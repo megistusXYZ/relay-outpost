@@ -59,3 +59,7 @@ EXTERNAL_DISCUSSION_PLAN.md
 test-results/
 coverage/
 playwright-report/
+
+# Internal strategy docs — live locally and in the private archive, never here
+POSITIONING_AND_IA.md
+CONCORD_PLAN.md
