@@ -1,0 +1,4 @@
+- [Build & deploy gotchas](build-and-deploy.md) — judge build by `npm run build` not tsc; dev preview ≠ prod build; Socket firewall can hard-block a pinned dep, fix in the lockfile.
+- [PWA service worker & seamless updates](pwa-service-worker.md) — "old app on custom domain" = stale SW, not DNS; verify by comparing asset hashes; v5 auto-activates (skipWaiting+claim) with deferred reload.
+- [Git lock & empty deploy commits](git-lock-and-empty-deploy-commits.md) — Git pane "index locked" + pull MERGE_CONFLICT = stale index.lock plus an empty local "Published your App" commit; verify no git procs, rm lock, reset to origin/main, pull via callback.
+- [Prod crashes on missing module while dev is fine](deploy-stale-node-modules.md) — VM deploy reused stale node_modules; fix = `npm ci && npm run build` in deploy build command.

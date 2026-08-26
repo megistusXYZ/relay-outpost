@@ -1,0 +1,61 @@
+node_modules
+dist
+.DS_Store
+server/public
+vite.config.ts.*
+*.tar.gz
+
+# Environment files
+.env*
+!.env.example
+
+# Internal Replit / agent files
+.local/
+.claude/
+attached_assets/
+.replit
+replit.nix
+replit.md
+.cache/
+.config/
+.upm/
+
+# Internal planning docs stay private by default; published docs are re-included below.
+docs/*
+!docs/DISTRIBUTION.md
+!docs/manual-qa.md
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+Thumbs.db
+
+# Database
+*.sqlite
+*.sqlite3
+
+# Build artifacts
+*.tsbuildinfo
+
+# Local-only workflow skills (vendored via `npx skills add`) — personal tooling,
+# not product code. Ignore everything under .agents/skills EXCEPT our own nostr-dev,
+# so a stray `git add -A` (or Replit auto-push) can't sweep them into the repo.
+.agents/skills/*
+!.agents/skills/nostr-dev/
+skills-lock.json
+
+# Held design docs — keep local, never commit (see repo-visibility-private policy)
+EXTERNAL_DISCUSSION_PLAN.md
+
+# Agent-canvas leftovers and test artifacts — never track
+.canvas/
+test-results/
+coverage/
+playwright-report/

@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main, local-dev]
+    paths-ignore: ['**.md', 'docs/**', '.gitignore', 'LICENSE']
+  pull_request:
+    branches: [main, local-dev]
+    paths-ignore: ['**.md', 'docs/**', '.gitignore', 'LICENSE']
+
+# Cost control (private repo → 2,000 Actions min/month cap). Two levers, neither
+# weakens what actually runs on real code:
+#   1. cancel-in-progress — when a branch/PR is pushed again before its run
+#      finishes (agents iterate fast), cancel the now-stale in-flight run instead
+#      of letting both burn minutes. Only ever cancels superseded runs.
+#   2. paths-ignore above — docs/markdown-only changes skip the full suite.
+# Safe here because no status check is required for merge.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 20 because that is what SHIPS — Dockerfile is `FROM node:20-slim`.
+      # Keep this pinned to production, not to whatever devs run locally.
+      #
+      # The gap bites: a laptop on Node 22+ has globals Node 20 lacks
+      # (WebSocket, sessionStorage), so a test can lean on one, pass locally,
+      # and fail only here. That kept this workflow red for 20 consecutive runs
+      # while everyone read a green local run and merged anyway. `.nvmrc` now
+      # pins local to 20 too, and `npm run test:ci-globals` reproduces the
+      # missing-global class on a newer Node without needing to switch versions.
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # Replit's publish flow regenerates package-lock.json against its internal
+      # package proxy (package-firewall.replit.local), baking that host into the
+      # `resolved` URLs. GitHub runners can't reach it, so installs fail there.
+      # Rewrite those back to the public registry before installing. Idempotent —
+      # a no-op when the lockfile is already clean. (integrity hashes are
+      # content-based, so the rewritten URLs still validate.)
+      - name: Normalize lockfile registry URLs
+        run: sed -i 's#http://package-firewall.replit.local/npm/#https://registry.npmjs.org/#g' package-lock.json
+
+      # Use `npm install` (not `npm ci`): the lockfile omits an optional native
+      # transitive dep (bufferutil, via ws) that the Linux runner resolves into its
+      # ideal tree, which makes strict `npm ci` fail. `npm install` matches how the
+      # app is actually installed (Replit/local). Switch back to `npm ci` once the
+      # lockfile is regenerated on Linux so it's fully in sync.
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      # Gating steps — these must pass.
+      - name: Test
+        run: npm test
+
+      # Cheap belt-and-braces (~5s): the same suite with the newer-Node globals
+      # stripped. Redundant while this job pins Node 20 — that is the point. It
+      # fails loudly the day someone bumps node-version or .nvmrc without
+      # noticing a test had started leaning on a global production won't have.
+      - name: Test (production globals only)
+        if: always()
+        run: npm run test:ci-globals
+
+      # `if: always()` on every gate after the first: a failing step otherwise
+      # SKIPS the rest, so one broken test file quietly disabled Build and
+      # Type-check for two weeks — 34 of 34 red runs reported one gate out of
+      # three. Report all of them; a run that stops at the first problem hides
+      # how many there are.
+      - name: Build
+        if: always()
+        run: npm run build
+
+      # Blocking baseline gate: the repo carries pre-existing type errors that
+      # are being burned down — the count may only ever go DOWN. A PR that
+      # pushes it above the baseline fails CI. Ratchet the number here whenever
+      # the burn-down lowers it. (125 → 123 on 2026-07-18, PR #318's cleanup;
+      # 123 → 90 on 2026-08-03 — the real count had been 90 for a while, so the
+      # gate was leaving room for 33 new errors to land unnoticed.)
+      - name: Type-check (baseline ≤ 90)
+        if: always()
+        run: |
+          count=$(npm run check 2>&1 | grep -c 'error TS' || true)
+          echo "tsc errors: $count (baseline 90)"
+          test "$count" -le 90

@@ -1,0 +1,39 @@
+# Relay Outpost — run the whole stack (app + Postgres) yourself.
+#   docker compose up --build
+# Then open http://localhost:5050
+# (Published on 5050 because macOS AirPlay squats on host port 5000; the
+# container itself still listens on 5000.)
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: relay
+      POSTGRES_PASSWORD: relay
+      POSTGRES_DB: relay_outpost
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U relay -d relay_outpost"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build: .
+    # The image CMD no longer pushes schema (the cluster does that via a Helm
+    # hook Job) — compose keeps the old push-then-start behavior explicitly.
+    command: ["sh", "-c", "npx drizzle-kit push && node dist/index.cjs"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://relay:relay@db:5432/relay_outpost
+      NODE_ENV: production
+      PORT: "5000"
+      # Set to your public domain(s) in production:
+      # ALLOWED_ORIGINS: https://relay.example.com
+    ports:
+      - "5050:5000"
+
+volumes:
+  pgdata:

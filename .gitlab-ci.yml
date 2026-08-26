@@ -1,0 +1,33 @@
+# Build + push the Relay Outpost image to artifacts.relay.tools on every
+# default-branch push to the code.relay.tools mirror. Adapted from
+# relay-op-ops/docs/example.gitlab-ci.yml — the Replit-lockfile normalization
+# lives inside the Dockerfile build stage, so no extra CI step is needed.
+#
+# BUILDKIT_HOST is injected by the runner config; CI_REGISTRY_* are set by
+# GitLab automatically.
+stages:
+  - build
+
+build-image:
+  stage: build
+  image:
+    name: moby/buildkit:v0.23.2
+    entrypoint: [""]
+  script:
+    - mkdir -p ~/.docker
+    - AUTH=$(printf '%s:%s' "$CI_REGISTRY_USER" "$CI_REGISTRY_PASSWORD" | base64 | tr -d '\n')
+    - printf '{"auths":{"%s":{"auth":"%s"}}}' "$CI_REGISTRY" "$AUTH" > ~/.docker/config.json
+    - >
+      buildctl build
+      --frontend dockerfile.v0
+      --local context=.
+      --local dockerfile=.
+      --output type=image,name=$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA,push=true
+    - >
+      buildctl build
+      --frontend dockerfile.v0
+      --local context=.
+      --local dockerfile=.
+      --output type=image,name=$CI_REGISTRY_IMAGE:latest,push=true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'

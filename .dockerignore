@@ -1,0 +1,17 @@
+# Keep the build context lean — node_modules alone is ~635MB and the build
+# stage reinstalls from the lockfile anyway. Docker does NOT read .gitignore.
+node_modules
+dist
+.git
+.env
+.env.*
+onboarding
+*.log
+.DS_Store
+.replitignore
+.agents
+.claude
+.github
+docs
+test-results
+coverage

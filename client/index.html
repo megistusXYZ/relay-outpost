@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <script>try{var t=localStorage.getItem('relay-outpost-theme');if(t==='light'){document.documentElement.classList.remove('dark')}else if(t==='black'){document.documentElement.setAttribute('data-theme','black')}}catch(e){}</script>
+    <script>try{var c=localStorage.getItem('relay-outpost-contrast-level');if(c==='high'||c==='maximum'){document.documentElement.setAttribute('data-contrast',c)}}catch(e){}</script>
+    <script>try{var pm=localStorage.getItem('relay-outpost-perf');var lite;if(pm==='lite'){lite=true}else if(pm==='full'){lite=false}else{var n=navigator;var conn=n.connection||{};lite=(n.maxTouchPoints>0&&matchMedia('(pointer: coarse)').matches)||(n.deviceMemory&&n.deviceMemory<=4)||(n.hardwareConcurrency&&n.hardwareConcurrency<=4)||conn.saveData===true||matchMedia('(prefers-reduced-transparency: reduce)').matches}if(lite){document.documentElement.setAttribute('data-perf','lite')}}catch(e){}</script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5, user-scalable=yes, viewport-fit=cover, interactive-widget=resizes-content" />
+    <script>(function(){try{var s=window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches;var i=window.navigator&&window.navigator.standalone===true;if(s||i){var m=document.querySelector('meta[name=viewport]');if(m){m.setAttribute('content','width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content');document.documentElement.classList.add('pwa-standalone');}}}catch(e){}})();</script>
+    <title>Relay Outpost — One outpost for everything you say.</title>
+    <meta name="description" content="All your communications in one account — post, chat, and connect without another username and password. Everything you make is yours." />
+    <meta name="keywords" content="social platform, online community, creator platform, community app, private messaging, content creators, own your account, Nostr" />
+
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <meta name="theme-color" content="#09090b" />
+    <script>try{var th=localStorage.getItem('relay-outpost-theme');if(th==='light')document.querySelector('meta[name=theme-color]').setAttribute('content','#ffffff');else if(th==='black')document.querySelector('meta[name=theme-color]').setAttribute('content','#050408')}catch(e){}</script>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Relay Outpost" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <meta property="og:title" content="Relay Outpost — One outpost for everything you say." />
+    <meta property="og:description" content="All your communications in one account — post, chat, and connect without another username and password. Everything you make is yours." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Relay Outpost" />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:width" content="1155" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Relay Outpost — one outpost for everything you say." />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Relay Outpost — One outpost for everything you say." />
+    <meta name="twitter:description" content="All your communications in one account — post, chat, and connect without another username and password. Everything you make is yours." />
+    <meta name="twitter:image" content="/og-image.png" />
+    <meta name="twitter:image:alt" content="Relay Outpost — own your account and run your own community." />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Relay Outpost",
+      "alternateName": "Relay Outpost — One outpost for everything you say.",
+      "description": "All your communications in one account — post, chat, and connect without another username and password. Everything you make is yours, and it works everywhere. No email or phone number required.",
+      "url": "https://relayop.xyz",
+      "applicationCategory": "SocialNetworkingApplication",
+      "operatingSystem": "Web",
+      "browserRequirements": "Requires a modern browser with WebSocket support",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "No algorithm decides who sees your posts",
+        "Publish posts and long-form articles",
+        "Go live with streaming",
+        "Private, encrypted messaging",
+        "Receive voluntary support directly from your audience",
+        "Content calendar and scheduling",
+        "Built-in moderation and insights",
+        "Works on any device — install as an app"
+      ],
+      "screenshot": "https://relayop.xyz/og-image.png"
+    }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Picker fonts: load async so this stylesheet never blocks first paint.
+         Only the curated FONT_OPTIONS families (Settings.tsx / FONT_MAP in
+         main.tsx) plus the brand faces (Oxanium, Space Grotesk/Mono) are
+         requested; only families actually applied to text get their woff2
+         downloaded. -->
+    <link rel="stylesheet" media="print" onload="this.onload=null;this.media='all'" href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Lora:ital,wght@0,400..700;1,400..700&family=Nunito:ital,wght@0,200..1000;1,200..1000&family=Oxanium:wght@200..800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Space+Grotesk:wght@300..700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"></noscript>
+
+    <!-- ── Cold-start branded splash ──────────────────────────────────────────
+         Inline, dependency-free critical CSS so the Relay Outpost mark paints
+         the instant the HTML loads — before the JS bundle parses / React mounts.
+         No blank screen on cold start (browser tab OR installed PWA, mobile &
+         desktop). Theme-matched bg is set by the script below to avoid a flash;
+         main.tsx fades + removes #ro-splash once the app is mounted. -->
+    <style>
+      #ro-splash{
+        position:fixed;
+        inset:0;
+        z-index:2147483647;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        gap:22px;
+        /* Default to the brand dark canvas; the inline script below overrides
+           to the light canvas before paint when the user is on light mode. */
+        background:#0a0a0a;
+        --ro-mark:#ffffff;
+        --ro-glow:rgba(139,92,246,.42);
+        --ro-glow2:rgba(99,102,241,.34);
+        --ro-ring:rgba(139,92,246,.38);
+        transition:opacity .34s ease;
+        opacity:1;
+        /* keep the mark visually centered even with device safe-area insets */
+        padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      }
+      html.ro-splash-light #ro-splash{
+        background:#f8f7fc;
+        --ro-mark:#7c3aed;
+        --ro-glow:rgba(124,58,237,.22);
+        --ro-glow2:rgba(99,102,241,.16);
+        --ro-ring:rgba(124,58,237,.28);
+      }
+      #ro-splash.ro-splash-hide{opacity:0;pointer-events:none;}
+      .ro-splash-stage{
+        position:relative;
+        width:132px;
+        height:132px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        animation:roSplashReveal .5s cubic-bezier(.2,.7,.2,1) both;
+      }
+      /* Twin violet/indigo aura, breathing + drifting out of phase so the
+         light behind the mark feels alive. No ring, no orbit dot. */
+      .ro-splash-glow{
+        position:absolute;
+        width:160%;
+        height:160%;
+        border-radius:50%;
+        background:radial-gradient(circle at center, var(--ro-glow) 0%, rgba(139,92,246,0) 66%);
+        filter:blur(7px);
+        animation:roSplashGlow 2.9s ease-in-out infinite;
+      }
+      .ro-splash-glow-2{
+        background:radial-gradient(circle at center, var(--ro-glow2) 0%, rgba(99,102,241,0) 62%);
+        animation:roSplashGlow2 3.7s ease-in-out infinite;
+      }
+      /* The Relay mark — crisp, gently breathing; a light sweeps across it
+         (SVG clip + gradient rect, animated inside). No constant spin. */
+      .ro-splash-mark{
+        position:relative;
+        width:54px;
+        height:54px;
+        color:var(--ro-mark);
+        overflow:visible;
+        animation:roSplashPulse 2.8s ease-in-out infinite;
+      }
+      @keyframes roSplashReveal{
+        from{opacity:0;transform:scale(.8);filter:blur(9px);}
+        to{opacity:1;transform:scale(1);filter:blur(0);}
+      }
+      @keyframes roSplashGlow{
+        0%,100%{opacity:.5;transform:scale(.92) translate(-2%,0);}
+        50%{opacity:.96;transform:scale(1.08) translate(2%,0);}
+      }
+      @keyframes roSplashGlow2{
+        0%,100%{opacity:.34;transform:scale(1.06) translate(2%,1.5%);}
+        50%{opacity:.72;transform:scale(.94) translate(-2%,-1.5%);}
+      }
+      /* The sweep is a white gradient — a true glint on the dark canvas's white
+         mark, but near-opaque white ERASES the violet mark on the light canvas.
+         Scale the whole sweep down in light mode so it reads as a soft sheen. */
+      .ro-splash-shine{opacity:1;}
+      html.ro-splash-light .ro-splash-shine{opacity:.35;}
+      @keyframes roSplashPulse{
+        0%,100%{opacity:.86;transform:scale(1);}
+        50%{opacity:1;transform:scale(1.035);}
+      }
+      /* Stuck-load reload escape hatch: hidden until #ro-splash gets .ro-splash-stuck */
+      .ro-splash-retry{
+        position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 44px);left:0;right:0;
+        display:flex;flex-direction:column;align-items:center;gap:12px;
+        opacity:0;transform:translateY(6px);pointer-events:none;
+        transition:opacity .3s ease,transform .3s ease;
+      }
+      #ro-splash.ro-splash-stuck .ro-splash-retry{opacity:1;transform:translateY(0);pointer-events:auto;}
+      .ro-splash-retry-note{
+        font-family:'Space Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+        font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.42);
+      }
+      html.ro-splash-light .ro-splash-retry-note{color:rgba(60,50,90,.5);}
+      .ro-splash-retry-btn{
+        appearance:none;border:1px solid var(--ro-ring);background:transparent;color:var(--ro-mark);
+        font:inherit;font-size:13px;font-weight:600;letter-spacing:.04em;
+        padding:10px 26px;min-height:44px;border-radius:999px;cursor:pointer;
+        transition:background .2s ease,border-color .2s ease;
+      }
+      .ro-splash-retry-btn:active{background:var(--ro-glow);}
+      /* Reduced motion: show the mark statically, no spin / orbit / breathing. */
+      @media (prefers-reduced-motion: reduce){
+        .ro-splash-stage{animation:none;}
+        .ro-splash-glow,.ro-splash-glow-2{animation:none;opacity:.7;transform:none;}
+        .ro-splash-mark{animation:none;opacity:1;transform:none;}
+        .ro-splash-shine{display:none;}
+        #ro-splash{transition:opacity .2s ease;}
+      }
+    </style>
+    <script>try{if(localStorage.getItem('relay-outpost-theme')==='light')document.documentElement.classList.add('ro-splash-light');}catch(e){}</script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Cold-start branded splash. A fixed overlay sibling of #root (NOT a
+         child) so React never clears it mid-fade; main.tsx calls
+         window.__roHideSplash() once mounted to fade it out and remove it. -->
+    <div id="ro-splash" aria-hidden="true" role="presentation">
+      <div class="ro-splash-stage">
+        <div class="ro-splash-glow"></div>
+        <div class="ro-splash-glow ro-splash-glow-2"></div>
+        <svg class="ro-splash-mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <defs>
+            <linearGradient id="roSplashShine" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0" />
+              <stop offset="50%" stop-color="#ffffff" stop-opacity="0.85" />
+              <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+            </linearGradient>
+            <clipPath id="roSplashClip">
+              <path d="M5.64999 7.64999L2.85001 4.85001C2.54001 4.54001 2.76001 4 3.20001 4H6.79001C6.92001 4 7.05001 4.04999 7.14001 4.14999L12.14 9.14999C12.45 9.45999 12.23 10 11.79 10H8.5C6.57 10 5 11.57 5 13.5C5 15.43 6.57 17 8.5 17H10L12.15 19.15C12.46 19.46 12.24 20 11.8 20H8.51001C4.92001 20 2.01001 17.09 2.01001 13.5C2.01001 11.01 3.41001 8.84 5.48001 7.75L5.64999 7.64999Z" />
+              <path d="M18.35 16.35L21.15 19.15C21.46 19.46 21.24 20 20.8 20H17.21C17.08 20 16.95 19.95 16.86 19.85L11.86 14.85C11.55 14.54 11.77 14 12.21 14H15.5C17.43 14 19 12.43 19 10.5C19 8.57 17.43 7 15.5 7H14L11.85 4.85001C11.54 4.54001 11.76 4 12.2 4H15.49C19.08 4 21.99 6.91 21.99 10.5C21.99 12.99 20.59 15.16 18.52 16.25L18.35 16.35Z" />
+            </clipPath>
+          </defs>
+          <path d="M5.64999 7.64999L2.85001 4.85001C2.54001 4.54001 2.76001 4 3.20001 4H6.79001C6.92001 4 7.05001 4.04999 7.14001 4.14999L12.14 9.14999C12.45 9.45999 12.23 10 11.79 10H8.5C6.57 10 5 11.57 5 13.5C5 15.43 6.57 17 8.5 17H10L12.15 19.15C12.46 19.46 12.24 20 11.8 20H8.51001C4.92001 20 2.01001 17.09 2.01001 13.5C2.01001 11.01 3.41001 8.84 5.48001 7.75L5.64999 7.64999Z" />
+          <path d="M18.35 16.35L21.15 19.15C21.46 19.46 21.24 20 20.8 20H17.21C17.08 20 16.95 19.95 16.86 19.85L11.86 14.85C11.55 14.54 11.77 14 12.21 14H15.5C17.43 14 19 12.43 19 10.5C19 8.57 17.43 7 15.5 7H14L11.85 4.85001C11.54 4.54001 11.76 4 12.2 4H15.49C19.08 4 21.99 6.91 21.99 10.5C21.99 12.99 20.59 15.16 18.52 16.25L18.35 16.35Z" />
+          <g clip-path="url(#roSplashClip)">
+            <rect class="ro-splash-shine" y="0" width="9" height="24" fill="url(#roSplashShine)">
+              <animate attributeName="x" values="-11;-11;33;33" keyTimes="0;0.12;0.6;1" dur="3.8s" begin="0.55s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;0.4 0 0.2 1;0 0 1 1" />
+            </rect>
+          </g>
+        </svg>
+      </div>
+      <div class="ro-splash-retry" id="ro-splash-retry">
+        <div class="ro-splash-retry-note">Taking longer than usual</div>
+        <button type="button" class="ro-splash-retry-btn" id="ro-splash-retry-btn">Reload</button>
+      </div>
+    </div>
+    <script>
+      // Splash teardown + resilience.
+      //  - Minimum on-screen time so a fast load still reads as a branded moment
+      //    rather than a flash, then a standard-timing fade (see .ro-splash CSS).
+      //  - If the app never signals ready (slow/failed bundle on a poor network),
+      //    we DON'T remove the splash into a blank screen; we reveal a Reload
+      //    escape hatch. Reload re-fetches a fresh index + chunks (network-first),
+      //    which also self-heals a stale service-worker cache.
+      (function(){
+        var START = Date.now();
+        var MIN_MS = 800;   // minimum branded-splash duration
+        window.__roHideSplash=function(){
+          var el=document.getElementById('ro-splash');
+          if(!el||el.dataset.hiding)return;
+          var wait = Math.max(0, MIN_MS - (Date.now()-START));
+          setTimeout(function(){
+            if(!el||el.dataset.hiding)return;
+            el.dataset.hiding='1';
+            el.classList.add('ro-splash-hide');
+            var done=function(){ if(el&&el.parentNode){el.parentNode.removeChild(el);} };
+            el.addEventListener('transitionend',done,{once:true});
+            setTimeout(done,600); // guarantee removal even if transitionend is missed
+          }, wait);
+        };
+        // Stuck-load: after ~9s with no "ready" signal, surface a reload button
+        // in place — never vanish into a blank.
+        setTimeout(function(){
+          var el=document.getElementById('ro-splash');
+          if(el && !el.dataset.hiding){ el.classList.add('ro-splash-stuck'); }
+        }, 9000);
+        var btn=document.getElementById('ro-splash-retry-btn');
+        if(btn){ btn.addEventListener('click', function(){ try{location.reload();}catch(e){} }); }
+      })();
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

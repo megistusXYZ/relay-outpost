@@ -1,0 +1,4574 @@
+/* Fonts load via the async (non-render-blocking) <link> in index.html with
+   display=swap — these same families (Oxanium, Space Grotesk/Mono, Inter,
+   Nunito, JetBrains Mono, Lora) are included there. A CSS @import here would be
+   render-blocking and delay first paint, so it's intentionally omitted. */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+input:focus,
+textarea:focus {
+  scroll-margin-bottom: 40vh;
+  scroll-padding-bottom: 40vh;
+}
+
+@supports (height: 100dvh) {
+  input:focus,
+  textarea:focus {
+    scroll-margin-bottom: 40dvh;
+    scroll-padding-bottom: 40dvh;
+  }
+}
+
+/* Hide scrollbars — and ONLY that. This utility is used on horizontal rails
+   AND vertical scrollers (e.g. the Add-Feed sheet body), so it must never set
+   `touch-action`: the old `touch-action: pan-x pinch-zoom` here forbade
+   vertical touch panning, which froze every vertical scroller that carried
+   this class (and stopped vertical page pans that started on a rail).
+   `overscroll-behavior-x: contain` stays: it keeps rail swipes from turning
+   into browser back/forward navigation and is inert on vertical scrollers. */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+:root {
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Space Mono', 'JetBrains Mono', 'Courier New', monospace;
+  /* Body default is a clean proportional sans for readability; Settings can
+     override --font-body per user pick (incl. the Space Mono "Station Default"). */
+  --font-body: var(--font-sans);
+  --font-brand: 'Oxanium', 'Space Grotesk', sans-serif;
+
+  --bottom-nav-height: 4rem;
+  --mini-player-height: 5.5rem;
+
+  --mention-hover-solid-bg: #f5f2ff;
+  --mention-hover-shadow: rgba(120, 80, 200, 0.18);
+
+  /* ── LIGHT THEME — "Synthesis" enterprise system (one violet hue, neutral text,
+     faint violet warmth canvas). Discipline: violet is RESERVED for primary actions,
+     the focus ring, and active/selected states; everything else is a near-neutral
+     violet-tinted gray. ONE brand hue (262) replaces the old purple/violet/indigo/
+     fuchsia drift. #1f1b4b (sidebar-primary) is kept ONLY as the deep selected/pressed
+     fill — no longer a wash. Canvas is near-white (98%), cards pure white to lift off it.
+     Components should map to these tokens, not raw Tailwind color families. */
+  --background: 262 16% 98%;        /* faint violet near-white canvas */
+  --foreground: 262 25% 12%;        /* body / heading text — ~14:1 on white */
+
+  --card: 0 0% 100%;                /* surfaces lift off the canvas via pure white + border */
+  --card-foreground: 262 25% 12%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 262 25% 12%;
+
+  --primary: 262 60% 44%;           /* primary actions: violet (white text ~5.3:1) */
+
+  /* ------------------------------------------------------------------
+   * --brand: the ACCENT hue. Not the same job as --primary.
+   *
+   * --primary is a FILL. In dark mode it is 0 0% 95% — near-white — which
+   * is exactly right for a solid button (it is why Follow is a white pill)
+   * and exactly wrong for an accent, because dark --foreground is 0 0% 96%.
+   * One percent apart: an icon or label painted text-primary is the same
+   * colour as body text, so the accent stops being an accent at all.
+   *
+   * In LIGHT this is byte-identical to --primary, so pointing an accent at
+   * --brand changes nothing there — the sweep is a provable no-op in light
+   * and repairs dark only.
+   * ------------------------------------------------------------------ */
+  --brand: 262 60% 44%;
+  /* The hover/emphasis step. Both themes move toward MORE contrast, which is
+   * what 199 hand-rolled hover pairs were already doing in opposite directions:
+   * light went violet-600 → violet-700 (darker on white), dark went violet-400
+   * → violet-300 (lighter on black). One token per step says that once instead
+   * of 199 times. 10.7:1 on white. */
+  --brand-strong: 262 65% 36%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 262 28% 93%;         /* tonal/secondary fill */
+  --secondary-foreground: 262 35% 28%;
+
+  --muted: 262 18% 95%;             /* muted surface (skeletons, recessed) */
+  --muted-foreground: 258 11% 42%;  /* captions, timestamps, metadata — ~5:1 on white */
+
+  --accent: 262 45% 93%;            /* hover / soft-selected tint (visible but calm) */
+  --accent-foreground: 262 45% 30%;
+
+  --destructive: 0 65% 50%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 262 16% 90%;            /* default hairline */
+  --input: 262 14% 84%;             /* form-field border (a touch stronger) */
+  --ring: 262 70% 55%;              /* focus ring — bright violet, pops on white */
+
+  --radius: 0.375rem;
+
+  --sidebar: 262 18% 97%;
+  --sidebar-foreground: 258 14% 30%;
+  --sidebar-primary: 245 47% 20%;          /* #1f1b4b — selected nav fill (kept) */
+  --sidebar-primary-foreground: 0 0% 98%;
+  --sidebar-accent: 262 48% 94%;           /* hover / soft-selected in sidebar (violet tint) */
+  --sidebar-accent-foreground: 262 45% 32%;
+  --sidebar-border: 262 16% 90%;
+  --sidebar-ring: 262 70% 55%;
+
+  /* ── GROUP-CHAT SENDER PALETTE (see lib/sender-color.ts) ──────────────────
+     Deterministic per-sender name colors for group chats (NIP-29 + Concord).
+     Curated 13-hue set: no red (~350–15deg, reads as error) and no violet-
+     primary band (262 +/- ~25deg, reads as selected). Every value passes WCAG
+     AA (>= 4.5:1, small bold text) against the canvas AND card backgrounds of
+     its theme — verified by sender-color.test.ts, which parses THIS file.
+     Keep the count in sync with SENDER_PALETTE_SIZE. */
+  --chat-sender-0: 22 62% 42%;    /* terracotta */
+  --chat-sender-1: 40 64% 34%;    /* amber */
+  --chat-sender-2: 60 55% 29%;    /* olive-gold */
+  --chat-sender-3: 85 50% 32%;    /* moss */
+  --chat-sender-4: 110 48% 33%;   /* green */
+  --chat-sender-5: 140 50% 33%;   /* emerald */
+  --chat-sender-6: 165 55% 31%;   /* teal */
+  --chat-sender-7: 188 60% 33%;   /* cyan */
+  --chat-sender-8: 205 62% 41%;   /* sky */
+  --chat-sender-9: 225 62% 55%;   /* blue */
+  --chat-sender-10: 300 45% 47%;  /* orchid */
+  --chat-sender-11: 320 55% 48%;  /* magenta */
+  --chat-sender-12: 338 55% 50%;  /* rose */
+}
+
+.dark {
+  --mention-hover-solid-bg: #0d0820;
+  --mention-hover-shadow: rgba(0, 0, 0, 0.5);
+
+  /* Surfaces sit at the brand violet hue (262) with a whisper more saturation
+     than before — leans "spaceship violet" instead of flat grey, still neutral
+     enough not to distract. Lightness unchanged, so contrast is identical. */
+  --background: 262 11% 7%;
+  --foreground: 0 0% 96%;
+
+  --card: 262 9% 9%;
+  --card-foreground: 0 0% 96%;
+
+  --popover: 262 9% 9%;
+  --popover-foreground: 0 0% 92%;
+
+  --primary: 0 0% 95%;
+  --primary-foreground: 0 0% 5%;
+  /* On the locked palette's hue 262, at a lightness chosen to match what the
+   * app had already drifted to: 7.5:1 on --background, within 0.1 of the
+   * purple-400 that 188 sites picked by hand. Consolidating six shades into
+   * this one should read as no change at all. */
+  --brand: 262 90% 76%;
+  /* Lighter than --brand here, darker than it in light — same intent, opposite
+   * direction, because "stronger" means "further from the background". 10.0:1
+   * on --background, within 0.3 of the violet-300 it replaces. */
+  --brand-strong: 262 95% 84%;
+
+  --secondary: 262 8% 10%;
+  --secondary-foreground: 0 0% 92%;
+
+  --muted: 262 8% 10%;
+  --muted-foreground: 0 0% 70%;
+
+  --accent: 262 9% 13%;
+  --accent-foreground: 0 0% 90%;
+
+  --destructive: 0 50% 35%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 262 8% 12%;
+  --input: 262 8% 12%;
+  --ring: 265 20% 50%;
+
+  --sidebar: 260 12% 3%;
+  --sidebar-foreground: 230 15% 80%;
+  --sidebar-primary: 0 0% 90%;
+  --sidebar-primary-foreground: 260 12% 3%;
+  --sidebar-accent: 265 20% 10%;
+  --sidebar-accent-foreground: 230 20% 90%;
+  --sidebar-border: 260 10% 8%;
+  --sidebar-ring: 265 35% 45%;
+
+  /* Group-chat sender palette — dark variants (same hues, lifted lightness so
+     each passes WCAG AA against the dark canvas/card; see :root block). */
+  --chat-sender-0: 22 62% 62%;    /* terracotta */
+  --chat-sender-1: 40 64% 58%;    /* amber */
+  --chat-sender-2: 60 50% 55%;    /* olive-gold */
+  --chat-sender-3: 85 45% 55%;    /* moss */
+  --chat-sender-4: 110 45% 55%;   /* green */
+  --chat-sender-5: 140 48% 52%;   /* emerald */
+  --chat-sender-6: 165 55% 50%;   /* teal */
+  --chat-sender-7: 188 60% 52%;   /* cyan */
+  --chat-sender-8: 205 65% 60%;   /* sky */
+  --chat-sender-9: 225 70% 68%;   /* blue */
+  --chat-sender-10: 300 50% 66%;  /* orchid */
+  --chat-sender-11: 320 60% 66%;  /* magenta */
+  --chat-sender-12: 338 62% 67%;  /* rose */
+}
+
+/* ---- Black (surfaces-only overlay on dark; use-theme.ts) -------------------
+ * "Lights out" tier: the .dark class stays on (every dark: style, glass
+ * effect, and star layer keeps working) and ONLY the surface tokens drop to
+ * near-black — a couple shades warmer than X's #000 so the violet space vibe
+ * survives. Foregrounds, brand, and chat-sender colors inherit from .dark
+ * (contrast only improves as the canvas darkens). Borders are LIFTED, not
+ * lowered: hairlines that read at L12% on an L7% canvas vanish on L2%. */
+.dark[data-theme="black"] {
+  --background: 262 14% 2%;
+  --card: 262 10% 4%;
+  --popover: 262 10% 4%;
+  --secondary: 262 9% 5%;
+  --muted: 262 9% 5%;
+  --accent: 262 10% 8%;
+  --border: 262 10% 15%;
+  --input: 262 10% 15%;
+  --sidebar: 260 14% 1%;
+  --sidebar-border: 260 10% 10%;
+  --mention-hover-solid-bg: #070412;
+}
+
+/* ---- Accessibility: contrast levels (see use-contrast.ts) ------------------
+ * "High" and "Maximum" re-tune the foreground/muted tokens toward the page
+ * background for stronger legibility (darker text in light mode, lighter in
+ * dark mode). Maximum also enforces a larger minimum body font size. The
+ * attribute is set on <html> by the contrast hook. */
+:root[data-contrast="high"] {
+  --foreground: 235 30% 8%;
+  --muted-foreground: 240 16% 30%;
+  --card-foreground: 235 30% 8%;
+  --secondary-foreground: 240 24% 16%;
+  --accent-foreground: 240 24% 16%;
+  --sidebar-foreground: 235 24% 18%;
+}
+:root[data-contrast="maximum"] {
+  --foreground: 235 40% 4%;
+  --muted-foreground: 240 24% 20%;
+  --card-foreground: 235 40% 4%;
+  --secondary-foreground: 240 30% 10%;
+  --accent-foreground: 240 30% 10%;
+  --sidebar-foreground: 235 30% 10%;
+  --border: 250 25% 70%;
+}
+.dark[data-contrast="high"] {
+  --foreground: 0 0% 96%;
+  --muted-foreground: 0 0% 80%;
+  --card-foreground: 0 0% 96%;
+  --secondary-foreground: 0 0% 97%;
+  --accent-foreground: 0 0% 96%;
+  --sidebar-foreground: 230 18% 90%;
+}
+.dark[data-contrast="maximum"] {
+  --foreground: 0 0% 100%;
+  --muted-foreground: 0 0% 92%;
+  --card-foreground: 0 0% 100%;
+  --secondary-foreground: 0 0% 100%;
+  --accent-foreground: 0 0% 100%;
+  --sidebar-foreground: 0 0% 96%;
+  --border: 260 6% 22%;
+}
+:root[data-contrast="maximum"] body {
+  font-size: 16px;
+}
+
+/* ---- Legibility floor (enterprise readability) ----------------------------
+ * The app applies low text-opacity utilities (text-muted-foreground/40, /50,
+ * text-foreground/40, …) in ~1500 places. Tailwind bakes that opacity into the
+ * color, blending the text toward the background — at /40–/50 that leaves
+ * chips, filters, counts and icon labels too faint to read comfortably in both
+ * light and dark mode. These rules intercept ONLY the faint *text* utilities
+ * and raise each to a readable opacity floor. They reference the same tokens,
+ * so High/Maximum contrast still scale them, and borders/backgrounds that use
+ * the same /xx opacities are left untouched. !important is required to win over
+ * Tailwind's own (non-important) utility of the same name, including dark:
+ * variants (higher specificity, so their floor takes over in dark mode). */
+
+/* muted-foreground — secondary text & icons (the bulk of the app's chrome) */
+.text-muted-foreground\/20, .dark .dark\:text-muted-foreground\/20 { color: hsl(var(--muted-foreground) / 0.42) !important; }
+.text-muted-foreground\/25, .dark .dark\:text-muted-foreground\/25 { color: hsl(var(--muted-foreground) / 0.48) !important; }
+.text-muted-foreground\/30, .dark .dark\:text-muted-foreground\/30 { color: hsl(var(--muted-foreground) / 0.54) !important; }
+.text-muted-foreground\/35, .dark .dark\:text-muted-foreground\/35 { color: hsl(var(--muted-foreground) / 0.60) !important; }
+.text-muted-foreground\/40, .dark .dark\:text-muted-foreground\/40 { color: hsl(var(--muted-foreground) / 0.66) !important; }
+.text-muted-foreground\/45, .dark .dark\:text-muted-foreground\/45 { color: hsl(var(--muted-foreground) / 0.72) !important; }
+.text-muted-foreground\/50, .dark .dark\:text-muted-foreground\/50 { color: hsl(var(--muted-foreground) / 0.76) !important; }
+
+/* foreground — primary text deliberately dimmed; lift a touch higher */
+.text-foreground\/20, .dark .dark\:text-foreground\/20 { color: hsl(var(--foreground) / 0.46) !important; }
+.text-foreground\/25, .dark .dark\:text-foreground\/25 { color: hsl(var(--foreground) / 0.52) !important; }
+.text-foreground\/30, .dark .dark\:text-foreground\/30 { color: hsl(var(--foreground) / 0.58) !important; }
+.text-foreground\/35, .dark .dark\:text-foreground\/35 { color: hsl(var(--foreground) / 0.64) !important; }
+.text-foreground\/40, .dark .dark\:text-foreground\/40 { color: hsl(var(--foreground) / 0.70) !important; }
+.text-foreground\/45, .dark .dark\:text-foreground\/45 { color: hsl(var(--foreground) / 0.78) !important; }
+.text-foreground\/50, .dark .dark\:text-foreground\/50 { color: hsl(var(--foreground) / 0.84) !important; }
+
+/* primary — accent labels */
+.text-primary\/20 { color: hsl(var(--primary) / 0.48) !important; }
+.text-primary\/30 { color: hsl(var(--primary) / 0.60) !important; }
+.text-primary\/40 { color: hsl(var(--primary) / 0.72) !important; }
+.text-primary\/50 { color: hsl(var(--primary) / 0.84) !important; }
+
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-body);
+    font-size: 16px;
+    letter-spacing: 0;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    background-color: hsl(245 25% 96%);
+    background-image:
+      radial-gradient(ellipse 90% 70% at 12% 15%, rgba(100, 70, 200, 0.07) 0%, transparent 55%),
+      radial-gradient(ellipse 70% 55% at 88% 80%, rgba(80, 50, 180, 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse 50% 45% at 50% 40%, rgba(60, 80, 200, 0.05) 0%, transparent 55%),
+      radial-gradient(ellipse 60% 40% at 75% 20%, rgba(120, 60, 220, 0.04) 0%, transparent 50%),
+      radial-gradient(ellipse 40% 50% at 25% 70%, rgba(70, 40, 180, 0.05) 0%, transparent 50%);
+  }
+
+  .dark body {
+    background-color: hsl(260 9% 7%);
+    background-image:
+      radial-gradient(ellipse 90% 70% at 12% 15%, rgba(20, 5, 50, 0.18) 0%, transparent 55%),
+      radial-gradient(ellipse 70% 55% at 88% 80%, rgba(40, 8, 35, 0.10) 0%, transparent 50%),
+      radial-gradient(ellipse 50% 45% at 50% 40%, rgba(8, 15, 45, 0.08) 0%, transparent 55%),
+      radial-gradient(ellipse 60% 40% at 75% 20%, rgba(10, 20, 50, 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse 40% 50% at 25% 70%, rgba(30, 5, 45, 0.06) 0%, transparent 50%);
+  }
+
+  /* Black: same nebula gradients (they read even better on a deeper canvas) —
+     only the base drops to near-black, matching the token overlay above. */
+  .dark[data-theme="black"] body {
+    background-color: hsl(262 14% 2%);
+  }
+
+  /* Remove the ~300ms tap delay + double-tap-zoom on interactive controls so
+     taps register instantly. Page scroll and pinch-zoom are unaffected. */
+  button, a, [role="button"], [role="tab"], [role="switch"], label, summary {
+    touch-action: manipulation;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply font-bold tracking-tight;
+  }
+
+  html {
+    background-color: hsl(245 25% 96%);
+  }
+
+  html.dark {
+    background-color: hsl(260 9% 7%);
+  }
+
+  html.dark[data-theme="black"] {
+    background-color: hsl(262 14% 2%);
+  }
+
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+    /* Govern text scaling at the ROOT so it applies uniformly to the whole tree.
+       Without this on <html>, iOS / DuckDuckGo "text autosizing" inflates long
+       body paragraphs but not UI chrome (buttons, labels, headers), throwing
+       layouts off balance. 100% opts out of that uneven auto-inflation while the
+       browser's own page-zoom still scales everything proportionally. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  ::selection {
+    background: rgba(120, 80, 200, 0.2);
+    color: hsl(260 15% 13%);
+  }
+
+  /* Theme swap = one clean crossfade of the whole screen via the View
+     Transitions API (see warpToggleTheme). It snapshots the old + new UI and
+     fades between them as single images, so gradients/backgrounds/shadows never
+     get caught half-transitioned the way a per-element color transition did.
+     Browsers without the API just snap instantly (also clean). */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 200ms;
+    animation-timing-function: ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) { animation: none; }
+  }
+
+  .dark ::selection {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+  }
+}
+
+@media (max-width: 767px) {
+  html, body {
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .feed-post-item button,
+  .feed-post-item a,
+  .feed-post-item [role="button"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .feed-post-item .transition-all {
+    transition-property: opacity, color, background-color;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .feed-post-item [class*="hover:scale"],
+  .feed-post-item [class*="hover:shadow"] {
+    transition: none;
+  }
+}
+
+.feed-scroll-container {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto;
+  overscroll-behavior-y: contain;
+  will-change: scroll-position;
+  transform: translateZ(0);
+  touch-action: pan-y;
+}
+
+.feed-post-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 220px;
+  contain: layout style;
+  border-radius: 0.75rem;
+  position: relative;
+  z-index: 0;
+}
+
+/* Inside the virtualized feed (VirtualFeed.tsx), rows are transform-positioned
+ * from ResizeObserver measurements, so two things must not run there:
+ *
+ * 1. The browser's OWN lazy renderer. `.feed-post-item` ships
+ *    `content-visibility: auto`, so a row whose contents are skipped reports
+ *    its contain-intrinsic-size placeholder (220px) instead of its real height.
+ *    The virtualizer caches that phantom height, then corrects by hundreds of
+ *    px mid-scroll when the row actually paints — the feed "glitches out"
+ *    (worst on iOS Safari, which re-skips content during momentum scroll).
+ *    The `data-restoring` override below already patches this for the
+ *    back-navigation window; live scrolling needs it always: virtualized rows
+ *    are only mounted near the viewport anyway, so content-visibility adds no
+ *    savings here — only measurement lies.
+ *
+ * 2. Native scroll anchoring. The virtualizer applies its own scroll
+ *    adjustment when an above-viewport row re-measures; Chrome's anchoring
+ *    then compensates the SAME transform shift a second time → jumps.
+ *    `overflow-anchor: none` excludes the feed subtree from anchor selection
+ *    (scoped here, not on `.feed-scroll-container`, so non-virtualized pages
+ *    in the same scroller keep native anchoring, which helps them). */
+.virtual-feed {
+  overflow-anchor: none;
+}
+.virtual-feed .feed-post-item {
+  content-visibility: visible;
+  contain-intrinsic-size: auto none;
+}
+
+/* While a back/forward scroll restore is in flight, the container carries
+ * `data-restoring` (set by use-scroll-restore.ts for the restore window only).
+ * Force posts to render their REAL height instead of the 220px
+ * content-visibility placeholder, so the virtualizer's measurements and the
+ * anchor restorer see true offsets immediately — no shifting-height churn while
+ * the position is being landed. Removed the instant the window settles. */
+.feed-scroll-container[data-restoring] .feed-post-item {
+  content-visibility: visible;
+  contain-intrinsic-size: auto;
+}
+
+.feed-post-item:focus-within {
+  z-index: 10;
+}
+
+.feed-post-item:has(.reaction-bar-wrapper[data-hover]),
+.feed-post-item:has(.reaction-bar-wrapper[data-open]) {
+  z-index: 10;
+}
+
+#root {
+  position: relative;
+  min-height: 100dvh;
+}
+
+@media (max-width: 767px) {
+  #root {
+    height: 100dvh;
+    overflow: hidden;
+  }
+}
+
+#app-header {
+  height: calc(3.5rem + env(safe-area-inset-top, 0px));
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (min-width: 768px) {
+  #app-header {
+    height: 3rem;
+    padding-top: 0 !important;
+  }
+}
+
+.space-bg-nebula {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  display: none;
+}
+
+.dark .space-bg-nebula {
+  display: block;
+  background:
+    radial-gradient(ellipse 45% 35% at 20% 25%, rgba(40, 10, 80, 0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 35% 40% at 80% 70%, rgba(60, 15, 50, 0.08) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 30% at 65% 15%, rgba(12, 25, 70, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 30% 35% at 35% 80%, rgba(25, 15, 60, 0.08) 0%, transparent 55%),
+    radial-gradient(ellipse 25% 25% at 90% 30%, rgba(100, 20, 100, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 20% 30% at 10% 60%, rgba(15, 10, 50, 0.08) 0%, transparent 50%);
+  animation: nebulaShift 45s ease-in-out infinite alternate;
+}
+
+.space-bg-nebula-glow {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  display: none;
+}
+
+.dark .space-bg-nebula-glow {
+  display: block;
+  background:
+    radial-gradient(ellipse 60% 50% at 30% 30%, rgba(50, 25, 100, 0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 60% at 70% 65%, rgba(80, 20, 60, 0.03) 0%, transparent 65%);
+  animation: nebulaShift 60s ease-in-out infinite alternate-reverse;
+}
+
+.space-bg-stars {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  display: none;
+}
+
+.dark .space-bg-stars {
+  display: block;
+  background-image:
+    radial-gradient(1.2px 1.2px at 3% 8%, rgba(220, 230, 255, 0.7) 0%, transparent 100%),
+    radial-gradient(1px 1px at 8% 45%, rgba(255, 255, 255, 0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 12% 78%, rgba(200, 210, 255, 0.55) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 18% 22%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 22% 62%, rgba(180, 200, 255, 0.45) 0%, transparent 100%),
+    radial-gradient(1.8px 1.8px at 28% 12%, rgba(255, 240, 220, 0.6) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 33% 88%, rgba(200, 220, 255, 0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 38% 35%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(1.3px 1.3px at 42% 55%, rgba(180, 190, 255, 0.5) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 48% 5%, rgba(255, 255, 255, 0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 52% 72%, rgba(200, 210, 255, 0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 58% 28%, rgba(220, 200, 255, 0.55) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 63% 92%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 68% 48%, rgba(180, 200, 255, 0.4) 0%, transparent 100%),
+    radial-gradient(1.8px 1.8px at 72% 15%, rgba(255, 220, 200, 0.5) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 78% 65%, rgba(200, 220, 255, 0.35) 0%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 82% 82%, rgba(255, 255, 255, 0.45) 0%, transparent 100%),
+    radial-gradient(1px 1px at 88% 38%, rgba(180, 200, 255, 0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 92% 58%, rgba(220, 210, 255, 0.5) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 96% 8%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 15% 50%, rgba(255, 255, 255, 0.25) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 45% 42%, rgba(200, 200, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 75% 30%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(1.3px 1.3px at 55% 85%, rgba(180, 190, 255, 0.45) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 85% 10%, rgba(255, 255, 255, 0.25) 0%, transparent 100%),
+    radial-gradient(1px 1px at 5% 95%, rgba(200, 220, 255, 0.35) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 35% 18%, rgba(220, 230, 255, 0.5) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 65% 75%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 95% 45%, rgba(200, 210, 255, 0.35) 0%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 25% 95%, rgba(255, 240, 230, 0.4) 0%, transparent 100%);
+  animation: starTwinkle 12s ease-in-out infinite alternate;
+}
+
+.space-bg-stars-deep {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  display: none;
+}
+
+.dark .space-bg-stars-deep {
+  display: block;
+  opacity: 0.6;
+  background-image:
+    radial-gradient(0.5px 0.5px at 7% 12%, rgba(255, 255, 255, 0.4) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 14% 34%, rgba(200, 210, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 21% 67%, rgba(255, 255, 255, 0.25) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 29% 89%, rgba(200, 200, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 36% 23%, rgba(255, 255, 255, 0.35) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 43% 56%, rgba(220, 220, 255, 0.25) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 51% 78%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 57% 11%, rgba(200, 210, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 64% 44%, rgba(255, 255, 255, 0.25) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 71% 91%, rgba(220, 230, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 79% 33%, rgba(255, 255, 255, 0.35) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 86% 66%, rgba(200, 200, 255, 0.25) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 93% 19%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 4% 55%, rgba(220, 210, 255, 0.25) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 47% 3%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 67% 97%, rgba(200, 220, 255, 0.25) 0%, transparent 100%);
+  animation: starTwinkle 18s ease-in-out infinite alternate-reverse;
+}
+
+.space-bg-shooting-star {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  display: none;
+}
+
+.dark .space-bg-shooting-star {
+  display: block;
+}
+
+.space-bg-shooting-star::before {
+  content: '';
+  position: absolute;
+  width: 120px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(200, 220, 255, 0.8), transparent);
+  top: 18%;
+  left: -120px;
+  transform: rotate(-25deg);
+  animation: shootingStar1 12s ease-in-out infinite;
+  animation-delay: 3s;
+}
+
+.space-bg-shooting-star::after {
+  content: '';
+  position: absolute;
+  width: 80px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(180, 200, 255, 0.6), transparent);
+  top: 55%;
+  left: -80px;
+  transform: rotate(-20deg);
+  animation: shootingStar2 18s ease-in-out infinite;
+  animation-delay: 9s;
+}
+
+.space-bg-vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  display: none;
+}
+
+.dark .space-bg-vignette {
+  display: block;
+  background:
+    radial-gradient(ellipse 110% 110% at 50% 50%, transparent 35%, rgba(0, 0, 0, 0.55) 100%),
+    radial-gradient(ellipse 80% 40% at 50% 100%, rgba(10, 5, 30, 0.4) 0%, transparent 70%),
+    radial-gradient(ellipse 80% 40% at 50% 0%, rgba(10, 5, 30, 0.3) 0%, transparent 70%);
+}
+
+#root::before,
+#root::after {
+  display: none;
+}
+
+.glass-card,
+.glass-header,
+.glass-nav-panel,
+.glass-footer {
+  position: relative;
+}
+
+.glass-dialog-card::before,
+.glass-card::before,
+.glass-header::before,
+.glass-dialog::before,
+.glass-nav-panel::before,
+.glass-footer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+  background-attachment: fixed;
+  mix-blend-mode: multiply;
+}
+
+.dark .glass-dialog::before,
+.dark .glass-nav-panel::before {
+  opacity: 0.035;
+  mix-blend-mode: normal;
+  animation: grain 8s steps(10) infinite;
+}
+
+.dark .glass-dialog-card::before,
+.dark .glass-card::before,
+.dark .glass-header::before,
+.dark .glass-footer::before {
+  opacity: 0.015;
+  mix-blend-mode: normal;
+  animation: none;
+}
+
+.glass-dialog-card::after,
+.glass-card::after,
+.glass-header::after,
+.glass-dialog::after,
+.glass-nav-panel::after,
+.glass-footer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: none;
+}
+
+.dark .glass-dialog::after,
+.dark .glass-nav-panel::after {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.025) 3px,
+    rgba(0, 0, 0, 0.025) 6px
+  );
+  background-attachment: fixed;
+}
+
+.dark .glass-dialog-card::after,
+.dark .glass-card::after,
+.dark .glass-header::after,
+.dark .glass-footer::after {
+  background: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-dialog-card::before,
+  .glass-card::before,
+  .glass-header::before,
+  .glass-dialog::before,
+  .glass-nav-panel::before,
+  .glass-footer::before {
+    animation: none;
+  }
+  .brand-flicker,
+  .brand-glow {
+    animation: none;
+  }
+  .space-bg-nebula,
+  .space-bg-nebula-glow,
+  .space-bg-stars,
+  .space-bg-stars-deep,
+  .space-bg-shooting-star::before,
+  .space-bg-shooting-star::after {
+    animation: none;
+  }
+}
+
+/* ---- Lite mode (see use-perf-mode.ts) -------------------------------------
+ * backdrop-filter: blur() is the single most expensive thing a mobile GPU does
+ * during scroll, and the app uses it in 110+ places. Lite mode — auto-enabled on
+ * touch / low-memory / data-saver devices, and user-toggleable — removes ALL
+ * backdrop blur (including Tailwind backdrop-blur-* utilities) and swaps frosted
+ * glass for solid, themed surfaces so everything stays legible and scrolls at
+ * 60fps on phones like the Galaxy S20. */
+html[data-perf="lite"] *,
+html[data-perf="lite"] *::before,
+html[data-perf="lite"] *::after,
+html[data-perf="lite"] [class*="backdrop-blur"],
+html[data-perf="lite"] .scroll-to-top-btn,
+html[data-perf="lite"] .glass-card,
+html[data-perf="lite"] .glass-dialog-card,
+html[data-perf="lite"] .glass-dialog,
+html[data-perf="lite"] .glass-settings-section,
+html[data-perf="lite"] .glass-header,
+html[data-perf="lite"] .glass-footer,
+html[data-perf="lite"] .glass-nav-panel,
+html[data-perf="lite"] .glass-dropdown,
+html[data-perf="lite"] .dark .glass-card,
+html[data-perf="lite"] .dark .glass-header,
+html[data-perf="lite"] .dark .glass-footer {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+/* The sheet/drawer scrim is frosted (dim + blur); on perf-lite devices the blur
+   is stripped above, so deepen the dim there so the background still recedes. */
+html[data-perf="lite"] .sheet-scrim {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+}
+html[data-perf="lite"] .glass-card,
+html[data-perf="lite"] .glass-dialog-card,
+html[data-perf="lite"] .glass-dialog,
+html[data-perf="lite"] .glass-settings-section {
+  background: hsl(var(--card)) !important;
+}
+html[data-perf="lite"] .glass-header,
+html[data-perf="lite"] .glass-footer,
+html[data-perf="lite"] .glass-nav-panel {
+  background: hsl(var(--background)) !important;
+}
+html[data-perf="lite"] .glass-dropdown,
+html[data-perf="lite"] .glass-dropdown-label {
+  background: hsl(var(--popover)) !important;
+}
+
+/* ---- Browser-native windowing for long feeds -------------------------------
+ * content-visibility: auto lets the browser skip layout/paint/style for items
+ * that are off-screen — the bulk of the scroll cost on long timelines — while
+ * keeping every node in the DOM, so infinite scroll, new-post prepend and
+ * scroll-position restore all keep working untouched. contain-intrinsic-size's
+ * `auto` keyword caches each item's real measured height so the scrollbar never
+ * jumps. Overlays (post menus, tooltips) are Radix-portaled to <body>, so paint
+ * containment never clips them. */
+.cv-list > * {
+  content-visibility: auto;
+  /* Closer to a real feed-post height (text + media + actions) than 360px, so
+     fast scrolls reserve the right space and the browser repaints less. The
+     `auto` keyword still caches each item's measured height after first paint. */
+  contain-intrinsic-size: auto 480px;
+}
+/* Drop purely-decorative animated/blurred overlays in lite mode. */
+html[data-perf="lite"] .glass-settings-glow,
+html[data-perf="lite"] .space-bg-nebula {
+  display: none !important;
+}
+
+@media (max-width: 767px) {
+  .glass-dialog-card,
+  .glass-card,
+  .glass-header,
+  .glass-dialog,
+  .glass-nav-panel,
+  .glass-footer {
+    /* !important: the .glass-nav-panel (and .dark .glass-nav-panel) backdrop-blur is
+       DEFINED later in the file (source order) + at higher specificity, so a plain
+       `backdrop-filter: none` here loses on non-lite phones and the blur repaints
+       while the side-menu Sheet slides in → flicker. */
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Mobile: drop the decorative noise (::before) + scanline (::after) overlays on
+     glass surfaces. On iOS their `background-attachment: fixed` + the dark grain
+     `animation`/`mix-blend` repaint the WHOLE viewport every frame while a sheet or
+     card transforms (e.g. the side menu sliding/expanding), which made colors
+     flicker and hid text/buttons on the menu AND posts. They're purely cosmetic
+     (2–3.5% opacity), so removing them on phones is imperceptible. `display:none`
+     over base + `.dark` + `::after` sidesteps the higher-specificity
+     `.dark .glass-*::before/::after` animation rules (a plain `animation:none` at
+     `.glass-*::before` specificity did NOT beat `.dark .glass-nav-panel::before`). */
+  .glass-dialog-card::before, .glass-card::before, .glass-header::before,
+  .glass-dialog::before, .glass-nav-panel::before, .glass-footer::before,
+  .glass-dialog-card::after, .glass-card::after, .glass-header::after,
+  .glass-dialog::after, .glass-nav-panel::after, .glass-footer::after,
+  .dark .glass-dialog-card::before, .dark .glass-card::before, .dark .glass-header::before,
+  .dark .glass-dialog::before, .dark .glass-nav-panel::before, .dark .glass-footer::before,
+  .dark .glass-dialog-card::after, .dark .glass-card::after, .dark .glass-header::after,
+  .dark .glass-dialog::after, .dark .glass-nav-panel::after, .dark .glass-footer::after {
+    display: none;
+  }
+
+  /* The sidebar galaxy nebula/star-twinkle animations run on the sidebar's
+     ::before/::after — and the sidebar IS the slide-in Sheet on mobile — with no
+     mobile reset. Their opacity/transform animation (+ will-change layer promotion)
+     repaints every frame while the Sheet transforms in, flickering colors on the
+     menu. Freeze them on mobile; the static gradient galaxy still shows.
+     `!important` beats the higher-specificity `.dark .sidebar-galaxy … ::before/::after`
+     animation rules. */
+  .sidebar-galaxy [data-sidebar="sidebar"]::before,
+  .sidebar-galaxy [data-sidebar="sidebar"]::after {
+    animation: none !important;
+    will-change: auto;
+  }
+
+  .dark .space-bg-nebula,
+  .dark .space-bg-nebula-glow {
+    animation: none;
+  }
+
+  .dark .space-bg-stars {
+    animation: none;
+    background-image:
+      radial-gradient(1.2px 1.2px at 3% 8%, rgba(220, 230, 255, 0.7) 0%, transparent 100%),
+      radial-gradient(1px 1px at 22% 62%, rgba(180, 200, 255, 0.45) 0%, transparent 100%),
+      radial-gradient(1.8px 1.8px at 28% 12%, rgba(255, 240, 220, 0.6) 0%, transparent 100%),
+      radial-gradient(1.3px 1.3px at 42% 55%, rgba(180, 190, 255, 0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 52% 72%, rgba(200, 210, 255, 0.4) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 58% 28%, rgba(220, 200, 255, 0.55) 0%, transparent 100%),
+      radial-gradient(1px 1px at 68% 48%, rgba(180, 200, 255, 0.4) 0%, transparent 100%),
+      radial-gradient(1.8px 1.8px at 72% 15%, rgba(255, 220, 200, 0.5) 0%, transparent 100%),
+      radial-gradient(1.2px 1.2px at 82% 82%, rgba(255, 255, 255, 0.45) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 92% 58%, rgba(220, 210, 255, 0.5) 0%, transparent 100%);
+  }
+
+  .dark .space-bg-stars-deep {
+    animation: none;
+    background-image:
+      radial-gradient(0.5px 0.5px at 7% 12%, rgba(255, 255, 255, 0.4) 0%, transparent 100%),
+      radial-gradient(0.5px 0.5px at 36% 23%, rgba(255, 255, 255, 0.35) 0%, transparent 100%),
+      radial-gradient(0.5px 0.5px at 51% 78%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
+      radial-gradient(0.5px 0.5px at 79% 33%, rgba(255, 255, 255, 0.35) 0%, transparent 100%);
+  }
+
+  .dark .space-bg-shooting-star::before,
+  .dark .space-bg-shooting-star::after {
+    animation: none;
+    display: none;
+  }
+}
+
+.sidebar-galaxy[data-slot="sidebar-container"] {
+  border-right-color: transparent !important;
+}
+
+.sidebar-galaxy[data-slot="sidebar-container"]::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -1px;
+  bottom: 0;
+  width: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(140, 100, 220, 0.12) 15%,
+    rgba(140, 100, 220, 0.06) 50%,
+    rgba(140, 100, 220, 0.12) 85%,
+    transparent 100%
+  );
+}
+
+.dark .sidebar-galaxy[data-slot="sidebar-container"]::after {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(90, 60, 180, 0.08) 15%,
+    rgba(90, 60, 180, 0.04) 50%,
+    rgba(90, 60, 180, 0.08) 85%,
+    transparent 100%
+  );
+}
+
+.sidebar-galaxy [data-sidebar="sidebar"] {
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-galaxy [data-sidebar="sidebar"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+  background:
+    radial-gradient(ellipse 90% 45% at 25% 15%, rgba(140, 100, 220, 0.05) 0%, transparent 70%),
+    radial-gradient(ellipse 70% 60% at 85% 70%, rgba(160, 80, 200, 0.03) 0%, transparent 60%);
+}
+
+.dark .sidebar-galaxy [data-sidebar="sidebar"]::before {
+  background:
+    radial-gradient(ellipse 90% 45% at 25% 15%, rgba(25, 8, 60, 0.28) 0%, transparent 70%),
+    radial-gradient(ellipse 70% 60% at 85% 70%, rgba(40, 5, 50, 0.16) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 35% at 15% 80%, rgba(8, 15, 50, 0.14) 0%, transparent 50%),
+    radial-gradient(ellipse 40% 30% at 60% 45%, rgba(15, 5, 35, 0.12) 0%, transparent 55%);
+  animation: sidebarNebula 40s ease-in-out infinite alternate;
+}
+
+.sidebar-galaxy [data-sidebar="sidebar"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  will-change: opacity;
+  background-image:
+    radial-gradient(0.8px 0.8px at 12% 8%, rgba(140, 100, 220, 0.15) 0%, transparent 100%),
+    radial-gradient(0.6px 0.6px at 38% 22%, rgba(120, 80, 200, 0.10) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 52% 38%, rgba(140, 100, 220, 0.12) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 72% 12%, rgba(120, 80, 200, 0.08) 0%, transparent 100%),
+    radial-gradient(0.7px 0.7px at 82% 52%, rgba(140, 100, 220, 0.10) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 18% 62%, rgba(180, 140, 255, 0.08) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 62% 72%, rgba(140, 100, 220, 0.12) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 42% 88%, rgba(120, 80, 200, 0.06) 0%, transparent 100%);
+}
+
+.dark .sidebar-galaxy [data-sidebar="sidebar"]::after {
+  background-image:
+    radial-gradient(1px 1px at 12% 8%, rgba(180, 200, 255, 0.45) 0%, transparent 100%),
+    radial-gradient(0.7px 0.7px at 38% 22%, rgba(255, 255, 255, 0.25) 0%, transparent 100%),
+    radial-gradient(1.1px 1.1px at 52% 38%, rgba(160, 180, 255, 0.35) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 72% 12%, rgba(255, 255, 255, 0.20) 0%, transparent 100%),
+    radial-gradient(0.9px 0.9px at 82% 52%, rgba(180, 190, 255, 0.30) 0%, transparent 100%),
+    radial-gradient(0.6px 0.6px at 18% 62%, rgba(255, 230, 210, 0.22) 0%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 62% 72%, rgba(200, 210, 255, 0.35) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 42% 88%, rgba(255, 255, 255, 0.15) 0%, transparent 100%),
+    radial-gradient(0.7px 0.7px at 92% 32%, rgba(180, 180, 255, 0.25) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 8% 42%, rgba(255, 255, 255, 0.20) 0%, transparent 100%),
+    radial-gradient(0.6px 0.6px at 58% 4%, rgba(160, 180, 255, 0.22) 0%, transparent 100%),
+    radial-gradient(1px 1px at 78% 82%, rgba(255, 200, 180, 0.25) 0%, transparent 100%),
+    radial-gradient(0.4px 0.4px at 28% 48%, rgba(255, 255, 255, 0.12) 0%, transparent 100%),
+    radial-gradient(0.4px 0.4px at 88% 68%, rgba(200, 190, 255, 0.15) 0%, transparent 100%),
+    radial-gradient(0.4px 0.4px at 48% 28%, rgba(255, 255, 255, 0.12) 0%, transparent 100%),
+    radial-gradient(0.4px 0.4px at 68% 58%, rgba(180, 200, 255, 0.12) 0%, transparent 100%);
+  animation: sidebarStarTwinkle 12s ease-in-out infinite alternate;
+}
+
+.sidebar-galaxy [data-sidebar="sidebar"] > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Launch button: a soft "ready to take off" glow that gently breathes to catch
+   the eye at rest, then grows on hover/active (handled by Tailwind classes). */
+@keyframes launchGlowPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.85; }
+}
+.launch-glow {
+  animation: launchGlowPulse 3s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .launch-glow { animation: none; opacity: 0.55; }
+}
+
+/* Landing hero: a purple glow blooms behind the hero on load, then eases back to
+   a faint halo so the starfield reads through — calm → cosmic. */
+.hero-intro-glow {
+  background: radial-gradient(ellipse 72% 56% at 50% 38%, rgba(139, 92, 246, 0.42) 0%, rgba(124, 58, 237, 0.16) 34%, transparent 68%);
+  animation: heroGlowIntro 1.8s ease-out forwards;
+  will-change: opacity, transform;
+}
+@keyframes heroGlowIntro {
+  0% { opacity: 0; transform: scale(1.08); }
+  28% { opacity: 1; }
+  100% { opacity: 0.34; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-intro-glow { animation: none; opacity: 0.3; transform: none; }
+}
+
+@keyframes sidebarNebula {
+  0% { opacity: 1; transform: translateY(0); }
+  50% { opacity: 0.7; transform: translateY(-1.5%); }
+  100% { opacity: 1; transform: translateY(0.5%); }
+}
+
+@keyframes sidebarStarTwinkle {
+  0% { opacity: 0.5; }
+  50% { opacity: 0.85; }
+  100% { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-galaxy [data-sidebar="sidebar"]::before,
+  .sidebar-galaxy [data-sidebar="sidebar"]::after {
+    animation: none;
+  }
+}
+
+@keyframes equalizer {
+  0%, 100% { height: 30%; }
+  50% { height: 100%; }
+}
+
+@keyframes grain {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-2%, -3%); }
+  20% { transform: translate(3%, 1%); }
+  30% { transform: translate(-1%, 2%); }
+  40% { transform: translate(2%, -1%); }
+  50% { transform: translate(-3%, 3%); }
+  60% { transform: translate(1%, -2%); }
+  70% { transform: translate(-2%, 1%); }
+  80% { transform: translate(3%, -3%); }
+  90% { transform: translate(-1%, 2%); }
+}
+
+@keyframes starTwinkle {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.8; }
+}
+
+@keyframes nebulaShift {
+  0% { opacity: 1; transform: scale(1) translate(0, 0); }
+  33% { opacity: 0.85; transform: scale(1.02) translate(0.5%, -0.3%); }
+  66% { opacity: 0.95; transform: scale(0.98) translate(-0.3%, 0.5%); }
+  100% { opacity: 1; transform: scale(1.01) translate(0.2%, 0.2%); }
+}
+
+@keyframes shootingStar1 {
+  0%, 85%, 100% { left: -120px; opacity: 0; }
+  90% { left: 110%; opacity: 1; }
+  95% { left: 110%; opacity: 0; }
+}
+
+@keyframes shootingStar2 {
+  0%, 88%, 100% { left: -80px; opacity: 0; }
+  93% { left: 110%; opacity: 0.8; }
+  96% { left: 110%; opacity: 0; }
+}
+
+@keyframes flicker {
+  0%, 97%, 100% { opacity: 1; }
+  97.5% { opacity: 0.85; }
+  98% { opacity: 1; }
+  98.5% { opacity: 0.9; }
+  99% { opacity: 1; }
+}
+
+@keyframes subtlePulse {
+  0%, 100% { opacity: 0.03; }
+  50% { opacity: 0.045; }
+}
+
+.brand-flicker {
+  animation: flicker 6s infinite;
+}
+
+.brand-glow {
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.06), 0 0 10px rgba(255, 255, 255, 0.03);
+  animation: flicker 6s infinite, brandGlow 5s ease-in-out infinite;
+}
+
+@keyframes brandGlow {
+  0%, 100% { box-shadow: 0 0 4px rgba(255, 255, 255, 0.06), 0 0 10px rgba(255, 255, 255, 0.03); }
+  50% { box-shadow: 0 0 6px rgba(255, 255, 255, 0.1), 0 0 14px rgba(255, 255, 255, 0.05); }
+}
+
+@keyframes spinSlow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+
+@keyframes outpost-ring-spin {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+@layer utilities {
+  /* Same contract as .scrollbar-hide above: hide scrollbars only — never set
+     `touch-action` here (it froze vertical touch scrolling wherever applied). */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .animate-spin-slow {
+    animation: spinSlow 3s linear infinite;
+  }
+
+  .glass-dialog-card {
+    background: linear-gradient(135deg, rgb(250, 248, 255) 0%, rgb(245, 242, 255) 50%, rgb(248, 246, 255) 100%) !important;
+    backdrop-filter: blur(24px) saturate(1.2);
+    -webkit-backdrop-filter: blur(24px) saturate(1.2);
+    border-color: rgba(120, 80, 200, 0.15) !important;
+    box-shadow:
+      0 0 0 1px rgba(120, 80, 200, 0.06) inset,
+      0 2px 8px rgba(100, 70, 180, 0.08),
+      0 4px 16px -4px rgba(100, 70, 180, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+  .dark .glass-dialog-card {
+    background: linear-gradient(135deg, rgb(20, 17, 34) 0%, rgb(14, 12, 26) 50%, rgb(17, 14, 30) 100%) !important;
+    backdrop-filter: blur(32px) saturate(1.5);
+    -webkit-backdrop-filter: blur(32px) saturate(1.5);
+    box-shadow:
+      0 0 0 1px rgba(140, 100, 220, 0.06) inset,
+      0 1px 2px rgba(0, 0, 0, 0.4),
+      0 4px 16px -4px rgba(0, 0, 0, 0.5),
+      0 0 1px rgba(140, 100, 220, 0.15);
+  }
+
+  .glass-card {
+    background: linear-gradient(135deg, rgba(250, 248, 255, 0.92) 0%, rgba(245, 242, 255, 0.88) 50%, rgba(248, 246, 255, 0.90) 100%) !important;
+    backdrop-filter: blur(24px) saturate(1.2);
+    -webkit-backdrop-filter: blur(24px) saturate(1.2);
+    border-color: rgba(120, 80, 200, 0.15) !important;
+    box-shadow:
+      0 0 0 1px rgba(120, 80, 200, 0.06) inset,
+      0 2px 8px rgba(100, 70, 180, 0.08),
+      0 4px 16px -4px rgba(100, 70, 180, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    transition: box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+
+  /* An ACTION that only appears on hover, made reachable without one.
+     ────────────────────────────────────────────────────────────────
+     `opacity-0 group-hover:opacity-100` is the house idiom for a row's
+     moderation buttons — remove, ban, mute, unmute. On a touch screen
+     `.group:hover` either never fires or LATCHES on the last-tapped element,
+     so the control is invisible for as long as the person needs it. The
+     button is still in the DOM and still clickable, which makes it worse than
+     absent: it is a blind tap on a destructive act.
+
+     Width is the wrong question, and both existing spellings ask it. Bare
+     `opacity-0` hides the control on every device. `sm:opacity-0` un-hides it
+     below 640px, but this app's own useIsMobile breaks at 768 — so 640-767px,
+     every tablet and every phone in landscape, gets desktop hover behaviour on
+     a touch screen. The right question is whether the device HAS a hover, which
+     is exactly what this media query asks, and what the .glass-card rule below
+     already asks for the same reason.
+
+     `:focus-within` is not a bonus: an opacity-0 button keeps its place in the
+     tab order, so without it a keyboard user tabs to a control they cannot see.
+
+     Usage: put `reveal-on-hover` on the row's control cluster and DROP the
+     `opacity-0 group-hover:opacity-100` classes. The parent still needs
+     `group`. Do not add a responsive prefix — that is the bug this replaces. */
+  .reveal-on-hover {
+    transition: opacity 150ms ease;
+  }
+  /* Doubled class names buy specificity (0,2,0), and that is load-bearing rather
+     than decorative. Some call sites legitimately want a RESTING opacity on
+     touch — ConcordChat keeps its message actions at `opacity-60` so a phone
+     shows them without shouting. A single `.reveal-on-hover` ties 0,1,0 with
+     Tailwind's `.opacity-60` and the winner is decided by whichever lands later
+     in the utilities layer, which is not something a call site can see or
+     control. Doubling makes the hover-capable branch win deterministically,
+     while touch still falls through to the element's own opacity because this
+     block does not apply there at all.
+     Note this does NOT rescue a co-located `opacity-0`: on touch nothing here
+     applies, so Tailwind's rule is the only one left and the control stays
+     hidden. That is the silent failure hover-reach.test.ts exists to catch. */
+  @media (hover: hover) and (pointer: fine) {
+    .reveal-on-hover.reveal-on-hover {
+      opacity: 0;
+    }
+    .group:hover .reveal-on-hover.reveal-on-hover,
+    .reveal-on-hover.reveal-on-hover:hover,
+    .reveal-on-hover.reveal-on-hover:focus-within {
+      opacity: 1;
+    }
+  }
+
+  /* The other half of the same problem. Making a control VISIBLE on a phone is
+     not the same as making it HITTABLE: the ops console's remove-member button
+     is `p-0.5` around a 10px icon, about a 14px target, against the ~44px a
+     fingertip actually needs. Asked as the same capability question rather than
+     a width, so a touch laptop gets a real target and a mouse keeps the dense
+     layout the ops tables are designed around. Padding, not width/height, so it
+     grows the hit area without moving the icon or reflowing the row. */
+  @media (hover: none), (pointer: coarse) {
+    .touch-target {
+      min-width: 44px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  /* Touch browsers LATCH :hover on the last element tapped, so on a phone
+     tapping a message left the whole chat panel wearing a deepened shadow
+     until something else was tapped. Gate both hover rules on a real pointer.
+     This has to live here: .glass-card is a plain class, not a Tailwind
+     utility, so there is no `md:glass-card` to reach for. */
+  @media (hover: hover) and (pointer: fine) {
+    .glass-card:hover {
+      border-color: rgba(120, 80, 220, 0.25) !important;
+      box-shadow:
+        0 0 0 1px rgba(120, 80, 200, 0.08) inset,
+        0 4px 12px rgba(100, 70, 180, 0.12),
+        0 8px 24px -6px rgba(100, 70, 180, 0.10),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+  }
+
+  .dark .glass-card {
+    background: rgba(8, 6, 18, 0.82) !important;
+    backdrop-filter: blur(32px) saturate(1.5);
+    -webkit-backdrop-filter: blur(32px) saturate(1.5);
+    box-shadow:
+      0 0 0 1px rgba(140, 100, 220, 0.06) inset,
+      0 1px 2px rgba(0, 0, 0, 0.4),
+      0 4px 16px -4px rgba(0, 0, 0, 0.5),
+      0 0 1px rgba(140, 100, 220, 0.15);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .dark .glass-card:hover {
+      box-shadow:
+        0 0 0 1px rgba(140, 100, 220, 0.08) inset,
+        0 2px 4px rgba(0, 0, 0, 0.45),
+        0 8px 24px -6px rgba(0, 0, 0, 0.55),
+        0 0 12px -2px rgba(120, 80, 200, 0.08);
+    }
+  }
+
+  .glass-header {
+    position: relative;
+    z-index: 1;
+    background: linear-gradient(135deg, rgba(248, 246, 255, 0.6) 0%, rgba(242, 238, 255, 0.5) 50%, rgba(245, 243, 255, 0.55) 100%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(31, 27, 75, 0.08);
+    color: rgba(31, 27, 75, 0.88);
+  }
+  .dark .glass-header {
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    color: inherit;
+  }
+
+  .glass-footer {
+    position: relative;
+    z-index: 2;
+    background: linear-gradient(135deg, rgba(245, 243, 255, 0.5) 0%, rgba(240, 236, 252, 0.45) 50%, rgba(243, 240, 255, 0.48) 100%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(31, 27, 75, 0.08);
+    color: rgba(31, 27, 75, 0.60);
+  }
+  .dark .glass-footer {
+    background: rgba(255, 255, 255, 0.012);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    color: inherit;
+  }
+
+  /* Engagement "active" colors — applied ONLY when the viewer has acted (liked /
+     reposted / etc.). Flat, steady, slightly desaturated for a calm, professional
+     feel: no animated pulse, no neon glow. Resting stats stay neutral gray. */
+  .stat-glow-replies { color: hsl(270 50% 50%); }
+  .stat-glow-reposts { color: hsl(160 52% 36%); }
+  .stat-glow-likes   { color: hsl(340 62% 50%); }
+  .stat-glow-zaps    { color: hsl(38 75% 44%); }
+  .dark .stat-glow-replies { color: hsl(270 48% 72%); }
+  .dark .stat-glow-reposts { color: hsl(160 45% 58%); }
+  .dark .stat-glow-likes   { color: hsl(340 58% 68%); }
+  .dark .stat-glow-zaps    { color: hsl(40 78% 62%); }
+
+  .zap-leader-amount {
+    color: hsl(35 35% 42%);
+  }
+  .dark .zap-leader-amount {
+    color: hsl(40 50% 58%);
+    text-shadow: 0 0 10px hsla(40, 80%, 50%, 0.15);
+  }
+  .zap-leader-message {
+    color: hsl(260 6% 52%);
+  }
+  .dark .zap-leader-message {
+    color: hsl(260 8% 56%);
+    text-shadow: 0 0 12px hsla(260, 40%, 60%, 0.12);
+  }
+
+  .glass-inner {
+    position: relative;
+    z-index: 2;
+    background: linear-gradient(135deg, rgba(245, 243, 255, 0.85) 0%, rgba(235, 230, 250, 0.78) 50%, rgba(240, 238, 255, 0.82) 100%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(120, 80, 200, 0.18);
+    box-shadow:
+      0 2px 10px -3px rgba(100, 70, 180, 0.12),
+      0 0 16px -4px rgba(130, 90, 210, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    color: rgba(30, 25, 50, 0.88);
+    border-radius: 0.75rem;
+  }
+  .dark .glass-inner {
+    background: rgba(12, 10, 24, 0.35);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(140, 100, 220, 0.06);
+    box-shadow:
+      0 3px 12px -2px rgba(0, 0, 0, 0.35),
+      0 1px 4px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(160, 120, 240, 0.05);
+    color: inherit;
+  }
+
+  @keyframes dm-msg-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .dm-msg-enter {
+    animation: dm-msg-in 0.2s ease-out both;
+  }
+
+  .dm-date-separator {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+  }
+
+  .dm-date-separator::before,
+  .dm-date-separator::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: hsl(var(--border) / 0.3);
+  }
+
+  .glass-bubble-own {
+    background: linear-gradient(135deg, #2d1b6b, #1f1b4b);
+    border: 1px solid rgba(100, 70, 180, 0.30);
+    color: #f0eef8;
+    box-shadow:
+      0 0 0 1px rgba(120, 80, 200, 0.10) inset,
+      0 2px 8px -2px rgba(31, 27, 75, 0.35),
+      0 4px 16px -6px rgba(31, 27, 75, 0.25);
+  }
+
+  /* Own DM/chat bubble is a dark-violet gradient (#2d1b6b→#1f1b4b in light mode),
+     but links / @mention chips / naddr chips render with `text-primary` (dark
+     violet) → ~1.6:1 and near-invisible. Recolor them to a light violet readable
+     on the dark bubble. Scoped to own bubbles only; received bubbles keep
+     text-primary. Applies in both themes (own bubble is dark-on-light in light
+     mode and translucent violet in dark mode — light links read well on both). */
+  .glass-bubble-own a,
+  .glass-bubble-own a span {
+    color: #c9b8ff;
+  }
+  .glass-bubble-own a:hover {
+    color: #ddd0ff;
+  }
+
+  .glass-bubble-other {
+    background: linear-gradient(135deg, rgba(245, 240, 255, 0.92), rgba(235, 228, 250, 0.88));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(120, 80, 200, 0.20);
+    color: #3b2d6b;
+    box-shadow:
+      0 0 0 1px rgba(120, 80, 200, 0.06) inset,
+      0 2px 8px -2px rgba(31, 27, 75, 0.12),
+      0 4px 16px -6px rgba(31, 27, 75, 0.08);
+  }
+
+  .dark .glass-bubble-own {
+    background: linear-gradient(135deg, rgba(110, 60, 180, 0.28), rgba(80, 40, 160, 0.20));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(160, 110, 240, 0.22);
+    color: inherit;
+    box-shadow:
+      0 0 0 1px rgba(160, 110, 240, 0.08) inset,
+      0 0 16px -2px rgba(120, 70, 200, 0.15) inset,
+      0 0 12px -4px rgba(140, 90, 220, 0.10),
+      0 2px 12px -4px rgba(0, 0, 0, 0.4);
+  }
+
+  .dark .glass-bubble-other {
+    background: linear-gradient(135deg, rgba(15, 12, 30, 0.65), rgba(25, 20, 45, 0.50));
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(80, 70, 120, 0.15);
+    color: inherit;
+    box-shadow:
+      0 0 0 1px rgba(80, 70, 120, 0.05) inset,
+      0 0 10px -2px rgba(0, 0, 0, 0.5) inset,
+      0 1px 8px -3px rgba(0, 0, 0, 0.35);
+  }
+
+  /* iOS Safari re-samples backdrop-filter wrong while a `position: fixed` layer
+     is repositioned — and the DM/chat thread is exactly that: a fixed overlay
+     docked to the keyboard, re-anchored on every keystroke (useKeyboardViewport).
+     The blur then flashes OTHER bubbles through the current one ("bleed-through /
+     flashing other sections", reported on iPhone). Phones don't need the glass
+     here: drop backdrop-filter on chat bubbles and make the blur-dependent
+     (translucent) ones opaque enough to still read as solid bubbles. Desktop —
+     no keyboard reposition — keeps the glass. */
+  @media (max-width: 767px) {
+    .glass-bubble-own,
+    .glass-bubble-other,
+    .dark .glass-bubble-own,
+    .dark .glass-bubble-other {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    .glass-bubble-other {
+      background: linear-gradient(135deg, rgba(245, 240, 255, 0.99), rgba(234, 227, 250, 0.98));
+    }
+    .dark .glass-bubble-own {
+      background: linear-gradient(135deg, rgba(74, 46, 134, 0.96), rgba(56, 34, 108, 0.96));
+    }
+    .dark .glass-bubble-other {
+      background: linear-gradient(135deg, rgba(24, 20, 44, 0.97), rgba(32, 26, 54, 0.96));
+    }
+  }
+
+  .glass-bubble-reply {
+    background: linear-gradient(135deg, rgba(31, 27, 75, 0.06) 0%, rgba(80, 60, 160, 0.04) 50%, rgba(31, 27, 75, 0.05) 100%);
+    border: 1px solid rgba(31, 27, 75, 0.10);
+    color: rgba(31, 27, 75, 0.85);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.45),
+      0 2px 4px -1px rgba(31, 27, 75, 0.08),
+      0 4px 12px -4px rgba(31, 27, 75, 0.06);
+  }
+
+  .glass-bubble-reply-own {
+    background: linear-gradient(135deg, rgba(31, 27, 75, 0.09) 0%, rgba(100, 70, 200, 0.06) 50%, rgba(31, 27, 75, 0.08) 100%);
+    border: 1px solid rgba(31, 27, 75, 0.14);
+    color: rgba(31, 27, 75, 0.90);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      0 2px 4px -1px rgba(31, 27, 75, 0.10),
+      0 4px 12px -4px rgba(31, 27, 75, 0.08);
+  }
+
+  .dark .glass-bubble-reply {
+    background: linear-gradient(135deg, rgba(18, 12, 32, 0.75) 0%, rgba(12, 10, 28, 0.68) 50%, rgba(15, 11, 30, 0.72) 100%);
+    border: 1px solid rgba(140, 100, 220, 0.12);
+    color: inherit;
+    box-shadow:
+      0 2px 10px -3px rgba(100, 70, 180, 0.14),
+      0 0 16px -4px rgba(130, 90, 210, 0.10),
+      inset 0 1px 0 rgba(160, 120, 240, 0.10);
+  }
+
+  .dark .glass-bubble-reply-own {
+    background: linear-gradient(135deg, rgba(22, 14, 38, 0.78) 0%, rgba(16, 12, 32, 0.70) 50%, rgba(20, 14, 35, 0.74) 100%);
+    border: 1px solid rgba(140, 100, 220, 0.15);
+    color: inherit;
+    box-shadow:
+      0 2px 10px -3px rgba(100, 70, 180, 0.16),
+      0 0 16px -4px rgba(130, 90, 210, 0.12),
+      inset 0 1px 0 rgba(160, 120, 240, 0.12);
+  }
+
+  [data-radix-popper-content-wrapper] .glass-dropdown {
+    background: rgba(250, 248, 255, 0.95);
+    backdrop-filter: blur(24px) saturate(1.3);
+    -webkit-backdrop-filter: blur(24px) saturate(1.3);
+    border-color: rgba(100, 70, 200, 0.15);
+    box-shadow:
+      0 0 0 1px rgba(100, 70, 200, 0.06) inset,
+      0 4px 16px -4px rgba(31, 27, 75, 0.12),
+      0 8px 32px -8px rgba(31, 27, 75, 0.08);
+  }
+
+  .dark [data-radix-popper-content-wrapper] .glass-dropdown,
+  [data-radix-popper-content-wrapper] .dark .glass-dropdown {
+    background: rgba(6, 4, 16, 0.88);
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    border-color: rgba(140, 100, 220, 0.18);
+    box-shadow:
+      0 0 0 1px rgba(140, 100, 220, 0.06) inset,
+      0 0 20px -4px rgba(120, 70, 200, 0.12),
+      0 8px 32px -8px rgba(0, 0, 0, 0.7);
+  }
+
+  .glass-dropdown [role="menuitem"] {
+    border-radius: 0.375rem;
+    transition: background 150ms ease;
+    color: rgba(31, 27, 75, 0.85);
+  }
+
+  .dark .glass-dropdown [role="menuitem"] {
+    color: inherit;
+  }
+
+  .glass-dropdown [role="separator"] {
+    background: rgba(100, 70, 200, 0.12);
+  }
+
+  .dark .glass-dropdown [role="separator"] {
+    background: rgba(140, 100, 220, 0.10);
+  }
+
+  .glass-dropdown .glass-dropdown-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(80, 60, 160, 0.55);
+    padding: 6px 8px 2px;
+  }
+
+  .dark .glass-dropdown .glass-dropdown-label {
+    color: rgba(180, 160, 230, 0.5);
+  }
+
+  .glass-dialog {
+    background: linear-gradient(135deg, rgba(248, 246, 255, 0.96) 0%, rgba(242, 240, 255, 0.94) 100%);
+    backdrop-filter: blur(32px) saturate(1.3);
+    -webkit-backdrop-filter: blur(32px) saturate(1.3);
+    border: 1px solid rgba(31, 27, 75, 0.12);
+    box-shadow:
+      0 0 0 1px rgba(31, 27, 75, 0.04) inset,
+      0 0 40px -8px rgba(31, 27, 75, 0.08),
+      0 16px 64px -16px rgba(31, 27, 75, 0.15);
+    color: rgba(31, 27, 75, 0.88);
+  }
+
+  .dark .glass-dialog {
+    background: rgba(6, 4, 16, 0.92);
+    border: 1px solid rgba(140, 100, 220, 0.15);
+    box-shadow:
+      0 0 0 1px rgba(140, 100, 220, 0.05) inset,
+      0 0 40px -8px rgba(120, 70, 200, 0.15),
+      0 16px 64px -16px rgba(0, 0, 0, 0.8);
+    color: inherit;
+  }
+
+  .glass-dialog-field {
+    background: rgba(31, 27, 75, 0.04);
+    border: 1px solid rgba(31, 27, 75, 0.10);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    transition: border-color 200ms ease;
+  }
+
+  .glass-dialog-field:hover {
+    border-color: rgba(31, 27, 75, 0.20);
+  }
+
+  .dark .glass-dialog-field {
+    background: rgba(20, 14, 40, 0.6);
+    border: 1px solid rgba(140, 100, 220, 0.08);
+  }
+
+  .dark .glass-dialog-field:hover {
+    border-color: rgba(140, 100, 220, 0.18);
+  }
+
+  .glass-dialog-field-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(31, 27, 75, 0.45);
+    margin-bottom: 2px;
+  }
+
+  .dark .glass-dialog-field-label {
+    color: rgba(180, 160, 230, 0.5);
+  }
+
+  .glass-console-btn {
+    background: rgba(140, 100, 220, 0.08);
+    border: 1px solid rgba(140, 100, 220, 0.12);
+  }
+
+  .glass-nav-panel {
+    background: linear-gradient(135deg, rgba(230, 225, 250, 0.65) 0%, rgba(225, 230, 250, 0.60) 100%);
+    backdrop-filter: blur(16px) saturate(1.2);
+    -webkit-backdrop-filter: blur(16px) saturate(1.2);
+    border: 1px solid rgba(100, 70, 200, 0.15);
+    box-shadow:
+      0 0 0 1px rgba(100, 70, 200, 0.05) inset,
+      0 0 16px -4px rgba(80, 50, 180, 0.08),
+      0 2px 12px -6px rgba(80, 60, 180, 0.10);
+  }
+
+  .dark .glass-nav-panel {
+    background: rgba(6, 4, 16, 0.5);
+    border-color: rgba(140, 100, 220, 0.10);
+    box-shadow:
+      0 0 0 1px rgba(140, 100, 220, 0.04) inset,
+      0 0 16px -4px rgba(100, 60, 180, 0.06),
+      0 2px 12px -6px rgba(0, 0, 0, 0.5);
+  }
+
+  .nav-icon-glow {
+    color: hsl(270 80% 75%);
+    filter: drop-shadow(0 0 4px hsla(270, 80%, 65%, 0.55));
+  }
+
+  .nav-item-active[data-active="true"] {
+    background: #1f1b4b !important;
+    border: 1px solid #1f1b4b !important;
+    color: white !important;
+    box-shadow: 0 2px 8px -2px rgba(31, 27, 75, 0.35);
+  }
+
+  .glass-feed-tabs {
+    /* Calmer light bar: a barely-there violet tint on near-white (was a saturated
+       lavender gradient), softer border + shadow — matches the enterprise light
+       palette. The .dark variant below is unchanged. */
+    background: linear-gradient(135deg, rgba(247, 244, 251, 0.9) 0%, rgba(243, 239, 249, 0.85) 100%);
+    backdrop-filter: blur(20px) saturate(1.15);
+    -webkit-backdrop-filter: blur(20px) saturate(1.15);
+    border: 1px solid rgba(120, 90, 200, 0.1);
+    box-shadow:
+      0 0 0 1px rgba(120, 90, 200, 0.03) inset,
+      0 2px 16px -8px rgba(80, 60, 180, 0.06);
+  }
+
+  .dark .glass-feed-tabs {
+    background: rgba(4, 4, 12, 0.6);
+    border-color: rgba(140, 100, 220, 0.12);
+    box-shadow:
+      0 0 0 1px rgba(140, 100, 220, 0.04) inset,
+      0 0 20px -4px rgba(100, 60, 180, 0.08),
+      0 4px 24px -8px rgba(0, 0, 0, 0.6);
+  }
+
+  /* .glass-tab-exempt opts a button out of the tab-hover treatment — used by
+     action rows (Calendar) that share the glass container but keep their own
+     per-action colors. */
+  .glass-feed-tabs button:not(.feed-tab-active):not(.glass-tab-exempt):hover {
+    background: rgba(31, 27, 75, 0.08) !important;
+    color: #1f1b4b !important;
+    border-color: rgba(31, 27, 75, 0.20) !important;
+  }
+  .dark .glass-feed-tabs button:not(.feed-tab-active):not(.glass-tab-exempt):hover {
+    background: rgba(140, 100, 220, 0.12) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    border-color: rgba(140, 100, 220, 0.20) !important;
+  }
+
+  .feed-tab-active {
+    background: #1f1b4b !important;
+    border: 1px solid #1f1b4b !important;
+    color: white !important;
+    box-shadow:
+      0 2px 8px -2px rgba(31, 27, 75, 0.4),
+      0 0 4px rgba(31, 27, 75, 0.15) inset;
+  }
+  .dark .feed-tab-active {
+    background: linear-gradient(135deg, rgba(120, 70, 200, 0.25), rgba(90, 50, 170, 0.18)) !important;
+    border: 1px solid rgba(160, 110, 240, 0.25) !important;
+    color: white !important;
+    box-shadow:
+      0 0 12px -2px rgba(140, 90, 220, 0.2),
+      0 0 4px rgba(160, 110, 240, 0.15) inset;
+  }
+
+  .feed-tab-glow {
+    position: relative;
+    overflow: hidden;
+  }
+  .feed-tab-glow::after {
+    content: "";
+    position: absolute;
+    bottom: 1px;
+    left: 15%;
+    right: 15%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(160, 120, 240, 0.5), transparent);
+    border-radius: 1px;
+    pointer-events: none;
+  }
+
+  .glass-feed-header {
+    background: linear-gradient(180deg, rgba(80, 50, 140, 0.06) 0%, transparent 100%);
+    border-bottom: 1px solid rgba(140, 100, 220, 0.06);
+  }
+
+  .glass-thread {
+    background: linear-gradient(135deg, rgba(248, 246, 255, 0.94) 0%, rgba(242, 240, 255, 0.90) 50%, rgba(245, 243, 255, 0.92) 100%);
+    backdrop-filter: blur(24px) saturate(1.2);
+    -webkit-backdrop-filter: blur(24px) saturate(1.2);
+    border: 1px solid rgba(31, 27, 75, 0.12);
+    box-shadow:
+      0 0 0 1px rgba(31, 27, 75, 0.04) inset,
+      0 4px 16px -4px rgba(31, 27, 75, 0.08),
+      0 8px 32px -8px rgba(31, 27, 75, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  .dark .glass-thread {
+    background: rgba(2, 2, 6, 0.85);
+    border-color: rgba(140, 100, 220, 0.06);
+    box-shadow:
+      0 0 0 1px rgba(140, 100, 220, 0.02) inset,
+      0 8px 32px -8px rgba(0, 0, 0, 0.7),
+      0 0 40px -8px rgba(80, 50, 140, 0.03);
+  }
+
+  .glass-thread-header {
+    background: linear-gradient(135deg, rgba(31, 27, 75, 0.06) 0%, rgba(31, 27, 75, 0.03) 50%, rgba(31, 27, 75, 0.05) 100%);
+    border-bottom: 1px solid rgba(31, 27, 75, 0.08);
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.3);
+  }
+
+  .dark .glass-thread-header {
+    background: linear-gradient(135deg, rgba(80, 50, 140, 0.04) 0%, rgba(120, 80, 180, 0.02) 100%);
+    border-bottom-color: rgba(140, 100, 220, 0.05);
+  }
+
+  .thread-reply-item {
+    position: relative;
+    z-index: 0;
+    background: linear-gradient(135deg, rgba(250, 248, 255, 0.94) 0%, rgba(245, 242, 255, 0.90) 50%, rgba(248, 246, 255, 0.92) 100%);
+    backdrop-filter: blur(24px) saturate(1.2);
+    -webkit-backdrop-filter: blur(24px) saturate(1.2);
+    border: 1px solid rgba(31, 27, 75, 0.12);
+    box-shadow:
+      0 0 0 1px rgba(31, 27, 75, 0.05) inset,
+      0 2px 8px rgba(31, 27, 75, 0.06),
+      0 4px 16px -4px rgba(31, 27, 75, 0.05),
+      inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    transition: box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+
+  .thread-reply-item:has(.reaction-bar-wrapper[data-hover]),
+  .thread-reply-item:has(.reaction-bar-wrapper[data-open]),
+  .thread-reply-item:focus-within {
+    z-index: 10;
+  }
+
+  .thread-reply-item:hover {
+    border-color: rgba(31, 27, 75, 0.20);
+    box-shadow:
+      0 0 0 1px rgba(31, 27, 75, 0.07) inset,
+      0 4px 12px rgba(31, 27, 75, 0.10),
+      0 8px 24px -6px rgba(31, 27, 75, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  }
+
+  .dark .thread-reply-item {
+    background: rgba(8, 6, 18, 0.72);
+    border-color: rgba(140, 100, 220, 0.10);
+    box-shadow:
+      0 0 0 1px rgba(140, 100, 220, 0.04) inset,
+      0 1px 2px rgba(0, 0, 0, 0.3),
+      0 2px 8px -2px rgba(0, 0, 0, 0.35);
+  }
+
+  .dark .thread-reply-item:hover {
+    border-color: rgba(140, 100, 220, 0.15);
+    box-shadow:
+      0 0 0 1px rgba(140, 100, 220, 0.06) inset,
+      0 1px 3px rgba(0, 0, 0, 0.35),
+      0 4px 12px -3px rgba(0, 0, 0, 0.4);
+  }
+
+  .thread-reply-item-op {
+    background: linear-gradient(135deg, rgba(240, 235, 255, 0.95) 0%, rgba(235, 232, 255, 0.92) 50%, rgba(242, 238, 255, 0.93) 100%);
+    border: 1px solid rgba(31, 27, 75, 0.18);
+    box-shadow:
+      0 0 0 1px rgba(31, 27, 75, 0.06) inset,
+      0 0 12px -4px rgba(31, 27, 75, 0.10),
+      0 2px 8px rgba(31, 27, 75, 0.06),
+      0 4px 16px -4px rgba(31, 27, 75, 0.05),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  .thread-reply-item-op:hover {
+    border-color: rgba(31, 27, 75, 0.26);
+    box-shadow:
+      0 0 0 1px rgba(31, 27, 75, 0.10) inset,
+      0 0 16px -4px rgba(31, 27, 75, 0.14),
+      0 4px 12px rgba(31, 27, 75, 0.10),
+      0 8px 24px -6px rgba(31, 27, 75, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  .dark .thread-reply-item-op {
+    background: linear-gradient(135deg, rgba(120, 80, 200, 0.12) 0%, rgba(80, 50, 160, 0.08) 50%, rgba(140, 90, 220, 0.10) 100%);
+    border-color: rgba(140, 100, 220, 0.22);
+    box-shadow:
+      0 0 0 1px rgba(140, 100, 220, 0.08) inset,
+      0 0 12px -4px rgba(140, 100, 220, 0.15),
+      0 1px 2px rgba(0, 0, 0, 0.3),
+      0 2px 8px -2px rgba(0, 0, 0, 0.35);
+  }
+
+  .dark .thread-reply-item-op:hover {
+    border-color: rgba(140, 100, 220, 0.30);
+    box-shadow:
+      0 0 0 1px rgba(140, 100, 220, 0.12) inset,
+      0 0 16px -4px rgba(140, 100, 220, 0.20),
+      0 1px 3px rgba(0, 0, 0, 0.35),
+      0 4px 12px -3px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Flat X-style reply (Clean feed style): no card surface — just a hairline
+     divider between replies. OP gets a faint tint so it still stands out. */
+  .thread-reply-flat {
+    position: relative;
+    z-index: 0;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(31, 27, 75, 0.08);
+    border-radius: 0;
+  }
+  .dark .thread-reply-flat {
+    border-bottom-color: rgba(140, 100, 220, 0.10);
+  }
+  .thread-reply-flat-op {
+    background: rgba(124, 58, 237, 0.035);
+  }
+  .dark .thread-reply-flat-op {
+    background: rgba(140, 100, 220, 0.05);
+  }
+
+  .thread-connector {
+    position: relative;
+  }
+
+  .thread-connector::before {
+    content: '';
+    position: absolute;
+    left: 16px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(180deg, rgba(120, 80, 180, 0.18), rgba(80, 50, 140, 0.03));
+  }
+
+  .thread-connector-dot {
+    position: absolute;
+    left: 13px;
+    top: 18px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(140, 100, 220, 0.25);
+    background: rgba(140, 100, 220, 0.08);
+  }
+
+  /* Thread rails: slim collapse-line handles, rendered only within the
+     responsive indent cap (2 levels <640px, 5 on desktop). Depth is encoded
+     as a subtle violet tint scale (3 steps cycling by depth), same hue 262
+     family in light + dark. */
+  .reddit-thread-line-btn {
+    display: flex;
+    align-items: stretch;
+    width: 20px;
+    min-width: 20px;
+    flex-shrink: 0;
+    padding: 0;
+    background: none;
+    border: none;
+    position: relative;
+  }
+
+  .reddit-thread-line {
+    width: 2px;
+    margin: 0 auto;
+    height: 100%;
+    background: hsl(262 55% 52% / 0.34);
+    border-radius: 1px;
+    transition: background 0.2s ease, width 0.2s ease, opacity 0.2s ease;
+  }
+
+  .reddit-thread-line-t0 { background: hsl(262 55% 52% / 0.34); }
+  .reddit-thread-line-t1 { background: hsl(262 55% 52% / 0.23); }
+  .reddit-thread-line-t2 { background: hsl(262 55% 52% / 0.14); }
+
+  .reddit-thread-line-btn:hover .reddit-thread-line {
+    background: hsl(262 60% 48% / 0.55);
+    width: 3px;
+  }
+
+  /* Manually collapsed branch: same tint, dimmed, so the handle still reads
+     as "something folded here". */
+  .reddit-thread-line-collapsed {
+    opacity: 0.4;
+  }
+
+  .reddit-thread-line-leaf {
+    height: 50%;
+    align-self: flex-start;
+    opacity: 0.5;
+  }
+
+  .reddit-thread-line-btn:hover .reddit-thread-line-collapsed {
+    opacity: 0.85;
+  }
+
+  .dark .reddit-thread-line,
+  .dark .reddit-thread-line-t0 { background: hsl(262 75% 74% / 0.38); }
+  .dark .reddit-thread-line-t1 { background: hsl(262 75% 74% / 0.26); }
+  .dark .reddit-thread-line-t2 { background: hsl(262 75% 74% / 0.16); }
+
+  .dark .reddit-thread-line-btn:hover .reddit-thread-line {
+    background: hsl(262 85% 78% / 0.60);
+  }
+
+  /* "↳ @parent" cue tap target: briefly wash the parent reply in violet so
+     the eye lands on it after the scroll. */
+  @keyframes thread-parent-flash {
+    0% { box-shadow: inset 0 0 0 999px hsl(262 65% 58% / 0.18); }
+    100% { box-shadow: inset 0 0 0 999px transparent; }
+  }
+
+  .thread-parent-flash {
+    animation: thread-parent-flash 1.4s ease-out;
+    border-radius: 0.75rem;
+  }
+
+  .post-content-text {
+    /* Reader Font Style setting (Settings → Text). --font-body is set on
+       <html> at boot (main.tsx) and defaults to Inter, so the untouched
+       default renders identically to the old hardcoded 'Inter'. */
+    font-family: var(--font-body, 'Inter', sans-serif);
+    color: rgba(40, 30, 50, 0.82);
+  }
+
+  /* Clean feed style: post body sized by the reader Text Size control (default
+     ~15px, X/Primal density). */
+  .post-clean-text {
+    font-size: var(--post-text-size, 15px);
+  }
+
+  /* Shared "dense body" copy for thread replies/comments, DM bubbles, and
+     group-chat messages. It owns the two things every chat-ish surface must
+     share with the feed:
+       - reader Font Style, via --font-body (same face as .post-content-text)
+       - reader Text Size, via --post-text-size, one step denser than a
+         top-level post so threads/chat read slightly tighter but STILL scale
+         Compact→Huge identically to posts (default 15px post → 14px here).
+     It deliberately does NOT set color. Surfaces rendered on the page
+     background (thread replies, Concord group chat) also add .post-content-text
+     to inherit its body ink + Boost-Contrast tokens. DM bubbles use this class
+     ALONE — each bubble (.glass-bubble-own / -other) owns its own already-AA
+     color pairing, so layering the page-background contrast tokens would fight
+     the bubble fill. */
+  .reply-content-text {
+    font-family: var(--font-body, 'Inter', sans-serif);
+    font-size: calc(var(--post-text-size, 15px) - 1px);
+  }
+
+  /* Bubbles feed style: same reader-controlled size. The +1px on mobile
+     preserves the historical text-base (16px) / sm:text-[15px] split at the
+     default setting while still scaling with the Text Size control. */
+  .post-bubbles-text {
+    font-size: calc(var(--post-text-size, 15px) + 1px);
+  }
+  @media (min-width: 640px) {
+    .post-bubbles-text {
+      font-size: var(--post-text-size, 15px);
+    }
+  }
+
+  .glass-inner .post-content-text {
+    color: rgba(30, 25, 50, 0.85);
+  }
+
+  .dark .post-content-text {
+    color: rgba(235, 230, 225, 0.82);
+  }
+
+  /* Boost-contrast accessibility setting (Settings → Accessibility → Contrast
+     Level) must lift the post body too. The hardcoded rgba above is not a
+     token, so High/Maximum would otherwise skip the single most-read text in
+     the app. Light mode darkens toward the page ink; dark mode brightens toward
+     white. Dark rules follow the light ones so equal-specificity ties resolve
+     to the dark value inside .dark. */
+  :root[data-contrast="high"] .post-content-text { color: rgba(28, 20, 38, 0.92); }
+  :root[data-contrast="maximum"] .post-content-text { color: rgba(16, 10, 24, 1); }
+  .dark[data-contrast="high"] .post-content-text { color: rgba(244, 241, 238, 0.94); }
+  .dark[data-contrast="maximum"] .post-content-text { color: rgba(255, 255, 255, 1); }
+
+  /* Solid (opaque) bottom dock — a translucent + backdrop-blur dock let page
+     content show straight through on mobile (blur is unreliable / disabled in
+     lite mode), which read as distracting. A solid surface with a subtle tint
+     gradient keeps the depth without the see-through. */
+  .mobile-nav-dock {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.55) 0%,
+        rgba(247, 245, 255, 0.85) 100%
+      ),
+      hsl(250 36% 98%);
+    border-top: 1px solid rgba(140, 100, 220, 0.14);
+    box-shadow:
+      0 -1px 0 rgba(140, 100, 220, 0.05),
+      0 -6px 20px -6px rgba(140, 100, 220, 0.12);
+  }
+
+  .dark .mobile-nav-dock {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(12, 10, 20, 0.6) 0%,
+        rgba(4, 4, 10, 0.92) 100%
+      ),
+      hsl(260 10% 4%);
+    border-top: 1px solid rgba(140, 100, 220, 0.08);
+    box-shadow:
+      0 0 0 1px rgba(140, 100, 220, 0.04) inset,
+      0 -1px 0 rgba(255, 255, 255, 0.02),
+      0 -8px 28px -6px rgba(0, 0, 0, 0.85);
+  }
+
+  .mobile-nav-inner {
+    padding: 6px 4px 4px;
+    position: relative;
+  }
+
+  .mobile-nav-inner::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(160, 120, 240, 0.15), transparent);
+  }
+
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    width: 56px;
+    height: 56px;
+    position: relative;
+    transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    border-radius: 12px;
+    color: rgba(100, 70, 160, 0.6);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: none;
+  }
+
+  .dark .mobile-nav-item {
+    color: rgba(180, 160, 240, 0.7);
+  }
+
+  .mobile-nav-active {
+    color: rgba(100, 60, 180, 0.95);
+    transform: translateY(-2px);
+  }
+
+  .dark .mobile-nav-active {
+    color: rgba(220, 200, 255, 0.95);
+  }
+
+  .mobile-nav-active-beam {
+    position: absolute;
+    top: -7px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 3px;
+    border-radius: 0 0 4px 4px;
+    background: linear-gradient(90deg, transparent, rgba(160, 120, 240, 0.6), transparent);
+    box-shadow:
+      0 0 8px 2px rgba(140, 100, 220, 0.2),
+      0 0 20px 4px rgba(120, 80, 200, 0.08);
+  }
+
+  .mobile-nav-icon-glow {
+    filter:
+      drop-shadow(0 0 6px rgba(170, 130, 255, 0.5))
+      drop-shadow(0 0 16px rgba(140, 100, 220, 0.25));
+    animation: mobile-nav-glow-pulse 2.5s ease-in-out infinite;
+  }
+
+  @keyframes mobile-nav-glow-pulse {
+    0%, 100% {
+      filter:
+        drop-shadow(0 0 6px rgba(170, 130, 255, 0.5))
+        drop-shadow(0 0 16px rgba(140, 100, 220, 0.25));
+    }
+    50% {
+      filter:
+        drop-shadow(0 0 10px rgba(180, 140, 255, 0.7))
+        drop-shadow(0 0 24px rgba(150, 110, 240, 0.35));
+    }
+  }
+
+  .mobile-nav-dot {
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: rgba(160, 130, 240, 0.6);
+    box-shadow: 0 0 6px 1px rgba(140, 100, 220, 0.25);
+  }
+
+  .mobile-nav-center-wrapper {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+  }
+
+  .mobile-nav-center {
+    --center-logo-start: #1f1b4b;
+    --center-logo-mid: #4c1d95;
+    --center-logo-end: #7c3aed;
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(245, 240, 255, 0.95));
+    border: 1.5px solid rgba(31, 27, 75, 0.18);
+    color: #1f1b4b;
+    box-shadow:
+      0 0 0 3px rgba(250, 248, 255, 0.9),
+      0 0 12px 3px rgba(76, 29, 149, 0.14),
+      0 0 24px 6px rgba(124, 58, 237, 0.08),
+      0 0 40px 10px rgba(124, 58, 237, 0.04),
+      0 4px 12px -2px rgba(31, 27, 75, 0.15);
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    cursor: pointer;
+    text-decoration: none;
+    z-index: 10;
+    animation: center-btn-glow-light 5s ease-in-out infinite;
+  }
+
+  @keyframes center-btn-glow-light {
+    0%, 100% {
+      box-shadow:
+        0 0 0 3px rgba(250, 248, 255, 0.9),
+        0 0 12px 3px rgba(76, 29, 149, 0.14),
+        0 0 24px 6px rgba(124, 58, 237, 0.08),
+        0 0 40px 10px rgba(124, 58, 237, 0.04),
+        0 4px 12px -2px rgba(31, 27, 75, 0.15);
+      border-color: rgba(31, 27, 75, 0.18);
+    }
+    50% {
+      box-shadow:
+        0 0 0 3px rgba(245, 240, 255, 0.95),
+        0 0 16px 4px rgba(76, 29, 149, 0.22),
+        0 0 30px 8px rgba(124, 58, 237, 0.12),
+        0 0 48px 14px rgba(124, 58, 237, 0.06),
+        0 4px 14px -2px rgba(31, 27, 75, 0.18);
+      border-color: rgba(76, 29, 149, 0.28);
+    }
+  }
+
+  .dark .mobile-nav-center {
+    --center-logo-start: #c4b5fd;
+    --center-logo-mid: #a78bfa;
+    --center-logo-end: #8b5cf6;
+    background: rgba(4, 4, 10, 0.95);
+    border-color: rgba(140, 100, 220, 0.25);
+    color: rgba(255, 255, 255, 0.85);
+    box-shadow:
+      0 0 0 3px rgba(2, 2, 6, 0.9),
+      0 0 10px 2px rgba(130, 80, 220, 0.18),
+      0 0 22px 5px rgba(110, 60, 200, 0.10),
+      0 0 40px 8px rgba(90, 50, 180, 0.06),
+      0 4px 12px -2px rgba(0, 0, 0, 0.7);
+    animation: center-btn-glow-dark 4s ease-in-out infinite;
+  }
+
+  @keyframes center-btn-glow-dark {
+    0%, 100% {
+      box-shadow:
+        0 0 0 3px rgba(2, 2, 6, 0.9),
+        0 0 10px 2px rgba(130, 80, 220, 0.18),
+        0 0 22px 5px rgba(110, 60, 200, 0.10),
+        0 0 40px 8px rgba(90, 50, 180, 0.06),
+        0 4px 12px -2px rgba(0, 0, 0, 0.7);
+      border-color: rgba(140, 100, 220, 0.25);
+    }
+    50% {
+      box-shadow:
+        0 0 0 3px rgba(2, 2, 6, 0.9),
+        0 0 14px 3px rgba(140, 90, 230, 0.25),
+        0 0 28px 7px rgba(120, 70, 210, 0.14),
+        0 0 48px 12px rgba(100, 55, 190, 0.08),
+        0 4px 12px -2px rgba(0, 0, 0, 0.7);
+      border-color: rgba(160, 120, 240, 0.35);
+    }
+  }
+
+  .mobile-nav-center:active {
+    transform: translateX(-50%) scale(0.95);
+  }
+
+  .mobile-nav-center-active {
+    color: white;
+    border-color: rgba(160, 120, 240, 0.35);
+    box-shadow:
+      0 0 0 3px rgba(2, 2, 6, 0.9),
+      0 0 16px 3px rgba(140, 100, 220, 0.15),
+      0 0 32px 6px rgba(100, 70, 180, 0.08),
+      0 4px 12px -2px rgba(0, 0, 0, 0.7);
+  }
+
+  /* While the shorts viewer is open (body.shorts-open, set by VideoFeed), the
+     bottom nav lifts ABOVE the full-bleed video layer (z 70 > shorts z 60) and
+     goes dark-translucent so the video shows through behind it and the center
+     button — TikTok-style. Dark glass in BOTH themes: the layer under it is
+     always video. */
+  body.shorts-open .mobile-nav-dock {
+    z-index: 70;
+    background: rgba(18, 14, 34, 0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top-color: rgba(255, 255, 255, 0.08);
+    box-shadow: none;
+  }
+
+  .shorts-container {
+    position: fixed;
+    /* Shorts viewer is MOBILE-only (rendered when isMobile && shortsMode).
+       Full-bleed like YouTube Shorts/TikTok: video runs from the very top of
+       the screen (under the status bar — overlay controls pad themselves with
+       safe-area-inset-top) down to the app bottom nav. The header stays
+       mounted underneath but is covered (z-index above its z-50); the bottom
+       nav remains visible and tappable — switching tabs is the primary exit,
+       with the fixed ✕ overlay as the explicit one. */
+    top: 0;
+    left: 0;
+    right: 0;
+    /* Full-bleed to the screen bottom — the video runs BEHIND the bottom nav
+       and its center button (TikTok-style). While shorts is open, a
+       body.shorts-open class lifts the nav above this layer and makes the dock
+       translucent so the video shows through; in-card bottom chrome (seek bar,
+       caption) pads itself up past the nav. */
+    bottom: 0;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+    background: black;
+    z-index: 60;
+  }
+
+  .shorts-slide {
+    width: 100%;
+    /* Full screen height — the slide runs under the (translucent) bottom nav. */
+    height: 100vh;
+    height: 100dvh;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .ig-feed-card {
+    border-bottom: 1px solid rgba(140, 100, 220, 0.08);
+  }
+
+  .dark .ig-feed-card {
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.glass-settings-section {
+  background: linear-gradient(135deg, rgba(238, 232, 255, 0.80) 0%, rgba(232, 238, 255, 0.78) 40%, rgba(240, 235, 255, 0.80) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-color: rgba(100, 70, 200, 0.16);
+}
+
+.dark .glass-settings-section {
+  background: linear-gradient(135deg, hsl(240 15% 4%) 0%, hsl(260 20% 7%) 40%, hsl(220 25% 5%) 100%);
+  backdrop-filter: none;
+}
+
+.glass-settings-glow {
+  background: radial-gradient(ellipse at 80% 20%, rgba(80, 60, 200, 0.08) 0%, transparent 60%), radial-gradient(ellipse at 20% 80%, rgba(100, 70, 200, 0.06) 0%, transparent 50%);
+}
+
+.dark .glass-settings-glow {
+  background: radial-gradient(ellipse at 80% 20%, hsl(220 50% 18% / 0.3) 0%, transparent 60%), radial-gradient(ellipse at 20% 80%, hsl(270 40% 15% / 0.2) 0%, transparent 50%);
+}
+
+.glass-settings-header {
+  background: linear-gradient(135deg, rgba(235, 230, 255, 0.85) 0%, rgba(240, 235, 255, 0.80) 50%, rgba(238, 232, 255, 0.85) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.dark .glass-settings-header {
+  background: linear-gradient(135deg, hsl(260 25% 8%) 0%, hsl(240 20% 5%) 50%, hsl(280 20% 10%) 100%);
+  backdrop-filter: none;
+}
+
+.glass-settings-header-glow {
+  background: radial-gradient(ellipse at 30% 50%, rgba(140, 100, 220, 0.08) 0%, transparent 60%), radial-gradient(ellipse at 80% 30%, rgba(100, 130, 220, 0.06) 0%, transparent 50%);
+}
+
+.dark .glass-settings-header-glow {
+  background: radial-gradient(ellipse at 30% 50%, hsl(270 60% 25% / 0.2) 0%, transparent 60%), radial-gradient(ellipse at 80% 30%, hsl(220 50% 20% / 0.15) 0%, transparent 50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .warp-teleport-overlay,
+  .warp-teleport-streak {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+}
+
+.warp-teleport-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 350ms ease-out;
+}
+
+.warp-teleport-overlay.warp-teleport-active {
+  opacity: 1;
+}
+
+.warp-teleport-overlay.warp-teleport-fade {
+  opacity: 0;
+}
+
+.warp-teleport-light {
+  background: radial-gradient(circle at 50% 100%, rgba(31, 27, 75, 0.06) 0%, transparent 60%);
+}
+
+.warp-teleport-dark {
+  background: radial-gradient(circle at 50% 100%, rgba(139, 92, 246, 0.08) 0%, transparent 60%);
+}
+
+.warp-teleport-streak {
+  position: absolute;
+  bottom: 15%;
+  left: 50%;
+  width: var(--w, 1.5px);
+  height: 0;
+  border-radius: 1px;
+  transform-origin: bottom center;
+  transform: rotate(var(--angle, 0deg)) translateX(-50%);
+  animation: warpStreakShoot 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--delay, 0ms);
+  opacity: 0;
+}
+
+.warp-teleport-light .warp-teleport-streak {
+  background: linear-gradient(
+    to top,
+    rgba(31, 27, 75, 0.5),
+    rgba(124, 58, 237, 0.6),
+    rgba(167, 139, 250, 0.3),
+    transparent
+  );
+  box-shadow: 0 0 4px rgba(124, 58, 237, 0.3);
+}
+
+.warp-teleport-dark .warp-teleport-streak {
+  background: linear-gradient(
+    to top,
+    rgba(139, 92, 246, 0.7),
+    rgba(196, 167, 255, 0.5),
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  box-shadow: 0 0 6px rgba(139, 92, 246, 0.4);
+}
+
+@keyframes warpStreakShoot {
+  0% {
+    height: 0;
+    opacity: 0;
+    bottom: 15%;
+  }
+  20% {
+    opacity: 0.9;
+    height: calc(var(--len, 100px) * 0.3);
+  }
+  60% {
+    opacity: 0.7;
+    height: var(--len, 100px);
+    bottom: calc(15% + var(--dist, 50%) * 0.5);
+  }
+  100% {
+    opacity: 0;
+    height: var(--len, 100px);
+    bottom: calc(15% + var(--dist, 50%));
+  }
+}
+
+/* "N new posts" pill (NewPostsPill) — calm slide-in within the motion budget. */
+.new-posts-pill {
+  position: relative;
+  animation: newPostsPillIn 170ms ease-out;
+}
+
+/* Invisible hit-area extension: the pill (40px) and rocket (38px) render
+   smaller than the 44px touch-target floor; the pseudo pads the tappable
+   area without changing the visual. */
+.new-posts-pill::after,
+.scroll-to-top-btn::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+}
+
+@keyframes newPostsPillIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.scroll-to-top-btn {
+  width: 38px;
+  height: 38px;
+  background: rgba(31, 27, 75, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(99, 80, 180, 0.25);
+  color: rgba(220, 210, 255, 0.9);
+  box-shadow:
+    0 2px 10px rgba(31, 27, 75, 0.25),
+    0 0 0 1px rgba(99, 80, 180, 0.1) inset;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.scroll-to-top-btn:hover {
+  background: rgba(31, 27, 75, 0.95);
+  border-color: rgba(124, 100, 220, 0.4);
+  box-shadow:
+    0 6px 20px rgba(31, 27, 75, 0.35),
+    0 0 14px rgba(124, 100, 220, 0.12) inset,
+    0 0 30px rgba(124, 58, 237, 0.08);
+  transform: translateY(-2px) scale(1.05);
+}
+
+.scroll-to-top-btn:active {
+  transform: translateY(-8px) scale(0.95);
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.scroll-to-top-btn.warp-launched {
+  animation: rocketLaunch 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes rocketLaunch {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  40% { transform: translateY(-20px) scale(1.1); opacity: 0.8; }
+  70% { transform: translateY(-50px) scale(0.7); opacity: 0.3; }
+  100% { transform: translateY(-80px) scale(0.4); opacity: 0; }
+}
+
+.dark .scroll-to-top-btn {
+  background: rgba(15, 12, 35, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  color: rgba(196, 167, 255, 0.9);
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.3),
+    0 0 12px rgba(139, 92, 246, 0.06) inset;
+}
+
+.dark .scroll-to-top-btn:hover {
+  background: rgba(20, 16, 45, 0.9);
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.4),
+    0 0 18px rgba(139, 92, 246, 0.12) inset,
+    0 0 30px rgba(139, 92, 246, 0.06);
+  transform: translateY(-2px) scale(1.05);
+}
+
+@media (max-width: 767px) {
+  .scroll-to-top-btn {
+    bottom: 1.25rem !important;
+    right: 1rem !important;
+  }
+}
+
+.collapse-thread-btn {
+  width: 28px;
+  height: 28px;
+  background: rgba(40, 28, 12, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  color: rgba(253, 224, 130, 0.95);
+  box-shadow:
+    0 2px 6px rgba(30, 20, 5, 0.35),
+    0 0 0 1px rgba(251, 191, 36, 0.06) inset,
+    0 0 10px rgba(251, 191, 36, 0.12);
+  animation: collapseOrbitPulse 3s ease-in-out infinite;
+}
+
+@keyframes collapseOrbitPulse {
+  0%, 100% { box-shadow: 0 2px 6px rgba(30, 20, 5, 0.35), 0 0 0 1px rgba(251, 191, 36, 0.06) inset, 0 0 10px rgba(251, 191, 36, 0.12); }
+  50% { box-shadow: 0 2px 6px rgba(30, 20, 5, 0.35), 0 0 0 1px rgba(251, 191, 36, 0.1) inset, 0 0 16px rgba(251, 191, 36, 0.25); }
+}
+
+.collapse-thread-btn:hover {
+  background: rgba(40, 28, 12, 0.95);
+  border-color: rgba(251, 191, 36, 0.55);
+  color: rgba(254, 240, 180, 1);
+  box-shadow:
+    0 4px 12px rgba(30, 20, 5, 0.4),
+    0 0 8px rgba(251, 191, 36, 0.12) inset,
+    0 0 20px rgba(251, 191, 36, 0.25);
+  transform: translateY(-2px) scale(1.1);
+  animation: none;
+}
+
+.collapse-thread-btn:active {
+  transform: translateY(0) scale(0.9);
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: none;
+}
+
+.dark .collapse-thread-btn {
+  background: rgba(20, 14, 5, 0.85);
+  border: 1px solid rgba(251, 191, 36, 0.22);
+  color: rgba(253, 224, 130, 0.95);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.4),
+    0 0 6px rgba(251, 191, 36, 0.06) inset,
+    0 0 10px rgba(251, 191, 36, 0.15);
+}
+
+.dark .collapse-thread-btn:hover {
+  background: rgba(25, 18, 8, 0.92);
+  border-color: rgba(251, 191, 36, 0.5);
+  color: rgba(254, 240, 180, 1);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    0 0 10px rgba(251, 191, 36, 0.12) inset,
+    0 0 22px rgba(251, 191, 36, 0.28);
+  transform: translateY(-2px) scale(1.1);
+  animation: none;
+}
+
+@media (max-width: 767px) {
+  .collapse-thread-btn {
+    bottom: 4rem !important;
+    right: calc(1rem + 5px) !important;
+  }
+}
+
+.sidebar-theme-toggle {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid transparent;
+}
+
+.sidebar-theme-toggle:hover {
+  background: rgba(124, 58, 237, 0.06);
+  border-color: rgba(76, 29, 149, 0.12);
+}
+
+.dark .sidebar-theme-toggle {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.dark .sidebar-theme-toggle:hover {
+  background: rgba(140, 100, 220, 0.08);
+  border-color: rgba(140, 100, 220, 0.15);
+}
+
+.outpost-galaxy-dust {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.outpost-galaxy-dust::before,
+.outpost-galaxy-dust::after {
+  content: "";
+  position: absolute;
+  inset: -10%;
+  will-change: transform;
+}
+
+.outpost-galaxy-dust::before {
+  background:
+    radial-gradient(1.8px 1.8px at 6% 15%, rgba(76, 29, 149, 0.45) 0%, transparent 100%),
+    radial-gradient(1.4px 1.4px at 18% 45%, rgba(124, 58, 237, 0.38) 0%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 28% 72%, rgba(100, 50, 200, 0.32) 0%, transparent 100%),
+    radial-gradient(2px 2px at 42% 22%, rgba(76, 29, 149, 0.40) 0%, transparent 100%),
+    radial-gradient(1.3px 1.3px at 55% 58%, rgba(139, 92, 246, 0.35) 0%, transparent 100%),
+    radial-gradient(1.6px 1.6px at 68% 35%, rgba(76, 29, 149, 0.38) 0%, transparent 100%),
+    radial-gradient(1.1px 1.1px at 78% 78%, rgba(124, 58, 237, 0.30) 0%, transparent 100%),
+    radial-gradient(1.8px 1.8px at 88% 12%, rgba(100, 50, 200, 0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 35% 88%, rgba(139, 92, 246, 0.28) 0%, transparent 100%),
+    radial-gradient(1.4px 1.4px at 62% 8%, rgba(76, 29, 149, 0.32) 0%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 92% 52%, rgba(124, 58, 237, 0.30) 0%, transparent 100%),
+    radial-gradient(0.9px 0.9px at 15% 62%, rgba(139, 92, 246, 0.25) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 48% 42%, rgba(76, 29, 149, 0.32) 0%, transparent 100%),
+    radial-gradient(1.1px 1.1px at 82% 28%, rgba(100, 50, 200, 0.28) 0%, transparent 100%);
+  animation: outpost-dust-a 90s linear infinite;
+}
+
+.outpost-galaxy-dust::after {
+  background:
+    radial-gradient(1.4px 1.4px at 10% 28%, rgba(124, 58, 237, 0.38) 0%, transparent 100%),
+    radial-gradient(1.3px 1.3px at 25% 55%, rgba(76, 29, 149, 0.32) 0%, transparent 100%),
+    radial-gradient(1.7px 1.7px at 38% 82%, rgba(139, 92, 246, 0.40) 0%, transparent 100%),
+    radial-gradient(1.1px 1.1px at 52% 18%, rgba(100, 50, 200, 0.30) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 65% 48%, rgba(76, 29, 149, 0.35) 0%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 75% 68%, rgba(124, 58, 237, 0.32) 0%, transparent 100%),
+    radial-gradient(1.8px 1.8px at 85% 38%, rgba(139, 92, 246, 0.38) 0%, transparent 100%),
+    radial-gradient(1px 1px at 95% 85%, rgba(76, 29, 149, 0.28) 0%, transparent 100%),
+    radial-gradient(1.3px 1.3px at 22% 92%, rgba(100, 50, 200, 0.30) 0%, transparent 100%),
+    radial-gradient(1.4px 1.4px at 45% 5%, rgba(124, 58, 237, 0.32) 0%, transparent 100%),
+    radial-gradient(1.1px 1.1px at 72% 15%, rgba(139, 92, 246, 0.28) 0%, transparent 100%),
+    radial-gradient(0.9px 0.9px at 58% 72%, rgba(76, 29, 149, 0.25) 0%, transparent 100%);
+  animation: outpost-dust-b 110s linear infinite;
+}
+
+@keyframes outpost-dust-a {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(1.5%, -1%) rotate(2deg); }
+  50% { transform: translate(-0.5%, 1.5%) rotate(-1.5deg); }
+  75% { transform: translate(1%, -0.5%) rotate(1deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes outpost-dust-b {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(-1%, 1.5%) rotate(-1.5deg); }
+  50% { transform: translate(1.5%, -0.5%) rotate(2deg); }
+  75% { transform: translate(-0.5%, 1%) rotate(-1deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .outpost-galaxy-dust::before,
+  .outpost-galaxy-dust::after {
+    animation: none;
+  }
+
+  .payload-tx-icon animate,
+  .payload-tx-icon animateTransform {
+    display: none;
+  }
+}
+
+.profile-banner-bg {
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(139, 92, 246, 0.18), transparent 55%),
+    radial-gradient(circle at 80% 70%, rgba(217, 70, 239, 0.14), transparent 55%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+  background-size: 200% 200%, 200% 200%, 100% 100%;
+  background-position: 0% 50%, 100% 50%, 0 0;
+  animation: profileBannerDrift 14s ease-in-out infinite;
+}
+
+.profile-banner-bg-light {
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(139, 92, 246, 0.12), transparent 55%),
+    radial-gradient(circle at 80% 70%, rgba(217, 70, 239, 0.10), transparent 55%),
+    linear-gradient(135deg, rgba(0, 0, 0, 0.03), rgba(0, 0, 0, 0.01));
+  background-size: 200% 200%, 200% 200%, 100% 100%;
+  background-position: 0% 50%, 100% 50%, 0 0;
+  animation: profileBannerDrift 14s ease-in-out infinite;
+}
+
+@keyframes profileBannerDrift {
+  0%, 100% {
+    background-position: 0% 50%, 100% 50%, 0 0;
+  }
+  50% {
+    background-position: 100% 50%, 0% 50%, 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-banner-bg,
+  .profile-banner-bg-light {
+    animation: none;
+  }
+}
+
+.outpost-icon-glow {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border: 1px solid rgba(76, 29, 149, 0.15) !important;
+  box-shadow:
+    0 0 6px 1px rgba(124, 58, 237, 0.12),
+    0 0 14px 3px rgba(76, 29, 149, 0.06),
+    0 2px 4px -1px rgba(31, 27, 75, 0.08);
+  transition: all 0.3s ease;
+}
+
+.outpost-icon-glow:hover {
+  background: rgba(245, 240, 255, 0.9) !important;
+  border-color: rgba(76, 29, 149, 0.25) !important;
+  box-shadow:
+    0 0 10px 2px rgba(124, 58, 237, 0.20),
+    0 0 20px 5px rgba(76, 29, 149, 0.10),
+    0 2px 6px -1px rgba(31, 27, 75, 0.10);
+}
+
+.dark .outpost-icon-glow {
+  background: rgba(10, 8, 24, 0.5) !important;
+  border: 1px solid rgba(140, 100, 220, 0.15) !important;
+  box-shadow:
+    0 0 6px 1px rgba(130, 80, 220, 0.10),
+    0 0 14px 3px rgba(100, 60, 200, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+.dark .outpost-icon-glow:hover {
+  background: rgba(20, 16, 40, 0.7) !important;
+  border-color: rgba(140, 100, 220, 0.25) !important;
+  box-shadow:
+    0 0 10px 2px rgba(140, 90, 230, 0.16),
+    0 0 20px 5px rgba(100, 60, 200, 0.08),
+    0 2px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+.light-galaxy-specks {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(0.8px 0.8px at 5% 10%, rgba(140, 100, 220, 0.18) 0%, transparent 100%),
+    radial-gradient(0.6px 0.6px at 15% 35%, rgba(120, 80, 200, 0.12) 0%, transparent 100%),
+    radial-gradient(0.7px 0.7px at 25% 70%, rgba(140, 100, 220, 0.14) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 35% 20%, rgba(160, 120, 240, 0.10) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 45% 55%, rgba(140, 100, 220, 0.15) 0%, transparent 100%),
+    radial-gradient(0.6px 0.6px at 55% 85%, rgba(120, 80, 200, 0.12) 0%, transparent 100%),
+    radial-gradient(0.7px 0.7px at 65% 15%, rgba(180, 140, 255, 0.10) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 75% 45%, rgba(140, 100, 220, 0.12) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 85% 75%, rgba(120, 80, 200, 0.14) 0%, transparent 100%),
+    radial-gradient(0.6px 0.6px at 95% 30%, rgba(140, 100, 220, 0.10) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 10% 60%, rgba(160, 120, 240, 0.08) 0%, transparent 100%),
+    radial-gradient(0.7px 0.7px at 40% 90%, rgba(140, 100, 220, 0.12) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 60% 40%, rgba(120, 80, 200, 0.10) 0%, transparent 100%),
+    radial-gradient(0.6px 0.6px at 80% 8%, rgba(140, 100, 220, 0.12) 0%, transparent 100%),
+    radial-gradient(0.4px 0.4px at 20% 50%, rgba(160, 120, 240, 0.08) 0%, transparent 100%),
+    radial-gradient(0.4px 0.4px at 50% 25%, rgba(140, 100, 220, 0.08) 0%, transparent 100%),
+    radial-gradient(0.4px 0.4px at 70% 65%, rgba(120, 80, 200, 0.08) 0%, transparent 100%),
+    radial-gradient(0.4px 0.4px at 90% 50%, rgba(140, 100, 220, 0.06) 0%, transparent 100%);
+}
+
+.dark .light-galaxy-specks {
+  display: none;
+}
+
+.light-galaxy-drift {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.light-galaxy-drift::before,
+.light-galaxy-drift::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+.light-galaxy-drift::before {
+  background:
+    radial-gradient(1px 1px at 8% 12%, rgba(120, 80, 200, 0.22) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 22% 68%, rgba(140, 100, 220, 0.18) 0%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 38% 28%, rgba(100, 70, 180, 0.14) 0%, transparent 100%),
+    radial-gradient(0.6px 0.6px at 52% 82%, rgba(160, 120, 240, 0.16) 0%, transparent 100%),
+    radial-gradient(0.9px 0.9px at 68% 18%, rgba(130, 90, 210, 0.18) 0%, transparent 100%),
+    radial-gradient(0.7px 0.7px at 82% 58%, rgba(140, 100, 220, 0.14) 0%, transparent 100%),
+    radial-gradient(1px 1px at 15% 45%, rgba(110, 80, 200, 0.12) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 48% 52%, rgba(150, 110, 230, 0.10) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 72% 38%, rgba(120, 80, 200, 0.12) 0%, transparent 100%),
+    radial-gradient(0.6px 0.6px at 92% 72%, rgba(140, 100, 220, 0.10) 0%, transparent 100%),
+    radial-gradient(0.7px 0.7px at 28% 88%, rgba(130, 90, 210, 0.12) 0%, transparent 100%),
+    radial-gradient(0.4px 0.4px at 58% 8%, rgba(160, 120, 240, 0.08) 0%, transparent 100%);
+  animation: galaxy-drift-a 120s linear infinite;
+}
+
+.light-galaxy-drift::after {
+  background:
+    radial-gradient(0.9px 0.9px at 12% 32%, rgba(140, 100, 220, 0.16) 0%, transparent 100%),
+    radial-gradient(0.7px 0.7px at 32% 78%, rgba(120, 80, 200, 0.14) 0%, transparent 100%),
+    radial-gradient(1px 1px at 48% 15%, rgba(100, 70, 180, 0.18) 0%, transparent 100%),
+    radial-gradient(0.6px 0.6px at 62% 62%, rgba(150, 110, 230, 0.12) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 78% 42%, rgba(130, 90, 210, 0.14) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 88% 22%, rgba(140, 100, 220, 0.10) 0%, transparent 100%),
+    radial-gradient(0.7px 0.7px at 18% 55%, rgba(110, 80, 200, 0.12) 0%, transparent 100%),
+    radial-gradient(1.1px 1.1px at 42% 92%, rgba(120, 80, 200, 0.16) 0%, transparent 100%),
+    radial-gradient(0.6px 0.6px at 65% 5%, rgba(160, 120, 240, 0.08) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 85% 85%, rgba(140, 100, 220, 0.12) 0%, transparent 100%);
+  animation: galaxy-drift-b 150s linear infinite;
+}
+
+@keyframes galaxy-drift-a {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(2%, -1.5%) rotate(3deg); }
+  50% { transform: translate(-1%, 2%) rotate(-2deg); }
+  75% { transform: translate(1.5%, -0.5%) rotate(1deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes galaxy-drift-b {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(-1.5%, 2%) rotate(-2deg); }
+  50% { transform: translate(2%, -1%) rotate(3deg); }
+  75% { transform: translate(-0.5%, 1%) rotate(-1deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+.dark .light-galaxy-drift {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .light-galaxy-drift::before,
+  .light-galaxy-drift::after {
+    animation: none;
+  }
+}
+
+/* No scrollbars, any axis, any width.
+ *
+ * Phones already hid them; desktop painted a 4px violet track, and it showed up
+ * wherever a strip scrolls sideways — a grey bar sitting under the profile media
+ * row, under sidebars, under every horizontal rail. On a surface this dense it
+ * reads as a rendering artefact rather than a control.
+ *
+ * Scrolling itself is untouched: wheel, trackpad, touch, keyboard, and
+ * scroll-into-view all behave exactly as before. What goes away is only the
+ * painted bar. Content that scrolls sideways signals it the way it already
+ * does — by showing a partial item at the edge. */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.mini-player-glass {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.85) 0%,
+    rgba(250, 248, 255, 0.95) 100%
+  );
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  border-top: 1px solid rgba(140, 100, 220, 0.1);
+  box-shadow:
+    0 -4px 20px rgba(140, 100, 220, 0.06),
+    0 -1px 8px rgba(140, 100, 220, 0.03);
+}
+
+.dark .mini-player-glass {
+  background: linear-gradient(
+    180deg,
+    rgba(4, 4, 10, 0.88) 0%,
+    rgba(2, 2, 6, 0.96) 100%
+  );
+  border-top-color: rgba(140, 100, 220, 0.08);
+  box-shadow:
+    0 -4px 20px rgba(0, 0, 0, 0.5),
+    0 -1px 8px rgba(80, 50, 140, 0.04);
+}
+
+.mini-player-glass.rounded-xl {
+  border-top: none;
+  box-shadow:
+    0 4px 24px rgba(140, 100, 220, 0.08),
+    0 1px 8px rgba(140, 100, 220, 0.04);
+}
+
+.dark .mini-player-glass.rounded-xl {
+  border-top: none;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.6),
+    0 1px 8px rgba(80, 50, 140, 0.06);
+}
+
+.media-dropdown-glass {
+  position: relative;
+  background:
+    radial-gradient(ellipse 120% 80% at 20% 10%, rgba(167, 139, 250, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 100% at 90% 80%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+    linear-gradient(
+      168deg,
+      rgba(252, 250, 255, 0.93) 0%,
+      rgba(245, 241, 255, 0.96) 50%,
+      rgba(240, 235, 255, 0.94) 100%
+    );
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow:
+    0 8px 32px rgba(120, 80, 200, 0.10),
+    0 2px 12px rgba(120, 80, 200, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(139, 92, 246, 0.04);
+}
+
+.media-dropdown-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1px 1px at 15% 20%, rgba(139, 92, 246, 0.18), transparent),
+    radial-gradient(1px 1px at 45% 65%, rgba(167, 139, 250, 0.14), transparent),
+    radial-gradient(1px 1px at 70% 15%, rgba(139, 92, 246, 0.12), transparent),
+    radial-gradient(1px 1px at 85% 45%, rgba(167, 139, 250, 0.16), transparent),
+    radial-gradient(1px 1px at 30% 80%, rgba(124, 58, 237, 0.10), transparent),
+    radial-gradient(1.5px 1.5px at 55% 35%, rgba(139, 92, 246, 0.12), transparent),
+    radial-gradient(1px 1px at 90% 75%, rgba(167, 139, 250, 0.10), transparent),
+    radial-gradient(1px 1px at 10% 55%, rgba(124, 58, 237, 0.08), transparent);
+  z-index: 0;
+  opacity: 0.7;
+}
+
+.media-dropdown-glass > * {
+  position: relative;
+  z-index: 1;
+}
+
+.dark .media-dropdown-glass {
+  background:
+    radial-gradient(ellipse 130% 80% at 15% 5%, rgba(139, 92, 246, 0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 90% 110% at 85% 90%, rgba(124, 58, 237, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 50% at 50% 50%, rgba(88, 28, 135, 0.06) 0%, transparent 70%),
+    linear-gradient(
+      168deg,
+      rgba(12, 8, 28, 0.94) 0%,
+      rgba(8, 5, 20, 0.96) 50%,
+      rgba(6, 3, 16, 0.95) 100%
+    );
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 2px 12px rgba(100, 60, 180, 0.08),
+    inset 0 1px 0 rgba(167, 139, 250, 0.08),
+    inset 0 -1px 0 rgba(139, 92, 246, 0.03);
+}
+
+.dark .media-dropdown-glass::before {
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, rgba(196, 181, 253, 0.35), transparent),
+    radial-gradient(1px 1px at 42% 62%, rgba(167, 139, 250, 0.25), transparent),
+    radial-gradient(1.5px 1.5px at 68% 12%, rgba(196, 181, 253, 0.30), transparent),
+    radial-gradient(1px 1px at 88% 42%, rgba(139, 92, 246, 0.28), transparent),
+    radial-gradient(1px 1px at 28% 78%, rgba(167, 139, 250, 0.22), transparent),
+    radial-gradient(1px 1px at 52% 32%, rgba(196, 181, 253, 0.20), transparent),
+    radial-gradient(1.5px 1.5px at 92% 72%, rgba(139, 92, 246, 0.25), transparent),
+    radial-gradient(1px 1px at 8% 52%, rgba(167, 139, 250, 0.18), transparent),
+    radial-gradient(0.5px 0.5px at 35% 45%, rgba(255, 255, 255, 0.15), transparent),
+    radial-gradient(0.5px 0.5px at 75% 25%, rgba(255, 255, 255, 0.12), transparent),
+    radial-gradient(0.5px 0.5px at 60% 85%, rgba(255, 255, 255, 0.10), transparent);
+  opacity: 0.8;
+}
+
+.media-compact-strip {
+  position: relative;
+  overflow: hidden;
+}
+
+.media-compact-strip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 120% at 0% 50%, rgba(139, 92, 246, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 100% at 100% 50%, rgba(167, 139, 250, 0.04) 0%, transparent 60%);
+}
+
+.dark .media-compact-strip::after {
+  background:
+    radial-gradient(ellipse 60% 120% at 0% 50%, rgba(139, 92, 246, 0.10) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 100% at 100% 50%, rgba(167, 139, 250, 0.06) 0%, transparent 60%);
+}
+
+@media (min-width: 768px) {
+  .mini-player-glass {
+    bottom: 0 !important;
+  }
+}
+
+.media-dropdown-glass {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 767px) {
+  .media-dropdown-glass input[type="range"] {
+    height: 6px;
+    min-height: 44px;
+  }
+}
+
+.thread-reply-glass {
+  background: linear-gradient(
+    180deg,
+    rgba(240, 236, 255, 0.88) 0%,
+    rgba(238, 234, 255, 0.95) 100%
+  );
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  border-top: 1px solid rgba(100, 70, 200, 0.14);
+  box-shadow:
+    0 -4px 20px rgba(100, 70, 200, 0.06),
+    0 -1px 8px rgba(100, 70, 200, 0.04);
+}
+
+.dark .thread-reply-glass {
+  background: linear-gradient(
+    180deg,
+    rgba(4, 4, 10, 0.88) 0%,
+    rgba(2, 2, 6, 0.96) 100%
+  );
+  border-top-color: rgba(140, 100, 220, 0.08);
+  box-shadow:
+    0 -4px 20px rgba(0, 0, 0, 0.5),
+    0 -1px 8px rgba(80, 50, 140, 0.04);
+}
+
+.thread-reply-glass-desktop {
+  background: linear-gradient(
+    180deg,
+    rgba(240, 236, 255, 0.90) 0%,
+    rgba(238, 234, 255, 0.96) 100%
+  );
+  backdrop-filter: blur(24px) saturate(1.3);
+  -webkit-backdrop-filter: blur(24px) saturate(1.3);
+  border-top: 1px solid rgba(100, 70, 200, 0.14);
+  box-shadow:
+    0 -6px 32px rgba(100, 70, 200, 0.06),
+    0 -2px 12px rgba(100, 70, 200, 0.04);
+}
+
+.dark .thread-reply-glass-desktop {
+  background: linear-gradient(
+    180deg,
+    rgba(6, 4, 14, 0.92) 0%,
+    rgba(3, 2, 8, 0.97) 100%
+  );
+  box-shadow:
+    0 -6px 32px rgba(0, 0, 0, 0.5),
+    0 -2px 12px rgba(80, 50, 140, 0.06),
+    inset 0 1px 0 rgba(140, 100, 220, 0.05);
+}
+
+.mention-hover-card {
+  filter: drop-shadow(0 0 16px rgba(139, 92, 246, 0.12)) drop-shadow(0 6px 16px rgba(80, 50, 140, 0.15));
+}
+.dark .mention-hover-card {
+  filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.15)) drop-shadow(0 8px 24px rgba(0, 0, 0, 0.5));
+}
+
+@keyframes radarPing {
+  0% { transform: scale(0.3); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+@keyframes radarSweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.radar-scope {
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.03) 0%, rgba(139, 92, 246, 0.06) 40%, rgba(139, 92, 246, 0.02) 100%);
+  box-shadow:
+    inset 0 0 30px rgba(139, 92, 246, 0.06),
+    0 0 20px rgba(139, 92, 246, 0.04);
+  overflow: hidden;
+}
+
+.dark .radar-scope {
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.06) 0%, rgba(10, 5, 25, 0.7) 40%, rgba(5, 2, 15, 0.85) 100%);
+  box-shadow:
+    inset 0 0 40px rgba(139, 92, 246, 0.08),
+    0 0 40px rgba(139, 92, 246, 0.06);
+}
+
+.radar-scope-grid {
+  background:
+    linear-gradient(0deg, transparent 49.5%, rgba(139, 92, 246, 0.06) 49.5%, rgba(139, 92, 246, 0.06) 50.5%, transparent 50.5%),
+    linear-gradient(90deg, transparent 49.5%, rgba(139, 92, 246, 0.06) 49.5%, rgba(139, 92, 246, 0.06) 50.5%, transparent 50.5%);
+}
+
+.dark .radar-scope-grid {
+  background:
+    linear-gradient(0deg, transparent 49.5%, rgba(168, 85, 247, 0.08) 49.5%, rgba(168, 85, 247, 0.08) 50.5%, transparent 50.5%),
+    linear-gradient(90deg, transparent 49.5%, rgba(168, 85, 247, 0.08) 49.5%, rgba(168, 85, 247, 0.08) 50.5%, transparent 50.5%);
+}
+
+.radar-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(139, 92, 246, 0.12);
+  animation: radarPing 2.5s ease-out infinite;
+}
+
+.dark .radar-ring {
+  border-color: rgba(168, 85, 247, 0.2);
+}
+
+.radar-sweep-line {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 50%;
+  height: 2px;
+  transform-origin: 0% 50%;
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.8), rgba(139, 92, 246, 0.3), transparent);
+  animation: radarSweep 2s linear infinite;
+  border-radius: 1px;
+}
+
+.dark .radar-sweep-line {
+  background: linear-gradient(90deg, rgba(168, 85, 247, 0.9), rgba(139, 92, 246, 0.4), transparent);
+}
+
+.radar-sweep-line::before {
+  content: '';
+  position: absolute;
+  top: -30px;
+  left: -2px;
+  width: 105%;
+  height: 60px;
+  background: conic-gradient(from -15deg, transparent, rgba(139, 92, 246, 0.08) 20deg, transparent 40deg);
+  transform-origin: 2px 50%;
+}
+
+.dark .radar-sweep-line::before {
+  background: conic-gradient(from -15deg, transparent, rgba(168, 85, 247, 0.15) 20deg, transparent 40deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radar-ring,
+  .radar-sweep-line {
+    animation: none !important;
+  }
+  .radar-ring {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+}
+
+/* Header notifications bell — "glow = new" story-ring (see HeaderBar in
+   App.tsx). Slow transform-only spin of the conic ring layer; reduced motion
+   gets a static glow instead. Same vocabulary as the Stories rail's ring. */
+@keyframes header-bell-ring-rot {
+  to { transform: rotate(360deg); }
+}
+.header-bell-ring-spin {
+  animation: header-bell-ring-rot 8s linear infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .header-bell-ring-spin {
+    animation: none;
+  }
+}
+
+@keyframes musicBar1 {
+  0%, 100% { height: 30%; }
+  50% { height: 100%; }
+}
+@keyframes musicBar2 {
+  0%, 100% { height: 60%; }
+  50% { height: 20%; }
+}
+@keyframes musicBar3 {
+  0%, 100% { height: 45%; }
+  50% { height: 90%; }
+}
+.animate-music-bar-1 {
+  animation: musicBar1 0.8s ease-in-out infinite;
+}
+.animate-music-bar-2 {
+  animation: musicBar2 0.6s ease-in-out infinite;
+}
+.animate-music-bar-3 {
+  animation: musicBar3 0.7s ease-in-out infinite;
+}
+
+.tiptap {
+  padding: 1rem 1.25rem;
+  min-height: 200px;
+}
+@media (min-width: 640px) {
+  .tiptap {
+    padding: 1.25rem 1.5rem;
+    min-height: 300px;
+  }
+}
+.tiptap .is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: hsl(var(--muted-foreground));
+  opacity: 0.5;
+  pointer-events: none;
+  height: 0;
+}
+.tiptap:focus {
+  outline: none;
+}
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: hsl(var(--muted-foreground));
+  opacity: 0.4;
+  pointer-events: none;
+  height: 0;
+}
+.tiptap img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.375rem;
+}
+.tiptap a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+}
+.tiptap blockquote {
+  border-left: 3px solid hsl(var(--primary) / 0.3);
+  padding-left: 1rem;
+  color: hsl(var(--muted-foreground));
+  font-style: italic;
+}
+.tiptap pre {
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.375rem;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+}
+.tiptap code {
+  color: hsl(var(--primary) / 0.8);
+  font-size: 0.875em;
+}
+.tiptap hr {
+  border-color: hsl(var(--border));
+  margin: 1.5rem 0;
+}
+
+.article-prose {
+  overflow-wrap: break-word;
+  word-break: break-word;
+  /* Reader Font Style setting; defaults to Inter (see .post-content-text).
+     Headings below intentionally stay Space Grotesk — a design choice. */
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  line-height: 1.8;
+  color: hsl(var(--foreground) / 0.85);
+  font-size: 0.938rem;
+}
+.article-prose h1,
+.article-prose h2,
+.article-prose h3,
+.article-prose h4,
+.article-prose h5,
+.article-prose h6 {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: hsl(var(--foreground) / 0.95);
+  margin-top: 2em;
+  margin-bottom: 0.75em;
+  line-height: 1.3;
+}
+.article-prose h1 { font-size: 1.75rem; }
+.article-prose h2 { font-size: 1.375rem; border-bottom: 1px solid hsl(var(--border) / 0.15); padding-bottom: 0.5em; }
+.article-prose h3 { font-size: 1.125rem; }
+.article-prose h4 { font-size: 1rem; }
+.article-prose p {
+  margin-bottom: 1.25em;
+}
+.article-prose a {
+  color: hsl(270 70% 70%);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: hsl(270 70% 70% / 0.3);
+  transition: text-decoration-color 0.15s;
+  word-break: break-all;
+}
+.article-prose a:hover {
+  text-decoration-color: hsl(270 70% 70% / 0.8);
+}
+.article-prose strong {
+  color: hsl(var(--foreground) / 0.95);
+  font-weight: 600;
+}
+.article-prose em {
+  color: hsl(var(--foreground) / 0.8);
+  font-style: italic;
+}
+.article-prose blockquote {
+  border-left: 3px solid hsl(270 70% 60% / 0.4);
+  padding: 0.75em 1.25em;
+  margin: 1.5em 0;
+  background: hsl(270 30% 50% / 0.06);
+  border-radius: 0 0.5rem 0.5rem 0;
+  color: hsl(var(--foreground) / 0.75);
+  font-style: italic;
+}
+.article-prose blockquote p:last-child {
+  margin-bottom: 0;
+}
+.article-prose ul,
+.article-prose ol {
+  padding-left: 1.5em;
+  margin-bottom: 1.25em;
+}
+.article-prose li {
+  margin-bottom: 0.4em;
+}
+.article-prose li::marker {
+  color: hsl(270 60% 65% / 0.6);
+}
+.article-prose hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(270 50% 60% / 0.2), transparent);
+  margin: 2em 0;
+}
+.article-prose code {
+  font-size: 0.85em;
+  padding: 0.15em 0.4em;
+  border-radius: 0.25rem;
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(270 60% 75%);
+  word-break: break-word;
+}
+.article-prose pre {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background: hsl(var(--muted) / 0.3);
+  border: 1px solid hsl(var(--border) / 0.2);
+  border-radius: 0.5rem;
+  padding: 1em 1.25em;
+  margin: 1.5em 0;
+}
+.article-prose pre code {
+  background: none;
+  padding: 0;
+  color: hsl(var(--foreground) / 0.8);
+}
+.article-prose img {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block;
+  border-radius: 0.5rem;
+  margin: 1.5em 0;
+}
+.article-prose table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-collapse: collapse;
+  margin: 1.5em 0;
+  width: 100%;
+}
+.article-prose th,
+.article-prose td {
+  border: 1px solid hsl(var(--border) / 0.2);
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+.article-prose th {
+  background: hsl(var(--muted) / 0.3);
+  font-weight: 600;
+}
+.article-prose iframe,
+.article-prose video,
+.article-prose embed,
+.article-prose object {
+  max-width: 100% !important;
+  height: auto !important;
+}
+@media (max-width: 640px) {
+  .article-prose { font-size: 0.875rem; line-height: 1.75; }
+  .article-prose h1 { font-size: 1.5rem; }
+  .article-prose h2 { font-size: 1.25rem; }
+  .article-prose h3 { font-size: 1.05rem; }
+}
+
+.rss-article-content {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.rss-article-content img {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block;
+}
+.rss-article-content a {
+  word-break: break-all;
+  -webkit-tap-highlight-color: transparent;
+  padding: 2px 0;
+}
+.rss-article-content iframe {
+  max-width: 100% !important;
+}
+.rss-article-content pre {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.rss-article-content table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.rss-article-content video,
+.rss-article-content embed,
+.rss-article-content object {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="submit"]):not([type="reset"]):not([type="button"]),
+  textarea,
+  select,
+  [contenteditable]:not([contenteditable="false"]) {
+    font-size: max(16px, 1rem) !important;
+  }
+
+  [data-vaul-drawer] input,
+  [data-vaul-drawer] textarea,
+  [data-vaul-drawer] select {
+    font-size: 16px !important;
+  }
+
+}
+
+.mention-hover-bg {
+  background: linear-gradient(to br, #f8f5ff 0%, #f0eefa 50%, #f5f3fc 100%);
+}
+
+.dark .mention-hover-bg {
+  background: linear-gradient(to br, #1a0533, #0d0d2b, #0a0a1a);
+}
+
+.zap-dialog-bg {
+  background: linear-gradient(to bottom, rgba(248, 246, 255, 0.99), rgba(245, 243, 252, 0.98), rgba(242, 240, 250, 0.99));
+}
+
+.dark .zap-dialog-bg {
+  background: linear-gradient(to bottom, #08080e, #050508, #030305);
+}
+
+.zap-dialog-glow-top {
+  background: radial-gradient(ellipse at top, rgba(245, 158, 11, 0.06), transparent 50%);
+}
+
+.dark .zap-dialog-glow-top {
+  background: radial-gradient(ellipse at top, rgba(245, 158, 11, 0.04), transparent 50%);
+}
+
+.zap-dialog-glow-corner {
+  background: radial-gradient(circle at bottom right, rgba(234, 179, 8, 0.04), transparent 40%);
+}
+
+.dark .zap-dialog-glow-corner {
+  background: radial-gradient(circle at bottom right, rgba(234, 179, 8, 0.03), transparent 40%);
+}
+
+.mention-hover-radial {
+  background: radial-gradient(ellipse at top, rgba(139, 92, 246, 0.08), transparent 60%);
+}
+
+.dark .mention-hover-radial {
+  background: radial-gradient(ellipse at top, rgba(139, 92, 246, 0.15), transparent 60%);
+}
+
+video:focus,
+iframe:focus,
+video:focus-visible,
+iframe:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.hljs {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  padding: 1rem;
+  overflow-x: auto;
+}
+.hljs-comment,
+.hljs-quote {
+  color: #6a737d;
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-addition {
+  color: #d73a49;
+}
+.dark .hljs-keyword,
+.dark .hljs-selector-tag,
+.dark .hljs-addition {
+  color: #ff7b72;
+}
+.hljs-string,
+.hljs-attr,
+.hljs-template-variable,
+.hljs-variable {
+  color: #032f62;
+}
+.dark .hljs-string,
+.dark .hljs-attr,
+.dark .hljs-template-variable,
+.dark .hljs-variable {
+  color: #a5d6ff;
+}
+.hljs-number,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-built_in {
+  color: #005cc5;
+}
+.dark .hljs-number,
+.dark .hljs-literal,
+.dark .hljs-type,
+.dark .hljs-params,
+.dark .hljs-built_in {
+  color: #79c0ff;
+}
+.hljs-function .hljs-title,
+.hljs-title.function_ {
+  color: #6f42c1;
+}
+.dark .hljs-function .hljs-title,
+.dark .hljs-title.function_ {
+  color: #d2a8ff;
+}
+.hljs-name,
+.hljs-section,
+.hljs-title {
+  color: #22863a;
+}
+.dark .hljs-name,
+.dark .hljs-section,
+.dark .hljs-title {
+  color: #7ee787;
+}
+.dark .hljs-comment,
+.dark .hljs-quote {
+  color: #8b949e;
+}
+.hljs-meta {
+  color: #e36209;
+}
+.dark .hljs-meta {
+  color: #ffa657;
+}
+.hljs-deletion {
+  color: #b31d28;
+  background-color: #ffeef0;
+}
+.dark .hljs-deletion {
+  color: #ffdcd7;
+  background-color: rgba(248, 81, 73, 0.15);
+}
+.hljs-addition {
+  background-color: #f0fff4;
+}
+.dark .hljs-addition {
+  background-color: rgba(63, 185, 80, 0.15);
+}
+
+@keyframes postSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.post-enter {
+  animation: postSlideIn 200ms ease-out both;
+}
+
+.post-enter-skip {
+  animation: none;
+}
+
+@media (max-width: 767px) {
+  .post-enter {
+    animation: postSlideIn 120ms ease-out both;
+  }
+  .post-enter-skip {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .post-enter,
+  .post-enter-skip {
+    animation: none;
+  }
+}
+
+.feed-skeleton-shimmer {
+  background: linear-gradient(90deg, transparent 0%, hsl(var(--muted)) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes signalBeaconPulse {
+  0%, 100% { box-shadow: 0 0 4px 1px rgba(139, 92, 246, 0.3), 0 0 8px 2px rgba(139, 92, 246, 0.15); border-color: rgba(139, 92, 246, 0.5); }
+  50% { box-shadow: 0 0 8px 3px rgba(139, 92, 246, 0.5), 0 0 16px 5px rgba(139, 92, 246, 0.2); border-color: rgba(139, 92, 246, 0.7); }
+}
+
+.signal-ring-strong {
+  border: 2px solid rgba(139, 92, 246, 0.5);
+  animation: signalBeaconPulse 2.5s ease-in-out infinite;
+}
+
+.signal-ring-fading {
+  border: 2px solid rgba(245, 158, 11, 0.4);
+  box-shadow: 0 0 4px 1px rgba(245, 158, 11, 0.15), 0 0 6px 2px rgba(245, 158, 11, 0.08);
+}
+
+.signal-ring-cold {
+  border: 2px solid rgba(148, 163, 184, 0.15);
+}
+
+@keyframes liveBeaconPulse {
+  0%, 100% { box-shadow: 0 0 4px 1px rgba(239, 68, 68, 0.3), 0 0 8px 2px rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.5); }
+  50% { box-shadow: 0 0 8px 3px rgba(239, 68, 68, 0.5), 0 0 16px 5px rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.7); }
+}
+
+.signal-ring-live {
+  border: 2px solid rgba(239, 68, 68, 0.5);
+  animation: liveBeaconPulse 2s ease-in-out infinite;
+}
+
+@keyframes liveDotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+
+.live-dot {
+  animation: liveDotPulse 1.5s ease-in-out infinite;
+}
+
+.banner-hud {
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  background: rgba(10, 10, 20, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.banner-hud-label {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.banner-hud-value {
+  color: rgba(255, 255, 255, 0.90);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.banner-hud-divider {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.banner-hud-rule {
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.dark .banner-hud {
+  background: rgba(8, 8, 18, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 6px 24px 4px rgba(0, 0, 0, 0.5), 0 0 12px 1px rgba(139, 92, 246, 0.06);
+}
+
+.dark .banner-hud-label {
+  color: rgba(255, 255, 255, 0.50);
+}
+
+.dark .banner-hud-value {
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 0 6px rgba(139, 92, 246, 0.12);
+}
+
+.dark .banner-hud-divider {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.dark .banner-hud-rule {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.reaction-bar-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+.reaction-bar-wrapper[data-hover],
+.reaction-bar-wrapper:focus-within,
+.reaction-bar-wrapper[data-open] {
+  z-index: 9999;
+}
+
+.reaction-bar {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 210px;
+  height: 180px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease 0ms;
+  z-index: 9999;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.reaction-bar::after {
+  content: "";
+  position: absolute;
+  left: -20px;
+  right: -20px;
+  top: -12px;
+  bottom: -20px;
+  z-index: -1;
+}
+
+.reaction-bar-wrapper[data-hover] .reaction-bar,
+.reaction-bar-wrapper:focus-within .reaction-bar,
+.reaction-bar-wrapper[data-open] .reaction-bar {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 150ms ease 0ms;
+}
+
+.reaction-bar-btn {
+  position: absolute;
+  left: var(--arc-x);
+  bottom: var(--arc-y);
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  font-size: 19px;
+  opacity: 0;
+  transform: scale(0);
+  transition: opacity 160ms ease, transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1), background 100ms ease, box-shadow 100ms ease;
+  background: rgba(250, 248, 255, 0.92);
+  backdrop-filter: blur(12px) saturate(1.3);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  border: 1px solid rgba(139, 92, 246, 0.16);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(139, 92, 246, 0.05);
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dark .reaction-bar-btn {
+  background: rgba(16, 10, 32, 0.9);
+  border-color: rgba(139, 92, 246, 0.28);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35), 0 0 8px rgba(139, 92, 246, 0.08);
+}
+
+.reaction-bar-wrapper[data-hover] .reaction-bar-btn,
+.reaction-bar-wrapper:focus-within .reaction-bar-btn,
+.reaction-bar-wrapper[data-open] .reaction-bar-btn {
+  opacity: 1;
+  transform: scale(1);
+  transition-delay: 200ms;
+}
+
+.reaction-bar-btn:nth-child(1) { --arc-x: calc(50% - 19px); --arc-y: 0px; }
+.reaction-bar-btn:nth-child(2) { --arc-x: calc(50% + 25px); --arc-y: 6px; }
+.reaction-bar-btn:nth-child(3) { --arc-x: calc(50% + 43px); --arc-y: 46px; }
+.reaction-bar-btn:nth-child(4) { --arc-x: calc(50% + 37px); --arc-y: 92px; }
+.reaction-bar-btn:nth-child(5) { --arc-x: calc(50% + 7px);  --arc-y: 126px; }
+.reaction-bar-btn:nth-child(6) { --arc-x: calc(50% - 37px); --arc-y: 134px; }
+.reaction-bar-btn:nth-child(7) { --arc-x: calc(50% - 77px); --arc-y: 110px; }
+.reaction-bar-btn:nth-child(8) { --arc-x: calc(50% - 87px); --arc-y: 64px; }
+.reaction-bar-btn:nth-child(9) { --arc-x: calc(50% - 69px); --arc-y: 20px; }
+
+.reaction-bar-wrapper[data-hover] .reaction-bar-btn:nth-child(1),
+.reaction-bar-wrapper:focus-within .reaction-bar-btn:nth-child(1),
+.reaction-bar-wrapper[data-open] .reaction-bar-btn:nth-child(1) { transition-delay: 0ms; }
+.reaction-bar-wrapper[data-hover] .reaction-bar-btn:nth-child(2),
+.reaction-bar-wrapper:focus-within .reaction-bar-btn:nth-child(2),
+.reaction-bar-wrapper[data-open] .reaction-bar-btn:nth-child(2) { transition-delay: 18ms; }
+.reaction-bar-wrapper[data-hover] .reaction-bar-btn:nth-child(3),
+.reaction-bar-wrapper:focus-within .reaction-bar-btn:nth-child(3),
+.reaction-bar-wrapper[data-open] .reaction-bar-btn:nth-child(3) { transition-delay: 36ms; }
+.reaction-bar-wrapper[data-hover] .reaction-bar-btn:nth-child(4),
+.reaction-bar-wrapper:focus-within .reaction-bar-btn:nth-child(4),
+.reaction-bar-wrapper[data-open] .reaction-bar-btn:nth-child(4) { transition-delay: 54ms; }
+.reaction-bar-wrapper[data-hover] .reaction-bar-btn:nth-child(5),
+.reaction-bar-wrapper:focus-within .reaction-bar-btn:nth-child(5),
+.reaction-bar-wrapper[data-open] .reaction-bar-btn:nth-child(5) { transition-delay: 72ms; }
+.reaction-bar-wrapper[data-hover] .reaction-bar-btn:nth-child(6),
+.reaction-bar-wrapper:focus-within .reaction-bar-btn:nth-child(6),
+.reaction-bar-wrapper[data-open] .reaction-bar-btn:nth-child(6) { transition-delay: 90ms; }
+.reaction-bar-wrapper[data-hover] .reaction-bar-btn:nth-child(7),
+.reaction-bar-wrapper:focus-within .reaction-bar-btn:nth-child(7),
+.reaction-bar-wrapper[data-open] .reaction-bar-btn:nth-child(7) { transition-delay: 108ms; }
+.reaction-bar-wrapper[data-hover] .reaction-bar-btn:nth-child(8),
+.reaction-bar-wrapper:focus-within .reaction-bar-btn:nth-child(8),
+.reaction-bar-wrapper[data-open] .reaction-bar-btn:nth-child(8) { transition-delay: 126ms; }
+.reaction-bar-wrapper[data-hover] .reaction-bar-btn:nth-child(9),
+.reaction-bar-wrapper:focus-within .reaction-bar-btn:nth-child(9),
+.reaction-bar-wrapper[data-open] .reaction-bar-btn:nth-child(9) { transition-delay: 140ms; }
+
+.reaction-bar-close {
+  background: rgba(240, 235, 248, 0.85) !important;
+  border-color: rgba(139, 92, 246, 0.1) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06) !important;
+  width: 32px !important;
+  height: 32px !important;
+}
+
+.dark .reaction-bar-close {
+  background: rgba(20, 14, 36, 0.85) !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3) !important;
+}
+
+.reaction-bar-close:hover {
+  background: rgba(220, 210, 240, 0.95) !important;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15) !important;
+}
+
+.dark .reaction-bar-close:hover {
+  background: rgba(30, 20, 55, 0.95) !important;
+  box-shadow: 0 2px 10px rgba(139, 92, 246, 0.2) !important;
+}
+
+.reaction-bar-center {
+  position: absolute;
+  left: calc(50% - 17px);
+  bottom: 58px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  background: rgba(240, 235, 248, 0.9);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.12), 0 0 12px rgba(139, 92, 246, 0.06);
+  color: rgba(139, 92, 246, 0.8);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.5);
+  transition: opacity 250ms ease, transform 250ms ease, background 150ms ease, box-shadow 150ms ease;
+  z-index: 1;
+}
+
+.dark .reaction-bar-center {
+  background: rgba(20, 14, 36, 0.9);
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow: 0 2px 10px rgba(139, 92, 246, 0.15), 0 0 16px rgba(139, 92, 246, 0.08);
+  color: rgba(167, 139, 250, 0.85);
+}
+
+.reaction-bar-wrapper[data-hover] .reaction-bar-center,
+.reaction-bar-wrapper:focus-within .reaction-bar-center,
+.reaction-bar-wrapper[data-open] .reaction-bar-center {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+  transition-delay: 280ms;
+}
+
+.reaction-bar-center:hover {
+  background: rgba(220, 210, 240, 0.97);
+  box-shadow: 0 3px 12px rgba(139, 92, 246, 0.25), 0 0 16px rgba(139, 92, 246, 0.1);
+  transform: scale(1.12);
+}
+
+.dark .reaction-bar-center:hover {
+  background: rgba(30, 20, 55, 0.97);
+  box-shadow: 0 3px 14px rgba(139, 92, 246, 0.3), 0 0 20px rgba(139, 92, 246, 0.12);
+}
+
+.reaction-bar-center:active {
+  transform: scale(0.92);
+}
+
+@media (max-width: 640px) {
+  .reaction-bar {
+    width: 220px;
+    height: 200px;
+    transform: translateX(-30%);
+  }
+
+  .reaction-bar-wrapper[data-hover] .reaction-bar,
+  .reaction-bar-wrapper:focus-within .reaction-bar {
+    transition: opacity 150ms ease 0ms;
+  }
+
+  .reaction-bar-btn {
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
+  }
+
+  .reaction-bar-btn:nth-child(1) { --arc-x: calc(50% - 21px); --arc-y: 0px;   }
+  .reaction-bar-btn:nth-child(2) { --arc-x: calc(50% + 28px); --arc-y: 7px;   }
+  .reaction-bar-btn:nth-child(3) { --arc-x: calc(50% + 48px); --arc-y: 52px;  }
+  .reaction-bar-btn:nth-child(4) { --arc-x: calc(50% + 41px); --arc-y: 103px; }
+  .reaction-bar-btn:nth-child(5) { --arc-x: calc(50% + 8px);  --arc-y: 141px; }
+  .reaction-bar-btn:nth-child(6) { --arc-x: calc(50% - 41px); --arc-y: 150px; }
+  .reaction-bar-btn:nth-child(7) { --arc-x: calc(50% - 86px); --arc-y: 123px; }
+  .reaction-bar-btn:nth-child(8) { --arc-x: calc(50% - 97px); --arc-y: 72px;  }
+  .reaction-bar-btn:nth-child(9) { --arc-x: calc(50% - 77px); --arc-y: 22px;  }
+
+  .reaction-bar-wrapper[data-hover] .reaction-bar-btn:nth-child(1),
+  .reaction-bar-wrapper:focus-within .reaction-bar-btn:nth-child(1) { transition-delay: 0ms; }
+  .reaction-bar-wrapper[data-hover] .reaction-bar-btn:nth-child(2),
+  .reaction-bar-wrapper:focus-within .reaction-bar-btn:nth-child(2) { transition-delay: 18ms; }
+  .reaction-bar-wrapper[data-hover] .reaction-bar-btn:nth-child(3),
+  .reaction-bar-wrapper:focus-within .reaction-bar-btn:nth-child(3) { transition-delay: 36ms; }
+  .reaction-bar-wrapper[data-hover] .reaction-bar-btn:nth-child(4),
+  .reaction-bar-wrapper:focus-within .reaction-bar-btn:nth-child(4) { transition-delay: 54ms; }
+  .reaction-bar-wrapper[data-hover] .reaction-bar-btn:nth-child(5),
+  .reaction-bar-wrapper:focus-within .reaction-bar-btn:nth-child(5) { transition-delay: 72ms; }
+  .reaction-bar-wrapper[data-hover] .reaction-bar-btn:nth-child(6),
+  .reaction-bar-wrapper:focus-within .reaction-bar-btn:nth-child(6) { transition-delay: 90ms; }
+  .reaction-bar-wrapper[data-hover] .reaction-bar-btn:nth-child(7),
+  .reaction-bar-wrapper:focus-within .reaction-bar-btn:nth-child(7) { transition-delay: 108ms; }
+  .reaction-bar-wrapper[data-hover] .reaction-bar-btn:nth-child(8),
+  .reaction-bar-wrapper:focus-within .reaction-bar-btn:nth-child(8) { transition-delay: 126ms; }
+  .reaction-bar-wrapper[data-hover] .reaction-bar-btn:nth-child(9),
+  .reaction-bar-wrapper:focus-within .reaction-bar-btn:nth-child(9) { transition-delay: 140ms; }
+
+  .reaction-bar-close {
+    width: 34px !important;
+    height: 34px !important;
+  }
+
+  .reaction-bar-center {
+    left: calc(50% - 19px);
+    bottom: 65px;
+    width: 38px;
+    height: 38px;
+  }
+}
+
+.reaction-bar-btn:hover {
+  transform: scale(1.15) !important;
+  background: rgba(235, 228, 255, 0.95);
+  box-shadow: 0 3px 12px rgba(139, 92, 246, 0.18), 0 0 0 1px rgba(139, 92, 246, 0.12);
+}
+
+.dark .reaction-bar-btn:hover {
+  background: rgba(30, 20, 60, 0.95);
+  box-shadow: 0 3px 16px rgba(139, 92, 246, 0.25), 0 0 0 1px rgba(139, 92, 246, 0.2);
+}
+
+.reaction-bar-btn:active {
+  transform: scale(0.92) !important;
+  background: rgba(220, 210, 248, 0.97);
+}
+
+.dark .reaction-bar-btn:active {
+  background: rgba(40, 28, 75, 0.97);
+}
+
+.reaction-bar-wrapper[data-closed] .reaction-bar {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.reaction-bar-wrapper[data-closed] .reaction-bar-btn {
+  opacity: 0 !important;
+  transform: scale(0) !important;
+}
+
+.reaction-bar-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.reaction-bar-btn:disabled:hover {
+  transform: scale(1) !important;
+  background: rgba(250, 248, 255, 0.92);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(139, 92, 246, 0.05);
+}
+
+.dark .reaction-bar-btn:disabled:hover {
+  background: rgba(16, 10, 32, 0.9);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35), 0 0 8px rgba(139, 92, 246, 0.08);
+}
+
+@keyframes reaction-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+.reaction-pop {
+  animation: reaction-pop 300ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reaction-bar-btn,
+  .reaction-bar-center {
+    transition: opacity 80ms ease, background 80ms ease;
+  }
+  .reaction-bar-wrapper[data-hover] .reaction-bar-btn,
+  .reaction-bar-wrapper:focus-within .reaction-bar-btn,
+  .reaction-bar-wrapper[data-open] .reaction-bar-btn,
+  .reaction-bar-wrapper[data-hover] .reaction-bar-center,
+  .reaction-bar-wrapper:focus-within .reaction-bar-center,
+  .reaction-bar-wrapper[data-open] .reaction-bar-center {
+    transition-delay: 0ms !important;
+  }
+  .reaction-pop {
+    animation: none;
+  }
+}
+
+.emoji-pill-mine {
+  box-shadow: 0 0 6px 1px rgba(139, 92, 246, 0.35);
+  border-color: rgba(139, 92, 246, 0.4) !important;
+  background: rgba(139, 92, 246, 0.08) !important;
+}
+
+.dark .emoji-pill-mine {
+  box-shadow: 0 0 8px 2px rgba(139, 92, 246, 0.3);
+  border-color: rgba(139, 92, 246, 0.5) !important;
+  background: rgba(139, 92, 246, 0.12) !important;
+}
+
+.custom-emoji-inline {
+  display: inline;
+  height: 1.2em;
+  width: auto;
+  vertical-align: -0.2em;
+  margin: 0 1px;
+}
+
+@keyframes relay-ops-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px rgba(168, 85, 247, 0.25));
+    opacity: 0.9;
+  }
+  50% {
+    filter: drop-shadow(0 0 4px rgba(168, 85, 247, 0.4));
+    opacity: 1;
+  }
+}
+
+.relay-ops-glow-icon {
+  animation: relay-ops-glow 2.5s ease-in-out infinite;
+}
+
+@keyframes pick-hammer {
+  0%, 100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  35% {
+    transform: rotate(-18deg) translateY(-2px);
+  }
+  50% {
+    transform: rotate(4deg) translateY(0.5px);
+  }
+  70% {
+    transform: rotate(-8deg) translateY(-1px);
+  }
+  85% {
+    transform: rotate(1deg) translateY(0);
+  }
+}
+
+.pick-hammer-icon {
+  transform-origin: bottom right;
+}
+
+.group:hover .pick-hammer-icon {
+  animation: pick-hammer 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .relay-ops-glow-icon,
+  .group:hover .pick-hammer-icon {
+    animation: none;
+  }
+}
+
+input[type="date"],
+input[type="time"] {
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.6);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+input[type="date"]::-webkit-datetime-edit-text {
+  color: hsl(var(--muted-foreground) / 0.3);
+}
+
+
+/* === Login banner: subtle warp-speed particles ============================ */
+.banner-warp::before,
+.banner-warp::after {
+  content: "";
+  position: absolute;
+  inset: -10%;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1px 1px at 18% 28%, rgba(196,181,253,0.85) 0, transparent 60%),
+    radial-gradient(1px 1px at 82% 22%, rgba(232,121,249,0.75) 0, transparent 60%),
+    radial-gradient(1px 1px at 65% 78%, rgba(196,181,253,0.70) 0, transparent 60%),
+    radial-gradient(1px 1px at 32% 82%, rgba(232,121,249,0.70) 0, transparent 60%),
+    radial-gradient(1px 1px at 92% 58%, rgba(196,181,253,0.80) 0, transparent 60%),
+    radial-gradient(1px 1px at 8%  62%, rgba(232,121,249,0.65) 0, transparent 60%),
+    radial-gradient(1px 1px at 50% 8%,  rgba(196,181,253,0.70) 0, transparent 60%),
+    radial-gradient(1px 1px at 50% 92%, rgba(232,121,249,0.65) 0, transparent 60%),
+    radial-gradient(1px 1px at 25% 55%, rgba(196,181,253,0.55) 0, transparent 60%),
+    radial-gradient(1px 1px at 75% 45%, rgba(232,121,249,0.55) 0, transparent 60%);
+  transform-origin: 50% 50%;
+  opacity: 0;
+  animation: warpDrift 7s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+.banner-warp::after {
+  animation-delay: 3.5s;
+  animation-duration: 8s;
+  filter: blur(0.4px);
+}
+@keyframes warpDrift {
+  0%   { transform: scale(0.35); opacity: 0; }
+  35%  { opacity: 0.55; }
+  100% { transform: scale(1.7);  opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .banner-warp::before,
+  .banner-warp::after { animation: none; opacity: 0; }
+}
+
+/* Operator radar — sidebar indicator for accounts that own at least
+   one outpost relay. Bright violet pulses, calibrated to be obvious in
+   light mode (deep indigo) and dark mode (bright violet) without being
+   loud. Uses scale on plain divs so transform-origin is reliable. */
+.operator-radar { line-height: 0; }
+.operator-radar__dot {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: rgb(99 102 241);
+  box-shadow: 0 0 3px rgba(99, 102, 241, 0.35);
+}
+.dark .operator-radar__dot {
+  background: rgb(165 180 252);
+  box-shadow: 0 0 4px rgba(129, 140, 248, 0.45);
+}
+.operator-radar__halo {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border-radius: 9999px;
+  border: 1px solid rgba(99, 102, 241, 0.28);
+  background: rgba(99, 102, 241, 0.04);
+}
+.dark .operator-radar__halo {
+  border-color: rgba(129, 140, 248, 0.32);
+  background: rgba(129, 140, 248, 0.05);
+}
+.operator-radar__ring {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border-radius: 9999px;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  transform-origin: center;
+  animation: operatorRadarPulse 3.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform, opacity;
+}
+.dark .operator-radar__ring {
+  border-color: rgba(165, 180, 252, 0.4);
+}
+.operator-radar__ring--inner { animation-delay: 0s; }
+.operator-radar__ring--outer { animation-delay: 1.8s; }
+@keyframes operatorRadarPulse {
+  0%   { transform: scale(0.7); opacity: 0.45; }
+  70%  { opacity: 0.10; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .operator-radar__ring { animation: none; opacity: 0.30; transform: scale(1); }
+}
+
+/* Field-info tooltip — guaranteed-readable solid dark panel. This rule is
+   intentionally UNLAYERED (outside every @layer), so its !important declarations
+   outrank glass-dialog-card's layered light gradient (@layer utilities), which was
+   pinning the popover to an unreadable washed-out panel. We also kill the backdrop
+   blur and the ::before/::after glass sheens so the surface stays flat and opaque
+   with crisp white text, in any theme and both the page and overlay variants. */
+.field-info-overlay {
+  background: #15121f !important;
+  border-color: rgba(140, 100, 220, 0.35) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.6) !important;
+}
+.field-info-overlay::before,
+.field-info-overlay::after { content: none !important; display: none !important; }
+
+/* ── Landing mascot motion ──────────────────────────────────────────────
+   The frontier-ranger companion (see components/landing/Mascot.tsx). Two
+   independent transforms layered on nested elements so float + sway don't
+   clobber each other: the wrapper bobs, the image gently sways. The ground
+   glow breathes in sync. All disabled under prefers-reduced-motion via the
+   motion-reduce:animate-none utility on each element. */
+@keyframes mascot-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-7px); }
+}
+@keyframes mascot-sway {
+  0%, 100% { transform: rotate(-1.5deg); }
+  50%      { transform: rotate(1.5deg); }
+}
+@keyframes mascot-glow {
+  0%, 100% { opacity: 0.55; transform: translateX(-50%) scale(1); }
+  50%      { opacity: 0.9;  transform: translateX(-50%) scale(1.08); }
+}
+.mascot-bob  { animation: mascot-bob 4.2s ease-in-out infinite; }
+.mascot-sway { animation: mascot-sway 5.6s ease-in-out infinite; transform-origin: 50% 85%; }
+.mascot-glow { animation: mascot-glow 4.2s ease-in-out infinite; }
+
+/* ── Warp "black hole" transition ───────────────────────────────────────
+   Replaces the old white flash at the warp apex (too harsh / seizure-risky).
+   A violet event-horizon ring closes inward to black as the scene collapses,
+   then opens back out to reveal the create-account page — gentle and dark, no
+   bright flash. The aperture radius is a registered custom property so it can
+   animate inside the radial-gradient. */
+@property --bh-hole {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 85%;
+}
+.blackhole-layer {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 45%,
+    transparent var(--bh-hole, 85%),
+    rgba(167, 139, 250, 0.28) calc(var(--bh-hole, 85%) + 1.5%),
+    rgba(91, 33, 182, 0.55) calc(var(--bh-hole, 85%) + 6%),
+    #05030a calc(var(--bh-hole, 85%) + 16%));
+}
+@keyframes bh-close { from { --bh-hole: 90%; } to { --bh-hole: 0%; } }
+@keyframes bh-open  { from { --bh-hole: 0%; } to { --bh-hole: 120%; } }
+.blackhole-layer.is-closing { animation: bh-close 380ms cubic-bezier(0.6, 0, 0.95, 0.25) forwards; }
+.blackhole-layer.is-opening { animation: bh-open 480ms cubic-bezier(0.2, 0.8, 0.3, 1) forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .blackhole-layer.is-closing, .blackhole-layer.is-opening { animation: none; }
+}
+
+/* Focused settings view: on the profile page's utility/settings tabs (Wallet,
+   Trust & safety, Bookmarks, Analytics, Console, Flight log) strip the social
+   profile chrome that's irrelevant to a settings task — the banner, bio,
+   metadata rows, edit/create actions, and the content-tab bar — leaving a
+   compact "you" identity (small avatar + name) above the focused content. Only
+   active on those tabs (data-manage-view is unset on content/identity tabs). */
+/* Settings sub-pages (Trust & safety, Wallet, …) stand on their own — hide the
+   whole profile chrome (banner, tabs, actions, meta, about, AND the identity
+   avatar+name). Each embedded page provides its own title + "← Settings" back. */
+[data-testid="page-myoutpost"][data-manage-view] [data-testid="container-outpost-banner"],
+[data-testid="page-myoutpost"][data-manage-view] [data-testid="container-outpost-tabs"],
+[data-testid="page-myoutpost"][data-manage-view] [data-testid="container-outpost-actions"],
+[data-testid="page-myoutpost"][data-manage-view] [data-testid="container-outpost-meta"],
+[data-testid="page-myoutpost"][data-manage-view] [data-testid="container-outpost-identity"],
+[data-testid="page-myoutpost"][data-manage-view] [data-testid="text-outpost-about"] {
+  display: none !important;
+}
+
+/* Primary-CTA "pop, but settled": a soft violet lift (locked hue 262) that
+   reads in BOTH themes without neon. Used on key conversion buttons — the
+   outpost strip's Join chip, the profile Follow button. Hover deepens it a
+   touch; keep everything around these buttons quiet. */
+.cta-pop {
+  box-shadow: 0 1px 2px rgba(31, 27, 75, 0.14), 0 2px 10px hsl(262 75% 52% / 0.25);
+  transition: box-shadow 150ms ease, transform 150ms ease;
+}
+.cta-pop:hover {
+  box-shadow: 0 1px 3px rgba(31, 27, 75, 0.18), 0 3px 14px hsl(262 75% 52% / 0.38);
+}
+.cta-pop:active {
+  transform: scale(0.98);
+}
+.dark .cta-pop {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 2px 12px hsl(262 85% 62% / 0.32);
+}
+.dark .cta-pop:hover {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55), 0 3px 16px hsl(262 85% 62% / 0.48);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cta-pop, .cta-pop:active { transition: none; transform: none; }
+}
+
+/* Profile/account identity docked in the top bar: the portal ships a
+   .header-banner-bg layer (user banner + dark gradient) painted at -z-10
+   inside the fixed header. When present — and the audio player is NOT
+   docked (data-audio on the slot) — the header goes transparent so the
+   banner shows through, and its chrome flips to white-on-banner. */
+#app-header:has(.header-banner-bg):not(:has(#header-identity-slot[data-audio="true"])) {
+  background: transparent;
+  border-color: rgb(255 255 255 / 0.08);
+  backdrop-filter: none;
+}
+#app-header:has(.header-banner-bg):not(:has(#header-identity-slot[data-audio="true"])) > button,
+#app-header:has(.header-banner-bg):not(:has(#header-identity-slot[data-audio="true"])) > a {
+  color: rgb(255 255 255 / 0.9);
+}
+
+/* On-banner mark chrome: the bar is transparent over the banner's dark gradient
+   scrim, so the trigger goes white with a legibility shadow — in BOTH themes.
+   Off-banner the Tailwind classes on the icon (theme foreground, no shadow)
+   apply instead; without this split the light-mode mark rendered white on the
+   plain light header and disappeared.
+
+   This is ALL that is left of the old context-aware trigger. Roughly seventy
+   lines of :has() lived here to decide when the signed-in user's avatar should
+   be swapped for the mark — on someone else's banner yes, on your own no,
+   unless audio was docked, and again for the solid identity bar. The trigger is
+   the mark unconditionally now, so every one of those cases collapsed: nothing
+   left to clash, nothing left to guess. Only the colour question survives. */
+#app-header:has(.header-banner-bg):not(:has(#header-identity-slot[data-audio="true"])) .header-trigger-mark {
+  color: rgb(255 255 255 / 0.9);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+}
+
+/* ── Post-menu shield glyph: the SIGNAL breathes while the menu is open ──────
+   Dot → inner arc → outer arc pulse softly in sequence (delays set inline on
+   the paths) — a slow radiating blink, not a spin; the shield stays still.
+   Only active while the trigger's svg carries .post-menu-open. */
+@keyframes post-menu-signal-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+.post-menu-open .pm-signal {
+  animation: post-menu-signal-pulse 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-menu-open .pm-signal { animation: none; }
+}
+
+/* ── Discover rubber band (owner decision 2026-08-15: real deltas,
+      theatrically presented) ─────────────────────────────────────────────── */
+
+/* Fresh tile: the "glow = new" story-ring vocabulary (same family as
+   .header-bell-ring-spin), calm — a static brand ring, no animation, so it
+   reads as state rather than motion. Extinguishes when freshCount hits 0. */
+.tile-fresh {
+  border-color: hsl(262 70% 58% / 0.45);
+  box-shadow: 0 0 0 1px hsl(262 70% 58% / 0.25), 0 0 18px -6px hsl(262 70% 58% / 0.35);
+}
+
+/* "+N new" chip — the NewPostsPill's 170ms calm slide-in, within the motion
+   budget. */
+.fresh-chip {
+  animation: newPostsPillIn 170ms ease-out both;
+}
+
+/* Arrival stagger: tiles deal in on page entry. Uses the .post-enter timing
+   (200ms desktop / 120ms phones) with a per-slot delay. Cheap transform +
+   opacity only. */
+.discover-grid > * {
+  animation: discoverTileIn 200ms ease-out both;
+}
+.discover-grid > *:nth-child(2) { animation-delay: 40ms; }
+.discover-grid > *:nth-child(3) { animation-delay: 80ms; }
+.discover-grid > *:nth-child(4) { animation-delay: 120ms; }
+.discover-grid > *:nth-child(5) { animation-delay: 160ms; }
+.discover-grid > *:nth-child(6) { animation-delay: 200ms; }
+.discover-grid > *:nth-child(7) { animation-delay: 240ms; }
+.discover-grid > *:nth-child(8) { animation-delay: 280ms; }
+.discover-grid > *:nth-child(9) { animation-delay: 300ms; }
+@keyframes discoverTileIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 767px) {
+  .discover-grid > * { animation-duration: 120ms; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .discover-grid > *, .fresh-chip { animation: none; }
+}
+html[data-perf="lite"] .discover-grid > *,
+html[data-perf="lite"] .fresh-chip {
+  animation: none;
+}

@@ -1,0 +1,26 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "lEMqVAFuwDPWB52srtUF2"
+uri = "file://docs/audio-clips-feature.md"
+type = "text"
+title = "Audio Clips Feature — Design & Interoperability Spec"
+
+[[outputs]]
+id = "i0uQor7I-leGEABem_6jg"
+uri = "file://docs/content-safety-auto-blur-proposal.md"
+type = "text"
+title = "Content Safety: Trust-Based Media Auto-Blur Proposal"
+
+[[outputs]]
+id = "6vorjBDPr9ZrvbT99X17j"
+uri = "file://docs/relay-software-compatibility.md"
+type = "text"
+title = "Relay Software Compatibility — Admin Management Tools"
+
+[[outputs]]
+id = "Pw9s6o-4gFIjc8Yx-4xME"
+uri = "file://docs/nsite-outpost-integration.md"
+type = "text"
+title = "nsite Integration in Relay Outpost — Deep Dive"
