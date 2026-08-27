@@ -17,14 +17,14 @@ import { Link } from "wouter";
 import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
 import { use$ } from "applesauce-react/hooks";
-import { Tag, MessageCircle, MapPin } from "lucide-react";
+import { Tag, MessageCircle, MapPin, ExternalLink } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { eventStore, fetchProfilesCached, FAST_RELAYS } from "@/lib/nostr";
 import { getWriteRelays } from "@/lib/outbox";
 import { queryAnswered } from "@/lib/relay-reach";
 import { getDisplayName, getAvatarUrl, formatNpub, shortenNpub, KIND_METADATA } from "@/lib/nostr-helpers";
-import { parseListing, formatListingPrice, KIND_CLASSIFIED_LISTING, LISTING_RELAYS, type Listing } from "@/lib/listing";
+import { parseListing, formatListingPrice, listingWebUrl, KIND_CLASSIFIED_LISTING, LISTING_RELAYS, type Listing } from "@/lib/listing";
 
 function useSellerIdentity(pubkey: string) {
   const profile = use$(() => eventStore.replaceable(KIND_METADATA, pubkey), [pubkey]);
@@ -48,6 +48,10 @@ export function ListingDialog({ listing, open, onOpenChange }: { listing: Listin
   const seller = useSellerIdentity(listing.pubkey);
   const [imageIndex, setImageIndex] = useState(0);
   const image = listing.images[imageIndex] ?? listing.images[0];
+  // Purchase happens on the WEB, not here — checkout belongs to the
+  // marketplace apps. Seller's own declared page wins; else the Conduit shop
+  // page for this exact listing (see lib/listing.listingWebUrl).
+  const web = useMemo(() => listingWebUrl(listing), [listing]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden rounded-2xl" data-testid={`listing-dialog-${listing.id}`}>
@@ -109,14 +113,28 @@ export function ListingDialog({ listing, open, onOpenChange }: { listing: Listin
                   <p className="text-[11px] text-muted-foreground">Seller</p>
                 </div>
               </Link>
-              <Link
-                href={`/messages/${seller.npub}`}
-                className="inline-flex items-center gap-1.5 h-9 px-4 mt-2 rounded-full bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity shrink-0"
-                data-testid="listing-message-seller"
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-                Message
-              </Link>
+              <div className="flex items-center gap-2 mt-2 shrink-0">
+                <Link
+                  href={`/messages/${seller.npub}`}
+                  className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full border border-border/60 text-xs font-semibold text-foreground hover:bg-muted/50 transition-colors"
+                  data-testid="listing-message-seller"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  Message
+                </Link>
+                {!listing.sold && (
+                  <a
+                    href={web.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity"
+                    data-testid="listing-buy-link"
+                  >
+                    {web.via === "conduit" ? "Buy on Conduit" : "View listing"}
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         </div>

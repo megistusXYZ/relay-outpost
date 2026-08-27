@@ -69,6 +69,35 @@ export function parseListing(event: Event): Listing | null {
 }
 
 /**
+ * Where "view / buy" should take a person, in sovereignty order:
+ *
+ *  1. The SELLER'S own declared page — an `r` tag holding a human web page.
+ *     Their listing, their storefront, whatever marketplace that is.
+ *  2. Otherwise the Conduit shop page for this listing, constructed from the
+ *     addressable coordinate (URL scheme measured live 2026-08-27:
+ *     /products/<kind>:<pubkey>:<d>, URL-encoded). Conduit's shop aggregates
+ *     listings across marketplaces, so this resolves for most of the network.
+ *
+ * Machine endpoints are never a destination: live listings carry `r` tags
+ * pointing at api.* service URLs (the402.ai), and sending a person to raw
+ * JSON is worse than no link.
+ */
+export function listingWebUrl(listing: Pick<Listing, "pubkey" | "dTag" | "event">): { url: string; via: "seller" | "conduit" } {
+  const rTags = listing.event.tags.filter((t) => t[0] === "r" && t[1]);
+  for (const t of rTags) {
+    const raw = t[1].trim();
+    if (!/^https?:\/\//i.test(raw)) continue;
+    try {
+      const u = new URL(raw);
+      const machinish = u.hostname.startsWith("api.") || /\/(v\d+|api)\//i.test(u.pathname);
+      if (!machinish) return { url: raw, via: "seller" };
+    } catch { /* malformed r — keep looking */ }
+  }
+  const coord = `${KIND_CLASSIFIED_LISTING}:${listing.pubkey}:${listing.dTag}`;
+  return { url: `https://shop.conduit.market/products/${encodeURIComponent(coord)}`, via: "conduit" };
+}
+
+/**
  * Human price line. Known currencies get their idiom (sats spelled out, $
  * for USD); everything else passes through as written — an invented symbol
  * for a currency we don't know would be a confident lie about money.
