@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Wrench, Wallet, Radio, Bookmark, BarChart3, Terminal, ScrollText, ChevronRight,
-  Users, ShieldCheck, RefreshCw, HardDrive, VolumeX, KeyRound,
+  Users, ShieldCheck, RefreshCw, HardDrive, VolumeX, KeyRound, Inbox,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
@@ -20,6 +20,7 @@ const TOOLS: ToolRow[] = [
   { href: "/relays", icon: Radio, title: "Relays", desc: "Where your posts go, health & blocks" },
   { href: "/account?tab=bookmarks", icon: Bookmark, title: "Bookmarks", desc: "Saved posts & articles" },
   { href: "/console/dashboard", icon: BarChart3, title: "Analytics", desc: "Engagement & reach" },
+  { href: "/tickets", icon: Inbox, title: "Tickets", desc: "Support & feedback from your users" },
   { href: "/console", icon: Terminal, title: "Console", desc: "Raw relay queries" },
   { href: "/account?tab=flight_log", icon: ScrollText, title: "Flight Log", desc: "Your activity log" },
   { href: "/recover-follows", icon: Users, title: "Follow list", desc: "Health: recover, review flagged & inactive" },
