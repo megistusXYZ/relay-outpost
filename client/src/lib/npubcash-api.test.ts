@@ -44,4 +44,12 @@ describe("claimableFromQuotes", () => {
   it("empty history claims nothing", () => {
     expect(claimableFromQuotes([])).toEqual({ sats: 0, count: 0 });
   });
+
+  it("excludes quotes this device knows are already issued — npub.cash re-lists them as PAID forever", () => {
+    const out = claimableFromQuotes(
+      [quote("PAID", 21, "q-old"), quote("PAID", 42, "q-old2"), quote("PAID", 7, "q-new")],
+      new Set(["q-old", "q-old2"]),
+    );
+    expect(out).toEqual({ sats: 7, count: 1 });
+  });
 });

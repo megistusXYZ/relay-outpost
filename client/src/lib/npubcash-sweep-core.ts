@@ -96,6 +96,22 @@ export function stashTotalSats(stash: Stash): number {
 }
 
 /**
+ * Sum proof amounts as NUMBERS regardless of spelling. Every sum over proofs
+ * that came straight from cashu-ts (not through the stash's heal-on-read)
+ * must go through here: melt change carries Amount objects, and a bare
+ * `s + p.amount` reduce concatenates — which is how a 1-sat change once
+ * rendered as "01 sats" (live-fire 2026-08-26).
+ */
+export function sumProofSats(proofs: readonly { amount: unknown }[]): number {
+  let total = 0;
+  for (const p of proofs) {
+    const n = toSatNumber(p.amount);
+    if (Number.isFinite(n)) total += n;
+  }
+  return total;
+}
+
+/**
  * Append proofs for one mint, deduped by secret, then VERIFY the write by
  * reading it back. Throws when the verify fails — the caller must treat that
  * as "do not proceed to spend the originals", because a stash that silently
@@ -134,6 +150,52 @@ export function removeSpentFromStash(pubkey: string, mintUrl: string, spentSecre
   stash[mintUrl] = (stash[mintUrl] ?? []).filter((p) => !spent.has(p.secret));
   if (stash[mintUrl].length === 0) delete stash[mintUrl];
   localStorage.setItem(stashKey(pubkey), JSON.stringify(stash));
+}
+
+/**
+ * Issued-quote memory — which npub.cash quote ids this device knows are
+ * already ISSUED at the mint (claimed by us, now or in a past session).
+ *
+ * Why it exists (live-fire 2026-08-26): the mint issues a quote's ecash
+ * exactly once, but npub.cash never learns that — its /wallet/quotes keeps
+ * answering PAID, so the claimable count re-lists money the user already has,
+ * forever, and every sweep re-fails on it with "Quote already issued".
+ * Remembering the ids lets the UI subtract them and the sweep skip them.
+ * Losing this memory is harmless: the worst case is the phantom count comes
+ * back until the next sweep re-discovers the ISSUED state from the mint.
+ */
+const ISSUED_KEY_BASE = "ro_npc_issued_quotes_v1";
+const ISSUED_CAP = 500;
+
+function issuedKey(pubkey: string): string {
+  return `${ISSUED_KEY_BASE}:${pubkey}`;
+}
+
+export function readIssuedQuotes(pubkey: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(issuedKey(pubkey));
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.filter((id): id is string => typeof id === "string"));
+  } catch {
+    return new Set();
+  }
+}
+
+export function rememberIssuedQuotes(pubkey: string, quoteIds: readonly string[]): void {
+  try {
+    const merged = [...readIssuedQuotes(pubkey)];
+    const seen = new Set(merged);
+    for (const id of quoteIds) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      merged.push(id);
+    }
+    localStorage.setItem(issuedKey(pubkey), JSON.stringify(merged.slice(-ISSUED_CAP)));
+  } catch {
+    // Memory only — never let bookkeeping break a sweep.
+  }
 }
 
 /**

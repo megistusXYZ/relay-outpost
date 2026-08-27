@@ -31,6 +31,9 @@ import {
   appendToStash,
   removeSpentFromStash,
   stashTotalSats,
+  sumProofSats,
+  rememberIssuedQuotes,
+  readIssuedQuotes,
   witnessKeyFor,
   type StashProof,
 } from "./npubcash-sweep-core";
@@ -150,5 +153,46 @@ describe("amount normalization (live-fire regression: 63 sats became a 32,493,42
 
   it("append refuses unparseable amounts — never persist garbage money metadata", () => {
     expect(() => appendToStash(PK, MINT, [{ id: "k", amount: "wat" as unknown as number, secret: "g1", C: "c" }])).toThrow();
+  });
+
+  it("sumProofSats adds Amount objects, strings, and numbers as numbers (live-fire: change showed as \"01 sats\")", () => {
+    const amountLike = { toNumber: () => 1, toJSON: () => "1" } as unknown as number;
+    expect(sumProofSats([
+      { amount: amountLike },
+      { amount: "2" as unknown as number },
+      { amount: 4 },
+    ])).toBe(7); // numeric 7 — NOT "0124"
+    expect(sumProofSats([])).toBe(0);
+  });
+});
+
+describe("issued-quote memory (live-fire: npub.cash re-lists ISSUED quotes as claimable forever)", () => {
+  it("remembers issued quote ids per pubkey and reads them back", () => {
+    rememberIssuedQuotes(PK, ["q1", "q2"]);
+    rememberIssuedQuotes(PK, ["q2", "q3"]);
+    const ids = readIssuedQuotes(PK);
+    expect(ids.has("q1")).toBe(true);
+    expect(ids.has("q2")).toBe(true);
+    expect(ids.has("q3")).toBe(true);
+    expect(ids.size).toBe(3);
+  });
+
+  it("is per pubkey — account A's history never leaks into B", () => {
+    rememberIssuedQuotes(PK, ["q1"]);
+    expect(readIssuedQuotes("b".repeat(64)).size).toBe(0);
+  });
+
+  it("caps the memory so it can't grow without bound (keeps the newest)", () => {
+    rememberIssuedQuotes(PK, Array.from({ length: 600 }, (_, i) => `q${i}`));
+    const ids = readIssuedQuotes(PK);
+    expect(ids.size).toBeLessThanOrEqual(500);
+    expect(ids.has("q599")).toBe(true); // newest survives
+  });
+
+  it("survives corrupted storage by answering empty, never throwing", () => {
+    __local.set(`ro_npc_issued_quotes_v1:${PK}`, "{not json");
+    expect(readIssuedQuotes(PK).size).toBe(0);
+    rememberIssuedQuotes(PK, ["q1"]); // and recovers on the next write
+    expect(readIssuedQuotes(PK).has("q1")).toBe(true);
   });
 });

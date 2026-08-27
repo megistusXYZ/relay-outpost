@@ -31,7 +31,9 @@ import {
   invoiceAmountFor,
   meltFits,
   readStash,
+  rememberIssuedQuotes,
   removeSpentFromStash,
+  sumProofSats,
   witnessKeyFor,
   type StashProof,
 } from "./npubcash-sweep-core";
@@ -54,6 +56,13 @@ export interface SweepOutcome {
   strandedSats: number;
   /** Human-readable problems, one per quote or mint that couldn't complete. */
   problems: string[];
+  /**
+   * Sats npub.cash still lists as claimable but whose quotes the mint says
+   * are already ISSUED — money the user claimed before (this or an earlier
+   * session), not money that's stuck. Reported so the UI can reassure
+   * instead of alarming.
+   */
+  alreadyClaimedSats: number;
 }
 
 /** NUT-20 witness key — only a local-key session has one. The UI gates on this. */
@@ -72,6 +81,7 @@ export async function sweepNpubCash(opts: {
   const { pubkey, signer, privkeyHex, getInvoice, onProgress } = opts;
   const problems: string[] = [];
   const results: MintSweepResult[] = [];
+  let alreadyClaimedSats = 0;
 
   onProgress?.({ stage: "quotes" });
   const quotesRes = await fetchNpubCashQuotes(signer);
@@ -92,7 +102,7 @@ export async function sweepNpubCash(opts: {
     if (!byMint.has(mintUrl)) byMint.set(mintUrl, []);
   }
   if (byMint.size === 0) {
-    return { results, strandedSats: 0, problems: ["Nothing to sweep."] };
+    return { results, strandedSats: 0, problems: ["Nothing to sweep."], alreadyClaimedSats: 0 };
   }
 
   for (const [mintUrl, quotes] of byMint) {
@@ -112,10 +122,23 @@ export async function sweepNpubCash(opts: {
           // positive claim; if we can't ask, we don't guess — the quote is
           // skipped and stays claimable.
           const mq = await wallet.mint.checkMintQuoteBolt11(q.quoteId);
+          // ISSUED = this quote's ecash was already minted (by us, in this or
+          // an earlier session — a mint issues exactly once). npub.cash never
+          // learns that, so it re-lists the quote as PAID forever. Not an
+          // error and not money: remember the id so the claimable count stops
+          // including it, and move on.
+          if ((mq as { state?: string }).state === "ISSUED") {
+            rememberIssuedQuotes(pubkey, [q.quoteId]);
+            alreadyClaimedSats += q.amount;
+            continue;
+          }
           const witness = witnessKeyFor((mq as { pubkey?: string | null }).pubkey, privkeyHex);
           const builder = wallet.ops.mintBolt11(q.amount, q.quoteId);
           const proofs = await (witness ? builder.privkey(witness) : builder).run();
           appendToStash(pubkey, mintUrl, proofs as unknown as StashProof[]);
+          // Minted = issued from this moment; future claimable counts must
+          // not re-list it even before npub.cash's own state catches up.
+          rememberIssuedQuotes(pubkey, [q.quoteId]);
         } catch (e) {
           problems.push(`Couldn't claim a ${q.amount}-sat payment: ${e instanceof Error ? e.message : "mint refused"}`);
         }
@@ -158,11 +181,13 @@ export async function sweepNpubCash(opts: {
       onProgress?.({ stage: "melting", detail: `${paidSats} sats` });
       const melt = await wallet.ops.meltBolt11(meltQuote, stashed).run();
 
-      // Success: retire exactly the spent proofs, keep any change.
+      // Success: retire exactly the spent proofs, keep any change. Change
+      // amounts come straight from cashu-ts as Amount objects — sum through
+      // sumProofSats, never a bare reduce (the "01 sats" concat bug).
       removeSpentFromStash(pubkey, mintUrl, stashed.map((p) => p.secret));
       const change = (melt.change ?? []) as unknown as StashProof[];
       if (change.length > 0) appendToStash(pubkey, mintUrl, change);
-      const changeSats = change.reduce((s, p) => s + p.amount, 0);
+      const changeSats = sumProofSats(change);
       results.push({
         mintUrl,
         sweptSats: paidSats,
@@ -176,5 +201,5 @@ export async function sweepNpubCash(opts: {
 
   onProgress?.({ stage: "done" });
   const strandedSats = Object.values(readStash(pubkey)).flat().reduce((s, p) => s + p.amount, 0);
-  return { results, strandedSats, problems };
+  return { results, strandedSats, problems, alreadyClaimedSats };
 }
