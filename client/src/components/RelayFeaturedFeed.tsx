@@ -73,31 +73,63 @@ function FeaturedItem({ item, relayUrl }: { item: CurationItem; relayUrl: string
 }
 
 export function RelayFeaturedFeed({ sets, relayUrl }: { sets: CurationSet[]; relayUrl: string }) {
+  // One feed shown at a time; multiple feeds become chips. Selection is by
+  // coordinate so a republished edition keeps the reader where they were.
+  const [activeCoord, setActiveCoord] = useState<string | null>(null);
+  const active = sets.find((s) => `${s.pubkey}:${s.dTag}` === activeCoord) || sets[0];
+  if (!active) return null;
+
   return (
-    <div className="space-y-8 max-w-2xl mx-auto" data-testid="relay-featured-feed">
-      {sets.map((set) => (
-        <section key={`${set.pubkey}:${set.dTag}`} data-testid={`featured-set-${set.dTag}`}>
-          <div className="mb-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-3.5 h-3.5 text-brand/70" />
-              <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-brand/70">Featured</span>
-            </div>
-            <h2 className="text-lg font-semibold tracking-tight mt-1">{set.title}</h2>
-            {set.description && (
-              <p className="text-sm text-muted-foreground mt-0.5">{set.description}</p>
-            )}
+    <div className="space-y-4 max-w-2xl mx-auto" data-testid="relay-featured-feed">
+      {sets.length > 1 && (
+        <div className="flex items-center gap-1.5 flex-wrap" data-testid="featured-feed-chips">
+          {sets.map((set) => {
+            const coord = `${set.pubkey}:${set.dTag}`;
+            const isActive = set === active;
+            return (
+              <button
+                key={coord}
+                onClick={() => setActiveCoord(coord)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${isActive ? "bg-accent text-accent-foreground border border-brand/25" : "text-muted-foreground hover:text-foreground hover:bg-muted/20 border border-border/20"}`}
+                data-testid={`featured-chip-${set.dTag}`}
+              >
+                {set.title}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <section key={`${active.pubkey}:${active.dTag}`} data-testid={`featured-set-${active.dTag}`}>
+        {active.image && (
+          <img
+            src={active.image}
+            alt=""
+            loading="lazy"
+            className="w-full aspect-[3/1] object-cover rounded-xl ring-1 ring-border/20 mb-3"
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
+          />
+        )}
+        <div className="mb-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 text-brand/70" />
+            <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-brand/70">Featured</span>
           </div>
-          <div className="space-y-3">
-            {set.items.map((item, i) => (
-              <FeaturedItem
-                key={`${i}-${item.type === "url" ? item.url : item.type === "note" ? item.id : `${item.kind}:${item.identifier}`}`}
-                item={item}
-                relayUrl={relayUrl}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+          <h2 className="text-lg font-semibold tracking-tight mt-1">{active.title}</h2>
+          {active.description && (
+            <p className="text-sm text-muted-foreground mt-0.5">{active.description}</p>
+          )}
+        </div>
+        <div className="space-y-3">
+          {active.items.map((item, i) => (
+            <FeaturedItem
+              key={`${i}-${item.type === "url" ? item.url : item.type === "note" ? item.id : `${item.kind}:${item.identifier}`}`}
+              item={item}
+              relayUrl={relayUrl}
+            />
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

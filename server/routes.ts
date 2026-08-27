@@ -2719,7 +2719,11 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Relay URL must use http(s) or ws(s) protocol" });
       }
 
-      const isSafe = await validateHostSafety(parsedUrl.hostname);
+      // Dev only: a local test relay (ws://localhost:PORT) is a legitimate
+      // management target. Production keeps the full SSRF guard.
+      const devLocalRelay = process.env.NODE_ENV !== "production" &&
+        ["localhost", "127.0.0.1"].includes(parsedUrl.hostname.toLowerCase());
+      const isSafe = devLocalRelay || await validateHostSafety(parsedUrl.hostname);
       if (!isSafe) {
         return res.status(403).json({ error: "Relay hostname failed safety check" });
       }

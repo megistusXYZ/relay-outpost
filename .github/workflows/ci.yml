@@ -83,11 +83,11 @@ jobs:
       # are being burned down — the count may only ever go DOWN. A PR that
       # pushes it above the baseline fails CI. Ratchet the number here whenever
       # the burn-down lowers it. (125 → 123 on 2026-07-18, PR #318's cleanup;
-      # 123 → 90 on 2026-08-03 — the real count had been 90 for a while, so the
+      # 123 → 90 on 2026-08-03, 90 → 89 on 2026-08-27 — the real count had been 90 for a while, so the
       # gate was leaving room for 33 new errors to land unnoticed.)
-      - name: Type-check (baseline ≤ 90)
+      - name: Type-check (baseline ≤ 89)
         if: always()
         run: |
           count=$(npm run check 2>&1 | grep -c 'error TS' || true)
-          echo "tsc errors: $count (baseline 90)"
-          test "$count" -le 90
+          echo "tsc errors: $count (baseline 89)"
+          test "$count" -le 89
