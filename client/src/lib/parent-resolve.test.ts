@@ -16,7 +16,7 @@
  *    RELAY_REACHABILITY three-outcomes defect, verbatim.
  */
 import { describe, expect, it } from "vitest";
-import { classifyParentTarget, parentRelayCandidates, resolveParentOutcome } from "./parent-resolve";
+import { classifyParentTarget, orderedRelayCandidates, parentRelayCandidates, resolveFetchOutcome } from "./parent-resolve";
 
 const ID = "a".repeat(64);
 
@@ -82,19 +82,51 @@ describe("parentRelayCandidates", () => {
   });
 });
 
-describe("resolveParentOutcome — the three outcomes stay three (RELAY_REACHABILITY)", () => {
+describe("orderedRelayCandidates — the shared candidate builder for hinted fetches", () => {
+  it("keeps group order: hints, then seen-on, then defaults", () => {
+    const out = orderedRelayCandidates([
+      ["wss://hint.example"],
+      ["wss://seen.example"],
+      ["wss://default.example"],
+    ]);
+    expect(out).toEqual(["wss://hint.example", "wss://seen.example", "wss://default.example"]);
+  });
+
+  it("dedupes across groups and spellings, drops junk, keeps first occurrence's slot", () => {
+    const out = orderedRelayCandidates([
+      ["wss://A.example/", "not-a-url", ""],
+      ["wss://a.example", "wss://b.example"],
+      ["wss://b.example/"],
+    ]);
+    expect(out).toEqual(["wss://a.example", "wss://b.example"]);
+  });
+
+  it("caps the flat list — a widely-shared quote must not fan one lookup out to every relay", () => {
+    const hints = Array.from({ length: 12 }, (_, i) => `wss://h${i}.example`);
+    const out = orderedRelayCandidates([hints, ["wss://never-reached.example"]]);
+    expect(out.length).toBeLessThanOrEqual(8);
+    expect(out[0]).toBe("wss://h0.example");
+    expect(out).not.toContain("wss://never-reached.example");
+  });
+
+  it("all-junk input yields an empty list, not a crash", () => {
+    expect(orderedRelayCandidates([["", "http-ish", "relay.example"], []])).toEqual([]);
+  });
+});
+
+describe("resolveFetchOutcome — the three outcomes stay three (RELAY_REACHABILITY)", () => {
   const evt = { id: ID } as never;
 
   it("an event is found regardless of the answered flag", () => {
-    expect(resolveParentOutcome({ events: [evt], answered: true })).toBe("found");
-    expect(resolveParentOutcome({ events: [evt], answered: false })).toBe("found");
+    expect(resolveFetchOutcome({ events: [evt], answered: true })).toBe("found");
+    expect(resolveFetchOutcome({ events: [evt], answered: false })).toBe("found");
   });
 
-  it("answered and empty = the parent genuinely isn't there", () => {
-    expect(resolveParentOutcome({ events: [], answered: true })).toBe("missing");
+  it("answered and empty = the target genuinely isn't there", () => {
+    expect(resolveFetchOutcome({ events: [], answered: true })).toBe("missing");
   });
 
-  it("unanswered and empty = we never got to ask — NOT missing, the reply must not be dropped", () => {
-    expect(resolveParentOutcome({ events: [], answered: false })).toBe("unreached");
+  it("unanswered and empty = we never got to ask — NOT missing, nothing may be claimed absent", () => {
+    expect(resolveFetchOutcome({ events: [], answered: false })).toBe("unreached");
   });
 });
