@@ -3,6 +3,7 @@ import { BtcZapIcon } from "@/components/icons/BtcZapIcon";
 import { Link } from "wouter";
 import { Rocket, Globe, Download, Check, ArrowUpRight } from "lucide-react";
 import { useInstallPrompt } from "@/hooks/use-install-prompt";
+import { compactCount } from "@/lib/compact-count";
 import { RelayOutpostIcon } from "@/components/RelayOutpostLoader";
 import { AmbientVideo } from "@/components/landing/HeroAmbientVideo";
 
@@ -46,6 +47,93 @@ const BITCOIN_WALLETS: { name: string; href: string; logo: string; h: number }[]
   { name: "Strike", href: "https://strike.me", logo: "/images/landing/partners/wallet-strike.webp", h: 16 },
   { name: "Wallet of Satoshi", href: "https://www.walletofsatoshi.com", logo: "/images/landing/partners/wallet-wos.webp", h: 15 },
 ];
+
+// The open standards this app is BUILT ON — each chip links to the spec or
+// project home. Concord is our own protocol (canonical spec repo).
+const BUILT_ON: { name: string; href: string }[] = [
+  { name: "Nostr", href: "https://nostr.com" },
+  { name: "Concord", href: "https://github.com/concord-protocol/concord" },
+  { name: "Lightning", href: "https://lightning.network" },
+  { name: "Cashu", href: "https://cashu.space" },
+  { name: "Blossom", href: "https://github.com/hzrd149/blossom" },
+  { name: "Podcasting 2.0", href: "https://podcastindex.org" },
+];
+
+// Services the app interoperates with beyond the icon row — marketplace,
+// audio rooms, streams, music, media, wallet. Text chips (no logo assets
+// needed); promote any of these into ECOSYSTEM_APPS when a logo lands.
+const ALSO_WORKS_WITH: { name: string; href: string }[] = [
+  { name: "Conduit", href: "https://conduit.market" },
+  { name: "Corny Chat", href: "https://cornychat.com" },
+  { name: "zap.stream", href: "https://zap.stream" },
+  { name: "Wavlake", href: "https://wavlake.com" },
+  { name: "DiVine", href: "https://divine.video" },
+  { name: "npub.cash", href: "https://npub.cash" },
+];
+
+const GITHUB_REPO_URL = "https://github.com/megistusXYZ/relay-outpost";
+
+/** The GitHub mark (octocat silhouette), inline so the landing bundle stays asset-free. */
+function GitHubMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className={className}>
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+    </svg>
+  );
+}
+
+/**
+ * "Built in the open" — the repo is public and MIT-licensed, and this panel
+ * says so with the receipts: a live star count when GitHub answers (its API is
+ * CORS-open), and simply no number when it doesn't — absence, never a fake 0.
+ */
+function OpenSourcePanel() {
+  const [stars, setStars] = useState<number | null>(null);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetch("https://api.github.com/repos/megistusXYZ/relay-outpost", { signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (j && typeof j.stargazers_count === "number") setStars(j.stargazers_count);
+      })
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, []);
+
+  return (
+    <div className="mt-12 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.015] p-7 sm:p-9" data-testid="landing-open-source">
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="max-w-xl">
+          <p className="text-[11px] font-brand uppercase tracking-[0.28em] text-white/65">Open source</p>
+          <h3 className="mt-3 text-xl font-semibold text-white sm:text-2xl">Built in the open.</h3>
+          <p className="mt-2.5 text-sm leading-relaxed text-white/70">
+            Every line of Relay Outpost is public and MIT-licensed — read the code, file an issue,
+            or ship a patch. Your app shouldn't be a black box.
+          </p>
+        </div>
+        <a
+          href={GITHUB_REPO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group/gh inline-flex shrink-0 items-center gap-2.5 self-start rounded-xl border border-white/15 bg-white/[0.06] px-5 py-3 text-sm font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/[0.1] motion-reduce:hover:translate-y-0 sm:self-center"
+          data-testid="link-landing-github"
+        >
+          <GitHubMark className="h-5 w-5" />
+          Star on GitHub
+          {/* The count appears once it's a signal (≥10) — a real number that
+              helps; "★ 0" on launch week would only argue against the button. */}
+          {stars !== null && stars >= 10 && (
+            <span className="rounded-full border border-white/15 bg-white/[0.08] px-2 py-0.5 text-[11px] tabular-nums text-white/80">
+              ★ {compactCount(stars)}
+            </span>
+          )}
+          <ArrowUpRight className="h-3.5 w-3.5 opacity-50 transition-opacity duration-300 group-hover/gh:opacity-90" />
+        </a>
+      </div>
+    </div>
+  );
+}
 
 interface Pillar {
   /** Short audience tag shown as an eyebrow beside the copy. */
@@ -538,6 +626,17 @@ export function LandingMarketing({ onLaunch }: { onLaunch: () => void }) {
                   </Link>
                 </li>
               ))}
+              <li>
+                <a
+                  href={GITHUB_REPO_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-[13px] text-white/70 transition-colors hover:text-white"
+                  data-testid="footer-link-github"
+                >
+                  <GitHubMark className="h-3.5 w-3.5" /> GitHub
+                </a>
+              </li>
             </ul>
           </div>
         </div>
@@ -608,8 +707,52 @@ export function LandingMarketing({ onLaunch }: { onLaunch: () => void }) {
               ))}
             </div>
           </div>
+          {/* Built on — the open standards under everything */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+            <span className="w-44 shrink-0 text-[11px] font-brand uppercase tracking-[0.26em] text-white/65">Built on</span>
+            <div className="flex flex-wrap items-center gap-2">
+              {BUILT_ON.map((p) => (
+                <a
+                  key={p.name}
+                  href={p.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group/proto inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/80 transition-colors duration-300 hover:border-brand/30 hover:bg-brand/[0.09] hover:text-white"
+                  data-testid={`link-builton-${p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                >
+                  {p.name}
+                  <ArrowUpRight className="h-3 w-3 opacity-40 transition-opacity duration-300 group-hover/proto:opacity-80" />
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Broader interop — text chips until logos land */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+            <span className="w-44 shrink-0 text-[11px] font-brand uppercase tracking-[0.26em] text-white/65">Also works with</span>
+            <div className="flex flex-wrap items-center gap-2">
+              {ALSO_WORKS_WITH.map((svc) => (
+                <a
+                  key={svc.name}
+                  href={svc.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group/svc inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/80 transition-colors duration-300 hover:border-brand/30 hover:bg-brand/[0.09] hover:text-white"
+                  data-testid={`link-workswith-${svc.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                >
+                  {svc.name}
+                  <ArrowUpRight className="h-3 w-3 opacity-40 transition-opacity duration-300 group-hover/svc:opacity-80" />
+                </a>
+              ))}
+            </div>
+          </div>
         </div>
 
+        </Reveal>
+
+        {/* Open source — built in the open, with the receipts */}
+        <Reveal delayMs={160}>
+          <OpenSourcePanel />
         </Reveal>
 
         {/* Bottom bar */}
