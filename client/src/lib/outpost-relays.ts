@@ -296,6 +296,22 @@ export function getDisabledRelays(): Set<string> {
   }
 }
 
+/** Turn one relay off (or back on) without removing it from the list. */
+export function setRelayDisabled(url: string, disabled: boolean): void {
+  const set = getDisabledRelays();
+  if (disabled) set.add(url);
+  else set.delete(url);
+  try {
+    localStorage.setItem(DISABLED_RELAYS_KEY, JSON.stringify([...set]));
+  } catch { /* storage unavailable — nothing to persist */ }
+}
+
+/** Remove an outpost from the user's list entirely (also clears its disable flag). */
+export function removeOutpostRelay(url: string): void {
+  saveOutpostRelays(getOutpostRelays().filter((r) => r.url !== url));
+  setRelayDisabled(url, false);
+}
+
 export function getActiveDefaultRelays(): string[] {
   const disabled = getDisabledRelays();
   const custom = getCustomRelays();
