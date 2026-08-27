@@ -12,6 +12,15 @@ Relay Outpost treats relays as first-class social spaces — not just infrastruc
 
 ---
 
+## Screenshots
+
+| Discover | News |
+|---|---|
+| ![Discover — live-tile landing with news, communities, articles, and live streams](.github/screenshots/discover.png) | ![News — trending front page with podcasts and RSS feeds](.github/screenshots/news.png) |
+| *Discover — a live-tile landing with news, communities, articles, and live streams* | *News — trending stories, podcasts, and RSS feeds (black theme)* |
+
+---
+
 ## Open Source Philosophy
 
 Relay Outpost is open source because the Nostr ecosystem is strongest when clients are transparent, interoperable, and community-driven. We believe:
