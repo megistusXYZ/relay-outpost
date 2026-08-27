@@ -8,6 +8,7 @@ import { extractExternalAnchor } from "@/lib/external-id";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { isMutedPubkey } from "@/lib/spam-filter";
 import { classifyMentionSpam } from "@/lib/notification-spam";
+import { markAcceptedSeen, checkPendingJoins } from "@/lib/join-requests";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useNostrMuteList } from "@/hooks/use-nostr-mute-list";
@@ -17,7 +18,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageTabs } from "@/components/PageTabs";
-import { MessageSquare, Heart, Repeat, Zap, UserPlus, AtSign, CheckCheck, ChevronDown, ChevronRight, LifeBuoy, ShieldAlert, VolumeX, Flag } from "lucide-react";
+import { MessageSquare, Heart, Repeat, Zap, UserPlus, AtSign, CheckCheck, ChevronDown, ChevronRight, LifeBuoy, ShieldAlert, VolumeX, Flag, DoorOpen } from "lucide-react";
 import { AdmissionQueue } from "@/components/AdmissionQueue";
 import { SweepNoticeCard } from "@/components/SweepNoticeCard";
 import { useNeedsYou } from "@/contexts/NeedsYouContext";
@@ -31,6 +32,7 @@ import { formatDistanceToNow, isToday, isYesterday, isThisWeek, isThisMonth, for
 import { useDocumentTitle } from "@/hooks/use-document-title";
 
 const TYPE_CONFIG = {
+  accepted: { icon: DoorOpen, label: "accepted you into the community", color: "text-emerald-600 dark:text-emerald-400", bgAccent: "bg-emerald-500/15 dark:bg-emerald-500/10", borderAccent: "border-emerald-500/30 dark:border-emerald-500/20", dotColor: "bg-emerald-500 dark:bg-emerald-400" },
   reply: { icon: MessageSquare, label: "replied to you", color: "text-blue-600 dark:text-blue-400", bgAccent: "bg-blue-500/15 dark:bg-blue-500/10", borderAccent: "border-blue-500/30 dark:border-blue-500/20", dotColor: "bg-blue-500 dark:bg-blue-400" },
   mention: { icon: AtSign, label: "mentioned you", color: "text-brand", bgAccent: "bg-brand/15 dark:bg-brand/10", borderAccent: "border-brand/30 dark:border-brand/20", dotColor: "bg-brand" },
   reaction: { icon: Heart, label: "reacted to your post", color: "text-red-600 dark:text-red-400", bgAccent: "bg-red-500/15 dark:bg-red-500/10", borderAccent: "border-red-500/30 dark:border-red-500/20", dotColor: "bg-red-500 dark:bg-red-400" },
@@ -375,15 +377,19 @@ function FilteredSpamRow({ author, notifs, onMute, onReport }: { author: string;
 
 const NotificationItem = memo(function NotificationItem({ notification, onRead }: { notification: any; onRead: (id: string) => void }) {
   const [, setLocation] = useLocation();
+  const { pubkey: myPubkeyForSeen } = useNostrAuth();
   const profile = use$(() => eventStore.replaceable(KIND_METADATA, notification.fromPubkey), [notification.fromPubkey]);
 
   const displayName = useMemo(() => {
+    // Acceptance rows are about a COMMUNITY, not a person — the synthetic
+    // event carries the community name as its content.
+    if (notification.type === "accepted") return notification.event?.content || "A community";
     if (profile) {
       const name = getDisplayName(profile, "");
       if (name) return name;
     }
     return shortenNpub(formatNpub(notification.fromPubkey));
-  }, [profile, notification.fromPubkey]);
+  }, [profile, notification.fromPubkey, notification.type, notification.event]);
 
   const avatarUrl = profile ? getAvatarUrl(profile) : undefined;
   const config = TYPE_CONFIG[notification.type as NotifType];
@@ -472,6 +478,10 @@ const NotificationItem = memo(function NotificationItem({ notification, onRead }
   }, [notification.event.content, notification.type]);
 
   const destination = useMemo(() => {
+    if (notification.type === "accepted") {
+      const relay = notification.event.tags?.find((t: string[]) => t[0] === "r")?.[1];
+      return relay ? `/outposts/${encodeURIComponent(relay)}?tab=chat` : null;
+    }
     if (notification.type === "follow") return profileUrl;
     if (notification.type === "ticket") return `/tickets?id=${notification.event.id}`;
     if ((notification.type === "reply" || notification.type === "mention") && notification.event.kind === KIND_COMMENT) {
@@ -545,8 +555,13 @@ const NotificationItem = memo(function NotificationItem({ notification, onRead }
 
   const handleCardClick = useCallback(() => {
     onRead(notification.id);
+    if (notification.type === "accepted" && myPubkeyForSeen) {
+      const relay = notification.event.tags?.find((t: string[]) => t[0] === "r")?.[1];
+      const group = notification.event.tags?.find((t: string[]) => t[0] === "h")?.[1];
+      if (relay && group) markAcceptedSeen(myPubkeyForSeen, relay, group);
+    }
     if (destination) setLocation(destination);
-  }, [notification.id, destination, onRead, setLocation]);
+  }, [notification, destination, onRead, setLocation, myPubkeyForSeen]);
 
   const handleAvatarClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -777,6 +792,7 @@ const ALL_TYPES: NotifType[] = ["ticket", "mention", "reply", "zap", "reaction",
 // Single source of truth for category labels — used by both the section
 // headers and the filter tabs so the two always read the same words.
 const TYPE_LABEL: Record<NotifType, string> = {
+  accepted: "Accepted",
   ticket: "Support",
   mention: "Mentions",
   reply: "Replies",
@@ -855,15 +871,26 @@ export default function Notifications() {
   }, []);
 
   const { getAuthorTier, isAuthorFlagged } = useGrapeRankScores();
-  const { follows } = useNostrAuth();
+  const { follows, pubkey } = useNostrAuth();
   const followSet = useMemo(() => new Set(follows || []), [follows]);
+
+  // Pending community join requests: check for acceptances whenever the
+  // Activity page opens — an accepted request becomes a bell notification
+  // (the context's accepted slice re-derives on the event this fires).
+  const checkedJoinsRef = useRef(false);
+  useEffect(() => {
+    if (!pubkey || checkedJoinsRef.current) return;
+    checkedJoinsRef.current = true;
+    void checkPendingJoins(pubkey);
+  }, [pubkey]);
+
 
   // Mention/reply fishing shield: suspect rows leave the main sections for a
   // collapsed "Filtered" bucket at the bottom — never deleted, always
   // reviewable, and the classification is narrow (see notification-spam.ts).
   const { grouped, filteredSpam } = useMemo(() => {
     const groups = new Map<NotifType, any[]>();
-    const typeOrder: NotifType[] = ["ticket", "mention", "reply", "zap", "reaction", "repost", "follow"];
+    const typeOrder: NotifType[] = ["accepted", "ticket", "mention", "reply", "zap", "reaction", "repost", "follow"];
     const spam: any[] = [];
 
     for (const notif of notifications) {

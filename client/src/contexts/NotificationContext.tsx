@@ -10,6 +10,7 @@ import * as dmCache from "@/lib/dm-cache";
 import { readDmLastRead, READSTATE_CHANGED_EVENT, READSTATE_HYDRATED_EVENT } from "@/lib/dm-read";
 import { getCachedNotifications, cacheNotifications } from "@/lib/indexeddb-cache";
 import { isMutedPubkey } from "@/lib/spam-filter";
+import { readAcceptedJoins } from "@/lib/join-requests";
 import { shouldNotifyForComment, DISCUSSION_PUBLIC_FLOOR } from "@/lib/external-comments";
 import { KIND_COMMENT } from "@/lib/nostr-helpers";
 import { detectPreset, readReachDepth } from "@/lib/trust-preset";
@@ -26,7 +27,7 @@ import { computeNotificationRead } from "@/lib/notification-read";
 interface NotificationItem {
   id: string;
   event: Event;
-  type: "reply" | "mention" | "reaction" | "repost" | "zap" | "follow" | "ticket";
+  type: "reply" | "mention" | "reaction" | "repost" | "zap" | "follow" | "ticket" | "accepted";
   fromPubkey: string;
   timestamp: number;
   read: boolean;
@@ -788,6 +789,32 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => { shownTicketIssuesRef.current = shownTicketIssues; }, [shownTicketIssues]);
 
+  // Community acceptances ("you're in") — a local slice like tickets: derived
+  // from the join-request store, re-read when it changes. The synthetic event
+  // carries the relay url in its tags so the row can open the community.
+  const [acceptedVersion, setAcceptedVersion] = useState(0);
+  useEffect(() => {
+    const bump = () => setAcceptedVersion((v) => v + 1);
+    window.addEventListener("relay-outpost:join-accepted", bump);
+    return () => window.removeEventListener("relay-outpost:join-accepted", bump);
+  }, []);
+
+  const acceptedItems = useMemo<NotificationItem[]>(() => {
+    if (!pubkey) return [];
+    void acceptedVersion;
+    return readAcceptedJoins(pubkey).map((a) => ({
+      id: `accepted_${a.relayUrl}|${a.groupId}`,
+      event: {
+        id: `accepted_${a.relayUrl}`, kind: 9002, pubkey: "", created_at: a.acceptedAt,
+        content: a.name, tags: [["r", a.relayUrl], ["h", a.groupId]], sig: "",
+      } as unknown as Event,
+      type: "accepted",
+      fromPubkey: "",
+      timestamp: a.acceptedAt,
+      read: a.seen,
+    }));
+  }, [pubkey, acceptedVersion]);
+
   const ticketItems = useMemo<NotificationItem[]>(
     () => shownTicketIssues.map((issue) => {
       const recipient = recipientFromIssue(issue.event);
@@ -806,10 +833,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   // Merge the ticket slice into the exposed list only here — the raw
   // `notifications` state (and its IndexedDB cache) stays ticket-free.
   const mergedNotifications = useMemo(
-    () => (ticketItems.length === 0
+    () => (ticketItems.length === 0 && acceptedItems.length === 0
       ? notifications
-      : [...notifications, ...ticketItems].sort((a, b) => b.timestamp - a.timestamp)),
-    [notifications, ticketItems],
+      : [...notifications, ...ticketItems, ...acceptedItems].sort((a, b) => b.timestamp - a.timestamp)),
+    [notifications, ticketItems, acceptedItems],
   );
 
   // Badge counts UNREAD items (id-based, per-item `read`), not "newer than the
