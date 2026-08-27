@@ -7,7 +7,7 @@
  */
 import { useState, useEffect } from "react";
 import { nip19, type Event } from "nostr-tools";
-import { pool, FAST_RELAYS } from "@/lib/nostr";
+import { pool, FAST_RELAYS, eventStore } from "@/lib/nostr";
 import { getDisplayName, getAvatarUrl } from "@/lib/nostr-helpers";
 import type { Nip11Document } from "@/lib/nip11";
 import {
@@ -18,7 +18,7 @@ import {
   type CurationSet,
   type CurationItem,
 } from "@/lib/curation-set";
-import { EmbeddedNote, EmbeddedAddressCard } from "@/components/NostrPost";
+import { NostrPost, EmbeddedAddressCard } from "@/components/NostrPost";
 import { LinkPreviewCard } from "@/components/MediaRenderer";
 import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 
@@ -102,12 +102,59 @@ function FeaturedPersonBlock({ pubkey, relayUrl, relayHint }: { pubkey: string; 
       ) : (
         <div className="space-y-3">
           {events.map((ev) => (
-            <FeaturedItem key={ev.id} item={eventToCurationItem(ev, relayUrl)} relayUrl={relayUrl} />
+            ev.kind < 30000
+              ? <NostrPost key={ev.id} event={ev} />
+              : <FeaturedItem key={ev.id} item={eventToCurationItem(ev, relayUrl)} relayUrl={relayUrl} />
           ))}
         </div>
       )}
     </div>
   );
+}
+
+/**
+ * A featured POST is a real post, not a quote: once the event resolves it
+ * renders through NostrPost — the full card with media, replies, reposts,
+ * likes and zaps (owner call: featured content must carry its engagement).
+ * Loading keeps the slot's shape; an unreached fetch says so and retries.
+ */
+function FeaturedNoteCard({ id, relays }: { id: string; relays: string[] }) {
+  const [event, setEvent] = useState<Event | null>(() => {
+    const cached = eventStore.getByFilters({ ids: [id] });
+    return cached && cached.length > 0 ? (cached[0] as Event) : null;
+  });
+  const [unreached, setUnreached] = useState(false);
+  const [nonce, setNonce] = useState(0);
+
+  useEffect(() => {
+    if (event) return;
+    let cancelled = false;
+    setUnreached(false);
+    pool.querySync([...new Set([...relays, ...FAST_RELAYS])], { ids: [id] })
+      .then((evs) => {
+        if (cancelled) return;
+        if (evs[0]) { eventStore.add(evs[0]); setEvent(evs[0] as Event); }
+        else setUnreached(true);
+      })
+      .catch(() => { if (!cancelled) setUnreached(true); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, nonce]);
+
+  if (event) return <NostrPost event={event} />;
+  if (unreached) {
+    return (
+      <button
+        type="button"
+        onClick={() => setNonce((n) => n + 1)}
+        className="w-full rounded-xl border border-dashed border-border/30 px-4 py-6 text-center text-xs text-muted-foreground/60 hover:text-foreground"
+        data-testid={`featured-note-retry-${id.slice(0, 8)}`}
+      >
+        Couldn't load this featured post — tap to retry
+      </button>
+    );
+  }
+  return <div className="h-28 animate-pulse rounded-xl border border-border/20 bg-muted/10" />;
 }
 
 function FeaturedItem({ item, relayUrl }: { item: CurationItem; relayUrl: string }) {
@@ -119,13 +166,7 @@ function FeaturedItem({ item, relayUrl }: { item: CurationItem; relayUrl: string
   }
   const relays = item.relayHint ? [relayUrl, item.relayHint] : [relayUrl];
   if (item.type === "note") {
-    return (
-      <EmbeddedNote
-        eventId={item.id}
-        encoded={nip19.neventEncode({ id: item.id, relays })}
-        relays={relays}
-      />
-    );
+    return <FeaturedNoteCard id={item.id} relays={relays} />;
   }
   return (
     <EmbeddedAddressCard
