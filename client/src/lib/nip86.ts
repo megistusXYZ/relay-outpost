@@ -106,7 +106,7 @@ function normalizeHttpUrl(relayUrl: string): string {
 export async function nip86Call<T = unknown>(
   relayUrl: string,
   method: Nip86Method,
-  params: string[] = [],
+  params: (string | number)[] = [],
 ): Promise<Nip86Response<T>> {
   try {
     const signer = getGlobalSigner();
@@ -208,6 +208,22 @@ export async function listAllowedPubkeys(relayUrl: string): Promise<Nip86Respons
 
 export async function listBannedPubkeys(relayUrl: string): Promise<Nip86Response<PubkeyEntry[]>> {
   return nip86Call<PubkeyEntry[]>(relayUrl, "listbannedpubkeys");
+}
+
+export async function allowKind(relayUrl: string, kind: number): Promise<Nip86Response<boolean>> {
+  return nip86Call<boolean>(relayUrl, "allowkind", [kind]);
+}
+
+export async function disallowKind(relayUrl: string, kind: number): Promise<Nip86Response<boolean>> {
+  return nip86Call<boolean>(relayUrl, "disallowkind", [kind]);
+}
+
+export async function listAllowedKinds(relayUrl: string): Promise<Nip86Response<number[]>> {
+  return nip86Call<number[]>(relayUrl, "listallowedkinds");
+}
+
+export async function listDisallowedKinds(relayUrl: string): Promise<Nip86Response<number[]>> {
+  return nip86Call<number[]>(relayUrl, "listdisallowedkinds");
 }
 
 export type Nip86SupportStatus =

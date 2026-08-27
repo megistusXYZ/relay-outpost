@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback } from "react";
 
 interface OutpostComposeState {
   relayUrl: string;
-  activeTab: "feed" | "featured" | "topics" | "horizon" | "about";
+  activeTab: "feed" | "featured" | "topics" | "channels" | "horizon" | "about";
   triggerCompose: (mode: "note" | "topic") => void;
   canPostHorizon?: boolean;
 }

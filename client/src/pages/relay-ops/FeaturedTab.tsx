@@ -67,6 +67,7 @@ interface DraftState {
   dTag: string | null;
   title: string;
   description: string;
+  image: string;
   items: CurationItem[];
 }
 
@@ -110,8 +111,8 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
   const openEditor = useCallback((set?: CurationSet) => {
     setPasteValue("");
     setDraft(set
-      ? { dTag: set.dTag, title: set.title, description: set.description || "", items: [...set.items] }
-      : { dTag: null, title: "", description: "", items: [] });
+      ? { dTag: set.dTag, title: set.title, description: set.description || "", image: set.image || "", items: [...set.items] }
+      : { dTag: null, title: "", description: "", image: "", items: [] });
   }, []);
 
   const addPaste = useCallback(() => {
@@ -199,7 +200,7 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
         kind: KIND_CURATION_SET,
         created_at: Math.floor(Date.now() / 1000),
         content: "",
-        tags: buildCurationSetTags({ dTag, title, description: draft.description.trim() || undefined, items: draft.items }),
+        tags: buildCurationSetTags({ dTag, title, description: draft.description.trim() || undefined, image: draft.image.trim() || undefined, items: draft.items }),
       };
       const signed = await signWithTimeout(signer, template);
       await publishEvent(signed, [relayUrl]);
@@ -291,6 +292,13 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
                 onChange={(e) => setDraft({ ...draft, description: e.target.value })}
                 placeholder="One-line description (optional)"
                 data-testid="input-featured-description"
+              />
+              <Input
+                value={draft.image}
+                onChange={(e) => setDraft({ ...draft, image: e.target.value })}
+                placeholder="Cover image URL (optional)"
+                className="sm:col-span-2"
+                data-testid="input-featured-image"
               />
             </div>
 

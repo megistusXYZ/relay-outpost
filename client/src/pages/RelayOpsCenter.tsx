@@ -21,6 +21,7 @@ import { LiveFeedTab } from "./relay-ops/LiveFeedTab";
 import { EventsTab } from "./relay-ops/EventsTab";
 import { AccessControlTab } from "./relay-ops/AccessControlTab";
 import { FeaturedTab } from "./relay-ops/FeaturedTab";
+import { KindGateCard } from "./relay-ops/KindGateCard";
 import { AnnounceTab } from "./relay-ops/AnnounceTab";
 import { CommunityTab } from "./relay-ops/CommunityTab";
 import { FeedbackTab } from "./relay-ops/FeedbackTab";
@@ -271,7 +272,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                 {activeTab === "overview" && <OverviewTab relayUrl={selectedRelay} inbox={inbox} onOpenFeedback={() => setActiveTab("feedback")} />}
                 {activeTab === "live" && <LiveFeedTab relayUrl={selectedRelay} />}
                 {activeTab === "events" && <EventsTab relayUrl={selectedRelay} />}
-                {activeTab === "access" && <AccessControlTab relayUrl={selectedRelay} nip11={nip11} />}
+                {activeTab === "access" && <><AccessControlTab relayUrl={selectedRelay} nip11={nip11} /><KindGateCard relayUrl={selectedRelay} nip11={nip11} /></>}
                 {activeTab === "announce" && <AnnounceTab relayUrl={selectedRelay} nip11={nip11} />}
                 {activeTab === "featured" && <FeaturedTab relayUrl={selectedRelay} nip11={nip11} />}
                 {activeTab === "community" && <CommunityTab relayUrl={selectedRelay} nip11={nip11} />}
