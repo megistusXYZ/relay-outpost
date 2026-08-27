@@ -51,6 +51,12 @@ app.use(helmet({
         "https://www.loom.com",
         "https://www.dailymotion.com",
         "https://embed.wavlake.com",
+        // Audio spaces (lib/audio-space.ts): the in-app Corny Chat room
+        // lightbox is an iframe of the room itself. Without this entry our
+        // OWN frame-src blocked it — the "This content is blocked" report,
+        // 2026-08-26. Add the host here when a service is promoted to
+        // embeddable in that lib's measured allowlist.
+        "https://cornychat.com",
       ],
       workerSrc: ["'self'", "blob:"],
       childSrc: ["'self'", "blob:"],
