@@ -40,12 +40,17 @@ import divineLogo from "@assets/Black_on_white_1772061458294.png";
 
 const PAGE_SIZE = 20;
 
-function DivineBadge({ dark, eventId }: { dark?: boolean; eventId?: string }) {
+function DivineBadge({ dark, eventId, shorts }: { dark?: boolean; eventId?: string; shorts?: boolean }) {
   return (
     <img
       src={divineLogo}
       alt="Divine"
-      className={`absolute top-2.5 right-2.5 z-10 h-5 w-auto rounded-md drop-shadow-lg ${dark ? "invert" : "dark:invert"}`}
+      /* shorts: the slide runs under the status bar and the top-right corner
+         is the badge's ALONE (the mute toggle lives in the left column under
+         the X — owner report 2026-08-26: the two overlapped). Vertically
+         centered against the 44px control row. */
+      className={`absolute z-10 h-5 w-auto rounded-md drop-shadow-lg ${shorts ? "right-3" : "top-2.5 right-2.5"} ${dark ? "invert" : "dark:invert"}`}
+      style={shorts ? { top: "calc(env(safe-area-inset-top, 0px) + 1.375rem)" } : undefined}
       data-testid={`badge-divine-source${eventId ? `-${eventId}` : ""}`}
     />
   );
@@ -393,7 +398,7 @@ function VideoProgressBar({ videoRef }: { videoRef: React.RefObject<HTMLVideoEle
   );
 }
 
-function ShortsCard({ event, videoUrl, isActive, isMuted, shouldPreload = false, disableAutoplay = false, onToggleMute }: { event: Event; videoUrl: string; isActive: boolean; isMuted: boolean; shouldPreload?: boolean; disableAutoplay?: boolean; onToggleMute: () => void }) {
+function ShortsCard({ event, videoUrl, isActive, isMuted, shouldPreload = false, disableAutoplay = false, onToggleMute, sortMode, onToggleSort }: { event: Event; videoUrl: string; isActive: boolean; isMuted: boolean; shouldPreload?: boolean; disableAutoplay?: boolean; onToggleMute: () => void; sortMode?: SortMode; onToggleSort?: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   // Immersive pager: the ACTIVE card is the one being watched — that is the
   // seen signal here (visibility is meaningless when every card fills the screen).
@@ -525,7 +530,7 @@ function ShortsCard({ event, videoUrl, isActive, isMuted, shouldPreload = false,
           letterbox bars), TikTok/Shorts style. The slide is sized down to
           just above the app bottom nav via .shorts-slide CSS. */}
       <div className="absolute inset-0 bg-black flex items-center justify-center">
-        {event.kind === KIND_SHORT_VIDEO && <DivineBadge dark eventId={event.id} />}
+        {event.kind === KIND_SHORT_VIDEO && <DivineBadge dark shorts eventId={event.id} />}
         {isEmbed && embedId ? (
           /* Embeds are interactive white iframes (X posts, YouTube), not video
              pixels — full-bleed they collide with the fixed chrome (mute, nav
@@ -587,14 +592,16 @@ function ShortsCard({ event, videoUrl, isActive, isMuted, shouldPreload = false,
         </div>
       )}
 
-      {/* Single mute/unmute toggle (device handles volume). Top-right safe zone
-          with a small scrim, clear of the grid toggle in the container. */}
+      {/* Single mute/unmute toggle (device handles volume). LEFT column,
+          directly under the X close button — a matching 44px circle with the
+          same 0.5rem gap, so the two read as one control stack. Top-right
+          belongs to the DiVine badge (owner report 2026-08-26: mute and badge
+          overlapped there). X sits at safe-top + 0.625rem and is 2.75rem tall,
+          so this starts at safe-top + 3.875rem. */}
       {!isEmbed && (
         <div
-          className="absolute right-3 z-20 pointer-events-auto"
-          // Same row as the X close button (owner report: the two floated at
-          // different heights). Both are 44px circles at safe-top + 0.625rem.
-          style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.625rem)" }}
+          className="absolute left-3 z-20 pointer-events-auto"
+          style={{ top: "calc(env(safe-area-inset-top, 0px) + 3.875rem)" }}
         >
           <button
             onClick={(e) => { e.stopPropagation(); onToggleMute(); }}
@@ -618,6 +625,19 @@ function ShortsCard({ event, videoUrl, isActive, isMuted, shouldPreload = false,
         style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 60px + 1rem)" }}
         data-testid={`shorts-actions-${event.id}`}
       >
+        {/* Trending ↔ newest swap, first in the rail (above repost — owner
+            request 2026-08-26). Subtle by design: smaller than the action
+            icons, shows the CURRENT lane, tap swaps. */}
+        {onToggleSort && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleSort(); }}
+            className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white/80 active-elevate-2"
+            aria-label={sortMode === "latest" ? "Showing newest — switch to trending" : "Showing trending — switch to newest"}
+            data-testid={`button-shorts-sort-toggle-${event.id}`}
+          >
+            {sortMode === "latest" ? <Clock className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
+          </button>
+        )}
         <MediaInteractionBar event={event} vertical />
       </div>
 
@@ -1043,7 +1063,11 @@ export default function VideoFeed({ embedded = false, sort }: { embedded?: boole
   // Mobile defaults to the TikTok-style shorts viewer; toggleable to the grid.
   const [shortsMode, setShortsMode] = useState(true);
   const [internalSortMode, setSortMode] = useState<SortMode>("latest");
-  const sortMode = sort ?? internalSortMode;
+  // The in-shorts trending/newest swap. Kept separate from `sort` because an
+  // embedding page (Search's media tab) PINS sort via prop — the swap must
+  // still win once the user taps it, and fall back to the pin until then.
+  const [shortsSortOverride, setShortsSortOverride] = useState<SortMode | null>(null);
+  const sortMode = shortsSortOverride ?? sort ?? internalSortMode;
   const [statsVersion, setStatsVersion] = useState(0);
   const [isMuted, setIsMuted] = useState(getVideoMuted);
   // Persist mute choice so it carries across the feed and future sessions (X-style).
@@ -1468,6 +1492,8 @@ export default function VideoFeed({ embedded = false, sort }: { embedded?: boole
                 shouldPreload={shouldPreload}
                 disableAutoplay={saveData}
                 onToggleMute={toggleMute}
+                sortMode={sortMode}
+                onToggleSort={() => setShortsSortOverride(sortMode === "latest" ? "trending" : "latest")}
               />
             ) : (
               <div key={`ph-${entry.event.id}-${i}`} className="shorts-slide" aria-hidden="true" />
