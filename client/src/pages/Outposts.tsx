@@ -5427,6 +5427,22 @@ export default function Outposts() {
               </button>
             ))}
           </div>
+          {/* Community operators are the growth loop — invite them in. Opens
+              the feedback composer (idea type) rather than a mailto: replies
+              land in the operator inbox with the reporter's npub attached. */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("relay-outpost:open-feedback", { detail: { initialType: "idea" } }))}
+            className="mt-3 flex w-full items-center gap-2 rounded-xl border border-dashed border-brand/25 bg-brand/[0.03] px-3.5 py-3 text-left transition-colors hover:border-brand/40 hover:bg-brand/[0.06] min-h-[44px]"
+            data-testid="button-feature-your-community"
+          >
+            <MagicStarIcon className="h-4 w-4 shrink-0 text-brand/70" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium">Run a community? Get it featured here.</span>
+              <span className="block text-[11px] text-muted-foreground/70">Tell us about your relay and we'll take a look.</span>
+            </span>
+            <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
+          </button>
         </div>
       )}
 
