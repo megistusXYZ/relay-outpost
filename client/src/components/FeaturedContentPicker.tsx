@@ -10,7 +10,7 @@ import type { Event } from "nostr-tools";
 import { pool, FAST_RELAYS, eventStore } from "@/lib/nostr";
 import { LIVE_STREAM_RELAYS, KIND_LIVE_EVENT, getDisplayName, getAvatarUrl } from "@/lib/nostr-helpers";
 import { LISTING_RELAYS, KIND_CLASSIFIED_LISTING } from "@/lib/listing";
-import { eventToCurationItem, type CurationItem } from "@/lib/curation-set";
+import { eventToCurationItem, curationItemKey, curationRowTitle, type CurationItem } from "@/lib/curation-set";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
@@ -50,20 +50,6 @@ function laneQuery(lane: Lane, pubkey: string): { relays: string[]; filters: obj
   }
 }
 
-/** One line that says what this event is — title tag first, else content. */
-function rowTitle(ev: Event): string {
-  const tagTitle = ev.tags.find((t) => t[0] === "title")?.[1];
-  if (tagTitle?.trim()) return tagTitle.trim().slice(0, 90);
-  const text = ev.content.replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim();
-  return text.slice(0, 90) || "(media)";
-}
-
-function itemKey(item: CurationItem): string {
-  if (item.type === "note") return `e:${item.id}`;
-  if (item.type === "address") return `a:${item.kind}:${item.pubkey}:${item.identifier}`;
-  return `r:${item.url}`;
-}
-export { itemKey as curationItemKey };
 
 type LaneState = { events: Event[]; loaded: boolean; unreached: boolean };
 
@@ -175,7 +161,7 @@ export function FeaturedContentPicker({
             <ul className="space-y-1">
               {state.events.map((ev) => {
                 const item = eventToCurationItem(ev, relayHint);
-                const key = itemKey(item);
+                const key = curationItemKey(item);
                 const picked = pickedKeys.has(key);
                 return (
                   <li key={ev.id}>
@@ -186,7 +172,7 @@ export function FeaturedContentPicker({
                       data-testid={`picker-row-${ev.id.slice(0, 8)}`}
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm truncate">{rowTitle(ev)}</p>
+                        <p className="text-sm truncate">{curationRowTitle(ev)}</p>
                         <p className="text-[10px] text-muted-foreground/60 mt-0.5">{format(new Date(ev.created_at * 1000), "MMM d, yyyy")}</p>
                       </div>
                       {picked ? (

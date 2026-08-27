@@ -10,6 +10,8 @@ import { type SignalTier } from "@/lib/graperank";
 import { computeEngagementScore } from "@/lib/engagement";
 import { usePrimalStatsBatch } from "@/hooks/use-primal-stats";
 import { Card } from "@/components/ui/card";
+import { AddToFeaturedDialog } from "@/components/AddToFeaturedDialog";
+import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -88,6 +90,7 @@ const WOT_TIER_RANK: Record<string, number> = { strong: 0, moderate: 1, low: 2, 
 export function LiveFeedTab({ relayUrl }: { relayUrl: string }) {
   const [, navigate] = useLocation();
   const [events, setEvents] = useState<LiveEvent[]>([]);
+  const [featureEvent, setFeatureEvent] = useState<NostrEvent | null>(null);
   const [paused, setPaused] = useState(false);
   const [kindFilter, setKindFilter] = useState<string>("all");
   const [authorFilter, setAuthorFilter] = useState("");
@@ -612,8 +615,17 @@ export function LiveFeedTab({ relayUrl }: { relayUrl: string }) {
                         </button>
                         <ScoreBadge eventId={getScoreEventId(event)} statsMap={liveStatsMap} />
                         <button
-                          onClick={(e) => { e.stopPropagation(); navigate(`/thread/${nip19.noteEncode(getScoreEventId(event))}`); }}
+                          onClick={(e) => { e.stopPropagation(); setFeatureEvent(event); }}
                           className="px-2 py-0.5 rounded text-[10px] font-medium transition-colors text-muted-foreground/70 hover:text-brand hover:bg-brand/10 ml-auto flex items-center gap-1"
+                          data-testid={`button-livefeed-feature-${event.id.slice(0, 8)}`}
+                          title="Add to this relay's Featured feeds"
+                        >
+                          <MagicStarIcon className="w-2.5 h-2.5" />
+                          Feature
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); navigate(`/thread/${nip19.noteEncode(getScoreEventId(event))}`); }}
+                          className="px-2 py-0.5 rounded text-[10px] font-medium transition-colors text-muted-foreground/70 hover:text-brand hover:bg-brand/10 flex items-center gap-1"
                         >
                           View Post
                           <ExternalLink className="w-2.5 h-2.5" />
@@ -634,6 +646,14 @@ export function LiveFeedTab({ relayUrl }: { relayUrl: string }) {
           </>
         )}
       </div>
+      {featureEvent && (
+        <AddToFeaturedDialog
+          event={featureEvent}
+          open={!!featureEvent}
+          onOpenChange={(o) => { if (!o) setFeatureEvent(null); }}
+          presetRelayUrl={relayUrl}
+        />
+      )}
     </div>
   );
 }

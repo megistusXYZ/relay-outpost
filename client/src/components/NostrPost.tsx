@@ -160,6 +160,9 @@ import { useLazyScoreRequest, VerifiedBadgeIcon, useHoverPopover, TrustTierDot, 
 import { ZapReceiptsPopover, TopZapperAvatars, ReactionDetailsPopover, formatCount } from "./nostr-post/zap-reactions";
 import { ReplyThread, ReplyComposer, QuoteComposer, ParentPostPreview, getReplyTargetId } from "./nostr-post/thread";
 import { PrivateReplyDialog } from "@/components/PrivateReplyDialog";
+import { AddToFeaturedDialog } from "@/components/AddToFeaturedDialog";
+import { getAdminOutposts } from "@/lib/featured-append";
+import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 
 export { VerifiedBadgeIcon, TrustTierDot, AuthorHoverCard, BtcZapIcon } from "./nostr-post/author-hover";
 export { ZapReceiptsPopover, TopZapperAvatars, ReactionDetailsPopover, formatCount } from "./nostr-post/zap-reactions";
@@ -2383,6 +2386,10 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
   const [isExpanded, setIsExpanded] = useState(false);
   // Post-menu open state — drives the caret's 180° disclosure flip.
   const [postMenuOpen, setPostMenuOpen] = useState(false);
+  const [featureDialogOpen, setFeatureDialogOpen] = useState(false);
+  // Read the admin-relay records only while the menu is open — this component
+  // renders per-post in feeds, and the gate must cost nothing when closed.
+  const canFeature = useMemo(() => postMenuOpen && getAdminOutposts().length > 0, [postMenuOpen]);
 
   const displayText = useMemo(() => {
     if (!needsTruncation || isExpanded) return proseText;
@@ -2789,6 +2796,18 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
               <Share2 className="w-3.5 h-3.5 text-brand/70" />
               Share Post
             </DropdownMenuItem>
+            {/* Operators/mods only: feature this post on a relay they run —
+                curation happens in the feed, not in a console. */}
+            {canFeature && (
+              <DropdownMenuItem
+                className="gap-2.5 cursor-pointer"
+                onSelect={() => setTimeout(() => setFeatureDialogOpen(true), 0)}
+                data-testid={`menu-feature-${event.id}`}
+              >
+                <MagicStarIcon className="w-3.5 h-3.5 text-brand/70" />
+                Add to Featured
+              </DropdownMenuItem>
+            )}
             {/* Bookmark: FLAT items in the main menu (a Radix submenu didn't
                 reliably open on touch). Not-saved → two save options; saved →
                 privacy toggle + remove. */}
@@ -2921,6 +2940,9 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
       <ReportDialog open={showReportDialog} onOpenChange={setShowReportDialog} event={event} />
       {showPrivateReply && (
         <PrivateReplyDialog open={showPrivateReply} onOpenChange={setShowPrivateReply} event={event} />
+      )}
+      {featureDialogOpen && (
+        <AddToFeaturedDialog event={event} open={featureDialogOpen} onOpenChange={setFeatureDialogOpen} />
       )}
       <ConfirmAction
         open={showMuteConfirm}
