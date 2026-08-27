@@ -90,7 +90,7 @@ export async function getProfile(pubkey: string): Promise<any | null> {
   try {
     const db = await openDB();
     if (!db) return null;
-    return new Promise((resolve) => {
+    return await new Promise((resolve) => {
       const tx = db.transaction(STORE_PROFILES, "readonly");
       const request = tx.objectStore(STORE_PROFILES).get(pubkey);
       request.onsuccess = () => {
@@ -112,7 +112,7 @@ export async function getProfilesBatch(pubkeys: string[]): Promise<Map<string, a
     const db = await openDB();
     if (!db) return results;
     const now = Date.now();
-    return new Promise((resolve) => {
+    return await new Promise((resolve) => {
       const tx = db.transaction(STORE_PROFILES, "readonly");
       const store = tx.objectStore(STORE_PROFILES);
       let pending = pubkeys.length;
@@ -144,7 +144,7 @@ export async function getAllProfiles(): Promise<Map<string, any>> {
     const db = await openDB();
     if (!db) return results;
     const now = Date.now();
-    return new Promise((resolve) => {
+    return await new Promise((resolve) => {
       const tx = db.transaction(STORE_PROFILES, "readonly");
       const request = tx.objectStore(STORE_PROFILES).openCursor();
       request.onsuccess = () => {
@@ -210,7 +210,7 @@ export async function getProfileCount(): Promise<number> {
   try {
     const db = await openDB();
     if (!db) return 0;
-    return new Promise((resolve) => {
+    return await new Promise((resolve) => {
       const tx = db.transaction(STORE_PROFILES, "readonly");
       const request = tx.objectStore(STORE_PROFILES).count();
       request.onsuccess = () => resolve(request.result);
@@ -239,7 +239,7 @@ export async function getCachedFeedEvents(feedKey: string): Promise<any[] | null
   try {
     const db = await openDB();
     if (!db) return null;
-    return new Promise((resolve) => {
+    return await new Promise((resolve) => {
       const tx = db.transaction(STORE_FEED_CACHE, "readonly");
       const request = tx.objectStore(STORE_FEED_CACHE).get(feedKey);
       request.onsuccess = () => {
@@ -276,7 +276,7 @@ export async function getCachedNotifications(accountKey: string): Promise<any[] 
   try {
     const db = await openDB();
     if (!db) return null;
-    return new Promise((resolve) => {
+    return await new Promise((resolve) => {
       const tx = db.transaction(STORE_NOTIFICATIONS, "readonly");
       const request = tx.objectStore(STORE_NOTIFICATIONS).get(accountKey);
       request.onsuccess = () => {
