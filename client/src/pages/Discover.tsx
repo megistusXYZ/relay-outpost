@@ -465,7 +465,7 @@ function NewsHeroTile() {
 
 function FeedTile() {
   const [, setLocation] = useLocation();
-  const { pubkey } = useNostrAuth();
+  const { pubkey, follows } = useNostrAuth();
   const { flaggedPubkeys, wotEnabled } = useGrapeRankScores();
   // HOLD until the shield is known, exactly as the people strip does: a WoT
   // viewer's teaser must be floored against flaggedPubkeys, and fetching
@@ -481,10 +481,11 @@ function FeedTile() {
   const load = useCallback(() => {
     const id = ++seq.current;
     setTeaser(null);
-    fetchFeedTeaser(flaggedPubkeys ?? new Set())
+    fetchFeedTeaser(flaggedPubkeys ?? new Set(), follows ?? [])
       .then((r) => { if (seq.current === id) setTeaser(r); })
       .catch(() => { if (seq.current === id) setTeaser({ data: [], reached: false }); });
-  }, [flaggedPubkeys]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flaggedPubkeys, follows]);
   // Refetch once the shield lands (the memo keys on shield readiness, so this
   // gets a freshly-floored pick rather than the pre-shield one).
   useEffect(() => { if (shieldReady) load(); return () => { seq.current++; }; }, [load, shieldReady]);
@@ -714,13 +715,14 @@ function CommunitiesTile() {
 
 function ArticlesTile() {
   const [, setLocation] = useLocation();
+  const { follows } = useNostrAuth();
   const [article, setArticle] = useState<Reached<ArticleData[]> | null>(null);
   const [, bumpProfiles] = useState(0);
   const seq = useRef(0);
   const load = useCallback(() => {
     const id = ++seq.current;
     setArticle(null);
-    fetchNewestArticle()
+    fetchNewestArticle(follows ?? [])
       .then(async (r) => {
         if (seq.current !== id) return;
         setArticle(r);
@@ -731,7 +733,8 @@ function ArticlesTile() {
         }
       })
       .catch(() => { if (seq.current === id) setArticle({ data: [], reached: false }); });
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [follows]);
   useEffect(() => { load(); return () => { seq.current++; }; }, [load]);
 
   const state = resolveTile(article);
