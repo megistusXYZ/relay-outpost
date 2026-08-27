@@ -1196,7 +1196,10 @@ function AppLayout() {
   const onDiscoverPage = location.startsWith("/discover")
     || location === "/news" || location === "/articles" || location === "/outposts"
     || location.startsWith("/search");
-  const overlayMode: "full" | "cockpit" | "dimmed" | "hidden" | "warping_to_cockpit" = warpingOut ? "cockpit" : ((pubkey || onInfoPage || onInvitePage || onDiscoverPage) ? "hidden" : overlayState);
+  // Dev-only: `?landing-preview` shows the signed-out landing while signed in,
+  // so marketing changes can be QA'd without logging the dev session out.
+  const forceLandingPreview = import.meta.env.DEV && typeof window !== "undefined" && new URLSearchParams(window.location.search).has("landing-preview");
+  const overlayMode: "full" | "cockpit" | "dimmed" | "hidden" | "warping_to_cockpit" = warpingOut ? "cockpit" : (forceLandingPreview ? overlayState : ((pubkey || onInfoPage || onInvitePage || onDiscoverPage) ? "hidden" : overlayState));
 
   // Introduce logged-out visitors to the Help hub with the nav expanded on
   // desktop (so they can see Search / Feed / News while they read). Auto-opens
