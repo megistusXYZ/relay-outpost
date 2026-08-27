@@ -7,7 +7,7 @@ accessibility work are all welcome.
 ## Code of Conduct
 
 By participating you agree to uphold our [Code of Conduct](CODE_OF_CONDUCT.md). Please report
-unacceptable behavior to **conduct@nosfabrica.com**.
+unacceptable behavior to **info@megistus.xyz**.
 
 ## Getting set up
 

@@ -1,0 +1,40 @@
+name: Bug report
+description: Something broke or behaves wrong
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. A minute of detail here saves an hour of guessing.
+        **Security issues:** please do NOT file them here — see [SECURITY.md](../blob/main/SECURITY.md).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what actually happened?
+      placeholder: I tapped … expected … but instead …
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to …
+        2. Tap …
+        3. See error
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Where were you running it?
+      description: Browser + OS, and whether it was relayop.xyz, a self-hosted instance, or local dev
+      placeholder: "Safari on iOS 19, relayop.xyz (installed as PWA)"
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots, console errors, the relay(s) involved — whatever might help. Please redact anything private.
