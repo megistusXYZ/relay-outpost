@@ -78,6 +78,7 @@ import {
   Rocket,
   Sparkles,
   ArrowUpRight,
+  UserPlus2,
   Telescope,
   BookOpen,
   ChevronDown,
@@ -123,6 +124,8 @@ import { TimelineIcon } from "@/components/icons/TimelineIcon";
 import { AboutIcon } from "@/components/icons/AboutIcon";
 import { RelayFeaturedFeed, useRelayFeaturedSets } from "@/components/RelayFeaturedFeed";
 import { starterSuggestions } from "@/lib/starter-communities";
+import { readPendingJoins, addPendingJoin, checkPendingJoins } from "@/lib/join-requests";
+import { fetchGroupMetadataResult, sendJoinRequest } from "@/lib/nip29";
 import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 import { useQuery } from "@tanstack/react-query";
 import { HorizonIcon } from "@/components/icons/HorizonIcon";
@@ -3834,6 +3837,50 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
     }
   }, [activeTab, trustFilterEnabled, events.length, feedTrustFiltered.length]);
 
+  // ── Ask-to-join (NIP-29 relays: Buzz communities et al) ────────────────────
+  const supportsGroupJoin = !!nip11?.supported_nips?.includes(29);
+  const [joinRequestState, setJoinRequestState] = useState<"none" | "pending">(() =>
+    pubkey && readPendingJoins(pubkey).some((p) => p.relayUrl === relayUrl) ? "pending" : "none");
+  const [joinRequestBusy, setJoinRequestBusy] = useState(false);
+
+  const handleRequestJoin = useCallback(async () => {
+    if (!pubkey) return;
+    setJoinRequestBusy(true);
+    try {
+      // The primary group: NIP-29 relays serve 39000 metadata publicly even
+      // behind AUTH. Buzz relays carry one main group; fall back to "_".
+      const meta = await fetchGroupMetadataResult(relayUrl).catch(() => null);
+      const groupId = meta?.groups?.[0]?.id || "_";
+      const { ok, error } = await sendJoinRequest(relayUrl, groupId);
+      if (!ok) {
+        toast({ title: "Couldn't send the request", description: error || "The relay didn't take it — try again.", variant: "destructive" });
+        return;
+      }
+      addPendingJoin(pubkey, { relayUrl, groupId, name: nip11?.name || relayUrl.replace(/^wss?:\/\//, ""), requestedAt: Math.floor(Date.now() / 1000) });
+      setJoinRequestState("pending");
+      toast({ title: "Request sent", description: "We'll tell you in your notifications the moment you're in." });
+    } finally {
+      setJoinRequestBusy(false);
+    }
+  }, [pubkey, relayUrl, nip11, toast]);
+
+  const handleCheckJoinAccepted = useCallback(async () => {
+    if (!pubkey) return;
+    setJoinRequestBusy(true);
+    try {
+      const accepted = await checkPendingJoins(pubkey);
+      if (accepted.some((a) => a.relayUrl === relayUrl)) {
+        setJoinRequestState("none");
+        toast({ title: "You're in!", description: "The community accepted you — connecting now." });
+        handleRetryAuth();
+      } else {
+        toast({ title: "Not yet", description: "Your request is still waiting on the community." });
+      }
+    } finally {
+      setJoinRequestBusy(false);
+    }
+  }, [pubkey, relayUrl, toast]);
+
   const handleRetryAuth = useCallback(() => {
     resetAuthState(relayUrl);
     pool.close([relayUrl]);
@@ -4097,7 +4144,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                   <button
                     type="button"
                     onClick={() => setHeaderCollapsed((c) => !c)}
-                    className="flex items-center gap-2 min-w-0 flex-1 text-left"
+                    className="flex items-center gap-2 min-w-0 flex-1 text-left overflow-hidden"
                     aria-label={headerCollapsed ? "Show full banner" : "Condense banner"}
                     data-testid="button-header-identity"
                   >
@@ -4139,7 +4186,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                     <button
                       type="button"
                       onClick={() => setHeaderCollapsed(false)}
-                      className="flex items-center gap-2 min-w-0 flex-1 text-left"
+                      className="flex items-center gap-2 min-w-0 flex-1 text-left overflow-hidden"
                       aria-label="Show full banner"
                       data-testid="button-header-identity"
                     >
@@ -4619,21 +4666,52 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                 <Lock className="w-7 h-7 text-amber-500/70 dark:text-amber-400/70" />
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-sm font-brand tracking-wide text-foreground/90">Members only</h3>
+                <h3 className="text-sm font-brand tracking-wide text-foreground/90">
+                  {supportsGroupJoin ? "Members get approved" : "Members only"}
+                </h3>
                 <p className="text-xs text-muted-foreground/60 leading-relaxed">
-                  This is a private community and the relay didn't authorize you — you're not on its allowlist. You can ask the operator for access, or leave it.
+                  {supportsGroupJoin
+                    ? "This community approves who joins. Ask to join, and we'll tell you the moment you're in."
+                    : "This is a private community and the relay didn't authorize you — you're not on its allowlist. You can ask the operator for access, or leave it."}
                 </p>
               </div>
               <div className="flex flex-col gap-2 w-full">
+                {supportsGroupJoin && (
+                  joinRequestState === "pending" ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCheckJoinAccepted}
+                      disabled={joinRequestBusy}
+                      className="gap-2 text-xs border-amber-500/30"
+                      data-testid="button-join-pending"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${joinRequestBusy ? "animate-spin" : ""}`} />
+                      Request pending — check again
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={handleRequestJoin}
+                      disabled={joinRequestBusy}
+                      className="gap-2 text-xs"
+                      data-testid="button-ask-to-join"
+                    >
+                      <UserPlus2 className="w-3.5 h-3.5" />
+                      {joinRequestBusy ? "Sending…" : "Ask to join"}
+                    </Button>
+                  )
+                )}
                 {operatorPubkey && (
                   <Button
                     size="sm"
+                    variant={supportsGroupJoin ? "outline" : "default"}
                     onClick={() => setLocation(`/messages/${formatNpub(operatorPubkey)}`)}
                     className="gap-2 text-xs"
                     data-testid="button-request-access"
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
-                    Request access from the operator
+                    {supportsGroupJoin ? "Message the operator" : "Request access from the operator"}
                   </Button>
                 )}
                 <div className="flex gap-2">
