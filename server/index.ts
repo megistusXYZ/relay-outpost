@@ -38,6 +38,12 @@ app.use(helmet({
         "wss:",
         "data:",
         "blob:",
+        // Dev only: plaintext localhost relays (ws://localhost:PORT and their
+        // http:// NIP-11 docs) for testing against a local test relay.
+        // Production CSP never includes these.
+        ...(process.env.NODE_ENV !== "production"
+          ? ["ws://localhost:*", "http://localhost:*", "ws://127.0.0.1:*", "http://127.0.0.1:*"]
+          : []),
       ],
       frameSrc: [
         "'self'",
