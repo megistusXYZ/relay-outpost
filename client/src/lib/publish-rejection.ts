@@ -71,6 +71,24 @@ export function summarizePublishRejections(
 }
 
 /**
+ * Explain a failed publish without ever blaming the relay for a socket that
+ * failed. When some relay actually ANSWERED, its words win (summarize above);
+ * when every entry is transport noise — connection failure, timeout — the
+ * honest sentence is "unreachable", not "the relay didn't take it". Buzz join
+ * requests taught this the hard way: the ws host 404'd, no relay ever saw the
+ * event, and the generic copy sent everyone hunting for a relay-side refusal
+ * that never happened. Unreached ≠ refused.
+ */
+export function explainPublishFailure(
+  rejections: readonly PublishRejection[] | null | undefined,
+): string | undefined {
+  const spoken = summarizePublishRejections(rejections);
+  if (spoken) return spoken;
+  if ((rejections ?? []).length === 0) return undefined;
+  return "Couldn't reach the relay — it may be offline. Try again in a moment.";
+}
+
+/**
  * Keep the relay's sentence, drop the machine prefix.
  *
  * The prefix is addressed to clients, not people — "invalid: " in front of a

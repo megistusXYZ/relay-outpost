@@ -2,7 +2,7 @@ import type { Event as NostrEvent, Filter } from "nostr-tools";
 import { REPORT_HORIZON_SECONDS } from "@/lib/reports-queue";
 import { withSignerTimeout, SIGNER_SIGN_TIMEOUT } from "@/lib/signer-timeout";
 import { pool, publishEvent, publishEventDetailed, subscriptionAuthFor } from "./nostr";
-import { summarizePublishRejections } from "./publish-rejection";
+import { explainPublishFailure } from "./publish-rejection";
 import { resolveSessionSigner } from "./session-signer";
 import { withReach, canReachAny, relayRefusedUs, type Reached } from "./relay-reach";
 
@@ -1277,7 +1277,7 @@ async function publishGroupAction(
     if (!signed) return { ok: false, error: "Signing was cancelled or timed out." };
     const { ok, rejections } = await publishEventDetailed(signed, [relayUrl], undefined, true);
     if (ok) return { ok: true };
-    return { ok: false, error: summarizePublishRejections(rejections) };
+    return { ok: false, error: explainPublishFailure(rejections) };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : undefined };
   }
@@ -1395,7 +1395,7 @@ export async function sendDeleteEvent(relayUrl: string, groupId: string, eventId
     if (!signed) return { ok: false, error: "Signing was cancelled or timed out." };
     const { ok, rejections } = await publishEventDetailed(signed, [relayUrl], undefined, true);
     if (ok) return { ok: true };
-    return { ok: false, error: summarizePublishRejections(rejections) };
+    return { ok: false, error: explainPublishFailure(rejections) };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : undefined };
   }
@@ -1478,7 +1478,7 @@ export async function sendCreateGroup(
     // programmatic creation) is a different problem from a malformed event.
     const { ok, rejections } = await publishEventDetailed(signed, [relayUrl], undefined, true);
     if (ok) return { ok: true };
-    return { ok: false, error: summarizePublishRejections(rejections) };
+    return { ok: false, error: explainPublishFailure(rejections) };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : undefined };
   }

@@ -126,6 +126,7 @@ import { RelayFeaturedFeed, useRelayFeaturedSets } from "@/components/RelayFeatu
 import { starterSuggestions } from "@/lib/starter-communities";
 import { readPendingJoins, addPendingJoin, checkPendingJoins } from "@/lib/join-requests";
 import { fetchGroupMetadataResult, sendJoinRequest } from "@/lib/nip29";
+import { isBuzzCommunityHost, fetchBuzzJoinPolicy, claimBuzzInvite, type BuzzJoinPolicy } from "@/lib/buzz-join";
 import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 import { useQuery } from "@tanstack/react-query";
 import { HorizonIcon } from "@/components/icons/HorizonIcon";
@@ -3851,7 +3852,10 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
       // behind AUTH. Buzz relays carry one main group; fall back to "_".
       const meta = await fetchGroupMetadataResult(relayUrl).catch(() => null);
       const groupId = meta?.groups?.[0]?.id || "_";
-      const { ok, error } = await sendJoinRequest(relayUrl, groupId);
+      // Buzz directory cards carry the community's PUBLIC invite code
+      // (?join=…) — with it the relay can admit the requester directly.
+      const inviteCode = new URLSearchParams(window.location.search).get("join") || undefined;
+      const { ok, error } = await sendJoinRequest(relayUrl, groupId, inviteCode);
       if (!ok) {
         toast({ title: "Couldn't send the request", description: error || "The relay didn't take it — try again.", variant: "destructive" });
         return;
@@ -3888,6 +3892,64 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
       window.location.reload();
     }, 300);
   }, [relayUrl]);
+
+  // ── Buzz communities: joining is an HTTP invite claim, not a kind-9021 ────
+  // Buzz relays refuse events from unauthed sockets AND refuse AUTH from
+  // non-members, so the knock can never land there (see lib/buzz-join). The
+  // directory hands us the community's public invite code via ?join=….
+  const isBuzzHost = isBuzzCommunityHost(relayUrl);
+  const buzzInviteCode = useMemo(() => new URLSearchParams(searchStr).get("join") || null, [searchStr]);
+  const [buzzConsent, setBuzzConsent] = useState<{ policy: BuzzJoinPolicy } | null>(null);
+  const [buzzAgreed, setBuzzAgreed] = useState(false);
+  const [buzzAgeOk, setBuzzAgeOk] = useState(false);
+
+  const handleBuzzClaim = useCallback(async (acceptance?: { policyVersion: string; ageConfirmed: boolean }) => {
+    if (!pubkey || !buzzInviteCode) return;
+    setJoinRequestBusy(true);
+    try {
+      const res = await claimBuzzInvite({ relayUrl, code: buzzInviteCode, acceptance });
+      if (res.ok) {
+        setBuzzConsent(null);
+        joinOutpost(relayUrl, nip11?.name || relayUrl.replace(/^wss?:\/\//, ""), "private", pubkey);
+        setJoined(true);
+        toast({ title: "You're in!", description: "The community accepted your invite — connecting now." });
+        handleRetryAuth();
+      } else if (res.policyRequired) {
+        const p = await fetchBuzzJoinPolicy(relayUrl);
+        if (p.reached && p.policy) {
+          setBuzzAgreed(false); setBuzzAgeOk(false);
+          setBuzzConsent({ policy: p.policy });
+        } else {
+          toast({ title: "Couldn't read the community's policy", description: "Try again in a moment.", variant: "destructive" });
+        }
+      } else {
+        toast({ title: "Couldn't join", description: res.error, variant: "destructive" });
+      }
+    } finally {
+      setJoinRequestBusy(false);
+    }
+  }, [pubkey, buzzInviteCode, relayUrl, nip11, toast, handleRetryAuth]);
+
+  const handleBuzzJoin = useCallback(async () => {
+    if (!pubkey || !buzzInviteCode) return;
+    setJoinRequestBusy(true);
+    try {
+      const p = await fetchBuzzJoinPolicy(relayUrl);
+      if (!p.reached) {
+        toast({ title: "Couldn't reach the community", description: "Try again in a moment.", variant: "destructive" });
+        return;
+      }
+      if (p.policy) {
+        // Consent is the user's to give — show the policy, never auto-accept.
+        setBuzzAgreed(false); setBuzzAgeOk(false);
+        setBuzzConsent({ policy: p.policy });
+        return;
+      }
+    } finally {
+      setJoinRequestBusy(false);
+    }
+    await handleBuzzClaim();
+  }, [pubkey, buzzInviteCode, relayUrl, toast, handleBuzzClaim]);
 
   // In-context moderation: a post's menu opens a reason dialog, then the
   // confirmed action runs the NIP-86 call, prunes the feed, and records a mod-log
@@ -4667,16 +4729,33 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
               </div>
               <div className="space-y-1.5">
                 <h3 className="text-sm font-brand tracking-wide text-foreground/90">
-                  {supportsGroupJoin ? "Members get approved" : "Members only"}
+                  {isBuzzHost ? (buzzInviteCode ? "You're invited" : "Members join by invite")
+                    : supportsGroupJoin ? "Members get approved" : "Members only"}
                 </h3>
                 <p className="text-xs text-muted-foreground/60 leading-relaxed">
-                  {supportsGroupJoin
+                  {isBuzzHost
+                    ? (buzzInviteCode
+                      ? "This community shares an open invite. One tap and you're a member."
+                      : "This Buzz community admits members with an invite from one of its members. If someone sent you an invite link, open it in the Buzz app — or ask the operator below.")
+                    : supportsGroupJoin
                     ? "This community approves who joins. Ask to join, and we'll tell you the moment you're in."
                     : "This is a private community and the relay didn't authorize you — you're not on its allowlist. You can ask the operator for access, or leave it."}
                 </p>
               </div>
               <div className="flex flex-col gap-2 w-full">
-                {supportsGroupJoin && (
+                {isBuzzHost && buzzInviteCode && (
+                  <Button
+                    size="sm"
+                    onClick={handleBuzzJoin}
+                    disabled={joinRequestBusy}
+                    className="gap-2 text-xs"
+                    data-testid="button-buzz-join"
+                  >
+                    <UserPlus2 className="w-3.5 h-3.5" />
+                    {joinRequestBusy ? "Joining…" : "Join this community"}
+                  </Button>
+                )}
+                {!isBuzzHost && supportsGroupJoin && (
                   joinRequestState === "pending" ? (
                     <Button
                       size="sm"
@@ -4744,6 +4823,53 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                 )}
               </div>
             </div>
+            {/* Buzz join-policy consent: the community requires accepting its
+                terms (and an age attestation) before the invite claim. Shown,
+                never auto-accepted. */}
+            <Sheet open={!!buzzConsent} onOpenChange={(open) => { if (!open) setBuzzConsent(null); }}>
+              <SheetContent side="bottom" className="max-h-[85svh] overflow-y-auto rounded-t-2xl">
+                <SheetTitle className="text-sm font-brand tracking-wide">Before you join</SheetTitle>
+                {buzzConsent && (
+                  <div className="mt-3 space-y-3 pb-2">
+                    <p className="text-xs text-muted-foreground/70 leading-relaxed">
+                      This community runs on Buzz and asks new members to accept its terms.
+                    </p>
+                    {buzzConsent.policy.termsMarkdown && (
+                      <details className="rounded-lg border border-border/30 px-3 py-2">
+                        <summary className="text-xs font-medium cursor-pointer select-none">Terms of service</summary>
+                        <div className="mt-2 max-h-40 overflow-y-auto text-[11px] text-muted-foreground/70 whitespace-pre-wrap leading-relaxed">{buzzConsent.policy.termsMarkdown}</div>
+                      </details>
+                    )}
+                    {buzzConsent.policy.privacyMarkdown && (
+                      <details className="rounded-lg border border-border/30 px-3 py-2">
+                        <summary className="text-xs font-medium cursor-pointer select-none">Privacy notice</summary>
+                        <div className="mt-2 max-h-40 overflow-y-auto text-[11px] text-muted-foreground/70 whitespace-pre-wrap leading-relaxed">{buzzConsent.policy.privacyMarkdown}</div>
+                      </details>
+                    )}
+                    <label className="flex items-start gap-2.5 text-xs leading-relaxed cursor-pointer">
+                      <input type="checkbox" checked={buzzAgreed} onChange={(e) => setBuzzAgreed(e.target.checked)} className="mt-0.5 accent-primary" data-testid="checkbox-buzz-terms" />
+                      <span>I've read and accept the terms of service and privacy notice.</span>
+                    </label>
+                    {buzzConsent.policy.ageAttestationRequired && (
+                      <label className="flex items-start gap-2.5 text-xs leading-relaxed cursor-pointer">
+                        <input type="checkbox" checked={buzzAgeOk} onChange={(e) => setBuzzAgeOk(e.target.checked)} className="mt-0.5 accent-primary" data-testid="checkbox-buzz-age" />
+                        <span>I confirm I meet the minimum age requirement in the terms.</span>
+                      </label>
+                    )}
+                    <Button
+                      size="sm"
+                      className="w-full gap-2 text-xs"
+                      disabled={joinRequestBusy || !buzzAgreed || (buzzConsent.policy.ageAttestationRequired && !buzzAgeOk)}
+                      onClick={() => handleBuzzClaim({ policyVersion: buzzConsent.policy.version, ageConfirmed: buzzAgeOk })}
+                      data-testid="button-buzz-agree-join"
+                    >
+                      <UserPlus2 className="w-3.5 h-3.5" />
+                      {joinRequestBusy ? "Joining…" : "Agree & join"}
+                    </Button>
+                  </div>
+                )}
+              </SheetContent>
+            </Sheet>
           </Card>
         ) : relayConnecting && authRequired ? (
           <Card className="glass-card border-amber-500/20 p-8">
@@ -5074,8 +5200,8 @@ const PAGE_PINS_COLLAPSED_KEY = "relay-outpost-page-pins-collapsed";
  * and shows nothing while nothing is known. Each slug IS a relay
  * (wss://<slug>.communities.buzz.xyz) — opening one is a normal outpost visit.
  */
-function BuzzDirectorySection({ joinedUrls, onOpen }: { joinedUrls: string[]; onOpen: (url: string) => void }) {
-  const { data, isError, refetch } = useQuery<{ communities: { slug: string; name: string; relayUrl: string; access: "public" | "invite" | null; description?: string; avatar?: string }[] }>({
+function BuzzDirectorySection({ joinedUrls, onOpen }: { joinedUrls: string[]; onOpen: (url: string, inviteCode?: string) => void }) {
+  const { data, isError, refetch } = useQuery<{ communities: { slug: string; name: string; relayUrl: string; access: "public" | "invite" | null; description?: string; avatar?: string; inviteCode?: string }[] }>({
     queryKey: ["/api/buzz-directory"],
     queryFn: async () => {
       const r = await fetch("/api/buzz-directory");
@@ -5114,7 +5240,7 @@ function BuzzDirectorySection({ joinedUrls, onOpen }: { joinedUrls: string[]; on
           <button
             key={c.slug}
             type="button"
-            onClick={() => onOpen(c.relayUrl)}
+            onClick={() => onOpen(c.relayUrl, c.inviteCode)}
             className="group/buzz flex items-center gap-3 rounded-xl border border-border/30 bg-card/40 px-3.5 py-3 text-left transition-all hover:border-brand/30 hover:bg-brand/[0.05] min-h-[44px]"
             data-testid={`buzz-community-${c.slug.slice(0, 12)}`}
           >
@@ -5597,7 +5723,7 @@ export default function Outposts() {
             <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
           </button>
 
-          <BuzzDirectorySection joinedUrls={joinedRelays.map((r) => r.url)} onOpen={(url) => setLocation(`/outposts/${encodeURIComponent(url)}?tab=chat`)} />
+          <BuzzDirectorySection joinedUrls={joinedRelays.map((r) => r.url)} onOpen={(url, inviteCode) => setLocation(`/outposts/${encodeURIComponent(url)}?tab=chat${inviteCode ? `&join=${encodeURIComponent(inviteCode)}` : ""}`)} />
         </div>
       )}
 

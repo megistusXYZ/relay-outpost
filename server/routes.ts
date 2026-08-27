@@ -9,7 +9,7 @@ import { db } from "./db";
 import { SERVER_APP_VERSION } from "./version";
 import { registerSignupTelemetryRoutes } from "./analytics/signup-telemetry";
 import { scheduledPosts, podcastTrendSnapshots } from "@shared/schema";
-import { parseBuzzDirectory } from "@shared/buzz-directory";
+import { resolveBuzzDirectory } from "@shared/buzz-directory";
 import { eq, and, sql, gte, lt } from "drizzle-orm";
 import {
   computeTrendSuggestions,
@@ -1466,7 +1466,18 @@ export async function registerRoutes(
       });
       if (!r.ok) return res.status(502).json({ error: "directory unavailable" });
       const html = await r.text();
-      const communities = parseBuzzDirectory(html);
+      // Each community's relay url comes from its OWN detail page (deep-link
+      // ground truth) — the ws host is not derivable from the listing slug,
+      // and Buzz's wildcard NIP-11 makes a wrong guess look alive.
+      const communities = await resolveBuzzDirectory(html, async (slug) => {
+        try {
+          const p = await fetch(`https://buzz.directory/communities/${slug}`, {
+            headers: { "User-Agent": "RelayOutpost/1.0 (+https://relayop.xyz)" },
+            signal: AbortSignal.timeout(8000),
+          });
+          return p.ok ? await p.text() : null;
+        } catch { return null; }
+      });
       if (communities.length === 0) return res.status(502).json({ error: "directory unreadable" });
       const payload = { communities };
       buzzDirectoryCache.set("all", payload);
