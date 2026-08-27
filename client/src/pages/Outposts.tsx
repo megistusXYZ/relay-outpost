@@ -3719,7 +3719,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
   // CommsTab reads `supportedNips?.includes(29) ?? true`: a deliberately
   // permissive default for the unknown case that could never once fire, because
   // [] is not nullish. A relay whose HTTP endpoint blipped was told it doesn't
-  // do NIP-29, and its rooms vanished behind "This outpost doesn't have chat yet".
+  // do NIP-29, and its rooms vanished behind "This community doesn't have chat yet".
   const supportedNips = nip11?.supported_nips;
   const operatorPubkey = nip11?.pubkey;
   const nip11Operator = !!(pubkey && operatorPubkey && pubkey === operatorPubkey);

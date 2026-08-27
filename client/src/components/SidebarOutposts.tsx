@@ -240,7 +240,7 @@ export function SidebarOutposts({
 
           {/* Outposts you've joined. Labeled "Joined" (not "Outposts") to avoid
               repeating the parent's word — both sub-groups instead name the
-              user's relationship to the outpost ("Relays you run" / "Joined"),
+              user's relationship to the community ("Relays you run" / "Joined"),
               which is more scannable (Krug, omit needless words). */}
           {communityOutposts.length > 0 && (
             <SidebarMenuItem className={operatedRelays.length > 0 ? "mt-1" : ""}>

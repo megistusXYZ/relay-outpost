@@ -1342,14 +1342,14 @@ export default function MyOutpost() {
     return (
       <div className="flex flex-col items-center justify-center h-full px-4 py-16 text-center" data-testid="page-myoutpost-signin">
         <Satellite className="w-12 h-12 text-muted-foreground/30 mb-4" />
-        <h2 className="text-lg font-brand uppercase tracking-wider text-foreground/80 mb-2">No Outpost Established</h2>
+        <h2 className="text-lg font-brand uppercase tracking-wider text-foreground/80 mb-2">No Community Established</h2>
         <p className="text-sm text-muted-foreground/60 max-w-sm mb-6">
-          Sign in to set up your outpost. Your identity, your crew, your broadcasts - all in one place.
+          Sign in to set up your community. Your identity, your crew, your broadcasts - all in one place.
         </p>
         <Button variant="default" className="gap-2 font-medium" asChild data-testid="button-signin-prompt">
           <Link href="/login">
             <Satellite className="w-4 h-4" />
-            Establish Your Outpost
+            Establish Your Community
           </Link>
         </Button>
       </div>
@@ -1819,7 +1819,7 @@ export default function MyOutpost() {
                         <button
                           onClick={() => setBadgesExpanded(!badgesExpanded)}
                           aria-expanded={badgesExpanded}
-                          aria-label={`Show ${rest.length} more outpost${rest.length > 1 ? "s" : ""}`}
+                          aria-label={`Show ${rest.length} more community${rest.length > 1 ? "s" : ""}`}
                           className="inline-flex items-center gap-0.5 text-brand/50 hover:text-brand/80 transition-colors shrink-0"
                         >
                           <span className="text-[10px]">+{rest.length} more</span>
@@ -1850,7 +1850,7 @@ export default function MyOutpost() {
         {!editing && (<>
         <div className="mt-4 min-w-0" data-testid="container-outpost-tabs">
           <PageTabs
-            ariaLabel="Outpost sections"
+            ariaLabel="Community sections"
             active={activeManageItem ? "" : activeTab}
             onChange={(key) => key === "network" ? selectNetworkView(networkView) : selectTab(key as OutpostTab)}
             tabs={contentTabs.map((tab) => ({
@@ -2064,7 +2064,7 @@ export default function MyOutpost() {
                     <BrainstormIcon className="w-5 h-5 text-green-600 dark:text-green-400 shrink-0" />
                     <DialogTitle className="text-sm font-bold text-foreground">Web of Trust Active</DialogTitle>
                   </div>
-                  <DialogDescription className="sr-only">What Web of Trust does for your Outpost</DialogDescription>
+                  <DialogDescription className="sr-only">What Web of Trust does for your Community</DialogDescription>
                   <div className="flex items-center justify-between">
                     <p className="text-[10px] text-foreground/50 leading-snug">NIP-85 Declaration · Updated {formatGrapeRankTime(connectionScoresData.lastCalculated)}</p>
                   </div>
@@ -2096,7 +2096,7 @@ export default function MyOutpost() {
                     <BrainstormIcon className="w-5 h-5 text-brand shrink-0" />
                     <DialogTitle className="text-sm font-bold text-foreground">What is Web of Trust?</DialogTitle>
                   </div>
-                  <DialogDescription className="sr-only">How Web of Trust enhances your Outpost</DialogDescription>
+                  <DialogDescription className="sr-only">How Web of Trust enhances your Community</DialogDescription>
                   <p className="text-xs text-foreground/70 dark:text-foreground/60 leading-relaxed">
                     Calculate your trust scores to unlock these enhancements:
                   </p>
@@ -2611,7 +2611,7 @@ function EditProfileForm({
           <div className="pt-3 border-t border-brand/15 dark:border-brand/10">
             <div className="flex items-center gap-1.5 mb-1">
               <RelayOutpostIcon className="w-3.5 h-3.5 text-brand/60" />
-              <span className="text-xs font-semibold text-brand/60 uppercase tracking-wider">My Outposts</span>
+              <span className="text-xs font-semibold text-brand/60 uppercase tracking-wider">My Communities</span>
               <span className="text-[10px] text-muted-foreground/40 ml-auto">
                 {hiddenUrls.size > 0
                   ? `${badgeList.filter(b => !hiddenUrls.has(b.url)).length} of ${badgeList.length} shown`

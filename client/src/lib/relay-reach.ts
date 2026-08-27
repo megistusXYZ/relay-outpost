@@ -8,7 +8,7 @@
  * value, and the UI then states the wrong one confidently:
  *
  *   "No Chat Rooms Found — be the first, create a channel!"   (relay was offline)
- *   "This outpost doesn't have chat yet"                      (NIP-11 502'd)
+ *   "This community doesn't have chat yet"                      (NIP-11 502'd)
  *
  * Both shipped. Both invited someone to act on a claim we had no basis for.
  *

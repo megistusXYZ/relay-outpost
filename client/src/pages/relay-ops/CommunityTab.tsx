@@ -865,7 +865,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
               className="text-xs min-h-[100px]"
             />
             <p className="text-[10px] text-muted-foreground/40">
-              These rules appear in the Outpost sidebar for members to see.
+              These rules appear in the Community sidebar for members to see.
             </p>
             <Button size="sm" onClick={handleSaveRules} disabled={savingRules} className="text-xs">
               {savingRules ? <RelayOutpostInlineLoader className="w-3 h-3 mr-1" /> : <Check className="w-3 h-3 mr-1" />}

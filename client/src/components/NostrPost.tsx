@@ -1865,7 +1865,7 @@ export function EmbeddedAddressCard({ kind, pubkey: authorPk, identifier, relays
     // Resolve via the naddr's own relay hints, then the AUTHOR'S write relays
     // (NIP-65 outbox — an event lives where its author published it, which is
     // usually NOT in a handful of generic defaults; without this, a shared
-    // calendar event / article on the creator's own or an outpost relay never
+    // calendar event / article on the creator's own or a community relay never
     // resolved → "content unavailable"), then a broad default set.
     const relaySet = orderedRelayCandidates([
       relays ?? [],

@@ -30,7 +30,7 @@ export function GuestWall({
       </span>
       <h3 className="text-base font-semibold">{context}</h3>
       <p className="mt-1 text-sm text-muted-foreground max-w-sm mx-auto">
-        Your outpost starts here. An account takes a minute — no email or phone number required.
+        Your community starts here. An account takes a minute — no email or phone number required.
       </p>
       <div className="mt-4 flex items-center justify-center gap-2">
         <Link

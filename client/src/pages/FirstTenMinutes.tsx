@@ -91,7 +91,7 @@ export default function FirstTenMinutes() {
               <ul className="list-disc list-inside space-y-1 text-[13px] text-foreground/60">
                 <li>Browse <strong>Discover</strong> and the <strong>For you</strong> feed to find interesting voices</li>
                 <li>Follow people whose content resonates with you</li>
-                <li>Check out Outposts — relay-based communities built around shared interests</li>
+                <li>Check out Communities — relay-based communities built around shared interests</li>
               </ul>
               <p className="text-[12px] text-foreground/50">The more you follow, the richer your feed becomes. Quality over quantity — your Web of Trust will help filter the noise.</p>
             </>
@@ -158,7 +158,7 @@ export default function FirstTenMinutes() {
           </div>
           <h3 className="text-sm font-bold text-foreground/80 mb-1">You're all set</h3>
           <p className="text-xs text-muted-foreground/50 max-w-sm mx-auto leading-relaxed mb-4">
-            That's the essentials. From here, explore Outposts, set up Trust &amp; Safety, connect a wallet, and make Relay Outpost your home on the open social web.
+            That's the essentials. From here, explore Communities, set up Trust &amp; Safety, connect a wallet, and make Relay Outpost your home on the open social web.
           </p>
           <Link
             href="/help"

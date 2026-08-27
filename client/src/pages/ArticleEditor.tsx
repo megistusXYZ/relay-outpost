@@ -1675,7 +1675,7 @@ export default function ArticleEditor() {
                 onClick={() => setLocation("/outposts")}
                 className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-md text-[11px] text-muted-foreground/55 hover:text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors"
                 data-testid="button-article-relay-manage-link"
-                title="Manage Outposts"
+                title="Manage Communities"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
                 <span className="hidden sm:inline truncate">Posting to defaults</span>

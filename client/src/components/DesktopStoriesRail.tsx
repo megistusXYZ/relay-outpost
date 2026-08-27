@@ -423,7 +423,7 @@ export function DesktopStoriesRail() {
   );
 
   // Open a specific community / group invite straight from a flyout search row,
-  // using the same navigation the page's command bar uses (the outpost route).
+  // using the same navigation the page's command bar uses (the community route).
   const openOutpostFromFlyout = useCallback(
     (url: string) => {
       setFlyoutOpen(false);

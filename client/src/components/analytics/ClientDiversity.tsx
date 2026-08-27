@@ -746,7 +746,7 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
 
         {summary && (
           <p className="text-[10px] text-muted-foreground/40 italic">
-            Scanned {scanRelays.length} relay{scanRelays.length !== 1 ? "s" : ""} (defaults{scanAllRelays ? " + outposts" : ""}). {summary.identifiedPct}% of events had client identification tags.
+            Scanned {scanRelays.length} relay{scanRelays.length !== 1 ? "s" : ""} (defaults{scanAllRelays ? " + communities" : ""}). {summary.identifiedPct}% of events had client identification tags.
           </p>
         )}
 

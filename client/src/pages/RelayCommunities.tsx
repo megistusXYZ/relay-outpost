@@ -25,7 +25,7 @@ export default function RelayCommunities() {
             <h1 className="text-lg sm:text-xl font-black uppercase tracking-[0.06em] leading-none text-brand dark:text-brand/90" style={{ fontStyle: "italic" }}>
               Relay Communities vs. Platforms
             </h1>
-            <p className="text-[10px] text-brand/40 dark:text-brand/30 font-bold uppercase tracking-[0.2em] mt-0.5 ml-0.5">why outposts are the future</p>
+            <p className="text-[10px] text-brand/40 dark:text-brand/30 font-bold uppercase tracking-[0.2em] mt-0.5 ml-0.5">why communities are the future</p>
           </div>
         </div>
       </div>
@@ -33,7 +33,7 @@ export default function RelayCommunities() {
       <div className="mb-8">
         <div className="rounded-xl border border-border/30 dark:border-border/15 bg-white/50 dark:bg-muted/10 p-5">
           <p className="text-sm text-foreground/70 dark:text-muted-foreground leading-relaxed">
-            Every online community you've joined has the same fundamental flaw: it exists at the mercy of a company. Discord can ban your server. Reddit can quarantine your subreddit. Facebook can delete your group. You built the community — they own it. Outposts flip this model entirely. Here's why relay-based communities are the future of how people organize online.
+            Every online community you've joined has the same fundamental flaw: it exists at the mercy of a company. Discord can ban your server. Reddit can quarantine your subreddit. Facebook can delete your group. You built the community — they own it. Communities flip this model entirely. Here's why relay-based communities are the future of how people organize online.
           </p>
           <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border/20">
             <Rocket className="w-3.5 h-3.5 text-brand/70" />
@@ -63,11 +63,11 @@ export default function RelayCommunities() {
 
         <SectionCard
           number={2}
-          title="What Makes Outposts Different"
+          title="What Makes Communities Different"
           icon={Rocket}
           description={
             <>
-              <p>An Outpost is a community built on a relay — a server that stores and forwards Nostr messages. Here's what makes it fundamentally different from a Discord server or a subreddit:</p>
+              <p>A Community is a community built on a relay — a server that stores and forwards Nostr messages. Here's what makes it fundamentally different from a Discord server or a subreddit:</p>
               <div className="space-y-1.5 mt-2">
                 <div className="rounded-lg bg-muted/10 dark:bg-white/[0.03] border border-border/20 px-3 py-2">
                   <span className="text-brand font-bold text-xs">Community-Owned Infrastructure</span>
@@ -79,7 +79,7 @@ export default function RelayCommunities() {
                 </div>
                 <div className="rounded-lg bg-muted/10 dark:bg-white/[0.03] border border-border/20 px-3 py-2">
                   <span className="text-brand font-bold text-xs">Cross-App Visibility</span>
-                  <p className="text-[12px] text-foreground/60 mt-0.5">Posts to an Outpost are visible from any Nostr client that supports relay communities — not locked to one app. Your community content lives on the open network.</p>
+                  <p className="text-[12px] text-foreground/60 mt-0.5">Posts to a Community are visible from any Nostr client that supports relay communities — not locked to one app. Your community content lives on the open network.</p>
                 </div>
                 <div className="rounded-lg bg-muted/10 dark:bg-white/[0.03] border border-border/20 px-3 py-2">
                   <span className="text-brand font-bold text-xs">No Lock-In by Design</span>
@@ -92,7 +92,7 @@ export default function RelayCommunities() {
 
         <SectionCard
           number={3}
-          title="Platform vs. Outpost: The Real Differences"
+          title="Platform vs. Community: The Real Differences"
           icon={Globe}
           description={
             <>
@@ -112,7 +112,7 @@ export default function RelayCommunities() {
                         <span className="text-[11px] text-foreground/55">{platform}</span>
                       </div>
                       <div className="flex items-start gap-1.5">
-                        <span className="text-[9px] font-bold text-emerald-500/70 uppercase shrink-0 mt-0.5">Outpost</span>
+                        <span className="text-[9px] font-bold text-emerald-500/70 uppercase shrink-0 mt-0.5">Community</span>
                         <span className="text-[11px] text-emerald-700 dark:text-emerald-400/80">{outpost}</span>
                       </div>
                     </div>
@@ -125,13 +125,13 @@ export default function RelayCommunities() {
 
         <SectionCard
           number={4}
-          title="How Outpost Access Works"
+          title="How Community Access Works"
           icon={Lock}
           description={
             <>
-              <p>Outposts support different access models — from wide-open public spaces to invite-only communities:</p>
+              <p>Communities support different access models — from wide-open public spaces to invite-only communities:</p>
               <ul className="list-disc list-inside space-y-1.5 text-[13px] text-foreground/60">
-                <li><strong>Public Outposts</strong> — anyone can join and post. Great for broad communities, open discussions, and growing your reach.</li>
+                <li><strong>Public Communities</strong> — anyone can join and post. Great for broad communities, open discussions, and growing your reach.</li>
                 <li><strong>Approval joins</strong> — the <em>Let people in one at a time</em> door means new members wait for a yes. Joining one of these shows <strong>Request</strong> instead of Join.</li>
                 <li><strong>Members only</strong> — a separate door that makes the space's rooms readable by members alone. A space can use either door, or both.</li>
                 <li><strong>Paid relays</strong> — some relays advertise a payment requirement (shown as Paid in search results). Payment is arranged with the operator directly today.</li>
@@ -162,7 +162,7 @@ export default function RelayCommunities() {
                   <p className="text-[12px] text-foreground/60 mt-0.5">Your business identity is a cryptographic key. Customers can verify that announcements actually came from you — not from a scammer impersonating your brand.</p>
                 </div>
               </div>
-              <p className="text-[12px] text-foreground/50">Outposts give businesses the direct relationship with customers that platforms have been intermediating (and taxing) for the last 15 years.</p>
+              <p className="text-[12px] text-foreground/50">Communities give businesses the direct relationship with customers that platforms have been intermediating (and taxing) for the last 15 years.</p>
             </>
           }
         />
@@ -176,11 +176,11 @@ export default function RelayCommunities() {
               <p>We're watching a fundamental shift in how communities organize online:</p>
               <ul className="list-disc list-inside space-y-1.5 text-[13px] text-foreground/60">
                 <li><strong>Communities as infrastructure</strong> — instead of renting space on a platform, communities own their own relay. The infrastructure belongs to the people who use it.</li>
-                <li><strong>Interoperable by default</strong> — a member of one Outpost can seamlessly interact with another. No more siloed communities trapped inside separate apps.</li>
+                <li><strong>Interoperable by default</strong> — a member of one Community can seamlessly interact with another. No more siloed communities trapped inside separate apps.</li>
                 <li><strong>Value flows to creators</strong> — zaps let community members directly support the people creating value. No ads. No sponsorships. 100% goes to them.</li>
                 <li><strong>AI can't fake belonging</strong> — in a world flooding with AI-generated content, real communities with real trust networks become the most valuable signal of authenticity.</li>
               </ul>
-              <p className="text-[12px] text-foreground/50">Outposts aren't a new Discord or a new Reddit. They're a new model — one where the community's interests and the infrastructure's incentives are finally aligned.</p>
+              <p className="text-[12px] text-foreground/50">Communities aren't a new Discord or a new Reddit. They're a new model — one where the community's interests and the infrastructure's incentives are finally aligned.</p>
             </>
           }
         />
@@ -193,11 +193,11 @@ export default function RelayCommunities() {
           </div>
           <h3 className="text-sm font-bold text-foreground/80 mb-1">Communities with no lock-in</h3>
           <p className="text-xs text-muted-foreground/50 max-w-sm mx-auto leading-relaxed mb-4">
-            Outposts put community ownership where it belongs — with the community. If a server disappears, your identity and connections survive — move to another relay and keep going. No algorithm can hide your voice.
+            Communities put community ownership where it belongs — with the community. If a server disappears, your identity and connections survive — move to another relay and keep going. No algorithm can hide your voice.
           </p>
           <div className="flex items-center justify-center gap-3">
             <Link href="/outposts" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand/10 text-brand border border-brand/20 text-xs font-medium transition-all duration-200 hover:bg-brand/15">
-              Explore Outposts
+              Explore Communities
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
             <Link href="/help" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-muted/20 text-muted-foreground/70 border border-border/20 text-xs font-medium transition-all duration-200 hover:bg-muted/30">

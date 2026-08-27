@@ -51,7 +51,7 @@ function OperatorRadarIndicator() {
     <span
       className="operator-radar ml-auto relative inline-flex items-center justify-center w-5 h-5 shrink-0"
       aria-label="Operator console available"
-      title="You operate at least one outpost — Console unlocked"
+      title="You operate at least one community — Console unlocked"
       data-testid="indicator-sidebar-operator-radar"
     >
       {/* Outer pulse ring */}

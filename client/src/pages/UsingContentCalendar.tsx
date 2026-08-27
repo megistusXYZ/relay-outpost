@@ -109,7 +109,7 @@ export default function UsingContentCalendar() {
                 <li>Subscribed events automatically appear on your calendar</li>
                 <li>Manage and remove subscriptions anytime</li>
               </ul>
-              <p className="text-[12px] text-foreground/50">Feed subscriptions let you aggregate events from multiple sources — conferences, meetup groups, Outpost communities, and more.</p>
+              <p className="text-[12px] text-foreground/50">Feed subscriptions let you aggregate events from multiple sources — conferences, meetup groups, Community communities, and more.</p>
             </>
           }
         />

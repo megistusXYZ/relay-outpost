@@ -56,7 +56,7 @@ export function pinFeed(feed: Omit<PinnedFeed, "id">): void {
   feeds.push({ ...feed, id });
   savePinnedFeeds(feeds);
   // Auto-promote: pinning a feed should make the underlying relay show up
-  // as one of the user's outposts. The enrichment helper is a no-op if the
+  // as one of the user's communities. The enrichment helper is a no-op if the
   // relay is already joined. Don't pass the pin's label as the relay name —
   // it's now a bare view name ("Waves"); let enrichment derive the relay
   // label from the host + NIP-11.

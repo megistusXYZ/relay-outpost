@@ -116,7 +116,7 @@ export default function ManagingCrew() {
                 <li><strong>Home feed</strong> — Posts from people you follow, ordered by time</li>
                 <li><strong>Trust filtering</strong> — When enabled, Trust &amp; Safety hides content from untrusted accounts</li>
                 <li><strong>Replies and interactions</strong> — Trust scores help surface meaningful replies over spam</li>
-                <li><strong>Outpost feeds</strong> — Community posts are enriched with trust context from your network</li>
+                <li><strong>Community feeds</strong> — Community posts are enriched with trust context from your network</li>
               </ul>
               <p className="text-[12px] text-foreground/50">The more intentionally you curate your follows, the better your feed becomes. Quality in, quality out.</p>
             </>
@@ -132,7 +132,7 @@ export default function ManagingCrew() {
               <p>Growing your network is easy — and trust-aware:</p>
               <ul className="list-disc list-inside space-y-1 text-[13px] text-foreground/60">
                 <li>Use <strong>Search</strong> to find people by name or verified username</li>
-                <li>Browse profiles in Outpost communities to find aligned voices</li>
+                <li>Browse profiles in Community communities to find aligned voices</li>
                 <li>Check someone's followers and following to discover mutual connections</li>
                 <li>Trust indicators show you how someone connects to your circle before you follow them</li>
               </ul>

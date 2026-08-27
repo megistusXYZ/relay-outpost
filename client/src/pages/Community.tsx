@@ -239,10 +239,10 @@ export default function CommunityPage() {
     const nowFollowing = toggleFollowCommunity(naddr);
     setFollowing(nowFollowing);
     toast({
-      title: nowFollowing ? "Joined Outpost" : "Left Outpost",
+      title: nowFollowing ? "Joined Community" : "Left Community",
       description: nowFollowing
-        ? `${community?.name || "Community"} added to your followed outposts.`
-        : `${community?.name || "Community"} removed from your followed outposts.`,
+        ? `${community?.name || "Community"} added to your followed communities.`
+        : `${community?.name || "Community"} removed from your followed communities.`,
     });
   };
 
@@ -251,7 +251,7 @@ export default function CommunityPage() {
       <div className="max-w-2xl mx-auto p-4">
         <div className="flex items-center justify-center py-20">
           <RelayOutpostInlineLoader className="w-6 h-6" />
-          <span className="text-sm text-muted-foreground/60 ml-2">Locating outpost...</span>
+          <span className="text-sm text-muted-foreground/60 ml-2">Locating community...</span>
         </div>
       </div>
     );
@@ -262,7 +262,7 @@ export default function CommunityPage() {
       <div className="max-w-2xl mx-auto p-4">
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <Globe className="w-12 h-12 text-muted-foreground/30 mb-3" />
-          <p className="text-sm font-medium mb-1">Outpost not found</p>
+          <p className="text-sm font-medium mb-1">Community not found</p>
           <p className="text-xs text-muted-foreground/60">This community may no longer exist or the address may be invalid.</p>
         </div>
       </div>
@@ -468,7 +468,7 @@ export default function CommunityPage() {
 
       {!pubkey && (
         <div className="mb-4 p-3 rounded-lg bg-primary/[0.04] border border-border text-center">
-          <p className="text-xs text-muted-foreground/60 italic">Sign in with Nostr to post and join this outpost</p>
+          <p className="text-xs text-muted-foreground/60 italic">Sign in with Nostr to post and join this community</p>
         </div>
       )}
 
@@ -490,7 +490,7 @@ export default function CommunityPage() {
             <FileText className="w-10 h-10 text-muted-foreground/30 mb-3" />
             <p className="text-sm font-medium mb-1">No posts yet</p>
             <p className="text-xs text-muted-foreground/60">
-              {pubkey ? "Be the first to post in this outpost!" : "Sign in to be the first to post here."}
+              {pubkey ? "Be the first to post in this community!" : "Sign in to be the first to post here."}
             </p>
           </div>
         ) : (

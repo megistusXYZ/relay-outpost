@@ -400,7 +400,7 @@ function WotBadgeStyleToggle() {
       <div className="flex-1 min-w-0 mr-3">
         <p className="text-sm font-medium text-foreground/85">Detailed WoT Badge</p>
         <p className="text-xs text-muted-foreground/55 leading-relaxed mt-0.5">
-          Show the full WoT service card on your Outpost banner instead of the compact pill.
+          Show the full WoT service card on your Community banner instead of the compact pill.
         </p>
       </div>
       <button

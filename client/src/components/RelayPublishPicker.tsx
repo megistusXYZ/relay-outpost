@@ -20,8 +20,8 @@ import {
   type RelayPreset,
 } from "@/lib/outpost-relays";
 
-// Remembers the user's curated outpost picks across an off/on flick of the
-// "Also post to Outposts" switch, so toggling is reversible instead of a
+// Remembers the user's curated community picks across an off/on flick of the
+// "Also post to Communities" switch, so toggling is reversible instead of a
 // preset jump that wipes a hand-built selection. Device-local by design.
 const OUTPOST_STASH_KEY = "relay-outpost-publish-outpost-stash";
 
@@ -174,7 +174,7 @@ function PickerBody({
             </div>
             <div className="min-w-0">
               <span className="block text-[12px] sm:text-[13px] font-medium text-foreground/90 truncate">
-                Discover Outposts
+                Discover Communities
               </span>
               <span className="block text-[10px] sm:text-[11px] text-muted-foreground/55 truncate">
                 Community relays for topics & groups you care about
@@ -188,7 +188,7 @@ function PickerBody({
       <div className="flex-1 min-h-0 overflow-y-auto space-y-3 mt-1.5 px-1" data-testid="container-relay-list">
         {hasOutposts && (
           <CollapsibleRelayGroup
-            label="Outpost Relays"
+            label="Community Relays"
             count={enabledOutposts.length}
             storageKey="picker-section-outposts-collapsed"
             defaultCollapsed={false}
@@ -342,11 +342,11 @@ export function RelayPublishPicker({ open, onOpenChange, onPreferenceChange }: R
     setTimeout(() => window.dispatchEvent(new CustomEvent("outpost-relays-changed")), 0);
   }, [onPreferenceChange]);
 
-  // The "Also post to Outposts" switch preserves the user's curation instead of
+  // The "Also post to Communities" switch preserves the user's curation instead of
   // jumping presets: OFF stashes the current outpost picks and keeps the
   // default-relay selection untouched; ON restores the stash (or selects all
   // enabled outposts if the user never curated a subset). A hand-built
-  // "3 outposts + 4 defaults" selection survives an off/on flick intact.
+  // "3 communities + 4 defaults" selection survives an off/on flick intact.
   const handleOutpostToggle = useCallback((checked: boolean) => {
     setPref((prev) => {
       const current = resolvePublishRelays(prev);
