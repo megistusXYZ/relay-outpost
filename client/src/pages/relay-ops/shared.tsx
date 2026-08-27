@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
+import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 import { nip19 } from "nostr-tools";
 import type { Event as NostrEvent, Filter as NostrToolsFilter } from "nostr-tools";
 import { pool, searchCachedProfiles } from "@/lib/nostr";
@@ -20,7 +21,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Radio,
   Activity,
-  Sparkles,
   Info,
   Shield,
   Lock,
@@ -2083,12 +2083,12 @@ export function addUptimeEntry(relayUrl: string, entry: UptimeEntry) {
 
 export type TabId = "overview" | "live" | "events" | "access" | "announce" | "featured" | "community" | "feedback";
 
-export const TABS: { id: TabId; label: string; icon: typeof Activity }[] = [
+export const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "overview", label: "Overview", icon: Activity },
   { id: "live", label: "Live Feed", icon: Radio },
   { id: "events", label: "Events", icon: Search },
   { id: "announce", label: "Announce", icon: Megaphone },
-  { id: "featured", label: "Featured Feeds", icon: Sparkles },
+  { id: "featured", label: "Featured Feeds", icon: MagicStarIcon },
   { id: "feedback", label: "Feedback", icon: Inbox },
   // "Relay" is load-bearing in both labels. This console governs the RELAY —
   // Access Control is NIP-86 allow/ban across every space on the box, and these
