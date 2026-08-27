@@ -161,7 +161,10 @@ export function ReportsQueue({ className = "" }: { className?: string }) {
   // page are the SAME sweep rather than two that can disagree.
   const needsYou = useNeedsYou();
   const { queue, sweep, removeLocally } = needsYou?.reports ?? EMPTY_QUEUE_STATE;
-  const notice = sweepNotice(sweep);
+  // Subject named: with an empty queue this line renders alone on the
+  // Activity page, and without its subject it read as "your notifications
+  // are broken" (live report, 2026-08-26).
+  const notice = sweepNotice(sweep, "reports");
   if (queue.length === 0 && !notice) return null;
   return (
     <div className={`space-y-2 ${className}`} data-testid="reports-queue">

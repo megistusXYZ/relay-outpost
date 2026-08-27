@@ -169,7 +169,9 @@ export function AdmissionQueue({ className = "" }: { className?: string }) {
   // page are the SAME sweep rather than two that can disagree.
   const needsYou = useNeedsYou();
   const { queue, sweep, removeLocally } = needsYou?.admissions ?? EMPTY_QUEUE_STATE;
-  const notice = sweepNotice(sweep);
+  // Subject named — see ReportsQueue: an orphan "may be incomplete" line on
+  // the Activity page reads as broken notifications.
+  const notice = sweepNotice(sweep, "join requests");
   // Self-hiding still, but only when the silence is TRUE: nothing waiting AND
   // nothing we failed to ask. An empty queue on a sweep that never reached a
   // relay is not "nobody is waiting", and it used to render as exactly that.
