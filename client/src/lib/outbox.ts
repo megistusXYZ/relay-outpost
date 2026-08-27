@@ -138,7 +138,7 @@ export function getWriteRelays(pubkey: string, fallback: string[] = DEFAULT_RELA
 
 /**
  * Outbox floor for PUBLIC posts: union the user's picked relays with their
- * advertised NIP-65 write relays, so a curated selection (e.g. "3 outposts
+ * advertised NIP-65 write relays, so a curated selection (e.g. "3 communities
  * only") can never make posts invisible to followers on other clients — they
  * resolve the author's outbox from kind-10002, not from this app's picker.
  * Deliberately falls back to [] (NOT DEFAULT_RELAYS): if no relay list is

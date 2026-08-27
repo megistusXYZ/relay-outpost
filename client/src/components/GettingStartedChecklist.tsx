@@ -33,7 +33,7 @@ export function GettingStartedChecklist({ className = "" }: { className?: string
   const [dismissed, setDismissed] = useState(false);
   const [joinedCount, setJoinedCount] = useState(() => getOutpostRelays().length);
 
-  // Keep the "join an outpost" row live as the user joins/leaves elsewhere.
+  // Keep the "join a community" row live as the user joins/leaves elsewhere.
   useEffect(() => {
     const sync = () => setJoinedCount(getOutpostRelays().length);
     sync();
@@ -72,7 +72,7 @@ export function GettingStartedChecklist({ className = "" }: { className?: string
     { key: "profile", icon: UserCircle, label: "Add a photo and a short bio", done: !!(content?.picture && content?.about), cta: "Edit profile", action: { type: "nav", href: "/account?edit=profile" } },
     { key: "follow", icon: Users, label: "Follow 5 people", done: followCount >= 5, cta: "Find people", action: { type: "nav", href: "/search" } },
     { key: "post", icon: PenLine, label: "Share your first post", done: hasPosted(pubkey), cta: "Write a post", action: { type: "event", name: "open-compose" } },
-    { key: "outpost", icon: OutpostIcon, label: "Join an outpost", done: joinedCount > 0, cta: "Browse", action: { type: "nav", href: "/outposts" } },
+    { key: "outpost", icon: OutpostIcon, label: "Join a community", done: joinedCount > 0, cta: "Browse", action: { type: "nav", href: "/outposts" } },
     { key: "wallet", icon: Zap, label: "Connect a Bitcoin wallet", done: !!content?.lud16, cta: "Add wallet", action: { type: "nav", href: "/account?tab=wallet" } },
   ];
 

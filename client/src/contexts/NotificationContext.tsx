@@ -425,7 +425,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     if (unwrapped.rumorKind === KIND_DIRECT_INVITE_RUMOR) {
       // Branch refactor (shared stash helper) + main's "Private chat" wording.
       const stashed = stashDirectInviteRumor(currentPubkey, unwrapped);
-      if (stashed?.isNew) toast({ title: "Private chat invite", description: `You've been invited to ${stashed.bundle.name ?? "a private chat"} — see Outposts.` });
+      if (stashed?.isNew) toast({ title: "Private chat invite", description: `You've been invited to ${stashed.bundle.name ?? "a private chat"} — see Communities.` });
       return;
     }
 

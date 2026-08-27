@@ -140,7 +140,7 @@ export function isLeakedInviteBundleJson(content: string | undefined | null): bo
 
 /** Redacted preview text for a conversation whose cached lastMessage was a
  *  leaked invite bundle. */
-const INVITE_REDACTED_PREVIEW = "Outpost invite";
+const INVITE_REDACTED_PREVIEW = "Community invite";
 
 export async function getConversationList(ownerPubkey: string): Promise<CachedConversation[]> {
   try {

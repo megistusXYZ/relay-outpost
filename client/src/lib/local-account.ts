@@ -423,8 +423,8 @@ export function downloadBackupFile(
 
   const lines: string[] = [
     includesRawNsec
-      ? "RELAY OUTPOST — KEY BACKUP (CONTAINS RAW SECRET KEY)"
-      : "RELAY OUTPOST — ENCRYPTED KEY BACKUP",
+      ? "RELAY COMMUNITY — KEY BACKUP (CONTAINS RAW SECRET KEY)"
+      : "RELAY COMMUNITY — ENCRYPTED KEY BACKUP",
     "=====================================",
     "",
   ];

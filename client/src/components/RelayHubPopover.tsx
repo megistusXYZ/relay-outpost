@@ -27,7 +27,7 @@ import {
 
 const PUBLISH_PRESETS: { key: RelayPreset; label: string; description: string; icon: typeof Satellite; dotColor: string }[] = [
   { key: "all", label: "All Relays", description: "Broadcast everywhere", icon: Satellite, dotColor: "bg-brand" },
-  { key: "private", label: "Private Only", description: "Private outpost relays", icon: Lock, dotColor: "bg-amber-400" },
+  { key: "private", label: "Private Only", description: "Private community relays", icon: Lock, dotColor: "bg-amber-400" },
   { key: "public", label: "Public Only", description: "Default & public relays", icon: Globe, dotColor: "bg-green-400" },
 ];
 

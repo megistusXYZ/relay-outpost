@@ -569,7 +569,7 @@ export function HorizonTab({
               <div>
                 <p className="text-[11px] font-medium text-foreground/70">A shared knowledge base</p>
                 <p className="text-[10px] text-muted-foreground/40 leading-relaxed mt-0.5">
-                  Articles are this outpost's long-form content library. Members contribute articles, guides, resources, and links that live permanently on the relay — building a shared knowledge base for the community.
+                  Articles are this community's long-form content library. Members contribute articles, guides, resources, and links that live permanently on the relay — building a shared knowledge base for the community.
                 </p>
               </div>
             </div>
@@ -672,7 +672,7 @@ export function HorizonTab({
               <div className="space-y-1.5">
                 <h3 className="text-sm font-brand tracking-wide text-foreground/80">No articles yet</h3>
                 <p className="text-[11px] text-muted-foreground/50 leading-relaxed">
-                  This outpost's knowledge base has no entries yet. Share articles, resources, files, and links to build your community's library.
+                  This community's knowledge base has no entries yet. Share articles, resources, files, and links to build your community's library.
                 </p>
               </div>
               {pubkey && canPostHorizon && (

@@ -244,7 +244,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       { type: "improved", text: "Videos go full-screen, Shorts/X-style — edge-to-edge, no more buttons stacked on buttons, with an instant preview frame and the next clip pre-loaded so it doesn't make you wait." },
       { type: "improved", text: "On your phone, Articles open in a clean list by default (with a comfortable/compact toggle), and there's a dedicated Tools page — Wallet, Relays, Bookmarks, Analytics, Console, Flight Log — one tap from the menu." },
       { type: "fixed", text: "Light mode, fixed where it counted: your own chat and DM bubbles were dark-on-purple and nearly unreadable — now they're crisp. And when you @mention someone while writing a post, you can see what you're typing again." },
-      { type: "fixed", text: "Profiles now actually show a person's relays (it used to always say “none”), the video player no longer double-stacks its controls, and Outpost headers are tidier — we dropped some confusing counts and hid an operator-only toggle from everyone else." },
+      { type: "fixed", text: "Profiles now actually show a person's relays (it used to always say “none”), the video player no longer double-stacks its controls, and Community headers are tidier — we dropped some confusing counts and hid an operator-only toggle from everyone else." },
     ],
     feedback: [
       { quote: "When someone vouched for a user it just showed a blob of raw code — I couldn't tell who said it or what they meant.", attribution: "Beta tester" },
@@ -259,13 +259,13 @@ export const CHANGELOG: ChangelogEntry[] = [
     title: "Calmer light mode, trust filters & mobile polish",
     changes: [
       { type: "improved", text: "Light mode got a full refresh. Everything now draws from one consistent color system, so text, buttons, filters, and toggles look calm and on-brand instead of a mix of washed-out blues and purples." },
-      { type: "new", text: "You can now apply your Web-of-Trust filter to a whole Outpost — Posts, Discussions, Chat, and Articles at once — so you mostly see people your network vouches for. In Chat, filtered messages collapse into a “tap to show” note instead of quietly disappearing." },
+      { type: "new", text: "You can now apply your Web-of-Trust filter to a whole Community — Posts, Discussions, Chat, and Articles at once — so you mostly see people your network vouches for. In Chat, filtered messages collapse into a “tap to show” note instead of quietly disappearing." },
       { type: "improved", text: "The Trust & Safety page is far easier to understand: one plain “How strict is your feed?” choice — Open, Balanced, or Strict — up front, with all the advanced trust controls tucked under Advanced." },
       { type: "improved", text: "On phones, Messages now has its own spot in the bottom bar with an unread count, so your DMs are always one tap away. Search moved to the top of the screen." },
-      { type: "improved", text: "We renamed a few things in plain English so they're easier to follow — nothing moved, just clearer labels. An Outpost's tabs are now Posts, Discussions, Chat, and Articles; the home feed views are For You, Following, and Trending; your saved feeds live under “Saved”; and your dashboard is now “Account.”" },
+      { type: "improved", text: "We renamed a few things in plain English so they're easier to follow — nothing moved, just clearer labels. A Community's tabs are now Posts, Discussions, Chat, and Articles; the home feed views are For You, Following, and Trending; your saved feeds live under “Saved”; and your dashboard is now “Account.”" },
       { type: "fixed", text: "Your profile picture now shows when you write a post, and the relay picker (“Manage”) opens where your post will go instead of dropping you on a page that made no sense." },
       { type: "fixed", text: "On mobile, tapping a link in the side menu now closes the menu and takes you straight to the page." },
-      { type: "fixed", text: "Opening a members-only Outpost you're not part of now tells you so clearly, instead of spinning on “Authenticating…” forever." },
+      { type: "fixed", text: "Opening a members-only Community you're not part of now tells you so clearly, instead of spinning on “Authenticating…” forever." },
     ],
     feedback: [
       { quote: "In light mode the colors looked washed out and off-brand.", attribution: "Beta tester" },

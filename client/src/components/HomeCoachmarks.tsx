@@ -4,7 +4,7 @@ import { MissionBriefing, restartMissionBriefing as restartGeneric, type Briefin
 
 const WELCOME_STEP: BriefingStep = {
   testId: null,
-  title: "Welcome to your outpost",
+  title: "Welcome to your community",
   body: "This is your home base. Take a quick mission briefing — four short stops to get your bearings.",
 };
 

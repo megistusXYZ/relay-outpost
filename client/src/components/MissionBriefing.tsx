@@ -429,7 +429,7 @@ export function MissionBriefing({ pageId, steps: stepsInput, startDelayMs = 600 
                 Orientation complete
               </p>
               <p className="text-xs text-muted-foreground leading-relaxed mt-1" data-testid="text-mission-briefing-complete">
-                You've toured every corner of your outpost.
+                You've toured every corner of your community.
               </p>
             </div>
           </div>

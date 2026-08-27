@@ -54,7 +54,7 @@ export function sweepNotice(sweep: QueueSweep, subject?: string): string | null 
   // Guard the nonsense case rather than rendering "2 of 1".
   if (relaysAttempted <= 0 || relaysUnreached > relaysAttempted) return null;
   const tail = subject ? `so ${subject} there can't be checked.` : "so this may be incomplete.";
-  const noun = subject ? "outpost relay" : "relay";
+  const noun = subject ? "community relay" : "relay";
   if (relaysUnreached === relaysAttempted) {
     return relaysAttempted === 1
       ? `Couldn't reach your ${noun}, ${tail}`

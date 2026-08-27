@@ -299,7 +299,7 @@ function ChatAuthorLine({ pubkey, createdAt }: { pubkey: string; createdAt: numb
       <span className="text-[11px] font-medium text-foreground/80 truncate">{name}</span>
       {/* Two different axes, deliberately side by side: PersonBadges is
           domain-attested (NIP-05) plus impersonation collision; WotDot is
-          web-of-trust. Same pairing Outposts.tsx:501-510 already uses. The
+          web-of-trust. Same pairing Communities.tsx:501-510 already uses. The
           badge is the AFFIRMATIVE half decision 9b asks for — the fake is
           caught by contrast with a real check, never by an accusation. */}
       <PersonBadges pubkey={pubkey} nip05={content?.nip05} claimedName={content?.display_name || content?.name} showCollision={!!profile} />
@@ -3250,7 +3250,7 @@ export function CommsTab({
 
   useEffect(() => {
     // Guards the late-answer callback below: this effect re-runs on every
-    // relayUrl change, so a slow relay's answer must not land on the outpost
+    // relayUrl change, so a slow relay's answer must not land on the community
     // the user has since navigated to.
     let stale = false;
     setLoading(true);
@@ -3266,7 +3266,7 @@ export function CommsTab({
       // The relay may still be working after we stop waiting. We tell the
       // truth on time ("couldn't reach"), and if the rooms arrive late we fill
       // them in rather than making the user hit Try again. Guarded by the
-      // effect's staleness flag so a late answer for an outpost the user has
+      // effect's staleness flag so a late answer for a community the user has
       // navigated away from cannot overwrite the new one.
       onLate: (late) => {
         if (stale || late.length === 0) return;
@@ -3643,7 +3643,7 @@ export function CommsTab({
                 <AlertCircle className="w-6 h-6 text-amber-500/60" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-sm font-brand tracking-wide text-foreground/70">This outpost doesn't have chat yet</h3>
+                <h3 className="text-sm font-brand tracking-wide text-foreground/70">This community doesn't have chat yet</h3>
                 <p className="text-[10px] text-muted-foreground/50 leading-relaxed max-w-xs">
                   Chat needs a relay running NIP-29. You can still start a channel — on a relay that supports it.
                 </p>
@@ -3677,8 +3677,8 @@ export function CommsTab({
             <div className="space-y-1">
               <h3 className="text-sm font-brand tracking-wide text-foreground/70">No rooms yet</h3>
               <p className="text-[10px] text-muted-foreground/50 leading-relaxed max-w-xs">
-                This outpost doesn't have any group chat rooms yet.
-                {pubkey ? " Be the first — create a room!" : " Rooms may be created by the outpost operator in the future."}
+                This community doesn't have any group chat rooms yet.
+                {pubkey ? " Be the first — create a room!" : " Rooms may be created by the community operator in the future."}
               </p>
             </div>
             {pubkey && (

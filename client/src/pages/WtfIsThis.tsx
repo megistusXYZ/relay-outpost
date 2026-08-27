@@ -89,14 +89,14 @@ const FAQ_ITEMS: FAQItem[] = [
     answer: <>Relays are the servers that store and pass along posts — think of them like radio towers your posts broadcast through. You choose which ones to use, and you're never locked to a single one. <strong>Public relays</strong> are open to everyone — great for reach and discovery, where most people start. <strong>Private relays</strong> are invite- or pay-to-join — quieter, less spam, and you can even run your own for personal or business data that never leaves your control. Your relay, your rules.</>,
     searchText: "what is a relay servers store and pass posts radio towers public relays open private relays invite paid run your own business data your relay your rules",
     icon: Radio,
-    tags: ["getting started", "relays & outposts"],
+    tags: ["getting started", "relays & communities"],
   },
   {
-    question: "What's an Outpost?",
-    answer: <>An Outpost is your crew's home base on a relay — one place to speak publicly and privately. Each one comes with <strong>Posts</strong> (a social feed like X), <strong>Discussions</strong> (threaded discussions like Reddit), <strong>Chat</strong> (group chat like Discord), <strong>Articles</strong> (a shared knowledge base like a wiki), and an <strong>About</strong> page. If you run the relay, you also get a dashboard to manage members, moderation, and settings. Your community, your rules.</>,
-    searchText: "what is an outpost community built around a relay home base posts timeline discussions waves chat channels articles horizon about dashboard moderation members your community your rules",
+    question: "What's a Community?",
+    answer: <>A Community is your crew's home base on a relay — one place to speak publicly and privately. Each one comes with <strong>Posts</strong> (a social feed like X), <strong>Discussions</strong> (threaded discussions like Reddit), <strong>Chat</strong> (group chat like Discord), <strong>Articles</strong> (a shared knowledge base like a wiki), and an <strong>About</strong> page. If you run the relay, you also get a dashboard to manage members, moderation, and settings. Your community, your rules.</>,
+    searchText: "what is a community community built around a relay home base posts timeline discussions waves chat channels articles horizon about dashboard moderation members your community your rules",
     icon: OutpostIcon,
-    tags: ["relays & outposts", "social"],
+    tags: ["relays & communities", "social"],
   },
   {
     question: "What's my account key?",
@@ -153,12 +153,12 @@ const GUIDE_ITEMS: GuideItem[] = [
     href: "/help/first-10-minutes",
   },
   {
-    title: "Setting Up Your Outpost",
-    description: "How to discover relay communities, join outposts, and build your home base.",
+    title: "Setting Up Your Community",
+    description: "How to discover relay communities, join communities, and build your home base.",
     icon: Radio,
     iconColor: "text-brand",
     type: "article",
-    tags: ["relays & outposts"],
+    tags: ["relays & communities"],
     href: "/help/setting-up-outpost",
   },
   {
@@ -233,13 +233,13 @@ const DEEP_DIVE_ITEMS: DeepDiveItem[] = [
   },
   {
     title: "Relay Communities vs. Platforms",
-    subtitle: "Why Outposts are the future of online communities",
-    description: "Discord servers, Subreddits, Facebook Groups — all controlled by one company. Outposts are community spaces with no lock-in — if a server disappears, your identity and community connections move with you.",
+    subtitle: "Why Communities are the future of online communities",
+    description: "Discord servers, Subreddits, Facebook Groups — all controlled by one company. Communities are community spaces with no lock-in — if a server disappears, your identity and community connections move with you.",
     icon: Rocket,
     iconColor: "text-brand",
     gradient: "from-brand/10 to-brand/10",
     type: "article",
-    tags: ["relays & outposts", "big ideas", "social"],
+    tags: ["relays & communities", "big ideas", "social"],
     href: "/help/relay-communities",
   },
   {
@@ -280,7 +280,7 @@ const DEEP_DIVE_ITEMS: DeepDiveItem[] = [
 // Tab order leads with the concepts a newcomer meets first in the app
 // (Outposts, the trust-based feed) before the deeper / advanced topics.
 const ALL_TAGS = [
-  "getting started", "relays & outposts", "web of trust",
+  "getting started", "relays & communities", "web of trust",
   "keys & security", "zaps & bitcoin", "social",
   "privacy", "vs other platforms", "big ideas",
 ];
@@ -296,7 +296,7 @@ const FAQ_ORDER_KEYS = [
   "lose my key",       // What if I lose my key?
   "other apps",        // Can I use my account on other apps?
   "a relay?",          // What's a relay?
-  "an Outpost?",       // What's an Outpost?
+  "a Community?",       // What's a Community?
   "are zaps",          // What are zaps?
   "keep spam out",     // How do you keep spam out…
   "see my messages",   // Who can see my messages?

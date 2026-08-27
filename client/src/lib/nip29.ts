@@ -138,7 +138,7 @@ export interface SimpleGroupEntry {
  * default let them drift apart silently, and one of them was already dead: a
  * `|| []` upstream meant CommsTab's permissive default could never fire, so a
  * relay whose HTTP endpoint blipped was told it doesn't do NIP-29 and its
- * rooms disappeared behind "This outpost doesn't have chat yet".
+ * rooms disappeared behind "This community doesn't have chat yet".
  */
 export type Nip29Support = "yes" | "no" | "unknown";
 
@@ -265,7 +265,7 @@ export function buildSimpleGroupsListTags(groups: SimpleGroupEntry[]): string[][
  * `groups: []` alone cannot be read: a relay with no groups and a relay that
  * never replied produce the identical value. This fetch resolves either way —
  * it has no reject path at all — so every caller's `.catch()` was dead code,
- * and a dead relay spent ten seconds arriving at "this outpost has no rooms".
+ * and a dead relay spent ten seconds arriving at "this community has no rooms".
  */
 export interface GroupMetadataResult {
   groups: GroupMetadata[];

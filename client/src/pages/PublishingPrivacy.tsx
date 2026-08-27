@@ -98,7 +98,7 @@ export default function PublishingPrivacy() {
               <ul className="list-disc list-inside space-y-1 text-[13px] text-foreground/60">
                 <li><strong>Public relays</strong> — Maximum reach, but anyone can read your posts</li>
                 <li><strong>Private/paid relays</strong> — Restricted access, higher signal-to-noise ratio</li>
-                <li><strong>Outpost relays</strong> — Community-specific, posts stay within the group</li>
+                <li><strong>Community relays</strong> — Community-specific, posts stay within the group</li>
                 <li><strong>Your own relay</strong> — Complete control, you manage all access</li>
               </ul>
               <p className="text-[12px] text-foreground/50">You can configure read/write settings per relay — broadcasting widely while reading selectively, or vice versa.</p>

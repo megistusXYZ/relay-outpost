@@ -73,7 +73,7 @@ export function ChatTab({ relayUrl, outpostName, isOwner, createChannelOpen, onC
     if (!pubkey || !signer) { toast({ title: "Sign in first", variant: "destructive" }); return; }
     setAdding(true);
     try {
-      // Seed the community's relay set with this outpost's relay, padded to ≤5.
+      // Seed the community's relay set with this community's relay, padded to ≤5.
       const relays = [relayUrl, ...getActiveDefaultRelays()].filter((r, i, a) => a.indexOf(r) === i).slice(0, 5);
       const record = await createCommunity(
         signer, pubkey,
@@ -126,7 +126,7 @@ export function ChatTab({ relayUrl, outpostName, isOwner, createChannelOpen, onC
         <SectionHeader icon={<Lock className="w-3 h-3" aria-hidden="true" />} label="Encrypted rooms" />
         {/*
           ConcordChat's root is `flex flex-1 min-h-0` — it expects a flex parent
-          that HANDS it a height, which is what the standalone outpost page does.
+          that HANDS it a height, which is what the standalone community page does.
           Embedded here it had neither, so `flex-1` resolved to nothing and the
           panel collapsed to its content: a half-empty slab with the composer
           floating mid-page and ~200px of dead air above it.

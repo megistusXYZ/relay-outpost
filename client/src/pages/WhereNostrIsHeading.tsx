@@ -187,7 +187,7 @@ export default function WhereNostrIsHeading() {
           </div>
           <h3 className="text-sm font-bold text-foreground/80 mb-1">The future is being built now</h3>
           <p className="text-xs text-muted-foreground/50 max-w-sm mx-auto leading-relaxed mb-4">
-            Every time you post, zap, or join an Outpost, you're using the infrastructure of the next internet. Not a prototype. Not a beta. The real thing — running on Nostr and Lightning, owned by nobody, available to everybody.
+            Every time you post, zap, or join a Community, you're using the infrastructure of the next internet. Not a prototype. Not a beta. The real thing — running on Nostr and Lightning, owned by nobody, available to everybody.
           </p>
           <div className="flex items-center justify-center gap-3">
             <Link href="/" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-pink-500/10 text-pink-600 dark:text-pink-400 border border-pink-500/20 text-xs font-medium transition-all duration-200 hover:bg-pink-500/15">

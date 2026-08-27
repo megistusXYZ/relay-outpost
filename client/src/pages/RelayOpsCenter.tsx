@@ -125,7 +125,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
         <Radio className="w-10 h-10 text-muted-foreground/50" />
         <h2 className="text-lg font-brand tracking-wider uppercase text-muted-foreground/60">No Admin Relays</h2>
         <p className="text-sm text-muted-foreground/60 text-center max-w-md leading-relaxed">
-          To use Relay Control, first join an outpost you operate from the Relays page. Once connected and active, toggle on the admin controls for that relay to enable management tools.
+          To use Relay Control, first join a community you operate from the Relays page. Once connected and active, toggle on the admin controls for that relay to enable management tools.
         </p>
         <Button variant="ghost" onClick={() => window.location.href = "/relays"} className="text-xs">
           <Radio className="w-3.5 h-3.5 mr-1" /> Go to Relays
@@ -192,7 +192,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
             <button
               onClick={() => navigate(`/outposts/${encodeURIComponent(selectedRelay)}`)}
               className="flex items-center gap-1.5 sm:gap-2 hover:opacity-80 transition-opacity cursor-pointer group min-w-0 max-w-[55vw] sm:max-w-none"
-              title={`Open outpost · ${selectedRelay.replace("wss://", "")}`}
+              title={`Open community · ${selectedRelay.replace("wss://", "")}`}
             >
               <Server className="w-3 h-3 text-muted-foreground/70 shrink-0" />
               <span className="text-xs font-mono text-brand dark:text-brand/70 underline underline-offset-2 decoration-brand/30 truncate">{selectedRelay.replace("wss://", "")}</span>

@@ -196,7 +196,7 @@ export function WtfWelcomeOverlay({ open, onDismiss }: Props) {
             <span
               className="font-brand uppercase tracking-[0.18em] text-[13px] min-[480px]:text-sm font-bold text-foreground dark:text-white"
             >
-              Outpost
+              Community
             </span>
           </div>
 
@@ -241,7 +241,7 @@ export function WtfWelcomeOverlay({ open, onDismiss }: Props) {
                 <Radio className="w-4 h-4" />
               </span>
               <p className="text-[13.5px] leading-snug text-foreground/80 dark:text-white/80 pt-1">
-                An Outpost is your home base for everything you say — public feeds and private rooms in one place. Join one or launch your own, run on your terms — your identity moves with you.
+                A Community is your home base for everything you say — public feeds and private rooms in one place. Join one or launch your own, run on your terms — your identity moves with you.
               </p>
             </li>
           </ul>

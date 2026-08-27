@@ -495,7 +495,7 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
                                       <DropdownMenuItem onClick={() => handleAddOutpost(relay.url)} className="text-xs gap-2 cursor-pointer">
                                         <Satellite className="w-3 h-3 text-brand" />
                                         <div>
-                                          <div className="font-medium">My Outpost</div>
+                                          <div className="font-medium">My Community</div>
                                           <div className="text-[10px] text-muted-foreground/60">Relay I operate</div>
                                         </div>
                                       </DropdownMenuItem>
@@ -879,14 +879,14 @@ export default function RelayDashboard() {
 
   const handleDiscoverAddOutpost = useCallback((url: string) => {
     if (outpostRelays.some(r => r.url.replace(/\/+$/, "").toLowerCase() === url)) {
-      toast({ title: "Already in My Outpost", description: url.replace("wss://", "") });
+      toast({ title: "Already in My Community", description: url.replace("wss://", "") });
       return;
     }
     setOutpostUrl(url.replace(/^wss?:\/\//i, ""));
     setOutpostLabel(url.replace("wss://", "").replace("ws://", "").split(".")[0]);
     setOutpostAccess("public");
     setShowAddOutpost(true);
-    toast({ title: "Fill in outpost details", description: "Set a label and access level for this relay." });
+    toast({ title: "Fill in community details", description: "Set a label and access level for this relay." });
   }, [outpostRelays, toast]);
 
   const addOutpostRelay = () => {
@@ -1761,13 +1761,13 @@ export default function RelayDashboard() {
             <div>
               <AlertDialogTitle className="text-base font-semibold">
                 {confirmAction?.type === "block-relay" ? "Block Relay" :
-                 confirmAction?.type === "remove-outpost" ? "Remove Outpost Relay" : "Remove Relay"}
+                 confirmAction?.type === "remove-outpost" ? "Remove Community Relay" : "Remove Relay"}
               </AlertDialogTitle>
               <AlertDialogDescription className="text-[13px] text-muted-foreground/70 mt-1.5 leading-relaxed">
                 {confirmAction?.type === "block-relay"
                   ? "This relay will be disconnected and excluded from all future connections."
                   : confirmAction?.type === "remove-outpost"
-                  ? "This outpost relay and its configuration will be permanently removed."
+                  ? "This community relay and its configuration will be permanently removed."
                   : "This relay will be disconnected and removed from your custom list."}
               </AlertDialogDescription>
             </div>

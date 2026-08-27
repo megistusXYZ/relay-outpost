@@ -2815,7 +2815,7 @@ export default function Profile() {
                       <button
                         onClick={() => setBadgesExpanded(!badgesExpanded)}
                         aria-expanded={badgesExpanded}
-                        aria-label={`Show ${rest.length} more outpost${rest.length > 1 ? "s" : ""}`}
+                        aria-label={`Show ${rest.length} more community${rest.length > 1 ? "s" : ""}`}
                         className="inline-flex items-center gap-0.5 text-brand/50 hover:text-brand/80 transition-colors shrink-0"
                       >
                         <span className="text-[10px]">+{rest.length} more</span>
@@ -3373,9 +3373,9 @@ function ProfileRelaysTab({ relayList, fetched }: { relayList: RelayPreference[]
       // the label and access model.
       void joinOutpostWithEnrichment(normalized, undefined, myPubkey);
       setMyRelays(prev => new Set([...prev, normalized]));
-      toast({ title: "Joined outpost", description: normalized.replace("wss://", "") });
+      toast({ title: "Joined community", description: normalized.replace("wss://", "") });
     } catch {
-      toast({ title: "Failed to join outpost", variant: "destructive" });
+      toast({ title: "Failed to join community", variant: "destructive" });
     }
   }, [toast, myPubkey]);
 

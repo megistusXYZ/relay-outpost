@@ -1738,7 +1738,7 @@ function OutpostsEmptyStateRow() {
   return (
     <ActionRow
       icon={Compass}
-      label="No Outposts joined yet"
+      label="No Communities joined yet"
       sub="Community relays around a topic — browse and join"
       onClick={() => setLocation("/outposts")}
       testId="card-outposts-empty-state"

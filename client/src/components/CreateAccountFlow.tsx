@@ -1479,7 +1479,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                     )}
                   </div>
 
-                  {/* RSS feed — surfaces in the user's Media outpost */}
+                  {/* RSS feed — surfaces in the user's Media community */}
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-1.5">
                       <Label className={labelBase}>
@@ -1507,7 +1507,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                       autoCorrect="off"
                       data-testid="input-rss"
                     />
-                    <p className={`text-xs ${subtleCls}`}>If set, episodes will appear in your profile's Media outpost.</p>
+                    <p className={`text-xs ${subtleCls}`}>If set, episodes will appear in your profile's Media community.</p>
                   </div>
 
                   {/* Lightning */}

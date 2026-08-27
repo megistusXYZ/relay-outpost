@@ -1034,7 +1034,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback }: { relayUrl: str
                         );
                       })}
                     </div>
-                    <p className="text-[10px] text-muted-foreground/50 mt-1">Uploads from this outpost are stored on the relay's Blossom server.</p>
+                    <p className="text-[10px] text-muted-foreground/50 mt-1">Uploads from this community are stored on the relay's Blossom server.</p>
                   </div>
                 </div>
               )}

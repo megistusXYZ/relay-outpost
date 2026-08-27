@@ -187,7 +187,7 @@ const PILLARS: Pillar[] = [
       </>
     ),
     image: "/images/landing/operate-control.webp",
-    alt: "A person running their outpost from a laptop over coffee in a cafe",
+    alt: "A person running their community from a laptop over coffee in a cafe",
     video: "/videos/operate-control.mp4",
     videoMobile: "/videos/operate-control-mobile.mp4",
   },
@@ -615,7 +615,7 @@ export function LandingMarketing({ onLaunch }: { onLaunch: () => void }) {
             <p className="text-[11px] font-brand uppercase tracking-[0.28em] text-white/65">Resources</p>
             <ul className="mt-4 space-y-2.5">
               {[
-                { label: "Set up your outpost", href: "/help/setting-up-outpost" },
+                { label: "Set up your community", href: "/help/setting-up-outpost" },
                 { label: "Connect a wallet", href: "/help/connecting-wallet" },
                 { label: "Privacy", href: "/privacy" },
                 { label: "Terms", href: "/terms" },

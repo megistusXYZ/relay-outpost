@@ -799,7 +799,7 @@ export function ChatList({
                         separated by a future re-sort or by the virtualization
                         in the perf plan: they were never two items to reorder.
 
-                        DELIBERATELY the outpost branch only, never the group
+                        DELIBERATELY the community branch only, never the group
                         branch below. A group row opens a Concord community via
                         onOpenGroup; these rooms live on a relay and open
                         /outposts/<url>?tab=channels. Hanging them under a

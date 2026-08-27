@@ -71,19 +71,19 @@ describe("sweepNotice — with a named subject", () => {
   // exists on the unreached relay.
   it("names what could not be checked, not what might exist", () => {
     expect(sweepNotice(sweep(14, 1), "reports")).toBe(
-      "Couldn't reach 1 of 14 outpost relays, so reports there can't be checked.",
+      "Couldn't reach 1 of 14 community relays, so reports there can't be checked.",
     );
     expect(sweepNotice(sweep(14, 1), "join requests")).toBe(
-      "Couldn't reach 1 of 14 outpost relays, so join requests there can't be checked.",
+      "Couldn't reach 1 of 14 community relays, so join requests there can't be checked.",
     );
   });
 
   it("keeps the natural singular and all-failed forms", () => {
     expect(sweepNotice(sweep(1, 1), "reports")).toBe(
-      "Couldn't reach your outpost relay, so reports there can't be checked.",
+      "Couldn't reach your community relay, so reports there can't be checked.",
     );
     expect(sweepNotice(sweep(3, 3), "join requests")).toBe(
-      "Couldn't reach any of your outpost relays, so join requests there can't be checked.",
+      "Couldn't reach any of your community relays, so join requests there can't be checked.",
     );
   });
 
@@ -99,7 +99,7 @@ describe("combinedSweepNotice (one actionable card instead of stacked duplicate 
     const b = { sweep: { relaysAttempted: 14, relaysUnreached: 1, unreachedUrls: ["wss://dead.example"] }, subject: "reports" };
     const got = combinedSweepNotice([a, b]);
     expect(got).not.toBeNull();
-    expect(got!.text).toBe("Couldn't reach 1 of 14 outpost relays, so join requests and reports there can't be checked.");
+    expect(got!.text).toBe("Couldn't reach 1 of 14 community relays, so join requests and reports there can't be checked.");
     expect(got!.urls).toEqual(["wss://dead.example"]);
   });
 
@@ -107,7 +107,7 @@ describe("combinedSweepNotice (one actionable card instead of stacked duplicate 
     const a = { sweep: { relaysAttempted: 14, relaysUnreached: 0, unreachedUrls: [] }, subject: "join requests" };
     const b = { sweep: { relaysAttempted: 14, relaysUnreached: 1, unreachedUrls: ["wss://dead.example"] }, subject: "reports" };
     const got = combinedSweepNotice([a, b]);
-    expect(got!.text).toBe("Couldn't reach 1 of 14 outpost relays, so reports there can't be checked.");
+    expect(got!.text).toBe("Couldn't reach 1 of 14 community relays, so reports there can't be checked.");
   });
 
   it("unions distinct failing relays across sweeps and counts the union", () => {

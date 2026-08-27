@@ -59,7 +59,7 @@ export interface StoredCommunity {
   addedAt: number;
   /**
    * Client-side link (v1): if this community provides the encrypted channels for
-   * a relay-backed outpost, the outpost's relay URL. Lets the relay outpost's
+   * a relay-backed outpost, the outpost's relay URL. Lets the relay community's
    * Chat tab surface Concord channels alongside its legacy NIP-29 rooms. Not on
    * the wire — a local convenience only.
    */

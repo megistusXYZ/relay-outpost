@@ -567,7 +567,7 @@ function EventNotFound({
               className="w-full gap-2 border-brand/20 hover:border-brand/40 hover:bg-brand/5"
             >
               <Radio className="w-4 h-4" />
-              Browse your outposts
+              Browse your communities
             </Button>
           )}
 

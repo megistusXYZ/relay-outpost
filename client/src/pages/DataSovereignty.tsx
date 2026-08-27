@@ -179,7 +179,7 @@ export default function DataSovereignty() {
                 <Link href="/settings/danger" className="text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:no-underline">
                   Settings → Advanced &amp; danger zone → Vanish from relays
                 </Link>
-                . Outpost also wipes your encrypted key, resume-signup draft, and
+                . Community also wipes your encrypted key, resume-signup draft, and
                 bunker config from this device the moment at least one relay accepts.
                 Caveat: non-compliant relays and clients that already cached your
                 posts may still hold copies — no client can reach into someone
