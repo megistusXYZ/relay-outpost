@@ -9,7 +9,7 @@
  * 85, location on 37. Content duplicates summary on many.
  */
 import { describe, expect, it } from "vitest";
-import { parseListing, formatListingPrice, listingWebUrl, pickMarketListings, rankListingCategories, filterListings } from "./listing";
+import { parseListing, formatListingPrice, listingWebUrl, pickMarketListings, rankListingCategories, filterListings, rankListingsTrustFirst } from "./listing";
 
 const PK = "a".repeat(64);
 const listing = (tags: string[][], content = "") =>
@@ -138,6 +138,29 @@ describe("pickMarketListings — assembling a browse surface from raw relay even
       { flagged: new Set([A]) },
     );
     expect(out).toHaveLength(0);
+  });
+});
+
+describe("rankListingsTrustFirst — vouched sellers float, nobody sinks for missing data", () => {
+  const S = "5".repeat(64); // strong seller
+  const M = "6".repeat(64); // moderate
+  const U = "7".repeat(64); // unknown
+  const mk = (pk: string, d: string, extra: string[][] = []) =>
+    parseListing({ id: d.padEnd(8, "0"), kind: 30402, pubkey: pk, created_at: 100,
+      content: "", sig: "", tags: [["d", d], ["title", "T"], ...extra] } as never)!;
+  const tierOf = (pk: string) => (pk === S ? "strong" : pk === M ? "moderate" : "none");
+
+  it("graph-trusted sellers lead, preserving incoming order within each band", () => {
+    const out = rankListingsTrustFirst([mk(U, "u1"), mk(M, "m1"), mk(U, "u2"), mk(S, "s1")], tierOf);
+    expect(out.map((l) => l.dTag)).toEqual(["s1", "m1", "u1", "u2"]);
+  });
+
+  it("sold stays behind active no matter how trusted the seller", () => {
+    const out = rankListingsTrustFirst(
+      [mk(U, "u-active"), mk(S, "s-sold", [["status", "sold"]])],
+      tierOf,
+    );
+    expect(out.map((l) => l.dTag)).toEqual(["u-active", "s-sold"]);
   });
 });
 

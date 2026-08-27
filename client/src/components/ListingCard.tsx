@@ -13,11 +13,13 @@
  *    silence), so profiles without a shop carry zero clutter.
  */
 import { useEffect, useMemo, useState } from "react";
+import { formatDistanceToNow } from "date-fns";
+import { useAttestations } from "@/hooks/use-attestations";
 import { Link } from "wouter";
 import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
 import { use$ } from "applesauce-react/hooks";
-import { Tag, MessageCircle, MapPin, ExternalLink, Flag, ShieldAlert } from "lucide-react";
+import { Tag, MessageCircle, MapPin, ExternalLink, Flag, ShieldAlert, BadgeCheck, ChevronDown } from "lucide-react";
 import { ReportDialog } from "@/components/ReportDialog";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { getSignalTier, getSignalTierLabel } from "@/lib/graperank";
@@ -38,6 +40,74 @@ function useSellerIdentity(pubkey: string) {
   let npub = pubkey;
   try { npub = nip19.npubEncode(pubkey); } catch {}
   return { name, avatarUrl: getAvatarUrl(profile ?? undefined), npub };
+}
+
+function VoucherChip({ pubkey }: { pubkey: string }) {
+  const who = useSellerIdentity(pubkey);
+  return (
+    <span className="flex items-center gap-1.5 min-w-0 shrink-0">
+      <Avatar className="w-4 h-4 border border-border/40">
+        <AvatarImage src={who.avatarUrl} alt={who.name} />
+        <AvatarFallback className="bg-brand/10 text-brand text-[7px] font-semibold">{who.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+      </Avatar>
+      <span className="text-[11px] font-medium truncate max-w-[110px]">{who.name}</span>
+    </span>
+  );
+}
+
+/**
+ * Seller reputation — the un-gameable review panel. Vouches are signed
+ * kind-31871 statements from identifiable people (positive-only by design),
+ * surfaced with progressive disclosure: a count line, tap for quotes, the
+ * profile for everything. Absence shows NOTHING — no seller is accused of
+ * being unvouched (PersonBadges philosophy, same as the tier chip above).
+ */
+function SellerVouches({ pubkey, sellerNpub }: { pubkey: string; sellerNpub: string }) {
+  const { attestations, fetched, fetch } = useAttestations(pubkey);
+  useEffect(() => { fetch(); }, [fetch]);
+  const [expanded, setExpanded] = useState(false);
+  const vouches = useMemo(
+    () => attestations.filter((a) => a.status !== "revoked" && a.status !== "rejected"),
+    [attestations],
+  );
+  if (!fetched || vouches.length === 0) return null;
+  return (
+    <div className="border-t border-border/40 pt-3 space-y-2" data-testid="listing-vouches">
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center gap-1.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400"
+        data-testid="listing-vouches-toggle"
+      >
+        <BadgeCheck className="w-3.5 h-3.5" />
+        Vouched for by {vouches.length} {vouches.length === 1 ? "person" : "people"} on the network
+        <ChevronDown className={`w-3.5 h-3.5 ml-auto text-muted-foreground/60 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
+      </button>
+      {expanded && (
+        <div className="space-y-2.5">
+          {vouches.slice(0, 3).map((v) => (
+            <div key={v.eventId} className="rounded-lg bg-muted/30 dark:bg-muted/15 px-3 py-2" data-testid={`listing-vouch-${v.eventId.slice(0, 8)}`}>
+              <div className="flex items-center gap-2">
+                <VoucherChip pubkey={v.attesterPubkey} />
+                <span className="ml-auto text-[10px] text-muted-foreground/60 tabular-nums shrink-0">
+                  {formatDistanceToNow(new Date(v.createdAt * 1000), { addSuffix: true })}
+                </span>
+              </div>
+              {v.content.trim() && (
+                <p className="mt-1 text-[12px] text-foreground/75 leading-relaxed line-clamp-2">{v.content.trim()}</p>
+              )}
+            </div>
+          ))}
+          <Link
+            href={`/profile/${sellerNpub}`}
+            className="block text-[11px] text-brand hover:text-brand-strong transition-colors"
+            data-testid="listing-vouches-all"
+          >
+            See all vouches on their profile →
+          </Link>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function SoldChip() {
@@ -160,6 +230,7 @@ export function ListingDialog({ listing, open, onOpenChange }: { listing: Listin
                 )}
               </div>
             </div>
+            <SellerVouches pubkey={listing.pubkey} sellerNpub={seller.npub} />
             {/* Quiet by design: reporting should be findable, never shouting.
                 Files a standard NIP-56 report on the listing event itself. */}
             <button
