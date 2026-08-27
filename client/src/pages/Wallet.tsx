@@ -22,7 +22,7 @@ import { ProfileSearchInput, type SelectedRecipient } from "@/components/Profile
 import { fetchProfilesCached, pool, DEFAULT_RELAYS, eventStore, getRelaysForPurpose, publishEvent, verifySignedEventKind } from "@/lib/nostr";
 import { fetchNpubCashClaimable } from "@/lib/npubcash-api";
 import { localSweepKey, sweepNpubCash, type SweepOutcome } from "@/lib/npubcash-sweep";
-import { readStash, stashTotalSats } from "@/lib/npubcash-sweep-core";
+import { readIssuedQuotes, readStash, stashTotalSats } from "@/lib/npubcash-sweep-core";
 import type { ISigner } from "applesauce-signers";
 import type { Event as NostrToolsEvent } from "nostr-tools";
 import { isNpubCashAddress, sumZapSats, NPUB_CASH_CLAIM_URL } from "@/lib/npubcash";
@@ -303,8 +303,23 @@ interface ZapEnrichment {
  * we didn't ask, and unparseable amounts add zero). No answer → no number —
  * the card still explains where zaps go, which is the part that must not wait.
  */
+/** "1 sat", "63 sats" — money copy must never say "1 sats" (live-fire 2026-08-26). */
+const fmtSats = (n: number) => `${n.toLocaleString()} sat${n === 1 ? "" : "s"}`;
+
+/** Sweep stages in words a first-time user understands — never the raw stage names. */
+function sweepProgressLabel(stage: string, detail?: string): string {
+  switch (stage) {
+    case "quotes": return "Checking what's waiting for you…";
+    case "minting": return detail ? `Collecting ${detail}…` : "Collecting your sats…";
+    case "invoice": return detail ? `Preparing to send ${detail}…` : "Preparing to send…";
+    case "melting": return detail ? `Sending ${detail} to your wallet…` : "Sending to your wallet…";
+    default: return "Working…";
+  }
+}
+
 function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | null; lud16: string | null; signer: ISigner | null }) {
   const show = isNpubCashAddress(lud16);
+  const [showHow, setShowHow] = useState(false);
   // Two sources, one honest ladder: the service's OWN claimable ledger when
   // its API answers (exact, works for every signer type — NIP-98 is a plain
   // nostr event), else the relay receipts as an "at least" floor, else no
@@ -315,7 +330,7 @@ function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | nul
     if (!show || !myPubkey) return;
     let cancelled = false;
     if (signer) {
-      fetchNpubCashClaimable(signer)
+      fetchNpubCashClaimable(signer, readIssuedQuotes(myPubkey))
         .then((r) => { if (!cancelled && r.reached && r.data) setExact(r.data); })
         .catch(() => {});
     }
@@ -400,10 +415,10 @@ function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | nul
         signer,
         privkeyHex: sweepKey,
         getInvoice,
-        onProgress: (p) => setProgress(p.detail ? `${p.stage} · ${p.detail}` : p.stage),
+        onProgress: (p) => setProgress(sweepProgressLabel(p.stage, p.detail)),
       });
       setOutcome(res);
-      fetchNpubCashClaimable(signer)
+      fetchNpubCashClaimable(signer, readIssuedQuotes(myPubkey))
         .then((r) => { if (r.reached && r.data) setExact(r.data); })
         .catch(() => {});
     } catch (e) {
@@ -411,6 +426,7 @@ function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | nul
         results: [],
         strandedSats: myPubkey ? stashTotalSats(readStash(myPubkey)) : 0,
         problems: [e instanceof Error ? e.message : "Sweep failed — nothing moved."],
+        alreadyClaimedSats: 0,
       });
     } finally {
       setSweeping(false);
@@ -427,42 +443,67 @@ function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | nul
       <CardContent className="p-4 space-y-2.5">
         <div className="flex items-center gap-2">
           <BtcZapIcon className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-          <span className="text-sm font-semibold">Your zaps are waiting at npub.cash</span>
+          <span className="text-sm font-semibold">
+            {(exact?.sats ?? 0) + stashSats > 0 ? "You have sats ready to collect" : "Where your zaps land"}
+          </span>
         </div>
+        {/* One honest sentence up front; the full custody detail is a tap away.
+            The short line must still say WHO holds the money — that part never
+            hides behind the fold. */}
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Your profile's lightning address (<span className="font-mono break-all">{lud16.length > 40 ? `${lud16.slice(0, 14)}…@npub.cash` : lud16}</span>)
-          is an npub.cash address. Zaps sent to you really do go through — they settle at npub.cash,
-          an independent third-party service. Funds there are held by npub.cash — not by Relay
-          Outpost — until you claim them with this account's key.
+          When someone zaps you, the sats wait for you at npub.cash — an independent service.
+          Relay Outpost never holds your money.{" "}
+          <button
+            type="button"
+            onClick={() => setShowHow((v) => !v)}
+            className="underline underline-offset-2 hover:text-foreground"
+            data-testid="button-npubcash-how"
+          >
+            {showHow ? "Hide details" : "How this works"}
+          </button>
         </p>
-        {exact !== null && exact.count > 0 ? (
-          <p className="text-xs font-medium text-amber-700 dark:text-amber-400" data-testid="text-npubcash-exact">
-            {exact.sats.toLocaleString()} sats across {exact.count} {exact.count === 1 ? "payment" : "payments"} are waiting to be claimed.
+        {showHow && (
+          <p className="text-xs text-muted-foreground leading-relaxed" data-testid="text-npubcash-how">
+            Your profile's lightning address (<span className="font-mono break-all">{lud16.length > 40 ? `${lud16.slice(0, 14)}…@npub.cash` : lud16}</span>)
+            points at npub.cash, so zaps sent to you really do go through — they settle there,
+            locked to this account's key. Only this account can collect them; collecting moves
+            them first onto this device, then on to any wallet you choose. Until then they're
+            held by npub.cash, not by Relay Outpost.
           </p>
-        ) : exact !== null && exact.count === 0 ? (
+        )}
+        {(exact !== null || stashSats > 0) && (exact?.sats ?? 0) + stashSats > 0 ? (
+          <div className="space-y-0.5">
+            <p className="text-xs font-medium text-amber-700 dark:text-amber-400" data-testid="text-npubcash-exact">
+              {fmtSats((exact?.sats ?? 0) + stashSats)} ready to move to your own wallet.
+            </p>
+            {/* Breakdown only when the total has two homes — one number is
+                calmer when it doesn't. */}
+            {(exact?.sats ?? 0) > 0 && stashSats > 0 ? (
+              <p className="text-[11px] text-muted-foreground" data-testid="text-npubcash-stash">
+                {fmtSats(exact!.sats)} waiting at npub.cash · {fmtSats(stashSats)} already collected on this device.
+              </p>
+            ) : stashSats > 0 ? (
+              <p className="text-[11px] text-muted-foreground" data-testid="text-npubcash-stash">
+                Already collected on this device — send them on to finish.
+              </p>
+            ) : null}
+          </div>
+        ) : exact !== null && exact.count === 0 && stashSats === 0 ? (
           // The service itself answered "nothing unclaimed" — an honest
           // all-clear, distinct from silence.
           <p className="text-xs text-muted-foreground" data-testid="text-npubcash-clear">
-            Nothing unclaimed right now.
+            Nothing waiting right now. When someone zaps you, it shows up here.
           </p>
-        ) : waiting !== null && waiting.count > 0 ? (
+        ) : exact === null && waiting !== null && waiting.count > 0 ? (
           <p className="text-xs font-medium text-amber-700 dark:text-amber-400" data-testid="text-npubcash-waiting">
-            At least {waiting.sats.toLocaleString()} sats across {waiting.count} {waiting.count === 1 ? "zap" : "zaps"} have been sent to you.
+            At least {fmtSats(waiting.sats)} across {waiting.count} {waiting.count === 1 ? "zap" : "zaps"} have been sent to you.
           </p>
         ) : null}
-        {/* Interrupted-sweep recovery: claimed ecash held on THIS device is
-            invisible to npub.cash (those quotes are ISSUED) — this line is the
-            only surface that knows about it, so it must always show. */}
-        {stashSats > 0 && (
-          <p className="text-xs font-medium text-amber-700 dark:text-amber-400" data-testid="text-npubcash-stash">
-            {stashSats.toLocaleString()} sats you already claimed are stored locally in your browser, under your key — only you can move them. Sweep to finish sending them to your own wallet.
-          </p>
-        )}
 
         {sweeping && (
           <p className="text-xs text-muted-foreground flex items-center gap-2" data-testid="text-sweep-progress">
             <RelayOutpostInlineLoader className="w-3 h-3" />
-            {progress ?? "Sweeping…"}
+            {progress ?? "Working…"}
           </p>
         )}
 
@@ -505,6 +546,13 @@ function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | nul
                 Cancel
               </Button>
             </div>
+            <p className="text-[11px] text-muted-foreground/80" data-testid="text-sweep-no-wallet-hint">
+              No Lightning wallet yet?{" "}
+              <a href="https://primal.net/downloads" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">Primal</a>
+              {" "}or{" "}
+              <a href="https://coinos.io" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">Coinos</a>
+              {" "}takes about a minute to set up — then come back and type your new address here.
+            </p>
           </div>
         )}
 
@@ -512,11 +560,19 @@ function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | nul
           <div className="space-y-1" data-testid="sweep-outcome">
             {outcome.results.map((r) => (
               <p key={r.mintUrl} className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                Swept {r.sweptSats.toLocaleString()} sats to your wallet
-                {r.feeSats > 0 ? ` (${r.feeSats} sat${r.feeSats === 1 ? "" : "s"} network fee)` : ""}
-                {r.changeSats > 0 ? ` — ${r.changeSats} sats change stored locally in your browser, under your key` : ""}.
+                ⚡ {fmtSats(r.sweptSats)} arrived in your wallet
+                {r.feeSats > 0 ? ` (network fee: ${fmtSats(r.feeSats)})` : ""}
+                {r.changeSats > 0 ? `. ${fmtSats(r.changeSats)} in change stayed on this device and will go along next time` : ""}.
               </p>
             ))}
+            {/* "Quote already issued" used to render here as two scary errors
+                about money the user already HAS. One calm line instead. */}
+            {outcome.alreadyClaimedSats > 0 && (
+              <p className="text-xs text-muted-foreground" data-testid="text-sweep-already-claimed">
+                {fmtSats(outcome.alreadyClaimedSats)} listed as waiting were already collected earlier —
+                nothing is missing, and they won't be counted again.
+              </p>
+            )}
             {outcome.problems.map((p, i) => (
               <p key={i} className="text-xs text-amber-700 dark:text-amber-400">{p}</p>
             ))}
@@ -532,7 +588,7 @@ function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | nul
               className="h-9 bg-amber-500/90 hover:bg-amber-500 text-black"
               data-testid="button-npubcash-sweep"
             >
-              {sweeping ? "Sweeping…" : nwcConnected ? "Sweep to connected wallet" : "Sweep to a Lightning invoice"}
+              {sweeping ? "Sending…" : nwcConnected ? "Send to connected wallet" : "Send to my wallet"}
             </Button>
           ) : (
             <a
@@ -542,7 +598,7 @@ function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | nul
               className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-amber-500/15 border border-amber-500/40 text-xs font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-500/25 transition-colors"
               data-testid="link-npubcash-claim"
             >
-              Claim at npub.cash
+              Collect at npub.cash
               <ExternalLink className="w-3 h-3" />
             </a>
           )}
@@ -559,7 +615,7 @@ function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | nul
             signers rightly never hand over. */}
         {!sweepKey && (
           <p className="text-[11px] text-muted-foreground/70">
-            In-app sweep needs your key on this device; extension and remote-signer accounts claim at npub.cash instead.
+            Collecting inside the app needs this account's key on this device. Extension and remote-signer accounts collect at npub.cash instead.
           </p>
         )}
       </CardContent>

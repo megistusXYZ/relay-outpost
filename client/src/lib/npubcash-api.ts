@@ -49,12 +49,21 @@ export function buildNip98Template(url: string, method: string): EventTemplate {
   };
 }
 
-/** PAID = settled by the sender, not yet issued to the owner: the claimable set. */
-export function claimableFromQuotes(quotes: readonly NpcQuote[]): { sats: number; count: number } {
+/**
+ * PAID = settled by the sender, not yet issued to the owner: the claimable
+ * set. `knownIssued` subtracts quotes this device has already seen ISSUED at
+ * the mint — npub.cash never learns about issuance, so its ledger re-lists
+ * claimed money as PAID forever (live-fire 2026-08-26).
+ */
+export function claimableFromQuotes(
+  quotes: readonly NpcQuote[],
+  knownIssued?: ReadonlySet<string>,
+): { sats: number; count: number } {
   let sats = 0;
   let count = 0;
   for (const q of quotes) {
     if (q.state !== "PAID") continue;
+    if (knownIssued?.has(q.quoteId)) continue;
     count++;
     sats += q.amount;
   }
@@ -70,10 +79,11 @@ export function claimableFromQuotes(quotes: readonly NpcQuote[]): { sats: number
  */
 export async function fetchNpubCashClaimable(
   signer: ISigner,
+  knownIssued?: ReadonlySet<string>,
 ): Promise<Reached<{ sats: number; count: number } | null>> {
   const quotes = await fetchNpubCashQuotes(signer);
   if (!quotes.reached || !quotes.data) return { data: null, reached: false };
-  return { data: claimableFromQuotes(quotes.data), reached: true };
+  return { data: claimableFromQuotes(quotes.data, knownIssued), reached: true };
 }
 
 /** The raw quote history — the sweep needs quote ids and mint urls, not sums. */
