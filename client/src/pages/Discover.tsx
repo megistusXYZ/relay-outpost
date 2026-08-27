@@ -25,7 +25,7 @@ import { queryClient } from "@/lib/queryClient";
 import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
 import { formatDistanceToNow } from "date-fns";
-import { Newspaper, TrendingUp, Users, BookOpen, ChevronRight, Radio, Headphones, Calendar, Clapperboard, Hash , ImageIcon } from "lucide-react";
+import { Newspaper, TrendingUp, Users, BookOpen, ChevronRight, Radio, Headphones, Calendar, Clapperboard, Hash, ImageIcon, Tag } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SearchPill } from "@/components/SearchPill";
@@ -55,10 +55,12 @@ import {
   fetchNextCalendarEvent,
   fetchVideoTeaser,
   fetchImagesTeaser,
+  fetchMarketShelf,
   fetchNetworkTopics,
   feedSnippet,
   type CommunityPulse,
   type VideoTeaser,
+  type MarketTeaser,
 } from "@/lib/discover-data";
 import { mergeFeedItems, pickHero, type MergedItem } from "@/lib/rss-merge";
 import { loadEdition } from "@/lib/news-edition";
@@ -1121,6 +1123,74 @@ function VideosTile() {
   );
 }
 
+// ── Marketplace shelf ────────────────────────────────────────────────────────
+
+/**
+ * A commerce door that shows the goods (ImagesShelf precedent): up to six
+ * product thumbnails with price chips, from NIP-99 listings across the
+ * network (Conduit's relay leads). Tap → /marketplace.
+ */
+function MarketplaceShelfTile() {
+  const [, setLocation] = useLocation();
+  const [teaser, setTeaser] = useState<Reached<MarketTeaser[] | null> | null>(null);
+  const seq = useRef(0);
+  const load = useCallback(() => {
+    const id = ++seq.current;
+    setTeaser(null);
+    fetchMarketShelf()
+      .then((r) => { if (seq.current === id) setTeaser(r); })
+      .catch(() => { if (seq.current === id) setTeaser({ data: null, reached: false }); });
+  }, []);
+  useEffect(() => { load(); return () => { seq.current++; }; }, [load]);
+
+  const state = resolveTile(teaser);
+  const items = state.status === "ready" ? state.data : null;
+  const freshItems = useMemo<FreshItem[] | null>(
+    () => (items && items.length > 0 ? items.map((i) => ({ id: i.id, timeMs: i.timeMs })) : null),
+    [items],
+  );
+  const freshN = useTileFresh("market", freshItems);
+
+  return (
+    <TileShell
+      icon={Tag}
+      label="Marketplace"
+      chip={freshN > 0 ? <FreshChip count={freshN} /> : undefined}
+      fresh={freshN > 0}
+      onOpen={() => { stampReported("market"); setLocation("/marketplace"); }}
+      testId="tile-marketplace"
+      footer={state.status === "unreachable" ? <RetryFooter onRetry={load} testId="button-retry-marketplace" /> : undefined}
+    >
+      {state.status === "loading" && <TileSkeleton />}
+      {state.status === "ready" && items && items.length > 0 && (
+        <span
+          className="grid grid-cols-3 sm:grid-cols-6 gap-px -mx-3 sm:-mx-4 -mb-3 sm:-mb-4 mt-1"
+          data-testid="marketplace-shelf-strip"
+        >
+          {items.slice(0, 6).map((it) => (
+            <span key={it.id} className="relative block aspect-square bg-muted/30 overflow-hidden" data-testid={`marketplace-shelf-thumb-${it.id.slice(0, 8)}`}>
+              <img
+                src={it.image}
+                alt={it.title}
+                loading="lazy"
+                className="w-full h-full object-cover"
+                onError={(e) => { e.currentTarget.style.display = "none"; }}
+              />
+              {it.priceLine && (
+                <span className="absolute bottom-1 left-1 rounded bg-black/65 px-1 py-0.5 text-[10px] font-medium text-white tabular-nums">
+                  {it.priceLine}
+                </span>
+              )}
+            </span>
+          ))}
+        </span>
+      )}
+      {state.status === "empty" && <span className="block text-xs text-muted-foreground">Quiet right now — tap to browse.</span>}
+      {state.status === "unreachable" && unreachableBody("the marketplace relays")}
+    </TileShell>
+  );
+}
+
 // ── Images shelf ─────────────────────────────────────────────────────────────
 
 /**
@@ -1313,6 +1383,10 @@ export default function Discover() {
             shelf-shaped door suits images — it shows the pictures. */}
         <div className="md:col-span-3">
           <ImagesShelfTile />
+        </div>
+        {/* Commerce door, same shelf grammar: show the goods, price chips on. */}
+        <div className="md:col-span-3">
+          <MarketplaceShelfTile />
         </div>
         {/* Additive: renders nothing without two distinct-author topics. */}
         <div className="md:col-span-3 empty:hidden">

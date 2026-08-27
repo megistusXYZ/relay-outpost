@@ -9,7 +9,7 @@
  * 85, location on 37. Content duplicates summary on many.
  */
 import { describe, expect, it } from "vitest";
-import { parseListing, formatListingPrice, listingWebUrl } from "./listing";
+import { parseListing, formatListingPrice, listingWebUrl, pickMarketListings } from "./listing";
 
 const PK = "a".repeat(64);
 const listing = (tags: string[][], content = "") =>
@@ -97,5 +97,36 @@ describe("listingWebUrl — where 'view / buy' should take a person", () => {
 
   it("ignores non-http r values", () => {
     expect(listingWebUrl(base([["r", "wss://relay.example"]])).via).toBe("conduit");
+  });
+});
+
+describe("pickMarketListings — assembling a browse surface from raw relay events", () => {
+  const ev = (pubkey: string, d: string, createdAt: number, extra: string[][] = [], title = "Item") =>
+    ({ id: `${pubkey.slice(0, 4)}-${d}-${createdAt}`, kind: 30402, pubkey, created_at: createdAt,
+       content: "", sig: "", tags: [["d", d], ["title", title], ...extra] }) as never;
+  const A = "a".repeat(64);
+  const B = "b".repeat(64);
+
+  it("keeps only the newest version of each addressable coordinate", () => {
+    const out = pickMarketListings([ev(A, "x", 100, [], "Old"), ev(A, "x", 200, [], "New")]);
+    expect(out).toHaveLength(1);
+    expect(out[0].title).toBe("New");
+  });
+
+  it("active listings lead; sold trail; newest first within each group", () => {
+    const out = pickMarketListings([
+      ev(A, "sold-new", 400, [["status", "sold"]]),
+      ev(A, "act-old", 100),
+      ev(B, "act-new", 300),
+    ]);
+    expect(out.map((l) => l.dTag)).toEqual(["act-new", "act-old", "sold-new"]);
+  });
+
+  it("drops unrenderable events and flagged sellers", () => {
+    const out = pickMarketListings(
+      [ev(A, "ok", 100), { id: "z", kind: 30402, pubkey: B, created_at: 50, content: "", sig: "", tags: [["d", "untitled"]] } as never],
+      { flagged: new Set([A]) },
+    );
+    expect(out).toHaveLength(0);
   });
 });
