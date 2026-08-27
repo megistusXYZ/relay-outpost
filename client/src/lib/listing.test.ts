@@ -9,7 +9,7 @@
  * 85, location on 37. Content duplicates summary on many.
  */
 import { describe, expect, it } from "vitest";
-import { parseListing, formatListingPrice } from "./listing";
+import { parseListing, formatListingPrice, listingWebUrl } from "./listing";
 
 const PK = "a".repeat(64);
 const listing = (tags: string[][], content = "") =>
@@ -73,5 +73,29 @@ describe("formatListingPrice", () => {
 
   it("an unparsable amount renders as-is rather than NaN", () => {
     expect(formatListingPrice({ amount: "a lot", currency: "USD" })).toBe("a lot USD");
+  });
+});
+
+describe("listingWebUrl — where 'view / buy' should take a person", () => {
+  const base = (tags: string[][]) => parseListing(listing([["d", "coffee-1"], ["title", "T"], ...tags]))!;
+
+  it("honors the seller's own declared page first (r tag, human web page)", () => {
+    const out = listingWebUrl(base([["r", "https://barattolo.store"]]));
+    expect(out).toEqual({ url: "https://barattolo.store", via: "seller" });
+  });
+
+  it("never sends a person to a machine endpoint (measured: api.* r tags on live listings)", () => {
+    const out = listingWebUrl(base([["r", "https://api.the402.ai/v1/services/svc_df741e"]]));
+    expect(out.via).toBe("conduit");
+  });
+
+  it("falls back to the Conduit shop page built from the coordinate (measured URL scheme)", () => {
+    const out = listingWebUrl(base([]));
+    expect(out.via).toBe("conduit");
+    expect(out.url).toBe(`https://shop.conduit.market/products/${encodeURIComponent(`30402:${PK}:coffee-1`)}`);
+  });
+
+  it("ignores non-http r values", () => {
+    expect(listingWebUrl(base([["r", "wss://relay.example"]])).via).toBe("conduit");
   });
 });
