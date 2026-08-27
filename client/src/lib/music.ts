@@ -851,6 +851,8 @@ export async function fetchWavlakePodcasts(searchIndex = 0): Promise<MusicTrack[
   }
 }
 
+import { podcastCategoryNames } from "@/lib/podcast-categories";
+
 export interface TrendingPodcast {
   id: number;
   title: string;
@@ -875,7 +877,12 @@ export async function fetchPodcastIndexTrending(): Promise<TrendingPodcast[]> {
     const res = await fetch("/api/podcastindex/trending");
     if (!res.ok) return [];
     const json = await res.json();
-    const feeds: TrendingPodcast[] = json.feeds || [];
+    // categories arrives as an id→name map from the server — normalize to the
+    // names array every renderer expects (the /search crash class).
+    const feeds: TrendingPodcast[] = (json.feeds || []).map((f: TrendingPodcast & { categories: unknown }) => ({
+      ...f,
+      categories: podcastCategoryNames(f.categories),
+    }));
     trendingPodcastCache = { data: feeds, fetchedAt: Date.now() };
     return feeds;
   } catch {
