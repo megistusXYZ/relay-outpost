@@ -1,6 +1,6 @@
 import type { Event as NostrEvent } from "nostr-tools";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { pool, publishEvent } from "@/lib/nostr";
+import { pool, publishEvent, FAST_RELAYS } from "@/lib/nostr";
 import { type Nip11Document } from "@/lib/nip11";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +29,8 @@ import {
   type CurationSet,
   type CurationItem,
 } from "@/lib/curation-set";
+import { FeaturedContentPicker, curationItemKey } from "@/components/FeaturedContentPicker";
+import { Switch } from "@/components/ui/switch";
 import {
   Sparkles,
   Plus,
@@ -84,6 +86,11 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
   const [pasteValue, setPasteValue] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CurationSet | null>(null);
+  const [pickerPubkey, setPickerPubkey] = useState<string | null>(null);
+  // Source events for picked items, keyed by curationItemKey — lets the
+  // copy-to-relay step rebroadcast without refetching what we just browsed.
+  const [pickedEvents] = useState(() => new Map<string, NostrEvent>());
+  const [copyToRelay, setCopyToRelay] = useState(true);
 
   const refresh = useCallback(async () => {
     setLoaded(false);
@@ -115,7 +122,8 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
       return;
     }
     if (parsed.type === "profile") {
-      toast({ title: "That's a person", description: "Browsing a profile to pick their content is coming next — for now paste a link to the specific post, article, or stream." });
+      setPickerPubkey(parsed.pubkey);
+      setPasteValue("");
       return;
     }
     setDraft({ ...draft, items: [...draft.items, parsed] });
@@ -135,6 +143,41 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
     if (!draft) return;
     setDraft({ ...draft, items: draft.items.filter((_, i) => i !== index) });
   }, [draft]);
+
+  /**
+   * Rebroadcast the featured events onto the operator's own relay so it
+   * genuinely SERVES what it features — events are signed and portable, a
+   * copy is byte-identical. Picker picks come from the cache; pasted refs are
+   * fetched (hints first, then defaults). Returns how many landed; failures
+   * are per-item and never block the feed publish itself.
+   */
+  const copyItemsToRelay = useCallback(async (items: CurationItem[]): Promise<{ copied: number; copyable: number }> => {
+    const targets: NostrEvent[] = [];
+    const noteIds: string[] = [];
+    const hints = new Set<string>();
+    const addrs: { kind: number; pubkey: string; identifier: string }[] = [];
+    for (const item of items) {
+      if (item.type === "url") continue;
+      const cached = pickedEvents.get(curationItemKey(item));
+      if (cached) { targets.push(cached); continue; }
+      if (item.relayHint) hints.add(item.relayHint);
+      if (item.type === "note") noteIds.push(item.id);
+      else addrs.push(item);
+    }
+    const relays = [...hints, ...FAST_RELAYS];
+    const fetched = await Promise.all([
+      noteIds.length ? pool.querySync(relays, { ids: noteIds }).catch(() => [] as NostrEvent[]) : Promise.resolve([] as NostrEvent[]),
+      ...addrs.map((a) =>
+        pool.querySync(relays, { kinds: [a.kind], authors: [a.pubkey], "#d": [a.identifier], limit: 1 }).catch(() => [] as NostrEvent[]),
+      ),
+    ]);
+    targets.push(...fetched.flat());
+    const seen = new Set<string>();
+    const unique = targets.filter((ev) => !seen.has(ev.id) && seen.add(ev.id));
+    const results = await Promise.all(unique.map((ev) => publishEvent(ev, [relayUrl]).catch(() => false)));
+    const copyable = items.filter((i) => i.type !== "url").length;
+    return { copied: results.filter(Boolean).length, copyable };
+  }, [pickedEvents, relayUrl]);
 
   const publish = useCallback(async () => {
     if (!draft || !signer || !pubkey) return;
@@ -167,15 +210,20 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
           return [parsed, ...rest];
         });
       }
+      let copyNote = "";
+      if (copyToRelay) {
+        const { copied, copyable } = await copyItemsToRelay(draft.items);
+        if (copyable > 0) copyNote = ` Copied ${copied} of ${copyable} items onto the relay.`;
+      }
       setDraft(null);
-      toast({ title: "Feed published", description: "It's live on this relay's Featured tab." });
+      toast({ title: "Feed published", description: `It's live on this relay's Featured tab.${copyNote}` });
     } catch (err) {
       if (isSignerError(err)) handleSignerError(err, toast);
       else toast({ title: "Couldn't publish", description: err instanceof Error ? err.message : "The relay didn't accept the feed.", variant: "destructive" });
     } finally {
       setPublishing(false);
     }
-  }, [draft, signer, pubkey, relayUrl, toast]);
+  }, [draft, signer, pubkey, relayUrl, toast, copyToRelay, copyItemsToRelay]);
 
   const deleteFeed = useCallback(async (set: CurationSet) => {
     if (!signer || !pubkey) return;
@@ -204,6 +252,7 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
 
   const mine = useMemo(() => sets.filter((s) => s.pubkey === pubkey), [sets, pubkey]);
   const others = useMemo(() => sets.filter((s) => s.pubkey !== pubkey), [sets, pubkey]);
+  const pickedKeys = useMemo(() => new Set((draft?.items || []).map(curationItemKey)), [draft?.items]);
 
   return (
     <div className="space-y-4" data-testid="featured-tab">
@@ -250,7 +299,7 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
                 value={pasteValue}
                 onChange={(e) => setPasteValue(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Return") { e.preventDefault(); addPaste(); } }}
-                placeholder="Paste anything — a post link, nevent, naddr, or web URL"
+                placeholder="Paste anything — a post link, naddr, web URL, or an npub to browse their content"
                 data-testid="input-featured-paste"
               />
               <Button onClick={addPaste} disabled={!pasteValue.trim()} data-testid="button-featured-add">
@@ -281,6 +330,13 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
                 })}
               </ul>
             )}
+
+            <label className="flex items-center justify-between gap-3 rounded-lg border border-border/25 bg-muted/5 px-3 py-2 cursor-pointer">
+              <span className="text-xs text-muted-foreground">
+                Copy featured content onto this relay, so it serves these posts itself
+              </span>
+              <Switch checked={copyToRelay} onCheckedChange={setCopyToRelay} data-testid="switch-featured-copy" />
+            </label>
 
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDraft(null)}>Cancel</Button>
@@ -334,6 +390,19 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
             </OpsCard>
           )}
         </>
+      )}
+
+      {pickerPubkey && (
+        <FeaturedContentPicker
+          pubkey={pickerPubkey}
+          open={!!pickerPubkey}
+          onOpenChange={(o) => { if (!o) setPickerPubkey(null); }}
+          pickedKeys={pickedKeys}
+          onPick={(item, ev) => {
+            pickedEvents.set(curationItemKey(item), ev);
+            setDraft((prev) => (prev ? { ...prev, items: [...prev.items, item] } : prev));
+          }}
+        />
       )}
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
