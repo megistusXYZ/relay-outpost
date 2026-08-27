@@ -145,7 +145,7 @@ const INVITE_REDACTED_PREVIEW = "Outpost invite";
 export async function getConversationList(ownerPubkey: string): Promise<CachedConversation[]> {
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       const tx = db.transaction(CONVERSATIONS_STORE, "readonly");
       const store = tx.objectStore(CONVERSATIONS_STORE);
       const index = store.index("by-owner");
@@ -173,7 +173,7 @@ export async function getConversationList(ownerPubkey: string): Promise<CachedCo
 export async function getMessages(ownerPubkey: string, peerPubkey: string): Promise<CachedMessage[]> {
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       const tx = db.transaction(MESSAGES_STORE, "readonly");
       const store = tx.objectStore(MESSAGES_STORE);
       const index = store.index("by-peer");
@@ -198,7 +198,7 @@ export async function getMessages(ownerPubkey: string, peerPubkey: string): Prom
 export async function putMessages(ownerPubkey: string, peerPubkey: string, messages: CachedMessage[]): Promise<void> {
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       const tx = db.transaction(MESSAGES_STORE, "readwrite");
       const store = tx.objectStore(MESSAGES_STORE);
       for (const msg of messages) {
@@ -257,7 +257,7 @@ export async function getLatestMessage(ownerPubkey: string, peerPubkey: string):
 export async function getLatestTimestamp(ownerPubkey: string, peerPubkey: string): Promise<number> {
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       const tx = db.transaction(MESSAGES_STORE, "readonly");
       const store = tx.objectStore(MESSAGES_STORE);
       const index = store.index("by-peer-time");
@@ -300,7 +300,7 @@ export async function deleteMessage(ownerPubkey: string, msgId: string): Promise
 export async function deleteConversation(ownerPubkey: string, peerPubkey: string): Promise<void> {
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       const tx = db.transaction([MESSAGES_STORE, CONVERSATIONS_STORE], "readwrite");
 
       const msgStore = tx.objectStore(MESSAGES_STORE);
@@ -326,7 +326,7 @@ export async function deleteConversation(ownerPubkey: string, peerPubkey: string
 export async function clearAll(ownerPubkey: string): Promise<void> {
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       const tx = db.transaction([MESSAGES_STORE, CONVERSATIONS_STORE, PROCESSED_WRAPS_STORE], "readwrite");
 
       const msgStore = tx.objectStore(MESSAGES_STORE);
@@ -378,7 +378,7 @@ export async function clearAll(ownerPubkey: string): Promise<void> {
 export async function getProcessedWrapIds(ownerPubkey: string): Promise<Set<string>> {
   try {
     const db = await openDB();
-    return new Promise((resolve) => {
+    return await new Promise((resolve) => {
       const tx = db.transaction(PROCESSED_WRAPS_STORE, "readonly");
       const store = tx.objectStore(PROCESSED_WRAPS_STORE);
       const index = store.index("by-owner");
@@ -413,7 +413,7 @@ export async function markProcessedBatch(
   if (entries.length === 0) return;
   try {
     const db = await openDB();
-    return new Promise((resolve) => {
+    return await new Promise((resolve) => {
       const tx = db.transaction(PROCESSED_WRAPS_STORE, "readwrite");
       const store = tx.objectStore(PROCESSED_WRAPS_STORE);
       const ts = Date.now();
