@@ -78,6 +78,7 @@ import { lazyRetry, lazyNamed } from "@/lib/lazy-retry";
 const lazyChunks = {
   Home: () => lazyRetry(() => import("@/pages/Home")),
   Discover: () => lazyRetry(() => import("@/pages/Discover")),
+  Marketplace: () => lazyRetry(() => import("@/pages/Marketplace")),
   NewsTrending: () => lazyRetry(() => import("@/pages/NewsTrending")),
   Profile: () => lazyRetry(() => import("@/pages/Profile")),
   Search: () => lazyRetry(() => import("@/pages/Search")),
@@ -153,6 +154,7 @@ const VideoFeed = lazy(lazyChunks.VideoFeed);
 const AudioFeed = lazy(lazyChunks.AudioFeed);
 const ArticlesFeed = lazy(lazyChunks.ArticlesFeed);
 const Discover = lazy(lazyChunks.Discover);
+const Marketplace = lazy(lazyChunks.Marketplace);
 const NewsTrending = lazy(lazyChunks.NewsTrending);
 
 /** /news picks the trending front page or the classic reader by the flag. The
@@ -352,6 +354,7 @@ function Router() {
         <Switch>
         <Route path="/" component={Home} />
         <Route path="/discover" component={Discover} />
+        <Route path="/marketplace" component={Marketplace} />
         <Route path="/generator" component={Generator} />
         <Route path="/following">{() => <RouteRedirect to="/account?tab=crew" />}</Route>
         <Route path="/followers">{() => <RouteRedirect to="/account?tab=orbit" />}</Route>

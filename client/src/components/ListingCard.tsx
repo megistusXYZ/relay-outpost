@@ -17,14 +17,17 @@ import { Link } from "wouter";
 import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
 import { use$ } from "applesauce-react/hooks";
-import { Tag, MessageCircle, MapPin, ExternalLink } from "lucide-react";
+import { Tag, MessageCircle, MapPin, ExternalLink, Flag, ShieldAlert } from "lucide-react";
+import { ReportDialog } from "@/components/ReportDialog";
+import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
+import { getSignalTier, getSignalTierLabel } from "@/lib/graperank";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { eventStore, fetchProfilesCached, FAST_RELAYS } from "@/lib/nostr";
 import { getWriteRelays } from "@/lib/outbox";
 import { queryAnswered } from "@/lib/relay-reach";
 import { getDisplayName, getAvatarUrl, formatNpub, shortenNpub, KIND_METADATA } from "@/lib/nostr-helpers";
-import { parseListing, formatListingPrice, listingWebUrl, KIND_CLASSIFIED_LISTING, LISTING_RELAYS, type Listing } from "@/lib/listing";
+import { formatListingPrice, listingWebUrl, pickMarketListings, KIND_CLASSIFIED_LISTING, LISTING_RELAYS, type Listing } from "@/lib/listing";
 
 function useSellerIdentity(pubkey: string) {
   const profile = use$(() => eventStore.replaceable(KIND_METADATA, pubkey), [pubkey]);
@@ -52,6 +55,14 @@ export function ListingDialog({ listing, open, onOpenChange }: { listing: Listin
   // marketplace apps. Seller's own declared page wins; else the Conduit shop
   // page for this exact listing (see lib/listing.listingWebUrl).
   const web = useMemo(() => listingWebUrl(listing), [listing]);
+  const [reportOpen, setReportOpen] = useState(false);
+  // Web-of-trust on the price tag — POSITIVE claims only (PersonBadges
+  // philosophy): a chip for sellers the graph vouches for, a warning for
+  // flagged ones, NOTHING for missing data — commerce must not paint
+  // accusations on absence.
+  const { getAuthorInfluence, flaggedPubkeys } = useGrapeRankScores();
+  const sellerTier = getSignalTier(getAuthorInfluence(listing.pubkey));
+  const sellerFlagged = flaggedPubkeys?.has(listing.pubkey) ?? false;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden rounded-2xl" data-testid={`listing-dialog-${listing.id}`}>
@@ -110,7 +121,19 @@ export function ListingDialog({ listing, open, onOpenChange }: { listing: Listin
                 </Avatar>
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{seller.name}</p>
-                  <p className="text-[11px] text-muted-foreground">Seller</p>
+                  <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    Seller
+                    {sellerFlagged ? (
+                      <span className="inline-flex items-center gap-1 text-destructive font-medium" data-testid="listing-seller-flagged">
+                        <ShieldAlert className="w-3 h-3" /> Flagged in your network
+                      </span>
+                    ) : (sellerTier === "strong" || sellerTier === "moderate") ? (
+                      <span className="inline-flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400" data-testid="listing-seller-trust">
+                        <span className={`w-1.5 h-1.5 rounded-full ${sellerTier === "strong" ? "bg-emerald-500" : "bg-sky-500"}`} />
+                        {getSignalTierLabel(sellerTier)}
+                      </span>
+                    ) : null}
+                  </p>
                 </div>
               </Link>
               <div className="flex items-center gap-2 mt-2 shrink-0">
@@ -136,8 +159,19 @@ export function ListingDialog({ listing, open, onOpenChange }: { listing: Listin
                 )}
               </div>
             </div>
+            {/* Quiet by design: reporting should be findable, never shouting.
+                Files a standard NIP-56 report on the listing event itself. */}
+            <button
+              onClick={() => setReportOpen(true)}
+              className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+              data-testid="listing-report"
+            >
+              <Flag className="w-3 h-3" />
+              Report this listing
+            </button>
           </div>
         </div>
+        <ReportDialog open={reportOpen} onOpenChange={setReportOpen} event={listing.event} />
       </DialogContent>
     </Dialog>
   );
@@ -178,7 +212,7 @@ export function ListingCard({ listing, compact = false }: { listing: Listing; co
   );
 }
 
-function ListingTile({ listing, onOpen }: { listing: Listing; onOpen: () => void }) {
+export function ListingTile({ listing, onOpen }: { listing: Listing; onOpen: () => void }) {
   const image = listing.images[0];
   return (
     <button
@@ -216,18 +250,7 @@ export function ProfileListingsStrip({ pubkey }: { pubkey: string }) {
     const relays = Array.from(new Set([...LISTING_RELAYS, ...getWriteRelays(pubkey, []), ...FAST_RELAYS.slice(0, 3)]));
     queryAnswered(relays, { kinds: [KIND_CLASSIFIED_LISTING], authors: [pubkey], limit: 24 }, 8_000).then((res) => {
       if (cancelled) return;
-      // Addressable: newest per d-tag wins. Active listings lead; sold trail.
-      const byAddr = new Map<string, Event>();
-      for (const e of res.events as Event[]) {
-        const d = e.tags.find((t) => t[0] === "d")?.[1] ?? e.id;
-        const prior = byAddr.get(d);
-        if (!prior || e.created_at > prior.created_at) byAddr.set(d, e);
-      }
-      const parsed = [...byAddr.values()]
-        .map(parseListing)
-        .filter((l): l is Listing => l !== null)
-        .sort((a, b) => (Number(a.sold) - Number(b.sold)) || (b.publishedAt - a.publishedAt));
-      setListings(parsed);
+      setListings(pickMarketListings(res.events as Event[]));
     });
     return () => { cancelled = true; };
   }, [pubkey]);

@@ -27,6 +27,7 @@ import { computeEngagementScore } from "@/lib/engagement";
 import { getFirstSeen } from "@/lib/account-age";
 import { ensureLanguageDetector, getPreferredLanguages, languageAllowed } from "@/lib/language";
 import { getContentWarning } from "@/lib/sensitive-content";
+import { pickMarketListings, formatListingPrice, KIND_CLASSIFIED_LISTING, LISTING_RELAYS } from "@/lib/listing";
 import { rankDiscoverFeed } from "@/lib/discover-rank";
 import { rankTopics, pickNextUpcoming, pickImageShelf, isSensitiveMedia, type RankedTopic, type ShelfImage } from "@/lib/discover-tiles";
 import { getEventMediaInfo } from "@/lib/media-utils";
@@ -443,6 +444,42 @@ async function fetchImagesTeaserFresh(
 
 export async function fetchVideoTeaser(): Promise<Reached<VideoTeaser | null>> {
   return remembered("video", fetchVideoTeaserFresh);
+}
+
+// ── Marketplace tile ─────────────────────────────────────────────────────────
+
+export interface MarketTeaser {
+  id: string;
+  title: string;
+  priceLine?: string;
+  image?: string;
+  timeMs: number;
+}
+
+export async function fetchMarketShelf(): Promise<Reached<MarketTeaser[] | null>> {
+  return remembered("market", fetchMarketShelfFresh);
+}
+
+async function fetchMarketShelfFresh(): Promise<Reached<MarketTeaser[] | null>> {
+  // Conduit's relay carries the densest listing set; the generals fill in.
+  const relays = [...LISTING_RELAYS, ...FAST_RELAYS.slice(0, 3)];
+  const [served, events] = await Promise.all([
+    anyServed(relays),
+    collectOnce(relays, { kinds: [KIND_CLASSIFIED_LISTING], limit: 40 }, 11_000),
+  ]);
+  // A marketplace door that shows words undersells the room behind it
+  // (ImagesShelf precedent) — image-bearing, unsold, front-door-safe.
+  const teasers = pickMarketListings(events.filter((e) => !isSensitiveMedia(e)))
+    .filter((l) => !l.sold && l.images.length > 0)
+    .slice(0, 6)
+    .map((l) => ({
+      id: l.id,
+      title: l.title,
+      priceLine: l.price ? formatListingPrice(l.price) : undefined,
+      image: l.images[0],
+      timeMs: l.publishedAt * 1000,
+    }));
+  return { data: teasers.length > 0 ? teasers : null, reached: served || events.length > 0 };
 }
 
 async function fetchVideoTeaserFresh(): Promise<Reached<VideoTeaser | null>> {

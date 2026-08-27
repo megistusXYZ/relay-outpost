@@ -98,6 +98,32 @@ export function listingWebUrl(listing: Pick<Listing, "pubkey" | "dTag" | "event"
 }
 
 /**
+ * Assemble a browse surface from raw relay events: newest per addressable
+ * coordinate (relays hold stale versions of replaceables), unrenderable
+ * events dropped, flagged sellers excluded (the one cheap, positive scam
+ * signal we hold), active listings before sold, newest first within each.
+ * Shared by the profile "For sale" rail and the Marketplace page.
+ */
+export function pickMarketListings(
+  events: readonly Event[],
+  opts?: { flagged?: ReadonlySet<string> },
+): Listing[] {
+  const byAddr = new Map<string, Event>();
+  for (const e of events) {
+    if (e.kind !== KIND_CLASSIFIED_LISTING) continue;
+    const d = e.tags.find((t) => t[0] === "d")?.[1] ?? e.id;
+    const key = `${e.pubkey}:${d}`;
+    const prior = byAddr.get(key);
+    if (!prior || e.created_at > prior.created_at) byAddr.set(key, e);
+  }
+  return [...byAddr.values()]
+    .filter((e) => !opts?.flagged?.has(e.pubkey))
+    .map(parseListing)
+    .filter((l): l is Listing => l !== null)
+    .sort((a, b) => (Number(a.sold) - Number(b.sold)) || (b.publishedAt - a.publishedAt));
+}
+
+/**
  * Human price line. Known currencies get their idiom (sats spelled out, $
  * for USD); everything else passes through as written — an invented symbol
  * for a currency we don't know would be a confident lie about money.

@@ -30,7 +30,7 @@ export const SEEN_IDS_CAP = 60;
 
 export type TileId =
   | "feed" | "communities" | "articles" | "live"
-  | "podcasts" | "events" | "videos" | "topics" | "images";
+  | "podcasts" | "events" | "videos" | "topics" | "images" | "market";
 
 export interface TileSeen {
   at: number;

@@ -30,6 +30,8 @@ const PARENT_ROUTES: Array<[RegExp, string]> = [
   [/^\/(key-backup|muted|media-servers|trust-reviews)$/, "/tools"],
   [/^\/community\//, "/search"],
   [/^\/live\/./, "/live"],
+  // Marketplace is Discover's commerce door — chrome back returns there.
+  [/^\/marketplace$/, "/discover"],
 ];
 
 export function parentRouteOf(path: string): string | null {
