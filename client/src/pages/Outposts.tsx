@@ -3258,6 +3258,9 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
   const [nip11, setNip11] = useState<Nip11Document | null>(null);
   // Operator-curated Featured feeds (kind 30004) — the tab self-hides when empty.
   const { sets: featuredSets } = useRelayFeaturedSets(relayUrl, nip11);
+  // Which featured feed is showing — lifted so the tab's options sheet and the
+  // inline chips stay one control (the Posts-tab pattern).
+  const [featuredCoord, setFeaturedCoord] = useState<string | null>(null);
   const [events, setEvents] = useState<NostrEvent[]>([]);
   // Posts / Replies / All lens for the Posts tab, matching the main feed control.
   const [feedContentFilter, setFeedContentFilter] = useState<"posts" | "replies" | "all">("all");
@@ -4543,6 +4546,16 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                         testPrefix="outpost-show"
                       />
                     )}
+                    {activeTab === "featured" && featuredSets.length > 0 && (
+                      <Segment
+                        label="Feed"
+                        options={featuredSets.map((f) => ({ value: `${f.pubkey}:${f.dTag}`, label: f.title }))}
+                        value={featuredCoord ?? `${featuredSets[0].pubkey}:${featuredSets[0].dTag}`}
+                        onChange={(v) => { setFeaturedCoord(v); setTabDropdownOpen(false); }}
+                        testPrefix="outpost-featured-feed"
+                        cols={2}
+                      />
+                    )}
                     <div className="grid grid-cols-1 gap-1.5">
                       {(PINNABLE_TABS as string[]).includes(activeTab) && (
                         <button
@@ -4855,7 +4868,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
 
         {activeTab === "featured" && (
           <div className="py-2">
-            <RelayFeaturedFeed sets={featuredSets} relayUrl={relayUrl} />
+            <RelayFeaturedFeed sets={featuredSets} relayUrl={relayUrl} activeCoord={featuredCoord} onSelectFeed={setFeaturedCoord} />
           </div>
         )}
 

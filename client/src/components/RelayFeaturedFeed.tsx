@@ -72,10 +72,20 @@ function FeaturedItem({ item, relayUrl }: { item: CurationItem; relayUrl: string
   );
 }
 
-export function RelayFeaturedFeed({ sets, relayUrl }: { sets: CurationSet[]; relayUrl: string }) {
-  // One feed shown at a time; multiple feeds become chips. Selection is by
-  // coordinate so a republished edition keeps the reader where they were.
-  const [activeCoord, setActiveCoord] = useState<string | null>(null);
+export function RelayFeaturedFeed({
+  sets,
+  relayUrl,
+  activeCoord,
+  onSelectFeed,
+}: {
+  sets: CurationSet[];
+  relayUrl: string;
+  /** Lifted selection — the tab's options sheet and the chips drive the same state. */
+  activeCoord: string | null;
+  onSelectFeed: (coord: string) => void;
+}) {
+  // One feed shown at a time; selection is by coordinate so a republished
+  // edition keeps the reader where they were.
   const active = sets.find((s) => `${s.pubkey}:${s.dTag}` === activeCoord) || sets[0];
   if (!active) return null;
 
@@ -89,7 +99,7 @@ export function RelayFeaturedFeed({ sets, relayUrl }: { sets: CurationSet[]; rel
             return (
               <button
                 key={coord}
-                onClick={() => setActiveCoord(coord)}
+                onClick={() => onSelectFeed(coord)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${isActive ? "bg-accent text-accent-foreground border border-brand/25" : "text-muted-foreground hover:text-foreground hover:bg-muted/20 border border-border/20"}`}
                 data-testid={`featured-chip-${set.dTag}`}
               >
