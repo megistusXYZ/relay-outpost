@@ -78,6 +78,9 @@ import { MediaSection } from "@/components/MediaSection";
 import { ProfileListingsStrip } from "@/components/ListingCard";
 import { fetchRelayLists, getRelayList, getRelayListMeta, parseRelayList, getUserNotesFetchRelays, type RelayPreference } from "@/lib/outbox";
 import { parseLiveEvent, streamsOfPerson, type LiveEventData } from "@/lib/live-events";
+import { AddToFeaturedDialog } from "@/components/AddToFeaturedDialog";
+import { getAdminOutposts } from "@/lib/featured-append";
+import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 import { getLastActivity } from "@/lib/follow-activity";
 import { isCreatorSubscribed, subscribeCreator, unsubscribeCreator } from "@/lib/creator-subscriptions";
 import { LIVE_STREAM_RELAYS, KIND_LIVE_EVENT } from "@/lib/nostr-helpers";
@@ -500,6 +503,9 @@ export default function Profile() {
   const [showUnfollowConfirm, setShowUnfollowConfirm] = useState(false);
   const [showMuteConfirm, setShowMuteConfirm] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showFeatureDialog, setShowFeatureDialog] = useState(false);
+  // Operator-only affordance — read the admin-outpost records once per mount.
+  const canFeaturePerson = useMemo(() => getAdminOutposts().length > 0, []);
   const [shareCopied, setShareCopied] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [showNetworkDialog, setShowNetworkDialog] = useState(false);
@@ -1798,6 +1804,17 @@ export default function Profile() {
       >
         <Terminal className="w-4 h-4 text-brand/70" /> Query this author's events
       </DropdownMenuItem>
+      {/* Operators/mods: feature this PERSON on a relay they run — everything
+          they publish flows into the chosen Featured feed. */}
+      {canFeaturePerson && !isOwnProfile && (
+        <DropdownMenuItem
+          onClick={() => setShowFeatureDialog(true)}
+          className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0"
+          data-testid="menu-item-feature-person"
+        >
+          <MagicStarIcon className="w-4 h-4 text-brand/70" /> Feature on your relay
+        </DropdownMenuItem>
+      )}
       <DropdownMenuSeparator />
       <DropdownMenuItem
         onClick={muted ? handleMute : () => setShowMuteConfirm(true)}
@@ -1816,6 +1833,14 @@ export default function Profile() {
     </>
   );
 
+  const featurePersonDialog = showFeatureDialog && pubkey ? (
+    <AddToFeaturedDialog
+      person={{ pubkey, name: displayName }}
+      open={showFeatureDialog}
+      onOpenChange={setShowFeatureDialog}
+    />
+  ) : null;
+
   const renderOverflowMenu = (trigger: React.ReactNode) => (
     // modal={false}: a modal Radix dropdown locks `body { pointer-events: none }`
     // while open and restores it on close — but when a menu item opens a Dialog
@@ -1827,6 +1852,7 @@ export default function Profile() {
       <DropdownMenuContent align="end" className="glass-dropdown w-52 rounded-lg p-1.5">
         {overflowMenuItems}
       </DropdownMenuContent>
+      {featurePersonDialog}
     </DropdownMenu>
   );
 

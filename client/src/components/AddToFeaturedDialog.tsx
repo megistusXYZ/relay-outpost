@@ -27,11 +27,15 @@ function relayLabel(url: string): string {
 
 export function AddToFeaturedDialog({
   event,
+  person,
   open,
   onOpenChange,
   presetRelayUrl,
 }: {
-  event: Event;
+  /** Feature one event… */
+  event?: Event;
+  /** …or a person: { pubkey, name } — all their content flows into the feed. */
+  person?: { pubkey: string; name: string };
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Skip the relay step (the ops Live Feed already knows its relay). */
@@ -73,12 +77,14 @@ export function AddToFeaturedDialog({
     const busyKey = "coord" in target ? target.coord : "new";
     setBusyTarget(busyKey);
     try {
-      const result = await addToFeaturedFeed({ relayUrl, target, event });
+      const result = await addToFeaturedFeed({ relayUrl, target, ...(person ? { person: person.pubkey } : { event: event! }) });
       if (result.ok) {
         setAddedTo((prev) => new Set(prev).add(busyKey));
         toast({
           title: `Featured in "${result.feedTitle}"`,
-          description: result.copied ? "The relay now serves this post too." : undefined,
+          description: person
+            ? "Their content now flows into that feed."
+            : result.copied ? "The relay now serves this post too." : undefined,
         });
         if ("newTitle" in target) {
           setNewTitle("");
@@ -106,7 +112,9 @@ export function AddToFeaturedDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <p className="text-xs text-muted-foreground truncate -mt-1">{curationRowTitle(event)}</p>
+        <p className="text-xs text-muted-foreground truncate -mt-1">
+          {person ? `Everything ${person.name} publishes, old and new` : curationRowTitle(event!)}
+        </p>
 
         {!relayUrl ? (
           <div className="space-y-1.5">

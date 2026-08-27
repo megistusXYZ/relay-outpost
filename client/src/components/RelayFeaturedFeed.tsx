@@ -6,12 +6,15 @@
  * listing, stream, or web link all look like themselves.
  */
 import { useState, useEffect } from "react";
-import { nip19 } from "nostr-tools";
-import { pool } from "@/lib/nostr";
+import { nip19, type Event } from "nostr-tools";
+import { pool, FAST_RELAYS } from "@/lib/nostr";
+import { getDisplayName, getAvatarUrl } from "@/lib/nostr-helpers";
 import type { Nip11Document } from "@/lib/nip11";
 import {
   KIND_CURATION_SET,
   relayFeaturedSets,
+  eventToCurationItem,
+  curationItemKey,
   type CurationSet,
   type CurationItem,
 } from "@/lib/curation-set";
@@ -47,9 +50,72 @@ export function useRelayFeaturedSets(relayUrl: string, nip11: Nip11Document | nu
   return { sets, loaded };
 }
 
+/**
+ * A featured PERSON: their recent published content, fetched live from the
+ * relay (plus hints/defaults) — the feed follows them, not a snapshot.
+ */
+function FeaturedPersonBlock({ pubkey, relayUrl, relayHint }: { pubkey: string; relayUrl: string; relayHint?: string }) {
+  const [events, setEvents] = useState<Event[] | null>(null);
+  const [unreached, setUnreached] = useState(false);
+  const [profile, setProfile] = useState<Event | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const relays = [...new Set([relayUrl, ...(relayHint ? [relayHint] : []), ...FAST_RELAYS])];
+    pool.querySync(relays, { kinds: [0], authors: [pubkey], limit: 1 })
+      .then((evs) => { if (!cancelled && evs[0]) setProfile(evs[0]); })
+      .catch(() => {});
+    pool.querySync(relays, { kinds: [1, 30023, 21, 22, 34235, 34236, 30311, 30402], authors: [pubkey], limit: 12 })
+      .then((evs) => {
+        if (cancelled) return;
+        const unique = [...new Map(evs.map((e) => [e.id, e])).values()]
+          .sort((a, b) => b.created_at - a.created_at)
+          .slice(0, 4);
+        setEvents(unique);
+      })
+      .catch(() => { if (!cancelled) { setUnreached(true); setEvents([]); } });
+    return () => { cancelled = true; };
+  }, [pubkey, relayUrl, relayHint]);
+
+  const name = profile ? getDisplayName(profile, pubkey.slice(0, 8)) : pubkey.slice(0, 8) + "…";
+  const avatar = profile ? getAvatarUrl(profile) : undefined;
+
+  return (
+    <div className="rounded-xl border border-border/25 p-3 space-y-3" data-testid={`featured-person-${pubkey.slice(0, 8)}`}>
+      <div className="flex items-center gap-2.5">
+        {avatar ? (
+          <img src={avatar} alt="" className="w-8 h-8 rounded-full object-cover ring-1 ring-border/30" />
+        ) : (
+          <span className="w-8 h-8 rounded-full bg-brand/10" />
+        )}
+        <div className="min-w-0">
+          <p className="text-sm font-medium truncate">{name}</p>
+          <p className="text-[10px] font-mono uppercase tracking-wider text-brand/60">Featured creator</p>
+        </div>
+      </div>
+      {events === null ? (
+        <p className="text-xs text-muted-foreground/60">Loading their latest…</p>
+      ) : unreached ? (
+        <p className="text-xs text-muted-foreground/60">Couldn't reach the relays to load their content.</p>
+      ) : events.length === 0 ? (
+        <p className="text-xs text-muted-foreground/60">Nothing published from them where we looked.</p>
+      ) : (
+        <div className="space-y-3">
+          {events.map((ev) => (
+            <FeaturedItem key={ev.id} item={eventToCurationItem(ev, relayUrl)} relayUrl={relayUrl} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FeaturedItem({ item, relayUrl }: { item: CurationItem; relayUrl: string }) {
   if (item.type === "url") {
     return <LinkPreviewCard url={item.url} />;
+  }
+  if (item.type === "person") {
+    return <FeaturedPersonBlock pubkey={item.pubkey} relayUrl={relayUrl} relayHint={item.relayHint} />;
   }
   const relays = item.relayHint ? [relayUrl, item.relayHint] : [relayUrl];
   if (item.type === "note") {
@@ -133,7 +199,7 @@ export function RelayFeaturedFeed({
         <div className="space-y-3">
           {active.items.map((item, i) => (
             <FeaturedItem
-              key={`${i}-${item.type === "url" ? item.url : item.type === "note" ? item.id : `${item.kind}:${item.identifier}`}`}
+              key={`${i}-${curationItemKey(item)}`}
               item={item}
               relayUrl={relayUrl}
             />

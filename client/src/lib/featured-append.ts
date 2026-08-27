@@ -55,12 +55,17 @@ function slugify(title: string): string {
 export async function addToFeaturedFeed(opts: {
   relayUrl: string;
   target: { coord: string } | { newTitle: string };
-  event: Event;
+  /** Feature one EVENT (rebroadcast onto the relay too)… */
+  event?: Event;
+  /** …or a PERSON — all their published content flows into the feed. */
+  person?: string;
 }): Promise<AddToFeaturedResult> {
   const signer = getGlobalSigner();
   if (!signer) return { ok: false, reason: "not-signed-in" };
 
-  const item: CurationItem = eventToCurationItem(opts.event, opts.relayUrl);
+  const item: CurationItem = opts.event
+    ? eventToCurationItem(opts.event, opts.relayUrl)
+    : { type: "person", pubkey: opts.person!, relayHint: opts.relayUrl };
 
   // Freshest edition first — appending onto anything older would republish a
   // stale item list and silently drop later additions.
@@ -104,10 +109,12 @@ export async function addToFeaturedFeed(opts: {
   }
 
   let copied = false;
-  try {
-    copied = await publishEvent(opts.event, [opts.relayUrl]);
-  } catch {
-    copied = false;
+  if (opts.event) {
+    try {
+      copied = await publishEvent(opts.event, [opts.relayUrl]);
+    } catch {
+      copied = false;
+    }
   }
   return { ok: true, feedTitle: title, copied };
 }

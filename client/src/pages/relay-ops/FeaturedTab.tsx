@@ -48,6 +48,7 @@ import {
   Link2,
   RefreshCw,
   AlertTriangle,
+  UserPlus,
 } from "lucide-react";
 import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 
@@ -55,6 +56,7 @@ import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 function itemIcon(item: CurationItem) {
   if (item.type === "url") return Link2;
   if (item.type === "note") return MessageSquare;
+  if (item.type === "person") return UserPlus;
   switch (item.kind) {
     case 30023: return FileText;
     case 30311: return Radio;
@@ -182,7 +184,9 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
     const hints = new Set<string>();
     const addrs: { kind: number; pubkey: string; identifier: string }[] = [];
     for (const item of items) {
-      if (item.type === "url") continue;
+      // Urls have nothing to copy; a PERSON's content is fetched live by the
+      // public tab, not snapshotted at feature time.
+      if (item.type === "url" || item.type === "person") continue;
       const cached = pickedEvents.get(curationItemKey(item));
       if (cached) { targets.push(cached); continue; }
       if (item.relayHint) hints.add(item.relayHint);
@@ -366,11 +370,14 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
                 {draft.items.map((item, i) => {
                   const Icon = itemIcon(item);
                   return (
-                    <li key={`${i}-${item.type === "url" ? item.url : item.type === "note" ? item.id : `${item.kind}:${item.identifier}`}`} className="flex items-center gap-2 rounded-lg border border-border/30 bg-muted/10 px-2.5 py-1.5">
+                    <li key={`${i}-${curationItemKey(item)}`} className="flex items-center gap-2 rounded-lg border border-border/30 bg-muted/10 px-2.5 py-1.5">
                       <Icon className="w-3.5 h-3.5 text-brand/70 shrink-0" />
                       <Badge variant="secondary" className="text-[9px] px-1.5 py-0 shrink-0">{curationItemLabel(item)}</Badge>
                       <span className="text-xs text-muted-foreground truncate flex-1 font-mono">
-                        {item.type === "url" ? item.url : item.type === "note" ? item.id.slice(0, 16) + "…" : item.identifier || `${item.kind}:${item.pubkey.slice(0, 8)}…`}
+                        {item.type === "url" ? item.url
+                          : item.type === "note" ? item.id.slice(0, 16) + "…"
+                          : item.type === "person" ? `${item.pubkey.slice(0, 16)}… (all their content)`
+                          : item.identifier || `${item.kind}:${item.pubkey.slice(0, 8)}…`}
                       </span>
                       <div className="flex items-center gap-0.5 shrink-0">
                         <button className="p-1 rounded hover:bg-muted/40 disabled:opacity-30" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move up"><ArrowUp className="w-3.5 h-3.5" /></button>
