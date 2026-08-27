@@ -9,6 +9,8 @@ import { eventStore, pool, publishEvent, fetchProfiles, fetchProfilesCached, DEF
 import { noteShareId } from "@/lib/share-links";
 import { queryAnswered } from "@/lib/relay-reach";
 import { classifyParentTarget, orderedRelayCandidates, parentRelayCandidates, resolveFetchOutcome } from "@/lib/parent-resolve";
+import { parseListing, KIND_CLASSIFIED_LISTING, LISTING_RELAYS } from "@/lib/listing";
+import { ListingCard } from "@/components/ListingCard";
 import { getPublishTarget } from "@/lib/outpost-relays";
 import { getWriteRelays } from "@/lib/outbox";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
@@ -1842,6 +1844,9 @@ export function EmbeddedAddressCard({ kind, pubkey: authorPk, identifier, relays
     // resolved → "content unavailable"), then a broad default set.
     const relaySet = orderedRelayCandidates([
       relays ?? [],
+      // Listings cluster on the marketplace's own relay (measured:
+      // relay.conduit.market serves 30402 that general relays may lack).
+      kind === KIND_CLASSIFIED_LISTING ? LISTING_RELAYS : [],
       getWriteRelays(authorPk, []),
       FAST_RELAYS,
       DEFAULT_RELAYS.slice(0, 6),
@@ -1939,6 +1944,13 @@ export function EmbeddedAddressCard({ kind, pubkey: authorPk, identifier, relays
         )}
       </div>
     );
+  }
+
+  // NIP-99 classified listings get the marketplace card — image-led, price
+  // up front, in-app detail dialog (see components/ListingCard).
+  if (kind === KIND_CLASSIFIED_LISTING) {
+    const listing = parseListing(resolved);
+    if (listing) return <div className="mt-2"><ListingCard listing={listing} /></div>;
   }
 
   if (calendarData) {
