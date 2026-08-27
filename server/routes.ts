@@ -9,6 +9,7 @@ import { db } from "./db";
 import { SERVER_APP_VERSION } from "./version";
 import { registerSignupTelemetryRoutes } from "./analytics/signup-telemetry";
 import { scheduledPosts, podcastTrendSnapshots } from "@shared/schema";
+import { parseBuzzDirectory } from "@shared/buzz-directory";
 import { eq, and, sql, gte, lt } from "drizzle-orm";
 import {
   computeTrendSuggestions,
@@ -1449,6 +1450,32 @@ export async function registerRoutes(
   }
 
   const rssDiscoverCache = new TTLCache<any>(100, 10 * 60 * 1000);
+
+  // Buzz directory proxy: buzz.directory has no API, but its served page
+  // carries every community (see shared/buzz-directory). Fixed upstream url —
+  // no user input reaches the fetch. 10-min cache; upstream failure is a 502
+  // so the client can be reach-honest instead of showing an empty section.
+  const buzzDirectoryCache = new TTLCache<any>(1, 10 * 60 * 1000);
+  app.get("/api/buzz-directory", async (_req, res) => {
+    const cached = buzzDirectoryCache.get("all");
+    if (cached) return res.json(cached);
+    try {
+      const r = await fetch("https://buzz.directory/", {
+        headers: { "User-Agent": "RelayOutpost/1.0 (+https://relayop.xyz)" },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!r.ok) return res.status(502).json({ error: "directory unavailable" });
+      const html = await r.text();
+      const communities = parseBuzzDirectory(html);
+      if (communities.length === 0) return res.status(502).json({ error: "directory unreadable" });
+      const payload = { communities };
+      buzzDirectoryCache.set("all", payload);
+      return res.json(payload);
+    } catch {
+      return res.status(502).json({ error: "directory unreachable" });
+    }
+  });
+
   const hostnameOf = (u: string) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return u; } };
   // Decode HTML entities in feed titles; loops to handle double-encoding
   // (e.g. "&amp;raquo;" → "&raquo;" → "»").

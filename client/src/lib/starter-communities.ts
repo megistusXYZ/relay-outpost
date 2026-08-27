@@ -12,13 +12,14 @@ export interface StarterCommunity {
   tagline: string;
 }
 
+// Order is deliberate (owner-curated, 2026-08-27) — not alphabetical.
 export const STARTER_COMMUNITIES: StarterCommunity[] = [
-  { url: "wss://relay.primal.net", name: "Primal", tagline: "The busiest public square on the network" },
-  { url: "wss://theforest.nostr1.com", name: "The Forest", tagline: "A calm, actively moderated community" },
-  { url: "wss://pyramid.fiatjaf.com", name: "fiatjaf's Pyramid", tagline: "Invite-only room run by nostr's original builder" },
   { url: "wss://relay.ditto.pub", name: "Ditto", tagline: "The Ditto community's home relay" },
-  { url: "wss://nostr21.com", name: "nostr21", tagline: "West-coast original — a paid, spam-free room" },
+  { url: "wss://relay.primal.net", name: "Primal", tagline: "The busiest public square on the network" },
+  { url: "wss://pyramid.fiatjaf.com", name: "fiatjaf's Pyramid", tagline: "Invite-only room run by nostr's original builder" },
   { url: "wss://spatia-arcana.com", name: "Spatia Arcana", tagline: "\"I contain multitudes\" — an eclectic gathering place" },
+  { url: "wss://nostr21.com", name: "nostr21", tagline: "West-coast original — a paid, spam-free room" },
+  { url: "wss://theforest.nostr1.com", name: "The Forest", tagline: "A calm, actively moderated community" },
 ];
 
 function canon(url: string): string {

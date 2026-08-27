@@ -124,6 +124,7 @@ import { AboutIcon } from "@/components/icons/AboutIcon";
 import { RelayFeaturedFeed, useRelayFeaturedSets } from "@/components/RelayFeaturedFeed";
 import { starterSuggestions } from "@/lib/starter-communities";
 import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
+import { useQuery } from "@tanstack/react-query";
 import { HorizonIcon } from "@/components/icons/HorizonIcon";
 import { ChannelsIcon } from "@/components/icons/CommsIcon";
 import { HorizonTab } from "@/components/HorizonTab";
@@ -4989,6 +4990,73 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
 
 const PAGE_PINS_COLLAPSED_KEY = "relay-outpost-page-pins-collapsed";
 
+/**
+ * Buzz communities from buzz.directory, via our /api/buzz-directory proxy.
+ * Reach-honest: the section renders on data, says so on failure (with Retry),
+ * and shows nothing while nothing is known. Each slug IS a relay
+ * (wss://<slug>.communities.buzz.xyz) — opening one is a normal outpost visit.
+ */
+function BuzzDirectorySection({ joinedUrls, onOpen }: { joinedUrls: string[]; onOpen: (url: string) => void }) {
+  const { data, isError, refetch } = useQuery<{ communities: { slug: string; name: string; relayUrl: string; access: "public" | "invite" | null }[] }>({
+    queryKey: ["/api/buzz-directory"],
+    queryFn: async () => {
+      const r = await fetch("/api/buzz-directory");
+      if (!r.ok) throw new Error("directory unavailable");
+      return r.json();
+    },
+    staleTime: 10 * 60 * 1000,
+    retry: 1,
+  });
+
+  const joined = useMemo(() => new Set(joinedUrls.map((u) => u.toLowerCase().replace(/\/+$/, ""))), [joinedUrls]);
+  const communities = (data?.communities || []).filter((c) => !joined.has(c.relayUrl.toLowerCase())).slice(0, 8);
+
+  if (isError) {
+    return (
+      <div className="mt-6">
+        <p className="px-0.5 mb-2 text-[11px] font-brand uppercase tracking-wider text-muted-foreground/60">From the Buzz directory</p>
+        <button type="button" onClick={() => refetch()} className="text-[12px] text-muted-foreground/60 hover:text-foreground px-0.5" data-testid="button-buzz-retry">
+          Couldn't reach the directory — tap to retry
+        </button>
+      </div>
+    );
+  }
+  if (communities.length === 0) return null;
+
+  return (
+    <div className="mt-6" data-testid="buzz-directory-section">
+      <div className="flex items-baseline justify-between px-0.5 mb-2.5">
+        <p className="text-[11px] font-brand uppercase tracking-wider text-muted-foreground/60">From the Buzz directory</p>
+        <a href="https://buzz.directory" target="_blank" rel="noopener noreferrer" className="text-[11px] text-muted-foreground/50 hover:text-foreground">
+          buzz.directory ↗
+        </a>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {communities.map((c) => (
+          <button
+            key={c.slug}
+            type="button"
+            onClick={() => onOpen(c.relayUrl)}
+            className="group/buzz flex items-center gap-3 rounded-xl border border-border/30 bg-card/40 px-3.5 py-3 text-left transition-all hover:border-brand/30 hover:bg-brand/[0.05] min-h-[44px]"
+            data-testid={`buzz-community-${c.slug.slice(0, 12)}`}
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-sm font-semibold text-amber-600 dark:text-amber-400">
+              {c.name.slice(0, 1).toUpperCase()}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium truncate">{c.name}</span>
+              <span className="block text-[11px] text-muted-foreground/70">
+                {c.access === "invite" ? "Invite only" : c.access === "public" ? "Open to join" : "Buzz community"}
+              </span>
+            </span>
+            <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-colors group-hover/buzz:text-brand" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function StarterCommunityIcon({ url, name }: { url: string; name: string }) {
   const [icon, setIcon] = useState<string | null>(null);
   useEffect(() => {
@@ -5443,6 +5511,8 @@ export default function Outposts() {
             </span>
             <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
           </button>
+
+          <BuzzDirectorySection joinedUrls={joinedRelays.map((r) => r.url)} onOpen={(url) => setLocation(`/outposts/${encodeURIComponent(url)}`)} />
         </div>
       )}
 
