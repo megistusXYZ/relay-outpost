@@ -171,11 +171,11 @@ export function survivingArticles(events: Event[]): ArticleData[] {
     .sort((a, b) => b.publishedAt - a.publishedAt);
 }
 
-export function fetchNewestArticle(): Promise<Reached<ArticleData | null>> {
+export function fetchNewestArticle(): Promise<Reached<ArticleData[]>> {
   return remembered("article", fetchNewestArticleFresh);
 }
 
-async function fetchNewestArticleFresh(): Promise<Reached<ArticleData | null>> {
+async function fetchNewestArticleFresh(): Promise<Reached<ArticleData[]>> {
   // Reach measured against the same pool sockets the subscribe uses — not a
   // fourth hand-rolled primitive. Raced in parallel; it costs nothing when the
   // sockets are already warm.
@@ -183,7 +183,9 @@ async function fetchNewestArticleFresh(): Promise<Reached<ArticleData | null>> {
     anyServed(FAST_RELAYS),
     collectOnce(FAST_RELAYS, { kinds: [KIND_LONG_FORM], limit: 15 }, 11_000),
   ]);
-  const top = survivingArticles(events)[0] ?? null;
+  // Top TWO editions — one headline over a tall empty card undersold the
+  // shelf (same densification as the feed tile).
+  const top = survivingArticles(events).slice(0, 2);
   // Events in hand are themselves proof someone answered, even if the reach
   // probe lost its race with a relay that dropped right after serving us.
   return { data: top, reached: served || events.length > 0 };
@@ -239,34 +241,38 @@ function floorTeaser(posts: Event[], langs: string[], mode: "primal" | "relay", 
   return floored.filter((e) => getContentWarning(e) === null);
 }
 
-export function fetchFeedTeaser(flagged: Set<string> = new Set()): Promise<Reached<Event | null>> {
+export function fetchFeedTeaser(flagged: Set<string> = new Set()): Promise<Reached<Event[]>> {
   // Key on shield readiness (empty vs applied): a memo taken BEFORE the
   // GrapeRank set loaded must not be served to the same viewer AFTER it does —
   // otherwise the tile keeps a pre-shield pick for the 5-minute TTL.
   return remembered(`teaser:${flagged.size > 0 ? "f" : "0"}`, () => fetchFeedTeaserFresh(flagged));
 }
 
-async function fetchFeedTeaserFresh(flagged: Set<string>): Promise<Reached<Event | null>> {
+async function fetchFeedTeaserFresh(flagged: Set<string>): Promise<Reached<Event[]>> {
   await ensureLanguageDetector();
   const langs = getPreferredLanguages();
   const sinceSecs = Math.floor(Date.now() / 1000) - 6 * 3600;
 
-  const pick = (posts: Event[], mode: "primal" | "relay"): Event | null =>
+  // Top THREE of the same vetted ranking (language, spam floor, flagged
+  // shield, engagement) — the tile was showing one post over a tall empty
+  // card, which read as a quiet network over a busy one.
+  const pick = (posts: Event[], mode: "primal" | "relay"): Event[] =>
     rankDiscoverFeed(floorTeaser(posts, langs, mode, flagged), {
       now: Math.floor(Date.now() / 1000),
       getEngagement: (id: string) => computeEngagementScore(primalStatsCache.get(id) ?? null),
-    })[0] ?? null;
+    }).slice(0, 3);
 
   // Primal never rejects and FAILS OPEN to [] — an empty answer is
   // structurally ambiguous (down, timeout, or genuinely quiet), so only a
   // non-empty one counts as reached.
   const primal = await fetchGlobalFeed(30, sinceSecs);
   if (primal.posts.length > 0) return { data: pick(primal.posts, "primal"), reached: true };
+  // (unreached below returns [] — the type's empty, the flag carries the truth)
 
   // Primal said nothing, which proves nothing. Ask the relays — with reach
   // measured first, so "empty" is only ever claimed after somebody answered.
   const relays = getRelaysForPurpose("notes");
-  if (!(await canReachAny(relays))) return { data: null, reached: false };
+  if (!(await canReachAny(relays))) return { data: [], reached: false };
   const events = await collectOnce(relays, { kinds: [1], limit: 30, since: sinceSecs }, 8_000);
   // hideNoProfile needs kind-0s, and unlike Primal the relays do not volunteer
   // them — without this second hop the floor drops EVERY post (no author can
