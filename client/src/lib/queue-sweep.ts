@@ -38,16 +38,25 @@ export const EMPTY_SWEEP: QueueSweep = { relaysAttempted: 0, relaysUnreached: 0 
  *
  * Applies whether or not the queue is empty: a partial sweep understates a
  * populated queue exactly as much as it understates an empty one.
+ *
+ * `subject` names WHAT could not be checked ("reports", "join requests").
+ * Pass it wherever the notice can render without its queue's rows around it
+ * — with an empty queue the notice is the component's ONLY output, and on
+ * the Activity page a context-free "may be incomplete" read as "your
+ * notifications are broken" (live report, 2026-08-26). The subject form
+ * still claims nothing about what exists on the unreached relay.
  */
-export function sweepNotice(sweep: QueueSweep): string | null {
+export function sweepNotice(sweep: QueueSweep, subject?: string): string | null {
   const { relaysAttempted, relaysUnreached } = sweep;
   if (relaysUnreached <= 0) return null;
   // Guard the nonsense case rather than rendering "2 of 1".
   if (relaysAttempted <= 0 || relaysUnreached > relaysAttempted) return null;
+  const tail = subject ? `so ${subject} there can't be checked.` : "so this may be incomplete.";
+  const noun = subject ? "outpost relay" : "relay";
   if (relaysUnreached === relaysAttempted) {
     return relaysAttempted === 1
-      ? "Couldn't reach your relay, so this may be incomplete."
-      : "Couldn't reach any of your relays, so this may be incomplete.";
+      ? `Couldn't reach your ${noun}, ${tail}`
+      : `Couldn't reach any of your ${noun}s, ${tail}`;
   }
-  return `Couldn't reach ${relaysUnreached} of ${relaysAttempted} relays, so this may be incomplete.`;
+  return `Couldn't reach ${relaysUnreached} of ${relaysAttempted} ${noun}s, ${tail}`;
 }

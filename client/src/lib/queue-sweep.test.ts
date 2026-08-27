@@ -61,3 +61,34 @@ describe("sweepNotice — when silence would be a lie", () => {
     expect(notice).not.toMatch(/waiting|pending|report|nobody|none/i);
   });
 });
+
+describe("sweepNotice — with a named subject", () => {
+  // Live report (2026-08-26): with an EMPTY queue the notice is the only
+  // thing the component renders, and on the Activity page a context-free
+  // "Couldn't reach 1 of 14 relays, so this may be incomplete" reads as
+  // "your notifications are broken". Naming the subject makes the orphan
+  // line carry its own context — while still claiming nothing about what
+  // exists on the unreached relay.
+  it("names what could not be checked, not what might exist", () => {
+    expect(sweepNotice(sweep(14, 1), "reports")).toBe(
+      "Couldn't reach 1 of 14 outpost relays, so reports there can't be checked.",
+    );
+    expect(sweepNotice(sweep(14, 1), "join requests")).toBe(
+      "Couldn't reach 1 of 14 outpost relays, so join requests there can't be checked.",
+    );
+  });
+
+  it("keeps the natural singular and all-failed forms", () => {
+    expect(sweepNotice(sweep(1, 1), "reports")).toBe(
+      "Couldn't reach your outpost relay, so reports there can't be checked.",
+    );
+    expect(sweepNotice(sweep(3, 3), "join requests")).toBe(
+      "Couldn't reach any of your outpost relays, so join requests there can't be checked.",
+    );
+  });
+
+  it("stays quiet in exactly the same cases as the plain form", () => {
+    expect(sweepNotice(sweep(3, 0), "reports")).toBeNull();
+    expect(sweepNotice(EMPTY_SWEEP, "reports")).toBeNull();
+  });
+});
