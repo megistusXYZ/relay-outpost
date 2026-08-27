@@ -109,7 +109,7 @@ function OpenSourcePanel() {
           <h3 className="mt-3 text-xl font-semibold text-white sm:text-2xl">Built in the open.</h3>
           <p className="mt-2.5 text-sm leading-relaxed text-white/70">
             Every line of Relay Outpost is public and MIT-licensed — read the code, file an issue,
-            or ship a patch. Your app shouldn't be a black box.
+            or ship a patch. Solutions shouldn't be a black box.
           </p>
         </div>
         <a
