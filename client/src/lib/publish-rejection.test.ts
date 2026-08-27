@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { summarizePublishRejections, humanize } from "./publish-rejection";
+import { explainPublishFailure, summarizePublishRejections, humanize } from "./publish-rejection";
 
 describe("humanize — keep the sentence, drop the machine prefix", () => {
   it("strips a NIP-01 prefix and capitalizes what's left", () => {
@@ -141,5 +141,28 @@ describe("restricted — the refusal an operator most needs to read", () => {
       { relay: "wss://a", message: "timeout after 10000ms" },
       { relay: "wss://b", message: "" },
     ])).toBeUndefined();
+  });
+});
+
+describe("explainPublishFailure (never blames the relay for a socket that failed)", () => {
+  it("prefers the relay's own words when any relay actually answered", () => {
+    expect(explainPublishFailure([
+      { relay: "wss://a", message: "connection failure: getaddrinfo ENOTFOUND" },
+      { relay: "wss://b", message: "restricted: members only" },
+    ])).toBe("Members only");
+  });
+
+  it("says the relay was unreachable when nothing was reached — a dead socket is not a refusal", () => {
+    // Buzz join requests surfaced 'The relay didn't take it' when the ws host
+    // 404'd and no relay ever saw the event. Unreached ≠ refused.
+    expect(explainPublishFailure([
+      { relay: "wss://a", message: "connection failure: Unexpected server response: 404" },
+      { relay: "wss://b", message: "timeout after 10000ms" },
+    ])).toBe("Couldn't reach the relay — it may be offline. Try again in a moment.");
+  });
+
+  it("returns undefined when there are no rejections at all", () => {
+    expect(explainPublishFailure([])).toBeUndefined();
+    expect(explainPublishFailure(undefined)).toBeUndefined();
   });
 });
