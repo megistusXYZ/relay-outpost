@@ -181,11 +181,23 @@ describe("buildAgendaDays", () => {
     expect(days[0].items.map((i) => i.id)).toEqual(["scheduled-early", "scheduled-late"]);
   });
 
-  it("attaches holiday occurrences to their day", () => {
+  it("a holiday alone creates NO agenda section — it lives on the calendar date, not as a banner", () => {
     const days = buildAgendaDays([], [{ date: new Date(2026, 6, 24), holiday: holiday("Test Day") }], TODAY);
-    expect(days).toHaveLength(1);
-    expect(days[0].key).toBe("2026-07-24");
-    expect(days[0].holidays[0].name).toBe("Test Day");
+    expect(days).toHaveLength(0);
+  });
+
+  it("attaches holidays to days that exist anyway — content days and the selected day", () => {
+    const occ = [{ date: new Date(2026, 6, 24), holiday: holiday("Content Day Holiday") }, { date: new Date(2026, 6, 26), holiday: holiday("Selected Day Holiday") }];
+    const days = buildAgendaDays(
+      [scheduledItem(new Date(2026, 6, 24, 9, 0), "a")],
+      occ,
+      TODAY,
+      AGENDA_WINDOW_DAYS,
+      ["2026-07-26"],
+    );
+    expect(days.map((d) => d.key)).toEqual(["2026-07-24", "2026-07-26"]);
+    expect(days[0].holidays[0].name).toBe("Content Day Holiday");
+    expect(days[1].holidays[0].name).toBe("Selected Day Holiday");
   });
 
   it("alwaysIncludeKeys forces an empty section inside the window only", () => {

@@ -112,12 +112,12 @@ export function CalendarGrid({
     <Card className="glass-card">
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-4">
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onPrevMonth}>
+          <Button variant="ghost" size="sm" className="min-h-[44px] min-w-[44px] p-0" onClick={onPrevMonth} aria-label="Previous month">
             <ChevronLeft className="w-4 h-4" />
           </Button>
           <div className="flex items-center gap-2">
             <span className="text-sm font-brand uppercase tracking-wider text-gray-900 dark:text-gray-100">{monthLabel}</span>
-            <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-500 dark:text-gray-400" onClick={onGoToToday}>
+            <Button variant="ghost" size="sm" className="min-h-[36px] text-[10px] px-2.5 text-gray-500 dark:text-gray-400" onClick={onGoToToday}>
               Today
             </Button>
           </div>
@@ -126,7 +126,7 @@ export function CalendarGrid({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 p-0 text-gray-400 dark:text-gray-500 hover:text-brand"
+                className="min-h-[44px] min-w-[44px] p-0 text-gray-400 dark:text-gray-500 hover:text-brand"
                 onClick={onRefresh}
                 disabled={refreshing}
                 title="Refresh feeds"
@@ -134,7 +134,7 @@ export function CalendarGrid({
                 <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
               </Button>
             )}
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onNextMonth}>
+            <Button variant="ghost" size="sm" className="min-h-[44px] min-w-[44px] p-0" onClick={onNextMonth} aria-label="Next month">
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>

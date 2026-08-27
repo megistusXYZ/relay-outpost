@@ -764,7 +764,7 @@ export default function ContentCalendar() {
             visible; Filters is a view control, so it sits last (icon-only). */}
         <div className="sm:hidden flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
           <button
-            className="glass-tab-exempt relative shrink-0 flex items-center justify-center gap-1.5 px-2.5 min-h-[40px] rounded-lg bg-brand text-white text-[11px] font-medium whitespace-nowrap transition-colors touch-manipulation active:bg-brand"
+            className="glass-tab-exempt relative shrink-0 flex items-center justify-center gap-1.5 px-2.5 min-h-[44px] rounded-lg bg-brand text-white text-[11px] font-medium whitespace-nowrap transition-colors touch-manipulation active:bg-brand"
             onClick={() => window.dispatchEvent(new CustomEvent("open-compose-schedule"))}
             data-testid="button-schedule-post"
           >
@@ -782,7 +782,7 @@ export default function ContentCalendar() {
           <Popover>
             <PopoverTrigger asChild>
               <button
-                className="glass-tab-exempt shrink-0 flex items-center justify-center w-10 min-h-[40px] rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-300 touch-manipulation transition-colors active:bg-gray-100 dark:active:bg-white/10"
+                className="glass-tab-exempt shrink-0 flex items-center justify-center w-10 min-h-[44px] rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-300 touch-manipulation transition-colors active:bg-gray-100 dark:active:bg-white/10"
                 aria-label="More calendar actions"
                 data-testid="button-calendar-more"
               >
@@ -817,7 +817,7 @@ export default function ContentCalendar() {
           <Popover>
             <PopoverTrigger asChild>
               <button
-                className="glass-tab-exempt shrink-0 flex items-center gap-1.5 px-3 min-h-[40px] rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-[12px] text-gray-700 dark:text-gray-200 whitespace-nowrap touch-manipulation transition-colors active:bg-gray-100 dark:active:bg-white/10"
+                className="glass-tab-exempt shrink-0 flex items-center gap-1.5 px-3 min-h-[44px] rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-[12px] text-gray-700 dark:text-gray-200 whitespace-nowrap touch-manipulation transition-colors active:bg-gray-100 dark:active:bg-white/10"
                 aria-label="Filters"
                 title="Filters"
               >
