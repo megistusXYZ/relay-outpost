@@ -5,10 +5,10 @@ import { nip19 } from "nostr-tools";
 import { Link, useLocation } from "wouter";
 import { use$ } from "applesauce-react/hooks";
 import { useRenderedContent, type ComponentMap } from "applesauce-react/hooks";
-import { eventStore, pool, publishEvent, fetchProfiles, fetchProfilesCached, DEFAULT_RELAYS, FAST_RELAYS, getEventRelays, throttledPoolSubscribe } from "@/lib/nostr";
+import { eventStore, pool, publishEvent, fetchProfiles, fetchProfilesCached, DEFAULT_RELAYS, FAST_RELAYS, getEventRelays } from "@/lib/nostr";
 import { noteShareId } from "@/lib/share-links";
 import { queryAnswered } from "@/lib/relay-reach";
-import { classifyParentTarget, parentRelayCandidates, resolveParentOutcome } from "@/lib/parent-resolve";
+import { classifyParentTarget, orderedRelayCandidates, parentRelayCandidates, resolveFetchOutcome } from "@/lib/parent-resolve";
 import { getPublishTarget } from "@/lib/outpost-relays";
 import { getWriteRelays } from "@/lib/outbox";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
@@ -907,7 +907,12 @@ export function ParsedPreviewText({ text }: { text: string }) {
   );
 }
 
-const embeddedNoteFetchCache = new Map<string, Promise<Event | null>>();
+// One shared fetch per quoted event id, so forty copies of one viral quote
+// don't open forty subscriptions. Entries that settle "unreached" are evicted
+// on settle: a retry must get a fresh ask, and a cached "we never got to ask"
+// would pin every later mount of that quote to a dead answer.
+type EmbeddedNoteFetch = { event: Event | null; outcome: "found" | "missing" | "unreached" };
+const embeddedNoteFetchCache = new Map<string, Promise<EmbeddedNoteFetch>>();
 
 export type NoteRef = { key: string; kind: "event" | "addr"; id?: string; coord?: { kind: number; pubkey: string; identifier: string }; encoded?: string; relays?: string[] };
 
@@ -956,6 +961,11 @@ export function EmbeddedNote({ eventId, encoded, relays, parentEventId }: { even
   const isSelfRef = eventId === parentEventId;
   const [fetchedEvent, setFetchedEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(!isSelfRef);
+  // "We never got to ask" is a distinct, settled state — same contract as the
+  // reply-parent fetch: the spinner ends, and a tap retries. The old fetch
+  // filed it as "not found", a claim about the note we had no basis for.
+  const [unreached, setUnreached] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
   const [, navigate] = useLocation();
 
   useEffect(() => {
@@ -967,53 +977,46 @@ export function EmbeddedNote({ eventId, encoded, relays, parentEventId }: { even
       return;
     }
 
-    if (embeddedNoteFetchCache.has(eventId)) {
-      embeddedNoteFetchCache.get(eventId)!.then((ev) => {
-        setFetchedEvent(ev);
-        setLoading(false);
-      });
-      return;
-    }
-
     let cancelled = false;
-    const fetchRelays = relays && relays.length > 0 ? relays : DEFAULT_RELAYS;
-
-    const promise = new Promise<Event | null>((resolve) => {
-      let resolved = false;
-      const sub = throttledPoolSubscribe(fetchRelays, [{ ids: [eventId] }], {
-        onevent(event: Event) {
-          if (!cancelled && !resolved) {
-            resolved = true;
-            eventStore.add(event);
-            setFetchedEvent(event);
-            setLoading(false);
-            resolve(event);
-          }
-        },
-        oneose() {
-          if (!cancelled && !resolved) {
-            resolved = true;
-            setLoading(false);
-            resolve(null);
-          }
-        } });
-
-      setTimeout(() => {
-        if (!cancelled && !resolved) {
-          resolved = true;
-          setLoading(false);
-          resolve(null);
-          if (sub && typeof sub.close === "function") sub.close();
-        }
-      }, 4000);
+    let promise = embeddedNoteFetchCache.get(eventId);
+    if (!promise) {
+      // Most-likely relays first: the nevent's encoded hints, then the relays
+      // the QUOTING post arrived on (in an outpost feed, the community relay),
+      // then defaults. The old fetch asked hints OR defaults, never both — a
+      // stale hint meant the defaults were never consulted, and vice versa.
+      const candidates = orderedRelayCandidates([
+        relays ?? [],
+        parentEventId ? getEventRelays(parentEventId) : [],
+        DEFAULT_RELAYS,
+      ]);
+      promise = queryAnswered(candidates, { ids: [eventId] }, 8_000)
+        .then((res) => {
+          const outcome = resolveFetchOutcome(res);
+          const ev = outcome === "found" ? (res.events[0] as Event) : null;
+          if (ev) eventStore.add(ev);
+          if (outcome === "unreached") embeddedNoteFetchCache.delete(eventId);
+          return { event: ev, outcome };
+        })
+        .catch((): EmbeddedNoteFetch => {
+          embeddedNoteFetchCache.delete(eventId);
+          return { event: null, outcome: "unreached" };
+        });
+      embeddedNoteFetchCache.set(eventId, promise);
+    }
+    // The shared promise settles regardless of which mounts are still alive —
+    // its predecessor resolved only under the FIRST mount's cancelled flag, so
+    // one unmount poisoned the cache with a spinner that could never end.
+    promise.then((r) => {
+      if (cancelled) return;
+      setFetchedEvent(r.event);
+      setUnreached(r.outcome === "unreached");
+      setLoading(false);
     });
-
-    embeddedNoteFetchCache.set(eventId, promise);
 
     return () => {
       cancelled = true;
     };
-  }, [eventId]);
+  }, [eventId, retryNonce]);
 
   useEffect(() => {
     if (fetchedEvent) {
@@ -1042,6 +1045,26 @@ export function EmbeddedNote({ eventId, encoded, relays, parentEventId }: { even
         <RelayOutpostInlineLoader className="w-4 h-4" />
         <span className="text-xs text-muted-foreground/60 dark:text-muted-foreground/60">Loading referenced post...</span>
       </div>
+    );
+  }
+
+  if (!fetchedEvent && unreached) {
+    // Distinct from "not found": no relay answered, so nothing is known about
+    // the note. A tap retries the fetch instead of claiming absence.
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setUnreached(false);
+          setLoading(true);
+          setRetryNonce((v) => v + 1);
+        }}
+        className="my-2 rounded-lg border border-border dark:border-border/20 bg-muted/40 dark:bg-muted/10 p-3 flex items-center gap-2 cursor-pointer min-h-[84px] w-full text-left"
+        data-testid={`embedded-note-unreached-${eventId.slice(0, 8)}`}
+      >
+        <CornerDownRight className="w-3.5 h-3.5 text-muted-foreground/50 dark:text-muted-foreground/50 shrink-0" />
+        <span className="text-xs text-muted-foreground/60 dark:text-muted-foreground/60">Quoted post didn't load — tap to retry</span>
+      </button>
     );
   }
 
@@ -1799,38 +1822,46 @@ export function EmbeddedAddressCard({ kind, pubkey: authorPk, identifier, relays
   const [, navigate] = useLocation();
   const [resolved, setResolved] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
+  // Same contract as EmbeddedNote: nobody answering is a settled, retryable
+  // state, not "content unavailable" — that line is a claim about the content.
+  const [unreached, setUnreached] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
   const [shareEvent, setShareEvent] = useState<CalendarEventData | null>(null);
 
   useEffect(() => {
     setResolved(null);
     setLoading(true);
+    setUnreached(false);
     const existing = eventStore.getByFilters({ kinds: [kind], authors: [authorPk], "#d": [identifier] });
     const found = existing ? [...existing].sort((a, b) => b.created_at - a.created_at)[0] : null;
     if (found) { setResolved(found); setLoading(false); return; }
-    // Resolve via the AUTHOR'S write relays (NIP-65 outbox) first — an event
-    // lives where its author published it, which is usually NOT in a handful of
-    // generic defaults. Without this, a shared calendar event / article on the
-    // creator's own or an outpost relay never resolved → "content unavailable".
-    // naddr relay hints + a broad default set round it out.
-    const relaySet = Array.from(new Set([
-      ...(relays ?? []),
-      ...getWriteRelays(authorPk, []),
-      ...FAST_RELAYS,
-      ...DEFAULT_RELAYS.slice(0, 6),
-    ]));
-    const sub = throttledPoolSubscribe(relaySet, { kinds: [kind], authors: [authorPk], "#d": [identifier], limit: 1 }, {
-      onevent(ev) {
-        eventStore.add(ev);
-        setResolved((prev) => (!prev || ev.created_at > prev.created_at) ? ev : prev);
-        setLoading(false);
-      },
-      // Don't declare "unavailable" the instant one fast relay EOSEs empty —
-      // a slower relay may still hold it. Keep loading until a real timeout.
-      oneose() {},
+    // Resolve via the naddr's own relay hints, then the AUTHOR'S write relays
+    // (NIP-65 outbox — an event lives where its author published it, which is
+    // usually NOT in a handful of generic defaults; without this, a shared
+    // calendar event / article on the creator's own or an outpost relay never
+    // resolved → "content unavailable"), then a broad default set.
+    const relaySet = orderedRelayCandidates([
+      relays ?? [],
+      getWriteRelays(authorPk, []),
+      FAST_RELAYS,
+      DEFAULT_RELAYS.slice(0, 6),
+    ]);
+    let cancelled = false;
+    queryAnswered(relaySet, { kinds: [kind], authors: [authorPk], "#d": [identifier], limit: 1 }, 8_000).then((res) => {
+      if (cancelled) return;
+      // Addressable events are replaceable — relays may hold different
+      // versions of the same coordinate, so keep the newest.
+      const newest = [...res.events].sort((a, b) => b.created_at - a.created_at)[0] as Event | undefined;
+      if (newest) {
+        eventStore.add(newest);
+        setResolved(newest);
+      } else if (!res.answered) {
+        setUnreached(true);
+      }
+      setLoading(false);
     });
-    const timer = setTimeout(() => { setLoading(false); try { sub.close(); } catch {} }, 6000);
-    return () => { clearTimeout(timer); sub.close(); };
-  }, [kind, authorPk, identifier, relays]);
+    return () => { cancelled = true; };
+  }, [kind, authorPk, identifier, relays, retryNonce]);
 
   const authorProfile = use$(() => resolved ? eventStore.replaceable(KIND_METADATA, resolved.pubkey) : undefined, [resolved?.pubkey]);
   useEffect(() => { if (resolved && !authorProfile) fetchProfilesCached([resolved.pubkey]); }, [resolved, authorProfile]);
@@ -1879,6 +1910,21 @@ export function EmbeddedAddressCard({ kind, pubkey: authorPk, identifier, relays
         <RelayOutpostInlineLoader className="w-3 h-3" />
         <span className="text-xs text-muted-foreground">Loading {kindLabel.toLowerCase()}...</span>
       </div>
+    );
+  }
+
+  if (!resolved && unreached) {
+    // No relay answered — nothing is known about the content, so don't call
+    // it unavailable. A tap retries the fetch.
+    return (
+      <button
+        onClick={(e) => { e.stopPropagation(); setRetryNonce((v) => v + 1); }}
+        className="mt-2 rounded-lg border border-border/30 bg-background/20 p-2.5 flex items-center gap-2 w-full text-left cursor-pointer"
+        data-testid={`address-card-unreached-${kind}`}
+      >
+        <FileJson className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
+        <span className="text-xs text-muted-foreground/80 truncate flex-1">{kindLabel} didn't load — tap to retry</span>
+      </button>
     );
   }
 
@@ -2159,7 +2205,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
     });
     queryAnswered(relays, { ids: [replyTargetId] }, 8_000).then((res) => {
       if (!mountedRef.current) return;
-      const outcome = resolveParentOutcome(res);
+      const outcome = resolveFetchOutcome(res);
       if (outcome === "found") {
         const parent = res.events[0] as Event;
         eventStore.add(parent);
