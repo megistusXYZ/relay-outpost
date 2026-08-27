@@ -6,6 +6,7 @@ import { Link, useLocation } from "wouter";
 import { use$ } from "applesauce-react/hooks";
 import { useRenderedContent, type ComponentMap } from "applesauce-react/hooks";
 import { eventStore, pool, publishEvent, fetchProfiles, fetchProfilesCached, DEFAULT_RELAYS, FAST_RELAYS, getEventRelays } from "@/lib/nostr";
+import { replyTargetOf, threadRootOf, KIND_NIP22_COMMENT } from "@/lib/reply-target";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
 import { getPublishTarget } from "@/lib/outpost-relays";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -136,27 +137,14 @@ function useCommentTrustVisible() {
   return visible;
 }
 
+// Both reply generations — NIP-10 kind 1 and NIP-22 kind 1111 (Amethyst's
+// write format since 2026-08) — resolve through the shared, tested lib.
 export function getReplyTargetId(event: Event): string | null {
-  const eTags = event.tags.filter((t) => t[0] === "e");
-  if (eTags.length === 0) return null;
-  const replyTag = eTags.find((t) => t[3] === "reply");
-  if (replyTag) return replyTag[1];
-  const rootTag = eTags.find((t) => t[3] === "root");
-  if (rootTag) {
-    const nonRootTags = eTags.filter((t) => t[3] !== "root");
-    if (nonRootTags.length > 0) return nonRootTags[nonRootTags.length - 1][1];
-    return rootTag[1];
-  }
-  if (eTags.length === 1) return eTags[0][1];
-  return eTags[eTags.length - 1][1];
+  return replyTargetOf(event);
 }
 
 export function getRootEventId(event: Event): string | null {
-  const eTags = event.tags.filter((t) => t[0] === "e");
-  if (eTags.length === 0) return null;
-  const rootTag = eTags.find((t) => t[3] === "root");
-  if (rootTag) return rootTag[1];
-  return eTags[0][1];
+  return threadRootOf(event);
 }
 
 export interface ThreadNode {
@@ -2015,7 +2003,9 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
 
   useEffect(() => {
     const sub = eventStore.insert$.subscribe((e) => {
-      if (e.kind !== KIND_TEXT_NOTE) return;
+      // Kind 1111 = NIP-22 comments, Amethyst's reply format since 2026-08 —
+      // they splice into kind-1 threads exactly like NIP-10 replies.
+      if (e.kind !== KIND_TEXT_NOTE && e.kind !== KIND_NIP22_COMMENT) return;
       setAllReplies((prev) => {
         if (prev.some((p) => p.id === e.id)) return prev;
         const rootE = getRootEventId(e);

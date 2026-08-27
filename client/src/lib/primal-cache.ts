@@ -1,4 +1,5 @@
 import { eventStore, trackEventRelay, DEFAULT_RELAYS, throttledPoolSubscribe, registerProfileInAllCaches } from "./nostr";
+import { replyTargetOf, THREAD_REPLY_KINDS, KIND_NIP22_COMMENT } from "./reply-target";
 import type { Event } from "nostr-tools";
 import { searchBrainstorm } from "./brainstorm-search";
 
@@ -955,27 +956,15 @@ export function fetchThreadRepliesStreaming(
   const allReplies: Event[] = [];
   let cancelled = false;
   let relaySubClose: (() => void) | null = null;
+  let commentSubClose: (() => void) | null = null;
 
   const pendingEvents: Event[] = [];
   const acceptedIds = new Set<string>([eventId]);
 
-  const getReplyTarget = (event: Event): string | null => {
-    const eTags = event.tags.filter((t) => t[0] === "e");
-    if (eTags.length === 0) return null;
-    const replyTag = eTags.find((t) => t[3] === "reply");
-    if (replyTag) return replyTag[1];
-    const rootTag = eTags.find((t) => t[3] === "root");
-    if (rootTag) {
-      const nonRoot = eTags.filter((t) => t[3] !== "root");
-      if (nonRoot.length > 0) return nonRoot[nonRoot.length - 1][1];
-      return rootTag[1];
-    }
-    if (eTags.length === 1) return eTags[0][1];
-    return eTags[eTags.length - 1][1];
-  };
-
   const isDescendant = (event: Event): boolean => {
-    const replyTarget = getReplyTarget(event);
+    // Both reply generations (NIP-10 kind 1, NIP-22 kind 1111) resolve
+    // through the shared lib — see lib/reply-target.ts.
+    const replyTarget = replyTargetOf(event);
     if (!replyTarget) return false;
     return acceptedIds.has(replyTarget);
   };
@@ -1004,7 +993,9 @@ export function fetchThreadRepliesStreaming(
   const addReply = (event: Event) => {
     if (cancelled) return;
     if (event.id === eventId || seenIds.has(event.id)) return;
-    if (event.kind !== 1) {
+    // Amethyst (2026-08) replies to kind 1s with NIP-22 kind-1111 comments;
+    // dropping non-kind-1 here made those replies invisible in threads.
+    if (event.kind !== 1 && event.kind !== KIND_NIP22_COMMENT) {
       if (event.kind === 0) registerProfileInAllCaches(event);
       if (event.kind === 10000100) {
         const parsed = parseEventStats(event);
@@ -1028,6 +1019,7 @@ export function fetchThreadRepliesStreaming(
   const cancel = () => {
     cancelled = true;
     relaySubClose?.();
+    commentSubClose?.();
   };
 
   if (opts?.signal) {
@@ -1060,12 +1052,14 @@ export function fetchThreadRepliesStreaming(
       if (cancelled) { resolve(); return; }
       const timeout = setTimeout(() => {
         relaySubClose?.();
+        commentSubClose?.();
         resolve();
       }, 3000);
 
       const sub = throttledPoolSubscribe(
         FAST_RELAYS.slice(0, 4),
-        { kinds: [1], "#e": [eventId], limit: 50 },
+        // Both reply generations tag the parent with lowercase e.
+        { kinds: [...THREAD_REPLY_KINDS], "#e": [eventId], limit: 50 },
         {
           onevent: (event: Event) => {
             addReply(event);
@@ -1078,6 +1072,22 @@ export function fetchThreadRepliesStreaming(
         }
       );
       relaySubClose = () => sub.close();
+      // NIP-22 comments deep in the thread tag THIS root with uppercase E —
+      // the #e filter above only sees direct children. A separate sub, not a
+      // second filter in one call: the pool merges filter arrays into one.
+      const commentSub = throttledPoolSubscribe(
+        FAST_RELAYS.slice(0, 4),
+        { kinds: [KIND_NIP22_COMMENT], "#E": [eventId], limit: 50 },
+        {
+          onevent: (event: Event) => {
+            addReply(event);
+          },
+          oneose: () => {
+            commentSubClose?.();
+          },
+        }
+      );
+      commentSubClose = () => commentSub.close();
     });
 
     await Promise.all([primalPromise, relayPromise]);
