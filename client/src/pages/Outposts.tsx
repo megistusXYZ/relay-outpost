@@ -77,6 +77,7 @@ import {
   Satellite,
   Rocket,
   Sparkles,
+  ArrowUpRight,
   Telescope,
   BookOpen,
   ChevronDown,
@@ -121,6 +122,7 @@ import { WavesIcon } from "@/components/icons/WavesIcon";
 import { TimelineIcon } from "@/components/icons/TimelineIcon";
 import { AboutIcon } from "@/components/icons/AboutIcon";
 import { RelayFeaturedFeed, useRelayFeaturedSets } from "@/components/RelayFeaturedFeed";
+import { starterSuggestions } from "@/lib/starter-communities";
 import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 import { HorizonIcon } from "@/components/icons/HorizonIcon";
 import { ChannelsIcon } from "@/components/icons/CommsIcon";
@@ -4987,6 +4989,23 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
 
 const PAGE_PINS_COLLAPSED_KEY = "relay-outpost-page-pins-collapsed";
 
+function StarterCommunityIcon({ url, name }: { url: string; name: string }) {
+  const [icon, setIcon] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetchNip11(url).then((doc) => { if (!cancelled && doc?.icon) setIcon(doc.icon); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [url]);
+  if (icon) {
+    return <img src={icon} alt="" loading="lazy" className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-border/30" onError={() => setIcon(null)} />;
+  }
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-sm font-semibold text-brand">
+      {name.slice(0, 1).toUpperCase()}
+    </span>
+  );
+}
+
 export default function Outposts() {
   useDocumentTitle("Communities · Relay Outpost");
   const { pubkey } = useNostrAuth();
@@ -5028,6 +5047,7 @@ export default function Outposts() {
 
   const [joinedRelays, setJoinedRelays] = useState(() => getOutpostRelays());
   const [reordering, setReordering] = useState(false);
+  const starterCards = useMemo(() => starterSuggestions(joinedRelays.map((r) => r.url)), [joinedRelays]);
 
   const [pinnedFeeds, setPinnedFeeds] = useState<PinnedFeed[]>(() => getPinnedFeeds());
   // Nested pins are EXPANDED by default (your shortcuts should be one tap away,
@@ -5379,6 +5399,35 @@ export default function Outposts() {
         <p className="px-0.5 text-[13px] text-muted-foreground/50" data-testid="text-empty-outposts-hint">
           Join a community by pasting its link above, or ask a friend for an invite.
         </p>
+      )}
+
+      {/* Curated starters — good rooms a new person can join without knowing
+          what to search for. Each entry is wire-verified before it's listed
+          (lib/starter-communities). Self-hides once everything is joined. */}
+      {pubkey && starterCards.length > 0 && (
+        <div className="mt-5" data-testid="starter-communities">
+          <p className="px-0.5 mb-2.5 text-[11px] font-brand uppercase tracking-wider text-muted-foreground/60">
+            Good places to start
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {starterCards.map((c) => (
+              <button
+                key={c.url}
+                type="button"
+                onClick={() => setLocation(`/outposts/${encodeURIComponent(c.url)}`)}
+                className="group/starter flex items-center gap-3 rounded-xl border border-border/30 bg-card/40 px-3.5 py-3 text-left transition-all hover:border-brand/30 hover:bg-brand/[0.05] min-h-[44px]"
+                data-testid={`starter-community-${c.url.replace(/\W+/g, "-")}`}
+              >
+                <StarterCommunityIcon url={c.url} name={c.name} />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium truncate">{c.name}</span>
+                  <span className="block text-[11px] text-muted-foreground/70 truncate">{c.tagline}</span>
+                </span>
+                <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-colors group-hover/starter:text-brand" />
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Relay infrastructure moved to Settings → Tools → Relays (/relays). Keep a
