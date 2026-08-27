@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { use$ } from "applesauce-react/hooks";
 import { eventStore, pool, subscribeToFeed, subscribeToFeedPersistent, fetchProfilesCached, DEFAULT_RELAYS, getRelaysForPurpose, hasFeedData, markFeedDataLoaded, throttledPoolSubscribe } from "@/lib/nostr";
-import { KIND_TEXT_NOTE, KIND_SHORT_VIDEO, DIVINE_VIDEO_RELAY } from "@/lib/nostr-helpers";
+import { KIND_TEXT_NOTE, KIND_SHORT_VIDEO, VIDEO_EVENT_KINDS, DIVINE_VIDEO_RELAY } from "@/lib/nostr-helpers";
+import { markVideosSeen, readSeenVideos, orderUnseenFirst } from "@/lib/video-seen";
 import { prefetchStatsImmediate, primalStatsCache, fetchTrendingFeed } from "@/lib/primal-cache";
 import { computeEngagementScore } from "@/lib/engagement";
 import { getEventMediaInfo, extractMediaFromContent, classifyUrl, resolveEmbedId, getEmbedThumbnail, isEmbedType, embedPlatformLabel, parseImetaTags } from "@/lib/media-utils";
@@ -80,6 +81,26 @@ const SORT_OPTIONS: Array<{ value: SortMode; label: string; icon: React.Componen
   { value: "latest", label: "Latest", icon: Clock },
   { value: "trending", label: "Trending", icon: Flame },
 ];
+
+/**
+ * Mark a video seen once its card has actually been on screen (half visible)
+ * — not merely rendered below the fold. Feeds the unseen-first ordering; the
+ * mark takes effect on the NEXT feed build, never mid-scroll.
+ */
+function useMarkVideoSeenOnVisible(ref: React.RefObject<HTMLElement | null>, eventId: string) {
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        markVideosSeen([eventId]);
+        obs.disconnect();
+      }
+    }, { threshold: 0.5 });
+    obs.observe(node);
+    return () => obs.disconnect();
+  }, [ref, eventId]);
+}
 
 function getSessionSeed(): number {
   const key = "video_feed_session_seed";
@@ -374,6 +395,11 @@ function VideoProgressBar({ videoRef }: { videoRef: React.RefObject<HTMLVideoEle
 
 function ShortsCard({ event, videoUrl, isActive, isMuted, shouldPreload = false, disableAutoplay = false, onToggleMute }: { event: Event; videoUrl: string; isActive: boolean; isMuted: boolean; shouldPreload?: boolean; disableAutoplay?: boolean; onToggleMute: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  // Immersive pager: the ACTIVE card is the one being watched — that is the
+  // seen signal here (visibility is meaningless when every card fills the screen).
+  useEffect(() => {
+    if (isActive) markVideosSeen([event.id]);
+  }, [isActive, event.id]);
   const [error, setError] = useState(false);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
   const [buffering, setBuffering] = useState(false);
@@ -632,6 +658,7 @@ function ShortsCard({ event, videoUrl, isActive, isMuted, shouldPreload = false,
 function VideoCard({ event, videoUrl }: { event: Event; videoUrl: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  useMarkVideoSeenOnVisible(cardRef, event.id);
   const [error, setError] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const { enterPiP, isPiP, pipVideoSrc, pipSupported, notifyUnmount } = usePiP();
@@ -864,6 +891,8 @@ function VideoCard({ event, videoUrl }: { event: Event; videoUrl: string }) {
 
 function VideoListItem({ event, videoUrl }: { event: Event; videoUrl: string }) {
   const [expanded, setExpanded] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  useMarkVideoSeenOnVisible(rootRef, event.id);
   const authorProfile = use$(() => eventStore.replaceable(0, event.pubkey), [event.pubkey]);
   const fallbackName = shortenNpub(formatNpub(event.pubkey));
   const displayName = authorProfile ? (getDisplayName(authorProfile, fallbackName) ?? fallbackName) : fallbackName;
@@ -901,6 +930,7 @@ function VideoListItem({ event, videoUrl }: { event: Event; videoUrl: string }) 
 
   return (
     <div
+      ref={rootRef}
       className="rounded-lg border border-border/20 bg-card/50"
       data-testid={`video-list-item-${event.id}`}
     >
@@ -1095,6 +1125,21 @@ export default function VideoFeed({ embedded = false, sort }: { embedded?: boole
       since: now,
     }, [DIVINE_VIDEO_RELAY]);
 
+    // The GENERAL network's video kinds — NIP-71 21/22 plus the legacy
+    // addressable pair. This is where most new video publishing lives now;
+    // divine's relay carries only the 34236 archive, so without this sub the
+    // feed was the archive plus whatever kind-1 notes happened to link video.
+    const videoKindsSub = subscribeToFeed({
+      kinds: [...VIDEO_EVENT_KINDS],
+      limit: 100,
+      since: now - 7 * 24 * 60 * 60,
+    }, noteRelays);
+
+    const videoKindsLiveSub = subscribeToFeedPersistent({
+      kinds: [...VIDEO_EVENT_KINDS],
+      since: now,
+    }, noteRelays);
+
     fetchTrendingFeed("trending_4h", undefined, 100).catch(() => {});
     fetchTrendingFeed("hot", undefined, 100).catch(() => {});
 
@@ -1103,13 +1148,16 @@ export default function VideoFeed({ embedded = false, sort }: { embedded?: boole
       liveSub.close();
       divineSub.close();
       divineLiveSub.close();
+      videoKindsSub.close();
+      videoKindsLiveSub.close();
     };
   }, []);
 
   const allTextNotes = use$(() => eventStore.timeline({ kinds: [KIND_TEXT_NOTE] }), []);
-  const allShortVideos = use$(() => eventStore.timeline({ kinds: [KIND_SHORT_VIDEO] }), []);
+  const allShortVideos = use$(() => eventStore.timeline({ kinds: [...VIDEO_EVENT_KINDS] }), []);
 
   const sessionSeed = useMemo(() => getSessionSeed(), []);
+  const seenSnapshot = useMemo(() => readSeenVideos(), []);
 
   // Three-state stranger profile gate (see spam-filter.ts): this is a global
   // discovery surface, so profile-less stranger posts (raw-npub authors) are
@@ -1175,10 +1223,14 @@ export default function VideoFeed({ embedded = false, sort }: { embedded?: boole
     if (sortMode === "latest") {
       sorted = shuffleWithinTimeWindows(sorted, sessionSeed);
     }
-    return interleaveByKind(sorted);
+    // Unseen-first, from the MOUNT-TIME snapshot of the seen ledger: videos
+    // this device already showed sink below fresh ones, but marks made while
+    // scrolling never reorder the grid mid-session (feed-stability rule) —
+    // they take effect next visit.
+    return orderUnseenFirst(interleaveByKind(sorted), seenSnapshot);
     // profileVersion: a kind-0 arrival must re-run the gate to un-hide its
     // author's held posts (grace → admit).
-  }, [allTextNotes, allShortVideos, spamFilter, tierFilter, sortMode, statsVersion, sessionSeed, followSet, profileGetter, profileSettledGetter, profileVersion, grapeRankScores]);
+  }, [allTextNotes, allShortVideos, spamFilter, tierFilter, sortMode, statsVersion, sessionSeed, seenSnapshot, followSet, profileGetter, profileSettledGetter, profileVersion, grapeRankScores]);
 
   const displayedEntries = useMemo(() => {
     return allVideoEntries
@@ -1232,7 +1284,7 @@ export default function VideoFeed({ embedded = false, sort }: { embedded?: boole
 
     let receivedCount = 0;
     let subsComplete = 0;
-    const totalSubs = 2;
+    const totalSubs = 3;
 
     const checkComplete = () => {
       subsComplete++;
@@ -1275,6 +1327,24 @@ export default function VideoFeed({ embedded = false, sort }: { embedded?: boole
       },
       oneose() {
         divineSub.close();
+        checkComplete();
+      },
+    });
+
+    // Dedicated video kinds page much sparser than kind-1: give the window a
+    // week per page so "load more" actually reaches older archive content.
+    const videoKindsSub = throttledPoolSubscribe(DEFAULT_RELAYS, {
+      kinds: [...VIDEO_EVENT_KINDS],
+      until: oldestTs,
+      since: oldestTs - 7 * 24 * 60 * 60,
+      limit: 100,
+    }, {
+      onevent(event) {
+        receivedCount++;
+        eventStore.add(event);
+      },
+      oneose() {
+        videoKindsSub.close();
         checkComplete();
       },
     });
@@ -1509,7 +1579,7 @@ export default function VideoFeed({ embedded = false, sort }: { embedded?: boole
         ) : (
           <>
             <div
-              className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3"
               data-testid="container-video-grid"
             >
               {displayedEntries.map((entry, i) => (

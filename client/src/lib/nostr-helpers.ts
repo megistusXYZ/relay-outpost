@@ -143,6 +143,15 @@ export const KIND_COMMENT = 1111;
 export const KIND_ZAP_REQUEST = 9734;
 export const KIND_ZAP = 9735;
 export const KIND_SHORT_VIDEO = 34236;
+// NIP-71 as revised: 21 = normal video, 22 = short/vertical video. The
+// addressable spellings (34235/34236) are the LEGACY generation — DiVine's
+// archive still lives on 34236 (measured 2026-08-26: relay.divine.video
+// serves 34236, zero 21/22), while new publishers ship 21/22 on general
+// relays (100-event cap hit instantly on damus/nos/primal). A video surface
+// that wants the whole catalog asks for all four.
+export const KIND_VIDEO_NIP71 = 21;
+export const KIND_SHORT_VIDEO_NIP71 = 22;
+export const VIDEO_EVENT_KINDS = [KIND_VIDEO_NIP71, KIND_SHORT_VIDEO_NIP71, 34235, KIND_SHORT_VIDEO] as const;
 
 export const DIVINE_VIDEO_RELAY = "wss://relay.divine.video";
 

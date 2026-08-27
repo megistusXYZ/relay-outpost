@@ -448,7 +448,9 @@ export async function fetchVideoTeaser(): Promise<Reached<VideoTeaser | null>> {
 async function fetchVideoTeaserFresh(): Promise<Reached<VideoTeaser | null>> {
   const [served, events] = await Promise.all([
     anyServed(FAST_RELAYS),
-    collectOnce(FAST_RELAYS, { kinds: [34235, 34236], limit: 15 }, 11_000),
+    // All four video generations — NIP-71 21/22 is where new publishing
+    // lives; 34235/34236 is the legacy/archive pair (see VIDEO_EVENT_KINDS).
+    collectOnce(FAST_RELAYS, { kinds: [21, 22, 34235, 34236], limit: 20 }, 11_000),
   ]);
   const teasers = events
     .sort((a, b) => b.created_at - a.created_at)
