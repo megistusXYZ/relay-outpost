@@ -37,6 +37,8 @@ export interface Listing {
   location?: string;
   sold: boolean;
   publishedAt: number;
+  /** Lowercased `t` hashtags — the category vocabulary sellers actually use. */
+  tags: string[];
   event: Event;
 }
 
@@ -64,8 +66,41 @@ export function parseListing(event: Event): Listing | null {
     // Positive claim only: sold means the event SAID sold.
     sold: tag("status")?.toLowerCase() === "sold",
     publishedAt: publishedAtStr ? parseInt(publishedAtStr, 10) || event.created_at : event.created_at,
+    tags: event.tags.filter((t) => t[0] === "t" && t[1]).map((t) => t[1].toLowerCase().trim()),
     event,
   };
+}
+
+/**
+ * The shop's category chips, from the vocabulary sellers actually use:
+ * lowercased `t` tags ranked by how many listings carry them.
+ */
+export function rankListingCategories(listings: readonly Listing[]): Array<{ tag: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const l of listings) {
+    for (const t of new Set(l.tags)) counts.set(t, (counts.get(t) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+}
+
+/** Search + category over parsed listings. Both narrow; neither is case-sensitive. */
+export function filterListings(
+  listings: readonly Listing[],
+  opts: { query?: string; category?: string },
+): Listing[] {
+  const q = opts.query?.trim().toLowerCase() ?? "";
+  const cat = opts.category?.toLowerCase();
+  return listings.filter((l) => {
+    if (cat && !l.tags.includes(cat)) return false;
+    if (!q) return true;
+    return (
+      l.title.toLowerCase().includes(q) ||
+      l.summary.toLowerCase().includes(q) ||
+      l.tags.some((t) => t.includes(q))
+    );
+  });
 }
 
 /**
@@ -106,7 +141,16 @@ export function listingWebUrl(listing: Pick<Listing, "pubkey" | "dTag" | "event"
  */
 export function pickMarketListings(
   events: readonly Event[],
-  opts?: { flagged?: ReadonlySet<string> },
+  opts?: {
+    flagged?: ReadonlySet<string>;
+    /**
+     * Locally-reported check (spam-filter's reported ledger, injected to keep
+     * this module pure). Reporting must hide the goods HERE too, immediately —
+     * feeds already hide by event id or author; waiting for the network-level
+     * flag would leave what you just reported on the shelf.
+     */
+    isReported?: (event: Event) => boolean;
+  },
 ): Listing[] {
   const byAddr = new Map<string, Event>();
   for (const e of events) {
@@ -117,7 +161,7 @@ export function pickMarketListings(
     if (!prior || e.created_at > prior.created_at) byAddr.set(key, e);
   }
   return [...byAddr.values()]
-    .filter((e) => !opts?.flagged?.has(e.pubkey))
+    .filter((e) => !opts?.flagged?.has(e.pubkey) && !opts?.isReported?.(e))
     .map(parseListing)
     .filter((l): l is Listing => l !== null)
     .sort((a, b) => (Number(a.sold) - Number(b.sold)) || (b.publishedAt - a.publishedAt));

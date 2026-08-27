@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Event } from "nostr-tools";
-import { Tag } from "lucide-react";
+import { Tag, Search, X } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { GuestWall } from "@/components/GuestWall";
@@ -20,7 +20,8 @@ import { ListingDialog } from "@/components/ListingCard";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { queryAnswered } from "@/lib/relay-reach";
 import { FAST_RELAYS, fetchProfilesCached } from "@/lib/nostr";
-import { formatListingPrice, pickMarketListings, KIND_CLASSIFIED_LISTING, LISTING_RELAYS, type Listing } from "@/lib/listing";
+import { isReportedEvent, isReportedPubkey } from "@/lib/spam-filter";
+import { formatListingPrice, pickMarketListings, rankListingCategories, filterListings, KIND_CLASSIFIED_LISTING, LISTING_RELAYS, type Listing } from "@/lib/listing";
 
 type PageState =
   | { status: "loading" }
@@ -58,6 +59,18 @@ export default function Marketplace() {
   const { flaggedPubkeys } = useGrapeRankScores();
   const [state, setState] = useState<PageState>({ status: "loading" });
   const [openListing, setOpenListing] = useState<Listing | null>(null);
+  // The typical shop controls: search + category chips, both client-side
+  // over the loaded set. Category vocabulary comes from sellers' own t tags.
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<string | null>(null);
+  const categories = useMemo(
+    () => (state.status === "ready" ? rankListingCategories(state.listings).slice(0, 12) : []),
+    [state],
+  );
+  const visible = useMemo(
+    () => (state.status === "ready" ? filterListings(state.listings, { query, category: category ?? undefined }) : []),
+    [state, query, category],
+  );
 
   const load = useCallback(() => {
     setState({ status: "loading" });
@@ -67,7 +80,16 @@ export default function Marketplace() {
         setState({ status: "unreachable" });
         return;
       }
-      setState({ status: "ready", listings: pickMarketListings(res.events as Event[], { flagged: flaggedPubkeys ?? undefined }) });
+      setState({
+        status: "ready",
+        listings: pickMarketListings(res.events as Event[], {
+          flagged: flaggedPubkeys ?? undefined,
+          // What YOU reported disappears from the shelf immediately — same
+          // id-or-author rule the feeds use — without waiting for the
+          // network-level flag to catch up.
+          isReported: (e) => isReportedEvent(e.id) || isReportedPubkey(e.pubkey),
+        }),
+      });
     });
   }, [flaggedPubkeys]);
   useEffect(() => { if (myPubkey) load(); }, [load, myPubkey]);
@@ -99,6 +121,56 @@ export default function Marketplace() {
         </p>
       </div>
 
+      {state.status === "ready" && (
+        <div className="mb-5 space-y-3">
+          {/* Shop controls: one rounded search, one chip rail. Mobile gets the
+              full-width field and a sideways-scrolling rail; desktop caps the
+              field so the rail breathes beside the grid width. */}
+          <div className="relative max-w-md">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 pointer-events-none" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search the shelves…"
+              className="w-full h-10 rounded-full border border-border/60 bg-card pl-10 pr-9 text-sm outline-none focus:border-brand/40 transition-colors"
+              data-testid="marketplace-search"
+            />
+            {query && (
+              <button
+                onClick={() => setQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground/60 hover:text-foreground"
+                aria-label="Clear search"
+                data-testid="marketplace-search-clear"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          {categories.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }} data-testid="marketplace-categories">
+              <button
+                onClick={() => setCategory(null)}
+                className={`shrink-0 h-8 px-3.5 rounded-full text-xs font-medium transition-colors ${category === null ? "bg-primary text-primary-foreground" : "border border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/40"}`}
+                data-testid="marketplace-category-all"
+              >
+                All
+              </button>
+              {categories.map((c) => (
+                <button
+                  key={c.tag}
+                  onClick={() => setCategory(category === c.tag ? null : c.tag)}
+                  className={`shrink-0 h-8 px-3.5 rounded-full text-xs font-medium transition-colors ${category === c.tag ? "bg-primary text-primary-foreground" : "border border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/40"}`}
+                  data-testid={`marketplace-category-${c.tag}`}
+                >
+                  {c.tag}
+                  <span className={`ml-1.5 tabular-nums ${category === c.tag ? "text-primary-foreground/70" : "text-muted-foreground/50"}`}>{c.count}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {state.status === "loading" && (
         <div className="flex flex-col items-center justify-center py-20" data-testid="marketplace-loading">
           <RelayOutpostLoader size="lg" label="Browsing the shelves..." />
@@ -115,9 +187,14 @@ export default function Marketplace() {
           The relays answered and the shelves are genuinely quiet right now.
         </p>
       )}
-      {state.status === "ready" && state.listings.length > 0 && (
+      {state.status === "ready" && state.listings.length > 0 && visible.length === 0 && (
+        <p className="py-20 text-center text-sm text-muted-foreground" data-testid="marketplace-no-match">
+          Nothing matches{query ? ` "${query}"` : ""}{category ? ` in ${category}` : ""} — try fewer words or another category.
+        </p>
+      )}
+      {visible.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 gap-y-6" data-testid="marketplace-grid">
-          {state.listings.map((l) => (
+          {visible.map((l) => (
             <MarketCard key={`${l.pubkey}:${l.dTag}`} listing={l} onOpen={() => setOpenListing(l)} />
           ))}
         </div>

@@ -21,6 +21,7 @@ import { Tag, MessageCircle, MapPin, ExternalLink, Flag, ShieldAlert } from "luc
 import { ReportDialog } from "@/components/ReportDialog";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { getSignalTier, getSignalTierLabel } from "@/lib/graperank";
+import { isReportedEvent, isReportedPubkey } from "@/lib/spam-filter";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { eventStore, fetchProfilesCached, FAST_RELAYS } from "@/lib/nostr";
@@ -250,7 +251,9 @@ export function ProfileListingsStrip({ pubkey }: { pubkey: string }) {
     const relays = Array.from(new Set([...LISTING_RELAYS, ...getWriteRelays(pubkey, []), ...FAST_RELAYS.slice(0, 3)]));
     queryAnswered(relays, { kinds: [KIND_CLASSIFIED_LISTING], authors: [pubkey], limit: 24 }, 8_000).then((res) => {
       if (cancelled) return;
-      setListings(pickMarketListings(res.events as Event[]));
+      setListings(pickMarketListings(res.events as Event[], {
+        isReported: (e) => isReportedEvent(e.id) || isReportedPubkey(e.pubkey),
+      }));
     });
     return () => { cancelled = true; };
   }, [pubkey]);
