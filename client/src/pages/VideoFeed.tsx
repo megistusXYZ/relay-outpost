@@ -25,7 +25,7 @@ import { getAvatarUrl, getDisplayName, formatNpub, shortenNpub } from "@/lib/nos
 import { RelayOutpostLoader, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { formatDistanceToNow } from "date-fns";
-import { Play, Video, LayoutGrid, LayoutList, ChevronUp, ChevronDown, Volume2, VolumeX, Loader2, Clock, TrendingUp, Flame, ExternalLink, MessageCircle, Filter, PictureInPicture2, X } from "lucide-react";
+import { Play, Video, LayoutGrid, LayoutList, ChevronDown, Volume2, VolumeX, Loader2, Clock, TrendingUp, Flame, ExternalLink, MessageCircle, Filter, PictureInPicture2, X } from "lucide-react";
 import { WalledGardenFallback } from "@/components/WalledGardenFallback";
 import { MediaCommentsSection } from "@/components/MediaComments";
 import { Button } from "@/components/ui/button";
@@ -1410,15 +1410,6 @@ export default function VideoFeed({ embedded = false, sort }: { embedded?: boole
     if (ids.length > 0) prefetchStatsImmediate(ids);
   }, [allVideoEntries, sortMode]);
 
-  const scrollToIndex = useCallback((index: number) => {
-    const container = shortsContainerRef.current;
-    if (!container) return;
-    const slides = container.querySelectorAll(".shorts-slide");
-    if (slides[index]) {
-      slides[index].scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, []);
-
   useEffect(() => {
     const container = shortsContainerRef.current;
     if (!container || !isMobile) return;
@@ -1518,24 +1509,9 @@ export default function VideoFeed({ embedded = false, sort }: { embedded?: boole
           >
             <X className="w-5 h-5" />
           </button>
-          <div className="fixed right-3 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2">
-            <button
-              onClick={() => scrollToIndex(Math.max(0, activeIndex - 1))}
-              className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white/70"
-              style={{ visibility: activeIndex > 0 ? "visible" : "hidden" }}
-              data-testid="button-shorts-prev"
-            >
-              <ChevronUp className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => scrollToIndex(Math.min(displayedEntries.length - 1, activeIndex + 1))}
-              className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white/70"
-              style={{ visibility: activeIndex < displayedEntries.length - 1 ? "visible" : "hidden" }}
-              data-testid="button-shorts-next"
-            >
-              <ChevronDown className="w-4 h-4" />
-            </button>
-          </div>
+          {/* No prev/next chevrons: swipe IS the pager here, and the floating
+              arrows crowded the action rail's sort toggle (owner screenshots,
+              2026-08-26). */}
           {/* No position counter ("5 / 20"): users shouldn't see how deep or
               how finite the reel is — endless-feel over odometer. */}
         </div>,
