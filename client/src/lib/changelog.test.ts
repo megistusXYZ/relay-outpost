@@ -33,9 +33,12 @@ describe("changelog is the single source of truth for the app version", () => {
     }
   });
 
-  it("dates strictly decrease too, so version order and date order agree", () => {
+  it("dates never increase, so version order and date order agree", () => {
+    // Non-strict: two releases can genuinely land on the same day (1.10.0 and
+    // 1.11.0 both shipped 2026-08-27). Array order stays the authority; a date
+    // may repeat but must never move backwards.
     for (let i = 1; i < CHANGELOG.length; i++) {
-      expect(CHANGELOG[i - 1].date > CHANGELOG[i].date, `${CHANGELOG[i - 1].date} must be after ${CHANGELOG[i].date}`).toBe(true);
+      expect(CHANGELOG[i - 1].date >= CHANGELOG[i].date, `${CHANGELOG[i - 1].date} must not be before ${CHANGELOG[i].date}`).toBe(true);
     }
     expect(LATEST_CHANGELOG_DATE).toBe(CHANGELOG[0].date);
   });

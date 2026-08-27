@@ -39,6 +39,32 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.11.0",
+    date: "2026-08-27",
+    title: "Curated by the people who run the place",
+    changes: [
+      { type: "new", text: "Communities have a front page now. The people who run a relay can curate named feeds — posts, articles, videos, streams, things for sale, links — from anyone on the network, old or new, and visitors see them as a Featured tab on the community's page. Build one from a paste box, from the relay's own recent activity, or by browsing everything a person has ever published." },
+      { type: "new", text: "Curating takes two taps. See something worth featuring while you're just scrolling? Every post's menu has \"Add to Featured\" if you run a relay — pick a feed, done. The relay even starts serving a copy of what it features, so your front page doesn't depend on someone else's server staying up." },
+      { type: "new", text: "Feature a person, not just a post. One tap on a profile puts everything they publish — past and future — into a feed as a living \"Featured creator\" block. Your community's front page can follow the voices that make it worth visiting." },
+      { type: "new", text: "Operators decide what their relay accepts at the door: plain-language switches for posts, articles, videos, live streams, private messages and more — no kind numbers, no guesswork, and the readout always shows what the relay itself reports." },
+      { type: "new", text: "Marketplace sellers wear their reputation. A seller's page shows who in your trust circle vouches for them — in their own words — and the marketplace sorts trusted sellers first. Real social proof, from people you actually trust, on the people asking for your sats." },
+      { type: "improved", text: "Discover's front door got choosier: the feed and article teasers lead with people you follow, and airdrop bait doesn't make the cut. Your actual feeds are untouched — this is just the welcome mat." },
+      { type: "improved", text: "Streamers' profiles finally show their past broadcasts. Most streams are published by the platform, not the person — we look for the human now, so a profile with thirty shows stops claiming it has none. Recordings play in place, and ones that live on YouTube open there instead of a button that does nothing." },
+      { type: "improved", text: "Podcasts work like they should: the Podcasts tab in Audio loads again, and sharing a podcast episode link in a post gives everyone an inline player — press play in the conversation, not on some other website." },
+      { type: "improved", text: "When a community relay can't be reached, the Activity page now names it and hands you the fix: try again, turn it off, or remove it — one clear card instead of two vague sentences. And a holiday weeks away is a mark on the calendar date now, not a banner squatting in your schedule." },
+    ],
+    feedback: [
+      {
+        quote: "Is there a way relay operators could publish custom feeds — add whatever content they want, from whatever profile, old or new?",
+        attribution: "The ask that became Featured feeds",
+      },
+      {
+        quote: "The Podcasts button is broken.",
+        attribution: "It was a crash. It's not anymore.",
+      },
+    ],
+  },
+  {
     version: "1.10.0",
     date: "2026-08-27",
     title: "Open source, open market, open mic",
