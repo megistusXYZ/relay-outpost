@@ -40,3 +40,11 @@ describe("changelog is the single source of truth for the app version", () => {
     expect(LATEST_CHANGELOG_DATE).toBe(CHANGELOG[0].date);
   });
 });
+
+describe("package.json follows the changelog", () => {
+  it("pkg.version === APP_VERSION — the Docker build stamps /api/version from package.json when git is absent, so an unbumped package lies about every deploy", async () => {
+    const { readFileSync } = await import("node:fs");
+    const pkg = JSON.parse(readFileSync(`${process.cwd()}/package.json`, "utf-8"));
+    expect(pkg.version).toBe(APP_VERSION);
+  });
+});
