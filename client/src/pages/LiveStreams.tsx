@@ -37,6 +37,7 @@ import { useLiveMiniPlayer } from "@/contexts/LiveMiniPlayerContext";
 import Hls from "hls.js";
 import nostrOstrichGif from "@assets/219719339-5eff628c-3470-4cc3-81eb-404f8902de9f_1771392554698.gif";
 import { parseLiveEvent, needsProxy, proxyUrl, getStreamHost, pickStreamSource, hasReplay } from "@/lib/live-events";
+import { isAudioSpace, audioSpaceFromUrl } from "@/lib/audio-space";
 import type { LiveEventData } from "@/lib/live-events";
 import { classifyUrl, resolveEmbedId, isEmbedType } from "@/lib/media-utils";
 import { InlineEmbedPlayer } from "@/components/InlineEmbedPlayer";
@@ -127,6 +128,12 @@ function StreamCard({ stream, onClick, liveness }: { stream: LiveEventData; onCl
           )}
           {liveness === "verified-live" && stream.status === "live" && (
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]" title="Verified live" />
+          )}
+          {isAudioSpace(stream) && (
+            <Badge className="bg-emerald-600/80 text-white border-emerald-500/50 gap-1" data-testid={`badge-audio-space-${stream.id}`}>
+              <Radio className="w-3 h-3" />
+              Audio
+            </Badge>
           )}
         </div>
         {stream.currentParticipants != null && (
@@ -1066,6 +1073,87 @@ function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, i
   );
 }
 
+/**
+ * Detail view for an AUDIO SPACE — a 30311 whose "stream" is a voice-room
+ * page (Corny Chat & co), which must never reach the video player.
+ *
+ * Embeddable services (measured allowlist in lib/audio-space) render the room
+ * itself inline with mic/camera delegated, so people can listen AND speak
+ * without leaving the app; the room's own chat and stage controls come with
+ * it, so the 1311 chat panel isn't duplicated here. Frame-blocked services
+ * get an honest Join button that opens the service in a new tab.
+ */
+function AudioSpaceDetail({ stream }: { stream: LiveEventData }) {
+  const space = audioSpaceFromUrl(stream.streamUrl ?? "");
+  const hostPubkey = useMemo(() => getStreamHost(stream), [stream]);
+  const profile = use$(() => eventStore.replaceable(KIND_METADATA, hostPubkey), [hostPubkey]);
+  const displayName = profile ? getDisplayName(profile) : shortenNpub(formatNpub(hostPubkey));
+  let hostNpub: string;
+  try { hostNpub = nip19.npubEncode(hostPubkey); } catch { hostNpub = hostPubkey; }
+  if (!space) return null;
+  const live = stream.status === "live";
+  return (
+    <div className="space-y-4" data-testid="audio-space-detail">
+      <div className="flex items-start gap-3 flex-wrap">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <StatusBadge status={stream.status} />
+            <Badge className="bg-emerald-600/80 text-white border-emerald-500/50 gap-1">
+              <Radio className="w-3 h-3" />
+              Audio space
+            </Badge>
+            {stream.currentParticipants != null && live && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Users className="w-3.5 h-3.5" />
+                {stream.currentParticipants} in the room
+              </span>
+            )}
+          </div>
+          <h2 className="text-lg font-semibold mt-2">{stream.title}</h2>
+          <Link href={`/profile/${hostNpub}`} className="text-sm text-muted-foreground hover:text-foreground">
+            Hosted by {displayName} · on {space.service}
+          </Link>
+        </div>
+        <a
+          href={space.joinUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border/50 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors shrink-0"
+          data-testid="link-audio-space-browser"
+        >
+          Open in browser
+          <ExternalLink className="w-3 h-3" />
+        </a>
+      </div>
+      {!live ? (
+        <div className="rounded-xl border border-border/50 bg-muted/20 p-6 text-sm text-muted-foreground" data-testid="audio-space-ended">
+          This space {stream.status === "planned" ? "hasn't started yet" : "has ended"}.
+        </div>
+      ) : space.embeddable ? (
+        <iframe
+          src={space.joinUrl}
+          title={`${space.service} — ${space.room}`}
+          className="w-full rounded-xl border border-border/50 bg-black h-[calc(100dvh-16rem)] min-h-[420px]"
+          allow="microphone; camera; autoplay; fullscreen; clipboard-write; display-capture"
+          data-testid="audio-space-inline-frame"
+        />
+      ) : (
+        <a
+          href={space.joinUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-6 text-sm font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+          data-testid="button-audio-space-join-external"
+        >
+          <Radio className="w-4 h-4" />
+          Join on {space.service}
+          <ExternalLink className="w-3.5 h-3.5" />
+        </a>
+      )}
+    </div>
+  );
+}
+
 function StreamDetail({ stream }: { stream: LiveEventData }) {
   const { pubkey: myPubkey, signer, attemptReconnect } = useNostrAuth();
   // Watching a stream fullscreen → dismiss any floating mini-player (round-trips
@@ -1939,7 +2027,9 @@ export default function LiveStreams() {
   if (selectedStream) {
     return (
       <div className="px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
-        <StreamDetail stream={selectedStream} />
+        {isAudioSpace(selectedStream)
+          ? <AudioSpaceDetail stream={selectedStream} />
+          : <StreamDetail stream={selectedStream} />}
       </div>
     );
   }
