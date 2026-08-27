@@ -98,6 +98,23 @@ export default function WhatsNew() {
                 })}
               </ul>
 
+              {/* Release call-to-action (e.g. the open-source repo) — change
+                  text is plain prose, so a real link gets a real row. */}
+              {entry.link && (
+                <div className="border-t border-border/40 dark:border-brand/12 px-3.5 py-2.5">
+                  <a
+                    href={entry.link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.15em] text-brand hover:text-brand-strong transition-colors"
+                    data-testid={`changelog-link-${entry.version}`}
+                  >
+                    {entry.link.label}
+                    <span aria-hidden>↗</span>
+                  </a>
+                </div>
+              )}
+
               {/* Community voice — the human reason(s) behind the release. */}
               {entry.feedback && (() => {
                 const sparks = Array.isArray(entry.feedback) ? entry.feedback : [entry.feedback];

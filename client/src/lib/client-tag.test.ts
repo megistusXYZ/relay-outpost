@@ -1,6 +1,7 @@
-// Locks the client-tag opt-out (fiatjaf request). clientTags() and the tag
-// builders must carry ["client","Relay Outpost"] by default and drop it when the
-// user disables it — this controls what every published event broadcasts.
+// Locks the client-tag OPT-IN (owner decision 2026-08-27, flipping the earlier
+// default): publishing which app someone uses is metadata about them, so the
+// tag is OFF unless the user turns it on in Settings. Explicit choices in
+// either direction keep working — only the unset default changed.
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
@@ -22,8 +23,8 @@ const hasClient = (tags: string[][]) => tags.some((t) => t[0] === "client");
 beforeEach(() => __store.clear());
 
 describe("clientTags() gate", () => {
-  it("default (unset) → includes the client tag", () => {
-    expect(clientTags()).toEqual([CLIENT_TAG]);
+  it("default (unset) → NO client tag: attribution is opt-in", () => {
+    expect(clientTags()).toEqual([]);
   });
 
   it('explicit "true" → includes the client tag', () => {
@@ -38,14 +39,14 @@ describe("clientTags() gate", () => {
 });
 
 describe("tag builders honor the gate", () => {
-  it("reaction + repost carry the client tag by default", () => {
-    expect(hasClient(buildReactionTags(ev))).toBe(true);
-    expect(hasClient(buildRepostTags(ev))).toBe(true);
-  });
-
-  it("reaction + repost omit the client tag when disabled", () => {
-    localStorage.setItem(CLIENT_TAG_ENABLED_KEY, "false");
+  it("reaction + repost omit the client tag by default — opt-in like everything else", () => {
     expect(hasClient(buildReactionTags(ev))).toBe(false);
     expect(hasClient(buildRepostTags(ev))).toBe(false);
+  });
+
+  it("reaction + repost carry the client tag when the user opted in", () => {
+    localStorage.setItem(CLIENT_TAG_ENABLED_KEY, "true");
+    expect(hasClient(buildReactionTags(ev))).toBe(true);
+    expect(hasClient(buildRepostTags(ev))).toBe(true);
   });
 });

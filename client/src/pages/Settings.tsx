@@ -2075,7 +2075,8 @@ function BatchedDecryptionRow() {
 // nostr-helpers). Synced across devices via the NIP-78 settings map.
 function AttributionRow() {
   const [enabled, setEnabled] = useState(() => {
-    try { return localStorage.getItem("relay-outpost-client-tag-enabled") !== "false"; } catch { return true; }
+    // Opt-in (owner decision 2026-08-27): unset means OFF — must match clientTags().
+    try { return localStorage.getItem("relay-outpost-client-tag-enabled") === "true"; } catch { return false; }
   });
   const handleToggle = (value: boolean) => {
     setEnabled(value);
