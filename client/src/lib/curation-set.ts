@@ -211,3 +211,26 @@ export function eventToCurationItem(event: Event, relayHint?: string): CurationI
   }
   return { type: "note", id: event.id, ...(relayHint ? { relayHint } : {}) };
 }
+
+/**
+ * Identity of an item for dedupe: notes by id, addressables by coordinate,
+ * urls by exact url — relay hints are routing, never identity.
+ */
+export function curationItemKey(item: CurationItem): string {
+  if (item.type === "note") return `e:${item.id}`;
+  if (item.type === "address") return `a:${item.kind}:${item.pubkey}:${item.identifier}`;
+  return `r:${item.url}`;
+}
+
+export function containsItem(items: CurationItem[], item: CurationItem): boolean {
+  const key = curationItemKey(item);
+  return items.some((i) => curationItemKey(i) === key);
+}
+
+/** One line that says what an event is — title tag first, else its content. */
+export function curationRowTitle(event: Event): string {
+  const tagTitle = event.tags.find((t) => t[0] === "title")?.[1];
+  if (tagTitle?.trim()) return tagTitle.trim().slice(0, 90);
+  const text = event.content.replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim();
+  return text.slice(0, 90) || "(media)";
+}

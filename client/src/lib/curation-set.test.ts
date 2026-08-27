@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCurationSet, buildCurationSetTags, relayFeaturedSets, detectFeedPaste, curationItemLabel, eventToCurationItem } from "./curation-set";
+import { parseCurationSet, buildCurationSetTags, relayFeaturedSets, detectFeedPaste, curationItemLabel, eventToCurationItem, containsItem, curationRowTitle } from "./curation-set";
 import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
 
@@ -165,5 +165,32 @@ describe("eventToCurationItem (picker: any event becomes the right item shape)",
     expect(eventToCurationItem(post)).toEqual({ type: "note", id: "9".repeat(64) });
     const video = setEvent([], { kind: 22, id: "8".repeat(64) });
     expect(eventToCurationItem(video)).toEqual({ type: "note", id: "8".repeat(64) });
+  });
+});
+
+describe("curationItemKey + containsItem (one-tap adds must not double-feature)", () => {
+  it("notes match by id, addresses by coordinate — relay hints never distinguish", () => {
+    const note = { type: "note" as const, id: "1".repeat(64), relayHint: "wss://a.example" };
+    const sameNote = { type: "note" as const, id: "1".repeat(64) };
+    const addr = { type: "address" as const, kind: 30023, pubkey: OP, identifier: "art", relayHint: "wss://a.example" };
+    const sameAddr = { type: "address" as const, kind: 30023, pubkey: OP, identifier: "art", relayHint: "wss://b.example" };
+    expect(containsItem([note], sameNote)).toBe(true);
+    expect(containsItem([addr], sameAddr)).toBe(true);
+    expect(containsItem([note], addr)).toBe(false);
+    expect(containsItem([], sameNote)).toBe(false);
+  });
+
+  it("urls match by exact url", () => {
+    const url = { type: "url" as const, url: "https://x.example/a" };
+    expect(containsItem([url], { type: "url", url: "https://x.example/a" })).toBe(true);
+    expect(containsItem([url], { type: "url", url: "https://x.example/b" })).toBe(false);
+  });
+});
+
+describe("curationRowTitle", () => {
+  it("prefers the title tag, falls back to link-stripped content", () => {
+    expect(curationRowTitle(setEvent([["title", "My Show"]], { content: "ignored" }))).toBe("My Show");
+    expect(curationRowTitle(setEvent([], { content: "hello https://x.example world" }))).toBe("hello world");
+    expect(curationRowTitle(setEvent([], { content: "" }))).toBe("(media)");
   });
 });

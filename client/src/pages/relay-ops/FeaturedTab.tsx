@@ -28,8 +28,11 @@ import {
   curationItemLabel,
   type CurationSet,
   type CurationItem,
+  curationItemKey,
 } from "@/lib/curation-set";
-import { FeaturedContentPicker, curationItemKey } from "@/components/FeaturedContentPicker";
+import { FeaturedContentPicker } from "@/components/FeaturedContentPicker";
+import { fetchRelaySuggestions } from "@/lib/featured-append";
+import { eventToCurationItem, curationRowTitle } from "@/lib/curation-set";
 import { Switch } from "@/components/ui/switch";
 import {
   Plus,
@@ -92,6 +95,27 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
   // copy-to-relay step rebroadcast without refetching what we just browsed.
   const [pickedEvents] = useState(() => new Map<string, NostrEvent>());
   const [copyToRelay, setCopyToRelay] = useState(true);
+  // The relay's own recent content, offered when the editor is empty — a
+  // first feed should be buildable without leaving this screen.
+  const [suggestions, setSuggestions] = useState<NostrEvent[] | null>(null);
+
+  useEffect(() => {
+    if (!draft || suggestions !== null) return;
+    let cancelled = false;
+    fetchRelaySuggestions(relayUrl)
+      .then((evs) => { if (!cancelled) setSuggestions(evs); })
+      .catch(() => { if (!cancelled) setSuggestions([]); });
+    return () => { cancelled = true; };
+  }, [draft, suggestions, relayUrl]);
+
+  const addSuggestion = useCallback((ev: NostrEvent) => {
+    const item = eventToCurationItem(ev, relayUrl);
+    pickedEvents.set(curationItemKey(item), ev);
+    setDraft((prev) => {
+      if (!prev || prev.items.some((i) => curationItemKey(i) === curationItemKey(item))) return prev;
+      return { ...prev, items: [...prev.items, item] };
+    });
+  }, [relayUrl, pickedEvents]);
 
   const refresh = useCallback(async () => {
     setLoaded(false);
@@ -316,7 +340,27 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
             </div>
 
             {draft.items.length === 0 ? (
-              <p className="text-xs text-muted-foreground/70 text-center py-4">Nothing here yet — paste the first thing worth featuring.</p>
+              suggestions === null ? (
+                <p className="text-xs text-muted-foreground/70 text-center py-4">Looking at what's already on this relay…</p>
+              ) : suggestions.length === 0 ? (
+                <p className="text-xs text-muted-foreground/70 text-center py-4">Nothing here yet — paste the first thing worth featuring, or an npub to browse someone's content.</p>
+              ) : (
+                <div className="space-y-1.5" data-testid="featured-suggestions">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">From this relay</p>
+                  {suggestions.map((ev) => (
+                    <button
+                      key={ev.id}
+                      onClick={() => addSuggestion(ev)}
+                      className="w-full flex items-center gap-2.5 rounded-lg border border-border/25 bg-muted/5 px-2.5 py-1.5 text-left hover:bg-muted/15 transition-colors"
+                      data-testid={`featured-suggestion-${ev.id.slice(0, 8)}`}
+                    >
+                      <Badge variant="secondary" className="text-[9px] px-1.5 py-0 shrink-0">{curationItemLabel(eventToCurationItem(ev))}</Badge>
+                      <span className="text-xs text-muted-foreground truncate flex-1">{curationRowTitle(ev)}</span>
+                      <Plus className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              )
             ) : (
               <ul className="space-y-1.5" data-testid="featured-item-list">
                 {draft.items.map((item, i) => {
