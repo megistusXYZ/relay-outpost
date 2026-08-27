@@ -115,6 +115,18 @@ function parseOgHtml(html: string, targetUrl: string, resolvedUrl?: string): OgD
     || extractMetaName(html, 'twitter:player:stream')
     || '';
   audioRaw = stripHtmlTags(audioRaw);
+  // Meta-less players: pages that render an <audio>/<source> element without
+  // any og:audio meta (podhome.fm's episode pages, and plenty of small hosts).
+  if (!audioRaw) {
+    audioRaw = html.match(/<(?:audio|source)[^>]+src=["']([^"']+)["']/i)?.[1] || '';
+  }
+  // Last resort: the first absolute audio-file URL anywhere in the document —
+  // covers pages that keep the enclosure only in embedded JS state. Bounded at
+  // quotes/entities, and still subject to the AUDIO_EXT/type gate below, so an
+  // HTML page can never slip through as "audio".
+  if (!audioRaw) {
+    audioRaw = html.match(/https?:\/\/[^"'\s&<>\\]+\.(?:mp3|m4a|aac|ogg|oga|opus|wav|flac)(?:\?[^"'\s<>&\\]*)?/i)?.[0] || '';
+  }
   if (audioRaw && !/^https?:\/\//i.test(audioRaw)) {
     try { audioRaw = new URL(audioRaw, baseUrl).toString(); } catch { audioRaw = ''; }
   }
@@ -263,12 +275,21 @@ async function fetchExternalOgData(targetUrl: string, timeoutMs = 9000): Promise
       if (reader) {
         const decoder = new TextDecoder();
         let received = 0;
+        // Podcast/episode pages often carry the playable enclosure only in
+        // the BODY (an <audio> element or embedded JS state — podhome.fm),
+        // with no og:audio meta at all. For those, stopping at </head> is
+        // exactly what loses the player, so keep reading (still capped).
+        const wantsBody = /episod|podcast/i.test(targetUrl);
         while (received < MAX_BODY) {
           const { done, value } = await reader.read();
           if (done) break;
           received += value.length;
           html += decoder.decode(value, { stream: true });
-          if (/<\/head>/i.test(html)) break;
+          if (/<\/head>/i.test(html)) {
+            if (!wantsBody) break;
+            // Head is in and it already declared audio — no need for the body.
+            if (/og:audio|twitter:player:stream/i.test(html)) break;
+          }
         }
         try { await reader.cancel(); } catch {}
       }
