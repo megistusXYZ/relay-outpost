@@ -14,10 +14,28 @@ Relay Outpost treats relays as first-class social spaces — not just infrastruc
 
 ## Screenshots
 
-| Discover | News |
-|---|---|
-| ![Discover — live-tile landing with news, communities, articles, and live streams](.github/screenshots/discover.png) | ![News — trending front page with podcasts and RSS feeds](.github/screenshots/news.png) |
-| *Discover — a live-tile landing with news, communities, articles, and live streams* | *News — trending stories, podcasts, and RSS feeds (black theme)* |
+<table>
+  <tr>
+    <td width="50%"><img src=".github/screenshots/feed.webp" alt="Home feed"><br><sub><b>Home feed</b> — For You, Following, and Saved lanes with trust-aware ranking</sub></td>
+    <td width="50%"><img src=".github/screenshots/discover.webp" alt="Discover"><br><sub><b>Discover</b> — live tiles for streams, audio, events, videos, images, and people to follow</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src=".github/screenshots/thread-trust.webp" alt="Thread with Web of Trust breakdown"><br><sub><b>Threads</b> — reply trees with a per-thread Web of Trust breakdown of who's talking</sub></td>
+    <td width="50%"><img src=".github/screenshots/profile.webp" alt="Profile"><br><sub><b>Profiles</b> — Circle social proof, media rail, and one-tap connect actions</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src=".github/screenshots/live.webp" alt="Live stream"><br><sub><b>Live</b> — NIP-53 streams with chat, zaps, and share</sub></td>
+    <td width="50%"><img src=".github/screenshots/news.webp" alt="News and podcasts"><br><sub><b>News</b> — RSS feeds and Podcast Index search with a trending front page</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src=".github/screenshots/notifications.webp" alt="Notifications in light mode"><br><sub><b>Notifications</b> — grouped by type and time, shown here in light mode</sub></td>
+    <td width="50%"><img src=".github/screenshots/composer.webp" alt="Composer"><br><sub><b>Composer</b> — pick exactly which relays a post goes to, or schedule it for later</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src=".github/screenshots/private-chats.webp" alt="Encrypted messages with private mode"><br><sub><b>Messages</b> — NIP-17 encrypted DMs and group chats, with a private mode that hides names from shoulder-surfers</sub></td>
+    <td width="50%"><img src=".github/screenshots/news-black.webp" alt="News in the black theme"><br><sub><b>Three themes</b> — light, dark, and black; the News trending page shown here in black</sub></td>
+  </tr>
+</table>
 
 ---
 
@@ -36,6 +54,7 @@ Contributions, forks, and feedback are welcome. See [Contributing](#contributing
 
 ## Table of Contents
 
+- [Screenshots](#screenshots)
 - [Why Relay Outpost](#why-relay-outpost)
 - [Outposts](#outposts)
 - [Content Calendar](#content-calendar)
