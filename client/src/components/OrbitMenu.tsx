@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useSearch } from "wouter";
 import { useReducedMotion } from "framer-motion";
-import { Search, LogOut, ChevronRight, ChevronDown, Sun, Moon, Eclipse, Check, UserPlus, X, Settings, SquarePen, Bug, Wrench, HelpCircle, Wallet } from "lucide-react";
+import { Search, LogOut, ChevronRight, ChevronDown, Sun, Moon, Eclipse, Check, UserPlus, X, Settings, SquarePen, Bug, Wrench, HelpCircle, Wallet, RadioTower } from "lucide-react";
+import { getAdminOutposts } from "@/lib/featured-append";
 
 // Custom "What's New" glyph (user-provided edit.svg): a quill over an
 // underline. fill uses currentColor (source had hardcoded #ffffff) so it
@@ -918,6 +919,9 @@ export function OrbitMenu() {
   // theme / Report / Wallet land in the dock bar; Terms / Privacy in the
   // micro row.
   const needsYou = useNeedsYouCount();
+  // Operator gate for the Relay Control dock chip — one localStorage read per
+  // menu open, no network.
+  const isOperator = useMemo(() => getAdminOutposts().length > 0, []);
   const entries: StoryEntry[] = useMemo(() => {
     // Both the rings here and the desktop Stories rail read the SAME node list
     // (lib/nav-destinations.ts) so the two Stories surfaces can never drift.
@@ -1884,6 +1888,20 @@ export function OrbitMenu() {
                     >
                       <Wrench className="h-5 w-5" aria-hidden="true" />
                     </button>
+                    {/* Operators only: one quiet chip straight into Relay
+                        Control — same dock, appears only when they run one. */}
+                    {isOperator && (
+                      <button
+                        type="button"
+                        onClick={() => go("/relays/admin")}
+                        className={`${dockItemClass} ${dockItemFlexClass}`}
+                        aria-label="Relay Control"
+                        title="Relay Control"
+                        data-testid="orbit-chip-relay-control"
+                      >
+                        <RadioTower className="h-5 w-5" aria-hidden="true" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => go("/account?invite=1")}
