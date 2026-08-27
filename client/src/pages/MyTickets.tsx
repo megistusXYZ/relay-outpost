@@ -64,7 +64,7 @@ function PersonChip({ pubkey, fallbackLabel }: { pubkey: string; fallbackLabel?:
 export default function MyTickets() {
   const { pubkey, signer } = useNostrAuth();
   const { toast } = useToast();
-  useDocumentTitle("Your tickets");
+  useDocumentTitle("Tickets & Feedback");
 
   const [events, setEvents] = useState<NostrEvent[]>([]);
   const [privateRumors, setPrivateRumors] = useState<UnwrappedRumor[]>([]);
@@ -223,14 +223,34 @@ export default function MyTickets() {
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
       <div className="flex items-center gap-2">
         <Inbox className="w-4 h-4 text-brand" />
-        <h1 className="text-base font-brand uppercase tracking-widest">Your tickets</h1>
+        <h1 className="text-base font-brand uppercase tracking-widest">Tickets &amp; Feedback</h1>
         <span className="text-xs text-muted-foreground/60">{tickets.length}</span>
+        {/* Creating belongs where reading happens: summon the same global
+            feedback composer the What's New footer uses. */}
+        <Button
+          size="sm"
+          className="ml-auto h-8 gap-1.5 rounded-full"
+          onClick={() => window.dispatchEvent(new CustomEvent("relay-outpost:open-feedback", { detail: { initialType: "question" } }))}
+          data-testid="button-mytickets-new"
+        >
+          <Send className="w-3.5 h-3.5" />
+          New ticket
+        </Button>
       </div>
       <p className="text-xs text-muted-foreground/60">Feedback you've sent to relay operators, and their replies.</p>
 
       {tickets.length === 0 ? (
-        <Card className="glass-card p-6 text-center">
+        <Card className="glass-card p-6 text-center space-y-3">
           <p className="text-sm text-muted-foreground/60">You haven't sent any feedback yet.</p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full"
+            onClick={() => window.dispatchEvent(new CustomEvent("relay-outpost:open-feedback", { detail: { initialType: "question" } }))}
+            data-testid="button-mytickets-new-empty"
+          >
+            Send your first ticket
+          </Button>
         </Card>
       ) : (
         <div className="space-y-2">

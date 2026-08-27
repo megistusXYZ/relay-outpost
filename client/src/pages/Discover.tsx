@@ -92,6 +92,17 @@ type HeroFeedItem = RssCachedItemLite & { thumbnail?: string };
 // ── Small shared pieces ──────────────────────────────────────────────────────
 
 /** Profile name straight off the shared event store; falls back to short npub. */
+function authorAvatarFor(pubkey: string): string | null {
+  try {
+    const ev = eventStore.getEvent({ kind: 0, pubkey, identifier: "" });
+    if (ev) {
+      const p = JSON.parse(ev.content);
+      if (typeof p.picture === "string" && p.picture.trim()) return p.picture.trim();
+    }
+  } catch { /* no picture — initial fallback renders */ }
+  return null;
+}
+
 function authorNameFor(pubkey: string): string {
   try {
     const ev = eventStore.getEvent({ kind: 0, pubkey, identifier: "" });
@@ -461,7 +472,7 @@ function FeedTile() {
   // before it loads would preview a shield-hidden author, then re-filter —
   // the filter-after-render the plan forbids. Guests/WoT-off have no shield.
   const shieldReady = !(pubkey && wotEnabled && !flaggedPubkeys);
-  const [teaser, setTeaser] = useState<Reached<Event | null> | null>(null);
+  const [teaser, setTeaser] = useState<Reached<Event[]> | null>(null);
   // Sequence-guarded: load() can be re-fired (Retry) while a previous fetch is
   // still in flight, and whichever promise resolved LAST would win the state —
   // including a stale one. The counter also covers unmount (cleanup bumps it),
@@ -472,18 +483,23 @@ function FeedTile() {
     setTeaser(null);
     fetchFeedTeaser(flaggedPubkeys ?? new Set())
       .then((r) => { if (seq.current === id) setTeaser(r); })
-      .catch(() => { if (seq.current === id) setTeaser({ data: null, reached: false }); });
+      .catch(() => { if (seq.current === id) setTeaser({ data: [], reached: false }); });
   }, [flaggedPubkeys]);
   // Refetch once the shield lands (the memo keys on shield readiness, so this
   // gets a freshly-floored pick rather than the pre-shield one).
   useEffect(() => { if (shieldReady) load(); return () => { seq.current++; }; }, [load, shieldReady]);
 
-  const state = shieldReady ? resolveTile(teaser) : resolveTile<Event | null>(null);
-  const post = state.status === "ready" ? state.data : null;
-  const snippet = post ? feedSnippet(post.content) : "";
+  const state = shieldReady ? resolveTile(teaser) : resolveTile<Event[]>(null);
+  const posts = state.status === "ready" && state.data ? state.data : [];
+  // Names/avatars for the rows — the relay fallback path doesn't volunteer
+  // kind-0s for everyone; a cached fetch fills them in and re-render follows.
+  useEffect(() => {
+    const missing = posts.filter((p) => !authorAvatarFor(p.pubkey)).map((p) => p.pubkey);
+    if (missing.length > 0) fetchProfilesCached(missing);
+  }, [posts]);
   const freshItems = useMemo<FreshItem[] | null>(
-    () => (post ? [{ id: post.id, timeMs: post.created_at * 1000 }] : null),
-    [post],
+    () => (posts.length > 0 ? posts.map((p) => ({ id: p.id, timeMs: p.created_at * 1000 })) : null),
+    [posts],
   );
   const fresh = useTileFresh("feed", freshItems);
 
@@ -498,15 +514,34 @@ function FeedTile() {
       footer={state.status === "unreachable" ? <RetryFooter onRetry={load} testId="button-retry-feed" /> : undefined}
     >
       {state.status === "loading" && <TileSkeleton />}
-      {state.status === "ready" && post && (
-        <>
-          <span className="block text-xs font-medium text-foreground/90">{authorNameFor(post.pubkey)}</span>
-          <span className="text-xs text-muted-foreground line-clamp-2" data-testid="feed-tile-snippet">
-            {snippet || "Shared media"}
-          </span>
-        </>
+      {state.status === "ready" && posts.length > 0 && (
+        // Three vetted posts, not one over empty space — same ranked pipeline,
+        // more of its output. Rows, hairline-separated, faces first.
+        <span className="block divide-y divide-border/30 dark:divide-white/[0.05]" data-testid="feed-tile-rows">
+          {posts.map((p) => {
+            const avatar = authorAvatarFor(p.pubkey);
+            const name = authorNameFor(p.pubkey);
+            return (
+              <span key={p.id} className="flex items-center gap-2 py-1.5 first:pt-0 last:pb-0">
+                <span className="w-[18px] h-[18px] rounded-full overflow-hidden bg-brand/15 shrink-0 flex items-center justify-center">
+                  {avatar ? (
+                    <img src={avatar} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                  ) : (
+                    <span className="text-[8px] font-bold text-brand">{name.slice(0, 1).toUpperCase()}</span>
+                  )}
+                </span>
+                <span className="text-[11px] font-medium text-foreground/90 shrink-0 max-w-[88px] truncate">{name}</span>
+                <span className="text-[11px] text-muted-foreground truncate flex-1" data-testid="feed-tile-snippet">
+                  {feedSnippet(p.content) || "Shared media"}
+                </span>
+              </span>
+            );
+          })}
+        </span>
       )}
-      {state.status === "empty" && <span className="block text-xs text-muted-foreground">Quiet right now — tap to look around.</span>}
+      {(state.status === "empty" || (state.status === "ready" && posts.length === 0)) && (
+        <span className="block text-xs text-muted-foreground">Quiet right now — tap to look around.</span>
+      )}
       {state.status === "unreachable" && unreachableBody("the network")}
     </TileShell>
   );
@@ -584,6 +619,26 @@ function CommunitiesTile() {
       const name = newestName(p);
       body = (
         <>
+          {/* Faces first: the joined communities' own icons — a row of places,
+              not a sentence about them. */}
+          <span className="flex items-center gap-1.5 mb-1.5" data-testid="communities-tile-faces">
+            {joined.slice(0, 6).map((r) => {
+              const meta = getOutpostMeta(r.url);
+              const label = meta.name || r.label || r.url;
+              return (
+                <span key={r.url} className="w-6 h-6 rounded-md overflow-hidden bg-brand/15 ring-1 ring-border/40 shrink-0 flex items-center justify-center" title={label}>
+                  {meta.icon ? (
+                    <img src={meta.icon} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                  ) : (
+                    <span className="text-[9px] font-bold text-brand">{label.slice(0, 1).toUpperCase()}</span>
+                  )}
+                </span>
+              );
+            })}
+            {joined.length > 6 && (
+              <span className="text-[10px] text-muted-foreground/70 tabular-nums">+{joined.length - 6}</span>
+            )}
+          </span>
           {p.newest && name ? (
             <span className="block text-xs font-medium text-foreground/90" data-testid="communities-tile-newest">
               {name} · active {formatDistanceToNow(new Date(p.newest.at), { addSuffix: true })}
@@ -608,8 +663,23 @@ function CommunitiesTile() {
           {dir.relays.length} communities in the directory
         </span>
         {guestMatches.length > 0 && (
-          <span className="block text-xs text-muted-foreground truncate">
-            {guestMatches.map((m) => m.name).join(" · ")}
+          // Rows with faces, not a comma list: each suggestion is a place.
+          <span className="block divide-y divide-border/30 dark:divide-white/[0.05] mt-1" data-testid="communities-tile-suggestions">
+            {guestMatches.map((m) => (
+              <span key={m.url} className="flex items-center gap-2 py-1 first:pt-0 last:pb-0">
+                <span className="w-5 h-5 rounded-md overflow-hidden bg-brand/15 ring-1 ring-border/40 shrink-0 flex items-center justify-center">
+                  {m.icon ? (
+                    <img src={m.icon} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                  ) : (
+                    <span className="text-[8px] font-bold text-brand">{m.name.slice(0, 1).toUpperCase()}</span>
+                  )}
+                </span>
+                <span className="text-[11px] text-foreground/85 truncate flex-1">{m.name}</span>
+                {typeof m.activeUserCount === "number" && m.activeUserCount > 0 && (
+                  <span className="text-[10px] text-muted-foreground/60 tabular-nums shrink-0">{m.activeUserCount} active</span>
+                )}
+              </span>
+            ))}
           </span>
         )}
       </>
@@ -644,7 +714,7 @@ function CommunitiesTile() {
 
 function ArticlesTile() {
   const [, setLocation] = useLocation();
-  const [article, setArticle] = useState<Reached<ArticleData | null> | null>(null);
+  const [article, setArticle] = useState<Reached<ArticleData[]> | null>(null);
   const [, bumpProfiles] = useState(0);
   const seq = useRef(0);
   const load = useCallback(() => {
@@ -654,21 +724,21 @@ function ArticlesTile() {
       .then(async (r) => {
         if (seq.current !== id) return;
         setArticle(r);
-        if (r.data) {
-          // Resolve the author's name after the fact; re-render when it lands.
-          try { await fetchProfilesCached([r.data.event.pubkey]); } catch { /* name stays npub */ }
+        if (r.data && r.data.length > 0) {
+          // Resolve the authors' names after the fact; re-render when they land.
+          try { await fetchProfilesCached(r.data.map((a) => a.event.pubkey)); } catch { /* names stay npub */ }
           if (seq.current === id) bumpProfiles((n) => n + 1);
         }
       })
-      .catch(() => { if (seq.current === id) setArticle({ data: null, reached: false }); });
+      .catch(() => { if (seq.current === id) setArticle({ data: [], reached: false }); });
   }, []);
   useEffect(() => { load(); return () => { seq.current++; }; }, [load]);
 
   const state = resolveTile(article);
-  const a = state.status === "ready" ? state.data : null;
+  const articles = state.status === "ready" && state.data ? state.data : [];
   const freshItems = useMemo<FreshItem[] | null>(
-    () => (a ? [{ id: a.event.id, timeMs: a.publishedAt * 1000 }] : null),
-    [a],
+    () => (articles.length > 0 ? articles.map((a) => ({ id: a.event.id, timeMs: a.publishedAt * 1000 })) : null),
+    [articles],
   );
   const fresh = useTileFresh("articles", freshItems);
 
@@ -683,15 +753,29 @@ function ArticlesTile() {
       footer={state.status === "unreachable" ? <RetryFooter onRetry={load} testId="button-retry-articles" /> : undefined}
     >
       {state.status === "loading" && <TileSkeleton />}
-      {state.status === "ready" && a && (
-        <>
-          <span className="text-xs font-medium text-foreground/90 line-clamp-2" data-testid="articles-tile-title">{a.title}</span>
-          <span className="block text-xs text-muted-foreground">
-            {authorNameFor(a.event.pubkey)} · {formatDistanceToNow(new Date(a.publishedAt * 1000), { addSuffix: true })}
-          </span>
-        </>
+      {state.status === "ready" && articles.length > 0 && (
+        // Two editions with cover thumbnails — the shelf shows its books.
+        <span className="block divide-y divide-border/30 dark:divide-white/[0.05]" data-testid="articles-tile-rows">
+          {articles.map((a) => (
+            <span key={a.event.id} className="flex items-center gap-2.5 py-1.5 first:pt-0 last:pb-0">
+              {a.image && (
+                <span className="w-9 h-9 rounded-md overflow-hidden bg-muted/30 shrink-0">
+                  <img src={a.image} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                </span>
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="block text-[11.5px] font-medium text-foreground/90 truncate" data-testid="articles-tile-title">{a.title}</span>
+                <span className="block text-[10.5px] text-muted-foreground truncate">
+                  {authorNameFor(a.event.pubkey)} · {formatDistanceToNow(new Date(a.publishedAt * 1000), { addSuffix: true })}
+                </span>
+              </span>
+            </span>
+          ))}
+        </span>
       )}
-      {state.status === "empty" && <span className="block text-xs text-muted-foreground">Nothing new — tap to browse.</span>}
+      {(state.status === "empty" || (state.status === "ready" && articles.length === 0)) && (
+        <span className="block text-xs text-muted-foreground">Nothing new — tap to browse.</span>
+      )}
       {state.status === "unreachable" && unreachableBody("the article relays")}
     </TileShell>
   );
