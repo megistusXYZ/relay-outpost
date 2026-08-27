@@ -11,6 +11,10 @@ export interface BuzzCommunity {
   name: string;
   relayUrl: string;
   access: "public" | "invite" | null;
+  /** The directory's own copy/media — absent when the card carries none. */
+  description?: string;
+  avatar?: string;
+  banner?: string;
 }
 
 const HREF_RE = /\/communities\/([a-z0-9-]+)/g;
@@ -32,11 +36,37 @@ export function parseBuzzDirectory(html: string): BuzzCommunity[] {
     const name = texts.find((t) => !/^(Invite|Public|Pub)$/i.test(t));
     if (!name) continue;
     const badge = texts.find((t) => /^(Invite|Public|Pub)$/i.test(t)) || "";
+
+    // The card's description streams as a LONG children string a few THOUSAND
+    // chars after the href (measured 3.2k on the live page) — a wider window
+    // than the name/badge one, still bounded at the next community's href.
+    // Tolerates 1-2 escaping backslashes (the RSC payload double-escapes).
+    let wide = html.slice(start, start + 6000);
+    const wideNext = wide.indexOf("/communities/");
+    if (wideNext !== -1) wide = wide.slice(0, wideNext);
+    const longs = [...wide.matchAll(/"children\\{0,2}":\\{0,2}"([^"\\]{40,300})/g)].map((t) => t[1]);
+    const description = longs.find((t) => t !== name);
+
+    // Avatar/banner live in supabase storage keyed by the community's uuid —
+    // the slug's 32-hex suffix, re-hyphenated. Search the WHOLE document:
+    // the images render before the href, outside this entry's context window.
+    const hex = slug.match(/([0-9a-f]{32})$/)?.[1];
+    let avatar: string | undefined;
+    let banner: string | undefined;
+    if (hex) {
+      const uuid = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+      avatar = html.match(new RegExp(`https?:[^"\\\\\\s]*${uuid}[^"\\\\\\s]*avatar[^"\\\\\\s]*`))?.[0]?.replace(/\\\//g, "/");
+      banner = html.match(new RegExp(`https?:[^"\\\\\\s]*${uuid}[^"\\\\\\s]*banner[^"\\\\\\s]*`))?.[0]?.replace(/\\\//g, "/");
+    }
+
     bySlug.set(slug, {
       slug,
       name: name.trim(),
       relayUrl: `wss://${slug}.communities.buzz.xyz`,
       access: /invite/i.test(badge) ? "invite" : /^pub/i.test(badge) ? "public" : null,
+      ...(description ? { description } : {}),
+      ...(avatar ? { avatar } : {}),
+      ...(banner ? { banner } : {}),
     });
   }
   return [...bySlug.values()];

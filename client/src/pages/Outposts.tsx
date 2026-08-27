@@ -4997,7 +4997,7 @@ const PAGE_PINS_COLLAPSED_KEY = "relay-outpost-page-pins-collapsed";
  * (wss://<slug>.communities.buzz.xyz) — opening one is a normal outpost visit.
  */
 function BuzzDirectorySection({ joinedUrls, onOpen }: { joinedUrls: string[]; onOpen: (url: string) => void }) {
-  const { data, isError, refetch } = useQuery<{ communities: { slug: string; name: string; relayUrl: string; access: "public" | "invite" | null }[] }>({
+  const { data, isError, refetch } = useQuery<{ communities: { slug: string; name: string; relayUrl: string; access: "public" | "invite" | null; description?: string; avatar?: string }[] }>({
     queryKey: ["/api/buzz-directory"],
     queryFn: async () => {
       const r = await fetch("/api/buzz-directory");
@@ -5040,13 +5040,20 @@ function BuzzDirectorySection({ joinedUrls, onOpen }: { joinedUrls: string[]; on
             className="group/buzz flex items-center gap-3 rounded-xl border border-border/30 bg-card/40 px-3.5 py-3 text-left transition-all hover:border-brand/30 hover:bg-brand/[0.05] min-h-[44px]"
             data-testid={`buzz-community-${c.slug.slice(0, 12)}`}
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-sm font-semibold text-amber-600 dark:text-amber-400">
-              {c.name.slice(0, 1).toUpperCase()}
-            </span>
+            {c.avatar ? (
+              <img src={c.avatar} alt="" loading="lazy" className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-border/30" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+            ) : (
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-sm font-semibold text-amber-600 dark:text-amber-400">
+                {c.name.slice(0, 1).toUpperCase()}
+              </span>
+            )}
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-medium truncate">{c.name}</span>
-              <span className="block text-[11px] text-muted-foreground/70">
-                {c.access === "invite" ? "Invite only" : c.access === "public" ? "Open to join" : "Buzz community"}
+              <span className="flex items-center gap-1.5 min-w-0">
+                <span className="text-sm font-medium truncate">{c.name}</span>
+                {c.access === "invite" && <span className="shrink-0 rounded-full border border-border/30 px-1.5 text-[9px] uppercase tracking-wider text-muted-foreground/60">Invite</span>}
+              </span>
+              <span className="block text-[11px] text-muted-foreground/70 truncate">
+                {c.description || (c.access === "public" ? "Open to join" : "Buzz community")}
               </span>
             </span>
             <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-colors group-hover/buzz:text-brand" />
@@ -5512,7 +5519,7 @@ export default function Outposts() {
             <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
           </button>
 
-          <BuzzDirectorySection joinedUrls={joinedRelays.map((r) => r.url)} onOpen={(url) => setLocation(`/outposts/${encodeURIComponent(url)}`)} />
+          <BuzzDirectorySection joinedUrls={joinedRelays.map((r) => r.url)} onOpen={(url) => setLocation(`/outposts/${encodeURIComponent(url)}?tab=chat`)} />
         </div>
       )}
 
