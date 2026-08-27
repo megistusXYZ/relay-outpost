@@ -22,14 +22,48 @@ import { useDocumentTitle } from "@/hooks/use-document-title";
 import { queryAnswered } from "@/lib/relay-reach";
 import { FAST_RELAYS, fetchProfilesCached } from "@/lib/nostr";
 import { isReportedEvent, isReportedPubkey } from "@/lib/spam-filter";
-import { formatListingPrice, pickMarketListings, rankListingCategories, filterListings, KIND_CLASSIFIED_LISTING, LISTING_RELAYS, type Listing } from "@/lib/listing";
+import { getSignalTier } from "@/lib/graperank";
+import { use$ } from "applesauce-react/hooks";
+import { eventStore } from "@/lib/nostr";
+import { KIND_METADATA, getDisplayName, getAvatarUrl, formatNpub, shortenNpub } from "@/lib/nostr-helpers";
+import { formatListingPrice, pickMarketListings, rankListingCategories, filterListings, rankListingsTrustFirst, KIND_CLASSIFIED_LISTING, LISTING_RELAYS, type Listing } from "@/lib/listing";
 
 type PageState =
   | { status: "loading" }
   | { status: "ready"; listings: Listing[] }
   | { status: "unreachable" };
 
-function MarketCard({ listing, onOpen }: { listing: Listing; onOpen: () => void }) {
+/** Merchant byline under each product — a face, a name, and (positive-only)
+ *  a trust dot when the viewer's graph vouches for them. The grid reads as a
+ *  directory of people you can evaluate, not anonymous products. */
+function SellerLine({ pubkey, tier }: { pubkey: string; tier: string }) {
+  const profile = use$(() => eventStore.replaceable(KIND_METADATA, pubkey), [pubkey]);
+  const fallback = shortenNpub(formatNpub(pubkey));
+  const name = profile ? (getDisplayName(profile, fallback) ?? fallback) : fallback;
+  const avatar = getAvatarUrl(profile ?? undefined);
+  const trusted = tier === "strong" || tier === "moderate";
+  return (
+    <span className="flex items-center gap-1.5 mt-1 min-w-0">
+      <span className="w-4 h-4 rounded-full overflow-hidden bg-brand/15 shrink-0 flex items-center justify-center">
+        {avatar ? (
+          <img src={avatar} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+        ) : (
+          <span className="text-[7px] font-bold text-brand">{name.slice(0, 1).toUpperCase()}</span>
+        )}
+      </span>
+      <span className="text-[11px] text-muted-foreground truncate">{name}</span>
+      {trusted && (
+        <span
+          className={`w-1.5 h-1.5 rounded-full shrink-0 ${tier === "strong" ? "bg-emerald-500" : "bg-sky-500"}`}
+          title={tier === "strong" ? "Highly Trusted in your network" : "Trusted in your network"}
+          data-testid="seller-trust-dot"
+        />
+      )}
+    </span>
+  );
+}
+
+function MarketCard({ listing, tier, onOpen }: { listing: Listing; tier: string; onOpen: () => void }) {
   const image = listing.images[0];
   return (
     <button onClick={onOpen} className="text-left group/mcard min-w-0" data-testid={`market-card-${listing.id}`}>
@@ -50,6 +84,7 @@ function MarketCard({ listing, onOpen }: { listing: Listing; onOpen: () => void 
       <p className="text-xs text-muted-foreground tabular-nums truncate mt-0.5">
         {listing.sold ? "Sold" : listing.price ? formatListingPrice(listing.price) : ""}
       </p>
+      <SellerLine pubkey={listing.pubkey} tier={tier} />
     </button>
   );
 }
@@ -64,14 +99,22 @@ export default function Marketplace() {
   // over the loaded set. Category vocabulary comes from sellers' own t tags.
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
+  // Trusted-first is the default lane: sellers the viewer's graph vouches for
+  // lead the grid. "Newest" is one tap away and pure chronology.
+  const [sort, setSort] = useState<"trusted" | "newest">("trusted");
+  const { getAuthorInfluence } = useGrapeRankScores();
   const categories = useMemo(
     () => (state.status === "ready" ? rankListingCategories(state.listings).slice(0, 12) : []),
     [state],
   );
-  const visible = useMemo(
-    () => (state.status === "ready" ? filterListings(state.listings, { query, category: category ?? undefined }) : []),
-    [state, query, category],
-  );
+  const visible = useMemo(() => {
+    if (state.status !== "ready") return [];
+    const filtered = filterListings(state.listings, { query, category: category ?? undefined });
+    return sort === "trusted"
+      ? rankListingsTrustFirst(filtered, (pk) => getSignalTier(getAuthorInfluence(pk)))
+      : filtered;
+  }, [state, query, category, sort, getAuthorInfluence]);
+  const tierOf = (pk: string) => getSignalTier(getAuthorInfluence(pk));
 
   const loadSeq = useRef(0);
   const load = useCallback(() => {
@@ -183,6 +226,18 @@ export default function Marketplace() {
               </button>
             )}
           </div>
+          <div className="flex items-center gap-1.5" data-testid="marketplace-sort">
+            {(["trusted", "newest"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSort(s)}
+                className={`h-7 px-3 rounded-full text-[11px] font-medium transition-colors ${sort === s ? "bg-foreground/[0.08] dark:bg-white/[0.08] text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                data-testid={`marketplace-sort-${s}`}
+              >
+                {s === "trusted" ? "Trusted first" : "Newest"}
+              </button>
+            ))}
+          </div>
           {categories.length > 0 && (
             <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }} data-testid="marketplace-categories">
               <button
@@ -233,7 +288,7 @@ export default function Marketplace() {
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 gap-y-6" data-testid="marketplace-grid">
             {visible.slice(0, displayLimit).map((l) => (
-              <MarketCard key={`${l.pubkey}:${l.dTag}`} listing={l} onOpen={() => setOpenListing(l)} />
+              <MarketCard key={`${l.pubkey}:${l.dTag}`} listing={l} tier={tierOf(l.pubkey)} onOpen={() => setOpenListing(l)} />
             ))}
           </div>
           <InfiniteScrollSentinel

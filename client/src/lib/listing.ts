@@ -85,6 +85,28 @@ export function rankListingCategories(listings: readonly Listing[]): Array<{ tag
     .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
 }
 
+/**
+ * Trusted-first ordering: listings from sellers the viewer's graph vouches
+ * for float ahead — a stable band partition (strong, moderate, everyone
+ * else) applied per sold-group, so sold never overtakes active and nobody
+ * SINKS for missing data (unknown sellers keep their relative order; they
+ * simply aren't lifted). Tier lookup is injected to keep this module pure.
+ */
+export function rankListingsTrustFirst(
+  listings: readonly Listing[],
+  tierOf: (pubkey: string) => string,
+): Listing[] {
+  const band = (l: Listing): number => {
+    const t = tierOf(l.pubkey);
+    return t === "strong" ? 0 : t === "moderate" ? 1 : 2;
+  };
+  return [...listings]
+    .map((l, i) => ({ l, i }))
+    .sort((a, b) =>
+      (Number(a.l.sold) - Number(b.l.sold)) || (band(a.l) - band(b.l)) || (a.i - b.i))
+    .map((x) => x.l);
+}
+
 /** Search + category over parsed listings. Both narrow; neither is case-sensitive. */
 export function filterListings(
   listings: readonly Listing[],
