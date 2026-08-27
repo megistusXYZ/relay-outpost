@@ -20,7 +20,7 @@ const TOOLS: ToolRow[] = [
   { href: "/relays", icon: Radio, title: "Relays", desc: "Where your posts go, health & blocks" },
   { href: "/account?tab=bookmarks", icon: Bookmark, title: "Bookmarks", desc: "Saved posts & articles" },
   { href: "/console/dashboard", icon: BarChart3, title: "Analytics", desc: "Engagement & reach" },
-  { href: "/tickets", icon: Inbox, title: "Tickets", desc: "Support & feedback from your users" },
+  { href: "/tickets", icon: Inbox, title: "Tickets & Feedback", desc: "Send feedback, and see replies to your tickets" },
   { href: "/console", icon: Terminal, title: "Console", desc: "Raw relay queries" },
   { href: "/account?tab=flight_log", icon: ScrollText, title: "Flight Log", desc: "Your activity log" },
   { href: "/recover-follows", icon: Users, title: "Follow list", desc: "Health: recover, review flagged & inactive" },
