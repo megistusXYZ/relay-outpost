@@ -232,9 +232,8 @@ export function RelayFeaturedFeed({
             <MagicStarIcon className="w-3.5 h-3.5 text-brand/70" />
             <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-brand/70">Featured</span>
           </div>
-          <h2 className="text-lg font-semibold tracking-tight mt-1">{active.title}</h2>
           {active.description && (
-            <p className="text-sm text-muted-foreground mt-0.5">{active.description}</p>
+            <p className="text-sm text-muted-foreground mt-1">{active.description}</p>
           )}
         </div>
         <div className="space-y-3">
