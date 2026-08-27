@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { PageTabs } from "@/components/PageTabs";
 import { MessageSquare, Heart, Repeat, Zap, UserPlus, AtSign, CheckCheck, ChevronDown, ChevronRight, LifeBuoy } from "lucide-react";
 import { AdmissionQueue } from "@/components/AdmissionQueue";
+import { SweepNoticeCard } from "@/components/SweepNoticeCard";
+import { useNeedsYou } from "@/contexts/NeedsYouContext";
 import { ReportsQueue } from "@/components/ReportsQueue";
 import { ConcordPendingInvites } from "@/components/concord/ConcordPendingInvites";
 import { useIaCollapsed } from "@/lib/ia-prefs";
@@ -686,6 +688,7 @@ function getInitialCollapsed(notifications: any[]): Set<string> {
 export default function Notifications() {
   const { notifications, unreadCount, markAllRead, markRead, clearAll, loading, updateLastSeen } = useNotifications();
   const iaCollapsed = useIaCollapsed();
+  const needsYou = useNeedsYou();
   // The nav calls this destination Activity; the tab said "Notifications". A
   // place should answer to one name — NAV_TITLES is where that name lives, so
   // the page reads it rather than keeping its own copy to drift from.
@@ -841,6 +844,19 @@ export default function Notifications() {
       {iaCollapsed && (
         <div data-testid="activity-needs-you">
           <ConcordPendingInvites />
+          {/* ONE notice for both queue sweeps — names the relays that never
+              answered and offers retry / turn off / remove. The per-queue
+              lines are gone; this card is the only reach admission here. */}
+          {needsYou && (
+            <SweepNoticeCard
+              className="mt-2"
+              entries={[
+                { sweep: needsYou.admissions.sweep, subject: "join requests" },
+                { sweep: needsYou.reports.sweep, subject: "reports" },
+              ]}
+              onRetry={needsYou.refresh}
+            />
+          )}
           {/* Stage 2: people waiting to be let into a space you run, gathered
               from every such space. Self-hides when nobody is waiting. */}
           <AdmissionQueue className="mt-2" />

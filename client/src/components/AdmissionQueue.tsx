@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { PersonBadges } from "@/components/PersonBadges";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { useToast } from "@/hooks/use-toast";
-import { sweepNotice, EMPTY_SWEEP } from "@/lib/queue-sweep";
+import { EMPTY_SWEEP } from "@/lib/queue-sweep";
 import { useNeedsYou } from "@/contexts/NeedsYouContext";
 import { useQueuePerson } from "@/hooks/use-queue-person";
 import { sendPutUser } from "@/lib/nip29";
@@ -168,25 +168,13 @@ export function AdmissionQueue({ className = "" }: { className?: string }) {
   // From the shared provider, so the badge in the nav and the rows on this
   // page are the SAME sweep rather than two that can disagree.
   const needsYou = useNeedsYou();
-  const { queue, sweep, removeLocally } = needsYou?.admissions ?? EMPTY_QUEUE_STATE;
-  // Subject named — see ReportsQueue: an orphan "may be incomplete" line on
-  // the Activity page reads as broken notifications.
-  const notice = sweepNotice(sweep, "join requests");
-  // Self-hiding still, but only when the silence is TRUE: nothing waiting AND
-  // nothing we failed to ask. An empty queue on a sweep that never reached a
-  // relay is not "nobody is waiting", and it used to render as exactly that.
-  if (queue.length === 0 && !notice) return null;
+  const { queue, removeLocally } = needsYou?.admissions ?? EMPTY_QUEUE_STATE;
+  // The reach admission for a partial sweep lives in the page-level
+  // SweepNoticeCard now (one card for both queues, naming the relays and
+  // offering actions) — this component only renders actual rows.
+  if (queue.length === 0) return null;
   return (
     <div className={`space-y-2 ${className}`} data-testid="admission-queue">
-      {/* A partial sweep understates a populated queue exactly as much as it
-          understates an empty one, so this sits above the rows either way.
-          Silent unless a relay was ASKED and did not answer — see
-          lib/queue-sweep.ts for why a zero-relay sweep says nothing. */}
-      {notice && (
-        <p className="px-1 text-[11px] text-muted-foreground/50" data-testid="admission-sweep-notice">
-          {notice}
-        </p>
-      )}
       {/* Only over actual rows — "0 accounts are waiting" next to a notice
           saying we could not reach the relay is the confident empty this whole
           change exists to remove. */}

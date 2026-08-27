@@ -5,7 +5,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { useToast } from "@/hooks/use-toast";
-import { sweepNotice, EMPTY_SWEEP } from "@/lib/queue-sweep";
+import { EMPTY_SWEEP } from "@/lib/queue-sweep";
 import { useNeedsYou } from "@/contexts/NeedsYouContext";
 import { describeReportQueue } from "@/lib/reports-queue";
 import { useQueuePerson } from "@/hooks/use-queue-person";
@@ -160,23 +160,13 @@ export function ReportsQueue({ className = "" }: { className?: string }) {
   // From the shared provider, so the badge in the nav and the rows on this
   // page are the SAME sweep rather than two that can disagree.
   const needsYou = useNeedsYou();
-  const { queue, sweep, removeLocally } = needsYou?.reports ?? EMPTY_QUEUE_STATE;
-  // Subject named: with an empty queue this line renders alone on the
-  // Activity page, and without its subject it read as "your notifications
-  // are broken" (live report, 2026-08-26).
-  const notice = sweepNotice(sweep, "reports");
-  if (queue.length === 0 && !notice) return null;
+  const { queue, removeLocally } = needsYou?.reports ?? EMPTY_QUEUE_STATE;
+  // The reach admission for a partial sweep lives in the page-level
+  // SweepNoticeCard now (one card for both queues, naming the relays and
+  // offering actions) — this component only renders actual rows.
+  if (queue.length === 0) return null;
   return (
     <div className={`space-y-2 ${className}`} data-testid="reports-queue">
-      {/* A partial sweep understates a populated queue exactly as much as it
-          understates an empty one, so this sits above the rows either way.
-          Silent unless a relay was ASKED and did not answer — see
-          lib/queue-sweep.ts for why a zero-relay sweep says nothing. */}
-      {notice && (
-        <p className="px-1 text-[11px] text-muted-foreground/50" data-testid="reports-sweep-notice">
-          {notice}
-        </p>
-      )}
       {queue.length > 0 && (
         <p className="flex items-center gap-1.5 px-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50">
           <Flag className="w-3 h-3" />

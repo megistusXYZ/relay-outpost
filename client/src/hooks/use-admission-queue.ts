@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
-import { getOutpostRelays } from "@/lib/outpost-relays";
+import { getOutpostRelays, getDisabledRelays } from "@/lib/outpost-relays";
 import { fetchProfiles } from "@/lib/nostr";
 import {
   fetchGroupMembers,
@@ -82,9 +82,13 @@ export function useAdmissionQueue(): {
 
     (async () => {
       setLoading(true);
-      const relays = getOutpostRelays();
+      // A relay the user turned OFF is not asked — so "Turn off" on the
+      // sweep notice genuinely silences it rather than re-flagging next sweep.
+      const disabled = getDisabledRelays();
+      const relays = getOutpostRelays().filter((r) => !disabled.has(r.url));
       const collected: PendingAdmission[][] = [];
       let unreached = 0;
+      const unreachedUrls: string[] = [];
 
       for (const relay of relays) {
         if (stale()) return;
@@ -96,7 +100,7 @@ export function useAdmissionQueue(): {
           // queue on the strength of a relay that never answered — and it is
           // now COUNTED, so the screen can admit the sweep was partial instead
           // of presenting it as a complete answer.
-          if (!mine.reached) { unreached++; continue; }
+          if (!mine.reached) { unreached++; unreachedUrls.push(relay.url); continue; }
           const { groups, adminsByGroupId } = mine.data;
           if (!groups.length) continue;
 
@@ -125,12 +129,13 @@ export function useAdmissionQueue(): {
         } catch {
           // Relay unreachable — skip it rather than blanking everything.
           unreached++;
+          unreachedUrls.push(relay.url);
         }
       }
 
       if (stale()) return;
       setQueue(mergeQueues(collected));
-      setSweep({ relaysAttempted: relays.length, relaysUnreached: unreached });
+      setSweep({ relaysAttempted: relays.length, relaysUnreached: unreached, unreachedUrls });
       setLoading(false);
     })();
 

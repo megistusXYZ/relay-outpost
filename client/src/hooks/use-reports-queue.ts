@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { dismissReport, filterDismissed, readDismissed } from "@/lib/reports-dismissed";
-import { getOutpostRelays } from "@/lib/outpost-relays";
+import { getOutpostRelays, getDisabledRelays } from "@/lib/outpost-relays";
 import { fetchProfiles } from "@/lib/nostr";
 import {
   fetchGroupMembers,
@@ -100,8 +100,12 @@ export function useReportsQueue(): {
       setLoading(true);
       const collected: PendingReport[][] = [];
 
-      const relays = getOutpostRelays();
+      // A relay the user turned OFF is not asked — so "Turn off" on the
+      // sweep notice genuinely silences it rather than re-flagging next sweep.
+      const disabled = getDisabledRelays();
+      const relays = getOutpostRelays().filter((r) => !disabled.has(r.url));
       let unreached = 0;
+      const unreachedUrls: string[] = [];
 
       for (const relay of relays) {
         if (stale()) return;
@@ -114,7 +118,7 @@ export function useReportsQueue(): {
           // walked is a public directory. See lib/nip29.ts.
           const mine = await fetchGroupsIAdministerResult(relay.url, pubkey);
           if (stale()) return;
-          if (!mine.reached) { unreached++; continue; }
+          if (!mine.reached) { unreached++; unreachedUrls.push(relay.url); continue; }
           const { groups, adminsByGroupId } = mine.data;
           if (!groups.length) continue;
 
@@ -177,6 +181,7 @@ export function useReportsQueue(): {
         } catch {
           // Relay unreachable — skip it rather than blanking everything.
           unreached++;
+          unreachedUrls.push(relay.url);
         }
       }
 
@@ -185,7 +190,7 @@ export function useReportsQueue(): {
       // rows all agree — three consumers reading one already-filtered list
       // rather than each remembering to apply the same rule.
       setQueue(filterDismissed(mergeQueues(collected), readDismissed(pubkey)));
-      setSweep({ relaysAttempted: relays.length, relaysUnreached: unreached });
+      setSweep({ relaysAttempted: relays.length, relaysUnreached: unreached, unreachedUrls });
       setLoading(false);
     })();
 

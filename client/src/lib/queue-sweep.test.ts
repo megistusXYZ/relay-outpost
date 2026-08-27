@@ -4,7 +4,7 @@
  * Sabotage to check these can fail: return a string unconditionally.
  */
 import { describe, it, expect } from "vitest";
-import { sweepNotice, EMPTY_SWEEP, type QueueSweep } from "./queue-sweep";
+import { sweepNotice, combinedSweepNotice, EMPTY_SWEEP, type QueueSweep } from "./queue-sweep";
 
 const sweep = (attempted: number, unreached: number): QueueSweep => ({
   relaysAttempted: attempted,
@@ -90,5 +90,36 @@ describe("sweepNotice — with a named subject", () => {
   it("stays quiet in exactly the same cases as the plain form", () => {
     expect(sweepNotice(sweep(3, 0), "reports")).toBeNull();
     expect(sweepNotice(EMPTY_SWEEP, "reports")).toBeNull();
+  });
+});
+
+describe("combinedSweepNotice (one actionable card instead of stacked duplicate lines)", () => {
+  it("merges subjects when sweeps failed, and unions the failing relay urls", () => {
+    const a = { sweep: { relaysAttempted: 14, relaysUnreached: 1, unreachedUrls: ["wss://dead.example"] }, subject: "join requests" };
+    const b = { sweep: { relaysAttempted: 14, relaysUnreached: 1, unreachedUrls: ["wss://dead.example"] }, subject: "reports" };
+    const got = combinedSweepNotice([a, b]);
+    expect(got).not.toBeNull();
+    expect(got!.text).toBe("Couldn't reach 1 of 14 outpost relays, so join requests and reports there can't be checked.");
+    expect(got!.urls).toEqual(["wss://dead.example"]);
+  });
+
+  it("keeps only the failing subject when the other sweep was clean", () => {
+    const a = { sweep: { relaysAttempted: 14, relaysUnreached: 0, unreachedUrls: [] }, subject: "join requests" };
+    const b = { sweep: { relaysAttempted: 14, relaysUnreached: 1, unreachedUrls: ["wss://dead.example"] }, subject: "reports" };
+    const got = combinedSweepNotice([a, b]);
+    expect(got!.text).toBe("Couldn't reach 1 of 14 outpost relays, so reports there can't be checked.");
+  });
+
+  it("unions distinct failing relays across sweeps and counts the union", () => {
+    const a = { sweep: { relaysAttempted: 14, relaysUnreached: 1, unreachedUrls: ["wss://x.example"] }, subject: "join requests" };
+    const b = { sweep: { relaysAttempted: 14, relaysUnreached: 1, unreachedUrls: ["wss://y.example"] }, subject: "reports" };
+    const got = combinedSweepNotice([a, b]);
+    expect(got!.urls.sort()).toEqual(["wss://x.example", "wss://y.example"]);
+    expect(got!.text).toContain("2 of 14");
+  });
+
+  it("null when every sweep was clean or nothing was asked", () => {
+    expect(combinedSweepNotice([{ sweep: { relaysAttempted: 14, relaysUnreached: 0, unreachedUrls: [] }, subject: "reports" }])).toBeNull();
+    expect(combinedSweepNotice([{ sweep: EMPTY_SWEEP, subject: "reports" }])).toBeNull();
   });
 });
