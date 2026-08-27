@@ -398,7 +398,7 @@ function VideoProgressBar({ videoRef }: { videoRef: React.RefObject<HTMLVideoEle
   );
 }
 
-function ShortsCard({ event, videoUrl, isActive, isMuted, shouldPreload = false, disableAutoplay = false, onToggleMute, sortMode, onToggleSort }: { event: Event; videoUrl: string; isActive: boolean; isMuted: boolean; shouldPreload?: boolean; disableAutoplay?: boolean; onToggleMute: () => void; sortMode?: SortMode; onToggleSort?: () => void }) {
+function ShortsCard({ event, videoUrl, isActive, isMuted, shouldPreload = false, disableAutoplay = false, sortMode, onToggleSort, utilityDimmed = false, onEnterAuthorLane }: { event: Event; videoUrl: string; isActive: boolean; isMuted: boolean; shouldPreload?: boolean; disableAutoplay?: boolean; sortMode?: SortMode; onToggleSort?: () => void; utilityDimmed?: boolean; onEnterAuthorLane?: (pubkey: string) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   // Immersive pager: the ACTIVE card is the one being watched — that is the
   // seen signal here (visibility is meaningless when every card fills the screen).
@@ -592,27 +592,11 @@ function ShortsCard({ event, videoUrl, isActive, isMuted, shouldPreload = false,
         </div>
       )}
 
-      {/* Single mute/unmute toggle (device handles volume). LEFT column,
-          directly under the X close button — a matching 44px circle with the
-          same 0.5rem gap, so the two read as one control stack. Top-right
-          belongs to the DiVine badge (owner report 2026-08-26: mute and badge
-          overlapped there). X sits at safe-top + 0.625rem and is 2.75rem tall,
-          so this starts at safe-top + 3.875rem. */}
-      {!isEmbed && (
-        <div
-          className="absolute left-3 z-20 pointer-events-auto"
-          style={{ top: "calc(env(safe-area-inset-top, 0px) + 3.875rem)" }}
-        >
-          <button
-            onClick={(e) => { e.stopPropagation(); onToggleMute(); }}
-            className="w-11 h-11 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-white active-elevate-2"
-            data-testid={`button-mute-toggle-${event.id}`}
-            aria-label={isMuted ? "Unmute" : "Mute"}
-          >
-            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-          </button>
-        </div>
-      )}
+      {/* No per-slide mute button: audio is GLOBAL, so its toggle lives in
+          the pager's fixed chrome under the X (owner report 2026-08-26: an
+          absolute mute rode each slide during swipes and collided with the
+          fixed X). The rail below stays per-slide on purpose — its counts
+          belong to this video, TikTok-style. */}
 
       {/* Right action rail: like/repost/zap/bookmark/share/orbit. Raised above
           the bottom nav via safe-area padding; width-capped caption (pr-20)
@@ -631,7 +615,7 @@ function ShortsCard({ event, videoUrl, isActive, isMuted, shouldPreload = false,
         {onToggleSort && (
           <button
             onClick={(e) => { e.stopPropagation(); onToggleSort(); }}
-            className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white/80 active-elevate-2"
+            className={`w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white/80 active-elevate-2 transition-opacity duration-300 ${utilityDimmed ? "opacity-30" : "opacity-100"}`}
             aria-label={sortMode === "latest" ? "Showing newest — switch to trending" : "Showing trending — switch to newest"}
             data-testid={`button-shorts-sort-toggle-${event.id}`}
           >
@@ -646,16 +630,45 @@ function ShortsCard({ event, videoUrl, isActive, isMuted, shouldPreload = false,
       <div className="absolute bottom-0 left-0 right-0 pointer-events-none" style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.85) 75%)" }}>
         <div className="px-4 pt-10 pr-20 pointer-events-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 2rem + 60px)" }}>
           <div className="flex items-center gap-2.5 mb-2">
-            <Link href={profileUrl} data-testid={`link-shorts-avatar-${event.id}`}>
-              <Avatar className="w-9 h-9 border-2 border-white/30 shrink-0">
-                <AvatarImage src={avatarUrl} alt={displayName} />
-                <AvatarFallback className="text-[11px] bg-white/10 text-white">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
-              </Avatar>
-            </Link>
-            <div className="min-w-0 flex-1">
-              <Link href={profileUrl} className="text-sm font-semibold text-white truncate block" data-testid={`link-shorts-author-${event.id}`}>
-                {displayName}
+            {/* Avatar/name enter the creator's LANE (their reel, then everyone
+                else's — owner request 2026-08-26), TikTok-style immersion
+                instead of leaving for the profile page. The profile stays one
+                tap away via View Post. Falls back to the profile link when no
+                lane handler exists (desktop paths). */}
+            {onEnterAuthorLane ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); onEnterAuthorLane(event.pubkey); }}
+                className="shrink-0"
+                data-testid={`link-shorts-avatar-${event.id}`}
+                aria-label={`Watch ${displayName}'s videos`}
+              >
+                <Avatar className="w-9 h-9 border-2 border-white/30 shrink-0">
+                  <AvatarImage src={avatarUrl} alt={displayName} />
+                  <AvatarFallback className="text-[11px] bg-white/10 text-white">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+              </button>
+            ) : (
+              <Link href={profileUrl} data-testid={`link-shorts-avatar-${event.id}`}>
+                <Avatar className="w-9 h-9 border-2 border-white/30 shrink-0">
+                  <AvatarImage src={avatarUrl} alt={displayName} />
+                  <AvatarFallback className="text-[11px] bg-white/10 text-white">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
               </Link>
+            )}
+            <div className="min-w-0 flex-1">
+              {onEnterAuthorLane ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onEnterAuthorLane(event.pubkey); }}
+                  className="text-sm font-semibold text-white truncate block text-left w-full"
+                  data-testid={`link-shorts-author-${event.id}`}
+                >
+                  {displayName}
+                </button>
+              ) : (
+                <Link href={profileUrl} className="text-sm font-semibold text-white truncate block" data-testid={`link-shorts-author-${event.id}`}>
+                  {displayName}
+                </Link>
+              )}
               <span className="text-[11px] text-white/40" data-testid={`text-shorts-time-${event.id}`}>{timeAgo}</span>
             </div>
             <Link
@@ -1256,11 +1269,42 @@ export default function VideoFeed({ embedded = false, sort }: { embedded?: boole
     // author's held posts (grace → admit).
   }, [allTextNotes, allShortVideos, spamFilter, tierFilter, sortMode, statsVersion, sessionSeed, seenSnapshot, followSet, profileGetter, profileSettledGetter, profileVersion, grapeRankScores]);
 
+  // ── Author lane: tap a creator in the shorts viewer to watch THEIR videos
+  // first — in the current sort — then flow seamlessly into everyone else's,
+  // so the reel never dead-ends (owner request, 2026-08-26). A top pill names
+  // the lane and exits it.
+  const [authorLane, setAuthorLane] = useState<string | null>(null);
+  const laneProfile = use$(
+    () => (authorLane ? eventStore.replaceable(0, authorLane) : undefined),
+    [authorLane],
+  );
+  const laneName = authorLane
+    ? (laneProfile ? getDisplayName(laneProfile, shortenNpub(formatNpub(authorLane))) : shortenNpub(formatNpub(authorLane)))
+    : null;
+  // Backfill the lane author's history so "their videos" means their catalog,
+  // not just what happened to be in the store already.
+  useEffect(() => {
+    if (!authorLane) return;
+    const sub = subscribeToFeed(
+      { kinds: [KIND_TEXT_NOTE, ...VIDEO_EVENT_KINDS], authors: [authorLane], limit: 150 },
+      getRelaysForPurpose("notes"),
+    );
+    return () => sub.close();
+  }, [authorLane]);
+
   const displayedEntries = useMemo(() => {
-    return allVideoEntries
-      .filter((e) => e.event.created_at <= cutoffTimestamp)
-      .slice(0, displayLimit);
-  }, [allVideoEntries, cutoffTimestamp, displayLimit]);
+    let list = allVideoEntries.filter((e) => e.event.created_at <= cutoffTimestamp);
+    if (authorLane) {
+      // Stable partition over the ALREADY-sorted list: the lane author's
+      // videos lead in the chosen order, everyone else follows in the same
+      // order — the endless continuation, not a walled profile view.
+      const own: typeof list = [];
+      const rest: typeof list = [];
+      for (const e of list) (e.event.pubkey === authorLane ? own : rest).push(e);
+      list = [...own, ...rest];
+    }
+    return list.slice(0, displayLimit);
+  }, [allVideoEntries, cutoffTimestamp, displayLimit, authorLane]);
 
   const bufferedCount = useMemo(() => {
     return allVideoEntries.filter((e) => e.event.created_at > cutoffTimestamp).length;
@@ -1438,6 +1482,39 @@ export default function VideoFeed({ embedded = false, sort }: { embedded?: boole
     return () => container.removeEventListener("scroll", handleScroll);
   }, [isMobile, displayedEntries.length, loadMore]);
 
+  // UTILITY chrome (X / mute / sort) dims after a few idle seconds so the
+  // video owns the frame; any touch or swipe restores it. Deliberately dim —
+  // never hidden — so the exit stays findable, and deliberately NOT applied
+  // to the action rail or caption: TikTok/Shorts keep engagement persistent,
+  // and so do we. The restore hooks are React PROPS on the container (not a
+  // ref-time addEventListener — the first attempt armed while the loading
+  // screen was mounted and listened to nothing).
+  const [chromeDimmed, setChromeDimmed] = useState(false);
+  const dimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pokeChrome = useCallback(() => {
+    setChromeDimmed(false);
+    if (dimTimerRef.current) clearTimeout(dimTimerRef.current);
+    dimTimerRef.current = setTimeout(() => setChromeDimmed(true), 3500);
+  }, []);
+  useEffect(() => {
+    if (!isMobile || !shortsMode) return;
+    pokeChrome();
+    return () => { if (dimTimerRef.current) clearTimeout(dimTimerRef.current); };
+  }, [isMobile, shortsMode, pokeChrome]);
+  const dimClass = chromeDimmed ? "opacity-30" : "opacity-100";
+
+  const enterAuthorLane = useCallback((pk: string) => {
+    setAuthorLane(pk);
+    shortsContainerRef.current?.scrollTo({ top: 0 });
+    setActiveIndex(0);
+    pokeChrome();
+  }, [pokeChrome]);
+  const exitAuthorLane = useCallback(() => {
+    setAuthorLane(null);
+    shortsContainerRef.current?.scrollTo({ top: 0 });
+    setActiveIndex(0);
+  }, []);
+
   if (isMobile && shortsMode) {
     if (isInitialLoading && displayedEntries.length === 0) {
       return (
@@ -1461,7 +1538,13 @@ export default function VideoFeed({ embedded = false, sort }: { embedded?: boole
     // viewport (the documented z-0 <main> chrome trap — same escape as the
     // mobile DM thread overlay).
     return createPortal(
-        <div className="shorts-container" ref={shortsContainerRef} data-testid="container-shorts">
+        <div
+          className="shorts-container"
+          ref={shortsContainerRef}
+          onScroll={pokeChrome}
+          onPointerDownCapture={pokeChrome}
+          data-testid="container-shorts"
+        >
           {displayedEntries.map((entry, i) => {
             // Mount the heavy video elements for the previous slide and the next
             // two upcoming ones (active-1 .. active+2). Pre-mounting the next two
@@ -1482,9 +1565,10 @@ export default function VideoFeed({ embedded = false, sort }: { embedded?: boole
                 isMuted={isMuted}
                 shouldPreload={shouldPreload}
                 disableAutoplay={saveData}
-                onToggleMute={toggleMute}
                 sortMode={sortMode}
                 onToggleSort={() => setShortsSortOverride(sortMode === "latest" ? "trending" : "latest")}
+                utilityDimmed={chromeDimmed}
+                onEnterAuthorLane={enterAuthorLane}
               />
             ) : (
               <div key={`ph-${entry.event.id}-${i}`} className="shorts-slide" aria-hidden="true" />
@@ -1501,7 +1585,7 @@ export default function VideoFeed({ embedded = false, sort }: { embedded?: boole
           />
           <button
             onClick={() => setShortsMode(false)}
-            className="fixed left-3 z-30 w-11 h-11 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-white active-elevate-2"
+            className={`fixed left-3 z-30 w-11 h-11 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-white active-elevate-2 transition-opacity duration-300 ${dimClass}`}
             style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.625rem)" }}
             aria-label="Close video viewer"
             title="Grid view"
@@ -1509,6 +1593,32 @@ export default function VideoFeed({ embedded = false, sort }: { embedded?: boole
           >
             <X className="w-5 h-5" />
           </button>
+          {/* Audio toggle: FIXED under the X — one sticky left-hand stack.
+              Audio is a global setting, so unlike the per-video rail this must
+              not travel with the slides (owner report 2026-08-26). */}
+          <button
+            onClick={toggleMute}
+            className={`fixed left-3 z-30 w-11 h-11 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-white active-elevate-2 transition-opacity duration-300 ${dimClass}`}
+            style={{ top: "calc(env(safe-area-inset-top, 0px) + 3.875rem)" }}
+            aria-label={isMuted ? "Unmute" : "Mute"}
+            data-testid="button-shorts-mute-toggle"
+          >
+            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+          </button>
+          {/* Lane pill: names whose reel this is; tap to return to the full
+              feed. Persistent while in a lane — it's context, not chrome. */}
+          {authorLane && (
+            <button
+              onClick={exitAuthorLane}
+              className="fixed left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 h-8 max-w-[60vw] px-3.5 rounded-full bg-black/50 backdrop-blur-md text-white text-xs font-medium"
+              style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.875rem)" }}
+              aria-label={`Showing ${laneName}'s videos — tap to see everyone`}
+              data-testid="button-shorts-exit-lane"
+            >
+              <span className="truncate">{laneName}'s videos</span>
+              <X className="w-3.5 h-3.5 shrink-0" />
+            </button>
+          )}
           {/* No prev/next chevrons: swipe IS the pager here, and the floating
               arrows crowded the action rail's sort toggle (owner screenshots,
               2026-08-26). */}
