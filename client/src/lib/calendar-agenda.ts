@@ -145,17 +145,22 @@ export function buildAgendaDays(
     }
   }
 
-  for (const occ of occurrences) {
-    const d = startOfDay(occ.date);
-    if (d.getTime() < winStart.getTime() || d.getTime() > winEndIncl.getTime()) continue;
-    ensure(d).holidays.push(occ.holiday);
-  }
-
   for (const key of alwaysIncludeKeys) {
     const d = parseDayKey(key);
     if (!d) continue;
     if (d.getTime() < winStart.getTime() || d.getTime() > winEndIncl.getTime()) continue;
     ensure(d);
+  }
+
+  // Holidays never create sections of their own — an upcoming holiday is a
+  // mark on the calendar date (grid cell, ribbon dot), not an agenda banner.
+  // They attach only to days that exist anyway: days with items, or the
+  // explicitly selected day (so tapping the date still shows the holiday).
+  for (const occ of occurrences) {
+    const d = startOfDay(occ.date);
+    if (d.getTime() < winStart.getTime() || d.getTime() > winEndIncl.getTime()) continue;
+    const day = byKey.get(dayKeyLocal(d));
+    if (day) day.holidays.push(occ.holiday);
   }
 
   const days = [...byKey.values()];

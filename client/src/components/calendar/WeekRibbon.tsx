@@ -123,7 +123,7 @@ export function WeekRibbon({
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 w-6 p-0 shrink-0 text-gray-400 dark:text-gray-500"
+          className="min-h-[44px] w-9 p-0 shrink-0 text-gray-400 dark:text-gray-500"
           onClick={onPrevWeek}
           aria-label="Previous week"
           data-testid="button-prev-week"
@@ -177,7 +177,7 @@ export function WeekRibbon({
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 w-6 p-0 shrink-0 text-gray-400 dark:text-gray-500"
+          className="min-h-[44px] w-9 p-0 shrink-0 text-gray-400 dark:text-gray-500"
           onClick={onNextWeek}
           aria-label={`Next week (from ${weekEnd.toLocaleDateString()})`}
           data-testid="button-next-week"
