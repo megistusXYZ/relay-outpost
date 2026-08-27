@@ -32,9 +32,39 @@ export interface ChangelogEntry {
    *  motivated the release — the human reason behind the work. One quote, or a
    *  few for a broad release. Illustrative of real reports, not named endorsements. */
   feedback?: ChangelogFeedback | ChangelogFeedback[];
+  /** Optional single call-to-action for the release (e.g. the open-source
+   *  repo). Rendered as a real link, because change text is plain prose. */
+  link?: { label: string; url: string };
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.10.0",
+    date: "2026-08-27",
+    title: "Open source, open market, open mic",
+    link: { label: "Read the code on GitHub", url: "https://github.com/megistusXYZ/relay-outpost" },
+    changes: [
+      { type: "new", text: "Relay Outpost is open source. The entire app — everything in this list and everything before it — is now public code under the MIT license, for anyone to read, audit, fork, or build on. A client that touches your keys and your sats should be one you can check for yourself. Now you can." },
+      { type: "new", text: "There's a marketplace. Real things for sale across the open network — coffee, art, electronics, thousands of listings — with search, categories in the sellers' own words, and every listing opening into photos, a price, and the actual person behind it. Your trust circle marks the sellers it vouches for right on the price tag, and buying happens with the seller or their marketplace — never through us." },
+      { type: "new", text: "Live audio rooms open inside the app. When someone shares a Corny Chat space, it's a Join button now, not a link to somewhere else — tap it and you're listening; allow the mic and you're on stage." },
+      { type: "new", text: "Videos became endless. The feed draws from the whole network's catalog — including the resurrected Vine archive — and always leads with what you haven't seen. Tap a creator's face to fall into their reel; when their videos run out it flows on into everyone else's. A small toggle above the actions swaps trending for newest." },
+      { type: "improved", text: "Threads stopped losing replies. Some apps recently changed how replies are written under the hood; we read both dialects now, so a conversation shows everyone who actually spoke — and the post a reply answers loads reliably, because we ask the relay the reply came from instead of only the usual suspects." },
+      { type: "improved", text: "The zap wallet speaks human: one number, one \"Send to my wallet\" button, plain words at every step — and you can send straight to a Lightning address like you@primal.net instead of hunting your wallet for an invoice. Sats you already collected are never counted as waiting again." },
+      { type: "improved", text: "Three looks instead of two: light, dark, and a deeper black that suits OLED screens and late nights. Switching also settles contrast and performance to sensible defaults, so a theme is one decision, not three." },
+      { type: "improved", text: "Your posts no longer advertise which app you used. The tiny \"posted with Relay Outpost\" tag is opt-in now — flip it on in Settings if you'd like to rep us; say nothing otherwise. A choice you already made, either way, still stands." },
+      { type: "fixed", text: "Small things you'll feel: the video player's buttons stay out of the picture and fade while you watch, a creator's photos use your whole screen on desktop, and the Activity page's confusing \"couldn't reach relays\" line now says what it actually means — and nothing more." },
+    ],
+    feedback: [
+      {
+        quote: "Stoked to see NIP-99 listings — is there a way to add this to profile views? Can't find a way to display people's listings unless I find it in feed.",
+        attribution: "Community member — the ask that became seller shelves on profiles",
+      },
+      {
+        quote: "Message to all other nostr devs: Amethyst now replies to all kind 1s with NIP-22 comments instead of NIP-10.",
+        attribution: "The migration we made sure wouldn't break your threads",
+      },
+    ],
+  },
   {
     version: "1.9.0",
     date: "2026-08-15",

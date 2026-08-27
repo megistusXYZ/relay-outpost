@@ -115,14 +115,17 @@ export function handleAvatarError(e: { currentTarget: HTMLImageElement }): void 
 export const CLIENT_TAG: [string, string] = ["client", "Relay Outpost"];
 
 // User-toggleable: whether to attribute published events with the client tag.
-// Default ON (attribution); only the literal "false" disables it. Returns a
-// spreadable list so call sites do `...clientTags()` in their tags array.
+// OPT-IN — default OFF (owner decision 2026-08-27, flipping the old default):
+// which app someone posts with is metadata about them, and the quiet default
+// should not broadcast it. Only the literal "true" enables. Explicit choices
+// made under the old default keep working ("true" stays on, "false" stays
+// off). Returns a spreadable list so call sites do `...clientTags()`.
 export const CLIENT_TAG_ENABLED_KEY = "relay-outpost-client-tag-enabled";
 export function clientTags(): string[][] {
   try {
-    return localStorage.getItem(CLIENT_TAG_ENABLED_KEY) === "false" ? [] : [CLIENT_TAG];
+    return localStorage.getItem(CLIENT_TAG_ENABLED_KEY) === "true" ? [CLIENT_TAG] : [];
   } catch {
-    return [CLIENT_TAG];
+    return [];
   }
 }
 
