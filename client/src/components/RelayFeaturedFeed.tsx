@@ -17,7 +17,7 @@ import {
 } from "@/lib/curation-set";
 import { EmbeddedNote, EmbeddedAddressCard } from "@/components/NostrPost";
 import { LinkPreviewCard } from "@/components/MediaRenderer";
-import { Sparkles } from "lucide-react";
+import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 
 export function useRelayFeaturedSets(relayUrl: string, nip11: Nip11Document | null) {
   const [sets, setSets] = useState<CurationSet[]>([]);
@@ -112,7 +112,7 @@ export function RelayFeaturedFeed({ sets, relayUrl }: { sets: CurationSet[]; rel
         )}
         <div className="mb-3">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5 text-brand/70" />
+            <MagicStarIcon className="w-3.5 h-3.5 text-brand/70" />
             <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-brand/70">Featured</span>
           </div>
           <h2 className="text-lg font-semibold tracking-tight mt-1">{active.title}</h2>

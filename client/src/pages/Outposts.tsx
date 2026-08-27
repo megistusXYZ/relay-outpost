@@ -121,6 +121,7 @@ import { WavesIcon } from "@/components/icons/WavesIcon";
 import { TimelineIcon } from "@/components/icons/TimelineIcon";
 import { AboutIcon } from "@/components/icons/AboutIcon";
 import { RelayFeaturedFeed, useRelayFeaturedSets } from "@/components/RelayFeaturedFeed";
+import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 import { HorizonIcon } from "@/components/icons/HorizonIcon";
 import { ChannelsIcon } from "@/components/icons/CommsIcon";
 import { HorizonTab } from "@/components/HorizonTab";
@@ -4002,7 +4003,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
   const TAB_CONFIG: { key: OutpostTab; label: string; icon: React.ComponentType<{ className?: string }>; hint: string }[] = [
     { key: "feed", label: "Posts", icon: TimelineIcon, hint: "The community feed — short posts" },
     // Self-hiding: only relays whose operator curated something get the tab.
-    ...(featuredSets.length > 0 ? [{ key: "featured" as OutpostTab, label: "Featured", icon: Sparkles, hint: "Hand-picked by this relay's operators" }] : []),
+    ...(featuredSets.length > 0 ? [{ key: "featured" as OutpostTab, label: "Featured", icon: MagicStarIcon, hint: "Hand-picked by this relay's operators" }] : []),
     { key: "topics", label: "Discussions", icon: WavesIcon, hint: "Threaded discussions people can reply to and vote on" },
     { key: "channels", label: "Chat", icon: ChannelsIcon, hint: "Real-time chat rooms" },
     { key: "horizon", label: "Articles", icon: HorizonIcon, hint: "Long-form articles" },

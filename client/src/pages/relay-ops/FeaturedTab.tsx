@@ -32,7 +32,6 @@ import {
 import { FeaturedContentPicker, curationItemKey } from "@/components/FeaturedContentPicker";
 import { Switch } from "@/components/ui/switch";
 import {
-  Sparkles,
   Plus,
   Trash2,
   ArrowUp,
@@ -47,6 +46,7 @@ import {
   RefreshCw,
   AlertTriangle,
 } from "lucide-react";
+import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 
 /** Icon per item flavor — same vocabulary the public Featured tab renders with. */
 function itemIcon(item: CurationItem) {
@@ -257,7 +257,7 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
 
   return (
     <div className="space-y-4" data-testid="featured-tab">
-      <OpsSectionHeader icon={Sparkles} label="Featured feeds">
+      <OpsSectionHeader icon={MagicStarIcon} label="Featured feeds">
         <p className="text-xs text-muted-foreground">
           Curate what greets people on this relay's Featured tab — any post, article, listing, stream, or link, from anyone, old or new.
         </p>
@@ -365,7 +365,7 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
           {mine.length === 0 && others.length === 0 && (
             <OpsCard>
               <div className="text-center py-6 space-y-1.5">
-                <Sparkles className="w-6 h-6 text-brand/50 mx-auto" />
+                <MagicStarIcon className="w-6 h-6 text-brand/50 mx-auto" />
                 <p className="text-sm font-medium">No featured feeds yet</p>
                 <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                   Create one and it becomes the Featured tab on this relay's public page — a curated front door you control.

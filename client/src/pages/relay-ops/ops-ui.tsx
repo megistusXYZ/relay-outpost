@@ -63,7 +63,7 @@ export const OpsSubCard = React.forwardRef<
 ));
 OpsSubCard.displayName = "OpsSubCard";
 
-type OpsIcon = LucideIcon | React.ReactNode;
+type OpsIcon = LucideIcon | React.ComponentType<{ className?: string }> | React.ReactNode;
 
 /**
  * The one operator section header. Renders `icon + uppercase brand label` in a
