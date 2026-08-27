@@ -70,6 +70,9 @@ export function localSweepKey(signer: ISigner | null): string | null {
   return signer instanceof PrivateKeySigner ? bytesToHex(signer.key) : null;
 }
 
+/** "1 sat" / "63 sats" — problem strings are user-facing; never "1 sats". */
+const sats = (n: number) => `${n.toLocaleString()} sat${n === 1 ? "" : "s"}`;
+
 export async function sweepNpubCash(opts: {
   pubkey: string;
   signer: ISigner;
@@ -102,7 +105,7 @@ export async function sweepNpubCash(opts: {
     if (!byMint.has(mintUrl)) byMint.set(mintUrl, []);
   }
   if (byMint.size === 0) {
-    return { results, strandedSats: 0, problems: ["Nothing to sweep."], alreadyClaimedSats: 0 };
+    return { results, strandedSats: 0, problems: ["Nothing to send right now."], alreadyClaimedSats: 0 };
   }
 
   for (const [mintUrl, quotes] of byMint) {
@@ -140,7 +143,7 @@ export async function sweepNpubCash(opts: {
           // not re-list it even before npub.cash's own state catches up.
           rememberIssuedQuotes(pubkey, [q.quoteId]);
         } catch (e) {
-          problems.push(`Couldn't claim a ${q.amount}-sat payment: ${e instanceof Error ? e.message : "mint refused"}`);
+          problems.push(`Couldn't collect a ${q.amount}-sat payment: ${e instanceof Error ? e.message : "the mint refused"}. It stays claimable — try again later.`);
         }
       }
 
@@ -150,14 +153,16 @@ export async function sweepNpubCash(opts: {
       if (total === 0) continue;
       const target = invoiceAmountFor(total);
       if (target === 0) {
-        problems.push(`${total} sats at ${mintUrl} are too small to sweep over lightning — kept safe locally.`);
+        // No mint URL in user copy — "at https://mint…" reads like an error
+        // in itself to someone who's never heard of a mint.
+        problems.push(`${sats(total)} is too small to send over Lightning on its own — it stays safe on this device and will go along once you've received more.`);
         continue;
       }
 
       onProgress?.({ stage: "invoice", detail: `${target} sats` });
       let invoice = await getInvoice(target, mintUrl);
       if (!invoice) {
-        problems.push(`No invoice for ${target} sats — ${total} sats stay safe locally.`);
+        problems.push(`No destination was given — your ${sats(total)} stay safe on this device.`);
         continue;
       }
       let meltQuote = await wallet.createMeltQuoteBolt11(invoice);
@@ -173,7 +178,7 @@ export async function sweepNpubCash(opts: {
         }
       }
       if (!invoice || !meltFits(quoteNums(meltQuote), total)) {
-        problems.push(`The mint's fee reserve doesn't fit ${total} sats — kept safe locally.`);
+        problems.push(`Lightning fees are too high right now to send ${sats(total)} — kept safe on this device; try again later.`);
         continue;
       }
 
@@ -195,7 +200,7 @@ export async function sweepNpubCash(opts: {
         changeSats,
       });
     } catch (e) {
-      problems.push(`Sweep at ${mintUrl} stopped: ${e instanceof Error ? e.message : "unexpected error"}. Any claimed sats are safe in the local stash.`);
+      problems.push(`Sending stopped partway: ${e instanceof Error ? e.message : "unexpected error"}. Any sats already collected are safe on this device.`);
     }
   }
 
