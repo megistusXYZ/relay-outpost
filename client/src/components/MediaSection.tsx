@@ -323,7 +323,9 @@ function ImagesSubTab({ urls, loaded, isOwnProfile, mediaMeta, mediaAuthor }: { 
           <input ref={mediaInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} data-testid="input-image-upload" />
         </div>
       )}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2" data-testid="container-images-grid">
+      {/* Desktop pass (owner request 2026-08-26): the profile column is wide
+          enough for another track at lg — 4 columns of squares read sparse. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2" data-testid="container-images-grid">
         {urls.map((url, i) => (
           <div
             key={url}
@@ -395,7 +397,7 @@ function VideosSubTab({ urls, loaded, isOwnProfile, orientationMap, mediaMeta }:
           )}
 
           {landscapeVideos.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" data-testid="container-videos-grid">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" data-testid="container-videos-grid">
               {landscapeVideos.map((url, i) => (
                 <div
                   key={url}
@@ -409,7 +411,7 @@ function VideosSubTab({ urls, loaded, isOwnProfile, orientationMap, mediaMeta }:
           )}
 
           {portraitVideos.length > 0 && (
-            <div className={`grid grid-cols-2 sm:grid-cols-3 gap-3 ${landscapeVideos.length > 0 ? "mt-3" : ""}`} data-testid="container-videos-portrait-grid">
+            <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 ${landscapeVideos.length > 0 ? "mt-3" : ""}`} data-testid="container-videos-portrait-grid">
               {portraitVideos.map((url, i) => (
                 <div
                   key={url}
