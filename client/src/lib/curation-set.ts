@@ -192,3 +192,22 @@ export function curationItemLabel(item: CurationItem): string {
     default: return "Item";
   }
 }
+
+/**
+ * The item shape for a picked EVENT: addressable kinds (30000-39999) become
+ * address items keyed by their d tag — an e-tag reference to an addressable
+ * event goes stale on the next edition, the coordinate never does. Everything
+ * else is a note item.
+ */
+export function eventToCurationItem(event: Event, relayHint?: string): CurationItem {
+  if (event.kind >= 30000 && event.kind < 40000) {
+    return {
+      type: "address",
+      kind: event.kind,
+      pubkey: event.pubkey,
+      identifier: event.tags.find((t) => t[0] === "d")?.[1] ?? "",
+      ...(relayHint ? { relayHint } : {}),
+    };
+  }
+  return { type: "note", id: event.id, ...(relayHint ? { relayHint } : {}) };
+}

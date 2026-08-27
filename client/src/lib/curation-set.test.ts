@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCurationSet, buildCurationSetTags, relayFeaturedSets, detectFeedPaste, curationItemLabel } from "./curation-set";
+import { parseCurationSet, buildCurationSetTags, relayFeaturedSets, detectFeedPaste, curationItemLabel, eventToCurationItem } from "./curation-set";
 import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
 
@@ -143,5 +143,27 @@ describe("curationItemLabel (reader vocabulary, never kind numbers for known kin
     expect(curationItemLabel({ type: "address", kind: 30311, pubkey: OP, identifier: "a" })).toBe("Stream");
     expect(curationItemLabel({ type: "address", kind: 34235, pubkey: OP, identifier: "a" })).toBe("Video");
     expect(curationItemLabel({ type: "address", kind: 31337, pubkey: OP, identifier: "a" })).toBe("Item");
+  });
+});
+
+describe("eventToCurationItem (picker: any event becomes the right item shape)", () => {
+  it("maps addressable kinds to address items via their d tag", () => {
+    const ev = setEvent([["d", "my-article"]], { kind: 30023, pubkey: AUTHOR });
+    expect(eventToCurationItem(ev, "wss://r.example")).toEqual({
+      type: "address", kind: 30023, pubkey: AUTHOR, identifier: "my-article", relayHint: "wss://r.example",
+    });
+  });
+
+  it("maps an addressable event with no d tag to identifier \"\" (its real coordinate)", () => {
+    const ev = setEvent([], { kind: 30311, pubkey: AUTHOR });
+    const item = eventToCurationItem(ev);
+    expect(item).toEqual({ type: "address", kind: 30311, pubkey: AUTHOR, identifier: "" });
+  });
+
+  it("maps regular kinds (posts, short video) to note items", () => {
+    const post = setEvent([], { kind: 1, id: "9".repeat(64) });
+    expect(eventToCurationItem(post)).toEqual({ type: "note", id: "9".repeat(64) });
+    const video = setEvent([], { kind: 22, id: "8".repeat(64) });
+    expect(eventToCurationItem(video)).toEqual({ type: "note", id: "8".repeat(64) });
   });
 });
