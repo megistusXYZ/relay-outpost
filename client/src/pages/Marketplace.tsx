@@ -8,12 +8,13 @@
  * Flagged sellers are excluded via the shared GrapeRank set: the one cheap,
  * positive scam signal we hold. Guests hit the standard browse wall.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Event } from "nostr-tools";
 import { Tag, Search, X } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { GuestWall } from "@/components/GuestWall";
+import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { RelayOutpostLoader } from "@/components/RelayOutpostLoader";
 import { Button } from "@/components/ui/button";
 import { ListingDialog } from "@/components/ListingCard";
@@ -72,27 +73,63 @@ export default function Marketplace() {
     [state, query, category],
   );
 
+  const loadSeq = useRef(0);
   const load = useCallback(() => {
+    const seq = ++loadSeq.current;
     setState({ status: "loading" });
-    const relays = Array.from(new Set([...LISTING_RELAYS, ...FAST_RELAYS.slice(0, 4)]));
-    queryAnswered(relays, { kinds: [KIND_CLASSIFIED_LISTING], limit: 120 }, 10_000).then((res) => {
-      if (res.events.length === 0 && !res.answered) {
+    const assemble = (events: Event[]) =>
+      pickMarketListings(events, {
+        flagged: flaggedPubkeys ?? undefined,
+        // What YOU reported disappears from the shelf immediately — same
+        // id-or-author rule the feeds use — without waiting for the
+        // network-level flag to catch up.
+        isReported: (e) => isReportedEvent(e.id) || isReportedPubkey(e.pubkey),
+      });
+    (async () => {
+      // DEEP-PAGE the marketplace relay: it answers 100 events per REQ but
+      // pages cleanly by `until` (measured 2026-08-27 — 800 unique in 8
+      // pages, catalog ~2,000). One capped query showed a tenth of the
+      // market; the pager streams pages into the grid until the relay
+      // genuinely runs dry or the cap. Pages arrive OLDER than what's
+      // shown, so streaming appends — never reorders under the reader.
+      const PAGE_CAP = 30;
+      const seen = new Set<string>();
+      const accumulated: Event[] = [];
+      let answeredAny = false;
+      const generalsP = queryAnswered(FAST_RELAYS.slice(0, 4), { kinds: [KIND_CLASSIFIED_LISTING], limit: 200 }, 10_000);
+      let until = Math.floor(Date.now() / 1000) + 60;
+      for (let page = 0; page < PAGE_CAP; page++) {
+        const res = await queryAnswered(LISTING_RELAYS, { kinds: [KIND_CLASSIFIED_LISTING], limit: 100, until }, 8_000);
+        if (loadSeq.current !== seq) return;
+        answeredAny = answeredAny || res.answered || res.events.length > 0;
+        const fresh = (res.events as Event[]).filter((e) => !seen.has(e.id));
+        if (fresh.length === 0) break;
+        fresh.forEach((e) => seen.add(e.id));
+        accumulated.push(...fresh);
+        until = Math.min(...fresh.map((e) => e.created_at)) - 1;
+        setState({ status: "ready", listings: assemble(accumulated) });
+      }
+      const gen = await generalsP;
+      if (loadSeq.current !== seq) return;
+      answeredAny = answeredAny || gen.answered || gen.events.length > 0;
+      for (const e of gen.events as Event[]) {
+        if (!seen.has(e.id)) { seen.add(e.id); accumulated.push(e); }
+      }
+      if (!answeredAny && accumulated.length === 0) {
         setState({ status: "unreachable" });
         return;
       }
-      setState({
-        status: "ready",
-        listings: pickMarketListings(res.events as Event[], {
-          flagged: flaggedPubkeys ?? undefined,
-          // What YOU reported disappears from the shelf immediately — same
-          // id-or-author rule the feeds use — without waiting for the
-          // network-level flag to catch up.
-          isReported: (e) => isReportedEvent(e.id) || isReportedPubkey(e.pubkey),
-        }),
-      });
-    });
+      setState({ status: "ready", listings: assemble(accumulated) });
+    })();
   }, [flaggedPubkeys]);
-  useEffect(() => { if (myPubkey) load(); }, [load, myPubkey]);
+  useEffect(() => { if (myPubkey) load(); return () => { loadSeq.current++; }; }, [load, myPubkey]);
+
+  // Render cap with an infinite-scroll sentinel: thousands of cards in the
+  // DOM at once is jank, not generosity. Search/category filter over the
+  // FULL loaded set; only the rendering is windowed.
+  const DISPLAY_STEP = 60;
+  const [displayLimit, setDisplayLimit] = useState(DISPLAY_STEP);
+  useEffect(() => { setDisplayLimit(DISPLAY_STEP); }, [query, category]);
 
   const sellers = useMemo(
     () => (state.status === "ready" ? Array.from(new Set(state.listings.map((l) => l.pubkey))) : []),
@@ -193,11 +230,18 @@ export default function Marketplace() {
         </p>
       )}
       {visible.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 gap-y-6" data-testid="marketplace-grid">
-          {visible.map((l) => (
-            <MarketCard key={`${l.pubkey}:${l.dTag}`} listing={l} onOpen={() => setOpenListing(l)} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 gap-y-6" data-testid="marketplace-grid">
+            {visible.slice(0, displayLimit).map((l) => (
+              <MarketCard key={`${l.pubkey}:${l.dTag}`} listing={l} onOpen={() => setOpenListing(l)} />
+            ))}
+          </div>
+          <InfiniteScrollSentinel
+            onLoadMore={() => setDisplayLimit((n) => n + DISPLAY_STEP)}
+            isLoading={false}
+            hasMore={visible.length > displayLimit}
+          />
+        </>
       )}
 
       {openListing && (
