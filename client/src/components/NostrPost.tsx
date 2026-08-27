@@ -1096,8 +1096,16 @@ export function EmbeddedNote({ eventId, encoded, relays, parentEventId }: { even
 
   const imageUrlRegex = /https?:\/\/\S+\.(jpeg|jpg|gif|png|webp)(\?[^\s]*)?/gi;
   const videoUrlRegex = /https?:\/\/\S+\.(mp4|webm|mov)(\?[^\s]*)?/gi;
+  const audioUrlRegex = /https?:\/\/\S+\.(mp3|m4a|wav|ogg|opus|aac|flac)(\?[^\s]*)?/gi;
   const imageUrls = (fetchedEvent.content.match(imageUrlRegex) || []).slice(0, 4);
   const videoUrls = (fetchedEvent.content.match(videoUrlRegex) || []).slice(0, 1);
+  // A quoted music/podcast post must arrive with its PLAYER, not as bare text
+  // (live report: quoted Wavlake-style tracks rendered playerless). The imeta
+  // tag's cover image (if any) rides along as the player's thumbnail.
+  const audioUrls = (fetchedEvent.content.match(audioUrlRegex) || []).slice(0, 1);
+  const audioCover = audioUrls.length > 0
+    ? fetchedEvent.tags.find((t) => t[0] === "imeta")?.find?.((v) => typeof v === "string" && v.startsWith("image "))?.slice(6)
+    : undefined;
   const textContent = fetchedEvent.content.replace(/https?:\/\/\S+/g, "").trim();
   // Token-preserving truncation: a naddr/nevent is 100s of chars, so a plain
   // slice(0,200) would cut it mid-token and leave it unresolvable (the raw
@@ -1156,6 +1164,20 @@ export function EmbeddedNote({ eventId, encoded, relays, parentEventId }: { even
           onClick={(e) => e.stopPropagation()}
           data-testid="embedded-note-video"
         />
+      )}
+      {audioUrls.length > 0 && (
+        <div className="flex items-center gap-2.5" onClick={(e) => e.stopPropagation()}>
+          {audioCover && (
+            <img src={audioCover} alt="" loading="lazy" className="h-12 w-12 shrink-0 rounded-md object-cover" />
+          )}
+          <audio
+            src={audioUrls[0]}
+            controls
+            preload="metadata"
+            className="h-10 w-full min-w-0"
+            data-testid="embedded-note-audio"
+          />
+        </div>
       )}
     </div>
   );
