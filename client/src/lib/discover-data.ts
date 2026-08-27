@@ -29,6 +29,7 @@ import { ensureLanguageDetector, getPreferredLanguages, languageAllowed } from "
 import { getContentWarning } from "@/lib/sensitive-content";
 import { pickMarketListings, formatListingPrice, KIND_CLASSIFIED_LISTING, LISTING_RELAYS } from "@/lib/listing";
 import { rankDiscoverFeed } from "@/lib/discover-rank";
+import { isPromoBait, preferFollowed } from "@/lib/discover-curation";
 import { rankTopics, pickNextUpcoming, pickImageShelf, isSensitiveMedia, type RankedTopic, type ShelfImage } from "@/lib/discover-tiles";
 import { getEventMediaInfo } from "@/lib/media-utils";
 import { parseCalendarEvent, KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT, type CalendarEventData } from "@/lib/calendar-events";
@@ -171,24 +172,34 @@ export function survivingArticles(events: Event[]): ArticleData[] {
     .sort((a, b) => b.publishedAt - a.publishedAt);
 }
 
-export function fetchNewestArticle(): Promise<Reached<ArticleData[]>> {
-  return remembered("article", fetchNewestArticleFresh);
+export function fetchNewestArticle(follows: readonly string[] = []): Promise<Reached<ArticleData[]>> {
+  return remembered(`article:${follows.length > 0 ? "F" : "g"}`, () => fetchNewestArticleFresh(follows));
 }
 
-async function fetchNewestArticleFresh(): Promise<Reached<ArticleData[]>> {
+async function fetchNewestArticleFresh(follows: readonly string[]): Promise<Reached<ArticleData[]>> {
+  const followSet = new Set(follows);
   // Reach measured against the same pool sockets the subscribe uses — not a
   // fourth hand-rolled primitive. Raced in parallel; it costs nothing when the
-  // sockets are already warm.
-  const [served, events] = await Promise.all([
+  // sockets are already warm. Follows' own long-form is fetched alongside the
+  // general pool and ordered FIRST (owner rule, 2026-08-27) — general fills
+  // whatever your writers didn't publish this week.
+  const [served, events, followsArticles] = await Promise.all([
     anyServed(FAST_RELAYS),
     collectOnce(FAST_RELAYS, { kinds: [KIND_LONG_FORM], limit: 15 }, 11_000),
+    follows.length > 0
+      ? collectOnce(FAST_RELAYS, { kinds: [KIND_LONG_FORM], authors: follows.slice(0, 100), limit: 15 }, 8_000)
+      : Promise.resolve([] as Event[]),
   ]);
   // Top TWO editions — one headline over a tall empty card undersold the
   // shelf (same densification as the feed tile).
-  const top = survivingArticles(events).slice(0, 2);
+  const top = preferFollowed(
+    survivingArticles([...followsArticles, ...events]),
+    (a) => followSet.has(a),
+    (a) => a.event.pubkey,
+  ).slice(0, 2);
   // Events in hand are themselves proof someone answered, even if the reach
   // probe lost its race with a relay that dropped right after serving us.
-  return { data: top, reached: served || events.length > 0 };
+  return { data: top, reached: served || events.length > 0 || followsArticles.length > 0 };
 }
 
 // ── Feed teaser ──────────────────────────────────────────────────────────────
@@ -241,32 +252,48 @@ function floorTeaser(posts: Event[], langs: string[], mode: "primal" | "relay", 
   return floored.filter((e) => getContentWarning(e) === null);
 }
 
-export function fetchFeedTeaser(flagged: Set<string> = new Set()): Promise<Reached<Event[]>> {
-  // Key on shield readiness (empty vs applied): a memo taken BEFORE the
-  // GrapeRank set loaded must not be served to the same viewer AFTER it does —
-  // otherwise the tile keeps a pre-shield pick for the 5-minute TTL.
-  return remembered(`teaser:${flagged.size > 0 ? "f" : "0"}`, () => fetchFeedTeaserFresh(flagged));
+export function fetchFeedTeaser(flagged: Set<string> = new Set(), follows: readonly string[] = []): Promise<Reached<Event[]>> {
+  // Key on shield readiness (empty vs applied) AND follows presence: a memo
+  // taken before either loaded must not be served after — otherwise the tile
+  // keeps a pre-shield or follows-blind pick for the 5-minute TTL.
+  return remembered(`teaser:${flagged.size > 0 ? "f" : "0"}:${follows.length > 0 ? "F" : "g"}`, () => fetchFeedTeaserFresh(flagged, follows));
 }
 
-async function fetchFeedTeaserFresh(flagged: Set<string>): Promise<Reached<Event[]>> {
+async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly string[]): Promise<Reached<Event[]>> {
   await ensureLanguageDetector();
   const langs = getPreferredLanguages();
   const sinceSecs = Math.floor(Date.now() / 1000) - 6 * 3600;
+  const followSet = new Set(follows);
+
+  // Your people first (owner rule, 2026-08-27): fetch the follows' own recent
+  // posts alongside the trending pool, and order followed authors ahead —
+  // trending only fills what the follows don't. The promo-bait floor drops
+  // airdrop/claim shills from the SHOWCASE (the feeds themselves are governed
+  // by the user's trust settings, not this).
+  const followsPostsP: Promise<Event[]> = follows.length > 0
+    ? collectOnce(getRelaysForPurpose("notes"), { kinds: [1], authors: follows.slice(0, 100), since: Math.floor(Date.now() / 1000) - 24 * 3600, limit: 40 }, 8_000)
+    : Promise.resolve([]);
 
   // Top THREE of the same vetted ranking (language, spam floor, flagged
   // shield, engagement) — the tile was showing one post over a tall empty
   // card, which read as a quiet network over a busy one.
-  const pick = (posts: Event[], mode: "primal" | "relay"): Event[] =>
-    rankDiscoverFeed(floorTeaser(posts, langs, mode, flagged), {
+  const pick = (posts: Event[], mode: "primal" | "relay"): Event[] => {
+    const seen = new Set<string>();
+    const deduped = posts.filter((e) => (seen.has(e.id) ? false : (seen.add(e.id), true)));
+    const ranked = rankDiscoverFeed(floorTeaser(deduped, langs, mode, flagged), {
       now: Math.floor(Date.now() / 1000),
       getEngagement: (id: string) => computeEngagementScore(primalStatsCache.get(id) ?? null),
-    }).slice(0, 3);
+    }).filter((e) => !isPromoBait(e.content));
+    return preferFollowed(ranked, (a) => followSet.has(a), (e) => e.pubkey).slice(0, 3);
+  };
 
   // Primal never rejects and FAILS OPEN to [] — an empty answer is
   // structurally ambiguous (down, timeout, or genuinely quiet), so only a
   // non-empty one counts as reached.
-  const primal = await fetchGlobalFeed(30, sinceSecs);
-  if (primal.posts.length > 0) return { data: pick(primal.posts, "primal"), reached: true };
+  const [primal, followsPosts] = await Promise.all([fetchGlobalFeed(30, sinceSecs), followsPostsP]);
+  if (primal.posts.length > 0 || followsPosts.length > 0) {
+    return { data: pick([...followsPosts, ...primal.posts], "primal"), reached: true };
+  }
   // (unreached below returns [] — the type's empty, the flag carries the truth)
 
   // Primal said nothing, which proves nothing. Ask the relays — with reach
