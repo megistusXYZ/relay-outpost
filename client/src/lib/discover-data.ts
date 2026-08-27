@@ -22,7 +22,7 @@ import { eventStore, throttledPoolSubscribe, FAST_RELAYS, getRelaysForPurpose } 
 import { canReachAny, canReachRelay, relayRefusedUs, type Reached } from "@/lib/relay-reach";
 import { KIND_LONG_FORM, parseArticle, type ArticleData } from "@/lib/nip23";
 import { fetchGlobalFeed, getCachedFollowerCount, primalStatsCache } from "@/lib/primal-cache";
-import { filterSpamEvents, MIN_FOLLOWERS_GLOBAL } from "@/lib/spam-filter";
+import { filterSpamEvents, MIN_FOLLOWERS_GLOBAL, isReportedEvent, isReportedPubkey } from "@/lib/spam-filter";
 import { computeEngagementScore } from "@/lib/engagement";
 import { getFirstSeen } from "@/lib/account-age";
 import { ensureLanguageDetector, getPreferredLanguages, languageAllowed } from "@/lib/language";
@@ -469,7 +469,9 @@ async function fetchMarketShelfFresh(): Promise<Reached<MarketTeaser[] | null>> 
   ]);
   // A marketplace door that shows words undersells the room behind it
   // (ImagesShelf precedent) — image-bearing, unsold, front-door-safe.
-  const teasers = pickMarketListings(events.filter((e) => !isSensitiveMedia(e)))
+  const teasers = pickMarketListings(events.filter((e) => !isSensitiveMedia(e)), {
+    isReported: (e) => isReportedEvent(e.id) || isReportedPubkey(e.pubkey),
+  })
     .filter((l) => !l.sold && l.images.length > 0)
     .slice(0, 6)
     .map((l) => ({

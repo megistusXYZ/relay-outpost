@@ -9,7 +9,7 @@
  * 85, location on 37. Content duplicates summary on many.
  */
 import { describe, expect, it } from "vitest";
-import { parseListing, formatListingPrice, listingWebUrl, pickMarketListings } from "./listing";
+import { parseListing, formatListingPrice, listingWebUrl, pickMarketListings, rankListingCategories, filterListings } from "./listing";
 
 const PK = "a".repeat(64);
 const listing = (tags: string[][], content = "") =>
@@ -122,11 +122,52 @@ describe("pickMarketListings — assembling a browse surface from raw relay even
     expect(out.map((l) => l.dTag)).toEqual(["act-new", "act-old", "sold-new"]);
   });
 
+  it("hides what this device already reported — the id AND the seller, matching feed behavior", () => {
+    // Reporting hides locally right away; waiting for the network-level flag
+    // to catch up would leave the reported goods on the shelf.
+    const events = [ev(A, "bad", 100), ev(B, "fine", 200)];
+    expect(pickMarketListings(events, { isReported: (e) => (e as { pubkey: string }).pubkey === A }))
+      .toHaveLength(1);
+    expect(pickMarketListings(events, { isReported: (e) => (e as { id: string }).id.startsWith("bbbb-fine") }))
+      .toHaveLength(1);
+  });
+
   it("drops unrenderable events and flagged sellers", () => {
     const out = pickMarketListings(
       [ev(A, "ok", 100), { id: "z", kind: 30402, pubkey: B, created_at: 50, content: "", sig: "", tags: [["d", "untitled"]] } as never],
       { flagged: new Set([A]) },
     );
     expect(out).toHaveLength(0);
+  });
+});
+
+describe("shop browsing — categories and search over parsed listings", () => {
+  const A = "a".repeat(64);
+  const mk = (d: string, title: string, tags: string[][] = [], summary = "") =>
+    parseListing({ id: d.padEnd(8, "0"), kind: 30402, pubkey: A, created_at: 100,
+      content: summary, sig: "", tags: [["d", d], ["title", title], ...tags] } as never)!;
+
+  it("ranks categories by how many listings carry them, case-folded", () => {
+    const cats = rankListingCategories([
+      mk("1", "Mug", [["t", "Art"], ["t", "clothing"]]),
+      mk("2", "Tee", [["t", "art"]]),
+      mk("3", "Coffee", [["t", "food"]]),
+    ]);
+    expect(cats[0]).toEqual({ tag: "art", count: 2 });
+    expect(cats.map((c) => c.tag)).toContain("food");
+  });
+
+  it("search matches title, summary, and tags — never case-sensitive", () => {
+    const all = [mk("1", "Sound Coffee", [["t", "food"]], "Whole bean from Guatemala"), mk("2", "Pop Art Mug")];
+    expect(filterListings(all, { query: "guatemala" })).toHaveLength(1);
+    expect(filterListings(all, { query: "MUG" })[0].title).toBe("Pop Art Mug");
+    expect(filterListings(all, { query: "" })).toHaveLength(2);
+  });
+
+  it("category narrows by t tag; combined with search both must hold", () => {
+    const all = [mk("1", "Sound Coffee", [["t", "food"]]), mk("2", "Hot Sauce", [["t", "food"]])];
+    expect(filterListings(all, { category: "food" })).toHaveLength(2);
+    expect(filterListings(all, { category: "food", query: "sauce" })).toHaveLength(1);
+    expect(filterListings(all, { category: "art" })).toHaveLength(0);
   });
 });
