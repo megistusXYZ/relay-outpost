@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Radio,
   Activity,
+  Sparkles,
   Info,
   Shield,
   Lock,
@@ -2080,13 +2081,14 @@ export function addUptimeEntry(relayUrl: string, entry: UptimeEntry) {
   localStorage.setItem(UPTIME_HISTORY_KEY + relayUrl, JSON.stringify(trimmed));
 }
 
-export type TabId = "overview" | "live" | "events" | "access" | "announce" | "community" | "feedback";
+export type TabId = "overview" | "live" | "events" | "access" | "announce" | "featured" | "community" | "feedback";
 
 export const TABS: { id: TabId; label: string; icon: typeof Activity }[] = [
   { id: "overview", label: "Overview", icon: Activity },
   { id: "live", label: "Live Feed", icon: Radio },
   { id: "events", label: "Events", icon: Search },
   { id: "announce", label: "Announce", icon: Megaphone },
+  { id: "featured", label: "Featured Feeds", icon: Sparkles },
   { id: "feedback", label: "Feedback", icon: Inbox },
   // "Relay" is load-bearing in both labels. This console governs the RELAY —
   // Access Control is NIP-86 allow/ban across every space on the box, and these

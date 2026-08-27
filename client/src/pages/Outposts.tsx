@@ -120,6 +120,7 @@ import { OutpostIcon } from "@/components/icons/OutpostIcon";
 import { WavesIcon } from "@/components/icons/WavesIcon";
 import { TimelineIcon } from "@/components/icons/TimelineIcon";
 import { AboutIcon } from "@/components/icons/AboutIcon";
+import { RelayFeaturedFeed, useRelayFeaturedSets } from "@/components/RelayFeaturedFeed";
 import { HorizonIcon } from "@/components/icons/HorizonIcon";
 import { ChannelsIcon } from "@/components/icons/CommsIcon";
 import { HorizonTab } from "@/components/HorizonTab";
@@ -580,7 +581,7 @@ function ActiveMembersSection({ authors }: { authors: string[] }) {
   );
 }
 
-type OutpostTab = "feed" | "topics" | "channels" | "horizon" | "about";
+type OutpostTab = "feed" | "featured" | "topics" | "channels" | "horizon" | "about";
 
 function WaveAuthorLine({ pubkey, createdAt, isOP, size = "sm" }: { pubkey: string; createdAt: number; isOP?: boolean; size?: "sm" | "md" }) {
   const profile = use$(() => eventStore.replaceable(KIND_METADATA, pubkey), [pubkey]);
@@ -3254,6 +3255,8 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
   const isMobile = useIsMobile();
   const concordEnabled = useConcordEnabled();
   const [nip11, setNip11] = useState<Nip11Document | null>(null);
+  // Operator-curated Featured feeds (kind 30004) — the tab self-hides when empty.
+  const { sets: featuredSets } = useRelayFeaturedSets(relayUrl, nip11);
   const [events, setEvents] = useState<NostrEvent[]>([]);
   // Posts / Replies / All lens for the Posts tab, matching the main feed control.
   const [feedContentFilter, setFeedContentFilter] = useState<"posts" | "replies" | "all">("all");
@@ -3272,7 +3275,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
   const loadMoreRelayRef = useRef<string>("");
   const [allowedPubkeys, setAllowedPubkeys] = useState<string[]>([]);
   const PINNABLE_TABS: PinnableTab[] = ["feed", "topics", "channels", "horizon"];
-  const validTabKeys: OutpostTab[] = ["feed", "topics", "channels", "horizon", "about"];
+  const validTabKeys: OutpostTab[] = ["feed", "featured", "topics", "channels", "horizon", "about"];
   const urlParams = new URLSearchParams(window.location.search);
   const rawUrlTab = urlParams.get("tab");
   const urlTab = (rawUrlTab ? slugToTabKey(rawUrlTab) : null) as OutpostTab | null;
@@ -3998,6 +4001,8 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
 
   const TAB_CONFIG: { key: OutpostTab; label: string; icon: React.ComponentType<{ className?: string }>; hint: string }[] = [
     { key: "feed", label: "Posts", icon: TimelineIcon, hint: "The community feed — short posts" },
+    // Self-hiding: only relays whose operator curated something get the tab.
+    ...(featuredSets.length > 0 ? [{ key: "featured" as OutpostTab, label: "Featured", icon: Sparkles, hint: "Hand-picked by this relay's operators" }] : []),
     { key: "topics", label: "Discussions", icon: WavesIcon, hint: "Threaded discussions people can reply to and vote on" },
     { key: "channels", label: "Chat", icon: ChannelsIcon, hint: "Real-time chat rooms" },
     { key: "horizon", label: "Articles", icon: HorizonIcon, hint: "Long-form articles" },
@@ -4845,6 +4850,12 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
         )}
 
         </>
+        )}
+
+        {activeTab === "featured" && (
+          <div className="py-2">
+            <RelayFeaturedFeed sets={featuredSets} relayUrl={relayUrl} />
+          </div>
         )}
 
         {activeTab === "about" && (
