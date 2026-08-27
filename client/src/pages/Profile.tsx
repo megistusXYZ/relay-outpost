@@ -75,6 +75,7 @@ import { isMutedPubkey, mutePubkey, unmutePubkey } from "@/lib/spam-filter";
 import { recordProfileVisit } from "@/lib/recent-profiles";
 import { MUSIC_KINDS, MUSIC_RELAYS, parseMusicEvents, fetchWavlakeTracksByNpub, fetchPodcastFromRSS, discoverPodcastFeed, isKnownPodcaster, getSavedPodcastFeed, isPodcastDisabled, fetchNostrPodcastFeed, isPodcastFeedUrl, type MusicTrack } from "@/lib/music";
 import { MediaSection } from "@/components/MediaSection";
+import { ProfileListingsStrip } from "@/components/ListingCard";
 import { fetchRelayLists, getRelayList, getRelayListMeta, parseRelayList, getUserNotesFetchRelays, type RelayPreference } from "@/lib/outbox";
 import { parseLiveEvent, type LiveEventData } from "@/lib/live-events";
 import { getLastActivity } from "@/lib/follow-activity";
@@ -1977,6 +1978,9 @@ export default function Profile() {
 
   const profileTabsAndContent = (
     <>
+      {/* "For sale" rail (NIP-99, Conduit et al) — self-hiding: renders
+          nothing unless this person's listings actually resolve. */}
+      {pubkey && myPubkey && <ProfileListingsStrip pubkey={pubkey} />}
       <div className="mt-4 min-w-0" data-testid="container-profile-tabs">
         <PageTabs
           ariaLabel="Profile sections"
@@ -2334,6 +2338,9 @@ export default function Profile() {
           communitiesSlot={subjectCommunityRows2.length > 0 ? <IdentityCommunitiesCard rows={subjectCommunityRows2} /> : undefined}
           vouchSlot={identityVouches}
         >
+          {/* "For sale" rail (NIP-99) — self-hiding; also rendered in the
+              classic layout above its tab row, so both skins carry it. */}
+          {myPubkey && <ProfileListingsStrip pubkey={pubkey} />}
           <IdentityProfileMain
             allNotes={allNotes ?? []}
             repostedEvents={repostedEvents}
