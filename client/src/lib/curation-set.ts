@@ -18,7 +18,9 @@ export const KIND_CURATION_SET = 30004;
 export type CurationItem =
   | { type: "note"; id: string; relayHint?: string }
   | { type: "address"; kind: number; pubkey: string; identifier: string; relayHint?: string }
-  | { type: "url"; url: string };
+  | { type: "url"; url: string }
+  /** A featured PERSON — their published content flows into the feed, old and new. */
+  | { type: "person"; pubkey: string; relayHint?: string };
 
 export interface CurationSet {
   id: string;
@@ -130,6 +132,8 @@ export function buildCurationSetTags(draft: CurationSetDraft): string[][] {
     } else if (item.type === "address") {
       const coord = `${item.kind}:${item.pubkey}:${item.identifier}`;
       tags.push(item.relayHint ? ["a", coord, item.relayHint] : ["a", coord]);
+    } else if (item.type === "person") {
+      tags.push(item.relayHint ? ["p", item.pubkey, item.relayHint] : ["p", item.pubkey]);
     } else {
       tags.push(["r", item.url]);
     }
@@ -159,6 +163,8 @@ export function parseCurationSet(event: Event): CurationSet | null {
       });
     } else if (t[0] === "r" && t[1]) {
       items.push({ type: "url", url: t[1] });
+    } else if (t[0] === "p" && /^[0-9a-f]{64}$/i.test(t[1] || "")) {
+      items.push({ type: "person", pubkey: t[1].toLowerCase(), ...(t[2] ? { relayHint: t[2] } : {}) });
     }
   }
 
@@ -183,6 +189,7 @@ export function parseCurationSet(event: Event): CurationSet | null {
 export function curationItemLabel(item: CurationItem): string {
   if (item.type === "note") return "Post";
   if (item.type === "url") return "Link";
+  if (item.type === "person") return "Person";
   switch (item.kind) {
     case 30023: return "Article";
     case 30402: return "Listing";
@@ -219,6 +226,7 @@ export function eventToCurationItem(event: Event, relayHint?: string): CurationI
 export function curationItemKey(item: CurationItem): string {
   if (item.type === "note") return `e:${item.id}`;
   if (item.type === "address") return `a:${item.kind}:${item.pubkey}:${item.identifier}`;
+  if (item.type === "person") return `p:${item.pubkey}`;
   return `r:${item.url}`;
 }
 

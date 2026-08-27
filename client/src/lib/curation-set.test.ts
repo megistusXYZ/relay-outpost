@@ -194,3 +194,27 @@ describe("curationRowTitle", () => {
     expect(curationRowTitle(setEvent([], { content: "" }))).toBe("(media)");
   });
 });
+
+describe("person items (feature ALL of someone's content, not one piece)", () => {
+  it("parses p tags as person items and round-trips through build", () => {
+    const tags = buildCurationSetTags({
+      dTag: "creators", title: "Creators",
+      items: [{ type: "person", pubkey: OP, relayHint: "wss://r.example" }, { type: "note", id: "1".repeat(64) }],
+    });
+    const set = parseCurationSet(setEvent(tags));
+    expect(set!.items).toEqual([
+      { type: "person", pubkey: OP, relayHint: "wss://r.example" },
+      { type: "note", id: "1".repeat(64) },
+    ]);
+  });
+
+  it("dedupes people by pubkey — hints never distinguish", () => {
+    const a = { type: "person" as const, pubkey: OP, relayHint: "wss://a.example" };
+    expect(containsItem([a], { type: "person", pubkey: OP })).toBe(true);
+    expect(containsItem([a], { type: "person", pubkey: AUTHOR })).toBe(false);
+  });
+
+  it("labels people as Person", () => {
+    expect(curationItemLabel({ type: "person", pubkey: OP })).toBe("Person");
+  });
+});
