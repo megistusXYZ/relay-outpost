@@ -7,7 +7,7 @@ that handles cryptographic identities and private messages, responsible disclosu
 
 **Please do not open a public GitHub issue for security vulnerabilities.**
 
-Instead, report privately to **security@nosfabrica.com**. If you prefer, you may also use
+Instead, report privately to **info@megistus.xyz**. If you prefer, you may also use
 GitHub's [private vulnerability reporting](https://github.com/megistusXYZ/relay-outpost-xyz/security/advisories/new).
 
 Please include:

@@ -1,12 +1,14 @@
 name: CI
 
 on:
+  # No paths-ignore: build-and-test is a REQUIRED check on the protected main
+  # branch, and a PR whose changed paths were all ignored would never receive
+  # the check and could not merge. CI on a docs-only PR is cheap; a stuck PR
+  # is not.
   push:
     branches: [main, local-dev]
-    paths-ignore: ['**.md', 'docs/**', '.gitignore', 'LICENSE']
   pull_request:
     branches: [main, local-dev]
-    paths-ignore: ['**.md', 'docs/**', '.gitignore', 'LICENSE']
 
 # Cost control (private repo → 2,000 Actions min/month cap). Two levers, neither
 # weakens what actually runs on real code:

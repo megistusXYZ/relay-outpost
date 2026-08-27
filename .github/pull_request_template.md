@@ -1,23 +1,19 @@
-## Summary
+<!-- Thanks for contributing! A few notes that make review fast: -->
 
-Briefly describe what this PR does and why.
+## What & why
 
-Closes #<!-- issue number, if applicable -->
+<!-- What does this change do, and what problem motivated it? Link the issue if one exists. -->
 
-## Changes
+## How it was verified
 
--
--
+<!-- The repo convention is verification-on-the-wire: tests pass locally AND the behavior was
+     checked against a real relay / in a real browser where it applies. Say what you ran. -->
 
-## How was this tested?
+- [ ] `npm test` green
+- [ ] `npm run check` introduces no new type errors (baseline documented in CLAUDE.md)
+- [ ] `npm run build` green
+- [ ] Verified live (describe how, when UI/relay behavior is involved)
 
-Describe what you ran / clicked to verify the change.
+## Screenshots
 
-## Checklist
-
-- [ ] `npm test` passes
-- [ ] `npm run build` passes
-- [ ] No new TypeScript errors introduced (`npm run check`)
-- [ ] No raw private keys (`nsec`) are handled or logged in the UI
-- [ ] Code matches the style of the surrounding files
-- [ ] Docs / README updated if behavior or setup changed
+<!-- For anything visual: before/after, and both light + dark theme if the change touches styling. -->

@@ -7,7 +7,7 @@
   "type": "module",
   "license": "MIT",
   "description": "A full-featured Nostr social client with relay-based communities, Web of Trust, and privacy-first publishing.",
-  "author": "Megistus <benjamin@nosfabrica.com>",
+  "author": "Megistus <info@megistus.xyz>",
   "homepage": "https://relayop.xyz",
   "repository": {
     "type": "git",

@@ -25,7 +25,7 @@ in full.
 
 ## Enforcement
 
-Concerns may be reported privately to the maintainers at **conduct@nosfabrica.com**. All reports
+Concerns may be reported privately to the maintainers at **info@megistus.xyz**. All reports
 will be reviewed and handled with discretion. Maintainers may take any action they deem
 appropriate, up to and including removing contributions or barring participation.
 

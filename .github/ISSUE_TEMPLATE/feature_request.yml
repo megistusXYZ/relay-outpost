@@ -1,0 +1,24 @@
+name: Feature request
+description: An idea that would make Relay Outpost better
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the situation where you wanted this — the problem is often more valuable than the proposed solution.
+      placeholder: When I'm doing …, I can't …
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like to happen?
+    validations:
+      required: true
+  - type: input
+    id: prior-art
+    attributes:
+      label: Prior art (optional)
+      description: Another client or app that does this well, or a relevant NIP
+      placeholder: "Amethyst does this via …; see NIP-xx"

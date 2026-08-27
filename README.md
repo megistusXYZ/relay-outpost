@@ -1,6 +1,12 @@
 # Relay Outpost
 
-A full-featured Nostr social client with relay-based communities, Web of Trust integration, and privacy-first publishing.
+[![CI](https://github.com/megistusXYZ/relay-outpost/actions/workflows/ci.yml/badge.svg)](https://github.com/megistusXYZ/relay-outpost/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-8b5cf6.svg)](LICENSE)
+[![Live app](https://img.shields.io/badge/live-relayop.xyz-6d28d9)](https://relayop.xyz)
+
+A full-featured Nostr social client with relay-based communities, Web of Trust integration, and privacy-first publishing. **Live at [relayop.xyz](https://relayop.xyz).**
+
+![Relay Outpost landing](.github/screenshots/landing.png)
 
 Relay Outpost treats relays as first-class social spaces — not just infrastructure. Each relay becomes an **outpost**: a community hub with its own feed, members, knowledge base, moderation, and media storage. Combined with personalized trust scoring, encrypted messaging, scheduled publishing, and fine-grained privacy controls, it provides a complete social experience built entirely on the open Nostr protocol.
 
@@ -152,7 +158,9 @@ Relay Outpost implements a full X/Twitter-style DM experience built entirely on 
 - **Relay-Aware Publishing** — choose exactly which relays receive each post (All, Private Only, Public Only, or custom selection) with full select/deselect control
 - **Private Relay Isolation** — notes from private outpost relays are excluded from the main home feed
 - **EXIF Metadata Stripping** — images and audio files are scrubbed of metadata client-side before upload
-- **NIP-36 Content Warnings** — sensitive content is blurred behind a tap-to-reveal overlay with branded "Signal Flagged" styling
+- **NIP-36 Content Warnings** — sensitive content is blurred behind a tap-to-reveal overlay, on by default, with an age screen before it can be disabled
+- **Three Themes** — Light, Dark, and Black (lights-out), synced across devices
+- **Guest Share Previews** — shared posts, articles, and media render for signed-out visitors with honest reachability states, while interaction stays behind sign-in
 - **SSRF Protection** — all server-side URL fetches validate DNS resolution against private IP ranges
 
 ### Social
@@ -203,6 +211,7 @@ Relay Outpost implements a full X/Twitter-style DM experience built entirely on 
 
 ### Media
 - **Video Feed** — shorts-style vertical video player with swipe navigation and grid mode
+- **Images Feed** — Instagram-style picture feed (kind-1 and kind-20 picture posts) with grid/list views and NIP-22 media comment threads
 - **Image Gallery** — multi-image posts with lightbox viewer
 - **Music Player** — Kind 31337 music tracks with persistent cross-page playback and audio duration tags
 - **Live Streams** — NIP-53 live event discovery with HLS playback, live chat, profile live indicators, and Picture-in-Picture support (including mobile and HLS streams)
@@ -213,10 +222,12 @@ Relay Outpost implements a full X/Twitter-style DM experience built entirely on 
 - **NIP-47 Wallet Connect** — send, receive, and view transaction history with Nostr profile context
 - **QR Scanner** — scan Lightning invoices and LNURL from camera
 - **Zap Integration** — one-tap zaps with customizable default amounts
+- **npub.cash Zap Claiming** — get a working lightning address with no signup, see exactly what's waiting, and sweep claimed sats to any wallet by typing its lightning address (Cashu ecash under your key in between)
 - **Balance Privacy** — toggle to blur wallet balance across all UI surfaces
 - **Unified BTC Badge** — header badge showing BTC price or wallet balance with market stats, sparkline, mempool fees, and sats converter
 
 ### Search & Discovery
+- **Discover Bento** — a live-tile landing: news front page with trending corroboration, images wall, live streams with host facepiles, articles, events, and communities — every tile shows real content or honestly says it couldn't ask
 - **Multi-Tab Search** — People, Posts, Hashtags, Live, RSS, and Vouches tabs with per-tab search
 - **Brainstorm Search Integration** — profile search powered by Brainstorm's MeiliSearch index of 2.7M+ Nostr profiles with WoT rank data
 - **WoT-Grouped Results** — non-followed profiles grouped by trust tier (Highly Trusted, Trusted, Neutral, Low Trust)
@@ -330,7 +341,18 @@ Relay Outpost is a client — it doesn't run its own relay or store user data on
 
 ## Getting Started
 
-### Prerequisites
+### Quick start with Docker (recommended)
+
+```bash
+git clone https://github.com/megistusXYZ/relay-outpost.git
+cd relay-outpost
+docker compose up --build
+```
+
+Then open http://localhost:5050 — the compose stack runs the app and Postgres
+together, applies the schema on boot, and needs no other setup.
+
+### Prerequisites (manual setup)
 
 - Node.js 20+
 - PostgreSQL database
@@ -339,8 +361,8 @@ Relay Outpost is a client — it doesn't run its own relay or store user data on
 ### Installation
 
 ```bash
-git clone https://github.com/megistusXYZ/relay-outpost-xyz.git
-cd relay-outpost-xyz
+git clone https://github.com/megistusXYZ/relay-outpost.git
+cd relay-outpost
 npm install
 ```
 
@@ -498,12 +520,12 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 
 Relay Outpost is independently developed and MIT-licensed. If it's useful to you, here's how to help keep it going:
 
-- **Zap it on Nostr** — `⚡ <your-lightning-address>` (e.g. `you@getalby.com`)  ·  npub: `<your-npub>`
+- 📧 **Email** — info@megistus.xyz
+- ⚡️ **Lightning address** — `megistus@primal.net`
+- ✍🏻 **Public key** — `npub1wxazmmaj28dsvc80fsvxfyy9dvtwrfltss977hgqlp3txjk8v60s7dkf2l`
 - **Sponsor** — [GitHub Sponsors](https://github.com/sponsors/megistusXYZ)
 - **Spread the word** — share it with your community
 - **Contribute** — code, docs, translations, or testing (see [Contributing](#contributing))
 - **Run a relay** and use Relay Outpost as your community's client
 
-Grant and ecosystem support from organizations backing open-source Nostr development is welcome — including [OpenSats](https://opensats.org), [HRF](https://hrf.org/devfund), and [Spiral](https://spiral.xyz).
-
-> Maintainer note: replace the `<your-lightning-address>`, `<your-npub>`, and Sponsors handle above with your real details before publishing.
+If you represent a foundation or grant program supporting open-source Nostr development and want to talk, reach out: info@megistus.xyz.
