@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getStreamHost, getStreamHosts, pickStreamSource, hasReplay } from "./live-events";
+import { getStreamHost, getStreamHosts, pickStreamSource, hasReplay, streamsOfPerson, isDirectMedia } from "./live-events";
 
 const AUTHOR = "author_platform_pubkey";
 const HOST = "host_streamer_pubkey";
@@ -95,5 +95,64 @@ describe("hasReplay (Past broadcasts show only watchable streams)", () => {
     expect(hasReplay({ recordingUrl: undefined })).toBe(false);
     expect(hasReplay({ recordingUrl: "" })).toBe(false);
     expect(hasReplay({ recordingUrl: "   " })).toBe(false);
+  });
+});
+
+describe("streamsOfPerson (owner report: past broadcasts missing from profiles)", () => {
+  const person = HOST;
+  const s = (over: Partial<Parameters<typeof streamsOfPerson>[0][number]>) =>
+    ({
+      pubkey: AUTHOR,
+      dTag: "show",
+      participants: [{ pubkey: HOST, role: "Host" }],
+      event: { created_at: 100 },
+      ...over,
+    }) as Parameters<typeof streamsOfPerson>[0][number];
+
+  it("keeps streams the person authored OR is a tagged participant of", () => {
+    const authored = s({ pubkey: person, dTag: "own", participants: [] });
+    const hosted = s({ dTag: "hosted" });
+    expect(streamsOfPerson([authored, hosted], person)).toHaveLength(2);
+  });
+
+  it("drops streams where the person is neither author nor participant", () => {
+    const stranger = s({ participants: [{ pubkey: SPEAKER, role: "Speaker" }] });
+    expect(streamsOfPerson([stranger], person)).toHaveLength(0);
+  });
+
+  it("keeps the NEWEST edition per author:dTag — the ended edition with the recording, not a stale live one", () => {
+    const stale = s({ event: { created_at: 100 } as never });
+    const current = s({ event: { created_at: 200 } as never });
+    const got = streamsOfPerson([stale, current], person);
+    expect(got).toHaveLength(1);
+    expect(got[0].event.created_at).toBe(200);
+  });
+
+  it("dedupes on author:dTag, never dTag alone — two platforms can reuse a d value", () => {
+    const a = s({ pubkey: AUTHOR });
+    const b = s({ pubkey: "other_platform", participants: [{ pubkey: HOST, role: "Host" }] });
+    expect(streamsOfPerson([a, b], person)).toHaveLength(2);
+  });
+
+  it("orders newest-first", () => {
+    const older = s({ dTag: "one", event: { created_at: 50 } as never });
+    const newer = s({ dTag: "two", event: { created_at: 150 } as never });
+    expect(streamsOfPerson([older, newer], person).map((x) => x.dTag)).toEqual(["two", "one"]);
+  });
+});
+
+describe("isDirectMedia (dead play button on YouTube-page recordings)", () => {
+  it("accepts direct stream/file URLs, with query strings", () => {
+    expect(isDirectMedia("https://cdn.zap.stream/abc/index.m3u8")).toBe(true);
+    expect(isDirectMedia("https://media.example.com/show.mp4?token=x")).toBe(true);
+    expect(isDirectMedia("https://media.example.com/audio.mp3")).toBe(true);
+    expect(isDirectMedia("https://media.example.com/a.webm")).toBe(true);
+  });
+
+  it("rejects platform page links a <video> element cannot load", () => {
+    expect(isDirectMedia("https://www.youtube.com/watch?v=cD_9xDIt0-Q")).toBe(false);
+    expect(isDirectMedia("https://youtu.be/cD_9xDIt0-Q")).toBe(false);
+    expect(isDirectMedia("https://rumble.com/v123-my-show.html")).toBe(false);
+    expect(isDirectMedia("https://zap.stream/naddr1xyz")).toBe(false);
   });
 });

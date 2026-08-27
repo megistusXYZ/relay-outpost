@@ -19,7 +19,7 @@ import { UploadTrackDialog } from "@/components/UploadTrackDialog";
 import { UploadVideoDialog } from "@/components/UploadVideoDialog";
 import { RelayOutpostLoader, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import type { MusicTrack } from "@/lib/music";
-import type { LiveEventData } from "@/lib/live-events";
+import { hasReplay, pickStreamSource, isDirectMedia, type LiveEventData } from "@/lib/live-events";
 import { nip19 } from "nostr-tools";
 import { Link } from "wouter";
 import { format } from "date-fns";
@@ -445,9 +445,12 @@ function LiveStreamCard({ stream }: { stream: LiveEventData }) {
   const { toast } = useToast();
 
   const isLive = stream.status === "live";
-  const playableUrl = stream.hlsUrl || stream.streamUrl || stream.recordingUrl;
+  const playableUrl = pickStreamSource(stream.status, stream.hlsUrl || stream.streamUrl, stream.recordingUrl);
   const hasRecording = !!stream.recordingUrl;
   const isHls = playableUrl ? (playableUrl.includes(".m3u8") || playableUrl.includes("m3u8")) : false;
+  // A recording tag pointing at a platform PAGE (YouTube/Rumble) can't feed a
+  // media element — that play button opens the page instead of doing nothing.
+  const playsInline = playableUrl ? isDirectMedia(playableUrl) : false;
 
   const zapStreamUrl = useMemo(() => {
     try {
@@ -623,9 +626,15 @@ function LiveStreamCard({ stream }: { stream: LiveEventData }) {
           {playableUrl && (
             <button
               className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${ loading ? "text-brand/70" : playing ? "text-red-500 bg-red-500/10" : isLive ? "text-red-500/70 hover:text-red-500 hover:bg-red-500/10" : "text-brand/70 hover:text-brand hover:bg-brand/10" }`}
-              onClick={toggleStream}
+              onClick={() => {
+                if (playsInline) {
+                  toggleStream();
+                } else {
+                  window.open(playableUrl, "_blank", "noopener,noreferrer");
+                }
+              }}
               disabled={loading}
-              title={playing ? "Stop" : "Play"}
+              title={playsInline ? (playing ? "Stop" : "Play") : "Watch recording"}
               data-testid={`button-stream-toggle-${stream.dTag}`}
             >
               {loading ? (
@@ -704,7 +713,9 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
   }, [onRefresh]);
 
   const liveNow = useMemo(() => liveStreams?.filter((s) => s.status === "live") || [], [liveStreams]);
-  const previousShows = useMemo(() => liveStreams?.filter((s) => s.status === "ended") || [], [liveStreams]);
+  // Replays only (the Past-broadcasts rule from /live): an ended stream
+  // without a recording is a dead row, not a show someone can watch.
+  const previousShows = useMemo(() => liveStreams?.filter((s) => s.status === "ended" && hasReplay(s)) || [], [liveStreams]);
   const podcastTracks = useMemo(() => tracks.filter(t => t.source === "podcast"), [tracks]);
   const musicTracks = useMemo(() => tracks.filter(t => t.source !== "podcast"), [tracks]);
   // Group into albums (Winamp-style), preserving track order. Album headers only
@@ -1000,7 +1011,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
               </div>
               <div className="space-y-2">
                 {liveNow.map((stream) => (
-                  <LiveStreamCard key={stream.dTag} stream={stream} />
+                  <LiveStreamCard key={`${stream.pubkey}:${stream.dTag}`} stream={stream} />
                 ))}
               </div>
             </div>
@@ -1014,7 +1025,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
               </div>
               <div className="space-y-2">
                 {previousShows.map((stream) => (
-                  <LiveStreamCard key={stream.dTag} stream={stream} />
+                  <LiveStreamCard key={`${stream.pubkey}:${stream.dTag}`} stream={stream} />
                 ))}
               </div>
             </div>
