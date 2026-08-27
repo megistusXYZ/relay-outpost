@@ -7,6 +7,8 @@ import { use$ } from "applesauce-react/hooks";
 import { useRenderedContent, type ComponentMap } from "applesauce-react/hooks";
 import { eventStore, pool, publishEvent, fetchProfiles, fetchProfilesCached, DEFAULT_RELAYS, FAST_RELAYS, getEventRelays, throttledPoolSubscribe } from "@/lib/nostr";
 import { noteShareId } from "@/lib/share-links";
+import { queryAnswered } from "@/lib/relay-reach";
+import { classifyParentTarget, parentRelayCandidates, resolveParentOutcome } from "@/lib/parent-resolve";
 import { getPublishTarget } from "@/lib/outpost-relays";
 import { getWriteRelays } from "@/lib/outbox";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
@@ -1783,9 +1785,6 @@ export function RawEventDialog({ open, onOpenChange, event }: { open: boolean; o
 }
 
 
-const HEX64_RE = /^[0-9a-f]{64}$/i;
-
-
 // Addressable-event coordinate: "kind:pubkey:d-tag" (from a q-tag or decoded naddr).
 const ADDR_COORD_RE = /^(\d+):([0-9a-f]{64}):(.*)$/i;
 const NOTE_REF_RE = /nostr:(note1[a-z0-9]+|nevent1[a-z0-9]+|naddr1[a-z0-9]+)/gi;
@@ -2126,9 +2125,21 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
     if (parentNotFound && replyTargetId) onUnresolved?.(event.id);
   }, [parentNotFound, replyTargetId, event.id, onUnresolved]);
 
+  // "We never got to ask" is a distinct, settled state: the spinner ends,
+  // the reply is NOT dropped from the feed, and a tap retries.
+  const [parentUnreached, setParentUnreached] = useState(false);
+  const [parentRetryNonce, setParentRetryNonce] = useState(0);
+
   useEffect(() => {
     if (!replyTargetId || parentFetchedRef.current) return;
-    if (!HEX64_RE.test(replyTargetId)) return;
+    const targetKind = classifyParentTarget(replyTargetId);
+    if (targetKind !== "event") {
+      // A malformed target can never be fetched. Settle as missing — the old
+      // early return left "Loading parent post..." spinning forever.
+      parentFetchedRef.current = true;
+      setParentNotFound(true);
+      return;
+    }
     parentFetchedRef.current = true;
     const existingSet = eventStore.getByFilters({ ids: [replyTargetId] });
     const existing = existingSet ? [...existingSet][0] : null;
@@ -2137,19 +2148,40 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
       fetchProfiles([existing.pubkey], DEFAULT_RELAYS.slice(0, 3));
       return;
     }
-    pool.querySync(DEFAULT_RELAYS.slice(0, 4), { ids: [replyTargetId] }).then((events) => {
+    // Most-likely relays first: the e-tag's hint, then the relays this reply
+    // itself arrived on (in an outpost feed, the community relay — where the
+    // old DEFAULT_RELAYS-only query never looked), then defaults.
+    const relays = parentRelayCandidates({
+      event,
+      targetId: replyTargetId,
+      seenOn: getEventRelays(event.id),
+      defaults: DEFAULT_RELAYS,
+    });
+    queryAnswered(relays, { ids: [replyTargetId] }, 8_000).then((res) => {
       if (!mountedRef.current) return;
-      if (events.length > 0) {
-        eventStore.add(events[0]);
-        setParentEvent(events[0]);
-        fetchProfiles([events[0].pubkey], DEFAULT_RELAYS.slice(0, 3));
-      } else {
+      const outcome = resolveParentOutcome(res);
+      if (outcome === "found") {
+        const parent = res.events[0] as Event;
+        eventStore.add(parent);
+        setParentEvent(parent);
+        fetchProfiles([parent.pubkey], DEFAULT_RELAYS.slice(0, 3));
+      } else if (outcome === "missing") {
         setParentNotFound(true);
+      } else {
+        setParentUnreached(true);
+        parentFetchedRef.current = false;
       }
     }).catch(() => {
-      if (mountedRef.current) setParentNotFound(true);
+      if (!mountedRef.current) return;
+      setParentUnreached(true);
+      parentFetchedRef.current = false;
     });
-  }, [replyTargetId]);
+  }, [replyTargetId, event, parentRetryNonce]);
+
+  const retryParentFetch = useCallback(() => {
+    setParentUnreached(false);
+    setParentRetryNonce((v) => v + 1);
+  }, []);
 
   const handleShowParent = useCallback(() => {
     if (!replyTargetId) return;
@@ -2893,6 +2925,18 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
             // thread view keeps the reply, because there the reader navigated
             // to it deliberately and its absence IS the answer.
             null
+          ) : parentUnreached ? (
+            // We never got to ask — a different fact from "missing", so the
+            // reply stays in the feed and the reader can retry. Unlike the
+            // old failure notice, a tap target is actionable.
+            <button
+              onClick={(e) => { e.stopPropagation(); retryParentFetch(); }}
+              className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/40 dark:bg-muted/20 border border-border dark:border-border/20 text-[11px] text-muted-foreground/80 cursor-pointer w-full text-left"
+              data-testid={`parent-retry-${event.id}`}
+            >
+              <CornerUpLeft className="w-3 h-3 shrink-0" />
+              Context didn't load — tap to retry
+            </button>
           ) : (
             <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/40 dark:bg-muted/20 border border-border dark:border-border/20" data-testid={`parent-loading-${event.id}`}>
               <RelayOutpostInlineLoader />
