@@ -33,7 +33,7 @@ Relay Outpost treats relays as first-class social spaces — not just infrastruc
   </tr>
   <tr>
     <td width="50%"><img src=".github/screenshots/private-chats.webp" alt="Encrypted messages with private mode"><br><sub><b>Messages</b> — NIP-17 encrypted DMs and group chats, with a private mode that hides names from shoulder-surfers</sub></td>
-    <td width="50%"></td>
+    <td width="50%"><img src=".github/screenshots/news-black.webp" alt="News in the black theme"><br><sub><b>Three themes</b> — light, dark, and black; the News trending page shown here in black</sub></td>
   </tr>
 </table>
 
