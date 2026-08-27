@@ -47,17 +47,19 @@ export function parseBuzzDirectory(html: string): BuzzCommunity[] {
     const longs = [...wide.matchAll(/"children\\{0,2}":\\{0,2}"([^"\\]{40,300})/g)].map((t) => t[1]);
     const description = longs.find((t) => t !== name);
 
-    // Avatar/banner live in supabase storage keyed by the community's uuid —
-    // the slug's 32-hex suffix, re-hyphenated. Search the WHOLE document:
-    // the images render before the href, outside this entry's context window.
-    const hex = slug.match(/([0-9a-f]{32})$/)?.[1];
-    let avatar: string | undefined;
-    let banner: string | undefined;
-    if (hex) {
-      const uuid = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-      avatar = html.match(new RegExp(`https?:[^"\\\\\\s]*${uuid}[^"\\\\\\s]*avatar[^"\\\\\\s]*`))?.[0]?.replace(/\\\//g, "/");
-      banner = html.match(new RegExp(`https?:[^"\\\\\\s]*${uuid}[^"\\\\\\s]*banner[^"\\\\\\s]*`))?.[0]?.replace(/\\\//g, "/");
-    }
+    // The card's own images stream immediately BEFORE its href (banner, then
+    // avatar). Look back to the previous community's href, take the LAST
+    // banner/avatar srcs — and never count the directory's /defaults/
+    // placeholders as media. (Storage paths are NOT keyed by the slug's uuid —
+    // that earlier assumption only held for one community by luck; position is
+    // the reliable association, measured across the live page.)
+    const back = html.slice(Math.max(0, m.index! - 3000), m.index!);
+    const prevHref = back.lastIndexOf("/communities/");
+    const backSeg = prevHref !== -1 ? back.slice(prevHref) : back;
+    const srcs = [...backSeg.matchAll(/"src\\{0,2}":\\{0,2}"([^"\\]{10,300})/g)].map((t) => t[1].replace(/\\\//g, "/"));
+    const notDefault = (u: string) => !/\/defaults\//.test(u);
+    const avatar = srcs.filter((u) => /avatar\.[a-z]+(\?|$)/i.test(u) && notDefault(u)).pop();
+    const banner = srcs.filter((u) => /banner\.[a-z]+(\?|$)/i.test(u) && notDefault(u)).pop();
 
     bySlug.set(slug, {
       slug,
