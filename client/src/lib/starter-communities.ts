@@ -18,6 +18,7 @@ export const STARTER_COMMUNITIES: StarterCommunity[] = [
   { url: "wss://pyramid.fiatjaf.com", name: "fiatjaf's Pyramid", tagline: "Invite-only room run by nostr's original builder" },
   { url: "wss://relay.ditto.pub", name: "Ditto", tagline: "The Ditto community's home relay" },
   { url: "wss://nostr21.com", name: "nostr21", tagline: "West-coast original — a paid, spam-free room" },
+  { url: "wss://spatia-arcana.com", name: "Spatia Arcana", tagline: "\"I contain multitudes\" — an eclectic gathering place" },
 ];
 
 function canon(url: string): string {
