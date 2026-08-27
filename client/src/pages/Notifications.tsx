@@ -7,11 +7,17 @@ import { KIND_METADATA, KIND_COMMENT, getDisplayName, getAvatarUrl, formatNpub, 
 import { extractExternalAnchor } from "@/lib/external-id";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { isMutedPubkey } from "@/lib/spam-filter";
+import { classifyMentionSpam } from "@/lib/notification-spam";
+import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
+import { useNostrAuth } from "@/contexts/NostrAuthContext";
+import { useNostrMuteList } from "@/hooks/use-nostr-mute-list";
+import { useToast } from "@/hooks/use-toast";
+import { ReportDialog } from "@/components/ReportDialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageTabs } from "@/components/PageTabs";
-import { MessageSquare, Heart, Repeat, Zap, UserPlus, AtSign, CheckCheck, ChevronDown, ChevronRight, LifeBuoy } from "lucide-react";
+import { MessageSquare, Heart, Repeat, Zap, UserPlus, AtSign, CheckCheck, ChevronDown, ChevronRight, LifeBuoy, ShieldAlert, VolumeX, Flag } from "lucide-react";
 import { AdmissionQueue } from "@/components/AdmissionQueue";
 import { SweepNoticeCard } from "@/components/SweepNoticeCard";
 import { useNeedsYou } from "@/contexts/NeedsYouContext";
@@ -258,6 +264,114 @@ const AggregatedAvatar = memo(function AggregatedAvatar({ pubkey }: { pubkey: st
     </Link>
   );
 });
+
+function FilteredSpamSection({ items }: { items: any[] }) {
+  const [open, setOpen] = useState(false);
+  const [reportEvent, setReportEvent] = useState<any | null>(null);
+  const { mutePubkey: muteAndPublish } = useNostrMuteList();
+  const { toast } = useToast();
+
+  if (items.length === 0) return null;
+
+  // One row per AUTHOR (newest content shown) — five identical airdrop blasts
+  // from one key are one decision, not five.
+  const byAuthor = new Map<string, any[]>();
+  for (const n of items) {
+    byAuthor.set(n.fromPubkey, [...(byAuthor.get(n.fromPubkey) || []), n]);
+  }
+
+  return (
+    <div className="rounded-xl border border-border/25 bg-muted/[0.04]" data-testid="filtered-spam-section">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left min-h-[44px]"
+        aria-expanded={open}
+        data-testid="button-filtered-spam-toggle"
+      >
+        <ShieldAlert className="w-4 h-4 text-muted-foreground/60 shrink-0" />
+        <span className="flex-1 text-[12px] text-muted-foreground">
+          Filtered — {items.length} likely spam {items.length === 1 ? "mention" : "mentions"} from accounts outside your network
+        </span>
+        <ChevronRight className={`w-3.5 h-3.5 text-muted-foreground/50 shrink-0 transition-transform ${open ? "rotate-90" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="px-3 pb-3 space-y-1.5">
+          {[...byAuthor.entries()].map(([author, notifs]) => (
+            <FilteredSpamRow
+              key={author}
+              author={author}
+              notifs={notifs}
+              onMute={async () => {
+                await muteAndPublish(author);
+                toast({ title: "Muted", description: "They can't reach your notifications anymore — synced to your mute list." });
+              }}
+              onReport={() => setReportEvent(notifs[0].event)}
+            />
+          ))}
+          <p className="px-1 pt-1 text-[10px] text-muted-foreground/50">
+            Filtered, never deleted — muting publishes to your mute list so every app you use honors it.
+          </p>
+        </div>
+      )}
+
+      {reportEvent && (
+        <ReportDialog open={!!reportEvent} onOpenChange={(o) => { if (!o) setReportEvent(null); }} event={reportEvent} />
+      )}
+    </div>
+  );
+}
+
+function FilteredSpamRow({ author, notifs, onMute, onReport }: { author: string; notifs: any[]; onMute: () => Promise<void>; onReport: () => void }) {
+  const profile = use$(() => eventStore.replaceable(KIND_METADATA, author), [author]);
+  const [muting, setMuting] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const name = profile ? getDisplayName(profile, shortenNpub(formatNpub(author))) : shortenNpub(formatNpub(author));
+  const avatarUrl = profile ? getAvatarUrl(profile) : undefined;
+  const newest = notifs[0];
+
+  return (
+    <div className="flex items-center gap-2.5 rounded-lg border border-border/20 bg-background/40 px-2.5 py-2" data-testid={`filtered-spam-${author.slice(0, 8)}`}>
+      <Avatar className="w-7 h-7 shrink-0">
+        {avatarUrl && <AvatarImage src={avatarUrl} />}
+        <AvatarFallback className="text-[10px]">{name.slice(0, 2)}</AvatarFallback>
+      </Avatar>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium truncate">
+          {name}
+          {notifs.length > 1 && <span className="ml-1.5 text-[10px] text-muted-foreground/60">×{notifs.length}</span>}
+        </p>
+        <p className="text-[11px] text-muted-foreground/60 truncate">{(newest.event?.content || "").slice(0, 90)}</p>
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        {muted ? (
+          <span className="text-[11px] text-muted-foreground/60 px-2">Muted</span>
+        ) : (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="min-h-[36px] px-2.5 text-[11px]"
+            disabled={muting}
+            onClick={async () => { setMuting(true); try { await onMute(); setMuted(true); } finally { setMuting(false); } }}
+            data-testid={`button-spam-mute-${author.slice(0, 8)}`}
+          >
+            <VolumeX className="w-3.5 h-3.5 mr-1" />Mute
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="min-h-[36px] px-2.5 text-[11px] text-muted-foreground hover:text-red-500"
+          onClick={onReport}
+          data-testid={`button-spam-report-${author.slice(0, 8)}`}
+        >
+          <Flag className="w-3.5 h-3.5 mr-1" />Report
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 const NotificationItem = memo(function NotificationItem({ notification, onRead }: { notification: any; onRead: (id: string) => void }) {
   const [, setLocation] = useLocation();
@@ -740,22 +854,45 @@ export default function Notifications() {
     });
   }, []);
 
-  const grouped = useMemo(() => {
+  const { getAuthorTier, isAuthorFlagged } = useGrapeRankScores();
+  const { follows } = useNostrAuth();
+  const followSet = useMemo(() => new Set(follows || []), [follows]);
+
+  // Mention/reply fishing shield: suspect rows leave the main sections for a
+  // collapsed "Filtered" bucket at the bottom — never deleted, always
+  // reviewable, and the classification is narrow (see notification-spam.ts).
+  const { grouped, filteredSpam } = useMemo(() => {
     const groups = new Map<NotifType, any[]>();
     const typeOrder: NotifType[] = ["ticket", "mention", "reply", "zap", "reaction", "repost", "follow"];
+    const spam: any[] = [];
 
     for (const notif of notifications) {
       if (notif.fromPubkey && isMutedPubkey(notif.fromPubkey)) continue;
       const type = notif.type as NotifType;
+      if ((type === "mention" || type === "reply") && notif.fromPubkey) {
+        const tier = getAuthorTier(notif.fromPubkey);
+        const verdict = classifyMentionSpam({
+          content: notif.event?.content || "",
+          flagged: isAuthorFlagged(notif.fromPubkey),
+          trusted: followSet.has(notif.fromPubkey) || tier === "strong" || tier === "moderate",
+        });
+        if (verdict === "suspect") {
+          spam.push(notif);
+          continue;
+        }
+      }
       if (!groups.has(type)) groups.set(type, []);
       groups.get(type)!.push(notif);
     }
 
-    return typeOrder.filter(t => groups.has(t)).map(t => ({
-      type: t,
-      items: groups.get(t)!.sort((a, b) => b.event.created_at - a.event.created_at),
-    }));
-  }, [notifications]);
+    return {
+      grouped: typeOrder.filter(t => groups.has(t)).map(t => ({
+        type: t,
+        items: groups.get(t)!.sort((a, b) => b.event.created_at - a.event.created_at),
+      })),
+      filteredSpam: spam.sort((a, b) => b.event.created_at - a.event.created_at),
+    };
+  }, [notifications, getAuthorTier, isAuthorFlagged, followSet]);
 
   // Tabs are derived from the categories that actually have notifications, so
   // they always match the section headers below and never point at nothing.
@@ -915,6 +1052,7 @@ export default function Notifications() {
               />
             ))
           )}
+          {filter === "all" && <FilteredSpamSection items={filteredSpam} />}
         </div>
       )}
     </div>
