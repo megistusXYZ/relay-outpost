@@ -77,7 +77,7 @@ import { MUSIC_KINDS, MUSIC_RELAYS, parseMusicEvents, fetchWavlakeTracksByNpub, 
 import { MediaSection } from "@/components/MediaSection";
 import { ProfileListingsStrip } from "@/components/ListingCard";
 import { fetchRelayLists, getRelayList, getRelayListMeta, parseRelayList, getUserNotesFetchRelays, type RelayPreference } from "@/lib/outbox";
-import { parseLiveEvent, type LiveEventData } from "@/lib/live-events";
+import { parseLiveEvent, streamsOfPerson, type LiveEventData } from "@/lib/live-events";
 import { getLastActivity } from "@/lib/follow-activity";
 import { isCreatorSubscribed, subscribeCreator, unsubscribeCreator } from "@/lib/creator-subscriptions";
 import { LIVE_STREAM_RELAYS, KIND_LIVE_EVENT } from "@/lib/nostr-helpers";
@@ -1210,7 +1210,7 @@ export default function Profile() {
   const loadAudio = useCallback(async () => {
     if (!pubkey || audioLoaded) return;
     try {
-      const [musicEvents, liveEvents] = await Promise.all([
+      const [musicEvents, authoredLive, hostedLive] = await Promise.all([
         pool.querySync(MUSIC_RELAYS, {
           kinds: MUSIC_KINDS,
           authors: [pubkey],
@@ -1221,19 +1221,21 @@ export default function Profile() {
           authors: [pubkey],
           limit: 20,
         }).catch(() => [] as Event[]),
+        // Most streams are AUTHORED by a platform account (zap.stream et al)
+        // with the human as the p-tagged HOST — querying authors alone left a
+        // streamer's profile with no broadcasts at all (the live-index lesson,
+        // now applied here: owner report 2026-08-27).
+        pool.querySync(LIVE_STREAM_RELAYS, {
+          kinds: [KIND_LIVE_EVENT],
+          "#p": [pubkey],
+          limit: 30,
+        }).catch(() => [] as Event[]),
       ]);
 
-      const parsed: LiveEventData[] = [];
-      const seen = new Set<string>();
-      for (const ev of liveEvents) {
-        const p = parseLiveEvent(ev);
-        if (p && !seen.has(p.dTag)) {
-          seen.add(p.dTag);
-          parsed.push(p);
-        }
-      }
-      parsed.sort((a, b) => b.event.created_at - a.event.created_at);
-      setLiveStreams(parsed);
+      const parsedAll = [...authoredLive, ...hostedLive]
+        .map(parseLiveEvent)
+        .filter((p): p is LiveEventData => p !== null);
+      setLiveStreams(streamsOfPerson(parsedAll, pubkey));
 
       let tracks = parseMusicEvents(musicEvents);
       if (tracks.length === 0) {

@@ -68,6 +68,38 @@ export function pickStreamSource(
   return pick || undefined;
 }
 
+/**
+ * The streams that belong on a person's profile: ones they AUTHORED plus ones
+ * where they are a tagged participant — most streams are published by a
+ * platform account (zap.stream et al) with the human p-tagged, so authorship
+ * alone finds almost nothing (the live-index lesson, applied to profiles).
+ * 30311 is addressable: the NEWEST edition per author:dTag wins — never dTag
+ * alone (two platforms can reuse a d value), and never first-seen (the newest
+ * edition is the one carrying `ended` + the recording tag). Newest-first.
+ */
+export function streamsOfPerson(streams: LiveEventData[], pubkey: string): LiveEventData[] {
+  const byCoord = new Map<string, LiveEventData>();
+  for (const s of streams) {
+    const theirs = s.pubkey === pubkey || s.participants.some((p) => p.pubkey === pubkey);
+    if (!theirs) continue;
+    const key = `${s.pubkey}:${s.dTag}`;
+    const prev = byCoord.get(key);
+    if (!prev || s.event.created_at > prev.event.created_at) byCoord.set(key, s);
+  }
+  return [...byCoord.values()].sort((a, b) => b.event.created_at - a.event.created_at);
+}
+
+/**
+ * Can a <video>/<audio> element load this URL directly? A `recording` tag is
+ * often a platform PAGE (YouTube watch link, Rumble page) — handing that to a
+ * media element fails silently, leaving a play button that does nothing. Such
+ * recordings must open externally instead.
+ */
+const DIRECT_MEDIA_EXT = /\.(m3u8|mp4|webm|mov|m4v|mp3|m4a|aac|ogg|wav|flac)(\?|#|$)/i;
+export function isDirectMedia(url: string): boolean {
+  return DIRECT_MEDIA_EXT.test(url);
+}
+
 export function getStreamHost(stream: Pick<LiveEventData, "pubkey" | "participants">): string {
   const host = stream.participants.find(p => p.role.toLowerCase() === "host");
   return host?.pubkey || stream.pubkey;
