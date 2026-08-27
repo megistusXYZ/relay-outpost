@@ -17,10 +17,11 @@ consecutive runs** while PR after PR was merged, because everyone read a green
 local `npm test` and never opened the CI result. The two failures were real and
 had been there the whole time.
 
-GitHub's own answer — a required status check — is **not available**: branch
-protection and rulesets both 403 on a private repo on the free plan. Until that
-changes (GitHub Pro, or making the repo public — the owner's call, not an
-assistant's), this convention is the only thing standing in for it.
+Since the 2026-08-26 open-source flip, main IS branch-protected: the
+`build-and-test` check is required and force-pushes are blocked, so GitHub now
+enforces what this convention policed by hand. The convention stays anyway —
+`npm run merge` reads the CI conclusion and says so out loud, and habits that
+survive tooling changes are the ones that hold.
 
 ## Local Node is not CI's Node
 
