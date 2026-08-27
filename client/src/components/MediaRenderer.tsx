@@ -42,6 +42,8 @@ import { setActiveVideo, clearActiveVideo, isAutoplayMediaEnabled } from "@/lib/
 import { autoplayDecision, readAutoplayEnvironment, AUTOPLAY_VISIBILITY_THRESHOLD } from "@/lib/autoplay-policy";
 import { useAutoplayMediaSetting } from "@/lib/video-prefs";
 import { MusicLinkCard } from "@/components/MusicLinkCard";
+import { AudioSpaceCard } from "@/components/AudioSpaceCard";
+import { audioSpaceFromUrl } from "@/lib/audio-space";
 import { WavlakeInlinePlayer } from "@/components/WavlakeInlinePlayer";
 import { InlineAudio } from "@/components/InlineAudio";
 import { extractZapSplits } from "@/lib/music";
@@ -1206,6 +1208,10 @@ interface LinkPreviewCardProps {
 export function LinkPreviewCard(props: LinkPreviewCardProps) {
   const invite = detectGroupInvite(props.url);
   if (invite) return <GroupInviteCard invite={invite} compact={props.compact} />;
+  // Audio-space room links (Corny Chat & co) upgrade the same way: detected
+  // from URL shape before any OG fetch, same fixed card height, Join in-app.
+  const space = audioSpaceFromUrl(props.url);
+  if (space) return <AudioSpaceCard space={space} compact={props.compact} />;
   return <OgLinkPreviewCard {...props} />;
 }
 
