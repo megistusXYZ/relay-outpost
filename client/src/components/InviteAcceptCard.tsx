@@ -27,6 +27,7 @@ import { KIND_FOLLOW_LIST, getDisplayName, getAvatarUrl } from "@/lib/nostr-help
 import { signWithTimeout } from "@/lib/signer-timeout";
 import { loadFollowBase, cacheFollowEvent } from "@/lib/follow-list";
 import { sendSayHiDM } from "@/lib/invite-links";
+import { joinOutpostWithEnrichment } from "@/lib/outpost-relays";
 import { readInviteConnect, clearInviteConnect, sayHiDefault, type InviteSource } from "@/lib/invite-connect";
 
 const INVITER_KEY = "relay-outpost-inviter";
@@ -63,6 +64,9 @@ export function InviteAcceptCard() {
   const [hiText, setHiText] = useState(() => sayHiDefault());
   /** Which rail they arrived on — a forwardable link is worded differently. */
   const [source, setSource] = useState<InviteSource>("friend");
+  /** The community relay to join — CONSENTED here, not auto-joined at signup. */
+  const inviteRelayRef = useRef<string | null>(null);
+  const relayJoinedRef = useRef(false);
   // Guards the gate effect from closing the card mid-advance. handleFollow does an
   // optimistic updateFollows() BEFORE the await, which re-runs the gate effect with
   // the inviter now in `follows` — without this it would clearInviter()+close and the
@@ -105,6 +109,7 @@ export function InviteAcceptCard() {
     const startAtHello = connect?.step === "sayhi" || alreadyFollows;
     setInviterHex(raw);
     setSource(connect?.source ?? "friend");
+    inviteRelayRef.current = connect?.relay ?? null;
     setHiText(sayHiDefault(connect?.context));
     setStep(startAtHello ? "sayhi" : "follow");
     // Opening straight at the say-hi step means the user is typing in a box this
@@ -132,10 +137,22 @@ export function InviteAcceptCard() {
   const avatar = profile ? getAvatarUrl(profile) : undefined;
 
   const dismiss = () => {
-    // "Maybe later" / close: clear so we never nag again this session.
+    // "Maybe later" / close: clear so we never nag again this session. The
+    // invite relay is deliberately NOT joined on dismiss — declining the invite
+    // means declining its community.
     advancingRef.current = false;
     clearInviter();
     setOpen(false);
+  };
+
+  // Join the invited community relay — but only once, and only when the person
+  // ENGAGED with the invite (followed, said hi, or skipped hi), never on
+  // dismiss. This is the consent the old silent auto-join-at-signup skipped.
+  const joinInviteRelayOnce = () => {
+    const relay = inviteRelayRef.current;
+    if (!relay || relayJoinedRef.current || !pubkey) return;
+    relayJoinedRef.current = true;
+    void joinOutpostWithEnrichment(relay, undefined, pubkey).catch(() => {});
   };
 
   // Follow the inviter via the EXACT safe path the Profile follow button uses:
@@ -183,6 +200,8 @@ export function InviteAcceptCard() {
       await publishEvent(signed as Event);
       cacheFollowEvent(signed as Event, { force: true }); // keep durable base current with user intent
 
+      // They accepted the invite — now it's consented to join its community.
+      joinInviteRelayOnce();
       toast({ title: `Following ${name}` });
       setStep("sayhi");
     } catch (err) {
@@ -199,6 +218,9 @@ export function InviteAcceptCard() {
     if (!pubkey || !signer || !inviterHex) return;
     setWorking(true);
     try {
+      // A fresh signup opens straight here (already auto-followed the inviter),
+      // so sending hi is its positive-engagement signal to join the community.
+      joinInviteRelayOnce();
       const res = await sendSayHiDM({ signer, senderPubkey: pubkey, inviterHex, content: hiText });
       if (res.success) {
         toast({ title: "Sent!", description: `Said hi to ${name}.` });
@@ -217,7 +239,10 @@ export function InviteAcceptCard() {
   };
 
   const skipSayHi = () => {
-    // Following already closed the main loop; sending hi is optional.
+    // Following already closed the main loop; sending hi is optional. They
+    // engaged with the invite (reached this step), so the community join is
+    // consented even when they skip the message.
+    joinInviteRelayOnce();
     advancingRef.current = false;
     clearInviter();
     setOpen(false);
