@@ -364,7 +364,7 @@ export async function checkNip86Support(relayUrl: string): Promise<Nip86SupportS
           if (isTransportFailure(data as Nip86Response<unknown>)) {
             return "unreachable";
           }
-          if (data.isHtml || data.raw) {
+          if (data.isHtml || data.bodyLength > 0) {
             return advertisedInNip11 ? "advertised_but_nonfunctional" : "not_supported";
           }
           if ("result" in data || "error" in data) {

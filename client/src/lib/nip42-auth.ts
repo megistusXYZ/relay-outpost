@@ -180,14 +180,21 @@ export function setOwnDMInboxProvider(provider: () => string[]) {
 
 // Relays cleared for NIP-42 auto-AUTH during a deliberate outbound publish — e.g.
 // delivering a gift-wrapped DM to a recipient's auth-required inbox relay
-// (auth.nostr1.com, relay.nsec.app, …). Scoped to publishes the user initiated; we
-// never auto-identify the user on passive reads.
-const publishAuthAllowed = new Set<string>();
+// (auth.nostr1.com, relay.nsec.app, …). Scoped to publishes the user initiated,
+// AND time-boxed: the grant is consulted on passive reads too, so a permanent
+// session-wide grant would auto-identify the user to a recipient's inbox relay
+// on every background read for the rest of the session. url -> grant expiry (ms).
+const PUBLISH_AUTH_TTL_MS = 60_000;
+const publishAuthAllowed = new Map<string, number>();
 
-function shouldAutoAuth(relayURL: string): boolean {
+export function shouldAutoAuth(relayURL: string): boolean {
   const key = normalizeUrl(relayURL);
   if (isAuthEnabled(key)) return true;
-  if (publishAuthAllowed.has(key)) return true;
+  const grantExpiry = publishAuthAllowed.get(key);
+  if (grantExpiry !== undefined) {
+    if (Date.now() < grantExpiry) return true;
+    publishAuthAllowed.delete(key); // expired — stop leaking into passive reads
+  }
   // Own DM inbox: auto-AUTH so we can READ our own mailbox from an auth-gated
   // relay (auth.nostr1.com, inbox.nostr.wine, …). Scoped to the relays we chose
   // as our inbox — never arbitrary relays. Small set, so the linear scan is fine.
@@ -356,11 +363,13 @@ export function createPoolAuthHandler(): (relayURL: string) => null | ((evt: Eve
  * delivery + explicit relay picks). Call BEFORE pool.publish: freshly connected relays
  * pick up an onauth handler via the pool's automaticallyAuth hook, and any relay that's
  * already connected without one is armed retroactively (and re-authed if a challenge is
- * already pending). Scoped — does not affect passive reads.
+ * already pending). Scoped to a short window after the publish — a passive read
+ * more than PUBLISH_AUTH_TTL_MS later no longer auto-authenticates.
  */
 export function allowAuthForPublish(relayUrls: string[]) {
+  const expiry = Date.now() + PUBLISH_AUTH_TTL_MS;
   for (const url of relayUrls) {
-    publishAuthAllowed.add(normalizeUrl(url));
+    publishAuthAllowed.set(normalizeUrl(url), expiry);
   }
   // Arm relays already connected before they were cleared (their onauth is null, so
   // nostr-tools won't auto-auth them on its own).

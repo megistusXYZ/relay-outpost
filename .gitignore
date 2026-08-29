@@ -63,3 +63,6 @@ playwright-report/
 # Internal strategy docs — live locally and in the private archive, never here
 POSITIONING_AND_IA.md
 CONCORD_PLAN.md
+
+# Local security/QA probe scripts (never shipped)
+scratch-*.mjs

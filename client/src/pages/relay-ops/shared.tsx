@@ -356,7 +356,17 @@ export function countWithNip45(
       authAttempted = true;
       try {
         // Lazy-import to avoid a circular dep with this shared module.
-        const { getGlobalSigner } = await import("@/lib/nip42-auth");
+        const { getGlobalSigner, shouldAutoAuth } = await import("@/lib/nip42-auth");
+        // Never sign a NIP-42 challenge (revealing pubkey↔IP to the relay) for a
+        // relay the user hasn't opted into — this hand-rolled COUNT path is NOT
+        // behind the pool's scoped auth handler, so it must apply the same gate
+        // itself. Without this, a crafted /relay-ops-center/<attacker-relay> link
+        // could harvest a user-signed 22242. Refuse = the count is simply
+        // unavailable for that relay, never an auth leak.
+        if (!shouldAutoAuth(relayUrl)) {
+          finish({ count: null, supported: false, transient: false });
+          return;
+        }
         const { signWithTimeout, SIGNER_SIGN_TIMEOUT } = await import("@/lib/signer-timeout");
         const signer = getGlobalSigner();
         // No signer yet (e.g. signer hydration is briefly delayed) — treat
