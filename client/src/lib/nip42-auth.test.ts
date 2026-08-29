@@ -5,7 +5,7 @@
 // aren't the user's own. allowAuthForPublish() opens that gate, scoped to deliberate
 // publishes.
 import { describe, it, expect, beforeEach } from "vitest";
-import { createPoolAuthHandler, createTemplateScopedAuthHandler, allowAuthForPublish, setGlobalSigner, setOwnDMInboxProvider } from "./nip42-auth";
+import { createPoolAuthHandler, createTemplateScopedAuthHandler, allowAuthForPublish, setGlobalSigner, setOwnDMInboxProvider, shouldAutoAuth } from "./nip42-auth";
 
 const mockSigner = {
   async getPublicKey() {
@@ -22,6 +22,16 @@ describe("scoped NIP-42 auto-AUTH gate", () => {
   it("refuses to auto-AUTH an arbitrary relay (e.g. a recipient's inbox) by default", () => {
     const handler = createPoolAuthHandler();
     expect(handler("wss://recipient-inbox-1.example")).toBeNull();
+  });
+
+  it("shouldAutoAuth is false for a relay the user hasn't opted into (ops-center count gate)", () => {
+    // The hand-rolled COUNT path in relay-ops consults this directly, so a
+    // crafted /relay-ops-center/<attacker-relay> link can't harvest a signed
+    // 22242. A relay opted in for a publish flips it true (proven below).
+    const attacker = "wss://attacker-relay.example";
+    expect(shouldAutoAuth(attacker)).toBe(false);
+    allowAuthForPublish([attacker]);
+    expect(shouldAutoAuth(attacker)).toBe(true);
   });
 
   it("auto-AUTHs a relay once it is cleared for a deliberate publish", () => {

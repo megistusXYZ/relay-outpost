@@ -184,7 +184,7 @@ export function setOwnDMInboxProvider(provider: () => string[]) {
 // never auto-identify the user on passive reads.
 const publishAuthAllowed = new Set<string>();
 
-function shouldAutoAuth(relayURL: string): boolean {
+export function shouldAutoAuth(relayURL: string): boolean {
   const key = normalizeUrl(relayURL);
   if (isAuthEnabled(key)) return true;
   if (publishAuthAllowed.has(key)) return true;

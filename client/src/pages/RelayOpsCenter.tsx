@@ -67,6 +67,15 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
     return getOutpostRelays().filter(r => r.isAdmin);
   }, []);
 
+  // A relay the user actually operates (flagged admin in their own outpost list).
+  // Used to gate the "relay publishes no operator pubkey" fallback: we only skip
+  // operator verification for a relay the user already claimed as theirs — never
+  // for an arbitrary relay reached via a crafted /relay-ops-center/<url> link.
+  const isOwnedRelay = useMemo(() => {
+    const norm = (u: string) => u.replace(/\/+$/, "").toLowerCase();
+    return adminRelays.some(r => norm(r.url) === norm(selectedRelay));
+  }, [adminRelays, selectedRelay]);
+
   useEffect(() => {
     if (adminRelays.length > 0 && !selectedRelay) {
       setSelectedRelay(adminRelays[0].url);
@@ -92,7 +101,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
   // #a-only badge missed entirely. Enabled whenever the console is usable (the
   // same states that render the tab + badge: authorized, or a relay that
   // publishes no operator pubkey where we fall back to the signed-in admin).
-  const feedbackEnabled = authStatus === "authorized" || authStatus === "no-pubkey";
+  const feedbackEnabled = authStatus === "authorized" || (authStatus === "no-pubkey" && isOwnedRelay);
   const inbox = useFeedbackInbox(selectedRelay, signer, pubkey, feedbackEnabled);
   const feedbackUnread = inbox.unreadCount;
 
@@ -144,13 +153,20 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
       );
     }
 
-    if (authStatus === "denied") {
+    // A relay that publishes no operator pubkey can't prove who runs it. We only
+    // skip verification for a relay the user already flagged as their own admin
+    // relay; for anything else (e.g. a crafted /relay-ops-center/<url> link) this
+    // is treated as denied, so the console never renders — and its auto-scan
+    // never signs a NIP-42 challenge — for a relay the user doesn't operate.
+    if (authStatus === "denied" || (authStatus === "no-pubkey" && !isOwnedRelay)) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 px-4">
           <AlertTriangle className="w-10 h-10 text-red-600 dark:text-red-400/70" />
           <h2 className="text-lg font-brand tracking-wider uppercase text-red-700 dark:text-red-300/80">Access Denied</h2>
           <p className="text-sm text-muted-foreground/60 text-center max-w-md">
-            {nip11 === null
+            {authStatus === "no-pubkey"
+              ? "This relay doesn't publish an operator pubkey, so operator access can't be verified. Open Relay Control from a relay you operate on the Relays page."
+              : nip11 === null
               ? "Unable to reach this relay for verification. Check that the relay is online."
               : "Your key does not match this relay's operator pubkey. Only the relay operator can access Relay Control."}
           </p>
@@ -220,7 +236,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
         </div>
       </div>
 
-      {authStatus === "no-pubkey" && (
+      {authStatus === "no-pubkey" && isOwnedRelay && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-400/30 dark:border-amber-400/20">
           <AlertTriangle className="w-3.5 h-3.5 text-amber-800/70 dark:text-amber-400/70 shrink-0" />
           <p className="text-[11px] text-amber-700 dark:text-amber-300/70">

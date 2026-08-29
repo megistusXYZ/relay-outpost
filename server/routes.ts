@@ -10,6 +10,7 @@ import { SERVER_APP_VERSION } from "./version";
 import { registerSignupTelemetryRoutes } from "./analytics/signup-telemetry";
 import { scheduledPosts, podcastTrendSnapshots } from "@shared/schema";
 import { resolveBuzzDirectory } from "@shared/buzz-directory";
+import { safeStreamContentType, safeImageContentType } from "./media-safety";
 import { eq, and, sql, gte, lt } from "drizzle-orm";
 import {
   computeTrendSuggestions,
@@ -2145,9 +2146,12 @@ export async function registerRoutes(
         return res.status(502).json({ error: "Failed to fetch image" });
       }
 
-      const contentType = response.headers.get('content-type') || 'image/jpeg';
-      if (!contentType.startsWith('image/') && !contentType.includes('svg')) {
-        return res.status(400).json({ error: "Not an image" });
+      // Allowlist raster image types only. SVG is rejected (it can carry script
+      // that executes on top-level navigation of this same-origin response), as
+      // is anything HTML-ish — never echo an attacker-chosen Content-Type.
+      const safeImageCt = safeImageContentType(response.headers.get('content-type'));
+      if (!safeImageCt) {
+        return res.status(415).json({ error: "Unsupported image type" });
       }
 
       const contentLength = response.headers.get('content-length');
@@ -2155,7 +2159,8 @@ export async function registerRoutes(
         return res.status(413).json({ error: "Image too large" });
       }
 
-      res.set('Content-Type', contentType);
+      res.set('Content-Type', safeImageCt);
+      res.set('X-Content-Type-Options', 'nosniff');
       res.set('Cache-Control', 'public, max-age=3600');
       res.set('Access-Control-Allow-Origin', '*');
 
@@ -2589,8 +2594,13 @@ export async function registerRoutes(
         return res.status(413).json({ error: "Upstream response too large" });
       }
 
-      const ct = upstream.headers.get("content-type");
-      if (ct) res.set("Content-Type", ct);
+      // Never echo the upstream Content-Type: a hostile host serving text/html
+      // or image/svg+xml would otherwise render/execute on our own origin. Media
+      // passes through; anything else is coerced to an opaque attachment.
+      const streamCt = safeStreamContentType(upstream.headers.get("content-type"));
+      res.set("Content-Type", streamCt.contentType);
+      res.set("X-Content-Type-Options", "nosniff");
+      if (streamCt.attachment) res.set("Content-Disposition", "attachment");
       res.set("Cache-Control", "public, max-age=5");
       res.set("Access-Control-Allow-Origin", "*");
 
