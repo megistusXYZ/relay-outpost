@@ -59,14 +59,28 @@ export function isPrivateIp(ip: string): boolean {
   return false;
 }
 
-export async function validateHostSafety(hostname: string): Promise<boolean> {
+/**
+ * Resolve a hostname and return its vetted public IPs, or null when it doesn't
+ * resolve or resolves to any private/loopback/link-local address.
+ *
+ * Returning the ACTUAL addresses (not just a boolean) lets a caller PIN the
+ * connection to exactly these IPs — closing the DNS-rebinding TOCTOU where the
+ * safety check and the connect resolve the name separately and can disagree
+ * (validate → public IP, connect → private IP). See safe-fetch.ts.
+ */
+export async function resolveVettedAddresses(hostname: string): Promise<string[] | null> {
   try {
     const addresses = await dns.resolve4(hostname).catch(() => [] as string[]);
     const addresses6 = await dns.resolve6(hostname).catch(() => [] as string[]);
     const allAddrs = [...addresses, ...addresses6];
-    if (allAddrs.length === 0) return false;
-    return !allAddrs.some(isPrivateIp);
+    if (allAddrs.length === 0) return null;
+    if (allAddrs.some(isPrivateIp)) return null;
+    return allAddrs;
   } catch {
-    return false;
+    return null;
   }
+}
+
+export async function validateHostSafety(hostname: string): Promise<boolean> {
+  return (await resolveVettedAddresses(hostname)) !== null;
 }
