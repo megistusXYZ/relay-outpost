@@ -11,6 +11,7 @@ import { registerSignupTelemetryRoutes } from "./analytics/signup-telemetry";
 import { scheduledPosts, podcastTrendSnapshots } from "@shared/schema";
 import { resolveBuzzDirectory } from "@shared/buzz-directory";
 import { safeStreamContentType, safeImageContentType } from "./media-safety";
+import { safeFetch } from "./safe-fetch";
 import { eq, and, sql, gte, lt } from "drizzle-orm";
 import {
   computeTrendSuggestions,
@@ -601,7 +602,10 @@ export async function registerRoutes(
       }
 
       const attempt = async (retryCount: number): Promise<void> => {
-        const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
+        // safeFetch re-validates the host on every redirect hop, so a lightning
+        // provider domain can't 302 us into the private network and reflect the
+        // internal response back through res.json(data).
+        const response = await safeFetch(url, { timeoutMs: 10000 });
         if (!response.ok) {
           const body = await response.text().catch(() => "");
           console.error(`[lnurl/pay] Upstream ${response.status} from ${url}: ${body.slice(0, 500)}`);
@@ -639,7 +643,10 @@ export async function registerRoutes(
       if (comment) url.searchParams.set("comment", comment);
 
       const attempt = async (retryCount: number): Promise<void> => {
-        const response = await fetch(url.toString(), { signal: AbortSignal.timeout(15000) });
+        // safeFetch re-validates on every redirect hop — a public callback host
+        // can't 302 us into the private network and get the internal response
+        // reflected back through res.json(data).
+        const response = await safeFetch(url.toString(), { timeoutMs: 15000 });
         if (!response.ok) {
           const body = await response.text().catch(() => "");
           console.error(`[lnurl/invoice] Upstream ${response.status} from ${url.toString().slice(0, 200)}: ${body.slice(0, 500)}`);
@@ -2021,20 +2028,18 @@ export async function registerRoutes(
     }
 
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-
       const articleOrigin = new URL(articleUrl).origin;
-      const response = await fetch(articleUrl, {
+      // safeFetch re-validates the host on every redirect hop, so a public
+      // article URL can't 302 us into the private network and reflect the
+      // internal page's extracted text back to the caller.
+      const response = await safeFetch(articleUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
           'Accept': 'text/html, application/xhtml+xml, */*',
           'Referer': articleOrigin + '/',
         },
-        signal: controller.signal,
-        redirect: 'follow',
+        timeoutMs: 10000,
       });
-      clearTimeout(timeout);
 
       if (!response.ok) {
         return res.status(502).json({ error: "Failed to fetch article" });
@@ -2827,11 +2832,13 @@ export async function registerRoutes(
 
         console.log(`[NIP-86 proxy] → POST ${tryUrl} | method=${method} | hasAuth=${!!authEvent}`);
         try {
-          const response = await fetch(tryUrl, {
+          // safeFetch re-validates the host on every redirect hop so a relay
+          // URL can't 302 this authenticated POST into the private network.
+          const response = await safeFetch(tryUrl, {
             method: "POST",
             headers: tryHeaders,
             body,
-            signal: AbortSignal.timeout(10000),
+            timeoutMs: 10000,
           });
 
           const responseText = await response.text();
@@ -2894,7 +2901,10 @@ export async function registerRoutes(
           : "Relay returned non-JSON response",
         isHtml,
         upstreamStatus: lastStatus,
-        raw: lastResponseText.slice(0, 500),
+        // Deliberately NOT echoing the upstream body: if a relay URL were pointed
+        // at an internal service, reflecting its bytes here would turn this into a
+        // read-capable SSRF. A length is enough to debug "empty vs non-JSON".
+        bodyLength: lastResponseText.length,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown proxy error";
@@ -4149,7 +4159,17 @@ export async function registerRoutes(
         } else if (channelMatch && channelId) {
           let relayUrl: string;
           try { relayUrl = decodeURIComponent(channelMatch[1]); } catch { return next(); }
-          if (!/^wss?:\/\//i.test(relayUrl)) return next();
+          // SSRF guard: this relay URL is fully attacker-controlled via the link,
+          // and fetchNostrEvent opens a raw WebSocket to it. Require wss:// (no
+          // plaintext ws:// probing of internal services) and refuse
+          // private/loopback hosts before connecting.
+          let relayHost: string;
+          try {
+            const parsedRelay = new URL(relayUrl);
+            if (parsedRelay.protocol !== "wss:") return next();
+            relayHost = parsedRelay.hostname;
+          } catch { return next(); }
+          if (!(await validateHostSafety(relayHost))) return next();
           // NIP-29 group metadata (kind 39000) lives on the outpost's OWN relay,
           // not the shared OG_RELAYS — so target that relay specifically.
           const event = await fetchNostrEvent({ kinds: [39000], "#d": [channelId] }, 4000, [relayUrl]);
