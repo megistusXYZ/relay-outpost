@@ -11,7 +11,7 @@
  * The imeta tag codec is pure + unit-tested; the crypto + upload/fetch I/O is not.
  */
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
-import { getBlossomServers, uploadToBlossomServer, stripImageMetadata } from "@/lib/media-upload";
+import { getBlossomServers, uploadToBlossomServer, stripImageMetadata, stripVideoMetadata } from "@/lib/media-upload";
 
 export interface ConcordMedia {
   url: string;
@@ -129,6 +129,10 @@ export async function encryptAndUpload(file: File, signer: Signer, onStatus?: (s
   if (file.type.startsWith("image/")) {
     onStatus?.("Scrubbing metadata…");
     uploadSource = (await stripImageMetadata(file).catch(() => ({ file, stripped: false }))).file;
+  } else if (file.type.startsWith("video/")) {
+    // Videos carry GPS (©xyz) + device model too — scrub before encrypting.
+    onStatus?.("Scrubbing metadata…");
+    uploadSource = (await stripVideoMetadata(file).catch(() => ({ file, stripped: false }))).file;
   }
 
   onStatus?.("Encrypting…");
