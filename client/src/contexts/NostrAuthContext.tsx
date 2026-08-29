@@ -12,6 +12,7 @@ import { setGlobalSigner } from "@/lib/nip42-auth";
 import { clearBrainstormAuth } from "@/lib/graperank";
 import { isReconnectInFlight, setReconnectInFlight, setSignerTimeoutBypass, canShowReconnectToast } from "@/lib/signer-timeout";
 import { clearProcessedWraps } from "@/lib/gift-wrap";
+import { clearAll as clearDmCache } from "@/lib/dm-cache";
 import { cacheFollowEvent } from "@/lib/follow-list";
 import { warmInterestsCache } from "@/lib/interests";
 import { loadLocalSecret, saveLocalSecret, clearLocalSecret, markNewAccount } from "@/lib/local-account";
@@ -749,6 +750,11 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
       } catch {}
     }
     clearQRSession();
+    // Privacy on sign-out: don't leave this account's decrypted DM plaintext
+    // (relay-outpost-dms) or its spend-capable wallet credential on the device.
+    // clearDmCache is per-owner; the NWC URI embeds a spend secret.
+    if (localPubkey) { try { void clearDmCache(localPubkey); } catch {} }
+    try { localStorage.removeItem("relay-outpost-nwc-uri"); } catch {}
     // Another account remains on this device: restore its credentials into
     // the singleton slots and reload into it. The reload guarantees zero
     // cross-account state bleed; the toast (shown after reload) tells the

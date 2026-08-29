@@ -4,7 +4,7 @@
 // relay's onauth when shouldAutoAuth() is true — which it wasn't for relays that
 // aren't the user's own. allowAuthForPublish() opens that gate, scoped to deliberate
 // publishes.
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createPoolAuthHandler, createTemplateScopedAuthHandler, allowAuthForPublish, setGlobalSigner, setOwnDMInboxProvider, shouldAutoAuth } from "./nip42-auth";
 
 const mockSigner = {
@@ -32,6 +32,19 @@ describe("scoped NIP-42 auto-AUTH gate", () => {
     expect(shouldAutoAuth(attacker)).toBe(false);
     allowAuthForPublish([attacker]);
     expect(shouldAutoAuth(attacker)).toBe(true);
+  });
+
+  it("the publish auth grant expires — no permanent passive-read leak", () => {
+    vi.useFakeTimers();
+    try {
+      const inbox = "wss://recipient-inbox-ttl.example";
+      allowAuthForPublish([inbox]);
+      expect(shouldAutoAuth(inbox)).toBe(true);
+      vi.advanceTimersByTime(61_000);
+      expect(shouldAutoAuth(inbox)).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("auto-AUTHs a relay once it is cleared for a deliberate publish", () => {
