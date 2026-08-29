@@ -54,6 +54,9 @@ export async function fetchBuzzJoinPolicy(
   relayUrl: string,
   io: ClaimIO = {},
 ): Promise<{ reached: true; policy: BuzzJoinPolicy | null } | { reached: false }> {
+  // Only ever talk to a recognized Buzz community host (defense-in-depth: the
+  // caller's relayUrl is route-controlled).
+  if (!isBuzzCommunityHost(relayUrl)) return { reached: false };
   const fetchFn = io.fetchFn ?? fetch;
   try {
     const r = await fetchFn(`${httpsBase(relayUrl)}/api/join-policy`, {
@@ -95,6 +98,13 @@ export async function claimBuzzInvite(opts: {
   acceptance?: { policyVersion: string; ageConfirmed: boolean };
   io?: ClaimIO;
 }): Promise<ClaimResult> {
+  // Enforce the Buzz-host restriction at the SIGNING boundary, not just in the
+  // UI: this POSTs a NIP-98 event signed with the user's key, so a caller that
+  // reached here with an attacker-controlled relayUrl must never send that proof
+  // to a non-Buzz host.
+  if (!isBuzzCommunityHost(opts.relayUrl)) {
+    return { ok: false, error: "That community relay isn't recognized." };
+  }
   const fetchFn = opts.io?.fetchFn ?? fetch;
   const signer = opts.io?.signer !== undefined ? opts.io.signer : resolveSessionSigner();
   if (!signer) return { ok: false, error: "No signer available — sign in again." };

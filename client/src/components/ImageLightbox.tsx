@@ -205,7 +205,7 @@ export function ImageLightbox({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
-      window.open(imgSrc, "_blank");
+      window.open(imgSrc, "_blank", "noopener,noreferrer");
     } finally {
       setDownloading(false);
     }

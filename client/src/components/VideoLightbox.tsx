@@ -273,7 +273,7 @@ export function VideoLightbox({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
-      window.open(src, "_blank");
+      window.open(src, "_blank", "noopener,noreferrer");
     } finally {
       setDownloading(false);
     }

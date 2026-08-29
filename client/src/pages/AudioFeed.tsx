@@ -519,7 +519,7 @@ function AudioShareMenu({ track }: { track: MusicTrack }) {
 
   const handleOpenWavlake = () => {
     if (track.wavlakeUrl) {
-      window.open(track.wavlakeUrl, "_blank");
+      window.open(track.wavlakeUrl, "_blank", "noopener,noreferrer");
     }
   };
 
