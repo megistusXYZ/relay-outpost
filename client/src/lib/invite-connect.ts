@@ -27,6 +27,14 @@ export interface InviteConnect {
   source: InviteSource;
   /** Community name, when they came through a community invite. */
   context?: string;
+  /**
+   * The relay to join, when the invite landed the person in a community. Carried
+   * here (rather than auto-joined at signup) so the join is CONSENTED: an invite
+   * link's relay is attacker-controllable, and a silently-joined relay becomes a
+   * default publish target and a NIP-42 auto-AUTH target. The invite-accept card
+   * joins it only when the person engages, never on dismiss.
+   */
+  relay?: string;
 }
 
 /**
@@ -83,12 +91,16 @@ export function decodeInviteConnect(raw: string | null | undefined): InviteConne
   let parsed: unknown;
   try { parsed = JSON.parse(raw); } catch { return null; }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
-  const { inviter, step, source, context } = parsed as Record<string, unknown>;
+  const { inviter, step, source, context, relay } = parsed as Record<string, unknown>;
   if (!isHexPubkey(inviter)) return null;
   if (step !== "follow" && step !== "sayhi") return null;
   if (source !== "friend" && source !== "link") return null;
   const rec: InviteConnect = { inviter, step, source };
   if (typeof context === "string" && context.trim()) rec.context = context;
+  // Only a well-formed relay websocket URL survives — a malformed value is
+  // dropped (like context) rather than voiding the whole hand-off, and can
+  // never reach the join path.
+  if (typeof relay === "string" && /^wss?:\/\/[^\s]+$/i.test(relay)) rec.relay = relay;
   return rec;
 }
 

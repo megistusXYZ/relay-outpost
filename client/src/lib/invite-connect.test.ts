@@ -56,6 +56,18 @@ describe("decodeInviteConnect — a bad marker must never open the card", () => 
     expect(decodeInviteConnect(JSON.stringify({ inviter: HEX, step: "sayhi", source: "wat" }))).toBeNull();
   });
 
+  it("round-trips a valid relay to join, and drops a malformed one", () => {
+    const withRelay = { inviter: HEX, step: "sayhi" as const, source: "friend" as const, relay: "wss://relay.example.com" };
+    expect(decodeInviteConnect(encodeInviteConnect(withRelay))).toEqual(withRelay);
+    // A non-ws(s) value must never reach the join path — dropped, record kept.
+    const bad = decodeInviteConnect(JSON.stringify({ inviter: HEX, step: "sayhi", source: "friend", relay: "https://evil.example/x" }));
+    expect(bad).toEqual({ inviter: HEX, step: "sayhi", source: "friend" });
+    expect(bad?.relay).toBeUndefined();
+    // Non-string relay ignored too.
+    const num = decodeInviteConnect(JSON.stringify({ inviter: HEX, step: "sayhi", source: "friend", relay: 42 }));
+    expect(num?.relay).toBeUndefined();
+  });
+
   it("ignores a non-string context instead of failing the whole record", () => {
     const out = decodeInviteConnect(JSON.stringify({ inviter: HEX, step: "sayhi", source: "friend", context: 42 }));
     expect(out).toEqual({ inviter: HEX, step: "sayhi", source: "friend" });

@@ -24,7 +24,6 @@ import { publishEvent, verifySignedEventKind } from "@/lib/nostr";
 import { clientTags, KIND_METADATA, KIND_FOLLOW_LIST } from "@/lib/nostr-helpers";
 import { CURATED_SEED_PUBKEYS, buildAnchorFollows } from "@/lib/curated-seed-follows";
 import { setInviteConnect } from "@/lib/invite-connect";
-import { joinOutpostWithEnrichment } from "@/lib/outpost-relays";
 import { triggerGrapeRankCalculation } from "@/lib/graperank";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { markNewAccountPublicNostrOff } from "@/lib/public-nostr";
@@ -945,20 +944,22 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
           }
         }
 
-        // Auto-join the outpost they were invited to (invited path only).
+        // The invite's relay is NOT auto-joined here. An invite link's relay is
+        // attacker-controllable, and a silently-joined relay becomes a default
+        // publish target AND a NIP-42 auto-AUTH target — so a crafted link could
+        // attach a brand-new account to a hostile relay with no consent. Instead
+        // we carry it to the invite-accept card (below), which joins it only when
+        // the person engages with the invite, never on dismiss.
+        let inviteRelay: string | null = null;
         if (inviterHex) {
-          let inviteRelay: string | null = null;
           try { inviteRelay = sessionStorage.getItem("relay-outpost-invite-relay"); } catch {}
-          if (inviteRelay) {
-            void joinOutpostWithEnrichment(inviteRelay, undefined, account.pubkey).catch(() => {});
-          }
         }
         // The follow half of the invite is fully consumed above, so hand the
         // person off rather than dropping them: the new account already follows
         // their inviter, and lands in a feed where they know nobody. This marker
         // is what lets InviteAcceptCard offer a one-tap hello — skipping its
         // follow step, which would otherwise re-ask for something already done.
-        if (inviterHex) setInviteConnect({ inviter: inviterHex, step: "sayhi", source: "friend" });
+        if (inviterHex) setInviteConnect({ inviter: inviterHex, step: "sayhi", source: "friend", ...(inviteRelay ? { relay: inviteRelay } : {}) });
         // Then clear the raw markers so the card can't ALSO run its follow flow.
         try {
           sessionStorage.removeItem("relay-outpost-inviter");
