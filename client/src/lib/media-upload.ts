@@ -443,6 +443,84 @@ function stripFlacMetadata(buffer: ArrayBuffer): ArrayBuffer | null {
   return result.buffer;
 }
 
+// MP4/QuickTime videos from phones carry location (the `©xyz` atom inside
+// `udta`) and device model. Images are stripped, so a user reasonably assumes
+// videos are too — they weren't.
+const STRIPPABLE_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/x-m4v"];
+
+/**
+ * Neutralize the ISO-BMFF metadata boxes that carry GPS/device info (`udta`,
+ * `meta`) by renaming them to `free` padding IN PLACE and zeroing their payload.
+ *
+ * The safety property that matters: this is SIZE-PRESERVING. We never remove
+ * bytes, so `mdat` never shifts and the `stco`/`co64` chunk-offset tables stay
+ * valid — the video can't be corrupted, and there is no re-encode. A `free` box
+ * is padding every MP4 parser skips, so the metadata is simply gone.
+ *
+ * Only touches a file that actually starts with an `ftyp` box (a real MP4/MOV),
+ * and only the `udta`/`meta` box types — anything else is left byte-for-byte.
+ * Exported for unit testing. Mutates `bytes` in place; returns whether anything
+ * was neutralized.
+ */
+export function scrubMp4MetadataBoxes(bytes: Uint8Array): boolean {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const typeAt = (p: number) => String.fromCharCode(bytes[p + 4], bytes[p + 5], bytes[p + 6], bytes[p + 7]);
+  // Require a real MP4/MOV signature so we never scribble on a mislabeled file.
+  if (bytes.length < 8 || typeAt(0) !== "ftyp") return false;
+
+  const NEUTRALIZE = new Set(["udta", "meta"]);
+  const RECURSE = new Set(["moov", "trak"]); // where udta/meta actually live
+  let stripped = false;
+
+  const walk = (start: number, end: number, depth: number) => {
+    if (depth > 8) return; // paranoia against a malformed nesting bomb
+    let pos = start;
+    while (pos + 8 <= end) {
+      let size = view.getUint32(pos);
+      let headerSize = 8;
+      if (size === 1) {
+        // 64-bit largesize
+        const hi = view.getUint32(pos + 8);
+        const lo = view.getUint32(pos + 12);
+        size = hi * 2 ** 32 + lo;
+        headerSize = 16;
+      } else if (size === 0) {
+        size = end - pos; // extends to the end
+      }
+      const boxEnd = pos + size;
+      if (size < headerSize || boxEnd > end) break; // malformed — stop cleanly
+      const type = typeAt(pos);
+      if (NEUTRALIZE.has(type)) {
+        bytes[pos + 4] = 0x66; bytes[pos + 5] = 0x72; bytes[pos + 6] = 0x65; bytes[pos + 7] = 0x65; // "free"
+        bytes.fill(0, pos + headerSize, boxEnd); // wipe the payload bytes too
+        stripped = true;
+      } else if (RECURSE.has(type)) {
+        walk(pos + headerSize, boxEnd, depth + 1);
+      }
+      pos = boxEnd;
+    }
+  };
+
+  walk(0, bytes.length, 0);
+  return stripped;
+}
+
+export async function stripVideoMetadata(file: File): Promise<{ file: File; stripped: boolean }> {
+  if (!STRIPPABLE_VIDEO_TYPES.includes(file.type)) {
+    return { file, stripped: false };
+  }
+  try {
+    const buffer = await readFileAsArrayBuffer(file);
+    const bytes = new Uint8Array(buffer); // owned copy from the File read — safe to mutate
+    const stripped = scrubMp4MetadataBoxes(bytes);
+    if (!stripped) return { file, stripped: false };
+    const cleanFile = new File([bytes], file.name, { type: file.type, lastModified: Date.now() });
+    return { file: cleanFile, stripped: true };
+  } catch {
+    return { file, stripped: false };
+  }
+}
+
 export async function stripAudioMetadata(file: File): Promise<{ file: File; stripped: boolean }> {
   if (!STRIPPABLE_AUDIO_TYPES.includes(file.type)) {
     return { file, stripped: false };
@@ -548,6 +626,11 @@ export async function uploadToNostrBuild(
   } else if (isAudioFile(file) && STRIPPABLE_AUDIO_TYPES.includes(file.type)) {
     onStatusChange?.("Scrubbing audio metadata...");
     const result = await stripAudioMetadata(file);
+    uploadFile = result.file;
+    metadataStripped = result.stripped;
+  } else if (isVideoFile(file) && STRIPPABLE_VIDEO_TYPES.includes(file.type)) {
+    onStatusChange?.("Scrubbing video metadata...");
+    const result = await stripVideoMetadata(file);
     uploadFile = result.file;
     metadataStripped = result.stripped;
   }
@@ -818,6 +901,11 @@ export async function uploadMediaForOutpost(
     const result = await stripAudioMetadata(file);
     uploadFile = result.file;
     metadataStripped = result.stripped;
+  } else if (isVideoFile(file) && STRIPPABLE_VIDEO_TYPES.includes(file.type)) {
+    onStatusChange?.("Scrubbing video metadata...");
+    const result = await stripVideoMetadata(file);
+    uploadFile = result.file;
+    metadataStripped = result.stripped;
   }
 
   if (relayBlossomServers.length > 0) {
@@ -873,6 +961,11 @@ export async function uploadMedia(
   } else if (isAudioFile(file) && STRIPPABLE_AUDIO_TYPES.includes(file.type)) {
     onStatusChange?.("Scrubbing audio metadata...");
     const result = await stripAudioMetadata(file);
+    uploadFile = result.file;
+    metadataStripped = result.stripped;
+  } else if (isVideoFile(file) && STRIPPABLE_VIDEO_TYPES.includes(file.type)) {
+    onStatusChange?.("Scrubbing video metadata...");
+    const result = await stripVideoMetadata(file);
     uploadFile = result.file;
     metadataStripped = result.stripped;
   }

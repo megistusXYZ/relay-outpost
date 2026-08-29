@@ -27,6 +27,7 @@ import {
   getBlossomServers,
   uploadToBlossomServer,
   stripImageMetadata,
+  stripVideoMetadata,
 } from "@/lib/media-upload";
 import {
   encryptedUploadServers,
@@ -119,6 +120,10 @@ export async function encryptAndUploadDmFile(
   if (file.type.startsWith("image/")) {
     onStatus?.("Scrubbing metadata…");
     source = (await stripImageMetadata(file).catch(() => ({ file, stripped: false }))).file;
+  } else if (file.type.startsWith("video/")) {
+    // Videos carry GPS (©xyz) + device model too — scrub before encrypting.
+    onStatus?.("Scrubbing metadata…");
+    source = (await stripVideoMetadata(file).catch(() => ({ file, stripped: false }))).file;
   }
 
   onStatus?.("Encrypting…");
