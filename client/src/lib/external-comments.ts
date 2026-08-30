@@ -323,13 +323,20 @@ export interface CommentNotifyDeps extends DiscussionTrustDeps {
  * Anti-spam gate for external-discussion alerts. Returns true ONLY when the
  * kind-1111 clears BOTH a RELEVANCE test and a TRUST test:
  *
- *  Relevance — it is either
+ *  Relevance — it is one of
  *    (a) a genuine REPLY to one of the user's own comments (an `e` tag
  *        referencing an id in `myCommentIds`), or
- *    (b) a pure @-MENTION of the user — it `p`-tags the user AND carries no
- *        reply `e` tag at all (a top-level comment that mentions them). A
- *        comment that replies to SOMEONE ELSE while p-tagging the user is NOT
- *        surfaced: that keeps the reply/mention split clean and the bar tight.
+ *    (b) a REPLY to one of the user's nostr EVENTS (e.g. a kind-1 note): a
+ *        NOSTR-scoped kind-1111 (no external `I`/`i` tag) that `p`-tags the user
+ *        and carries a reply `e` tag. This is the kind-1-parity case — as
+ *        clients move note-replies to kind-1111, they must still notify like a
+ *        kind-1 reply did. On external-URL (NIP-73) discussions this branch does
+ *        NOT apply, so a web-link comment that merely p-tags the user still needs
+ *        (a) or (c) — keeping public threads from becoming a firehose. or
+ *    (c) a pure @-MENTION of the user — it `p`-tags the user AND carries no
+ *        reply `e` tag at all (a top-level comment that mentions them). An
+ *        external-URL comment that replies to SOMEONE ELSE while p-tagging the
+ *        user is NOT surfaced: that keeps the reply/mention split clean.
  *  Trust — its author clears the SAME discussion trust bar the thread itself
  *    uses: in-network (followed / self) is always admitted, an earned-signal
  *    stranger is admitted, but a cold stranger (or a muted / spam / flagged
@@ -349,20 +356,34 @@ export function shouldNotifyForComment(
   // filter already excludes self, but the pure gate must stay self-consistent).
   if (deps.selfPubkey && event.pubkey === deps.selfPubkey) return false;
 
-  // (a) genuine reply to one of MY comments (an e-tag to my event id).
-  const repliesToMe = event.tags.some(
-    (t) => t[0] === "e" && typeof t[1] === "string" && deps.myCommentIds.has(t[1]),
-  );
-  // (b) pure @-mention of me: p-tags me AND carries no reply e-tag at all.
   const hasReplyTag = event.tags.some(
     (t) => t[0] === "e" && typeof t[1] === "string" && t[1],
   );
-  const pureMentionOfMe =
-    !hasReplyTag &&
-    !!deps.selfPubkey &&
-    event.tags.some((t) => t[0] === "p" && t[1] === deps.selfPubkey);
+  const pTagsMe =
+    !!deps.selfPubkey && event.tags.some((t) => t[0] === "p" && t[1] === deps.selfPubkey);
 
-  if (!repliesToMe && !pureMentionOfMe) return false;
+  // (a) genuine reply to one of MY comments (an e-tag to my comment id) —
+  // works for both nostr-scoped and external-URL (NIP-73) discussions.
+  const repliesToMyComment = event.tags.some(
+    (t) => t[0] === "e" && typeof t[1] === "string" && deps.myCommentIds.has(t[1]),
+  );
+
+  // (b) a reply to one of MY nostr EVENTS — e.g. a kind-1 note. As clients move
+  // note-replies from kind-1 to kind-1111 (Amethyst/Ditto, NIP-22 §2447), those
+  // must still notify the way a kind-1 reply always did. The signal mirrors
+  // kind-1: I'm p-tagged AND it's a reply. Scoped to NOSTR events only — an
+  // external-URL (NIP-73) comment carries an I/i tag and stays on the strict
+  // rule above, so public web-link discussions don't become a notification
+  // firehose. The author still has to clear the discussion trust bar below.
+  const isExternalUrlComment = event.tags.some(
+    (t) => (t[0] === "I" || t[0] === "i") && typeof t[1] === "string" && t[1],
+  );
+  const repliesToMyNostrEvent = !isExternalUrlComment && hasReplyTag && pTagsMe;
+
+  // (c) pure @-mention of me: p-tags me AND carries no reply e-tag at all.
+  const pureMentionOfMe = !hasReplyTag && pTagsMe;
+
+  if (!repliesToMyComment && !repliesToMyNostrEvent && !pureMentionOfMe) return false;
 
   // Author clears the discussion trust bar — reuse the exact admit pipeline
   // (spam floor + stranger-quality floor) the visible thread uses, so the

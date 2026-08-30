@@ -422,6 +422,51 @@ describe("shouldNotifyForComment (reply-alert anti-spam gate)", () => {
     expect(shouldNotifyForComment(note, deps({ follows: new Set([author]) }))).toBe(false);
   });
 
+  // ── Reply to my nostr NOTE (kind-1) written as a kind-1111 comment: a
+  //    NOSTR-scoped 1111 (no external I/i tag) that p-tags me + replies. As
+  //    Amethyst/Ditto move note-replies to 1111, these must notify like the
+  //    kind-1 replies they replace. ──
+  const noteReply = (over: Partial<Event> = {}): Event =>
+    evt({
+      pubkey: "a".repeat(64),
+      tags: [
+        ["E", "r".repeat(64)],     // thread root = my note (NIP-22 uppercase)
+        ["K", "1"],
+        ["e", "r".repeat(64), ""], // parent = my note
+        ["k", "1"],
+        ["p", ME],
+      ],
+      ...over,
+    });
+
+  it("NOTIFIES: a kind-1111 reply to my NOTE from an in-network author (the migration gap)", () => {
+    const author = "f".repeat(64);
+    expect(shouldNotifyForComment(noteReply({ pubkey: author }), deps({ follows: new Set([author]) }))).toBe(true);
+  });
+
+  it("NOTIFIES: a kind-1111 reply to my note from an earned-signal stranger", () => {
+    expect(shouldNotifyForComment(noteReply(), deps({ scoreGetter: () => 0.5 }))).toBe(true);
+  });
+
+  it("does NOT notify: a kind-1111 reply to my note from a cold zero-signal stranger (trust bar holds)", () => {
+    expect(shouldNotifyForComment(noteReply(), deps())).toBe(false);
+  });
+
+  it("does NOT notify: a kind-1111 reply to my note from a flagged author (safety floor)", () => {
+    const flagged = "a".repeat(64);
+    expect(shouldNotifyForComment(noteReply({ pubkey: flagged }), deps({ flaggedPubkeys: new Set([flagged]), scoreGetter: () => 0.9 }))).toBe(false);
+  });
+
+  it("REGRESSION: an external-URL (NIP-73) comment replying to someone else's comment while p-tagging me still does NOT notify", () => {
+    // Same shape as the pre-existing 'stranger p-tags me' case — the new
+    // note-reply branch must NOT loosen the external-URL path.
+    const urlComment = evt({
+      pubkey: "a".repeat(64),
+      tags: [["I", "https://example.com/a"], ["K", "web"], ["e", "z".repeat(64), ""], ["p", ME]],
+    });
+    expect(shouldNotifyForComment(urlComment, deps({ follows: new Set(["a".repeat(64)]) }))).toBe(false);
+  });
+
   // ── Pure @-mention branch: p-tags me, NO reply e-tag (a top-level comment
   //    that mentions me) — notifies iff the author clears the trust bar. ──
   const mention = (over: Partial<Event> = {}): Event =>
