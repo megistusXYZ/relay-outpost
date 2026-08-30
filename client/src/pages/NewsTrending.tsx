@@ -26,6 +26,7 @@ import {
   type AnnotatedStory,
 } from "@/lib/news-trending";
 import { useNewsNetworkShares } from "@/hooks/use-news-network-shares";
+import { PodcastTrendingRail } from "@/components/news/PodcastTrendingRail";
 import { applyNetworkBoost, type NetworkSignal } from "@/lib/news-network-boost";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { GuestWall } from "@/components/GuestWall";
@@ -205,6 +206,8 @@ export function NewsTrending({ embedded = false }: { embedded?: boolean }) {
           </div>
         </button>
       )}
+
+      <PodcastTrendingRail />
 
       <div className="space-y-1">
         {rest.map((s) => (
