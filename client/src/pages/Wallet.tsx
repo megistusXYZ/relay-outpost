@@ -21,6 +21,7 @@ import { ProfileLink } from "@/components/analytics/ProfileLink";
 import { ProfileSearchInput, type SelectedRecipient } from "@/components/ProfileSearchInput";
 import { fetchProfilesCached, pool, DEFAULT_RELAYS, eventStore, getRelaysForPurpose, publishEvent, verifySignedEventKind } from "@/lib/nostr";
 import { fetchNpubCashClaimable } from "@/lib/npubcash-api";
+import { getNpubCashJwt, fetchNpubCashUserInfo, checkNpubCashUsername, validateUsernameFormat, type NpubCashUserInfo, type UsernameCheck } from "@/lib/npubcash-username";
 import { localSweepKey, sweepNpubCash, type SweepOutcome } from "@/lib/npubcash-sweep";
 import { readIssuedQuotes, readStash, stashTotalSats } from "@/lib/npubcash-sweep-core";
 import type { ISigner } from "applesauce-signers";
@@ -73,6 +74,7 @@ import {
   RotateCcw,
   CheckCircle2,
   XCircle,
+  AtSign,
   Settings2 } from "lucide-react";
 import {
   type ZapPreset, DEFAULT_ZAP_PRESETS, getZapPresets, saveZapPresets,
@@ -635,6 +637,51 @@ function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | nul
  * might exist that we failed to load, and never blank a field
  * (replaceable-event rule: an empty replaceable is a delete).
  */
+/**
+ * Merge-safe publish of a lightning address into the user's kind-0. Loads the
+ * freshest profile (the given event, else one relay ask), REFUSES to publish if
+ * an existing profile can't be parsed (never wipe), merges only `lud16`, signs,
+ * verifies the kind, and broadcasts. Shared by MakeZappableCard and the
+ * npub.cash username card so there is one implementation of this discipline.
+ */
+async function publishLud16Address(opts: {
+  myPubkey: string;
+  signer: ISigner;
+  profileEvent: NostrToolsEvent | undefined;
+  address: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  let base = opts.profileEvent;
+  if (!base) {
+    try {
+      const fetched = await pool.querySync(DEFAULT_RELAYS.slice(0, 5), { kinds: [KIND_METADATA], authors: [opts.myPubkey], limit: 1 });
+      if (fetched.length > 0) base = fetched[0] as NostrToolsEvent;
+    } catch { /* keep base undefined — empty profile is the true state */ }
+  }
+  let existing: Record<string, unknown> = {};
+  if (base) {
+    try {
+      const parsed = JSON.parse(base.content);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) existing = parsed;
+      else if (base.content.trim() !== "") throw new Error("unparseable");
+    } catch {
+      // A profile EXISTS but we can't parse it — a merge from {} would wipe it.
+      return { ok: false, error: "Your existing profile couldn't be parsed, so nothing was changed." };
+    }
+  }
+  const event = {
+    kind: KIND_METADATA,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [],
+    content: JSON.stringify({ ...existing, lud16: opts.address }),
+  };
+  const signed = await signWithTimeout(opts.signer, event);
+  if (!verifySignedEventKind(signed, KIND_METADATA)) {
+    return { ok: false, error: "Your signer modified the event type — profile was not updated." };
+  }
+  const ok = await publishEvent(signed as NostrToolsEvent);
+  return ok ? { ok: true } : { ok: false, error: "Could not publish your profile update." };
+}
+
 function MakeZappableCard({ myPubkey, signer, profileEvent, profileLoaded }: {
   myPubkey: string | null;
   signer: ISigner | null;
@@ -656,47 +703,12 @@ function MakeZappableCard({ myPubkey, signer, profileEvent, profileLoaded }: {
   const enable = async () => {
     setPublishing(true);
     try {
-      // Freshest base: the loaded event, else one last relay ask. If neither
-      // answers but the profile clearly exists elsewhere we cannot know — but
-      // this card only renders once the store's replaceable RESOLVED (loaded),
-      // so `undefined` here genuinely means "no kind-0 found anywhere".
-      let base = profileEvent;
-      if (!base) {
-        try {
-          const fetched = await pool.querySync(DEFAULT_RELAYS.slice(0, 5), { kinds: [KIND_METADATA], authors: [myPubkey], limit: 1 });
-          if (fetched.length > 0) base = fetched[0] as NostrToolsEvent;
-        } catch { /* keep base undefined — empty profile is the true state */ }
-      }
-      let existing: Record<string, unknown> = {};
-      if (base) {
-        try {
-          const parsed = JSON.parse(base.content);
-          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) existing = parsed;
-          else if (base.content.trim() !== "") throw new Error("unparseable");
-        } catch {
-          // A profile EXISTS but we can't parse it — publishing a merge from
-          // {} would wipe it. Refuse, loudly.
-          toast({ title: "Couldn't read your profile", description: "Your existing profile couldn't be parsed, so nothing was changed.", variant: "destructive" });
-          return;
-        }
-      }
-      const event = {
-        kind: KIND_METADATA,
-        created_at: Math.floor(Date.now() / 1000),
-        tags: [],
-        content: JSON.stringify({ ...existing, lud16: address }),
-      };
-      const signed = await signWithTimeout(signer, event);
-      if (!verifySignedEventKind(signed, KIND_METADATA)) {
-        toast({ title: "Signer error", description: "Your signer modified the event type — profile was not updated.", variant: "destructive" });
-        return;
-      }
-      const ok = await publishEvent(signed as NostrToolsEvent);
-      if (ok) {
+      const res = await publishLud16Address({ myPubkey, signer, profileEvent, address });
+      if (res.ok) {
         setDone(true);
         toast({ title: "You're zappable", description: "Zaps now land at npub.cash under your key — claim them any time from this page." });
       } else {
-        toast({ title: "Broadcast failed", description: "Could not publish your profile update.", variant: "destructive" });
+        toast({ title: "Couldn't update profile", description: res.error, variant: "destructive" });
       }
     } finally {
       setPublishing(false);
@@ -726,6 +738,212 @@ function MakeZappableCard({ myPubkey, signer, profileEvent, profileLoaded }: {
         >
           {publishing ? "Publishing…" : "Use npub.cash address"}
         </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Claim a human `name@npub.cash` lightning address. v1 does everything in-app
+ * except the payment: it shows the current name, checks availability + price
+ * live, links OUT to npub.cash to complete the one-time purchase (no in-app
+ * ecash handling), then — on return — detects the new name and offers to set it
+ * as the profile's lightning address (merge-safe, via publishLud16Address).
+ */
+function NpubCashUsernameCard({ myPubkey, signer, profileEvent, currentLud16 }: {
+  myPubkey: string | null;
+  signer: ISigner | null;
+  profileEvent: NostrToolsEvent | undefined;
+  currentLud16: string | null;
+}) {
+  const { toast } = useToast();
+  const jwtRef = useRef<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [loadingInfo, setLoadingInfo] = useState(false);
+  const [info, setInfo] = useState<NpubCashUserInfo | null>(null);
+  const [infoReached, setInfoReached] = useState<boolean | null>(null);
+  const [name, setName] = useState("");
+  const [formatErr, setFormatErr] = useState<string | null>(null);
+  const [check, setCheck] = useState<UsernameCheck | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [addressJustSet, setAddressJustSet] = useState(false);
+
+  // One NIP-98 → JWT for the whole session (so the signer prompts at most once,
+  // not per keystroke). Cached in a ref.
+  const ensureJwt = useCallback(async (): Promise<string | null> => {
+    if (jwtRef.current) return jwtRef.current;
+    if (!signer) return null;
+    const jwt = await getNpubCashJwt(signer);
+    jwtRef.current = jwt;
+    return jwt;
+  }, [signer]);
+
+  const loadInfo = useCallback(async () => {
+    setLoadingInfo(true);
+    try {
+      const jwt = await ensureJwt();
+      if (!jwt) { setInfoReached(false); return; }
+      const res = await fetchNpubCashUserInfo(jwt);
+      setInfo(res.data);
+      setInfoReached(res.reached);
+    } finally {
+      setLoadingInfo(false);
+    }
+  }, [ensureJwt]);
+
+  const expand = async () => { setExpanded(true); await loadInfo(); };
+
+  // Debounced availability check on a client-valid name.
+  useEffect(() => {
+    if (!expanded) return;
+    setCheck(null);
+    if (!validateUsernameFormat(name).ok) return;
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      setChecking(true);
+      try {
+        const jwt = await ensureJwt();
+        if (cancelled) return;
+        const res = jwt ? await checkNpubCashUsername(jwt, name) : ({ status: "unreachable" } as UsernameCheck);
+        if (!cancelled) setCheck(res);
+      } finally {
+        if (!cancelled) setChecking(false);
+      }
+    }, 500);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [name, expanded, ensureJwt]);
+
+  const onNameChange = (v: string) => {
+    const val = v.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 30);
+    setName(val);
+    const fmt = validateUsernameFormat(val);
+    setFormatErr(val.length === 0 || fmt.ok ? null : fmt.reason);
+  };
+
+  const useAsAddress = async (username: string) => {
+    if (!myPubkey || !signer) return;
+    setBusy(true);
+    try {
+      const address = `${username}@npub.cash`;
+      const res = await publishLud16Address({ myPubkey, signer, profileEvent, address });
+      if (res.ok) {
+        setAddressJustSet(true);
+        toast({ title: "Address updated", description: `${address} is now your lightning address.` });
+      } else {
+        toast({ title: "Couldn't update profile", description: res.error, variant: "destructive" });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!myPubkey || !signer) return null;
+
+  if (!expanded) {
+    return (
+      <Card className="glass-card" data-testid="card-npubcash-username">
+        <CardContent className="p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <AtSign className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <span className="text-sm font-semibold">Claim a name@npub.cash address</span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Trade the long <span className="font-mono">npub1…@npub.cash</span> for a human handle like
+            <span className="font-mono"> you@npub.cash</span> — a one-time claim on npub.cash; zaps to it still land under your key.
+          </p>
+          <Button size="sm" variant="outline" onClick={expand} data-testid="button-npubcash-username-setup">
+            Set up a name
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const address = info?.username ? `${info.username}@npub.cash` : null;
+  const isCurrentAddress = !!address && (addressJustSet || currentLud16?.toLowerCase() === address.toLowerCase());
+
+  return (
+    <Card className="glass-card" data-testid="card-npubcash-username">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <AtSign className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+          <span className="text-sm font-semibold">Your npub.cash name</span>
+        </div>
+
+        {loadingInfo ? (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <RelayOutpostInlineLoader className="w-4 h-4" /> Connecting to npub.cash…
+          </div>
+        ) : infoReached === false ? (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Couldn't reach npub.cash. Check your connection and try again.</p>
+            <Button size="sm" variant="outline" onClick={loadInfo}><RefreshCw className="w-3.5 h-3.5 mr-1" /> Retry</Button>
+          </div>
+        ) : address ? (
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+              <span className="text-sm font-mono break-all">{address}</span>
+            </div>
+            {isCurrentAddress ? (
+              <p className="text-xs text-emerald-600 dark:text-emerald-400">✓ This is your profile's lightning address.</p>
+            ) : (
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">Set it as the lightning address on your profile so zaps use your name.</p>
+                <Button size="sm" onClick={() => useAsAddress(info!.username!)} disabled={busy} className="bg-amber-500/90 hover:bg-amber-500 text-black" data-testid="button-npubcash-use-address">
+                  {busy ? "Publishing…" : "Use as my lightning address"}
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-1.5">
+              <Input
+                value={name}
+                onChange={(e) => onNameChange(e.target.value)}
+                placeholder="yourname"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                className="h-9 text-sm font-mono"
+                data-testid="input-npubcash-username"
+              />
+              <span className="text-sm text-muted-foreground font-mono shrink-0">@npub.cash</span>
+            </div>
+
+            {formatErr ? (
+              <p className="text-xs text-muted-foreground">{formatErr}</p>
+            ) : checking ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground"><RelayOutpostInlineLoader className="w-3.5 h-3.5" /> Checking…</div>
+            ) : check?.status === "available" ? (
+              <div className="space-y-2">
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 shrink-0" /> <span className="font-mono break-all">{name}@npub.cash</span> is available{check.priceSats ? ` · ${fmtSats(check.priceSats)}` : ""}
+                </p>
+                <Button size="sm" asChild className="bg-amber-500/90 hover:bg-amber-500 text-black">
+                  <a href="https://npub.cash" target="_blank" rel="noopener noreferrer" data-testid="button-npubcash-claim-out">
+                    Claim on npub.cash <ExternalLink className="w-3.5 h-3.5 ml-1" />
+                  </a>
+                </Button>
+                <button type="button" onClick={loadInfo} className="block text-xs text-muted-foreground/70 hover:text-foreground underline underline-offset-2" data-testid="button-npubcash-refresh">
+                  Claimed it? Refresh
+                </button>
+              </div>
+            ) : check?.status === "taken" ? (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5"><XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" /> Taken — try another.</p>
+            ) : check?.status === "invalid" ? (
+              <p className="text-xs text-muted-foreground">Not allowed — lowercase letters and numbers, 3+ characters.</p>
+            ) : check?.status === "unreachable" ? (
+              <p className="text-xs text-muted-foreground">Couldn't reach npub.cash — try again.</p>
+            ) : null}
+
+            <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
+              You complete the one-time purchase on npub.cash (an independent service), then come back and tap Refresh to set it as your address.
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -2424,6 +2642,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
               answer is not the NWC paste box. */}
           <NpubCashClaimCard myPubkey={myPubkey} lud16={myLightningAddress} signer={signer ?? null} />
           <MakeZappableCard myPubkey={myPubkey} signer={signer ?? null} profileEvent={myProfile} profileLoaded={myProfile !== undefined} />
+          <NpubCashUsernameCard myPubkey={myPubkey} signer={signer ?? null} profileEvent={myProfile} currentLud16={myLightningAddress} />
 
           <Card className="glass-card" data-testid="card-wallet-connect">
             <CardContent className="p-4 sm:p-5 space-y-4">
@@ -2519,6 +2738,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
             quietly diverts them to a mint the NWC balance will never show. */}
         <NpubCashClaimCard myPubkey={myPubkey} lud16={myLightningAddress} signer={signer ?? null} />
         <MakeZappableCard myPubkey={myPubkey} signer={signer ?? null} profileEvent={myProfile} profileLoaded={myProfile !== undefined} />
+        <NpubCashUsernameCard myPubkey={myPubkey} signer={signer ?? null} profileEvent={myProfile} currentLud16={myLightningAddress} />
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <div className="space-y-0.5">
