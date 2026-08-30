@@ -2896,7 +2896,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
   // Reader density: "comfortable" (rich cards) vs "compact" (dense inbox list).
   const [density, setDensity] = useRssDensity();
   // Merged-thread sort: unread-first (default) vs pure latest.
-  const [sortMode, setSortMode] = useRssSortMode();
+  const [sortMode] = useRssSortMode();
   // Selected News topic tab (All-feeds view only). "Top" = the full diversified
   // feed; a bucket key filters to that topic. Persisted across reloads.
   const [selectedBucket, setSelectedBucket] = useNewsTopic();
@@ -3931,12 +3931,13 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
 
         {/* Control bar: search + "All feeds" picker + ⋮. Stacked on mobile
             (unchanged); one full-width bar on desktop. */}
-        <div className="mb-4 space-y-2.5">
+        <div className={useMagazine ? "mb-4 flex flex-row items-center gap-2" : "mb-4 space-y-2.5"}>
         {/* Search FIRST (owner redesign 2026-08-30): the app's canonical search
             pill — identical to the Search page — opens the discover-and-add
-            dialog. The old density/layout overflow (⋮) is gone; the two
-            still-useful actions (sort, mark-all) plus the contextual source
-            filter now sit inline in the row below. */}
+            dialog. On desktop the pill (flex-1) and the feed picker share ONE
+            line, search left / picker right; on mobile they stack. The old
+            density/layout overflow (⋮) and the sort toggle are gone; mark-all
+            plus the contextual source filter sit inline beside the picker. */}
         <AddRssFeedDialog
           onAdd={handleAddFeed}
           existingUrls={existingUrls}
@@ -3945,7 +3946,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
           trigger={
             <button
               type="button"
-              className={`${searchPillClass} relative flex items-center pl-10 pr-4 text-muted-foreground/60`}
+              className={`${searchPillClass} relative flex items-center pl-10 pr-4 text-muted-foreground/60 ${useMagazine ? "flex-1 min-w-0 !h-10" : ""}`}
               aria-label="Search news, blogs & podcasts"
               data-testid="button-open-feed-search"
             >
@@ -3955,7 +3956,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
           }
         />
         {/* Filter row: feed picker · sort · mark-all · source · visit-site */}
-        <div className="flex items-center gap-2" data-testid="container-feed-selector-mobile">
+        <div className={`flex items-center gap-2 ${useMagazine ? "shrink-0" : ""}`} data-testid="container-feed-selector-mobile">
           {!isAllMode && (
             <Button
               variant="ghost"
@@ -4171,31 +4172,6 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
               <span className="truncate">{sourceFilter}</span>
               <X className="w-3 h-3 shrink-0" />
             </button>
-          )}
-          {/* Sort (merged "All feeds" view only): unread-first vs latest. */}
-          {isAllMode && (
-            <div className="inline-flex items-center h-10 rounded-full border border-border/40 overflow-hidden shrink-0" role="group" aria-label="Sort articles">
-              <button
-                type="button"
-                onClick={() => setSortMode("unread-first")}
-                aria-pressed={sortMode === "unread-first"}
-                title="Unread first"
-                className={`inline-flex items-center justify-center w-10 h-full transition-colors ${sortMode === "unread-first" ? "bg-brand/15 text-brand" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
-                data-testid="button-sort-unread-first"
-              >
-                <ListStart className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setSortMode("latest")}
-                aria-pressed={sortMode === "latest"}
-                title="Latest first"
-                className={`inline-flex items-center justify-center w-10 h-full border-l border-border/40 transition-colors ${sortMode === "latest" ? "bg-brand/15 text-brand" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
-                data-testid="button-sort-latest"
-              >
-                <Clock className="w-4 h-4" />
-              </button>
-            </div>
           )}
           {/* Mark all read — only when there's something unread to clear. */}
           {(isAllMode ? mergedTotalUnread > 0 : (feedData && visibleUnreadCount > 0)) && (
