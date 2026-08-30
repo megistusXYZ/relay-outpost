@@ -115,8 +115,6 @@ import {
   ImageIcon,
   Pencil,
   Check,
-  Rows3,
-  StretchHorizontal,
   MoreVertical,
   ListStart,
   ListEnd,
@@ -3933,15 +3931,31 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
 
         {/* Control bar: search + "All feeds" picker + ⋮. Stacked on mobile
             (unchanged); one full-width bar on desktop. */}
-        <div className={useMagazine ? "mb-4" : "contents"}>
-        {/* The search HERO that used to sit here was demoted to a compact
-            control inside the slim row below (plan round 2, #14): since the
-            Discover bento, the universal search bar lives one screen up, and
-            two hero-scale search bars a tap apart read as a bug. Same
-            AddRssFeedDialog, same autofocus, same testid — only the trigger
-            shrank. */}
-        {/* Slim control row: feed pill · source chip · search · overflow menu */}
-        <div className={`flex items-center gap-2 ${useMagazine ? "shrink-0" : "mb-2"}`} data-testid="container-feed-selector-mobile">
+        <div className="mb-4 space-y-2.5">
+        {/* Search FIRST (owner redesign 2026-08-30): the app's canonical search
+            pill — identical to the Search page — opens the discover-and-add
+            dialog. The old density/layout overflow (⋮) is gone; the two
+            still-useful actions (sort, mark-all) plus the contextual source
+            filter now sit inline in the row below. */}
+        <AddRssFeedDialog
+          onAdd={handleAddFeed}
+          existingUrls={existingUrls}
+          onOpenFeed={handleSelectFeed}
+          autoFocusSearch
+          trigger={
+            <button
+              type="button"
+              className={`${searchPillClass} relative flex items-center pl-10 pr-4 text-muted-foreground/60`}
+              aria-label="Search news, blogs & podcasts"
+              data-testid="button-open-feed-search"
+            >
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+              <span className="truncate">Search news, blogs &amp; podcasts…</span>
+            </button>
+          }
+        />
+        {/* Filter row: feed picker · sort · mark-all · source · visit-site */}
+        <div className="flex items-center gap-2" data-testid="container-feed-selector-mobile">
           {!isAllMode && (
             <Button
               variant="ghost"
@@ -4158,142 +4172,93 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
               <X className="w-3 h-3 shrink-0" />
             </button>
           )}
-          <AddRssFeedDialog
-            onAdd={handleAddFeed}
-            existingUrls={existingUrls}
-            onOpenFeed={handleSelectFeed}
-            autoFocusSearch
-            trigger={
-              <Button
-                variant="outline"
-                size="icon"
-                className="shrink-0 h-10 w-10"
-                aria-label="Search news, blogs & podcasts"
-                title="Search news, blogs & podcasts"
-                data-testid="button-open-feed-search"
+          {/* Sort (merged "All feeds" view only): unread-first vs latest. */}
+          {isAllMode && (
+            <div className="inline-flex items-center h-10 rounded-full border border-border/40 overflow-hidden shrink-0" role="group" aria-label="Sort articles">
+              <button
+                type="button"
+                onClick={() => setSortMode("unread-first")}
+                aria-pressed={sortMode === "unread-first"}
+                title="Unread first"
+                className={`inline-flex items-center justify-center w-10 h-full transition-colors ${sortMode === "unread-first" ? "bg-brand/15 text-brand" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                data-testid="button-sort-unread-first"
               >
-                <Search className="w-4 h-4" />
-              </Button>
-            }
-          />
-          {/* Overflow: refresh · density · mark-all · source · site — everything
-              that used to crowd the toolbar now lives behind one control. */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="icon" className="shrink-0 h-10 w-10" data-testid="button-feed-overflow" aria-label="Feed options">
-                <MoreVertical className="w-4 h-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="glass-dropdown w-56 rounded-lg p-1">
-              <div className="flex items-center justify-between px-2 py-1">
-                <span className="text-xs text-muted-foreground">Density</span>
-                <div className="inline-flex items-center rounded-md border border-border/40 overflow-hidden" role="group" aria-label="Reader density">
+                <ListStart className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortMode("latest")}
+                aria-pressed={sortMode === "latest"}
+                title="Latest first"
+                className={`inline-flex items-center justify-center w-10 h-full border-l border-border/40 transition-colors ${sortMode === "latest" ? "bg-brand/15 text-brand" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                data-testid="button-sort-latest"
+              >
+                <Clock className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          {/* Mark all read — only when there's something unread to clear. */}
+          {(isAllMode ? mergedTotalUnread > 0 : (feedData && visibleUnreadCount > 0)) && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="shrink-0 h-10 w-10"
+              onClick={() => setMarkAllConfirmOpen(true)}
+              title="Mark all read"
+              aria-label="Mark all read"
+              data-testid="button-mark-all-read"
+            >
+              <Check className="w-4 h-4" />
+            </Button>
+          )}
+          {/* Filter by source — only when a feed aggregates multiple sources. */}
+          {feedAuthors.length > 1 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="icon" className="shrink-0 h-10 w-10" title="Filter by source" aria-label="Filter by source" data-testid="button-source-filter">
+                  <Filter className="w-4 h-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="glass-dropdown w-56 rounded-lg p-1">
+                <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50 px-2 py-1">Filter by source</p>
+                <div className="max-h-48 overflow-y-auto">
                   <button
                     type="button"
-                    onClick={() => setDensity("comfortable")}
-                    aria-pressed={density === "comfortable"}
-                    title="Comfortable"
-                    className={`inline-flex items-center justify-center w-7 h-7 transition-colors ${density === "comfortable" ? "bg-brand/15 text-brand" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
-                    data-testid="button-density-comfortable"
+                    onClick={() => setSourceFilter(null)}
+                    className={`w-full text-left px-2 py-1.5 rounded-md text-[13px] transition-colors ${!sourceFilter ? "text-brand bg-brand/10" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
+                    data-testid="option-source-all"
                   >
-                    <StretchHorizontal className="w-3.5 h-3.5" />
+                    All sources
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setDensity("compact")}
-                    aria-pressed={density === "compact"}
-                    title="Compact"
-                    className={`inline-flex items-center justify-center w-7 h-7 border-l border-border/40 transition-colors ${density === "compact" ? "bg-brand/15 text-brand" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
-                    data-testid="button-density-compact"
-                  >
-                    <Rows3 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-              {/* Sort — only the merged thread is sortable (single source uses the
-                  unread→hero→read editorial split). */}
-              {isAllMode && (
-                <div className="flex items-center justify-between px-2 py-1">
-                  <span className="text-xs text-muted-foreground">Sort</span>
-                  <div className="inline-flex items-center rounded-md border border-border/40 overflow-hidden" role="group" aria-label="Thread sort">
+                  {feedAuthors.map((a) => (
                     <button
+                      key={a}
                       type="button"
-                      onClick={() => setSortMode("unread-first")}
-                      aria-pressed={sortMode === "unread-first"}
-                      title="Unread first"
-                      className={`inline-flex items-center gap-1 px-2 h-7 text-xs transition-colors ${sortMode === "unread-first" ? "bg-brand/15 text-brand" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
-                      data-testid="button-sort-unread-first"
+                      onClick={() => setSourceFilter(a)}
+                      className={`w-full text-left px-2 py-1.5 rounded-md text-[13px] truncate transition-colors ${sourceFilter === a ? "text-brand bg-brand/10" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
+                      data-testid={`option-source-${a}`}
                     >
-                      <ListStart className="w-3.5 h-3.5" />
-                      Unread
+                      {a}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setSortMode("latest")}
-                      aria-pressed={sortMode === "latest"}
-                      title="Latest first"
-                      className={`inline-flex items-center gap-1 px-2 h-7 border-l border-border/40 text-xs transition-colors ${sortMode === "latest" ? "bg-brand/15 text-brand" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
-                      data-testid="button-sort-latest"
-                    >
-                      <Clock className="w-3.5 h-3.5" />
-                      Latest
-                    </button>
-                  </div>
+                  ))}
                 </div>
-              )}
-              {/* Refresh removed — redundant with pull-to-refresh at the top of
-                  the feed. Density/Sort/Mark-all-read remain. */}
-              {(isAllMode ? mergedTotalUnread > 0 : (feedData && visibleUnreadCount > 0)) && (
-                <button
-                  type="button"
-                  onClick={() => setMarkAllConfirmOpen(true)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[13px] text-foreground hover:bg-muted/50 transition-colors"
-                  data-testid="button-mark-all-read"
-                >
-                  <Check className="w-3.5 h-3.5 text-muted-foreground" />
-                  Mark all read
-                </button>
-              )}
-              {!isAllMode && (activeFeed?.siteUrl || feedData?.link) && (
-                <a
-                  href={activeFeed?.siteUrl || feedData!.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[13px] text-foreground hover:bg-muted/50 transition-colors"
-                  data-testid="link-visit-site"
-                >
-                  <Globe className="w-3.5 h-3.5 text-muted-foreground" />
-                  Visit site
-                </a>
-              )}
-              {feedAuthors.length > 1 && (
-                <div className="pt-1 mt-1 border-t border-border/20">
-                  <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50 px-2 py-1">Filter by source</p>
-                  <div className="max-h-48 overflow-y-auto">
-                    <button
-                      type="button"
-                      onClick={() => setSourceFilter(null)}
-                      className={`w-full text-left px-2 py-1 rounded-md text-[13px] transition-colors ${!sourceFilter ? "text-brand bg-brand/10" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
-                      data-testid="option-source-all"
-                    >
-                      All sources
-                    </button>
-                    {feedAuthors.map((a) => (
-                      <button
-                        key={a}
-                        type="button"
-                        onClick={() => setSourceFilter(a)}
-                        className={`w-full text-left px-2 py-1 rounded-md text-[13px] truncate transition-colors ${sourceFilter === a ? "text-brand bg-brand/10" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
-                        data-testid={`option-source-${a}`}
-                      >
-                        {a}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </PopoverContent>
-          </Popover>
+              </PopoverContent>
+            </Popover>
+          )}
+          {/* Visit the feed's own website (single-feed view). */}
+          {!isAllMode && (activeFeed?.siteUrl || feedData?.link) && (
+            <a
+              href={activeFeed?.siteUrl || feedData!.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center shrink-0 h-10 w-10 rounded-md border [border-color:var(--button-outline)] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              title="Visit site"
+              aria-label="Visit site"
+              data-testid="link-visit-site"
+            >
+              <Globe className="w-4 h-4" />
+            </a>
+          )}
         </div>
         </div>
 
