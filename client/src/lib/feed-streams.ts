@@ -83,6 +83,40 @@ export function isFeedStreamEntry(stream: Pick<LiveEventData, "dTag">): boolean 
   return stream.dTag.startsWith(FEED_STREAM_DTAG_PREFIX);
 }
 
+/**
+ * Known channel-poster accounts, unioned with the viewer's follows for the
+ * Channels tab (the "wire-verified starters" pattern). Untagged channel
+ * posts are NOT discoverable network-wide (measured 2026-08-31: NIP-50
+ * search can't match URLs, and these bots tag nothing), so curation is how
+ * the directory reaches beyond the viewer's own graph.
+ */
+export const CHANNEL_SEED_POSTERS: readonly string[] = [
+  // notes@nostrverse.net — IPTV channel directory bot (25 channels, reposted
+  // in batches). npub1eek26qhlhptxku39008vnpdzlalksd5z0sn2s4ynmnscwz260h7q57sxmr,
+  // decoded in full — never hand-complete a truncated hex.
+  "ce6cad02ffb8566b72257bcec985a2ff7f6836827c26a85493dce187095a7dfc",
+];
+
+/**
+ * The Channels directory order: verified-live channels lead, unverified
+ * follow, offline sit last — a channel that goes down REORDERS, never
+ * disappears (they come back; the probe flips them live again). Newest
+ * post first within each band.
+ */
+export function rankChannels(
+  posts: readonly FeedStreamPost[],
+  livenessOf: (url: string) => "verified-live" | "offline" | "unknown",
+): FeedStreamPost[] {
+  const band = (p: FeedStreamPost): number => {
+    const l = livenessOf(p.url);
+    return l === "verified-live" ? 0 : l === "unknown" ? 1 : 2;
+  };
+  return [...posts]
+    .map((p, i) => ({ p, i, b: band(p) }))
+    .sort((a, b) => a.b - b.b || b.p.createdAt - a.p.createdAt || a.i - b.i)
+    .map((x) => x.p);
+}
+
 export function pickFeedStreams(events: readonly Event[]): FeedStreamPost[] {
   const byUrl = new Map<string, FeedStreamPost>();
   for (const e of events) {
