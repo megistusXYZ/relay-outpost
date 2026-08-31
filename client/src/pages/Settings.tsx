@@ -447,17 +447,23 @@ type LaunchOption =
   | { kind: "feed"; value: "open_comms" | "deep_scan" | "raw_signal"; label: string; icon: IconComponent }
   | { kind: "route"; value: string; label: string; icon: IconComponent };
 
+// Kept honest against TODAY'S routes (audited 2026-08-31): /rss is a
+// redirect to /news, the standalone /wallet page is gone (it's the Account
+// wallet tab), Discover is a main tab that was missing entirely, and the
+// nav calls /notifications "Activity" now. Legacy saved values are mapped
+// in the landing-state init below.
 const LAUNCH_OPTIONS: readonly LaunchOption[] = [
+  { kind: "route", value: "/messages", label: "Chats", icon: MessageCircle },
+  { kind: "route", value: "/notifications", label: "Activity", icon: Bell },
+  { kind: "route", value: "/discover", label: "Discover", icon: LayoutGrid },
   { kind: "route", value: "/account", label: "Account", icon: AccountIcon },
-  { kind: "feed", value: "open_comms", label: "Following", icon: MessageSquare },
-  { kind: "feed", value: "raw_signal", label: "For you", icon: Antenna },
-  { kind: "feed", value: "deep_scan", label: "Trending", icon: Radar },
+  { kind: "feed", value: "open_comms", label: "Following feed", icon: MessageSquare },
+  { kind: "feed", value: "raw_signal", label: "For you feed", icon: Antenna },
+  { kind: "feed", value: "deep_scan", label: "Trending feed", icon: Radar },
   { kind: "route", value: "/search", label: "Search", icon: Search },
   { kind: "route", value: "/articles", label: "Articles", icon: BookOpen },
-  { kind: "route", value: "/rss", label: "News", icon: Newspaper },
-  { kind: "route", value: "/wallet", label: "Wallet", icon: Wallet },
-  { kind: "route", value: "/messages", label: "Chats", icon: MessageCircle },
-  { kind: "route", value: "/notifications", label: "Notifications", icon: Bell },
+  { kind: "route", value: "/news", label: "News", icon: Newspaper },
+  { kind: "route", value: "/account?tab=wallet", label: "Wallet", icon: Wallet },
   { kind: "route", value: "/outposts", label: "Communities", icon: Compass },
 ] as const;
 
@@ -475,9 +481,12 @@ function LaunchSection() {
   const [landing, setLanding] = useState<string>(() => {
     try {
       const saved = localStorage.getItem("relay-outpost-default-landing-page");
-      // Legacy stored value from before the own-account page moved to /account
-      // (also arrives via NIP-78 settings sync from other devices).
+      // Legacy stored values from before pages moved (also arrive via NIP-78
+      // settings sync from other devices): own-account → /account, the RSS
+      // reader → /news, the standalone wallet page → the Account wallet tab.
       if (saved === "/outpost") return "/account";
+      if (saved === "/rss") return "/news";
+      if (saved === "/wallet") return "/account?tab=wallet";
       if (saved) return saved;
     } catch {}
     return "/";
@@ -575,6 +584,11 @@ function LaunchSection() {
           </SelectContent>
         </Select>
       </Row>
+
+      {/* Launch behavior, so it lives with the launch preset (owner call,
+          2026-08-31): when this is on, opening the app onto Chats — the
+          default landing — starts masked. Was buried under Safety. */}
+      <PrivateModeRow />
 
       {activeKey === "deep_scan" && (
         <Row icon={Clock} label="Scan filter" sub="Default Trending chart">
@@ -2300,7 +2314,6 @@ export default function Settings() {
             <CategoryGroup id="safety" title="Safety">
               <RowSection testId="section-privacy">
                 <HideMessagePreviewsRow />
-                <PrivateModeRow />
                 <LinkRow
                   href="/shield-matrix"
                   icon={ShieldMatrixIcon}
