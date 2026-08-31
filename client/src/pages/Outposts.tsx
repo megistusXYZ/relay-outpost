@@ -5241,7 +5241,7 @@ function BuzzDirectorySection({ joinedUrls, onOpen }: { joinedUrls: string[]; on
             key={c.slug}
             type="button"
             onClick={() => onOpen(c.relayUrl, c.inviteCode)}
-            className="group/buzz flex items-center gap-3 rounded-xl border border-border/30 bg-card/40 px-3.5 py-3 text-left transition-all hover:border-brand/30 hover:bg-brand/[0.05] min-h-[44px]"
+            className="group/buzz flex items-start gap-3 rounded-xl border border-border/30 bg-card/40 px-3.5 py-3 text-left transition-all hover:border-brand/30 hover:bg-brand/[0.05] min-h-[44px]"
             data-testid={`buzz-community-${c.slug.slice(0, 12)}`}
           >
             {c.avatar ? (
@@ -5256,11 +5256,14 @@ function BuzzDirectorySection({ joinedUrls, onOpen }: { joinedUrls: string[]; on
                 <span className="text-sm font-medium truncate">{c.name}</span>
                 {c.access === "invite" && <span className="shrink-0 rounded-full border border-border/30 px-1.5 text-[9px] uppercase tracking-wider text-muted-foreground/60">Invite</span>}
               </span>
-              <span className="block text-[11px] text-muted-foreground/70 truncate">
+              {/* Two lines, not a one-line ellipsis (owner QA: phones lost
+                  every description mid-sentence). NO `block` here — it would
+                  override line-clamp's -webkit-box display and unclamp. */}
+              <span className="text-[11px] leading-snug text-muted-foreground/70 line-clamp-2">
                 {c.description || (c.access === "public" ? "Open to join" : "Buzz community")}
               </span>
             </span>
-            <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-colors group-hover/buzz:text-brand" />
+            <ArrowUpRight className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-colors group-hover/buzz:text-brand" />
           </button>
         ))}
       </div>
@@ -5694,15 +5697,19 @@ export default function Outposts() {
                 key={c.url}
                 type="button"
                 onClick={() => setLocation(`/outposts/${encodeURIComponent(c.url)}`)}
-                className="group/starter flex items-center gap-3 rounded-xl border border-border/30 bg-card/40 px-3.5 py-3 text-left transition-all hover:border-brand/30 hover:bg-brand/[0.05] min-h-[44px]"
+                className="group/starter flex items-start gap-3 rounded-xl border border-border/30 bg-card/40 px-3.5 py-3 text-left transition-all hover:border-brand/30 hover:bg-brand/[0.05] min-h-[44px]"
                 data-testid={`starter-community-${c.url.replace(/\W+/g, "-")}`}
               >
                 <StarterCommunityIcon url={c.url} name={c.name} />
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium truncate">{c.name}</span>
-                  <span className="block text-[11px] text-muted-foreground/70 truncate">{c.tagline}</span>
+                  {/* Two lines, not a one-line ellipsis: on a phone the old
+                      truncate cut every tagline mid-sentence (owner QA).
+                      NO `block` here — it would override line-clamp's
+                      -webkit-box display and unclamp the text. */}
+                  <span className="text-[11px] leading-snug text-muted-foreground/70 line-clamp-2">{c.tagline}</span>
                 </span>
-                <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-colors group-hover/starter:text-brand" />
+                <ArrowUpRight className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-colors group-hover/starter:text-brand" />
               </button>
             ))}
           </div>
