@@ -3,6 +3,7 @@ import type { NostrEvent } from "nostr-tools";
 import { pool, publishEvent, filterBlockedRelays } from "@/lib/nostr";
 import { signWithTimeout } from "@/lib/signer-timeout";
 import { getOutpostRelays, getActiveDefaultRelays, type OutpostRelay } from "@/lib/outpost-relays";
+import { armPrivateModeIfSet } from "@/lib/private-mode";
 
 const KIND_APP_DATA = 30078;
 const D_TAG = "relay-outpost-settings";
@@ -464,6 +465,10 @@ function applySettingsToLocal(settings: PortableSettings, pubkey: string): void 
         writeSetting(mapping, value);
       }
     }
+    // Settings with live in-memory state need a nudge — writeSetting bypasses
+    // their setters. Private mode is the one that matters: a remote ON must
+    // mask the chat list NOW, not after the next reload.
+    armPrivateModeIfSet();
 
     try {
       if (Array.isArray(settings.outpostRelays) && settings.outpostRelays.length > 0) {

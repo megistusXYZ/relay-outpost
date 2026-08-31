@@ -80,6 +80,18 @@ export function isPrivateMasked(): boolean {
   return masked;
 }
 
+/**
+ * Re-arm after the NIP-78 settings sync writes the key from another device.
+ * The sync bypasses setPrivateModeSetting (it writes localStorage raw), so
+ * without this the in-memory mask stays stale until the next reload or
+ * backgrounding. Deliberately one-directional: a remote ON masks now (the
+ * person asked for privacy somewhere — honor it everywhere); a remote OFF
+ * never force-reveals a list someone masked by hand on THIS device.
+ */
+export function armPrivateModeIfSet(): void {
+  if (getPrivateModeSetting()) applyMasked(true);
+}
+
 export function togglePrivateMasked(): void {
   applyMasked(nextMaskedState("toggle", masked, getPrivateModeSetting()));
 }
