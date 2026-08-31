@@ -139,6 +139,15 @@ describe("pickMarketListings — assembling a browse surface from raw relay even
     );
     expect(out).toHaveLength(0);
   });
+
+  it("muted catalog sellers vanish from shared shelves — but only when the caller opts in", () => {
+    // The mute is a shared-surface curation (catalog floods drowning the
+    // shelf), NOT a network flag: the profile "For sale" rail deliberately
+    // doesn't pass it, so a seller's own page still shows their goods.
+    const events = [ev(A, "flood-1", 100), ev(B, "fine", 200)];
+    expect(pickMarketListings(events, { mutedSellers: new Set([A]) }).map((l) => l.dTag)).toEqual(["fine"]);
+    expect(pickMarketListings(events)).toHaveLength(2);
+  });
 });
 
 describe("rankListingsTrustFirst — vouched sellers float, nobody sinks for missing data", () => {
@@ -178,6 +187,19 @@ describe("shop browsing — categories and search over parsed listings", () => {
     ]);
     expect(cats[0]).toEqual({ tag: "art", count: 2 });
     expect(cats.map((c) => c.tag)).toContain("food");
+  });
+
+  it("client app stamps are not categories — the listing's real product tags still label it", () => {
+    // Measured live 2026-08-31: Shopstr stamps every listing it publishes
+    // with t:"shopstr", which made a marketplace CLIENT the second-biggest
+    // "category" chip. The stamp is excluded from the chip vocabulary; the
+    // listing stays reachable through its actual product tags and search.
+    const cats = rankListingCategories([
+      mk("1", "Tee", [["t", "Shopstr"], ["t", "t-shirts"]]),
+      mk("2", "Sticker", [["t", "shopstr"], ["t", "stickers"]]),
+    ]);
+    expect(cats.map((c) => c.tag)).not.toContain("shopstr");
+    expect(cats.map((c) => c.tag)).toEqual(expect.arrayContaining(["t-shirts", "stickers"]));
   });
 
   it("search matches title, summary, and tags — never case-sensitive", () => {

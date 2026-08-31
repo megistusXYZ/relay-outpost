@@ -72,13 +72,39 @@ export function parseListing(event: Event): Listing | null {
 }
 
 /**
+ * Marketplace CLIENTS stamp their own name as a `t` tag on every listing they
+ * publish (measured live 2026-08-31: Shopstr's stamp was the second-biggest
+ * "category" chip at 400+ listings). An app name is not a product category, so
+ * these are excluded from the chip vocabulary — the listings themselves are
+ * untouched and stay reachable via their real product tags and search.
+ */
+export const CLIENT_STAMP_TAGS: ReadonlySet<string> = new Set(["shopstr"]);
+
+/**
+ * Sellers muted from the SHARED shelves (owner curation, 2026-08-31): catalog
+ * floods — one account bulk-listing 1,300+ near-identical $0.99 stock photos —
+ * drown every real merchant on the browse surfaces. This is curation of OUR
+ * shelf, not a network flag: nothing is published about them, their profile
+ * page still shows their goods, and reporting/flagging stays a separate,
+ * user-driven act.
+ */
+export const CATALOG_MUTED_SELLERS: ReadonlySet<string> = new Set([
+  // TravelTelly (traveltelly@ditto.pub) — stock-photo flood, resolved live 2026-08-31.
+  "7d33ba57d8a6e8869a1f1d5215254597594ac0dbfeb01b690def8c461b82db35",
+]);
+
+/**
  * The shop's category chips, from the vocabulary sellers actually use:
- * lowercased `t` tags ranked by how many listings carry them.
+ * lowercased `t` tags ranked by how many listings carry them. Client app
+ * stamps (see CLIENT_STAMP_TAGS) are not part of the vocabulary.
  */
 export function rankListingCategories(listings: readonly Listing[]): Array<{ tag: string; count: number }> {
   const counts = new Map<string, number>();
   for (const l of listings) {
-    for (const t of new Set(l.tags)) counts.set(t, (counts.get(t) ?? 0) + 1);
+    for (const t of new Set(l.tags)) {
+      if (CLIENT_STAMP_TAGS.has(t)) continue;
+      counts.set(t, (counts.get(t) ?? 0) + 1);
+    }
   }
   return [...counts.entries()]
     .map(([tag, count]) => ({ tag, count }))
@@ -172,6 +198,12 @@ export function pickMarketListings(
      * flag would leave what you just reported on the shelf.
      */
     isReported?: (event: Event) => boolean;
+    /**
+     * Shared-shelf curation (CATALOG_MUTED_SELLERS) — caller-owned so the
+     * profile "For sale" rail can deliberately NOT pass it: a seller's own
+     * page always shows their goods.
+     */
+    mutedSellers?: ReadonlySet<string>;
   },
 ): Listing[] {
   const byAddr = new Map<string, Event>();
@@ -183,7 +215,7 @@ export function pickMarketListings(
     if (!prior || e.created_at > prior.created_at) byAddr.set(key, e);
   }
   return [...byAddr.values()]
-    .filter((e) => !opts?.flagged?.has(e.pubkey) && !opts?.isReported?.(e))
+    .filter((e) => !opts?.flagged?.has(e.pubkey) && !opts?.mutedSellers?.has(e.pubkey) && !opts?.isReported?.(e))
     .map(parseListing)
     .filter((l): l is Listing => l !== null)
     .sort((a, b) => (Number(a.sold) - Number(b.sold)) || (b.publishedAt - a.publishedAt));
