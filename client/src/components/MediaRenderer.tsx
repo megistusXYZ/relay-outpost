@@ -54,6 +54,7 @@ import { supportsNativeHls } from "@/contexts/PiPContext";
 import { needsProxy, proxyUrl, parseLiveEvent } from "@/lib/live-events";
 import type { LiveEventData } from "@/lib/live-events";
 import { useLiveStatus } from "@/contexts/LiveStatusContext";
+import { useStreamLiveness } from "@/hooks/use-stream-liveness";
 import { KIND_LIVE_EVENT } from "@/lib/nostr-helpers";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useReservedRatio } from "@/hooks/use-reserved-ratio";
@@ -577,6 +578,12 @@ function InlineVideo({
     if (!next) el.play().catch(() => {});
   }, [setMutedSafely]);
   const { getLiveStream } = useLiveStatus();
+  // The LIVE chip used to mean "the URL contains .m3u8" — permanent and
+  // unverified, so long-dead streams wore it forever (owner QA 2026-08-31).
+  // Now it means "the server probe confirms this manifest answers right
+  // now": no positive signal, no LIVE claim. Probing is TTL-cached
+  // server-side and only runs for HLS posts.
+  const streamLiveness = useStreamLiveness(isHls ? src : undefined);
 
   const liveStreamLink = useMemo(() => {
     if (!isHls) return null;
@@ -918,9 +925,9 @@ function InlineVideo({
       data-autoplay={autoplayVerdict}
       onClick={(e) => e.stopPropagation()}
     >
-      {isHls && (
+      {isHls && streamLiveness === "verified-live" && (
         <div className="flex items-center gap-1.5 px-2 py-1.5 bg-zinc-950/95 border-b border-white/5">
-          <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-600/90 text-white text-[10px] font-semibold uppercase tracking-wide">
+          <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-600/90 text-white text-[10px] font-semibold uppercase tracking-wide" data-testid="badge-stream-live">
             <Radio className="w-2.5 h-2.5 animate-pulse" />
             LIVE
           </div>

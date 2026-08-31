@@ -12,6 +12,7 @@ import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import type Hls from "hls.js";
 import { loadHls } from "@/lib/load-hls";
 import { needsProxy, proxyUrl } from "@/lib/live-events";
+import { useStreamLiveness } from "@/hooks/use-stream-liveness";
 import { setVideoMuted } from "@/lib/video-prefs";
 
 export interface VideoLightboxAuthorInfo {
@@ -49,6 +50,9 @@ export function VideoLightbox({
   const { enterPiP, isPiP, pipVideoSrc, pipSupported, notifyUnmount } = usePiP();
   const { claimVideo, handoffVideo } = usePersistentMedia();
   const isHls = src.includes(".m3u8");
+  // LIVE only on a verified probe — a .m3u8 URL alone proves nothing
+  // (same honesty rule as the feed's inline chip).
+  const streamLiveness = useStreamLiveness(isHls ? src : undefined);
   const hlsRef = useRef<Hls | null>(null);
   const isThisPiP = isPiP && pipVideoSrc === src;
   const claimedRef = useRef(false);
@@ -462,8 +466,8 @@ export function VideoLightbox({
           )}
         </button>
 
-        {isHls && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-600/90 text-white text-xs font-semibold uppercase tracking-wide">
+        {isHls && streamLiveness === "verified-live" && (
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-600/90 text-white text-xs font-semibold uppercase tracking-wide" data-testid="badge-lightbox-live">
             <Radio className="w-3 h-3 animate-pulse" />
             LIVE
           </div>
