@@ -154,19 +154,30 @@ export function parseLiveEvent(event: Event): LiveEventData | null {
     const now = Math.floor(Date.now() / 1000);
     const eventAge = now - event.created_at;
     const startAge = startsStr ? now - parseInt(startsStr) : eventAge;
+    // min() is what keeps long-running radios alive: platforms republish the
+    // 30311 constantly (participant counts), so eventAge stays minutes even
+    // when the stream started a year ago.
     const age = Math.min(eventAge, startAge);
 
     const hasStreamUrl = !!(streamUrl || hlsUrl);
     const hasTitle = title !== "Untitled Stream";
     const hasParticipantTracking = currentParticipantsStr != null;
+    const endsTs = endsStr ? parseInt(endsStr) : undefined;
 
     if (!hasStreamUrl && !hasTitle && !hasParticipantTracking) {
       status = "ended";
     } else if (!hasStreamUrl && !hasParticipantTracking && age > 2 * 60 * 60) {
       status = "ended";
-    } else if (age > 12 * 60 * 60 && !hasParticipantTracking) {
+    } else if (age > 12 * 60 * 60) {
+      // A liveness claim 12h past its last republish is stale no matter what
+      // it carries — a participants tag used to immortalize these (the count
+      // is only as fresh as the event that carries it), and a dead >24h
+      // branch sat behind this one.
       status = "ended";
-    } else if (age > 24 * 60 * 60 && !hasParticipantTracking) {
+    } else if (endsTs != null && now > endsTs && eventAge > 2 * 60 * 60) {
+      // The declared end passed and nothing has been republished since —
+      // honor `ends` (it was parsed and never consulted). Running over is
+      // normal, so a FRESH republish forgives a passed end.
       status = "ended";
     }
   }
@@ -194,6 +205,30 @@ export function parseLiveEvent(event: Event): LiveEventData | null {
     zapStreamNaddr,
     event,
   };
+}
+
+/** Freshness window for an unverified liveness claim (see isShowableLive). */
+const SHOWABLE_STALE_AGE = 2 * 60 * 60;
+
+/**
+ * The Live tab's single admission rule — previously duplicated verbatim in
+ * the page's filter and its count, with a bug both copies shared: ANY
+ * `current_participants` tag (including "0") bypassed the staleness gate
+ * forever. The probe's positive answer always wins, its negative always
+ * drops, and an unverified claim is only as fresh as its last republish —
+ * a participants count carries no liveness of its own.
+ */
+export function isShowableLive(
+  stream: Pick<LiveEventData, "status" | "starts" | "event">,
+  liveness: "verified-live" | "offline" | "unknown",
+  nowSec: number,
+): boolean {
+  if (stream.status !== "live") return false;
+  if (liveness === "verified-live") return true;
+  if (liveness === "offline") return false;
+  const eventAge = nowSec - stream.event.created_at;
+  const startAge = stream.starts ? nowSec - stream.starts : eventAge;
+  return Math.min(eventAge, startAge) <= SHOWABLE_STALE_AGE;
 }
 
 /**

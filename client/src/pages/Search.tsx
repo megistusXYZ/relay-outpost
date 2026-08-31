@@ -12,6 +12,7 @@ import { searchUsersWithStatus, getLastBrainstormWotScores, fetchTrendingHashtag
 import { discoverByTopic, lookupProfileDirect } from "@/lib/brainstorm-search";
 import { searchArchivesEvents, fetchTopNotes, type ArchivesSortOption, type ArchivesEvent, type TopNoteMetric, type TopNoteRange } from "@/lib/nostr-archives";
 import { getRelaysForPurpose, pool, DEFAULT_RELAYS, fetchProfilesCached, eventStore, publishEvent, verifySignedEventKind } from "@/lib/nostr";
+import { queryAnswered } from "@/lib/relay-reach";
 import { getDisplayName, getAvatarUrl, getProfileContent, formatNpub, shortenNpub, KIND_LIVE_EVENT, KIND_METADATA, KIND_FOLLOW_LIST, LIVE_STREAM_RELAYS } from "@/lib/nostr-helpers";
 import { signWithTimeout } from "@/lib/signer-timeout";
 import { loadFollowBase, cacheFollowEvent } from "@/lib/follow-list";
@@ -2735,31 +2736,47 @@ function LiveTab({ urlQuery, updateUrl }: TabProps) {
   const [query, setQuery] = useState(urlQuery);
   const [liveEvents, setLiveEvents] = useState<LiveEventInfo[]>([]);
   const [loading, setLoading] = useState(true);
-  const loadedRef = useRef(false);
+  // Three outcomes, not two: data, genuinely quiet, or we never got to ask
+  // (RELAY_REACHABILITY.md). This tab used to collapse the third into the
+  // second — a cold-start connection stampede left querySync empty-handed at
+  // its deadline and "No live events" painted over 21 real ones (measured
+  // 2026-08-31 via the app's own pool: warm 42 events / cold 0).
+  const [unreachable, setUnreachable] = useState(false);
+  const [fetchNonce, setFetchNonce] = useState(0);
 
   useEffect(() => {
     setQuery(urlQuery);
   }, [urlQuery]);
 
   useEffect(() => {
-    if (loadedRef.current) return;
-    loadedRef.current = true;
-
+    // An empty cached array is NOT an answer — one slow first fetch used to
+    // cache [] and paint "No live events" for the whole session (the same
+    // fabricated-empty class: only positive results count).
     const cached = getSessionCache<LiveEventInfo[]>("search_discovery_live");
-    if (cached) {
+    if (cached && cached.length > 0 && fetchNonce === 0) {
       setLiveEvents(cached);
       setLoading(false);
       return;
     }
 
+    let cancelled = false;
+    setLoading(true);
+    setUnreachable(false);
     (async () => {
       try {
         const relays = Array.from(new Set([...LIVE_EVENT_RELAYS, ...LIVE_STREAM_RELAYS]));
         const since = Math.floor(Date.now() / 1000) - 60 * 60 * 12;
-        const events = await queryWithTimeout(
-          pool.querySync(relays, { kinds: [KIND_LIVE_EVENT], limit: 400, since }), 8000, []
-        );
-        const parsed = events.map(parseLiveEvent).filter((e): e is LiveEventInfo => e !== null);
+        // queryAnswered settles with whatever arrived AND says whether any
+        // relay actually answered — the generous budget rides out the
+        // page-load connection stampede.
+        const { events, answered } = await queryAnswered(relays, { kinds: [KIND_LIVE_EVENT], limit: 400, since }, 12_000);
+        if (cancelled) return;
+        const parsed = (events as Event[]).map(parseLiveEvent).filter((e): e is LiveEventInfo => e !== null)
+          // Newest edition first BEFORE the first-wins dedupe below — relays
+          // return replaceables in arbitrary order, so without this an older
+          // "live" edition could shadow the newer "ended" one and a finished
+          // stream would keep showing as live here.
+          .sort((a, b) => b.event.created_at - a.event.created_at);
         const seen = new Set<string>();
         const deduped: LiveEventInfo[] = [];
         for (const e of parsed) {
@@ -2776,13 +2793,17 @@ function LiveTab({ urlQuery, updateUrl }: TabProps) {
           return (b.participants ?? 0) - (a.participants ?? 0) || b.event.created_at - a.event.created_at;
         });
         setLiveEvents(sorted);
-        setSessionCache("search_discovery_live", sorted);
+        // Cache only a real answer — see the empty-cache guard above.
+        if (sorted.length > 0) setSessionCache("search_discovery_live", sorted);
+        if (!answered && sorted.length === 0) setUnreachable(true);
       } catch {
+        if (!cancelled) setUnreachable(true);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
-  }, []);
+    return () => { cancelled = true; };
+  }, [fetchNonce]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return liveEvents;
@@ -2808,6 +2829,18 @@ function LiveTab({ urlQuery, updateUrl }: TabProps) {
 
       {loading ? (
         <LoadingState message="Scanning for live broadcasts..." />
+      ) : unreachable && filtered.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 py-16 text-sm text-muted-foreground" data-testid="live-tab-unreachable">
+          Couldn't reach the stream relays — nothing is known about live broadcasts right now.
+          <button
+            type="button"
+            onClick={() => setFetchNonce(n => n + 1)}
+            className="px-4 py-2 rounded-full text-xs font-medium border border-brand/30 text-brand hover:bg-brand/10 transition-colors"
+            data-testid="button-live-tab-retry"
+          >
+            Try again
+          </button>
+        </div>
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={Radio}
