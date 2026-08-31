@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getStreamHost, getStreamHosts, pickStreamSource, hasReplay, streamsOfPerson, isDirectMedia } from "./live-events";
+import { getStreamHost, getStreamHosts, pickStreamSource, hasReplay, streamsOfPerson, isDirectMedia, parseLiveEvent, isShowableLive, type LiveEventData } from "./live-events";
 
 const AUTHOR = "author_platform_pubkey";
 const HOST = "host_streamer_pubkey";
@@ -154,5 +154,73 @@ describe("isDirectMedia (dead play button on YouTube-page recordings)", () => {
     expect(isDirectMedia("https://youtu.be/cD_9xDIt0-Q")).toBe(false);
     expect(isDirectMedia("https://rumble.com/v123-my-show.html")).toBe(false);
     expect(isDirectMedia("https://zap.stream/naddr1xyz")).toBe(false);
+  });
+});
+
+// ── parseLiveEvent status ladder + isShowableLive (the stale-stream fixes,
+//    owner ask 2026-08-31: no stream shown when it is no longer live) ────────
+const NOW = Math.floor(Date.now() / 1000);
+const H = 60 * 60;
+
+function ev30311(tags: string[][], createdAt: number) {
+  return { id: "e".repeat(64), kind: 30311, pubkey: "p".repeat(64), created_at: createdAt, content: "", tags: [["d", "show"], ...tags], sig: "" } as never;
+}
+
+describe("parseLiveEvent — the liveness claim's shelf life", () => {
+  it("an explicit live event republished recently is live (the radio pattern: started long ago, refreshed constantly)", () => {
+    const s = parseLiveEvent(ev30311([
+      ["status", "live"], ["title", "Radio"], ["streaming", "https://x/s.m3u8"],
+      ["starts", String(NOW - 400 * 24 * H)], ["current_participants", "12"],
+    ], NOW - 5 * 60))!;
+    expect(s.status).toBe("live");
+  });
+
+  it("a participants tag does not immortalize a stale claim — 13h without a republish is ended", () => {
+    const s = parseLiveEvent(ev30311([
+      ["status", "live"], ["title", "Old"], ["streaming", "https://x/s.m3u8"],
+      ["starts", String(NOW - 13 * H)], ["current_participants", "3"],
+    ], NOW - 13 * H))!;
+    expect(s.status).toBe("ended");
+  });
+
+  it("a declared end that has passed, with no republish backing the claim, means ended", () => {
+    const s = parseLiveEvent(ev30311([
+      ["status", "live"], ["title", "Show"], ["streaming", "https://x/s.m3u8"],
+      ["ends", String(NOW - 4 * H)], ["current_participants", "0"],
+    ], NOW - 5 * H))!;
+    expect(s.status).toBe("ended");
+  });
+
+  it("a passed end is forgiven while the event keeps being republished (running over is normal)", () => {
+    const s = parseLiveEvent(ev30311([
+      ["status", "live"], ["title", "Overtime"], ["streaming", "https://x/s.m3u8"],
+      ["ends", String(NOW - 1 * H)], ["current_participants", "50"],
+    ], NOW - 10 * 60))!;
+    expect(s.status).toBe("live");
+  });
+});
+
+describe("isShowableLive — the Live tab's single admission rule", () => {
+  const base = (over: Partial<LiveEventData>): LiveEventData => ({
+    id: "id", pubkey: "pk", dTag: "d", title: "T", summary: "", streamUrl: "https://x/s.m3u8",
+    status: "live", hashtags: [], participants: [], relays: [], chatEnabled: true, isZapStream: false,
+    event: { created_at: NOW - 10 * 60 } as never,
+    ...over,
+  });
+
+  it("a verified-live probe answer always admits; offline always drops", () => {
+    const old = base({ event: { created_at: NOW - 40 * H } as never });
+    expect(isShowableLive(old, "verified-live", NOW)).toBe(true);
+    expect(isShowableLive(base({}), "offline", NOW)).toBe(false);
+  });
+
+  it("unknown liveness falls back to freshness — and a participants tag no longer bypasses the gate", () => {
+    const staleWithViewers = base({ currentParticipants: 7, event: { created_at: NOW - 5 * H } as never });
+    expect(isShowableLive(staleWithViewers, "unknown", NOW)).toBe(false);
+    expect(isShowableLive(base({}), "unknown", NOW)).toBe(true);
+  });
+
+  it("only status live is admitted at all", () => {
+    expect(isShowableLive(base({ status: "ended" }), "verified-live", NOW)).toBe(false);
   });
 });

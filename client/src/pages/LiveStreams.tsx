@@ -37,7 +37,7 @@ import { usePiP, supportsNativeHls } from "@/contexts/PiPContext";
 import { useLiveMiniPlayer } from "@/contexts/LiveMiniPlayerContext";
 import Hls from "hls.js";
 import nostrOstrichGif from "@assets/219719339-5eff628c-3470-4cc3-81eb-404f8902de9f_1771392554698.gif";
-import { parseLiveEvent, needsProxy, proxyUrl, getStreamHost, pickStreamSource, hasReplay } from "@/lib/live-events";
+import { parseLiveEvent, needsProxy, proxyUrl, getStreamHost, pickStreamSource, hasReplay, isShowableLive } from "@/lib/live-events";
 import { isAudioSpace, audioSpaceFromUrl } from "@/lib/audio-space";
 import type { LiveEventData } from "@/lib/live-events";
 import { classifyUrl, resolveEmbedId, isEmbedType } from "@/lib/media-utils";
@@ -635,11 +635,21 @@ function StreamPlayerLoader() {
 function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, image, status, expandNaddr }: { url: string; title: string; hlsUrl?: string; isZapStream?: boolean; zapStreamNaddr?: string; mini?: boolean; image?: string; status?: string; expandNaddr?: string }) {
   const [videoLoading, setVideoLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // In-app retry (owner rule: everything accessible through Relay Outpost —
+  // a failed player must offer another try HERE before any external door).
+  // Bumping the nonce re-runs the player effects after the error card
+  // unmounted the <video>.
+  const [retryNonce, setRetryNonce] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const manifestLoadedRef = useRef(false);
   const retriedRef = useRef(false);
-  const isMobile = typeof window !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  // Capability, not user agent: the old /iPhone|iPad|iPod|Android/ sniff
+  // forced the native <video src=m3u8> path on ANDROID too — which has no
+  // native HLS, so Android got a black player and a false "stream ended".
+  // iOS (real native HLS) keeps the native path; everything else that
+  // hls.js supports — Android Chrome included — gets hls.js.
+  const preferNativeHls = supportsNativeHls;
   const { enterPiP, pipSupported, notifyUnmount, isPiP, pipVideoSrc } = usePiP();
 
   const isUrlHls = url.endsWith(".m3u8") || url.includes("m3u8");
@@ -666,7 +676,7 @@ function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, i
     const raw = isUrlHls ? url : hlsUrl || "";
     return /m3u8/i.test(raw);
   }, [url, hlsUrl, isUrlHls]);
-  const useHlsJs = !!directVideoUrl && rawIsManifest && !isMobile && !isIframeEmbed && Hls.isSupported();
+  const useHlsJs = !!directVideoUrl && rawIsManifest && !preferNativeHls && !isIframeEmbed && Hls.isSupported();
 
   const externalUrl = useMemo(() => {
     if (zapStreamNaddr) return `https://zap.stream/${zapStreamNaddr}`;
@@ -757,7 +767,7 @@ function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, i
         video.load();
       }
     };
-  }, [useHlsJs, directVideoUrl]);
+  }, [useHlsJs, directVideoUrl, retryNonce]);
 
   useEffect(() => {
     if (useHlsJs) return;
@@ -773,7 +783,7 @@ function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, i
         }
       } catch {}
     };
-  }, [url, hlsUrl, useHlsJs]);
+  }, [url, hlsUrl, useHlsJs, retryNonce]);
 
 
   const pipSrcForStream = directVideoUrl || url;
@@ -850,22 +860,39 @@ function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, i
         <div className="text-center space-y-3 text-brand/50 dark:text-white/40 px-6">
           <Satellite className="w-12 h-12 mx-auto opacity-40" />
           <p className="text-sm">{error}</p>
+          {/* In-app first: retry re-initializes the player through our own
+              proxy. The external door survives only as a quiet last resort
+              below it — it appears exactly when in-app playback has failed. */}
+          <button
+            type="button"
+            onClick={() => {
+              manifestLoadedRef.current = false;
+              retriedRef.current = false;
+              setError(null);
+              setVideoLoading(true);
+              setRetryNonce(n => n + 1);
+            }}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-medium border border-brand/30 text-brand hover:bg-brand/10 transition-colors"
+            data-testid="button-stream-retry"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Try again
+          </button>
           <a
             href={externalUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-medium border border-brand/30 text-brand hover:bg-brand/10 transition-colors"
+            className="block text-[11px] text-muted-foreground/50 hover:text-muted-foreground underline-offset-2 hover:underline transition-colors"
             data-testid="link-stream-external"
           >
-            <ExternalLink className="w-3.5 h-3.5" />
-            Watch on {isZapStream ? "zap.stream" : "source"}
+            Watch on {isZapStream ? "zap.stream" : "the source"} instead
           </a>
         </div>
       </div>
     );
   }
 
-  if ((isMobile || (directVideoUrl && !Hls.isSupported() && supportsNativeHls)) && directVideoUrl && !isIframeEmbed) {
+  if ((preferNativeHls || (directVideoUrl && !Hls.isSupported())) && directVideoUrl && !isIframeEmbed) {
     return (
       <div className={`space-y-0 ${mini ? "h-full" : ""}`}>
         <div className={`relative ${mini ? "h-full" : "aspect-video"} bg-brand/5 dark:bg-black ${mini ? "rounded-none" : "rounded-t-lg sm:rounded-lg"} overflow-hidden border border-brand/20 dark:border-transparent group/stream`}>
@@ -1642,18 +1669,10 @@ function StreamDetail({ stream }: { stream: LiveEventData }) {
             </div>
           )}
 
-          {stream.streamUrl && (
-            <a
-              href={stream.streamUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[11px] text-brand/50 hover:text-brand/80 transition-colors mt-1"
-              data-testid="link-stream-url"
-            >
-              <ExternalLink className="w-3 h-3" />
-              Open stream in new tab
-            </a>
-          )}
+          {/* The raw-URL "Open stream in new tab" door is gone (owner rule
+              2026-08-31: watching happens through Relay Outpost). The player's
+              error card keeps a quiet external fallback for the one case we
+              genuinely cannot play. */}
         </div>
       )}
 
@@ -2024,7 +2043,11 @@ export default function LiveStreams() {
     setLoading(true);
     const seen = new Map<string, LiveEventData>();
 
-    const sub = throttledPoolSubscribe(LIVE_STREAM_RELAYS, { kinds: [KIND_LIVE_EVENT], limit: 100 }, {
+    // `since` bounds the page the same way LiveStatusContext bounds itself
+    // (its comment records why: a bare `limit` let 34 ended events crowd a
+    // 50-slot page). A week still feeds Past broadcasts their replays.
+    const since = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
+    const sub = throttledPoolSubscribe(LIVE_STREAM_RELAYS, { kinds: [KIND_LIVE_EVENT], limit: 100, since }, {
       onevent(event: Event) {
         const parsed = parseLiveEvent(event);
         if (!parsed) return;
@@ -2149,20 +2172,11 @@ export default function LiveStreams() {
   const filteredStreams = useMemo(() => {
     let list = [...allStreams];
     if (filterTab === "live") {
+      // One admission rule, shared with liveCount below and unit-tested in
+      // lib (the old inline copies let any current_participants tag — even
+      // "0" — bypass the staleness gate forever).
       const now = Math.floor(Date.now() / 1000);
-      const STALE_AGE = 2 * 60 * 60;
-      list = list.filter(s => {
-        if (s.status !== "live") return false;
-        const liveness = getStreamLiveness(s);
-        if (liveness === "verified-live") return true;
-        if (liveness === "offline") return false;
-        if (s.currentParticipants != null) return true;
-        const eventAge = now - s.event.created_at;
-        const startAge = s.starts ? now - s.starts : eventAge;
-        const age = Math.min(eventAge, startAge);
-        if (age > STALE_AGE) return false;
-        return true;
-      });
+      list = list.filter(s => isShowableLive(s, getStreamLiveness(s), now));
     } else {
       // Past broadcasts list only what a viewer can actually WATCH: a
       // declared recording (hasReplay). An ended event without one is a tap
@@ -2217,19 +2231,7 @@ export default function LiveStreams() {
 
   const liveCount = (() => {
     const now = Math.floor(Date.now() / 1000);
-    const STALE_AGE = 2 * 60 * 60;
-    return allStreams.filter(s => {
-      if (s.status !== "live") return false;
-      const liveness = getStreamLiveness(s);
-      if (liveness === "verified-live") return true;
-      if (liveness === "offline") return false;
-      if (s.currentParticipants != null) return true;
-      const eventAge = now - s.event.created_at;
-      const startAge = s.starts ? now - s.starts : eventAge;
-      const age = Math.min(eventAge, startAge);
-      if (age > STALE_AGE) return false;
-      return true;
-    }).length;
+    return allStreams.filter(s => isShowableLive(s, getStreamLiveness(s), now)).length;
   })();
   const plannedCount = streams.filter(s => effectiveStatus(s) === "planned").length;
   const endedCount = streams.filter(s => effectiveStatus(s) === "ended" && hasReplay(s)).length;

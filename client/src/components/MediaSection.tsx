@@ -452,14 +452,16 @@ function LiveStreamCard({ stream }: { stream: LiveEventData }) {
   // media element — that play button opens the page instead of doing nothing.
   const playsInline = playableUrl ? isDirectMedia(playableUrl) : false;
 
-  const zapStreamUrl = useMemo(() => {
+  // In-app home of this stream — Relay Outpost's own /live detail (owner
+  // rule 2026-08-31: watching happens here, not on zap.stream).
+  const liveDetailUrl = useMemo(() => {
     try {
       const naddr = nip19.naddrEncode({
         identifier: stream.dTag,
         pubkey: stream.pubkey,
         kind: 30311,
-        relays: stream.relays.length > 0 ? stream.relays.slice(0, 2) : ["wss://relay.zap.stream"] });
-      return `https://zap.stream/${naddr}`;
+        relays: stream.relays.length > 0 ? stream.relays.slice(0, 2) : [] });
+      return `/live/${naddr}`;
     } catch {
       return null;
     }
@@ -524,7 +526,7 @@ function LiveStreamCard({ stream }: { stream: LiveEventData }) {
                 stopStream();
                 toast({
                   title: "Playback unavailable",
-                  description: zapStreamUrl ? "Try listening on zap.stream instead." : "Recording not available.",
+                  description: liveDetailUrl ? "Try opening it on the Live page." : "Recording not available.",
                   variant: "destructive" });
               }
             });
@@ -540,7 +542,7 @@ function LiveStreamCard({ stream }: { stream: LiveEventData }) {
     } else {
       playDirect();
     }
-  }, [playableUrl, isHls, stopMusic, destroyHls, stopStream, zapStreamUrl, toast]);
+  }, [playableUrl, isHls, stopMusic, destroyHls, stopStream, liveDetailUrl, toast]);
 
   const toggleStream = useCallback(() => {
     if (playing) {
@@ -623,18 +625,12 @@ function LiveStreamCard({ stream }: { stream: LiveEventData }) {
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          {playableUrl && (
+          {playableUrl && (playsInline || !liveDetailUrl ? (
             <button
               className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${ loading ? "text-brand/70" : playing ? "text-red-500 bg-red-500/10" : isLive ? "text-red-500/70 hover:text-red-500 hover:bg-red-500/10" : "text-brand/70 hover:text-brand hover:bg-brand/10" }`}
-              onClick={() => {
-                if (playsInline) {
-                  toggleStream();
-                } else {
-                  window.open(playableUrl, "_blank", "noopener,noreferrer");
-                }
-              }}
+              onClick={toggleStream}
               disabled={loading}
-              title={playsInline ? (playing ? "Stop" : "Play") : "Watch recording"}
+              title={playing ? "Stop" : "Play"}
               data-testid={`button-stream-toggle-${stream.dTag}`}
             >
               {loading ? (
@@ -645,19 +641,30 @@ function LiveStreamCard({ stream }: { stream: LiveEventData }) {
                 <Play className="w-4 h-4" />
               )}
             </button>
-          )}
-          {zapStreamUrl && (
-            <a
-              href={zapStreamUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+          ) : (
+            // A platform-page recording can't feed a media element — this
+            // used to window.open the raw page. It now goes to OUR stream
+            // detail, whose player renders platform pages as in-app iframe
+            // embeds (owner rule: watching happens through Relay Outpost).
+            <Link
+              href={liveDetailUrl}
+              className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${ isLive ? "text-red-500/70 hover:text-red-500 hover:bg-red-500/10" : "text-brand/70 hover:text-brand hover:bg-brand/10" }`}
+              title="Watch on the Live page"
+              data-testid={`button-stream-toggle-${stream.dTag}`}
+            >
+              <Play className="w-4 h-4" />
+            </Link>
+          ))}
+          {liveDetailUrl && (
+            <Link
+              href={liveDetailUrl}
               className={`shrink-0 rounded-full flex items-center justify-center transition-colors ${ playableUrl ? "w-7 h-7 text-muted-foreground/40 hover:text-foreground hover:bg-muted/30" : "w-9 h-9 text-brand/70 hover:text-brand hover:bg-brand/10" }`}
               onClick={(e) => e.stopPropagation()}
-              title="Listen on zap.stream"
-              data-testid={`button-stream-external-${stream.dTag}`}
+              title="Open on the Live page"
+              data-testid={`button-stream-live-page-${stream.dTag}`}
             >
-              <ExternalLink className={playableUrl ? "w-3.5 h-3.5" : "w-4 h-4"} />
-            </a>
+              <Radio className={playableUrl ? "w-3.5 h-3.5" : "w-4 h-4"} />
+            </Link>
           )}
         </div>
       </div>
