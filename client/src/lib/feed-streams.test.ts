@@ -8,7 +8,7 @@
  * health probe's job and stays out of here.
  */
 import { describe, expect, it } from "vitest";
-import { extractStreamUrl, pickFeedStreams, toLiveEventData, isFeedStreamEntry } from "./feed-streams";
+import { extractStreamUrl, pickFeedStreams, toLiveEventData, isFeedStreamEntry, rankChannels } from "./feed-streams";
 
 const PK_A = "a".repeat(64);
 const PK_B = "b".repeat(64);
@@ -68,6 +68,30 @@ describe("pickFeedStreams — assembling the lane from raw notes", () => {
   it("a bare-URL post still gets an honest generic title", () => {
     const out = pickFeedStreams([note("b", PK_A, 100, "https://cdn.x.com/bare.m3u8")]);
     expect(out[0].title).toBe("Live stream");
+  });
+});
+
+describe("rankChannels — the Channels directory order", () => {
+  const posts = pickFeedStreams([
+    note("deadOld", PK_A, 100, "Dead Old https://cdn.x.com/dead-old.m3u8"),
+    note("liveOld", PK_A, 200, "Live Old https://cdn.x.com/live-old.m3u8"),
+    note("unknownNew", PK_B, 300, "Unknown New https://cdn.x.com/unknown.m3u8"),
+    note("liveNew", PK_B, 400, "Live New https://cdn.x.com/live-new.m3u8"),
+    note("deadNew", PK_B, 500, "Dead New https://cdn.x.com/dead-new.m3u8"),
+  ]);
+  const liveness = (url: string) =>
+    url.includes("live-") ? "verified-live" as const : url.includes("dead-") ? "offline" as const : "unknown" as const;
+
+  it("verified channels lead, unknown follow, offline sit last — newest first within each band", () => {
+    const ranked = rankChannels(posts, liveness);
+    expect(ranked.map((p) => p.id.replace(/0+$/, ""))).toEqual([
+      "liveNew", "liveOld", "unknownNew", "deadNew", "deadOld",
+    ]);
+  });
+
+  it("a channel directory keeps its offline rows — going down must reorder, never erase", () => {
+    const ranked = rankChannels(posts, () => "offline");
+    expect(ranked).toHaveLength(posts.length);
   });
 });
 

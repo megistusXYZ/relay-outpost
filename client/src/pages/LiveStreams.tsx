@@ -2,7 +2,9 @@ import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { MissionBriefing, LIVE_STREAMS_BRIEFING } from "@/components/MissionBriefing";
 import { use$ } from "applesauce-react/hooks";
 import { pool, eventStore, fetchProfilesCached, publishEvent, throttledPoolSubscribe, getRelaysForPurpose } from "@/lib/nostr";
-import { pickFeedStreams, toLiveEventData, isFeedStreamEntry, type FeedStreamPost } from "@/lib/feed-streams";
+import { pickFeedStreams, toLiveEventData, isFeedStreamEntry, rankChannels, CHANNEL_SEED_POSTERS, type FeedStreamPost } from "@/lib/feed-streams";
+import { isReportedEvent, isReportedPubkey } from "@/lib/spam-filter";
+import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { getPublishTarget } from "@/lib/outpost-relays";
 import {
   clientTags, KIND_LIVE_EVENT, KIND_LIVE_CHAT, KIND_METADATA, LIVE_STREAM_RELAYS,
@@ -1830,52 +1832,74 @@ function ParticipantBadge({ pubkey, role }: { pubkey: string; role: string }) {
   );
 }
 
-type FilterTab = "live" | "planned" | "ended";
+type FilterTab = "live" | "channels" | "planned" | "ended";
 
 /**
- * Streams people you follow post as plain notes (an IPTV-style channel
- * broadcasts by posting kind-1 notes carrying raw .m3u8 URLs — no kind-30311,
- * so the NIP-53 index never sees them). One bounded querySync, same shape as
- * the news network-shares hook: ≤150 follows, recent window, capped. What
- * comes back is only CANDIDATES — the Live tab admits an entry solely on a
- * verified-live probe answer.
+ * Channels — streams people post as plain notes (an IPTV-style directory bot
+ * posts kind-1 notes carrying raw .m3u8 URLs — no kind-30311, so the NIP-53
+ * index never sees them; measured 2026-08-31: one bot = 258 notes → 25
+ * channels, reposted in batches every ~2 days). A channel post is a DURABLE
+ * POINTER — its age says nothing about liveness (the probe decides that) —
+ * so the window is a month, and dedupe-by-URL keeps the directory tidy.
+ *
+ * Sources, all bounded: the viewer's follows (≤150) ∪ CHANNEL_SEED_POSTERS
+ * (untagged channel posts are NOT discoverable network-wide — NIP-50 can't
+ * match URLs) ∪ a #iptv/#live hashtag lane for posters who do tag.
  */
-const FEED_STREAM_SINCE_MS = 12 * 60 * 60 * 1000;
-const FEED_STREAM_MAX_FOLLOWS = 150;
-const FEED_STREAM_NOTE_LIMIT = 500;
-const FEED_STREAM_QUERY_TIMEOUT_MS = 6000;
-/** Probe budget: newest candidates only, the health endpoint batches 20/req. */
-const FEED_STREAM_MAX_CANDIDATES = 24;
+const CHANNEL_SINCE_MS = 30 * 24 * 60 * 60 * 1000;
+const CHANNEL_MAX_FOLLOWS = 150;
+const CHANNEL_NOTE_LIMIT = 500;
+const CHANNEL_TAG_LIMIT = 100;
+const CHANNEL_QUERY_TIMEOUT_MS = 8000;
+/** Probe budget: newest distinct channels only; the health endpoint batches 20/req. */
+const CHANNEL_MAX_CANDIDATES = 40;
 
-function useFeedStreamNotes(): FeedStreamPost[] {
+function useChannelNotes(): { channels: FeedStreamPost[]; channelsLoading: boolean } {
   const { pubkey, follows } = useNostrAuth();
-  const [posts, setPosts] = useState<FeedStreamPost[]>([]);
+  const { flaggedPubkeys } = useGrapeRankScores();
+  const [channels, setChannels] = useState<FeedStreamPost[]>([]);
+  const [channelsLoading, setChannelsLoading] = useState(true);
   const followsKey = (follows ?? []).length;
 
   useEffect(() => {
-    if (!pubkey || !follows || follows.length === 0) {
-      setPosts([]);
+    if (!pubkey) {
+      setChannels([]);
+      setChannelsLoading(false);
       return;
     }
     let cancelled = false;
-    const authors = follows.slice(0, FEED_STREAM_MAX_FOLLOWS);
-    const since = Math.floor((Date.now() - FEED_STREAM_SINCE_MS) / 1000);
-    (async () => {
-      const events = await Promise.race([
-        pool.querySync(getRelaysForPurpose("notes"), { kinds: [1], authors, since, limit: FEED_STREAM_NOTE_LIMIT }),
-        new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), FEED_STREAM_QUERY_TIMEOUT_MS)),
+    setChannelsLoading(true);
+    const authors = Array.from(new Set([
+      ...CHANNEL_SEED_POSTERS,
+      ...(follows ?? []).slice(0, CHANNEL_MAX_FOLLOWS),
+    ]));
+    const since = Math.floor((Date.now() - CHANNEL_SINCE_MS) / 1000);
+    const relays = getRelaysForPurpose("notes");
+    const withTimeout = (p: Promise<Event[]>) =>
+      Promise.race([
+        p,
+        new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), CHANNEL_QUERY_TIMEOUT_MS)),
       ]).catch(() => [] as Event[]);
+    (async () => {
+      const [authored, tagged] = await Promise.all([
+        withTimeout(pool.querySync(relays, { kinds: [1], authors, since, limit: CHANNEL_NOTE_LIMIT }) as Promise<Event[]>),
+        withTimeout(pool.querySync(relays, { kinds: [1], "#t": ["iptv", "live"], since, limit: CHANNEL_TAG_LIMIT }) as Promise<Event[]>),
+      ]);
       if (cancelled) return;
-      const picked = pickFeedStreams(events as Event[]).slice(0, FEED_STREAM_MAX_CANDIDATES);
+      const safe = [...authored, ...tagged].filter(
+        (e) => !flaggedPubkeys?.has(e.pubkey) && !isReportedPubkey(e.pubkey) && !isReportedEvent(e.id),
+      );
+      const picked = pickFeedStreams(safe).slice(0, CHANNEL_MAX_CANDIDATES);
       if (picked.length > 0) fetchProfilesCached(picked.map((p) => p.pubkey));
-      setPosts(picked);
+      setChannels(picked);
+      setChannelsLoading(false);
     })();
     return () => { cancelled = true; };
     // Refetch when the follow SET changes, not on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pubkey, followsKey]);
 
-  return posts;
+  return { channels, channelsLoading };
 }
 
 /** The poster's byline — its own component so use$ always has a pubkey. */
@@ -1896,6 +1920,40 @@ function FeedStreamByline({ post }: { post: FeedStreamPost }) {
         · {formatDistanceToNow(new Date(post.createdAt * 1000), { addSuffix: true })}
       </span>
     </Link>
+  );
+}
+
+/**
+ * One row of the Channels directory. Offline channels stay listed, DIMMED —
+ * these channels flap all day and the probe flips the badge back in place;
+ * erasing them would make the directory unreadable (owner call 2026-08-31).
+ */
+function ChannelCard({ post, liveness, onOpen }: { post: FeedStreamPost; liveness: StreamLiveness; onOpen: () => void }) {
+  const offline = liveness === "offline";
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`w-full flex items-start justify-between gap-3 rounded-xl border border-border dark:border-white/[0.06] bg-card dark:bg-white/[0.02] px-4 py-3 text-left transition-colors hover:border-brand/30 ${offline ? "opacity-50" : ""}`}
+      data-testid={`channel-card-${post.id.slice(0, 12)}`}
+    >
+      <div className="min-w-0">
+        <p className="text-sm font-medium leading-snug truncate">{post.title}</p>
+        <FeedStreamByline post={post} />
+      </div>
+      <span className="shrink-0 mt-0.5">
+        {liveness === "verified-live" ? (
+          <Badge className="bg-red-600/80 text-white text-[10px] animate-pulse">LIVE</Badge>
+        ) : offline ? (
+          <Badge className="bg-zinc-700/80 text-zinc-300 border-zinc-600/50 gap-1 text-[10px]">
+            <Signal className="w-3 h-3" />
+            Signal Lost
+          </Badge>
+        ) : (
+          <Badge variant="secondary" className="text-[10px] text-muted-foreground/70">Checking…</Badge>
+        )}
+      </span>
+    </button>
   );
 }
 
@@ -1921,7 +1979,7 @@ function FeedStreamPostDetail({ nevent }: { nevent: string }) {
         const targets = [...new Set([...(relays ?? []), ...getRelaysForPurpose("notes")])];
         const events = await Promise.race([
           pool.querySync(targets, { ids: [id] }),
-          new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), FEED_STREAM_QUERY_TIMEOUT_MS)),
+          new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), CHANNEL_QUERY_TIMEOUT_MS)),
         ]);
         if (cancelled) return;
         const picked = pickFeedStreams(events as Event[]);
@@ -2128,16 +2186,16 @@ export default function LiveStreams() {
     return () => { cancelled = true; };
   }, [params.naddr, streams, getLiveStream]);
 
-  // Feed stream posts (kind-1 notes carrying an .m3u8) are CANDIDATES only:
-  // they enter the probe batch here and are admitted to the grid solely on a
-  // verified-live answer below — no positive signal, no card.
-  const feedPosts = useFeedStreamNotes();
+  // Channel posts (kind-1 notes carrying an .m3u8) live in the CHANNELS tab
+  // (owner call 2026-08-31) — a directory, not the NIP-53 Live grid. They
+  // share the probe batch so their badges stay honest and self-refresh.
+  const { channels, channelsLoading } = useChannelNotes();
   const streamUrls = useMemo(() =>
     [
       ...streams.filter(s => s.status === "live").map(s => s.streamUrl || s.hlsUrl),
-      ...feedPosts.map(p => p.url),
+      ...channels.map(p => p.url),
     ],
-    [streams, feedPosts]
+    [streams, channels]
   );
   const livenessMap = useBatchStreamLiveness(streamUrls);
 
@@ -2157,20 +2215,24 @@ export default function LiveStreams() {
     return "ended";
   }, []);
 
-  // Verified feed streams join the grid as synthesized entries; a URL a real
-  // kind-30311 already covers is skipped so the same broadcast never shows
-  // twice. Strictly verified-live — the 2h-freshness grace the 30311s get is
-  // an editorial call about NIP-53 publishers, not about raw URLs in posts.
-  const feedEntries = useMemo(() => {
+  // The Channels directory: dedupe against URLs a real 30311 already covers
+  // (that broadcast has a proper card in Live), then rank by probe state —
+  // verified lead, offline sit last DIMMED rather than vanishing (channels
+  // flap; the probe flips them back live in place).
+  const rankedChannels = useMemo(() => {
     const covered = new Set(streams.map(s => s.streamUrl || s.hlsUrl).filter(Boolean));
-    return feedPosts
-      .filter(p => !covered.has(p.url) && livenessMap.get(p.url) === "verified-live")
-      .map(toLiveEventData);
-  }, [feedPosts, streams, livenessMap]);
-  const allStreams = useMemo(() => [...streams, ...feedEntries], [streams, feedEntries]);
+    return rankChannels(
+      channels.filter(p => !covered.has(p.url)),
+      (url) => livenessMap.get(url) || "unknown",
+    );
+  }, [channels, streams, livenessMap]);
+  const liveChannelCount = useMemo(
+    () => rankedChannels.filter(p => livenessMap.get(p.url) === "verified-live").length,
+    [rankedChannels, livenessMap],
+  );
 
   const filteredStreams = useMemo(() => {
-    let list = [...allStreams];
+    let list = [...streams];
     if (filterTab === "live") {
       // One admission rule, shared with liveCount below and unit-tested in
       // lib (the old inline copies let any current_participants tag — even
@@ -2211,7 +2273,7 @@ export default function LiveStreams() {
       return b.event.created_at - a.event.created_at;
     });
     return list;
-  }, [allStreams, filterTab, getStreamLiveness]);
+  }, [streams, filterTab, getStreamLiveness]);
 
   // /live/post/<nevent> — a feed stream post's in-app player (registered
   // before /live/:naddr in App.tsx so the segment is never read as an naddr).
@@ -2231,13 +2293,16 @@ export default function LiveStreams() {
 
   const liveCount = (() => {
     const now = Math.floor(Date.now() / 1000);
-    return allStreams.filter(s => isShowableLive(s, getStreamLiveness(s), now)).length;
+    return streams.filter(s => isShowableLive(s, getStreamLiveness(s), now)).length;
   })();
   const plannedCount = streams.filter(s => effectiveStatus(s) === "planned").length;
   const endedCount = streams.filter(s => effectiveStatus(s) === "ended" && hasReplay(s)).length;
 
   const tabs: { key: FilterTab; label: string; shortLabel: string; count: number }[] = [
     { key: "live", label: "Live", shortLabel: "Live", count: liveCount },
+    // Channels = the posted-stream directory; the count is channels the
+    // probe verified live RIGHT NOW, not directory size.
+    { key: "channels", label: "Channels", shortLabel: "Channels", count: liveChannelCount },
     { key: "planned", label: "Upcoming", shortLabel: "Upcoming", count: plannedCount },
     // "Past broadcasts" wrapped to two lines at 375px and broke the tab row's
     // baseline — phones get the short word, sm+ keeps the full label.
@@ -2284,7 +2349,33 @@ export default function LiveStreams() {
         ))}
       </div>
 
-      {loading ? (
+      {filterTab === "channels" ? (
+        channelsLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <RelayOutpostInlineLoader />
+          </div>
+        ) : rankedChannels.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/30 space-y-3">
+            <Radio className="w-12 h-12 opacity-30" />
+            <p className="text-sm">No channels yet</p>
+            <p className="text-xs text-muted-foreground/50 max-w-sm text-center">
+              Channels are live streams people post as notes. Follow someone who
+              shares them and their lineup appears here.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2 max-w-2xl" data-testid="channels-directory">
+            {rankedChannels.map(post => (
+              <ChannelCard
+                key={post.url}
+                post={post}
+                liveness={livenessMap.get(post.url) || "unknown"}
+                onOpen={() => selectStream(toLiveEventData(post))}
+              />
+            ))}
+          </div>
+        )
+      ) : loading ? (
         <div className="flex items-center justify-center py-20">
           <RelayOutpostInlineLoader />
         </div>
