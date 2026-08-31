@@ -98,14 +98,26 @@ export const CHANNEL_SEED_POSTERS: readonly string[] = [
 ];
 
 /**
+ * How long an UNWATCHABLE (offline/unknown) entry keeps its dimmed row.
+ * Durable channels never hit this: their posters repost the lineup every
+ * couple of days, so a flapping TV channel's post is always fresh. What
+ * ages out is the one-shot session stream (measured 2026-08-31: a personal
+ * streamer's 27 dead streamstr URLs over 3 weeks) — a dead 3-week-old
+ * session is noise, not a channel.
+ */
+const CHANNEL_UNWATCHABLE_MAX_AGE_S = 72 * 60 * 60;
+
+/**
  * The Channels directory order: verified-live channels lead, unverified
  * follow, offline sit last — a channel that goes down REORDERS, never
  * disappears (they come back; the probe flips them live again). Newest
- * post first within each band.
+ * post first within each band. Verified-live entries stay no matter how
+ * old their post is; unwatchable ones age out (see above).
  */
 export function rankChannels(
   posts: readonly FeedStreamPost[],
   livenessOf: (url: string) => "verified-live" | "offline" | "unknown",
+  nowSec: number = Math.floor(Date.now() / 1000),
 ): FeedStreamPost[] {
   const band = (p: FeedStreamPost): number => {
     const l = livenessOf(p.url);
@@ -113,6 +125,7 @@ export function rankChannels(
   };
   return [...posts]
     .map((p, i) => ({ p, i, b: band(p) }))
+    .filter((x) => x.b === 0 || nowSec - x.p.createdAt <= CHANNEL_UNWATCHABLE_MAX_AGE_S)
     .sort((a, b) => a.b - b.b || b.p.createdAt - a.p.createdAt || a.i - b.i)
     .map((x) => x.p);
 }

@@ -82,16 +82,40 @@ describe("rankChannels — the Channels directory order", () => {
   const liveness = (url: string) =>
     url.includes("live-") ? "verified-live" as const : url.includes("dead-") ? "offline" as const : "unknown" as const;
 
+  // Fixture timestamps are seconds 100–500, so "now" = 600 keeps every post
+  // inside the unwatchable-freshness window; the aging rule has its own test.
+  const NOW = 600;
+
   it("verified channels lead, unknown follow, offline sit last — newest first within each band", () => {
-    const ranked = rankChannels(posts, liveness);
+    const ranked = rankChannels(posts, liveness, NOW);
     expect(ranked.map((p) => p.id.replace(/0+$/, ""))).toEqual([
       "liveNew", "liveOld", "unknownNew", "deadNew", "deadOld",
     ]);
   });
 
-  it("a channel directory keeps its offline rows — going down must reorder, never erase", () => {
-    const ranked = rankChannels(posts, () => "offline");
+  it("a channel directory keeps its FRESH offline rows — going down must reorder, never erase", () => {
+    const ranked = rankChannels(posts, () => "offline", NOW);
     expect(ranked).toHaveLength(posts.length);
+  });
+
+  // Durable channels vs one-shot session streams (measured 2026-08-31: a
+  // personal streamer posts a FRESH streamstr URL per broadcast — 27 dead
+  // sessions over 3 weeks — while the TV-channel bot reposts its lineup
+  // every ~2 days). An unwatchable entry earns its dimmed row only while
+  // its post is fresh; a durable channel's repost cadence keeps it fresh
+  // by itself.
+  it("dead one-shot sessions age out; a LIVE stream stays no matter how old its post is", () => {
+    const now = 1_000_000;
+    const fresh = now - 60 * 60;             // 1h ago
+    const stale = now - 5 * 24 * 60 * 60;    // 5d ago
+    const aged = pickFeedStreams([
+      note("liveAncient", PK_A, now - 20 * 24 * 3600, "Live Ancient https://cdn.x.com/live-a.m3u8"),
+      note("deadFresh", PK_A, fresh, "Dead Fresh https://cdn.x.com/dead-f.m3u8"),
+      note("deadStale", PK_B, stale, "Dead Stale https://cdn.x.com/dead-s.m3u8"),
+      note("unknownStale", PK_B, stale, "Unknown Stale https://cdn.x.com/unk-s.m3u8"),
+    ]);
+    const ranked = rankChannels(aged, liveness, now);
+    expect(ranked.map((p) => p.id.replace(/0+$/, ""))).toEqual(["liveAncient", "deadFresh"]);
   });
 });
 
