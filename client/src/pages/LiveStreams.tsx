@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { MissionBriefing, LIVE_STREAMS_BRIEFING } from "@/components/MissionBriefing";
 import { use$ } from "applesauce-react/hooks";
-import { pool, eventStore, fetchProfilesCached, publishEvent, throttledPoolSubscribe } from "@/lib/nostr";
+import { pool, eventStore, fetchProfilesCached, publishEvent, throttledPoolSubscribe, getRelaysForPurpose } from "@/lib/nostr";
+import { pickFeedStreams, toLiveEventData, isFeedStreamEntry, type FeedStreamPost } from "@/lib/feed-streams";
 import { getPublishTarget } from "@/lib/outpost-relays";
 import {
   clientTags, KIND_LIVE_EVENT, KIND_LIVE_CHAT, KIND_METADATA, LIVE_STREAM_RELAYS,
@@ -42,7 +43,7 @@ import type { LiveEventData } from "@/lib/live-events";
 import { classifyUrl, resolveEmbedId, isEmbedType } from "@/lib/media-utils";
 import { InlineEmbedPlayer } from "@/components/InlineEmbedPlayer";
 import { copyNostrId } from "@/lib/clipboard-bridge";
-import { useBatchStreamLiveness, type StreamLiveness } from "@/hooks/use-stream-liveness";
+import { useBatchStreamLiveness, useStreamLiveness, type StreamLiveness } from "@/hooks/use-stream-liveness";
 
 function buildATag(event: Event): string | null {
   const dTag = event.tags.find(t => t[0] === "d")?.[1];
@@ -1812,9 +1813,155 @@ function ParticipantBadge({ pubkey, role }: { pubkey: string; role: string }) {
 
 type FilterTab = "live" | "planned" | "ended";
 
+/**
+ * Streams people you follow post as plain notes (an IPTV-style channel
+ * broadcasts by posting kind-1 notes carrying raw .m3u8 URLs — no kind-30311,
+ * so the NIP-53 index never sees them). One bounded querySync, same shape as
+ * the news network-shares hook: ≤150 follows, recent window, capped. What
+ * comes back is only CANDIDATES — the Live tab admits an entry solely on a
+ * verified-live probe answer.
+ */
+const FEED_STREAM_SINCE_MS = 12 * 60 * 60 * 1000;
+const FEED_STREAM_MAX_FOLLOWS = 150;
+const FEED_STREAM_NOTE_LIMIT = 500;
+const FEED_STREAM_QUERY_TIMEOUT_MS = 6000;
+/** Probe budget: newest candidates only, the health endpoint batches 20/req. */
+const FEED_STREAM_MAX_CANDIDATES = 24;
+
+function useFeedStreamNotes(): FeedStreamPost[] {
+  const { pubkey, follows } = useNostrAuth();
+  const [posts, setPosts] = useState<FeedStreamPost[]>([]);
+  const followsKey = (follows ?? []).length;
+
+  useEffect(() => {
+    if (!pubkey || !follows || follows.length === 0) {
+      setPosts([]);
+      return;
+    }
+    let cancelled = false;
+    const authors = follows.slice(0, FEED_STREAM_MAX_FOLLOWS);
+    const since = Math.floor((Date.now() - FEED_STREAM_SINCE_MS) / 1000);
+    (async () => {
+      const events = await Promise.race([
+        pool.querySync(getRelaysForPurpose("notes"), { kinds: [1], authors, since, limit: FEED_STREAM_NOTE_LIMIT }),
+        new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), FEED_STREAM_QUERY_TIMEOUT_MS)),
+      ]).catch(() => [] as Event[]);
+      if (cancelled) return;
+      const picked = pickFeedStreams(events as Event[]).slice(0, FEED_STREAM_MAX_CANDIDATES);
+      if (picked.length > 0) fetchProfilesCached(picked.map((p) => p.pubkey));
+      setPosts(picked);
+    })();
+    return () => { cancelled = true; };
+    // Refetch when the follow SET changes, not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pubkey, followsKey]);
+
+  return posts;
+}
+
+/** The poster's byline — its own component so use$ always has a pubkey. */
+function FeedStreamByline({ post }: { post: FeedStreamPost }) {
+  const profile = use$(() => eventStore.replaceable(KIND_METADATA, post.pubkey), [post.pubkey]);
+  const displayName = profile ? getDisplayName(profile) : shortenNpub(formatNpub(post.pubkey));
+  const avatarUrl = profile ? getAvatarUrl(profile) : undefined;
+  let posterNpub: string;
+  try { posterNpub = nip19.npubEncode(post.pubkey); } catch { posterNpub = post.pubkey; }
+  return (
+    <Link href={`/profile/${posterNpub}`} className="mt-1.5 flex items-center gap-2 group/host w-fit" data-testid="feed-stream-host">
+      <Avatar className="w-6 h-6 border border-border/40">
+        <AvatarImage src={avatarUrl} alt={displayName} />
+        <AvatarFallback className="text-[9px] font-semibold bg-brand/10 text-brand">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+      </Avatar>
+      <span className="text-xs text-muted-foreground group-hover/host:text-foreground transition-colors truncate">{displayName}</span>
+      <span className="text-[11px] text-muted-foreground/50 shrink-0">
+        · {formatDistanceToNow(new Date(post.createdAt * 1000), { addSuffix: true })}
+      </span>
+    </Link>
+  );
+}
+
+/**
+ * /live/post/<nevent> — the in-app home of a feed stream post. Deliberately
+ * NOT StreamDetail: that component's chat/zap machinery needs a real NIP-53
+ * coordinate, and a fabricated one would post chat into the void. This is
+ * the player, the poster's byline, and an honest liveness badge.
+ */
+function FeedStreamPostDetail({ nevent }: { nevent: string }) {
+  const [post, setPost] = useState<FeedStreamPost | null>(null);
+  const [missing, setMissing] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPost(null);
+    setMissing(false);
+    (async () => {
+      try {
+        const dec = nip19.decode(nevent);
+        if (dec.type !== "nevent") throw new Error("not an nevent");
+        const { id, relays } = dec.data;
+        const targets = [...new Set([...(relays ?? []), ...getRelaysForPurpose("notes")])];
+        const events = await Promise.race([
+          pool.querySync(targets, { ids: [id] }),
+          new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), FEED_STREAM_QUERY_TIMEOUT_MS)),
+        ]);
+        if (cancelled) return;
+        const picked = pickFeedStreams(events as Event[]);
+        if (picked.length > 0) {
+          fetchProfilesCached([picked[0].pubkey]);
+          setPost(picked[0]);
+        } else {
+          setMissing(true);
+        }
+      } catch {
+        if (!cancelled) setMissing(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [nevent]);
+
+  const liveness = useStreamLiveness(post?.url);
+
+  if (missing) {
+    return (
+      <div className="px-3 sm:px-6 lg:px-8 py-4 sm:py-6" data-testid="feed-stream-missing">
+        <div className="flex flex-col items-center justify-center py-20 gap-3 text-sm text-muted-foreground">
+          This stream post couldn't be found — it may have been deleted.
+          <Link href="/live" className="text-brand hover:underline text-xs font-medium">Back to Live Streams</Link>
+        </div>
+      </div>
+    );
+  }
+  if (!post) {
+    return (
+      <div className="flex items-center justify-center py-20" data-testid="feed-stream-loading">
+        <RelayOutpostInlineLoader />
+      </div>
+    );
+  }
+  return (
+    <div className="px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 max-w-4xl mx-auto" data-testid="feed-stream-detail">
+      <StreamPlayer url={post.url} title={post.title} status={liveness === "verified-live" ? "live" : undefined} />
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h1 className="text-base font-semibold leading-snug" data-testid="feed-stream-title">{post.title}</h1>
+            {liveness === "verified-live" && (
+              <Badge className="bg-red-600/80 text-white text-[10px] animate-pulse shrink-0">LIVE</Badge>
+            )}
+            {liveness === "offline" && (
+              <Badge className="bg-zinc-700/80 text-zinc-300 border-zinc-600/50 text-[10px] shrink-0">Signal Lost</Badge>
+            )}
+          </div>
+          <FeedStreamByline post={post} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LiveStreams() {
   useDocumentTitle("Live Streams | Relay Outpost");
-  const params = useParams<{ naddr?: string }>();
+  const params = useParams<{ naddr?: string; nevent?: string }>();
   const { getLiveStream } = useLiveStatus();
   const [streams, setStreams] = useState<LiveEventData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1834,6 +1981,15 @@ export default function LiveStreams() {
 
   const [, navigate] = useLocation();
   const selectStream = useCallback((stream: LiveEventData) => {
+    // A feed stream post has no kind-30311 behind it — encoding its
+    // synthetic coordinate as an naddr would mint a shareable URL to an
+    // event that does not exist. Its detail lives at /live/post/<nevent>.
+    if (isFeedStreamEntry(stream)) {
+      try {
+        navigate(`/live/post/${nip19.neventEncode({ id: stream.id })}`);
+        return;
+      } catch { /* malformed id — fall through to the naddr path */ }
+    }
     // From the LIST page a selection is a NAVIGATION: the detail gets a real
     // URL — shareable, and the chrome back appears. (/live is a top-level
     // route with no back of its own; an in-place switch left the viewer with
@@ -1949,9 +2105,16 @@ export default function LiveStreams() {
     return () => { cancelled = true; };
   }, [params.naddr, streams, getLiveStream]);
 
+  // Feed stream posts (kind-1 notes carrying an .m3u8) are CANDIDATES only:
+  // they enter the probe batch here and are admitted to the grid solely on a
+  // verified-live answer below — no positive signal, no card.
+  const feedPosts = useFeedStreamNotes();
   const streamUrls = useMemo(() =>
-    streams.filter(s => s.status === "live").map(s => s.streamUrl || s.hlsUrl),
-    [streams]
+    [
+      ...streams.filter(s => s.status === "live").map(s => s.streamUrl || s.hlsUrl),
+      ...feedPosts.map(p => p.url),
+    ],
+    [streams, feedPosts]
   );
   const livenessMap = useBatchStreamLiveness(streamUrls);
 
@@ -1971,8 +2134,20 @@ export default function LiveStreams() {
     return "ended";
   }, []);
 
+  // Verified feed streams join the grid as synthesized entries; a URL a real
+  // kind-30311 already covers is skipped so the same broadcast never shows
+  // twice. Strictly verified-live — the 2h-freshness grace the 30311s get is
+  // an editorial call about NIP-53 publishers, not about raw URLs in posts.
+  const feedEntries = useMemo(() => {
+    const covered = new Set(streams.map(s => s.streamUrl || s.hlsUrl).filter(Boolean));
+    return feedPosts
+      .filter(p => !covered.has(p.url) && livenessMap.get(p.url) === "verified-live")
+      .map(toLiveEventData);
+  }, [feedPosts, streams, livenessMap]);
+  const allStreams = useMemo(() => [...streams, ...feedEntries], [streams, feedEntries]);
+
   const filteredStreams = useMemo(() => {
-    let list = [...streams];
+    let list = [...allStreams];
     if (filterTab === "live") {
       const now = Math.floor(Date.now() / 1000);
       const STALE_AGE = 2 * 60 * 60;
@@ -2022,7 +2197,13 @@ export default function LiveStreams() {
       return b.event.created_at - a.event.created_at;
     });
     return list;
-  }, [streams, filterTab, getStreamLiveness]);
+  }, [allStreams, filterTab, getStreamLiveness]);
+
+  // /live/post/<nevent> — a feed stream post's in-app player (registered
+  // before /live/:naddr in App.tsx so the segment is never read as an naddr).
+  if (params.nevent) {
+    return <FeedStreamPostDetail nevent={params.nevent} />;
+  }
 
   if (selectedStream) {
     return (
@@ -2037,7 +2218,7 @@ export default function LiveStreams() {
   const liveCount = (() => {
     const now = Math.floor(Date.now() / 1000);
     const STALE_AGE = 2 * 60 * 60;
-    return streams.filter(s => {
+    return allStreams.filter(s => {
       if (s.status !== "live") return false;
       const liveness = getStreamLiveness(s);
       if (liveness === "verified-live") return true;

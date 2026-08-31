@@ -443,6 +443,10 @@ function Router() {
         <Route path="/outpost">{() => <RouteRedirect to={`/account${window.location.search}${window.location.hash}`} />}</Route>
         <Route path="/calendar" component={ContentCalendar} />
         <Route path="/community/:naddr" component={Community} />
+        {/* Feed stream posts (kind-1 notes carrying an .m3u8) get their own
+            in-app detail — registered BEFORE /live/:naddr so "post/…" is
+            never parsed as an naddr. */}
+        <Route path="/live/post/:nevent" component={LiveStreams} />
         <Route path="/live/:naddr" component={LiveStreams} />
         {/* The streams page, restored (owner request 2026-08-15): the list view
             inside LiveStreams was the old /live page and never left — it only
