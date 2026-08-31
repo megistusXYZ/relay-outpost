@@ -27,7 +27,7 @@ import { computeEngagementScore } from "@/lib/engagement";
 import { getFirstSeen } from "@/lib/account-age";
 import { ensureLanguageDetector, getPreferredLanguages, languageAllowed } from "@/lib/language";
 import { getContentWarning } from "@/lib/sensitive-content";
-import { pickMarketListings, formatListingPrice, KIND_CLASSIFIED_LISTING, LISTING_RELAYS } from "@/lib/listing";
+import { pickMarketListings, formatListingPrice, CATALOG_MUTED_SELLERS, KIND_CLASSIFIED_LISTING, LISTING_RELAYS } from "@/lib/listing";
 import { rankDiscoverFeed } from "@/lib/discover-rank";
 import { isPromoBait, preferFollowed } from "@/lib/discover-curation";
 import { rankTopics, pickNextUpcoming, pickImageShelf, isSensitiveMedia, type RankedTopic, type ShelfImage } from "@/lib/discover-tiles";
@@ -504,6 +504,7 @@ async function fetchMarketShelfFresh(): Promise<Reached<MarketTeaser[] | null>> 
   // (ImagesShelf precedent) — image-bearing, unsold, front-door-safe.
   const teasers = pickMarketListings(events.filter((e) => !isSensitiveMedia(e)), {
     isReported: (e) => isReportedEvent(e.id) || isReportedPubkey(e.pubkey),
+    mutedSellers: CATALOG_MUTED_SELLERS,
   })
     .filter((l) => !l.sold && l.images.length > 0)
     .slice(0, 6)

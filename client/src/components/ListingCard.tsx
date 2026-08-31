@@ -184,33 +184,37 @@ export function ListingDialog({ listing, open, onOpenChange }: { listing: Listin
               )}
               <span>{new Date(listing.publishedAt * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span>
             </div>
-            <div className="flex items-center gap-3 pt-1 border-t border-border/40">
-              <Link href={`/profile/${seller.npub}`} className="flex items-center gap-2.5 min-w-0 flex-1 pt-3 pb-1" data-testid="listing-seller">
-                <Avatar className="w-8 h-8 border border-border/40">
+            {/* Seller + actions, STACKED: identity gets the full width (the
+                one-row version truncated names to nothing and wrapped the
+                trust badge into the buttons on phones), then the actions
+                share an even row beneath. */}
+            <div className="pt-3 border-t border-border/40 space-y-3">
+              <Link href={`/profile/${seller.npub}`} className="flex items-center gap-2.5 min-w-0" data-testid="listing-seller">
+                <Avatar className="w-8 h-8 border border-border/40 shrink-0">
                   <AvatarImage src={seller.avatarUrl} alt={seller.name} />
                   <AvatarFallback className="bg-brand/10 text-brand text-[10px] font-semibold">{seller.name.slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{seller.name}</p>
-                  <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground min-w-0">
                     Seller
                     {sellerFlagged ? (
-                      <span className="inline-flex items-center gap-1 text-destructive font-medium" data-testid="listing-seller-flagged">
-                        <ShieldAlert className="w-3 h-3" /> Flagged in your network
+                      <span className="inline-flex items-center gap-1 text-destructive font-medium whitespace-nowrap truncate" data-testid="listing-seller-flagged">
+                        <ShieldAlert className="w-3 h-3 shrink-0" /> Flagged in your network
                       </span>
                     ) : (sellerTier === "strong" || sellerTier === "moderate") ? (
-                      <span className="inline-flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400" data-testid="listing-seller-trust">
-                        <span className={`w-1.5 h-1.5 rounded-full ${sellerTier === "strong" ? "bg-emerald-500" : "bg-sky-500"}`} />
+                      <span className="inline-flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400 whitespace-nowrap" data-testid="listing-seller-trust">
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${sellerTier === "strong" ? "bg-emerald-500" : "bg-sky-500"}`} />
                         {getSignalTierLabel(sellerTier)}
                       </span>
                     ) : null}
                   </p>
                 </div>
               </Link>
-              <div className="flex items-center gap-2 mt-2 shrink-0">
+              <div className="flex items-center gap-2">
                 <Link
                   href={`/messages/${seller.npub}`}
-                  className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full border border-border/60 text-xs font-semibold text-foreground hover:bg-muted/50 transition-colors"
+                  className="inline-flex items-center justify-center gap-1.5 h-9 flex-1 rounded-full border border-border/60 text-xs font-semibold text-foreground hover:bg-muted/50 transition-colors"
                   data-testid="listing-message-seller"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
@@ -221,7 +225,7 @@ export function ListingDialog({ listing, open, onOpenChange }: { listing: Listin
                     href={web.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity"
+                    className="inline-flex items-center justify-center gap-1.5 h-9 flex-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity whitespace-nowrap"
                     data-testid="listing-buy-link"
                   >
                     {web.via === "conduit" ? "Buy on Conduit" : "View listing"}
