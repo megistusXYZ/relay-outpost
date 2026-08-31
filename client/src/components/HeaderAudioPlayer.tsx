@@ -49,6 +49,7 @@ import { resolveWavlakeArtistPubkey, ensureWavlakeMapLoaded } from "@/lib/music"
 import { useLocation } from "wouter";
 import { nip19 } from "nostr-tools";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { isIOSDevice } from "@/lib/is-ios";
 import { registerAudioSource, unregisterAudioSource } from "@/lib/audio-coordinator";
 import { useSyncExternalStore } from "react";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
@@ -718,23 +719,34 @@ function ExpandedMusicPanel({
 
         <div className="flex items-center justify-between pt-2 md:pt-1.5 border-t border-border/15 dark:border-brand/10">
           <div className="flex items-center gap-2 flex-1 max-w-[160px] md:max-w-[140px]">
-            <button className="shrink-0 w-9 h-9 md:w-auto md:h-auto flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground transition-colors" onClick={toggleMute}>
+            <button className="shrink-0 w-9 h-9 md:w-auto md:h-auto flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground transition-colors" onClick={toggleMute} aria-label={muted || volume === 0 ? "Unmute" : "Mute"} data-testid="button-audio-mute">
               {muted || volume === 0 ? <VolumeX className="w-4 h-4 md:w-3.5 md:h-3.5" /> : <Volume2 className="w-4 h-4 md:w-3.5 md:h-3.5" />}
             </button>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={muted ? 0 : volume}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value);
-                setVolume(v);
-                if (v > 0 && muted) setMuted(false);
-              }}
-              className="w-full h-1 accent-primary cursor-pointer"
-              style={{ fontSize: 16 }}
-            />
+            {/* iOS silently ignores audio.volume (hardware buttons own
+                loudness there), so the slider would move without doing
+                anything — hide it and keep mute, which iOS does honor.
+                Elsewhere: the input needs a REAL hit box. h-1 made the
+                whole control a 4px strip (the native thumb only renders
+                bigger), which is why "the volume slider doesn't work" —
+                the track stays thin; only the touchable area grows. */}
+            {!isIOSDevice() && (
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={muted ? 0 : volume}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  setVolume(v);
+                  if (v > 0 && muted) setMuted(false);
+                }}
+                aria-label="Volume"
+                className="w-full h-11 md:h-5 accent-primary cursor-pointer"
+                style={{ fontSize: 16 }}
+                data-testid="input-audio-volume"
+              />
+            )}
           </div>
           <div className="flex items-center gap-1 md:gap-0.5 shrink-0">
             <div className="relative">
@@ -1110,6 +1122,11 @@ export function HeaderAudioPlayer() {
     const el = dropdownRef.current;
     if (!el || !isMobile) return;
     if (el.scrollTop > 0) return;
+    // A drag that starts on a slider is adjusting the slider, never
+    // dismissing the sheet — the finger's small vertical jitter must not
+    // tug the sheet mid-adjust (same target.closest guard as the chat
+    // list's touch-reveal).
+    if ((e.target as HTMLElement).closest?.('input[type="range"]')) return;
     sheetStartY.current = e.touches[0].clientY;
     sheetDragY.current = 0;
     sheetDragging.current = true;
