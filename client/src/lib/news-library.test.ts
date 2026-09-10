@@ -11,7 +11,7 @@
  * and a podcast category. What a source IS decides its lane.
  */
 import { describe, expect, it } from "vitest";
-import { LEGACY_STARTER_URLS_V1, STARTER_URLS_V2, deriveLibrary, laneFeeds, laneOf, migrateNewsLibrary, removeFromLibrary } from "./news-library";
+import { LEGACY_STARTER_URLS_V1, STARTER_URLS_V2, deriveLibrary, laneFeeds, laneOf, migrateNewsLibrary, removeFromLibrary, restoreSource, sourceSections, starterStatus } from "./news-library";
 import { ALL_NEWS_FEEDS, ALL_PODCAST_FEEDS, type SavedFeed } from "./rss-feeds";
 
 describe("laneOf — which lane a source belongs in", () => {
@@ -30,6 +30,82 @@ describe("laneOf — which lane a source belongs in", () => {
     const outlet = ALL_NEWS_FEEDS[0];
     expect(laneFeeds([blog, show, outlet], "news").map((f) => f.url)).toEqual([blog.url, outlet.url]);
     expect(laneFeeds([blog, show, outlet], "listen").map((f) => f.url)).toEqual([show.url]);
+  });
+});
+
+/**
+ * The starter is a suggestion, not a choice made for you: while nobody has
+ * shaped the library, News says so in one quiet line with Keep and Edit.
+ * Removing a suggestion is still editing the suggestions, so the line stays
+ * until you keep them or add a source of your own.
+ */
+describe("starterStatus — the starter stays a suggestion until you settle it", () => {
+  it("is suggested while nothing was added, even after removing one of the suggestions", () => {
+    expect(starterStatus({ custom: [], hidden: new Set() }, { kept: false })).toBe("suggested");
+    expect(starterStatus({ custom: [], hidden: new Set(["https://fortune.com/feed/"]) }, { kept: false })).toBe("suggested");
+  });
+
+  it("is settled once you keep the suggestions, add a source of your own, or remove every suggestion", () => {
+    const blog: SavedFeed = { name: "A blog I like", url: "https://example.com/feed.xml", category: "Custom" };
+    expect(starterStatus({ custom: [], hidden: new Set() }, { kept: true })).toBe("settled");
+    expect(starterStatus({ custom: [blog], hidden: new Set() }, { kept: false })).toBe("settled");
+    expect(starterStatus({ custom: [], hidden: new Set(STARTER_URLS_V2) }, { kept: false })).toBe("settled");
+  });
+
+  it("is settled for a library someone shaped before the new starter came in", () => {
+    const shaped = migrateNewsLibrary({ custom: [], hidden: new Set(["https://feeds.feedburner.com/zerohedge/feed"]) });
+    expect(starterStatus(shaped, { kept: false })).toBe("settled");
+  });
+});
+
+/**
+ * The Sources drawer says plainly what each source is: the suggestions you
+ * haven't decided on yet, your news sources, and the shows you follow.
+ */
+describe("sourceSections — Suggested, News and Shows", () => {
+  const blog: SavedFeed = { name: "A blog I like", url: "https://example.com/feed.xml", category: "Custom" };
+  const show = ALL_PODCAST_FEEDS[0];
+  const urls = (feeds: SavedFeed[]) => feeds.map((f) => f.url);
+
+  it("lists the starter as suggestions, apart from the sources and shows you added", () => {
+    const stored = { custom: [blog, show], hidden: new Set<string>() };
+    const sections = sourceSections(stored, "suggested");
+    expect(urls(sections.suggested)).toEqual(urls(deriveLibrary(STARTER_URLS_V2, { custom: [], hidden: new Set() })));
+    expect(urls(sections.news)).toEqual([blog.url]);
+    expect(urls(sections.shows)).toEqual([show.url]);
+  });
+
+  it("files the starter under your news sources once you keep it", () => {
+    const sections = sourceSections({ custom: [blog], hidden: new Set<string>() }, "settled");
+    expect(sections.suggested).toEqual([]);
+    // The library as the reader sees it: the starter in catalogue order, then the blog.
+    expect(urls(sections.news)).toEqual(urls(deriveLibrary(STARTER_URLS_V2, { custom: [blog], hidden: new Set() })));
+  });
+});
+
+/**
+ * Removing a source shows an Undo. Undo brings back that one source as it was
+ * (a suggestion, or a source you added with the name you gave it) and nothing
+ * else: a source you removed after it stays removed.
+ */
+describe("restoreSource — Undo brings back one source, exactly as it was", () => {
+  const urls = (feeds: SavedFeed[]) => feeds.map((f) => f.url);
+
+  it("brings back a removed suggestion without undoing a later removal", () => {
+    const fortune = "https://fortune.com/feed/";
+    const nasa = "https://www.nasa.gov/news-release/feed/";
+    const start = { custom: [], hidden: new Set<string>() };
+    const afterBoth = removeFromLibrary(removeFromLibrary(start, fortune), nasa);
+    const library = urls(deriveLibrary(STARTER_URLS_V2, restoreSource(afterBoth, start, fortune)));
+    expect(library).toContain(fortune);
+    expect(library).not.toContain(nasa);
+  });
+
+  it("brings back a source you added, with the name you gave it", () => {
+    const blog: SavedFeed = { name: "A blog I like", url: "https://example.com/feed.xml", category: "Custom" };
+    const before = { custom: [blog], hidden: new Set<string>() };
+    const undone = restoreSource(removeFromLibrary(before, blog.url), before, blog.url);
+    expect(deriveLibrary(STARTER_URLS_V2, undone).find((f) => f.url === blog.url)?.name).toBe("A blog I like");
   });
 });
 

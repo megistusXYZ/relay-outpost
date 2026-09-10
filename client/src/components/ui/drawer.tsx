@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Drawer as DrawerPrimitive } from "vaul"
 import { withBackClose } from "@/hooks/use-back-closable"
+import { ignoreToastInteraction } from "@/components/ui/toast"
 
 import { cn } from "@/lib/utils"
 
@@ -42,7 +43,7 @@ DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName
 const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+>(({ className, children, onPointerDownOutside, onInteractOutside, ...props }, ref) => (
   <DrawerPortal>
     <DrawerOverlay />
     <DrawerPrimitive.Content
@@ -52,6 +53,9 @@ const DrawerContent = React.forwardRef<
         className
       )}
       {...props}
+      // A tap on a toast raised from this drawer (an Undo) isn't "outside".
+      onPointerDownOutside={ignoreToastInteraction(onPointerDownOutside)}
+      onInteractOutside={ignoreToastInteraction(onInteractOutside)}
     >
       <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
       {children}
