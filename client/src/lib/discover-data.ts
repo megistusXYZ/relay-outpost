@@ -33,7 +33,8 @@ import { isPromoBait, preferFollowed } from "@/lib/discover-curation";
 import { rankTopics, pickNextUpcoming, pickImageShelf, isSensitiveMedia, type RankedTopic, type ShelfImage } from "@/lib/discover-tiles";
 import { getEventMediaInfo } from "@/lib/media-utils";
 import { parseCalendarEvent, KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT, type CalendarEventData } from "@/lib/calendar-events";
-import { NEWS_STARTER_FEEDS, NEWS_FRONT_PAGE_URLS, PODCAST_FEED_URLS, loadHiddenDefaults, type SavedFeed } from "@/lib/rss-feeds";
+import type { SavedFeed } from "@/lib/rss-feeds";
+import { laneFeeds, loadLibraryFeeds } from "@/lib/news-library";
 import { fetchCommunityActivity } from "@/lib/community-activity";
 import { normalizeUrl } from "@/lib/pinned-feeds";
 
@@ -133,17 +134,14 @@ export function feedSnippet(content: string, max = 140): string {
 
 // ── News (pure set-builder; the fetching is react-query in the page) ─────────
 /**
- * The feed set the News hero queries: the audited front-page flagships, minus
- * anything the user hid, minus podcasts — the hero slot is a headline, not an
- * episode. Bounded (~6-8) on purpose: /api/rss shares a 120 req/min/IP budget
- * with the News page itself.
+ * The feed set the News hero queries: the news sources in your News library,
+ * in your order, never a podcast (the hero slot is a headline, not an
+ * episode). It follows the library, not the starter: a library carried over
+ * from the old starter hides the new one (lib/news-library.ts). Bounded to 8
+ * on purpose: /api/rss shares a 120 req/min/IP budget with the News page.
  */
-export function discoverNewsFeeds(
-  hidden: Set<string> = loadHiddenDefaults(),
-): SavedFeed[] {
-  return NEWS_STARTER_FEEDS.filter(
-    (f) => NEWS_FRONT_PAGE_URLS.has(f.url) && !hidden.has(f.url) && !PODCAST_FEED_URLS.has(f.url),
-  );
+export function discoverNewsFeeds(library: SavedFeed[] = loadLibraryFeeds()): SavedFeed[] {
+  return laneFeeds(library, "news").slice(0, 8);
 }
 
 // ── Articles ─────────────────────────────────────────────────────────────────

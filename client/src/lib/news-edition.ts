@@ -9,12 +9,15 @@
 
 import type { MergedItem, MergeableItem } from "./rss-merge";
 
-export const NEWS_EDITION_KEY = "ro_news_edition_v1";
+// Version 2 (2026-09): editions remembered before the News starter change hold
+// stories from sources the reader may no longer have (the old starter and its
+// podcasts), so they are never painted.
+export const NEWS_EDITION_KEY = "ro_news_edition_v2";
 /** Cap the snapshot so localStorage stays small (a few hundred KB at most). */
 export const NEWS_EDITION_CAP = 120;
 
 interface StoredEdition {
-  v: 1;
+  v: 2;
   ts: number;
   items: MergedItem[];
 }
@@ -53,7 +56,7 @@ function slimItem<T extends MergeableItem>(m: MergedItem<T>): MergedItem<T> {
 export function packEdition(items: MergedItem[], now: number, cap = NEWS_EDITION_CAP): string | null {
   const slim = (items ?? []).filter(isRenderable).slice(0, cap).map(slimItem);
   if (slim.length === 0) return null;
-  const payload: StoredEdition = { v: 1, ts: now, items: slim };
+  const payload: StoredEdition = { v: 2, ts: now, items: slim };
   return JSON.stringify(payload);
 }
 
@@ -64,11 +67,21 @@ export function unpackEdition(raw: string | null | undefined): MergedItem[] {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as StoredEdition;
-    if (!parsed || parsed.v !== 1 || !Array.isArray(parsed.items)) return [];
+    if (!parsed || parsed.v !== 2 || !Array.isArray(parsed.items)) return [];
     return parsed.items.filter(isRenderable);
   } catch {
     return [];
   }
+}
+
+/** Only the remembered stories whose source is still one of `sourceUrls` (your
+ *  News lane): a source you removed must not linger from the snapshot, which
+ *  is merged under the live stream for the whole visit. */
+export function editionForSources<T extends MergeableItem>(
+  items: MergedItem<T>[],
+  sourceUrls: ReadonlySet<string>,
+): MergedItem<T>[] {
+  return items.filter((m) => sourceUrls.has(m.source?.url));
 }
 
 /** Overlay the remembered edition UNDER the live items: live wins (it's fresher),

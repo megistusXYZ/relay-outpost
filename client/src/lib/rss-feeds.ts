@@ -1,5 +1,3 @@
-import { categoryToBucket } from "./news-categories";
-
 export interface SavedFeed {
   name: string;
   url: string;
@@ -84,8 +82,9 @@ const NEWS_DEFAULT_FEEDS: SavedFeed[] = [
   // driven by the item's audioUrl (RSSFeed.tsx `isPodcast = !!item.audioUrl`), NOT
   // by the category string, so these render/play as podcasts under any category
   // name. Resolved + fetch-verified via iTunes Search (collectionName / feedUrl /
-  // artworkUrl600 / trackViewUrl). The ~2 flagships per category (see STARTER_URLS)
-  // auto-load for a new user; the rest stay one tap away in discovery (EXTRA).
+  // artworkUrl600 / trackViewUrl). All of them stay one tap away in discovery
+  // (EXTRA); since 2026-09 none auto-load (News is your own sources, and the
+  // shows you follow belong in the Listen lane).
   // The "Sports" and "Nostr" names intentionally reuse the existing news categories
   // (those already carried podcasts); the other ten are new, Top-only categories.
 const PODCAST_DEFAULT_FEEDS: SavedFeed[] = [
@@ -200,99 +199,41 @@ export const ALL_PODCAST_FEEDS: SavedFeed[] = PODCAST_DEFAULT_FEEDS;
  *  show apart from a news feed (e.g. for the podcast-showcase shelf). */
 export const PODCAST_FEED_URLS: ReadonlySet<string> = new Set(PODCAST_DEFAULT_FEEDS.map((f) => f.url));
 
-// The flagships a brand-new user auto-loads on day one. NEWS: one strong pick per major
-// category, plus one Bitcoin blog. PODCASTS: ~2 flagships per podcast category (a
-// deliberately "moderate" auto-subscribe — the rest of the podcast library stays one tap
-// away in discovery / EXTRA).
-//
-// News selection criterion (2026-07 audit): every news starter must render RICH in-app —
-// full-copy article text in the feed itself (content:encoded, not a teaser) plus
-// inline images. The big-wire feeds (BBC/NPR/CNBC/MarketWatch/PBS/SciAm/CBS
-// Sports/Variety/Guardian) all ship <400-char teasers that force a click-out, so
-// they were demoted to discovery. Measured through our own /api/rss:
-// ProPublica 22k chars · NASA 42k · Colossal 13k · Intercept 11k · Fortune 9k ·
-// ZeroHedge 7k · 404 Media 4k · Free Press 2k — all with images.
-// Podcast flagships are picked by reach/activity within each category (~2 each).
-const STARTER_URLS = new Set<string>([
-  "https://theintercept.com/feed/?rss", // The Intercept (World) — full text + images
-  "https://www.thefp.com/feed", // The Free Press (US & Breaking) — creator-led, full text
-  "https://feeds.propublica.org/propublica/main", // ProPublica (Politics) — 22k-char investigations
-  "https://fortune.com/feed/", // Fortune (Business & Finance) — full text
-  "https://feeds.feedburner.com/zerohedge/feed", // ZeroHedge (Markets) — full text
-  "https://www.theverge.com/rss/index.xml", // The Verge (Technology) — hero images
-  "https://www.404media.co/rss/", // 404 Media (Technology) — journalist-owned, full text
-  "https://frontofficesports.com/feed/", // Front Office Sports (Sports)
-  "https://www.thisiscolossal.com/feed/", // Colossal (Entertainment & Culture) — visual, full text
-  "https://www.theatlantic.com/feed/all/", // The Atlantic (Longform) — full text
-  "https://bitcoinmagazine.com/feed", // Bitcoin Magazine
-  // ── Podcast flagships (~2 per category) — the "moderate" auto-subscribe set ──
-  "https://feeds.megaphone.fm/GLT1412515089", // The Joe Rogan Experience (Interviews & Ideas)
-  "https://lexfridman.com/feed/podcast/", // Lex Fridman Podcast (Interviews & Ideas)
-  "https://feeds.simplecast.com/hNaFxXpO", // SmartLess (Comedy)
-  "https://feeds.megaphone.fm/thispastweekend", // This Past Weekend w/ Theo Von (Comedy)
-  "https://feeds.megaphone.fm/ESP7297553965", // The Pat McAfee Show (Sports)
-  "https://rss.art19.com/new-heights", // New Heights with Jason & Travis Kelce (Sports)
-  "https://anchor.fm/s/558f520/podcast/rss", // TFTC: A Bitcoin Podcast (Bitcoin & Crypto)
-  "https://feeds.fountain.fm/UZSKQcrOnhqYS1JopxGg", // What Bitcoin Did (Bitcoin & Crypto)
-  "https://feeds.fountain.fm/xRzQd3loNa0ItnvWXcOz", // Plebchain Radio (Nostr)
-  "https://feeds.fountain.fm/0EAzqUaM4qqanDr1qNuK", // Rabbit Hole Recap (Nostr)
-  "https://serve.podhome.fm/rss/c90e609a-df1e-596a-bd5e-57bcc8aad6cc", // Citadel Dispatch (Nostr)
-  "https://feeds.megaphone.fm/HS2300184645", // My First Million (Business & Investing)
-  "https://rss.libsyn.com/shows/254861/destinations/1928300.xml", // All-In (Business & Investing)
-  "https://podcast.darknetdiaries.com", // Darknet Diaries (Science & Tech)
-  "https://feeds.simplecast.com/6HKOhNgS", // Hard Fork (Science & Tech)
-  "https://feeds.megaphone.fm/hubermanlab", // Huberman Lab (Health & Longevity)
-  "https://rss.libsyn.com/shows/121729/destinations/713489.xml", // The Peter Attia Drive (Health & Longevity)
-  "https://feeds.transistor.fm/mindfulness-meditation-podcast", // Mindfulness Meditation Podcast (Mind & Wellness)
-  "https://feed.podbean.com/AbrahamHicksInsight/feed.xml", // Abraham Hicks (Mind & Wellness)
-  "https://feeds.npr.org/510318/podcast.xml", // Up First from NPR (News & Commentary)
-  "https://feeds.simplecast.com/54nAGcIl", // The Daily (News & Commentary)
-  "https://feeds.simplecast.com/qm_9xx0g", // Crime Junkie (True Crime & Curiosity)
-  "https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/a91018a4-ea4f-4130-bf55-ae270180c327/44710ecc-10bb-48d1-93c7-ae270180c33e/podcast.rss", // Stuff You Should Know (True Crime & Curiosity)
-  "https://feeds.simplecast.com/BqbsxVfO", // 99% Invisible (Culture & Creativity)
-  "http://feeds.feedburner.com/themothpodcast", // The Moth (Culture & Creativity)
+// The pre-2026-09 starter (11 news outlets chosen for full-text feeds, plus 25
+// podcasts) is frozen verbatim as LEGACY_STARTER_URLS_V1 in lib/news-library.ts,
+// which carries libraries shaped under it over to the new starter below.
+
+/**
+ * The News starter from 2026-09 on: 8 broad outlets, no podcasts (owner's call,
+ * after "forced with our agenda and presets"). A mix of headline wires (BBC,
+ * NPR, The Guardian: teaser feeds, the reader links out) and outlets whose
+ * feeds carry the full article (The Verge, The Atlantic, Fortune, NASA, Front
+ * Office Sports). Every URL is already in NEWS_DEFAULT_FEEDS. Libraries shaped
+ * under the old starter are carried over by lib/news-library.ts.
+ */
+export const STARTER_URLS_V2: ReadonlySet<string> = new Set<string>([
+  "https://feeds.bbci.co.uk/news/world/rss.xml", // BBC World
+  "https://feeds.npr.org/1001/rss.xml", // NPR News
+  "https://www.theguardian.com/world/rss", // The Guardian World
+  "https://www.theverge.com/rss/index.xml", // The Verge
+  "https://www.theatlantic.com/feed/all/", // The Atlantic
+  "https://fortune.com/feed/", // Fortune
+  "https://www.nasa.gov/news-release/feed/", // NASA
+  "https://frontofficesports.com/feed/", // Front Office Sports
 ]);
 
 /** Feeds auto-loaded for a brand-new user (the calm starter set). */
-export const DEFAULT_FEEDS: SavedFeed[] = ALL_DEFAULT_FEEDS.filter((f) => STARTER_URLS.has(f.url));
+export const DEFAULT_FEEDS: SavedFeed[] = ALL_DEFAULT_FEEDS.filter((f) => STARTER_URLS_V2.has(f.url));
 
 /** The QUALITY news flagships only (starter news — each audited to render RICH:
  *  full-copy text + images, never a teaser). This is the news half of the merged
  *  "All feeds" firehose — deliberately NOT the full library, so the demoted
  *  teaser feeds (Variety, NPR World, Rolling Stone, CBS Sports, Guardian World…)
  *  never surface there. Paired with ALL_PODCAST_FEEDS for the mix. */
-export const NEWS_STARTER_FEEDS: SavedFeed[] = NEWS_DEFAULT_FEEDS.filter((f) => STARTER_URLS.has(f.url));
+export const NEWS_STARTER_FEEDS: SavedFeed[] = NEWS_DEFAULT_FEEDS.filter((f) => STARTER_URLS_V2.has(f.url));
 
 /** The remaining curated feeds — not auto-loaded, but offered in discovery (Popular). */
-export const EXTRA_DEFAULT_FEEDS: SavedFeed[] = ALL_DEFAULT_FEEDS.filter((f) => !STARTER_URLS.has(f.url));
-
-/**
- * The News "front page": the small curated set fetched on FIRST paint of the
- * All-feeds view (News-perf Phase 2). It deliberately includes:
- *  - one marquee news feed per topic bucket that actually appears — so every
- *    topic tab (News/Business/Tech/Sports) renders immediately (tabs only show
- *    for buckets that already have ≥1 article, so the front page must seed each),
- *  - a few more news flagships for a full "Top" first screen,
- *  - the top flagship podcasts so the Popular-podcasts shelf populates at once.
- * The rest of the ~90-feed library (long-tail news + the other ~70 podcasts)
- * backfills on idle, and tapping a topic tab primes that bucket's feeds early.
- * Built from the existing starter sets so it can't reference a stale URL.
- */
-export const NEWS_FRONT_PAGE_URLS: ReadonlySet<string> = (() => {
-  const urls = new Set<string>();
-  // 1 marquee feed per appearing bucket → guarantees each topic tab shows.
-  const seenBucket = new Set<string>();
-  for (const f of NEWS_STARTER_FEEDS) {
-    const b = categoryToBucket(f.category);
-    if (b && !seenBucket.has(b)) { seenBucket.add(b); urls.add(f.url); }
-  }
-  // A few more news flagships for a fuller Top on first paint.
-  for (const f of NEWS_STARTER_FEEDS.slice(0, 6)) urls.add(f.url);
-  // Flagship podcasts so the shelf populates immediately.
-  const podcastFlagships = PODCAST_DEFAULT_FEEDS.filter((f) => STARTER_URLS.has(f.url));
-  for (const f of podcastFlagships.slice(0, 4)) urls.add(f.url);
-  return urls;
-})();
+export const EXTRA_DEFAULT_FEEDS: SavedFeed[] = ALL_DEFAULT_FEEDS.filter((f) => !STARTER_URLS_V2.has(f.url));
 
 /** URLs of every curated preset (news + podcast) — lets the All view tell a
  *  user's OWN custom subscription apart from an auto-loaded default. */

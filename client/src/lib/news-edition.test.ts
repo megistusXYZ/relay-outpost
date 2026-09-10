@@ -4,6 +4,7 @@ import {
   unpackEdition,
   mergeEditions,
   editionItemKey,
+  editionForSources,
   NEWS_EDITION_CAP,
 } from "./news-edition";
 import type { MergedItem } from "./rss-merge";
@@ -33,8 +34,17 @@ describe("packEdition / unpackEdition", () => {
   it("never throws on malformed / missing / wrong-version input", () => {
     expect(unpackEdition(null)).toEqual([]);
     expect(unpackEdition("not json")).toEqual([]);
-    expect(unpackEdition(JSON.stringify({ v: 2, items: [mk("a")] }))).toEqual([]);
-    expect(unpackEdition(JSON.stringify({ v: 1, items: "nope" }))).toEqual([]);
+    expect(unpackEdition(JSON.stringify({ v: 3, items: [mk("a")] }))).toEqual([]);
+    expect(unpackEdition(JSON.stringify({ v: 2, items: "nope" }))).toEqual([]);
+  });
+
+  /**
+   * An edition remembered before the 2026-09 News starter change holds stories
+   * from the old starter (ZeroHedge, podcasts…). Painting it first would flash
+   * sources the reader no longer has, so version 1 is never shown.
+   */
+  it("ignores an edition saved before the new starter (version 1)", () => {
+    expect(unpackEdition(JSON.stringify({ v: 1, ts: 1, items: [mk("a")] }))).toEqual([]);
   });
 
   it("strips the heavy article body so the snapshot stays small", () => {
@@ -50,8 +60,17 @@ describe("packEdition / unpackEdition", () => {
   });
 
   it("drops items without a source url on the way back in", () => {
-    const raw = JSON.stringify({ v: 1, ts: 1, items: [mk("a"), { item: { id: "b" }, source: {} }] });
+    const raw = JSON.stringify({ v: 2, ts: 1, items: [mk("a"), { item: { id: "b" }, source: {} }] });
     expect(unpackEdition(raw).map((m) => (m.item as any).id)).toEqual(["a"]);
+  });
+});
+
+describe("editionForSources — the remembered edition only shows sources you still have", () => {
+  it("drops remembered stories from a source that is no longer in your News lane", () => {
+    const verge = "https://www.theverge.com/rss/index.xml";
+    const kept = mk("a", verge);
+    const gone = mk("b", "https://feeds.feedburner.com/zerohedge/feed");
+    expect(editionForSources([kept, gone], new Set([verge])).map((m) => (m.item as any).id)).toEqual(["a"]);
   });
 });
 
