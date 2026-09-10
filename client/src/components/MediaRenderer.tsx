@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
 import { Link } from "wouter";
@@ -45,7 +45,7 @@ import { MusicLinkCard } from "@/components/MusicLinkCard";
 import { AudioSpaceCard } from "@/components/AudioSpaceCard";
 import { audioSpaceFromUrl } from "@/lib/audio-space";
 import { RadioStationCard } from "@/components/RadioStationCard";
-import { radioStationFromUrl } from "@/lib/radio-station";
+import { pageStationToShow, radioStationFromUrl } from "@/lib/radio-station";
 import { WavlakeInlinePlayer } from "@/components/WavlakeInlinePlayer";
 import { InlineAudio } from "@/components/InlineAudio";
 import { extractZapSplits } from "@/lib/music";
@@ -1185,6 +1185,18 @@ interface LinkPreviewCardProps {
   displayedImageUrls?: Set<string>;
   hideImage?: boolean;
   isVideo?: boolean;
+  /**
+   * Stations (public player page URLs) the post links directly. A linked page
+   * that turns out to carry one of these stays a plain link card, so the post
+   * never shows the same Listen card twice.
+   */
+  linkedStations?: Set<string>;
+  /**
+   * The post's earlier links whose previews also come from the page (in post
+   * order). A station found on this page shows only if none of them led to
+   * it first. Their previews are the same cached queries, so no extra fetch.
+   */
+  earlierLinks?: string[];
 }
 
 /**
@@ -1219,6 +1231,8 @@ function OgLinkPreviewCard({
   displayedImageUrls,
   hideImage = false,
   isVideo = false,
+  linkedStations,
+  earlierLinks,
 }: LinkPreviewCardProps) {
   const [thumbFailed, setThumbFailed] = useState(false);
   const [faviconFailed, setFaviconFailed] = useState(false);
@@ -1230,11 +1244,21 @@ function OgLinkPreviewCard({
     video?: boolean;
     /** Directly-playable audio (podcast enclosure via og:audio) — inline player. */
     audioUrl?: string;
+    /** An internet radio station the page links, confirmed against the station's own API. */
+    radioStation?: string;
   }>({
     queryKey: [`/api/og?url=${encodeURIComponent(url)}`],
     staleTime: 60 * 60 * 1000,
     retry: 1,
     retryDelay: 2000,
+  });
+  const earlierOg = useQueries({
+    queries: (earlierLinks ?? []).map((earlierUrl) => ({
+      queryKey: [`/api/og?url=${encodeURIComponent(earlierUrl)}`],
+      staleTime: 60 * 60 * 1000,
+      retry: 1,
+      retryDelay: 2000,
+    })),
   });
 
   // Show the play affordance when the caller knows it's a video host, or when the
@@ -1268,6 +1292,24 @@ function OgLinkPreviewCard({
       : showVideo
         ? "media-video-link-fallback"
         : "media-link-fallback";
+
+  // A page that links an internet radio station (Bowl After Bowl's /live/)
+  // becomes that station's Listen card, opening the page itself from its
+  // external link. One card per station per post (lib/radio-station.ts
+  // pageStationToShow): a direct station link or an earlier page already
+  // showing it keeps this one a plain link card. Same fixed height either way.
+  const shownStation = resolved
+    ? pageStationToShow({
+        radioStation: ogData?.radioStation,
+        linkedStations,
+        earlier: earlierOg.map((q) => ({
+          settled: !q.isLoading,
+          radioStation: (q.data as { radioStation?: string } | undefined)?.radioStation,
+        })),
+      })
+    : null;
+  const pageStation = shownStation ? radioStationFromUrl(shownStation) : null;
+  if (pageStation) return <RadioStationCard station={pageStation} compact={compact} linkUrl={url} />;
 
   // Podcast/audio share page that exposed a playable enclosure (og:audio) →
   // inline player. NOT wrapped in the card <a> (so the audio controls don't
@@ -1796,6 +1838,19 @@ export function MediaRenderer({ event, compact = false, priority = false }: Medi
       .filter((m, i, arr) => arr.findIndex((a) => a.url === m.url) === i);
   }, [media, imetaUrlSet, imetaAudio, imetaImages, imetaVideos, contentAudio, contentImages, contentVideos]);
 
+  // Stations this post links directly: a linked page that turns out to carry
+  // the same station stays a plain link card (no duplicate Listen card).
+  const linkedStations = useMemo(
+    () => new Set(contentLinks.map((link) => radioStationFromUrl(link.url)?.pageUrl).filter((u): u is string => !!u)),
+    [contentLinks],
+  );
+  // The links whose previews come from the page itself (not the URL alone),
+  // in post order: a station found on several of them belongs to the first.
+  const ogLinkUrls = useMemo(
+    () => contentLinks.map((link) => link.url).filter((u) => !detectGroupInvite(u) && !audioSpaceFromUrl(u) && !radioStationFromUrl(u)),
+    [contentLinks],
+  );
+
   const hasMedia = allImageUrls.size > 0 || allVideoUrls.size > 0 || allAudioUrls.size > 0 || contentEmbeds.length > 0 || contentLinks.length > 0 || contentZapStreams.length > 0 || contentMusicLinks.length > 0;
 
   if (liveEventData) {
@@ -1896,7 +1951,7 @@ export function MediaRenderer({ event, compact = false, priority = false }: Medi
       {contentLinks.map((link) => {
         const hidePreviewImage = allImageUrls.size > 0 && allAudioUrls.size > 0;
         return (
-          <LinkPreviewCard key={link.url} url={link.url} compact={compact} displayedImageUrls={allImageUrls} hideImage={hidePreviewImage} isVideo={isKnownVideoLink(link.url)} />
+          <LinkPreviewCard key={link.url} url={link.url} compact={compact} displayedImageUrls={allImageUrls} hideImage={hidePreviewImage} isVideo={isKnownVideoLink(link.url)} linkedStations={linkedStations} earlierLinks={ogLinkUrls.slice(0, Math.max(0, ogLinkUrls.indexOf(link.url)))} />
         );
       })}
     </div>

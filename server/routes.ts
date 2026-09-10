@@ -46,13 +46,14 @@ import { clusterNews, type NewsInput, type NewsCluster } from "./news-corroborat
 import { NEWS_SOURCES, NEWS_TOPICS } from "@shared/news-sources";
 import { isPrivateIp, validateHostSafety } from "./net-safety";
 import { fetchPlaylistText, probeHlsLiveness } from "./hls-liveness";
-import { fetchStationInfo, type RadioStationInfo } from "./radio-station";
+import { discoverRadioStation, fetchStationInfo, type RadioStationInfo } from "./radio-station";
+import { ogReadsBody } from "./og-read";
 import { radioStationFromUrl } from "@shared/radio-station";
 import { registerOgCardRoutes } from "./og-cards";
 import { registerTranslateRoute } from "./translate";
 import { parseDiscussParam, buildDiscussMeta, buildOgHtml } from "./discuss-og";
 
-type OgData = { title: string; description: string; image: string; siteName: string; url: string; video?: boolean; audioUrl?: string };
+type OgData = { title: string; description: string; image: string; siteName: string; url: string; video?: boolean; audioUrl?: string; radioStation?: string };
 const ogCache = new TTLCache<OgData>(500, 60 * 60 * 1000);
 // Short-lived negative cache: when a fetch fails/times out (e.g. X rate-limits us)
 // we remember it briefly so the feed doesn't re-hit the slow upstream every render.
@@ -283,9 +284,10 @@ async function fetchExternalOgData(targetUrl: string, timeoutMs = 9000): Promise
         let received = 0;
         // Podcast/episode pages often carry the playable enclosure only in
         // the BODY (an <audio> element or embedded JS state — podhome.fm),
-        // with no og:audio meta at all. For those, stopping at </head> is
-        // exactly what loses the player, so keep reading (still capped).
-        const wantsBody = /episod|podcast/i.test(targetUrl);
+        // with no og:audio meta at all, and live-radio pages link their
+        // station there (server/og-read.ts). For those, stopping at </head>
+        // is exactly what loses the player, so keep reading (still capped).
+        const wantsBody = ogReadsBody(targetUrl);
         while (received < MAX_BODY) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -301,6 +303,16 @@ async function fetchExternalOgData(targetUrl: string, timeoutMs = 9000): Promise
       }
 
       const data = parseOgHtml(html, targetUrl, currentUrl);
+      // A live-radio page (Bowl After Bowl's /live/) links its station in the
+      // body: confirmed against the station's own API, the preview becomes
+      // the station's Listen card, which supersedes the raw audio fallback.
+      if (ogReadsBody(targetUrl)) {
+        const radioStation = await discoverRadioStation(html, fetchPlaylistText, (host) => isSafeExternalOgUrl(`https://${host}/`)).catch(() => null);
+        if (radioStation) {
+          data.radioStation = radioStation;
+          delete data.audioUrl;
+        }
+      }
       ogCache.set(targetUrl, data);
       return { ok: true, data };
     } finally {

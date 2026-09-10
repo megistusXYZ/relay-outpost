@@ -20,7 +20,21 @@ import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { radioTrack, type RadioStationInfo, type RadioStationRef } from "@/lib/radio-station";
 
-export function RadioStationCard({ station, compact = false }: { station: RadioStationRef; compact?: boolean }) {
+export function RadioStationCard({
+  station,
+  compact = false,
+  linkUrl,
+}: {
+  station: RadioStationRef;
+  compact?: boolean;
+  /**
+   * The page the external link opens. Defaults to the station's own player
+   * page; a card found on a page the post linked (Bowl After Bowl's /live/,
+   * which also carries their chat and video) opens that page instead.
+   */
+  linkUrl?: string;
+}) {
+  const openUrl = linkUrl ?? station.pageUrl;
   const { data, isLoading } = useQuery<{ station: RadioStationInfo | null }>({
     queryKey: [`/api/radio/station?url=${encodeURIComponent(station.pageUrl)}`],
     staleTime: 60 * 1000,
@@ -48,7 +62,7 @@ export function RadioStationCard({ station, compact = false }: { station: RadioS
   const onListen = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!track) {
-      window.open(station.pageUrl, "_blank", "noopener,noreferrer");
+      window.open(openUrl, "_blank", "noopener,noreferrer");
       return;
     }
     if (isThisStation) togglePlay();
@@ -88,7 +102,7 @@ export function RadioStationCard({ station, compact = false }: { station: RadioS
       </div>
       <div className="flex items-center shrink-0">
         <a
-          href={station.pageUrl}
+          href={openUrl}
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}

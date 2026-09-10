@@ -50,6 +50,39 @@ export function parseNowPlaying(json: unknown): RadioStationInfo | null {
 }
 
 /**
+ * The AzuraCast stations a page links to, as clean public player page URLs,
+ * distinct, at most `limit`. A candidate only: `/public/<name>` also occurs on
+ * sites that are not radio stations, so callers confirm it against the
+ * station's own API (fetchStationInfo) before calling the page a station.
+ */
+export function stationLinksInHtml(html: string, limit = 2): string[] {
+  const found: string[] = [];
+  for (const match of html.matchAll(/https?:\/\/[^\s"'<>\/]+\/public\/[A-Za-z0-9_-]+/g)) {
+    const ref = radioStationFromUrl(match[0]);
+    if (ref && !found.includes(ref.pageUrl)) found.push(ref.pageUrl);
+    if (found.length >= limit) break;
+  }
+  return found;
+}
+
+/**
+ * The station a linked page carries, confirmed: a candidate from
+ * stationLinksInHtml counts only once the station's own API answers with a
+ * stream to play. Returns the station's public player page URL, or null.
+ */
+export async function discoverRadioStation(
+  html: string,
+  fetchText: TextFetch,
+  isAllowedHost: (hostname: string) => Promise<boolean>,
+): Promise<string | null> {
+  for (const pageUrl of stationLinksInHtml(html)) {
+    const info = await fetchStationInfo(pageUrl, fetchText, isAllowedHost);
+    if (info?.listenUrl) return pageUrl;
+  }
+  return null;
+}
+
+/**
  * Read a station's now-playing data from its public player page link. Only
  * links that pass the shared station rule are fetched, and every hop —
  * the first included — must pass `isAllowedHost` (the SSRF gate).
