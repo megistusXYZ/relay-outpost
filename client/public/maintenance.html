@@ -1,0 +1,200 @@
+<!doctype html>
+<!-- Source of truth for the page the ingress serves while the app restarts.
+     Copied, flattened, into relay-op-ops charts/relay-outpost/files/. Rules in
+     client/src/lib/maintenance-page.test.ts: no double quotes, no dollar signs,
+     no backslashes, no line comments, nothing loaded from any server. -->
+<html lang='en'>
+<head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<meta name='robots' content='noindex'>
+<meta name='theme-color' content='#0a090d'>
+<title>Relay Outpost · back in a moment</title>
+<noscript><meta http-equiv='refresh' content='30'></noscript>
+<style>
+  :root {
+    --bg: hsl(262 14% 4%);
+    --card: hsl(262 10% 7%);
+    --line: hsl(262 10% 18%);
+    --fg: hsl(0 0% 96%);
+    --muted: hsl(0 0% 72%);
+    --brand: hsl(262 90% 76%);
+    --brand-ink: hsl(262 30% 9%);
+    --glow: hsl(262 80% 55% / 0.22);
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: hsl(262 16% 98%);
+      --card: hsl(0 0% 100%);
+      --line: hsl(262 16% 88%);
+      --fg: hsl(262 25% 12%);
+      --muted: hsl(258 11% 38%);
+      --brand: hsl(262 60% 44%);
+      --brand-ink: hsl(0 0% 100%);
+      --glow: hsl(262 70% 60% / 0.14);
+      color-scheme: light;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding: 32px 20px;
+    background: radial-gradient(70% 50% at 50% 0%, var(--glow), transparent 72%), var(--bg);
+    color: var(--fg);
+    font: 16px/1.55 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { width: 100%; max-width: 440px; text-align: center; }
+  .wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    height: 40px;
+    padding: 0 14px;
+    border: 1.5px solid var(--line);
+    border-radius: 6px;
+    font: 700 13px/1 Oxanium, Space Grotesk, system-ui, sans-serif;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    margin-bottom: 36px;
+  }
+  .wordmark svg { width: 20px; height: 20px; color: var(--brand); }
+  .pill {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--brand);
+    margin: 0 0 14px;
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--brand);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.35; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1); }
+  }
+  h1 {
+    font-size: clamp(24px, 6.4vw, 30px);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .lede { color: var(--muted); margin: 0 auto 28px; max-width: 36ch; }
+  .safe {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    text-align: left;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--card);
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0 0 28px;
+  }
+  .safe svg { flex: none; width: 20px; height: 20px; margin-top: 2px; color: var(--brand); }
+  .safe strong { display: block; color: var(--fg); font-weight: 600; margin-bottom: 2px; }
+  .check { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
+  #status { margin: 0; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 17ch; }
+  button {
+    min-height: 44px;
+    padding: 0 22px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--brand);
+    color: var(--brand-ink);
+    font: 600 15px/1 system-ui, -apple-system, sans-serif;
+    cursor: pointer;
+  }
+  button:hover { filter: brightness(1.06); }
+  button:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) { .dot { animation: none; opacity: 1; } }
+</style>
+</head>
+<body>
+<main>
+  <div class='wordmark'>
+    <span>Relay</span>
+    <svg viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>
+      <path d='M5.64999 7.64999L2.85001 4.85001C2.54001 4.54001 2.76001 4 3.20001 4H6.79001C6.92001 4 7.05001 4.04999 7.14001 4.14999L12.14 9.14999C12.45 9.45999 12.23 10 11.79 10H8.5C6.57 10 5 11.57 5 13.5C5 15.43 6.57 17 8.5 17H10L12.15 19.15C12.46 19.46 12.24 20 11.8 20H8.51001C4.92001 20 2.01001 17.09 2.01001 13.5C2.01001 11.01 3.41001 8.84 5.48001 7.75L5.64999 7.64999Z'/>
+      <path d='M18.35 16.35L21.15 19.15C21.46 19.46 21.24 20 20.8 20H17.21C17.08 20 16.95 19.95 16.86 19.85L11.86 14.85C11.55 14.54 11.77 14 12.21 14H15.5C17.43 14 19 12.43 19 10.5C19 8.57 17.43 7 15.5 7H14L11.85 4.85001C11.54 4.54001 11.76 4 12.2 4H15.49C19.08 4 21.99 6.91 21.99 10.5C21.99 12.99 20.59 15.16 18.52 16.25L18.35 16.35Z'/>
+    </svg>
+    <span>Outpost</span>
+  </div>
+
+  <p class='pill'><span class='dot' aria-hidden='true'></span>Updating</p>
+  <h1>We’re updating Relay Outpost</h1>
+  <p class='lede'>This usually takes under a minute. The page reloads on its own as soon as we’re back, so you can leave it open.</p>
+
+  <div class='safe'>
+    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'>
+      <path d='M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z'/>
+      <path d='M9 12l2 2 4-4'/>
+    </svg>
+    <div><strong>Nothing is lost</strong>Your posts, messages and follows live on Nostr relays, not on our servers.</div>
+  </div>
+
+  <div class='check'>
+    <p id='status' aria-live='polite'>Checking shortly</p>
+    <button id='retry' type='button'>Try again</button>
+  </div>
+</main>
+<script>
+(function () {
+  var statusEl = document.getElementById('status');
+  var retryEl = document.getElementById('retry');
+  var waits = [5, 10, 15, 20, 30];
+  var attempt = 0;
+  var timer = null;
+  var checking = false;
+
+  function say(text) { statusEl.textContent = text; }
+
+  function countdown(left) {
+    if (left <= 0) { check(); return; }
+    say('Checking again in ' + left + 's');
+    timer = setTimeout(function () { countdown(left - 1); }, 1000);
+  }
+
+  function next() {
+    var wait = waits[Math.min(attempt, waits.length - 1)];
+    attempt += 1;
+    countdown(wait);
+  }
+
+  function check() {
+    if (checking) return;
+    checking = true;
+    clearTimeout(timer);
+    say('Checking now…');
+    fetch('/api/version', { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('still down');
+      say('We are back. Reloading…');
+      location.reload();
+    }).catch(function () {
+      checking = false;
+      next();
+    });
+  }
+
+  retryEl.addEventListener('click', function () { attempt = 0; check(); });
+  next();
+})();
+</script>
+</body>
+</html>
