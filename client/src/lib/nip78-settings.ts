@@ -4,6 +4,7 @@ import { pool, publishEvent, filterBlockedRelays } from "@/lib/nostr";
 import { signWithTimeout } from "@/lib/signer-timeout";
 import { getOutpostRelays, getActiveDefaultRelays, type OutpostRelay } from "@/lib/outpost-relays";
 import { armPrivateModeIfSet } from "@/lib/private-mode";
+import { nativeSetItem, setStorageWriteListener } from "@/lib/storage-write-hook";
 
 const KIND_APP_DATA = 30078;
 const D_TAG = "relay-outpost-settings";
@@ -241,31 +242,15 @@ export function handleAccountSwitch(newPubkey: string): boolean {
 
 let isApplyingRemote = false;
 
-interface Nip78Window { __nip78OrigSetItem?: typeof localStorage.setItem; __nip78OrigRemoveItem?: typeof localStorage.removeItem }
-
-const _origSetItem = (window as Nip78Window).__nip78OrigSetItem ?? localStorage.setItem.bind(localStorage);
-const _origRemoveItem = (window as Nip78Window).__nip78OrigRemoveItem ?? localStorage.removeItem.bind(localStorage);
-
-if (!(window as Nip78Window).__nip78OrigSetItem) {
-  (window as Nip78Window).__nip78OrigSetItem = _origSetItem;
-  (window as Nip78Window).__nip78OrigRemoveItem = _origRemoveItem;
-
-  localStorage.setItem = function (key: string, value: string) {
-    _origSetItem(key, value);
-    if (isApplyingRemote) return;
-    if (WATCHED_LS_KEYS.has(key) || key.startsWith("relay-outpost-dm-demoted-") || key.startsWith(PINNED_EVENTS_PREFIX) || key.startsWith(CUSTOM_HOLIDAYS_PREFIX) || key.startsWith(HIDDEN_HOLIDAYS_PREFIX)) {
-      try { window.dispatchEvent(new CustomEvent("nip78-trigger-sync")); } catch {}
-    }
-  };
-
-  localStorage.removeItem = function (key: string) {
-    _origRemoveItem(key);
-    if (isApplyingRemote) return;
-    if (WATCHED_LS_KEYS.has(key) || key.startsWith("relay-outpost-dm-demoted-") || key.startsWith(PINNED_EVENTS_PREFIX) || key.startsWith(CUSTOM_HOLIDAYS_PREFIX) || key.startsWith(HIDDEN_HOLIDAYS_PREFIX)) {
-      try { window.dispatchEvent(new CustomEvent("nip78-trigger-sync")); } catch {}
-    }
-  };
-}
+// A settings write anywhere in the app schedules a sync. Through
+// lib/storage-write-hook, never `localStorage.setItem = fn`: Safari stores
+// that assignment as an item and keeps the real method, so sync never fired.
+setStorageWriteListener(localStorage, "nip78-settings", (_op, key) => {
+  if (isApplyingRemote) return;
+  if (WATCHED_LS_KEYS.has(key) || key.startsWith("relay-outpost-dm-demoted-") || key.startsWith(PINNED_EVENTS_PREFIX) || key.startsWith(CUSTOM_HOLIDAYS_PREFIX) || key.startsWith(HIDDEN_HOLIDAYS_PREFIX)) {
+    try { window.dispatchEvent(new CustomEvent("nip78-trigger-sync")); } catch {}
+  }
+});
 
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
 let currentSigner: ISigner | null = null;
@@ -288,7 +273,7 @@ function getLocalTimestamp(pubkey: string): number {
 
 function setLocalTimestamp(pubkey: string, ts: number): void {
   try {
-    _origSetItem(settingsTsKey(pubkey), String(ts));
+    nativeSetItem(localStorage, settingsTsKey(pubkey), String(ts));
   } catch {}
 }
 
