@@ -1984,11 +1984,6 @@ export function EmbeddedAddressCard({ kind, pubkey: authorPk, identifier, relays
         <EventCard
           variant="embed"
           ce={calendarData}
-          onOpen={() => {
-            // No standalone event page yet — the Search → Events tab scoped to
-            // the host surfaces this event alongside the host's others.
-            try { navigate(`/search?tab=events&q=${nip19.npubEncode(calendarData.pubkey)}`); } catch {}
-          }}
           onShare={(ce) => setShareEvent(ce)}
         />
         {shareEvent && <ShareEventDialog ce={shareEvent} onClose={() => setShareEvent(null)} />}
