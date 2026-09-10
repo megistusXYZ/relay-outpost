@@ -20,6 +20,7 @@ import { formatDistanceToNow, format } from "date-fns";
 // remark plugin, video/iframe/nostr-embed overrides) lives in the shared
 // ArticleMarkdown component so GuestArticlePreview renders identically.
 import { ArticleMarkdown } from "@/components/ArticleMarkdown";
+import { CommentContent } from "@/components/CommentContent";
 import {
   ArrowLeft,
   Clock,
@@ -395,7 +396,7 @@ function ArticleComments({ articleEvent }: { articleEvent: Event }) {
                         {formatDistanceToNow(new Date(comment.created_at * 1000), { addSuffix: true })}
                       </span>
                     </div>
-                    <p className="text-sm text-foreground/70 whitespace-pre-wrap break-words leading-relaxed">{comment.content}</p>
+                    <CommentContent event={comment} />
                   </div>
                 </div>
               </div>
