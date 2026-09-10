@@ -126,11 +126,6 @@ import type { MusicTrack } from "@/lib/music";
 import {
   type SavedFeed,
   DEFAULT_FEEDS,
-  NEWS_STARTER_FEEDS,
-  ALL_PODCAST_FEEDS,
-  PODCAST_FEED_URLS,
-  NEWS_FRONT_PAGE_URLS,
-  PRESET_FEED_URLS,
   SUGGESTED_FEEDS,
   EXTRA_DEFAULT_FEEDS,
   loadCustomFeeds,
@@ -139,6 +134,7 @@ import {
   saveHiddenDefaults,
   addFeedToLibrary,
   updateFeedInLibrary } from "@/lib/rss-feeds";
+import { laneFeeds, removeFromLibrary } from "@/lib/news-library";
 import {
   mergeFeedItems,
   sortMergedItems,
@@ -156,7 +152,7 @@ import {
   NEWS_BUCKETS,
   NEWS_BUCKET_LABELS,
   type NewsBucket } from "@/lib/news-categories";
-import { loadEdition, saveEdition, mergeEditions } from "@/lib/news-edition";
+import { loadEdition, saveEdition, mergeEditions, editionForSources } from "@/lib/news-edition";
 import { stripHtml, formatDuration, buildTrendSuggestionsUrl, normalizeShowTitle, type TrendSuggestionItem } from "@/lib/podcast-index";
 import {
   scoreNewsItems,
@@ -487,30 +483,8 @@ interface RSSFeedData {
   items: RSSItem[];
 }
 
-function migrateOldFeedsStorage() {
-  if (typeof window === 'undefined' || !window.localStorage) return;
-  const OLD_KEY = "relay-outpost-rss-feeds";
-  try {
-    const old = localStorage.getItem(OLD_KEY);
-    if (!old) return;
-    const parsed = JSON.parse(old);
-    if (!Array.isArray(parsed)) {
-      localStorage.removeItem(OLD_KEY);
-      return;
-    }
-    const defaultUrls = new Set(DEFAULT_FEEDS.map(f => f.url));
-    const custom = parsed.filter((f: SavedFeed) => !defaultUrls.has(f.url));
-    if (custom.length > 0) {
-      const existing = loadCustomFeeds();
-      const existingUrls = new Set(existing.map(f => f.url));
-      const merged = [...existing, ...custom.filter((f: SavedFeed) => !existingUrls.has(f.url))];
-      saveCustomFeeds(merged);
-    }
-    localStorage.removeItem(OLD_KEY);
-  } catch {}
-}
-
-migrateOldFeedsStorage();
+// The oldest saved-feeds key is folded in at start-up, before this page loads
+// (ensureNewsLibraryMigrated in lib/news-library.ts, called from main.tsx).
 
 function loadAllFeeds(): SavedFeed[] {
   const hidden = loadHiddenDefaults();
@@ -2988,21 +2962,12 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
     gcTime: 30 * 60 * 1000,
     retry: 1 });
 
-  // The merged "All feeds" firehose = QUALITY only: the audited rich news
-  // flagships (NEWS_STARTER_FEEDS — full-text + images, never teasers) mixed with
-  // the WHOLE popular-podcast library (ALL_PODCAST_FEEDS — every show carries good
-  // artwork + copy), plus the user's own adds. Deliberately NOT the full news
-  // library — the demoted teaser feeds (Variety, NPR World, Rolling Stone, CBS
-  // Sports, Guardian World…) stay in discovery and never clutter the All view.
-  // The feed picker still lists only `feeds` (the calm subscribed set).
-  const allFeedSources = useMemo<SavedFeed[]>(() => {
-    const hidden = loadHiddenDefaults();
-    const byUrl = new Map<string, SavedFeed>();
-    for (const f of NEWS_STARTER_FEEDS) if (!hidden.has(f.url)) byUrl.set(f.url, f);
-    for (const f of ALL_PODCAST_FEEDS) if (!hidden.has(f.url)) byUrl.set(f.url, f);
-    for (const f of feeds) if (!byUrl.has(f.url)) byUrl.set(f.url, f);
-    return [...byUrl.values()];
-  }, [feeds]);
+  // The merged "All feeds" stream = YOUR news sources only (lib/news-library.ts).
+  // It used to add every preset outlet and all 76 preset podcasts on top of the
+  // library whether you chose them or not, so podcasts crowded out the news
+  // ("forced with our agenda and presets", 2026-09-10). Podcasts you follow
+  // belong in their own Listen lane.
+  const allFeedSources = useMemo<SavedFeed[]>(() => laneFeeds(feeds, "news"), [feeds]);
 
   // ── Staged loading (perf) ───────────────────────────────────────────────────
   // The All view can source ~70 feeds. Fanning them all out on first paint is
@@ -3016,15 +2981,12 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
   // in small batches on an interval — so the ~75-feed long-tail streams in gently
   // instead of a single burst that hammered /api/rss (and starved sibling APIs).
   const [backfillLimit, setBackfillLimit] = useState(0);
-  // Wave 1 (first paint) = the curated FRONT PAGE (~12: one marquee feed per
-  // topic tab + flagship podcasts) PLUS the user's OWN custom subscriptions (so
-  // their adds are never delayed). The rest of the ~90-feed default library
-  // backfills on idle — this is what cut first paint from a ~36-request stampede.
-  const primaryFeedUrls = useMemo(() => {
-    const s = new Set<string>(NEWS_FRONT_PAGE_URLS);
-    for (const f of feeds) if (!PRESET_FEED_URLS.has(f.url)) s.add(f.url);
-    return s;
-  }, [feeds]);
+  // Wave 1 (first paint) = your first 12 news sources; a larger library
+  // backfills the rest on idle, so first paint never stampedes /api/rss.
+  const primaryFeedUrls = useMemo(
+    () => new Set<string>(allFeedSources.slice(0, 12).map((f) => f.url)),
+    [allFeedSources],
+  );
   // Each feed's topic bucket, for lazy per-tab priming.
   const bucketByUrl = useMemo(() => {
     const m = new Map<string, NewsBucket | null>();
@@ -3107,7 +3069,9 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
 
   // The remembered "latest edition" — read synchronously on mount so the News
   // page paints its last screen instantly instead of waiting on the network.
-  const [restoredEdition] = useState<MergedItem<RSSItem>[]>(() => loadEdition() as MergedItem<RSSItem>[]);
+  const [restoredEdition] = useState<MergedItem<RSSItem>[]>(() =>
+    editionForSources(loadEdition() as MergedItem<RSSItem>[], new Set(allFeedSources.map((f) => f.url))),
+  );
 
   // Flatten + dedup the feeds that have resolved so far (renders progressively).
   const liveMergedItems = useMemo(() => {
@@ -3318,33 +3282,6 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
     });
   }, [isAllMode, mergedCollapsedItems, scoredById, hasReadHistory]);
 
-  // Popular-podcasts shelf: the freshest episode from each show currently in the
-  // mix (podcast presets carry rich artwork + copy), newest show first, capped.
-  // A guaranteed, always-visible showcase at the top of the All/Top view — the
-  // scoring boost surfaces some inline, but the shelf makes the top shows
-  // impossible to miss regardless of when their latest episode dropped.
-  const podcastShelfRaw = useMemo<MergedItem<RSSItem>[]>(() => {
-    if (!isAllMode) return [];
-    const byShow = new Map<string, MergedItem<RSSItem>>();
-    for (const m of mergedItems) {
-      // Actual podcast SHOWS only (a curated podcast preset) — not news outlets
-      // that happen to attach an audio version to an article.
-      if (!m.item.audioUrl || !PODCAST_FEED_URLS.has(m.source.url)) continue;
-      // Skip sub-3-min clips/trailers — the shelf should headline real episodes.
-      const dur = m.item.duration || 0;
-      if (dur > 0 && dur < 180) continue;
-      const prev = byShow.get(m.source.url);
-      const t = Date.parse(m.item.pubDate || "") || 0;
-      const pt = prev ? (Date.parse(prev.item.pubDate || "") || 0) : -1;
-      if (!prev || t > pt) byShow.set(m.source.url, m);
-    }
-    return [...byShow.values()]
-      .sort((a, b) => (Date.parse(b.item.pubDate || "") || 0) - (Date.parse(a.item.pubDate || "") || 0))
-      .slice(0, 14);
-  }, [isAllMode, mergedItems]);
-  // Freeze the shelf order so shows don't reshuffle as podcast feeds stream in.
-  // (Shelf is Top-only + always "freshest per show", so it never needs a re-sort.)
-  const podcastShelf = useStableOrder(podcastShelfRaw, bySourceUrl);
 
   // ── News topic tabs (canonical taxonomy) ──────────────────────────────────
   // Map each source url → its feed's category, then fold that onto a canonical
@@ -3745,15 +3682,11 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
   }, []);
 
   const handleRemoveFeed = useCallback((url: string) => {
-    const isDefault = DEFAULT_FEEDS.some(d => d.url === url);
-    if (isDefault) {
-      const hidden = loadHiddenDefaults();
-      hidden.add(url);
-      saveHiddenDefaults(hidden);
-    } else {
-      const custom = loadCustomFeeds().filter(f => f.url !== url);
-      saveCustomFeeds(custom);
-    }
+    // Drop any stored copy AND hide the starter entry, so a renamed starter
+    // source can't come back after a reload (lib/news-library.ts).
+    const next = removeFromLibrary({ custom: loadCustomFeeds(), hidden: loadHiddenDefaults() }, url);
+    saveCustomFeeds(next.custom);
+    saveHiddenDefaults(next.hidden);
     setFeeds(prev => {
       const next = prev.filter(f => f.url !== url);
       if (activeFeedUrl === url && next.length > 0) {
@@ -4277,7 +4210,6 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                   {/* DIGEST / "Worth your time" panel removed (2026-07) — the
                       collapsed digest banner cluttered the top of the feed; the
                       feed itself already surfaces what's new. */}
-                  {effectiveBucket === "Top" && <PodcastShelf items={podcastShelf} onOpenShow={(url) => { setActiveFeedUrl(url); window.scrollTo({ top: 0 }); }} />}
                   {useMagazine ? (
                     <>
                       {/* Lead block: feature hero (2/3) + secondary rail (1/3). */}

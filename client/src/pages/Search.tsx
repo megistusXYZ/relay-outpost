@@ -63,7 +63,7 @@ import { DesktopOptionsPopover } from "@/components/DesktopOptionsPopover";
 import { PageTabs } from "@/components/PageTabs";
 import { ActivityIndicator, activityCache } from "@/components/ActivityIndicator";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
-import { DEFAULT_FEEDS, SUGGESTED_FEEDS, getAllSavedFeedUrls, addFeedToLibrary, loadCustomFeeds, type SavedFeed } from "@/lib/rss-feeds";
+import { ALL_NEWS_FEEDS, SUGGESTED_FEEDS, getAllSavedFeedUrls, addFeedToLibrary, loadCustomFeeds, type SavedFeed } from "@/lib/rss-feeds";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useStreamLiveness } from "@/hooks/use-stream-liveness";
 import { useToast } from "@/hooks/use-toast";
@@ -2879,7 +2879,7 @@ function RssTab({ urlQuery, updateUrl }: TabProps) {
     if (!fromUrl) updateUrl({ q: searchQuery.trim() });
 
     const q = searchQuery.trim().toLowerCase();
-    const allAvailable = [...DEFAULT_FEEDS, ...SUGGESTED_FEEDS, ...loadCustomFeeds()];
+    const allAvailable = [...ALL_NEWS_FEEDS, ...SUGGESTED_FEEDS, ...loadCustomFeeds()];
     const seen = new Set<string>();
     const matched: SavedFeed[] = [];
     for (const f of allAvailable) {
@@ -3843,7 +3843,7 @@ function FeedDiscoverySection() {
   const allFeeds = useMemo(() => {
     const seen = new Set<string>();
     const feeds: SavedFeed[] = [];
-    for (const f of [...DEFAULT_FEEDS, ...SUGGESTED_FEEDS]) {
+    for (const f of [...ALL_NEWS_FEEDS, ...SUGGESTED_FEEDS]) {
       if (!seen.has(f.url)) {
         seen.add(f.url);
         feeds.push(f);

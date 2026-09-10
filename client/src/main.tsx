@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { installAppHistory } from "@/lib/app-history";
 import { ensureModalBackListener } from "@/lib/modal-history";
+import { ensureNewsLibraryMigrated } from "@/lib/news-library";
 import App from "./App";
 import "./index.css";
 import { installScrollClickGuard } from "./lib/scroll-click-guard";
@@ -53,6 +54,10 @@ installAppHistory();
 // Arm the modal-back listener at boot too — a reload-restored dead guard entry
 // must be chained through even if no overlay opens this session.
 ensureModalBackListener();
+// Before anything reads or writes the News library: carry it over to the new
+// starter once, so every reader agrees and no early add or remove can make an
+// untouched device look customised (lib/news-library.ts).
+ensureNewsLibraryMigrated();
 
 // Prevent scroll gestures from registering as taps (accidental dialog opens).
 installScrollClickGuard();

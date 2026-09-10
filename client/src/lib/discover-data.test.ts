@@ -26,34 +26,31 @@ vi.mock("@/lib/relay-reach", () => ({
 }));
 
 import { discoverNewsFeeds, summarizePulse, fetchCommunityPulse, feedSnippet, survivingArticles } from "./discover-data";
-import { NEWS_STARTER_FEEDS, NEWS_FRONT_PAGE_URLS, PODCAST_FEED_URLS } from "./rss-feeds";
+import { ALL_NEWS_FEEDS, ALL_PODCAST_FEEDS, DEFAULT_FEEDS, STARTER_URLS_V2, type SavedFeed } from "./rss-feeds";
 
-describe("discoverNewsFeeds", () => {
-  it("draws only from the audited front-page set", () => {
-    const feeds = discoverNewsFeeds(new Set());
-    expect(feeds.length).toBeGreaterThan(0);
-    for (const f of feeds) expect(NEWS_FRONT_PAGE_URLS.has(f.url)).toBe(true);
+/**
+ * The Discover news hero follows your News library (2026-09), not the starter:
+ * after the News migration a library someone shaped keeps its sources as added
+ * entries and hides the new starter, so a starter-based hero would be empty.
+ */
+describe("discoverNewsFeeds — the Discover news hero draws from your News library", () => {
+  it("takes your news sources, in your order, never a podcast", () => {
+    const show = ALL_PODCAST_FEEDS[0];
+    const [first, second] = ALL_NEWS_FEEDS;
+    expect(discoverNewsFeeds([show, first, second]).map((f) => f.url)).toEqual([first.url, second.url]);
   });
 
   it("keeps the fan-out bounded — /api/rss budget is shared with the News page", () => {
-    expect(discoverNewsFeeds(new Set()).length).toBeLessThanOrEqual(10);
+    expect(discoverNewsFeeds(ALL_NEWS_FEEDS).length).toBeLessThanOrEqual(8);
   });
 
-  it("respects a feed the user hid", () => {
-    const all = discoverNewsFeeds(new Set());
-    const hidden = new Set([all[0].url]);
-    expect(discoverNewsFeeds(hidden).map((f) => f.url)).not.toContain(all[0].url);
+  it("still has sources for someone whose library was carried over from the old starter", () => {
+    const carried: SavedFeed[] = ALL_NEWS_FEEDS.filter((f) => !STARTER_URLS_V2.has(f.url)).slice(0, 3);
+    expect(discoverNewsFeeds(carried).length).toBeGreaterThan(0);
   });
 
-  it("never puts a podcast in the hero slot", () => {
-    for (const f of discoverNewsFeeds(new Set())) {
-      expect(PODCAST_FEED_URLS.has(f.url)).toBe(false);
-    }
-  });
-
-  it("is a subset of the starter news feeds, so hiding rules stay one system", () => {
-    const starterUrls = new Set(NEWS_STARTER_FEEDS.map((f) => f.url));
-    for (const f of discoverNewsFeeds(new Set())) expect(starterUrls.has(f.url)).toBe(true);
+  it("uses the new starter for a library nobody customised", () => {
+    expect(new Set(discoverNewsFeeds(DEFAULT_FEEDS).map((f) => f.url))).toEqual(new Set(STARTER_URLS_V2));
   });
 });
 
