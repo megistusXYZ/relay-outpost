@@ -46,6 +46,8 @@ import { clusterNews, type NewsInput, type NewsCluster } from "./news-corroborat
 import { NEWS_SOURCES, NEWS_TOPICS } from "@shared/news-sources";
 import { isPrivateIp, validateHostSafety } from "./net-safety";
 import { fetchPlaylistText, probeHlsLiveness } from "./hls-liveness";
+import { fetchStationInfo, type RadioStationInfo } from "./radio-station";
+import { radioStationFromUrl } from "@shared/radio-station";
 import { registerOgCardRoutes } from "./og-cards";
 import { registerTranslateRoute } from "./translate";
 import { parseDiscussParam, buildDiscussMeta, buildOgHtml } from "./discuss-og";
@@ -2637,6 +2639,28 @@ export async function registerRoutes(
       console.error("Stream proxy error:", err.message);
       return res.status(502).json({ error: "Failed to proxy stream" });
     }
+  });
+
+  // Internet radio (server/radio-station.ts): the feed's Listen card reads a
+  // station's now-playing data through here, so rendering a post never
+  // connects the viewer to the station's host. Only links that pass the
+  // shared station rule are fetched, and every hop passes the same SSRF gate
+  // as /api/og. What is on air changes, so answers live for a minute.
+  const radioStationCache = new TTLCache<{ station: RadioStationInfo | null }>(200, 60 * 1000);
+
+  app.get("/api/radio/station", async (req, res) => {
+    const ref = radioStationFromUrl(typeof req.query.url === "string" ? req.query.url : "");
+    if (!ref) return res.status(400).json({ error: "Not a radio station link" });
+    const cached = radioStationCache.get(ref.pageUrl);
+    if (cached) {
+      res.set("Cache-Control", "public, max-age=60");
+      return res.json(cached);
+    }
+    const station = await fetchStationInfo(ref.pageUrl, fetchPlaylistText, (host) => isSafeExternalOgUrl(`https://${host}/`)).catch(() => null);
+    const body = { station };
+    radioStationCache.set(ref.pageUrl, body);
+    res.set("Cache-Control", "public, max-age=60");
+    return res.json(body);
   });
 
   const streamHealthCache = new TTLCache<{ alive: boolean | null; checkedAt: number }>(100, 5 * 60 * 1000);
