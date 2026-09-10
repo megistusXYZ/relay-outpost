@@ -7,25 +7,35 @@
  * file for 502/503/504 on page routes (relay-op-ops, charts/relay-outpost,
  * VirtualServer errorPages). So it must work with the app DOWN, and it must
  * pass NIC's body validation, `([^"$\\]|\\[^$])*`: no double quotes, no
- * dollar signs, no backslashes. The chart flattens its newlines.
+ * dollar signs, no backslashes.
+ *
+ * And it must fit in ONE nginx config parameter: the whole body is the
+ * argument of a `return` directive, and nginx refuses a parameter over its
+ * 4096-byte config buffer. A 6.8KB first version was rejected on a trial
+ * VirtualServer ("too long parameter") — shipped, it would have blocked every
+ * ingress reload on the cluster. The chart serves the page with every
+ * whitespace run collapsed to one space; `served` below is exactly that, and
+ * the behaviour tests run the served script.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const html = readFileSync(join(__dirname, "../../public/maintenance.html"), "utf8");
+const served = html.replace(/\s+/g, " ");
 
 function inlineScript(): string {
-  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  const scripts = [...served.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
   expect(scripts).toHaveLength(1);
   return scripts[0];
 }
 
 class FakeElement {
   textContent = "";
+  onclick: (() => void) | null = null;
   private handlers: Array<() => void> = [];
   addEventListener(_type: string, fn: () => void) { this.handlers.push(fn); }
-  click() { for (const h of this.handlers) h(); }
+  click() { this.onclick?.(); for (const h of this.handlers) h(); }
 }
 
 type Answer = { ok: boolean; status: number };
@@ -95,9 +105,14 @@ describe("maintenance page — safe to serve from the ingress", () => {
     expect(html).not.toMatch(/["$\\]/);
   });
 
-  it("still works with its newlines flattened (no line comments in the script)", () => {
-    expect(inlineScript()).not.toMatch(/\/\/|<!--/);
-    expect(Buffer.byteLength(html, "utf8")).toBeLessThan(16 * 1024);
+  it("fits in one nginx config parameter once served, with room to spare", () => {
+    // ~10% under nginx's 4096-byte buffer; the trial VirtualServer is the real proof.
+    expect(Buffer.byteLength(served, "utf8")).toBeLessThan(3700);
+  });
+
+  it("survives whitespace collapsing: no comments anywhere, no line comments in the script", () => {
+    expect(html).not.toMatch(/<!--/);
+    expect(inlineScript()).not.toMatch(/\/\/|\/\*/);
   });
 
   it("can't be indexed, declares its language and a mobile viewport, and is named for the brand", () => {
