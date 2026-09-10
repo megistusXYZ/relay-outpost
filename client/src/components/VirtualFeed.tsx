@@ -1,8 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import {
+  useVirtualizer,
+  observeElementOffset,
+  observeElementRect,
+  measureElement as measureRowElement,
+} from "@tanstack/react-virtual";
 import { setFeedScrollBridge } from "@/lib/feed-scroll-bridge";
 import { getPendingRestoreAnchor, scrollRestoreDebugEnabled } from "@/lib/scroll-restore";
 import { computeIndexAnchor, resolveRestoreTarget, type RowRect } from "@/lib/feed-anchor";
+import { useSurfaceActive } from "@/contexts/SurfaceActiveContext";
 
 interface VirtualFeedProps<T> {
   items: T[];
@@ -20,6 +26,8 @@ interface VirtualFeedProps<T> {
   gap?: number;
   className?: string;
 }
+
+type ScrollRect = { width: number; height: number };
 
 /**
  * Window/element virtualized post list. Renders only the rows near the viewport
@@ -43,6 +51,12 @@ interface VirtualFeedProps<T> {
  * intra-row offset is then applied, and the app-level growth-aware restorer
  * fine-tunes to the now-present DOM anchor for the exact final pixel. See
  * lib/feed-anchor.ts for the pure index math.
+ *
+ * Kept-alive (the Home layer, components/HomeKeepAlive.tsx): the feed can stay
+ * mounted while HIDDEN under a thread that shares `<main>`. It is then frozen —
+ * that page's scrolls and resizes are not ours, and re-ranging for them would
+ * unmount the very rows Back is about to reveal — so the index-restore path
+ * above never runs for a kept-alive return: nothing was lost.
  */
 export function VirtualFeed<T>({
   items,
@@ -57,6 +71,14 @@ export function VirtualFeed<T>({
 }: VirtualFeedProps<T>) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
+
+  // Read by the observer wrappers at EVENT time, so the freeze starts the
+  // moment the hiding render happens — before the page on top scrolls `<main>`.
+  const active = useSurfaceActive();
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  // A resize of `<main>` that happened while frozen, replayed on reveal.
+  const pendingRectRef = useRef<{ rect: ScrollRect; cb: (rect: ScrollRect) => void } | null>(null);
 
   // Refs so the bridge closures always see the latest list without re-registering
   // on every items change.
@@ -94,10 +116,6 @@ export function VirtualFeed<T>({
     ? Math.max(0, restoreTargetRef.current.index * rowStride + restoreTargetRef.current.intraOffset)
     : 0;
 
-  // The virtualizer needs the scroll element; find the app's main scroll
-  // container once the row container is in the DOM. When restoring, seed the
-  // container near the estimated target BEFORE the virtualizer attaches so the
-  // first paint already renders the anchor region.
   // Offset of the feed's row container within the scroll container's CONTENT
   // (the controls/tabs above the feed, ~140px on Home). Without this the
   // virtualizer's row coordinates and the container's scrollTop disagree by
@@ -108,13 +126,21 @@ export function VirtualFeed<T>({
   // `start`s then include the margin, so capture math, scrollToIndex and the
   // DOM all agree.
   const [scrollMargin, setScrollMargin] = useState(0);
+  const measureScrollMargin = (el: HTMLElement) => {
+    if (!parentRef.current) return;
+    const m = parentRef.current.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
+    setScrollMargin(Math.max(0, Math.round(m)));
+  };
 
+  // The virtualizer needs the scroll element; find the app's main scroll
+  // container once the row container is in the DOM. When restoring, seed the
+  // container near the estimated target BEFORE the virtualizer attaches so the
+  // first paint already renders the anchor region.
   useLayoutEffect(() => {
     const el = parentRef.current?.closest<HTMLElement>(".feed-scroll-container") ?? null;
-    if (el && parentRef.current) {
-      const m = parentRef.current.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
-      setScrollMargin(Math.max(0, Math.round(m)));
-    }
+    // A hidden mount (the feed finishing its first load while a thread is on
+    // top) would measure against the thread's layout — the reveal re-measures.
+    if (el && activeRef.current) measureScrollMargin(el);
     if (el && initialOffset > 0) el.scrollTop = initialOffset;
     setScrollEl(el);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -128,7 +154,46 @@ export function VirtualFeed<T>({
     getItemKey: (index) => getKey(items[index], index),
     initialOffset,
     scrollMargin,
+    // Frozen while hidden: `<main>` belongs to the page on top.
+    observeElementOffset: (instance, cb) =>
+      observeElementOffset(instance, (offset, isScrolling) => {
+        if (activeRef.current) cb(offset, isScrolling);
+      }),
+    observeElementRect: (instance, cb) =>
+      observeElementRect(instance, (rect) => {
+        if (activeRef.current) cb(rect);
+        else pendingRectRef.current = { rect, cb };
+      }),
+    // A row re-observed while hidden keeps its cached size — never a
+    // measurement taken under someone else's layout.
+    measureElement: (element, entry, instance) => {
+      if (!activeRef.current) {
+        const index = instance.indexFromElement(element);
+        const cached = instance.getVirtualItems().find((v) => v.index === index)?.size;
+        if (cached !== undefined) return cached;
+      }
+      return measureRowElement(element, entry, instance);
+    },
   });
+
+  // Reveal after a kept-alive hide: replay a `<main>` resize that happened while
+  // frozen, re-measure the scroll margin against the real layout, and re-measure
+  // the mounted rows (a rotation while hidden rewraps them). Each is a no-op when
+  // nothing changed — the common case, where the rows come back byte-identical.
+  const wasActiveRef = useRef(active);
+  useLayoutEffect(() => {
+    const was = wasActiveRef.current;
+    wasActiveRef.current = active;
+    if (!active || was) return;
+    const pending = pendingRectRef.current;
+    pendingRectRef.current = null;
+    if (pending) pending.cb(pending.rect);
+    if (scrollEl) measureScrollMargin(scrollEl);
+    parentRef.current
+      ?.querySelectorAll<HTMLElement>(":scope > [data-index]")
+      .forEach((row) => virtualizer.measureElement(row));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
 
   // INDEX-BASED restore: once the scroll element is attached, force the saved
   // anchor row to mount and measure via `scrollToIndex` (which self-reconciles
@@ -160,7 +225,10 @@ export function VirtualFeed<T>({
   // Bridge for the app-level restorer:
   //  • scrollToEventId — reach a virtualized-out row by id (scrollToIndex mounts it).
   //  • captureAnchor  — save-time index anchor from the virtualizer's own rows.
+  // Registered only while SHOWING: a hidden feed answering for `<main>` would
+  // hand the page on top an index anchor into the wrong list.
   useEffect(() => {
+    if (!active) return;
     setFeedScrollBridge({
       scrollToEventId: (eventId) => {
         const arr = itemsRef.current;
@@ -188,7 +256,7 @@ export function VirtualFeed<T>({
       },
     });
     return () => setFeedScrollBridge(null);
-  }, [virtualizer]);
+  }, [virtualizer, active]);
 
   const virtualItems = virtualizer.getVirtualItems();
   const lastIndex = virtualItems.length ? virtualItems[virtualItems.length - 1].index : -1;

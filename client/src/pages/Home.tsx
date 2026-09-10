@@ -127,6 +127,7 @@ import { fetchTopNotes } from "@/lib/nostr-archives";
 import { FeedSkeletonCard, FeedSkeletonList, ChipInput, PeopleSearch, TuneFrequencyFormContent, TuneFrequencyDialog, REACH_DEPTH_STOPS, ReachDepthSlider, FEED_FILTER_TIERS, FeedTierFilter, StrictnessPresetControl } from "./home/feed-controls";
 import { detectPreset, PRESET_DEFS, type StrictnessPreset } from "@/lib/trust-preset";
 import { writeExcludedTiers } from "@/lib/trust-filter";
+import { useSurfaceActive } from "@/contexts/SurfaceActiveContext";
 
 let _savedCutoffTimestamp: number | null = null;
 
@@ -157,6 +158,12 @@ export default function Home() {
   const { filter: spamFilter } = useSpamFilter();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  // Kept-alive (components/HomeKeepAlive.tsx): while a thread or profile is on
+  // top, Home stays mounted but HIDDEN and must not react to that page's
+  // scrolls or refreshes — they would reshuffle the very list Back reveals.
+  const surfaceActive = useSurfaceActive();
+  const surfaceActiveRef = useRef(surfaceActive);
+  surfaceActiveRef.current = surfaceActive;
   const useVirtualFeed = useMemo(() => feedVirtualizationEnabled(), []);
   const hasSessionPref = useRef(false);
   const [feedMode, setFeedModeState] = useState<FeedMode>(() => {
@@ -726,7 +733,10 @@ export default function Home() {
         // fresh (possibly still-empty) list mid-restore — the feed collapsed
         // to a skeleton under the restored offset. The reader is NOT at the
         // top during a restore; ignore scroll events until it finishes.
-        if (attachedEl && !isRestoreActive()) setIsAtTop(attachedEl.scrollTop <= 80);
+        // …and while kept-alive and hidden, `<main>` scrolls belong to the
+        // page on top: a thread sitting at 0 would flip isAtTop true and
+        // adopt a fresh, reordered list under the position Back reveals.
+        if (attachedEl && !isRestoreActive() && surfaceActiveRef.current) setIsAtTop(attachedEl.scrollTop <= 80);
       });
     };
     const find = () => {
@@ -762,6 +772,19 @@ export default function Home() {
   const [deletingFeed, setDeletingFeed] = useState<NostrCustomFeed | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importText, setImportText] = useState("");
+  // Hidden under a page on top (kept-alive): Home's own overlays portal to
+  // <body>, OUTSIDE the hidden layer — close them so none lingers over it.
+  useEffect(() => {
+    if (surfaceActive) return;
+    setOptionsSheetOpen(false);
+    setSavedMenuOpen(false);
+    setTuneDialogOpen(false);
+    setBrowsePacksOpen(false);
+    setEditingFeed(null);
+    setShareDialogOpen(false);
+    setDeletingFeed(null);
+    setImportDialogOpen(false);
+  }, [surfaceActive]);
   const [isImporting, setIsImporting] = useState(false);
 
   const followSet = useMemo(() => new Set(follows), [follows]);
@@ -2825,6 +2848,10 @@ export default function Home() {
 
   useEffect(() => {
     const handleSoftRefresh = () => {
+      // A pull-to-refresh on the page ON TOP of a hidden, kept-alive Home is
+      // that page's refresh — resetting the display limit here would truncate
+      // the list out from under the position Back is about to reveal.
+      if (!surfaceActiveRef.current) return;
       // The refresh bumps the cutoff past every buffered event; drain them
       // into `seen` (they're about to be visible) so the pill count doesn't
       // survive the refresh as a stale number.

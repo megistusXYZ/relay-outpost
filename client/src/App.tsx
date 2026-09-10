@@ -64,6 +64,7 @@ import { LiveStatusProvider } from "@/contexts/LiveStatusContext";
 import { GrapeRankScoresProvider } from "@/contexts/GrapeRankScoresContext";
 import { InteractionIndexProvider } from "@/contexts/InteractionIndexContext";
 import { useScrollRestore } from "@/hooks/use-scroll-restore";
+import { HomeKeepAlive } from "@/components/HomeKeepAlive";
 import { useGoBack } from "@/hooks/use-go-back";
 import { isEdgeBackSwipe, shouldAttachCustomBackSwipe, detectBackGestureEnv } from "@/lib/edge-swipe";
 import { useIaCollapsed, isIaCollapsed } from "@/lib/ia-prefs";
@@ -352,7 +353,11 @@ function Router() {
     <ErrorBoundary key={routeBase} fallback={<RouteErrorFallback />}>
       <Suspense fallback={<LazyFallback />}>
         <Switch>
-        <Route path="/" component={Home} />
+        {/* "/" renders nothing here: Home lives in the kept-alive layer
+            (components/HomeKeepAlive.tsx), outside this route-keyed
+            boundary, so opening a thread no longer unmounts the timeline.
+            The route stays so NotFound never matches "/". */}
+        <Route path="/">{() => null}</Route>
         <Route path="/discover" component={Discover} />
         <Route path="/marketplace" component={Marketplace} />
         <Route path="/generator" component={Generator} />
@@ -492,6 +497,12 @@ function useScrollHide(containerRef: React.RefObject<HTMLElement | null>) {
 
       if (currentY <= 30) {
         setHidden(false);
+        accumulated.current = 0;
+      } else if (Math.abs(delta) > el.clientHeight) {
+        // A single-frame jump bigger than the viewport is programmatic — a
+        // back-navigation restore or the Home keep-alive reveal writing
+        // scrollTop — not the reader scrolling. Reading it as "scrolled
+        // down" hid the header on every back.
         accumulated.current = 0;
       } else if (delta > 0) {
         accumulated.current = Math.max(0, accumulated.current + delta);
@@ -1095,6 +1106,7 @@ function AppContent({ mainRef, scrollHidden }: { mainRef: React.RefObject<HTMLEl
           <PullToRefresh onRefresh={async () => { await queryClient.invalidateQueries(); window.dispatchEvent(new CustomEvent("nostr-soft-refresh")); }} scrollContainerSelector="main">
             <LandingRedirect />
             <Router />
+            <HomeKeepAlive renderHome={() => <Home />} fallback={<LazyFallback />} errorFallback={<RouteErrorFallback />} />
           </PullToRefresh>
         </main>
       </div>

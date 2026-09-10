@@ -13,8 +13,11 @@ import {
   usesIndexRestore,
   shouldReleaseIndexRestore,
   INDEX_RESTORE_MIN_ASSERT_FRAMES,
+  cancelPendingRestore,
 } from "@/lib/scroll-restore";
 import { captureFeedIndexAnchor } from "@/lib/feed-scroll-bridge";
+import { appHistoryIndex } from "@/lib/app-history";
+import { getCommittedHomeLayer, shouldGenericRestoreStandDown } from "@/lib/home-keepalive";
 
 /**
  * Shared, surface-agnostic scroll restoration.
@@ -182,6 +185,15 @@ export function useScrollRestore(
 
     cancelAnimationFrame(rafRef.current);
     isRestoringRef.current = false;
+
+    // A back onto the kept-alive Home entry is the Home layer's to reveal
+    // (components/HomeKeepAlive.tsx): the SAME DOM comes back at the same
+    // place, so there is nothing to restore — and a second writer would only
+    // fight it. Consume the popstate arm, or saves stay suspended.
+    if (driveGlobalWindow && shouldGenericRestoreStandDown(getCommittedHomeLayer(), { path: location, token: getScrollToken(), idx: appHistoryIndex() })) {
+      cancelPendingRestore();
+      return;
+    }
 
     if (driveGlobalWindow) ensureScrollToken();
     const saved = getSavedScrollPosition(storeKey());

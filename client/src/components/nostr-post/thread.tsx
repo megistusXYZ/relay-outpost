@@ -1151,7 +1151,9 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
     e.preventDefault();
     const parentId = getReplyTargetId(event);
     if (!parentId) return;
-    const container = document.querySelector(`[data-event-id="${parentId}"]`);
+    // Never a copy inside the hidden, kept-alive feed (components/HomeKeepAlive.tsx):
+    // it shares the page and can hold the same event, invisibly.
+    const container = [...document.querySelectorAll(`[data-event-id="${parentId}"]`)].find((el) => !el.closest("[inert]"));
     if (!container) return;
     const item = container.querySelector(`[data-testid="thread-reply-content-${parentId}"]`) ?? container;
     item.scrollIntoView({ behavior: "smooth", block: "center" });
