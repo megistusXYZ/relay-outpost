@@ -7,7 +7,7 @@
  * captured 2026-09-10 (trimmed to the fields read).
  */
 import { describe, expect, it } from "vitest";
-import { fetchStationInfo, parseNowPlaying, type TextFetch } from "./radio-station";
+import { discoverRadioStation, fetchStationInfo, parseNowPlaying, stationLinksInHtml, type TextFetch } from "./radio-station";
 
 const BOWL_AFTER_BOWL = {
   station: {
@@ -50,6 +50,53 @@ describe("parseNowPlaying", () => {
     expect(parseNowPlaying(plain)?.listenUrl).toBeNull();
     const garbage = { ...BOWL_AFTER_BOWL, station: { ...BOWL_AFTER_BOWL.station, listen_url: "javascript:alert(1)" } };
     expect(parseNowPlaying(garbage)?.listenUrl).toBeNull();
+  });
+});
+
+/**
+ * Most Bowl After Bowl posts link their site's /live/ page, not the station
+ * itself. The page carries the station in its BODY (captured 2026-09-10,
+ * ~11.6KB in, well past </head>): an "Open Stream" link to the AzuraCast
+ * public player page, next to their own player button.
+ */
+const LIVE_PAGE_BODY = `
+  <button id="live-now-playing-listen-btn" type="button" class="btn-form live-listen-btn"
+    data-bab-play data-bab-live="true"
+    data-audio-src="https://stream.bowlafterbowl.com:8000/stream.mp3"
+    aria-label="Listen to current stream">Listen Now</button>
+  <a class="btn-form live-chat-btn" href="https://stream.bowlafterbowl.com/public/bowlafterbowl" target="_blank" rel="noopener">Open Stream</a>
+`;
+
+describe("stationLinksInHtml", () => {
+  it("finds the station a page links to, as its clean public player page", () => {
+    expect(stationLinksInHtml(LIVE_PAGE_BODY)).toEqual(["https://stream.bowlafterbowl.com/public/bowlafterbowl"]);
+  });
+});
+
+describe("discoverRadioStation", () => {
+  const allowAll = async () => true;
+
+  it("calls a page a station only once the station's own API confirms it", async () => {
+    const asked: string[] = [];
+    const fetchText: TextFetch = async (url) => {
+      asked.push(url);
+      return { status: 200, text: JSON.stringify(BOWL_AFTER_BOWL) };
+    };
+    expect(await discoverRadioStation(LIVE_PAGE_BODY, fetchText, allowAll)).toBe("https://stream.bowlafterbowl.com/public/bowlafterbowl");
+    expect(asked).toEqual(["https://stream.bowlafterbowl.com/api/nowplaying/bowlafterbowl"]);
+  });
+
+  it("ignores a /public/ link whose host does not answer as a radio station", async () => {
+    const page = `<a href="https://example.com/public/images">Press kit</a>`;
+    const fetchText: TextFetch = async () => ({ status: 404, text: "<html>Not found</html>" });
+    expect(await discoverRadioStation(page, fetchText, allowAll)).toBeNull();
+  });
+
+  it("asks nothing of a page that links no station", async () => {
+    let calls = 0;
+    const fetchText: TextFetch = async () => { calls++; return { status: 200, text: "{}" }; };
+    expect(await discoverRadioStation("<p>Just an article.</p>", fetchText, allowAll)).toBeNull();
+    expect(calls).toBe(0);
   });
 });
 

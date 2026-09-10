@@ -11,7 +11,7 @@
  * lib/audio-space.ts recognises a Corny Chat room.
  */
 import { describe, expect, it } from "vitest";
-import { radioStationFromUrl, radioTrack } from "./radio-station";
+import { pageStationToShow, radioStationFromUrl, radioTrack } from "./radio-station";
 
 describe("radioStationFromUrl", () => {
   it("reads an AzuraCast public player link as a station: host, station name and clean page link", () => {
@@ -25,6 +25,30 @@ describe("radioStationFromUrl", () => {
   it("only upgrades web links: another scheme on the same path is not a station", () => {
     expect(radioStationFromUrl("ftp://stream.bowlafterbowl.com/public/bowlafterbowl")).toBeNull();
     expect(radioStationFromUrl("javascript:alert(1)//public/x")).toBeNull();
+  });
+});
+
+/**
+ * One Listen card per station per post. 13 of Bowl After Bowl's recent posts
+ * link BOTH their /live/ page and the stream's root address, and each of those
+ * pages leads to the same station: the first link, in post order, owns the
+ * card and the rest stay plain link cards.
+ */
+describe("pageStationToShow — one Listen card per station per post", () => {
+  const STATION = "https://stream.bowlafterbowl.com/public/bowlafterbowl";
+
+  it("lets the first link that leads to a station show it, and keeps a later link to the same station plain", () => {
+    expect(pageStationToShow({ radioStation: STATION, linkedStations: new Set(), earlier: [] })).toBe(STATION);
+    expect(pageStationToShow({ radioStation: STATION, linkedStations: new Set(), earlier: [{ settled: true, radioStation: STATION }] })).toBeNull();
+  });
+
+  it("stays a plain link when the post links the station directly, which already shows its card", () => {
+    expect(pageStationToShow({ radioStation: STATION, linkedStations: new Set([STATION]), earlier: [] })).toBeNull();
+  });
+
+  it("waits for earlier links to load, so a card never shows and then turns plain", () => {
+    expect(pageStationToShow({ radioStation: STATION, linkedStations: new Set(), earlier: [{ settled: false }] })).toBeNull();
+    expect(pageStationToShow({ radioStation: STATION, linkedStations: new Set(), earlier: [{ settled: true, radioStation: null }] })).toBe(STATION);
   });
 });
 

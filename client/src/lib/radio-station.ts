@@ -13,6 +13,26 @@ import type { MusicTrack } from "@/lib/music";
 export { radioStationFromUrl, type RadioStationRef, type RadioStationInfo } from "@shared/radio-station";
 
 /**
+ * Which station, if any, a link preview shows as a Listen card. A post shows
+ * one Listen card per station: a station the post links directly already has
+ * its card, and among links whose pages lead to the same station the first in
+ * post order owns it. A later link waits until every earlier one has loaded,
+ * so a card never appears and then turns back into a plain link.
+ */
+export function pageStationToShow(input: {
+  radioStation?: string | null;
+  linkedStations?: Set<string>;
+  earlier: Array<{ settled: boolean; radioStation?: string | null }>;
+}): string | null {
+  const station = input.radioStation;
+  if (!station) return null;
+  if (input.linkedStations?.has(station)) return null;
+  if (input.earlier.some((link) => !link.settled)) return null;
+  if (input.earlier.some((link) => link.radioStation === station)) return null;
+  return station;
+}
+
+/**
  * The track Listen hands the app's audio player: the station's stream, marked
  * live (no duration, no seeking, no remembered position). Its id is the
  * station, not what is on air, so the card can tell the station is already
