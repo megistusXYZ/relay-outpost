@@ -21,6 +21,7 @@ import type { Event } from "nostr-tools";
 import { use$ } from "applesauce-react/hooks";
 import { Tag, MessageCircle, MapPin, ExternalLink, Flag, ShieldAlert, BadgeCheck, ChevronDown } from "lucide-react";
 import { ReportDialog } from "@/components/ReportDialog";
+import { ListingDescription } from "@/components/ListingDescription";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { getSignalTier, getSignalTierLabel } from "@/lib/graperank";
 import { isReportedEvent, isReportedPubkey } from "@/lib/spam-filter";
@@ -175,9 +176,7 @@ export function ListingDialog({ listing, open, onOpenChange }: { listing: Listin
                 </p>
               )}
             </div>
-            {listing.summary && (
-              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{listing.summary}</p>
-            )}
+            {listing.summary && <ListingDescription text={listing.summary} />}
             <div className="flex items-center gap-3 text-[11px] text-muted-foreground/70 tabular-nums">
               {listing.location && (
                 <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{listing.location}</span>
