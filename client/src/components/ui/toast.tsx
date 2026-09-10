@@ -7,16 +7,39 @@ import { cn } from "@/lib/utils"
 
 const ToastProvider = ToastPrimitives.Provider
 
+/**
+ * Taps on a toast aren't "outside" the drawer, sheet or dialog it was raised
+ * from. A toast lives outside that surface in the DOM, so tapping its Undo
+ * used to dismiss the surface under it. The overlay wrappers run this in
+ * front of their own outside handlers. See toast-outside.test.ts.
+ */
+export function ignoreToastInteraction<E extends { target: EventTarget | null; preventDefault(): void }>(
+  handler?: (event: E) => void,
+): (event: E) => void {
+  return (event) => {
+    const target = event.target as Element | null;
+    if (target && typeof target.closest === "function" && target.closest("[data-toast-viewport]")) {
+      event.preventDefault();
+    }
+    handler?.(event);
+  };
+}
+
 const ToastViewport = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Viewport>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Viewport
     ref={ref}
+    // z-[400]: above every sheet, drawer and dialog (≤ 220) and dropdown
+    // (300), so an Undo raised from inside one is seen and tappable. At 100 a
+    // toast opened from the News sources drawer sat hidden behind it. Still
+    // below the full-screen lightboxes and welcome overlay (9999+).
     className={cn(
-      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+      "fixed top-0 z-[400] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
       className
     )}
+    data-toast-viewport=""
     {...props}
   />
 ))

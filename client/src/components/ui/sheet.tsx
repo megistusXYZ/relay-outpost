@@ -5,6 +5,7 @@ import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { withBackClose } from "@/hooks/use-back-closable"
 import { cva, type VariantProps } from "class-variance-authority"
 import { OVERLAY_CLOSE_BUTTON, OverlayCloseChip } from "@/components/ui/overlay-close"
+import { ignoreToastInteraction } from "@/components/ui/toast"
 
 import { cn } from "@/lib/utils"
 
@@ -74,7 +75,7 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, style, overlayClassName, ...props }, ref) => {
+>(({ side = "right", className, children, style, overlayClassName, onPointerDownOutside, onInteractOutside, ...props }, ref) => {
   // iOS standalone-PWA compositing fix for bottom sheets.
   //
   // On display-mode:standalone WebKit, a portaled `position: fixed`,
@@ -110,6 +111,9 @@ const SheetContent = React.forwardRef<
             : style
         }
         {...props}
+        // A tap on a toast raised from this sheet (an Undo) isn't "outside".
+        onPointerDownOutside={ignoreToastInteraction(onPointerDownOutside)}
+        onInteractOutside={ignoreToastInteraction(onInteractOutside)}
       >
         {children}
         <SheetPrimitive.Close className={OVERLAY_CLOSE_BUTTON}>

@@ -133,7 +133,7 @@ import {
   saveHiddenDefaults,
   addFeedToLibrary,
   updateFeedInLibrary } from "@/lib/rss-feeds";
-import { laneFeeds, removeFromLibrary } from "@/lib/news-library";
+import { NEWS_STARTER_KEPT_KEY, laneFeeds, removeFromLibrary, restoreSource, sourceSections, starterStatus } from "@/lib/news-library";
 import { mergeFeedItems, type MergedItem, type MergeSource } from "@/lib/rss-merge";
 import { groupByDay, orderStream, pickLead, withoutLead, withoutMuted } from "@/lib/news-stream";
 import { imageFit } from "@/lib/news-image";
@@ -1783,7 +1783,6 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
   const discussSearch = useSearch();
   const [markAllConfirmOpen, setMarkAllConfirmOpen] = useState(false);
   const articlesRef = useRef<HTMLDivElement>(null);
-  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   // Source filter: narrows the active feed's items to a single author/source.
   const [sourceFilter, setSourceFilter] = useState<string | null>(null);
   // Merged thread is the default when no single source is chosen.
@@ -2232,6 +2231,30 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
     );
   };
 
+  // The starter stays a suggestion until you settle it (starterStatus in
+  // lib/news-library.ts): one quiet line under the search with Keep and Edit.
+  const [starterKept, setStarterKept] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(NEWS_STARTER_KEPT_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  // Re-read what's stored whenever this page changes the library (every
+  // add / remove / rename goes through setFeeds after writing storage).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const storedLibrary = useMemo(() => ({ custom: loadCustomFeeds(), hidden: loadHiddenDefaults() }), [feeds]);
+  const libraryStatus = starterStatus(storedLibrary, { kept: starterKept });
+  const sections = useMemo(() => sourceSections(storedLibrary, libraryStatus), [storedLibrary, libraryStatus]);
+  const handleKeepStarter = useCallback(() => {
+    setStarterKept(true);
+    try {
+      localStorage.setItem(NEWS_STARTER_KEPT_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const handleAddFeed = useCallback((feed: SavedFeed) => {
     setFeeds(prev => {
       if (prev.some(f => f.url === feed.url)) return prev;
@@ -2252,7 +2275,9 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
   const handleRemoveFeed = useCallback((url: string) => {
     // Drop any stored copy AND hide the starter entry, so a renamed starter
     // source can't come back after a reload (lib/news-library.ts).
-    const next = removeFromLibrary({ custom: loadCustomFeeds(), hidden: loadHiddenDefaults() }, url);
+    const before = { custom: loadCustomFeeds(), hidden: loadHiddenDefaults() };
+    const name = feeds.find((f) => f.url === url)?.name;
+    const next = removeFromLibrary(before, url);
     saveCustomFeeds(next.custom);
     saveHiddenDefaults(next.hidden);
     setFeeds(prev => {
@@ -2262,7 +2287,27 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
       }
       return next;
     });
-  }, [activeFeedUrl, toast, handleSelectFeed]);
+    // Undo brings back this one source as it was, and nothing else
+    // (restoreSource in lib/news-library.ts).
+    toast({
+      title: name ? `Removed ${name}` : "Source removed",
+      action: (
+        <ToastAction
+          altText="Undo"
+          className="h-11 px-4"
+          onClick={() => {
+            const restored = restoreSource({ custom: loadCustomFeeds(), hidden: loadHiddenDefaults() }, before, url);
+            saveCustomFeeds(restored.custom);
+            saveHiddenDefaults(restored.hidden);
+            setFeeds(loadAllFeeds());
+          }}
+          data-testid="button-undo-remove-source"
+        >
+          Undo
+        </ToastAction>
+      ),
+    });
+  }, [activeFeedUrl, toast, handleSelectFeed, feeds]);
 
   const handleStartEdit = useCallback((feed: SavedFeed) => {
     setEditingFeedUrl(feed.url);
@@ -2292,29 +2337,13 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
   const handleResetDefaults = useCallback(() => {
     saveCustomFeeds([]);
     saveHiddenDefaults(new Set());
+    // Restored defaults are suggestions again.
+    setStarterKept(false);
+    try { localStorage.removeItem(NEWS_STARTER_KEPT_KEY); } catch {}
     const defaults = [...DEFAULT_FEEDS];
     setFeeds(defaults);
     setActiveFeedUrl(""); // back to the merged "All feeds" thread
   }, [toast]);
-
-  const categories = useMemo(() => {
-    const cats = new Set(feeds.map(f => f.category));
-    return Array.from(cats).sort();
-  }, [feeds]);
-
-
-  const mobileFilteredFeeds = useMemo(() => {
-    if (selectedCategories.size === 0) return feeds;
-    return feeds.filter(f => selectedCategories.has(f.category));
-  }, [feeds, selectedCategories]);
-
-  useEffect(() => {
-    // Only re-target when already drilled into a single source; never yank the
-    // user out of the merged "All feeds" thread.
-    if (activeFeedUrl !== "" && selectedCategories.size > 0 && mobileFilteredFeeds.length > 0 && !mobileFilteredFeeds.some(f => f.url === activeFeedUrl)) {
-      setActiveFeedUrl(mobileFilteredFeeds[0].url);
-    }
-  }, [mobileFilteredFeeds, activeFeedUrl, selectedCategories]);
 
   // Hard wall (owner decision, 2026-08-14): News is a browse surface, so
   // guests meet the wall outright — the reader, the feeds, and the trending
@@ -2396,14 +2425,32 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
               <ArrowLeft className="w-5 h-5" />
             </Button>
           )}
+          {/* The starter, said plainly: suggestions you can keep in one tap or
+              edit. The line goes once you keep them or add a source. */}
+          {isAllMode && libraryStatus === "suggested" && (
+            <p className="flex items-center gap-1 text-sm text-muted-foreground" data-testid="news-suggested-line">
+              {sections.suggested.length} suggested {sections.suggested.length === 1 ? "source" : "sources"}
+              <span aria-hidden="true">·</span>
+              <Button variant="ghost" onClick={handleKeepStarter} className="h-11 px-2 text-sm font-medium text-brand hover:text-brand" data-testid="button-keep-starter">
+                Keep
+              </Button>
+              <span aria-hidden="true">·</span>
+            </p>
+          )}
           <Drawer open={feedPopoverOpen} onOpenChange={setFeedPopoverOpen}>
             <DrawerTrigger asChild>
               {isAllMode ? (
-                // A quiet way into your sources; the stream itself is the page.
-                <Button variant="ghost" className="h-11 -ml-2 px-2 gap-1.5 text-sm font-normal text-muted-foreground hover:text-foreground" data-testid="button-feed-dropdown">
-                  Your sources
-                  <ChevronDown className="w-3.5 h-3.5 shrink-0" />
-                </Button>
+                libraryStatus === "suggested" ? (
+                  <Button variant="ghost" className="h-11 -ml-1 px-2 text-sm font-medium text-brand hover:text-brand" data-testid="button-feed-dropdown">
+                    Edit
+                  </Button>
+                ) : (
+                  // A quiet way into your sources; the stream itself is the page.
+                  <Button variant="ghost" className="h-11 -ml-2 px-2 gap-1.5 text-sm font-normal text-muted-foreground hover:text-foreground" data-testid="button-feed-dropdown">
+                    Your sources
+                    <ChevronDown className="w-3.5 h-3.5 shrink-0" />
+                  </Button>
+                )
               ) : (
               <Button variant="outline" size="sm" className="justify-between h-11 flex-1 min-w-0" data-testid="button-feed-dropdown">
                 <span className="flex items-center gap-1.5 truncate">
@@ -2471,14 +2518,15 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                     <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0 ml-auto" />
                   </button>
                 </div>
-                {(selectedCategories.size > 0 ? categories.filter(c => selectedCategories.has(c)) : categories).map(cat => {
-                  const catFeeds = mobileFilteredFeeds.filter(f => f.category === cat);
-                  if (catFeeds.length === 0) return null;
+                {/* Suggested (the starter you haven't decided on), your news
+                    sources, and the shows you follow (lib/news-library.ts). */}
+                {([["Suggested", sections.suggested], ["News", sections.news], ["Shows", sections.shows]] as const).map(([label, sectionFeeds]) => {
+                  if (sectionFeeds.length === 0) return null;
                   return (
-                    <div key={cat} className="mb-3">
-                      <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50 px-2 py-1.5">{cat}</p>
+                    <div key={label} className="mb-3" data-testid={`sources-section-${label.toLowerCase()}`}>
+                      <p className="text-xs font-medium text-muted-foreground px-2 py-1.5">{label}</p>
                       <div className="space-y-1">
-                        {catFeeds.map(feed => {
+                        {sectionFeeds.map(feed => {
                           const isActive = feed.url === activeFeedUrl;
                           const isEditing = editingFeedUrl === feed.url;
                           if (isEditing) {
@@ -2664,10 +2712,6 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
         </div>
         </div>
 
-        {/* Category tabs removed (2026-07): the per-topic buckets read
-            inconsistently across users' feed mixes; topic discovery lives in
-            Search, where categories are curated. The All-feeds view is now a
-            single "Top" stream. */}
 
         <div ref={articlesRef} className="min-w-0 space-y-3" data-testid="container-feed-content">
           {/* ── Merged "All feeds" thread (the default view) ── */}

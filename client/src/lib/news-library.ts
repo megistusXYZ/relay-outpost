@@ -128,6 +128,60 @@ export function removeFromLibrary(stored: StoredLibrary, url: string): { custom:
   };
 }
 
+/**
+ * Whether the starter is still a suggestion ("suggested": News shows one
+ * quiet line with Keep and Edit) or your own library ("settled").
+ *
+ * Settled once you tap Keep, once anything is stored as your own (a source you
+ * added, a starter source you renamed, or a library carried over from the old
+ * starter, which is always stored as explicit entries), or once no suggestion
+ * is left. Removing a suggestion alone doesn't settle it: that's still
+ * editing the suggestions. See news-library.test.ts.
+ */
+export type StarterStatus = "suggested" | "settled";
+
+export function starterStatus(stored: StoredLibrary, prefs: { kept: boolean }): StarterStatus {
+  if (prefs.kept || stored.custom.length > 0) return "settled";
+  return [...STARTER_URLS_V2].some((url) => !stored.hidden.has(url)) ? "suggested" : "settled";
+}
+
+/** Set when you tap Keep on the suggested sources. */
+export const NEWS_STARTER_KEPT_KEY = "ro_news_starter_kept";
+
+export interface SourceSections {
+  suggested: SavedFeed[];
+  news: SavedFeed[];
+  shows: SavedFeed[];
+}
+
+/**
+ * The Sources drawer's sections. While the starter is a suggestion its
+ * sources are listed as Suggested; once settled they are simply your news
+ * sources, ahead of the ones you added (the library's own order).
+ */
+export function sourceSections(stored: StoredLibrary, status: StarterStatus): SourceSections {
+  const starter = deriveLibrary(STARTER_URLS_V2, { custom: [], hidden: stored.hidden });
+  const yours = status === "suggested" ? stored.custom : [...starter, ...stored.custom];
+  return {
+    suggested: status === "suggested" ? starter : [],
+    news: laneFeeds(yours, "news"),
+    shows: laneFeeds(yours, "listen"),
+  };
+}
+
+/**
+ * Undo for removeFromLibrary: bring back one source as it was before it was
+ * removed (its stored copy, if it had one, and whether it was hidden), and
+ * leave every other change since then alone.
+ */
+export function restoreSource(now: StoredLibrary, before: StoredLibrary, url: string): { custom: SavedFeed[]; hidden: Set<string> } {
+  const copy = before.custom.find((feed) => feed.url === url);
+  const custom = copy && !now.custom.some((feed) => feed.url === url) ? [...now.custom, copy] : [...now.custom];
+  const hidden = new Set(now.hidden);
+  if (!before.hidden.has(url)) hidden.delete(url);
+  return { custom, hidden };
+}
+
 /** Set once this device's library has been carried over to the new starter. */
 export const NEWS_LIBRARY_VERSION_KEY = "ro_news_library_version";
 /** The oldest saved-feeds key: it held the whole list, defaults included. */
