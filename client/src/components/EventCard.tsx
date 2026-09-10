@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { use$ } from "applesauce-react/hooks";
 import { eventStore, fetchProfilesCached } from "@/lib/nostr";
 import { KIND_METADATA, getProfileContent } from "@/lib/nostr-helpers";
@@ -13,6 +13,8 @@ import {
   type CalendarEventData,
 } from "@/lib/calendar-events";
 import { EventActionBar } from "@/components/EventActionBar";
+import { EventDetails } from "@/components/EventDetails";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 // One event card for every surface: the Search → Events list, the calendar's
 // pinned-events sections, and events embedded in feed posts (shared via
@@ -112,6 +114,37 @@ export function MeetingLinkChip({ ce, suppressIfInText }: { ce: CalendarEventDat
   );
 }
 
+/**
+ * The whole event, opened from any EventCard: the full description, time,
+ * place and host, the meeting link and the RSVP / calendar / share bar. Clicks
+ * inside stop here — React bubbles portal events up to the card, which would
+ * otherwise reopen it.
+ */
+function EventDetailDialog({ ce, host, open, onOpenChange, onShare }: {
+  ce: CalendarEventData;
+  host: { name: string; avatar?: string };
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onShare?: (ce: CalendarEventData) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="max-w-lg p-0 gap-0 overflow-hidden rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+        data-testid={`event-detail-dialog-${ce.id.slice(0, 8)}`}
+      >
+        <DialogTitle className="sr-only">{ce.title}</DialogTitle>
+        <div className="max-h-[85dvh] overflow-y-auto p-5 space-y-4">
+          <EventDetails ce={ce} when={formatEventWhen(ce)} host={host} />
+          <MeetingLinkChip ce={ce} suppressIfInText={ce.description} />
+          <EventActionBar ce={ce} variant="list" onShare={onShare ? () => onShare(ce) : undefined} />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export interface EventCardProps {
   ce: CalendarEventData;
   variant?: "list" | "embed";
@@ -121,7 +154,7 @@ export interface EventCardProps {
    *  DayDetail. Browsing surfaces (Search events, feed embed) leave this unset
    *  and rely on the single bottom action row instead. */
   actions?: React.ReactNode;
-  /** Tap handler for the embed variant (opens the event surface). */
+  /** Tap handler that replaces the built-in detail sheet (either variant). */
   onOpen?: () => void;
   /** Share-to-feed handler. When set, a compact Share icon appears in the
    *  bottom action row. When unset, the icon is hidden. */
@@ -131,12 +164,19 @@ export interface EventCardProps {
 
 export function EventCard({ ce, variant = "list", dimmed = false, actions, onOpen, onShare, className = "" }: EventCardProps) {
   const host = useEventHost(ce.pubkey);
+  // Tapping a card opens the whole event (EventDetailDialog) unless the caller
+  // routes it elsewhere with onOpen.
+  const [detailOpen, setDetailOpen] = useState(false);
+  const openDetails = () => (onOpen ? onOpen() : setDetailOpen(true));
+  const detailDialog = !onOpen && (
+    <EventDetailDialog ce={ce} host={host} open={detailOpen} onOpenChange={setDetailOpen} onShare={onShare} />
+  );
 
   if (variant === "embed") {
     return (
       <div
-        className={`mt-2 rounded-lg border border-border/30 bg-background/20 overflow-hidden hover-elevate transition-colors ${onOpen ? "cursor-pointer" : ""} ${className}`}
-        onClick={(e) => { e.stopPropagation(); onOpen?.(); }}
+        className={`mt-2 rounded-lg border border-border/30 bg-background/20 overflow-hidden hover-elevate transition-colors cursor-pointer ${className}`}
+        onClick={(e) => { e.stopPropagation(); openDetails(); }}
         data-testid={`event-embed-card-${ce.id.slice(0, 8)}`}
       >
         <div className="p-3">
@@ -156,7 +196,14 @@ export function EventCard({ ce, variant = "list", dimmed = false, actions, onOpe
           <div className="flex items-start gap-3">
             {ce.image && <EventThumb src={ce.image} sizeClass="w-16 h-16" />}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold leading-snug line-clamp-2">{ce.title}</p>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); openDetails(); }}
+                className="block w-full text-left text-sm font-semibold leading-snug line-clamp-2 focus-visible:outline-none focus-visible:underline"
+                data-testid={`event-card-open-${ce.id.slice(0, 8)}`}
+              >
+                {ce.title}
+              </button>
               <p className="mt-1 text-xs text-muted-foreground/80 flex items-center gap-1.5">
                 <Clock className="w-3 h-3 shrink-0" />
                 <span className="truncate">{formatEventWhen(ce)}</span>
@@ -171,19 +218,28 @@ export function EventCard({ ce, variant = "list", dimmed = false, actions, onOpe
           </div>
           <EventActionBar ce={ce} variant="embed" onShare={onShare ? () => onShare(ce) : undefined} />
         </div>
+        {detailDialog}
       </div>
     );
   }
 
   return (
     <div
-      className={`group glass-card rounded-xl border p-3 sm:p-3.5 transition-colors ${dimmed ? "opacity-50" : ""} ${className}`}
+      className={`group glass-card rounded-xl border p-3 sm:p-3.5 transition-colors cursor-pointer hover:border-brand/30 ${dimmed ? "opacity-50" : ""} ${className}`}
+      onClick={openDetails}
       data-testid={`card-event-${ce.id.slice(0, 8)}`}
     >
       <div className="flex items-start gap-3">
         {ce.image && <EventThumb src={ce.image} sizeClass="w-16 h-16 sm:w-20 sm:h-20" />}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground/90 mb-1 leading-snug line-clamp-2">{ce.title}</p>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); openDetails(); }}
+            className="block w-full text-left text-sm font-medium text-foreground/90 mb-1 leading-snug line-clamp-2 hover:text-foreground focus-visible:outline-none focus-visible:underline"
+            data-testid={`event-card-open-${ce.id.slice(0, 8)}`}
+          >
+            {ce.title}
+          </button>
           <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1 sm:gap-2 text-[11px] text-muted-foreground/60 mb-1.5">
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3 shrink-0" />
@@ -212,9 +268,10 @@ export function EventCard({ ce, variant = "list", dimmed = false, actions, onOpe
             </span>
           </div>
         </div>
-        {actions && <div className="flex flex-col items-center gap-0.5 shrink-0">{actions}</div>}
+        {actions && <div className="flex flex-col items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>{actions}</div>}
       </div>
       <EventActionBar ce={ce} variant="list" onShare={onShare ? () => onShare(ce) : undefined} />
+      {detailDialog}
     </div>
   );
 }
