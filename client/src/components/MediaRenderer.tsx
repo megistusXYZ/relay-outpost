@@ -58,12 +58,12 @@ import { useStreamLiveness } from "@/hooks/use-stream-liveness";
 import { KIND_LIVE_EVENT } from "@/lib/nostr-helpers";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useReservedRatio } from "@/hooks/use-reserved-ratio";
+import { useNearViewport } from "@/hooks/use-near-viewport";
 import {
   clampVideoRatio,
   COMPACT_MAX_HEIGHT,
   IMAGE_MAX_HEIGHT,
   UNKNOWN_PLACEHOLDER_HEIGHT,
-  MEDIA_MOUNT_LEAD,
   VIDEO_MAX_HEIGHT,
   VIDEO_WIDEST_RATIO,
 } from "@/lib/media-ratio";
@@ -145,14 +145,10 @@ function decodeBlurhashToDataUrl(blurhash: string, width = 32, height = 32): str
   }
 }
 
-
-// Mount media a bit BEFORE it scrolls into view — earlier and more consistently
-// than the browser's native lazy threshold (which is conservative, especially on
-// mobile) — so it's usually loaded by the time the user reaches it.
 /**
  * Is this box within N screens of the viewport, tracked BOTH ways?
  *
- * The budget for live `<video>` elements. `useNearViewport` below is a one-way
+ * The budget for live `<video>` elements. `useNearViewport` (hooks/) is a one-way
  * latch — correct for "start loading early", useless for "release the decoder
  * once it is far away". At ~700px a row, the virtualizer's overscan of 6 would
  * otherwise keep ~4,200px of video decoding off screen, and a mid-range Android
@@ -178,20 +174,6 @@ function useWithinScreens(ref: React.RefObject<HTMLElement | null>, screens = 1)
   return within;
 }
 
-function useNearViewport(rootMargin = MEDIA_MOUNT_LEAD) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [near, setNear] = useState(typeof IntersectionObserver === "undefined");
-  useEffect(() => {
-    const el = ref.current;
-    if (near || !el) return;
-    const obs = new IntersectionObserver((entries) => {
-      if (entries[0]?.isIntersecting) { setNear(true); obs.disconnect(); }
-    }, { rootMargin });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [near, rootMargin]);
-  return [ref, near] as const;
-}
 
 function InlineImage({
   src,
@@ -350,7 +332,10 @@ function InlineImage({
             // image: a centre crop would remove the beginning AND the end,
             // ruinous for the screenshots and memes most tall images are.
             style={inGallery || !box.known ? undefined : { objectPosition: "top" }}
-            loading={priority ? "eager" : "lazy"}
+            // Eager once the mount lead has fired: the lead already chose when
+            // to load, and WebKit's own lazy loader, clipped by <main> like a
+            // default-root observer, would hold the fetch until on screen.
+            loading={priority || near ? "eager" : "lazy"}
             decoding="async"
             {...(priority ? { fetchpriority: "high" } : {})}
             onClick={inGallery ? undefined : handleClick}
