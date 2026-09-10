@@ -45,6 +45,7 @@ import { TTLCache } from "./ttl-cache";
 import { clusterNews, type NewsInput, type NewsCluster } from "./news-corroboration";
 import { NEWS_SOURCES, NEWS_TOPICS } from "@shared/news-sources";
 import { isPrivateIp, validateHostSafety } from "./net-safety";
+import { fetchPlaylistText, probeHlsLiveness } from "./hls-liveness";
 import { registerOgCardRoutes } from "./og-cards";
 import { registerTranslateRoute } from "./translate";
 import { parseDiscussParam, buildDiscussMeta, buildOgHtml } from "./discuss-og";
@@ -2640,6 +2641,12 @@ export async function registerRoutes(
 
   const streamHealthCache = new TTLCache<{ alive: boolean | null; checkedAt: number }>(100, 5 * 60 * 1000);
 
+  // Reads the playlist (server/hls-liveness.ts): a finished clip served as HLS
+  // is not live. Every redirect hop is re-checked like the stream proxy's.
+  const probeStreamLiveness = (url: string) =>
+    probeHlsLiveness(url, fetchPlaylistText, async (host) => isAllowedStreamDomain(host) && (await validateHostSafety(host)))
+      .catch(() => false);
+
   app.get("/api/stream/health-check", async (req, res) => {
     const targetUrl = req.query.url as string;
     if (!targetUrl) {
@@ -2670,30 +2677,9 @@ export async function registerRoutes(
       return res.json(cached);
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
-
-    try {
-      const upstream = await fetch(targetUrl, {
-        method: "HEAD",
-        signal: controller.signal,
-        redirect: "manual",
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; NostrClient/1.0)",
-        },
-      });
-
-      const alive = upstream.ok || (upstream.status >= 300 && upstream.status < 400);
-      const result = { alive, checkedAt: Date.now() };
-      streamHealthCache.set(targetUrl, result);
-      return res.json(result);
-    } catch {
-      const result = { alive: false, checkedAt: Date.now() };
-      streamHealthCache.set(targetUrl, result);
-      return res.json(result);
-    } finally {
-      clearTimeout(timeout);
-    }
+    const result = { alive: await probeStreamLiveness(targetUrl), checkedAt: Date.now() };
+    streamHealthCache.set(targetUrl, result);
+    return res.json(result);
   });
 
   app.post("/api/stream/health-check-batch", async (req, res) => {
@@ -2735,26 +2721,9 @@ export async function registerRoutes(
         return;
       }
 
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 6000);
-      try {
-        const upstream = await fetch(url, {
-          method: "HEAD",
-          signal: controller.signal,
-          redirect: "manual",
-          headers: { "User-Agent": "Mozilla/5.0 (compatible; NostrClient/1.0)" },
-        });
-        const alive = upstream.ok || (upstream.status >= 300 && upstream.status < 400);
-        const result = { alive, checkedAt: Date.now() };
-        streamHealthCache.set(url, result);
-        results[url] = result;
-      } catch {
-        const result = { alive: false as const, checkedAt: Date.now() };
-        streamHealthCache.set(url, result);
-        results[url] = result;
-      } finally {
-        clearTimeout(timeout);
-      }
+      const result = { alive: await probeStreamLiveness(url), checkedAt: Date.now() };
+      streamHealthCache.set(url, result);
+      results[url] = result;
     }));
 
     return res.json({ results });
