@@ -55,7 +55,12 @@ export interface MusicTrack {
   /** Podcasting 2.0 `podcast:chapters` JSON URL, when the feed provides one. */
   chaptersUrl?: string;
   zapSplits?: ZapSplitRecipient[];
-  source?: "wavlake" | "zapstr" | "nostr" | "catalog" | "relay-outpost" | "podcast";
+  source?: "wavlake" | "zapstr" | "nostr" | "catalog" | "relay-outpost" | "podcast" | "radio";
+  /**
+   * A live stream (internet radio, lib/radio-station.ts): it has no duration,
+   * nothing to seek or skip through, and no position worth remembering.
+   */
+  live?: boolean;
   version?: string;
   colorInfo?: {
     muted?: string;

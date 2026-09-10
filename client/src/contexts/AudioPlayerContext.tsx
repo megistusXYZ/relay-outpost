@@ -195,7 +195,8 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       // src load; reassert the user's chosen rate so it persists across
       // tracks/episodes.
       audio.playbackRate = playbackRateRef.current;
-      const realDuration = audio.duration || 0;
+      // A live stream reports Infinity: there is no duration to show or cache.
+      const realDuration = isFinite(audio.duration) ? audio.duration : 0;
       setState((s) => {
         if (realDuration > 0 && s.currentTrack && !s.currentTrack.duration) {
           durationCache.set(s.currentTrack.id, realDuration);
@@ -337,7 +338,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     const handleBeforeUnload = () => {
       const s = stateRef.current;
-      if (s.currentTrack) {
+      if (s.currentTrack && !s.currentTrack.live) {
         savePlaybackPosition(s.currentTrack, s.currentTime, s.queue, s.queueIndex);
         saveTrackPosition(s.currentTrack.id, s.currentTime, s.duration);
       }
@@ -350,7 +351,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     if (!state.currentTrack) return;
     const interval = setInterval(() => {
       const s = stateRef.current;
-      if (s.currentTrack && s.currentTime > 0) {
+      if (s.currentTrack && !s.currentTrack.live && s.currentTime > 0) {
         savePlaybackPosition(s.currentTrack, s.currentTime, s.queue, s.queueIndex);
         saveTrackPosition(s.currentTrack.id, s.currentTime, s.duration);
       }
@@ -370,7 +371,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     if (!audio) return;
 
     const prev = stateRef.current;
-    if (prev.currentTrack && prev.currentTrack.id !== track.id && prev.currentTime > 0) {
+    if (prev.currentTrack && !prev.currentTrack.live && prev.currentTrack.id !== track.id && prev.currentTime > 0) {
       saveTrackPosition(prev.currentTrack.id, prev.currentTime, prev.duration);
     }
 
@@ -388,7 +389,8 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     const newQueue = queue || [track];
     const idx = queue ? queue.findIndex((t) => t.id === track.id) : 0;
 
-    const saved = getTrackPosition(track.id);
+    // A live stream has no position to come back to: it is always "now".
+    const saved = track.live ? null : getTrackPosition(track.id);
     const resumeTime = saved ? saved.time : 0;
 
     audio.src = track.audioUrl;
@@ -420,7 +422,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
 
   const pause = useCallback(() => {
     const s = stateRef.current;
-    if (s.currentTrack && s.currentTime > 0) {
+    if (s.currentTrack && !s.currentTrack.live && s.currentTime > 0) {
       saveTrackPosition(s.currentTrack.id, s.currentTime, s.duration);
     }
     audioRef.current?.pause();
@@ -439,7 +441,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     // to it before play(). Skipped when the element is already mid-track
     // so a normal pause/resume keeps its current position.
     const s = stateRef.current;
-    if (s.currentTrack && audio.currentTime < 0.5) {
+    if (s.currentTrack && !s.currentTrack.live && audio.currentTime < 0.5) {
       const saved = getTrackPosition(s.currentTrack.id);
       const target = saved && saved.time > 0.5 ? saved.time : s.currentTime;
       if (target > 0.5) {
@@ -468,7 +470,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       audio.play().catch((e) => console.warn("[Audio] Toggle play failed:", e?.message));
     } else {
       const s = stateRef.current;
-      if (s.currentTrack && s.currentTime > 0) {
+      if (s.currentTrack && !s.currentTrack.live && s.currentTime > 0) {
         saveTrackPosition(s.currentTrack.id, s.currentTime, s.duration);
       }
       audio.pause();
@@ -562,7 +564,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
 
   const stop = useCallback(() => {
     const s = stateRef.current;
-    if (s.currentTrack && s.currentTime > 0) {
+    if (s.currentTrack && !s.currentTrack.live && s.currentTime > 0) {
       saveTrackPosition(s.currentTrack.id, s.currentTime, s.duration);
     }
     unregisterAudioSource("music");
@@ -595,7 +597,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     if (!audio || !track) return;
 
     const s = stateRef.current;
-    if (s.currentTrack && s.currentTrack.id !== track.id && s.currentTime > 0) {
+    if (s.currentTrack && !s.currentTrack.live && s.currentTrack.id !== track.id && s.currentTime > 0) {
       saveTrackPosition(s.currentTrack.id, s.currentTime, s.duration);
     }
 
@@ -610,7 +612,8 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       setState((st) => ({ ...st, isPlaying: false, isBuffering: false }));
     });
 
-    const saved = getTrackPosition(track.id);
+    // A live stream has no position to come back to: it is always "now".
+    const saved = track.live ? null : getTrackPosition(track.id);
     const resumeTime = saved ? saved.time : 0;
 
     audio.src = track.audioUrl;

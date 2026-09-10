@@ -44,6 +44,8 @@ import { useAutoplayMediaSetting } from "@/lib/video-prefs";
 import { MusicLinkCard } from "@/components/MusicLinkCard";
 import { AudioSpaceCard } from "@/components/AudioSpaceCard";
 import { audioSpaceFromUrl } from "@/lib/audio-space";
+import { RadioStationCard } from "@/components/RadioStationCard";
+import { radioStationFromUrl } from "@/lib/radio-station";
 import { WavlakeInlinePlayer } from "@/components/WavlakeInlinePlayer";
 import { InlineAudio } from "@/components/InlineAudio";
 import { extractZapSplits } from "@/lib/music";
@@ -1204,6 +1206,10 @@ export function LinkPreviewCard(props: LinkPreviewCardProps) {
   // from URL shape before any OG fetch, same fixed card height, Join in-app.
   const space = audioSpaceFromUrl(props.url);
   if (space) return <AudioSpaceCard space={space} compact={props.compact} />;
+  // Internet radio stations (AzuraCast public player pages) upgrade to a
+  // Listen card that plays in the app's own audio player.
+  const station = radioStationFromUrl(props.url);
+  if (station) return <RadioStationCard station={station} compact={props.compact} />;
   return <OgLinkPreviewCard {...props} />;
 }
 

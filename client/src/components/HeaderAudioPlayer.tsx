@@ -603,6 +603,8 @@ function ExpandedMusicPanel({
   if (!currentTrack) return null;
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  // Live radio: nothing to seek, skip, step through or speed up.
+  const isLive = !!currentTrack.live;
   const hasNext = queueIndex < queue.length - 1;
   const hasPrev = queueIndex > 0 || currentTime > 3;
 
@@ -676,18 +678,22 @@ function ExpandedMusicPanel({
 
         <div className="space-y-3 md:space-y-2">
           <div className="flex items-center justify-center gap-2 md:gap-1">
-            <button className="h-11 w-11 md:h-8 md:w-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors" onClick={previous} disabled={!hasPrev} title="Previous track">
-              <SkipBack className="w-5 h-5 md:w-4 md:h-4" />
-            </button>
-            <button
-              className="relative h-11 w-11 md:h-8 md:w-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors"
-              onClick={() => skip(-SKIP_BACK_SECONDS)}
-              title={`Back ${SKIP_BACK_SECONDS}s`}
-              data-testid="button-music-skip-back"
-            >
-              <Rewind className="w-5 h-5 md:w-4 md:h-4" />
-              <span className="absolute -bottom-0.5 text-[8px] font-bold tabular-nums leading-none">{SKIP_BACK_SECONDS}</span>
-            </button>
+            {!isLive && (
+              <button className="h-11 w-11 md:h-8 md:w-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors" onClick={previous} disabled={!hasPrev} title="Previous track">
+                <SkipBack className="w-5 h-5 md:w-4 md:h-4" />
+              </button>
+            )}
+            {!isLive && (
+              <button
+                className="relative h-11 w-11 md:h-8 md:w-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors"
+                onClick={() => skip(-SKIP_BACK_SECONDS)}
+                title={`Back ${SKIP_BACK_SECONDS}s`}
+                data-testid="button-music-skip-back"
+              >
+                <Rewind className="w-5 h-5 md:w-4 md:h-4" />
+                <span className="absolute -bottom-0.5 text-[8px] font-bold tabular-nums leading-none">{SKIP_BACK_SECONDS}</span>
+              </button>
+            )}
             <button
               className="h-12 w-12 md:h-9 md:w-9 rounded-full flex items-center justify-center bg-brand/10 dark:bg-brand/15 hover:bg-brand/20 text-foreground transition-all shadow-[0_0_8px_rgba(139,92,246,0.15)] dark:shadow-[0_0_12px_rgba(139,92,246,0.2)] hover:shadow-[0_0_14px_rgba(139,92,246,0.25)] dark:hover:shadow-[0_0_18px_rgba(139,92,246,0.3)]"
               onClick={togglePlay}
@@ -695,26 +701,40 @@ function ExpandedMusicPanel({
             >
               {isBuffering ? <RelayOutpostInlineLoader className="w-5 h-5 md:w-4.5 md:h-4.5" /> : isPlaying ? <Pause className="w-5 h-5 md:w-4.5 md:h-4.5" /> : <Play className="w-5 h-5 md:w-4.5 md:h-4.5 ml-0.5" />}
             </button>
-            <button
-              className="relative h-11 w-11 md:h-8 md:w-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors"
-              onClick={() => skip(SKIP_FORWARD_SECONDS)}
-              title={`Forward ${SKIP_FORWARD_SECONDS}s`}
-              data-testid="button-music-skip-forward"
-            >
-              <FastForward className="w-5 h-5 md:w-4 md:h-4" />
-              <span className="absolute -bottom-0.5 text-[8px] font-bold tabular-nums leading-none">{SKIP_FORWARD_SECONDS}</span>
-            </button>
-            <button className="h-11 w-11 md:h-8 md:w-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors" onClick={next} disabled={!hasNext} title="Next track">
-              <SkipForward className="w-5 h-5 md:w-4 md:h-4" />
-            </button>
+            {!isLive && (
+              <button
+                className="relative h-11 w-11 md:h-8 md:w-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors"
+                onClick={() => skip(SKIP_FORWARD_SECONDS)}
+                title={`Forward ${SKIP_FORWARD_SECONDS}s`}
+                data-testid="button-music-skip-forward"
+              >
+                <FastForward className="w-5 h-5 md:w-4 md:h-4" />
+                <span className="absolute -bottom-0.5 text-[8px] font-bold tabular-nums leading-none">{SKIP_FORWARD_SECONDS}</span>
+              </button>
+            )}
+            {!isLive && (
+              <button className="h-11 w-11 md:h-8 md:w-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors" onClick={next} disabled={!hasNext} title="Next track">
+                <SkipForward className="w-5 h-5 md:w-4 md:h-4" />
+              </button>
+            )}
           </div>
-          <ExpandedSeekBar
-            progress={progress}
-            duration={duration}
-            seek={seek}
-            currentTime={currentTime}
-            markers={chapterMarkers}
-          />
+          {isLive ? (
+            <div className="flex items-center justify-center gap-2 text-xs font-semibold tracking-wide text-red-600 dark:text-red-400" data-testid="music-live-row">
+              <span className="relative flex h-2 w-2" aria-hidden>
+                <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+              </span>
+              LIVE
+            </div>
+          ) : (
+            <ExpandedSeekBar
+              progress={progress}
+              duration={duration}
+              seek={seek}
+              currentTime={currentTime}
+              markers={chapterMarkers}
+            />
+          )}
         </div>
 
         <div className="flex items-center justify-between pt-2 md:pt-1.5 border-t border-border/15 dark:border-brand/10">
@@ -749,34 +769,36 @@ function ExpandedMusicPanel({
             )}
           </div>
           <div className="flex items-center gap-1 md:gap-0.5 shrink-0">
-            <div className="relative">
-              <button
-                className="h-9 md:h-7 px-2 rounded-lg flex items-center gap-1 text-muted-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors shrink-0"
-                onClick={() => setShowSpeed((v) => !v)}
-                title="Playback speed"
-                data-testid="button-music-speed"
-              >
-                <Gauge className="w-4 h-4 md:w-3.5 md:h-3.5" />
-                <span className="text-xs md:text-[11px] font-medium tabular-nums">{playbackRate}x</span>
-              </button>
-              {showSpeed && (
-                <div className="absolute bottom-full right-0 mb-1.5 z-10 flex flex-col gap-0.5 p-1 rounded-lg border border-border/30 dark:border-brand/15 bg-popover shadow-xl min-w-[3.5rem]">
-                  {MUSIC_RATE_OPTIONS.map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => { setPlaybackRate(r); setShowSpeed(false); }}
-                      className={`px-2.5 py-2 md:py-1.5 rounded-md text-xs md:text-[11px] font-medium tabular-nums text-center transition-colors ${
-                        playbackRate === r
-                          ? "bg-brand/15 text-brand dark:bg-brand/20"
-                          : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/15"
-                      }`}
-                    >
-                      {r}x
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            {!isLive && (
+              <div className="relative">
+                <button
+                  className="h-9 md:h-7 px-2 rounded-lg flex items-center gap-1 text-muted-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors shrink-0"
+                  onClick={() => setShowSpeed((v) => !v)}
+                  title="Playback speed"
+                  data-testid="button-music-speed"
+                >
+                  <Gauge className="w-4 h-4 md:w-3.5 md:h-3.5" />
+                  <span className="text-xs md:text-[11px] font-medium tabular-nums">{playbackRate}x</span>
+                </button>
+                {showSpeed && (
+                  <div className="absolute bottom-full right-0 mb-1.5 z-10 flex flex-col gap-0.5 p-1 rounded-lg border border-border/30 dark:border-brand/15 bg-popover shadow-xl min-w-[3.5rem]">
+                    {MUSIC_RATE_OPTIONS.map((r) => (
+                      <button
+                        key={r}
+                        onClick={() => { setPlaybackRate(r); setShowSpeed(false); }}
+                        className={`px-2.5 py-2 md:py-1.5 rounded-md text-xs md:text-[11px] font-medium tabular-nums text-center transition-colors ${
+                          playbackRate === r
+                            ? "bg-brand/15 text-brand dark:bg-brand/20"
+                            : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/15"
+                        }`}
+                      >
+                        {r}x
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <button
               className="w-9 h-9 md:w-7 md:h-7 rounded-lg flex items-center justify-center text-brand/70 hover:text-brand hover:bg-brand/10 transition-colors shrink-0"
               onClick={() => setShareOpen(true)}
@@ -1357,6 +1379,8 @@ export function HeaderAudioPlayer() {
     const hasNext = queueIndex < queue.length - 1;
     const hasPrev = queueIndex > 0 || currentTime > 3;
     const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+    // Live radio: nothing to seek, skip or step through — just play/pause.
+    const isLive = !!currentTrack.live;
 
     const handleMusicSeek = (pct: number) => {
       if (duration > 0) seek(pct * duration);
@@ -1391,24 +1415,38 @@ export function HeaderAudioPlayer() {
                   <User className="w-2.5 h-2.5" />
                 </Button>
               )}
-              <span className="text-[9px] tabular-nums text-muted-foreground/50 mr-0.5 hidden sm:inline" data-testid="header-audio-time">
-                {formatTime(currentTime)}/{formatTime(duration)}
-              </span>
-              <Button variant="ghost" size="icon" className="h-6 w-6 md:h-5 md:w-5" onClick={previous} disabled={!hasPrev || isBuffering} data-testid="header-audio-back">
-                <SkipBack className="w-2.5 h-2.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6 md:h-5 md:w-5 hidden sm:inline-flex" onClick={() => musicSkip(-SKIP_BACK_SECONDS)} disabled={isBuffering} title={`Back ${SKIP_BACK_SECONDS}s`} data-testid="header-audio-skip-back">
-                <Rewind className="w-2.5 h-2.5" />
-              </Button>
+              {isLive ? (
+                <span className="text-[9px] font-bold tracking-wide text-red-600 dark:text-red-400 mr-1" data-testid="header-audio-live">
+                  LIVE
+                </span>
+              ) : (
+                <span className="text-[9px] tabular-nums text-muted-foreground/50 mr-0.5 hidden sm:inline" data-testid="header-audio-time">
+                  {formatTime(currentTime)}/{formatTime(duration)}
+                </span>
+              )}
+              {!isLive && (
+                <Button variant="ghost" size="icon" className="h-6 w-6 md:h-5 md:w-5" onClick={previous} disabled={!hasPrev || isBuffering} data-testid="header-audio-back">
+                  <SkipBack className="w-2.5 h-2.5" />
+                </Button>
+              )}
+              {!isLive && (
+                <Button variant="ghost" size="icon" className="h-6 w-6 md:h-5 md:w-5 hidden sm:inline-flex" onClick={() => musicSkip(-SKIP_BACK_SECONDS)} disabled={isBuffering} title={`Back ${SKIP_BACK_SECONDS}s`} data-testid="header-audio-skip-back">
+                  <Rewind className="w-2.5 h-2.5" />
+                </Button>
+              )}
               <Button variant="ghost" size="icon" className="h-6 w-6 md:h-5 md:w-5" onClick={togglePlay} disabled={isBuffering} data-testid="header-audio-toggle">
                 {isBuffering ? <RelayOutpostInlineLoader className="w-3 h-3" /> : isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
               </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6 md:h-5 md:w-5 hidden sm:inline-flex" onClick={() => musicSkip(SKIP_FORWARD_SECONDS)} disabled={isBuffering} title={`Forward ${SKIP_FORWARD_SECONDS}s`} data-testid="header-audio-skip-forward">
-                <FastForward className="w-2.5 h-2.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6 md:h-5 md:w-5" onClick={next} disabled={!hasNext} data-testid="header-audio-forward">
-                <SkipForward className="w-2.5 h-2.5" />
-              </Button>
+              {!isLive && (
+                <Button variant="ghost" size="icon" className="h-6 w-6 md:h-5 md:w-5 hidden sm:inline-flex" onClick={() => musicSkip(SKIP_FORWARD_SECONDS)} disabled={isBuffering} title={`Forward ${SKIP_FORWARD_SECONDS}s`} data-testid="header-audio-skip-forward">
+                  <FastForward className="w-2.5 h-2.5" />
+                </Button>
+              )}
+              {!isLive && (
+                <Button variant="ghost" size="icon" className="h-6 w-6 md:h-5 md:w-5" onClick={next} disabled={!hasNext} data-testid="header-audio-forward">
+                  <SkipForward className="w-2.5 h-2.5" />
+                </Button>
+              )}
               <Button variant="ghost" size="icon" className="h-6 w-6 md:h-5 md:w-5 text-red-700/80 dark:text-red-400/80" onClick={musicStop} data-testid="header-audio-stop">
                 <X className="w-3 h-3" />
               </Button>
@@ -1426,9 +1464,9 @@ export function HeaderAudioPlayer() {
           </div>
 
           <CompactSeekBar
-            progress={progress}
+            progress={isLive ? 100 : progress}
             onSeek={handleMusicSeek}
-            colorClass="bg-primary/50"
+            colorClass={isLive ? "bg-red-500/50" : "bg-primary/50"}
             bgClass="bg-primary/10"
           />
         </div>
