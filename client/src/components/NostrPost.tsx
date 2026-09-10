@@ -2290,6 +2290,9 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
   const { emojis: customEmojis } = useCustomEmojis();
   const [reactionPopping, setReactionPopping] = useState(false);
   const reactionPopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // hasLiked only flips after the signature resolves; a second tap in that
+  // window would otherwise sign again and bump the count twice.
+  const likeInFlightRef = useRef(false);
   useEffect(() => {
     return () => { if (reactionPopTimerRef.current) clearTimeout(reactionPopTimerRef.current); };
   }, []);
@@ -2563,7 +2566,8 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
       toast({ title: "Sign in required", description: "Sign in to react.", variant: "destructive" });
       return;
     }
-    if (hasLiked) return;
+    if (hasLiked || likeInFlightRef.current) return;
+    likeInFlightRef.current = true;
     setIsLiking(true);
     try {
       const hint = getRelayHintForEvent(event.id, getEventRelays);
@@ -2609,6 +2613,8 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
       } else {
         toast({ title: "Failed", description: "Could not react.", variant: "destructive" });
       }
+    } finally {
+      likeInFlightRef.current = false;
     }
   };
 

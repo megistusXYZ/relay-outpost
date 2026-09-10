@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { fetchEventCounts, primalStatsCache, type EventStats } from "@/lib/primal-cache";
 import { eventStore, fetchInteractions } from "@/lib/nostr";
+import { isDirectReply, liveStatsField } from "@/lib/live-stats";
+import { useNostrAuth } from "@/contexts/NostrAuthContext";
 
 const BATCH_DELAY = 200;
 const FALLBACK_DELAY = 1500;
@@ -11,20 +13,6 @@ let batchCallbacks: Array<() => void> = [];
 let primalFailed = false;
 let primalFailedAt = 0;
 const PRIMAL_RETRY_INTERVAL = 30000;
-
-function isDirectReply(event: { tags: string[][] }, targetEventId: string): boolean {
-  const eTags = event.tags.filter((t) => t[0] === "e");
-  if (eTags.length === 0) return false;
-
-  const hasMarkers = eTags.some((t) => t[3] === "reply" || t[3] === "root" || t[3] === "mention");
-
-  if (hasMarkers) {
-    return eTags.some((t) => t[1] === targetEventId && t[3] === "reply");
-  }
-
-  const lastETag = eTags[eTags.length - 1];
-  return lastETag[1] === targetEventId;
-}
 
 function countFromEventStore(eventId: string): EventStats {
   const replies = [...eventStore.getByFilters({ kinds: [1] })].filter(
@@ -99,6 +87,9 @@ export function usePrimalStats(eventId: string): EventStats | null {
   });
   const mountedRef = useRef(true);
   const updatingRef = useRef(false);
+  const { pubkey: viewerPubkey } = useNostrAuth();
+  const viewerRef = useRef(viewerPubkey);
+  viewerRef.current = viewerPubkey;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -127,33 +118,30 @@ export function usePrimalStats(eventId: string): EventStats | null {
   useEffect(() => {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const processedInserts = new Set<string>();
+    const pending = { replies: 0, reposts: 0, likes: 0 };
+    // lib/live-stats.ts: fetched history and the viewer's own actions are
+    // already in the shown count — only NEW interactions from others add.
+    const onScreenSince = Math.floor(Date.now() / 1000);
     const sub = eventStore.insert$.subscribe((e) => {
       if (!mountedRef.current) return;
       if (processedInserts.has(e.id)) return;
 
-      let field: "replies" | "reposts" | "likes" | null = null;
-
-      if (e.kind === 1 && isDirectReply(e, eventId)) {
-        field = "replies";
-      } else if (e.kind === 6 && e.tags.some((t) => t[0] === "e" && t[1] === eventId)) {
-        field = "reposts";
-      } else if (e.kind === 7) {
-        const eTags = e.tags.filter((t) => t[0] === "e");
-        const lastETag = eTags[eTags.length - 1];
-        if (lastETag && lastETag[1] === eventId) {
-          field = "likes";
-        }
-      }
-
+      const field = liveStatsField(e, eventId, viewerRef.current, onScreenSince);
       if (field) {
         processedInserts.add(e.id);
+        pending[field] += 1;
         if (debounceTimer) clearTimeout(debounceTimer);
-        const f = field;
         debounceTimer = setTimeout(() => {
           if (!mountedRef.current) return;
           const existing = primalStatsCache.get(eventId);
           const base = existing ?? { replies: 0, reposts: 0, likes: 0, zaps: 0, zapAmount: 0 };
-          const updated = { ...base, [f]: base[f] + 1 };
+          const updated = {
+            ...base,
+            replies: base.replies + pending.replies,
+            reposts: base.reposts + pending.reposts,
+            likes: base.likes + pending.likes,
+          };
+          pending.replies = pending.reposts = pending.likes = 0;
           updatingRef.current = true;
           primalStatsCache.set(eventId, updated);
           updatingRef.current = false;

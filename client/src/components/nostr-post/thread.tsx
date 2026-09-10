@@ -988,6 +988,9 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
   const [showInlineReply, setShowInlineReply] = useState(false);
   const [isReposting, setIsReposting] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
+  // hasLiked only flips after the signature resolves; a second tap in that
+  // window would otherwise sign again and bump the count twice.
+  const likeInFlightRef = useRef(false);
   const [showZapDialog, setShowZapDialog] = useState(false);
   const [hasReposted, setHasReposted] = useState(false);
   const [hasLiked, setHasLiked] = useState(false);
@@ -1260,7 +1263,8 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
       toast({ title: "Sign in required", description: "Sign in to react.", variant: "destructive" });
       return;
     }
-    if (hasLiked) return;
+    if (hasLiked || likeInFlightRef.current) return;
+    likeInFlightRef.current = true;
     setIsLiking(true);
     try {
       const hint = getRelayHintForEvent(event.id, getEventRelays);
@@ -1307,6 +1311,8 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
       } else {
         toast({ title: "Failed", description: "Could not react.", variant: "destructive" });
       }
+    } finally {
+      likeInFlightRef.current = false;
     }
   };
 

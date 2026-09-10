@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
 import { Button } from "@/components/ui/button";
@@ -78,6 +78,9 @@ export function MediaInteractionBar({ event, vertical, onCommentClick }: MediaIn
   const [hasLiked, setHasLiked] = useState(false);
   const [isReposting, setIsReposting] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
+  // hasLiked only flips after the signature resolves; a second tap in that
+  // window would otherwise sign again and bump the count twice.
+  const likeInFlightRef = useRef(false);
   const [showZapDialog, setShowZapDialog] = useState(false);
   const [showRawData, setShowRawData] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
@@ -166,7 +169,8 @@ export function MediaInteractionBar({ event, vertical, onCommentClick }: MediaIn
       toast({ title: "Sign in required", description: "Sign in to like.", variant: "destructive" });
       return;
     }
-    if (hasLiked) return;
+    if (hasLiked || likeInFlightRef.current) return;
+    likeInFlightRef.current = true;
     setIsLiking(true);
     try {
       const hint = getRelayHintForEvent(event.id, getEventRelays);
@@ -206,6 +210,8 @@ export function MediaInteractionBar({ event, vertical, onCommentClick }: MediaIn
       } else {
         toast({ title: "Failed", description: "Could not like.", variant: "destructive" });
       }
+    } finally {
+      likeInFlightRef.current = false;
     }
   }, [signer, hasLiked, event, toast, attemptReconnect]);
 
