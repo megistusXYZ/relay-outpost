@@ -1,77 +1,82 @@
 /**
  * "This person is on air right now — watch."
  *
- * Live status existed before this and was a 9px pill tucked under the avatar on
- * one layout, absent entirely on the other. It said someone was streaming; it
- * did not offer to take you there, and at that size it lost to every other badge
- * on the page. Meanwhile the desktop identity layout — the default on desktop —
- * had no live awareness at all.
+ * A broadcast is the most time-sensitive thing an account can be doing, and
+ * unlike a post it is gone if you miss it, so while it is showing it is the
+ * loudest thing on the profile. It used to be a separate red card between the
+ * cover and the identity card, which cost a whole row on a phone; now the
+ * COVER carries it: a red ring and glow around the banner, the broadcast
+ * overlaid on it, and the whole cover is the tap target (owner request,
+ * 2026-09-10). Controls already on the cover sit above the overlay (z-20).
  *
- * So this is deliberately the loudest thing on a profile while it is showing,
- * and it is showing rarely: a broadcast is the most time-sensitive thing an
- * account can be doing, and unlike a post it is gone if you miss it.
- *
- * The small avatar pill stays. It is the at-a-glance marker in lists and beside
- * the picture; this is the thing you can act on.
+ * The small avatar pill stays. It is the at-a-glance marker in lists and
+ * beside the picture; this is the thing you can act on.
  */
 import { Link } from "wouter";
 import { nip19 } from "nostr-tools";
 import { Radio, Play, Users } from "lucide-react";
 import { useLiveStatus } from "@/contexts/LiveStatusContext";
 import { KIND_LIVE_EVENT } from "@/lib/nostr-helpers";
+import type { LiveEventData } from "@/lib/live-events";
 
-export function LiveNowBanner({ pubkey, className = "" }: { pubkey: string; className?: string }) {
-  const { getLiveStream } = useLiveStatus();
-  const stream = pubkey ? getLiveStream(pubkey) : undefined;
-  if (!stream) return null;
+type BannerStream = Pick<LiveEventData, "dTag" | "pubkey" | "title" | "currentParticipants" | "image">;
 
-  /**
-   * The address is the AUTHOR's, never the profile's.
-   *
-   * These are routinely different people — the streamer hosts, the platform
-   * publishes — which is the whole reason this banner can appear on a profile
-   * whose owner did not author the event. Encoding the viewed profile here would
-   * mint an naddr for an event that does not exist.
-   */
-  let href = "/live";
+/**
+ * The address is the AUTHOR's, never the profile's.
+ *
+ * These are routinely different people — the streamer hosts, the platform
+ * publishes — which is the whole reason the live treatment can appear on a
+ * profile whose owner did not author the event. Encoding the viewed profile
+ * here would mint an naddr for an event that does not exist.
+ */
+export function liveStreamHref(stream: Pick<LiveEventData, "dTag" | "pubkey">): string {
   try {
-    href = `/live/${nip19.naddrEncode({ identifier: stream.dTag, pubkey: stream.pubkey, kind: KIND_LIVE_EVENT })}`;
-  } catch { /* keep the index; a broken address must not cost the banner */ }
+    return `/live/${nip19.naddrEncode({ identifier: stream.dTag, pubkey: stream.pubkey, kind: KIND_LIVE_EVENT })}`;
+  } catch {
+    return "/live";
+  }
+}
 
+/** The broadcast this profile is live in, if any — the avatar pill's source. */
+export function useProfileLiveStream(pubkey: string | null | undefined): LiveEventData | undefined {
+  const { getLiveStream } = useLiveStatus();
+  return pubkey ? getLiveStream(pubkey) : undefined;
+}
+
+/** Ring + glow for a cover that carries LiveBannerOverlay. */
+export const LIVE_BANNER_RING = "ring-2 ring-red-500/70 shadow-[0_0_28px_-6px_rgba(239,68,68,0.6)]";
+
+/**
+ * Covers its (positioned) parent: scrim, LIVE pill, title, Watch. `placement`
+ * picks the edge that nothing else on that cover is using.
+ */
+export function LiveBannerOverlay({ stream, placement = "bottom", contentClassName = "" }: {
+  stream: BannerStream;
+  placement?: "top" | "bottom";
+  contentClassName?: string;
+}) {
+  const title = stream.title?.trim();
   const viewers = stream.currentParticipants;
-
+  const top = placement === "top";
   return (
     <Link
-      href={href}
-      className={`group block rounded-xl overflow-hidden border border-red-500/40 bg-red-500/[0.06] hover:bg-red-500/[0.10] transition-colors ${className}`}
+      href={liveStreamHref(stream)}
+      aria-label={title ? `Watch ${title} live` : "Watch this live stream"}
+      className={`group absolute inset-0 z-10 flex ${top ? "items-start" : "items-end"} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white`}
       data-testid="profile-live-banner"
     >
-      <div className="flex items-stretch gap-3 p-3">
-        {stream.image && (
-          // Decoration, so it earns no alt text and never blocks the row. If the
-          // thumbnail 404s the banner must still read as a live banner.
-          <span className="relative shrink-0 w-20 h-14 rounded-lg overflow-hidden bg-black/20 hidden sm:block">
-            <img
-              src={stream.image}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              className="w-full h-full object-cover"
-              onError={(e) => { e.currentTarget.style.display = "none"; }}
-            />
-          </span>
-        )}
-
-        <span className="min-w-0 flex-1 flex flex-col justify-center gap-1">
+      <span
+        aria-hidden="true"
+        className={`absolute inset-x-0 ${top ? "top-0 bg-gradient-to-b" : "bottom-0 bg-gradient-to-t"} h-3/4 from-black/80 via-black/40 to-transparent pointer-events-none`}
+      />
+      <span className={`relative flex w-full items-center gap-3 p-3 ${contentClassName}`}>
+        <span className="min-w-0 flex-1 flex flex-col gap-1">
           <span className="flex items-center gap-2">
-            {/* Solid red + white, not a status-tinted text colour: this pill has
-                to read identically in both themes, and it is the one place on
-                the page allowed to shout. */}
+            {/* Solid red + white: reads the same in both themes and over any
+                cover image. The one standing animation in the app — live is
+                the industry's pulsing idiom; motion-safe keeps it calm for
+                reduced-motion users. */}
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider">
-              {/* The one place in the app allowed a standing animation: live is
-                  the industry's pulsing idiom, and a static pill undersold the
-                  most time-sensitive state a profile can be in. motion-safe so
-                  reduced-motion users get the calm pill. */}
               <span className="relative flex w-2.5 h-2.5 items-center justify-center">
                 <span className="absolute inset-0 rounded-full bg-white/50 motion-safe:animate-ping" aria-hidden="true" />
                 <Radio className="relative w-2.5 h-2.5" />
@@ -79,22 +84,21 @@ export function LiveNowBanner({ pubkey, className = "" }: { pubkey: string; clas
               Live
             </span>
             {typeof viewers === "number" && viewers > 0 && (
-              <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground" data-testid="profile-live-viewers">
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-white/85" data-testid="profile-live-viewers">
                 <Users className="w-3 h-3" />
                 {viewers.toLocaleString()}
               </span>
             )}
           </span>
-          <span className="text-sm font-medium text-foreground truncate">
-            {stream.title?.trim() || "Streaming now"}
+          <span className="text-sm font-semibold text-white truncate [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]">
+            {title || "Streaming now"}
           </span>
         </span>
-
-        <span className="shrink-0 self-center inline-flex items-center gap-1.5 rounded-full bg-red-600 group-hover:bg-red-500 text-white text-xs font-semibold px-3 py-2 transition-colors">
+        <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-red-600 group-hover:bg-red-500 text-white text-xs font-semibold px-3.5 min-h-[36px] transition-colors shadow-lg shadow-black/30">
           <Play className="w-3.5 h-3.5" />
           Watch
         </span>
-      </div>
+      </span>
     </Link>
   );
 }
