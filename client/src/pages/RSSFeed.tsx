@@ -78,7 +78,6 @@ import { readReachDepth } from "@/lib/trust-preset";
 import { readExcludedTiers } from "@/lib/trust-filter";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
-  Rss,
   ExternalLink,
   Share2,
   Plus,
@@ -135,39 +134,17 @@ import {
   addFeedToLibrary,
   updateFeedInLibrary } from "@/lib/rss-feeds";
 import { laneFeeds, removeFromLibrary } from "@/lib/news-library";
-import {
-  mergeFeedItems,
-  sortMergedItems,
-  capPerSource,
-  pickHero,
-  countUnread,
-  interleaveMergedSources,
-  type MergedItem,
-  type MergeSource,
-  type SortMode,
-  type DiversifyOptions } from "@/lib/rss-merge";
-import {
-  articleCategory,
-  categoryToBucket,
-  NEWS_BUCKETS,
-  NEWS_BUCKET_LABELS,
-  type NewsBucket } from "@/lib/news-categories";
+import { mergeFeedItems, type MergedItem, type MergeSource } from "@/lib/rss-merge";
+import { groupByDay, orderStream, pickLead, withoutLead, withoutMuted } from "@/lib/news-stream";
+import { imageFit } from "@/lib/news-image";
+import { scrollRootFor } from "@/lib/scroll-root";
 import { loadEdition, saveEdition, mergeEditions, editionForSources } from "@/lib/news-edition";
-import { stripHtml, formatDuration, buildTrendSuggestionsUrl, normalizeShowTitle, type TrendSuggestionItem } from "@/lib/podcast-index";
-import {
-  scoreNewsItems,
-  presetShowTitleKeys,
-  ALERTING_TIERS,
-  type ScorableNewsItem,
-  type ScoredNewsItem } from "@/lib/news-scoring";
-import { countPriorityUnread, shouldShowWorthYourTime } from "@/lib/news-unread";
-import { buildDigestGroups, digestSummary, type DigestGroup } from "@/lib/news-digest";
+import { stripHtml, formatDuration } from "@/lib/podcast-index";
 import { clusterStories, type StoryCluster } from "@/lib/story-cluster";
 import { useNewsAlertPrefs } from "@/lib/news-alert-settings";
 import { AddRssFeedDialog } from "@/components/rss/AddRssFeedDialog";
 import { GuestWall } from "@/components/GuestWall";
-import { RSSMagazineCard } from "@/components/rss/RSSMagazineCard";
-import { splitMagazine, diversifyGrid } from "@/lib/news-magazine";
+import { NewsStoryRow } from "@/components/news/NewsStoryRow";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -180,122 +157,10 @@ function useIsMobile() {
   return isMobile;
 }
 
-// The desktop "magazine" front page kicks in at the lg breakpoint (≥1024px).
-// Below it — mobile AND tablet — the News reader stays the single centered
-// column (unchanged). Matches Tailwind's lg so the JS branch and the CSS grid
-// breakpoints agree.
-function useIsWide() {
-  const [isWide, setIsWide] = useState(false);
-  useEffect(() => {
-    const check = () => setIsWide(window.innerWidth >= 1024);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-  return isWide;
-}
-
-// Live magazine-grid column count, mirroring the grid's Tailwind breakpoints
-// (grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4): 2 from lg (≥1024) up, 3 at xl
-// (≥1280), 4 at 2xl (≥1536). Threaded into the ordering as the vertical "stride"
-// so no card sits directly above another from the same source. Below lg the News
-// reader is a single column (stride 1) — the linear diversity already covers it.
-function useGridColumns(): number {
-  const [cols, setCols] = useState(2);
-  useEffect(() => {
-    const check = () => {
-      const w = window.innerWidth;
-      setCols(w >= 1536 ? 4 : w >= 1280 ? 3 : 2);
-    };
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-  return cols;
-}
-
-// Source-dominance cap for the "Top" mixed stream: a source appears at most once
-// in any 4-card window, so a firehose outlet (e.g. ZeroHedge) can't crowd out the
-// mix. Per-topic tabs pass NO cap (that tab is one topic's full firehose). Kept a
-// named constant here so the policy is tunable in one place, not buried in logic.
-const TOP_SOURCE_CAP: DiversifyOptions = { window: 4, maxPerWindow: 1 };
 // Merge/memory guard: newest N items per feed fed into the All-view merge. A
 // firehose never surfaces a single feed's deep back-catalog, so this bounds the
-// scored/held item set (≤ N × feed-count) and keeps weak devices safe.
+// held item set (≤ N × feed-count) and keeps weak devices safe.
 const MAX_ITEMS_PER_FEED = 25;
-
-// Persisted News topic tab. "Top" = the full diversified feed; a bucket key
-// (News/Business/Tech/…) = that topic's stream. Validated against the canonical
-// bucket list on load so a stale/renamed value falls back to Top.
-const RSS_TOPIC_KEY = "ro_news_topic_v1";
-
-function useNewsTopic(): [NewsBucket | "Top", (b: NewsBucket | "Top") => void] {
-  const [topic, setTopicState] = useState<NewsBucket | "Top">(() => {
-    try {
-      const stored = localStorage.getItem(RSS_TOPIC_KEY);
-      if (stored && (NEWS_BUCKETS as readonly string[]).includes(stored)) {
-        return stored as NewsBucket;
-      }
-    } catch {
-      /* ignore */
-    }
-    return "Top";
-  });
-  const setTopic = useCallback((b: NewsBucket | "Top") => {
-    setTopicState(b);
-    try {
-      localStorage.setItem(RSS_TOPIC_KEY, b);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-  return [topic, setTopic];
-}
-
-type RssDensity = "comfortable" | "compact";
-const RSS_DENSITY_KEY = "ro_rss_density";
-
-function useRssDensity(): [RssDensity, (d: RssDensity) => void] {
-  const [density, setDensityState] = useState<RssDensity>(() => {
-    try {
-      return localStorage.getItem(RSS_DENSITY_KEY) === "compact" ? "compact" : "comfortable";
-    } catch {
-      return "comfortable";
-    }
-  });
-  const setDensity = useCallback((d: RssDensity) => {
-    setDensityState(d);
-    try {
-      localStorage.setItem(RSS_DENSITY_KEY, d);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-  return [density, setDensity];
-}
-
-// Sort of the merged "thread of releases": pure latest (default — newest at the
-// top, the whole-library firehose reads as a live wire) vs unread-first.
-const RSS_SORT_KEY = "ro_rss_sort";
-
-function useRssSortMode(): [SortMode, (m: SortMode) => void] {
-  const [mode, setModeState] = useState<SortMode>(() => {
-    try {
-      return localStorage.getItem(RSS_SORT_KEY) === "unread-first" ? "unread-first" : "latest";
-    } catch {
-      return "latest";
-    }
-  });
-  const setMode = useCallback((m: SortMode) => {
-    setModeState(m);
-    try {
-      localStorage.setItem(RSS_SORT_KEY, m);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-  return [mode, setMode];
-}
 
 // Persisted last selection in the feed picker. "" = the merged "All feeds" view.
 const RSS_ACTIVE_FEED_KEY = "ro_rss_active_feed";
@@ -440,6 +305,8 @@ export interface RSSItem {
   author: string;
   categories: string[];
   thumbnail: string;
+  /** The picture's width in px, when the feed states it (lets News size it honestly). */
+  thumbnailWidth?: number;
   comments: string;
   audioUrl?: string;
   duration?: number;
@@ -491,239 +358,6 @@ function loadAllFeeds(): SavedFeed[] {
   const visibleDefaults = DEFAULT_FEEDS.filter(f => !hidden.has(f.url));
   const custom = loadCustomFeeds();
   return [...visibleDefaults, ...custom];
-}
-
-// ---- Smart alerts (priority strip + digest) ---------------------------------
-// Scoring/tiers live in lib/news-scoring, grouping in lib/news-digest; this
-// page builds the scoring context (saved feeds + read ledger + trending cache
-// + user prefs) and renders tier 1–2 items as a compact strip above the merged
-// thread. NOTE: "priority" is IN-APP prominence only — the app has no OS/web
-// push infrastructure, so nothing here notifies outside the page.
-
-type NewsScorable = ScorableNewsItem & { merged: MergedItem<RSSItem> };
-type NewsScored = ScoredNewsItem<NewsScorable>;
-
-// Digest-only mode shows the collapsed digest once per session.
-const NEWS_DIGEST_DISMISSED_KEY = "ro_news_digest_dismissed_v1";
-
-function PriorityGroupRow({ group, v4v, onOpen, onMarkGroupRead }: {
-  group: DigestGroup<NewsScorable>;
-  v4v: boolean;
-  onOpen: (item: RSSItem) => void;
-  onMarkGroupRead: (group: DigestGroup<NewsScorable>) => void;
-}) {
-  const top = group.items[0];
-  const topItem = top?.item.merged.item;
-  // Podcast episodes in this priority strip are playable in place — not all of
-  // these are read-me articles, so surface a Play control (via the global audio
-  // player) instead of forcing users into the text reader to hunt for it.
-  // Hooks must run before the early `return null` below (rules-of-hooks).
-  const { play, currentTrack, isPlaying, togglePlay } = useAudioPlayer();
-  const podcastTrack: MusicTrack | null = useMemo(() => {
-    if (!topItem?.audioUrl) return null;
-    return {
-      id: `rss-${encodeURIComponent(topItem.audioUrl)}`,
-      title: topItem.title || "Untitled Episode",
-      artist: topItem.author || group.label || "Podcast",
-      artistPubkey: "",
-      audioUrl: topItem.audioUrl,
-      coverUrl: topItem.thumbnail || "",
-      description: topItem.description || "",
-      genre: "Podcast",
-      duration: topItem.duration || 0,
-      createdAt: topItem.pubDate ? Math.floor(new Date(topItem.pubDate).getTime() / 1000) : 0,
-      source: "podcast" as const,
-      albumTitle: group.label || undefined };
-  }, [topItem, group.label]);
-  const isCurrentPodcast = !!podcastTrack && currentTrack?.audioUrl === podcastTrack.audioUrl;
-  const isThisPlaying = isCurrentPodcast && isPlaying;
-  const handlePlay = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!podcastTrack) return;
-    isCurrentPodcast ? togglePlay() : play(podcastTrack);
-  }, [podcastTrack, isCurrentPodcast, togglePlay, play]);
-
-  if (!top || !topItem) return null;
-  const desc = stripHtml(topItem.description || "").slice(0, 140);
-  const dur = formatDuration(top.item.durationSec);
-  return (
-    <div className="flex items-start gap-1.5 px-3 py-2.5">
-      <button
-        type="button"
-        onClick={() => onOpen(topItem)}
-        className="flex-1 min-w-0 text-left rounded-md -mx-1 px-1 py-0.5 hover:bg-primary/[0.06] transition-colors"
-        data-testid={`row-priority-${group.key}`}
-      >
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[11px] font-semibold text-brand truncate max-w-[180px]">{group.label}</span>
-          <span className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wider">{group.countLabel}</span>
-          {v4v && (
-            <span
-              className="inline-flex items-center gap-0.5 text-[9px] font-medium text-amber-500/90"
-              title="Supports Lightning (value for value)"
-              data-testid={`badge-v4v-${group.key}`}
-            >
-              <Zap className="w-2.5 h-2.5 fill-current" />
-              V4V
-            </span>
-          )}
-        </div>
-        <p className="text-sm font-medium text-foreground/90 line-clamp-1 mt-0.5">{topItem.title}</p>
-        {(desc || dur) && (
-          <p className="text-[11px] text-muted-foreground/70 line-clamp-1 mt-0.5">
-            {dur && (
-              <span className="inline-flex items-center gap-0.5 mr-1.5 tabular-nums text-muted-foreground/60">
-                <Clock className="w-2.5 h-2.5" />
-                {dur}
-              </span>
-            )}
-            {desc}
-          </p>
-        )}
-      </button>
-      {podcastTrack && (
-        <button
-          type="button"
-          onClick={handlePlay}
-          className="shrink-0 w-9 h-9 mt-0.5 flex items-center justify-center rounded-full bg-brand/15 text-brand hover:bg-brand/25 transition-colors"
-          aria-label={isThisPlaying ? "Pause episode" : "Play episode"}
-          title={isThisPlaying ? "Pause episode" : "Play episode"}
-          data-testid={`button-play-priority-${group.key}`}
-        >
-          {isThisPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
-        </button>
-      )}
-      <button
-        type="button"
-        onClick={() => onMarkGroupRead(group)}
-        className="shrink-0 w-8 h-8 mt-0.5 flex items-center justify-center rounded-lg text-muted-foreground/60 hover:text-brand hover:bg-brand/10 transition-colors"
-        aria-label={`Mark ${group.label} read`}
-        title="Mark group read"
-        data-testid={`button-mark-group-read-${group.key}`}
-      >
-        <Check className="w-4 h-4" />
-      </button>
-    </div>
-  );
-}
-
-/**
- * The alerts surface above the merged thread. Two presentations:
- *  - Default: a calm "Worth your time" cluster listing tier 1–2 groups. It is
- *    shown ONLY when the priority scorer flagged fresh items (alertCount > 0);
- *    with nothing fresh flagged it hides entirely — no zero-state, no running
- *    total of everything-unread. News is a firehose, not an inbox to clear.
- *  - Digest-only (user setting): one collapsed digest card, shown once per
- *    session (dismiss hides it until the next session; counts are unaffected).
- */
-function NewsAlertsPanel({ groups, alertCount, digestOnly, showWorthYourTime, isV4v, onOpen, onMarkGroupRead }: {
-  groups: DigestGroup<NewsScorable>[];
-  alertCount: number;
-  digestOnly: boolean;
-  /** The "Worth your time" strip is opt-in (off by default); the compact digest
-   *  bar is unaffected. */
-  showWorthYourTime: boolean;
-  isV4v: (sourceUrl?: string) => boolean;
-  onOpen: (item: RSSItem) => void;
-  onMarkGroupRead: (group: DigestGroup<NewsScorable>) => void;
-}) {
-  const [dismissed, setDismissed] = useState(() => {
-    try {
-      return sessionStorage.getItem(NEWS_DIGEST_DISMISSED_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
-  const [expanded, setExpanded] = useState(false);
-  // Hide entirely when the priority scorer flagged nothing fresh — no empty
-  // "0" zero-state (this is the exact case behind an all-stale backlog).
-  if (groups.length === 0 || !shouldShowWorthYourTime(alertCount)) return null;
-
-  const settingsLink = (
-    <Link
-      href="/settings#news-alerts"
-      className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground/60 hover:text-brand hover:bg-brand/10 transition-colors"
-      aria-label="News alert settings"
-      title="News alert settings"
-      data-testid="link-news-alert-settings"
-    >
-      <SlidersHorizontal className="w-3.5 h-3.5" />
-    </Link>
-  );
-
-  const rows = (
-    <div className="divide-y divide-primary/10">
-      {groups.slice(0, 4).map((g) => (
-        <PriorityGroupRow
-          key={g.key}
-          group={g}
-          v4v={isV4v(g.items[0]?.item.sourceUrl)}
-          onOpen={onOpen}
-          onMarkGroupRead={onMarkGroupRead}
-        />
-      ))}
-    </div>
-  );
-
-  if (digestOnly) {
-    if (dismissed) return null;
-    const summary = digestSummary(groups);
-    return (
-      <div className="rounded-xl border border-primary/25 bg-primary/[0.06] overflow-hidden" data-testid="news-digest-card">
-        <div className="flex items-center gap-2 px-3 py-2.5">
-          <BellRing className="w-3.5 h-3.5 text-brand shrink-0" />
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="flex-1 min-w-0 flex items-center gap-2 text-left"
-            aria-expanded={expanded}
-            data-testid="button-digest-toggle"
-          >
-            <span className="text-xs font-brand uppercase tracking-widest text-brand shrink-0">Digest</span>
-            <span className="text-sm text-foreground/85 truncate">{summary.headline}</span>
-            {expanded ? (
-              <ChevronUp className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
-            ) : (
-              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
-            )}
-          </button>
-          {settingsLink}
-          <button
-            type="button"
-            onClick={() => {
-              setDismissed(true);
-              try {
-                sessionStorage.setItem(NEWS_DIGEST_DISMISSED_KEY, "1");
-              } catch {}
-            }}
-            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors"
-            aria-label="Dismiss digest for this session"
-            data-testid="button-digest-dismiss"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-        {expanded && <div className="border-t border-primary/15">{rows}</div>}
-      </div>
-    );
-  }
-
-  // The full "Worth your time" strip is opt-in (Settings → News). Off by default
-  // so the News page opens clean; power users can switch it on.
-  if (!showWorthYourTime) return null;
-  return (
-    <div className="rounded-xl border border-primary/25 bg-primary/[0.06] overflow-hidden" data-testid="news-priority-strip">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-primary/15">
-        <span className="text-xs font-brand uppercase tracking-widest text-brand">Worth your time</span>
-        <Badge variant="default" className="text-[10px] tabular-nums h-4 min-w-4 px-1" data-testid="badge-priority-count">
-          {alertCount}
-        </Badge>
-        <span className="flex-1" />
-        {settingsLink}
-      </div>
-      {rows}
-    </div>
-  );
 }
 
 function proxyContentImages(html: string): string {
@@ -1978,723 +1612,6 @@ function ArticleReaderDialog({ item, onClose, onShare, isMobile: isMobileProp, i
   );
 }
 
-function RSSArticleCard({ item, onShare, onRead, isBookmarked, onToggleBookmark, feedTitle, feedImage, sourceName, sourceSiteUrl, isRead, onMarkRead, onFilterSource, density = "comfortable" }: { item: RSSItem; onShare: (item: RSSItem) => void; onRead: (item: RSSItem) => void; isBookmarked: boolean; onToggleBookmark: () => void; feedTitle?: string; feedImage?: string; sourceName?: string; sourceSiteUrl?: string; isRead?: boolean; onMarkRead?: (item: RSSItem) => void; onFilterSource?: (author: string) => void; density?: RssDensity }) {
-  const isCompact = density === "compact";
-  const cleanDescription = useMemo(() => stripHtml(item.description).slice(0, 250), [item.description]);
-  const { play, currentTrack, isPlaying, togglePlay, playNext, addToQueue, currentTime: playerTime, duration: playerDuration } = useAudioPlayer();
-  const timeAgo = useMemo(() => {
-    if (!item.pubDate) return "";
-    try {
-      return formatDistanceToNow(new Date(item.pubDate), { addSuffix: true });
-    } catch {
-      return "";
-    }
-  }, [item.pubDate]);
-
-  const podcastTrack: MusicTrack | null = useMemo(() => {
-    if (!item.audioUrl) return null;
-    return {
-      id: `rss-${encodeURIComponent(item.audioUrl)}`,
-      title: item.title || "Untitled Episode",
-      artist: item.author || feedTitle || "Podcast",
-      artistPubkey: "",
-      audioUrl: item.audioUrl,
-      coverUrl: item.thumbnail || feedImage || "",
-      description: item.description || "",
-      genre: "Podcast",
-      duration: item.duration || 0,
-      createdAt: item.pubDate ? Math.floor(new Date(item.pubDate).getTime() / 1000) : 0,
-      source: "podcast" as const,
-      albumTitle: feedTitle || undefined };
-  }, [item, feedTitle, feedImage]);
-
-  const isCurrentPodcast = podcastTrack && currentTrack?.audioUrl === podcastTrack.audioUrl;
-
-  const savedPosition = useMemo(() => {
-    if (!podcastTrack) return null;
-    if (isCurrentPodcast && !isPlaying && playerTime > 5) {
-      return { time: playerTime, duration: playerDuration || item.duration || 0 };
-    }
-    if (isCurrentPodcast) return null;
-    return getTrackPosition(podcastTrack.id);
-  }, [podcastTrack, isCurrentPodcast, isPlaying, playerTime, playerDuration, item.duration]);
-
-  const resumeLabel = useMemo(() => {
-    if (!savedPosition || savedPosition.time < 5) return null;
-    const t = Math.floor(savedPosition.time);
-    const h = Math.floor(t / 3600);
-    const m = Math.floor((t % 3600) / 60);
-    const s = t % 60;
-    return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
-  }, [savedPosition]);
-
-  const progressPct = useMemo(() => {
-    if (!savedPosition || !savedPosition.duration || savedPosition.duration <= 0) return 0;
-    return Math.min(100, Math.max(0, (savedPosition.time / savedPosition.duration) * 100));
-  }, [savedPosition]);
-
-  // Queue actions for podcast episodes — reused in the compact kebab + the comfortable bar.
-  const queueMenuItems = podcastTrack ? (
-    <>
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); playNext(podcastTrack); }}
-        className="flex items-center gap-2 w-full px-2 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
-        data-testid={`button-play-next-${item.link}`}
-      >
-        <ListStart className="w-3.5 h-3.5" />
-        Play next
-      </button>
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); addToQueue(podcastTrack); }}
-        className="flex items-center gap-2 w-full px-2 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
-        data-testid={`button-add-queue-${item.link}`}
-      >
-        <ListEnd className="w-3.5 h-3.5" />
-        Add to queue
-      </button>
-    </>
-  ) : null;
-
-  const handleCardClick = useCallback((e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest("a") || target.closest("button[data-action]")) return;
-    onRead(item);
-  }, [item, onRead]);
-
-  return (
-    <Card
-      className={`group glass-card hover-elevate cursor-pointer overflow-hidden transition-opacity ${isCompact ? "p-2 sm:p-2.5" : "p-3 sm:p-4"} ${isRead ? "opacity-60" : ""}`}
-      onClick={handleCardClick}
-      data-read={isRead ? "true" : "false"}
-      data-testid={`card-rss-item-${item.link}`}
-    >
-      <div className={`flex ${isCompact ? "gap-2.5" : "gap-3"}`}>
-        {(item.thumbnail || feedImage) && (
-          <div className={`rounded-md overflow-hidden shrink-0 bg-muted/30 ${isCompact ? "w-12 h-12 sm:w-14 sm:h-14" : "w-20 h-16 sm:w-24 sm:h-18"}`}>
-            <img
-              src={item.thumbnail || feedImage || ""}
-              alt=""
-              className="w-full h-full object-cover"
-              loading="lazy"
-              onError={(e) => {
-                const img = e.target as HTMLImageElement;
-                const currentSrc = item.thumbnail || feedImage || "";
-                if (!img.src.includes('/api/rss/image-proxy')) {
-                  img.src = `/api/rss/image-proxy?url=${encodeURIComponent(currentSrc)}`;
-                } else if (feedImage && item.thumbnail && img.src.includes(encodeURIComponent(item.thumbnail))) {
-                  img.src = `/api/rss/image-proxy?url=${encodeURIComponent(feedImage)}`;
-                } else {
-                  img.style.display = "none";
-                }
-              }}
-            />
-          </div>
-        )}
-        <div className={`flex-1 min-w-0 ${isCompact ? "space-y-1" : "space-y-1.5"}`}>
-          <h3
-            className={`text-sm leading-snug flex items-start gap-1.5 ${isCompact ? "line-clamp-1" : "line-clamp-2"} ${isRead ? "font-medium text-muted-foreground" : "font-bold text-foreground"}`}
-            data-testid={`link-rss-item-${item.link}`}
-          >
-            {!isRead && (
-              <span
-                className="mt-1 w-[7px] h-[7px] rounded-full bg-primary shrink-0"
-                aria-label="Unread"
-                data-testid={`indicator-unread-${item.link}`}
-              />
-            )}
-            <span className="min-w-0">{item.title || "Untitled"}</span>
-          </h3>
-
-          {!isCompact && cleanDescription && (
-            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-              {cleanDescription}
-            </p>
-          )}
-
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <SourceFavicon feedImage={feedImage} link={item.link} siteUrl={sourceSiteUrl} />
-            {sourceName && (
-              <span className="text-[11px] text-muted-foreground font-mono uppercase tracking-wider truncate max-w-[140px]">
-                {sourceName}
-              </span>
-            )}
-            {!isCompact && item.author && (
-              <>
-                <span className="text-muted-foreground/40 text-[11px]">/</span>
-                {onFilterSource ? (
-                  <button
-                    type="button"
-                    data-action="filter-source"
-                    onClick={(e) => { e.stopPropagation(); onFilterSource(item.author); }}
-                    className="text-[11px] text-muted-foreground hover:text-brand font-mono uppercase tracking-wider truncate max-w-[120px] underline-offset-2 hover:underline transition-colors"
-                    title={`Filter by ${item.author}`}
-                    data-testid={`button-filter-author-${item.link}`}
-                  >
-                    {item.author}
-                  </button>
-                ) : (
-                  <span className="text-[11px] text-muted-foreground font-mono uppercase tracking-wider truncate max-w-[120px]">
-                    {item.author}
-                  </span>
-                )}
-              </>
-            )}
-            {timeAgo && (
-              <>
-                <span className="text-muted-foreground/40 text-[11px]">/</span>
-                <span className="text-[11px] text-muted-foreground/80 font-mono">
-                  {timeAgo}
-                </span>
-              </>
-            )}
-          </div>
-
-          {!isCompact && item.categories.length > 0 && (
-            <div className="flex items-center gap-1 flex-wrap">
-              {item.categories.slice(0, 3).map((cat, i) => (
-                <Badge key={i} variant="outline" className="text-[11px] px-1.5 py-0">
-                  {typeof cat === "string" ? cat : ""}
-                </Badge>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {isCompact && (
-          <div className="flex items-center gap-0.5 shrink-0 self-center" onClick={(e) => e.stopPropagation()}>
-            {podcastTrack && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-9 w-9 sm:h-8 sm:w-8 ${isCurrentPodcast && isPlaying ? "text-brand" : resumeLabel ? "text-brand/80" : "text-muted-foreground"}`}
-                data-action="play"
-                onClick={(e) => { e.stopPropagation(); onMarkRead?.(item); isCurrentPodcast ? togglePlay() : play(podcastTrack); }}
-                aria-label={isCurrentPodcast && isPlaying ? "Pause" : resumeLabel ? `Resume at ${resumeLabel}` : "Play"}
-                title={isCurrentPodcast && isPlaying ? "Pause" : resumeLabel ? `Resume at ${resumeLabel}` : "Play"}
-                data-testid={`button-play-podcast-${item.link}`}
-              >
-                {isCurrentPodcast && isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              </Button>
-            )}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 sm:h-8 sm:w-8 text-muted-foreground"
-                  data-action="more"
-                  onClick={(e) => e.stopPropagation()}
-                  aria-label="More actions"
-                  title="More actions"
-                  data-testid={`button-more-rss-${item.link}`}
-                >
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-44 p-1" onClick={(e) => e.stopPropagation()}>
-                {queueMenuItems && (
-                  <>
-                    {queueMenuItems}
-                    <div className="my-1 h-px bg-border/40" />
-                  </>
-                )}
-                <a
-                  href={item.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-2 w-full px-2 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
-                  data-testid={`button-open-article-${item.link}`}
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  Original
-                </a>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onShare(item); }}
-                  className="flex items-center gap-2 w-full px-2 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
-                  data-testid={`button-share-rss-${item.link}`}
-                >
-                  <Share2 className="w-3.5 h-3.5" />
-                  Share
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onToggleBookmark(); }}
-                  className={`flex items-center gap-2 w-full px-2 py-2 rounded-md text-sm hover:bg-muted/50 transition-colors ${isBookmarked ? "text-brand" : "text-muted-foreground hover:text-foreground"}`}
-                  data-testid={`button-bookmark-rss-${item.link}`}
-                >
-                  {isBookmarked ? <BookmarkCheck className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
-                  {isBookmarked ? "Saved" : "Save"}
-                </button>
-              </PopoverContent>
-            </Popover>
-          </div>
-        )}
-      </div>
-
-      {progressPct > 0 && (
-        <div className={`mx-0 h-[2px] rounded-full bg-border/30 overflow-hidden ${isCompact ? "mt-1.5" : "mt-2"}`}>
-          <div className="h-full rounded-full bg-primary/60 transition-all duration-300" style={{ width: `${progressPct}%` }} />
-        </div>
-      )}
-
-      {!isCompact && (
-      <div className="flex items-center gap-0.5 sm:gap-1 mt-2.5 sm:mt-3 pt-2 sm:pt-2.5 border-t border-border/30 flex-wrap">
-        {podcastTrack && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`text-xs font-brand uppercase tracking-widest h-7 px-1.5 sm:px-2 ${isCurrentPodcast && isPlaying ? "text-brand" : resumeLabel ? "text-brand/80" : "text-muted-foreground"}`}
-            data-action="play"
-            onClick={(e) => { e.stopPropagation(); onMarkRead?.(item); isCurrentPodcast ? togglePlay() : play(podcastTrack); }}
-            aria-label={isCurrentPodcast && isPlaying ? "Pause" : resumeLabel ? `Resume at ${resumeLabel}` : "Play"}
-            data-testid={`button-play-podcast-${item.link}`}
-          >
-            {isCurrentPodcast && isPlaying ? <Pause className="w-3.5 h-3.5 sm:mr-1.5" /> : <Play className="w-3.5 h-3.5 sm:mr-1.5" />}
-            <span className="hidden sm:inline">{isCurrentPodcast && isPlaying ? "Playing" : resumeLabel ? "Resume" : "Play"}</span>
-            {resumeLabel ? <span className="ml-1 opacity-70 text-[10px] sm:text-xs">{resumeLabel}</span> : item.duration ? <span className="ml-1 opacity-60 text-[10px] sm:text-xs">{item.duration >= 3600 ? `${Math.floor(item.duration / 3600)}h ${Math.floor((item.duration % 3600) / 60)}m` : `${Math.floor(item.duration / 60)}m`}</span> : null}
-          </Button>
-        )}
-        {queueMenuItems && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground h-7 px-1.5 sm:px-2"
-                data-action="more"
-                onClick={(e) => e.stopPropagation()}
-                aria-label="Queue actions"
-                title="Queue actions"
-                data-testid={`button-queue-rss-${item.link}`}
-              >
-                <ListEnd className="w-3.5 h-3.5" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-44 p-1" onClick={(e) => e.stopPropagation()}>
-              {queueMenuItems}
-            </PopoverContent>
-          </Popover>
-        )}
-        <a
-          href={item.link}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          data-testid={`button-open-article-${item.link}`}
-        >
-          <Button variant="ghost" size="sm" className="text-xs font-brand uppercase tracking-widest text-muted-foreground h-7 px-1.5 sm:px-2" aria-label="Open original">
-            <ExternalLink className="w-3.5 h-3.5 sm:mr-1.5" />
-            <span className="hidden sm:inline">Original</span>
-          </Button>
-        </a>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-xs font-brand uppercase tracking-widest text-muted-foreground h-7 px-1.5 sm:px-2"
-          aria-label="Share"
-          data-action="share"
-          onClick={(e) => { e.stopPropagation(); onShare(item); }}
-          data-testid={`button-share-rss-${item.link}`}
-        >
-          <Share2 className="w-3.5 h-3.5 sm:mr-1.5" />
-          <span className="hidden sm:inline">Share</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={`text-xs font-brand uppercase tracking-widest ml-auto h-7 px-1.5 sm:px-2 ${isBookmarked ? "text-brand" : "text-muted-foreground"}`}
-          aria-label={isBookmarked ? "Remove bookmark" : "Bookmark"}
-          data-action="bookmark"
-          onClick={(e) => { e.stopPropagation(); onToggleBookmark(); }}
-          data-testid={`button-bookmark-rss-${item.link}`}
-        >
-          {isBookmarked ? <BookmarkCheck className="w-3.5 h-3.5 sm:mr-1.5" /> : <Bookmark className="w-3.5 h-3.5 sm:mr-1.5" />}
-          <span className="hidden sm:inline">{isBookmarked ? "Saved" : "Save"}</span>
-        </Button>
-      </div>
-      )}
-    </Card>
-  );
-}
-
-
-// Editorial "Top story" card — the newest unread article, given full width and
-// a large image. Tapping the body opens the reader (which marks it read). When
-// the item is a podcast (has an audio/video enclosure) it gets a full playback
-// treatment: a large play/pause button over the artwork, a Play/Resume pill with
-// duration, and a resume-progress bar — same engine as the list cards.
-// ── Stacked story card (multi-outlet cluster) ────────────────────────────────
-// The cluster's lead article keeps its normal card treatment; a subtle stack
-// visual + an "N sources" chip collapse the other outlets' versions of the
-// SAME story behind a tap-to-expand list of compact rows. "N sources" is
-// breadth of coverage, never a truth claim ("verified"/"confirmed" is banned
-// copy). Unread math counts the cluster once (lead's read state); the expanded
-// rows surface each member's own read state.
-function memberTimeAgo(pubDate?: string): string {
-  if (!pubDate) return "";
-  try {
-    return formatDistanceToNow(new Date(pubDate), { addSuffix: true });
-  } catch {
-    return "";
-  }
-}
-
-function StackedStoryCard({
-  leadCard,
-  members,
-  outletCount,
-  isRead,
-  onOpenMember,
-}: {
-  /** The lead item's normal card (rendered unchanged). */
-  leadCard: React.ReactNode;
-  /** The cluster's non-lead members, earliest → latest. */
-  members: MergedItem<RSSItem>[];
-  outletCount: number;
-  isRead: (id: string) => boolean;
-  onOpenMember: (item: RSSItem) => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const chipLabel =
-    outletCount > 1
-      ? `${outletCount} sources`
-      : `${members.length + 1} versions`;
-  return (
-    <div data-testid="stacked-story">
-      <div className="relative">
-        {/* Stack peek layers under the lead card. */}
-        <div aria-hidden className="absolute inset-x-2 -bottom-1 h-2 rounded-b-lg border border-border/40 bg-card/60" />
-        <div aria-hidden className="absolute inset-x-4 -bottom-2 h-2 rounded-b-lg border border-border/30 bg-card/40" />
-        <div className="relative z-[1]">{leadCard}</div>
-      </div>
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
-        className="mt-2.5 w-full flex items-center justify-center gap-1.5 py-1 text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/70 hover:text-foreground transition-colors"
-        data-testid="button-stack-toggle"
-      >
-        {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-        {chipLabel}
-      </button>
-      {expanded && (
-        <div className="mt-1 space-y-1" data-testid="stack-members">
-          {members.map((m) => {
-            const id = rssItemId(m.item);
-            const read = isRead(id);
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => onOpenMember(m.item)}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-md border border-border/30 bg-card/40 text-left hover:bg-muted/40 transition-colors ${read ? "opacity-60" : ""}`}
-                data-testid={`stack-member-${id}`}
-              >
-                {!read && <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
-                <span className="text-[11px] font-medium text-muted-foreground shrink-0 max-w-[7rem] truncate">
-                  {m.source.name || "Source"}
-                </span>
-                <span className={`text-xs flex-1 min-w-0 truncate ${read ? "text-muted-foreground" : "text-foreground"}`}>
-                  {m.item.title}
-                </span>
-                <span className="text-[10px] text-muted-foreground/60 shrink-0 hidden sm:inline">
-                  {memberTimeAgo(m.item.pubDate)}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function RSSHeroCard({
-  item, feedImage, feedTitle, sourceName, sourceSiteUrl, onRead, onMarkRead, onShare, isBookmarked, onToggleBookmark, feature = false,
-}: {
-  item: RSSItem;
-  feedImage?: string;
-  feedTitle?: string;
-  sourceName?: string;
-  sourceSiteUrl?: string;
-  onRead: (item: RSSItem) => void;
-  onMarkRead?: (item: RSSItem) => void;
-  onShare: (item: RSSItem) => void;
-  isBookmarked: boolean;
-  onToggleBookmark: () => void;
-  /** Desktop "lead story" treatment: bigger headline/dek/padding via lg: classes
-   *  only — off (the default) leaves the mobile + single-column hero unchanged. */
-  feature?: boolean;
-}) {
-  const imageUrl = item.thumbnail || feedImage || "";
-  const timeAgo = useMemo(() => {
-    if (!item.pubDate) return "";
-    try { return formatDistanceToNow(new Date(item.pubDate), { addSuffix: true }); }
-    catch { return ""; }
-  }, [item.pubDate]);
-  const cleanDescription = useMemo(() => stripHtml(item.description).slice(0, 180), [item.description]);
-
-  // ── Podcast playback (mirrors RSSArticleCard) ──
-  const { play, currentTrack, isPlaying, togglePlay, currentTime: playerTime, duration: playerDuration } = useAudioPlayer();
-  const podcastTrack: MusicTrack | null = useMemo(() => {
-    if (!item.audioUrl) return null;
-    return {
-      id: `rss-${encodeURIComponent(item.audioUrl)}`,
-      title: item.title || "Untitled Episode",
-      artist: item.author || feedTitle || "Podcast",
-      artistPubkey: "",
-      audioUrl: item.audioUrl,
-      coverUrl: item.thumbnail || feedImage || "",
-      description: item.description || "",
-      genre: "Podcast",
-      duration: item.duration || 0,
-      createdAt: item.pubDate ? Math.floor(new Date(item.pubDate).getTime() / 1000) : 0,
-      source: "podcast" as const,
-      albumTitle: feedTitle || undefined };
-  }, [item, feedTitle, feedImage]);
-  const isCurrentPodcast = !!podcastTrack && currentTrack?.audioUrl === podcastTrack.audioUrl;
-  const isThisPlaying = isCurrentPodcast && isPlaying;
-
-  const savedPosition = useMemo(() => {
-    if (!podcastTrack) return null;
-    if (isCurrentPodcast && !isPlaying && playerTime > 5) {
-      return { time: playerTime, duration: playerDuration || item.duration || 0 };
-    }
-    if (isCurrentPodcast) return null;
-    return getTrackPosition(podcastTrack.id);
-  }, [podcastTrack, isCurrentPodcast, isPlaying, playerTime, playerDuration, item.duration]);
-
-  const resumeLabel = useMemo(() => {
-    if (!savedPosition || savedPosition.time < 5) return null;
-    const t = Math.floor(savedPosition.time);
-    const h = Math.floor(t / 3600);
-    const m = Math.floor((t % 3600) / 60);
-    const s = t % 60;
-    return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
-  }, [savedPosition]);
-
-  const progressPct = useMemo(() => {
-    if (!savedPosition || !savedPosition.duration || savedPosition.duration <= 0) return 0;
-    return Math.min(100, Math.max(0, (savedPosition.time / savedPosition.duration) * 100));
-  }, [savedPosition]);
-
-  const durationLabel = useMemo(() => {
-    if (!item.duration) return null;
-    return item.duration >= 3600
-      ? `${Math.floor(item.duration / 3600)}h ${Math.floor((item.duration % 3600) / 60)}m`
-      : `${Math.floor(item.duration / 60)}m`;
-  }, [item.duration]);
-
-  const handlePlay = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!podcastTrack) return;
-    onMarkRead?.(item);
-    isCurrentPodcast ? togglePlay() : play(podcastTrack);
-  }, [podcastTrack, isCurrentPodcast, togglePlay, play, onMarkRead, item]);
-
-  const playTitle = isThisPlaying ? "Pause" : resumeLabel ? `Resume at ${resumeLabel}` : "Play";
-
-  return (
-    <article
-      className="group glass-card relative overflow-hidden rounded-2xl border transition-colors cursor-pointer"
-      onClick={() => onRead(item)}
-      data-testid="card-rss-hero"
-    >
-      {imageUrl && (
-        <div className="relative w-full aspect-[16/9] overflow-hidden bg-muted/30">
-          <img
-            src={imageUrl}
-            alt=""
-            loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-            onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = "none"; }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/5 to-transparent pointer-events-none" />
-          <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-primary/90 text-primary-foreground text-[10px] font-brand uppercase tracking-widest px-2.5 py-1 shadow-sm">
-            {podcastTrack ? <Headphones className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
-            Top story
-          </span>
-          {/* Large tap-to-play control over the artwork for podcast episodes. */}
-          {podcastTrack && (
-            <button
-              type="button"
-              onClick={handlePlay}
-              className="absolute inset-0 flex items-center justify-center focus:outline-none"
-              aria-label={playTitle}
-              title={playTitle}
-              data-testid="button-hero-play-overlay"
-            >
-              <span className="flex items-center justify-center w-16 h-16 rounded-full bg-black/45 backdrop-blur-sm border border-white/25 text-white shadow-lg transition-transform group-hover:scale-105 hover:bg-black/60">
-                {isThisPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7 ml-0.5" />}
-              </span>
-            </button>
-          )}
-          {progressPct > 0 && (
-            <div className="absolute bottom-0 inset-x-0 h-1 bg-white/20">
-              <div className="h-full bg-primary transition-all duration-300" style={{ width: `${progressPct}%` }} />
-            </div>
-          )}
-        </div>
-      )}
-      <div className={`p-4 sm:p-5 ${feature ? "lg:p-7" : ""}`}>
-        <div className="flex items-center gap-2 mb-2 text-[11px] text-muted-foreground/80 min-w-0">
-          <SourceFavicon feedImage={feedImage} link={item.link} siteUrl={sourceSiteUrl} className="w-4 h-4 shrink-0" />
-          <span className="font-mono uppercase tracking-wider truncate">{sourceName || item.author || "Feed"}</span>
-          {timeAgo && <span className="shrink-0">· {timeAgo}</span>}
-        </div>
-        <h2 className={`text-lg sm:text-xl font-semibold leading-snug text-foreground line-clamp-3 ${feature ? "lg:text-3xl lg:leading-[1.15] lg:font-bold" : ""}`} data-testid="text-rss-hero-title">
-          {item.title || "Untitled"}
-        </h2>
-        {cleanDescription && (
-          <p className={`mt-2 text-sm text-muted-foreground/85 line-clamp-2 ${feature ? "lg:text-base lg:line-clamp-3 lg:mt-3" : ""}`}>{cleanDescription}</p>
-        )}
-        <div className="mt-3 flex items-center gap-1">
-          {podcastTrack && (
-            <button
-              type="button"
-              onClick={handlePlay}
-              className={`inline-flex items-center gap-2 h-9 pl-3 pr-4 rounded-full font-brand uppercase tracking-widest text-xs transition-colors ${
-                isThisPlaying
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-primary/15 text-primary hover:bg-primary/25"
-              }`}
-              aria-label={playTitle}
-              title={playTitle}
-              data-testid="button-hero-play"
-            >
-              {isThisPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              <span>{isThisPlaying ? "Playing" : resumeLabel ? "Resume" : "Play"}</span>
-              {(resumeLabel || durationLabel) && (
-                <span className="opacity-70 normal-case tracking-normal font-mono text-[11px]">
-                  {resumeLabel || durationLabel}
-                </span>
-              )}
-            </button>
-          )}
-          <div className={podcastTrack ? "ml-auto flex items-center gap-1" : "flex items-center gap-1"}>
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onToggleBookmark(); }}
-              className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground/70 hover:text-brand hover:bg-muted/50 transition-colors"
-              aria-label={isBookmarked ? "Remove bookmark" : "Bookmark"}
-              data-testid="button-hero-bookmark"
-            >
-              {isBookmarked ? <BookmarkCheck className="w-4 h-4 text-brand" /> : <Bookmark className="w-4 h-4" />}
-            </button>
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onShare(item); }}
-              className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground/70 hover:text-brand hover:bg-muted/50 transition-colors"
-              aria-label="Share"
-              data-testid="button-hero-share"
-            >
-              <Share2 className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-// ── Popular-podcasts shelf ───────────────────────────────────────────────────
-// A horizontal showcase of each podcast show in the mix, rendered with the
-// show's rich artwork. Tapping the card opens that SHOW's feed (all its
-// episodes); the artwork's play button jumps straight into the latest episode.
-// Lives at the top of the All/Top view so the popular shows are the first thing
-// users see, across every category, alongside the trending-news thread below.
-function PodcastShelfCard({ m, onOpenShow }: { m: MergedItem<RSSItem>; onOpenShow: (sourceUrl: string) => void }) {
-  const item = m.item;
-  const { play, currentTrack, isPlaying, togglePlay } = useAudioPlayer();
-  // Prefer the SHOW cover (curated 600×600 preset artwork) over per-episode
-  // thumbnails, which are spottier — the shelf is a recognizable-shows showcase.
-  const art = m.source.feedImage || item.thumbnail || "";
-  const track: MusicTrack | null = useMemo(() => {
-    if (!item.audioUrl) return null;
-    return {
-      id: `rss-${encodeURIComponent(item.audioUrl)}`,
-      title: item.title || "Untitled Episode",
-      artist: item.author || m.source.name || "Podcast",
-      artistPubkey: "",
-      audioUrl: item.audioUrl,
-      coverUrl: art,
-      description: item.description || "",
-      genre: "Podcast",
-      duration: item.duration || 0,
-      createdAt: item.pubDate ? Math.floor(new Date(item.pubDate).getTime() / 1000) : 0,
-      source: "podcast" as const,
-      albumTitle: m.source.name || undefined,
-    };
-  }, [item, m.source.name, art]);
-  const isCurrent = !!track && currentTrack?.audioUrl === track.audioUrl;
-  const isThisPlaying = isCurrent && isPlaying;
-  const onPlay = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!track) return;
-    if (isCurrent) togglePlay(); else play(track);
-  };
-  return (
-    <button
-      type="button"
-      onClick={() => onOpenShow(m.source.url)}
-      className="group/pod shrink-0 w-[136px] sm:w-[150px] text-left snap-start"
-      data-testid="podcast-shelf-card"
-    >
-      <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-muted/30 border border-border/40 shadow-sm">
-        {art ? (
-          <img
-            src={art}
-            alt=""
-            loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-300 group-hover/pod:scale-[1.03]"
-            onError={(e) => {
-              // Podcast CDN art hotlinks fine; if a host blocks it, retry once
-              // through the image proxy, then give up gracefully.
-              const el = e.currentTarget as HTMLImageElement;
-              if (!el.dataset.proxied) { el.dataset.proxied = "1"; el.src = `/api/rss/image-proxy?url=${encodeURIComponent(art)}`; }
-              else { el.style.visibility = "hidden"; }
-            }}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center"><Mic className="w-8 h-8 text-muted-foreground/30" /></div>
-        )}
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={onPlay}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPlay(e as unknown as React.MouseEvent); } }}
-          className="absolute bottom-1.5 right-1.5 w-9 h-9 rounded-full bg-black/55 backdrop-blur-sm flex items-center justify-center text-white shadow-md opacity-100 sm:opacity-0 sm:group-hover/pod:opacity-100 transition-opacity"
-          aria-label={isThisPlaying ? "Pause" : "Play latest episode"}
-          data-testid="podcast-shelf-play"
-        >
-          {isThisPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
-        </span>
-      </div>
-      <p className="mt-1.5 text-[11px] font-semibold text-foreground/90 truncate">{m.source.name}</p>
-      <p className="text-[11px] text-muted-foreground/60 leading-tight line-clamp-2">{item.title}</p>
-    </button>
-  );
-}
-
-function PodcastShelf({ items, onOpenShow }: { items: MergedItem<RSSItem>[]; onOpenShow: (sourceUrl: string) => void }) {
-  if (items.length === 0) return null;
-  return (
-    <section data-testid="podcast-shelf">
-      <div className="flex items-center gap-1.5 mb-2">
-        <Headphones className="w-3.5 h-3.5 text-brand" />
-        <span className="text-xs font-brand uppercase tracking-widest text-brand">Popular podcasts</span>
-      </div>
-      <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {items.map((m) => <PodcastShelfCard key={m.source.url} m={m} onOpenShow={onOpenShow} />)}
-      </div>
-    </section>
-  );
-}
-
 /**
  * One compact row in the single-feed "playlist" view. A feed's own view no
  * longer uses the magazine spread (every podcast episode shares the same show
@@ -2777,7 +1694,6 @@ function PlaylistEpisodeRow({ item, index, feedImage, feedTitle, isPodcast, read
 
 // News single-feed + All-feed stabilization helpers.
 // Stable-order keys (module-level so they don't churn the memos below).
-const bySourceUrl = (m: MergedItem<RSSItem>) => m.source.url;
 const byMergedItemId = (m: MergedItem<RSSItem>) => rssItemId(m.item);
 
 /**
@@ -2793,8 +1709,9 @@ function useStableOrder<T>(items: T[], keyFn: (t: T) => string, resetKey: string
   const nextRef = useRef(0);
   const lastResetRef = useRef(resetKey);
   return useMemo(() => {
-    // A deliberate re-sort (sort mode / topic tab switch) SHOULD reorder; streaming
-    // backfill should not. Reset the frozen order only when the resetKey changes.
+    // A deliberate re-sort (all your sources answered while you're at the top)
+    // SHOULD reorder; streaming backfill should not. Reset the frozen order only
+    // when the resetKey changes.
     if (resetKey !== lastResetRef.current) {
       orderRef.current = new Map();
       nextRef.current = 0;
@@ -2828,16 +1745,18 @@ function useStableHero(hero: MergedItem<RSSItem> | null, present: MergedItem<RSS
   }, [hero, present, resetKey]);
 }
 
+/** "24 minutes ago"; empty without a usable date. A date a publisher's clock
+ *  put in the future reads as now, never "in 3 hours". */
+function storyTimeLabel(pubDate?: string): string {
+  const t = Date.parse(pubDate || "");
+  if (!Number.isFinite(t)) return "";
+  return formatDistanceToNow(new Date(Math.min(t, Date.now())), { addSuffix: true });
+}
+
 export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {}) {
   const { pubkey } = useNostrAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const isWide = useIsWide();
-  // Desktop "magazine" front page (hero + secondary rail + card grid). Below lg
-  // the reader stays the single centered column — mobile is unchanged. News is
-  // always rendered embedded (inside Search's media hub), so we do NOT gate on
-  // `embedded`; the width comes from a rail-aware full-bleed breakout below.
-  const useMagazine = isWide;
   const { rssBookmarks, isRssBookmarked, toggleRssBookmark } = useRssBookmarks();
   const [, navigate] = useLocation();
   const { isRead, markRead, markAllRead } = useRssReadState();
@@ -2867,23 +1786,11 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   // Source filter: narrows the active feed's items to a single author/source.
   const [sourceFilter, setSourceFilter] = useState<string | null>(null);
-  // Reader density: "comfortable" (rich cards) vs "compact" (dense inbox list).
-  const [density, setDensity] = useRssDensity();
-  // Merged-thread sort: unread-first (default) vs pure latest.
-  const [sortMode] = useRssSortMode();
-  // Selected News topic tab (All-feeds view only). "Top" = the full diversified
-  // feed; a bucket key filters to that topic. Persisted across reloads.
-  const [selectedBucket, setSelectedBucket] = useNewsTopic();
-  // Live magazine-grid column count — the vertical diversity stride.
-  const gridCols = useGridColumns();
   // Merged thread is the default when no single source is chosen.
   const isAllMode = activeFeedUrl === "";
   // How many cards of the merged thread to render (paginated so a 30-feed
   // library doesn't paint thousands of cards at once). Reset when inputs change.
   const MERGED_PAGE = 25;
-  // Desktop magazine: how many stories sit in the secondary column beside the
-  // lead hero (the rest flow into the card grid below).
-  const MAGAZINE_RAIL = 3;
   const [mergedVisibleCount, setMergedVisibleCount] = useState(MERGED_PAGE);
   const [editingFeedUrl, setEditingFeedUrl] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -2987,20 +1894,6 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
     () => new Set<string>(allFeedSources.slice(0, 12).map((f) => f.url)),
     [allFeedSources],
   );
-  // Each feed's topic bucket, for lazy per-tab priming.
-  const bucketByUrl = useMemo(() => {
-    const m = new Map<string, NewsBucket | null>();
-    for (const f of allFeedSources) m.set(f.url, categoryToBucket(f.category));
-    return m;
-  }, [allFeedSources]);
-  // Tapping a topic tab primes THAT bucket's feeds immediately (ahead of the
-  // idle backfill), so a tab opened early fills fast instead of waiting ~2.5s.
-  const [primedBuckets, setPrimedBuckets] = useState<Set<NewsBucket>>(new Set());
-  useEffect(() => {
-    if (selectedBucket && selectedBucket !== "Top") {
-      setPrimedBuckets((prev) => (prev.has(selectedBucket) ? prev : new Set(prev).add(selectedBucket)));
-    }
-  }, [selectedBucket]);
   useEffect(() => {
     if (!isAllMode) return;
     const total = allFeedSources.length;
@@ -3044,11 +1937,10 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
   // mode so a single-source drill-in doesn't fan out the whole library.
   const feedQueries = useQueries({
     queries: allFeedSources.map((f, i) => {
-      const bucket = bucketByUrl.get(f.url);
-      // A feed fetches when it's on the front page (wave 1), OR its topic tab has
-      // been tapped (lazy prime), OR the rolling backfill frontier has reached it.
-      // This keeps first paint to ~12 requests and streams the long-tail gently.
-      const shouldFetch = primaryFeedUrls.has(f.url) || (!!bucket && primedBuckets.has(bucket)) || i < backfillLimit;
+      // A feed fetches when it's on the front page (wave 1) or the rolling
+      // backfill frontier has reached it. This keeps first paint to ~12
+      // requests and streams a larger library in gently.
+      const shouldFetch = primaryFeedUrls.has(f.url) || i < backfillLimit;
       return {
         queryKey: ["/api/rss", f.url],
         queryFn: async () => {
@@ -3137,20 +2029,15 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
     );
   }, [isAllMode, mergedItems]);
 
-  // Per-item cluster lookup + the set of non-lead members of multi-item
-  // clusters ("stacked members") — those render inside their lead's stack, not
-  // as standalone cards, and never count toward unread (cluster counts ONCE,
-  // read = lead read).
-  const { clusterByItemId, stackedMemberIds } = useMemo(() => {
-    const byId = new Map<string, StoryCluster>();
+  // The non-lead members of multi-outlet clusters: the same story from several
+  // outlets shows once, as its lead, never as a run of near-duplicates.
+  const stackedMemberIds = useMemo(() => {
     const memberIds = new Set<string>();
     for (const c of storyClusters) {
-      for (const id of c.itemIds) {
-        byId.set(id, c);
-        if (c.itemIds.length > 1 && id !== c.leadItemId) memberIds.add(id);
-      }
+      if (c.itemIds.length < 2) continue;
+      for (const id of c.itemIds) if (id !== c.leadItemId) memberIds.add(id);
     }
-    return { clusterByItemId: byId, stackedMemberIds: memberIds };
+    return memberIds;
   }, [storyClusters]);
 
   const mergedItemById = useMemo(() => {
@@ -3165,258 +2052,53 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
     [mergedItems, stackedMemberIds]
   );
 
-  // Raw unread total — counts each story CLUSTER once (lead's read state).
-  const mergedTotalUnread = useMemo(
-    () => countUnread(mergedCollapsedItems, (it) => isRead(rssItemId(it))),
-    [mergedCollapsedItems, isRead]
+  // Your mutes (Settings → News) are the one thing the stream leaves out. It no
+  // longer hides stories by our own scoring, keeps one story per source, or
+  // files them under topic tabs (2026-09 calm redesign, lib/news-stream.ts).
+  const newsPrefs = useNewsAlertPrefs();
+  const mergedVisibleItems = useMemo(
+    () => withoutMuted(mergedCollapsedItems, { mutedSources: newsPrefs.mutedSources, mutedKeywords: newsPrefs.mutedKeywords }),
+    [mergedCollapsedItems, newsPrefs.mutedSources, newsPrefs.mutedKeywords],
   );
 
-  // ── Smart alert scoring (tier 1–2 = alerts; tier 4 = source-view only) ────
-  const alertPrefs = useNewsAlertPrefs();
-
-  // Currently-trending shows (Podcast Index trend cache). Degrades to nothing
-  // when the proxy is unconfigured/erroring — scoring just skips the factor.
-  const { data: trendingData } = useQuery<{ suggestions: TrendSuggestionItem[] }>({
-    queryKey: ["/api/podcastindex/trend-suggestions", "news-alerts"],
-    queryFn: async () => {
-      try {
-        const res = await fetch(buildTrendSuggestionsUrl(null, 10));
-        if (!res.ok) return { suggestions: [] };
-        return (await res.json()) as { suggestions: TrendSuggestionItem[] };
-      } catch {
-        return { suggestions: [] };
-      }
-    },
-    enabled: isAllMode,
-    staleTime: 10 * 60 * 1000,
-    retry: false,
-  });
-
-  const feedByUrl = useMemo(() => new Map(allFeedSources.map((f) => [f.url, f])), [allFeedSources]);
-
-  // Score every collapsed story once per input change (cluster leads stand in
-  // for their stacks and carry the corroboration boost). Index-free: results
-  // carry their MergedItem so the strip can open/mark the underlying article.
-  const scoredMerged = useMemo<NewsScored[]>(() => {
-    if (!isAllMode || mergedCollapsedItems.length === 0) return [];
-    // Followed individual creators: user-added podcasts + curated preset shows.
-    const presetKeys = presetShowTitleKeys();
-    const followed: string[] = [];
-    for (const f of allFeedSources) {
-      if (f.category === "Podcast" || presetKeys.has(normalizeShowTitle(f.name))) followed.push(f.url);
-    }
-    // Prior engagement from the read ledger: a source counts as engaged when
-    // any of its currently-loaded items has been read.
-    const engaged = new Set<string>();
-    for (const m of mergedItems) {
-      if (isRead(rssItemId(m.item))) engaged.add(m.source.url);
-    }
-    const trendingKeys = (trendingData?.suggestions ?? [])
-      .map((s) => normalizeShowTitle(s.title))
-      .filter(Boolean);
-    const scorables: NewsScorable[] = mergedCollapsedItems.map((m) => {
-      const id = rssItemId(m.item);
-      return {
-        id,
-        title: m.item.title,
-        description: m.item.description,
-        sourceUrl: m.source.url,
-        sourceName: m.source.name,
-        sourceCategory: feedByUrl.get(m.source.url)?.category,
-        author: m.item.author,
-        isPodcast: !!m.item.audioUrl,
-        durationSec: m.item.duration,
-        outletCount: clusterByItemId.get(id)?.outletCount ?? 1,
-        merged: m,
-      };
-    });
-    return scoreNewsItems(scorables, {
-      savedCategoryKeys: allFeedSources.map((f) => f.category),
-      followedCreatorUrls: followed,
-      trendingSourceKeys: trendingKeys,
-      engagedSourceUrls: engaged,
-      mutedSourceUrls: alertPrefs.mutedSources,
-      mutedKeywords: alertPrefs.mutedKeywords,
-      onlyPresets: alertPrefs.onlyPresets,
-      onlyFollowedCreators: alertPrefs.onlyCreators,
-    });
-    // Depend on the individual pref fields (stable refs from the prefs store)
-    // so re-renders don't re-score the whole thread.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    isAllMode,
-    mergedItems,
-    mergedCollapsedItems,
-    clusterByItemId,
-    allFeedSources,
-    feedByUrl,
-    trendingData,
-    isRead,
-    alertPrefs.mutedSources,
-    alertPrefs.mutedKeywords,
-    alertPrefs.onlyPresets,
-    alertPrefs.onlyCreators,
-  ]);
-
-  const scoredById = useMemo(() => {
-    const map = new Map<string, NewsScored>();
-    for (const s of scoredMerged) map.set(s.item.id, s);
-    return map;
-  }, [scoredMerged]);
-
-  // Tier-4 filtering: low-priority items live only in their source's own feed
-  // view. Cold-start guard: with zero read history there is no engagement
-  // signal yet, so nothing is hidden until the user has actually used News.
-  const hasReadHistory = useMemo(
-    () => mergedItems.some((m) => isRead(rssItemId(m.item))),
-    [mergedItems, isRead]
+  // The quiet lead: the newest unread story with a picture big enough to lead,
+  // otherwise the newest unread one. Held once picked, so a better picture
+  // arriving in the backfill never swaps it out from under the reader.
+  const mergedLeadRaw = useMemo(
+    () => pickLead(mergedVisibleItems, (it) => isRead(rssItemId(it))),
+    [mergedVisibleItems, isRead],
   );
-  const mergedVisibleItems = useMemo(() => {
-    if (!isAllMode || scoredById.size === 0) return mergedCollapsedItems;
-    return mergedCollapsedItems.filter((m) => {
-      const s = scoredById.get(rssItemId(m.item));
-      if (!s || s.tier !== "low") return true;
-      // Muted/thin items always hide; other low scorers hide once the user has
-      // read history (before that, hiding would empty a fresh account's feed).
-      return !(s.muted || s.factors.includes("thinContent") || hasReadHistory);
-    });
-  }, [isAllMode, mergedCollapsedItems, scoredById, hasReadHistory]);
-
-
-  // ── News topic tabs (canonical taxonomy) ──────────────────────────────────
-  // Map each source url → its feed's category, then fold that onto a canonical
-  // bucket (lib/news-categories). The tab bar shows "Top" plus only the buckets
-  // that currently have ≥1 article; a stale/renamed selection falls back to Top.
-  const feedCatByUrl = useMemo(
-    () => new Map(allFeedSources.map((f) => [f.url, f.category])),
-    [allFeedSources]
-  );
-  const presentBuckets = useMemo(() => {
-    if (!isAllMode) return [] as NewsBucket[];
-    const present = new Set<NewsBucket>();
-    for (const m of mergedVisibleItems) {
-      const b = articleCategory(m, feedCatByUrl);
-      if (b) present.add(b);
-    }
-    return NEWS_BUCKETS.filter((b) => present.has(b));
-  }, [isAllMode, mergedVisibleItems, feedCatByUrl]);
-  // The bucket actually in effect: the selection if it still has articles, else
-  // Top (so the view never gets stuck on an empty/vanished topic).
-  const effectiveBucket: NewsBucket | "Top" =
-    selectedBucket !== "Top" && presentBuckets.includes(selectedBucket)
-      ? selectedBucket
-      : "Top";
-  // The tab-filtered universe fed into the hero/sort/diversify/split pipeline so
-  // every downstream surface (hero, grid, read-dimming, Caught-up) works per tab.
-  // "Top" = the full set (the diversifier balances sources); a bucket = only its
-  // articles.
-  const categoryItems = useMemo(() => {
-    if (!isAllMode) return mergedVisibleItems;
-    // "Top" firehose: show ONE card per source so a prolific show (e.g. 3 fresh
-    // podcast episodes) or wire feed can't repeat down the feed. The list is
-    // already in best-first order, so the survivor is each source's top item.
-    if (effectiveBucket === "Top") return capPerSource(mergedVisibleItems, (m) => m.source.url, 1);
-    return mergedVisibleItems.filter((m) => articleCategory(m, feedCatByUrl) === effectiveBucket);
-  }, [isAllMode, mergedVisibleItems, effectiveBucket, feedCatByUrl]);
-
-  // Tier 1–2 unread — the alerting slice that feeds the "Worth your time"
-  // cluster's digest groups. There is no aggregate "everything-unread" total
-  // anywhere on the page; only this bounded priority slice surfaces.
-  const alertScored = useMemo(
-    () =>
-      scoredMerged.filter(
-        (s) => ALERTING_TIERS.includes(s.tier) && !isRead(s.item.id)
-      ),
-    [scoredMerged, isRead]
-  );
-  // THE News unread count (the fatigue fix): tier 1–2 AND inside the shared
-  // 72h freshness window (news-unread.ts — same policy as the Stories menu).
-  // Older priority items stay readable in the strip; they just stop counting.
-  const newsAlertUnread = useMemo(
-    () =>
-      countPriorityUnread(
-        alertScored.map((s) => ({
-          id: s.item.id,
-          tier: s.tier,
-          timeMs: Date.parse(s.item.merged.item.pubDate || ""),
-          title: s.item.title,
-        })),
-        (id) => isRead(id),
-        Date.now(),
-      ).count,
-    [alertScored, isRead]
-  );
-  const alertGroups = useMemo(() => buildDigestGroups(alertScored), [alertScored]);
-
-  const handleMarkGroupRead = useCallback(
-    (group: DigestGroup<NewsScorable>) => {
-      markAllRead(group.items.map((s) => s.item.id));
-    },
-    [markAllRead]
-  );
-
-  // Hero + ordered thread for the merged view (over the tier-filtered slice,
-  // then narrowed to the selected topic). Story stacks are excluded from hero
-  // candidacy: the stack's expand UI lives on the in-list card, so a
-  // multi-version story always renders there.
-  const mergedHeroRaw = useMemo(
-    () =>
-      pickHero(
-        categoryItems.filter(
-          (m) => (clusterByItemId.get(rssItemId(m.item))?.itemIds.length ?? 1) === 1
-        ),
-        (it) => isRead(rssItemId(it))
-      ),
-    [categoryItems, clusterByItemId, isRead]
-  );
-  // Keep the lead story fixed once picked — don't swap it as the backfill arrives.
-  const mergedHero = useStableHero(mergedHeroRaw, categoryItems, `${sortMode}|${effectiveBucket}`);
-  const mergedSorted = useMemo(
-    () => sortMergedItems(categoryItems, sortMode, (it) => isRead(rssItemId(it))),
-    [categoryItems, sortMode, isRead]
-  );
-  // Everything below the hero, in the chosen order (hero pulled out to lead),
-  // then a source-diversity pass so one outlet never runs back-to-back while
-  // other outlets have stories waiting (read/unread segments kept separate).
-  // The "Top" mixed stream additionally caps each source's share so a firehose
-  // outlet can't dominate; a single topic's tab keeps only the linear diversity.
+  const mergedLead = useStableHero(mergedLeadRaw, mergedVisibleItems);
+  // Everything else, strictly newest first. The lead is removed by story id,
+  // so it's never shown twice.
   const mergedRestRaw = useMemo(
-    () =>
-      interleaveMergedSources(
-        mergedSorted.filter((m) => m.item !== mergedHero?.item),
-        sortMode,
-        (it) => isRead(rssItemId(it)),
-        effectiveBucket === "Top" ? TOP_SOURCE_CAP : undefined,
-      ),
-    [mergedSorted, mergedHero, sortMode, isRead, effectiveBucket]
+    () => withoutLead(orderStream(mergedVisibleItems), mergedLead),
+    [mergedVisibleItems, mergedLead],
   );
-  // Freeze card positions so streaming backfill doesn't reshuffle the list; new
-  // items append instead of re-sorting into what's already visible. A sort/tab
-  // switch (resetKey) re-orders deliberately.
-  const mergedRest = useStableOrder(mergedRestRaw, byMergedItemId, `${sortMode}|${effectiveBucket}`);
-  // Index of the first read card, so unread-first mode can show a "Caught up"
-  // divider (latest mode is a flat chronological list, no divider).
-  const mergedReadBoundary = useMemo(() => {
-    if (sortMode !== "unread-first") return -1;
-    return mergedRest.findIndex((m) => isRead(rssItemId(m.item)));
-  }, [mergedRest, sortMode, isRead]);
-  // Paginate the rendered slice.
-  const mergedVisible = useMemo(
+  // Freeze positions as feeds stream in so nothing on screen moves (iOS has no
+  // scroll anchoring); a late story appends, and still lands under the right
+  // day. Once your sources have all answered, re-sort a single time if you're
+  // still at the top: the first screen paints from the remembered edition, and
+  // staying frozen buried a slower source's newest story below older ones.
+  const [orderEpoch, setOrderEpoch] = useState(0);
+  useEffect(() => {
+    if (mergedLoading) return;
+    const root = scrollRootFor(articlesRef.current);
+    if ((root ? root.scrollTop : window.scrollY) < 120) setOrderEpoch((n) => n + 1);
+  }, [mergedLoading]);
+  const mergedRest = useStableOrder(mergedRestRaw, byMergedItemId, String(orderEpoch));  const mergedVisible = useMemo(
     () => mergedRest.slice(0, mergedVisibleCount),
     [mergedRest, mergedVisibleCount]
   );
+  const mergedDays = useMemo(() => groupByDay(mergedVisible, Date.now()), [mergedVisible]);
 
-  // Reset pagination only when the thread's FILTER context changes (source
-  // mode, sort mode, topic bucket) — NOT when the item count changes. The
-  // merged feed streams in over several seconds (feeds resolve on a backfill
-  // ramp) and pull-to-refresh rebuilds it; keying the reset on
-  // `mergedVisibleItems.length` snapped the visible slice back to page 1 on
-  // every one of those ticks, truncating cards out from under a user who had
-  // scrolled or hit "Load more". Excluding length keeps their position stable
-  // while new items append below.
+  // Back to the first page when switching between all sources and one source,
+  // NOT when the item count changes: the stream fills over several seconds and
+  // pull-to-refresh rebuilds it, and resetting on length snapped a reader who
+  // had scrolled or tapped "Show more" back to page 1.
   useEffect(() => {
     setMergedVisibleCount(MERGED_PAGE);
-  }, [isAllMode, sortMode, effectiveBucket]);
+  }, [isAllMode]);
 
   // Refresh: All mode re-fetches every feed; single mode re-fetches the one.
   const mergedFetching = isAllMode && feedQueries.some((q) => q.isFetching);
@@ -3440,25 +2122,6 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
     [visibleItems, isRead]
   );
 
-  // Editorial split: newest unread (with an image) becomes the "Top story" hero;
-  // remaining unread flow beneath; read items sink below a "caught up" divider,
-  // dimmed in place. Feed order is preserved within each group (feeds arrive
-  // newest-first). A hero only exists when there is something unread — it's
-  // always a NEW story, never an already-read one.
-  const { heroItem, unreadRest, readItems } = useMemo(() => {
-    const unread: RSSItem[] = [];
-    const read: RSSItem[] = [];
-    for (const it of visibleItems) {
-      (isRead(rssItemId(it)) ? read : unread).push(it);
-    }
-    const hero = unread.length ? (unread.find((it) => !!it.thumbnail) ?? unread[0]) : null;
-    return {
-      heroItem: hero,
-      unreadRest: hero ? unread.filter((it) => it !== hero) : unread,
-      readItems: read,
-    };
-  }, [visibleItems, isRead]);
-
   // Distinct authors in the active feed, for the source-filter dropdown.
   const feedAuthors = useMemo(() => {
     const seen = new Set<string>();
@@ -3469,17 +2132,11 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
     return Array.from(seen).sort((a, b) => a.localeCompare(b));
   }, [feedData]);
 
+  // Mark all read lives in a single source's view only; the all-sources stream
+  // is read by time, not cleared like an inbox.
   const handleMarkAllVisibleRead = useCallback(() => {
-    // A visible cluster lead marks its whole stack read (members included).
-    const ids = isAllMode
-      ? mergedVisibleItems.flatMap((m) => {
-          const id = rssItemId(m.item);
-          const c = clusterByItemId.get(id);
-          return c && c.leadItemId === id ? c.itemIds : [id];
-        })
-      : visibleItems.map((it) => rssItemId(it));
-    markAllRead(ids);
-  }, [isAllMode, mergedVisibleItems, clusterByItemId, visibleItems, markAllRead]);
+    markAllRead(visibleItems.map((it) => rssItemId(it)));
+  }, [visibleItems, markAllRead]);
 
   // Opening an article in the reader marks it read. Normal card opens always
   // land on the Article tab (the ?discuss= deep-link overrides this to comments).
@@ -3552,117 +2209,28 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
     } catch {}
   }, [discussSearch, markRead]);
 
-  // One card renderer shared by the unread + read groups (read cards dim in place).
-  const renderArticle = useCallback((item: RSSItem, idx: number, dimmed: boolean) => (
-    <div key={item.link} className={dimmed ? "opacity-55 transition-opacity" : ""}>
-      <RSSArticleCard
-        density={density}
-        item={item}
-        onShare={(it) => setShareCtx({ item: it, feedTitle: feedData?.title, feedImage: activeFeed?.feedImage || feedData?.image })}
-        onRead={handleOpenReader}
-        isBookmarked={isRssBookmarked(item.link)}
-        onToggleBookmark={() => toggleRssBookmark(item)}
-        feedTitle={feedData?.title}
-        feedImage={activeFeed?.feedImage || feedData?.image}
-        sourceName={activeFeed?.name || feedData?.title}
-        sourceSiteUrl={activeFeed?.siteUrl || feedData?.link}
-        isRead={isRead(rssItemId(item))}
-        onMarkRead={(it) => markRead(rssItemId(it))}
-        onFilterSource={(author) => setSourceFilter(author)}
-      />
-    </div>
-  ), [density, feedData, activeFeed, handleOpenReader, isRssBookmarked, toggleRssBookmark, isRead, markRead]);
-
-  // Card renderer for the merged thread: each card is labelled with ITS OWN
-  // source, and tapping the source drills into that single feed.
-  const renderMergedArticle = useCallback((m: MergedItem<RSSItem>, idx: number, dimmed: boolean) => (
-    <div key={`${m.source.url}-${m.item.link}`} className={dimmed ? "opacity-55 transition-opacity" : ""}>
-      <RSSArticleCard
-        density={density}
-        item={m.item}
-        onShare={(it) => setShareCtx({ item: it, feedTitle: m.source.name, feedImage: m.source.feedImage })}
-        onRead={handleOpenReader}
-        isBookmarked={isRssBookmarked(m.item.link)}
-        onToggleBookmark={() => toggleRssBookmark(m.item)}
-        feedTitle={m.source.name}
-        feedImage={m.source.feedImage}
-        sourceName={m.source.name}
-        sourceSiteUrl={m.source.siteUrl}
-        isRead={isRead(rssItemId(m.item))}
-        onMarkRead={(it) => markRead(rssItemId(it))}
-        onFilterSource={() => handleSelectFeed(m.source.url)}
-      />
-    </div>
-  ), [density, handleOpenReader, isRssBookmarked, toggleRssBookmark, isRead, markRead, handleSelectFeed]);
-
-  // Stacked renderer for multi-version story clusters: the lead keeps the
-  // normal card treatment; the other outlets' versions collapse behind the
-  // "N sources" chip. Falls back to the plain card when members are missing.
-  const renderStackedStory = useCallback(
-    (m: MergedItem<RSSItem>, cluster: StoryCluster, idx: number, dimmed: boolean) => {
-      const members = cluster.itemIds
-        .filter((id) => id !== cluster.leadItemId)
-        .map((id) => mergedItemById.get(id))
-        .filter((mm): mm is MergedItem<RSSItem> => !!mm);
-      if (members.length === 0) return renderMergedArticle(m, idx, dimmed);
-      return (
-        <div key={`stack-${cluster.clusterId}`} className={dimmed ? "opacity-55 transition-opacity" : ""}>
-          <StackedStoryCard
-            leadCard={renderMergedArticle(m, idx, false)}
-            members={members}
-            outletCount={cluster.outletCount}
-            isRead={isRead}
-            onOpenMember={handleOpenReader}
-          />
-        </div>
-      );
-    },
-    [mergedItemById, renderMergedArticle, isRead, handleOpenReader]
-  );
-
-  // ── Desktop "magazine" card renderer ───────────────────────────────────────
-  // One renderer for both the secondary rail and the card grid. It reuses the
-  // shared RSSMagazineCard tile and the SAME StackedStoryCard used on mobile, so
-  // multi-outlet clusters keep their "N sources" expand + testids. Source labels
-  // and v4v come from the merged item's own source (single-feed items carry the
-  // active feed as their source, so this works unchanged in both modes).
-  const renderMagCard = useCallback((m: MergedItem<RSSItem>, variant: "grid" | "rail") => {
+  // One row style for every story (components/news/NewsStoryRow). A picture
+  // shows only when it's good enough (lib/news-image.ts): show art, logos and
+  // tracker pixels never stand in for a story's own picture.
+  const renderStory = (m: MergedItem<RSSItem>, variant: "lead" | "row") => {
     const id = rssItemId(m.item);
-    const cluster = clusterByItemId.get(id);
-    const isStack = !!cluster && cluster.itemIds.length > 1 && cluster.leadItemId === id;
-    const card = (
-      <RSSMagazineCard
-        variant={variant}
-        item={m.item}
-        onRead={handleOpenReader}
-        onMarkRead={(it) => markRead(rssItemId(it))}
-        onShare={(it) => setShareCtx({ item: it, feedTitle: m.source.name, feedImage: m.source.feedImage })}
-        isBookmarked={isRssBookmarked(m.item.link)}
-        onToggleBookmark={() => toggleRssBookmark(m.item)}
-        feedTitle={m.source.name}
-        feedImage={m.source.feedImage}
-        sourceName={m.source.name}
-        isRead={isRead(id)}
-        outletCount={cluster?.outletCount}
-        v4v={!!feedByUrl.get(m.source.url)?.v4v}
-      />
-    );
-    if (!isStack || !cluster) return card;
-    const members = cluster.itemIds
-      .filter((x) => x !== cluster.leadItemId)
-      .map((x) => mergedItemById.get(x))
-      .filter((mm): mm is MergedItem<RSSItem> => !!mm);
-    if (members.length === 0) return card;
+    const thumbnail = m.item.thumbnail || "";
+    const fit = imageFit(thumbnail, { width: m.item.thumbnailWidth, feedImage: m.source.feedImage });
     return (
-      <StackedStoryCard
-        leadCard={card}
-        members={members}
-        outletCount={cluster.outletCount}
-        isRead={isRead}
-        onOpenMember={handleOpenReader}
+      <NewsStoryRow
+        // The picture is part of the key, so a fresher copy of the story with a
+        // different picture starts over instead of keeping the old fallback.
+        key={`${variant}-${id}-${thumbnail}`}
+        variant={variant}
+        title={m.item.title}
+        sourceName={m.source.name || "News"}
+        timeLabel={storyTimeLabel(m.item.pubDate)}
+        image={fit ? { url: thumbnail, ...fit } : null}
+        isRead={isRead(id)}
+        onOpen={() => handleOpenReader(m.item)}
       />
     );
-  }, [clusterByItemId, mergedItemById, feedByUrl, handleOpenReader, markRead, isRssBookmarked, toggleRssBookmark, isRead]);
+  };
 
   const handleAddFeed = useCallback((feed: SavedFeed) => {
     setFeeds(prev => {
@@ -3748,43 +2316,6 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
     }
   }, [mobileFilteredFeeds, activeFeedUrl, selectedCategories]);
 
-  // ── Desktop magazine buckets (only rendered when useMagazine) ──────────────
-  // Split the ordered below-hero list into the secondary rail + the card grid.
-  // Cheap shallow slices; when there is no hero, everything flows into the grid
-  // (no rail). Single-feed items are normalised to the shared MergedItem shape
-  // (source = the active feed) so the ONE magazine renderer serves both modes.
-  const magAll = mergedHero
-    ? splitMagazine(mergedVisible, MAGAZINE_RAIL, (m) => isRead(rssItemId(m.item)))
-    : { rail: [] as MergedItem<RSSItem>[], grid: mergedVisible, gridReadStart: mergedVisible.findIndex((m) => isRead(rssItemId(m.item))) };
-
-  const singleSource: MergeSource = {
-    url: activeFeedUrl,
-    name: activeFeed?.name || feedData?.title,
-    feedImage: activeFeed?.feedImage || feedData?.image,
-    siteUrl: activeFeed?.siteUrl || feedData?.link,
-  };
-  const singleRest: MergedItem<RSSItem>[] = [...unreadRest, ...readItems].map((it) => ({ item: it, source: singleSource }));
-  const magSingle = heroItem
-    ? splitMagazine(singleRest, MAGAZINE_RAIL, (m) => isRead(rssItemId(m.item)))
-    : { rail: [] as MergedItem<RSSItem>[], grid: singleRest, gridReadStart: singleRest.findIndex((m) => isRead(rssItemId(m.item))) };
-
-  // Column-aware diversity: reorder each grid so no card sits directly above
-  // another from the same source (positions i and i+gridCols differ). The
-  // unread/read halves are diversified independently, so gridReadStart — and the
-  // "Caught up" divider it drives — is unchanged. Single-feed grids are one
-  // source, so this is a no-op there.
-  const magAllGrid = diversifyGrid(magAll.grid, magAll.gridReadStart, gridCols, (m) => m.source.url);
-  const magSingleGrid = diversifyGrid(magSingle.grid, magSingle.gridReadStart, gridCols, (m) => m.source.url);
-
-  // Shared "Caught up" divider (spans all grid columns) between fresh + read cards.
-  const caughtUpDivider = (
-    <div className="col-span-full flex items-center gap-3 pt-1 pb-1" data-testid="divider-caught-up">
-      <span className="h-px flex-1 bg-border/40" />
-      <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground/50">Caught up</span>
-      <span className="h-px flex-1 bg-border/40" />
-    </div>
-  );
-
   // Hard wall (owner decision, 2026-08-14): News is a browse surface, so
   // guests meet the wall outright — the reader, the feeds, and the trending
   // machinery behind them are membership. All hooks above have run; this
@@ -3801,76 +2332,39 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
 
   return (
     <div className={embedded ? "" : "max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6"} data-testid="page-rss-feed">
-      {/* Desktop "magazine" front page: break out of Search's max-w-2xl wrapper
-          to fill the space right of the rail (main is flex-1, so centering on
-          the box's center == centering in that space), capped at 1400px so it
-          doesn't sprawl on ultrawide. Width is viewport-derived (rail ≈ 4.25rem
-          + gutters); main's overflow-x-hidden guards the edges. Below lg the
-          reader stays the mobile single centered column — untouched. The
-          reader/share/alert dialogs render OUTSIDE this div, so the transform's
-          containing block never traps their `position: fixed`. (The title
-          header lives INSIDE it so title, control row, and content share one
-          left edge at every width — it used to sit in the page's max-w-5xl
-          box while the content sat in this one, and the two edges never
-          lined up. Its own dialog is portal-based, so the transform is safe.) */}
-      <div
-        className={useMagazine ? "w-full" : "max-w-2xl mx-auto w-full"}
-        style={useMagazine ? { position: "relative", left: "50%", transform: "translateX(-50%)", width: "min(1400px, calc(100vw - 6.5rem))" } : undefined}
-      >
+      {/* One calm column at every width (2026-09 redesign): the desktop
+          magazine breakout (hero + rail + grid) is gone. */}
+      <div className="max-w-2xl mx-auto w-full">
       {/* Title header: only on the standalone page. On the focused News view
           (embedded) it's redundant — refresh + Add Feed are relocated into
           Row A (mobile) and a slim desktop action bar below. */}
       {!embedded && (
         <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
           <div className="flex items-center gap-2">
-            {/* No "← Discover" back here (owner call, 2026-08-14): the bottom
-                bar's Discover tab already returns to the bento in one tap, so
-                a header back was a second way to say the same thing. News's
-                only in-page arrow is the feed-level back-to-all below. */}
-            {/* nowrap: with "← Discover" beside it on a 375px screen the title
-                used to shrink and break into two lines. The decorative RSS
-                badge is the thing that yields on the smallest screens. */}
             <h1 className="text-lg font-semibold text-foreground whitespace-nowrap" data-testid="text-rss-title">
-              News Feeds
+              News
             </h1>
-            <Badge variant="secondary" className="text-[11px] hidden sm:inline-flex">
-              RSS
-            </Badge>
-            {/* All-mode header count = bounded tier 1–2 priority slice only (the
-                fatigue fix); there is no aggregate everything-unread total. */}
-            {(isAllMode ? newsAlertUnread : (feedData && feedData.items.length > 0 ? visibleUnreadCount : 0)) > 0 && (
-              // hidden < sm: the feed pill one row down shows the same count,
-              // and dropping the duplicate keeps the title on one line beside
-              // "← Discover" + refresh + Add.
-              <Badge variant="default" className="text-[11px] tabular-nums hidden sm:inline-flex" data-testid="badge-header-unread">
-                {isAllMode ? newsAlertUnread : visibleUnreadCount} unread
-              </Badge>
-            )}
           </div>
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
+              className="h-11 w-11"
               onClick={handleRefresh}
               disabled={isAllMode ? mergedFetching : isFetching}
+              aria-label="Refresh"
               data-testid="button-refresh-feed"
             >
               <RefreshCw className={`w-4 h-4 ${(isAllMode ? mergedFetching : isFetching) ? "animate-spin" : ""}`} />
             </Button>
-            <AddRssFeedDialog onAdd={handleAddFeed} existingUrls={existingUrls} onOpenFeed={handleSelectFeed} />
           </div>
         </div>
       )}
 
-        {/* Control bar: search + "All feeds" picker + ⋮. Stacked on mobile
-            (unchanged); one full-width bar on desktop. */}
-        <div className={useMagazine ? "mb-4 flex flex-row items-center gap-2" : "mb-4 space-y-2.5"}>
-        {/* Search FIRST (owner redesign 2026-08-30): the app's canonical search
-            pill — identical to the Search page — opens the discover-and-add
-            dialog. On desktop the pill (flex-1) and the feed picker share ONE
-            line, search left / picker right; on mobile they stack. The old
-            density/layout overflow (⋮) and the sort toggle are gone; mark-all
-            plus the contextual source filter sit inline beside the picker. */}
+        {/* Search (the app's search pill, which opens find-and-add), then your
+            sources. Mark all read, the source filter and Visit site belong to
+            a single source's view only. */}
+        <div className="mb-4 space-y-2.5">
         <AddRssFeedDialog
           onAdd={handleAddFeed}
           existingUrls={existingUrls}
@@ -3879,7 +2373,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
           trigger={
             <button
               type="button"
-              className={`${searchPillClass} relative flex items-center pl-10 pr-4 text-muted-foreground/60 ${useMagazine ? "flex-1 min-w-0 !h-10" : ""}`}
+              className={`${searchPillClass} relative flex items-center pl-10 pr-4 text-muted-foreground`}
               aria-label="Search news, blogs & podcasts"
               data-testid="button-open-feed-search"
             >
@@ -3888,8 +2382,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
             </button>
           }
         />
-        {/* Filter row: feed picker · sort · mark-all · source · visit-site */}
-        <div className={`flex items-center gap-2 ${useMagazine ? "shrink-0" : ""}`} data-testid="container-feed-selector-mobile">
+        <div className="flex items-center gap-2" data-testid="container-feed-selector-mobile">
           {!isAllMode && (
             <Button
               variant="ghost"
@@ -3905,7 +2398,14 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
           )}
           <Drawer open={feedPopoverOpen} onOpenChange={setFeedPopoverOpen}>
             <DrawerTrigger asChild>
-              <Button variant="outline" size="sm" className={`justify-between h-10 ${useMagazine ? "w-56 flex-none" : "flex-1 min-w-0"}`} data-testid="button-feed-dropdown">
+              {isAllMode ? (
+                // A quiet way into your sources; the stream itself is the page.
+                <Button variant="ghost" className="h-11 -ml-2 px-2 gap-1.5 text-sm font-normal text-muted-foreground hover:text-foreground" data-testid="button-feed-dropdown">
+                  Your sources
+                  <ChevronDown className="w-3.5 h-3.5 shrink-0" />
+                </Button>
+              ) : (
+              <Button variant="outline" size="sm" className="justify-between h-11 flex-1 min-w-0" data-testid="button-feed-dropdown">
                 <span className="flex items-center gap-1.5 truncate">
                   <SourceFavicon
                     feedImage={activeFeed?.feedImage || feedData?.image}
@@ -3913,27 +2413,23 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                     siteUrl={activeFeed?.siteUrl || feedData?.link}
                     className="w-4 h-4 shrink-0"
                   />
-                  <span className="truncate">{isAllMode ? "All feeds" : (activeFeed?.name || "Select feed")}</span>
-                  {(isAllMode ? newsAlertUnread : (feedData && feedData.items.length > 0 ? visibleUnreadCount : 0)) > 0 && (
-                    <span className="text-muted-foreground/70 tabular-nums shrink-0" data-testid="text-picker-unread">
-                      · {isAllMode ? newsAlertUnread : visibleUnreadCount} unread
+                  <span className="truncate">{activeFeed?.name || "Select feed"}</span>
+                  {feedData && feedData.items.length > 0 && visibleUnreadCount > 0 && (
+                    <span className="text-muted-foreground tabular-nums shrink-0" data-testid="text-picker-unread">
+                      · {visibleUnreadCount} unread
                     </span>
                   )}
                 </span>
                 <ChevronDown className="w-3.5 h-3.5 ml-2 text-muted-foreground shrink-0" />
               </Button>
+              )}
             </DrawerTrigger>
             <DrawerContent className="border-border/20 bg-background/95 backdrop-blur-xl max-h-[80dvh] overflow-hidden flex flex-col">
               {/* Opaque backing: iOS WebKit can drop the composited background of a transform-animated
                   fixed container with a scrollable descendant (PRs #321/#322). */}
               <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 rounded-t-[10px] bg-background" data-testid="switch-feed-backing" />
               <DrawerHeader className="pb-2 border-b border-border/15 shrink-0">
-                <DrawerTitle className="text-sm font-brand uppercase tracking-widest flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center">
-                    <Rss className="w-3.5 h-3.5 text-brand" />
-                  </div>
-                  Switch feed
-                </DrawerTitle>
+                <DrawerTitle className="text-base font-semibold">Your sources</DrawerTitle>
               </DrawerHeader>
               <div
                 className="flex-1 min-h-0 px-3 pb-8 pt-2 overflow-y-auto overflow-x-hidden overscroll-contain"
@@ -3953,10 +2449,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                     <div className="w-5 h-5 rounded-md bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0">
                       <Newspaper className="w-3 h-3 text-brand" />
                     </div>
-                    <span className={`truncate ${isAllMode ? "font-medium" : ""}`}>All feeds</span>
-                    {newsAlertUnread > 0 && (
-                      <span className="text-xs text-muted-foreground/70 tabular-nums shrink-0">{newsAlertUnread}</span>
-                    )}
+                    <span className={`truncate ${isAllMode ? "font-medium" : ""}`}>All sources</span>
                     {isAllMode && <Check className="w-4 h-4 text-brand shrink-0 ml-auto" />}
                   </button>
                   {/* Saved articles — the bookmark icon on cards/reader saves
@@ -4107,7 +2600,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
             </button>
           )}
           {/* Mark all read — only when there's something unread to clear. */}
-          {(isAllMode ? mergedTotalUnread > 0 : (feedData && visibleUnreadCount > 0)) && (
+          {!isAllMode && feedData && visibleUnreadCount > 0 && (
             <Button
               variant="outline"
               size="icon"
@@ -4183,140 +2676,54 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
               {mergedLoading && mergedItems.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-16 gap-3">
                   <RelayOutpostLoader />
-                  <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
-                    Gathering your feeds…
-                  </p>
+                  <p className="text-sm text-muted-foreground">Gathering your stories…</p>
                 </div>
               )}
 
               {!mergedLoading && mergedVisibleItems.length === 0 && (
-                <Card className="glass-card p-6">
-                  <div className="flex flex-col items-center gap-3 text-center">
-                    <Newspaper className="w-8 h-8 text-muted-foreground/60" />
-                    <p className="text-sm font-medium">Nothing to read yet</p>
-                    <p className="text-xs text-muted-foreground">
-                      {feeds.length === 0
-                        ? "Add a feed to start your thread."
-                        : mergedItems.length > 0
-                          ? "Everything here is muted or low-priority — check individual feeds or your alert settings."
-                          : "Your feeds returned no articles."}
-                    </p>
-                  </div>
-                </Card>
+                <div className="flex flex-col items-center gap-2 py-12 text-center" data-testid="news-empty">
+                  <Newspaper className="w-7 h-7 text-muted-foreground" />
+                  <p className="text-sm font-medium">Nothing to read yet</p>
+                  <p className="text-sm text-muted-foreground max-w-xs">
+                    {feeds.length === 0
+                      ? "Search above to add a source."
+                      : mergedItems.length > 0
+                        ? "Everything from your sources right now matches something you muted."
+                        : "Your sources have no stories right now."}
+                  </p>
+                </div>
               )}
 
               {mergedVisibleItems.length > 0 && (
-                <div className={useMagazine ? "space-y-5" : "space-y-2"}>
-                  {/* DIGEST / "Worth your time" panel removed (2026-07) — the
-                      collapsed digest banner cluttered the top of the feed; the
-                      feed itself already surfaces what's new. */}
-                  {useMagazine ? (
-                    <>
-                      {/* Lead block: feature hero (2/3) + secondary rail (1/3). */}
-                      {mergedHero && (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5" data-testid="container-magazine-lead">
-                          <div className="lg:col-span-2">
-                            <RSSHeroCard
-                              feature
-                              item={mergedHero.item}
-                              feedImage={mergedHero.source.feedImage}
-                              feedTitle={mergedHero.source.name}
-                              sourceName={mergedHero.source.name}
-                              sourceSiteUrl={mergedHero.source.siteUrl}
-                              onRead={handleOpenReader}
-                              onMarkRead={(it) => markRead(rssItemId(it))}
-                              onShare={(it) => setShareCtx({ item: it, feedTitle: mergedHero.source.name, feedImage: mergedHero.source.feedImage })}
-                              isBookmarked={isRssBookmarked(mergedHero.item.link)}
-                              onToggleBookmark={() => toggleRssBookmark(mergedHero.item)}
-                            />
-                          </div>
-                          {magAll.rail.length > 0 && (
-                            <div className="lg:col-span-1 flex flex-col gap-3" data-testid="container-magazine-rail">
-                              {magAll.rail.map((m, idx) => (
-                                <div key={`rail-${m.source.url}-${m.item.link}`}>{renderMagCard(m, "rail")}</div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {/* Card grid: the remaining stories, 2→3→4 columns with width. */}
-                      {magAllGrid.length > 0 && (
-                        <div className="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 items-start" data-testid="container-magazine-grid">
-                          {magAllGrid.flatMap((m, idx) => {
-                            const cells: React.ReactNode[] = [];
-                            if (sortMode === "unread-first" && idx === magAll.gridReadStart && magAll.gridReadStart > 0) {
-                              cells.push(<div key="caught-up-grid" className="contents">{caughtUpDivider}</div>);
-                            }
-                            cells.push(
-                              <div key={`grid-${m.source.url}-${m.item.link}`}>{renderMagCard(m, "grid")}</div>
-                            );
-                            return cells;
-                          })}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      {mergedHero && (
-                        <RSSHeroCard
-                          item={mergedHero.item}
-                          feedImage={mergedHero.source.feedImage}
-                          feedTitle={mergedHero.source.name}
-                          sourceName={mergedHero.source.name}
-                          sourceSiteUrl={mergedHero.source.siteUrl}
-                          onRead={handleOpenReader}
-                          onMarkRead={(it) => markRead(rssItemId(it))}
-                          onShare={(it) => setShareCtx({ item: it, feedTitle: mergedHero.source.name, feedImage: mergedHero.source.feedImage })}
-                          isBookmarked={isRssBookmarked(mergedHero.item.link)}
-                          onToggleBookmark={() => toggleRssBookmark(mergedHero.item)}
-                        />
-                      )}
-                      <div className={density === "compact" ? "space-y-1 divide-y divide-border/20" : "space-y-2"}>
-                        {mergedVisible.flatMap((m, idx) => {
-                          const itemId = rssItemId(m.item);
-                          const cluster = clusterByItemId.get(itemId);
-                          const isStack = !!cluster && cluster.itemIds.length > 1 && cluster.leadItemId === itemId;
-                          const card = isStack
-                            ? renderStackedStory(m, cluster, idx, isRead(itemId))
-                            : renderMergedArticle(m, idx, isRead(itemId));
-                          // Insert a "Caught up" divider before the first read card in
-                          // unread-first mode (latest mode is a flat chronological list).
-                          const showDivider =
-                            sortMode === "unread-first" &&
-                            idx > 0 &&
-                            isRead(rssItemId(m.item)) &&
-                            !isRead(rssItemId(mergedVisible[idx - 1].item));
-                          if (!showDivider) return [card];
-                          return [
-                            <div key={`caught-up-${idx}`} className="flex items-center gap-3 pt-3 pb-1" data-testid="divider-caught-up">
-                              <span className="h-px flex-1 bg-border/40" />
-                              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground/50">Caught up</span>
-                              <span className="h-px flex-1 bg-border/40" />
-                            </div>,
-                            card,
-                          ];
-                        })}
+                <div className="space-y-6">
+                  {/* One calm column (2026-09 redesign): a quiet lead, then your
+                      stories under Today / Yesterday / weekday. One row style
+                      throughout; the lead's size is the only contrast. */}
+                  {mergedLead && renderStory(mergedLead, "lead")}
+                  {mergedDays.map((day) => (
+                    <section key={day.label} data-testid="news-day">
+                      <h2 className="px-2 pb-1 text-sm font-semibold text-foreground">{day.label}</h2>
+                      <div className="divide-y divide-border/50">
+                        {day.items.map((m) => renderStory(m, "row"))}
                       </div>
-                    </>
-                  )}
+                    </section>
+                  ))}
                   {mergedRest.length > mergedVisibleCount && (
-                    <div className="flex justify-center pt-3">
+                    <div className="flex justify-center">
                       <Button
-                        variant="outline"
-                        size="sm"
+                        variant="ghost"
                         onClick={() => setMergedVisibleCount((n) => n + MERGED_PAGE)}
-                        className="font-brand uppercase tracking-widest text-xs"
+                        className="h-11 px-4 text-sm text-muted-foreground hover:text-foreground"
                         data-testid="button-load-more-merged"
                       >
-                        <ChevronDown className="w-3.5 h-3.5 mr-1.5" />
-                        Load more
+                        Show more stories
                       </Button>
                     </div>
                   )}
                   {mergedLoading && (
-                    <div className="flex items-center justify-center gap-2 pt-3 text-muted-foreground/60">
+                    <div className="flex items-center justify-center gap-2 text-muted-foreground">
                       <RelayOutpostInlineLoader />
-                      <span className="text-[11px] font-mono uppercase tracking-wider">Loading more feeds…</span>
+                      <span className="text-xs">Loading more stories…</span>
                     </div>
                   )}
                 </div>

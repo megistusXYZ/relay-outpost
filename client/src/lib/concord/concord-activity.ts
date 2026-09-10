@@ -5,6 +5,7 @@
  * admin activity feeds) are node-testable in isolation.
  */
 import { effectiveTime, parseAuditRumor, KIND_AUDIT, type AuditEntry } from "./concord-events";
+import { chatDayLabel, sameLocalDay } from "../day-label";
 
 /** One membership event for the admin activity log + inline chat system lines. */
 export interface MembershipEvent { pubkey: string; action: "join" | "leave"; t: number }
@@ -86,32 +87,9 @@ export function seedGroupActivity(persisted: number, readMarks: number[], addedA
 // across renders. Timeline `t` is in ms (see effectiveTime / moderationSystemEvents).
 
 const GROUP_WINDOW_MS = 5 * 60 * 1000; // consecutive same-author messages within 5 min tuck together
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
-function startOfLocalDay(ms: number): number {
-  const d = new Date(ms);
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-}
-
-/** True when two ms timestamps fall on the same local calendar day. */
-export function sameLocalDay(a: number, b: number): boolean {
-  return startOfLocalDay(a) === startOfLocalDay(b);
-}
-
-/** Date-divider label: "Today" / "Yesterday" / weekday (within the last week)
- *  / "Mon D" / "Mon D, YYYY" (older or a different year). */
-export function chatDayLabel(t: number, now: number): string {
-  const diffDays = Math.round((startOfLocalDay(now) - startOfLocalDay(t)) / 86400000);
-  if (diffDays <= 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  const d = new Date(t);
-  if (diffDays < 7) return WEEKDAYS[d.getDay()];
-  const sameYear = d.getFullYear() === new Date(now).getFullYear();
-  return sameYear
-    ? `${MONTHS[d.getMonth()]} ${d.getDate()}`
-    : `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
-}
+// Day labels live in lib/day-label.ts (shared with the News stream's time
+// groups); re-exported here for existing callers.
+export { chatDayLabel, sameLocalDay };
 
 /** Compact wall-clock time "2:34 PM" (12-hour, hand-rolled so it doesn't depend
  *  on the host's Intl output shape — only its timezone). */

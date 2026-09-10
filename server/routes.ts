@@ -48,6 +48,7 @@ import { isPrivateIp, validateHostSafety } from "./net-safety";
 import { fetchPlaylistText, probeHlsLiveness } from "./hls-liveness";
 import { discoverRadioStation, fetchStationInfo, type RadioStationInfo } from "./radio-station";
 import { ogReadsBody } from "./og-read";
+import { pickItemImage } from "./rss-image";
 import { radioStationFromUrl } from "@shared/radio-station";
 import { registerOgCardRoutes } from "./og-cards";
 import { registerTranslateRoute } from "./translate";
@@ -996,6 +997,9 @@ export async function registerRoutes(
         ["itunes:summary", "itunesSummary"],
         ["podcast:transcript", "podcastTranscripts", { keepArray: true }],
         ["podcast:chapters", "podcastChapters"],
+        // Story photos with their widths (The Guardian, BBC…): see rss-image.ts.
+        ["media:content", "mediaContents", { keepArray: true }],
+        ["media:thumbnail", "mediaThumbnails", { keepArray: true }],
       ],
       feed: [
         ["itunes:image", "itunesImage"],
@@ -1740,7 +1744,16 @@ export async function registerRoutes(
           pubDate: item.pubDate || item.isoDate || "",
           author: item.creator || item.author || item["dc:creator"] || feedAuthor || "",
           categories: item.categories || [],
-          thumbnail: itemImage || (hasAudio ? feedImage : "") || extractImageFromContent(item.content || item["content:encoded"] || "") || "",
+          // Episode art first (itunes:image), then the story's own photo with its
+          // width (media:content / media:thumbnail / attached / in-article), then
+          // the show art for an episode. The width lets News size it honestly.
+          ...(() => {
+            const picked = itemImage ? null : pickItemImage(item);
+            return {
+              thumbnail: itemImage || picked?.url || (hasAudio ? feedImage : "") || "",
+              thumbnailWidth: picked?.width,
+            };
+          })(),
           comments: item.comments || "",
           audioUrl: hasAudio ? item.enclosure.url : "",
           duration: parseItunesDuration(item.itunesDuration),
