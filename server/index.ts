@@ -70,9 +70,15 @@ app.use(helmet({
       baseUri: ["'self'"],
       formAction: ["'self'"],
       frameAncestors: ["'none'"],
+      // Dev is plain http: real WebKit (iPhone Safari, the iOS Simulator)
+      // obeys these two and rewrites every module request to https://, so the
+      // app never boots there. Chromium exempts localhost, which hid it.
+      ...(process.env.NODE_ENV !== "production" ? { upgradeInsecureRequests: null } : {}),
     },
   },
-  strictTransportSecurity: { maxAge: 31536000, includeSubDomains: false },
+  strictTransportSecurity: process.env.NODE_ENV === "production"
+    ? { maxAge: 31536000, includeSubDomains: false }
+    : false,
   frameguard: { action: "deny" },
   referrerPolicy: { policy: "strict-origin-when-cross-origin" },
   crossOriginOpenerPolicy: { policy: "same-origin" },
