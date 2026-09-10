@@ -66,7 +66,7 @@ import { getPetname, usePetnamesVersion } from "@/lib/petnames";
 import { PetnameDialog } from "@/components/PetnameDialog";
 import { IdentityProfileLayout } from "@/components/profile/IdentityProfileLayout";
 import { IdentityCommunitiesCard, useSubjectCommunityRows } from "@/components/profile/IdentityCommunitiesCard";
-import { LiveNowBanner } from "@/components/profile/LiveNowBanner";
+import { LiveBannerOverlay, useProfileLiveStream } from "@/components/profile/LiveNowBanner";
 import { ProfileLayoutSwitch } from "@/components/profile/ProfileLayoutSwitch";
 import { IdentityProfileMain } from "@/components/profile/IdentityProfileMain";
 import { IdentityNetworkCard } from "@/components/profile/IdentityNetworkCard";
@@ -1064,6 +1064,7 @@ export default function Profile() {
   /** Where a broken banner lands. Stable per account, so it reads as theirs. */
   const bannerFallback = useMemo(() => presetBannerFor(pubkey), [pubkey]);
   useEffect(() => { setProfileBannerLoaded(false); }, [profileBannerSrc]);
+  const liveStream = useProfileLiveStream(pubkey);
 
   useEffect(() => {
     if (!profileBannerSrc || profileBannerSrc === relayOutpostBanner) return;
@@ -2505,7 +2506,7 @@ export default function Profile() {
 
       <div className={headerCollapsed ? "hidden" : "relative w-full"} data-testid="container-profile-banner">
         <div
-          className="h-36 sm:h-48 md:h-56 w-full overflow-hidden"
+          className={`relative h-36 sm:h-48 md:h-56 w-full overflow-hidden ${liveStream ? "ring-2 ring-inset ring-red-500/70" : ""}`}
           style={{
             backgroundColor: "hsl(260 20% 7%)",
             backgroundImage: profileContent?.banner ? undefined : `url(${PROFILE_BANNER_LQIP})`,
@@ -2556,7 +2557,13 @@ export default function Profile() {
               filter: "blur(2px)",
             }}
           />
-          {profileStats && (profileStats.lastSeen || profileStats.timeJoined || lastPostedAt) && (
+          {/* While they are live the cover carries the broadcast: top edge (the
+              identity block overlaps the bottom), whole cover = Watch, and it
+              takes the HUD's place — "last signal: now" says less than LIVE. */}
+          {liveStream && (
+            <LiveBannerOverlay stream={liveStream} placement="top" contentClassName={headerSlotEl ? "" : "pl-14"} />
+          )}
+          {!liveStream && profileStats && (profileStats.lastSeen || profileStats.timeJoined || lastPostedAt) && (
             <div className="absolute top-3 right-3 z-10 banner-hud rounded-md px-2.5 py-1.5 flex flex-col items-center" data-testid="container-banner-hud">
               <div className="flex items-stretch">
                 {profileStats.lastSeen && (
@@ -2752,13 +2759,6 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Live now — the classic layout is what MOBILE always renders, so this
-            is the mobile half of "noticeable on desktop and mobile". Outside
-            the headerCollapsed block below on purpose: collapsing the header to
-            read someone's posts should not hide the fact that they are on air.
-            Renders nothing when they are not. */}
-        <LiveNowBanner pubkey={pubkey || ""} className="mt-3" />
-
         <div className={headerCollapsed ? "hidden" : "mt-3"}>
           {profileContent?.about && (
             <LinkifiedText
@@ -2850,7 +2850,10 @@ export default function Profile() {
           </ErrorBoundary>
         )}
 
-        {profileIsLive && (() => {
+        {/* The condensed header hides the cover, so the broadcast gets this
+            strip; expanded, the cover itself carries it (LiveBannerOverlay).
+            Being live is never hidden by condensing the header. */}
+        {profileIsLive && headerCollapsed && (() => {
           const liveStream = pubkey ? getLiveStream(pubkey) : undefined;
           return (
             <Link href={liveHref}>

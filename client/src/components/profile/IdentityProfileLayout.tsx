@@ -20,8 +20,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Nip05Badge } from "@/components/Nip05Badge";
 import { TrustTierGlyph } from "@/components/nostr-post/trust-tier-glyph";
 import { ProfileLayoutSwitch } from "@/components/profile/ProfileLayoutSwitch";
-import { LiveNowBanner } from "./LiveNowBanner";
-import { useLiveStatus } from "@/contexts/LiveStatusContext";
+import { LIVE_BANNER_RING, LiveBannerOverlay, useProfileLiveStream } from "./LiveNowBanner";
 import { useState } from "react";
 import { Pencil } from "lucide-react";
 import { getPetname, usePetnamesVersion } from "@/lib/petnames";
@@ -105,10 +104,7 @@ function CirclesAndCommunities({ circleSlot, communitiesSlot }: { circleSlot?: R
 export function IdentityProfileLayout({ data, actions, networkSlot, overflowSlot, circleSlot, communitiesSlot, vouchSlot, onZapLud16, children }: { data: IdentityProfileData; actions: ReactNode; networkSlot?: ReactNode; overflowSlot?: ReactNode; circleSlot?: ReactNode; communitiesSlot?: ReactNode; vouchSlot?: ReactNode; onZapLud16?: () => void; children: ReactNode }) {
   const joined = data.joinedAt ? new Date(data.joinedAt * 1000).toLocaleDateString(undefined, { month: "short", year: "numeric" }) : null;
   const showTrust = data.wotEnabled && !!data.grapeRankTier && data.grapeRankTier !== "none";
-  // Same predicate LiveNowBanner uses, so this tracks exactly whether that
-  // banner renders between the cover and the identity card below.
-  const { getLiveStream } = useLiveStatus();
-  const isLive = !!getLiveStream(data.pubkey);
+  const liveStream = useProfileLiveStream(data.pubkey);
   // Petname reveal + edit ("you call them X"). The identity card keeps the
   // REAL name as the headline — the page that verifies identity never hides
   // the claimed name; your private name lives on the line below it.
@@ -131,12 +127,16 @@ export function IdentityProfileLayout({ data, actions, networkSlot, overflowSlot
           more of the picture but left the band looking framed rather than
           full-bleed, and the full-bleed band is the look. Cropping is the
           accepted cost. */}
-      <IdentityBanner src={data.bannerSrc} fallbackSrc={data.bannerFallbackSrc} topRight={<ProfileLayoutSwitch />} />
-
-      {/* Above the fold and above the grid, because a broadcast outranks
-          everything else on the page while it is happening — and unlike a post,
-          it is gone if you miss it. Renders nothing when they are not live. */}
-      <LiveNowBanner pubkey={data.pubkey} className="mt-4" />
+      {/* While they are live the cover carries the broadcast (ring, overlay,
+          whole cover = Watch) — it outranks everything else on the page, and
+          it no longer costs a row of its own. */}
+      <IdentityBanner
+        src={data.bannerSrc}
+        fallbackSrc={data.bannerFallbackSrc}
+        topRight={<ProfileLayoutSwitch />}
+        live={liveStream ? <LiveBannerOverlay stream={liveStream} /> : undefined}
+        className={liveStream ? LIVE_BANNER_RING : undefined}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5 mt-4">
         {/* ── Left rail ─────────────────────────────────────────── */}
@@ -145,13 +145,11 @@ export function IdentityProfileLayout({ data, actions, networkSlot, overflowSlot
               over the banner without its top being cropped. */}
           <div className="rounded-xl border border-border/60 dark:border-white/[0.07] bg-card p-3 shadow-sm shadow-black/[0.04] dark:shadow-none">
             {/* The -mt-14 lifts the avatar over the COVER IMAGE — the classic
-                profile idiom. But when a LiveNowBanner renders, IT occupies
-                the space between cover and card, and the lift lands the
-                avatar on top of the live banner's title instead (owner
-                screenshot at 520px: the avatar sat on "Get tickets…"). While
-                live, the card keeps its natural position; the cover overlap
-                is a look, not a load-bearing layout. */}
-            <IdentityHead avatarUrl={data.avatarUrl} title={data.displayName} lift={!isLive}>
+                profile idiom. While live, the cover's bottom edge carries the
+                broadcast's title and Watch button, and the lift would land the
+                avatar on top of them, so the card keeps its natural position;
+                the cover overlap is a look, not a load-bearing layout. */}
+            <IdentityHead avatarUrl={data.avatarUrl} title={data.displayName} lift={!liveStream}>
               {data.nip05 && (
                 <Nip05Badge nip05={data.nip05} pubkey={data.pubkey} className="mt-0.5" textClassName="text-[11px] text-muted-foreground" iconClassName="w-3 h-3" />
               )}

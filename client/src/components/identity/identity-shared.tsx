@@ -28,9 +28,10 @@ export function IdentitySection({ title, children, className }: { title?: string
 /**
  * The banner band: full-bleed cover, gradient scrim, one-shot fallback swap
  * (reassigning a fallback that also 404s would loop), optional top-right
- * control.
+ * control, and an optional `live` overlay (the profile's broadcast) that the
+ * top-right control stays above.
  */
-export function IdentityBanner({ src, fallbackSrc, blurBackdropSrc, topRight, className }: {
+export function IdentityBanner({ src, fallbackSrc, blurBackdropSrc, topRight, live, className }: {
   src?: string;
   fallbackSrc?: string;
   /** Real-images-only fallback: when there is no banner, a blurred blow-up of
@@ -38,6 +39,7 @@ export function IdentityBanner({ src, fallbackSrc, blurBackdropSrc, topRight, cl
    *  stock illustration. Absent both, the brand gradient underlay carries it. */
   blurBackdropSrc?: string;
   topRight?: ReactNode;
+  live?: ReactNode;
   className?: string;
 }) {
   return (
@@ -64,15 +66,16 @@ export function IdentityBanner({ src, fallbackSrc, blurBackdropSrc, topRight, cl
         />
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-      {topRight && <div className="absolute top-2 right-2">{topRight}</div>}
+      {live}
+      {topRight && <div className="absolute top-2 right-2 z-20">{topRight}</div>}
     </div>
   );
 }
 
 /**
  * The identity card head: avatar lifted over the banner (the classic profile
- * idiom), title, and caption rows below. `lift` off when something (a live
- * banner) occupies the space between cover and card.
+ * idiom), title, and caption rows below. `lift` off when the cover's bottom
+ * edge is in use (the profile's live overlay) and the avatar would cover it.
  */
 export function IdentityHead({ avatarUrl, title, lift = true, children }: {
   avatarUrl?: string;
