@@ -54,6 +54,14 @@ describe("ListingDescription — the seller's links are tappable", () => {
     expect(html).toMatch(/<\/a>\.<\/p>$/);
   });
 
+  it("keeps a long link on one line inside the sheet, with the full address in its title", () => {
+    const html = render(DARK_FOREST);
+    const tag = (html.match(/<a [^>]*dribbble[^>]*>/) ?? [""])[0];
+    expect(tag).toMatch(/class="[^"]*\btruncate\b/);
+    expect(tag).toMatch(/class="[^"]*\bmax-w-full\b/);
+    expect(tag).toContain('title="https://dribbble.com/shots/26612197-Dark-Forest-00-Dark-Forest-Zine"');
+  });
+
   it("renders a description without links as plain text", () => {
     expect(hrefs(render("42 pages\nPremium 180g paper"))).toEqual([]);
   });

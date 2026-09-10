@@ -26,6 +26,7 @@ export function Linkify({ text, className }: { text: string; className?: string 
       <a
         key={match.index}
         href={url}
+        title={url}
         target="_blank"
         rel="noopener noreferrer"
         className={className || "text-sky-500 hover:text-sky-400 underline underline-offset-2 break-all"}
