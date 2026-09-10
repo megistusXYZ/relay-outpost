@@ -14,6 +14,11 @@
  * Feed pages (Home) also consult `hasPendingScrollRestore()` at mount to know
  * they are being returned to, so they re-render their cached snapshot instead
  * of a fresh (reshuffled) feed.
+ *
+ * Home's EVERYDAY back no longer comes through here: the kept-alive layer
+ * (components/HomeKeepAlive.tsx) reveals the same DOM instead of rebuilding
+ * it. This store remains Home's fallback — after a reload, or a drill-in past
+ * MAX_KEEPALIVE_DEPTH — and every other surface's only restorer.
  */
 
 import { tryVirtualScrollToEventId } from "@/lib/feed-scroll-bridge";
@@ -475,6 +480,9 @@ export function captureScrollAnchor(container: HTMLElement): { id: string; offse
   let best: { id: string; offset: number } | null = null;
 
   for (let i = 0; i < posts.length; i++) {
+    // A hidden, kept-alive layer (components/HomeKeepAlive.tsx) shares this
+    // container and keeps its rows' layout boxes — never an anchor.
+    if (posts[i].closest?.("[inert]")) continue;
     const top = posts[i].getBoundingClientRect().top - containerTop;
     const id = posts[i].getAttribute("data-event-id");
     if (!id) continue;
@@ -486,6 +494,19 @@ export function captureScrollAnchor(container: HTMLElement): { id: string; offse
     }
   }
   return best;
+}
+
+/**
+ * The anchor row for `id` that is actually on the page. The same event can be
+ * in the container twice — the post you tapped sits in the hidden, kept-alive
+ * feed AND in the thread on top — and the hidden copy is `inert`.
+ */
+export function findAnchorElement(container: HTMLElement, id: string): HTMLElement | null {
+  const matches = container.querySelectorAll<HTMLElement>(`[data-event-id="${CSS.escape(id)}"]`);
+  for (let i = 0; i < matches.length; i++) {
+    if (!matches[i].closest?.("[inert]")) return matches[i];
+  }
+  return null;
 }
 
 /**
@@ -504,7 +525,7 @@ export function restoreToAnchor(container: HTMLElement, saved: SavedScrollPositi
     container.scrollTop = Math.min(saved.scrollTop, Math.max(maxTop, 0));
     return maxTop >= saved.scrollTop - 2;
   }
-  const target = container.querySelector<HTMLElement>(`[data-event-id="${CSS.escape(saved.anchorId)}"]`);
+  const target = findAnchorElement(container, saved.anchorId);
   if (!target) {
     const maxTop = container.scrollHeight - container.clientHeight;
     const targetTop = Math.min(saved.scrollTop, Math.max(maxTop, 0));

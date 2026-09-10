@@ -478,6 +478,21 @@ textarea:focus {
   contain-intrinsic-size: auto none;
 }
 
+/* A kept-alive surface that is not showing (the Home layer —
+ * components/HomeKeepAlive.tsx). Its rows keep their FULL layout, so the
+ * virtualizer's measurements, content-visibility's remembered sizes and every
+ * decoded image survive untouched — while the wrapper takes no space and
+ * paints nothing. `display:none` would destroy exactly that layout
+ * (ResizeObserver reports 0 for every row). `clip` rather than `hidden` so
+ * the wrapper is not a scroll container: a stray scrollIntoView on a hidden
+ * row cannot scroll it and offset the feed on reveal. */
+.surface-hidden {
+  height: 0;
+  overflow: hidden;
+  overflow: clip;
+  visibility: hidden;
+}
+
 /* While a back/forward scroll restore is in flight, the container carries
  * `data-restoring` (set by use-scroll-restore.ts for the restore window only).
  * Force posts to render their REAL height instead of the 220px
