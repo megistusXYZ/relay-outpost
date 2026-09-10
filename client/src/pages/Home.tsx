@@ -128,6 +128,7 @@ import { FeedSkeletonCard, FeedSkeletonList, ChipInput, PeopleSearch, TuneFreque
 import { detectPreset, PRESET_DEFS, type StrictnessPreset } from "@/lib/trust-preset";
 import { writeExcludedTiers } from "@/lib/trust-filter";
 import { useSurfaceActive } from "@/contexts/SurfaceActiveContext";
+import { feedPinKey } from "@/lib/feed-pin-key";
 
 let _savedCutoffTimestamp: number | null = null;
 
@@ -2257,9 +2258,11 @@ export default function Home() {
   //
   // The pin only breaks on USER view changes (tab/sort/filter — the feedKey),
   // never on data arrival.
-  const feedKey = [
+  // lib/feed-pin-key.ts: the reader's CHOSEN reach depth, not the effective
+  // one — trust scores finishing to load (wotReady) is data arrival.
+  const feedKey = feedPinKey({
     feedMode,
-    activeCustomFeed?.id ?? "",
+    customFeedId: activeCustomFeed?.id ?? "",
     feedSortMode,
     topTimeWindow,
     contentFilter,
@@ -2267,11 +2270,12 @@ export default function Home() {
     trendingSelector,
     pollSort,
     discoverSort,
-    effectiveReachDepth,
-    rankingEnabled ? "1" : "0",
-    wotEnabled ? "1" : "0",
-    Array.from(excludedTiers).sort().join(","),
-  ].join("|");
+    reachDepth,
+    wotEnabled,
+    wotReady,
+    rankingEnabled,
+    excludedTiers,
+  });
   const pinnedRef = useRef<Event[] | null>(null);
   const pinnedKeyRef = useRef<string | null>(null);
   const snapshotConsumedRef = useRef(false);
