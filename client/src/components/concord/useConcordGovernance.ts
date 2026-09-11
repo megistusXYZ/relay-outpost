@@ -21,7 +21,8 @@ import { receiveRekey, receiveChannelGrant, privateRoomHolders } from "@/lib/con
 import { compactionOf } from "@/lib/concord/concord-events";
 import type { Seal } from "@/lib/concord/concord-crypto";
 import { saveRosterSnapshot } from "@/lib/concord/concord-roster";
-import { putCommunity, updateCommunity, deleteCommunity, adoptBaseRekey, type StoredCommunity } from "@/lib/concord/concord-keys";
+import { putCommunity, updateCommunity, deleteCommunity, adoptBaseRekey, publishCommunityList, type StoredCommunity } from "@/lib/concord/concord-keys";
+import { markLeft } from "@/lib/concord/community-list-memory";
 import { reconcilePatch } from "@/lib/concord/concord-reconcile";
 import { controlWrapFor, openControlWrap } from "@/lib/concord/concord-control-wrap";
 
@@ -210,7 +211,10 @@ export function useConcordGovernance(community: StoredCommunity | null | undefin
               return; // the refreshed record re-runs this effect with new planes
             }
             if (res.status === "removed") {
+              // You were removed: for your other devices that is a leave too.
+              markLeft(pubkey, community.community_id);
               await deleteCommunity(pubkey, community.community_id);
+              void publishCommunityList(signer, pubkey).catch(() => {});
               notify();
               return;
             }

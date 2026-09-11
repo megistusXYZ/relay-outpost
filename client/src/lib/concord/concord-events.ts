@@ -32,7 +32,10 @@ export const KIND_KICK = 3309;
 export const KIND_SNAPSHOT = 3312;
 export const KIND_DIRECT_INVITE = 3313;
 export const KIND_TYPING = 23311;
-export const KIND_COMMUNITY_LIST = 13302;
+/** The Community List (CORD-02 §8): addressable fragments, `d` = the fragment index. */
+export const KIND_COMMUNITY_LIST = 33302;
+/** The retired single-event list. Read forever, since a device's groups may only be there; never written. */
+export const KIND_LEGACY_COMMUNITY_LIST = 13302;
 export const KIND_INVITE_LIST = 13303;
 export const KIND_INVITE_BUNDLE = 33301;
 export const KIND_AUDIT = 3314;

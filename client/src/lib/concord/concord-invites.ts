@@ -291,7 +291,7 @@ export { parseInviteUrl, detectGroupInvite, type GroupInviteTarget } from "./inv
  * Accept an invite link. Decodes the fragment, fetches the 33301 bundle from the
  * bootstrap relays, decrypts it, VERIFIES the community_id recomputes from
  * owner+salt (rejects a spoofed bundle), stores the keys, and publishes a
- * guestbook join + 13302 backup. Returns the joined community or null.
+ * guestbook join + Community List sync. Returns the joined community or null.
  */
 export async function acceptInviteLink(
   ownerPubkey: string,
@@ -345,7 +345,7 @@ export function recordFromBundle(bundle: InviteBundle, bootstrapRelays: string[]
 
 /**
  * Adopt an invite bundle: verify the community id (anti-spoof), persist the
- * keys, publish a guestbook join + the 13302 backup. Shared by link acceptance
+ * keys, publish a guestbook join and sync your Community List. Shared by link acceptance
  * and direct-invite (3313) acceptance. Returns null if the bundle doesn't verify.
  */
 export async function adoptInviteBundle(

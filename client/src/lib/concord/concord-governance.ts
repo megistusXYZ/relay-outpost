@@ -13,6 +13,7 @@ import { VSK, PERM, ADMIN_ROLE_ID, buildControlEdition, buildJoinLeaveRumor, bui
 import { nextChannelEdition, type ChannelChanges, type ChannelHead } from "./concord-channel-edition";
 import { nextGrantEdition, type GrantHead } from "./concord-grant-edition";
 import { putCommunity, deleteCommunity, publishCommunityList, adoptBaseRekey, type StoredCommunity, type StoredChannel } from "./concord-keys";
+import { markLeft } from "./community-list-memory";
 import { nextBanlistEdition, type BanlistHead } from "./concord-banlist";
 import { refreshInviteLinks } from "./concord-invites";
 import { publishControlEdition, publishGuestbook, publishGuestbookSnapshot, channelPlaneKey, controlWritePlane } from "./concord-stream";
@@ -234,7 +235,7 @@ export async function createPrivateChannel(
  * Grant or revoke the built-in Admin role for a member (owner-only in the UI).
  * Publishes the Admin role edition once (vsk-1), then a chained grant edition
  * (vsk-3, version N+1) mapping the member to [admin] or [] (revoke). Updates the
- * local grant-chain state + resyncs 13302. No rekey — role changes are cheap.
+ * local grant-chain state + syncs your Community List. No rekey — role changes are cheap.
  */
 export async function setAdmin(
   signer: ISigner,
@@ -310,7 +311,7 @@ export async function setAdmin(
 /**
  * Rename or delete a channel (owner/admin). Publishes a chained vsk-2 channel
  * edition (version N+1); delete carries `deleted:true` so folds drop it. Updates
- * the local record + resyncs 13302. No rekey needed.
+ * the local record + syncs your Community List. No rekey needed.
  */
 export async function editChannel(
   signer: ISigner,
@@ -372,8 +373,9 @@ export async function editChannel(
 
 /**
  * Dissolve the whole outpost (owner-only): publish a vsk-10 tombstone so members'
- * apps mark it gone, then delete the local keys + resync the 13302 backup so it
- * drops off other devices. Irreversible. Returns nothing (the community is gone).
+ * apps mark it gone, then delete the local keys and record the leave in your
+ * Community List, so it drops off your other devices too. Irreversible.
+ * Returns nothing (the community is gone).
  */
 export async function dissolveCommunity(
   signer: ISigner,
@@ -388,14 +390,16 @@ export async function dissolveCommunity(
     publish).catch(() => null);
   await publishGuestbook(signer, ownerPubkey, community,
     buildAuditRumor(ownerPubkey, "dissolve", now), publish).catch(() => null);
+  markLeft(ownerPubkey, community.community_id);
   await deleteCommunity(ownerPubkey, community.community_id);
   await publishCommunityList(signer, ownerPubkey, publishSelf).catch(() => {});
 }
 
 /**
  * Leave an outpost (non-owner member): publish a guestbook leave so the roster
- * drops you, then remove the local keys + resync 13302. The owner can't leave —
- * they dissolve instead.
+ * drops you, then remove the local keys and record the leave in your Community
+ * List, so your other devices drop it too. The owner can't leave — they
+ * dissolve instead.
  */
 export async function leaveCommunity(
   signer: ISigner,
