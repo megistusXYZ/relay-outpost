@@ -359,6 +359,8 @@ export interface CachedMessage {
   rootId?: string;
   /** 9 for a message, 1111 for a threaded reply: reactions, edits and deletes name it. */
   kind?: number;
+  /** When it disappears (unix seconds), by the tag its author signed (CORD-08). */
+  expiresAt?: number;
   edited?: boolean; deleted?: boolean; mentions?: string[];
 }
 
@@ -383,6 +385,24 @@ export async function cacheMessage(ownerPubkey: string, communityId: string, cha
       tx.onerror = () => resolve();
     });
   } catch { /* best-effort */ }
+}
+
+/**
+ * Remove messages from this device's cache for good: disappearing messages
+ * past their expiry (CORD-08 §3, "hiding is not disappearing").
+ */
+export async function deleteCachedMessages(ownerPubkey: string, ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  try {
+    const db = await openDB();
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(MESSAGES_STORE, "readwrite");
+      const store = tx.objectStore(MESSAGES_STORE);
+      for (const id of ids) store.delete([ownerPubkey, id]);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+  } catch { /* best-effort: the display still hides them */ }
 }
 
 export async function getCachedMessages(ownerPubkey: string, communityId: string, channelId: string): Promise<CachedMessage[]> {

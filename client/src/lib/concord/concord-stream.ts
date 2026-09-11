@@ -16,7 +16,7 @@ import {
   channelRekeyAddress, baseRekeyAddress, deriveSnapshotId,
   LABEL_CONTROL, LABEL_GUESTBOOK, LABEL_CHANNEL, KIND_SEAL_ENC, KIND_SEAL_PLAIN, KIND_STREAM_WRAP, KIND_EPHEMERAL_WRAP, type GroupKey, type Seal,
 } from "./concord-crypto";
-import { KIND_MESSAGE, KIND_REPLY, KIND_REACTION, KIND_DELETE, KIND_EDIT, KIND_TYPING, KIND_CONTROL_EDITION, KIND_JOIN_LEAVE, buildTypingRumor, buildSnapshotRumor, SNAPSHOT_CHUNK, SNAPSHOT_CHUNK_CAP, type RumorTemplate } from "./concord-events";
+import { KIND_MESSAGE, KIND_REPLY, KIND_REACTION, KIND_DELETE, KIND_EDIT, KIND_TYPING, KIND_TIMER_NOTICE, KIND_CONTROL_EDITION, KIND_JOIN_LEAVE, buildTypingRumor, buildSnapshotRumor, SNAPSHOT_CHUNK, SNAPSHOT_CHUNK_CAP, type RumorTemplate } from "./concord-events";
 import type { StoredCommunity, StoredChannel } from "./concord-keys";
 import { isStreamProcessed, markStreamProcessed } from "./concord-keys";
 import { registerPlaneAuth } from "./concord-plane-auth";
@@ -172,7 +172,11 @@ export async function publishToPlane(
       ? buildEncryptedSeal(authorPubkey, rumorJson, planeConvKey(plane), createdAt)
       : buildPlainSeal(authorPubkey, rumorJson, createdAt);
     const signedSeal = await signer.signEvent({ kind: seal.kind, created_at: seal.created_at, tags: seal.tags, content: seal.content });
-    const wrap = wrapStream(plane, signedSeal as unknown as Seal, createdAt, wrapKind);
+    // A timed message's wrap carries the same expiry as the message inside, so
+    // relays delete the ciphertext too (CORD-08 §2). Taken from the rumor, the
+    // copy its author signs, so the two can never disagree.
+    const expiration = rumor.tags.find((t) => t[0] === "expiration" && t[1]);
+    const wrap = wrapStream(plane, signedSeal as unknown as Seal, createdAt, wrapKind, expiration ? [["expiration", expiration[1]]] : []);
     // HONOUR THE PUBLISHER'S VERDICT. `publishEvent` returns false when zero
     // relays accepted the event — it does NOT throw — and this used to discard
     // that answer and return the wrap regardless. So every caller that "checked
@@ -242,6 +246,7 @@ export type RoutedRumor =
   | { type: "reaction"; rumor: DecodedRumor }
   | { type: "delete"; rumor: DecodedRumor }
   | { type: "edit"; rumor: DecodedRumor }
+  | { type: "timer"; rumor: DecodedRumor }
   | { type: "control"; rumor: DecodedRumor }
   | { type: "join_leave"; rumor: DecodedRumor }
   | { type: "ignored" };
@@ -257,12 +262,13 @@ export function routeRumor(rumor: DecodedRumor, expectChannelId?: string, expect
     case KIND_REPLY:
     case KIND_REACTION:
     case KIND_DELETE:
-    case KIND_EDIT: {
+    case KIND_EDIT:
+    case KIND_TIMER_NOTICE: {
       const ch = rumor.tags.find((t) => t[0] === "channel")?.[1];
       const ep = rumor.tags.find((t) => t[0] === "epoch")?.[1];
       if (expectChannelId !== undefined && ch !== expectChannelId) return { type: "ignored" };
       if (expectEpoch !== undefined && ep !== String(expectEpoch)) return { type: "ignored" };
-      const type = rumor.kind === KIND_MESSAGE ? "message" : rumor.kind === KIND_REPLY ? "reply" : rumor.kind === KIND_REACTION ? "reaction" : rumor.kind === KIND_DELETE ? "delete" : "edit";
+      const type = rumor.kind === KIND_MESSAGE ? "message" : rumor.kind === KIND_REPLY ? "reply" : rumor.kind === KIND_REACTION ? "reaction" : rumor.kind === KIND_DELETE ? "delete" : rumor.kind === KIND_TIMER_NOTICE ? "timer" : "edit";
       return { type, rumor };
     }
     case KIND_CONTROL_EDITION: return { type: "control", rumor };
@@ -302,7 +308,7 @@ export function subscribeChannel(
     const rumor = decodeStreamEvent(held.plane, wrap);
     if (!rumor) return;
     const routed = routeRumor(rumor, channel.id, held.epoch);
-    if (routed.type === "message" || routed.type === "reply" || routed.type === "reaction" || routed.type === "delete" || routed.type === "edit") onMessage(routed.rumor);
+    if (routed.type === "message" || routed.type === "reply" || routed.type === "reaction" || routed.type === "delete" || routed.type === "edit" || routed.type === "timer") onMessage(routed.rumor);
   });
 }
 

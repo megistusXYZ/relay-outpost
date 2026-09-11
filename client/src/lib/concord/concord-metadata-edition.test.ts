@@ -214,3 +214,16 @@ describe("canPublishMetadata", () => {
     })).toBe(false);
   });
 });
+
+describe("nextMetadataEdition — the disappearing-messages timer (CORD-08 §1)", () => {
+  it("setting it from Manage writes message_expiration in seconds; turning it off writes 0", () => {
+    const base = fold({ raw: { name: "Group", description: "", relays: [] } });
+    expect(nextMetadataEdition(joined(), base, { ev: 4, hash: H(4) }, { messageExpiration: 604800 }).content.message_expiration).toBe(604800);
+    expect(nextMetadataEdition(joined(), fold({ raw: { name: "Group", description: "", message_expiration: 86400 } }), { ev: 4, hash: H(4) }, { messageExpiration: 0 }).content.message_expiration).toBe(0);
+  });
+
+  it("an edit that doesn't touch it carries the group's timer as it is", () => {
+    const set = fold({ raw: { name: "Group", description: "", message_expiration: 2592000 } });
+    expect(nextMetadataEdition(joined(), set, { ev: 4, hash: H(4) }, { name: "Renamed" }).content.message_expiration).toBe(2592000);
+  });
+});

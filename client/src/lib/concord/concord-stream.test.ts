@@ -314,3 +314,13 @@ describe("guestbook seals are encrypted (CORD-02 §5)", () => {
     }
   });
 });
+
+describe("routing a disappearing-messages timer notice (CORD-08 §4)", () => {
+  const TIMER_CH = "c4".repeat(32);
+  const notice = (channel: string) => ({ id: "n", kind: 1740, pubkey: "a1".repeat(32), created_at: 1, content: "",
+    tags: [["channel", channel], ["epoch", "0"], ["timer", "86400"]] }) as DecodedRumor;
+  it("is a chat rumor like any other: routed when bound to this room, ignored when bound to another", () => {
+    expect(routeRumor(notice(TIMER_CH), TIMER_CH, 0).type).toBe("timer");
+    expect(routeRumor(notice("d5".repeat(32)), TIMER_CH, 0).type).toBe("ignored");
+  });
+});

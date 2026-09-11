@@ -29,13 +29,22 @@ import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { getGlobalSigner } from "@/lib/nip42-auth";
 import { publishEvent } from "@/lib/nostr";
 import { useToast } from "@/hooks/use-toast";
-import { editMetadata } from "@/lib/concord/concord-community";
+import { editMetadata, postTimerNotices } from "@/lib/concord/concord-community";
+import { disappearingTimer, timerSpan } from "@/lib/concord/concord-disappearing";
 import type { CommunityMetadata } from "@/lib/concord/concord-events";
 import { canPublishMetadata, type MetadataChanges, type MetadataHead } from "@/lib/concord/concord-metadata-edition";
 import type { StoredCommunity } from "@/lib/concord/concord-keys";
 import { RoomImagePicker } from "./RoomImagePicker";
 
-type Field = "name" | "icon" | "about" | "allowMemberInvites";
+type Field = "name" | "icon" | "about" | "allowMemberInvites" | "messageExpiration";
+
+/** The choices CORD-08 suggests: a day is the shortest, so clock skew never matters. */
+const TIMER_CHOICES = [
+  { seconds: 0, label: "Off" },
+  { seconds: 86400, label: "1 day" },
+  { seconds: 604800, label: "7 days" },
+  { seconds: 2592000, label: "30 days" },
+];
 
 export function ConcordEditOutpostDialog({ open, onOpenChange, community, onCommunityChange, govMetadata, foldHead }: {
   open: boolean;
@@ -67,6 +76,7 @@ export function ConcordEditOutpostDialog({ open, onOpenChange, community, onComm
   const [icon, setIcon] = useState("");
   const [about, setAbout] = useState("");
   const [allowMemberInvites, setAllowMemberInvites] = useState(false);
+  const [expiration, setExpiration] = useState(0);
   const touch = (f: Field) => setDirty((d) => (d[f] ? d : { ...d, [f]: true }));
 
   // Seeding is for DISPLAY only, and never reaches into a field the user has
@@ -78,6 +88,7 @@ export function ConcordEditOutpostDialog({ open, onOpenChange, community, onComm
     if (!dirty.icon) setIcon(folded?.picture ?? community.icon ?? "");
     if (!dirty.about) setAbout(folded?.about ?? community.about ?? "");
     if (!dirty.allowMemberInvites) setAllowMemberInvites((folded?.allowMemberInvites ?? community.allowMemberInvites) === true);
+    if (!dirty.messageExpiration) setExpiration(disappearingTimer(folded));
   }, [open, community, folded, dirty]);
 
   const ready = canPublishMetadata({ community, pubkey, govMetadata: folded, foldHead });
@@ -91,6 +102,7 @@ export function ConcordEditOutpostDialog({ open, onOpenChange, community, onComm
     if (dirty.icon) changes.icon = icon;            // "" means cleared, and stays cleared
     if (dirty.about) changes.about = about.trim();
     if (dirty.allowMemberInvites) changes.allowMemberInvites = allowMemberInvites;
+    if (dirty.messageExpiration) changes.messageExpiration = expiration;
     // Publishing an edition that changes nothing is not free: it is a full
     // replacement at a version that outranks the real head. A Save with nothing
     // dirty has to go on the wire as nothing.
@@ -103,6 +115,9 @@ export function ConcordEditOutpostDialog({ open, onOpenChange, community, onComm
         { metadata: folded, head: foldHead },
         (e, r) => publishEvent(e, r), (e) => publishEvent(e, relays));
       onCommunityChange(updated);
+      // A line in each room saying who changed the timer (CORD-08 §4). The
+      // settings are the authority, so this never holds up the save.
+      if (dirty.messageExpiration) void postTimerNotices(signer, pubkey, updated, expiration, (e, r) => publishEvent(e, r));
       toast({ title: "Group chat updated" });
       onOpenChange(false);
     } catch (err) {
@@ -137,6 +152,31 @@ export function ConcordEditOutpostDialog({ open, onOpenChange, community, onComm
               <p className="text-[11px] text-muted-foreground/60">Anyone can create invite links, not just admins.</p>
             </div>
             <Switch checked={allowMemberInvites} onCheckedChange={(v) => { touch("allowMemberInvites"); setAllowMemberInvites(v); }} data-testid="switch-member-invites" />
+          </div>
+          <div className="space-y-2 rounded-lg border border-border/30 bg-muted/10 p-2.5" data-testid="disappearing-setting">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Disappearing messages</p>
+              <p className="text-[11px] text-muted-foreground/60">New messages disappear for everyone after this long. Anyone could still have saved a copy before then.</p>
+            </div>
+            <div className="grid grid-cols-4 gap-1" role="radiogroup" aria-label="Disappearing messages">
+              {TIMER_CHOICES.map((c) => (
+                <button
+                  key={c.seconds}
+                  type="button"
+                  role="radio"
+                  aria-checked={expiration === c.seconds}
+                  onClick={() => { touch("messageExpiration"); setExpiration(c.seconds); }}
+                  className={cn("h-10 md:h-8 rounded-md text-xs font-medium transition-colors",
+                    expiration === c.seconds ? "bg-primary text-primary-foreground" : "bg-background/60 text-muted-foreground hover:bg-muted/40")}
+                  data-testid={`disappearing-${c.seconds}`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            {expiration > 0 && !TIMER_CHOICES.some((c) => c.seconds === expiration) && (
+              <p className="text-[11px] text-muted-foreground/60">Set elsewhere to {timerSpan(expiration)}.</p>
+            )}
           </div>
           {/* Say WHY it is disabled. A dead Save button with no reason is its own
               defect, and "we don't know this group's current details" is a real

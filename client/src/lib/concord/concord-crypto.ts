@@ -172,7 +172,12 @@ const planeConversationKey = planeConvKey;
  * author), with a random ephemeral `p` tag, content = NIP-44(plane self-ECDH).
  * `created_at` is passed in (untweaked per spec) so this stays pure/testable.
  */
-export function wrapStream(plane: GroupKey, seal: Seal, createdAt: number, kind: number = KIND_STREAM_WRAP): Event {
+/**
+ * `outerTags`: the only outer tags a stream wrap may carry, which today is the
+ * NIP-40 `expiration` of a timed chat message (CORD-08 §2), for relays to delete
+ * the ciphertext. Readers go by the copy inside the signed rumor.
+ */
+export function wrapStream(plane: GroupKey, seal: Seal, createdAt: number, kind: number = KIND_STREAM_WRAP, outerTags: string[][] = []): Event {
   // Only a holder of the address key can write the plane (CORD-01): a member's
   // read-only view of the admin plane never gets here.
   if (!plane.sk) throw new Error("wrapStream: this plane can be read, not written");
@@ -180,7 +185,7 @@ export function wrapStream(plane: GroupKey, seal: Seal, createdAt: number, kind:
   const ephemeralPk = getPublicKey(generateSecretKey());
   const content = nip44v2.encrypt(JSON.stringify(seal), convKey);
   return finalizeEvent(
-    { kind, created_at: createdAt, tags: [["p", ephemeralPk]], content },
+    { kind, created_at: createdAt, tags: [["p", ephemeralPk], ...outerTags], content },
     plane.sk,
   );
 }
