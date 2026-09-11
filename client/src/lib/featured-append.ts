@@ -10,10 +10,11 @@
  */
 import type { Event } from "nostr-tools";
 import { pool, publishEvent } from "@/lib/nostr";
-import { fetchNip11 } from "@/lib/nip11";
+import { fetchNip11, toHexPubkey } from "@/lib/nip11";
+import { canReachRelay, queryAnswered } from "@/lib/relay-reach";
 import { getGlobalSigner } from "@/lib/nip42-auth";
 import { signWithTimeout } from "@/lib/signer-timeout";
-import { getOutpostRelays, type OutpostRelay } from "@/lib/outpost-relays";
+import { getOutpostRelays, saveOutpostRelays, type OutpostRelay } from "@/lib/outpost-relays";
 import {
   KIND_CURATION_SET,
   buildCurationSetTags,
@@ -29,17 +30,53 @@ export function getAdminOutposts(): OutpostRelay[] {
   return getOutpostRelays().filter((r) => r.isAdmin);
 }
 
-export async function fetchFeedsForRelay(relayUrl: string): Promise<CurationSet[]> {
-  const [events, nip11] = await Promise.all([
-    pool.querySync([relayUrl], { kinds: [KIND_CURATION_SET], limit: 100 }),
-    fetchNip11(relayUrl),
-  ]);
-  return relayFeaturedSets(events, { pubkey: nip11?.pubkey, moderators: nip11?.moderators });
+/**
+ * A relay's Featured feeds, and whether you may shape them. Three outcomes, not
+ * two (RELAY_REACHABILITY.md): the feeds (none yet is a real answer), a relay
+ * we never got to ask, and one that doesn't list you as its operator. The old
+ * read asked a dead relay, took nostr-tools' made-up EOSE for an answer, and
+ * offered "Name your first feed" for a relay that could take nothing.
+ */
+export type RelayFeeds =
+  | { status: "ok"; feeds: CurationSet[] }
+  | { status: "unreachable" }
+  | { status: "not-operator" };
+
+type FeedDeps = {
+  reach: (relayUrl: string) => Promise<boolean>;
+  nip11: (relayUrl: string) => Promise<{ pubkey?: string; moderators?: string[] } | null>;
+  query: (relayUrl: string) => Promise<{ events: Event[]; answered: boolean }>;
+};
+const liveFeedDeps: FeedDeps = {
+  reach: (relayUrl) => canReachRelay(relayUrl),
+  nip11: (relayUrl) => fetchNip11(relayUrl),
+  query: (relayUrl) => queryAnswered([relayUrl], { kinds: [KIND_CURATION_SET], limit: 100 }),
+};
+
+export async function loadRelayFeeds(relayUrl: string, me: string | null, deps: Partial<FeedDeps> = {}): Promise<RelayFeeds> {
+  const d = { ...liveFeedDeps, ...deps };
+  if (!(await d.reach(relayUrl))) return { status: "unreachable" };
+  // Who runs it comes from its NIP-11 document; without one we never got to ask.
+  const doc = await d.nip11(relayUrl).catch(() => null);
+  if (!doc) return { status: "unreachable" };
+  const staff = new Set([doc.pubkey, ...(doc.moderators ?? [])].map(toHexPubkey).filter((p): p is string => !!p));
+  if (!me || !staff.has(me.toLowerCase())) return { status: "not-operator" };
+  const { events, answered } = await d.query(relayUrl);
+  if (!answered) return { status: "unreachable" };
+  return { status: "ok", feeds: relayFeaturedSets(events, doc) };
+}
+
+/** The relay says it isn't yours: stop offering Featured for it. */
+export function forgetOperatorMark(relayUrl: string): void {
+  const key = (u: string) => u.replace(/\/+$/, "").toLowerCase();
+  const relays = getOutpostRelays();
+  if (!relays.some((r) => key(r.url) === key(relayUrl) && r.isAdmin)) return;
+  saveOutpostRelays(relays.map((r) => (key(r.url) === key(relayUrl) ? { ...r, isAdmin: false } : r)));
 }
 
 export type AddToFeaturedResult =
   | { ok: true; feedTitle: string; copied: boolean }
-  | { ok: false; reason: "duplicate" | "unreached" | "not-signed-in" | "publish-failed"; feedTitle?: string };
+  | { ok: false; reason: "duplicate" | "unreached" | "not-operator" | "not-signed-in" | "publish-failed"; feedTitle?: string };
 
 function slugify(title: string): string {
   const base = title.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -59,9 +96,19 @@ export async function addToFeaturedFeed(opts: {
   event?: Event;
   /** …or a PERSON — all their published content flows into the feed. */
   person?: string;
+  /** How the relay is asked (tests pass fakes). */
+  deps?: Partial<FeedDeps>;
 }): Promise<AddToFeaturedResult> {
   const signer = getGlobalSigner();
   if (!signer) return { ok: false, reason: "not-signed-in" };
+
+  // Ask the relay first, for a new feed as much as an existing one: a feed on
+  // a relay that's down can't land, and one on a relay that doesn't list you
+  // would never be shown.
+  const me = await signer.getPublicKey().catch(() => null);
+  const found = await loadRelayFeeds(opts.relayUrl, me, opts.deps).catch((): RelayFeeds => ({ status: "unreachable" }));
+  if (found.status === "unreachable") return { ok: false, reason: "unreached" };
+  if (found.status === "not-operator") return { ok: false, reason: "not-operator" };
 
   const item: CurationItem = opts.event
     ? eventToCurationItem(opts.event, opts.relayUrl)
@@ -76,13 +123,7 @@ export async function addToFeaturedFeed(opts: {
   let image: string | undefined;
   if ("coord" in opts.target) {
     const coord = opts.target.coord;
-    let feeds: CurationSet[];
-    try {
-      feeds = await fetchFeedsForRelay(opts.relayUrl);
-    } catch {
-      return { ok: false, reason: "unreached" };
-    }
-    base = feeds.find((s) => `${s.pubkey}:${s.dTag}` === coord) ?? null;
+    base = found.feeds.find((s) => `${s.pubkey}:${s.dTag}` === coord) ?? null;
     if (!base) return { ok: false, reason: "unreached" };
     title = base.title;
     dTag = base.dTag;
