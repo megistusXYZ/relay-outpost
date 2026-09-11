@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreHorizontal, Users, Settings, Link2, LogOut, Bell, BellOff, Pencil, ShieldCheck } from "lucide-react";
+import { MoreHorizontal, Users, Settings, Link2, LogOut, Bell, BellOff, Pencil, ShieldCheck, Search } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,6 +42,7 @@ export function SpaceOverflowMenu({
   onManage,
   onSettings,
   onMembers,
+  onSearch,
   onInvite,
   onLeave,
   petnameSubject,
@@ -56,6 +57,8 @@ export function SpaceOverflowMenu({
   onManage?: () => void;
   onSettings?: () => void;
   onMembers?: () => void;
+  /** Search this space's messages (the ones this device has, for a group chat). */
+  onSearch?: () => void;
   onInvite?: () => void;
   onLeave?: () => void;
   /**
@@ -79,7 +82,7 @@ export function SpaceOverflowMenu({
   const communityMuted = useCommunityMuted(muteContext?.communityId ?? "");
   const mutedChannels = useMutedChannels(muteContext?.communityId ?? "");
   const [petnameOpen, setPetnameOpen] = useState(false);
-  if (!onManage && !onSettings && !onMembers && !onInvite && !onLeave && !muteContext && !petnameSubject) return null;
+  if (!onManage && !onSettings && !onMembers && !onSearch && !onInvite && !onLeave && !muteContext && !petnameSubject) return null;
   const channelMuted = !!muteContext?.channelId && mutedChannels.has(muteContext.channelId);
   const itemClass = "gap-2 cursor-pointer min-h-[44px] md:min-h-0 md:py-1.5";
   const defer = (cb: () => void) => () => setTimeout(cb, 0);
@@ -119,6 +122,12 @@ export function SpaceOverflowMenu({
           <DropdownMenuItem className={itemClass} onSelect={defer(onSettings)} data-testid="menu-channel-settings">
             <Settings className="w-3.5 h-3.5" />
             Channel settings
+          </DropdownMenuItem>
+        )}
+        {onSearch && (
+          <DropdownMenuItem className={itemClass} onSelect={defer(onSearch)} data-testid="menu-group-search">
+            <Search className="w-3.5 h-3.5" />
+            Search messages
           </DropdownMenuItem>
         )}
         {onMembers && (

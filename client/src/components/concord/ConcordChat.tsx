@@ -54,6 +54,8 @@ import { useGoBack } from "@/hooks/use-go-back";
 import { computeUnreadChannels, newestActivity, readChannelLastRead } from "@/lib/concord/concord-channel-unread";
 import { getChannelWrapTimes, CHANGED_EVENT as UNREAD_CHANGED_EVENT, READ_EVENT } from "@/lib/concord/concord-unread";
 import { writeChannelLastRead } from "@/lib/concord/concord-channel-unread";
+import { ConcordSearchSheet } from "./ConcordSearchSheet";
+import type { SearchHit } from "@/lib/concord/concord-search";
 import { isMuted, setChannelMuted, useMutedChannels, MUTE_CHANGED_EVENT } from "@/lib/concord/concord-mute";
 import { mentionKey, useConcordMentionCounts } from "@/lib/concord/concord-mentions";
 import { ConcordCreateChannelDialog } from "./ConcordCreateChannelDialog";
@@ -669,6 +671,41 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     setThreadParent(null);
     if (restoreMembersRef.current) { restoreMembersRef.current = false; onToggleMembers?.(); }
   }, [onToggleMembers]);
+
+  // ── Search (concord-search): a result opens its room and lands on the message ──
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [jumpTarget, setJumpTarget] = useState<{ roomId: string; msgId: string } | null>(null);
+  const jumpToHit = useCallback((hit: SearchHit) => {
+    setSearchOpen(false);
+    setActiveId(hit.roomId);
+    // A threaded reply lives in its thread, not in the room.
+    if (hit.msg.rootId) openThread(hit.msg.rootId);
+    setJumpTarget({ roomId: hit.roomId, msgId: hit.msg.id });
+  }, [openThread]);
+  useEffect(() => {
+    if (!jumpTarget || activeChannel?.id !== jumpTarget.roomId) return;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let tries = 0;
+    const find = () => {
+      const el = document.querySelector<HTMLElement>(`[data-msg-id="${jumpTarget.msgId}"]`);
+      if (!el) {
+        // The room may still be loading; give it a few seconds, then let it go.
+        if (++tries < 20) timers.push(setTimeout(find, 150)); else setJumpTarget(null);
+        return;
+      }
+      const land = () => el.scrollIntoView({ block: "center", behavior: "smooth" });
+      land();
+      // Opening a room scrolls it to the newest message once it loads; land again after that.
+      timers.push(setTimeout(land, 350));
+      el.classList.remove("thread-parent-flash");
+      void el.offsetWidth;
+      el.classList.add("thread-parent-flash");
+      timers.push(setTimeout(() => el.classList.remove("thread-parent-flash"), 1500));
+      setJumpTarget(null);
+    };
+    find();
+    return () => { for (const t of timers) clearTimeout(t); };
+  }, [jumpTarget, activeChannel?.id, visible]);
   // Switching channels leaves any open thread behind — its messages are gone.
   useEffect(() => { setThreadRootId(null); setThreadParent(null); setThreadDraft(""); restoreMembersRef.current = false; }, [activeChannel?.id]);
   const threadRoot = threadRootId ? messagesById.get(threadRootId) : undefined;
@@ -956,6 +993,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           triggerIconClassName="w-[18px] h-[18px]"
           triggerTestId="concord-channel-settings-mobile"
           onManage={undefined}
+          onSearch={() => setSearchOpen(true)}
           onMembers={onOverview}
           onInvite={openInvite}
           onLeave={onLeave}
@@ -1081,6 +1119,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             triggerIconClassName="w-4 h-4"
             triggerTestId="concord-channel-settings"
             onManage={undefined}
+            onSearch={() => setSearchOpen(true)}
             onMembers={onOverview}
             onInvite={openInvite}
             onLeave={onLeave}
@@ -1102,6 +1141,13 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           drift between the two surfaces. */}
       {/* Only when the host has none: the standalone page owns its own, and two
           live invite dialogs over one community is how their link lists drift. */}
+      <ConcordSearchSheet
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        community={community}
+        rooms={channels.map((ch) => ({ id: ch.id, name: ch.name }))}
+        onJump={jumpToHit}
+      />
       {!onInvite && canInvite && (
         <ConcordInviteDialog
           open={inviteOpen}
@@ -1672,7 +1718,7 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
   const chips = reactions ? [...reactions.values()].filter((a) => a.reactors.size > 0) : [];
   const showTime = typeof t === "number";
   return (
-    <div className={`flex items-start gap-2.5 group relative rounded-lg ${mentionedMe && !deleted ? "bg-primary/[0.06] border-l-2 border-primary/50 -ml-0.5 pl-2 py-0.5" : ""}`} data-testid="concord-message">
+    <div className={`flex items-start gap-2.5 group relative rounded-lg ${mentionedMe && !deleted ? "bg-primary/[0.06] border-l-2 border-primary/50 -ml-0.5 pl-2 py-0.5" : ""}`} data-testid="concord-message" data-msg-id={msgId}>
       {grouped ? (
         // Grouped under the same author: the avatar slot becomes a hover-reveal
         // timestamp gutter (Discord/Slack), so the row stays anchored to the
