@@ -28,6 +28,8 @@ export const KIND_SEAL_PLAIN = 20014;
 
 /** Plane derivation labels (CORD-02 §group_key). */
 export const LABEL_CONTROL = "concord/control";
+/** CORD-02 §5: the admin plane's address and wrap signer, from the staff-only control_root. */
+export const LABEL_CONTROL_SIGNER = "concord/control-signer";
 export const LABEL_GUESTBOOK = "concord/guestbook";
 export const LABEL_CHANNEL = "concord/channel";
 /** CORD-06 §2 / CORD-02 A.6: dedicated rekey-pseudonym address labels. */
@@ -42,10 +44,20 @@ const CURVE_N: bigint = secp256k1.Point.Fn.ORDER;
 
 // ── Types ────────────────────────────────────────────────────────────────────
 export interface GroupKey {
-  /** 32-byte private scalar (valid secp256k1 key). */
-  sk: Uint8Array;
-  /** x-only public key, 64 lowercase hex chars. */
+  /**
+   * 32-byte private scalar (valid secp256k1 key). Absent on a plane we can
+   * only read: a member's view of the admin plane, whose address key is
+   * staff-only (CORD-02 §5). Such a plane can't sign a wrap.
+   */
+  sk?: Uint8Array;
+  /** x-only public key, 64 lowercase hex chars: the plane's address. */
   pk: string;
+  /**
+   * The conversation key the plane's content is encrypted under, when it
+   * isn't the address key's own (CORD-01 write-restricted streams: the admin
+   * plane is addressed by control_pk, encrypted under the concord/control key).
+   */
+  conv?: Uint8Array;
 }
 
 /** A decoded Concord seal (the layer between the outer wrap and the rumor). */
@@ -149,6 +161,8 @@ export function verifyCommunityId(communityId: string, ownerXonly: string, owner
  * layer (Slice 2) doesn't re-derive it.
  */
 export function planeConvKey(plane: GroupKey): Uint8Array {
+  if (plane.conv) return plane.conv;
+  if (!plane.sk) throw new Error("planeConvKey: the plane has neither a read key nor its own key");
   return nip44v2.utils.getConversationKey(plane.sk, plane.pk);
 }
 const planeConversationKey = planeConvKey;
@@ -159,6 +173,9 @@ const planeConversationKey = planeConvKey;
  * `created_at` is passed in (untweaked per spec) so this stays pure/testable.
  */
 export function wrapStream(plane: GroupKey, seal: Seal, createdAt: number, kind: number = KIND_STREAM_WRAP): Event {
+  // Only a holder of the address key can write the plane (CORD-01): a member's
+  // read-only view of the admin plane never gets here.
+  if (!plane.sk) throw new Error("wrapStream: this plane can be read, not written");
   const convKey = planeConversationKey(plane);
   const ephemeralPk = getPublicKey(generateSecretKey());
   const content = nip44v2.encrypt(JSON.stringify(seal), convKey);

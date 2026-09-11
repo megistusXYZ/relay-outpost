@@ -11,7 +11,7 @@ import { v2 as nip44v2 } from "nostr-tools/nip44";
 import { getPublicKey, type Event } from "nostr-tools";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import type { ISigner } from "applesauce-signers";
-import { computeLocator, epochKeyCommitment, epochKeyCommitmentLegacy, channelRekeyAddress, baseRekeyAddress, u64BE, concatBytes, randomBytes32, type GroupKey } from "./concord-crypto";
+import { computeLocator, epochKeyCommitment, epochKeyCommitmentLegacy, channelRekeyAddress, baseRekeyAddress, u64BE, concatBytes, randomBytes32, groupKey, LABEL_CONTROL_SIGNER, type GroupKey } from "./concord-crypto";
 import { KIND_REKEY, buildJoinLeaveRumor, hasPermission, canActOn, PERM, OWNER_POSITION, type RumorTemplate, type Member } from "./concord-events";
 import type { StoredChannel, StoredCommunity } from "./concord-keys";
 import { controlPlaneKey, publishToPlane } from "./concord-stream";
@@ -34,12 +34,24 @@ export function buildRekeyPayload(scopeId: string, epoch: bigint, newKey: Uint8A
   if (newKey.length !== 32) throw new Error("newKey must be 32 bytes");
   return concatBytes(hexToBytes(scopeId), u64BE(epoch), newKey);
 }
-export function parseRekeyPayload(payload: Uint8Array): { scopeId: string; epoch: bigint; newKey: Uint8Array } | null {
-  if (payload.length !== 72) return null;
+/**
+ * A wrapped blob's plaintext, by width (CORD-06 §2):
+ *  - 72:  scope_id ‖ epoch_be ‖ new_key: a private room's key, or a legacy
+ *         (pre-split) base rotation;
+ *  - 104: … ‖ new_control_pk: a base rotation, member copy;
+ *  - 136: … ‖ new_control_pk ‖ new_control_root: a base rotation, staff copy.
+ * Any other width is dropped.
+ */
+export function parseRekeyPayload(payload: Uint8Array): { scopeId: string; epoch: bigint; newKey: Uint8Array; controlPk?: string; controlRoot?: Uint8Array } | null {
+  if (payload.length !== 72 && payload.length !== 104 && payload.length !== 136) return null;
   const scopeId = bytesToHex(payload.slice(0, 32));
   let epoch = 0n;
   for (const b of payload.slice(32, 40)) epoch = (epoch << 8n) | BigInt(b);
-  return { scopeId, epoch, newKey: payload.slice(40, 72) };
+  return {
+    scopeId, epoch, newKey: payload.slice(40, 72),
+    ...(payload.length >= 104 ? { controlPk: bytesToHex(payload.slice(72, 104)) } : {}),
+    ...(payload.length === 136 ? { controlRoot: payload.slice(104, 136) } : {}),
+  };
 }
 
 /** Split recipient pubkeys into chunk groups (each becomes one 3303 event). */
@@ -203,10 +215,18 @@ export async function receiveRekey(
   signer: ISigner,
   myPubkey: string,
   rotatorPubkey: string,
-  params: { scopeId: string; myCurrentKey: Uint8Array; myCurrentEpoch: number },
+  params: {
+    scopeId: string; myCurrentKey: Uint8Array; myCurrentEpoch: number;
+    /** Needed to check a staff blob's control_root against its control_pk. */
+    communityId?: string;
+  },
   rumors: { tags: string[][]; content: string }[],
   auth: RekeyAuthority,
-): Promise<{ status: "rekeyed"; newKey: Uint8Array; newEpoch: number } | { status: "removed" } | { status: "pending" }> {
+): Promise<
+  | { status: "rekeyed"; newKey: Uint8Array; newEpoch: number; controlPk?: string; controlRoot?: string }
+  | { status: "removed" }
+  | { status: "pending" }
+> {
   if (!signer.nip44) return { status: "pending" };
   // Ignore rotations from a member who lacks rekey authority for this scope.
   if (!isAuthorizedRotator(rotatorPubkey, auth, params.scopeId)) return { status: "pending" };
@@ -247,9 +267,21 @@ export async function receiveRekey(
     const b64 = await signer.nip44.decrypt(rotatorPubkey, blob.wrapped).catch(() => null);
     if (!b64) continue;
     const payload = parseRekeyPayload(base64ToBytes(b64));
-    if (payload && payload.epoch === BigInt(newEpoch) && payload.scopeId === params.scopeId) {
-      return { status: "rekeyed", newKey: payload.newKey, newEpoch };
+    if (!payload || payload.epoch !== BigInt(newEpoch) || payload.scopeId !== params.scopeId) continue;
+    // A private room's key is always the 72-byte form; the wider ones are base
+    // rotations only (CORD-06 §2).
+    if (params.scopeId !== BASE_SCOPE && payload.controlPk !== undefined) continue;
+    // Staff copy: the control_root must derive to exactly the control_pk beside
+    // it, or the pair is refused (CORD-06 §2).
+    if (payload.controlRoot) {
+      if (!params.communityId) continue;
+      if (groupKey(LABEL_CONTROL_SIGNER, payload.controlRoot, params.communityId, BigInt(newEpoch)).pk !== payload.controlPk) continue;
     }
+    return {
+      status: "rekeyed", newKey: payload.newKey, newEpoch,
+      controlPk: payload.controlPk,
+      controlRoot: payload.controlRoot ? bytesToHex(payload.controlRoot) : undefined,
+    };
   }
   return { status: "pending" };
 }
@@ -295,7 +327,8 @@ export async function receiveChannelGrant(
     const b64 = await signer.nip44.decrypt(rotatorPubkey, blob.wrapped).catch(() => null);
     if (!b64) continue;
     const payload = parseRekeyPayload(base64ToBytes(b64));
-    if (payload && payload.scopeId === channelId && payload.epoch === BigInt(newEpoch)) {
+    // A private room's key is always the 72-byte form (CORD-06 §2).
+    if (payload && payload.controlPk === undefined && payload.scopeId === channelId && payload.epoch === BigInt(newEpoch)) {
       return { key: payload.newKey, epoch: newEpoch };
     }
   }

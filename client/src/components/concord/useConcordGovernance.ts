@@ -196,11 +196,13 @@ export function useConcordGovernance(community: StoredCommunity | null | undefin
         try {
           if (g.scope === BASE_SCOPE) {
             const res = await receiveRekey(signer, pubkey, g.rotator,
-              { scopeId: g.scope, myCurrentKey: hexToBytes(community.community_root), myCurrentEpoch: community.root_epoch },
+              { scopeId: g.scope, myCurrentKey: hexToBytes(community.community_root), myCurrentEpoch: community.root_epoch, communityId: community.community_id },
               g.rumors, auth);
             if (cancelled) return;
             if (res.status === "rekeyed") {
-              await putCommunity(pubkey, adoptBaseRekey(community, bytesToHex(res.newKey), res.newEpoch));
+              // A current-spec rotation also hands over the new epoch's admin
+              // address (and, to staff, its secret): CORD-06 §2.
+              await putCommunity(pubkey, adoptBaseRekey(community, bytesToHex(res.newKey), res.newEpoch, { controlPk: res.controlPk, controlRoot: res.controlRoot }));
               notify();
               return; // the refreshed record re-runs this effect with new planes
             }

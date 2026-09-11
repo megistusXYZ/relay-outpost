@@ -41,16 +41,36 @@ export function channelPlaneKey(c: StoredCommunity, ch: StoredChannel): GroupKey
  * they hold" — the read side derives planes for ALL of these; the publish side
  * always uses the current key only.
  */
-export function heldBaseKeys(c: StoredCommunity): { root: string; epoch: number }[] {
-  const held = [...(c.priorRoots ?? []).filter((p) => p.epoch < c.root_epoch), { root: c.community_root, epoch: c.root_epoch }];
+export function heldBaseKeys(c: StoredCommunity): { root: string; epoch: number; control_pk?: string }[] {
+  const held = [
+    ...(c.priorRoots ?? []).filter((p) => p.epoch < c.root_epoch),
+    { root: c.community_root, epoch: c.root_epoch, control_pk: c.control_pk },
+  ];
   return held.sort((a, b) => a.epoch - b.epoch);
 }
 
-/** Control + guestbook plane keys across every held base epoch (read side). */
+const HEX32 = /^[0-9a-f]{64}$/;
+
+/**
+ * Control + guestbook plane keys across every held base epoch (read side).
+ *
+ * The admin (Control) plane is read at TWO addresses per epoch (CORD-02 §5):
+ *  - the legacy one, where the concord/control key is both address and
+ *    encryption. A client MUST keep reading it: older epochs, groups not yet
+ *    upgraded, and every edition our own clients have written;
+ *  - the split one, when the epoch has a control_pk: the address is control_pk
+ *    (derived from the staff-only control_root), and the content is encrypted
+ *    under the same concord/control read key every member derives. A member
+ *    holds no key for that address, so the plane can read and never write.
+ */
 export function governancePlanes(c: StoredCommunity): GroupKey[] {
   const planes: GroupKey[] = [];
-  for (const { root, epoch } of heldBaseKeys(c)) {
-    planes.push(groupKey(LABEL_CONTROL, hexToBytes(root), c.community_id, BigInt(epoch)));
+  for (const { root, epoch, control_pk } of heldBaseKeys(c)) {
+    const control = groupKey(LABEL_CONTROL, hexToBytes(root), c.community_id, BigInt(epoch));
+    planes.push(control);
+    if (control_pk && HEX32.test(control_pk) && control_pk !== control.pk) {
+      planes.push({ pk: control_pk, conv: planeConvKey(control) });
+    }
     planes.push(groupKey(LABEL_GUESTBOOK, hexToBytes(root), c.community_id, BigInt(epoch)));
   }
   return planes;
