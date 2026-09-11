@@ -4,10 +4,10 @@
  * the persistence + relay publishing. Slice 2 covers public channels; private
  * channels + governance land in Slice 4.
  */
-import { bytesToHex } from "@noble/hashes/utils.js";
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import type { Event } from "nostr-tools";
 import type { ISigner } from "applesauce-signers";
-import { deriveCommunityId, randomBytes32 } from "./concord-crypto";
+import { deriveCommunityId, randomBytes32, groupKey, LABEL_CONTROL_SIGNER } from "./concord-crypto";
 import { VSK, buildControlEdition, buildJoinLeaveRumor, computeEditionId, type CommunityMetadata } from "./concord-events";
 import { putCommunity, publishCommunityList, type StoredCommunity, type StoredChannel } from "./concord-keys";
 import { nextMetadataEdition, type MetadataChanges, type MetadataHead } from "./concord-metadata-edition";
@@ -44,6 +44,11 @@ export async function createCommunity(
   const communityId = deriveCommunityId(myPubkey, ownerSalt);
   const rootEpoch = 0;
   const relays = opts.relays.slice(0, 5);
+  // The split from the start (CORD-02 §2): a second secret only the owner and
+  // staff hold. Its derived key addresses and signs the admin plane, so members
+  // (who get only control_pk, in invites) can read it but never write it.
+  const controlRoot = bytesToHex(randomBytes32());
+  const controlPk = groupKey(LABEL_CONTROL_SIGNER, hexToBytes(controlRoot), communityId, BigInt(rootEpoch)).pk;
 
   const generalId = bytesToHex(randomBytes32());
   const generalContent = { channel_id: generalId, name: "general" };
@@ -58,6 +63,8 @@ export async function createCommunity(
     owner_salt: ownerSalt,
     community_root: communityRoot,
     root_epoch: rootEpoch,
+    control_pk: controlPk,
+    control_root: controlRoot,
     channels: [general],
     relays,
     name: opts.name,
