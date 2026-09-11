@@ -17,6 +17,8 @@ import { nextBanlistEdition, type BanlistHead } from "./concord-banlist";
 import { refreshInviteLinks } from "./concord-invites";
 import { publishControlEdition, publishGuestbook, publishGuestbookSnapshot, channelPlaneKey, controlWritePlane } from "./concord-stream";
 import { sendRekey, resecurePrivateRooms } from "./concord-rekey";
+import { groupKey, LABEL_CONTROL_SIGNER } from "./concord-crypto";
+import { sealControlWrap } from "./concord-control-wrap";
 
 type PublishFn = (event: Event, relays: string[]) => Promise<unknown>;
 type PublishSelfFn = (event: Event) => Promise<unknown>;
@@ -269,8 +271,19 @@ export async function setAdmin(
 
   // 2. Chained grant edition for this member — fold head first, local cursor
   //    only as a floor.
+  // A staff-making grant carries the current admin-plane secret (CORD-04 §3),
+  // so the new admin can write where current apps read straight away rather
+  // than at the next removal. Only when this device holds that secret and it
+  // matches the group's address; a signer that can't encrypt still promotes.
+  let controlWrap: string | undefined;
+  if (makeAdmin && community.control_root && community.control_pk) {
+    const root = hexToBytes(community.control_root);
+    if (groupKey(LABEL_CONTROL_SIGNER, root, community.community_id, BigInt(community.root_epoch)).pk === community.control_pk) {
+      controlWrap = await sealControlWrap(signer, target, community.root_epoch, root).catch(() => undefined);
+    }
+  }
   const next = nextGrantEdition(target, community.grantVersions?.[target], foldHead,
-    makeAdmin ? [ADMIN_ROLE_ID] : [], foldArrived);
+    makeAdmin ? [ADMIN_ROLE_ID] : [], foldArrived, controlWrap);
 
   // Refuse to record a cursor for an edition that never landed. Swallowing the
   // publish left the next change to this member chaining onto an edition no

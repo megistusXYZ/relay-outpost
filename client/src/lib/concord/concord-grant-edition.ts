@@ -54,6 +54,12 @@ export interface GrantCursor {
 export interface GrantContent {
   member: string;
   role_ids: string[];
+  /**
+   * The admin-plane secret for a member being made staff (CORD-04 §3):
+   * NIP-44 to them, see concord-control-wrap. Absent on revokes and in
+   * groups that aren't split.
+   */
+  control_wrap?: string;
 }
 
 export interface NextGrantEdition {
@@ -76,8 +82,11 @@ export function nextGrantEdition(
    * second one on an occupied coordinate where the loser is simply discarded.
    */
   foldArrived: boolean,
+  /** A control_wrap to deliver with a staff-making grant (CORD-04 §3). */
+  controlWrap?: string,
 ): NextGrantEdition {
-  const content: GrantContent = { member: target, role_ids: roleIds };
+  // The wrap is part of the content, so it is inside the hash below too.
+  const content: GrantContent = { member: target, role_ids: roleIds, ...(controlWrap ? { control_wrap: controlWrap } : {}) };
 
   // Highest head wins, and the FOLD wins a tie — its hash is the one other
   // clients already hold, so chaining onto ours would fork a private history
