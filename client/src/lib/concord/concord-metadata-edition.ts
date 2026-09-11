@@ -62,13 +62,20 @@ export interface MetadataChanges {
   allowMemberInvites?: boolean;
 }
 
-/** The wire shape of a vsk-0 edition's content. */
+/**
+ * The wire shape of a vsk-0 edition's content. `name`, `description` and
+ * `relays` are CORD-02 §6's; `about`, `picture` and `allow_member_invites` are
+ * ours from before we followed it. Everything else is another app's, carried
+ * forward untouched.
+ */
 export interface MetadataContent {
   name: string;
-  about: string;
-  picture: string;
-  relays: string[];
-  allow_member_invites: boolean;
+  description: string;
+  about?: string;
+  picture?: string;
+  relays?: string[];
+  allow_member_invites?: boolean;
+  [field: string]: unknown;
 }
 
 export interface NextMetadataEdition {
@@ -125,17 +132,30 @@ export function nextMetadataEdition(
     relays: community.relays,
     allowMemberInvites: community.allowMemberInvites,
   };
-  const content: MetadataContent = {
-    name: changes.name ?? base.name,
-    about: changes.about ?? base.about ?? "",
-    picture: changes.icon ?? base.picture ?? "",
-    // No UI field, so always untouched — and therefore folded like the rest.
-    // Republishing `community.relays` was its own quiet corruption: for a
-    // link-joined member that array is the invite bundle's relays mixed with
-    // our bootstrap defaults and sliced to five.
-    relays: (base.relays?.length ? base.relays : community.relays).slice(0, 5),
-    allow_member_invites: changes.allowMemberInvites ?? base.allowMemberInvites ?? false,
-  };
+  // CORD-02 §6: an editor MUST round-trip the fields it doesn't know. Start
+  // from the winning edition's whole content: rebuilding it from the fields we
+  // know is how one rename from us turned a Vector group's disappearing timer
+  // off and dropped its banner, rules and encrypted icon.
+  const raw = govMetadata?.raw;
+  const description = changes.about ?? base.about ?? "";
+  const content: MetadataContent = { ...(raw ?? {}), name: changes.name ?? base.name, description };
+  // Our own fields: written when edited, when the group already has them, or
+  // when there is no raw content (our own group). Never added unasked to a
+  // group another app made.
+  const ours = (field: string, edited: boolean) => edited || !raw || field in raw;
+  // Our older groups also carry `about`: keep it in step, never stale.
+  if (raw && "about" in raw) content.about = description;
+  if (ours("picture", changes.icon !== undefined)) content.picture = changes.icon ?? base.picture ?? "";
+  // Relays have no UI field, so they are always untouched: carry the group's
+  // own list as it is. Without raw content, the fold's list. Republishing
+  // `community.relays` was its own quiet corruption: for a link-joined member
+  // that array is the invite bundle's relays mixed with our bootstrap defaults
+  // and sliced to five.
+  if (raw && Array.isArray(raw.relays)) content.relays = raw.relays as string[];
+  else if (ours("relays", false)) content.relays = (base.relays?.length ? base.relays : community.relays).slice(0, 5);
+  if (ours("allow_member_invites", changes.allowMemberInvites !== undefined)) {
+    content.allow_member_invites = changes.allowMemberInvites ?? base.allowMemberInvites ?? false;
+  }
 
   // Highest head wins, and the FOLD wins a tie — its hash is the one other
   // clients already hold, so chaining onto ours would fork off a private

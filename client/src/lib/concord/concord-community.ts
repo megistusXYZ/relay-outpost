@@ -68,7 +68,8 @@ export async function createCommunity(
   };
 
   // Record the v1 metadata edition id so later edits can chain to it.
-  const metaContent = { name: opts.name, about: opts.about ?? "", picture: opts.icon ?? "", relays };
+  // `description` is CORD-02 §6's name for it, where other apps read it.
+  const metaContent = { name: opts.name, description: opts.about ?? "", picture: opts.icon ?? "", relays };
   record.metaVersion = 1;
   record.metaEid = computeEditionId(communityId, 1, undefined, JSON.stringify(metaContent));
 
@@ -144,17 +145,19 @@ export async function editMetadata(
   publishSelf: PublishSelfFn,
 ): Promise<StoredCommunity> {
   const next = nextMetadataEdition(community, fold.metadata, fold.head, changes);
-  const { name, about, picture, allow_member_invites: allowMemberInvites } = next.content;
+  const { name, description, picture, allow_member_invites: allowMemberInvites } = next.content;
 
   // The record now mirrors what we actually published — the fold's values plus
   // this edit — so the next edit from this device chains, instead of
-  // resurrecting whatever it was holding before the fold arrived.
+  // resurrecting whatever it was holding before the fold arrived. A field the
+  // edition didn't carry (another app's group we didn't add it to) leaves the
+  // record's value alone.
   const updated: StoredCommunity = {
     ...community,
     name,
-    icon: picture || undefined,
-    about: about || undefined,
-    allowMemberInvites,
+    icon: picture !== undefined ? picture || undefined : community.icon,
+    about: description || undefined,
+    allowMemberInvites: allowMemberInvites !== undefined ? allowMemberInvites : community.allowMemberInvites,
     metaVersion: next.version,
     metaEid: next.eid,
   };

@@ -41,7 +41,7 @@ describe("nextMetadataEdition — the base", () => {
     const out = nextMetadataEdition(
       joined(), fold({ about: "live description", picture: "live.png" }),
       { ev: 4, hash: H(4) }, { name: "Renamed" });
-    expect(out.content.about).toBe("live description");
+    expect(out.content.description).toBe("live description");
     expect(out.content.picture).toBe("live.png");
   });
 
@@ -62,7 +62,7 @@ describe("nextMetadataEdition — the base", () => {
   it("falls back to the local record only when there is no fold (owner, just created)", () => {
     const out = nextMetadataEdition(
       created({ about: "mine", allowMemberInvites: true }), undefined, undefined, { name: "Renamed" });
-    expect(out.content.about).toBe("mine");
+    expect(out.content.description).toBe("mine");
     expect(out.content.allow_member_invites).toBe(true);
   });
 
@@ -78,8 +78,58 @@ describe("nextMetadataEdition — the base", () => {
     const live = fold({ about: "x", picture: "p", allowMemberInvites: true, relays: ["wss://a"] });
     const out = nextMetadataEdition(joined(), live, { ev: 4, hash: H(4) }, {});
     expect(out.content).toEqual({
-      name: "Group", about: "x", picture: "p", relays: ["wss://a"], allow_member_invites: true,
+      name: "Group", description: "x", picture: "p", relays: ["wss://a"], allow_member_invites: true,
     });
+  });
+});
+
+/**
+ * CORD-02 §6: "An editor MUST round-trip unknown fields." Found in the
+ * 2026-09-11 spec deep dive: we rebuilt the content from the five fields we
+ * know, so one rename from us in a Vector group turned its disappearing timer
+ * off and dropped its banner, rules and encrypted icon. We also wrote the
+ * description as `about`, where no other app looks.
+ */
+describe("nextMetadataEdition — what other apps wrote survives our edit", () => {
+  const vector = {
+    name: "Book Club",
+    description: "We read one book a month",
+    relays: ["wss://a", "wss://b"],
+    message_expiration: 604800,
+    icon: { url: "https://blossom.example/i", key: "k", nonce: "n", hash: "h" },
+    banner: { url: "https://blossom.example/b", key: "k2", nonce: "n2", hash: "h2" },
+    custom: { rules: "Be kind", "vector/theme": "dusk" },
+  };
+  const live = fold({ name: vector.name, about: vector.description, relays: vector.relays, raw: vector });
+
+  it("a rename keeps the disappearing timer, banner, icon and rules exactly", () => {
+    const out = nextMetadataEdition(joined(), live, { ev: 4, hash: H(4) }, { name: "Books & Tea" });
+    expect(out.content).toMatchObject({
+      name: "Books & Tea",
+      message_expiration: 604800,
+      icon: vector.icon,
+      banner: vector.banner,
+      custom: vector.custom,
+    });
+  });
+
+  it("writes the description where other apps read it, and adds no legacy field they never had", () => {
+    const out = nextMetadataEdition(joined(), live, { ev: 4, hash: H(4) }, { about: "Two books a month" });
+    expect(out.content.description).toBe("Two books a month");
+    expect("about" in out.content).toBe(false);
+  });
+
+  it("keeps our older groups' about in step, so it never shows a stale description", () => {
+    const ours = fold({ about: "old", raw: { name: "Group", about: "old", picture: "", relays: [] } });
+    const out = nextMetadataEdition(joined(), ours, { ev: 4, hash: H(4) }, { about: "new" });
+    expect(out.content.description).toBe("new");
+    expect(out.content.about).toBe("new");
+  });
+
+  it("leaves another app's relay list as it was when nobody edited it", () => {
+    const seven = ["wss://1", "wss://2", "wss://3", "wss://4", "wss://5", "wss://6", "wss://7"];
+    const out = nextMetadataEdition(joined(), fold({ relays: seven.slice(0, 5), raw: { name: "G", relays: seven } }), { ev: 4, hash: H(4) }, { name: "R" });
+    expect(out.content.relays).toEqual(seven);
   });
 });
 

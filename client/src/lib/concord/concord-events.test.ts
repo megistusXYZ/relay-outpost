@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { nextMetadataEdition } from "./concord-metadata-edition";
+import type { StoredCommunity } from "./concord-keys";
 import {
   msTag, effectiveTime,
   parsePermissions, serializePermissions, hasPermissionBit, memberPermissions, hasPermission, canActOn,
@@ -737,5 +739,60 @@ describe("banlist fork healing (banlistSeen)", () => {
       { vsk: VSK.BANLIST, eid: EID_BAN, ev: 1, content: JSON.stringify([BOB]), rumorId: "rB", pubkey: OWNER },
     ], OWNER);
     expect(state.banlistSeen.has(BOB)).toBe(true);
+  });
+});
+
+/**
+ * CORD-02 §6 metadata as other apps write it (2026-09-11 spec deep dive): the
+ * description is `description`, and an editor must round-trip every field it
+ * doesn't know. The fold threw away everything but five fields, so the next
+ * edit from us had nothing to carry forward.
+ */
+describe("foldEditions — metadata another app wrote", () => {
+  const vector = {
+    name: "Book Club",
+    description: "We read one book a month",
+    relays: ["wss://a"],
+    message_expiration: 604800,
+    custom: { rules: "Be kind" },
+  };
+
+  it("reads the description where other apps write it", () => {
+    const state = foldEditions([edition(VSK.METADATA, CID, 1, vector, "r1")], OWNER);
+    expect(state.metadata!.about).toBe("We read one book a month");
+  });
+
+  it("still reads our older groups' about", () => {
+    const state = foldEditions([edition(VSK.METADATA, CID, 1, { name: "G", about: "ours", relays: [] }, "r1")], OWNER);
+    expect(state.metadata!.about).toBe("ours");
+  });
+
+  it("keeps the whole winning content, so an edit can carry forward what it doesn't know", () => {
+    const state = foldEditions([edition(VSK.METADATA, CID, 1, vector, "r1")], OWNER);
+    expect(state.metadata!.raw).toEqual(vector);
+  });
+});
+
+describe("our edit of another app's group, end to end through the fold", () => {
+  it("chains onto their edition and wins, with everything they wrote intact", () => {
+    const vector = {
+      name: "Book Club", description: "We read one book a month", relays: ["wss://a"],
+      message_expiration: 604800, custom: { rules: "Be kind" },
+    };
+    const v1 = edition(VSK.METADATA, CID, 1, vector, "r1");
+    const before = foldEditions([v1], OWNER);
+    const coord = `${VSK.METADATA}:${CID}`;
+    const stored = { community_id: CID, owner: OWNER, name: "Book Club", relays: [], channels: [] } as unknown as StoredCommunity;
+    const next = nextMetadataEdition(stored, before.metadata, before.heads.get(coord), { name: "Books & Tea" });
+    const v2: ControlEdition = {
+      vsk: VSK.METADATA, eid: CID, ev: next.version, ep: next.prevHash,
+      content: JSON.stringify(next.content), rumorId: "r2", pubkey: OWNER,
+    };
+    const after = foldEditions([v1, v2], OWNER);
+    expect(after.metadata!.name).toBe("Books & Tea");
+    expect(after.metadata!.about).toBe("We read one book a month");
+    expect(after.metadata!.raw).toMatchObject({ message_expiration: 604800, custom: { rules: "Be kind" } });
+    // The id we record is the hash the fold holds, so our next edit chains too.
+    expect(after.heads.get(coord)?.hash).toBe(next.eid);
   });
 });
