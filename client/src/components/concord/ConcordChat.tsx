@@ -157,13 +157,14 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   /** Open the existing invite dialog (present iff the viewer may invite). */
   onInvite?: () => void;
   /**
-   * Open the host's LEAVE confirm. Correctly withheld from an owner — an owner
-   * leaving is dissolving — which is why it must not double as dissolve.
+   * Open the host's LEAVE confirm. Offered to the owner too: an owner leaving
+   * steps back (the group goes on and they stay its owner, concord-step-back),
+   * which is exactly why it must never double as dissolve.
    */
   onLeave?: () => void;
   /**
    * Open the host's DISSOLVE confirm. Separate from `onLeave` because aliasing
-   * the two meant `onLeave={isOwner ? undefined : onLeave}` silently deleted
+   * the two meant `onLeave={onLeave}` silently deleted
    * the owner's only way to end their own space: the drawer's danger section
    * gates on `!!onDissolve`, and under the absent-never-disabled doctrine its
    * silence ASSERTED the owner could not do it. On the Chats tab — the app's
@@ -959,7 +960,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           onManage={undefined}
           onMembers={onOverview}
           onInvite={openInvite}
-          onLeave={isOwner ? undefined : onLeave}
+          onLeave={onLeave}
           petnameSubject={{ kind: "group", id: community.community_id, realName: community.name }}
           isOwner={isOwner}
           muteContext={{ communityId: community.community_id, channelId: single ? undefined : activeChannel?.id, channelName: activeChannel?.name }}
@@ -1084,7 +1085,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             onManage={undefined}
             onMembers={onOverview}
             onInvite={openInvite}
-            onLeave={isOwner ? undefined : onLeave}
+            onLeave={onLeave}
             petnameSubject={{ kind: "group", id: community.community_id, realName: community.name }}
             isOwner={isOwner}
             muteContext={{ communityId: community.community_id, channelId: single ? undefined : activeChannel?.id, channelName: activeChannel?.name }}

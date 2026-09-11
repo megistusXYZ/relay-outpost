@@ -8,10 +8,11 @@
  * differently" — and that rule only holds while there IS one. A second host
  * needing the confirm is precisely when a codebase grows the second wording.
  *
- * Both acts live here because they are the same decision seen from two sides:
- * an owner leaving IS dissolving, which is why ConcordChat withholds Leave from
- * an owner. Splitting them into two components would put that relationship in
- * two files that cannot see each other.
+ * Both acts live here because they are the two ways out, and their wording
+ * belongs side by side: leaving (for an owner, stepping back: the group goes
+ * on under its admins and they stay its owner, concord-step-back) and deleting
+ * it for everyone. An owner leaving used to be treated as dissolving, so owners
+ * had no way to step away without ending the group.
  *
  * `onDone` rather than a navigation of its own: the standalone page leaves for
  * /messages, while the relay outpost's Chat tab stays put and re-reads. The
@@ -23,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getGlobalSigner } from "@/lib/nip42-auth";
 import { publishEvent } from "@/lib/nostr";
 import { dissolveCommunity, leaveCommunity } from "@/lib/concord/concord-governance";
+import { leaveCopy } from "@/lib/concord/concord-step-back";
 import type { StoredCommunity } from "@/lib/concord/concord-keys";
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
@@ -31,7 +33,7 @@ import {
 
 export type ConcordDangerMode = "dissolve" | "leave";
 
-export function ConcordDangerDialog({ mode, onOpenChange, community, pubkey, onDone }: {
+export function ConcordDangerDialog({ mode, onOpenChange, community, pubkey, onDone, otherStaff }: {
   /** `null` closes it. */
   mode: ConcordDangerMode | null;
   onOpenChange: (mode: ConcordDangerMode | null) => void;
@@ -39,9 +41,12 @@ export function ConcordDangerDialog({ mode, onOpenChange, community, pubkey, onD
   pubkey: string | null | undefined;
   /** Ran only after the act SUCCEEDED — never on the error path. */
   onDone: (mode: ConcordDangerMode) => void;
+  /** Other staff in the group, when the host knows: an owner stepping back with none is warned. */
+  otherStaff?: number;
 }) {
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
+  const leave = leaveCopy({ isOwner: !!pubkey && pubkey === community.owner, otherStaff });
 
   const run = async () => {
     const signer = getGlobalSigner();
@@ -54,7 +59,7 @@ export function ConcordDangerDialog({ mode, onOpenChange, community, pubkey, onD
         toast({ title: "Group chat deleted" });
       } else {
         await leaveCommunity(signer, pubkey, community, (e, r) => publishEvent(e, r), (e) => publishEvent(e, relays));
-        toast({ title: "Left group chat" });
+        toast({ title: leave.done });
       }
       onDone(mode);
     } catch (err) {
@@ -76,12 +81,12 @@ export function ConcordDangerDialog({ mode, onOpenChange, community, pubkey, onD
       <AlertDialogContent className="z-[210] max-w-sm" overlayClassName="z-[210]">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-sm">
-            {mode === "dissolve" ? "Delete this group chat?" : "Leave this group chat?"}
+            {mode === "dissolve" ? "Delete this group chat?" : leave.title}
           </AlertDialogTitle>
           <AlertDialogDescription className="text-xs">
             {mode === "dissolve"
               ? "This deletes the group chat for everyone and removes it from your devices. Members lose access. This can't be undone."
-              : "You'll be removed from the roster and it'll disappear from your devices. You can rejoin later with a new invite."}
+              : leave.body}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -92,7 +97,7 @@ export function ConcordDangerDialog({ mode, onOpenChange, community, pubkey, onD
             className="text-xs bg-destructive hover:bg-destructive/90"
             data-testid="concord-danger-confirm"
           >
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : mode === "dissolve" ? "Delete" : "Leave"}
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : mode === "dissolve" ? "Delete" : leave.confirm}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
