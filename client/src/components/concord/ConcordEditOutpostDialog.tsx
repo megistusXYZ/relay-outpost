@@ -35,6 +35,7 @@ import type { CommunityMetadata } from "@/lib/concord/concord-events";
 import { canPublishMetadata, type MetadataChanges, type MetadataHead } from "@/lib/concord/concord-metadata-edition";
 import type { StoredCommunity } from "@/lib/concord/concord-keys";
 import { RoomImagePicker } from "./RoomImagePicker";
+import { parseCommunityImage, type CommunityImage } from "@/lib/concord/concord-image";
 
 type Field = "name" | "icon" | "about" | "allowMemberInvites" | "messageExpiration";
 
@@ -74,6 +75,7 @@ export function ConcordEditOutpostDialog({ open, onOpenChange, community, onComm
   const [dirty, setDirty] = useState<Partial<Record<Field, true>>>({});
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("");
+  const [image, setImage] = useState<CommunityImage | null>(null);
   const [about, setAbout] = useState("");
   const [allowMemberInvites, setAllowMemberInvites] = useState(false);
   const [expiration, setExpiration] = useState(0);
@@ -85,7 +87,11 @@ export function ConcordEditOutpostDialog({ open, onOpenChange, community, onComm
   useEffect(() => {
     if (!open) { setDirty({}); return; }
     if (!dirty.name) setName(folded?.name ?? community.name);
-    if (!dirty.icon) setIcon(folded?.picture ?? community.icon ?? "");
+    if (!dirty.icon) {
+      setIcon(folded?.picture ?? community.icon ?? "");
+      // The group's settings are the whole photo: no `icon` there, no encrypted photo.
+      setImage((folded?.raw ? parseCommunityImage(folded.raw.icon) : community.iconImage) ?? null);
+    }
     if (!dirty.about) setAbout(folded?.about ?? community.about ?? "");
     if (!dirty.allowMemberInvites) setAllowMemberInvites((folded?.allowMemberInvites ?? community.allowMemberInvites) === true);
     if (!dirty.messageExpiration) setExpiration(disappearingTimer(folded));
@@ -99,7 +105,7 @@ export function ConcordEditOutpostDialog({ open, onOpenChange, community, onComm
 
     const changes: MetadataChanges = {};
     if (dirty.name) changes.name = name.trim();
-    if (dirty.icon) changes.icon = icon;            // "" means cleared, and stays cleared
+    if (dirty.icon) changes.image = image;          // null means removed, and stays removed
     if (dirty.about) changes.about = about.trim();
     if (dirty.allowMemberInvites) changes.allowMemberInvites = allowMemberInvites;
     if (dirty.messageExpiration) changes.messageExpiration = expiration;
@@ -135,8 +141,13 @@ export function ConcordEditOutpostDialog({ open, onOpenChange, community, onComm
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-[11px] font-medium text-muted-foreground/70">Room image</label>
-            <RoomImagePicker value={icon || undefined} onChange={(url) => { touch("icon"); setIcon(url ?? ""); }} fallback={name || "?"} />
+            <label className="text-[11px] font-medium text-muted-foreground/70">Group photo</label>
+            <RoomImagePicker
+              image={image ?? undefined}
+              picture={icon || undefined}
+              onChange={(next) => { touch("icon"); setImage(next); if (!next) setIcon(""); }}
+              fallback={name || "?"}
+            />
           </div>
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground/70">Name</label>

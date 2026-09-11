@@ -2,6 +2,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Nip05Badge } from "@/components/Nip05Badge";
 import { ImpersonationChip } from "@/components/ImpersonationChip";
 import { GroupAvatar } from "@/components/GroupAvatar";
+import type { CommunityImage } from "@/lib/concord/concord-image";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +30,8 @@ export type ChatListItem =
       name: string;
       /** Custom group image; absent ⇒ facepile of members. */
       icon?: string;
+      /** The group's encrypted photo; shown over `icon` once it opens. */
+      iconImage?: CommunityImage;
       channelCount: number;
       /** Newest known activity, ms since epoch. */
       lastActivity: number;
@@ -143,7 +146,7 @@ function GroupChatRow({
         data-testid={`button-open-group-${item.communityId.slice(0, 8)}`}
       >
         <div className="relative shrink-0">
-          <GroupAvatar members={item.members} picture={item.icon} name={item.name} myPubkey={myPubkey} size={40} />
+          <GroupAvatar members={item.members} picture={item.icon} image={item.iconImage} name={item.name} myPubkey={myPubkey} size={40} />
           {unread && (
             <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-brand border-2 border-background z-10" data-testid={`group-unread-${item.communityId.slice(0, 8)}`} />
           )}

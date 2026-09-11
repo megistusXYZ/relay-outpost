@@ -12,6 +12,7 @@
  */
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { getBlossomServers, uploadToBlossomServer, stripImageMetadata, stripVideoMetadata } from "@/lib/media-upload";
+import { sealCommunityImage, imageExt, type CommunityImage } from "./concord-image";
 
 export interface ConcordMedia {
   url: string;
@@ -144,21 +145,40 @@ export async function encryptAndUpload(file: File, signer: Signer, onStatus?: (s
   const ctFile = new File([ct], "blob.enc", { type: "application/octet-stream" });
 
   onStatus?.("Uploading…");
-  const servers = encryptedUploadServers(getBlossomServers());
+  const uploaded = await uploadCiphertext(ctFile, signer, onStatus);
+
+  const dim = await imageDimensions(uploadSource).catch(() => undefined);
+  return { url: uploaded.url, mime: uploadSource.type || "application/octet-stream", key: bytesToHex(key), iv: bytesToHex(iv), name: file.name, dim };
+}
+
+/**
+ * A group photo, uploaded the spec's way (CORD-02 §6): metadata stripped, then
+ * sealed with a 16-byte nonce so Vector can open it too, then sent to the same
+ * servers as encrypted chat media. The pointer it returns goes into the
+ * group's settings; the server only ever holds ciphertext.
+ */
+export async function uploadCommunityImage(file: File, signer: Signer, onStatus?: (s: string) => void): Promise<CommunityImage> {
+  onStatus?.("Scrubbing metadata…");
+  const source = (await stripImageMetadata(file).catch(() => ({ file, stripped: false }))).file;
+  onStatus?.("Encrypting…");
+  const sealed = await sealCommunityImage(new Uint8Array(await source.arrayBuffer()));
+  onStatus?.("Uploading…");
+  const { url } = await uploadCiphertext(new File([sealed.ciphertext as BlobPart], "blob.enc", { type: "application/octet-stream" }), signer, onStatus);
+  const ext = imageExt(source.type);
+  return { url, key: sealed.key, nonce: sealed.nonce, hash: sealed.hash, ...(ext ? { ext } : {}) };
+}
+
+/** Upload ciphertext to the user's servers, then the encrypted-media fallbacks, stopping at the first that takes it. */
+async function uploadCiphertext(ctFile: File, signer: Signer, onStatus?: (s: string) => void): Promise<{ url: string }> {
   const failures: { server: string; message: string }[] = [];
-  let uploaded: { url: string } | null = null;
-  for (const s of servers) {
+  for (const s of encryptedUploadServers(getBlossomServers())) {
     try {
-      uploaded = await uploadToBlossomServer(s, ctFile, signer as never, onStatus);
-      break;
+      return await uploadToBlossomServer(s, ctFile, signer as never, onStatus);
     } catch (err) {
       failures.push({ server: s, message: String((err as Error)?.message ?? err) });
     }
   }
-  if (!uploaded) throw new Error(summarizeUploadFailures(failures));
-
-  const dim = await imageDimensions(uploadSource).catch(() => undefined);
-  return { url: uploaded.url, mime: uploadSource.type || "application/octet-stream", key: bytesToHex(key), iv: bytesToHex(iv), name: file.name, dim };
+  throw new Error(summarizeUploadFailures(failures));
 }
 
 // ── Decrypt to a cached object URL (I/O) ─────────────────────────────────────

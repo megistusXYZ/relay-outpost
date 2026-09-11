@@ -13,10 +13,13 @@ import { putCommunity, publishCommunityList, type StoredCommunity, type StoredCh
 import { nextMetadataEdition, type MetadataChanges, type MetadataHead } from "./concord-metadata-edition";
 import { publishControlEdition, publishGuestbook, publishChannelMessage } from "./concord-stream";
 import { buildTimerNotice } from "./concord-disappearing";
+import { parseCommunityImage, type CommunityImage } from "./concord-image";
 
 export interface CreateCommunityOpts {
   name: string;
   icon?: string;
+  /** The group's encrypted photo, written as the spec's `icon` (CORD-02 §6). */
+  image?: CommunityImage;
   about?: string;
   /** Relay set for the community (≤5). Caller resolves from NIP-65 writes + defaults. */
   relays: string[];
@@ -70,6 +73,7 @@ export async function createCommunity(
     relays,
     name: opts.name,
     icon: opts.icon,
+    ...(opts.image ? { iconImage: opts.image } : {}),
     about: opts.about,
     addedAt: Date.now(),
     relayUrl: opts.relayUrl,
@@ -77,7 +81,7 @@ export async function createCommunity(
 
   // Record the v1 metadata edition id so later edits can chain to it.
   // `description` is CORD-02 §6's name for it, where other apps read it.
-  const metaContent = { name: opts.name, description: opts.about ?? "", picture: opts.icon ?? "", relays };
+  const metaContent = { name: opts.name, description: opts.about ?? "", picture: opts.icon ?? "", relays, ...(opts.image ? { icon: opts.image } : {}) };
   record.metaVersion = 1;
   record.metaEid = computeEditionId(communityId, 1, undefined, JSON.stringify(metaContent));
 
@@ -164,6 +168,8 @@ export async function editMetadata(
     ...community,
     name,
     icon: picture !== undefined ? picture || undefined : community.icon,
+    // What we published is the group's whole photo: no `icon`, no encrypted photo.
+    iconImage: parseCommunityImage(next.content.icon) ?? undefined,
     about: description || undefined,
     allowMemberInvites: allowMemberInvites !== undefined ? allowMemberInvites : community.allowMemberInvites,
     metaVersion: next.version,

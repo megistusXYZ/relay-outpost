@@ -2350,6 +2350,7 @@ export default function Messages() {
       communityId: c.community_id,
       name: id?.name ?? c.name,
       icon: c.icon,
+      iconImage: c.iconImage,
       channelCount: c.channels.length,
       // Activity clock (ms) floored by addedAt so a brand-new / never-seeded
       // group still sorts by when you joined it instead of pinning to epoch 0.

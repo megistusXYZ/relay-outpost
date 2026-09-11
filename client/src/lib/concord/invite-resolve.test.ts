@@ -58,6 +58,12 @@ describe("bundleToDisplay (pure mapping)", () => {
     expect(bundleToDisplay({ ...baseBundle, icon: "  " }).photo).toBeUndefined();
   });
 
+  it("hands the card the group's encrypted photo to open", () => {
+    const photo = { url: "https://blossom.example/x.enc", key: "8a".repeat(32), nonce: "eb".repeat(16), hash: "bc".repeat(32) };
+    expect(bundleToDisplay({ ...baseBundle, icon: undefined, iconImage: photo }).image).toEqual(photo);
+    expect(bundleToDisplay(baseBundle).image).toBeUndefined();
+  });
+
   it("never throws on an Armada-shaped bundle (object icon, empty channels)", () => {
     // Armada carries `icon` as an encrypted-blob OBJECT; `icon?.trim()` threw
     // and the card crashed instead of rendering the generic fallback.

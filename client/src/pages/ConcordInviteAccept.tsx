@@ -18,6 +18,7 @@ import { forceEnableConcord } from "@/lib/concord/concord-prefs";
 import { decodeFragment, acceptInviteLink, pickBundleEvent } from "@/lib/concord/concord-invites";
 import { classifyInviteFetch, type InviteLookup } from "@/lib/concord/invite-resolve";
 import { getCommunity } from "@/lib/concord/concord-keys";
+import { useCommunityImage } from "@/components/concord/useCommunityImage";
 import { inviterFromCreator, setInviteConnect } from "@/lib/invite-connect";
 import { KIND_INVITE_BUNDLE } from "@/lib/concord/concord-events";
 import { nip19, type Event } from "nostr-tools";
@@ -42,6 +43,7 @@ export default function ConcordInviteAccept({ naddr }: { naddr: string }) {
   const [signerTick, setSignerTick] = useState(0);
   const fragment = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
   const bundle = lookup && (lookup.status === "ok" || lookup.status === "expired") ? lookup.bundle : null;
+  const photo = useCommunityImage(bundle?.iconImage);
   // Already in this group? Then the invite only opens it; your keys stay yours.
   const [held, setHeld] = useState(false);
   useEffect(() => {
@@ -233,7 +235,7 @@ export default function ConcordInviteAccept({ naddr }: { naddr: string }) {
     <Wrap>
       <p className="text-[11px] font-medium uppercase tracking-wider text-brand/60">You're invited to join</p>
       <Avatar className="w-16 h-16 mx-auto border border-primary/30 mt-3">
-        <AvatarImage src={bundle.icon} />
+        <AvatarImage src={photo ?? bundle.icon} />
         <AvatarFallback className="bg-brand/25 text-brand text-xl font-bold">{bundle.name.slice(0, 2).toUpperCase()}</AvatarFallback>
       </Avatar>
       <p className="text-lg font-bold mt-3">{bundle.name}</p>

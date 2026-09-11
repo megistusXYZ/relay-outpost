@@ -179,7 +179,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
   const identityStrip = (
     <div className="flex w-full items-center gap-2 min-w-0 pr-1">
       <button onClick={() => setExpanded((v) => !v)} className="flex items-center gap-2 min-w-0 flex-1 text-left">
-        <GroupAvatar members={rosterPks} picture={community.icon} name={displayName} myPubkey={pubkey} size={28} className="shrink-0" />
+        <GroupAvatar members={rosterPks} picture={community.icon} image={community.iconImage} name={displayName} myPubkey={pubkey} size={28} className="shrink-0" />
         <span className="text-sm font-bold truncate">{displayName}</span>
         <span className="shrink-0 inline-flex" title="End-to-end encrypted" aria-label="End-to-end encrypted"><Lock className="w-3 h-3 text-muted-foreground/50" /></span>
       </button>
@@ -199,7 +199,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
   const aboutInner = (
     <>
       <div className="flex items-start gap-3">
-        <GroupAvatar members={rosterPks} picture={community.icon} name={displayName} myPubkey={pubkey} size={48} className="shrink-0" />
+        <GroupAvatar members={rosterPks} picture={community.icon} image={community.iconImage} name={displayName} myPubkey={pubkey} size={48} className="shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold truncate">{displayName}</p>
           {/* The group's own description leads; live folded metadata wins over
@@ -315,7 +315,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
       {/* Expanded banner block */}
       {expanded && (
         <div className="rounded-xl border border-border/30 p-4 flex items-start gap-3">
-          <GroupAvatar members={rosterPks} picture={community.icon} name={displayName} myPubkey={pubkey} size={56} className="shrink-0" />
+          <GroupAvatar members={rosterPks} picture={community.icon} image={community.iconImage} name={displayName} myPubkey={pubkey} size={56} className="shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="text-lg font-bold">{displayName}</p>
             <p className="text-[11px] text-muted-foreground/50 flex items-center gap-1"><Lock className="w-3 h-3 shrink-0" aria-hidden="true" /> {community.channels.length} channel{community.channels.length !== 1 ? "s" : ""} · encrypted</p>

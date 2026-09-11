@@ -14,6 +14,7 @@
  */
 import type { Event } from "nostr-tools";
 import type { ISigner } from "applesauce-signers";
+import type { CommunityImage } from "./concord-image";
 
 // ── Stored shapes ─────────────────────────────────────────────────────────────
 export interface StoredChannel {
@@ -58,7 +59,10 @@ export interface StoredCommunity {
   channels: StoredChannel[];
   relays: string[];
   name: string;
+  /** A plain photo URL (our `picture`). */
   icon?: string;
+  /** The group's encrypted photo, the spec's `icon` (CORD-02 §6). Shown over `icon` once it opens. */
+  iconImage?: CommunityImage;
   about?: string;
   /** Community policy (mirrors folded metadata): members may create invites. */
   allowMemberInvites?: boolean;

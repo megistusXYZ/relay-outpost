@@ -28,6 +28,49 @@ const created = (over: Partial<StoredCommunity> = {}): StoredCommunity =>
 const fold = (over: Partial<CommunityMetadata> = {}): CommunityMetadata =>
   ({ name: "Group", relays: [], ...over });
 
+describe("nextMetadataEdition — the group photo", () => {
+  // The spec's `icon`: an encrypted photo pointer, as Armada and Vector read it.
+  const photo = { url: "https://blossom.example/p.enc", key: "8a".repeat(32), nonce: "eb".repeat(16), hash: "bc".repeat(32), ext: "png" };
+  const head = { ev: 4, hash: H(4) };
+  const old = "https://public.example/old.png";
+
+  it("a new photo goes out as the spec's encrypted icon, and the old public one is cleared", () => {
+    const live = fold({ picture: old, raw: { name: "Group", description: "", picture: old, relays: [] } });
+    const out = nextMetadataEdition(joined(), live, head, { image: photo });
+    expect(out.content.icon).toEqual(photo);
+    expect(out.content.picture).toBe("");
+  });
+
+  it("in another app's group, adds only the icon", () => {
+    const out = nextMetadataEdition(joined(), fold({ raw: { name: "Group", description: "", relays: [] } }), head, { image: photo });
+    expect(out.content.icon).toEqual(photo);
+    expect(out.content).not.toHaveProperty("picture");
+  });
+
+  it("removing the photo removes both forms", () => {
+    const live = fold({ picture: old, raw: { name: "Group", description: "", picture: old, icon: photo, relays: [] } });
+    const out = nextMetadataEdition(joined(), live, head, { image: null });
+    expect(out.content).not.toHaveProperty("icon");
+    expect(out.content.picture).toBe("");
+  });
+
+  it("a plain photo URL replaces an encrypted one rather than hiding behind it", () => {
+    const live = fold({ raw: { name: "Group", description: "", picture: "", icon: photo, relays: [] } });
+    const out = nextMetadataEdition(joined(), live, head, { icon: "https://public.example/new.png" });
+    expect(out.content).not.toHaveProperty("icon");
+    expect(out.content.picture).toBe("https://public.example/new.png");
+  });
+
+  it("a rename leaves the photo exactly as it was", () => {
+    const live = fold({ raw: { name: "Group", description: "", icon: photo, relays: [] } });
+    expect(nextMetadataEdition(joined(), live, head, { name: "Renamed" }).content.icon).toEqual(photo);
+  });
+
+  it("the owner's brand-new group, with no fold yet, writes it too", () => {
+    expect(nextMetadataEdition(created(), undefined, undefined, { image: photo }).content.icon).toEqual(photo);
+  });
+});
+
 describe("nextMetadataEdition — the base", () => {
   it("takes an untouched policy from the FOLD, not the stale record", () => {
     // The reported bug: renaming republished the record's invite policy.

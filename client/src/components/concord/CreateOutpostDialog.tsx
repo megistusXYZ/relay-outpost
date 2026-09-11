@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { createCommunity } from "@/lib/concord/concord-community";
 import { publishCommunityList, type StoredCommunity } from "@/lib/concord/concord-keys";
 import { RoomImagePicker } from "./RoomImagePicker";
+import type { CommunityImage } from "@/lib/concord/concord-image";
 import createBg from "../../assets/images/create-bg.webp";
 
 export function CreateOutpostDialog({ open, onOpenChange, onCreated }: {
@@ -39,7 +40,7 @@ export function CreateOutpostDialog({ open, onOpenChange, onCreated }: {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [name, setName] = useState("");
-  const [icon, setIcon] = useState("");
+  const [image, setImage] = useState<CommunityImage | null>(null);
   const [about, setAbout] = useState("");
   const [busy, setBusy] = useState(false);
   // Mobile keyboard: top-anchor + cap to the visual viewport so the Name/
@@ -57,12 +58,12 @@ export function CreateOutpostDialog({ open, onOpenChange, onCreated }: {
       // Your own write relays first (NIP-65), the defaults filling up to five.
       const relays = groupRelays(getWriteRelays(pubkey, []), getActiveDefaultRelays());
       const record = await createCommunity(
-        signer, pubkey, { name: name.trim(), icon: icon.trim() || undefined, about: about.trim() || undefined, relays },
+        signer, pubkey, { name: name.trim(), image: image ?? undefined, about: about.trim() || undefined, relays },
         (e, r) => publishEvent(e, r),
         (e) => publishEvent(e, relays),
       );
       onOpenChange(false);
-      setName(""); setIcon(""); setAbout("");
+      setName(""); setImage(null); setAbout("");
       toast({ title: "Group chat created", description: record.name });
       if (onCreated) { onCreated(record); return; }
       // Land in the new group chat with the invite dialog open — an empty community
@@ -106,8 +107,8 @@ export function CreateOutpostDialog({ open, onOpenChange, onCreated }: {
             An end-to-end-encrypted group chat on Nostr — no relay to run. You own the keys; members join by invite.
           </p>
           <div className="space-y-1.5">
-            <label className="text-[11px] font-medium text-muted-foreground/70">Room image <span className="opacity-50">(optional)</span></label>
-            <RoomImagePicker value={icon || undefined} onChange={(url) => setIcon(url ?? "")} fallback={name || "?"} />
+            <label className="text-[11px] font-medium text-muted-foreground/70">Group photo <span className="opacity-50">(optional)</span></label>
+            <RoomImagePicker image={image ?? undefined} onChange={setImage} fallback={name || "?"} />
           </div>
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground/70">Name</label>

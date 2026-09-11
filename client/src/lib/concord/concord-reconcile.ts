@@ -32,10 +32,11 @@
  */
 import { VSK, ADMIN_ROLE_ID, type FoldedState } from "./concord-events";
 import type { StoredChannel, StoredCommunity } from "./concord-keys";
+import { parseCommunityImage, type CommunityImage } from "./concord-image";
 
 // ── The allowlist, as a closed set ────────────────────────────────────────────
 export const RECONCILABLE = [
-  "name", "about", "icon", "allowMemberInvites", "relays",
+  "name", "about", "icon", "iconImage", "allowMemberInvites", "relays",
   "channels", "metaVersion", "metaEid", "adminRolePublished", "retractedChannels",
 ] as const;
 
@@ -64,6 +65,8 @@ export type CommunityPatch = Partial<Pick<StoredCommunity, (typeof RECONCILABLE)
 const str = (v: unknown): string | undefined => (typeof v === "string" ? v : undefined);
 const isHex32 = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f]{64}$/i.test(v);
 const isRelayUrl = (v: unknown): v is string => typeof v === "string" && /^wss?:\/\/\S+$/i.test(v);
+const sameImage = (a?: CommunityImage, b?: CommunityImage): boolean =>
+  a === b || (!!a && !!b && a.url === b.url && a.key === b.key && a.nonce === b.nonce && a.hash === b.hash && a.ext === b.ext);
 
 /** Existing entries are never evicted, so this only bounds ACCRETION. */
 const RELAY_CAP = 5;
@@ -148,6 +151,15 @@ function reconcileMetadata(record: StoredCommunity, folded: FoldedState, patch: 
   if (picture !== undefined) {
     const next = picture.trim() || undefined;
     if (next !== record.icon) patch.icon = next;
+  }
+
+  // iconImage — the spec's `icon`, an encrypted-photo pointer, and the only
+  // photo an Armada or Vector group has. An edition is the group's whole
+  // metadata and every editor carries each field through (CORD-02 §6), so one
+  // without `icon`, or with one we can't safely fetch, means no photo.
+  if (md.raw) {
+    const next = parseCommunityImage(md.raw.icon) ?? undefined;
+    if (!sameImage(next, record.iconImage)) patch.iconImage = next;
   }
 
   // allowMemberInvites — the field this whole family circles. Written in BOTH

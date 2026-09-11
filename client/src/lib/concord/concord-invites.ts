@@ -15,6 +15,7 @@ import { KIND_INVITE_BUNDLE, KIND_CONTROL_EDITION, VSK, buildJoinLeaveRumor, par
 import { putCommunity, getCommunity, publishCommunityList, putInviteSigner, getInviteSigners, type StoredCommunity, type StoredInviteSigner } from "./concord-keys";
 import { publishGuestbook, subscribeGovernance } from "./concord-stream";
 import { checkHeldBundle, anchorsGenesis } from "./concord-invite-guard";
+import { parseCommunityImage, type CommunityImage } from "./concord-image";
 import { persistentPoolSubscribe } from "@/lib/nostr";
 import { inviteAttribution } from "./concord-invite-links";
 import { createGiftWrap, publishWithFallback } from "@/lib/dm";
@@ -124,16 +125,41 @@ export interface InviteBundle {
   channels: { id: string; key?: string; epoch: number; name: string }[];
   relays: string[];
   name: string;
+  /** A plain photo URL, as our older groups carry it. Only ever a string here. */
   icon?: string;
+  /**
+   * The group's encrypted photo (CORD-02 §6). On the wire this is `icon` as an
+   * object, which is how Armada and Vector write it; it's split out here so
+   * every reader of `icon` keeps getting a string.
+   */
+  iconImage?: CommunityImage;
   expires_at?: number;
   creator_npub?: string;
   label?: string;
 }
 
 export function encryptBundle(bundle: InviteBundle, token: Uint8Array): string {
+  const { iconImage, ...rest } = bundle;
+  const wire = iconImage ? { ...rest, icon: iconImage } : rest;
   // New links always use the canonical cross-client key.
-  return nip44v2.encrypt(JSON.stringify(bundle), bundleKeyFromToken(token));
+  return nip44v2.encrypt(JSON.stringify(wire), bundleKeyFromToken(token));
 }
+/**
+ * TOLERANT DUAL-READ (Armada interop). `icon` is a plain URL from us, or the
+ * spec's encrypted-photo OBJECT ({url,key,nonce,hash}) from Armada and Vector,
+ * and every string reader of `icon` threw on the object (`icon?.trim()`). The
+ * object moves to `iconImage`, only if it's a pointer we can safely fetch, and
+ * `icon` is left a string or nothing. `iconImage` itself is never taken from
+ * the wire. Every way a bundle arrives (link or direct invite) comes through here.
+ */
+function normalizeBundleIcon(bundle: InviteBundle): InviteBundle {
+  const image = typeof bundle.icon === "string" ? null : parseCommunityImage(bundle.icon);
+  if (typeof bundle.icon !== "string") delete bundle.icon;
+  delete bundle.iconImage;
+  if (image) bundle.iconImage = image;
+  return bundle;
+}
+
 export function decryptBundle(ciphertext: string, token: Uint8Array): InviteBundle | null {
   // Dual-read: try the canonical bundle_key first (cross-client + all new links),
   // then fall back to the legacy label-only key so invite links our users already
@@ -141,12 +167,7 @@ export function decryptBundle(ciphertext: string, token: Uint8Array): InviteBund
   for (const derive of [bundleKeyFromToken, legacyBundleKeyFromToken]) {
     try {
       const bundle = JSON.parse(nip44v2.decrypt(ciphertext, derive(token))) as InviteBundle;
-      // TOLERANT DUAL-READ (Armada interop): Armada bundles carry `icon` as an
-      // encrypted-blob OBJECT ({url,key,nonce,hash}), not a plain string URL.
-      // Every render/persist path here expects a string (`icon?.trim()` threw)
-      // — drop the variant form at this single choke point. Decrypting the
-      // blob is a possible follow-up; a missing icon falls back to initials.
-      if (bundle && typeof bundle.icon !== "string") delete bundle.icon;
+      if (bundle && typeof bundle === "object") normalizeBundleIcon(bundle);
       return bundle;
     } catch {
       /* try the next key */
@@ -178,6 +199,8 @@ export function bundleFromCommunity(c: StoredCommunity, creatorNpub?: string, la
       .filter((ch) => !ch.isPrivate && !ch.key)
       .map((ch) => ({ id: ch.id, epoch: ch.epoch, name: ch.name })),
     relays: c.relays, name: c.name, icon: c.icon, expires_at: expiresAt, creator_npub: creatorNpub, label,
+    // The group's encrypted photo goes out as the spec's `icon` (encryptBundle).
+    ...(c.iconImage ? { iconImage: c.iconImage } : {}),
   };
 }
 
@@ -371,6 +394,7 @@ export async function acceptInviteLink(
 export function recordFromBundle(bundle: InviteBundle, bootstrapRelays: string[]): StoredCommunity {
   const channels = Array.isArray(bundle.channels) ? bundle.channels : [];
   const controlPk = typeof bundle.control_pk === "string" && /^[0-9a-f]{64}$/.test(bundle.control_pk) ? bundle.control_pk : undefined;
+  const iconImage = parseCommunityImage(bundle.iconImage);
   return {
     community_id: bundle.community_id, owner: bundle.owner, owner_salt: bundle.owner_salt,
     community_root: bundle.community_root, root_epoch: bundle.root_epoch,
@@ -378,6 +402,7 @@ export function recordFromBundle(bundle: InviteBundle, bootstrapRelays: string[]
     channels: channels.map((ch) => ({ id: ch.id, key: ch.key, epoch: ch.epoch, name: ch.name, isPrivate: !!ch.key })),
     relays: [...new Set([...(bundle.relays ?? []), ...bootstrapRelays])].slice(0, 5),
     name: bundle.name, icon: typeof bundle.icon === "string" ? bundle.icon : undefined, addedAt: Date.now(),
+    ...(iconImage ? { iconImage } : {}),
   };
 }
 
@@ -516,6 +541,7 @@ export function stashDirectInviteRumor(
   try {
     const bundle = JSON.parse(rumor.content) as InviteBundle;
     if (!bundle?.community_id || !bundle?.owner || !bundle?.community_root) return null;
+    normalizeBundleIcon(bundle);
     const isNew = addPendingInvite(owner, { bundle, from: rumor.senderPubkey, at: rumor.timestamp });
     try { window.dispatchEvent(new Event("concord-invite-received")); } catch {}
     return { bundle, isNew };

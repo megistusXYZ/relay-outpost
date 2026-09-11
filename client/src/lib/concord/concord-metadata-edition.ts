@@ -39,6 +39,7 @@
  */
 import { computeEditionId, type CommunityMetadata } from "./concord-events";
 import type { StoredCommunity } from "./concord-keys";
+import type { CommunityImage } from "./concord-image";
 
 /** The winning metadata edition as the live fold currently sees it. */
 export interface MetadataHead {
@@ -57,7 +58,10 @@ export interface MetadataHead {
  */
 export interface MetadataChanges {
   name?: string;
+  /** A plain photo URL; setting one removes any encrypted photo. */
   icon?: string;
+  /** A new encrypted photo, the spec's `icon` (CORD-02 §6); null removes the photo. */
+  image?: CommunityImage | null;
   about?: string;
   allowMemberInvites?: boolean;
   /** The disappearing-messages timer in seconds; 0 turns it off (CORD-08 §1). */
@@ -147,7 +151,19 @@ export function nextMetadataEdition(
   const ours = (field: string, edited: boolean) => edited || !raw || field in raw;
   // Our older groups also carry `about`: keep it in step, never stale.
   if (raw && "about" in raw) content.about = description;
-  if (ours("picture", changes.icon !== undefined)) content.picture = changes.icon ?? base.picture ?? "";
+  // The photo. Any change to it replaces the whole photo. The encrypted `icon`
+  // is the spec's and wins wherever it opens, so every photo change sets or
+  // removes it; a new encrypted photo clears our plain `picture` (where the
+  // group has one) rather than leaving the old one behind as a fallback.
+  if (changes.image !== undefined || changes.icon !== undefined) {
+    if (changes.image) content.icon = changes.image;
+    else delete content.icon;
+  }
+  if (changes.image !== undefined) {
+    if (ours("picture", false)) content.picture = "";
+  } else if (ours("picture", changes.icon !== undefined)) {
+    content.picture = changes.icon ?? base.picture ?? "";
+  }
   // Relays have no UI field, so they are always untouched: carry the group's
   // own list as it is. Without raw content, the fold's list. Republishing
   // `community.relays` was its own quiet corruption: for a link-joined member

@@ -26,23 +26,28 @@ import { persistentPoolSubscribe } from "@/lib/nostr";
 import { KIND_INVITE_BUNDLE } from "@/lib/concord/concord-events";
 import { resolveInviteBundle, bundleToDisplay, type InviteDisplay } from "@/lib/concord/invite-resolve";
 import { pickBundleEvent } from "@/lib/concord/concord-invites";
+import { useCommunityImage } from "@/components/concord/useCommunityImage";
 import type { Event } from "nostr-tools";
 
 export function GroupInviteCard({ invite, compact = false }: { invite: GroupInviteTarget; compact?: boolean }) {
   // Resolved group (name/icon/description). undefined = still generic (loading
   // or unresolvable) — the generic card below IS that state, no layout shift.
   const [display, setDisplay] = useState<InviteDisplay | undefined>(undefined);
+  // An encrypted photo, once opened, wins over the plain one.
+  const opened = useCommunityImage(display?.image);
+  const src = opened ?? display?.photo;
   // Only reveal the real icon once it has actually decoded — a loading/broken
   // image must never flash in the fixed slot (the lock glyph stays behind it).
-  const [iconOk, setIconOk] = useState(false);
-  const [iconFailed, setIconFailed] = useState(false);
+  // Tracked per URL, so a plain photo that failed doesn't hide the encrypted one.
+  const [loadedSrc, setLoadedSrc] = useState<string | undefined>(undefined);
+  const [failedSrc, setFailedSrc] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     let cancelled = false;
     // Reset per-invite so a re-keyed card never shows the previous group's icon.
     setDisplay(undefined);
-    setIconOk(false);
-    setIconFailed(false);
+    setLoadedSrc(undefined);
+    setFailedSrc(undefined);
 
     // Fetch the freshest 33301 bundle from the invite's bootstrap relays — same
     // subscribe-with-timeout shape the accept screen uses. Injected so the
@@ -67,7 +72,7 @@ export function GroupInviteCard({ invite, compact = false }: { invite: GroupInvi
     return () => { cancelled = true; };
   }, [invite.naddr, invite.fragment]);
 
-  const showIcon = !!display?.photo && !iconFailed;
+  const showIcon = !!src && src !== failedSrc;
 
   return (
     <Link
@@ -89,12 +94,13 @@ export function GroupInviteCard({ invite, compact = false }: { invite: GroupInvi
         <Lock className={`${compact ? "w-5 h-5" : "w-6 h-6"} text-brand`} />
         {showIcon && (
           <img
-            src={display!.photo}
+            key={src}
+            src={src}
             alt=""
             loading="lazy"
-            onLoad={() => setIconOk(true)}
-            onError={() => setIconFailed(true)}
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ${iconOk ? "opacity-100" : "opacity-0"}`}
+            onLoad={() => setLoadedSrc(src)}
+            onError={() => setFailedSrc(src)}
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ${loadedSrc === src ? "opacity-100" : "opacity-0"}`}
             data-testid="img-invite-icon"
           />
         )}

@@ -78,19 +78,40 @@ describe("bundle encrypt/decrypt + anti-spoof (CORD-05)", () => {
   // encrypted-blob OBJECT {url,key,nonce,hash} — not a string URL. The object
   // icon crashed `bundleToDisplay` (`icon?.trim` is not a function) and leaked
   // a non-string into the stored record.
-  it("tolerates an Armada-shaped bundle: object icon dropped, empty channels kept", () => {
+  const photo = { url: "https://blossom.example/x.enc", key: "8a".repeat(32), nonce: "eb".repeat(16), hash: "bc".repeat(32) };
+
+  it("tolerates an Armada-shaped bundle: the photo pointer is kept apart, empty channels kept", () => {
     const armada = {
       ...bundle,
       channels: [],
-      icon: { url: "https://blossom.example/x.enc", key: "8a".repeat(32), nonce: "eb".repeat(16), hash: "bc".repeat(32) },
+      icon: photo,
       creator_npub: getPublicKey(generateSecretKey()),
     } as unknown as InviteBundle;
     const out = decryptBundle(encryptBundle(armada, token), token);
     expect(out).not.toBeNull();
     expect(out!.name).toBe("Test");
-    expect(out!.icon).toBeUndefined(); // object variant normalized away
+    expect(out!.icon).toBeUndefined(); // `icon` stays a plain URL or nothing: every string reader is safe
+    expect(out!.iconImage).toEqual(photo); // ...and the group's photo is no longer thrown away
     expect(out!.channels).toEqual([]);
     expect(verifyCommunityId(out!.community_id, out!.owner, out!.owner_salt)).toBe(true);
+  });
+
+  it("drops a photo pointer that couldn't be fetched safely", () => {
+    const odd = { ...bundle, icon: { ...photo, url: "http://blossom.example/x.enc" } } as unknown as InviteBundle;
+    const out = decryptBundle(encryptBundle(odd, token), token);
+    expect(out!.icon).toBeUndefined();
+    expect(out!.iconImage).toBeUndefined();
+  });
+
+  it("a link we mint passes the group's photo on in the spec's shape", () => {
+    const community = {
+      community_id: cid, owner, owner_salt: salt, community_root: "33".repeat(32), root_epoch: 0,
+      channels: [], relays: ["wss://a"], name: "Test", addedAt: 1, icon: "https://old.example/p.png", iconImage: photo,
+    } as StoredCommunity;
+    const ct = encryptBundle(bundleFromCommunity(community), token);
+    // On the wire it's `icon` as the object, as Armada and Vector write and read it.
+    expect(JSON.parse(nip44v2.decrypt(ct, bundleKeyFromToken(token))).icon).toEqual(photo);
+    expect(decryptBundle(ct, token)!.iconImage).toEqual(photo);
   });
 
   it("keeps a canonical string icon untouched", () => {
@@ -332,6 +353,14 @@ describe("stashDirectInviteRumor (3313 payload → pending store, never a DM)", 
     const again = stashDirectInviteRumor(owner, { content: JSON.stringify(bundle), senderPubkey: sender, timestamp: 456 });
     expect(again!.isNew).toBe(false);
     expect(listPendingInvites(owner).length).toBe(1);
+  });
+
+  it("keeps another app's group photo from a direct invite, apart from the plain icon field", () => {
+    const photo = { url: "https://blossom.example/x.enc", key: "8a".repeat(32), nonce: "eb".repeat(16), hash: "bc".repeat(32) };
+    const r = stashDirectInviteRumor(owner, { content: JSON.stringify({ ...bundle, icon: photo }), senderPubkey: sender, timestamp: 123 });
+    expect(r!.bundle.icon).toBeUndefined();
+    expect(r!.bundle.iconImage).toEqual(photo);
+    expect(listPendingInvites(owner)[0].bundle.iconImage).toEqual(photo);
   });
 
   it("rejects non-bundle payloads (plain text / partial JSON)", () => {

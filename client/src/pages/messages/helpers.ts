@@ -1,5 +1,6 @@
 import { nip19 } from "nostr-tools";
 import { classifyUrl } from "@/lib/media-utils";
+import type { CommunityImage } from "@/lib/concord/concord-image";
 
 // Pure helpers + types shared between Messages.tsx (the page/thread) and the
 // extracted conversation list (ChatList / ChatListRow). Moved verbatim from
@@ -21,6 +22,8 @@ export interface GroupPreview {
   name: string;
   /** Custom group image (metadata.picture); absent ⇒ facepile of members. */
   icon?: string;
+  /** The group's encrypted photo (the spec's `icon`); shown over `icon` once it opens. */
+  iconImage?: CommunityImage;
   channelCount: number;
   /** Newest known activity, ms since epoch (concord-unread's clock). */
   lastActivity: number;

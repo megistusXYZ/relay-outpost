@@ -24,11 +24,14 @@
 import { nip19, type Event } from "nostr-tools";
 import { decodeFragment, decryptBundle, isRevokedBundleEvent, type InviteBundle } from "./concord-invites";
 import { KIND_INVITE_BUNDLE } from "./concord-events";
+import { parseCommunityImage, type CommunityImage } from "./concord-image";
 
 /** What the fixed-height card actually renders — content swapped into its existing slots. */
 export interface InviteDisplay {
   /** Group icon URL for the photo slot; undefined → keep the lock glyph. */
   photo?: string;
+  /** The group's encrypted photo, for the card to open; shown over `photo` once it does. */
+  image?: CommunityImage;
   /** Group name → the card title. */
   title: string;
   /** Short description → the card subtitle. */
@@ -45,7 +48,7 @@ export interface InviteDisplay {
  *   icon  → photo       (fallback: undefined → lock glyph)
  */
 export function bundleToDisplay(
-  bundle: Pick<InviteBundle, "name" | "icon" | "channels" | "label" | "expires_at">,
+  bundle: Pick<InviteBundle, "name" | "icon" | "iconImage" | "channels" | "label" | "expires_at">,
   now = Date.now(),
 ): InviteDisplay {
   const title = bundle.name?.trim() || "Group chat invite";
@@ -64,9 +67,10 @@ export function bundleToDisplay(
   }
 
   // Armada bundles carry `icon` as an encrypted-blob OBJECT — decryptBundle
-  // normalizes that away, but stay string-guarded here too ("never throws").
+  // moves it to `iconImage`, but stay string-guarded here too ("never throws").
   const photo = typeof bundle.icon === "string" ? bundle.icon.trim() || undefined : undefined;
-  return { photo, title, subtitle };
+  const image = parseCommunityImage(bundle.iconImage) ?? undefined;
+  return { photo, image, title, subtitle };
 }
 
 /** Fetch params derived from an invite link (all client-side; the token never leaves). */
