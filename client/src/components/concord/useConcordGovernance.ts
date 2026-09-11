@@ -9,7 +9,7 @@
  * The pure aggregation (membership events, audit log) lives in concord-activity
  * so it stays node-testable; this hook just accumulates rumors and folds.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { getGlobalSigner } from "@/lib/nip42-auth";
@@ -17,7 +17,7 @@ import { persistentPoolSubscribe } from "@/lib/nostr";
 import { subscribeGovernance, type DecodedRumor } from "@/lib/concord/concord-stream";
 import { parseControlEdition, editionKey, parseSnapshotRumor, foldEditions, computeRoster, KIND_CONTROL_EDITION, KIND_JOIN_LEAVE, KIND_AUDIT, KIND_REKEY, KIND_SNAPSHOT, type ControlEdition, type FoldedState, type Member, type AuditEntry } from "@/lib/concord/concord-events";
 import { computeMembershipEvents, computeAuditLog, type RawRumor, type MembershipEvent } from "@/lib/concord/concord-activity";
-import { receiveRekey, receiveChannelGrant } from "@/lib/concord/concord-rekey";
+import { receiveRekey, receiveChannelGrant, privateRoomHolders } from "@/lib/concord/concord-rekey";
 import { saveRosterSnapshot } from "@/lib/concord/concord-roster";
 import { putCommunity, updateCommunity, deleteCommunity, adoptBaseRekey, type StoredCommunity } from "@/lib/concord/concord-keys";
 import { reconcilePatch } from "@/lib/concord/concord-reconcile";
@@ -76,7 +76,7 @@ function useReconcilerElection(communityId: string | undefined): boolean {
 
 const BASE_SCOPE = "00".repeat(32);
 
-export function useConcordGovernance(community: StoredCommunity | null | undefined): { state: FoldedState; roster: Member[]; myMember?: Member; events: MembershipEvent[]; auditLog: AuditEntry[] } {
+export function useConcordGovernance(community: StoredCommunity | null | undefined): { state: FoldedState; roster: Member[]; myMember?: Member; events: MembershipEvent[]; auditLog: AuditEntry[]; privateRoomHolders: (roomId: string) => string[] | null } {
   const { pubkey } = useNostrAuth();
   const [editions, setEditions] = useState<Map<string, ControlEdition>>(new Map());
   const [joinLeave, setJoinLeave] = useState<Map<string, RawRumor>>(new Map());
@@ -289,5 +289,14 @@ export function useConcordGovernance(community: StoredCommunity | null | undefin
     return () => clearTimeout(t);
   }, [pubkey, communityId, isReconciler, folded.state]);
 
-  return folded;
+  // Who holds each private room's current key, read off the key deliveries this
+  // hook already collects. A removal re-secures those rooms for exactly these
+  // people (concord-rekey.ts resecurePrivateRooms). null = not known.
+  const holdersOf = useCallback((roomId: string) => {
+    const ch = community?.channels.find((c) => c.id === roomId);
+    if (!ch || !owner) return null;
+    return privateRoomHolders(roomId, ch.epoch, [...rekeys.values()], { ownerPubkey: owner, roster: folded.roster });
+  }, [community, rekeys, owner, folded.roster]);
+
+  return useMemo(() => ({ ...folded, privateRoomHolders: holdersOf }), [folded, holdersOf]);
 }

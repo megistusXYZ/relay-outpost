@@ -32,7 +32,7 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
 }) {
   const { pubkey } = useNostrAuth();
   const { toast } = useToast();
-  const { state, roster, myMember, events, auditLog } = useConcordGovernance(community);
+  const { state, roster, myMember, events, auditLog, privateRoomHolders } = useConcordGovernance(community);
   const [pending, setPending] = useState<{ target: string; ban: boolean } | null>(null);
   const [reason, setReason] = useState("");
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -61,6 +61,8 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
           // banlist is multi-writer, so this device's own history is only a
           // floor (removeMember reads that from the community record).
           banHead: state.heads.get(`${VSK.BANLIST}:${BANLIST_EID}`),
+          // Private rooms get new keys too, sent only to the people in them.
+          privateRoomHolders,
         },
         (e, r) => publishEvent(e, r),
         (done, total) => setProgress({ done, total }),
@@ -72,7 +74,7 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
     } finally {
       setPending(null); setReason(""); setProgress(null);
     }
-  }, [pending, pubkey, community, roster, state, reason, onCommunityChange, toast]);
+  }, [pending, pubkey, community, roster, state, reason, onCommunityChange, toast, privateRoomHolders]);
 
   const [adminBusy, setAdminBusy] = useState<string | null>(null);
   const [pendingAdmin, setPendingAdmin] = useState<{ target: string; make: boolean } | null>(null);

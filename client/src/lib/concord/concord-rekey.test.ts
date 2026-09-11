@@ -1,15 +1,15 @@
 import { describe, it, expect } from "vitest";
 import {
   buildRekeyPayload, parseRekeyPayload, chunkRecipients, matchOwnBlob, isRemoved,
-  isAuthorizedRotator, rotatorOutranks, receiveRekey, receiveChannelGrant, sendRekey, type RekeyBlob, type RekeyAuthority,
+  isAuthorizedRotator, rotatorOutranks, receiveRekey, receiveChannelGrant, sendRekey, privateRoomHolders, resecurePrivateRooms, type RekeyBlob, type RekeyAuthority,
 } from "./concord-rekey";
 import { v2 as nip44v2 } from "nostr-tools/nip44";
 import {
   computeLocator, rekeyScopeId, epochKeyCommitment, epochKeyCommitmentLegacy,
   baseRekeyAddress, channelRekeyAddress, unwrapStream, KIND_SEAL_ENC, KIND_SEAL_PLAIN,
 } from "./concord-crypto";
-import { controlPlaneKey, decodeStreamEvent, type DecodedRumor } from "./concord-stream";
-import type { StoredCommunity } from "./concord-keys";
+import { controlPlaneKey, decodeStreamEvent, rekeyReadPlanes, type DecodedRumor } from "./concord-stream";
+import { adoptBaseRekey, type StoredCommunity } from "./concord-keys";
 import { PERM, type Member } from "./concord-events";
 import type { ISigner } from "applesauce-signers";
 import { getPublicKey, generateSecretKey, finalizeEvent, type Event } from "nostr-tools";
@@ -456,5 +456,120 @@ describe("CORD-06 §2 dual-write / dual-read transition", () => {
     const grant = await receiveChannelGrant(fullSigner(bobSk), bob, owner, channelId, [rumor], auth);
     expect(grant).not.toBeNull();
     expect(bytesToHex(grant!.key)).toBe(bytesToHex(channelKey));
+  });
+});
+
+// ── Private rooms re-secured on removal (CORD-06 Refounding, step 4) ──────────
+// Removing someone rotated only the base key, so a removed member kept every
+// private room key they held and could go on reading those rooms (found in the
+// 2026-09-11 spec deep dive). Each held private room now gets a new key too,
+// delivered to the people who actually hold it: never to the removed member,
+// and never to someone who joined after the room was made and was not given it.
+describe("private rooms are re-secured when someone is removed", () => {
+  const ownerSk = generateSecretKey();
+  const owner = getPublicKey(ownerSk);
+  const bobSk = generateSecretKey();
+  const bob = getPublicKey(bobSk);
+  const evicteeSk = generateSecretKey();
+  const evictee = getPublicKey(evicteeSk);
+  const latecomerSk = generateSecretKey();
+  const latecomer = getPublicKey(latecomerSk);
+  const member = (pubkey: string, rank: number, permissions = 0n): Member => ({ pubkey, joinedAt: 0, roleIds: [], permissions, rank });
+  const roster = [member(bob, 3), member(evictee, 3), member(latecomer, 3)];
+  const auth: RekeyAuthority = { ownerPubkey: owner, roster };
+
+  const roomId = "cc".repeat(32);
+  const roomKey = new Uint8Array(32).fill(7);
+  const root = "03".repeat(32);
+  const community: StoredCommunity = {
+    community_id: "02".repeat(32), owner, owner_salt: "11".repeat(32),
+    community_root: root, root_epoch: 0,
+    channels: [{ id: roomId, key: bytesToHex(roomKey), epoch: 1, name: "staff", isPrivate: true }],
+    relays: ["wss://r"], name: "G", addedAt: 0,
+  };
+
+  function fullSigner(sk: Uint8Array): ISigner {
+    return {
+      signEvent: async (t: unknown) => finalizeEvent({ ...(t as object) } as never, sk),
+      nip44: {
+        encrypt: async (pk: string, plaintext: string) => nip44v2.encrypt(plaintext, nip44v2.utils.getConversationKey(sk, pk)),
+        decrypt: async (pk: string, ciphertext: string) => nip44v2.decrypt(ciphertext, nip44v2.utils.getConversationKey(sk, pk)),
+      },
+    } as unknown as ISigner;
+  }
+
+  /** The room's first key delivery, as createPrivateChannel sends it: to the
+   *  members at the time (bob and the evictee; the latecomer joined after). */
+  async function creationDelivery(rotatorSk = ownerSk) {
+    const published: Event[] = [];
+    await sendRekey(
+      fullSigner(rotatorSk), getPublicKey(rotatorSk), community,
+      { scopeId: roomId, prevEpoch: 0, prevKey: roomKey, newKey: roomKey, remaining: [{ pubkey: bob }, { pubkey: evictee }] },
+      async (e) => { published.push(e); },
+    );
+    const plane = controlPlaneKey(community);
+    return published.filter((e) => e.pubkey === plane.pk).map((e) => decodeStreamEvent(plane, e)!);
+  }
+
+  /** What a removal publishes for the room: the rumors at its next rekey address. */
+  async function removal(holdersOf: (roomId: string) => string[] | null) {
+    const published: Event[] = [];
+    const channels = await resecurePrivateRooms(
+      fullSigner(ownerSk), owner, community,
+      { removed: evictee, holdersOf, everyone: [owner, bob, evictee, latecomer] },
+      async (e) => { published.push(e); },
+    );
+    // Addressed under the root the holders hold now, where they listen (rekeyReadPlanes).
+    const plane = channelRekeyAddress(hexToBytes(root), roomId, 2n);
+    const rumors = published.filter((e) => e.pubkey === plane.pk).map((e) => decodeStreamEvent(plane, e)!);
+    return { room: channels.find((c) => c.id === roomId)!, rumors };
+  }
+  const heldAt1 = { scopeId: roomId, myCurrentKey: roomKey, myCurrentEpoch: 1 };
+
+  it("knows who holds a private room from its latest key delivery, not from the roster", async () => {
+    const holders = privateRoomHolders(roomId, 1, await creationDelivery(), auth);
+    expect(holders?.slice().sort()).toEqual([owner, bob, evictee].sort());
+  });
+
+  it("says it doesn't know when no delivery for the room's current key is in hand", () => {
+    expect(privateRoomHolders(roomId, 1, [], auth)).toBeNull();
+  });
+
+  it("ignores a delivery from someone who can't manage rooms, so nobody can write themselves in", async () => {
+    // The evictee (no MANAGE_CHANNELS) forges a delivery naming themselves.
+    const forged = await creationDelivery(evicteeSk);
+    expect(privateRoomHolders(roomId, 1, forged, auth)).toBeNull();
+  });
+
+  it("gives the other holders a new key and leaves the removed member out", async () => {
+    const { room, rumors } = await removal(() => [owner, bob, evictee]);
+    expect(room.epoch).toBe(2);
+    expect(room.key).not.toBe(bytesToHex(roomKey));
+    const kept = await receiveRekey(fullSigner(bobSk), bob, owner, heldAt1, rumors, auth);
+    expect(kept.status).toBe("rekeyed");
+    if (kept.status === "rekeyed") expect(bytesToHex(kept.newKey)).toBe(room.key);
+    const gone = await receiveRekey(fullSigner(evicteeSk), evictee, owner, heldAt1, rumors, auth);
+    expect(gone.status).toBe("removed");
+  });
+
+  it("reaches holders who already moved to the group's new key, at the address they still watch", async () => {
+    const { rumors } = await removal(() => [owner, bob, evictee]);
+    expect(rumors.length).toBeGreaterThan(0);
+    // Bob adopts the removal's new base key first. The room's new key went out
+    // under the root he held before, and he keeps watching that address.
+    const bobAfterBase = adoptBaseRekey(community, "04".repeat(32), 1);
+    const watched = rekeyReadPlanes(bobAfterBase).map((p) => p.pk);
+    expect(watched).toContain(channelRekeyAddress(hexToBytes(root), roomId, 2n).pk);
+  });
+
+  it("never hands the room to someone who wasn't in it", async () => {
+    const { rumors } = await removal(() => [owner, bob, evictee]);
+    expect(await receiveChannelGrant(fullSigner(latecomerSk), latecomer, owner, roomId, rumors, auth)).toBeNull();
+  });
+
+  it("when the holders can't be worked out, keeps everyone still in the group rather than lock a holder out", async () => {
+    const { rumors } = await removal(() => null);
+    expect((await receiveRekey(fullSigner(bobSk), bob, owner, heldAt1, rumors, auth)).status).toBe("rekeyed");
+    expect((await receiveRekey(fullSigner(evicteeSk), evictee, owner, heldAt1, rumors, auth)).status).toBe("removed");
   });
 });
