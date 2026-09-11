@@ -361,6 +361,9 @@ export interface CachedMessage {
   kind?: number;
   /** When it disappears (unix seconds), by the tag its author signed (CORD-08). */
   expiresAt?: number;
+  /** The seal it arrived in, kept so it can be pinned (CORD-04 §7), and the key epoch that opens it. */
+  seal?: import("./concord-crypto").Seal;
+  epoch?: number;
   edited?: boolean; deleted?: boolean; mentions?: string[];
 }
 
