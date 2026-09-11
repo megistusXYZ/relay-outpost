@@ -322,6 +322,29 @@ export async function wipeConcordKeys(ownerPubkey: string): Promise<void> {
   await Promise.all(list.map((c) => deleteCommunity(ownerPubkey, c.community_id)));
 }
 
+/**
+ * Everything this device holds for an account's group chats: their keys, the
+ * decrypted messages and reactions cached from them, invite-link records and
+ * the processed-wrap ledger. The account's Community List and Invite List on
+ * its relays are untouched (nothing here marks a group as left), so signing
+ * back in restores the groups and links. Used by "remove my private group
+ * chats from this device" at sign-out.
+ */
+export async function wipeConcordDevice(ownerPubkey: string): Promise<void> {
+  try {
+    const db = await openDB();
+    const mine = IDBKeyRange.bound([ownerPubkey, ""], [ownerPubkey, "￿"]);
+    const stores = [COMMUNITIES_STORE, STREAMS_STORE, INVITES_STORE, MESSAGES_STORE, REACTIONS_STORE];
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(stores, "readwrite");
+      for (const s of stores) tx.objectStore(s).delete(mine);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    });
+  } catch { /* best-effort */ }
+}
+
 // Stream-dedupe ledger (used by concord-stream.ts).
 export async function isStreamProcessed(ownerPubkey: string, wrapId: string): Promise<boolean> {
   try {

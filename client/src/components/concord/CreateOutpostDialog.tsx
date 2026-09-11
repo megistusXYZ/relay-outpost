@@ -15,6 +15,8 @@ import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { getGlobalSigner } from "@/lib/nip42-auth";
 import { publishEvent } from "@/lib/nostr";
 import { getActiveDefaultRelays } from "@/lib/outpost-relays";
+import { getWriteRelays } from "@/lib/outbox";
+import { groupRelays } from "@/lib/concord/concord-group-relays";
 import { useToast } from "@/hooks/use-toast";
 import { createCommunity } from "@/lib/concord/concord-community";
 import { publishCommunityList, type StoredCommunity } from "@/lib/concord/concord-keys";
@@ -52,7 +54,8 @@ export function CreateOutpostDialog({ open, onOpenChange, onCreated }: {
     }
     setBusy(true);
     try {
-      const relays = getActiveDefaultRelays().slice(0, 5);
+      // Your own write relays first (NIP-65), the defaults filling up to five.
+      const relays = groupRelays(getWriteRelays(pubkey, []), getActiveDefaultRelays());
       const record = await createCommunity(
         signer, pubkey, { name: name.trim(), icon: icon.trim() || undefined, about: about.trim() || undefined, relays },
         (e, r) => publishEvent(e, r),

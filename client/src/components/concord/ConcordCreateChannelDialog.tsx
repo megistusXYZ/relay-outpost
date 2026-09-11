@@ -87,7 +87,7 @@ export function ConcordCreateChannelDialog({ open, onOpenChange, community, onCo
       }
       onCommunityChange(updated);
       onCreated(updated.channels[updated.channels.length - 1].id);
-      toast({ title: type === "private" ? "Private channel created" : type === "hangout" ? "Hangout created" : "Channel created" });
+      toast({ title: type === "private" ? "Private room created" : type === "hangout" ? "Hangout created" : "Room created" });
       onOpenChange(false);
       setName(""); setType("text");
     } catch (err) {

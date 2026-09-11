@@ -36,6 +36,8 @@ import { NotificationIcon } from "@/components/icons/NotificationIcon";
 import { useNWC } from "@/contexts/NWCContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { ensureConcordUnreadWatcher, useConcordUnread } from "@/lib/concord/concord-unread";
+import { hasSeenList } from "@/lib/concord/community-list-memory";
+import { wipeConcordDevice } from "@/lib/concord/concord-keys";
 import { concordChatsBadgeCount, useConcordMentionCounts } from "@/lib/concord/concord-mentions";
 import { ensureConcordMentionScanner } from "@/lib/concord/concord-mention-scan";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
@@ -71,6 +73,8 @@ export function AppSidebar() {
   const [location, setLocation] = useLocation();
   const search = useSearch();
   const { pubkey, profile, isLoggingIn, isReconnecting, loginMethod, logout } = useNostrAuth();
+  // Sign-out option: take this account's private group chats off the device too.
+  const [wipeChats, setWipeChats] = useState(false);
   const { wotEnabled } = useGrapeRankScores();
   const { isConnected: walletConnected, balance: walletBalance } = useNWC();
   const [balanceHidden, setBalanceHidden] = useState(() => localStorage.getItem("walletBalanceHidden") === "true");
@@ -401,9 +405,20 @@ export function AppSidebar() {
               {showLogoutConfirm ? (
                 <div className="rounded-lg border border-primary/30 dark:border-white/20 bg-primary/10 dark:bg-black/40 p-3 space-y-2.5" data-testid="container-logout-confirm">
                   <p className="text-[11px] font-brand uppercase tracking-[0.15em] text-brand dark:text-white/70">Sign out?</p>
+                  {/* Offered only once this device has seen the account's
+                      encrypted group list, the backup that brings them back. */}
+                  {hasSeenList(pubkey) && (
+                    <label className="flex items-start gap-2 text-[11px] text-foreground/75 dark:text-white/70 cursor-pointer">
+                      <input type="checkbox" checked={wipeChats} onChange={(e) => setWipeChats(e.target.checked)} className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-primary" data-testid="sidebar-signout-wipe-chats" />
+                      <span>
+                        Also remove my private group chats from this device
+                        <span className="block text-[10px] text-muted-foreground/60">They come back when you sign in again, from your encrypted backup.</span>
+                      </span>
+                    </label>
+                  )}
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => { setShowLogoutConfirm(false); logout(); }}
+                      onClick={async () => { setShowLogoutConfirm(false); if (wipeChats && pubkey) await wipeConcordDevice(pubkey); logout(); }}
                       className="flex-1 inline-flex items-center justify-center gap-1.5 h-8 rounded-md bg-red-500/20 border border-red-500/40 text-red-500 dark:text-red-400 font-brand uppercase tracking-[0.15em] text-[10px] transition-all duration-200 hover:bg-red-500/30 hover:border-red-500/50 cursor-pointer"
                       data-testid="button-confirm-logout"
                     >
