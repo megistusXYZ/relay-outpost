@@ -15,7 +15,7 @@ import { putCommunity, deleteCommunity, publishCommunityList, adoptBaseRekey, ty
 import { nextBanlistEdition, type BanlistHead } from "./concord-banlist";
 import { refreshInviteLinks } from "./concord-invites";
 import { publishControlEdition, publishGuestbook, publishGuestbookSnapshot, channelPlaneKey } from "./concord-stream";
-import { sendRekey } from "./concord-rekey";
+import { sendRekey, resecurePrivateRooms } from "./concord-rekey";
 
 type PublishFn = (event: Event, relays: string[]) => Promise<unknown>;
 type PublishSelfFn = (event: Event) => Promise<unknown>;
@@ -59,6 +59,11 @@ export async function removeMember(
      */
     banHead?: BanlistHead;
     reason?: string;
+    /**
+     * Who holds each private room's current key (privateRoomHolders over the
+     * live rekey rumors), or null when unknown. Omitted = unknown for every room.
+     */
+    privateRoomHolders?: (roomId: string) => string[] | null;
   },
   publish: PublishFn,
   onProgress?: ProgressFn,
@@ -107,12 +112,27 @@ export async function removeMember(
   ).catch(() => null);
   if (!res) return null;
 
+  // 2.5 Re-secure every private room they could read (CORD-06 Refounding,
+  //     step 4). The base rotation alone left them holding those rooms' keys,
+  //     so a removed member went on reading every private room they were in.
+  //     Sent while `community` still holds the PRIOR root: that is the address
+  //     the holders watch. Best-effort per room; a failed room keeps its key.
+  const channels = await resecurePrivateRooms(
+    signer, ownerPubkey, community,
+    {
+      removed: target,
+      holdersOf: opts.privateRoomHolders ?? (() => null),
+      everyone: [ownerPubkey, ...opts.roster.map((m) => m.pubkey)],
+    },
+    publish, onProgress,
+  ).catch(() => community.channels);
+
   // 3. Adopt the new root locally, RETAINING the prior root so the earlier
   //    epochs' governance/guestbook/channel planes stay readable (without this,
   //    the roster + audit history vanish the moment the epoch bumps).
   // `community` already carries the banlist cursor recorded in step 1, and
   // adoptBaseRekey spreads the record, so it survives the epoch bump.
-  const updated = adoptBaseRekey(community, bytesToHex(newKey), res.newEpoch);
+  const updated = adoptBaseRekey({ ...community, channels }, bytesToHex(newKey), res.newEpoch);
   await putCommunity(ownerPubkey, updated);
 
   // 3.5 Refounding guestbook snapshot (CORD-06 §3 / CORD-02 §5): seed the

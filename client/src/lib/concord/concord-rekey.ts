@@ -11,9 +11,9 @@ import { v2 as nip44v2 } from "nostr-tools/nip44";
 import { getPublicKey, type Event } from "nostr-tools";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import type { ISigner } from "applesauce-signers";
-import { computeLocator, epochKeyCommitment, epochKeyCommitmentLegacy, channelRekeyAddress, baseRekeyAddress, u64BE, concatBytes, type GroupKey } from "./concord-crypto";
+import { computeLocator, epochKeyCommitment, epochKeyCommitmentLegacy, channelRekeyAddress, baseRekeyAddress, u64BE, concatBytes, randomBytes32, type GroupKey } from "./concord-crypto";
 import { KIND_REKEY, buildJoinLeaveRumor, hasPermission, canActOn, PERM, OWNER_POSITION, type RumorTemplate, type Member } from "./concord-events";
-import type { StoredCommunity } from "./concord-keys";
+import type { StoredChannel, StoredCommunity } from "./concord-keys";
 import { controlPlaneKey, publishToPlane } from "./concord-stream";
 import { KIND_SEAL_PLAIN, KIND_SEAL_ENC } from "./concord-crypto";
 
@@ -300,6 +300,81 @@ export async function receiveChannelGrant(
     }
   }
   return null;
+}
+
+// ── Private rooms on removal (CORD-06 Refounding, step 4) ─────────────────────
+/**
+ * Who holds a private room's current key, read off the delivery that handed it
+ * out: the rotator, plus every roster member whose locator is in its blobs
+ * (locators derive from public keys, so anyone can recompute them). Only
+ * deliveries from someone allowed to rotate the room count, or a member could
+ * forge one naming themselves and be handed the key at the next removal.
+ * null = no such delivery in hand, so the holders aren't known.
+ */
+export function privateRoomHolders(
+  roomId: string,
+  epoch: number,
+  rumors: { pubkey: string; tags: string[][]; content: string }[],
+  auth: RekeyAuthority,
+): string[] | null {
+  const holders = new Set<string>();
+  let found = false;
+  for (const r of rumors) {
+    const tag = (k: string) => r.tags.find((t) => t[0] === k)?.[1];
+    if (tag("scope") !== roomId || Number(tag("newepoch")) !== epoch) continue;
+    if (!isAuthorizedRotator(r.pubkey, auth, roomId)) continue;
+    found = true;
+    holders.add(r.pubkey);
+    const locators = new Set(safeParseBlobs(r.content).map((b) => b.locator));
+    for (const m of auth.roster) {
+      if (locators.has(computeLocator(r.pubkey, m.pubkey, roomId, BigInt(epoch)))) holders.add(m.pubkey);
+    }
+  }
+  return found ? [...holders] : null;
+}
+
+/**
+ * Give every private room the removed member could read a new key, delivered
+ * to its other holders. Call it BEFORE adopting the new base root: the
+ * delivery is addressed under the root the holders hold now, which they keep
+ * watching after adopting (rekeyReadPlanes). Holders unknown → everyone still
+ * in the group, because leaving a holder out locks them out of the room.
+ * Returns the community's channels with each re-secured room's new key and
+ * epoch; a room whose rotation failed keeps its old key.
+ */
+export async function resecurePrivateRooms(
+  signer: ISigner,
+  rotatorPubkey: string,
+  community: StoredCommunity,
+  opts: { removed: string; holdersOf: (roomId: string) => string[] | null; everyone: string[] },
+  publish: (event: Event, relays: string[]) => Promise<unknown>,
+  onProgress?: (done: number, total: number) => void,
+): Promise<StoredChannel[]> {
+  const plans = community.channels
+    .filter((ch) => ch.isPrivate && ch.key)
+    .map((ch) => ({ ch, holders: opts.holdersOf(ch.id) }))
+    // A room they never held needs no new key.
+    .filter(({ holders }) => holders === null || holders.includes(opts.removed))
+    .map(({ ch, holders }) => ({
+      ch,
+      recipients: [...new Set(holders ?? opts.everyone)]
+        .filter((pk) => pk !== opts.removed && pk !== rotatorPubkey)
+        .map((pubkey) => ({ pubkey })),
+    }));
+  const total = plans.reduce((n, p) => n + p.recipients.length, 0);
+  let before = 0;
+  const rotated = new Map<string, StoredChannel>();
+  for (const { ch, recipients } of plans) {
+    const newKey = randomBytes32();
+    const res = await sendRekey(
+      signer, rotatorPubkey, community,
+      { scopeId: ch.id, prevEpoch: ch.epoch, prevKey: hexToBytes(ch.key!), newKey, remaining: recipients },
+      publish, (done) => onProgress?.(before + done, total),
+    ).catch(() => null);
+    before += recipients.length;
+    if (res) rotated.set(ch.id, { ...ch, key: bytesToHex(newKey), epoch: res.newEpoch });
+  }
+  return community.channels.map((c) => rotated.get(c.id) ?? c);
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
