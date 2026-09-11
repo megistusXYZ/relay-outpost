@@ -11,6 +11,8 @@ import {
   onMuteChange,
   normalizeForCrossDup,
   buildCrossAuthorWaveSet,
+  setMutedHashtags,
+  setMutedThreads,
   type SpamFilterOptions,
 } from "./spam-filter";
 
@@ -175,6 +177,31 @@ describe("filterSpamEvents — three-state profile gate (profileSettledGetter)",
       scoreGetter: (pk) => (pk === "trusted_no_kind0" ? 0.4 : undefined),
     });
     expect(out.map((e) => e.pubkey)).toEqual(["trusted_no_kind0"]);
+  });
+});
+
+/**
+ * Other apps can mute a hashtag or a whole thread (NIP-51 "t" and "e" entries
+ * in your mute list). The owner's call (2026-09-11): honour them here too, for
+ * everyone, as muted words are: a mute is your choice about what you see.
+ */
+describe("filterSpamEvents — hashtags and threads you muted in any app", () => {
+  const THREAD = "e".repeat(64);
+
+  it("hides posts under a muted hashtag, and a muted thread with its replies, even from people you follow", () => {
+    setMutedHashtags(["nsfw"]);
+    setMutedThreads([THREAD]);
+    try {
+      const tagged = ev({ tags: [["t", "NSFW"]] });
+      const threadStart = ev({ id: THREAD });
+      const reply = ev({ tags: [["e", THREAD, "", "root"]] });
+      const fine = ev({ tags: [["t", "bitcoin"]] });
+      const out = filterSpamEvents([tagged, threadStart, reply, fine], { follows: new Set(["author1"]) });
+      expect(out).toEqual([fine]);
+    } finally {
+      setMutedHashtags([]);
+      setMutedThreads([]);
+    }
   });
 });
 
