@@ -18,6 +18,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageTabs } from "@/components/PageTabs";
+import { ConcordActivityMentions } from "@/components/concord/ConcordActivityMentions";
 import { MessageSquare, Heart, Repeat, Zap, UserPlus, AtSign, CheckCheck, ChevronDown, ChevronRight, LifeBuoy, ShieldAlert, VolumeX, Flag, DoorOpen } from "lucide-react";
 import { AdmissionQueue } from "@/components/AdmissionQueue";
 import { SweepNoticeCard } from "@/components/SweepNoticeCard";
@@ -1034,6 +1035,10 @@ export default function Notifications() {
           </p>
         </div>
       )}
+
+      {/* Group chats: mentions and replies to you, still unread. Encrypted,
+          so they never reach the relay-driven sections below. */}
+      {(filter === "all" || filter === "mention" || filter === "reply") && <ConcordActivityMentions className="mb-3" />}
 
       {loading && notifications.length === 0 ? (
         <div className="glass-card rounded-lg border p-10">
