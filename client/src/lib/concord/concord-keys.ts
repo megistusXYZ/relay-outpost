@@ -80,7 +80,7 @@ export interface StoredCommunity {
   /** Whether the built-in Admin role edition has been published (publish once). */
   adminRolePublished?: boolean;
   /** Per-member grant (vsk-3) chain state so admin toggles publish version N+1. */
-  grantVersions?: Record<string, { version: number; eid: string }>;
+  grantVersions?: Record<string, { version: number; eid: string; /** The coordinate that chain lives at; absent = the member's pubkey. */ coord?: string }>;
   /**
    * Banlist (vsk-4) chain state — a FLOOR, not the authority. Unlike metadata,
    * the banlist is multi-writer (any PERM.BAN holder publishes it), so the live
@@ -96,6 +96,8 @@ export interface StoredCommunity {
   banVersion?: number;
   banEid?: string;
   banSnapshot?: string[];
+  /** The coordinate the banlist cursor's chain lives at; absent = the original `"ba"×32`. */
+  banCoord?: string;
   /**
    * Prior base keys this member HELD before each base rotation (CORD-06),
    * oldest → newest. Kept so the control/guestbook/public-channel planes of

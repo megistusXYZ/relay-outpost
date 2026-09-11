@@ -63,7 +63,7 @@ export function ConcordCreateChannelDialog({ open, onOpenChange, community, onCo
   }, [open, pubkey, community]);
 
   const roster = useMemo(
-    () => computeRoster([...joinLeave.values()], foldEditions([...editions.values()], community.owner), community.owner),
+    () => computeRoster([...joinLeave.values()], foldEditions([...editions.values()], community.owner, community.community_id), community.owner),
     [editions, joinLeave, community.owner],
   );
 

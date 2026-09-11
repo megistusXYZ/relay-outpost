@@ -179,7 +179,7 @@ export function useConcordGovernance(community: StoredCommunity | null | undefin
   const owner = community?.owner ?? "";
   const groupId = community?.community_id ?? "";
   const folded = useMemo(() => {
-    const state = foldEditions([...editions.values()], owner);
+    const state = foldEditions([...editions.values()], owner, groupId || undefined);
     const snaps = [...snapshots.values()].map(parseSnapshotRumor).filter((s): s is NonNullable<typeof s> => s !== null);
     const roster = owner ? computeRoster([...joinLeave.values()], state, owner, snaps, [...kicks.values()]) : [];
     const myMember = pubkey ? roster.find((m) => m.pubkey === pubkey) : undefined;

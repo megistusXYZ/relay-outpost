@@ -19,6 +19,7 @@ import { roleContent, nextRoleEdition, rolesAfter, becomesStaff } from "./concor
 import { pinsLocator } from "./concord-pins";
 import { nextBanlistEdition, nextUnbanEdition, type BanlistHead } from "./concord-banlist";
 import { refreshInviteLinks } from "./concord-invites";
+import { grantLocator, banlistLocator } from "./concord-locators";
 import { publishControlEdition, publishGuestbook, publishGuestbookSnapshot, publishDissolution, channelPlaneKey, controlWritePlane } from "./concord-stream";
 import { sendRekey, resecurePrivateRooms } from "./concord-rekey";
 import { sealControlWrap } from "./concord-control-wrap";
@@ -87,9 +88,10 @@ export async function removeMember(
   //    time put two different payloads on one fold coordinate, where only one
   //    survives and it REPLACES the set — silently un-banning somebody.
   if (opts.ban) {
+    // At the spec's coordinate (CORD-02 A.6), where every Concord app reads it.
     const next = nextBanlistEdition(target, opts.currentBanlist, opts.banHead, {
-      version: community.banVersion, eid: community.banEid, snapshot: community.banSnapshot,
-    });
+      version: community.banVersion, eid: community.banEid, snapshot: community.banSnapshot, coord: community.banCoord,
+    }, banlistLocator(community.community_id));
     // Hash the SAME array buildControlEdition will serialize, so the id we
     // record matches the content byte-for-byte (JSON.stringify, key order and
     // all) — a mismatch here makes the next edition's `ep` unresolvable.
@@ -104,7 +106,7 @@ export async function removeMember(
     // removeMember then returns early. Remembering only on the success path left
     // a published version this device had no memory of, so the next ban reused
     // that version and collided: the exact failure this function is fixing.
-    community = { ...community, banVersion: next.version, banEid: eid, banSnapshot: next.banlist };
+    community = { ...community, banVersion: next.version, banEid: eid, banSnapshot: next.banlist, banCoord: next.eid };
     await putCommunity(ownerPubkey, community).catch(() => {});
   }
 
@@ -323,20 +325,22 @@ export async function setMemberRoles(
       controlWrap = await sealControlWrap(signer, target, community.root_epoch, root).catch(() => undefined);
     }
   }
-  const next = nextGrantEdition(target, community.grantVersions?.[target], foldHead, change.after, foldArrived, controlWrap);
+  // At the spec's coordinate (CORD-02 A.6), where every Concord app reads it.
+  const coord = grantLocator(community.community_id, target);
+  const next = nextGrantEdition(target, community.grantVersions?.[target], foldHead, change.after, foldArrived, controlWrap, coord);
 
   // Refuse to record a cursor for an edition that never landed. A revoke that
   // doesn't land leaves the person holding every permission the role gave,
   // enforced by every other client, with nothing to show it failed.
   const landed = await publishControlEdition(signer, actorPubkey, community,
-    buildControlEdition(actorPubkey, VSK.GRANT, target, next.version, next.content, now,
+    buildControlEdition(actorPubkey, VSK.GRANT, coord, next.version, next.content, now,
       next.prevHash ? { prevHash: next.prevHash } : undefined),
     publish);
   if (!landed) throw new Error("Couldn't reach any relay — the role was not changed.");
 
   const updated: StoredCommunity = {
     ...community,
-    grantVersions: { ...(community.grantVersions ?? {}), [target]: { version: next.version, eid: next.eid } },
+    grantVersions: { ...(community.grantVersions ?? {}), [target]: { version: next.version, eid: next.eid, coord } },
   };
   await putCommunity(actorPubkey, updated);
 
@@ -486,14 +490,14 @@ export async function unbanMember(
 ): Promise<StoredCommunity> {
   const now = Math.floor(Date.now() / 1000);
   const next = nextUnbanEdition(target, opts.currentBanlist, opts.banHead, {
-    version: community.banVersion, eid: community.banEid, snapshot: community.banSnapshot,
-  });
+    version: community.banVersion, eid: community.banEid, snapshot: community.banSnapshot, coord: community.banCoord,
+  }, banlistLocator(community.community_id));
   const eid = computeEditionId(next.eid, next.version, next.prevHash, JSON.stringify(next.banlist));
   await publishControlEdition(signer, actorPubkey, community,
     buildControlEdition(actorPubkey, VSK.BANLIST, next.eid, next.version, next.banlist, now,
       next.prevHash ? { prevHash: next.prevHash } : undefined),
     publish);
-  const updated = { ...community, banVersion: next.version, banEid: eid, banSnapshot: next.banlist };
+  const updated = { ...community, banVersion: next.version, banEid: eid, banSnapshot: next.banlist, banCoord: next.eid };
   await putCommunity(actorPubkey, updated).catch(() => {});
   await publishGuestbook(signer, actorPubkey, updated, buildAuditRumor(actorPubkey, "unban", now, { target }), publish).catch(() => null);
   return updated;

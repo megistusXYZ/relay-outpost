@@ -49,6 +49,8 @@ export interface GrantHead {
 export interface GrantCursor {
   version: number;
   eid: string;
+  /** The coordinate that chain lives at. Absent: the member's pubkey, this client's original one. */
+  coord?: string;
 }
 
 export interface GrantContent {
@@ -84,6 +86,8 @@ export function nextGrantEdition(
   foldArrived: boolean,
   /** A control_wrap to deliver with a staff-making grant (CORD-04 §3). */
   controlWrap?: string,
+  /** The grant's coordinate: grant_locator for new editions; the member's pubkey was this client's original. */
+  coord: string = target,
 ): NextGrantEdition {
   // The wrap is part of the content, so it is inside the hash below too.
   const content: GrantContent = { member: target, role_ids: roleIds, ...(controlWrap ? { control_wrap: controlWrap } : {}) };
@@ -93,7 +97,8 @@ export function nextGrantEdition(
   // nobody else can resolve.
   const candidates: GrantHead[] = [];
   if (foldHead?.hash) candidates.push(foldHead);
-  if (cursor?.version && cursor.eid) candidates.push({ ev: cursor.version, hash: cursor.eid });
+  // A cursor names the chain at the coordinate it was written to, never another.
+  if (cursor?.version && cursor.eid && (cursor.coord ?? target) === coord) candidates.push({ ev: cursor.version, hash: cursor.eid });
   const head = candidates.reduce<GrantHead | undefined>((best, c) => (!best || c.ev > best.ev ? c : best), undefined);
 
   // v1 only against arrival proof — never on the mere absence of a local cursor,
@@ -109,6 +114,6 @@ export function nextGrantEdition(
     // Hash the SAME object the caller will serialize, so the id we record
     // matches the content byte for byte — a mismatch makes the next edition's
     // `ep` unresolvable.
-    eid: computeEditionId(target, version, prevHash, JSON.stringify(content)),
+    eid: computeEditionId(coord, version, prevHash, JSON.stringify(content)),
   };
 }

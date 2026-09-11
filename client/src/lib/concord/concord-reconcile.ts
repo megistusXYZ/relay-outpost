@@ -45,7 +45,7 @@ export const UNTOUCHABLE = [
   // blobs (CORD-02 §5), never from the fold.
   "control_pk", "control_root",
   "priorRoots", "relayUrl", "addedAt",
-  "banVersion", "banEid", "banSnapshot", "grantVersions",
+  "banVersion", "banEid", "banSnapshot", "banCoord", "grantVersions",
 ] as const;
 
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;

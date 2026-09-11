@@ -75,6 +75,17 @@ export interface BanlistCursor {
   eid?: string;
   /** The exact payload published, so a cold fold cannot silently shrink it. */
   snapshot?: string[];
+  /** The coordinate that chain lives at. Absent: BANLIST_EID, this client's original one. */
+  coord?: string;
+}
+
+/**
+ * A cursor names the chain at the coordinate it was written to. At any other
+ * it is no parent, and only still carries the bans it knew about.
+ */
+function cursorAt(cursor: BanlistCursor | undefined, coord: string): BanlistCursor | undefined {
+  if (!cursor || (cursor.coord ?? BANLIST_EID) === coord) return cursor;
+  return { snapshot: cursor.snapshot };
 }
 
 export interface NextBanlistEdition {
@@ -94,15 +105,17 @@ export function nextBanlistEdition(
   foldedBanlist: Iterable<string>,
   foldHead: BanlistHead | undefined,
   cursor: BanlistCursor | undefined,
+  /** Where the list goes: banlist_locator for new editions (CORD-02 A.6). */
+  coord: string = BANLIST_EID,
 ): NextBanlistEdition {
-  const { head, merged } = startFrom(foldedBanlist, foldHead, cursor);
+  const { head, merged } = startFrom(foldedBanlist, foldHead, cursorAt(cursor, coord));
   // Capped like every other list this store persists (PRIOR_ROOTS_CAP,
   // SNAPSHOT_CHUNK_CAP): the payload is persisted on StoredCommunity. Oldest
   // entries go first, and the ban being made now is never the one dropped.
   const banlist = merged.includes(target)
     ? merged.slice(-BANLIST_CAP)
     : [...merged.slice(-(BANLIST_CAP - 1)), target].sort();
-  return { eid: BANLIST_EID, version: head ? head.ev + 1 : 1, prevHash: head?.hash, banlist };
+  return { eid: coord, version: head ? head.ev + 1 : 1, prevHash: head?.hash, banlist };
 }
 
 /**
@@ -117,10 +130,12 @@ export function nextUnbanEdition(
   foldedBanlist: Iterable<string>,
   foldHead: BanlistHead | undefined,
   cursor: BanlistCursor | undefined,
+  /** Where the list goes: banlist_locator for new editions (CORD-02 A.6). */
+  coord: string = BANLIST_EID,
 ): NextBanlistEdition {
-  const { head, merged } = startFrom(foldedBanlist, foldHead, cursor);
+  const { head, merged } = startFrom(foldedBanlist, foldHead, cursorAt(cursor, coord));
   return {
-    eid: BANLIST_EID, version: head ? head.ev + 1 : 1, prevHash: head?.hash,
+    eid: coord, version: head ? head.ev + 1 : 1, prevHash: head?.hash,
     banlist: merged.filter((n) => n !== target).slice(-BANLIST_CAP),
   };
 }
