@@ -18,7 +18,7 @@ import type { Seal } from "./concord-crypto";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
 import { u64BE, concatBytes } from "./concord-crypto";
-import { grantLocator, banlistLocator, LEGACY_BANLIST_EID } from "./concord-locators";
+import { grantLocator, banlistLocator, inviteLinksLocator, LEGACY_BANLIST_EID } from "./concord-locators";
 
 // ── Rumor / event kinds ──────────────────────────────────────────────────────
 export const KIND_MESSAGE = 9;
@@ -55,9 +55,9 @@ export const KIND_AUDIT = 3314;
  * marker's revocation-tombstone variant (`["vsk","9"]`, empty content) — CORD-02
  * Appendix B lists "6, 9" as claimed by the addressable invite marker.
  *
- * REGISTRY (8) is the unrelated "invite-link registry" entity — kept defined but
- * unused. (It was previously and wrongly emitted as the bundle marker; the
- * joinable bundle must carry vsk 6, not 8.)
+ * REGISTRY (8) is a creator's invite-link Registry (CORD-05 §5, concord-registry),
+ * a Control Plane entity. (It was previously and wrongly emitted as the bundle
+ * marker; the joinable bundle must carry vsk 6, not 8.)
  */
 export const VSK = {
   METADATA: 0,
@@ -212,6 +212,12 @@ export interface FoldedState {
   dissolvedEids: Set<string>;
   /** Each room's Pin List content, by its coordinate (pinsLocator), as carried (CORD-04 §7). */
   pinLists: Map<string, string>;
+  /**
+   * Each creator's invite Registry by its coordinate (inviteLinksLocator): the
+   * winning edition's author and the link locators it lists (CORD-05 §5).
+   * activeInviteLinks turns these into the group's Public/Private answer.
+   */
+  registries: Map<string, { author: string; links: string[] }>;
   /**
    * The WINNING edition per `${vsk}:${eid}` coordinate — its version and its
    * computed hash, which is exactly what a successor must carry as `ep`.
@@ -707,7 +713,7 @@ function applyEditions(
     }
   }
 
-  const state: FoldedState = { roles: new Map(), channels: new Map(), grants: new Map(), banlist: new Set(), banlistSeen: new Set(), dissolvedEids: new Set(), pinLists: new Map(), heads: new Map() };
+  const state: FoldedState = { roles: new Map(), channels: new Map(), grants: new Map(), banlist: new Set(), banlistSeen: new Set(), dissolvedEids: new Set(), pinLists: new Map(), registries: new Map(), heads: new Map() };
   // A name dropped by a later edition on the winner's own chain was lifted on
   // purpose (an unban) and stays off; a name only in a losing fork sibling is a
   // ban the tie-break dropped, and stays in the heal set.
@@ -781,6 +787,9 @@ function applyEditions(
           // private room's list opens only with that room's key (concord-pins).
           state.pinLists.set(e.eid, e.content);
           break;
+        case VSK.REGISTRY:
+          if (Array.isArray(data)) state.registries.set(e.eid, { author: e.pubkey, links: data.filter((l): l is string => typeof l === "string") });
+          break;
         case VSK.DISSOLVED:
           state.dissolvedEids.add(e.eid);
           break;
@@ -825,6 +834,7 @@ function safeParse(content: string): any {
 function authorizeEdition(
   e: ControlEdition, state: FoldedState, ownerPubkey: string,
   byHash: Map<string, ControlEdition>, admitted: Set<ControlEdition>,
+  communityId?: string,
 ): boolean {
   if (e.pubkey === ownerPubkey) return true; // owner is supreme
 
@@ -840,6 +850,11 @@ function authorizeEdition(
   switch (e.vsk) {
     case VSK.PINS:
       return hasPermissionBit(signer.perms, PERM.PIN_MESSAGES);
+    case VSK.REGISTRY:
+      // Each creator writes exactly their own list, at the coordinate bound to
+      // them, so nobody can forge links into anyone else's (CORD-05 §5).
+      return hasPermissionBit(signer.perms, PERM.CREATE_INVITE) &&
+        !!communityId && e.eid === inviteLinksLocator(communityId, e.pubkey);
     case VSK.DISSOLVED:
       return false; // owner-only; owner handled above
     case VSK.METADATA:
@@ -878,7 +893,7 @@ function authorizeEdition(
       return outranks(targetRank);
     }
     default:
-      return false; // REGISTRY/REVOKED and unknown types: non-owner may not set
+      return false; // REVOKED and unknown types: non-owner may not set
   }
 }
 
@@ -973,7 +988,7 @@ export function foldEditions(
     const state = applyEditions(admitted, hashOf, communityId);
     for (const e of candidates) {
       if (admitted.has(e)) continue;
-      if (authorizeEdition(e, state, ownerPubkey, byHash, admitted)) {
+      if (authorizeEdition(e, state, ownerPubkey, byHash, admitted, communityId)) {
         admitted.add(e);
         changed = true;
       }
