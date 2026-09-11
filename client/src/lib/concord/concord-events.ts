@@ -175,6 +175,8 @@ export interface ChannelMetadata {
   picture?: string;
   /** private channels need a distributed key; public derive from community_root. */
   private?: boolean;
+  /** Fields the protocol doesn't define (CORD-02 §6, allowed here by CORD-03): kept, and carried through every edit. */
+  custom?: Record<string, unknown>;
 }
 
 export interface FoldedState {
@@ -718,7 +720,10 @@ function applyEditions(
           // channel_id).
           const channelId = typeof data.channel_id === "string" && data.channel_id ? data.channel_id : e.eid;
           if (data.deleted) state.channels.delete(channelId);
-          else state.channels.set(channelId, { channel_id: channelId, name: data.name ?? "", about: data.about, picture: data.picture, private: !!data.private });
+          else state.channels.set(channelId, {
+            channel_id: channelId, name: data.name ?? "", about: data.about, picture: data.picture, private: !!data.private,
+            ...(data.custom && typeof data.custom === "object" && !Array.isArray(data.custom) ? { custom: data.custom } : {}),
+          });
           break;
         }
         case VSK.GRANT:

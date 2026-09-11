@@ -1,12 +1,14 @@
 /**
  * Create a Concord channel: a public (community-derived key) or private (sealed,
- * independent key) text channel — plus a greyed "Voice" type reserved for
- * CORD-07 (Phase 3). Private channels distribute their key to the current
- * roster via a channel-scoped rekey, so the dialog collects the roster from the
- * governance planes while open.
+ * independent key) text channel, or a Hangout: a public room with a Corny Chat
+ * voice room attached (concord-hangout.ts) until Concord's own voice, CORD-07.
+ * Private channels distribute their key to the current roster via a
+ * channel-scoped rekey, so the dialog collects the roster from the governance
+ * planes while open.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Hash, Lock, Mic, Loader2 } from "lucide-react";
+import { Hash, Lock, Headphones, Loader2 } from "lucide-react";
+import { newHangoutUrl, hangoutCustom } from "@/lib/concord/concord-hangout";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { getGlobalSigner } from "@/lib/nip42-auth";
 import { persistentPoolSubscribe, publishEvent } from "@/lib/nostr";
@@ -20,7 +22,7 @@ import { createPrivateChannel } from "@/lib/concord/concord-governance";
 import { subscribeGovernance } from "@/lib/concord/concord-stream";
 import { parseControlEdition, editionKey, foldEditions, computeRoster, KIND_CONTROL_EDITION, KIND_JOIN_LEAVE, type ControlEdition } from "@/lib/concord/concord-events";
 
-type ChannelType = "text" | "private" | "voice";
+type ChannelType = "text" | "private" | "hangout";
 
 export function ConcordCreateChannelDialog({ open, onOpenChange, community, onCommunityChange, onCreated }: {
   open: boolean;
@@ -78,12 +80,14 @@ export function ConcordCreateChannelDialog({ open, onOpenChange, community, onCo
           (e, relays) => publishEvent(e, relays), (done, total) => setProgress({ done, total }));
       } else {
         const wr = community.relays;
-        updated = await createChannel(signer, pubkey, community, { name: trimmed },
+        // A Hangout is a public room plus a fresh voice room, kept in its custom fields.
+        updated = await createChannel(signer, pubkey, community,
+          { name: trimmed, ...(type === "hangout" ? { custom: hangoutCustom(newHangoutUrl()) } : {}) },
           (e, relays) => publishEvent(e, relays), (e) => publishEvent(e, wr));
       }
       onCommunityChange(updated);
       onCreated(updated.channels[updated.channels.length - 1].id);
-      toast({ title: type === "private" ? "Private channel created" : "Channel created" });
+      toast({ title: type === "private" ? "Private channel created" : type === "hangout" ? "Hangout created" : "Channel created" });
       onOpenChange(false);
       setName(""); setType("text");
     } catch (err) {
@@ -105,9 +109,9 @@ export function ConcordCreateChannelDialog({ open, onOpenChange, community, onCo
           {([
             ["text", "Text", Hash, "Anyone in the group"],
             ["private", "Private", Lock, "Sealed for members"],
-            ["voice", "Voice", Mic, "Coming soon"],
+            ["hangout", "Hangout", Headphones, "Voice + chat"],
           ] as const).map(([key, label, Icon, sub]) => {
-            const disabled = key === "voice";
+            const disabled = false;
             const active = type === key;
             return (
               <button
@@ -141,6 +145,13 @@ export function ConcordCreateChannelDialog({ open, onOpenChange, community, onCo
         {type === "private" && (
           <p className="text-[11px] text-muted-foreground/55 flex items-center gap-1.5">
             <Lock className="w-3 h-3 shrink-0" /> The key goes to the current {roster.length} member{roster.length !== 1 ? "s" : ""}. New members get it on their next invite.
+          </p>
+        )}
+
+        {type === "hangout" && (
+          <p className="text-[11px] text-muted-foreground/55 flex items-start gap-1.5" data-testid="concord-hangout-note">
+            <Headphones className="w-3 h-3 shrink-0 mt-0.5" />
+            <span>Voice runs on Corny Chat and isn't end-to-end encrypted. Only group members get the room's link, and its messages stay encrypted.</span>
           </p>
         )}
 

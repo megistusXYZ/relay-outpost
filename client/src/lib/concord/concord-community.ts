@@ -107,13 +107,13 @@ export async function createChannel(
   signer: ISigner,
   myPubkey: string,
   community: StoredCommunity,
-  opts: { name: string; isPrivate?: boolean },
+  opts: { name: string; isPrivate?: boolean; /** Fields beyond the protocol's (CORD-02 §6), e.g. a Hangout's voice room. */ custom?: Record<string, unknown> },
   publish: PublishFn,
   publishSelf: PublishSelfFn,
 ): Promise<StoredCommunity> {
   if (opts.isPrivate) throw new Error("Private channels arrive in a later update");
   const channelId = bytesToHex(randomBytes32());
-  const chContent = { channel_id: channelId, name: opts.name };
+  const chContent = { channel_id: channelId, name: opts.name, ...(opts.custom ? { custom: opts.custom } : {}) };
   const channel: StoredChannel = {
     id: channelId, epoch: community.root_epoch, name: opts.name, isPrivate: false,
     edVersion: 1, edEid: computeEditionId(channelId, 1, undefined, JSON.stringify(chContent)),
