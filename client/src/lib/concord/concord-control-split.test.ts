@@ -21,7 +21,7 @@ import {
   groupKey, planeConvKey, LABEL_CONTROL, LABEL_CONTROL_SIGNER, KIND_SEAL_PLAIN,
   computeLocator, epochKeyCommitment, concatBytes, u64BE, rekeyScopeId,
 } from "./concord-crypto";
-import { governancePlanes, publishToPlane, decodeStreamEvent } from "./concord-stream";
+import { governancePlanes, publishToPlane, publishControlEdition, decodeStreamEvent } from "./concord-stream";
 import { buildControlEdition, parseControlEdition, VSK, type Member } from "./concord-events";
 import { adoptBaseRekey, type StoredCommunity } from "./concord-keys";
 import { recordFromBundle, bundleFromCommunity, type InviteBundle } from "./concord-invites";
@@ -171,5 +171,39 @@ describe("base rotations from a current-spec app (CORD-06 §2 blob widths)", () 
     const payload = concatBytes(hexBytes(room), u64BE(1n), newRoot, hexBytes(newControlPk));
     const res = await receiveRekey(signer(memberSk), memberPk, owner, { ...held, scopeId: room }, await rotation(room, payload), auth);
     expect(res.status).toBe("pending");
+  });
+});
+
+/**
+ * Writing the admin plane (CORD-02 §5). Staff sign at control_pk; a device
+ * without the epoch's control_root keeps the legacy address, which our
+ * clients always read, rather than write somewhere members can't.
+ */
+describe("writing the admin plane", () => {
+  const ownerView: StoredCommunity = { ...member, control_root: bytesToHex(controlRoot) };
+  async function write(record: StoredCommunity): Promise<Event> {
+    const out: Event[] = [];
+    await publishControlEdition(signer(ownerSk), owner, record,
+      buildControlEdition(owner, VSK.METADATA, cid, 1, { name: "Book Club", relays: [] }, now), async (e) => { out.push(e); });
+    return out[0];
+  }
+
+  it("the owner of a split group writes at the split address, where every member reads it", async () => {
+    const wrap = await write(ownerView);
+    expect(wrap.pubkey).toBe(signerKey.pk);
+    const plane = governancePlanes(member).find((p) => p.pk === wrap.pubkey)!;
+    expect(JSON.parse(parseControlEdition(decodeStreamEvent(plane, wrap)!)!.content).name).toBe("Book Club");
+  });
+
+  it("a device without the group's control_root keeps writing at the legacy address", async () => {
+    expect((await write(member)).pubkey).toBe(readKey.pk);
+  });
+
+  it("never writes where members can't read: a control_root that doesn't match the group's address falls back to legacy", async () => {
+    expect((await write({ ...ownerView, control_root: bytesToHex(generateSecretKey()) })).pubkey).toBe(readKey.pk);
+  });
+
+  it("the owner's own view of the admin plane holds its key, so it can answer relay AUTH as that address", () => {
+    expect(governancePlanes(ownerView).find((p) => p.pk === signerKey.pk)!.sk).toBeDefined();
   });
 });

@@ -19,10 +19,29 @@ import { KIND_MESSAGE, KIND_REPLY, KIND_REACTION, KIND_DELETE, KIND_EDIT, KIND_T
 import type { StoredCommunity, StoredChannel } from "./concord-keys";
 import { isStreamProcessed, markStreamProcessed } from "./concord-keys";
 import { registerPlaneAuth } from "./concord-plane-auth";
+import { LABEL_CONTROL_SIGNER } from "./concord-crypto";
 
 // ── Plane key derivation (CORD-02/03) ────────────────────────────────────────
 export function controlPlaneKey(c: StoredCommunity): GroupKey {
   return groupKey(LABEL_CONTROL, hexToBytes(c.community_root), c.community_id, BigInt(c.root_epoch));
+}
+
+/**
+ * Where this device writes the admin plane (CORD-02 §5).
+ *
+ * Staff holding the current epoch's control_root sign at the split address
+ * (control_pk), encrypting under the concord/control read key every member
+ * derives. Everyone else, and a group not yet split, writes at the legacy
+ * address, which our clients always read. A control_root that doesn't derive
+ * to the group's control_pk falls back too: writing at an address members
+ * weren't given would be writing into the void.
+ */
+export function controlWritePlane(c: StoredCommunity): GroupKey {
+  const legacy = controlPlaneKey(c);
+  if (!c.control_root || !c.control_pk) return legacy;
+  const signer = groupKey(LABEL_CONTROL_SIGNER, hexToBytes(c.control_root), c.community_id, BigInt(c.root_epoch));
+  if (signer.pk !== c.control_pk) return legacy;
+  return { sk: signer.sk, pk: signer.pk, conv: planeConvKey(legacy) };
 }
 export function guestbookPlaneKey(c: StoredCommunity): GroupKey {
   return groupKey(LABEL_GUESTBOOK, hexToBytes(c.community_root), c.community_id, BigInt(c.root_epoch));
@@ -69,7 +88,10 @@ export function governancePlanes(c: StoredCommunity): GroupKey[] {
     const control = groupKey(LABEL_CONTROL, hexToBytes(root), c.community_id, BigInt(epoch));
     planes.push(control);
     if (control_pk && HEX32.test(control_pk) && control_pk !== control.pk) {
-      planes.push({ pk: control_pk, conv: planeConvKey(control) });
+      // Staff at the current epoch hold the address key: their view can sign,
+      // so it can answer a relay's AUTH as that address.
+      const write = epoch === c.root_epoch ? controlWritePlane(c) : null;
+      planes.push(write?.sk && write.pk === control_pk ? write : { pk: control_pk, conv: planeConvKey(control) });
     }
     planes.push(groupKey(LABEL_GUESTBOOK, hexToBytes(root), c.community_id, BigInt(epoch)));
   }
@@ -356,7 +378,7 @@ export async function publishControlEdition(
   rumor: RumorTemplate,
   publish: (event: Event, relays: string[]) => Promise<unknown>,
 ): Promise<Event | null> {
-  const plane = controlPlaneKey(community);
+  const plane = controlWritePlane(community);
   return publishToPlane(signer, authorPubkey, plane, rumor, KIND_SEAL_PLAIN, (e) => publish(e, community.relays));
 }
 
