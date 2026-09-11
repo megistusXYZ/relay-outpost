@@ -6,9 +6,9 @@
  * dark-on-light. "Invite a person" (direct gift-wrapped 3313) uses the app's
  * people search — find someone by name, handle, or npub, not just a raw key.
  */
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Link2, Copy, Check, Trash2, Loader2, QrCode, Send, X, RotateCw } from "lucide-react";
+import { Link2, Copy, Check, Trash2, Loader2, QrCode, Send, X, RotateCw, Globe, Lock, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,13 +26,25 @@ import { formatCompactTime } from "@/lib/time";
 import { mintInviteLink, rebuildInviteLink, revokeInviteLink, sendDirectInvite } from "@/lib/concord/concord-invites";
 import { getInviteSigners, putInviteSigner, type StoredCommunity, type StoredInviteSigner } from "@/lib/concord/concord-keys";
 import { listSentInvites, recordSentInvite, removeSentInvite, isInGroup, type SentInvite } from "@/lib/concord/concord-sent-invites";
+import { activeInviteLinks, groupLinksWith, nextRegistryEdition, registryFloor, rememberRegistryHead } from "@/lib/concord/concord-registry";
+import { publishInviteRegistry, resecureGroup } from "@/lib/concord/concord-governance";
+import { hasPermissionBit, PERM, VSK, type FoldedState, type Member } from "@/lib/concord/concord-events";
+import type { Seal } from "@/lib/concord/concord-crypto";
 
-export function ConcordInviteDialog({ open, onOpenChange, community, memberPubkeys, linkJoins }: {
+export function ConcordInviteDialog({ open, onOpenChange, community, memberPubkeys, linkJoins, govState, myMember, roster, compaction, onCommunityChange }: {
   open: boolean; onOpenChange: (o: boolean) => void; community: StoredCommunity;
   /** Live member pubkeys — used to show whether a sent invite's recipient has since joined. */
   memberPubkeys?: string[];
   /** How many people joined through each of my links, by label (their Joins say which). */
   linkJoins?: Map<string, number>;
+  /** The live governance fold: which links the group lists, and so whether it's Public (CORD-05 §5). */
+  govState?: FoldedState;
+  myMember?: Member;
+  /** Who's in the group, for re-securing it once its last link is off. */
+  roster?: Member[];
+  /** The group's current settings (compactionOf), republished when it's re-secured. */
+  compaction?: () => Seal[];
+  onCommunityChange?: (c: StoredCommunity) => void;
 }) {
   const { pubkey } = useNostrAuth();
   const { toast } = useToast();
@@ -49,6 +61,68 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
   const [expiry, setExpiry] = useState<ExpiryChoice>("never");
 
   const memberSet = useMemo(() => new Set(memberPubkeys ?? []), [memberPubkeys]);
+
+  // ── The group's link list (CORD-05 §5) ──
+  const cid = community.community_id;
+  const isOwner = pubkey === community.owner;
+  // Only someone who may create invites lists links; the owner always may.
+  const canList = !!pubkey && (isOwner || (!!myMember && hasPermissionBit(myMember.permissions, PERM.CREATE_INVITE)));
+  // Re-securing is a Refounding, the same step a ban takes.
+  const canResecure = !!pubkey && (isOwner || (!!myMember && hasPermissionBit(myMember.permissions, PERM.BAN)));
+  // Until the group's settings have folded, "no links" only means "not read yet".
+  const foldReady = !!govState?.heads.has(`${VSK.METADATA}:${cid}`);
+  const groupLinks = foldReady && govState ? activeInviteLinks(govState, community.owner, cid) : null;
+  const [goneQuiet, setGoneQuiet] = useState(false);
+  const [resecuring, setResecuring] = useState<{ done: number; total: number } | null>(null);
+
+  // Publish my list when it differs from what the group holds: after a mint, a
+  // revoke, or for links made before the list existed. Returns the group's live
+  // links as they now stand, or null when it couldn't check.
+  const syncRegistry = useCallback(async (): Promise<string[] | null> => {
+    const signer = getGlobalSigner();
+    if (!pubkey || !signer || !canList || !foldReady || !govState) return null;
+    const local = await getInviteSigners(pubkey, cid).catch(() => [] as StoredInviteSigner[]);
+    const floor = registryFloor(cid, pubkey);
+    const next = nextRegistryEdition(govState, cid, pubkey, local, Date.now(), floor);
+    const foldHead = govState.heads.get(`${VSK.REGISTRY}:${next.eid}`);
+    const known = [...(floor && (!foldHead || floor.ev >= foldHead.ev) ? floor.links : govState.registries.get(next.eid)?.links ?? [])].sort();
+    const same = known.length === next.links.length && known.every((l, i) => l === next.links[i]);
+    if (!same) {
+      const head = await publishInviteRegistry(signer, pubkey, community, next, (e, r) => publishEvent(e, r));
+      if (head) rememberRegistryHead(cid, pubkey, { ...head, links: next.links });
+    }
+    return groupLinksWith(govState, community.owner, cid, pubkey, next.links);
+  }, [pubkey, canList, foldReady, govState, cid, community]);
+
+  // Once per opening, as soon as the fold is in: lists links made before this existed.
+  const filledRef = useRef(false);
+  useEffect(() => {
+    if (!open) { filledRef.current = false; return; }
+    if (!foldReady || filledRef.current) return;
+    filledRef.current = true;
+    void syncRegistry();
+  }, [open, foldReady, syncRegistry]);
+
+  const resecure = useCallback(async () => {
+    const signer = getGlobalSigner();
+    if (!pubkey || !signer || !roster) return;
+    setResecuring({ done: 0, total: roster.length });
+    try {
+      const updated = await resecureGroup(signer, pubkey, community, { roster, compaction: compaction?.() },
+        (e, r) => publishEvent(e, r), (done, total) => setResecuring({ done, total }));
+      if (updated) {
+        onCommunityChange?.(updated);
+        setGoneQuiet(false);
+        toast({ title: "Group re-secured", description: "Only the people in the group hold its keys now." });
+      } else {
+        toast({ title: "Couldn't re-secure the group", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Couldn't re-secure the group", description: String((err as Error)?.message ?? err), variant: "destructive" });
+    } finally {
+      setResecuring(null);
+    }
+  }, [pubkey, roster, community, compaction, onCommunityChange, toast]);
 
   const reloadSent = useCallback(() => {
     if (pubkey) setSent(listSentInvites(pubkey, community.community_id));
@@ -85,10 +159,11 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
       setLabel("");
       reload();
       syncLinks();
+      void syncRegistry();
     } catch (err) {
       toast({ title: "Couldn't create invite", description: String((err as Error)?.message ?? err), variant: "destructive" });
     } finally { setMinting(false); }
-  }, [pubkey, community, label, expiry, reload, syncLinks, toast]);
+  }, [pubkey, community, label, expiry, reload, syncLinks, syncRegistry, toast]);
 
   const revoke = useCallback(async (link: StoredInviteSigner) => {
     if (!pubkey) return;
@@ -99,7 +174,12 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
     toast({ title: "Invite revoked" });
     reload();
     syncLinks();
-  }, [pubkey, community, reload, syncLinks, toast]);
+    // The group's link list follows. If that was its last live link, the group
+    // is private now, and whoever opened a link still holds its keys.
+    const wasPublic = !!groupLinks?.length;
+    const after = await syncRegistry();
+    if (wasPublic && after && after.length === 0) setGoneQuiet(true);
+  }, [pubkey, community, reload, syncLinks, toast, groupLinks, syncRegistry]);
 
   const invitePerson = useCallback(async () => {
     const signer = getGlobalSigner();
@@ -166,6 +246,38 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 min-w-0">
+          {groupLinks && (
+            <p className="flex items-start gap-1.5 text-[11px] text-muted-foreground/70" data-testid="invite-group-status">
+              {groupLinks.length
+                ? <Globe className="w-3.5 h-3.5 mt-px shrink-0 text-brand/70" aria-hidden="true" />
+                : <Lock className="w-3.5 h-3.5 mt-px shrink-0 text-muted-foreground/60" aria-hidden="true" />}
+              <span>
+                {groupLinks.length
+                  ? <><span className="font-medium text-foreground/80">Public.</span> Anyone with {groupLinks.length === 1 ? "the group's live invite link" : `one of its ${groupLinks.length} live invite links`} can join.</>
+                  : <><span className="font-medium text-foreground/80">Private.</span> No invite links are on, so people join only by a direct invite.</>}
+              </span>
+            </p>
+          )}
+          {goneQuiet && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2" data-testid="invite-resecure-offer">
+              <p className="text-xs font-medium text-foreground/90">The group is private now</p>
+              <p className="text-[11px] text-muted-foreground/70">
+                Anyone who opened one of its links, even without joining, still has its keys. Re-secure it so only the people in the group can read what's said from now on.
+              </p>
+              {canResecure && roster ? (
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={resecure} disabled={!!resecuring} className="h-11 md:h-8 gap-1.5" data-testid="button-resecure-group">
+                    {resecuring
+                      ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Re-securing keys {resecuring.done}/{resecuring.total}</>
+                      : <><ShieldCheck className="w-3.5 h-3.5" /> Re-secure group</>}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setGoneQuiet(false)} disabled={!!resecuring} className="h-11 md:h-8">Not now</Button>
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground/60">The owner, or an admin who can ban, can re-secure it.</p>
+              )}
+            </div>
+          )}
           <div className="space-y-2">
             <Input
               value={label}

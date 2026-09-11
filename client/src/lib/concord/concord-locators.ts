@@ -15,6 +15,7 @@ import { bytesToHex, hexToBytes, utf8ToBytes, concatBytes } from "@noble/hashes/
 
 const LABEL_GRANT = "concord/grant";
 const LABEL_BANLIST = "concord/banlist";
+const LABEL_INVITE_LINKS = "concord/invite-links";
 const ZERO_ID = new Uint8Array(32);
 
 /** This client's original Banlist coordinate: still read, never written. */
@@ -33,4 +34,9 @@ export function grantLocator(communityId: string, member: string): string {
 /** `banlist_locator(community_id)`: where the Banlist lives. */
 export function banlistLocator(communityId: string): string {
   return locator(communityId, LABEL_BANLIST, ZERO_ID);
+}
+
+/** `invite-links(community_id, creator)`: where a creator's invite Registry lives (CORD-05 §5). */
+export function inviteLinksLocator(communityId: string, creator: string): string {
+  return locator(communityId, LABEL_INVITE_LINKS, hexToBytes(creator));
 }

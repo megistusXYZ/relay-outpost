@@ -20,6 +20,7 @@ import { pinsLocator } from "./concord-pins";
 import { nextBanlistEdition, nextUnbanEdition, type BanlistHead } from "./concord-banlist";
 import { refreshInviteLinks } from "./concord-invites";
 import { grantLocator, banlistLocator } from "./concord-locators";
+import type { NextRegistryEdition } from "./concord-registry";
 import { publishControlEdition, publishGuestbook, publishGuestbookSnapshot, publishDissolution, channelPlaneKey, controlWritePlane } from "./concord-stream";
 import { sendRekey, resecurePrivateRooms } from "./concord-rekey";
 import { sealControlWrap } from "./concord-control-wrap";
@@ -120,6 +121,40 @@ export async function removeMember(
     await publishGuestbook(signer, ownerPubkey, community, buildKickRumor(ownerPubkey, target, now), publish).catch(() => null);
   }
 
+  const survivors = opts.roster.filter((m) => m.pubkey !== target && m.pubkey !== ownerPubkey);
+  return refound(signer, ownerPubkey, community, {
+    remaining: survivors.map((m) => ({ pubkey: m.pubkey, staff: isStaff(m) })),
+    removed: target,
+    everyone: [ownerPubkey, ...opts.roster.map((m) => m.pubkey)],
+    privateRoomHolders: opts.privateRoomHolders,
+    compaction: opts.compaction,
+  }, publish, onProgress);
+}
+
+/**
+ * The Refounding itself (CORD-06 §3), shared by a removal and by re-securing a
+ * group that went private: roll the root to `remaining` only, re-secure the
+ * private rooms a removed member could read, adopt the new root keeping the old
+ * one readable, republish the group's settings at the new epoch, seed its
+ * roster there, and refresh this creator's live links.
+ */
+async function refound(
+  signer: ISigner,
+  ownerPubkey: string,
+  community: StoredCommunity,
+  opts: {
+    /** Everyone who gets the new keys, besides the one doing this. */
+    remaining: { pubkey: string; staff: boolean }[];
+    /** Who's being removed, whose private rooms get new keys too; none when re-securing. */
+    removed?: string;
+    /** Everyone in the group, for finding who holds each private room. */
+    everyone: string[];
+    privateRoomHolders?: (roomId: string) => string[] | null;
+    compaction?: Seal[];
+  },
+  publish: PublishFn,
+  onProgress?: ProgressFn,
+): Promise<StoredCommunity | null> {
   // 2. Rotate community_root, excluding the target, and mint the split with it
   //    (CORD-06 §3: "a fresh control_root is minted alongside it … the pair
   //    travels in the same base blobs"). A legacy group upgrades here. Staff
@@ -128,9 +163,7 @@ export async function removeMember(
   const newKey = randomBytes32();
   const newControlRoot = randomBytes32();
   const newControlPk = groupKey(LABEL_CONTROL_SIGNER, newControlRoot, community.community_id, BigInt(community.root_epoch + 1)).pk;
-  const remaining = opts.roster
-    .filter((m) => m.pubkey !== target && m.pubkey !== ownerPubkey)
-    .map((m) => ({ pubkey: m.pubkey, staff: isStaff(m) }));
+  const remaining = opts.remaining;
   const res = await sendRekey(
     signer, ownerPubkey, community,
     {
@@ -146,15 +179,16 @@ export async function removeMember(
   //     so a removed member went on reading every private room they were in.
   //     Sent while `community` still holds the PRIOR root: that is the address
   //     the holders watch. Best-effort per room; a failed room keeps its key.
-  const channels = await resecurePrivateRooms(
-    signer, ownerPubkey, community,
-    {
-      removed: target,
-      holdersOf: opts.privateRoomHolders ?? (() => null),
-      everyone: [ownerPubkey, ...opts.roster.map((m) => m.pubkey)],
-    },
-    publish, onProgress,
-  ).catch(() => community.channels);
+  //     With nobody removed there's nothing to re-secure: a link never carried
+  //     a private room's key (bundleFromCommunity).
+  const removed = opts.removed;
+  const channels = removed
+    ? await resecurePrivateRooms(
+      signer, ownerPubkey, community,
+      { removed, holdersOf: opts.privateRoomHolders ?? (() => null), everyone: opts.everyone },
+      publish, onProgress,
+    ).catch(() => community.channels)
+    : community.channels;
 
   // 3. Adopt the new root locally, RETAINING the prior root so the earlier
   //    epochs' governance/guestbook/channel planes stay readable (without this,
@@ -197,6 +231,32 @@ export async function removeMember(
     pool.querySync(relays, { kinds: [KIND_INVITE_BUNDLE], authors: [linkSigner], "#d": [""] }, { maxWait: 4000 }),
   ).catch(() => {});
   return updated;
+}
+
+/**
+ * Re-secure the group without removing anyone (a CORD-06 Refounding): new keys
+ * go to the people in the group and to nobody else. Offered when the last live
+ * invite link is turned off (CORD-05 §5), since anyone who opened a link but
+ * never joined still holds the old keys, and this is what cuts them off.
+ */
+export async function resecureGroup(
+  signer: ISigner,
+  actorPubkey: string,
+  community: StoredCommunity,
+  opts: {
+    roster: Member[];
+    /** The group's current settings (compactionOf over the live fold), republished at the new epoch. */
+    compaction?: Seal[];
+  },
+  publish: PublishFn,
+  onProgress?: ProgressFn,
+): Promise<StoredCommunity | null> {
+  const others = opts.roster.filter((m) => m.pubkey !== actorPubkey);
+  return refound(signer, actorPubkey, community, {
+    remaining: others.map((m) => ({ pubkey: m.pubkey, staff: isStaff(m) })),
+    everyone: [actorPubkey, ...others.map((m) => m.pubkey)],
+    compaction: opts.compaction,
+  }, publish, onProgress);
 }
 
 /**
@@ -524,6 +584,28 @@ export async function setRoomPins(
       head ? { prevHash: head.hash } : undefined),
     publish).catch(() => null);
   return !!wrap;
+}
+
+/**
+ * Publish my invite Registry (CORD-05 §5) after a link is made or turned off:
+ * `next` is nextRegistryEdition's, one version past the head known, listing my
+ * live links by locator only. Returns the new head, for the caller to keep as a
+ * floor until the fold echoes it, or null when no relay took it.
+ */
+export async function publishInviteRegistry(
+  signer: ISigner,
+  actorPubkey: string,
+  community: StoredCommunity,
+  next: NextRegistryEdition,
+  publish: PublishFn,
+): Promise<{ ev: number; hash: string } | null> {
+  const now = Math.floor(Date.now() / 1000);
+  const wrap = await publishControlEdition(signer, actorPubkey, community,
+    buildControlEdition(actorPubkey, VSK.REGISTRY, next.eid, next.version, next.links, now,
+      next.prevHash ? { prevHash: next.prevHash } : undefined),
+    publish).catch(() => null);
+  // Hashed over the same array buildControlEdition serializes, so a successor's `ep` resolves.
+  return wrap ? { ev: next.version, hash: computeEditionId(next.eid, next.version, next.prevHash, JSON.stringify(next.links)) } : null;
 }
 
 /**

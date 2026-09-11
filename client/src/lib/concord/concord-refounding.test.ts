@@ -18,7 +18,7 @@ import { v2 as nip44v2 } from "nostr-tools/nip44";
 import { getPublicKey, generateSecretKey, finalizeEvent, type Event } from "nostr-tools";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import type { ISigner } from "applesauce-signers";
-import { removeMember } from "./concord-governance";
+import { removeMember, resecureGroup } from "./concord-governance";
 import { receiveRekey, type RekeyAuthority } from "./concord-rekey";
 import { baseRekeyAddress, deriveCommunityId, groupKey, rekeyScopeId, LABEL_CONTROL_SIGNER } from "./concord-crypto";
 import { decodeStreamEvent } from "./concord-stream";
@@ -99,6 +99,32 @@ describe("removing someone moves the group onto the split", () => {
       expect(res.controlRoot).toMatch(/^[0-9a-f]{64}$/);
       expect(res.controlRoot).toBe(updated.control_root);
     }
+  });
+});
+
+/**
+ * CORD-05 §5: retiring the last live link "empties the set and triggers the
+ * Refounding (CORD-06)". Someone who opened a link but never joined still holds
+ * the group's keys; a Refounding with nobody removed hands new ones only to
+ * the people actually in the group.
+ */
+describe("going private re-secures the group without removing anyone", () => {
+  it("everyone in the group gets the new keys; someone who only opened a link doesn't", async () => {
+    const published: Event[] = [];
+    const updated = (await resecureGroup(signer(ownerSk), owner, legacyGroup, { roster }, async (e) => { published.push(e); }))!;
+    expect(updated.root_epoch).toBe(1);
+    expect(updated.control_pk).toMatch(/^[0-9a-f]{64}$/);
+
+    const plane = baseRekeyAddress(root, cid, 1n);
+    const rumors = published.filter((e) => e.pubkey === plane.pk).map((e) => decodeStreamEvent(plane, e)!);
+    for (const [sk, pk] of [[memberSk, memberPk], [adminSk, adminPk]] as const) {
+      const res = await receiveRekey(signer(sk), pk, owner, held, rumors, auth);
+      expect(res.status).toBe("rekeyed");
+      if (res.status === "rekeyed") expect(bytesToHex(res.newKey)).toBe(updated.community_root);
+    }
+    const outsiderSk = generateSecretKey();
+    const outsider = await receiveRekey(signer(outsiderSk), getPublicKey(outsiderSk), owner, held, rumors, auth);
+    expect(outsider.status).not.toBe("rekeyed");
   });
 });
 

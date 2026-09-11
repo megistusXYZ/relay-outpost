@@ -9,7 +9,7 @@ import { describe, it, expect } from "vitest";
 import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
-import { grantLocator, banlistLocator } from "./concord-locators";
+import { grantLocator, banlistLocator, inviteLinksLocator } from "./concord-locators";
 import { concatBytes } from "./concord-crypto";
 import { foldEditions, computeEditionId, VSK, type ControlEdition } from "./concord-events";
 import { BANLIST_EID } from "./concord-banlist";
@@ -33,6 +33,12 @@ describe("the derived coordinates (CORD-02 A.6)", () => {
     expect(grantLocator(CID, ALICE)).toBe(derive("concord/grant", ALICE));
     expect(grantLocator(CID, ALICE)).not.toBe(grantLocator(CID, BOB));
     expect(grantLocator(CID, ALICE)).not.toBe(ALICE);
+  });
+
+  it("a creator's invite Registry lives at a coordinate bound to them (CORD-05 §5)", () => {
+    expect(inviteLinksLocator(CID, ALICE)).toBe(derive("concord/invite-links", ALICE));
+    expect(inviteLinksLocator(CID, ALICE)).not.toBe(inviteLinksLocator(CID, BOB));
+    expect(inviteLinksLocator(CID, ALICE)).not.toBe(grantLocator(CID, ALICE));
   });
 
   it("the Banlist's coordinate is derived from the group alone", () => {

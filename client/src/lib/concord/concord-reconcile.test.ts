@@ -30,7 +30,7 @@ const ch = (over: Partial<StoredChannel> = {}): StoredChannel =>
 /** An empty fold — exactly what a torn-down subscription produces. */
 const empty = (): FoldedState => ({
   roles: new Map(), channels: new Map(), grants: new Map(),
-  banlist: new Set(), banlistSeen: new Set(), dissolvedEids: new Set(), pinLists: new Map(), heads: new Map(),
+  banlist: new Set(), banlistSeen: new Set(), dissolvedEids: new Set(), pinLists: new Map(), registries: new Map(), heads: new Map(),
 });
 
 const fold = (opts: {
