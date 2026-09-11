@@ -196,7 +196,9 @@ export function useScrollRestore(
     }
 
     if (driveGlobalWindow) ensureScrollToken();
-    const saved = getSavedScrollPosition(storeKey());
+    // Only a position saved on THIS page: a tab switch replaces the entry and
+    // would otherwise hand the new page the old page's offset.
+    const saved = getSavedScrollPosition(storeKey(), location);
 
     if (saved && saved.scrollTop > 0) {
       isRestoringRef.current = true;

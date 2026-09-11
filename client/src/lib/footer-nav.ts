@@ -124,3 +124,12 @@ export function isNavDestinationActive(
       return false;
   }
 }
+
+/**
+ * What tapping a footer tab does. Re-tapping the tab you are on takes you back
+ * to its top, as X does (it used to do nothing). Any other tap, including this
+ * tab from one of its inner pages, goes to the tab.
+ */
+export function tabTap(location: string, target: string): "scroll-to-top" | "navigate" {
+  return location === target ? "scroll-to-top" : "navigate";
+}
