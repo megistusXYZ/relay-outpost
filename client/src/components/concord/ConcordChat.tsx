@@ -7,7 +7,9 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useBackClosable } from "@/hooks/use-back-closable";
 import { createPortal } from "react-dom";
-import { Hash, Lock, Plus, Send, ImagePlus, Loader2, X, CornerUpLeft, ChevronDown, Users, BellOff, MessageSquare, ArrowLeft, Link2, Shield } from "lucide-react";
+import { Hash, Lock, Plus, Send, ImagePlus, Loader2, X, CornerUpLeft, ChevronDown, Users, BellOff, MessageSquare, ArrowLeft, Link2, Shield, Headphones } from "lucide-react";
+import { hangoutOf } from "@/lib/concord/concord-hangout";
+import { AudioSpaceLightbox } from "@/components/AudioSpaceCard";
 import { getEventHash, nip19 } from "nostr-tools";
 import { Link } from "wouter";
 import { AuthorHoverCard } from "@/components/nostr-post/author-hover";
@@ -205,6 +207,18 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     () => channels.find((c) => c.id === activeId) ?? channels[0],
     [channels, activeId],
   );
+  // Hangout rooms (concord-hangout.ts): the voice room lives in the folded
+  // room's custom fields, so only members see it and other apps see text.
+  const hangoutIds = useMemo(
+    () => new Set(channels.filter((c) => hangoutOf(govState.channels.get(c.id))).map((c) => c.id)),
+    [channels, govState.channels],
+  );
+  const activeHangout = useMemo(
+    () => (activeChannel ? hangoutOf(govState.channels.get(activeChannel.id)) : null),
+    [activeChannel, govState.channels],
+  );
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  useEffect(() => { setVoiceOpen(false); }, [activeChannel?.id]);
   const isOwner = pubkey === community.owner;
   const canManageChannels = isOwner || (!!myMember && hasPermission(myMember, PERM.MANAGE_CHANNELS));
   const [adminOpen, setAdminOpen] = useState(false);
@@ -833,7 +847,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
               } ${mutedChannels.has(ch.id) ? "opacity-50" : ""}`}
               data-testid={`concord-channel-side-${ch.id.slice(0, 8)}`}
             >
-              {ch.isPrivate ? <Lock className="w-3.5 h-3.5 shrink-0 opacity-60" /> : <Hash className="w-3.5 h-3.5 shrink-0 opacity-60" />}
+              {hangoutIds.has(ch.id) ? <Headphones className="w-3.5 h-3.5 shrink-0 opacity-60" /> : ch.isPrivate ? <Lock className="w-3.5 h-3.5 shrink-0 opacity-60" /> : <Hash className="w-3.5 h-3.5 shrink-0 opacity-60" />}
               <span className="truncate flex-1">{ch.name}</span>
               <ChannelRowSignal
                 muted={mutedChannels.has(ch.id)}
@@ -874,7 +888,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           !embedded && <div className="min-w-0 flex-1 h-10" aria-hidden="true" />
         ) : (
         <button onClick={() => setChannelSheetOpen(true)} className="flex items-center gap-1.5 min-w-0 flex-1 h-10 px-2 rounded-lg text-left active:bg-muted/30 transition-colors" data-testid="concord-channel-picker">
-          {activeChannel?.isPrivate ? <Lock className="w-4 h-4 shrink-0 text-muted-foreground/50" /> : <Hash className="w-4 h-4 shrink-0 text-muted-foreground/50" />}
+          {activeHangout ? <Headphones className="w-4 h-4 shrink-0 text-muted-foreground/50" /> : activeChannel?.isPrivate ? <Lock className="w-4 h-4 shrink-0 text-muted-foreground/50" /> : <Hash className="w-4 h-4 shrink-0 text-muted-foreground/50" />}
           <span className="text-sm font-semibold truncate">{activeChannel?.name}</span>{timer > 0 && <DisappearingBadge seconds={timer} />}
           <ChevronDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground/50" />
           {otherChannelMentions > 0 ? (
@@ -963,7 +977,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
                     } ${mutedChannels.has(ch.id) ? "opacity-50" : ""}`}
                     data-testid={`concord-channel-${ch.id.slice(0, 8)}`}
                   >
-                    {ch.isPrivate ? <Lock className="w-4 h-4 shrink-0 opacity-60" /> : <Hash className="w-4 h-4 shrink-0 opacity-60" />}
+                    {hangoutIds.has(ch.id) ? <Headphones className="w-4 h-4 shrink-0 opacity-60" /> : ch.isPrivate ? <Lock className="w-4 h-4 shrink-0 opacity-60" /> : <Hash className="w-4 h-4 shrink-0 opacity-60" />}
                     <span className="truncate flex-1">{ch.name}</span>
                     <ChannelRowSignal
                       muted={mutedChannels.has(ch.id)}
@@ -1000,7 +1014,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       <div className="hidden md:flex items-center gap-2 px-4 py-2.5 border-b border-border/20 shrink-0" data-testid="concord-channel-header">
         {!single && (
           <>
-            {activeChannel?.isPrivate ? <Lock className="w-4 h-4 text-muted-foreground/50 shrink-0" /> : <Hash className="w-4 h-4 text-muted-foreground/50 shrink-0" />}
+            {activeHangout ? <Headphones className="w-4 h-4 text-muted-foreground/50 shrink-0" /> : activeChannel?.isPrivate ? <Lock className="w-4 h-4 text-muted-foreground/50 shrink-0" /> : <Hash className="w-4 h-4 text-muted-foreground/50 shrink-0" />}
             <span className="text-sm font-semibold truncate">{activeChannel?.name}</span>{timer > 0 && <DisappearingBadge seconds={timer} />}
           </>
         )}
@@ -1101,6 +1115,26 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           phone as every message shifted left with the names and timestamps cut
           off. A message list has no business scrolling sideways; anything that
           genuinely needs width scrolls inside itself. */}
+      {/* A Hangout room's voice room, one tap away and honest about what it is. */}
+      {activeHangout && (
+        <div className="flex items-center gap-2.5 px-3 md:px-4 py-2 border-b border-border/20 shrink-0 bg-primary/5" data-testid="concord-hangout-bar">
+          <Headphones className="w-4 h-4 text-brand shrink-0" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-foreground/90">Voice hangout</p>
+            <p className="text-[11px] text-muted-foreground/60 truncate">Runs on Corny Chat · voice isn't end-to-end encrypted</p>
+          </div>
+          <button
+            onClick={() => setVoiceOpen(true)}
+            className="h-11 md:h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium shrink-0 hover:bg-primary/90 transition-colors"
+            data-testid="concord-hangout-join"
+          >
+            Join voice
+          </button>
+        </div>
+      )}
+      {voiceOpen && activeHangout && (
+        <AudioSpaceLightbox space={{ ...activeHangout, room: activeChannel?.name || activeHangout.room }} onClose={() => setVoiceOpen(false)} />
+      )}
       {/* The room's pins (CORD-04 §7): the newest above the conversation, all of them in a list. */}
       {pins.length > 0 ? (
         <ConcordPinnedBar pins={pins} textOf={textOfPin} preview={(t) => <ConcordContentPreview content={t} />} onOpen={() => setPinsOpen(true)} />

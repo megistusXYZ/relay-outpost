@@ -65,6 +65,8 @@ export interface ChannelContent {
   about?: string;
   picture?: string;
   private?: true;
+  /** Another app's fields (or ours), carried through untouched (CORD-02 §6). */
+  custom?: Record<string, unknown>;
   deleted?: true;
 }
 
@@ -125,6 +127,9 @@ export function nextChannelEdition(
   // Monotone — see the header. Holding the key is un-fakeable proof the channel
   // is private, and it outranks a fold an earlier rename already broke.
   if (base.private || local?.isPrivate) content.private = true;
+  // An editor MUST round-trip what it doesn't understand: a rename used to
+  // wipe another app's custom fields, and a Hangout room's voice link with them.
+  if (base.custom !== undefined) content.custom = base.custom;
   // A tombstone carries the whole base, not a bare {channel_id, deleted}: our
   // fold reads only this flag, but a peer that ignores it must not be handed a
   // channel with a blank name and no privacy flag.
