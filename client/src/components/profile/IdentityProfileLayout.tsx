@@ -19,7 +19,6 @@ import { IdentitySection as Section, IdentityBanner, IdentityHead } from "@/comp
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Nip05Badge } from "@/components/Nip05Badge";
 import { TrustTierGlyph } from "@/components/nostr-post/trust-tier-glyph";
-import { ProfileLayoutSwitch } from "@/components/profile/ProfileLayoutSwitch";
 import { LIVE_BANNER_RING, LiveBannerOverlay, useProfileLiveStream } from "./LiveNowBanner";
 import { useState } from "react";
 import { Pencil } from "lucide-react";
@@ -137,7 +136,6 @@ export function IdentityProfileLayout({ data, actions, networkSlot, overflowSlot
       <IdentityBanner
         src={data.bannerSrc}
         fallbackSrc={data.bannerFallbackSrc}
-        topRight={<ProfileLayoutSwitch />}
         live={liveStream ? <LiveBannerOverlay stream={liveStream} /> : undefined}
         className={liveStream ? LIVE_BANNER_RING : undefined}
       />

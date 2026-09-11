@@ -1412,11 +1412,11 @@ function AppearanceSection() {
       </Row>
 
       {/* Profile pages render either in the classic X-style column or the
-          living-identity layout, on every size. This row is the ONLY way back to
-          Classic on a phone — the switch that floats over the profile banner is
-          hidden below lg, where it would collide with the back button — so it
-          must not be gated on viewport. It was, which left the identity layout
-          (the default) unreachable and un-leaveable on mobile at once. */}
+          living-identity layout, on every size. This row is the ONE place to
+          change it (owner call, 2026-09-11): the Classic / Identity switch that
+          floated over every profile banner was removed, since Identity is the
+          default and the banner reads better clean. So it must not be gated on
+          viewport — that once left the layout un-leaveable on mobile. */}
       <Row icon={PanelLeft} label="Profile layout" sub="How profile pages are laid out" testId="section-profile-layout">
         <Seg
           value={profileLayout}

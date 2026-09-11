@@ -67,7 +67,6 @@ import { PetnameDialog } from "@/components/PetnameDialog";
 import { IdentityProfileLayout } from "@/components/profile/IdentityProfileLayout";
 import { IdentityCommunitiesCard, useSubjectCommunityRows } from "@/components/profile/IdentityCommunitiesCard";
 import { LiveBannerOverlay, useProfileLiveStream } from "@/components/profile/LiveNowBanner";
-import { ProfileLayoutSwitch } from "@/components/profile/ProfileLayoutSwitch";
 import { IdentityProfileMain } from "@/components/profile/IdentityProfileMain";
 import { IdentityCircleCard } from "@/components/profile/IdentityCircleCard";
 import { isMutedPubkey, mutePubkey, unmutePubkey } from "@/lib/spam-filter";
@@ -2740,9 +2739,6 @@ export default function Profile() {
                   />
                 )}
                 {!isOwnProfile && myPubkey && renderOtherUserHeaderActions("")}
-                {/* Desktop-only viewer switch so the Identity layout is
-                    discoverable without opening Settings. */}
-                <ProfileLayoutSwitch />
               </div>
             </div>
           </div>
