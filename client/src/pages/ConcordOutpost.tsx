@@ -18,6 +18,7 @@ import { recordRecentDestination } from "@/lib/recent-destinations";
 import { isConcordEnabled } from "@/lib/concord/concord-prefs";
 import { ConcordChat } from "@/components/concord/ConcordChat";
 import { GroupAvatar } from "@/components/GroupAvatar";
+import { ReportCountBadge } from "@/components/concord/ConcordReports";
 import { canInviteToCommunity, rosterPubkeys } from "@/lib/concord/concord-invite-gate";
 import { ConcordMembers } from "@/components/concord/ConcordMembers";
 import { ConcordInviteDialog } from "@/components/concord/ConcordInviteDialog";
@@ -217,6 +218,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
         {hasAnyCapability(concordCapabilities(myMember)) && (
           <button onClick={() => setAdminOpen(true)} className="shrink-0 flex items-center gap-1 px-3 py-2 md:px-2.5 md:py-1.5 rounded-lg border border-border/40 text-xs font-medium hover:bg-muted/30 transition-colors" data-testid="button-manage-outpost">
             <Settings2 className="w-3 h-3" /> Manage
+            <ReportCountBadge communityId={community.community_id} />
           </button>
         )}
       </div>

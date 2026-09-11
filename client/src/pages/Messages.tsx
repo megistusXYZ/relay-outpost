@@ -69,8 +69,8 @@ import {
 import type { Event } from "nostr-tools";
 import { nip19, generateSecretKey, getPublicKey, finalizeEvent, getEventHash, verifyEvent } from "nostr-tools";
 import { v2 as nip44v2 } from "nostr-tools/nip44";
-import { unwrapGiftWrap, seedProcessedWraps, isWrapProcessed, KIND_DIRECT_INVITE_RUMOR } from "@/lib/gift-wrap";
-import { stashDirectInviteRumor } from "@/lib/concord/concord-invites";
+import { unwrapGiftWrap, seedProcessedWraps, isWrapProcessed } from "@/lib/gift-wrap";
+import { routeGroupRumor } from "@/lib/concord/concord-dm-pipe";
 import { detectGroupInvite } from "@/lib/concord/invite-detect";
 import { GroupInviteCard } from "@/components/GroupInviteCard";
 import { EmbeddedNote } from "@/components/NostrPost";
@@ -1155,12 +1155,9 @@ export default function Messages() {
           const r = results[j];
           if (r.status !== "fulfilled" || !r.value) continue;
           const unwrapped = r.value;
-          // Concord direct invite (3313) riding the DM pipe: pending-invite
-          // store only — its payload is secret key material, never DM text.
-          if (unwrapped.rumorKind === KIND_DIRECT_INVITE_RUMOR) {
-            stashDirectInviteRumor(pubkey, unwrapped);
-            continue;
-          }
+          // Group-chat invites and reports ride the DM pipe but are never DM
+          // text (concord-dm-pipe): an invite's payload is secret key material.
+          if (routeGroupRumor(pubkey, unwrapped)) continue;
           const otherPubkey: string = unwrapped.senderPubkey === pubkey
             ? unwrapped.recipientPubkey
             : unwrapped.senderPubkey;
@@ -1319,11 +1316,8 @@ export default function Messages() {
       unwrapGiftWrap(signer, pubkey, ev).then(unwrapped => {
         if (!mountedRef.current || !unwrapped) return;
 
-        // Concord direct invite (3313): stash as a pending invite, never a DM.
-        if (unwrapped.rumorKind === KIND_DIRECT_INVITE_RUMOR) {
-          stashDirectInviteRumor(pubkey, unwrapped);
-          return;
-        }
+        // Group-chat invites and reports: never a DM (concord-dm-pipe).
+        if (routeGroupRumor(pubkey, unwrapped)) return;
 
         const otherPubkey = unwrapped.senderPubkey === pubkey
           ? unwrapped.recipientPubkey
@@ -1409,11 +1403,8 @@ export default function Messages() {
           unwrapGiftWrap(signer, pubkey, ev).then(unwrapped => {
             if (!mountedRef.current || !unwrapped) return;
 
-            // Concord direct invite (3313): stash as a pending invite, never a DM.
-            if (unwrapped.rumorKind === KIND_DIRECT_INVITE_RUMOR) {
-              stashDirectInviteRumor(pubkey, unwrapped);
-              return;
-            }
+            // Group-chat invites and reports: never a DM (concord-dm-pipe).
+            if (routeGroupRumor(pubkey, unwrapped)) return;
 
             const isRelevant =
               (unwrapped.senderPubkey === contactPubkey && unwrapped.recipientPubkey === pubkey) ||
@@ -1641,13 +1632,10 @@ export default function Messages() {
         for (const r of results) {
           if (r.status !== "fulfilled" || !r.value) continue;
           const unwrapped = r.value;
-          // Concord direct invite (3313): stash as a pending invite, never a DM.
-          // (The self-heal force pass can re-decrypt an already-processed 3313
-          // wrap — without this it would leak the bundle into the thread.)
-          if (unwrapped.rumorKind === KIND_DIRECT_INVITE_RUMOR) {
-            stashDirectInviteRumor(pubkey, unwrapped);
-            continue;
-          }
+          // Group-chat invites and reports: never a DM (concord-dm-pipe).
+          // (The self-heal force pass can re-decrypt an already-processed
+          // wrap — without this an invite would leak its bundle into the thread.)
+          if (routeGroupRumor(pubkey, unwrapped)) continue;
           const isRelevant =
             (unwrapped.senderPubkey === contactPubkey && unwrapped.recipientPubkey === pubkey) ||
             (unwrapped.senderPubkey === pubkey && unwrapped.recipientPubkey === contactPubkey);

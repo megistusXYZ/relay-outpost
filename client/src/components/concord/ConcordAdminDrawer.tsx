@@ -15,7 +15,8 @@
  * answer to "who may open this", instead of one answer per host.
  */
 import { useCallback, useMemo, useState } from "react";
-import { DoorOpen, Hash, History as HistoryIcon, Lock, Settings2, Shield, Trash2, Users } from "lucide-react";
+import { DoorOpen, Flag, Hash, History as HistoryIcon, Lock, Settings2, Shield, Trash2, Users } from "lucide-react";
+import { ConcordReports } from "./ConcordReports";
 import { SpaceAdminDrawer } from "@/components/space/SpaceAdminDrawer";
 import { SpaceAdminSection } from "@/components/space/SpaceAdminSection";
 import type { SpaceAdminSectionDef } from "@/components/space/space-admin-sections";
@@ -88,6 +89,13 @@ export function ConcordAdminDrawer({
 
   const renderSection = useCallback((section: SpaceAdminSectionDef) => {
     switch (section.id) {
+      case "reports":
+        // Messages members reported to the moderators; only they see this.
+        return (
+          <SpaceAdminSection can={caps.manageMembers} title={section.label} icon={Flag}>
+            <ConcordReports communityId={community.community_id} roomName={(id) => channels.find((c) => c.id === id)?.name} />
+          </SpaceAdminSection>
+        );
       case "people":
         // Re-derives authority from the fold itself, so it is safe anywhere —
         // the one dialog in this drawer that does. Its activity block is

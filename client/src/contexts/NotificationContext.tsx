@@ -3,8 +3,8 @@ import type { Event } from "nostr-tools";
 import { eventStore, FAST_RELAYS, fetchProfiles, throttledPoolSubscribe, persistentPoolSubscribe } from "@/lib/nostr";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
-import { unwrapGiftWrap, seedProcessedWraps, KIND_DIRECT_INVITE_RUMOR } from "@/lib/gift-wrap";
-import { stashDirectInviteRumor } from "@/lib/concord/concord-invites";
+import { unwrapGiftWrap, seedProcessedWraps } from "@/lib/gift-wrap";
+import { routeGroupRumor } from "@/lib/concord/concord-dm-pipe";
 import { toast } from "@/hooks/use-toast";
 import * as dmCache from "@/lib/dm-cache";
 import { readDmLastRead, READSTATE_CHANGED_EVENT, READSTATE_HYDRATED_EVENT } from "@/lib/dm-read";
@@ -420,12 +420,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     const unwrapped = await unwrapGiftWrap(currentSigner, currentPubkey, wrapEvent);
     if (!unwrapped) return;
 
-    // Concord direct invite (3313) riding the DM pipe: stash it as a pending
-    // invite + notify — it is NOT a DM and must not enter the DM cache.
-    if (unwrapped.rumorKind === KIND_DIRECT_INVITE_RUMOR) {
-      // Branch refactor (shared stash helper) + main's "Private chat" wording.
-      const stashed = stashDirectInviteRumor(currentPubkey, unwrapped);
-      if (stashed?.isNew) toast({ title: "Private chat invite", description: `You've been invited to ${stashed.bundle.name ?? "a private chat"}. Open Chats to accept it.` });
+    // Group-chat invites (3313) and reports (1984) ride the DM pipe but are
+    // NOT DMs and must not enter the DM cache (concord-dm-pipe): an invite goes
+    // to pending invites, a report to the group's Manage.
+    const routed = routeGroupRumor(currentPubkey, unwrapped);
+    if (routed) {
+      if (routed.isNew && routed.kind === "invite") {
+        toast({ title: "Private chat invite", description: `You've been invited to ${routed.name ?? "a private chat"}. Open Chats to accept it.` });
+      }
+      if (routed.isNew && routed.kind === "report") {
+        toast({ title: "A message was reported", description: "Someone reported a message in a group chat you moderate. Open the group's Manage to review it." });
+      }
       return;
     }
 

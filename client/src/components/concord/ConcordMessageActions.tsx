@@ -4,13 +4,13 @@
  * copy, edit, delete) as a tidy list — instead of a crowded row of always-on icons.
  */
 import { useState } from "react";
-import { MoreHorizontal, Reply, MessageSquare, Pin, PinOff, Copy, Pencil, Trash2, SmilePlus, Check } from "lucide-react";
+import { MoreHorizontal, Reply, MessageSquare, Pin, PinOff, Copy, Pencil, Trash2, SmilePlus, Check, Flag } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { ComposeEmojiPicker } from "@/components/ComposeEmojiPicker";
 
 const QUICK = ["👍", "❤️", "😂", "🎉", "😮", "😢"];
 
-export function ConcordMessageActions({ content, mine, onReact, onReply, onReplyInThread, readOnly, pinned, onTogglePin, onEdit, onDelete, removable }: {
+export function ConcordMessageActions({ content, mine, onReact, onReply, onReplyInThread, readOnly, pinned, onTogglePin, onEdit, onDelete, removable, onReport }: {
   content: string;
   mine: boolean;
   onReact: (emoji: string, emojiUrl?: string) => void;
@@ -27,6 +27,8 @@ export function ConcordMessageActions({ content, mine, onReact, onReply, onReply
   onDelete: () => void;
   /** Someone else's message I may remove, as a moderator who outranks them (CORD-04 §5). */
   removable?: boolean;
+  /** Report someone else's message to the group's moderators (concord-reports). */
+  onReport?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -61,6 +63,7 @@ export function ConcordMessageActions({ content, mine, onReact, onReply, onReply
         {onReplyInThread && !readOnly && <MenuItem icon={MessageSquare} label="Reply in thread" onClick={() => act(onReplyInThread)} testid="concord-menu-reply-thread" />}
         {onTogglePin && !readOnly && <MenuItem icon={pinned ? PinOff : Pin} label={pinned ? "Unpin" : "Pin"} onClick={() => act(onTogglePin)} testid="concord-menu-pin" />}
         <MenuItem icon={copied ? Check : Copy} label={copied ? "Copied" : "Copy text"} onClick={copy} testid="concord-menu-copy" />
+        {onReport && !mine && <MenuItem icon={Flag} label="Report" onClick={() => act(onReport)} testid="concord-menu-report" />}
         {mine && !readOnly && <MenuItem icon={Pencil} label="Edit" onClick={() => act(onEdit)} testid="concord-menu-edit" />}
         {(mine || removable) && (
           <MenuItem icon={Trash2} label={mine ? "Delete" : "Remove for everyone"} onClick={() => act(onDelete)} destructive testid={mine ? "concord-menu-delete" : "concord-menu-remove"} />

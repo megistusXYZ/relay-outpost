@@ -14,7 +14,7 @@ const ids = (caps: Parameters<typeof visibleSections>[0], b: Parameters<typeof v
 describe("visibleSections — two gates, asked separately", () => {
   it("shows a Concord owner everything Concord has", () => {
     expect(ids(concordCapabilities(member(0n, OWNER_POSITION)), "concord"))
-      .toEqual(["people", "roles", "history", "channels", "access", "details", "danger"]);
+      .toEqual(["reports", "people", "roles", "history", "channels", "access", "details", "danger"]);
   });
 
   it("shows a NIP-29 admin everything NIP-29 has", () => {
@@ -64,8 +64,12 @@ describe("the backend gate does work the capability gate cannot", () => {
 });
 
 describe("partial authority renders partially", () => {
-  it("gives a KICK-only Concord moderator People, and nothing else", () => {
-    expect(ids(concordCapabilities(member(PERM.KICK)), "concord")).toEqual(["people"]);
+  it("gives a KICK-only Concord moderator Reports and People, and nothing else", () => {
+    expect(ids(concordCapabilities(member(PERM.KICK)), "concord")).toEqual(["reports", "people"]);
+  });
+
+  it("shows Reports only in a group chat: a NIP-29 room's reports are public events", () => {
+    expect(ids(nip29Capabilities(admins(ME), ME), "nip29")).not.toContain("reports");
   });
 
   it("gives a MANAGE_METADATA-only moderator the door and the details form, not the roster", () => {
