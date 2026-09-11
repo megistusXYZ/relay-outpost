@@ -11,7 +11,7 @@
  * the permission choices people see. Publishing lives in concord-governance.
  */
 import {
-  PERM, STAFF_PERMS, memberPermissions, hasPermissionBit, canActOn, serializePermissions, computeEditionId,
+  PERM, STAFF_PERMS, ADMIN_ROLE_ID, VSK, memberPermissions, hasPermissionBit, canActOn, serializePermissions, computeEditionId,
   type FoldedState, type Role,
 } from "./concord-events";
 
@@ -44,6 +44,28 @@ export function nextRoleEdition(roleId: string, head: { ev: number; hash: string
   const version = head ? head.ev + 1 : 1;
   const prevHash = head?.hash;
   return { version, prevHash, content, eid: computeEditionId(roleId, version, prevHash, JSON.stringify(content)) };
+}
+
+/**
+ * The Admin role's next edition, for a group made before some permission
+ * joined it (Pin messages, #112): the owner's device publishes it once. Only
+ * while the role is the untouched original (version 1), so an owner who edited
+ * it keeps their choices; and it only adds bits, never takes any away.
+ */
+export function adminRoleCatchUp(
+  state: Pick<FoldedState, "roles" | "heads">,
+  ownerPubkey: string,
+  me: string,
+  wanted: bigint,
+): ReturnType<typeof nextRoleEdition> | null {
+  if (me !== ownerPubkey) return null;
+  const role = state.roles.get(ADMIN_ROLE_ID);
+  const head = state.heads.get(`${VSK.ROLE}:${ADMIN_ROLE_ID}`);
+  if (!role || !head || head.ev !== 1) return null;
+  if ((role.permissions & wanted) === wanted) return null;
+  return nextRoleEdition(ADMIN_ROLE_ID, head, roleContent({
+    roleId: ADMIN_ROLE_ID, name: role.name, position: role.position, permissions: role.permissions | wanted, color: role.color,
+  }));
 }
 
 /**

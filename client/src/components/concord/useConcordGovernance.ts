@@ -13,11 +13,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { getGlobalSigner } from "@/lib/nip42-auth";
-import { persistentPoolSubscribe } from "@/lib/nostr";
+import { persistentPoolSubscribe, publishEvent } from "@/lib/nostr";
+import { editRole, ADMIN_PERMS } from "@/lib/concord/concord-governance";
+import { adminRoleCatchUp } from "@/lib/concord/concord-roles";
 import { subscribeGovernance, type DecodedRumor } from "@/lib/concord/concord-stream";
 import { isDissolution, isDeleted } from "@/lib/concord/concord-dissolution";
 import { removalSystemEvents, type SystemEvent } from "@/lib/concord/concord-activity";
-import { KIND_KICK } from "@/lib/concord/concord-events";
+import { KIND_KICK, ADMIN_ROLE_ID, VSK } from "@/lib/concord/concord-events";
 import { joinCountsByLabel } from "@/lib/concord/concord-invite-links";
 import { parseControlEdition, editionKey, parseSnapshotRumor, foldEditions, computeRoster, KIND_CONTROL_EDITION, KIND_JOIN_LEAVE, KIND_AUDIT, KIND_REKEY, KIND_SNAPSHOT, type ControlEdition, type FoldedState, type Member, type AuditEntry } from "@/lib/concord/concord-events";
 import { computeMembershipEvents, computeAuditLog, type RawRumor, type MembershipEvent } from "@/lib/concord/concord-activity";
@@ -83,6 +85,9 @@ function useReconcilerElection(communityId: string | undefined): boolean {
 }
 
 const BASE_SCOPE = "00".repeat(32);
+
+/** Groups whose Admin role this session already tried to bring up to date (adminRoleCatchUp). */
+const adminCatchUpTried = new Set<string>();
 
 export function useConcordGovernance(community: StoredCommunity | null | undefined): { state: FoldedState; roster: Member[]; myMember?: Member; events: MembershipEvent[]; auditLog: AuditEntry[]; deleted: boolean; removals: SystemEvent[]; privateRoomHolders: (roomId: string) => string[] | null; compaction: () => Seal[];
   /** How many people joined through each of my invite links, by label (CORD-05 §1). */
@@ -323,6 +328,27 @@ export function useConcordGovernance(community: StoredCommunity | null | undefin
     }, RECONCILE_QUIET_MS);
     return () => clearTimeout(t);
   }, [pubkey, communityId, isReconciler, folded.state]);
+
+  // Groups made before "Pin messages" joined the Admin role: the owner's device
+  // brings that role up to date, once, while it is still the untouched original
+  // (adminRoleCatchUp). Same elected writer and the same wait-for-quiet as above,
+  // so one tab does it, and never off a fold that's still walking in.
+  useEffect(() => {
+    if (!pubkey || !community || !communityId || pubkey !== owner || !isReconciler || adminCatchUpTried.has(communityId)) return;
+    if (folded.state.heads.size === 0) return;
+    const t = setTimeout(() => {
+      const next = adminRoleCatchUp(folded.state, owner, pubkey, ADMIN_PERMS);
+      const role = folded.state.roles.get(ADMIN_ROLE_ID);
+      const signer = getGlobalSigner();
+      if (!next || !role || !signer) return;
+      adminCatchUpTried.add(communityId);
+      void editRole(signer, pubkey, community, ADMIN_ROLE_ID,
+        { name: role.name, permissions: BigInt(next.content.permissions), position: role.position, color: role.color },
+        folded.state.heads.get(`${VSK.ROLE}:${ADMIN_ROLE_ID}`), (e, r) => publishEvent(e, r))
+        .catch(() => { adminCatchUpTried.delete(communityId); });
+    }, RECONCILE_QUIET_MS);
+    return () => clearTimeout(t);
+  }, [pubkey, community, communityId, owner, isReconciler, folded.state]);
 
   // Who holds each private room's current key, read off the key deliveries this
   // hook already collects. A removal re-secures those rooms for exactly these
