@@ -268,20 +268,26 @@ export function canActOn(actorRank: number, targetRank: number): boolean {
 }
 
 // ── Rumor builders (unsigned templates) ──────────────────────────────────────
-/** A channel message rumor with the mandatory binding tags (CORD-03). */
+/**
+ * A channel message rumor with the mandatory binding tags (CORD-03). `quote`
+ * makes it an inline quote (NIP-C7 `q`, examples §2.1): still a kind 9 in the
+ * room, carrying a card of the message it answers. That is what "Reply" in the
+ * room sends; a reply in a thread is buildReplyRumor.
+ */
 export function buildMessageRumor(
   author: string, channelId: string, epoch: bigint, content: string, ms: number, createdAt: number,
+  opts: { quote?: { id: string; pubkey: string } } = {},
 ): RumorTemplate {
-  return {
-    kind: KIND_MESSAGE,
-    pubkey: author,
-    created_at: createdAt,
-    content,
-    tags: [["channel", channelId], ["epoch", epoch.toString()], msTag(ms)],
-  };
+  const tags = [["channel", channelId], ["epoch", epoch.toString()], msTag(ms)];
+  if (opts.quote) tags.push(["q", opts.quote.id, "", opts.quote.pubkey]);
+  return { kind: KIND_MESSAGE, pubkey: author, created_at: createdAt, content, tags };
 }
 
-/** A threaded reply (NIP-22): uppercase K/E/P = thread root, lowercase = immediate parent. */
+/**
+ * A threaded reply (NIP-22, examples §2.2): uppercase K/E/P = thread root,
+ * lowercase = immediate parent, each `E`/`e` naming its author in the fourth
+ * slot. Build `ref` with threadReplyRef, which inherits the parent's root.
+ */
 export function buildReplyRumor(
   author: string, channelId: string, epoch: bigint, content: string, ms: number, createdAt: number,
   ref: { rootKind: number; rootId: string; rootPubkey: string; parentKind: number; parentId: string; parentPubkey: string },
@@ -293,8 +299,8 @@ export function buildReplyRumor(
     content,
     tags: [
       ["channel", channelId], ["epoch", epoch.toString()], msTag(ms),
-      ["K", String(ref.rootKind)], ["E", ref.rootId], ["P", ref.rootPubkey],
-      ["k", String(ref.parentKind)], ["e", ref.parentId], ["p", ref.parentPubkey],
+      ["K", String(ref.rootKind)], ["E", ref.rootId, "", ref.rootPubkey], ["P", ref.rootPubkey],
+      ["k", String(ref.parentKind)], ["e", ref.parentId, "", ref.parentPubkey], ["p", ref.parentPubkey],
     ],
   };
 }
@@ -307,25 +313,30 @@ export function buildReplyRumor(
  */
 export function buildReactionRumor(
   author: string, channelId: string, epoch: bigint, content: string,
-  target: { id: string; pubkey: string }, ms: number, createdAt: number,
+  target: { id: string; pubkey: string; kind?: number }, ms: number, createdAt: number,
   customEmoji?: { shortcode: string; url: string },
 ): RumorTemplate {
   const tags: string[][] = [
     ["channel", channelId], ["epoch", epoch.toString()], msTag(ms),
-    ["e", target.id], ["p", target.pubkey], ["k", String(KIND_MESSAGE)],
+    ["e", target.id], ["p", target.pubkey], ["k", String(target.kind ?? KIND_MESSAGE)],
   ];
   if (customEmoji) tags.push(["emoji", customEmoji.shortcode, customEmoji.url]);
   return { kind: KIND_REACTION, pubkey: author, created_at: createdAt, content, tags };
 }
 
+/** CORD-03: "reactions, edits, and deletes … their `k` tag naming `9` or `1111`". */
+const kindTag = (kind?: number): string[][] => (kind === undefined ? [] : [["k", String(kind)]]);
+
 /** A delete rumor (kind 5) tombstoning one of the author's own events (reaction
  *  un-react, or a message delete). Carries the channel/epoch binding. */
 export function buildDeleteRumor(
   author: string, channelId: string, epoch: bigint, targetId: string, ms: number, createdAt: number,
+  /** The target's kind (9, 1111, or 7 for an un-react), named in `k` (CORD-03). */
+  targetKind?: number,
 ): RumorTemplate {
   return {
     kind: KIND_DELETE, pubkey: author, created_at: createdAt, content: "",
-    tags: [["channel", channelId], ["epoch", epoch.toString()], msTag(ms), ["e", targetId]],
+    tags: [["channel", channelId], ["epoch", epoch.toString()], msTag(ms), ["e", targetId], ...kindTag(targetKind)],
   };
 }
 
@@ -333,10 +344,12 @@ export function buildDeleteRumor(
  *  `e` references the target; content is the new text. Channel/epoch bound. */
 export function buildEditRumor(
   author: string, channelId: string, epoch: bigint, targetId: string, content: string, ms: number, createdAt: number,
+  /** The edited message's kind (9 or 1111), named in `k` (CORD-03). */
+  targetKind?: number,
 ): RumorTemplate {
   return {
     kind: KIND_EDIT, pubkey: author, created_at: createdAt, content,
-    tags: [["channel", channelId], ["epoch", epoch.toString()], msTag(ms), ["e", targetId]],
+    tags: [["channel", channelId], ["epoch", epoch.toString()], msTag(ms), ["e", targetId], ...kindTag(targetKind)],
   };
 }
 

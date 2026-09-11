@@ -66,7 +66,8 @@ export function rumorMentionsMe(
   authorPubkey: string,
 ): boolean {
   if (!myPubkey || authorPubkey === myPubkey) return false;
-  return tags.some((t) => t[0] === "p" && t[1] === myPubkey);
+  // An inline quote of your message names you only in its q tag (CORD-03).
+  return tags.some((t) => (t[0] === "p" && t[1] === myPubkey) || (t[0] === "q" && t[3] === myPubkey));
 }
 
 /** Add one entry to a channel's list: dedupe by id, keep ascending by t, and

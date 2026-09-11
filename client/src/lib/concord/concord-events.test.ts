@@ -5,7 +5,7 @@ import {
   msTag, effectiveTime,
   parsePermissions, serializePermissions, hasPermissionBit, memberPermissions, hasPermission, canActOn,
   buildMessageRumor, buildReplyRumor, buildJoinLeaveRumor, buildControlEdition,
-  buildReactionRumor, buildDeleteRumor,
+  buildReactionRumor, buildDeleteRumor, buildEditRumor,
   buildAuditRumor, parseAuditRumor,
   buildSnapshotRumor, parseSnapshotRumor,
   parseControlEdition, editionKey, computeEditionId, foldEditions, computeRoster,
@@ -131,8 +131,8 @@ describe("rumor builders (CORD-03)", () => {
       rootKind: 9, rootId: "root", rootPubkey: OWNER, parentKind: 9, parentId: "par", parentPubkey: BOB,
     });
     expect(r.tags).toContainEqual(["K", "9"]);
-    expect(r.tags).toContainEqual(["E", "root"]);
-    expect(r.tags).toContainEqual(["e", "par"]);
+    expect(r.tags).toContainEqual(["E", "root", "", OWNER]);
+    expect(r.tags).toContainEqual(["e", "par", "", BOB]);
     expect(r.tags).toContainEqual(["p", BOB]);
   });
   it("join/leave records the action", () => {
@@ -794,5 +794,14 @@ describe("our edit of another app's group, end to end through the fold", () => {
     expect(after.metadata!.raw).toMatchObject({ message_expiration: 604800, custom: { rules: "Be kind" } });
     // The id we record is the hash the fold holds, so our next edit chains too.
     expect(after.heads.get(coord)?.hash).toBe(next.eid);
+  });
+});
+
+describe("what a reaction, delete or edit points at (CORD-03)", () => {
+  it("names the kind of the message it targets: 1111 for a threaded reply, 9 for a message", () => {
+    expect(buildReactionRumor(ALICE, CH, 0n, "🔥", { id: "m", pubkey: BOB, kind: 1111 }, 0, 1).tags).toContainEqual(["k", "1111"]);
+    expect(buildReactionRumor(ALICE, CH, 0n, "🔥", { id: "m", pubkey: BOB }, 0, 1).tags).toContainEqual(["k", "9"]);
+    expect(buildDeleteRumor(ALICE, CH, 0n, "m", 0, 1, 1111).tags).toContainEqual(["k", "1111"]);
+    expect(buildEditRumor(ALICE, CH, 0n, "m", "fixed", 0, 1, 1111).tags).toContainEqual(["k", "1111"]);
   });
 });

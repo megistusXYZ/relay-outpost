@@ -350,7 +350,27 @@ function stripOwner(rec: StoredCommunity & { ownerPubkey?: string }): StoredComm
 // processed-streams ledger, so a tab switch (unmount) loses them and the ledger
 // blocks re-fetch. This cache is the durable display source: decoded messages
 // persist across remount/reload; the live subscription only appends new ones.
-export interface CachedMessage { id: string; pubkey: string; content: string; t: number; media?: import("./concord-media").ConcordMedia[]; replyTo?: { id: string; pubkey: string }; edited?: boolean; deleted?: boolean; mentions?: string[] }
+export interface CachedMessage {
+  id: string; pubkey: string; content: string; t: number; media?: import("./concord-media").ConcordMedia[];
+  /** The message this one answers: the quoted one, or a threaded reply's parent. */
+  replyTo?: { id: string; pubkey: string };
+  /** A threaded reply's root (concord-replies), and its id for grouping. */
+  root?: { id: string; pubkey: string; kind: number };
+  rootId?: string;
+  /** 9 for a message, 1111 for a threaded reply: reactions, edits and deletes name it. */
+  kind?: number;
+  edited?: boolean; deleted?: boolean; mentions?: string[];
+}
+
+/**
+ * A cached row as a message: every field it was stored with except the storage
+ * keys. The reader used to copy an allowlist that left out the thread, so after
+ * a reload every thread reply came back in the room.
+ */
+export function messageFromCacheRow(row: CachedMessage & { ownerPubkey?: string; communityId?: string; channelId?: string }): CachedMessage {
+  const { ownerPubkey: _owner, communityId: _community, channelId: _channel, ...msg } = row;
+  return msg;
+}
 const MESSAGE_CACHE_CAP = 1000;
 
 export async function cacheMessage(ownerPubkey: string, communityId: string, channelId: string, msg: CachedMessage): Promise<void> {
@@ -373,7 +393,7 @@ export async function getCachedMessages(ownerPubkey: string, communityId: string
       const req = tx.objectStore(MESSAGES_STORE).index("by-channel").getAll([ownerPubkey, communityId, channelId]);
       req.onsuccess = () => {
         const rows = (req.result || []) as (CachedMessage & { ownerPubkey: string })[];
-        const msgs = rows.map(({ id, pubkey, content, t, media, replyTo, edited, deleted, mentions }) => ({ id, pubkey, content, t, media, replyTo, edited, deleted, mentions })).sort((a, b) => a.t - b.t);
+        const msgs = rows.map(messageFromCacheRow).sort((a, b) => a.t - b.t);
         resolve(msgs.slice(-MESSAGE_CACHE_CAP));
       };
       req.onerror = () => resolve([]);
