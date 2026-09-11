@@ -2931,7 +2931,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                 <div className="flex flex-col items-center justify-center py-16 gap-3">
                   <RelayOutpostLoader />
                   <p className="text-sm text-muted-foreground">
-                    {listenFeedSources.length > 0 ? "Gathering your shows…" : "Finding what people are listening to…"}
+                    {listenFeedSources.length > 0 ? "Gathering your shows…" : "Finding trending shows…"}
                   </p>
                 </div>
               )}
@@ -2969,9 +2969,11 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
 
               {listenMode === "trending" && (
                 <section data-testid="listen-trending">
-                  <h2 className="px-2 text-sm font-semibold text-foreground">Trending in podcasts</h2>
+                  <h2 className="px-2 text-sm font-semibold text-foreground">Trending on Podcast Index</h2>
                   <p className="px-2 pt-1 pb-2 text-sm text-muted-foreground">
-                    You don't follow any shows yet. Here's what people are listening to, from Podcast Index.
+                    {/* Podcast Index's trending list isn't a measure of listening,
+                        so the copy doesn't claim it is. */}
+                    You don't follow any shows yet. These shows are trending on Podcast Index right now.
                   </p>
                   <div className="divide-y divide-border/50">
                     {trending.feeds.map((feed) => renderSuggestedShow(feed))}
