@@ -11,6 +11,7 @@
  * Import-light on purpose (no nostr/relay deps) so pure callers stay testable.
  */
 import { useEffect, useState } from "react";
+import { READSTATE_CHANGED_EVENT } from "@/lib/dm-read";
 
 const STORAGE_KEY = "ro_concord_mute_v1";
 /** Fired on every mute/unmute so dots, badges and counts can recompute. */
@@ -21,25 +22,83 @@ interface MuteState {
   communities: string[];
   /** Muted channels as `${communityId}|${channelId}`. */
   channels: string[];
+  /**
+   * When each flag last changed (ms), by entry key (`c:<communityId>`,
+   * `ch:<communityId>|<channelId>`), so the latest change wins when your
+   * devices sync (read-state-sync). Mutes from before this have none: 0.
+   */
+  at: Record<string, number>;
 }
+
+const COMMUNITY = "c:";
+const CHANNEL = "ch:";
 
 function loadState(): MuteState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { communities: [], channels: [] };
+    if (!raw) return { communities: [], channels: [], at: {} };
     const parsed = JSON.parse(raw) as Partial<MuteState>;
+    const at: Record<string, number> = {};
+    if (parsed.at && typeof parsed.at === "object") {
+      for (const [k, v] of Object.entries(parsed.at)) if (typeof v === "number") at[k] = v;
+    }
     return {
       communities: Array.isArray(parsed.communities) ? parsed.communities.filter((v) => typeof v === "string") : [],
       channels: Array.isArray(parsed.channels) ? parsed.channels.filter((v) => typeof v === "string") : [],
+      at,
     };
   } catch {
-    return { communities: [], channels: [] };
+    return { communities: [], channels: [], at: {} };
   }
 }
 
-function saveState(state: MuteState): void {
+/** `local`: a change made here, which your other devices should hear about. */
+function saveState(state: MuteState, opts?: { local?: boolean }): void {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
   try { window.dispatchEvent(new Event(MUTE_CHANGED_EVENT)); } catch {}
+  if (opts?.local) { try { window.dispatchEvent(new Event(READSTATE_CHANGED_EVENT)); } catch {} }
+}
+
+/** Each flag's latest state and when it changed: mutes, and unmutes that were ever made. */
+export type MuteEntries = Record<string, { muted: boolean; at: number }>;
+
+/** This device's mutes as sync entries (read-state-sync publishes them). */
+export function muteEntries(): MuteEntries {
+  const s = loadState();
+  const out: MuteEntries = {};
+  for (const c of s.communities) out[COMMUNITY + c] = { muted: true, at: s.at[COMMUNITY + c] ?? 0 };
+  for (const ch of s.channels) out[CHANNEL + ch] = { muted: true, at: s.at[CHANNEL + ch] ?? 0 };
+  for (const [key, at] of Object.entries(s.at)) if (!out[key]) out[key] = { muted: false, at };
+  return out;
+}
+
+/**
+ * Take another device's mute changes where they're newer than this device's.
+ * Saved without asking to publish again (the change came from there). Returns
+ * whether anything changed.
+ */
+export function applyMuteEntries(remote: MuteEntries | null | undefined): boolean {
+  const s = loadState();
+  const communities = new Set(s.communities);
+  const channels = new Set(s.channels);
+  const at = { ...s.at };
+  let changed = false;
+  for (const [key, entry] of Object.entries(remote ?? {})) {
+    if (!entry || typeof entry.at !== "number" || typeof entry.muted !== "boolean") continue;
+    const isCommunity = key.startsWith(COMMUNITY);
+    if (!isCommunity && !key.startsWith(CHANNEL)) continue;
+    const id = key.slice(isCommunity ? COMMUNITY.length : CHANNEL.length);
+    if (!id) continue;
+    const set = isCommunity ? communities : channels;
+    // A mute kept from before times were recorded counts as 0; no flag at all, as never.
+    const mine = at[key] ?? (set.has(id) ? 0 : -1);
+    if (entry.at <= mine) continue;
+    if (entry.muted) set.add(id); else set.delete(id);
+    at[key] = entry.at;
+    changed = true;
+  }
+  if (changed) saveState({ communities: [...communities], channels: [...channels], at });
+  return changed;
 }
 
 /** The `${communityId}|${channelId}` key channel mutes are stored under. */
@@ -73,7 +132,8 @@ export function setCommunityMuted(communityId: string, muted: boolean): void {
   saveState({
     ...s,
     communities: muted ? [...s.communities, communityId] : s.communities.filter((c) => c !== communityId),
-  });
+    at: { ...s.at, [COMMUNITY + communityId]: Date.now() },
+  }, { local: true });
 }
 
 export function setChannelMuted(communityId: string, channelId: string, muted: boolean): void {
@@ -84,7 +144,8 @@ export function setChannelMuted(communityId: string, channelId: string, muted: b
   saveState({
     ...s,
     channels: muted ? [...s.channels, key] : s.channels.filter((c) => c !== key),
-  });
+    at: { ...s.at, [CHANNEL + key]: Date.now() },
+  }, { local: true });
 }
 
 // ── Reactive views ───────────────────────────────────────────────────────────

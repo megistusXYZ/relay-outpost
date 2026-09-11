@@ -18,6 +18,7 @@ import {
   type ReadState,
 } from "./read-state-sync";
 import { DM_READ_PREFIX } from "./dm-read";
+import { setCommunityMuted, setChannelMuted, isCommunityMuted, isChannelMuted, muteEntries } from "./concord/concord-mute";
 
 // Deterministic localStorage (node env has none).
 const __store = new Map<string, string>();
@@ -222,5 +223,90 @@ describe("isReadStateDoc — validation", () => {
     expect(isReadStateDoc({})).toBe(false);
     expect(isReadStateDoc({ version: 1, lastModified: 1 })).toBe(false);
     expect(isReadStateDoc({ version: 1, lastModified: 1, notifLastSeen: 0, dmRead: null })).toBe(false);
+  });
+});
+
+// ── Group chats (Concord): each room's read mark, and mutes ─────────────────
+// A room read on your phone should be read on your laptop too, and a group you
+// muted on one device shouldn't keep buzzing on the other.
+const CID = "c".repeat(64), ROOM = "d".repeat(64), ROOM2 = "e".repeat(64);
+const markKey = (cid: string, room: string) => `ro_concord_read_${cid}_${room}`;
+const __events: { type: string; detail?: unknown }[] = [];
+vi.stubGlobal("window", {
+  dispatchEvent: (e: { type: string; detail?: unknown }) => { __events.push({ type: e.type, detail: e.detail }); return true; },
+  addEventListener: () => {},
+  removeEventListener: () => {},
+});
+
+describe("group chats — each room's read mark", () => {
+  beforeEach(() => { __events.length = 0; });
+
+  it("collects each room's mark, and nothing that isn't one", () => {
+    localStorage.setItem(markKey(CID, ROOM), "1000");
+    localStorage.setItem(markKey(CID, ROOM2), "2000");
+    localStorage.setItem("ro_concord_read_junk", "5");
+    expect(collectLocalState(PK).concordRead).toEqual({ [`${CID}|${ROOM}`]: 1000, [`${CID}|${ROOM2}`]: 2000 });
+  });
+
+  it("merges per room by MAX and never drops one", () => {
+    const out = mergeReadState(doc({ concordRead: { a: 100, b: 900 } }), doc({ concordRead: { a: 500, c: 50 } }));
+    expect(out.concordRead).toEqual({ a: 500, b: 900, c: 50 });
+  });
+
+  it("a room read on another device is read here too, and its group's dot is told", () => {
+    localStorage.setItem(markKey(CID, ROOM), "1000");
+    expect(applyRemoteToLocal(doc({ concordRead: { [`${CID}|${ROOM}`]: 5000 } }), PK)).toBe(true);
+    expect(localStorage.getItem(markKey(CID, ROOM))).toBe("5000");
+    expect(__events).toContainEqual({ type: "concord-read", detail: CID });
+  });
+
+  it("never lowers a room's mark, and ignores a key that isn't a room", () => {
+    localStorage.setItem(markKey(CID, ROOM), "5000");
+    expect(applyRemoteToLocal(doc({ concordRead: { [`${CID}|${ROOM}`]: 1000, "nope|x": 9 } }), PK)).toBe(false);
+    expect(localStorage.getItem(markKey(CID, ROOM))).toBe("5000");
+    expect(__events).toEqual([]);
+  });
+
+  it("is worth publishing on its own", () => {
+    localStorage.setItem(markKey(CID, ROOM), "1000");
+    expect(hasAnyReadMarkers(PK)).toBe(true);
+  });
+
+  it("keeps the newest marks when there are too many to carry", () => {
+    for (let i = 0; i < 450; i++) localStorage.setItem(markKey(CID, i.toString(16).padStart(64, "0")), String(1000 + i));
+    const marks = collectLocalState(PK).concordRead!;
+    expect(Object.keys(marks)).toHaveLength(400);
+    expect(Math.min(...Object.values(marks))).toBe(1050);
+  });
+});
+
+describe("group chats — mutes", () => {
+  beforeEach(() => { __events.length = 0; });
+
+  it("the latest mute or unmute wins, from whichever device made it", () => {
+    setCommunityMuted(CID, true);
+    const at = muteEntries()[`c:${CID}`].at;
+    expect(applyRemoteToLocal(doc({ concordMutes: { [`c:${CID}`]: { muted: false, at: at - 1000 } } }), PK)).toBe(false);
+    expect(isCommunityMuted(CID)).toBe(true);
+    const later = { [`c:${CID}`]: { muted: false, at: at + 1000 }, [`ch:${CID}|${ROOM}`]: { muted: true, at: at + 1000 } };
+    expect(applyRemoteToLocal(doc({ concordMutes: later }), PK)).toBe(true);
+    expect(isCommunityMuted(CID)).toBe(false);
+    expect(isChannelMuted(CID, ROOM)).toBe(true);
+  });
+
+  it("merges per key by the later change", () => {
+    const out = mergeReadState(
+      doc({ concordMutes: { a: { muted: true, at: 10 }, b: { muted: false, at: 50 } } }),
+      doc({ concordMutes: { a: { muted: false, at: 20 }, b: { muted: true, at: 40 } } }));
+    expect(out.concordMutes).toEqual({ a: { muted: false, at: 20 }, b: { muted: false, at: 50 } });
+  });
+
+  it("an unmute travels too, and a mute alone is worth publishing", () => {
+    setChannelMuted(CID, ROOM, true);
+    setChannelMuted(CID, ROOM, false);
+    expect(collectLocalState(PK).concordMutes?.[`ch:${CID}|${ROOM}`]).toMatchObject({ muted: false });
+    __store.clear();
+    setCommunityMuted(CID, true);
+    expect(hasAnyReadMarkers(PK)).toBe(true);
   });
 });

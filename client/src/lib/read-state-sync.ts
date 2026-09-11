@@ -38,6 +38,8 @@
 import type { ISigner } from "applesauce-signers";
 import type { NostrEvent } from "nostr-tools";
 import { DM_READ_PREFIX, DM_READ_EVENT, READSTATE_HYDRATED_EVENT } from "@/lib/dm-read";
+import { CONCORD_READ_PREFIX } from "@/lib/concord/concord-channel-unread";
+import { muteEntries, applyMuteEntries, type MuteEntries } from "@/lib/concord/concord-mute";
 
 // NOTE: the heavy relay graph (`@/lib/nostr` pulls IndexedDB + SimplePool at
 // module load) is imported LAZILY inside the async I/O helpers below. Keeping
@@ -67,6 +69,30 @@ export interface ReadState {
   notifLastSeen: number;
   /** counterparty pubkey (hex) → last-read UNIX timestamp. */
   dmRead: Record<string, number>;
+  /**
+   * Group chats: each room's read mark (ms), by `${communityId}|${channelId}`.
+   * Per room MAX, like dmRead. Optional, so docs from before still validate.
+   */
+  concordRead?: Record<string, number>;
+  /** Group chats: each mute flag's latest state and when it changed; the later change wins. */
+  concordMutes?: MuteEntries;
+}
+
+/** At most this many room marks ride in the doc (the newest), keeping it well under NIP-44's size cap. */
+const CONCORD_READ_CAP = 400;
+const HEX64 = /^[0-9a-f]{64}$/;
+
+/** `ro_concord_read_<cid>_<chid>` → `<cid>|<chid>`, or null when it isn't a room's mark. */
+function concordPairOf(storageKey: string): string | null {
+  const rest = storageKey.slice(CONCORD_READ_PREFIX.length);
+  const cid = rest.slice(0, 64), chid = rest.slice(65);
+  return rest[64] === "_" && HEX64.test(cid) && HEX64.test(chid) ? `${cid}|${chid}` : null;
+}
+
+/** `<cid>|<chid>` → its storage key, or null when it isn't a room. */
+function concordStorageKeyOf(pair: string): string | null {
+  const [cid, chid, extra] = pair.split("|");
+  return extra === undefined && HEX64.test(cid ?? "") && HEX64.test(chid ?? "") ? `${CONCORD_READ_PREFIX}${cid}_${chid}` : null;
 }
 
 function pubkeySlug(pubkey: string): string {
@@ -104,21 +130,44 @@ export function mergeReadState(local: ReadState, remote: ReadState | null | unde
 
   const notifLastSeen = Math.max(local.notifLastSeen || 0, remote?.notifLastSeen || 0);
 
+  // Group chats: room marks per key MAX; mutes per key by the later change.
+  const concordRead: Record<string, number> = { ...(local.concordRead ?? {}) };
+  for (const [key, raw] of Object.entries(remote?.concordRead ?? {})) {
+    const ts = Number(raw) || 0;
+    if (ts > (concordRead[key] || 0)) concordRead[key] = ts;
+  }
+  const concordMutes: MuteEntries = { ...(local.concordMutes ?? {}) };
+  for (const [key, entry] of Object.entries(remote?.concordMutes ?? {})) {
+    if (entry && typeof entry.at === "number" && entry.at > (concordMutes[key]?.at ?? -1)) {
+      concordMutes[key] = { muted: !!entry.muted, at: entry.at };
+    }
+  }
+
   return {
     version: READSTATE_VERSION,
     lastModified: Math.max(local.lastModified || 0, remote?.lastModified || 0),
     notifLastSeen,
     dmRead,
+    concordRead,
+    concordMutes,
   };
 }
 
 /** Read the current on-device read-state into a plain doc. */
 export function collectLocalState(pubkey: string): ReadState {
   const dmRead: Record<string, number> = {};
+  const concordMarks: [string, number][] = [];
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (!key || !key.startsWith(DM_READ_PREFIX)) continue;
+      if (!key) continue;
+      if (key.startsWith(CONCORD_READ_PREFIX)) {
+        const pair = concordPairOf(key);
+        const ts = Number(localStorage.getItem(key)) || 0;
+        if (pair && ts > 0) concordMarks.push([pair, ts]);
+        continue;
+      }
+      if (!key.startsWith(DM_READ_PREFIX)) continue;
       const pk = key.slice(DM_READ_PREFIX.length);
       if (!pk) continue;
       const ts = parseInt(localStorage.getItem(key) || "0", 10) || 0;
@@ -131,11 +180,16 @@ export function collectLocalState(pubkey: string): ReadState {
     notifLastSeen = parseInt(localStorage.getItem(notifLastSeenKey(pubkey)) || "0", 10) || 0;
   } catch { /* ignore */ }
 
+  let concordMutes: MuteEntries = {};
+  try { concordMutes = muteEntries(); } catch { /* no storage */ }
+
   return {
     version: READSTATE_VERSION,
     lastModified: Date.now(),
     notifLastSeen,
     dmRead,
+    concordRead: Object.fromEntries(concordMarks.sort((a, b) => b[1] - a[1]).slice(0, CONCORD_READ_CAP)),
+    concordMutes,
   };
 }
 
@@ -143,7 +197,9 @@ export function collectLocalState(pubkey: string): ReadState {
 export function hasAnyReadMarkers(pubkey: string): boolean {
   const state = collectLocalState(pubkey);
   if (state.notifLastSeen > 0) return true;
-  return Object.keys(state.dmRead).length > 0;
+  return Object.keys(state.dmRead).length > 0 ||
+    Object.keys(state.concordRead ?? {}).length > 0 ||
+    Object.keys(state.concordMutes ?? {}).length > 0;
 }
 
 /**
@@ -183,6 +239,28 @@ export function applyRemoteToLocal(remote: ReadState | null | undefined, pubkey:
       } catch { /* ignore */ }
     }
   }
+
+  // Group chats: each room's mark, raise only. Every group whose marks rose is
+  // told ("concord-read", as a local read does), so its dot and badges catch up.
+  const groupsRead = new Set<string>();
+  for (const [pair, rawTs] of Object.entries(remote.concordRead ?? {})) {
+    const key = concordStorageKeyOf(pair);
+    const ts = Number(rawTs) || 0;
+    if (!key || ts <= 0) continue;
+    try {
+      if (ts > (Number(localStorage.getItem(key)) || 0)) {
+        localStorage.setItem(key, String(ts));
+        groupsRead.add(pair.slice(0, 64));
+        changed = true;
+      }
+    } catch { /* ignore */ }
+  }
+  for (const cid of groupsRead) {
+    try { window.dispatchEvent(new CustomEvent("concord-read", { detail: cid })); } catch { /* no window */ }
+  }
+
+  // Group chats: mutes, the later change winning.
+  if (remote.concordMutes && applyMuteEntries(remote.concordMutes)) changed = true;
 
   return changed;
 }
