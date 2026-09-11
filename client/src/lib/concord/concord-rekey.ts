@@ -113,7 +113,15 @@ export function rotatorOutranks(rotatorPubkey: string, targetPubkey: string, aut
 }
 
 // ── Send a rekey (I/O) ────────────────────────────────────────────────────────
-export interface RekeyRecipient { pubkey: string }
+export interface RekeyRecipient {
+  pubkey: string;
+  /**
+   * Staff (CORD-04 §3: the owner, or anyone holding a staff bit) get the
+   * 136-byte base blob, which also carries the new control_root so they can
+   * keep writing the admin plane. Everyone else gets the 104-byte form.
+   */
+  staff?: boolean;
+}
 
 /**
  * Rotate a scope key. For each remaining member, compute their locator and
@@ -142,7 +150,16 @@ export async function sendRekey(
   signer: ISigner,
   rotatorPubkey: string,
   community: StoredCommunity,
-  params: { scopeId: string; prevEpoch: number; prevKey: Uint8Array; newKey: Uint8Array; remaining: RekeyRecipient[] },
+  params: {
+    scopeId: string; prevEpoch: number; prevKey: Uint8Array; newKey: Uint8Array; remaining: RekeyRecipient[];
+    /**
+     * The new epoch's admin address and its secret (CORD-06 §2): a base
+     * rotation MUST mint the split. Members' blobs carry `pk` (104 bytes),
+     * staff's also carry `root` (136). Absent = the legacy 72-byte form, which
+     * private-room deliveries always use.
+     */
+    control?: { pk: string; root: Uint8Array };
+  },
   publish: (event: Event, relays: string[]) => Promise<unknown>,
   onProgress?: (done: number, total: number) => void,
 ): Promise<{ newEpoch: number } | null> {
@@ -150,8 +167,18 @@ export async function sendRekey(
   const newEpoch = params.prevEpoch + 1;
   // EMIT the Vector-conformant commitment (label ‖ epoch ‖ key, no scope_id).
   const prevcommit = epochKeyCommitment(BigInt(params.prevEpoch), params.prevKey);
-  const payload = buildRekeyPayload(params.scopeId, BigInt(newEpoch), params.newKey);
-  const payloadB64 = bytesToBase64(payload);
+  const control = params.scopeId === BASE_SCOPE ? params.control : undefined;
+  // Never hand out a pair receivers would refuse (CORD-06 §2: staff check
+  // that control_root derives to exactly control_pk).
+  if (control && groupKey(LABEL_CONTROL_SIGNER, control.root, community.community_id, BigInt(newEpoch)).pk !== control.pk) {
+    throw new Error("sendRekey: control_root does not derive to control_pk");
+  }
+  const base = buildRekeyPayload(params.scopeId, BigInt(newEpoch), params.newKey);
+  const payloadFor = (r: RekeyRecipient): string => bytesToBase64(
+    !control ? base
+      : r.staff ? concatBytes(base, hexToBytes(control.pk), control.root)
+      : concatBytes(base, hexToBytes(control.pk)),
+  );
 
   const groups = chunkRecipients(params.remaining, PSEUDONYM_CHUNK);
   const n = groups.length;
@@ -172,7 +199,7 @@ export async function sendRekey(
     for (const r of groups[i]) {
       const locator = computeLocator(rotatorPubkey, r.pubkey, params.scopeId, BigInt(newEpoch));
       // Pairwise NIP-44 to the recipient — payload is already ciphertext of the raw bytes.
-      const wrapped = await signer.nip44.encrypt(r.pubkey, payloadB64).catch(() => null);
+      const wrapped = await signer.nip44.encrypt(r.pubkey, payloadFor(r)).catch(() => null);
       if (wrapped) blobs.push({ locator, wrapped });
       onProgress?.(++done, total);
     }

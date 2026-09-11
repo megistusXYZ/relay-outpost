@@ -18,6 +18,8 @@ import { subscribeGovernance, type DecodedRumor } from "@/lib/concord/concord-st
 import { parseControlEdition, editionKey, parseSnapshotRumor, foldEditions, computeRoster, KIND_CONTROL_EDITION, KIND_JOIN_LEAVE, KIND_AUDIT, KIND_REKEY, KIND_SNAPSHOT, type ControlEdition, type FoldedState, type Member, type AuditEntry } from "@/lib/concord/concord-events";
 import { computeMembershipEvents, computeAuditLog, type RawRumor, type MembershipEvent } from "@/lib/concord/concord-activity";
 import { receiveRekey, receiveChannelGrant, privateRoomHolders } from "@/lib/concord/concord-rekey";
+import { compactionOf } from "@/lib/concord/concord-events";
+import type { Seal } from "@/lib/concord/concord-crypto";
 import { saveRosterSnapshot } from "@/lib/concord/concord-roster";
 import { putCommunity, updateCommunity, deleteCommunity, adoptBaseRekey, type StoredCommunity } from "@/lib/concord/concord-keys";
 import { reconcilePatch } from "@/lib/concord/concord-reconcile";
@@ -76,7 +78,7 @@ function useReconcilerElection(communityId: string | undefined): boolean {
 
 const BASE_SCOPE = "00".repeat(32);
 
-export function useConcordGovernance(community: StoredCommunity | null | undefined): { state: FoldedState; roster: Member[]; myMember?: Member; events: MembershipEvent[]; auditLog: AuditEntry[]; privateRoomHolders: (roomId: string) => string[] | null } {
+export function useConcordGovernance(community: StoredCommunity | null | undefined): { state: FoldedState; roster: Member[]; myMember?: Member; events: MembershipEvent[]; auditLog: AuditEntry[]; privateRoomHolders: (roomId: string) => string[] | null; compaction: () => Seal[] } {
   const { pubkey } = useNostrAuth();
   const [editions, setEditions] = useState<Map<string, ControlEdition>>(new Map());
   const [joinLeave, setJoinLeave] = useState<Map<string, RawRumor>>(new Map());
@@ -300,5 +302,9 @@ export function useConcordGovernance(community: StoredCommunity | null | undefin
     return privateRoomHolders(roomId, ch.epoch, [...rekeys.values()], { ownerPubkey: owner, roster: folded.roster });
   }, [community, rekeys, owner, folded.roster]);
 
-  return useMemo(() => ({ ...folded, privateRoomHolders: holdersOf }), [folded, holdersOf]);
+  // The group's current editions as signed seals, for a removal to republish
+  // at the new epoch (concord-events compactionOf). Computed on demand.
+  const compaction = useCallback(() => (owner ? compactionOf([...editions.values()], owner) : []), [editions, owner]);
+
+  return useMemo(() => ({ ...folded, privateRoomHolders: holdersOf, compaction }), [folded, holdersOf, compaction]);
 }

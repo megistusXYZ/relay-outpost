@@ -32,7 +32,7 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
 }) {
   const { pubkey } = useNostrAuth();
   const { toast } = useToast();
-  const { state, roster, myMember, events, auditLog, privateRoomHolders } = useConcordGovernance(community);
+  const { state, roster, myMember, events, auditLog, privateRoomHolders, compaction } = useConcordGovernance(community);
   const [pending, setPending] = useState<{ target: string; ban: boolean } | null>(null);
   const [reason, setReason] = useState("");
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -63,6 +63,9 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
           banHead: state.heads.get(`${VSK.BANLIST}:${BANLIST_EID}`),
           // Private rooms get new keys too, sent only to the people in them.
           privateRoomHolders,
+          // The group's current settings, republished at the new epoch so
+          // people who join after this still see its rooms and roles.
+          compaction: compaction(),
         },
         (e, r) => publishEvent(e, r),
         (done, total) => setProgress({ done, total }),
@@ -74,7 +77,7 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
     } finally {
       setPending(null); setReason(""); setProgress(null);
     }
-  }, [pending, pubkey, community, roster, state, reason, onCommunityChange, toast, privateRoomHolders]);
+  }, [pending, pubkey, community, roster, state, reason, onCommunityChange, toast, privateRoomHolders, compaction]);
 
   const [adminBusy, setAdminBusy] = useState<string | null>(null);
   const [pendingAdmin, setPendingAdmin] = useState<{ target: string; make: boolean } | null>(null);

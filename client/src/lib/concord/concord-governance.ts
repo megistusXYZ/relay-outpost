@@ -7,14 +7,15 @@
 import { bytesToHex } from "@noble/hashes/utils.js";
 import type { Event } from "nostr-tools";
 import type { ISigner } from "applesauce-signers";
-import { randomBytes32, rekeyScopeId } from "./concord-crypto";
+import { randomBytes32, rekeyScopeId, groupKey, wrapStream, LABEL_CONTROL_SIGNER, type Seal } from "./concord-crypto";
+import { isStaff } from "./concord-events";
 import { VSK, PERM, ADMIN_ROLE_ID, buildControlEdition, buildJoinLeaveRumor, buildAuditRumor, computeEditionId, serializePermissions, type Member, type ChannelMetadata } from "./concord-events";
 import { nextChannelEdition, type ChannelChanges, type ChannelHead } from "./concord-channel-edition";
 import { nextGrantEdition, type GrantHead } from "./concord-grant-edition";
 import { putCommunity, deleteCommunity, publishCommunityList, adoptBaseRekey, type StoredCommunity, type StoredChannel } from "./concord-keys";
 import { nextBanlistEdition, type BanlistHead } from "./concord-banlist";
 import { refreshInviteLinks } from "./concord-invites";
-import { publishControlEdition, publishGuestbook, publishGuestbookSnapshot, channelPlaneKey } from "./concord-stream";
+import { publishControlEdition, publishGuestbook, publishGuestbookSnapshot, channelPlaneKey, controlWritePlane } from "./concord-stream";
 import { sendRekey, resecurePrivateRooms } from "./concord-rekey";
 
 type PublishFn = (event: Event, relays: string[]) => Promise<unknown>;
@@ -64,6 +65,12 @@ export async function removeMember(
      * live rekey rumors), or null when unknown. Omitted = unknown for every room.
      */
     privateRoomHolders?: (roomId: string) => string[] | null;
+    /**
+     * The seals of the group's current editions (compactionOf over the live
+     * fold). Republished at the new epoch so people who join after the
+     * removal still see the group's name, rooms and roles.
+     */
+    compaction?: Seal[];
   },
   publish: PublishFn,
   onProgress?: ProgressFn,
@@ -101,13 +108,23 @@ export async function removeMember(
     buildAuditRumor(ownerPubkey, opts.ban ? "ban" : "kick", now, { target, reason: opts.reason }),
     publish).catch(() => null);
 
-  // 2. Rotate community_root, excluding the target.
+  // 2. Rotate community_root, excluding the target, and mint the split with it
+  //    (CORD-06 §3: "a fresh control_root is minted alongside it … the pair
+  //    travels in the same base blobs"). A legacy group upgrades here. Staff
+  //    get the new control_root; everyone else only its address.
   const scopeId = rekeyScopeId(); // all-zeros = base rotation
   const newKey = randomBytes32();
-  const remaining = opts.roster.filter((m) => m.pubkey !== target && m.pubkey !== ownerPubkey).map((m) => ({ pubkey: m.pubkey }));
+  const newControlRoot = randomBytes32();
+  const newControlPk = groupKey(LABEL_CONTROL_SIGNER, newControlRoot, community.community_id, BigInt(community.root_epoch + 1)).pk;
+  const remaining = opts.roster
+    .filter((m) => m.pubkey !== target && m.pubkey !== ownerPubkey)
+    .map((m) => ({ pubkey: m.pubkey, staff: isStaff(m) }));
   const res = await sendRekey(
     signer, ownerPubkey, community,
-    { scopeId, prevEpoch: community.root_epoch, prevKey: hexToBytes(community.community_root), newKey, remaining },
+    {
+      scopeId, prevEpoch: community.root_epoch, prevKey: hexToBytes(community.community_root), newKey, remaining,
+      control: { pk: newControlPk, root: newControlRoot },
+    },
     publish, onProgress,
   ).catch(() => null);
   if (!res) return null;
@@ -132,8 +149,25 @@ export async function removeMember(
   //    the roster + audit history vanish the moment the epoch bumps).
   // `community` already carries the banlist cursor recorded in step 1, and
   // adoptBaseRekey spreads the record, so it survives the epoch bump.
-  const updated = adoptBaseRekey({ ...community, channels }, bytesToHex(newKey), res.newEpoch);
+  const updated = adoptBaseRekey({ ...community, channels }, bytesToHex(newKey), res.newEpoch, {
+    controlPk: newControlPk,
+    controlRoot: bytesToHex(newControlRoot),
+  });
   await putCommunity(ownerPubkey, updated);
+
+  // 3.2 Republish the compaction at the new epoch (CORD-06 §3), after the
+  //     root roll is out. Each current edition's ORIGINAL seal is re-wrapped
+  //     at the new admin address: re-sealing under us would change its author
+  //     and fail the author check for every admin's edit. Best-effort: the
+  //     removal must not depend on it (the spec would abort a Refounding it
+  //     can't fully fold; cutting off the removed member matters more).
+  if (opts.compaction?.length) {
+    const plane = controlWritePlane(updated);
+    const createdAt = Math.floor(Date.now() / 1000);
+    for (const seal of opts.compaction) {
+      try { await publish(wrapStream(plane, seal, createdAt), updated.relays); } catch { /* next */ }
+    }
+  }
 
   // 3.5 Refounding guestbook snapshot (CORD-06 §3 / CORD-02 §5): seed the
   //     survivors (everyone but the removed target — includes the refounder)
