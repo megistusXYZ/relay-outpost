@@ -219,8 +219,8 @@ export function decodeStreamEvent(plane: GroupKey, wrap: Event): DecodedRumor | 
  * it: a Refounding republishes each current edition at the new epoch by
  * re-wrapping its ORIGINAL seal (CORD-01: "a re-wrap MUST carry the exact
  * bytes forward"). Re-sealing under the refounder would change its author.
- * Chat decoding keeps using decodeStreamEvent, so message caches never hold
- * seals.
+ * The chat keeps it too: a pin carries a message's original seal, verbatim
+ * (CORD-04 §7).
  */
 export function decodeStreamEventWithSeal(plane: GroupKey, wrap: Event): (DecodedRumor & { seal: Seal }) | null {
   const seal = unwrapStream(plane, wrap);
@@ -305,7 +305,8 @@ export function subscribeChannel(
     if (!held) return;
     if (await isStreamProcessed(ownerPubkey, wrap.id)) return;
     void markStreamProcessed(ownerPubkey, wrap.id);
-    const rumor = decodeStreamEvent(held.plane, wrap);
+    // With its seal: a pin carries a message's original seal (CORD-04 §7).
+    const rumor = decodeStreamEventWithSeal(held.plane, wrap);
     if (!rumor) return;
     const routed = routeRumor(rumor, channel.id, held.epoch);
     if (routed.type === "message" || routed.type === "reply" || routed.type === "reaction" || routed.type === "delete" || routed.type === "edit" || routed.type === "timer") onMessage(routed.rumor);

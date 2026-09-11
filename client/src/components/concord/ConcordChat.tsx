@@ -30,8 +30,8 @@ import { senderColor } from "@/lib/sender-color";
 import { ConcordMediaView } from "./ConcordMediaView";
 import { getCachedMessages, cacheMessage, deleteCachedMessages, getCachedReactions, cacheReaction, removeCachedReaction, type StoredCommunity, type StoredChannel, type CachedReaction } from "@/lib/concord/concord-keys";
 import { liveChannels } from "@/lib/concord/concord-live-channels";
-import { subscribeChannel, publishChannelMessage, publishTyping, subscribeTyping, type DecodedRumor } from "@/lib/concord/concord-stream";
-import { buildMessageRumor, buildReplyRumor, buildReactionRumor, buildDeleteRumor, buildEditRumor, effectiveTime, hasPermission, PERM, KIND_REACTION, KIND_DELETE, KIND_EDIT, KIND_MESSAGE, KIND_REPLY, KIND_TIMER_NOTICE, type RumorTemplate } from "@/lib/concord/concord-events";
+import { subscribeChannel, publishChannelMessage, publishTyping, subscribeTyping, channelReadPlanes, channelPlaneKey, type DecodedRumor } from "@/lib/concord/concord-stream";
+import { buildMessageRumor, buildReplyRumor, buildReactionRumor, buildDeleteRumor, buildEditRumor, effectiveTime, hasPermission, PERM, KIND_REACTION, KIND_DELETE, KIND_EDIT, KIND_MESSAGE, KIND_REPLY, KIND_TIMER_NOTICE, VSK, type RumorTemplate } from "@/lib/concord/concord-events";
 import { encryptAndUpload, mediaToTag, mediaFromTags, type ConcordMedia } from "@/lib/concord/concord-media";
 import { useConcordGovernance } from "./useConcordGovernance";
 import { ConcordInviteDialog } from "./ConcordInviteDialog";
@@ -44,6 +44,10 @@ import { groupThreads, type ThreadMeta } from "@/lib/concord/concord-threads";
 import { readMessageShape, threadReplyRef, type RootRef } from "@/lib/concord/concord-replies";
 import { disappearingTimer, stampExpiration, isExpired, expiresAt, timerLines, timerNoticeText, timerSpan } from "@/lib/concord/concord-disappearing";
 import { Timer as TimerIcon } from "lucide-react";
+import { pinsLocator, readPinList, nextPinList, visiblePins, makePinEntry, PIN_ENTRY_CAP, PIN_CONTENT_CAP, type PinChange, type PinSeal, type VerifiedPin } from "@/lib/concord/concord-pins";
+import { planeConvKey, type Seal } from "@/lib/concord/concord-crypto";
+import { setRoomPins } from "@/lib/concord/concord-governance";
+import { ConcordPinnedBar, ConcordPinnedSheet, ConcordPinsUnavailable } from "./ConcordPinned";
 import { useGoBack } from "@/hooks/use-go-back";
 import { computeUnreadChannels, newestActivity, readChannelLastRead } from "@/lib/concord/concord-channel-unread";
 import { getChannelWrapTimes, CHANGED_EVENT as UNREAD_CHANGED_EVENT, READ_EVENT } from "@/lib/concord/concord-unread";
@@ -55,10 +59,20 @@ import { ConcordAdminDrawer } from "./ConcordAdminDrawer";
 import { SpaceOverflowMenu } from "@/components/space/SpaceOverflowMenu";
 import { ConcordMessageActions } from "./ConcordMessageActions";
 
-interface ChatMsg { id: string; pubkey: string; content: string; t: number; media?: ConcordMedia[]; replyTo?: { id: string; pubkey: string }; rootId?: string; root?: RootRef; kind?: number; expiresAt?: number; edited?: boolean; deleted?: boolean; mentions?: string[] }
+interface ChatMsg { id: string; pubkey: string; content: string; t: number; media?: ConcordMedia[]; replyTo?: { id: string; pubkey: string }; rootId?: string; root?: RootRef; kind?: number; expiresAt?: number; seal?: Seal; epoch?: number; edited?: boolean; deleted?: boolean; mentions?: string[] }
 /** A message's kind, for the `k` tag of what targets it (CORD-03). Rows cached
  *  before the kind was recorded fall back on their thread pointer. */
 const kindOf = (m: ChatMsg) => m.kind ?? (m.rootId ? KIND_REPLY : KIND_MESSAGE);
+/** The seal a message arrived in, kept so it can be pinned (CORD-04 §7): a pin carries it verbatim. */
+function pinSealOf(rumor: DecodedRumor): PinSeal | undefined {
+  const s = (rumor as DecodedRumor & { seal?: Omit<PinSeal, "id" | "sig"> & { id?: string; sig?: string } }).seal;
+  return s && s.id && s.sig ? { id: s.id, pubkey: s.pubkey, created_at: s.created_at, kind: s.kind, tags: s.tags, content: s.content, sig: s.sig } : undefined;
+}
+/** The key epoch a message was sent under: which room key opens its seal. */
+function epochOf(rumor: DecodedRumor): number | undefined {
+  const n = Number(rumor.tags.find((t) => t[0] === "epoch")?.[1]);
+  return Number.isInteger(n) && n >= 0 ? n : undefined;
+}
 /** Aggregated reactions for one message: emoji → who reacted + my reaction id. */
 type ReactionAgg = { emoji: string; emojiUrl?: string; reactors: Set<string>; myId?: string };
 
@@ -412,7 +426,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       // reads it with the same function, so a cached row matches this one.
       const { replyTo, root, kind } = readMessageShape(rumor);
       const mentions = rumor.tags.filter((t) => t[0] === "p" && t[1]).map((t) => t[1]);
-      let msg: ChatMsg = { id: rumor.id, pubkey: rumor.pubkey, content: rumor.content, t: effectiveTime(rumor), media: media.length ? media : undefined, replyTo, root, rootId: root?.id, kind, expiresAt: expiresAt(rumor), mentions: mentions.length ? mentions : undefined };
+      let msg: ChatMsg = { id: rumor.id, pubkey: rumor.pubkey, content: rumor.content, t: effectiveTime(rumor), media: media.length ? media : undefined, replyTo, root, rootId: root?.id, kind, expiresAt: expiresAt(rumor), seal: pinSealOf(rumor), epoch: epochOf(rumor), mentions: mentions.length ? mentions : undefined };
       // Apply a delete that landed before this message did.
       if (pendingDeletes.get(msg.id) === msg.pubkey) msg = { ...msg, deleted: true, content: "", media: undefined };
       void cacheMessage(pubkey, communityId, channelId, msg);
@@ -698,6 +712,57 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     await publishChannelMessage(signer, pubkey, community, activeChannel, rumor, (e, relays) => publishEvent(e, relays)).catch(() => null);
   }, [pubkey, activeChannel, community, channelEpoch, reactionsByMessage, timer]);
 
+  // ── Pins (CORD-04 §7) ───────────────────────────────────────────────────
+  const [pinsOpen, setPinsOpen] = useState(false);
+  const canPin = isOwner || (!!myMember && hasPermission(myMember, PERM.PIN_MESSAGES));
+  const pinEid = activeChannel ? pinsLocator(community.community_id, activeChannel.id) : "";
+  const pinContent = pinEid ? govState.pinLists.get(pinEid) : undefined;
+  const pinHead = pinEid ? govState.heads.get(`${VSK.PINS}:${pinEid}`) : undefined;
+  // "No list yet" means none only once the admin plane has arrived.
+  const pinsFoldLoaded = govState.heads.size > 0;
+  const readPlanes = useMemo(() => (activeChannel ? channelReadPlanes(community, activeChannel) : []), [community, activeChannel]);
+  const convKeyAt = useCallback((epoch: number) => {
+    const held = readPlanes.find((p) => p.epoch === epoch);
+    return held ? planeConvKey(held.plane) : undefined;
+  }, [readPlanes]);
+  const pinView = useMemo(
+    () => (activeChannel ? readPinList(pinContent, activeChannel.id, { foldLoaded: pinsFoldLoaded, convKeyAt }) : { status: "unavailable" as const }),
+    [activeChannel, pinContent, pinsFoldLoaded, convKeyAt],
+  );
+  // A pin whose author deleted the message is hidden at once (self-erasure
+  // outranks curation); expired messages' pins go with them.
+  const pins = useMemo(() => (pinView.status === "ok"
+    ? visiblePins(pinView.pins, messages.filter((m) => m.deleted).map((m) => ({ pubkey: m.pubkey, targetId: m.id })))
+      .filter((p) => { const m = messages.find((x) => x.id === p.id); return !m?.expiresAt || m.expiresAt > nowSec; })
+    : []), [pinView, messages, nowSec]);
+  const pinnedIds = useMemo(() => new Set(pins.map((p) => p.id)), [pins]);
+  const changePins = useCallback(async (change: PinChange, done: string) => {
+    const signer = getGlobalSigner();
+    if (!pubkey || !signer || !activeChannel) return;
+    const form = activeChannel.isPrivate && activeChannel.key
+      ? { private: true as const, epoch: activeChannel.epoch, convKey: planeConvKey(channelPlaneKey(community, activeChannel)) }
+      : { private: false as const };
+    const next = nextPinList(pinView, change, form);
+    if (!next.ok) {
+      toast(next.reason === "full" ? { title: "This room has 25 pins", description: "Unpin one to make room." }
+        : next.reason === "too-big" ? { title: "No room for this pin", description: "This room's pins are at their size limit. Unpin one to make room." }
+        : { title: "Pins aren't loaded here yet", description: "Changing them now could drop pins this device hasn't seen. Try again in a moment." });
+      return;
+    }
+    const ok = await setRoomPins(signer, pubkey, community, activeChannel.id, next.content, pinHead, (e, r) => publishEvent(e, r));
+    toast(ok ? { title: done } : { title: "Couldn't update pins", description: "No relay accepted the change. Try again.", variant: "destructive" });
+  }, [pubkey, activeChannel, community, pinView, pinHead, toast]);
+  const togglePin = useCallback((msg: ChatMsg) => {
+    if (pinnedIds.has(msg.id)) { void changePins({ unpin: msg.id }, "Unpinned"); return; }
+    // A seal is pin-ready only with its id and signature, as it arrived.
+    const seal = msg.seal?.id && msg.seal.sig ? (msg.seal as PinSeal) : undefined;
+    const key = seal && msg.epoch !== undefined ? convKeyAt(msg.epoch) : undefined;
+    if (!seal || !key) { toast({ title: "This message can't be pinned from this device", description: "It arrived before this app kept what a pin needs. Newer messages can be pinned." }); return; }
+    void changePins({ pin: makePinEntry(seal, key) }, "Pinned");
+  }, [pinnedIds, changePins, convKeyAt, toast]);
+  // The room's current words when this device holds them (an edit), else the proof's.
+  const textOfPin = useCallback((p: VerifiedPin) => messages.find((m) => m.id === p.id)?.content || p.rumor.content, [messages]);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ChatMsg | null>(null);
   const publishMut = useCallback((rumor: RumorTemplate) => {
@@ -712,7 +777,10 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, deleted: true, content: "", media: undefined } : m)); // optimistic
     void cacheMessage(pubkey, community.community_id, activeChannel.id, { ...msg, deleted: true, content: "", media: undefined });
     publishMut(buildDeleteRumor(pubkey, activeChannel.id, BigInt(channelEpoch), msg.id, ms, now, kindOf(msg)));
-  }, [pubkey, activeChannel, community, channelEpoch, publishMut]);
+    // A pinner deleting their own pinned message takes it off the list too, so
+    // members who can't see the delete (it lives on the old epoch) lose it.
+    if (canPin && pinnedIds.has(msg.id)) void changePins({ unpin: msg.id }, "Unpinned");
+  }, [pubkey, activeChannel, community, channelEpoch, publishMut, canPin, pinnedIds, changePins]);
 
   const saveEdit = useCallback((msg: ChatMsg, text: string) => {
     const trimmed = text.trim();
@@ -1032,6 +1100,17 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           phone as every message shifted left with the names and timestamps cut
           off. A message list has no business scrolling sideways; anything that
           genuinely needs width scrolls inside itself. */}
+      {/* The room's pins (CORD-04 §7): the newest above the conversation, all of them in a list. */}
+      {pins.length > 0 ? (
+        <ConcordPinnedBar pins={pins} textOf={textOfPin} preview={(t) => <ConcordContentPreview content={t} />} onOpen={() => setPinsOpen(true)} />
+      ) : pinView.status === "unavailable" && pinContent !== undefined ? <ConcordPinsUnavailable /> : null}
+      <ConcordPinnedSheet open={pinsOpen} onOpenChange={setPinsOpen} pins={pins} textOf={textOfPin}
+        editedOf={(p) => !!messages.find((m) => m.id === p.id)?.edited}
+        preview={(t) => <ConcordContentPreview content={t} />}
+        canUnpin={canPin && !groupDeleted} onUnpin={(id) => void changePins({ unpin: id }, "Unpinned")}
+        spaceLine={activeChannel?.isPrivate
+          ? `${pins.length} pinned · space for about ${Math.max(0, Math.floor((PIN_CONTENT_CAP - new TextEncoder().encode(pinContent ?? "").length) / 1900))} more`
+          : `${pins.length} of ${PIN_ENTRY_CAP} pinned`} />
       <div ref={scrollRef} onScroll={onMessagesScroll} className="flex-1 overflow-y-auto overflow-x-hidden px-3 md:px-4 py-3">
         {/* Reading-width cap: messages stay scannable next to the sidebar.
             `justify-end` bottom-anchors a short conversation against the
@@ -1093,6 +1172,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             onReply={() => setReplyingTo(item.msg)}
             onReplyInThread={() => replyInThread(item.msg.id)}
             readOnly={groupDeleted}
+            pinned={pinnedIds.has(item.msg.id)}
+            onTogglePin={canPin && !groupDeleted ? () => togglePin(item.msg) : undefined}
             onStartEdit={() => setEditingId(item.msg.id)}
             onCancelEdit={() => setEditingId(null)}
             onSaveEdit={(text) => saveEdit(item.msg, text)}
@@ -1479,7 +1560,7 @@ function ThreadFace({ pubkey }: { pubkey: string }) {
   );
 }
 
-function ConcordMessageRow({ msgId, pubkey, content, media, mine, t, grouped, edited, deleted, mentionedMe, reactions, myPubkey, replyTo, parent, thread, onOpenThread, editing, onReact, onReply, onReplyInThread, readOnly, onStartEdit, onCancelEdit, onSaveEdit, onRequestDelete }: {
+function ConcordMessageRow({ msgId, pubkey, content, media, mine, t, grouped, edited, deleted, mentionedMe, reactions, myPubkey, replyTo, parent, thread, onOpenThread, editing, onReact, onReply, onReplyInThread, readOnly, pinned, onTogglePin, onStartEdit, onCancelEdit, onSaveEdit, onRequestDelete }: {
   msgId: string; pubkey: string; content: string; media?: ConcordMedia[]; mine: boolean; t?: number; grouped?: boolean; edited?: boolean; deleted?: boolean; mentionedMe?: boolean;
   reactions?: Map<string, ReactionAgg>; myPubkey?: string | null;
   replyTo?: { id: string; pubkey: string }; parent?: ChatMsg; editing: boolean;
@@ -1490,6 +1571,9 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, t, grouped, ed
   onReplyInThread?: () => void;
   /** A deleted group: nothing new can be said, so no reactions, replies or edits. */
   readOnly?: boolean;
+  pinned?: boolean;
+  /** Pin or unpin: offered to the owner and anyone with Pin messages. */
+  onTogglePin?: () => void;
   onStartEdit: () => void; onCancelEdit: () => void; onSaveEdit: (text: string) => void; onRequestDelete: () => void;
 }) {
   const { name, avatar, hasProfile } = useConcordProfile(pubkey);
@@ -1599,7 +1683,7 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, t, grouped, ed
       {/* One Signal-style actions menu — hover on desktop, always subtle on mobile */}
       {!deleted && !editing && (
         <div className="shrink-0 self-start opacity-60 reveal-on-hover">
-          <ConcordMessageActions content={content} mine={mine} onReact={onReact} onReply={onReply} onReplyInThread={onReplyInThread} readOnly={readOnly} onEdit={onStartEdit} onDelete={onRequestDelete} />
+          <ConcordMessageActions content={content} mine={mine} onReact={onReact} onReply={onReply} onReplyInThread={onReplyInThread} readOnly={readOnly} pinned={pinned} onTogglePin={onTogglePin} onEdit={onStartEdit} onDelete={onRequestDelete} />
         </div>
       )}
     </div>

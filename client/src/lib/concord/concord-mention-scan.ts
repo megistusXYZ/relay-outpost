@@ -45,7 +45,7 @@ import {
   isStreamProcessed, markStreamProcessed,
   type StoredCommunity, type CachedMessage,
 } from "./concord-keys";
-import { channelReadPlanes, decodeStreamEvent, routeRumor } from "./concord-stream";
+import { channelReadPlanes, decodeStreamEventWithSeal, routeRumor } from "./concord-stream";
 import { registerPlaneAuth } from "./concord-plane-auth";
 import type { GroupKey } from "./concord-crypto";
 import { effectiveTime } from "./concord-events";
@@ -167,7 +167,8 @@ async function processWrap(
   held: { plane: GroupKey; epoch: number; channelId: string },
   wrap: Event,
 ): Promise<void> {
-  const rumor = decodeStreamEvent(held.plane, wrap);
+  // With its seal: a pin carries a message's original seal (CORD-04 §7).
+  const rumor = decodeStreamEventWithSeal(held.plane, wrap);
   if (!rumor) {
     // Deterministically undecodable — mark so neither we nor the live sub
     // burn crypto on it again.
@@ -196,6 +197,8 @@ async function processWrap(
       kind: shape.kind,
       mentions: mentions.length ? mentions : undefined,
       expiresAt: expiresAt(rumor),
+      seal: rumor.seal,
+      epoch: held.epoch,
     };
     await cacheMessage(pk, c.community_id, held.channelId, msg);
     await markStreamProcessed(pk, wrap.id); // cache first, mark second

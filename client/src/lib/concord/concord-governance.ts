@@ -14,6 +14,7 @@ import { nextChannelEdition, type ChannelChanges, type ChannelHead } from "./con
 import { nextGrantEdition, type GrantHead } from "./concord-grant-edition";
 import { putCommunity, deleteCommunity, publishCommunityList, adoptBaseRekey, type StoredCommunity, type StoredChannel } from "./concord-keys";
 import { markLeft } from "./community-list-memory";
+import { pinsLocator } from "./concord-pins";
 import { nextBanlistEdition, nextUnbanEdition, type BanlistHead } from "./concord-banlist";
 import { refreshInviteLinks } from "./concord-invites";
 import { publishControlEdition, publishGuestbook, publishGuestbookSnapshot, publishDissolution, channelPlaneKey, controlWritePlane } from "./concord-stream";
@@ -32,7 +33,7 @@ export { ADMIN_ROLE_ID } from "./concord-events";
 export const ADMIN_ROLE_POSITION = 1;
 export const ADMIN_PERMS =
   PERM.MANAGE_CHANNELS | PERM.MANAGE_METADATA | PERM.KICK | PERM.BAN |
-  PERM.MANAGE_MESSAGES | PERM.CREATE_INVITE | PERM.VIEW_AUDIT_LOG;
+  PERM.MANAGE_MESSAGES | PERM.CREATE_INVITE | PERM.VIEW_AUDIT_LOG | PERM.PIN_MESSAGES;
 
 function hexToBytes(hex: string): Uint8Array {
   const out = new Uint8Array(hex.length / 2);
@@ -409,6 +410,29 @@ export async function unbanMember(
   await putCommunity(actorPubkey, updated).catch(() => {});
   await publishGuestbook(signer, actorPubkey, updated, buildAuditRumor(actorPubkey, "unban", now, { target }), publish).catch(() => null);
   return updated;
+}
+
+/**
+ * Publish a room's next Pin List (CORD-04 §7): `content` is nextPinList's,
+ * published byte-for-byte, one version past the head the fold holds. Returns
+ * whether a relay took it.
+ */
+export async function setRoomPins(
+  signer: ISigner,
+  actorPubkey: string,
+  community: StoredCommunity,
+  channelId: string,
+  content: string,
+  head: { ev: number; hash: string } | undefined,
+  publish: PublishFn,
+): Promise<boolean> {
+  const eid = pinsLocator(community.community_id, channelId);
+  const now = Math.floor(Date.now() / 1000);
+  const wrap = await publishControlEdition(signer, actorPubkey, community,
+    buildControlEdition(actorPubkey, VSK.PINS, eid, head ? head.ev + 1 : 1, JSON.parse(content), now,
+      head ? { prevHash: head.hash } : undefined),
+    publish).catch(() => null);
+  return !!wrap;
 }
 
 /**

@@ -68,6 +68,8 @@ export const VSK = {
   REGISTRY: 8,
   REVOKED: 9,
   DISSOLVED: 10,
+  /** A room's Pin List (CORD-04 §7). */
+  PINS: 11,
 } as const;
 
 /** Permission bits (CORD-04). u64, transmitted as a decimal string. */
@@ -202,6 +204,8 @@ export interface FoldedState {
    * tombstone lifted from another group must not kill this one (CORD-02 §9).
    */
   dissolvedEids: Set<string>;
+  /** Each room's Pin List content, by its coordinate (pinsLocator), as carried (CORD-04 §7). */
+  pinLists: Map<string, string>;
   /**
    * The WINNING edition per `${vsk}:${eid}` coordinate — its version and its
    * computed hash, which is exactly what a successor must carry as `ep`.
@@ -649,7 +653,7 @@ function applyEditions(
     }
   }
 
-  const state: FoldedState = { roles: new Map(), channels: new Map(), grants: new Map(), banlist: new Set(), banlistSeen: new Set(), dissolvedEids: new Set(), heads: new Map() };
+  const state: FoldedState = { roles: new Map(), channels: new Map(), grants: new Map(), banlist: new Set(), banlistSeen: new Set(), dissolvedEids: new Set(), pinLists: new Map(), heads: new Map() };
   // A name dropped by a later edition on the winner's own chain was lifted on
   // purpose (an unban) and stays off; a name only in a losing fork sibling is a
   // ban the tie-break dropped, and stays in the heal set.
@@ -705,6 +709,11 @@ function applyEditions(
         case VSK.BANLIST:
           if (Array.isArray(data)) state.banlist = new Set(data);
           break;
+        case VSK.PINS:
+          // Kept as carried: the byte cap is judged on these exact bytes, and a
+          // private room's list opens only with that room's key (concord-pins).
+          state.pinLists.set(e.eid, e.content);
+          break;
         case VSK.DISSOLVED:
           state.dissolvedEids.add(e.eid);
           break;
@@ -757,6 +766,8 @@ function authorizeEdition(
   const outranks = (targetRank: number) => canActOn(signer.rank, targetRank);
 
   switch (e.vsk) {
+    case VSK.PINS:
+      return hasPermissionBit(signer.perms, PERM.PIN_MESSAGES);
     case VSK.DISSOLVED:
       return false; // owner-only; owner handled above
     case VSK.METADATA:

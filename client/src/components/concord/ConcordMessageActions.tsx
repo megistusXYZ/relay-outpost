@@ -4,13 +4,13 @@
  * copy, edit, delete) as a tidy list — instead of a crowded row of always-on icons.
  */
 import { useState } from "react";
-import { MoreHorizontal, Reply, MessageSquare, Copy, Pencil, Trash2, SmilePlus, Check } from "lucide-react";
+import { MoreHorizontal, Reply, MessageSquare, Pin, PinOff, Copy, Pencil, Trash2, SmilePlus, Check } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { ComposeEmojiPicker } from "@/components/ComposeEmojiPicker";
 
 const QUICK = ["👍", "❤️", "😂", "🎉", "😮", "😢"];
 
-export function ConcordMessageActions({ content, mine, onReact, onReply, onReplyInThread, readOnly, onEdit, onDelete }: {
+export function ConcordMessageActions({ content, mine, onReact, onReply, onReplyInThread, readOnly, pinned, onTogglePin, onEdit, onDelete }: {
   content: string;
   mine: boolean;
   onReact: (emoji: string, emojiUrl?: string) => void;
@@ -20,6 +20,9 @@ export function ConcordMessageActions({ content, mine, onReact, onReply, onReply
   onReplyInThread?: () => void;
   /** A deleted group: only copying, and deleting your own, remain. */
   readOnly?: boolean;
+  pinned?: boolean;
+  /** Pin or unpin: offered to the owner and anyone with Pin messages. */
+  onTogglePin?: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -54,6 +57,7 @@ export function ConcordMessageActions({ content, mine, onReact, onReply, onReply
         {/* Actions */}
         {!readOnly && <MenuItem icon={Reply} label="Reply" onClick={() => act(onReply)} testid="concord-menu-reply" />}
         {onReplyInThread && !readOnly && <MenuItem icon={MessageSquare} label="Reply in thread" onClick={() => act(onReplyInThread)} testid="concord-menu-reply-thread" />}
+        {onTogglePin && !readOnly && <MenuItem icon={pinned ? PinOff : Pin} label={pinned ? "Unpin" : "Pin"} onClick={() => act(onTogglePin)} testid="concord-menu-pin" />}
         <MenuItem icon={copied ? Check : Copy} label={copied ? "Copied" : "Copy text"} onClick={copy} testid="concord-menu-copy" />
         {mine && !readOnly && <MenuItem icon={Pencil} label="Edit" onClick={() => act(onEdit)} testid="concord-menu-edit" />}
         {mine && <MenuItem icon={Trash2} label="Delete" onClick={() => act(onDelete)} destructive testid="concord-menu-delete" />}
