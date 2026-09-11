@@ -15,6 +15,9 @@ import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { getGlobalSigner } from "@/lib/nip42-auth";
 import { persistentPoolSubscribe } from "@/lib/nostr";
 import { subscribeGovernance, type DecodedRumor } from "@/lib/concord/concord-stream";
+import { isDissolution, isDeleted } from "@/lib/concord/concord-dissolution";
+import { removalSystemEvents, type SystemEvent } from "@/lib/concord/concord-activity";
+import { KIND_KICK } from "@/lib/concord/concord-events";
 import { parseControlEdition, editionKey, parseSnapshotRumor, foldEditions, computeRoster, KIND_CONTROL_EDITION, KIND_JOIN_LEAVE, KIND_AUDIT, KIND_REKEY, KIND_SNAPSHOT, type ControlEdition, type FoldedState, type Member, type AuditEntry } from "@/lib/concord/concord-events";
 import { computeMembershipEvents, computeAuditLog, type RawRumor, type MembershipEvent } from "@/lib/concord/concord-activity";
 import { receiveRekey, receiveChannelGrant, privateRoomHolders } from "@/lib/concord/concord-rekey";
@@ -80,13 +83,17 @@ function useReconcilerElection(communityId: string | undefined): boolean {
 
 const BASE_SCOPE = "00".repeat(32);
 
-export function useConcordGovernance(community: StoredCommunity | null | undefined): { state: FoldedState; roster: Member[]; myMember?: Member; events: MembershipEvent[]; auditLog: AuditEntry[]; privateRoomHolders: (roomId: string) => string[] | null; compaction: () => Seal[] } {
+export function useConcordGovernance(community: StoredCommunity | null | undefined): { state: FoldedState; roster: Member[]; myMember?: Member; events: MembershipEvent[]; auditLog: AuditEntry[]; deleted: boolean; removals: SystemEvent[]; privateRoomHolders: (roomId: string) => string[] | null; compaction: () => Seal[] } {
   const { pubkey } = useNostrAuth();
   const [editions, setEditions] = useState<Map<string, ControlEdition>>(new Map());
   const [joinLeave, setJoinLeave] = useState<Map<string, RawRumor>>(new Map());
   const [audit, setAudit] = useState<Map<string, RawRumor & { content: string }>>(new Map());
   const [rekeys, setRekeys] = useState<Map<string, DecodedRumor>>(new Map());
   const [snapshots, setSnapshots] = useState<Map<string, DecodedRumor>>(new Map());
+  /** The owner's tombstone, verified against this group (CORD-02 §9). */
+  const [tombstones, setTombstones] = useState<Map<string, DecodedRumor>>(new Map());
+  /** Kicks (kind 3309) from any app; the roster and the room check who may kick. */
+  const [kicks, setKicks] = useState<Map<string, DecodedRumor>>(new Map());
 
   // The subscription's identity is its PLANES, not the whole record. Keyed on
   // the record, ANY cosmetic write — a folded name landing in IDB — cleared all
@@ -108,6 +115,7 @@ export function useConcordGovernance(community: StoredCommunity | null | undefin
     const live = communityRef.current;
     if (!pubkey || !live) return;
     setEditions(new Map()); setJoinLeave(new Map()); setAudit(new Map()); setRekeys(new Map()); setSnapshots(new Map());
+    setTombstones(new Map()); setKicks(new Map());
     const sub = subscribeGovernance(pubkey, live, (rumor) => {
       // DEDUP on immutable keys: the same rumor is redelivered constantly (every
       // relay in the set echoes it, reconnects replay it, and right after create
@@ -121,6 +129,16 @@ export function useConcordGovernance(community: StoredCommunity | null | undefin
       // machines / chatty relay sets (reload was clean because the editions had
       // settled to a single delivery). Mirrors the dedup ConcordChat's own message
       // handlers already do (`if (prev.has(id)) return prev`).
+      // The owner's tombstone: anyone can publish at its address, so it counts
+      // only verified against this group (owner-signed, naming this group).
+      if (isDissolution(rumor, live)) {
+        setTombstones((prev) => prev.has(rumor.id) ? prev : new Map(prev).set(rumor.id, rumor));
+        return;
+      }
+      if (rumor.kind === KIND_KICK) {
+        setKicks((prev) => prev.has(rumor.id) ? prev : new Map(prev).set(rumor.id, rumor));
+        return;
+      }
       if (rumor.kind === KIND_CONTROL_EDITION) {
         const ed = parseControlEdition(rumor);
         if (ed) setEditions((prev) => {
@@ -156,15 +174,18 @@ export function useConcordGovernance(community: StoredCommunity | null | undefin
   }, [pubkey, planeSig]);
 
   const owner = community?.owner ?? "";
+  const groupId = community?.community_id ?? "";
   const folded = useMemo(() => {
     const state = foldEditions([...editions.values()], owner);
     const snaps = [...snapshots.values()].map(parseSnapshotRumor).filter((s): s is NonNullable<typeof s> => s !== null);
-    const roster = owner ? computeRoster([...joinLeave.values()], state, owner, snaps) : [];
+    const roster = owner ? computeRoster([...joinLeave.values()], state, owner, snaps, [...kicks.values()]) : [];
     const myMember = pubkey ? roster.find((m) => m.pubkey === pubkey) : undefined;
     const events = computeMembershipEvents([...joinLeave.values()]);
     const auditLog = computeAuditLog([...audit.values()]);
-    return { state, roster, myMember, events, auditLog };
-  }, [editions, joinLeave, audit, snapshots, owner, pubkey]);
+    const deleted = !!owner && isDeleted({ community_id: groupId, owner }, state, [...tombstones.values()]);
+    const removals = owner ? removalSystemEvents(auditLog, [...kicks.values()], state, owner) : [];
+    return { state, roster, myMember, events, auditLog, deleted, removals };
+  }, [editions, joinLeave, audit, snapshots, tombstones, kicks, owner, groupId, pubkey]);
 
   // ── Apply incoming rekeys (CORD-06 receive side) ───────────────────────────
   // A rotation arrives as kind-3303 chunk rumors on the (old-epoch) control
@@ -179,7 +200,8 @@ export function useConcordGovernance(community: StoredCommunity | null | undefin
   // the prevepoch/continuity checks, so re-runs (and the second hook instance
   // on another tab) are no-ops.
   useEffect(() => {
-    if (!pubkey || !community || rekeys.size === 0) return;
+    // Death wins every race: no rotation is honored past a tombstone (CORD-02 §9).
+    if (!pubkey || !community || rekeys.size === 0 || folded.deleted) return;
     const signer = getGlobalSigner();
     if (!signer?.nip44) return;
     let cancelled = false;

@@ -10,7 +10,7 @@ import { ComposeEmojiPicker } from "@/components/ComposeEmojiPicker";
 
 const QUICK = ["👍", "❤️", "😂", "🎉", "😮", "😢"];
 
-export function ConcordMessageActions({ content, mine, onReact, onReply, onReplyInThread, onEdit, onDelete }: {
+export function ConcordMessageActions({ content, mine, onReact, onReply, onReplyInThread, readOnly, onEdit, onDelete }: {
   content: string;
   mine: boolean;
   onReact: (emoji: string, emojiUrl?: string) => void;
@@ -18,6 +18,8 @@ export function ConcordMessageActions({ content, mine, onReact, onReply, onReply
   onReply: () => void;
   /** In the room only: open this message's thread with its composer ready. */
   onReplyInThread?: () => void;
+  /** A deleted group: only copying, and deleting your own, remain. */
+  readOnly?: boolean;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -39,6 +41,7 @@ export function ConcordMessageActions({ content, mine, onReact, onReply, onReply
       </PopoverTrigger>
       <PopoverContent align="end" className="w-56 p-1.5" data-testid="concord-msg-menu">
         {/* Quick reactions */}
+        {!readOnly && (
         <div className="flex items-center gap-0.5 pb-1.5 mb-1 border-b border-border/20">
           {QUICK.map((e) => (
             <button key={e} onClick={() => react(e)} className="flex-1 h-11 md:h-9 rounded-lg text-lg hover:bg-muted/50 transition-colors" data-testid={`concord-quick-react-${e}`}>{e}</button>
@@ -47,11 +50,12 @@ export function ConcordMessageActions({ content, mine, onReact, onReply, onReply
             <ComposeEmojiPicker hideStickers onInsert={(emoji, custom) => onReact(custom?.shortcode ? `:${custom.shortcode}:` : emoji, custom?.url)} />
           </div>
         </div>
+        )}
         {/* Actions */}
-        <MenuItem icon={Reply} label="Reply" onClick={() => act(onReply)} testid="concord-menu-reply" />
-        {onReplyInThread && <MenuItem icon={MessageSquare} label="Reply in thread" onClick={() => act(onReplyInThread)} testid="concord-menu-reply-thread" />}
+        {!readOnly && <MenuItem icon={Reply} label="Reply" onClick={() => act(onReply)} testid="concord-menu-reply" />}
+        {onReplyInThread && !readOnly && <MenuItem icon={MessageSquare} label="Reply in thread" onClick={() => act(onReplyInThread)} testid="concord-menu-reply-thread" />}
         <MenuItem icon={copied ? Check : Copy} label={copied ? "Copied" : "Copy text"} onClick={copy} testid="concord-menu-copy" />
-        {mine && <MenuItem icon={Pencil} label="Edit" onClick={() => act(onEdit)} testid="concord-menu-edit" />}
+        {mine && !readOnly && <MenuItem icon={Pencil} label="Edit" onClick={() => act(onEdit)} testid="concord-menu-edit" />}
         {mine && <MenuItem icon={Trash2} label="Delete" onClick={() => act(onDelete)} destructive testid="concord-menu-delete" />}
       </PopoverContent>
     </Popover>

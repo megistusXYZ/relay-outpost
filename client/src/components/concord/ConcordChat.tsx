@@ -162,7 +162,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   onToggleMembers?: () => void;
 }) {
   const { pubkey } = useNostrAuth();
-  const { state: govState, roster: govRoster, myMember, events: govEvents, auditLog } = useConcordGovernance(community);
+  const { state: govState, roster: govRoster, myMember, events: govEvents, auditLog, deleted: groupDeleted, removals } = useConcordGovernance(community);
   // Live channel list: local channels (with keys) + public channels the owner
   // added (folded from control editions; a member can derive their key), with
   // names kept current. Private channels only show if the member holds the key.
@@ -395,7 +395,9 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       // Calm rules: no mention toast — you're already looking at this channel;
       // cross-channel mentions surface as quiet count badges (concord-mentions).
     };
-    const sub = subscribeChannel(pubkey, community, activeChannel, onMessage, (relays, filter, onevent) =>
+    // A deleted group is sealed (CORD-02 §9): its history stays readable from
+    // this device, but nothing new is listened for.
+    const sub = groupDeleted ? { close() {} } : subscribeChannel(pubkey, community, activeChannel, onMessage, (relays, filter, onevent) =>
       persistentPoolSubscribe(relays, filter, { onevent }),
     );
     // Foreground/online catch-up: a socket that died while the tab was hidden
@@ -405,7 +407,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     // makes replayed wraps free, and only genuinely missed ones decode.
     const catchUpSubs: { close: () => void }[] = [];
     const catchUp = () => {
-      if (cancelled || document.visibilityState === "hidden") return;
+      if (cancelled || groupDeleted || document.visibilityState === "hidden") return;
       const newest = messagesRef.current[messagesRef.current.length - 1]?.t ?? 0; // ms
       const since = newest
         ? Math.floor(newest / 1000) - 3600 // 1h overlap absorbs clock skew
@@ -429,11 +431,11 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       document.removeEventListener("visibilitychange", onVisible);
       for (const s of catchUpSubs) { try { s.close(); } catch {} }
     };
-  }, [pubkey, community, activeChannel]);
+  }, [pubkey, community, activeChannel, groupDeleted]);
 
   // Ephemeral typing stream (separate subscription; nothing persisted).
   useEffect(() => {
-    if (!activeChannel) return;
+    if (!activeChannel || groupDeleted) return;
     const timers = typingTimers.current;
     const sub = subscribeTyping(community, activeChannel, (pk) => {
       if (pk === pubkey) return;
@@ -442,7 +444,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       timers.set(pk, setTimeout(() => { setTyping((prev) => { const n = new Set(prev); n.delete(pk); return n; }); timers.delete(pk); }, 5000));
     }, (relays, filter, onevent) => persistentPoolSubscribe(relays, filter, { onevent }));
     return () => { sub.close(); timers.forEach(clearTimeout); timers.clear(); setTyping(new Set()); };
-  }, [pubkey, community, activeChannel]);
+  }, [pubkey, community, activeChannel, groupDeleted]);
 
   const notifyTyping = useCallback(() => {
     const signer = getGlobalSigner();
@@ -500,8 +502,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   // this channel keeps rendering inline (groupThreads' fallback) — never hidden.
   const threading = useMemo(() => groupThreads(messages), [messages]);
   const timeline = useMemo(
-    () => buildChatTimeline(threading.timeline, [...govEvents, ...moderationSystemEvents(auditLog)], isDefaultChannel),
-    [threading.timeline, govEvents, auditLog, isDefaultChannel],
+    () => buildChatTimeline(threading.timeline, [...govEvents, ...removals], isDefaultChannel),
+    [threading.timeline, govEvents, removals, isDefaultChannel],
   );
   // First timeline item newer than where we left off → the "New" divider slot.
   const firstUnreadIdx = firstUnreadIndex(timeline, openLastRead);
@@ -1055,6 +1057,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             onReact={(emoji, url) => toggleReaction({ id: item.msg.id, pubkey: item.msg.pubkey, kind: kindOf(item.msg) }, emoji, url)}
             onReply={() => setReplyingTo(item.msg)}
             onReplyInThread={() => replyInThread(item.msg.id)}
+            readOnly={groupDeleted}
             onStartEdit={() => setEditingId(item.msg.id)}
             onCancelEdit={() => setEditingId(null)}
             onSaveEdit={(text) => saveEdit(item.msg, text)}
@@ -1118,6 +1121,14 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             )}
           </div>
         )}
+        {groupDeleted ? (
+          <div className={`flex flex-col items-center gap-2 px-4 pt-3 text-center ${embedded ? "pb-3" : "pb-[max(env(safe-area-inset-bottom,0px),0.75rem)]"} md:pb-3`} data-testid="concord-deleted-notice">
+            <p className="text-sm text-muted-foreground">The owner deleted this group. You can still read what was said here.</p>
+            {onLeave && (
+              <button onClick={onLeave} className="h-10 px-4 rounded-full text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors" data-testid="concord-remove-deleted">Remove from Chats</button>
+            )}
+          </div>
+        ) : (<>
         {/* env(safe-area-inset-bottom) is a VIEWPORT constant — it has no idea
             where this element is. Embedded, the composer ends mid-page and was
             paying ~34px to clear a home indicator hundreds of pixels below it. */}
@@ -1145,6 +1156,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             <Send className="w-4 h-4" />
           </button>
         </div>
+        </>)}
         </div>{/* /composer width cap */}
       </div>
       </div>{/* /message pane */}
@@ -1170,6 +1182,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           sending={threadSending}
           onSend={sendThreadReply}
           focusNonce={threadFocus}
+          readOnly={groupDeleted}
           onReact={(m, emoji, url) => toggleReaction({ id: m.id, pubkey: m.pubkey, kind: kindOf(m) }, emoji, url)}
           onStartEdit={setEditingId}
           onSaveEdit={saveEdit}
@@ -1186,7 +1199,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
  * and media behave identically. "Reply" on a message here answers it in this
  * thread (the composer shows which); by default a reply answers the starter.
  */
-function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messagesById, editingId, embedded, onClose, draft, onDraftChange, answering, onReplyTo, onCancelReplyTo, sending, onSend, focusNonce, onReact, onStartEdit, onSaveEdit, onRequestDelete }: {
+function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messagesById, editingId, embedded, onClose, draft, onDraftChange, answering, onReplyTo, onCancelReplyTo, sending, onSend, focusNonce, readOnly, onReact, onStartEdit, onSaveEdit, onRequestDelete }: {
   root: ChatMsg;
   /** See ConcordChat's own `embedded`: this panel is `absolute inset-0` over the
    *  chat's box, so embedded its bottom edge is the panel's, not the screen's. */
@@ -1207,6 +1220,8 @@ function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messa
   onSend: () => void;
   /** Bumped to focus the composer ("Reply in thread", "Reply" on a message here). */
   focusNonce: number;
+  /** A deleted group: the thread reads, and takes no replies. */
+  readOnly?: boolean;
   onReact: (msg: ChatMsg, emoji: string, emojiUrl?: string) => void;
   onStartEdit: (id: string | null) => void;
   onSaveEdit: (msg: ChatMsg, text: string) => void;
@@ -1223,6 +1238,7 @@ function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messa
       editing={editingId === m.id}
       onReact={(emoji, url) => onReact(m, emoji, url)}
       onReply={() => onReplyTo(m)}
+      readOnly={readOnly}
       onStartEdit={() => onStartEdit(m.id)}
       onCancelEdit={() => onStartEdit(null)}
       onSaveEdit={(text) => onSaveEdit(m, text)}
@@ -1252,6 +1268,9 @@ function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messa
         {replies.map((m) => <div key={m.id}>{row(m)}</div>)}
       </div>
       <div className={`border-t border-border/20 shrink-0 p-2.5 ${embedded ? "pb-2.5" : "pb-[max(env(safe-area-inset-bottom,0px),0.625rem)]"} md:pb-2.5`}>
+        {readOnly ? (
+          <p className="py-1.5 text-center text-xs text-muted-foreground/70" data-testid="concord-thread-deleted">The owner deleted this group.</p>
+        ) : (<>
         {answering && (
           <div className="flex items-center gap-2 pb-2 text-xs" data-testid="concord-thread-replying-to">
             <div className="w-0.5 self-stretch bg-primary/50 rounded-full" />
@@ -1277,6 +1296,7 @@ function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messa
             <Send className="w-4 h-4" />
           </button>
         </div>
+        </>)}
       </div>
     </aside>
   );
@@ -1423,7 +1443,7 @@ function ThreadFace({ pubkey }: { pubkey: string }) {
   );
 }
 
-function ConcordMessageRow({ msgId, pubkey, content, media, mine, t, grouped, edited, deleted, mentionedMe, reactions, myPubkey, replyTo, parent, thread, onOpenThread, editing, onReact, onReply, onReplyInThread, onStartEdit, onCancelEdit, onSaveEdit, onRequestDelete }: {
+function ConcordMessageRow({ msgId, pubkey, content, media, mine, t, grouped, edited, deleted, mentionedMe, reactions, myPubkey, replyTo, parent, thread, onOpenThread, editing, onReact, onReply, onReplyInThread, readOnly, onStartEdit, onCancelEdit, onSaveEdit, onRequestDelete }: {
   msgId: string; pubkey: string; content: string; media?: ConcordMedia[]; mine: boolean; t?: number; grouped?: boolean; edited?: boolean; deleted?: boolean; mentionedMe?: boolean;
   reactions?: Map<string, ReactionAgg>; myPubkey?: string | null;
   replyTo?: { id: string; pubkey: string }; parent?: ChatMsg; editing: boolean;
@@ -1432,6 +1452,8 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, t, grouped, ed
   onReact: (emoji: string, emojiUrl?: string) => void; onReply: () => void;
   /** In the room: open this message's thread with its composer ready. */
   onReplyInThread?: () => void;
+  /** A deleted group: nothing new can be said, so no reactions, replies or edits. */
+  readOnly?: boolean;
   onStartEdit: () => void; onCancelEdit: () => void; onSaveEdit: (text: string) => void; onRequestDelete: () => void;
 }) {
   const { name, avatar, hasProfile } = useConcordProfile(pubkey);
@@ -1541,7 +1563,7 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, t, grouped, ed
       {/* One Signal-style actions menu — hover on desktop, always subtle on mobile */}
       {!deleted && !editing && (
         <div className="shrink-0 self-start opacity-60 reveal-on-hover">
-          <ConcordMessageActions content={content} mine={mine} onReact={onReact} onReply={onReply} onReplyInThread={onReplyInThread} onEdit={onStartEdit} onDelete={onRequestDelete} />
+          <ConcordMessageActions content={content} mine={mine} onReact={onReact} onReply={onReply} onReplyInThread={onReplyInThread} readOnly={readOnly} onEdit={onStartEdit} onDelete={onRequestDelete} />
         </div>
       )}
     </div>

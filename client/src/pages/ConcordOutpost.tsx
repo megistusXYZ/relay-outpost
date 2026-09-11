@@ -75,8 +75,9 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
   const isOwner = !!community && pubkey === community.owner;
   // Owner + admins (CREATE_INVITE) manage invite links; members forward them —
   // unless the owner opened invites to everyone (allowMemberInvites policy).
-  const { state: govState, roster: govRoster, myMember, events: govEvents, auditLog: govAuditLog } = useConcordGovernance(community);
-  const canInvite = canInviteToCommunity({ community, pubkey, myMember, govMetadata: govState.metadata });
+  const { state: govState, roster: govRoster, myMember, events: govEvents, auditLog: govAuditLog, deleted } = useConcordGovernance(community);
+  // A group its owner deleted takes nobody new.
+  const canInvite = !deleted && canInviteToCommunity({ community, pubkey, myMember, govMetadata: govState.metadata });
   // Same gate as ConcordChat's rail button — the About tab hosts the only
   // "New channel" entry point visible while the group has a single channel.
   const canManageChannels = isOwner || (!!myMember && hasPermission(myMember, PERM.MANAGE_CHANNELS));

@@ -9,14 +9,14 @@ import type { Event } from "nostr-tools";
 import type { ISigner } from "applesauce-signers";
 import { randomBytes32, rekeyScopeId, groupKey, wrapStream, LABEL_CONTROL_SIGNER, type Seal } from "./concord-crypto";
 import { isStaff } from "./concord-events";
-import { VSK, PERM, ADMIN_ROLE_ID, buildControlEdition, buildJoinLeaveRumor, buildAuditRumor, computeEditionId, serializePermissions, type Member, type ChannelMetadata } from "./concord-events";
+import { VSK, PERM, ADMIN_ROLE_ID, buildControlEdition, buildJoinLeaveRumor, buildAuditRumor, buildKickRumor, computeEditionId, serializePermissions, type Member, type ChannelMetadata } from "./concord-events";
 import { nextChannelEdition, type ChannelChanges, type ChannelHead } from "./concord-channel-edition";
 import { nextGrantEdition, type GrantHead } from "./concord-grant-edition";
 import { putCommunity, deleteCommunity, publishCommunityList, adoptBaseRekey, type StoredCommunity, type StoredChannel } from "./concord-keys";
 import { markLeft } from "./community-list-memory";
 import { nextBanlistEdition, type BanlistHead } from "./concord-banlist";
 import { refreshInviteLinks } from "./concord-invites";
-import { publishControlEdition, publishGuestbook, publishGuestbookSnapshot, channelPlaneKey, controlWritePlane } from "./concord-stream";
+import { publishControlEdition, publishGuestbook, publishGuestbookSnapshot, publishDissolution, channelPlaneKey, controlWritePlane } from "./concord-stream";
 import { sendRekey, resecurePrivateRooms } from "./concord-rekey";
 import { sealControlWrap } from "./concord-control-wrap";
 
@@ -109,6 +109,11 @@ export async function removeMember(
   await publishGuestbook(signer, ownerPubkey, community,
     buildAuditRumor(ownerPubkey, opts.ban ? "ban" : "kick", now, { target, reason: opts.reason }),
     publish).catch(() => null);
+  // Other apps show a removal from a Kick (kind 3309), not from our record. A
+  // ban is announced by the banlist instead (CORD-04 §6).
+  if (!opts.ban) {
+    await publishGuestbook(signer, ownerPubkey, community, buildKickRumor(ownerPubkey, target, now), publish).catch(() => null);
+  }
 
   // 2. Rotate community_root, excluding the target, and mint the split with it
   //    (CORD-06 §3: "a fresh control_root is minted alongside it … the pair
@@ -385,9 +390,9 @@ export async function dissolveCommunity(
   publishSelf: PublishSelfFn,
 ): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
-  await publishControlEdition(signer, ownerPubkey, community,
-    buildControlEdition(ownerPubkey, VSK.DISSOLVED, community.community_id, 1, { dissolved: true }, now),
-    publish).catch(() => null);
+  // The spec's tombstone at the group's dissolved address (CORD-02 §9), which
+  // every member watches; not an edition on the admin plane, which none read.
+  await publishDissolution(signer, ownerPubkey, community, publish).catch(() => null);
   await publishGuestbook(signer, ownerPubkey, community,
     buildAuditRumor(ownerPubkey, "dissolve", now), publish).catch(() => null);
   markLeft(ownerPubkey, community.community_id);
