@@ -8,6 +8,7 @@
  * Decrypt is symmetric (plane conv key) so it needs NO signer — only publishing
  * a message needs one `signer.signEvent` for the seal.
  */
+import { dissolvedPlaneKey, buildDissolutionRumor } from "./concord-dissolution";
 import { getEventHash, verifyEvent, type Event } from "nostr-tools";
 import type { ISigner } from "applesauce-signers";
 import {
@@ -329,7 +330,9 @@ export function subscribeGovernance(
   // dual-written to both locations carries the identical rumor, so the
   // consumer's rumor-id keyed map processes it once.
   const planes = new Map<string, GroupKey>(
-    [...governancePlanes(community), ...rekeyReadPlanes(community)].map((p) => [p.pk, p]),
+    // Plus the group's dissolved address (CORD-02 §9): derived from its id, so
+    // a member past or present always finds the owner's tombstone.
+    [...governancePlanes(community), ...rekeyReadPlanes(community), dissolvedPlaneKey(community.community_id)].map((p) => [p.pk, p]),
   );
   // Armada-flavored relays NIP-42-gate wrap reads by their filter authors —
   // register the plane keys so the transport can authenticate AS the planes.
@@ -384,6 +387,21 @@ export async function publishChannelMessage(
 ): Promise<Event | null> {
   const plane = channelPlaneKey(community, channel);
   return publishToPlane(signer, authorPubkey, plane, rumor, KIND_SEAL_ENC, (e) => publish(e, community.relays));
+}
+
+/**
+ * The owner's dissolution tombstone (CORD-02 §9), at the address derived from
+ * the group's id so every member past or present finds it. A plaintext seal,
+ * like the admin plane: it is the signature that counts, not secrecy.
+ */
+export async function publishDissolution(
+  signer: ISigner,
+  ownerPubkey: string,
+  community: StoredCommunity,
+  publish: (event: Event, relays: string[]) => Promise<unknown>,
+): Promise<Event | null> {
+  const rumor = buildDissolutionRumor(ownerPubkey, community.community_id, Math.floor(Date.now() / 1000));
+  return publishToPlane(signer, ownerPubkey, dissolvedPlaneKey(community.community_id), rumor, KIND_SEAL_PLAIN, (e) => publish(e, community.relays));
 }
 
 /** Publish a control-plane edition (20014 plaintext, e.g. metadata/channel/grant). */

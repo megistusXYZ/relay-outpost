@@ -195,7 +195,12 @@ export interface FoldedState {
    * one is added, this must become "seen minus explicitly unbanned".
    */
   banlistSeen: Set<string>;
-  dissolved: boolean;
+  /**
+   * Groups an admitted owner edition on the admin plane says were dissolved,
+   * by the `eid` it names. Only the group's own id counts (isDeleted): a
+   * tombstone lifted from another group must not kill this one (CORD-02 §9).
+   */
+  dissolvedEids: Set<string>;
   /**
    * The WINNING edition per `${vsk}:${eid}` coordinate — its version and its
    * computed hash, which is exactly what a successor must carry as `ep`.
@@ -362,14 +367,46 @@ export function buildTypingRumor(author: string, channelId: string, epoch: bigin
   };
 }
 
+/**
+ * A Join or Leave (kind 3306). "The content is the verb" (CORD-02 §5), which is
+ * what other apps read; the `action` tag is what earlier versions of this app
+ * read, so it stays.
+ */
 export function buildJoinLeaveRumor(author: string, join: boolean, createdAt: number, ms = 0): RumorTemplate {
   return {
     kind: KIND_JOIN_LEAVE,
     pubkey: author,
     created_at: createdAt,
-    content: "",
+    content: join ? "join" : "leave",
     tags: [["action", join ? "join" : "leave"], msTag(ms)],
   };
+}
+
+/**
+ * A Kick (kind 3309, Guestbook; examples §3.2): admin-signed, naming its
+ * target. Honored only from someone who may kick them (mayKick). Cooperative:
+ * the target's client leaves, and a Refounding is what actually cuts access.
+ */
+export function buildKickRumor(author: string, target: string, createdAt: number, ms = 0): RumorTemplate {
+  return { kind: KIND_KICK, pubkey: author, created_at: createdAt, content: "", tags: [msTag(ms), ["p", target]] };
+}
+
+/**
+ * May `signer` kick `target` (CORD-04 §6)? The owner may kick anyone else;
+ * anyone else needs KICK and must strictly outrank the target. Nobody kicks
+ * the owner, and kicking yourself means nothing (that is a Leave).
+ */
+export function mayKick(signer: string, target: string, state: FoldedState, ownerPubkey: string): boolean {
+  if (target === ownerPubkey || signer === target) return false;
+  if (signer === ownerPubkey) return true;
+  const s = standingAuthority(signer, state, ownerPubkey);
+  return hasPermissionBit(s.perms, PERM.KICK) && canActOn(s.rank, standingAuthority(target, state, ownerPubkey).rank);
+}
+
+/** A Join/Leave's verb: the `action` tag our earlier versions wrote, else the content (CORD-02 §5). */
+export function joinLeaveVerb(ev: { content?: string; tags: string[][] }): "join" | "leave" {
+  const tagged = ev.tags.find((t) => t[0] === "action")?.[1];
+  return (tagged ?? ev.content) === "leave" ? "leave" : "join";
 }
 
 // ── Refounding guestbook snapshot (CORD-06 §3 / CORD-02 §5, kind 3312) ────────
@@ -586,7 +623,7 @@ function applyEditions(
     }
   }
 
-  const state: FoldedState = { roles: new Map(), channels: new Map(), grants: new Map(), banlist: new Set(), banlistSeen: new Set(), dissolved: false, heads: new Map() };
+  const state: FoldedState = { roles: new Map(), channels: new Map(), grants: new Map(), banlist: new Set(), banlistSeen: new Set(), dissolvedEids: new Set(), heads: new Map() };
   for (const b of seenBans) state.banlistSeen.add(b);
   for (const [coord, e] of byCoord) {
     // The winner per coordinate IS the head a successor must chain onto. We
@@ -639,7 +676,7 @@ function applyEditions(
           if (Array.isArray(data)) state.banlist = new Set(data);
           break;
         case VSK.DISSOLVED:
-          state.dissolved = true;
+          state.dissolvedEids.add(e.eid);
           break;
       }
     } catch { /* skip malformed content */ }
@@ -866,20 +903,31 @@ function snapshotAuthorities(state: FoldedState, ownerPubkey: string): Set<strin
  * exact prior behavior (the argument defaults to empty).
  */
 export function computeRoster(
-  joinLeave: { pubkey: string; created_at: number; tags: string[][] }[],
+  joinLeave: { pubkey: string; created_at: number; tags: string[][]; content?: string }[],
   state: FoldedState,
   ownerPubkey: string,
   snapshots: { refounder: string; members: string[]; t: number }[] = [],
+  /** Kicks (kind 3309): each departs its target when mayKick allows it. */
+  kicks: { pubkey: string; created_at: number; tags: string[][] }[] = [],
 ): Member[] {
   type Src = "firsthand" | "snapshot";
   const latest = new Map<string, { join: boolean; t: number; src: Src }>();
   // Firsthand Joins/Leaves first — unchanged last-wins-on-tie behavior.
   for (const ev of joinLeave) {
-    const action = ev.tags.find((t) => t[0] === "action")?.[1];
-    const join = action !== "leave";
+    const join = joinLeaveVerb(ev) === "join";
     const t = effectiveTime(ev);
     const cur = latest.get(ev.pubkey);
     if (!cur || t >= cur.t) latest.set(ev.pubkey, { join, t, src: "firsthand" });
+  }
+  // Kicks: an authorized one departs its target, like a Leave the target never
+  // wrote. Their own later Join brings them back ("latest Join, Leave, or Kick
+  // wins", CORD-02 §5).
+  for (const k of kicks) {
+    const target = k.tags.find((t) => t[0] === "p")?.[1];
+    if (!target || !mayKick(k.pubkey, target, state, ownerPubkey)) continue;
+    const t = effectiveTime(k);
+    const cur = latest.get(target);
+    if (!cur || t >= cur.t) latest.set(target, { join: false, t, src: "firsthand" });
   }
   // Snapshot seeds: authorized refounders only, seeding Joined. A snapshot beats
   // what it finds only when strictly newer, or when tying a prior SNAPSHOT seed;

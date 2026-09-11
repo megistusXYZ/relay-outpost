@@ -414,7 +414,7 @@ describe("foldEditions authority gating (CORD-04 §authority)", () => {
     expect(attackerState.banlist.has(BOB)).toBe(false);
     expect(attackerState.channels.has(CH)).toBe(false);
     expect(attackerState.metadata!.name).toBe("owned");
-    expect(attackerState.dissolved).toBe(false);
+    expect(attackerState.dissolvedEids.has(CID)).toBe(false);
 
     const ownerState = foldEditions([
       edition(VSK.METADATA, CID, 1, { name: "owned", relays: [] }, "r0"),
@@ -426,7 +426,7 @@ describe("foldEditions authority gating (CORD-04 §authority)", () => {
     expect(ownerState.banlist.has(BOB)).toBe(true);
     expect(ownerState.channels.get(CH)?.name).toBe("general");
     expect(ownerState.metadata!.name).toBe("renamed");
-    expect(ownerState.dissolved).toBe(true);
+    expect(ownerState.dissolvedEids.has(CID)).toBe(true);
   });
 
   it("rejects a non-owner banning a member they do not outrank (incl. the owner)", () => {

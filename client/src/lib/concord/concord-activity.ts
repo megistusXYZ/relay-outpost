@@ -4,7 +4,7 @@
  * what a user actually sees (interleaved system lines, the "new" divider, the
  * admin activity feeds) are node-testable in isolation.
  */
-import { effectiveTime, parseAuditRumor, KIND_AUDIT, type AuditEntry } from "./concord-events";
+import { effectiveTime, parseAuditRumor, joinLeaveVerb, mayKick, KIND_AUDIT, type AuditEntry, type FoldedState } from "./concord-events";
 import { chatDayLabel, sameLocalDay } from "../day-label";
 
 /** One membership event for the admin activity log + inline chat system lines. */
@@ -53,6 +53,31 @@ export function moderationSystemEvents(auditLog: AuditEntry[]): SystemEvent[] {
     if ((a.action === "kick" || a.action === "ban") && a.target) {
       out.push({ pubkey: a.target, action: a.action, t: a.t * 1000 });
     }
+  }
+  return out;
+}
+
+/**
+ * Every removal the room announces: our own records (kick or ban, as above)
+ * and Kicks (kind 3309) from any app, when their signer was allowed to make
+ * them (mayKick). A removal from this app writes both a record and a Kick, so a
+ * Kick within a minute of a record for the same person is the same removal and
+ * shows once.
+ */
+export function removalSystemEvents(
+  auditLog: AuditEntry[],
+  kicks: { pubkey: string; created_at: number; tags: string[][] }[],
+  state: FoldedState,
+  ownerPubkey: string,
+): SystemEvent[] {
+  const out = moderationSystemEvents(auditLog);
+  const SAME_REMOVAL_MS = 60_000;
+  for (const k of kicks) {
+    const target = k.tags.find((t) => t[0] === "p")?.[1];
+    if (!target || !mayKick(k.pubkey, target, state, ownerPubkey)) continue;
+    const t = effectiveTime(k);
+    if (out.some((e) => e.pubkey === target && Math.abs(e.t - t) <= SAME_REMOVAL_MS)) continue;
+    out.push({ pubkey: target, action: "kick", t });
   }
   return out;
 }
@@ -124,7 +149,7 @@ export function chatRowMeta<M extends { t: number; pubkey: string }>(
 }
 
 /** A raw decoded guestbook/audit rumor (the shape the stream hands us). */
-export interface RawRumor { id: string; pubkey: string; created_at: number; tags: string[][] }
+export interface RawRumor { id: string; pubkey: string; created_at: number; tags: string[][]; content?: string }
 
 /**
  * Fold guestbook join/leave rumors into newest-first membership events. Dedups
@@ -137,7 +162,7 @@ export function computeMembershipEvents(rumors: RawRumor[]): MembershipEvent[] {
   return [...byId.values()]
     .map((ev) => ({
       pubkey: ev.pubkey,
-      action: (ev.tags.find((t) => t[0] === "action")?.[1] === "leave" ? "leave" : "join") as "join" | "leave",
+      action: joinLeaveVerb(ev),
       t: effectiveTime(ev),
     }))
     .sort((a, b) => b.t - a.t);
