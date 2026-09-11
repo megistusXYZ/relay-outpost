@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreHorizontal, Users, Settings, Link2, LogOut, Trash2, Bell, BellOff, Pencil, ShieldCheck } from "lucide-react";
+import { MoreHorizontal, Users, Settings, Link2, LogOut, Bell, BellOff, Pencil, ShieldCheck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -163,8 +163,9 @@ export function SpaceOverflowMenu({
         )}
         {onLeave && (
           <DropdownMenuItem className={`${itemClass} text-destructive`} onSelect={defer(onLeave)} data-testid="menu-group-leave">
-            {isOwner ? <Trash2 className="w-3.5 h-3.5" /> : <LogOut className="w-3.5 h-3.5" />}
-            {isOwner ? "Delete group chat" : "Leave group chat"}
+            {/* An owner's Leave steps back; ending the group is Delete, in Manage. */}
+            <LogOut className="w-3.5 h-3.5" />
+            {isOwner ? "Step back from group chat" : "Leave group chat"}
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

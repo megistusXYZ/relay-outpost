@@ -23,6 +23,7 @@ import { ConcordMembers } from "@/components/concord/ConcordMembers";
 import { ConcordInviteDialog } from "@/components/concord/ConcordInviteDialog";
 import { ConcordCreateChannelDialog } from "@/components/concord/ConcordCreateChannelDialog";
 import { useConcordGovernance, COMMUNITY_UPDATED_EVENT } from "@/components/concord/useConcordGovernance";
+import { isStaff } from "@/lib/concord/concord-events";
 import { ConcordAdminDrawer } from "@/components/concord/ConcordAdminDrawer";
 import { concordCapabilities, hasAnyCapability } from "@/lib/space-admin";
 import { liveChannels } from "@/lib/concord/concord-live-channels";
@@ -252,14 +253,12 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
       {/* Ending the space is authority and lives in Manage now. LEAVING is not —
           it is the most member-level action there is, and burying it behind an
           admin drawer would hide it from everyone who actually needs it. */}
-      {!isOwner && (
-        <div className="pt-3 border-t border-destructive/15">
-          <p className="font-medium text-destructive/70 uppercase tracking-wider text-[10px] mb-2">Danger zone</p>
-          <button onClick={() => setDanger("leave")} className="flex items-center gap-1.5 py-2 md:py-0 text-xs text-destructive hover:underline" data-testid="button-leave-outpost">
-            <LogOut className="w-3.5 h-3.5" /> Leave group chat
-          </button>
-        </div>
-      )}
+      <div className="pt-3 border-t border-destructive/15">
+        <p className="font-medium text-destructive/70 uppercase tracking-wider text-[10px] mb-2">Danger zone</p>
+        <button onClick={() => setDanger("leave")} className="flex items-center gap-1.5 py-2 md:py-0 text-xs text-destructive hover:underline" data-testid="button-leave-outpost">
+          <LogOut className="w-3.5 h-3.5" /> {isOwner ? "Step back from group chat" : "Leave group chat"}
+        </button>
+      </div>
     </>
   );
 
@@ -421,6 +420,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
         onOpenChange={setDanger}
         community={community}
         pubkey={pubkey}
+        otherStaff={govRoster.filter((m) => m.pubkey !== community.owner && isStaff(m)).length}
         onDone={() => setLocation("/messages")}
       />
     </div>
