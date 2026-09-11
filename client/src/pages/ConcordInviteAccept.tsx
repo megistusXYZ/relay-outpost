@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { forceEnableConcord } from "@/lib/concord/concord-prefs";
 import { decodeFragment, acceptInviteLink, pickBundleEvent } from "@/lib/concord/concord-invites";
 import { classifyInviteFetch, type InviteLookup } from "@/lib/concord/invite-resolve";
+import { getCommunity } from "@/lib/concord/concord-keys";
 import { inviterFromCreator, setInviteConnect } from "@/lib/invite-connect";
 import { KIND_INVITE_BUNDLE } from "@/lib/concord/concord-events";
 import { nip19, type Event } from "nostr-tools";
@@ -41,6 +42,14 @@ export default function ConcordInviteAccept({ naddr }: { naddr: string }) {
   const [signerTick, setSignerTick] = useState(0);
   const fragment = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
   const bundle = lookup && (lookup.status === "ok" || lookup.status === "expired") ? lookup.bundle : null;
+  // Already in this group? Then the invite only opens it; your keys stay yours.
+  const [held, setHeld] = useState(false);
+  useEffect(() => {
+    if (!pubkey || !bundle?.community_id) { setHeld(false); return; }
+    let cancelled = false;
+    getCommunity(pubkey, bundle.community_id).then((r) => { if (!cancelled) setHeld(!!r); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [pubkey, bundle?.community_id]);
 
   // You can't gate someone out of a link they were handed — flip the flag on so
   // this page and the outpost they land in are enabled even if they'd killed it.
@@ -119,9 +128,9 @@ export default function ConcordInviteAccept({ naddr }: { naddr: string }) {
           setTimeout(() => { sub.close(); resolve(pickBundleEvent(seen)); }, 3500);
         });
       };
-      const record = await acceptInviteLink(pubkey, signer, naddr, fragment, fetchBundle, (e, r) => publishEvent(e, r), (e) => publishEvent(e, relays));
+      const result = await acceptInviteLink(pubkey, signer, naddr, fragment, fetchBundle, (e, r) => publishEvent(e, r), (e) => publishEvent(e, relays));
       clearPending();
-      if (!record) {
+      if (!result) {
         // Even having REACHED relays, "none of them have it" is not proof of
         // revocation — a bundle published seconds ago may not have propagated
         // to this reader's relay set yet, and the window here is 3.5s. Say what
@@ -132,6 +141,29 @@ export default function ConcordInviteAccept({ naddr }: { naddr: string }) {
         setJoining(false);
         return;
       }
+      if (result.status === "invalid") {
+        toast({ title: "This invite didn't check out", description: "Its group details don't match the group's owner. Ask for a new link.", variant: "destructive" });
+        setJoining(false);
+        return;
+      }
+      if (result.status === "unverified") {
+        // The owner's own record didn't open with this invite's keys, or the
+        // relays haven't handed it over yet. Nothing was kept; try again.
+        toast({ title: "Couldn't confirm this group yet", description: "We couldn't read the group's own record with this invite. The relays may be slow. Try again in a moment." });
+        setJoining(false);
+        return;
+      }
+      if (result.status === "already") {
+        toast({
+          title: "You're already in this group",
+          description: result.kept
+            ? "This link carried older keys, so yours were kept."
+            : result.added > 0 ? `Added ${result.added} room${result.added === 1 ? "" : "s"} you were missing.` : result.record.name,
+        });
+        setLocation(`/outposts/c/${result.record.community_id}`);
+        return;
+      }
+      const record = result.record;
       // Hand off the human behind the link so they don't land among strangers.
       // A community link can be forwarded or scanned off a QR, so this only
       // ARMS the prompt — the follow itself stays an explicit tap.
@@ -212,7 +244,11 @@ export default function ConcordInviteAccept({ naddr }: { naddr: string }) {
           ? `${bundle.channels.length} channel${bundle.channels.length !== 1 ? "s" : ""} · encrypted`
           : "Encrypted group chat"}
       </p>
-      {expired ? (
+      {held ? (
+        <Button onClick={() => setLocation(`/outposts/c/${bundle.community_id}`)} className="w-full mt-5" data-testid="button-invite-open-held">
+          <Check className="w-4 h-4 mr-1.5" /> You're in · Open group chat
+        </Button>
+      ) : expired ? (
         <div className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-left" data-testid="invite-expired">
           <p className="text-sm font-medium flex items-center gap-1.5"><Clock className="w-4 h-4 text-amber-500 shrink-0" aria-hidden="true" /> This invite expired</p>
           <p className="text-xs text-muted-foreground/70 mt-1">
