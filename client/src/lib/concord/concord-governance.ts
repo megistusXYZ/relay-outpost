@@ -17,7 +17,6 @@ import { nextBanlistEdition, type BanlistHead } from "./concord-banlist";
 import { refreshInviteLinks } from "./concord-invites";
 import { publishControlEdition, publishGuestbook, publishGuestbookSnapshot, channelPlaneKey, controlWritePlane } from "./concord-stream";
 import { sendRekey, resecurePrivateRooms } from "./concord-rekey";
-import { groupKey, LABEL_CONTROL_SIGNER } from "./concord-crypto";
 import { sealControlWrap } from "./concord-control-wrap";
 
 type PublishFn = (event: Event, relays: string[]) => Promise<unknown>;
