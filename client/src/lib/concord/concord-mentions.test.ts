@@ -185,3 +185,11 @@ describe("keys", () => {
     expect(splitMentionKey(key)).toEqual(["cid123", "ch456"]);
   });
 });
+
+describe("being quoted", () => {
+  it("counts as a reply to you, as an inline quote names you only in its q tag", () => {
+    expect(rumorMentionsMe([["q", "m", "", ME]], ME, OTHER)).toBe(true);
+    expect(rumorMentionsMe([["q", "m", "", OTHER]], ME, OTHER)).toBe(false);
+    expect(rumorMentionsMe([["q", "m", "", ME]], ME, ME)).toBe(false); // quoting yourself
+  });
+});

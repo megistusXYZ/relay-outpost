@@ -31,7 +31,7 @@ import { ConcordMediaView } from "./ConcordMediaView";
 import { getCachedMessages, cacheMessage, getCachedReactions, cacheReaction, removeCachedReaction, type StoredCommunity, type StoredChannel, type CachedReaction } from "@/lib/concord/concord-keys";
 import { liveChannels } from "@/lib/concord/concord-live-channels";
 import { subscribeChannel, publishChannelMessage, publishTyping, subscribeTyping, type DecodedRumor } from "@/lib/concord/concord-stream";
-import { buildMessageRumor, buildReplyRumor, buildReactionRumor, buildDeleteRumor, buildEditRumor, effectiveTime, hasPermission, PERM, KIND_REACTION, KIND_DELETE, KIND_EDIT, KIND_MESSAGE, type RumorTemplate } from "@/lib/concord/concord-events";
+import { buildMessageRumor, buildReplyRumor, buildReactionRumor, buildDeleteRumor, buildEditRumor, effectiveTime, hasPermission, PERM, KIND_REACTION, KIND_DELETE, KIND_EDIT, KIND_MESSAGE, KIND_REPLY, type RumorTemplate } from "@/lib/concord/concord-events";
 import { encryptAndUpload, mediaToTag, mediaFromTags, type ConcordMedia } from "@/lib/concord/concord-media";
 import { useConcordGovernance } from "./useConcordGovernance";
 import { ConcordInviteDialog } from "./ConcordInviteDialog";
@@ -41,6 +41,7 @@ import { MentionSearch, type MentionResult } from "@/components/MentionSearch";
 import { ConcordMessageBody, ConcordContentPreview, ConcordChannelNavProvider } from "./ConcordMessageBody";
 import { buildChatTimeline, firstUnreadIndex, moderationSystemEvents, chatRowMeta, chatClockTime, type SystemAction } from "@/lib/concord/concord-activity";
 import { groupThreads, type ThreadMeta } from "@/lib/concord/concord-threads";
+import { readMessageShape, threadReplyRef, type RootRef } from "@/lib/concord/concord-replies";
 import { useGoBack } from "@/hooks/use-go-back";
 import { computeUnreadChannels, newestActivity, readChannelLastRead } from "@/lib/concord/concord-channel-unread";
 import { getChannelWrapTimes, CHANGED_EVENT as UNREAD_CHANGED_EVENT, READ_EVENT } from "@/lib/concord/concord-unread";
@@ -52,7 +53,10 @@ import { ConcordAdminDrawer } from "./ConcordAdminDrawer";
 import { SpaceOverflowMenu } from "@/components/space/SpaceOverflowMenu";
 import { ConcordMessageActions } from "./ConcordMessageActions";
 
-interface ChatMsg { id: string; pubkey: string; content: string; t: number; media?: ConcordMedia[]; replyTo?: { id: string; pubkey: string }; rootId?: string; edited?: boolean; deleted?: boolean; mentions?: string[] }
+interface ChatMsg { id: string; pubkey: string; content: string; t: number; media?: ConcordMedia[]; replyTo?: { id: string; pubkey: string }; rootId?: string; root?: RootRef; kind?: number; edited?: boolean; deleted?: boolean; mentions?: string[] }
+/** A message's kind, for the `k` tag of what targets it (CORD-03). Rows cached
+ *  before the kind was recorded fall back on their thread pointer. */
+const kindOf = (m: ChatMsg) => m.kind ?? (m.rootId ? KIND_REPLY : KIND_MESSAGE);
 /** Aggregated reactions for one message: emoji → who reacted + my reaction id. */
 type ReactionAgg = { emoji: string; emojiUrl?: string; reactors: Set<string>; myId?: string };
 
@@ -231,6 +235,12 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   const [replyingTo, setReplyingTo] = useState<ChatMsg | null>(null);
   /** Open thread, by its starter message id (null = channel view). */
   const [threadRootId, setThreadRootId] = useState<string | null>(null);
+  /** The thread's own composer: its draft, the reply it answers (null = the
+   *  thread's starter), and a nonce that focuses it. */
+  const [threadDraft, setThreadDraft] = useState("");
+  const [threadParent, setThreadParent] = useState<ChatMsg | null>(null);
+  const [threadSending, setThreadSending] = useState(false);
+  const [threadFocus, setThreadFocus] = useState(0);
   // Same @-mention typeahead + tokenizer as the main post/discussion composers
   // (useMention → MentionSearch → resolveContent/getMentionTags): picks insert
   // a display tag that resolveContent turns into a content-level nostr:npub1…
@@ -369,16 +379,12 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
         return;
       }
       const media = mediaFromTags(rumor.tags);
-      const parentId = rumor.tags.find((t) => t[0] === "e")?.[1];
-      const parentPk = rumor.tags.find((t) => t[0] === "p")?.[1];
-      const replyTo = parentId && parentPk ? { id: parentId, pubkey: parentPk } : undefined;
-      // Thread root (NIP-22 uppercase `E`) — what the reply belongs UNDER, as
-      // opposed to `e`, the single message it answers. Older replies that only
-      // carry `e` fall back to their parent, which is the same thing whenever
-      // the parent is itself a thread starter.
-      const rootId = rumor.tags.find((t) => t[0] === "E")?.[1] ?? parentId;
+      // What it answers: a quote in the room (kind 9 + q), or a reply in a
+      // thread (kind 1111, grouped under its root). The background scanner
+      // reads it with the same function, so a cached row matches this one.
+      const { replyTo, root, kind } = readMessageShape(rumor);
       const mentions = rumor.tags.filter((t) => t[0] === "p" && t[1]).map((t) => t[1]);
-      let msg: ChatMsg = { id: rumor.id, pubkey: rumor.pubkey, content: rumor.content, t: effectiveTime(rumor), media: media.length ? media : undefined, replyTo, rootId, mentions: mentions.length ? mentions : undefined };
+      let msg: ChatMsg = { id: rumor.id, pubkey: rumor.pubkey, content: rumor.content, t: effectiveTime(rumor), media: media.length ? media : undefined, replyTo, root, rootId: root?.id, kind, mentions: mentions.length ? mentions : undefined };
       // Apply a delete that landed before this message did.
       if (pendingDeletes.get(msg.id) === msg.pubkey) msg = { ...msg, deleted: true, content: "", media: undefined };
       void cacheMessage(pubkey, communityId, channelId, msg);
@@ -520,12 +526,10 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     const mentions = getMentionTags(raw).map((t) => t[1]);
     const ms = Math.floor((Date.now() % 1000));
     const now = Math.floor(Date.now() / 1000);
-    const rumor = parent
-      ? buildReplyRumor(pubkey, activeChannel.id, BigInt(channelEpoch), text, ms, now, {
-          rootKind: KIND_MESSAGE, rootId: parent.id, rootPubkey: parent.pubkey,
-          parentKind: KIND_MESSAGE, parentId: parent.id, parentPubkey: parent.pubkey,
-        })
-      : buildMessageRumor(pubkey, activeChannel.id, BigInt(channelEpoch), text, ms, now);
+    // Replying in the room quotes inline (kind 9 + q), as Armada and Vector
+    // do; a reply in a thread goes through the thread's own composer.
+    const rumor = buildMessageRumor(pubkey, activeChannel.id, BigInt(channelEpoch), text, ms, now,
+      parent ? { quote: { id: parent.id, pubkey: parent.pubkey } } : {});
     // p-tags on the rumor (inside the encrypted content) keep in-app mention
     // notifications + row highlight working — same rumor-tag scheme as before.
     for (const pk of mentions) if (!rumor.tags.some((t) => t[0] === "p" && t[1] === pk)) rumor.tags.push(["p", pk]);
@@ -561,17 +565,54 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   const openThread = useCallback((rootId: string) => {
     if (onToggleMembers && membersCollapsed === false) { restoreMembersRef.current = true; onToggleMembers(); }
     setThreadRootId(rootId);
+    setThreadParent(null);
   }, [onToggleMembers, membersCollapsed]);
+  // "Reply in thread" from the room: open that message's thread with its
+  // composer ready. A message nobody has answered yet starts one.
+  const replyInThread = useCallback((rootId: string) => {
+    openThread(rootId);
+    setThreadFocus((n) => n + 1);
+  }, [openThread]);
   const closeThread = useCallback(() => {
     setThreadRootId(null);
+    setThreadParent(null);
     if (restoreMembersRef.current) { restoreMembersRef.current = false; onToggleMembers?.(); }
   }, [onToggleMembers]);
   // Switching channels leaves any open thread behind — its messages are gone.
-  useEffect(() => { setThreadRootId(null); restoreMembersRef.current = false; }, [activeChannel?.id]);
+  useEffect(() => { setThreadRootId(null); setThreadParent(null); setThreadDraft(""); restoreMembersRef.current = false; }, [activeChannel?.id]);
   const threadRoot = threadRootId ? messagesById.get(threadRootId) : undefined;
   // A starter that got deleted (or fell out of the window) closes the panel
   // rather than stranding the reader on an empty pane.
   useEffect(() => { if (threadRootId && !threadRoot) closeThread(); }, [threadRootId, threadRoot, closeThread]);
+
+  // A reply in the thread: a kind 1111 whose root is inherited from what it
+  // answers (the starter, or a reply in the thread), so it stays in THIS thread
+  // in every client. Fails the way the room composer does: text back, and say so.
+  const sendThreadReply = useCallback(async () => {
+    const text = threadDraft.trim();
+    const signer = getGlobalSigner();
+    const answering = threadParent ?? threadRoot;
+    if (!text || !pubkey || !signer || !activeChannel || !answering) return;
+    setThreadSending(true);
+    setThreadDraft("");
+    const parent = threadParent; setThreadParent(null);
+    const rootMsg = answering.rootId ? messagesById.get(answering.rootId) : undefined;
+    const root = answering.root ?? (rootMsg ? { id: rootMsg.id, pubkey: rootMsg.pubkey, kind: kindOf(rootMsg) } : undefined);
+    const ms = Math.floor(Date.now() % 1000);
+    const now = Math.floor(Date.now() / 1000);
+    const rumor = buildReplyRumor(pubkey, activeChannel.id, BigInt(channelEpoch), text, ms, now,
+      threadReplyRef({ id: answering.id, pubkey: answering.pubkey, kind: kindOf(answering), root }));
+    const wrap = await publishChannelMessage(signer, pubkey, community, activeChannel, rumor, (e, relays) => publishEvent(e, relays));
+    if (!wrap) {
+      setThreadDraft(text); setThreadParent(parent);
+      toast({
+        title: "Couldn't send",
+        description: "No relay accepted the reply. Your text is back in the box — try again.",
+        variant: "destructive",
+      });
+    }
+    setThreadSending(false);
+  }, [threadDraft, threadParent, threadRoot, messagesById, pubkey, activeChannel, community, channelEpoch, toast]);
 
   const onDraftChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -599,7 +640,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     return map;
   }, [reactions, pubkey]);
 
-  const toggleReaction = useCallback(async (target: { id: string; pubkey: string }, emoji: string, emojiUrl?: string) => {
+  const toggleReaction = useCallback(async (target: { id: string; pubkey: string; kind?: number }, emoji: string, emojiUrl?: string) => {
     const signer = getGlobalSigner();
     if (!pubkey || !signer || !activeChannel) return;
     const mine = reactionsByMessage.get(target.id)?.get(emoji)?.myId;
@@ -607,7 +648,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     const now = Math.floor(Date.now() / 1000);
     let rumor: RumorTemplate;
     if (mine) {
-      rumor = buildDeleteRumor(pubkey, activeChannel.id, BigInt(channelEpoch), mine, ms, now);
+      rumor = buildDeleteRumor(pubkey, activeChannel.id, BigInt(channelEpoch), mine, ms, now, KIND_REACTION);
       setReactions((prev) => { const next = new Map(prev); next.delete(mine); return next; }); // optimistic
       void removeCachedReaction(pubkey, mine);
     } else {
@@ -633,7 +674,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     const ms = Math.floor(Date.now() % 1000), now = Math.floor(Date.now() / 1000);
     setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, deleted: true, content: "", media: undefined } : m)); // optimistic
     void cacheMessage(pubkey, community.community_id, activeChannel.id, { ...msg, deleted: true, content: "", media: undefined });
-    publishMut(buildDeleteRumor(pubkey, activeChannel.id, BigInt(channelEpoch), msg.id, ms, now));
+    publishMut(buildDeleteRumor(pubkey, activeChannel.id, BigInt(channelEpoch), msg.id, ms, now, kindOf(msg)));
   }, [pubkey, activeChannel, community, channelEpoch, publishMut]);
 
   const saveEdit = useCallback((msg: ChatMsg, text: string) => {
@@ -643,7 +684,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     const ms = Math.floor(Date.now() % 1000), now = Math.floor(Date.now() / 1000);
     setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, content: trimmed, edited: true } : m)); // optimistic
     void cacheMessage(pubkey, community.community_id, activeChannel.id, { ...msg, content: trimmed, edited: true });
-    publishMut(buildEditRumor(pubkey, activeChannel.id, BigInt(channelEpoch), msg.id, trimmed, ms, now));
+    publishMut(buildEditRumor(pubkey, activeChannel.id, BigInt(channelEpoch), msg.id, trimmed, ms, now, kindOf(msg)));
   }, [pubkey, activeChannel, community, channelEpoch, publishMut]);
 
   // Encrypt + upload a picked file, then stage it for the next send.
@@ -1011,8 +1052,9 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             replyTo={item.msg.replyTo} parent={item.msg.replyTo ? messagesById.get(item.msg.replyTo.id) : undefined}
             thread={threading.meta.get(item.msg.id)} onOpenThread={() => openThread(item.msg.id)}
             editing={editingId === item.msg.id}
-            onReact={(emoji, url) => toggleReaction({ id: item.msg.id, pubkey: item.msg.pubkey }, emoji, url)}
+            onReact={(emoji, url) => toggleReaction({ id: item.msg.id, pubkey: item.msg.pubkey, kind: kindOf(item.msg) }, emoji, url)}
             onReply={() => setReplyingTo(item.msg)}
+            onReplyInThread={() => replyInThread(item.msg.id)}
             onStartEdit={() => setEditingId(item.msg.id)}
             onCancelEdit={() => setEditingId(null)}
             onSaveEdit={(text) => saveEdit(item.msg, text)}
@@ -1108,8 +1150,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       </div>{/* /message pane */}
 
       {/* Thread panel — a right column on desktop (standing in for Members), a
-          full-screen layer on mobile. Read-only: replying hands the root back
-          to the channel composer, so there is one send path, not two. */}
+          full-screen layer on mobile, with its own composer: a reply there is
+          a kind 1111 in this thread; "Reply" in the room is an inline quote. */}
       {threadRoot && (
         <ConcordThreadPanel
           embedded={embedded}
@@ -1120,8 +1162,15 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           messagesById={messagesById}
           editingId={editingId}
           onClose={closeThread}
-          onReply={() => { setReplyingTo(threadRoot); closeThread(); composerRef.current?.focus(); }}
-          onReact={(m, emoji, url) => toggleReaction({ id: m.id, pubkey: m.pubkey }, emoji, url)}
+          draft={threadDraft}
+          onDraftChange={setThreadDraft}
+          answering={threadParent}
+          onReplyTo={(m) => { setThreadParent(m.id === threadRoot.id ? null : m); setThreadFocus((n) => n + 1); }}
+          onCancelReplyTo={() => setThreadParent(null)}
+          sending={threadSending}
+          onSend={sendThreadReply}
+          focusNonce={threadFocus}
+          onReact={(m, emoji, url) => toggleReaction({ id: m.id, pubkey: m.pubkey, kind: kindOf(m) }, emoji, url)}
           onStartEdit={setEditingId}
           onSaveEdit={saveEdit}
           onRequestDelete={setPendingDelete}
@@ -1132,12 +1181,12 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
 }
 
 /**
- * One thread: its starter, then every reply, oldest first. Deliberately a VIEW —
- * it reuses the channel's message row (so reactions, edit, delete and media all
- * behave identically) and routes "Reply" back through the channel composer with
- * the starter armed, which is what keeps a reply landing in THIS thread.
+ * One thread: its starter, then every reply, oldest first, and its own
+ * composer. It reuses the channel's message row, so reactions, edit, delete
+ * and media behave identically. "Reply" on a message here answers it in this
+ * thread (the composer shows which); by default a reply answers the starter.
  */
-function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messagesById, editingId, embedded, onClose, onReply, onReact, onStartEdit, onSaveEdit, onRequestDelete }: {
+function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messagesById, editingId, embedded, onClose, draft, onDraftChange, answering, onReplyTo, onCancelReplyTo, sending, onSend, focusNonce, onReact, onStartEdit, onSaveEdit, onRequestDelete }: {
   root: ChatMsg;
   /** See ConcordChat's own `embedded`: this panel is `absolute inset-0` over the
    *  chat's box, so embedded its bottom edge is the panel's, not the screen's. */
@@ -1148,12 +1197,23 @@ function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messa
   messagesById: Map<string, ChatMsg>;
   editingId: string | null;
   onClose: () => void;
-  onReply: () => void;
+  draft: string;
+  onDraftChange: (text: string) => void;
+  /** The reply being answered, or null for the starter. */
+  answering: ChatMsg | null;
+  onReplyTo: (msg: ChatMsg) => void;
+  onCancelReplyTo: () => void;
+  sending: boolean;
+  onSend: () => void;
+  /** Bumped to focus the composer ("Reply in thread", "Reply" on a message here). */
+  focusNonce: number;
   onReact: (msg: ChatMsg, emoji: string, emojiUrl?: string) => void;
   onStartEdit: (id: string | null) => void;
   onSaveEdit: (msg: ChatMsg, text: string) => void;
   onRequestDelete: (msg: ChatMsg) => void;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (focusNonce > 0) inputRef.current?.focus(); }, [focusNonce]);
   const row = (m: ChatMsg) => (
     <ConcordMessageRow
       msgId={m.id} pubkey={m.pubkey} content={m.content} media={m.media} mine={m.pubkey === myPubkey}
@@ -1162,7 +1222,7 @@ function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messa
       replyTo={m.replyTo} parent={m.replyTo ? messagesById.get(m.replyTo.id) : undefined}
       editing={editingId === m.id}
       onReact={(emoji, url) => onReact(m, emoji, url)}
-      onReply={onReply}
+      onReply={() => onReplyTo(m)}
       onStartEdit={() => onStartEdit(m.id)}
       onCancelEdit={() => onStartEdit(null)}
       onSaveEdit={(text) => onSaveEdit(m, text)}
@@ -1192,9 +1252,31 @@ function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messa
         {replies.map((m) => <div key={m.id}>{row(m)}</div>)}
       </div>
       <div className={`border-t border-border/20 shrink-0 p-2.5 ${embedded ? "pb-2.5" : "pb-[max(env(safe-area-inset-bottom,0px),0.625rem)]"} md:pb-2.5`}>
-        <button onClick={onReply} className="flex items-center justify-center gap-1.5 w-full h-10 rounded-full bg-brand/10 text-brand text-xs font-medium hover:bg-brand/15 transition-colors" data-testid="concord-thread-reply">
-          <CornerUpLeft className="w-3.5 h-3.5" /> Reply to thread
-        </button>
+        {answering && (
+          <div className="flex items-center gap-2 pb-2 text-xs" data-testid="concord-thread-replying-to">
+            <div className="w-0.5 self-stretch bg-primary/50 rounded-full" />
+            <div className="min-w-0 flex-1">
+              <ReplyingToLabel pubkey={answering.pubkey} />
+              <p className="text-muted-foreground/60 truncate"><ConcordContentPreview content={answering.content} fallback={answering.media?.length ? "Attachment" : undefined} /></p>
+            </div>
+            <button onClick={onCancelReplyTo} aria-label="Reply to the thread instead" className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground/50 hover:bg-muted/40" data-testid="concord-thread-cancel-reply"><X className="w-3.5 h-3.5" /></button>
+          </div>
+        )}
+        <div className="flex items-center gap-1.5">
+          <input
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => onDraftChange(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); } if (e.key === "Escape" && answering) onCancelReplyTo(); }}
+            placeholder="Reply in thread…"
+            aria-label="Reply in thread"
+            className="flex-1 min-w-0 h-11 md:h-10 px-3 rounded-full bg-muted/20 border border-border/30 text-base md:text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
+            data-testid="concord-thread-composer"
+          />
+          <button onClick={onSend} disabled={!draft.trim() || sending} aria-label="Send reply" className="flex items-center justify-center w-11 h-11 md:w-10 md:h-10 shrink-0 rounded-full bg-primary text-primary-foreground disabled:opacity-40 transition-opacity" data-testid="concord-thread-send">
+            <Send className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </aside>
   );
@@ -1341,13 +1423,15 @@ function ThreadFace({ pubkey }: { pubkey: string }) {
   );
 }
 
-function ConcordMessageRow({ msgId, pubkey, content, media, mine, t, grouped, edited, deleted, mentionedMe, reactions, myPubkey, replyTo, parent, thread, onOpenThread, editing, onReact, onReply, onStartEdit, onCancelEdit, onSaveEdit, onRequestDelete }: {
+function ConcordMessageRow({ msgId, pubkey, content, media, mine, t, grouped, edited, deleted, mentionedMe, reactions, myPubkey, replyTo, parent, thread, onOpenThread, editing, onReact, onReply, onReplyInThread, onStartEdit, onCancelEdit, onSaveEdit, onRequestDelete }: {
   msgId: string; pubkey: string; content: string; media?: ConcordMedia[]; mine: boolean; t?: number; grouped?: boolean; edited?: boolean; deleted?: boolean; mentionedMe?: boolean;
   reactions?: Map<string, ReactionAgg>; myPubkey?: string | null;
   replyTo?: { id: string; pubkey: string }; parent?: ChatMsg; editing: boolean;
   /** Set when replies hang off this message — renders the thread chip. */
   thread?: ThreadMeta; onOpenThread?: () => void;
   onReact: (emoji: string, emojiUrl?: string) => void; onReply: () => void;
+  /** In the room: open this message's thread with its composer ready. */
+  onReplyInThread?: () => void;
   onStartEdit: () => void; onCancelEdit: () => void; onSaveEdit: (text: string) => void; onRequestDelete: () => void;
 }) {
   const { name, avatar, hasProfile } = useConcordProfile(pubkey);
@@ -1457,7 +1541,7 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, t, grouped, ed
       {/* One Signal-style actions menu — hover on desktop, always subtle on mobile */}
       {!deleted && !editing && (
         <div className="shrink-0 self-start opacity-60 reveal-on-hover">
-          <ConcordMessageActions content={content} mine={mine} onReact={onReact} onReply={onReply} onEdit={onStartEdit} onDelete={onRequestDelete} />
+          <ConcordMessageActions content={content} mine={mine} onReact={onReact} onReply={onReply} onReplyInThread={onReplyInThread} onEdit={onStartEdit} onDelete={onRequestDelete} />
         </div>
       )}
     </div>

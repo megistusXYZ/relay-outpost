@@ -1,20 +1,23 @@
 /**
  * Signal/WhatsApp-style message actions: one ⋯ entry point opens a compact menu
- * with a quick-reaction emoji row on top and the rest (reply, copy, edit,
- * delete) as a tidy list — instead of a crowded row of always-on icons.
+ * with a quick-reaction emoji row on top and the rest (reply, reply in thread,
+ * copy, edit, delete) as a tidy list — instead of a crowded row of always-on icons.
  */
 import { useState } from "react";
-import { MoreHorizontal, Reply, Copy, Pencil, Trash2, SmilePlus, Check } from "lucide-react";
+import { MoreHorizontal, Reply, MessageSquare, Copy, Pencil, Trash2, SmilePlus, Check } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { ComposeEmojiPicker } from "@/components/ComposeEmojiPicker";
 
 const QUICK = ["👍", "❤️", "😂", "🎉", "😮", "😢"];
 
-export function ConcordMessageActions({ content, mine, onReact, onReply, onEdit, onDelete }: {
+export function ConcordMessageActions({ content, mine, onReact, onReply, onReplyInThread, onEdit, onDelete }: {
   content: string;
   mine: boolean;
   onReact: (emoji: string, emojiUrl?: string) => void;
+  /** In the room: an inline quote. In a thread: a reply in that thread. */
   onReply: () => void;
+  /** In the room only: open this message's thread with its composer ready. */
+  onReplyInThread?: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -46,6 +49,7 @@ export function ConcordMessageActions({ content, mine, onReact, onReply, onEdit,
         </div>
         {/* Actions */}
         <MenuItem icon={Reply} label="Reply" onClick={() => act(onReply)} testid="concord-menu-reply" />
+        {onReplyInThread && <MenuItem icon={MessageSquare} label="Reply in thread" onClick={() => act(onReplyInThread)} testid="concord-menu-reply-thread" />}
         <MenuItem icon={copied ? Check : Copy} label={copied ? "Copied" : "Copy text"} onClick={copy} testid="concord-menu-copy" />
         {mine && <MenuItem icon={Pencil} label="Edit" onClick={() => act(onEdit)} testid="concord-menu-edit" />}
         {mine && <MenuItem icon={Trash2} label="Delete" onClick={() => act(onDelete)} destructive testid="concord-menu-delete" />}
