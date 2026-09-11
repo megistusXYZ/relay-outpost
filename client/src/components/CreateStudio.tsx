@@ -4,6 +4,9 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { MentionHighlightTextarea } from "@/components/MentionHighlightTextarea";
+import { MentionSearch, type MentionResult } from "@/components/MentionSearch";
+import { useMention } from "@/hooks/use-mention";
 import { useToast } from "@/hooks/use-toast";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { uploadToNostrBuild, UploadError } from "@/lib/media-upload";
@@ -50,6 +53,18 @@ export function CreateStudio() {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
+  // @mentions in the caption, as in the post composer: the picker finds
+  // people, and publishing turns each into a nostr:npub reference and a p tag.
+  const { mentionActive, mentionQuery, detectMention, insertMention, closeMention, resolveContent, getMentionTags, clearMentionTags } = useMention();
+  const captionRef = useRef<HTMLTextAreaElement>(null);
+  const onCaptionChange = useCallback((e: { target: HTMLTextAreaElement }) => {
+    const value = e.target.value;
+    setCaption(value);
+    detectMention(value, e.target.selectionStart ?? value.length);
+  }, [detectMention]);
+  const onMentionSelect = useCallback((result: MentionResult) => {
+    setCaption(insertMention(result, caption, captionRef));
+  }, [caption, insertMention]);
   const [podcastUrl, setPodcastUrl] = useState("");
   const [scheduleOn, setScheduleOn] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
@@ -64,7 +79,7 @@ export function CreateStudio() {
   const reset = useCallback(() => {
     setStep("picker");
     setFile(null);
-    setCaption(""); setPodcastUrl("");
+    setCaption(""); setPodcastUrl(""); clearMentionTags();
     setScheduleOn(false); setScheduleAt(""); setBusy(false); setStatus("");
     setPreviewUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
     setCoverFile(null);
@@ -164,15 +179,19 @@ export function CreateStudio() {
       setStatus("Publishing…");
       const now = Math.floor(Date.now() / 1000);
       let template: any;
-      let preview = caption;
+      // Mentions go out as nostr:npub references with p tags, exactly as a
+      // post's do, so the people tagged are notified and other apps link them.
+      const text = resolveContent(caption);
+      const mentionTags = getMentionTags(caption);
+      let preview = text;
       if (step === "photo") {
-        template = { kind: 1, created_at: now, content: caption ? `${caption}\n${url}` : url, tags: [...clientTags(), ["imeta", `url ${url}`, `m ${file.type}`]] };
-        preview = caption || "Photo";
+        template = { kind: 1, created_at: now, content: text ? `${text}\n${url}` : url, tags: [...clientTags(), ...mentionTags, ["imeta", `url ${url}`, `m ${file.type}`]] };
+        preview = text || "Photo";
       } else {
         // video: NIP-92 imeta with an optional `image` thumbnail so clients show a poster.
         const imeta = ["imeta", `url ${url}`, `m ${file.type}`, ...(coverUrl ? [`image ${coverUrl}`] : [])];
-        template = { kind: 1, created_at: now, content: caption ? `${caption}\n${url}` : url, tags: [...clientTags(), ["r", url], imeta, ...(coverUrl ? [["image", coverUrl]] : [])] };
-        preview = caption || "Video";
+        template = { kind: 1, created_at: now, content: text ? `${text}\n${url}` : url, tags: [...clientTags(), ...mentionTags, ["r", url], imeta, ...(coverUrl ? [["image", coverUrl]] : [])] };
+        preview = text || "Video";
       }
       await publishOrSchedule(template, preview);
       close();
@@ -288,7 +307,23 @@ export function CreateStudio() {
                 </div>
               )}
 
-              <Textarea value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Add a caption…" rows={3} className="bg-card/60 dark:bg-white/[0.03] border-brand/15 dark:border-brand/10" data-testid="input-create-caption" />
+              <div className="space-y-2">
+                {/* The same box as before; the highlighter mirrors these classes
+                    on its overlay, so no `flex` (it would break the text flow). */}
+                <MentionHighlightTextarea
+                  ref={captionRef}
+                  value={caption}
+                  onChange={onCaptionChange}
+                  placeholder="Add a caption… type @ to tag someone"
+                  rows={3}
+                  autoComplete="off"
+                  className="block min-h-[80px] w-full rounded-md border px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground bg-card/60 dark:bg-white/[0.03] border-brand/15 dark:border-brand/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background resize-none"
+                  data-testid="input-create-caption"
+                />
+                {mentionActive && (
+                  <MentionSearch query={mentionQuery} visible={mentionActive} onSelect={onMentionSelect} onClose={closeMention} position="static" />
+                )}
+              </div>
 
               {step === "video" && (
                 <div className="rounded-xl border border-brand/15 dark:border-brand/10 bg-card/60 dark:bg-white/[0.03] p-3">
