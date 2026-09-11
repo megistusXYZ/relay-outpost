@@ -3,16 +3,24 @@
  * Opened from the post menu and the ops Live Feed — pick a feed (or name a
  * new one), done. The append itself lives in lib/featured-append (freshest
  * edition, duplicate guard, copy-to-relay).
+ *
+ * The relay is asked before anything is offered (loadRelayFeeds): a relay
+ * that's down reads as unreachable, never as "no feeds yet", and one that no
+ * longer lists you as its operator says so instead of taking a feed nobody
+ * would be shown.
  */
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Event } from "nostr-tools";
 import {
   getAdminOutposts,
-  fetchFeedsForRelay,
+  loadRelayFeeds,
   addToFeaturedFeed,
+  forgetOperatorMark,
+  type RelayFeeds,
 } from "@/lib/featured-append";
-import { curationRowTitle, type CurationSet } from "@/lib/curation-set";
+import { curationRowTitle } from "@/lib/curation-set";
 import { getOutpostMeta } from "@/lib/outpost-relays";
+import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,10 +50,10 @@ export function AddToFeaturedDialog({
   presetRelayUrl?: string;
 }) {
   const { toast } = useToast();
+  const { pubkey } = useNostrAuth();
   const adminRelays = useMemo(() => getAdminOutposts(), []);
   const [relayUrl, setRelayUrl] = useState<string | null>(null);
-  const [feeds, setFeeds] = useState<CurationSet[] | null>(null);
-  const [unreached, setUnreached] = useState(false);
+  const [lookup, setLookup] = useState<RelayFeeds | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [busyTarget, setBusyTarget] = useState<string | null>(null);
   const [addedTo, setAddedTo] = useState<Set<string>>(new Set());
@@ -58,15 +66,12 @@ export function AddToFeaturedDialog({
   }, [open, presetRelayUrl, adminRelays]);
 
   const loadFeeds = useCallback(async (url: string) => {
-    setFeeds(null);
-    setUnreached(false);
-    try {
-      setFeeds(await fetchFeedsForRelay(url));
-    } catch {
-      setUnreached(true);
-      setFeeds([]);
-    }
-  }, []);
+    setLookup(null);
+    const out = await loadRelayFeeds(url, pubkey ?? null).catch((): RelayFeeds => ({ status: "unreachable" }));
+    setLookup(out);
+    // The relay says it isn't yours: stop offering Featured for it.
+    if (out.status === "not-operator") forgetOperatorMark(url);
+  }, [pubkey]);
 
   useEffect(() => {
     if (open && relayUrl) loadFeeds(relayUrl);
@@ -94,13 +99,18 @@ export function AddToFeaturedDialog({
         toast({ title: "Already featured", description: `This is already in "${result.feedTitle}".` });
       } else if (result.reason === "not-signed-in") {
         toast({ title: "Not signed in", description: "Sign in to curate feeds.", variant: "destructive" });
+      } else if (result.reason === "not-operator") {
+        forgetOperatorMark(relayUrl);
+        setLookup({ status: "not-operator" });
+      } else if (result.reason === "unreached") {
+        toast({ title: "Couldn't reach the relay", description: "Nothing was changed. Try again in a moment.", variant: "destructive" });
       } else {
-        toast({ title: "Couldn't add", description: "The relay didn't take the update — try again.", variant: "destructive" });
+        toast({ title: "Couldn't add", description: "The relay didn't take the update. Try again.", variant: "destructive" });
       }
     } finally {
       setBusyTarget(null);
     }
-  }, [relayUrl, event, toast, loadFeeds]);
+  }, [relayUrl, event, person, toast, loadFeeds]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -130,12 +140,18 @@ export function AddToFeaturedDialog({
               </button>
             ))}
           </div>
-        ) : feeds === null ? (
+        ) : lookup === null ? (
           <div className="flex items-center justify-center py-6"><RelayOutpostInlineLoader className="w-5 h-5" /></div>
-        ) : unreached ? (
-          <div className="text-center py-4 space-y-2">
-            <p className="text-sm text-muted-foreground">Couldn't reach the relay.</p>
+        ) : lookup.status === "unreachable" ? (
+          <div className="text-center py-4 space-y-2" data-testid="featured-unreachable">
+            <p className="text-sm text-muted-foreground">Couldn't reach {relayLabel(relayUrl)}.</p>
+            <p className="text-xs text-muted-foreground/60">Its feeds can't be read or changed until it's back.</p>
             <Button size="sm" variant="outline" onClick={() => loadFeeds(relayUrl)}><RefreshCw className="w-3.5 h-3.5 mr-1" />Retry</Button>
+          </div>
+        ) : lookup.status === "not-operator" ? (
+          <div className="text-center py-4 space-y-1.5" data-testid="featured-not-operator">
+            <p className="text-sm text-muted-foreground">{relayLabel(relayUrl)} doesn't list you as its operator.</p>
+            <p className="text-xs text-muted-foreground/60">Only the people a relay names as its operator or moderators can shape its Featured page.</p>
           </div>
         ) : (
           <div className="space-y-1.5">
@@ -144,7 +160,7 @@ export function AddToFeaturedDialog({
                 ← {relayLabel(relayUrl)}
               </button>
             )}
-            {feeds.map((f) => {
+            {lookup.feeds.map((f) => {
               const coord = `${f.pubkey}:${f.dTag}`;
               const done = addedTo.has(coord);
               return (
@@ -173,7 +189,7 @@ export function AddToFeaturedDialog({
               <Input
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                placeholder={feeds.length === 0 ? "Name your first feed — e.g. Weekly Picks" : "New feed name"}
+                placeholder={lookup.feeds.length === 0 ? "Name your first feed — e.g. Weekly Picks" : "New feed name"}
                 data-testid="input-featured-new-name"
               />
               <Button
