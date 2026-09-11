@@ -76,7 +76,10 @@ export default function MuteList() {
   useDocumentTitle("Muted");
   const { pubkey } = useNostrAuth();
   const [, setLocation] = useLocation();
-  const { mutedPubkeys, mutedKeywords, isLoading, unmutePubkey, removeKeyword } = useNostrMuteList();
+  const {
+    mutedPubkeys, mutedKeywords, mutedHashtags, mutedThreads, isLoading, syncNote,
+    unmutePubkey, removeKeyword, unmuteHashtag, unmuteThread,
+  } = useNostrMuteList();
   const [confirm, setConfirm] = useState<
     | { title: string; description: string; confirmLabel: string; onConfirm: () => void }
     | null
@@ -91,7 +94,7 @@ export default function MuteList() {
   const requestUnmute = (pk: string, name: string) => {
     setConfirm({
       title: `Unmute ${name}?`,
-      description: "Their posts will start showing up in your feeds again. This updates your mute list on your relays.",
+      description: "Their posts will start showing up in your feeds again, here and in your other apps.",
       confirmLabel: "Unmute",
       onConfirm: () => { void unmutePubkey(pk); },
     });
@@ -100,13 +103,32 @@ export default function MuteList() {
   const requestRemoveKeyword = (kw: string) => {
     setConfirm({
       title: `Remove “${kw}”?`,
-      description: "Posts containing this word will no longer be hidden. This updates your mute list on your relays.",
+      description: "Posts containing this word will no longer be hidden, here and in your other apps.",
       confirmLabel: "Remove",
       onConfirm: () => { void removeKeyword(kw); },
     });
   };
 
-  const hasNothing = !isLoading && mutedPubkeys.length === 0 && mutedKeywords.length === 0;
+  const requestUnmuteHashtag = (tag: string) => {
+    setConfirm({
+      title: `Unmute #${tag}?`,
+      description: "Posts with this hashtag will show up again, here and in your other apps.",
+      confirmLabel: "Unmute",
+      onConfirm: () => { void unmuteHashtag(tag); },
+    });
+  };
+
+  const requestUnmuteThread = (id: string) => {
+    setConfirm({
+      title: "Unmute this thread?",
+      description: "Posts and replies in this thread will show up again, here and in your other apps.",
+      confirmLabel: "Unmute",
+      onConfirm: () => { void unmuteThread(id); },
+    });
+  };
+
+  const hasNothing =
+    !isLoading && mutedPubkeys.length === 0 && mutedKeywords.length === 0 && mutedHashtags.length === 0 && mutedThreads.length === 0;
 
   return (
     <div className="max-w-xl mx-auto px-4 py-10 space-y-5" data-testid="page-muted">
@@ -117,9 +139,20 @@ export default function MuteList() {
         <h1 className="text-lg font-brand uppercase tracking-widest">Muted</h1>
       </div>
 
-      <p className="text-sm text-muted-foreground/70 leading-relaxed">
-        People and words you've hidden. Unmuting republishes your mute list to relays.
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        People, words, hashtags and threads you've hidden. Only you can see this list: it's encrypted
+        and saved to your relays, so the same mutes apply in other apps that support private mute lists,
+        like Amethyst.
       </p>
+
+      {syncNote && (
+        <p className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground" role="status" data-testid="mute-sync-note">
+          {syncNote === "cannot-encrypt" && "Your signer can't encrypt, so changes are kept on this device only. Nothing is shared publicly."}
+          {syncNote === "unreadable" && "Your signer couldn't open the private part of your saved list, so changes stay on this device rather than overwrite it."}
+          {syncNote === "not-loaded" && "Your saved list hasn't loaded, so changes stay on this device until it does."}
+          {syncNote === "publish-failed" && "Couldn't reach your relays. Changes are kept on this device and will be saved with your next one."}
+        </p>
+      )}
 
       {isLoading ? (
         <Card className="glass-card p-8 flex items-center justify-center gap-2">
@@ -179,6 +212,62 @@ export default function MuteList() {
               </div>
             )}
           </section>
+
+          {mutedHashtags.length > 0 && (
+            <section className="space-y-2">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+                <Hash className="h-3.5 w-3.5" />
+                Hashtags <span className="text-muted-foreground/60">· {mutedHashtags.length}</span>
+              </div>
+              <div className="flex flex-wrap gap-2" data-testid="list-muted-hashtags">
+                {mutedHashtags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border pl-3 pr-1.5 py-1 text-xs text-foreground/80"
+                  >
+                    #{tag}
+                    <button
+                      onClick={() => requestUnmuteHashtag(tag)}
+                      className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-brand/20 transition-colors"
+                      aria-label={`Unmute hashtag ${tag}`}
+                      data-testid={`button-unmute-hashtag-${tag.replace(/[^a-z0-9]/gi, "-")}`}
+                    >
+                      <X className="h-3 w-3 text-muted-foreground" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {mutedThreads.length > 0 && (
+            <section className="space-y-2">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+                <VolumeX className="h-3.5 w-3.5" />
+                Threads <span className="text-muted-foreground/60">· {mutedThreads.length}</span>
+              </div>
+              <div className="space-y-1.5" data-testid="list-muted-threads">
+                {mutedThreads.map((id) => {
+                  let label = id.slice(0, 12) + "…";
+                  try { label = shortenNpub(nip19.noteEncode(id)); } catch { /* not an event id */ }
+                  return (
+                    <div key={id} className="flex items-center gap-3 rounded-md border border-border px-2.5 py-2">
+                      <span className="flex-1 min-w-0 truncate font-mono text-xs text-muted-foreground">{label}</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => requestUnmuteThread(id)}
+                        className="shrink-0 text-xs min-h-11"
+                        data-testid={`button-unmute-thread-${id.slice(0, 12)}`}
+                      >
+                        Unmute
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
         </>
       )}
 

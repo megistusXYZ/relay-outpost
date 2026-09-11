@@ -1,5 +1,6 @@
 import type { Event } from "nostr-tools";
 import { gateStrangerProfile, type ProfileResolution } from "./discover-quality";
+import { threadRootOf } from "./reply-target";
 
 const SPAM_API_URL = "https://spam.nostr.band/spam_api";
 const CACHE_DURATION = 5 * 60 * 1000;
@@ -170,6 +171,33 @@ export function removeMutedKeyword(keyword: string) {
 
 export function getMutedKeywords(): string[] {
   return Array.from(mutedKeywords);
+}
+
+// Hashtags and threads you muted, in this app or any other (NIP-51 "t" and
+// "e" entries in your mute list). Not stored on the device: the synced list is
+// the source, pushed in whole by the mute-list hook (use-nostr-mute-list.ts).
+let mutedHashtags = new Set<string>();
+let mutedThreads = new Set<string>();
+
+export function setMutedHashtags(hashtags: Iterable<string>) {
+  mutedHashtags = new Set(Array.from(hashtags, (t) => t.toLowerCase()));
+  notifyMuteListeners();
+}
+
+export function setMutedThreads(threadIds: Iterable<string>) {
+  mutedThreads = new Set(threadIds);
+  notifyMuteListeners();
+}
+
+/** Tagged with a muted hashtag, or part of a muted thread (the thread itself or a reply in it). */
+function inMutedHashtagOrThread(event: Event): boolean {
+  if (mutedHashtags.size > 0 && event.tags.some((t) => t[0] === "t" && t[1] && mutedHashtags.has(t[1].toLowerCase()))) {
+    return true;
+  }
+  if (mutedThreads.size === 0) return false;
+  if (mutedThreads.has(event.id)) return true;
+  const root = threadRootOf(event);
+  return !!root && mutedThreads.has(root);
 }
 
 function matchesMutedKeyword(content: string): boolean {
@@ -500,6 +528,10 @@ export function filterSpamEvents(
     if (isReportedEvent(event.id) || isReportedPubkey(event.pubkey)) return false;
 
     if (matchesMutedKeyword(event.content)) return false;
+
+    // Hashtags and threads you muted in any app apply to everyone, as muted
+    // words do: a mute is your choice about what you see.
+    if (inMutedHashtagOrThread(event)) return false;
 
     const isFollowed = follows && follows.has(event.pubkey);
 
