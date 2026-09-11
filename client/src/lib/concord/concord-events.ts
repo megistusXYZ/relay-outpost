@@ -189,10 +189,9 @@ export interface FoldedState {
    * the NEXT edition can put them back. That heals the fork WITHOUT changing how
    * anyone folds, which is why it is done here and not in the winner selection.
    *
-   * Only safe while there is no unban: a smaller list at a higher version would
-   * be a legitimate removal, and unioning would resurrect it. There is no unban
-   * publisher in Concord (AUDIT_META reserves the verb; nothing emits it). If
-   * one is added, this must become "seen minus explicitly unbanned".
+   * Minus what the winner's own chain LIFTED: a smaller list at a higher
+   * version on the same chain is an unban, and unioning it back would ban them
+   * again (liftedBans). A name only in a losing fork sibling is still healed.
    */
   banlistSeen: Set<string>;
   /**
@@ -598,6 +597,31 @@ export function computeEditionId(entityId: string, version: number, prev: string
 }
 
 // ── Authority-gated fold (CORD-04 §authority) ────────────────────────────────
+function banNames(e: ControlEdition): string[] {
+  try {
+    const names = JSON.parse(e.content);
+    return Array.isArray(names) ? names.filter((n): n is string => typeof n === "string") : [];
+  } catch { return []; }
+}
+
+/** Names a banlist's own chain dropped: in an ancestor of the winning edition, not in the winner. */
+function liftedBans(winners: Map<string, ControlEdition>, hashOf?: Map<ControlEdition, string>): Set<string> {
+  const lifted = new Set<string>();
+  if (!hashOf) return lifted;
+  const byHash = new Map<string, ControlEdition>();
+  for (const [e, h] of hashOf) byHash.set(h, e);
+  for (const head of winners.values()) {
+    if (head.vsk !== VSK.BANLIST) continue;
+    const current = new Set(banNames(head));
+    const walked = new Set<ControlEdition>([head]);
+    for (let e = head.ep ? byHash.get(head.ep) : undefined; e && !walked.has(e); e = e.ep ? byHash.get(e.ep) : undefined) {
+      walked.add(e);
+      for (const n of banNames(e)) if (!current.has(n)) lifted.add(n);
+    }
+  }
+  return lifted;
+}
+
 /**
  * Apply an already-admitted, structurally-intact set of editions into state.
  * Per entity coordinate (vsk:eid) the highest `ev` wins, tie-breaking on the
@@ -624,7 +648,11 @@ function applyEditions(
   }
 
   const state: FoldedState = { roles: new Map(), channels: new Map(), grants: new Map(), banlist: new Set(), banlistSeen: new Set(), dissolvedEids: new Set(), heads: new Map() };
-  for (const b of seenBans) state.banlistSeen.add(b);
+  // A name dropped by a later edition on the winner's own chain was lifted on
+  // purpose (an unban) and stays off; a name only in a losing fork sibling is a
+  // ban the tie-break dropped, and stays in the heal set.
+  const lifted = liftedBans(byCoord, hashOf);
+  for (const b of seenBans) if (!lifted.has(b)) state.banlistSeen.add(b);
   for (const [coord, e] of byCoord) {
     // The winner per coordinate IS the head a successor must chain onto. We
     // already know it here; publishing it costs nothing and saves every caller

@@ -151,13 +151,11 @@ export function ConcordAdminDrawer({
                 This group is invite-only either way — there is no public join link.
               </p>
               {bannedCount > 0 && (
-                // Read-only ON PURPOSE. The fold UNIONS every banlist edition it
-                // admits (concord-events.ts) precisely because the protocol has
-                // no unban; a button here would appear to work and be undone by
-                // the next ban anyone publishes. Stating the count is honest,
-                // offering a reversal is not.
+                // Unbanning lives with the people it concerns (ConcordMembers),
+                // so this only says where. It stays undone now: the fold treats
+                // a name a later edition dropped as lifted (concord-events.ts).
                 <p className="text-[11px] text-muted-foreground/60">
-                  {bannedCount} {bannedCount === 1 ? "person is" : "people are"} banned. Bans can't be undone yet.
+                  {bannedCount} {bannedCount === 1 ? "person is" : "people are"} banned. You can lift a ban under People.
                 </p>
               )}
               <button onClick={() => setEditOpen(true)} className="text-[11px] text-primary hover:underline" data-testid="space-admin-edit-access">
