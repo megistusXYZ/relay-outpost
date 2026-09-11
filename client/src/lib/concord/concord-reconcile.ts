@@ -41,6 +41,9 @@ export const RECONCILABLE = [
 
 export const UNTOUCHABLE = [
   "community_id", "owner", "owner_salt", "community_root", "root_epoch",
+  // The admin plane's address and secret: key material from invites and rekey
+  // blobs (CORD-02 §5), never from the fold.
+  "control_pk", "control_root",
   "priorRoots", "relayUrl", "addedAt",
   "banVersion", "banEid", "banSnapshot", "grantVersions",
 ] as const;

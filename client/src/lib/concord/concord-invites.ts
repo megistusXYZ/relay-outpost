@@ -116,6 +116,8 @@ export interface InviteBundle {
   owner_salt: string;
   community_root: string;
   root_epoch: number;
+  /** The admin plane's address (CORD-02 §5), hex. Absent = a legacy group (CORD-05 §1). */
+  control_pk?: string;
   channels: { id: string; key?: string; epoch: number; name: string }[];
   relays: string[];
   name: string;
@@ -167,6 +169,8 @@ export function bundleFromCommunity(c: StoredCommunity, creatorNpub?: string, la
   return {
     community_id: c.community_id, owner: c.owner, owner_salt: c.owner_salt,
     community_root: c.community_root, root_epoch: c.root_epoch,
+    // Whoever joins needs the admin address to see the group's rooms and roles.
+    ...(c.control_pk ? { control_pk: c.control_pk } : {}),
     channels: c.channels
       .filter((ch) => !ch.isPrivate && !ch.key)
       .map((ch) => ({ id: ch.id, epoch: ch.epoch, name: ch.name })),
@@ -322,6 +326,24 @@ export async function acceptInviteLink(
 }
 
 /**
+ * The stored record an invite bundle becomes. Pure: adoptInviteBundle checks
+ * the bundle first and persists the result. Only a real key is kept as the
+ * admin address; anything else reads as a legacy group (CORD-05 §1).
+ */
+export function recordFromBundle(bundle: InviteBundle, bootstrapRelays: string[]): StoredCommunity {
+  const channels = Array.isArray(bundle.channels) ? bundle.channels : [];
+  const controlPk = typeof bundle.control_pk === "string" && /^[0-9a-f]{64}$/.test(bundle.control_pk) ? bundle.control_pk : undefined;
+  return {
+    community_id: bundle.community_id, owner: bundle.owner, owner_salt: bundle.owner_salt,
+    community_root: bundle.community_root, root_epoch: bundle.root_epoch,
+    ...(controlPk ? { control_pk: controlPk } : {}),
+    channels: channels.map((ch) => ({ id: ch.id, key: ch.key, epoch: ch.epoch, name: ch.name, isPrivate: !!ch.key })),
+    relays: [...new Set([...(bundle.relays ?? []), ...bootstrapRelays])].slice(0, 5),
+    name: bundle.name, icon: typeof bundle.icon === "string" ? bundle.icon : undefined, addedAt: Date.now(),
+  };
+}
+
+/**
  * Adopt an invite bundle: verify the community id (anti-spoof), persist the
  * keys, publish a guestbook join + the 13302 backup. Shared by link acceptance
  * and direct-invite (3313) acceptance. Returns null if the bundle doesn't verify.
@@ -347,13 +369,7 @@ export async function adoptInviteBundle(
   const channels = bundle.channels ?? [];
   if (!Array.isArray(channels) || channels.length > 256) return null;
 
-  const record: StoredCommunity = {
-    community_id: bundle.community_id, owner: bundle.owner, owner_salt: bundle.owner_salt,
-    community_root: bundle.community_root, root_epoch: bundle.root_epoch,
-    channels: channels.map((ch) => ({ id: ch.id, key: ch.key, epoch: ch.epoch, name: ch.name, isPrivate: !!ch.key })),
-    relays: [...new Set([...(bundle.relays ?? []), ...bootstrapRelays])].slice(0, 5),
-    name: bundle.name, icon: typeof bundle.icon === "string" ? bundle.icon : undefined, addedAt: Date.now(),
-  };
+  const record = recordFromBundle({ ...bundle, channels }, bootstrapRelays);
   await putCommunity(ownerPubkey, record);
   await publishGuestbook(signer, ownerPubkey, record, buildJoinLeaveRumor(ownerPubkey, true, Math.floor(Date.now() / 1000)), publish).catch(() => null);
   await publishCommunityList(signer, ownerPubkey, publishSelf).catch(() => {});

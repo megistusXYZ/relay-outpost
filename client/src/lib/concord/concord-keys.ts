@@ -49,6 +49,14 @@ export interface StoredCommunity {
   /** the community root secret (hex) — members hold it; public channels derive from it. */
   community_root: string;
   root_epoch: number;
+  /**
+   * The admin (Control) plane's address at root_epoch (CORD-02 §2/§5), hex.
+   * From an invite, the Community List, or a base rekey blob. Absent = a legacy
+   * group, whose admin plane is the concord/control address.
+   */
+  control_pk?: string;
+  /** Staff only: the secret control_pk derives from (CORD-02 §2), hex. */
+  control_root?: string;
   channels: StoredChannel[];
   relays: string[];
   name: string;
@@ -99,7 +107,7 @@ export interface StoredCommunity {
    * members list collapses to just the owner. Local + 13302-backup state only,
    * never on the community wire.
    */
-  priorRoots?: { root: string; epoch: number }[];
+  priorRoots?: { root: string; epoch: number; control_pk?: string }[];
   /**
    * Channel ids the reconciler has retracted — the fold positively called them
    * private while this device held no key, so the row was a phantom seated off a
@@ -119,12 +127,24 @@ export const PRIOR_ROOTS_CAP = 24;
  * Dedupes by epoch and keeps the newest PRIOR_ROOTS_CAP entries. No-op if the
  * record is already at (or past) the new epoch — adoption is idempotent.
  */
-export function adoptBaseRekey(c: StoredCommunity, newRootHex: string, newEpoch: number): StoredCommunity {
+export function adoptBaseRekey(
+  c: StoredCommunity,
+  newRootHex: string,
+  newEpoch: number,
+  /** The new epoch's admin address (and, for staff, its secret) from the rekey
+   *  blob. Absent = a legacy rotation: the new epoch has no split address. */
+  control: { controlPk?: string; controlRoot?: string } = {},
+): StoredCommunity {
   if (newEpoch <= c.root_epoch) return c;
-  const prior = [...(c.priorRoots ?? []).filter((p) => p.epoch !== c.root_epoch), { root: c.community_root, epoch: c.root_epoch }]
+  // The epoch we leave keeps its admin address, so its plane stays readable.
+  const leaving = { root: c.community_root, epoch: c.root_epoch, ...(c.control_pk ? { control_pk: c.control_pk } : {}) };
+  const prior = [...(c.priorRoots ?? []).filter((p) => p.epoch !== c.root_epoch), leaving]
     .sort((a, b) => a.epoch - b.epoch)
     .slice(-PRIOR_ROOTS_CAP);
-  return { ...c, community_root: newRootHex, root_epoch: newEpoch, priorRoots: prior };
+  return {
+    ...c, community_root: newRootHex, root_epoch: newEpoch, priorRoots: prior,
+    control_pk: control.controlPk, control_root: control.controlRoot,
+  };
 }
 
 /** kind-13302 list entry (seed = lowest epoch seen, current = highest). */

@@ -72,8 +72,11 @@ export function registerPlaneAuth(relays: string[], planes: GroupKey[]): void {
     if (!key) continue;
     let m = registry.get(key);
     if (!m) { m = new Map(); registry.set(key, m); }
-    for (const p of planes) if (!m.has(p.pk)) m.set(p.pk, p.sk);
-    armPlaneAuth(r, planes.map((p) => p.pk));
+    // A plane we can only read (a member's view of the admin plane, CORD-02 §5)
+    // has no key to authenticate as, so it isn't registered.
+    const signable = planes.filter((p): p is typeof p & { sk: Uint8Array } => !!p.sk);
+    for (const p of signable) if (!m.has(p.pk)) m.set(p.pk, p.sk);
+    armPlaneAuth(r, signable.map((p) => p.pk));
   }
 }
 
