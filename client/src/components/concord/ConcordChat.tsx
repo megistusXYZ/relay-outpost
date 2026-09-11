@@ -53,6 +53,7 @@ import { ConcordPinnedBar, ConcordPinnedSheet, ConcordPinsUnavailable } from "./
 import { useGoBack } from "@/hooks/use-go-back";
 import { computeUnreadChannels, newestActivity, readChannelLastRead } from "@/lib/concord/concord-channel-unread";
 import { getChannelWrapTimes, CHANGED_EVENT as UNREAD_CHANGED_EVENT, READ_EVENT } from "@/lib/concord/concord-unread";
+import { writeChannelLastRead } from "@/lib/concord/concord-channel-unread";
 import { isMuted, setChannelMuted, useMutedChannels, MUTE_CHANGED_EVENT } from "@/lib/concord/concord-mute";
 import { mentionKey, useConcordMentionCounts } from "@/lib/concord/concord-mentions";
 import { ConcordCreateChannelDialog } from "./ConcordCreateChannelDialog";
@@ -360,17 +361,14 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   const messagesRef = useRef<ChatMsg[]>([]);
   messagesRef.current = messages;
   const readKey = activeChannel ? `ro_concord_read_${community.community_id}_${activeChannel.id}` : "";
+  const readChannelId = activeChannel?.id ?? "";
   const persistRead = useCallback(() => {
-    if (!readKey) return;
+    if (!readChannelId) return;
     const latest = messagesRef.current[messagesRef.current.length - 1]?.t ?? 0;
-    try {
-      if (latest) {
-        localStorage.setItem(readKey, String(latest));
-        // Let the global unread watcher clear this outpost's dot.
-        window.dispatchEvent(new CustomEvent("concord-read", { detail: community.community_id }));
-      }
-    } catch {}
-  }, [readKey, community.community_id]);
+    // Forward only. Clears this group's dot, and your other devices hear it
+    // through the read-state sync.
+    if (latest) writeChannelLastRead(community.community_id, readChannelId, latest);
+  }, [readChannelId, community.community_id]);
   useEffect(() => {
     if (!readKey) return;
     let v = 0; try { v = Number(localStorage.getItem(readKey)) || 0; } catch {}

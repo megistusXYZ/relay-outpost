@@ -25,9 +25,40 @@ import {
   isCommunityMuted, isChannelMuted, isMuted,
   setCommunityMuted, setChannelMuted,
   channelMuteKey, MUTE_CHANGED_EVENT,
+  muteEntries, applyMuteEntries,
 } from "./concord-mute";
 
 beforeEach(() => { __store.clear(); __dispatched.length = 0; });
+
+describe("each change records when it was made, so the latest wins on every device", () => {
+  it("lists mutes and unmutes with their time, and asks the read-state sync to publish", () => {
+    setCommunityMuted("c1", true);
+    setChannelMuted("c1", "ch1", true);
+    setChannelMuted("c1", "ch1", false);
+    const e = muteEntries();
+    expect(e["c:c1"]).toMatchObject({ muted: true });
+    expect(e["c:c1"].at).toBeGreaterThan(0);
+    expect(e["ch:c1|ch1"]).toMatchObject({ muted: false });
+    expect(__dispatched).toContain("readstate-changed");
+  });
+
+  it("a mute from before times were kept still travels", () => {
+    __store.set("ro_concord_mute_v1", JSON.stringify({ communities: ["old"], channels: [] }));
+    expect(muteEntries()["c:old"]).toEqual({ muted: true, at: 0 });
+  });
+
+  it("applying another device's changes takes only the newer ones, without asking to publish again", () => {
+    setCommunityMuted("c1", true);
+    const at = muteEntries()["c:c1"].at;
+    __dispatched.length = 0;
+    expect(applyMuteEntries({ "c:c1": { muted: false, at: at - 1 } })).toBe(false);
+    expect(applyMuteEntries({ "c:c1": { muted: false, at: at + 1 }, "c:c2": { muted: true, at: 5 } })).toBe(true);
+    expect(isCommunityMuted("c1")).toBe(false);
+    expect(isCommunityMuted("c2")).toBe(true);
+    expect(__dispatched).toContain(MUTE_CHANGED_EVENT);
+    expect(__dispatched).not.toContain("readstate-changed");
+  });
+});
 
 describe("mute flag round-trip", () => {
   it("defaults to unmuted everywhere", () => {
@@ -94,19 +125,23 @@ describe("effective mute (community OR channel)", () => {
   });
 });
 
+// A change here also asks the read-state sync to publish ("readstate-changed");
+// these pin the mute event itself.
+const muteEvents = () => __dispatched.filter((t) => t === MUTE_CHANGED_EVENT);
+
 describe("change event", () => {
   it("dispatches MUTE_CHANGED_EVENT on every state change", () => {
     setCommunityMuted("c1", true);
     setChannelMuted("c1", "ch1", true);
-    expect(__dispatched).toEqual([MUTE_CHANGED_EVENT, MUTE_CHANGED_EVENT]);
+    expect(muteEvents()).toEqual([MUTE_CHANGED_EVENT, MUTE_CHANGED_EVENT]);
   });
 
   it("no-op writes (same value) do not dispatch", () => {
     setCommunityMuted("c1", false); // already unmuted
     setChannelMuted("c1", "ch1", false);
-    expect(__dispatched).toEqual([]);
+    expect(__dispatched).toEqual([]); // nothing at all: no publish for a no-op either
     setCommunityMuted("c1", true);
     setCommunityMuted("c1", true); // repeat
-    expect(__dispatched).toEqual([MUTE_CHANGED_EVENT]);
+    expect(muteEvents()).toEqual([MUTE_CHANGED_EVENT]);
   });
 });
