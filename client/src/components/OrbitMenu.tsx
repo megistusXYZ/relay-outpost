@@ -26,6 +26,8 @@ import { useNotifications } from "@/contexts/NotificationContext";
 import { useNWC } from "@/contexts/NWCContext";
 import { useTheme } from "@/hooks/use-theme";
 import { ensureConcordUnreadWatcher, useConcordUnread } from "@/lib/concord/concord-unread";
+import { hasSeenList } from "@/lib/concord/community-list-memory";
+import { wipeConcordDevice } from "@/lib/concord/concord-keys";
 import { concordChatsBadgeCount, useConcordMentionCounts } from "@/lib/concord/concord-mentions";
 import { ensureConcordMentionScanner } from "@/lib/concord/concord-mention-scan";
 import { openCreateStudio } from "@/components/CreateStudio";
@@ -239,6 +241,8 @@ export function OrbitMenu() {
   const { theme, isDark, toggleTheme } = useTheme();
 
   const { pubkey, profile, logout } = useNostrAuth();
+  // Sign-out option: take this account's private group chats off the device too.
+  const [wipeChats, setWipeChats] = useState(false);
   const { unreadCount, unreadDmCount, notifications, lastSeenTimestamp } = useNotifications();
   const concordUnread = useConcordUnread();
   const concordMentions = useConcordMentionCounts();
@@ -1831,10 +1835,22 @@ export function OrbitMenu() {
               )}
               {pubkey ? (
                 confirmSignOut ? (
-                  <div className="flex items-center gap-2" data-testid="orbit-signout-confirm">
+                  <div className="flex flex-col gap-2" data-testid="orbit-signout-confirm">
+                  {/* Offered only once this device has seen the account's
+                      encrypted group list, the backup that brings them back. */}
+                  {hasSeenList(pubkey) && (
+                    <label className="flex items-start gap-2 min-h-11 py-1 text-[12px] text-foreground/75 dark:text-white/70 cursor-pointer">
+                      <input type="checkbox" checked={wipeChats} onChange={(e) => setWipeChats(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-primary" data-testid="orbit-signout-wipe-chats" />
+                      <span>
+                        Also remove my private group chats from this device
+                        <span className="block text-[11px] text-muted-foreground/60">They come back when you sign in again, from your encrypted backup.</span>
+                      </span>
+                    </label>
+                  )}
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => { setConfirmSignOut(false); close(); logout(); }}
+                      onClick={async () => { setConfirmSignOut(false); close(); if (wipeChats && pubkey) await wipeConcordDevice(pubkey); logout(); }}
                       className="inline-flex h-11 items-center gap-1.5 rounded-full border border-red-500/40 bg-red-500/15 px-4 text-[12px] font-medium text-red-600 active:bg-red-500/25 dark:text-red-300"
                       data-testid="orbit-confirm-signout"
                     >
@@ -1849,6 +1865,7 @@ export function OrbitMenu() {
                     >
                       Cancel
                     </button>
+                  </div>
                   </div>
                 ) : (
                   /* Dock — ONE glass bar of uniform icon buttons (account

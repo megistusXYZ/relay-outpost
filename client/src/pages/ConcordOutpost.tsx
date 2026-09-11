@@ -219,8 +219,15 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
           </button>
         )}
       </div>
+      {/* The group's id and its relays are for the curious and for support, not
+          for reading: behind a disclosure, not in the way. */}
+      <details className="group/details text-[11px] text-muted-foreground/60" data-testid="concord-about-details">
+        <summary className="cursor-pointer select-none py-2 md:py-0 font-medium text-foreground/70 uppercase tracking-wider text-[10px] list-none flex items-center gap-1">
+          <ChevronDown className="w-3 h-3 transition-transform group-open/details:rotate-180" aria-hidden="true" /> Details
+        </summary>
+        <div className="mt-2 space-y-3">
       <div className="space-y-1.5 text-[11px] text-muted-foreground/60">
-        <p className="font-medium text-foreground/70 uppercase tracking-wider text-[10px]">Community id</p>
+        <p className="font-medium text-foreground/70 uppercase tracking-wider text-[10px]">Group id</p>
         <button
           onClick={() => { navigator.clipboard?.writeText(community.community_id); setCopied(true); toast({ title: "Copied" }); setTimeout(() => setCopied(false), 1500); }}
           className="flex items-center gap-1.5 font-mono text-[10px] break-all text-left hover:text-foreground/80"
@@ -233,6 +240,8 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
         <p className="font-medium text-foreground/70 uppercase tracking-wider text-[10px]">Relays</p>
         {community.relays.map((r) => <p key={r} className="font-mono text-[10px]">{r.replace(/^wss?:\/\//, "")}</p>)}
       </div>
+        </div>
+      </details>
 
       <div className="space-y-1.5" data-testid="concord-about-channels">
         <div className="flex items-center justify-between gap-2">
