@@ -131,6 +131,12 @@ export interface CommunityMetadata {
   /** Community policy: if true, any member (not just owner/admins) may create
    *  invite links. Default false — owner/admins only. */
   allowMemberInvites?: boolean;
+  /**
+   * The winning edition's whole content, fields we don't know included (a
+   * disappearing timer, a banner, rules, an encrypted icon). CORD-02 §6: an
+   * editor MUST round-trip them, so the next edition starts from this.
+   */
+  raw?: Record<string, unknown>;
 }
 
 export interface ChannelMetadata {
@@ -538,7 +544,15 @@ function applyEditions(
       const data = JSON.parse(e.content);
       switch (e.vsk) {
         case VSK.METADATA:
-          state.metadata = { name: data.name ?? "", about: data.about, picture: data.picture, relays: Array.isArray(data.relays) ? data.relays.slice(0, 5) : [], allowMemberInvites: !!data.allow_member_invites };
+          state.metadata = {
+            name: data.name ?? "",
+            // CORD-02 §6 names it `description`; our older groups wrote `about`.
+            about: typeof data.description === "string" ? data.description : data.about,
+            picture: data.picture,
+            relays: Array.isArray(data.relays) ? data.relays.slice(0, 5) : [],
+            allowMemberInvites: !!data.allow_member_invites,
+            raw: data && typeof data === "object" && !Array.isArray(data) ? data : undefined,
+          };
           break;
         case VSK.ROLE:
           state.roles.set(data.role_id, {
