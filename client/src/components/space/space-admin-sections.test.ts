@@ -14,7 +14,7 @@ const ids = (caps: Parameters<typeof visibleSections>[0], b: Parameters<typeof v
 describe("visibleSections — two gates, asked separately", () => {
   it("shows a Concord owner everything Concord has", () => {
     expect(ids(concordCapabilities(member(0n, OWNER_POSITION)), "concord"))
-      .toEqual(["people", "history", "channels", "access", "details", "danger"]);
+      .toEqual(["people", "roles", "history", "channels", "access", "details", "danger"]);
   });
 
   it("shows a NIP-29 admin everything NIP-29 has", () => {
@@ -149,5 +149,13 @@ describe("the table itself", () => {
   it("labels in plain language — no protocol nouns on screen", () => {
     const jargon = /nip-?29|kind-?\d|relay|concord|pubkey|npub/i;
     for (const s of SPACE_ADMIN_SECTIONS) expect(s.label).not.toMatch(jargon);
+  });
+});
+
+describe("roles", () => {
+  it("Roles shows in a Concord group to someone who can manage roles, and nowhere else", () => {
+    expect(ids(concordCapabilities(member(PERM.MANAGE_ROLES)), "concord")).toEqual(["roles"]);
+    expect(ids(concordCapabilities(member(PERM.KICK)), "concord")).not.toContain("roles");
+    expect(ids(nip29Capabilities(admins(ME), ME), "nip29")).not.toContain("roles");
   });
 });

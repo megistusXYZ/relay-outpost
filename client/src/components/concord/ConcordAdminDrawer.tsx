@@ -15,7 +15,7 @@
  * answer to "who may open this", instead of one answer per host.
  */
 import { useCallback, useMemo, useState } from "react";
-import { DoorOpen, Hash, History as HistoryIcon, Lock, Settings2, Trash2, Users } from "lucide-react";
+import { DoorOpen, Hash, History as HistoryIcon, Lock, Settings2, Shield, Trash2, Users } from "lucide-react";
 import { SpaceAdminDrawer } from "@/components/space/SpaceAdminDrawer";
 import { SpaceAdminSection } from "@/components/space/SpaceAdminSection";
 import type { SpaceAdminSectionDef } from "@/components/space/space-admin-sections";
@@ -25,6 +25,7 @@ import { VSK, type Member, type AuditEntry, type FoldedState } from "@/lib/conco
 import { membersMayInvite } from "@/lib/concord/concord-invite-gate";
 import type { MembershipEvent } from "./useConcordGovernance";
 import { ConcordMembers } from "./ConcordMembers";
+import { ConcordRoles } from "./ConcordRoles";
 import { ConcordActivityLog } from "./ConcordActivityLog";
 import { ConcordEditOutpostDialog } from "./ConcordEditOutpostDialog";
 import { ConcordCreateChannelDialog } from "./ConcordCreateChannelDialog";
@@ -92,6 +93,14 @@ export function ConcordAdminDrawer({
         return (
           <SpaceAdminSection can={caps.manageMembers} title={section.label} icon={Users}>
             <ConcordMembers community={community} onCommunityChange={onCommunityChange} showActivity={false} />
+          </SpaceAdminSection>
+        );
+      case "roles":
+        // Who ranks where and what each role may do. Changing roles re-derives
+        // authority from the fold, like People does.
+        return (
+          <SpaceAdminSection can={caps.manageRoles} title={section.label} icon={Shield}>
+            <ConcordRoles community={community} />
           </SpaceAdminSection>
         );
       case "history":

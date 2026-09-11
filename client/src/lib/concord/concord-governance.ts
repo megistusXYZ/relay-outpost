@@ -9,11 +9,12 @@ import type { Event } from "nostr-tools";
 import type { ISigner } from "applesauce-signers";
 import { randomBytes32, rekeyScopeId, groupKey, wrapStream, LABEL_CONTROL_SIGNER, type Seal } from "./concord-crypto";
 import { isStaff } from "./concord-events";
-import { VSK, PERM, ADMIN_ROLE_ID, buildControlEdition, buildJoinLeaveRumor, buildAuditRumor, buildKickRumor, computeEditionId, serializePermissions, type Member, type ChannelMetadata } from "./concord-events";
+import { VSK, PERM, ADMIN_ROLE_ID, buildControlEdition, buildJoinLeaveRumor, buildAuditRumor, buildKickRumor, type Role, computeEditionId, serializePermissions, type Member, type ChannelMetadata } from "./concord-events";
 import { nextChannelEdition, type ChannelChanges, type ChannelHead } from "./concord-channel-edition";
 import { nextGrantEdition, type GrantHead } from "./concord-grant-edition";
 import { putCommunity, deleteCommunity, publishCommunityList, adoptBaseRekey, type StoredCommunity, type StoredChannel } from "./concord-keys";
 import { markLeft } from "./community-list-memory";
+import { roleContent, nextRoleEdition, rolesAfter, becomesStaff } from "./concord-roles";
 import { pinsLocator } from "./concord-pins";
 import { nextBanlistEdition, nextUnbanEdition, type BanlistHead } from "./concord-banlist";
 import { refreshInviteLinks } from "./concord-invites";
@@ -260,6 +261,8 @@ export async function setAdmin(
   foldArrived: boolean,
   publish: PublishFn,
   publishSelf: PublishSelfFn,
+  /** The member's roles now (FoldedState.grants): Admin is given or taken, the rest kept. */
+  currentRoles: string[] = [],
 ): Promise<StoredCommunity> {
   const now = Math.floor(Date.now() / 1000);
   let updated: StoredCommunity = { ...community };
@@ -275,43 +278,123 @@ export async function setAdmin(
     updated.adminRolePublished = true;
   }
 
-  // 2. Chained grant edition for this member — fold head first, local cursor
-  //    only as a floor.
-  // A staff-making grant carries the current admin-plane secret (CORD-04 §3),
-  // so the new admin can write where current apps read straight away rather
-  // than at the next removal. Only when this device holds that secret and it
-  // matches the group's address; a signer that can't encrypt still promotes.
+  // 2. Their roles with Admin given or taken and the rest left alone: an empty
+  //    grant here used to wipe every other role they held.
+  const after = rolesAfter(currentRoles, makeAdmin ? { add: ADMIN_ROLE_ID } : { remove: ADMIN_ROLE_ID });
+  const adminRole = new Map<string, Role>([[ADMIN_ROLE_ID, {
+    role_id: ADMIN_ROLE_ID, name: "Admin", position: ADMIN_ROLE_POSITION, permissions: ADMIN_PERMS, scope: { kind: "server" },
+  }]]);
+  return setMemberRoles(signer, ownerPubkey, updated, target, { before: currentRoles, after, roles: adminRole },
+    foldHead, foldArrived, publish, publishSelf);
+}
+
+/**
+ * Give or take roles (CORD-04 §2): one chained grant edition carrying the
+ * member's whole role list, so changing one role leaves the others as they are.
+ * The fold honors it only if the signer outranks every role handed out and the
+ * member as they stand.
+ */
+export async function setMemberRoles(
+  signer: ISigner,
+  actorPubkey: string,
+  community: StoredCommunity,
+  target: string,
+  change: { before: string[]; after: string[]; roles: Map<string, Role> },
+  /** The live head of THIS member's grant chain (see setAdmin). */
+  foldHead: GrantHead | undefined,
+  foldArrived: boolean,
+  publish: PublishFn,
+  publishSelf: PublishSelfFn,
+): Promise<StoredCommunity> {
+  const now = Math.floor(Date.now() / 1000);
+  // The grant that first makes someone staff carries the current admin-plane
+  // secret (CORD-04 §3), so they can write where current apps read straight
+  // away rather than at the next removal. Only when this device holds that
+  // secret and it matches the group's address; a signer that can't encrypt
+  // still grants.
   let controlWrap: string | undefined;
-  if (makeAdmin && community.control_root && community.control_pk) {
+  if (becomesStaff(change.before, change.after, change.roles) && community.control_root && community.control_pk) {
     const root = hexToBytes(community.control_root);
     if (groupKey(LABEL_CONTROL_SIGNER, root, community.community_id, BigInt(community.root_epoch)).pk === community.control_pk) {
       controlWrap = await sealControlWrap(signer, target, community.root_epoch, root).catch(() => undefined);
     }
   }
-  const next = nextGrantEdition(target, community.grantVersions?.[target], foldHead,
-    makeAdmin ? [ADMIN_ROLE_ID] : [], foldArrived, controlWrap);
+  const next = nextGrantEdition(target, community.grantVersions?.[target], foldHead, change.after, foldArrived, controlWrap);
 
-  // Refuse to record a cursor for an edition that never landed. Swallowing the
-  // publish left the next change to this member chaining onto an edition no
-  // relay holds, and told the caller it worked. The REVOKE is what makes that
-  // serious: the fold replaces roles wholesale and there is no rekey here, so a
-  // revoke that does not land leaves the person holding MANAGE_CHANNELS,
-  // MANAGE_METADATA, KICK and BAN — network-wide, enforced by every other
-  // client, with nothing anywhere to show the owner it failed.
-  const landed = await publishControlEdition(signer, ownerPubkey, updated,
-    buildControlEdition(ownerPubkey, VSK.GRANT, target, next.version, next.content, now,
+  // Refuse to record a cursor for an edition that never landed. A revoke that
+  // doesn't land leaves the person holding every permission the role gave,
+  // enforced by every other client, with nothing to show it failed.
+  const landed = await publishControlEdition(signer, actorPubkey, community,
+    buildControlEdition(actorPubkey, VSK.GRANT, target, next.version, next.content, now,
       next.prevHash ? { prevHash: next.prevHash } : undefined),
     publish);
   if (!landed) throw new Error("Couldn't reach any relay — the role was not changed.");
 
-  updated.grantVersions = { ...(community.grantVersions ?? {}), [target]: { version: next.version, eid: next.eid } };
-  await putCommunity(ownerPubkey, updated);
+  const updated: StoredCommunity = {
+    ...community,
+    grantVersions: { ...(community.grantVersions ?? {}), [target]: { version: next.version, eid: next.eid } },
+  };
+  await putCommunity(actorPubkey, updated);
 
-  await publishGuestbook(signer, ownerPubkey, updated,
-    buildAuditRumor(ownerPubkey, makeAdmin ? "make_admin" : "remove_admin", now, { target }),
-    publish).catch(() => null);
-  await publishCommunityList(signer, ownerPubkey, publishSelf).catch(() => {});
+  const added = change.after.filter((id) => !change.before.includes(id));
+  const removed = change.before.filter((id) => !change.after.includes(id));
+  for (const [ids, given] of [[added, true], [removed, false]] as const) {
+    for (const id of ids) {
+      const action = id === ADMIN_ROLE_ID ? (given ? "make_admin" : "remove_admin") : (given ? "grant_role" : "revoke_role");
+      await publishGuestbook(signer, actorPubkey, updated,
+        buildAuditRumor(actorPubkey, action, now, { target, detail: id === ADMIN_ROLE_ID ? undefined : change.roles.get(id)?.name }),
+        publish).catch(() => null);
+    }
+  }
+  await publishCommunityList(signer, actorPubkey, publishSelf).catch(() => {});
   return updated;
+}
+
+/**
+ * Make a role (CORD-04 §2): a fresh random id, at a position below its maker
+ * (newRolePosition picks one). Returns its id.
+ */
+export async function createRole(
+  signer: ISigner,
+  actorPubkey: string,
+  community: StoredCommunity,
+  role: { name: string; permissions: bigint; position: number; color?: number },
+  publish: PublishFn,
+): Promise<string> {
+  const roleId = bytesToHex(randomBytes32());
+  const now = Math.floor(Date.now() / 1000);
+  const content = roleContent({ roleId, ...role });
+  const landed = await publishControlEdition(signer, actorPubkey, community,
+    buildControlEdition(actorPubkey, VSK.ROLE, roleId, 1, content, now), publish);
+  if (!landed) throw new Error("Couldn't reach any relay — the role wasn't made.");
+  await publishGuestbook(signer, actorPubkey, community,
+    buildAuditRumor(actorPubkey, "edit_role", now, { detail: content.name }), publish).catch(() => null);
+  return roleId;
+}
+
+/**
+ * Change a role's name, color or permissions: the next edition on its chain.
+ * Needs the head the fold holds, or it would restart the chain at version 1.
+ */
+export async function editRole(
+  signer: ISigner,
+  actorPubkey: string,
+  community: StoredCommunity,
+  roleId: string,
+  role: { name: string; permissions: bigint; position: number; color?: number },
+  head: { ev: number; hash: string } | undefined,
+  publish: PublishFn,
+): Promise<void> {
+  if (!head) throw new Error("This role's details haven't loaded yet. Try again in a moment.");
+  const now = Math.floor(Date.now() / 1000);
+  const next = nextRoleEdition(roleId, head, roleContent({ roleId, ...role }));
+  const landed = await publishControlEdition(signer, actorPubkey, community,
+    buildControlEdition(actorPubkey, VSK.ROLE, roleId, next.version, next.content, now,
+      next.prevHash ? { prevHash: next.prevHash } : undefined),
+    publish);
+  if (!landed) throw new Error("Couldn't reach any relay — the role wasn't changed.");
+  await publishGuestbook(signer, actorPubkey, community,
+    buildAuditRumor(actorPubkey, "edit_role", now, { detail: next.content.name }), publish).catch(() => null);
 }
 
 /**

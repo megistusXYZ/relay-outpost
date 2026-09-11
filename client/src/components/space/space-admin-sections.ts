@@ -34,7 +34,7 @@ import type { SpaceCapabilities, SpaceBackend } from "@/lib/space-admin";
  * decide what a moderator sees should not need a relay to check.
  */
 export interface SpaceAdminSectionDef {
-  id: "requests" | "people" | "history" | "channels" | "access" | "details" | "danger";
+  id: "requests" | "people" | "roles" | "history" | "channels" | "access" | "details" | "danger";
   /** Sentence-case, plain language — no protocol nouns. */
   label: string;
   /**
@@ -67,6 +67,8 @@ export const SPACE_ADMIN_SECTIONS: readonly SpaceAdminSectionDef[] = [
   // queue of strangers to approve and no section to render.
   { id: "requests", label: "Waiting to join", capability: "manageMembers", backends: ["nip29"] },
   { id: "people", label: "People", capability: "manageMembers", backends: ["concord", "nip29"] },
+  // Concord only: a NIP-29 group has a single admin bit and no roles.
+  { id: "roles", label: "Roles", capability: "manageRoles", backends: ["concord"] },
   { id: "history", label: "Moderation history", capability: "viewAuditLog", backends: ["concord", "nip29"] },
   // Concord only: see the module note — a NIP-29 group has no channels inside it.
   { id: "channels", label: "Rooms", capability: "manageChannels", backends: ["concord"] },
