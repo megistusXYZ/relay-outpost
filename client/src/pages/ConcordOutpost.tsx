@@ -75,7 +75,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
   const isOwner = !!community && pubkey === community.owner;
   // Owner + admins (CREATE_INVITE) manage invite links; members forward them —
   // unless the owner opened invites to everyone (allowMemberInvites policy).
-  const { state: govState, roster: govRoster, myMember, events: govEvents, auditLog: govAuditLog, deleted } = useConcordGovernance(community);
+  const { state: govState, roster: govRoster, myMember, events: govEvents, auditLog: govAuditLog, deleted, linkJoins: govLinkJoins } = useConcordGovernance(community);
   // A group its owner deleted takes nobody new.
   const canInvite = !deleted && canInviteToCommunity({ community, pubkey, myMember, govMetadata: govState.metadata });
   // Same gate as ConcordChat's rail button — the About tab hosts the only
@@ -267,7 +267,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
     <div className="flex flex-col h-[calc(100svh-4.25rem-7rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] md:h-[calc(100dvh-5rem)]" data-testid="page-concord-outpost">
       {/* Identity in the top bar */}
       {slotEl && createPortal(identityStrip, slotEl)}
-      <ConcordInviteDialog open={inviteOpen} onOpenChange={setInviteOpen} community={community} memberPubkeys={rosterPks} />
+      <ConcordInviteDialog open={inviteOpen} onOpenChange={setInviteOpen} community={community} memberPubkeys={rosterPks} linkJoins={govLinkJoins} />
       {/* Same component the chat mounts — the About tab needs its own door, but
           not its own copy of what is behind it. */}
       <ConcordAdminDrawer

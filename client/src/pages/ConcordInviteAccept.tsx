@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation } from "wouter";
-import { Lock, Loader2, Check, UserPlus } from "lucide-react";
+import { Lock, Loader2, Check, UserPlus, WifiOff, SearchX, Link2Off, Clock, RotateCw } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { getGlobalSigner } from "@/lib/nip42-auth";
 import { persistentPoolSubscribe, publishEvent } from "@/lib/nostr";
@@ -15,7 +15,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { forceEnableConcord } from "@/lib/concord/concord-prefs";
-import { decodeFragment, decryptBundle, acceptInviteLink, type InviteBundle } from "@/lib/concord/concord-invites";
+import { decodeFragment, acceptInviteLink, pickBundleEvent } from "@/lib/concord/concord-invites";
+import { classifyInviteFetch, type InviteLookup } from "@/lib/concord/invite-resolve";
 import { inviterFromCreator, setInviteConnect } from "@/lib/invite-connect";
 import { KIND_INVITE_BUNDLE } from "@/lib/concord/concord-events";
 import { nip19, type Event } from "nostr-tools";
@@ -23,43 +24,73 @@ import { nip19, type Event } from "nostr-tools";
 const PENDING_KEY = "relay-outpost-concord-invite-pending";
 const clearPending = () => { try { sessionStorage.removeItem(PENDING_KEY); } catch {} };
 
+/** While the group's relays can't be reached, look again this often, this many times (a minute). */
+const RETRY_MS = 5_000;
+const AUTO_RETRIES = 12;
+
 export default function ConcordInviteAccept({ naddr }: { naddr: string }) {
   const { pubkey } = useNostrAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [bundle, setBundle] = useState<InviteBundle | null | undefined>(undefined);
+  const [lookup, setLookup] = useState<InviteLookup | undefined>(undefined);
+  const [attempt, setAttempt] = useState(0);
   const [joining, setJoining] = useState(false);
   const autoJoinedRef = useRef(false);
   // Bumped on a short timer while the global signer isn't registered yet, so
   // the auto-join effect below re-runs instead of dead-ending (see comment).
   const [signerTick, setSignerTick] = useState(0);
   const fragment = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
+  const bundle = lookup && (lookup.status === "ok" || lookup.status === "expired") ? lookup.bundle : null;
 
   // You can't gate someone out of a link they were handed — flip the flag on so
   // this page and the outpost they land in are enabled even if they'd killed it.
   useEffect(() => { forceEnableConcord(); }, []);
 
-  // Fetch + decrypt the bundle for preview.
+  // Fetch + decrypt the bundle for preview. A lookup has three outcomes, not
+  // two: the bundle, relays that answered without it, and relays we never
+  // reached. "Invalid, expired, or revoked" used to cover all of them, so a
+  // good link met on a bad connection read as dead and got thrown away.
   useEffect(() => {
     const frag = decodeFragment(fragment);
     let decoded: nip19.DecodedResult | null = null;
     try { decoded = nip19.decode(naddr); } catch {}
     if (!frag || !decoded || decoded.type !== "naddr" || decoded.data.kind !== KIND_INVITE_BUNDLE) {
-      setBundle(null); return;
+      setLookup({ status: "broken" }); return;
     }
     const linkSigner = decoded.data.pubkey;
     const relays = [...new Set([...(decoded.data.relays ?? []), ...frag.relays])];
-    let latest: Event | null = null;
-    const sub = persistentPoolSubscribe(relays, { kinds: [KIND_INVITE_BUNDLE], authors: [linkSigner], "#d": [""] }, {
-      onevent: (e: Event) => { if (!latest || e.created_at > latest.created_at) latest = e; },
-    });
-    const done = setTimeout(() => {
-      sub.close();
-      if (!latest || latest.tags.some((t) => t[0] === "vsk" && t[1] === "9") || !latest.content) { setBundle(null); return; }
-      setBundle(decryptBundle(latest.content, frag.token) ?? null);
-    }, 3500);
-    return () => { clearTimeout(done); sub.close(); };
-  }, [naddr, fragment]);
+    let cancelled = false;
+    let sub: { close: () => void } | null = null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    (async () => {
+      if (!(await canReachAny(relays))) { if (!cancelled) setLookup({ status: "unreachable" }); return; }
+      if (cancelled) return;
+      // Every version at the link's address, not only the newest: a tombstone
+      // seen anywhere means the link was turned off (pickBundleEvent).
+      const seen: Event[] = [];
+      sub = persistentPoolSubscribe(relays, { kinds: [KIND_INVITE_BUNDLE], authors: [linkSigner], "#d": [""] }, {
+        onevent: (e: Event) => { seen.push(e); },
+      });
+      timer = setTimeout(() => {
+        sub?.close();
+        if (!cancelled) setLookup(classifyInviteFetch({ reached: true, event: pickBundleEvent(seen) }, frag.token));
+      }, 3500);
+    })();
+    return () => { cancelled = true; clearTimeout(timer); sub?.close(); };
+  }, [naddr, fragment, attempt]);
+
+  // Unreachable relays usually come back: keep looking for a minute.
+  useEffect(() => {
+    if (lookup?.status !== "unreachable" || attempt >= AUTO_RETRIES) return;
+    const t = setTimeout(() => setAttempt((n) => n + 1), RETRY_MS);
+    return () => clearTimeout(t);
+  }, [lookup, attempt]);
+
+  // Only a proven dead end releases the onboarding hold; a lookup that may
+  // still succeed keeps it, so the auto-join can land when it does.
+  useEffect(() => {
+    if (lookup?.status === "revoked" || lookup?.status === "broken" || lookup?.status === "expired") clearPending();
+  }, [lookup]);
 
   const join = useCallback(async () => {
     const signer = getGlobalSigner();
@@ -81,11 +112,11 @@ export default function ConcordInviteAccept({ naddr }: { naddr: string }) {
         const set = bootstrap.length ? bootstrap : relays;
         if (!(await canReachAny(set))) { bundleReached = false; return null; }
         return new Promise<Event | null>((resolve) => {
-          let latest: Event | null = null;
+          const seen: Event[] = [];
           const sub = persistentPoolSubscribe(set, { kinds: [KIND_INVITE_BUNDLE], authors: [linkSigner], "#d": [""] }, {
-            onevent: (e: Event) => { if (!latest || e.created_at > latest.created_at) latest = e; },
+            onevent: (e: Event) => { seen.push(e); },
           });
-          setTimeout(() => { sub.close(); resolve(latest); }, 3500);
+          setTimeout(() => { sub.close(); resolve(pickBundleEvent(seen)); }, 3500);
         });
       };
       const record = await acceptInviteLink(pubkey, signer, naddr, fragment, fetchBundle, (e, r) => publishEvent(e, r), (e) => publishEvent(e, relays));
@@ -118,7 +149,7 @@ export default function ConcordInviteAccept({ naddr }: { naddr: string }) {
   // during the logged-out → sign-in bounce). Already-logged-in visitors instead
   // tap Join deliberately. Runs once, after the preview bundle has loaded.
   useEffect(() => {
-    if (autoJoinedRef.current || !pubkey || !bundle) return;
+    if (autoJoinedRef.current || !pubkey || lookup?.status !== "ok") return;
     let pending = false;
     try { pending = sessionStorage.getItem(PENDING_KEY) === "1"; } catch {}
     if (!pending) return;
@@ -132,21 +163,40 @@ export default function ConcordInviteAccept({ naddr }: { naddr: string }) {
     }
     autoJoinedRef.current = true;
     join();
-  }, [pubkey, bundle, join, signerTick]);
+  }, [pubkey, lookup, join, signerTick]);
 
   // A logged-out visitor: preview first, then a focused sign-in that returns
   // here (App.tsx already stashed the full url incl. fragment + the pending
   // marker) and auto-joins once the account exists.
   const createAccount = () => setLocation("/login");
+  const tryAgain = () => { setLookup(undefined); setAttempt((n) => n + 1); };
 
-  if (bundle === undefined) {
+  if (lookup === undefined) {
     return <Wrap><Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40 mx-auto" /><p className="text-sm text-muted-foreground/50 mt-3">Opening invite…</p></Wrap>;
   }
-  if (bundle === null) {
-    clearPending(); // a dead invite must never keep suppressing onboarding
-    return <Wrap><Lock className="w-10 h-10 text-muted-foreground/30 mx-auto" /><p className="text-sm text-muted-foreground/70 mt-3">This invite is invalid, expired, or revoked.</p></Wrap>;
+  if (lookup.status === "unreachable") {
+    const retrying = attempt < AUTO_RETRIES;
+    return (
+      <Dead icon={WifiOff} title="Couldn't reach this group's relays" testId="invite-unreachable"
+        body={retrying ? "The invite may be fine. Trying again…" : "The invite may be fine. Check your connection and try again."}
+        action={retrying ? undefined : tryAgain} />
+    );
+  }
+  if (lookup.status === "missing") {
+    return (
+      <Dead icon={SearchX} title="We couldn't find this invite" testId="invite-missing"
+        body="The relays we reached don't have it. It may have been turned off, or it hasn't reached them yet."
+        action={tryAgain} />
+    );
+  }
+  if (lookup.status === "revoked") {
+    return <Dead icon={Link2Off} title="This invite link was turned off" body="Ask whoever sent it for a new one." testId="invite-revoked" />;
+  }
+  if (!bundle) {
+    return <Dead icon={Lock} title="This invite link is incomplete" body="Part of the link is missing or damaged. Ask for a new one." testId="invite-broken" />;
   }
 
+  const expired = lookup.status === "expired";
   return (
     <Wrap>
       <p className="text-[11px] font-medium uppercase tracking-wider text-brand/60">You're invited to join</p>
@@ -162,7 +212,14 @@ export default function ConcordInviteAccept({ naddr }: { naddr: string }) {
           ? `${bundle.channels.length} channel${bundle.channels.length !== 1 ? "s" : ""} · encrypted`
           : "Encrypted group chat"}
       </p>
-      {!pubkey ? (
+      {expired ? (
+        <div className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-left" data-testid="invite-expired">
+          <p className="text-sm font-medium flex items-center gap-1.5"><Clock className="w-4 h-4 text-amber-500 shrink-0" aria-hidden="true" /> This invite expired</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">
+            It stopped letting people join on {new Date(bundle.expires_at!).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}. Ask whoever sent it for a new one.
+          </p>
+        </div>
+      ) : !pubkey ? (
         <>
           <Button onClick={createAccount} className="w-full mt-5" data-testid="button-invite-create-account">
             <UserPlus className="w-4 h-4 mr-1.5" /> Create account to join
@@ -180,4 +237,24 @@ export default function ConcordInviteAccept({ naddr }: { naddr: string }) {
 
 function Wrap({ children }: { children: React.ReactNode }) {
   return <div className="max-w-sm mx-auto px-4 py-20 text-center">{children}</div>;
+}
+
+/** An invite we can't open, saying which of the reasons it is. */
+function Dead({ icon: Icon, title, body, action, testId }: {
+  icon: React.ComponentType<{ className?: string }>; title: string; body: string; action?: () => void; testId: string;
+}) {
+  return (
+    <Wrap>
+      <div data-testid={testId}>
+        <Icon className="w-10 h-10 text-muted-foreground/30 mx-auto" />
+        <p className="text-sm font-medium text-foreground/90 mt-3">{title}</p>
+        <p className="text-xs text-muted-foreground/60 mt-1">{body}</p>
+        {action && (
+          <Button variant="outline" onClick={action} className="mt-4 gap-1.5" data-testid="button-invite-retry">
+            <RotateCw className="w-3.5 h-3.5" /> Try again
+          </Button>
+        )}
+      </div>
+    </Wrap>
+  );
 }

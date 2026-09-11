@@ -8,7 +8,8 @@ import { bytesToHex } from "@noble/hashes/utils.js";
 import type { Event } from "nostr-tools";
 import type { ISigner } from "applesauce-signers";
 import { randomBytes32, rekeyScopeId, groupKey, wrapStream, LABEL_CONTROL_SIGNER, type Seal } from "./concord-crypto";
-import { isStaff } from "./concord-events";
+import { isStaff, KIND_INVITE_BUNDLE } from "./concord-events";
+import { pool } from "@/lib/nostr";
 import { VSK, PERM, ADMIN_ROLE_ID, buildControlEdition, buildJoinLeaveRumor, buildAuditRumor, buildKickRumor, type Role, computeEditionId, serializePermissions, type Member, type ChannelMetadata } from "./concord-events";
 import { nextChannelEdition, type ChannelChanges, type ChannelHead } from "./concord-channel-edition";
 import { nextGrantEdition, type GrantHead } from "./concord-grant-edition";
@@ -189,7 +190,10 @@ export async function removeMember(
 
   // 4. Refresh this creator's live invite links so a shared link/QR hands out
   //    the NEW root (CORD-05 §2 — a link survives every rotation). Best-effort.
-  await refreshInviteLinks(ownerPubkey, updated, publish).catch(() => {});
+  //    Never over a link turned off on another device: its tombstone is on the relays.
+  await refreshInviteLinks(ownerPubkey, updated, publish, undefined, (linkSigner, relays) =>
+    pool.querySync(relays, { kinds: [KIND_INVITE_BUNDLE], authors: [linkSigner], "#d": [""] }, { maxWait: 4000 }),
+  ).catch(() => {});
   return updated;
 }
 

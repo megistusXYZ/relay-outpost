@@ -163,6 +163,10 @@ export interface StoredInviteSigner {
   token: string; // hex (16 bytes)
   label?: string;
   createdAt: number;
+  /** When the link stops letting people join, unix ms (CORD-05 §1). */
+  expiresAt?: number;
+  /** When this device last posted the link's bundle, unix seconds: its tombstone must be dated after it. */
+  publishedAt?: number;
   revoked?: boolean;
 }
 
@@ -484,6 +488,19 @@ export async function getInviteSigners(ownerPubkey: string, communityId: string)
     return await new Promise((resolve) => {
       const tx = db.transaction(INVITES_STORE, "readonly");
       const req = tx.objectStore(INVITES_STORE).index("by-community").getAll([ownerPubkey, communityId]);
+      req.onsuccess = () => resolve((req.result || []).map((r: any) => { const { ownerPubkey: _o, ...rest } = r; return rest as StoredInviteSigner; }));
+      req.onerror = () => resolve([]);
+    });
+  } catch { return []; }
+}
+
+/** Every link this account made, in every group: what the Invite List (13303) syncs. */
+export async function getAllInviteSigners(ownerPubkey: string): Promise<StoredInviteSigner[]> {
+  try {
+    const db = await openDB();
+    return await new Promise((resolve) => {
+      const tx = db.transaction(INVITES_STORE, "readonly");
+      const req = tx.objectStore(INVITES_STORE).getAll(IDBKeyRange.bound([ownerPubkey, ""], [ownerPubkey, "￿"]));
       req.onsuccess = () => resolve((req.result || []).map((r: any) => { const { ownerPubkey: _o, ...rest } = r; return rest as StoredInviteSigner; }));
       req.onerror = () => resolve([]);
     });

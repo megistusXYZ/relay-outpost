@@ -14,6 +14,7 @@ import { bundleKeyFromToken, legacyBundleKeyFromToken, verifyCommunityId } from 
 import { KIND_INVITE_BUNDLE, VSK, buildJoinLeaveRumor } from "./concord-events";
 import { putCommunity, publishCommunityList, putInviteSigner, getInviteSigners, type StoredCommunity, type StoredInviteSigner } from "./concord-keys";
 import { publishGuestbook } from "./concord-stream";
+import { inviteAttribution } from "./concord-invite-links";
 import { createGiftWrap, publishWithFallback } from "@/lib/dm";
 import { fetchDMRelayList, hasDMRelayList, getDMRelaysForContact } from "@/lib/outbox";
 
@@ -207,7 +208,8 @@ export async function mintInviteLink(
 
   await putInviteSigner(ownerPubkey, {
     communityId: community.community_id, linkSignerPubkey: linkPk, linkSignerSecret: bytesToHex(linkSk),
-    token: bytesToHex(token), label: opts?.label, createdAt: Date.now(),
+    token: bytesToHex(token), label: opts?.label, createdAt: Date.now(), publishedAt: event.created_at,
+    ...(opts?.expiresAt ? { expiresAt: opts.expiresAt } : {}),
   });
 
   const naddr = nip19.naddrEncode({ kind: KIND_INVITE_BUNDLE, pubkey: linkPk, identifier: "", relays: community.relays.slice(0, 3) });
@@ -242,26 +244,49 @@ export async function refreshInviteLinks(
   ownerPubkey: string,
   community: StoredCommunity,
   publish: PublishFn,
+  /** The links to refresh; defaults to this device's. */
+  links?: StoredInviteSigner[],
+  /**
+   * What the relays hold at a link's address. Links sync between devices
+   * (CORD-05 §4), so one this device still thinks is live may have been turned
+   * off elsewhere; re-posting it would bring it back. Checked when given.
+   */
+  fetchCurrent?: (linkSigner: string, relays: string[]) => Promise<Event[]>,
 ): Promise<void> {
-  const signers = await getInviteSigners(ownerPubkey, community.community_id).catch(() => [] as StoredInviteSigner[]);
+  const signers = links ?? await getInviteSigners(ownerPubkey, community.community_id).catch(() => [] as StoredInviteSigner[]);
   for (const s of signers) {
     if (s.revoked) continue;
     try {
-      const bundle = bundleFromCommunity(community, undefined, s.label, undefined);
+      if (fetchCurrent) {
+        const current = pickBundleEvent(await fetchCurrent(s.linkSignerPubkey, community.relays).catch(() => []));
+        if (current && isRevokedBundleEvent(current)) {
+          await putInviteSigner(ownerPubkey, { ...s, revoked: true });
+          continue;
+        }
+      }
+      // Fresh keys, same link: its name, expiry and creator stay. Dropping them
+      // here un-expired every link and wiped its join attribution on each rekey.
+      const bundle = bundleFromCommunity(community, nip19.npubEncode(ownerPubkey), s.label, s.expiresAt);
       const content = encryptBundle(bundle, hexToBytes(s.token));
       const event = finalizeEvent(
         { kind: KIND_INVITE_BUNDLE, created_at: Math.floor(Date.now() / 1000), tags: [["d", ""], ["vsk", String(VSK.INVITE)]], content },
         hexToBytes(s.linkSignerSecret),
       );
       await publish(event, community.relays).catch(() => {});
+      await putInviteSigner(ownerPubkey, { ...s, publishedAt: event.created_at });
     } catch { /* best-effort per link */ }
   }
 }
 
-/** Revoke a link: republish its 33301 coordinate as a vsk-9 tombstone (link_signer-signed). */
-export async function revokeInviteLink(linkSignerSecretHex: string, relays: string[], publish: PublishFn): Promise<void> {
+/**
+ * Revoke a link: republish its 33301 coordinate as a vsk-9 tombstone (link_signer-signed).
+ * Dated after the link's last bundle (`lastBundleAt`, unix s): a relay keeping one
+ * event per address may keep the bundle over a tombstone from the same second.
+ */
+export async function revokeInviteLink(linkSignerSecretHex: string, relays: string[], publish: PublishFn, lastBundleAt?: number): Promise<void> {
   const sk = hexToBytes(linkSignerSecretHex);
-  const tombstone = finalizeEvent({ kind: KIND_INVITE_BUNDLE, created_at: Math.floor(Date.now() / 1000), tags: [["d", ""], ["vsk", String(VSK.REVOKED)]], content: "" }, sk);
+  const createdAt = Math.max(Math.floor(Date.now() / 1000), (lastBundleAt ?? 0) + 1);
+  const tombstone = finalizeEvent({ kind: KIND_INVITE_BUNDLE, created_at: createdAt, tags: [["d", ""], ["vsk", String(VSK.REVOKED)]], content: "" }, sk);
   await publish(tombstone, relays).catch(() => {});
 }
 
@@ -279,6 +304,17 @@ export async function revokeInviteLink(linkSignerSecretHex: string, relays: stri
 export function isRevokedBundleEvent(event: { tags: string[][]; content: string }): boolean {
   const vsk = event.tags.find((t) => t[0] === "vsk")?.[1];
   return vsk === String(VSK.REVOKED) || !event.content;
+}
+
+/**
+ * The event that speaks for a link, from every version seen at its address.
+ * A tombstone anywhere wins: turning a link off is for good (CORD-05 §2, §4),
+ * so neither a same-second bundle nor one a stale device posted later brings
+ * it back. Otherwise the newest bundle.
+ */
+export function pickBundleEvent(events: Event[]): Event | null {
+  const tombstones = events.filter(isRevokedBundleEvent);
+  return (tombstones.length ? tombstones : events).reduce<Event | null>((best, e) => (!best || e.created_at > best.created_at ? e : best), null);
 }
 
 // ── Parse + accept a link (I/O) ───────────────────────────────────────────────
@@ -371,7 +407,9 @@ export async function adoptInviteBundle(
 
   const record = recordFromBundle({ ...bundle, channels }, bootstrapRelays);
   await putCommunity(ownerPubkey, record);
-  await publishGuestbook(signer, ownerPubkey, record, buildJoinLeaveRumor(ownerPubkey, true, Math.floor(Date.now() / 1000)), publish).catch(() => null);
+  // The Join names the link it came through, so its creator can count joins per link (CORD-05 §1).
+  const via = inviteAttribution(bundle) ?? undefined;
+  await publishGuestbook(signer, ownerPubkey, record, buildJoinLeaveRumor(ownerPubkey, true, Math.floor(Date.now() / 1000), 0, via), publish).catch(() => null);
   await publishCommunityList(signer, ownerPubkey, publishSelf).catch(() => {});
   return record;
 }

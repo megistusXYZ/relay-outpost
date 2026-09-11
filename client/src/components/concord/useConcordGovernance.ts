@@ -18,6 +18,7 @@ import { subscribeGovernance, type DecodedRumor } from "@/lib/concord/concord-st
 import { isDissolution, isDeleted } from "@/lib/concord/concord-dissolution";
 import { removalSystemEvents, type SystemEvent } from "@/lib/concord/concord-activity";
 import { KIND_KICK } from "@/lib/concord/concord-events";
+import { joinCountsByLabel } from "@/lib/concord/concord-invite-links";
 import { parseControlEdition, editionKey, parseSnapshotRumor, foldEditions, computeRoster, KIND_CONTROL_EDITION, KIND_JOIN_LEAVE, KIND_AUDIT, KIND_REKEY, KIND_SNAPSHOT, type ControlEdition, type FoldedState, type Member, type AuditEntry } from "@/lib/concord/concord-events";
 import { computeMembershipEvents, computeAuditLog, type RawRumor, type MembershipEvent } from "@/lib/concord/concord-activity";
 import { receiveRekey, receiveChannelGrant, privateRoomHolders } from "@/lib/concord/concord-rekey";
@@ -83,7 +84,9 @@ function useReconcilerElection(communityId: string | undefined): boolean {
 
 const BASE_SCOPE = "00".repeat(32);
 
-export function useConcordGovernance(community: StoredCommunity | null | undefined): { state: FoldedState; roster: Member[]; myMember?: Member; events: MembershipEvent[]; auditLog: AuditEntry[]; deleted: boolean; removals: SystemEvent[]; privateRoomHolders: (roomId: string) => string[] | null; compaction: () => Seal[] } {
+export function useConcordGovernance(community: StoredCommunity | null | undefined): { state: FoldedState; roster: Member[]; myMember?: Member; events: MembershipEvent[]; auditLog: AuditEntry[]; deleted: boolean; removals: SystemEvent[]; privateRoomHolders: (roomId: string) => string[] | null; compaction: () => Seal[];
+  /** How many people joined through each of my invite links, by label (CORD-05 §1). */
+  linkJoins: Map<string, number> } {
   const { pubkey } = useNostrAuth();
   const [editions, setEditions] = useState<Map<string, ControlEdition>>(new Map());
   const [joinLeave, setJoinLeave] = useState<Map<string, RawRumor>>(new Map());
@@ -184,7 +187,8 @@ export function useConcordGovernance(community: StoredCommunity | null | undefin
     const auditLog = computeAuditLog([...audit.values()]);
     const deleted = !!owner && isDeleted({ community_id: groupId, owner }, state, [...tombstones.values()]);
     const removals = owner ? removalSystemEvents(auditLog, [...kicks.values()], state, owner) : [];
-    return { state, roster, myMember, events, auditLog, deleted, removals };
+    const linkJoins = pubkey ? joinCountsByLabel([...joinLeave.values()], pubkey) : new Map<string, number>();
+    return { state, roster, myMember, events, auditLog, deleted, removals, linkJoins };
   }, [editions, joinLeave, audit, snapshots, tombstones, kicks, owner, groupId, pubkey]);
 
   // ── Apply incoming rekeys (CORD-06 receive side) ───────────────────────────

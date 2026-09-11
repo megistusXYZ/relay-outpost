@@ -178,7 +178,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   onToggleMembers?: () => void;
 }) {
   const { pubkey } = useNostrAuth();
-  const { state: govState, roster: govRoster, myMember, events: govEvents, auditLog, deleted: groupDeleted, removals } = useConcordGovernance(community);
+  const { state: govState, roster: govRoster, myMember, events: govEvents, auditLog, deleted: groupDeleted, removals, linkJoins: inviteLinkJoins } = useConcordGovernance(community);
   // Live channel list: local channels (with keys) + public channels the owner
   // added (folded from control editions; a member can derive their key), with
   // names kept current. Private channels only show if the member holds the key.
@@ -1063,6 +1063,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           onOpenChange={setInviteOpen}
           community={community}
           memberPubkeys={rosterPubkeys(community.community_id, govRoster)}
+          linkJoins={inviteLinkJoins}
         />
       )}
       <ConcordAdminDrawer

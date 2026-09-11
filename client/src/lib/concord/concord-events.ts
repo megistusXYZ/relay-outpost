@@ -380,14 +380,25 @@ export function buildTypingRumor(author: string, channelId: string, epoch: bigin
  * what other apps read; the `action` tag is what earlier versions of this app
  * read, so it stays.
  */
-export function buildJoinLeaveRumor(author: string, join: boolean, createdAt: number, ms = 0): RumorTemplate {
+export function buildJoinLeaveRumor(
+  author: string, join: boolean, createdAt: number, ms = 0,
+  /** The link this Join came through (CORD-05 §1): its creator and label, echoed so they can count joins per link. */
+  invite?: { creator: string; label: string },
+): RumorTemplate {
   return {
     kind: KIND_JOIN_LEAVE,
     pubkey: author,
     created_at: createdAt,
     content: join ? "join" : "leave",
-    tags: [["action", join ? "join" : "leave"], msTag(ms)],
+    tags: [["action", join ? "join" : "leave"], msTag(ms), ...(join && invite ? [["invite", invite.creator, invite.label]] : [])],
   };
+}
+
+/** A Join's invite attribution, `["invite", creator hex, label]` (CORD-02 §5), when the creator is a real key. */
+export function readInviteAttribution(ev: { tags: string[][] }): { creator: string; label: string } | null {
+  const tag = ev.tags.find((t) => t[0] === "invite");
+  if (!tag || !/^[0-9a-f]{64}$/.test(tag[1] ?? "")) return null;
+  return { creator: tag[1], label: tag[2] ?? "" };
 }
 
 /**

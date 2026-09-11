@@ -25,6 +25,7 @@ import type { GroupInviteTarget } from "@/lib/concord/invite-detect";
 import { persistentPoolSubscribe } from "@/lib/nostr";
 import { KIND_INVITE_BUNDLE } from "@/lib/concord/concord-events";
 import { resolveInviteBundle, bundleToDisplay, type InviteDisplay } from "@/lib/concord/invite-resolve";
+import { pickBundleEvent } from "@/lib/concord/concord-invites";
 import type { Event } from "nostr-tools";
 
 export function GroupInviteCard({ invite, compact = false }: { invite: GroupInviteTarget; compact?: boolean }) {
@@ -49,13 +50,14 @@ export function GroupInviteCard({ invite, compact = false }: { invite: GroupInvi
     const fetchEvent = (linkSigner: string, relays: string[]) =>
       new Promise<Event | null>((resolve) => {
         if (!relays.length) return resolve(null);
-        let latest: Event | null = null;
+        const seen: Event[] = [];
         const sub = persistentPoolSubscribe(
           relays,
           { kinds: [KIND_INVITE_BUNDLE], authors: [linkSigner], "#d": [""] },
-          { onevent: (e: Event) => { if (!latest || e.created_at > latest.created_at) latest = e; } },
+          { onevent: (e: Event) => { seen.push(e); } },
         );
-        setTimeout(() => { sub.close(); resolve(latest); }, 3500);
+        // A tombstone seen anywhere means the link was turned off.
+        setTimeout(() => { sub.close(); resolve(pickBundleEvent(seen)); }, 3500);
       });
 
     resolveInviteBundle(invite, fetchEvent)
