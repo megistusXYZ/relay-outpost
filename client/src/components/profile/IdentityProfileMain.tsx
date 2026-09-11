@@ -182,19 +182,16 @@ export function IdentityProfileMain({
 
   return (
     <div className="min-w-0">
-      {/* Presence — a calm, human read of who this person is: activity status,
-          tenure, what they post about, and quiet lifetime totals. Deliberately
-          NOT a posts-per-week / contribution-graph dashboard. */}
+      {/* Presence — one quiet line: lifetime totals and what they post about.
+          The follower counts and activity status live under the name, in the
+          identity card. Deliberately NOT a posts-per-week / contribution-graph
+          dashboard. */}
       <IdentityPresence
-        following={stats?.following}
-        followers={stats?.followers}
         totalPosts={stats?.totalPosts}
         totalReplies={stats?.totalReplies}
         totalArticles={stats?.totalArticles}
         joinedAt={stats?.joinedAt}
-        lastActiveAt={stats?.lastActiveAt ?? (allNotes.length ? Math.max(...allNotes.map((e) => e.created_at)) : undefined)}
         topics={topics}
-        onSeeNetwork={onSeeNetwork}
       />
 
       {/* Media montage — the page leads with what they MAKE, not a text wall.

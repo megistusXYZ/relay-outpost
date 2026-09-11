@@ -10,161 +10,157 @@
  * about?"
  *
  * Instead: a warm activity status (bucketed, never a minute-precise "last seen"),
- * tenure, the topics they actually post about (top recurring hashtags, and only
- * when they genuinely tag — it fades away otherwise), and one quiet line of
- * lifetime totals (standard social-profile info, not a cadence flex).
+ * the topics they actually post about (top recurring hashtags, and only when
+ * they genuinely tag — it fades away otherwise), and one quiet line of lifetime
+ * totals (standard social-profile info, not a cadence flex).
+ *
+ * Where each piece lives (owner call, 2026-09-11): the follower counts and the
+ * activity status sit under the name (`IdentityCounts`), as on every social
+ * app. They used to lead the main column as a three-number grid, which made
+ * them the loudest thing on the page and, on a phone, put them below the
+ * fold. What stays here is one quiet line: totals, then topics.
  */
 import { Sparkles } from "lucide-react";
 
 const DAY = 86_400;
 
-function tenureLabel(joinedAt: number): string {
-  // Plain, platform-agnostic wording — a newcomer never has to know what "Nostr"
-  // is. Matches the familiar "Joined 2022" convention from mainstream apps.
-  const year = new Date(joinedAt * 1000).getFullYear();
-  return `Joined ${year}`;
-}
-
 /** Bucketed, gentle recency — no exact timestamp. Returns null when the last
  *  activity is old enough that any label would read as a negative judgment; the
- *  caller then simply shows tenure alone. */
+ *  caller then simply shows nothing. */
 export function activityStatus(lastActive: number | undefined, now: number): string | null {
   if (!lastActive) return null;
   const days = (now - lastActive) / DAY;
   if (days < 1) return "Active today";
   if (days < 7) return "Active this week";
   if (days < 31) return "Active this month";
-  return null; // older → don't label them "quiet"; tenure carries it.
+  return null; // older → don't label them "quiet".
+}
+
+/** 10,000 and up read as "68.6K"; smaller counts stay exact ("1,980"). */
+function countValue(n: number): string {
+  if (n < 10_000) return n.toLocaleString();
+  return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(n);
 }
 
 /**
- * A single headline stat (Following / Followers / Posts) in the summary grid.
- *
- * Following and Followers get an `onClick` and render as buttons; Posts has
- * nowhere to go and stays inert. Without this the big bold counts were plain
- * text and the ONLY way into the list was the smaller "Connections" button in
- * the rail — so the same numbers appeared twice and only the less prominent
- * copy responded to a tap.
+ * The counts line under the name: followers, then following. A count we never
+ * got is left out, never shown as 0: Primal's cache flaps, and a confident
+ * "0 followers" on a real profile is worse than no number. A measured zero
+ * still shows.
  */
-function Stat({ label, value, onClick }: { label: string; value?: number; onClick?: () => void }) {
-  const body = (
-    <>
-      {/* `undefined` means we never got an answer, and it used to print as
-          "0" via `?? 0` — a measured-looking number for a stat nobody
-          measured. Primal's cache flaps (~50% of probes returned 502 on
-          2026-08-03), so this was routinely a real profile reading
-          "0 FOLLOWERS". A real zero still prints 0; only the unknown dashes. */}
-      <div className="text-lg font-bold tabular-nums text-foreground">
-        {value === undefined ? "—" : value.toLocaleString()}
-      </div>
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground/70">{label}</div>
-    </>
-  );
-  if (!onClick) return <div className="text-center">{body}</div>;
+export function countsLine({ followers, following }: { followers?: number; following?: number }): { value: string; label: string }[] {
+  const out: { value: string; label: string }[] = [];
+  if (followers !== undefined) out.push({ value: countValue(followers), label: followers === 1 ? "follower" : "followers" });
+  if (following !== undefined) out.push({ value: countValue(following), label: "following" });
+  return out;
+}
+
+/** Lifetime totals as short phrases, singular for one. Zero and unknown are
+ *  left out: "0 articles" says nothing a visitor needs. */
+export function totalsLine({ totalPosts, totalReplies, totalArticles }: { totalPosts?: number; totalReplies?: number; totalArticles?: number }): string[] {
+  const phrase = (n: number | undefined, one: string, many: string) =>
+    n ? `${n.toLocaleString()} ${n === 1 ? one : many}` : null;
+  return [
+    phrase(totalPosts, "post", "posts"),
+    phrase(totalReplies, "reply", "replies"),
+    phrase(totalArticles, "article", "articles"),
+  ].filter((p): p is string => p !== null);
+}
+
+/**
+ * Follower counts and activity status, under the name in the identity card.
+ * Both counts open the following/followers list when `onSeeNetwork` is given.
+ * The tap area is padded to 44px while the text stays one compact line.
+ */
+export function IdentityCounts({
+  followers,
+  following,
+  lastActiveAt,
+  onSeeNetwork,
+}: {
+  followers?: number;
+  following?: number;
+  lastActiveAt?: number;
+  onSeeNetwork?: () => void;
+}) {
+  const counts = countsLine({ followers, following });
+  const status = activityStatus(lastActiveAt, Math.floor(Date.now() / 1000));
+  if (counts.length === 0 && !status) return null;
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="text-center rounded-lg py-1 transition-colors hover:bg-primary/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      data-testid={`identity-stat-${label.toLowerCase()}`}
-    >
-      {body}
-    </button>
+    <div className="mt-2 flex flex-col items-center gap-1.5" data-testid="identity-counts">
+      {counts.length > 0 && (
+        <div className="flex items-center justify-center flex-wrap gap-x-3 text-[13px]">
+          {counts.map((c) => {
+            const body = (
+              <>
+                <span className="font-semibold text-foreground tabular-nums">{c.value}</span>{" "}
+                <span className="text-muted-foreground">{c.label}</span>
+              </>
+            );
+            const id = `identity-stat-${c.label === "follower" ? "followers" : c.label}`;
+            return onSeeNetwork ? (
+              <button
+                key={c.label}
+                type="button"
+                onClick={onSeeNetwork}
+                className="inline-flex items-center min-h-11 -my-3 px-1 rounded-md hover:underline underline-offset-4 decoration-muted-foreground/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                data-testid={id}
+              >
+                <span>{body}</span>
+              </button>
+            ) : (
+              <span key={c.label} data-testid={id}>{body}</span>
+            );
+          })}
+        </div>
+      )}
+      {status && (
+        <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground" data-testid="identity-activity">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+          {status}
+        </div>
+      )}
+    </div>
   );
 }
 
 export function IdentityPresence({
-  following,
-  followers,
   totalPosts,
   totalReplies,
   totalArticles,
   joinedAt,
-  lastActiveAt,
   topics,
-  onSeeNetwork,
 }: {
-  following?: number;
-  followers?: number;
   totalPosts?: number;
   totalReplies?: number;
   totalArticles?: number;
   joinedAt?: number;
-  lastActiveAt?: number;
   /** Top recurring hashtags the person posts about (already ranked, no '#'). */
   topics?: string[];
-  /** Opens the following/followers list. Absent ⇒ the counts stay inert. */
-  onSeeNetwork?: () => void;
 }) {
   const now = Math.floor(Date.now() / 1000);
-  const tenureSec = joinedAt ? Math.max(DAY, now - joinedAt) : undefined;
-  const isNew = tenureSec !== undefined && tenureSec < 30 * DAY;
-  const status = activityStatus(lastActiveAt, now);
-
-  // ONE flowing metadata line — activity, tenure, and secondary totals used to
-  // stack on separate rows; now they read as a single "· "-separated sentence.
-  // Activity is emphasized (foreground); the rest is quiet. POSTS is omitted (it
-  // is already the Posts headline stat above), so nothing is shown twice.
-  const metaSegments: { text: string; strong?: boolean }[] = [];
-  if (status) metaSegments.push({ text: status, strong: true });
-  // Tenure lives in the Details card directly above this one, as "Joined Dec
-  // 2021" — the precise form. Repeating a vaguer "Joined 2021" forty pixels
-  // below it said the same thing twice and cost the line a segment it could not
-  // fit.
-  if (totalReplies) metaSegments.push({ text: `${totalReplies.toLocaleString()} replies` });
-  if (totalArticles) metaSegments.push({ text: `${totalArticles.toLocaleString()} articles` });
+  const isNew = joinedAt !== undefined && Math.max(DAY, now - joinedAt) < 30 * DAY;
+  const totals = totalsLine({ totalPosts, totalReplies, totalArticles });
 
   // "Often posts about #pyramid" — a single tag is not a pattern, and claiming
   // one from a single hashtag is the kind of thin signal the Circle grid already
   // refuses (it needs four faces or it hides). Two or nothing.
   const ranked = (topics ?? []).slice(0, 4);
   const topTopics = ranked.length >= 2 ? ranked : [];
-  const hasStats = following !== undefined || followers !== undefined || totalPosts !== undefined;
-
-  // Nothing worth a CARD. The bar is the headline stats, or a summary line with
-  // something actually in it — not a single phrase.
-  //
-  // Seen live while the counts were still in flight: a full-width bordered card
-  // whose entire contents were the words "Active today". A card is a promise
-  // that something is inside it, and two words is not that. Same rule as the
-  // Circle grid (four faces or it hides) and the topics row above.
-  const worthACard = hasStats || metaSegments.length >= 2 || topTopics.length > 0 || isNew;
-  if (!worthACard) return null;
-
-  // The metadata line + topics form the lower block; it only gets a top divider
-  // when the headline stats sit above it.
-  const hasLowerBlock = metaSegments.length > 0 || isNew || topTopics.length > 0;
+  if (totals.length === 0 && topTopics.length === 0 && !isNew) return null;
 
   return (
-    // The SAME shell every other card in this column uses — border, elevation
-    // and inset all matched. It drifted to its own `p-4` and a flatter border,
-    // which put its content 4px deeper than Details and Circle directly above
-    // it and made the one card holding the headline numbers look like a
-    // leftover. Headerless on purpose: follower counts are the loudest thing on
-    // a profile and a small uppercase label above them would demote them.
-    <section className="rounded-xl border border-border/60 dark:border-white/[0.07] bg-card p-3 mb-4 shadow-sm shadow-black/[0.04] dark:shadow-none" data-testid="identity-presence">
-      {/* Headline stats — folded in from the old separate stats card so the
-          identity summary is one block, not two (and "posts" isn't shown twice). */}
-      {hasStats && (
-        <div className="grid grid-cols-3 gap-2">
-          <Stat label="Following" value={following} onClick={onSeeNetwork} />
-          <Stat label="Followers" value={followers} onClick={onSeeNetwork} />
-          <Stat label="Posts" value={totalPosts} />
-        </div>
-      )}
-
-      {hasStats && hasLowerBlock && <div className="mt-3 pt-3 border-t border-border/40" />}
-
-      {(metaSegments.length > 0 || isNew) && (
-        <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm">
-          {metaSegments.map((seg, i) => (
+    // No card: one quiet line in the same gutter as the Media shelf below it,
+    // so the page's left edge stays one line down the column.
+    <section className="mb-4 px-3 space-y-1.5" data-testid="identity-presence">
+      {(totals.length > 0 || isNew) && (
+        <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-[13px] text-muted-foreground" data-testid="identity-presence-totals">
+          {totals.map((t, i) => (
             // The separator trails its own segment rather than leading the next
-            // one. When the line wrapped, a leading "·" became the first thing
-            // on the second row — "· 301 articles" — which reads as a bullet
-            // list that lost its first item.
-            <span key={i} className="inline-flex items-center gap-1.5 whitespace-nowrap">
-              <span className={seg.strong ? "text-foreground/90 font-medium" : "text-muted-foreground"}>{seg.text}</span>
-              {i < metaSegments.length - 1 && <span className="text-muted-foreground/30">·</span>}
+            // one, so a wrapped line never starts with a stray "·".
+            <span key={t} className="inline-flex items-center gap-1.5 whitespace-nowrap tabular-nums">
+              {t}
+              {i < totals.length - 1 && <span className="text-muted-foreground/30">·</span>}
             </span>
           ))}
           {isNew && (
@@ -176,26 +172,24 @@ export function IdentityPresence({
       )}
 
       {topTopics.length > 0 && (
-        <div className="mt-2.5" data-testid="identity-presence-topics">
-          <div className="text-[11px] text-muted-foreground/60 mb-1">Often posts about</div>
-          <div className="flex flex-wrap gap-1.5">
-            {topTopics.map((t) => (
-              <a
-                key={t}
-                href={`/search?tab=hashtags&q=${encodeURIComponent(`#${t}`)}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  const url = `/search?tab=hashtags&q=${encodeURIComponent(`#${t}`)}`;
-                  window.history.pushState(null, "", url);
-                  window.dispatchEvent(new PopStateEvent("popstate"));
-                }}
-                className="text-[13px] font-medium text-brand no-underline hover:underline"
-                data-testid={`identity-topic-${t}`}
-              >
-                #{t}
-              </a>
-            ))}
-          </div>
+        <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-[13px]" data-testid="identity-presence-topics">
+          <span className="text-muted-foreground/70">Often posts about</span>
+          {topTopics.map((t) => (
+            <a
+              key={t}
+              href={`/search?tab=hashtags&q=${encodeURIComponent(`#${t}`)}`}
+              onClick={(e) => {
+                e.preventDefault();
+                const url = `/search?tab=hashtags&q=${encodeURIComponent(`#${t}`)}`;
+                window.history.pushState(null, "", url);
+                window.dispatchEvent(new PopStateEvent("popstate"));
+              }}
+              className="font-medium text-brand no-underline hover:underline"
+              data-testid={`identity-topic-${t}`}
+            >
+              #{t}
+            </a>
+          ))}
         </div>
       )}
     </section>

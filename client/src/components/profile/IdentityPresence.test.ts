@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { rankTopics } from "./IdentityPresence";
+import { rankTopics, countsLine, totalsLine } from "./IdentityPresence";
 
 const ev = (content: string, tags: string[][] = []) => ({ content, tags });
 
@@ -58,5 +58,47 @@ describe("rankTopics", () => {
     // (the inline regex stops at '-', so 'good' is captured instead). ok_tag is valid.
     expect(out).toContain("ok_tag");
     expect(out).not.toContain(long);
+  });
+});
+
+/**
+ * The follower counts move out of a three-number grid that led the page and
+ * into one quiet line under the name (owner call, 2026-09-11): important, but
+ * not the loudest thing on a profile. On a phone that also puts them on the
+ * first screen, where the grid sat below the fold.
+ */
+describe("countsLine — follower counts as one line under the name", () => {
+  it("shows followers then following; big numbers compact, small ones exact", () => {
+    expect(countsLine({ followers: 68557, following: 415 })).toEqual([
+      { value: "68.6K", label: "followers" },
+      { value: "415", label: "following" },
+    ]);
+    expect(countsLine({ followers: 1980, following: 43 })[0].value).toBe("1,980");
+  });
+
+  it("says follower for exactly one, and still shows a real zero", () => {
+    expect(countsLine({ followers: 1, following: 0 })).toEqual([
+      { value: "1", label: "follower" },
+      { value: "0", label: "following" },
+    ]);
+  });
+
+  it("leaves out a count we never got, rather than claiming 0", () => {
+    expect(countsLine({ followers: undefined, following: 12 })).toEqual([{ value: "12", label: "following" }]);
+  });
+
+  it("shows nothing when neither count is known", () => {
+    expect(countsLine({})).toEqual([]);
+  });
+});
+
+describe("totalsLine — lifetime totals as one quiet line", () => {
+  it("reads naturally, with the singular for one", () => {
+    expect(totalsLine({ totalPosts: 772, totalReplies: 2717, totalArticles: 1 })).toEqual(["772 posts", "2,717 replies", "1 article"]);
+    expect(totalsLine({ totalPosts: 1, totalReplies: 1 })).toEqual(["1 post", "1 reply"]);
+  });
+
+  it("leaves out totals that are zero or unknown", () => {
+    expect(totalsLine({ totalPosts: 9, totalReplies: 0, totalArticles: undefined })).toEqual(["9 posts"]);
   });
 });
