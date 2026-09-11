@@ -80,6 +80,14 @@ import { PeopleToFollowStrip } from "@/components/PeopleToFollowStrip";
 import { getDisplayName, getAvatarUrl, getProfileContent } from "@/lib/nostr-helpers";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import type { ArticleData } from "@/lib/nip23";
+import { floorArticles } from "@/lib/article-floor";
+import { useStrictnessPreset } from "@/lib/trust-preset";
+import { useSpamFilter } from "@/hooks/use-spam-filter";
+import { useProfileFloor } from "@/hooks/use-profile-floor";
+import { getCachedFollowerCount, onFollowerCountUpdate, prefetchStatsImmediate, primalStatsCache, requestFollowerCounts } from "@/lib/primal-cache";
+import { getFirstSeen } from "@/lib/account-age";
+import { computeEngagementScore } from "@/lib/engagement";
+import { effectivePow } from "@/lib/nip13-pow";
 
 /**
  * The one item shape the News hero flows end to end: what /api/rss caches,
@@ -715,30 +723,80 @@ function CommunitiesTile() {
 
 function ArticlesTile() {
   const [, setLocation] = useLocation();
-  const { follows } = useNostrAuth();
+  const { follows, pubkey } = useNostrAuth();
   const [article, setArticle] = useState<Reached<ArticleData[]> | null>(null);
-  const [, bumpProfiles] = useState(0);
   const seq = useRef(0);
   const load = useCallback(() => {
     const id = ++seq.current;
     setArticle(null);
     fetchNewestArticle(follows ?? [])
-      .then(async (r) => {
-        if (seq.current !== id) return;
-        setArticle(r);
-        if (r.data && r.data.length > 0) {
-          // Resolve the authors' names after the fact; re-render when they land.
-          try { await fetchProfilesCached(r.data.map((a) => a.event.pubkey)); } catch { /* names stay npub */ }
-          if (seq.current === id) bumpProfiles((n) => n + 1);
-        }
-      })
+      .then((r) => { if (seq.current === id) setArticle(r); })
       .catch(() => { if (seq.current === id) setArticle({ data: [], reached: false }); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [follows]);
   useEffect(() => { load(); return () => { seq.current++; }; }, [load]);
 
   const state = resolveTile(article);
-  const articles = state.status === "ready" && state.data ? state.data : [];
+
+  // ── The Articles floor (lib/article-floor.ts), as on the Articles page ────
+  // The card used to show the newest two that passed a title-and-length check,
+  // so the flooders and nameless accounts the Articles page hides led the
+  // front door. People you follow always; anyone else needs a name and a
+  // picture, a person's pace, and one earned signal at your preset.
+  const candidates = useMemo(() => (state.status === "ready" && state.data ? state.data : []), [state.status, state.data]);
+  const candidateEvents = useMemo(() => candidates.map((a) => a.event), [candidates]);
+  const { scores: wotScores, flaggedPubkeys, requestScoresBulk } = useGrapeRankScores();
+  const { preset } = useStrictnessPreset();
+  const { filter: moderationFilter } = useSpamFilter();
+  // Also fetches the authors' profiles, and re-renders when names land.
+  const { profileGetter, profileSettledGetter, profileVersion } = useProfileFloor(candidateEvents);
+  const [followerVersion, setFollowerVersion] = useState(0);
+  useEffect(() => onFollowerCountUpdate(() => setFollowerVersion((v) => v + 1)), []);
+  // Engagement comes from Primal. null = still asking: wait, rather than show a
+  // step-down pick and then swap it. false = Primal didn't answer: step down.
+  const [signals, setSignals] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (candidateEvents.length === 0) return;
+    const authors = Array.from(new Set(candidateEvents.map((e) => e.pubkey)));
+    requestScoresBulk(authors);
+    requestFollowerCounts(authors);
+    const ids = candidateEvents.map((e) => e.id);
+    let live = true;
+    setSignals(null);
+    prefetchStatsImmediate(ids)
+      .catch(() => { /* judged below from what arrived */ })
+      .finally(() => { if (live) setSignals(ids.some((id) => primalStatsCache.has(id))); });
+    return () => { live = false; };
+  }, [candidateEvents, requestScoresBulk]);
+  const followSet = useMemo(() => new Set(follows ?? []), [follows]);
+  const floored = useMemo(() => {
+    if (signals === null || candidateEvents.length === 0) return null;
+    const byEvent = new Map(candidates.map((a) => [a.event, a] as const));
+    const { shown, holding } = floorArticles<ArticleData["event"]>(
+      moderationFilter(candidateEvents),
+      {
+        isFollowed: (pk) => followSet.has(pk) || pk === pubkey,
+        wotScore: (pk) => wotScores?.get(pk),
+        flagged: (pk) => !!flaggedPubkeys?.has(pk),
+        profile: profileGetter,
+        profileSettled: profileSettledGetter,
+        engagementScore: (e) => computeEngagementScore(primalStatsCache.get(e.id) ?? null),
+        firstSeen: getFirstSeen,
+        followerCount: getCachedFollowerCount,
+        powDifficulty: effectivePow,
+        signalsAvailable: signals,
+      },
+      preset,
+      Math.floor(Date.now() / 1000),
+    );
+    return { shown: shown.slice(0, 2).map((e) => byEvent.get(e)!), holding };
+    // profileVersion / followerVersion re-run the floor when a profile or a
+    // follower count arrives after the articles did.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [candidates, candidateEvents, signals, moderationFilter, followSet, pubkey, wotScores, flaggedPubkeys, profileVersion, followerVersion, preset]);
+  // Still deciding: the answer is in but the floor can't pick yet.
+  const deciding = candidates.length > 0 && (floored === null || (floored.shown.length === 0 && floored.holding > 0));
+  const articles = floored?.shown ?? [];
   const freshItems = useMemo<FreshItem[] | null>(
     () => (articles.length > 0 ? articles.map((a) => ({ id: a.event.id, timeMs: a.publishedAt * 1000 })) : null),
     [articles],
@@ -755,7 +813,7 @@ function ArticlesTile() {
       testId="tile-articles"
       footer={state.status === "unreachable" ? <RetryFooter onRetry={load} testId="button-retry-articles" /> : undefined}
     >
-      {state.status === "loading" && <TileSkeleton />}
+      {(state.status === "loading" || deciding) && <TileSkeleton />}
       {state.status === "ready" && articles.length > 0 && (
         // Two editions with cover thumbnails — the shelf shows its books.
         <span className="block divide-y divide-border/30 dark:divide-white/[0.05]" data-testid="articles-tile-rows">
@@ -776,7 +834,7 @@ function ArticlesTile() {
           ))}
         </span>
       )}
-      {(state.status === "empty" || (state.status === "ready" && articles.length === 0)) && (
+      {(state.status === "empty" || (state.status === "ready" && !deciding && articles.length === 0)) && (
         <span className="block text-xs text-muted-foreground">Nothing new — tap to browse.</span>
       )}
       {state.status === "unreachable" && unreachableBody("the article relays")}

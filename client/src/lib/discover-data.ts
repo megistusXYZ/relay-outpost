@@ -183,21 +183,24 @@ async function fetchNewestArticleFresh(follows: readonly string[]): Promise<Reac
   // whatever your writers didn't publish this week.
   const [served, events, followsArticles] = await Promise.all([
     anyServed(FAST_RELAYS),
-    collectOnce(FAST_RELAYS, { kinds: [KIND_LONG_FORM], limit: 15 }, 11_000),
+    // 40, not the 2 the tile shows: the tile runs the Articles floor
+    // (lib/article-floor.ts), which needs enough left over after it, and
+    // enough of a flooder's articles in hand to see the flood.
+    collectOnce(FAST_RELAYS, { kinds: [KIND_LONG_FORM], limit: 40 }, 11_000),
     follows.length > 0
       ? collectOnce(FAST_RELAYS, { kinds: [KIND_LONG_FORM], authors: follows.slice(0, 100), limit: 15 }, 8_000)
       : Promise.resolve([] as Event[]),
   ]);
-  // Top TWO editions — one headline over a tall empty card undersold the
-  // shelf (same densification as the feed tile).
-  const top = preferFollowed(
+  // Every candidate, your writers first. The tile floors them and shows the
+  // top TWO that pass (one headline over a tall empty card undersold it).
+  const candidates = preferFollowed(
     survivingArticles([...followsArticles, ...events]),
     (a) => followSet.has(a),
     (a) => a.event.pubkey,
-  ).slice(0, 2);
+  );
   // Events in hand are themselves proof someone answered, even if the reach
   // probe lost its race with a relay that dropped right after serving us.
-  return { data: top, reached: served || events.length > 0 || followsArticles.length > 0 };
+  return { data: candidates, reached: served || events.length > 0 || followsArticles.length > 0 };
 }
 
 // ── Feed teaser ──────────────────────────────────────────────────────────────
