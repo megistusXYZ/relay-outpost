@@ -56,6 +56,8 @@ import { getChannelWrapTimes, CHANGED_EVENT as UNREAD_CHANGED_EVENT, READ_EVENT 
 import { writeChannelLastRead } from "@/lib/concord/concord-channel-unread";
 import { ConcordSearchSheet } from "./ConcordSearchSheet";
 import type { SearchHit } from "@/lib/concord/concord-search";
+import { ReportCountBadge } from "./ConcordReports";
+import { ConcordReportDialog } from "./ConcordReportDialog";
 import { isMuted, setChannelMuted, useMutedChannels, MUTE_CHANGED_EVENT } from "@/lib/concord/concord-mute";
 import { mentionKey, useConcordMentionCounts } from "@/lib/concord/concord-mentions";
 import { ConcordCreateChannelDialog } from "./ConcordCreateChannelDialog";
@@ -706,6 +708,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     find();
     return () => { for (const t of timers) clearTimeout(t); };
   }, [jumpTarget, activeChannel?.id, visible]);
+  // The message being reported to the moderators (concord-reports), if any.
+  const [reporting, setReporting] = useState<ChatMsg | null>(null);
   // Switching channels leaves any open thread behind — its messages are gone.
   useEffect(() => { setThreadRootId(null); setThreadParent(null); setThreadDraft(""); restoreMembersRef.current = false; }, [activeChannel?.id]);
   const threadRoot = threadRootId ? messagesById.get(threadRootId) : undefined;
@@ -986,6 +990,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           >
             <Shield className="w-3.5 h-3.5" />
             Manage
+            <ReportCountBadge communityId={community.community_id} />
           </button>
         )}
         <SpaceOverflowMenu
@@ -1112,6 +1117,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             >
               <Shield className="w-3.5 h-3.5" />
               Manage
+              <ReportCountBadge communityId={community.community_id} />
             </button>
           )}
           <SpaceOverflowMenu
@@ -1162,6 +1168,14 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           onCommunityChange={onCommunityChange}
         />
       )}
+      <ConcordReportDialog
+        open={!!reporting}
+        onOpenChange={(o) => { if (!o) setReporting(null); }}
+        community={community}
+        roster={govRoster}
+        channelId={activeChannel?.id ?? ""}
+        message={reporting}
+      />
       <ConcordAdminDrawer
         open={adminOpen}
         onOpenChange={setAdminOpen}
@@ -1297,6 +1311,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             readOnly={groupDeleted}
             pinned={pinnedIds.has(item.msg.id)}
             onTogglePin={canPin && !groupDeleted ? () => togglePin(item.msg) : undefined}
+            onReport={pubkey && item.msg.pubkey !== pubkey && !item.msg.deleted ? () => setReporting(item.msg) : undefined}
             onStartEdit={() => setEditingId(item.msg.id)}
             onCancelEdit={() => setEditingId(null)}
             onSaveEdit={(text) => saveEdit(item.msg, text)}
@@ -1688,7 +1703,7 @@ function ThreadFace({ pubkey }: { pubkey: string }) {
   );
 }
 
-function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, removedByModerator, t, grouped, edited, deleted, mentionedMe, reactions, myPubkey, replyTo, parent, thread, onOpenThread, editing, onReact, onReply, onReplyInThread, readOnly, pinned, onTogglePin, onStartEdit, onCancelEdit, onSaveEdit, onRequestDelete }: {
+function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, removedByModerator, t, grouped, edited, deleted, mentionedMe, reactions, myPubkey, replyTo, parent, thread, onOpenThread, editing, onReact, onReply, onReplyInThread, readOnly, pinned, onTogglePin, onReport, onStartEdit, onCancelEdit, onSaveEdit, onRequestDelete }: {
   msgId: string; pubkey: string; content: string; media?: ConcordMedia[]; mine: boolean; t?: number; grouped?: boolean; edited?: boolean; deleted?: boolean; mentionedMe?: boolean;
   /** Someone else's message I may remove (a moderator who outranks them). */
   removable?: boolean;
@@ -1706,6 +1721,8 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
   pinned?: boolean;
   /** Pin or unpin: offered to the owner and anyone with Pin messages. */
   onTogglePin?: () => void;
+  /** Report it to the group's moderators: offered on someone else's message. */
+  onReport?: () => void;
   onStartEdit: () => void; onCancelEdit: () => void; onSaveEdit: (text: string) => void; onRequestDelete: () => void;
 }) {
   const { name, avatar, hasProfile } = useConcordProfile(pubkey);
@@ -1815,7 +1832,7 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
       {/* One Signal-style actions menu — hover on desktop, always subtle on mobile */}
       {!deleted && !editing && (
         <div className="shrink-0 self-start opacity-60 reveal-on-hover">
-          <ConcordMessageActions content={content} mine={mine} onReact={onReact} onReply={onReply} onReplyInThread={onReplyInThread} readOnly={readOnly} pinned={pinned} onTogglePin={onTogglePin} onEdit={onStartEdit} onDelete={onRequestDelete} removable={removable} />
+          <ConcordMessageActions content={content} mine={mine} onReact={onReact} onReply={onReply} onReplyInThread={onReplyInThread} readOnly={readOnly} pinned={pinned} onTogglePin={onTogglePin} onEdit={onStartEdit} onDelete={onRequestDelete} removable={removable} onReport={onReport} />
         </div>
       )}
     </div>

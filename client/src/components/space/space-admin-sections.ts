@@ -34,7 +34,7 @@ import type { SpaceCapabilities, SpaceBackend } from "@/lib/space-admin";
  * decide what a moderator sees should not need a relay to check.
  */
 export interface SpaceAdminSectionDef {
-  id: "requests" | "people" | "roles" | "history" | "channels" | "access" | "details" | "danger";
+  id: "requests" | "reports" | "people" | "roles" | "history" | "channels" | "access" | "details" | "danger";
   /** Sentence-case, plain language — no protocol nouns. */
   label: string;
   /**
@@ -66,6 +66,10 @@ export const SPACE_ADMIN_SECTIONS: readonly SpaceAdminSectionDef[] = [
   // NIP-29 only: a Concord community admits through invites, so there is no
   // queue of strangers to approve and no section to render.
   { id: "requests", label: "Waiting to join", capability: "manageMembers", backends: ["nip29"] },
+  // Concord only: messages members reported to the moderators (concord-reports),
+  // who are exactly the people this capability covers. Waiting on someone, so
+  // it sits with the door, above the roster. NIP-29 reports are public events.
+  { id: "reports", label: "Reports", capability: "manageMembers", backends: ["concord"] },
   { id: "people", label: "People", capability: "manageMembers", backends: ["concord", "nip29"] },
   // Concord only: a NIP-29 group has a single admin bit and no roles.
   { id: "roles", label: "Roles", capability: "manageRoles", backends: ["concord"] },

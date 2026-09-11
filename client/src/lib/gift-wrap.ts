@@ -23,6 +23,8 @@ export const KIND_RUMOR = 14;
 export const KIND_FILE_MESSAGE = 15;
 /** Concord direct invite (CORD-05) — rides the same NIP-59 gift-wrap pipe as DMs. */
 export const KIND_DIRECT_INVITE_RUMOR = 3313;
+/** A report to a group chat's moderators (concord-reports): NIP-56-shaped, on the same pipe. */
+export const KIND_GROUP_REPORT_RUMOR = 1984;
 
 export interface UnwrappedGiftWrap {
   senderPubkey: string;
@@ -30,8 +32,10 @@ export interface UnwrappedGiftWrap {
   content: string;
   timestamp: number;
   rumorId: string;
-  /** The decrypted rumor's kind — 14/15 are DMs; 3313 is a Concord invite. */
+  /** The decrypted rumor's kind — 14/15 are DMs; 3313 is a Concord invite; 1984 a group report. */
   rumorKind: number;
+  /** The decrypted rumor's tags: a report says what it's about in them. */
+  tags?: string[][];
   fileMetadata?: CachedFileMetadata;
   /** Set when this DM is a "private reply": the kind-14 rumor carries a `q`
    *  quote tag referencing a public note. Holds that note's event id so the
@@ -134,7 +138,7 @@ export async function unwrapGiftWrap(
         SIGNER_CRYPTO_TIMEOUT,
       );
       const rumor = JSON.parse(rumorJson);
-      if (rumor.kind !== KIND_RUMOR && rumor.kind !== KIND_FILE_MESSAGE && rumor.kind !== KIND_DIRECT_INVITE_RUMOR) return null;
+      if (rumor.kind !== KIND_RUMOR && rumor.kind !== KIND_FILE_MESSAGE && rumor.kind !== KIND_DIRECT_INVITE_RUMOR && rumor.kind !== KIND_GROUP_REPORT_RUMOR) return null;
       if (rumor.pubkey && rumor.pubkey !== seal.pubkey) return null;
 
       const recipientTag = rumor.tags?.find((t: string[]) => t[0] === "p");
@@ -148,6 +152,7 @@ export async function unwrapGiftWrap(
         timestamp: rumor.created_at,
         rumorId: rumor.id || wrapEvent.id,
         rumorKind: rumor.kind,
+        tags: Array.isArray(rumor.tags) ? rumor.tags : [],
         fileMetadata: extractFileMetadata(rumor),
         quotedNoteId: extractPrivateReplyRef(rumor.tags)?.noteId,
       } as UnwrappedGiftWrap;
