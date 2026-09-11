@@ -12,7 +12,7 @@
  * otherwise.
  */
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { ChevronDown, Lock, History, Loader2, Sparkles } from "lucide-react";
+import { ChevronDown, Lock, History, Loader2 } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { getGlobalSigner } from "@/lib/nip42-auth";
 import { publishEvent } from "@/lib/nostr";
@@ -102,7 +102,7 @@ export function ChatTab({ relayUrl, outpostName, isOwner, createChannelOpen, onC
             className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-primary/25 bg-primary/5 hover:bg-primary/10 transition-colors text-left disabled:opacity-50"
             data-testid="button-add-encrypted-channels"
           >
-            {adding ? <Loader2 className="w-4 h-4 animate-spin text-brand shrink-0" /> : <Sparkles className="w-4 h-4 text-brand shrink-0" />}
+            {adding ? <Loader2 className="w-4 h-4 animate-spin text-brand shrink-0" /> : <Lock className="w-4 h-4 text-brand shrink-0" aria-hidden="true" />}
             <span className="min-w-0">
               <span className="block text-xs font-semibold text-foreground/90">Add encrypted rooms</span>
               <span className="block text-[11px] text-muted-foreground/60">Only people you invite can read them — not even the server can.</span>
