@@ -38,4 +38,17 @@ describe("NewsStoryRow — one calm row for every story", () => {
     expect(html.toLowerCase()).not.toContain("top story");
     expect(html).toContain("24 minutes ago");
   });
+
+  /**
+   * The Listen lane's episodes are the same row with a Play control. The row
+   * itself is one button (it opens the reader), and a button can't hold
+   * another button, so Play sits beside it.
+   */
+  it("gives an episode its own Play control beside the row, named for the episode", () => {
+    const html = renderToString(createElement(NewsStoryRow, { ...story, variant: "row", image: null, onPlay: () => {}, playing: false }));
+    expect(html).toContain('aria-label="Play Trump ally resigns from post leading inquiry"');
+    expect(html).not.toMatch(/<button[^>]*>(?:(?!<\/button>)[\s\S])*<button/);
+    const playing = renderToString(createElement(NewsStoryRow, { ...story, variant: "row", image: null, onPlay: () => {}, playing: true }));
+    expect(playing).toContain('aria-label="Pause Trump ally resigns from post leading inquiry"');
+  });
 });

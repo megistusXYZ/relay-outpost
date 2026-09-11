@@ -121,7 +121,6 @@ import {
   SlidersHorizontal } from "lucide-react";
 import { useTTS } from "@/contexts/TextToSpeechContext";
 import { useAudioPlayer, getTrackPosition } from "@/contexts/AudioPlayerContext";
-import type { MusicTrack } from "@/lib/music";
 import {
   type SavedFeed,
   DEFAULT_FEEDS,
@@ -133,13 +132,16 @@ import {
   saveHiddenDefaults,
   addFeedToLibrary,
   updateFeedInLibrary } from "@/lib/rss-feeds";
-import { NEWS_STARTER_KEPT_KEY, laneFeeds, removeFromLibrary, restoreSource, sourceSections, starterStatus } from "@/lib/news-library";
+import { NEWS_STARTER_KEPT_KEY, laneFeeds, removeFromLibrary, restoreSource, sourceSections, starterStatus, type NewsLane } from "@/lib/news-library";
 import { mergeFeedItems, type MergedItem, type MergeSource } from "@/lib/rss-merge";
-import { groupByDay, orderStream, pickLead, withoutLead, withoutMuted } from "@/lib/news-stream";
+import { groupByDay, listenEpisodes, orderStream, pickLead, withoutLead, withoutMuted } from "@/lib/news-stream";
 import { imageFit } from "@/lib/news-image";
+import { episodeTrack, podcastFeedToSaved } from "@/lib/podcast-episode";
+import { listenView } from "@/lib/listen-view";
+import { usePodcastStatus, usePodcastTrending } from "@/hooks/use-podcast-index";
 import { scrollRootFor } from "@/lib/scroll-root";
 import { loadEdition, saveEdition, mergeEditions, editionForSources } from "@/lib/news-edition";
-import { stripHtml, formatDuration } from "@/lib/podcast-index";
+import { stripHtml, formatDuration, type PodcastFeed } from "@/lib/podcast-index";
 import { clusterStories, type StoryCluster } from "@/lib/story-cluster";
 import { useNewsAlertPrefs } from "@/lib/news-alert-settings";
 import { AddRssFeedDialog } from "@/components/rss/AddRssFeedDialog";
@@ -1011,22 +1013,22 @@ function ArticleReaderDialog({ item, onClose, onShare, isMobile: isMobileProp, i
 
   const podcastAudioUrl = item.audioUrl || sharedPodcast?.audioUrl;
   const isPodcastReader = !!podcastAudioUrl;
-  const podcastTrack = useMemo<MusicTrack | null>(() => {
-    if (!podcastAudioUrl) return null;
-    return {
-      id: `rss-${encodeURIComponent(podcastAudioUrl)}`,
-      title: sharedPodcast?.title || item.title || "Podcast Episode",
-      artist: item.author || "Podcast",
-      artistPubkey: "",
-      audioUrl: podcastAudioUrl,
-      coverUrl: sharedPodcast?.image || item.thumbnail || "",
-      description: item.description || "",
-      genre: "Podcast",
-      duration: sharedPodcast?.duration || item.duration || 0,
-      createdAt: 0,
-      source: "podcast",
-    };
-  }, [podcastAudioUrl, sharedPodcast, item]);
+  const podcastTrack = useMemo(
+    () =>
+      episodeTrack(
+        {
+          title: sharedPodcast?.title || item.title || "Podcast Episode",
+          audioUrl: podcastAudioUrl,
+          pubDate: item.pubDate,
+          duration: sharedPodcast?.duration || item.duration,
+          description: item.description,
+          thumbnail: sharedPodcast?.image || item.thumbnail,
+          author: item.author,
+        },
+        {},
+      ),
+    [podcastAudioUrl, sharedPodcast, item],
+  );
   const isCurrentEpisode = !!podcastTrack && currentTrack?.audioUrl === podcastTrack.audioUrl;
   const playEpisode = useCallback(() => {
     if (!podcastTrack) return;
@@ -1630,23 +1632,7 @@ function PlaylistEpisodeRow({ item, index, feedImage, feedTitle, isPodcast, read
   onMarkRead: (item: RSSItem) => void;
 }) {
   const { play, currentTrack, isPlaying, togglePlay } = useAudioPlayer();
-  const track = useMemo<MusicTrack | null>(() => {
-    if (!item.audioUrl) return null;
-    return {
-      id: `rss-${encodeURIComponent(item.audioUrl)}`,
-      title: item.title || "Untitled Episode",
-      artist: item.author || feedTitle || "Podcast",
-      artistPubkey: "",
-      audioUrl: item.audioUrl,
-      coverUrl: item.thumbnail || feedImage || "",
-      description: item.description || "",
-      genre: "Podcast",
-      duration: item.duration || 0,
-      createdAt: item.pubDate ? Math.floor(new Date(item.pubDate).getTime() / 1000) : 0,
-      source: "podcast" as const,
-      albumTitle: feedTitle || undefined,
-    };
-  }, [item, feedTitle, feedImage]);
+  const track = useMemo(() => episodeTrack(item, { title: feedTitle, image: feedImage }), [item, feedTitle, feedImage]);
   const isCurrent = !!track && currentTrack?.audioUrl === track.audioUrl;
   const dur = item.duration ? formatDuration(item.duration) : "";
   const when = useMemo(() => {
@@ -1743,6 +1729,31 @@ function useStableHero(hero: MergedItem<RSSItem> | null, present: MergedItem<RSS
     return hero;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hero, present, resetKey]);
+}
+
+/** Which lane of the News page you last had open ("news" | "listen"). */
+const NEWS_LANE_KEY = "ro_news_lane";
+
+/** One feed through the server's RSS proxy. Throws on failure, so react-query retries and reports it. */
+async function fetchRssFeed(url: string): Promise<RSSFeedData> {
+  const res = await fetch(`/api/rss?url=${encodeURIComponent(url)}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Failed to fetch" }));
+    throw new Error(err.error || "Failed to fetch feed");
+  }
+  return res.json() as Promise<RSSFeedData>;
+}
+
+/**
+ * A feed's newest items, at most MAX_ITEMS_PER_FEED. A feed's own order isn't
+ * always newest first, and a stream never reaches a feed's deep back-catalogue,
+ * so keeping all of it only bloats the merge and memory on weaker devices.
+ */
+function newestCapped(items: RSSItem[]): RSSItem[] {
+  if (items.length <= MAX_ITEMS_PER_FEED) return items;
+  return [...items]
+    .sort((a, b) => (Date.parse(b.pubDate || "") || 0) - (Date.parse(a.pubDate || "") || 0))
+    .slice(0, MAX_ITEMS_PER_FEED);
 }
 
 /** "24 minutes ago"; empty without a usable date. A date a publisher's clock
@@ -1942,14 +1953,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
       const shouldFetch = primaryFeedUrls.has(f.url) || i < backfillLimit;
       return {
         queryKey: ["/api/rss", f.url],
-        queryFn: async () => {
-          const res = await fetch(`/api/rss?url=${encodeURIComponent(f.url)}`);
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({ error: "Failed to fetch" }));
-            throw new Error(err.error || "Failed to fetch feed");
-          }
-          return res.json() as Promise<RSSFeedData>;
-        },
+        queryFn: () => fetchRssFeed(f.url),
         enabled: isAllMode && !!f.url && shouldFetch,
         staleTime: 10 * 60 * 1000,
         gcTime: 30 * 60 * 1000,
@@ -1957,6 +1961,82 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
       };
     }),
   });
+
+  // ── The Listen lane (News redesign, part 4) ──────────────────────────────
+  // News | Listen: articles in News, the new episodes of the shows you follow
+  // in Listen. The lane you had open is remembered on this device.
+  const [lane, setLane] = useState<NewsLane>(() => {
+    try {
+      return localStorage.getItem(NEWS_LANE_KEY) === "listen" ? "listen" : "news";
+    } catch {
+      return "news";
+    }
+  });
+  const chooseLane = useCallback((next: string) => {
+    const chosen: NewsLane = next === "listen" ? "listen" : "news";
+    setLane(chosen);
+    try {
+      localStorage.setItem(NEWS_LANE_KEY, chosen);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const isListen = isAllMode && lane === "listen";
+  const listenFeedSources = useMemo<SavedFeed[]>(() => laneFeeds(feeds, "listen"), [feeds]);
+  // Your shows are fetched only while Listen is open: the first 12 at once,
+  // then 6 more a second (the /api/rss budget is 120 requests a minute).
+  const [listenLimit, setListenLimit] = useState(12);
+  useEffect(() => {
+    if (!isListen || listenLimit >= listenFeedSources.length) return;
+    const t = window.setTimeout(() => setListenLimit((n) => n + 6), 1000);
+    return () => window.clearTimeout(t);
+  }, [isListen, listenLimit, listenFeedSources.length]);
+  const listenQueries = useQueries({
+    queries: listenFeedSources.map((f, i) => ({
+      queryKey: ["/api/rss", f.url],
+      queryFn: () => fetchRssFeed(f.url),
+      enabled: isListen && i < listenLimit,
+      staleTime: 10 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+      retry: 1,
+    })),
+  });
+  const listenItems = useMemo(() => {
+    if (!isListen) return [] as MergedItem<RSSItem>[];
+    const perFeed = listenFeedSources.map((f, i) => {
+      const data = listenQueries[i]?.data as RSSFeedData | undefined;
+      const source: MergeSource = {
+        url: f.url,
+        name: f.name || data?.title,
+        feedImage: f.feedImage || data?.image,
+        siteUrl: f.siteUrl || data?.link,
+      };
+      return { source, items: newestCapped((data?.items ?? []) as RSSItem[]) };
+    });
+    return listenEpisodes(mergeFeedItems(perFeed));
+    // listenQueries identity changes each render; key off the resolved data.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isListen, listenFeedSources, listenQueries.map((q) => q.dataUpdatedAt).join(",")]);
+  const listenLoading = isListen && listenQueries.some((q) => q.isLoading);
+  const [listenVisibleCount, setListenVisibleCount] = useState(MERGED_PAGE);
+  const listenDays = useMemo(
+    () => groupByDay(listenItems.slice(0, listenVisibleCount), Date.now()),
+    [listenItems, listenVisibleCount],
+  );
+  // Following no shows: suggest what's trending in podcasting (Podcast Index),
+  // never our own picks, and say so plainly when it can't answer.
+  const { configured: podcastIndexConfigured } = usePodcastStatus();
+  const trending = usePodcastTrending(null, 20, isListen && listenFeedSources.length === 0 && podcastIndexConfigured === true);
+  const listenMode = listenView({
+    followedShows: listenFeedSources.length,
+    episodeCount: listenItems.length,
+    episodesLoading: listenLoading,
+    podcastIndexConfigured,
+    trendingLoading: trending.isLoading,
+    trendingCount: trending.feeds.length,
+    trendingError: trending.isError,
+  });
+  const player = useAudioPlayer();
 
   // The remembered "latest edition" — read synchronously on mount so the News
   // page paints its last screen instantly instead of waiting on the network.
@@ -1975,16 +2055,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
         feedImage: f.feedImage || data?.image,
         siteUrl: f.siteUrl || data?.link,
       };
-      // Cap each feed to its NEWEST items before merging. In a newest-first
-      // firehose a single feed's deep back-catalog never surfaces, so keeping
-      // all of it just bloats the merge/score/cluster passes and memory — a
-      // real risk on weaker devices. Sort desc by date so the cap keeps the
-      // freshest regardless of the feed's own ordering.
-      const items = (data?.items ?? []) as RSSItem[];
-      const capped = items.length > MAX_ITEMS_PER_FEED
-        ? [...items].sort((a, b) => (Date.parse(b.pubDate || "") || 0) - (Date.parse(a.pubDate || "") || 0)).slice(0, MAX_ITEMS_PER_FEED)
-        : items;
-      return { source, items: capped };
+      return { source, items: newestCapped((data?.items ?? []) as RSSItem[]) };
     });
     return mergeFeedItems(perFeed);
     // feedQueries identity changes each render; key off the resolved data + sources.
@@ -2100,14 +2171,16 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
   }, [isAllMode]);
 
   // Refresh: All mode re-fetches every feed; single mode re-fetches the one.
-  const mergedFetching = isAllMode && feedQueries.some((q) => q.isFetching);
+  // Refresh follows the lane you're in.
+  const laneQueries = isListen ? listenQueries : feedQueries;
+  const mergedFetching = isAllMode && laneQueries.some((q) => q.isFetching);
   const handleRefresh = useCallback(() => {
     if (isAllMode) {
-      feedQueries.forEach((q) => q.refetch());
+      laneQueries.forEach((q) => q.refetch());
     } else {
       refetch();
     }
-  }, [isAllMode, feedQueries, refetch]);
+  }, [isAllMode, laneQueries, refetch]);
 
   // Items actually shown, after applying the source (author) filter.
   const visibleItems = useMemo(() => {
@@ -2231,6 +2304,66 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
     );
   };
 
+  // An episode in the Listen lane: the same row as a story, with its own Play
+  // beside it. The show's art isn't repeated on every row (the show's name
+  // says whose it is); tapping the row opens the episode in the reader.
+  const renderEpisode = (m: MergedItem<RSSItem>) => {
+    const id = rssItemId(m.item);
+    const track = episodeTrack(m.item, { title: m.source.name, image: m.source.feedImage });
+    const isCurrent = !!track && player.currentTrack?.audioUrl === track.audioUrl;
+    const length = m.item.duration ? formatDuration(m.item.duration) : "";
+    return (
+      <NewsStoryRow
+        key={`episode-${id}`}
+        variant="row"
+        title={m.item.title}
+        sourceName={m.source.name || "Podcast"}
+        timeLabel={[storyTimeLabel(m.item.pubDate), length].filter(Boolean).join(" · ")}
+        image={null}
+        isRead={isRead(id)}
+        onOpen={() => handleOpenReader(m.item)}
+        onPlay={track ? () => {
+          markRead(id);
+          if (isCurrent) player.togglePlay();
+          else player.play(track);
+        } : undefined}
+        playing={isCurrent && player.isPlaying}
+      />
+    );
+  };
+
+  // A show suggested from Podcast Index's trending list, followed in one tap.
+  const renderSuggestedShow = (feed: PodcastFeed) => {
+    const following = existingUrls.has(feed.url);
+    return (
+      <div key={feed.id} className="flex items-center gap-3 px-2 py-3" data-testid="listen-suggested-show">
+        {feed.image && (
+          <img
+            src={feed.image}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="h-12 w-12 shrink-0 rounded-md object-cover bg-muted/40"
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
+          />
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-medium text-foreground">{feed.title}</p>
+          {feed.author && <p className="truncate text-xs text-muted-foreground">{feed.author}</p>}
+        </div>
+        <Button
+          variant="outline"
+          className="h-11 shrink-0 px-4 text-sm"
+          disabled={following}
+          onClick={() => handleAddFeed(podcastFeedToSaved(feed))}
+          data-testid={`button-follow-show-${feed.id}`}
+        >
+          {following ? "Following" : "Follow"}
+        </Button>
+      </div>
+    );
+  };
+
   // The starter stays a suggestion until you settle it (starterStatus in
   // lib/news-library.ts): one quiet line under the search with Keep and Edit.
   const [starterKept, setStarterKept] = useState<boolean>(() => {
@@ -2254,6 +2387,9 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
       /* ignore */
     }
   }, []);
+
+  // The suggestion line is about your news sources, so it lives in News.
+  const showSuggestedLine = isAllMode && lane === "news" && libraryStatus === "suggested";
 
   const handleAddFeed = useCallback((feed: SavedFeed) => {
     setFeeds(prev => {
@@ -2411,6 +2547,19 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
             </button>
           }
         />
+        {isAllMode && (
+          <PageTabs
+            ariaLabel="News or Listen"
+            testId="news-lane-switch"
+            className="[&_[role=tab]]:min-h-11"
+            active={lane}
+            onChange={chooseLane}
+            tabs={[
+              { key: "news", label: "News", testId: "tab-lane-news" },
+              { key: "listen", label: "Listen", testId: "tab-lane-listen" },
+            ]}
+          />
+        )}
         <div className="flex items-center gap-2" data-testid="container-feed-selector-mobile">
           {!isAllMode && (
             <Button
@@ -2427,7 +2576,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
           )}
           {/* The starter, said plainly: suggestions you can keep in one tap or
               edit. The line goes once you keep them or add a source. */}
-          {isAllMode && libraryStatus === "suggested" && (
+          {showSuggestedLine && (
             <p className="flex items-center gap-1 text-sm text-muted-foreground" data-testid="news-suggested-line">
               {sections.suggested.length} suggested {sections.suggested.length === 1 ? "source" : "sources"}
               <span aria-hidden="true">·</span>
@@ -2440,7 +2589,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
           <Drawer open={feedPopoverOpen} onOpenChange={setFeedPopoverOpen}>
             <DrawerTrigger asChild>
               {isAllMode ? (
-                libraryStatus === "suggested" ? (
+                showSuggestedLine ? (
                   <Button variant="ghost" className="h-11 -ml-1 px-2 text-sm font-medium text-brand hover:text-brand" data-testid="button-feed-dropdown">
                     Edit
                   </Button>
@@ -2715,7 +2864,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
 
         <div ref={articlesRef} className="min-w-0 space-y-3" data-testid="container-feed-content">
           {/* ── Merged "All feeds" thread (the default view) ── */}
-          {isAllMode && (
+          {isAllMode && lane === "news" && (
             <div data-testid="container-merged-thread">
               {mergedLoading && mergedItems.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -2770,6 +2919,82 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                       <span className="text-xs">Loading more stories…</span>
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Listen: the new episodes of the shows you follow ── */}
+          {isListen && (
+            <div data-testid="container-listen">
+              {listenMode === "loading" && (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <RelayOutpostLoader />
+                  <p className="text-sm text-muted-foreground">
+                    {listenFeedSources.length > 0 ? "Gathering your shows…" : "Finding what people are listening to…"}
+                  </p>
+                </div>
+              )}
+
+              {listenMode === "episodes" && listenItems.length === 0 && (
+                <p className="py-12 text-center text-sm text-muted-foreground" data-testid="listen-empty">
+                  No new episodes from your shows right now.
+                </p>
+              )}
+
+              {listenMode === "episodes" && listenItems.length > 0 && (
+                <div className="space-y-6">
+                  {listenDays.map((day) => (
+                    <section key={day.label} data-testid="listen-day">
+                      <h2 className="px-2 pb-1 text-sm font-semibold text-foreground">{day.label}</h2>
+                      <div className="divide-y divide-border/50">
+                        {day.items.map((m) => renderEpisode(m))}
+                      </div>
+                    </section>
+                  ))}
+                  {listenItems.length > listenVisibleCount && (
+                    <div className="flex justify-center">
+                      <Button
+                        variant="ghost"
+                        onClick={() => setListenVisibleCount((n) => n + MERGED_PAGE)}
+                        className="h-11 px-4 text-sm text-muted-foreground hover:text-foreground"
+                        data-testid="button-load-more-episodes"
+                      >
+                        Show more episodes
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {listenMode === "trending" && (
+                <section data-testid="listen-trending">
+                  <h2 className="px-2 text-sm font-semibold text-foreground">Trending in podcasts</h2>
+                  <p className="px-2 pt-1 pb-2 text-sm text-muted-foreground">
+                    You don't follow any shows yet. Here's what people are listening to, from Podcast Index.
+                  </p>
+                  <div className="divide-y divide-border/50">
+                    {trending.feeds.map((feed) => renderSuggestedShow(feed))}
+                  </div>
+                </section>
+              )}
+
+              {listenMode === "unavailable" && (
+                <div className="flex flex-col items-center gap-3 py-12 text-center" data-testid="listen-unavailable">
+                  <p className="text-sm text-muted-foreground max-w-xs">
+                    Podcast suggestions aren't available right now. You can still find and follow shows by searching.
+                  </p>
+                  <AddRssFeedDialog
+                    onAdd={handleAddFeed}
+                    existingUrls={existingUrls}
+                    onOpenFeed={handleSelectFeed}
+                    autoFocusSearch
+                    trigger={
+                      <Button variant="outline" className="h-11 px-4" data-testid="button-find-podcasts">
+                        Find podcasts
+                      </Button>
+                    }
+                  />
                 </div>
               )}
             </div>

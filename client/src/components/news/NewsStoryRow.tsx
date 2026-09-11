@@ -12,6 +12,7 @@
  * size turns out small, it steps down to a thumbnail or disappears.
  */
 import { useState, type SyntheticEvent } from "react";
+import { Pause, Play } from "lucide-react";
 
 export interface NewsStoryImage {
   url: string;
@@ -28,6 +29,10 @@ export interface NewsStoryRowProps {
   variant: "lead" | "row";
   isRead: boolean;
   onOpen: () => void;
+  /** An episode (the Listen lane): a Play control beside the row. */
+  onPlay?: () => void;
+  /** This episode is the one playing now (Play becomes Pause). */
+  playing?: boolean;
 }
 
 /** Wide enough to fill the lead's picture without looking blown up. */
@@ -37,7 +42,7 @@ const THUMB_MIN_WIDTH = 120;
 
 const proxied = (url: string) => `/api/rss/image-proxy?url=${encodeURIComponent(url)}`;
 
-export function NewsStoryRow({ title, sourceName, timeLabel, image, variant, isRead, onOpen }: NewsStoryRowProps) {
+export function NewsStoryRow({ title, sourceName, timeLabel, image, variant, isRead, onOpen, onPlay, playing = false }: NewsStoryRowProps) {
   const [src, setSrc] = useState(image?.url ?? "");
   const [fit, setFit] = useState<"lead" | "thumb" | "none">(image ? image.fit : "none");
   const isLead = variant === "lead";
@@ -66,7 +71,7 @@ export function NewsStoryRow({ title, sourceName, timeLabel, image, variant, isR
   );
 
   const tone = isRead ? "text-muted-foreground" : "text-foreground";
-  return (
+  const row = (
     <button
       type="button"
       onClick={onOpen}
@@ -101,5 +106,23 @@ export function NewsStoryRow({ title, sourceName, timeLabel, image, variant, isR
         )}
       </span>
     </button>
+  );
+  if (!onPlay) return row;
+  // A button can't hold another button, so an episode's Play sits beside the
+  // row (which opens the reader), as its own 44px target named for the episode.
+  const name = title || "episode";
+  return (
+    <div className="flex items-center gap-1" data-testid="news-episode">
+      <div className="min-w-0 flex-1">{row}</div>
+      <button
+        type="button"
+        onClick={onPlay}
+        aria-label={`${playing ? "Pause" : "Play"} ${name}`}
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand transition-colors hover:bg-brand/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        data-testid="button-play-episode"
+      >
+        {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+      </button>
+    </div>
   );
 }
