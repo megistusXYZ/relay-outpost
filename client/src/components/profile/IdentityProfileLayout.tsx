@@ -28,6 +28,7 @@ import { PetnameDialog } from "@/components/PetnameDialog";
 import { DetailLink, linkifyBio } from "@/components/profile/ProfileDetailLink";
 import { BtcZapIcon } from "@/components/icons/BtcZapIcon";
 import { CalendarDays } from "lucide-react";
+import { IdentityCounts } from "@/components/profile/IdentityPresence";
 
 export interface IdentityProfileData {
   pubkey: string;
@@ -49,9 +50,12 @@ export interface IdentityProfileData {
   lud16?: string;
   /** Seconds since epoch — shown as "Joined <month year>". */
   joinedAt?: number;
+  /** Measured counts only: undefined when we never got an answer. */
   followers?: number;
   following?: number;
   notes?: number;
+  /** Seconds since epoch of their latest activity, for the bucketed status. */
+  lastActiveAt?: number;
   /** WoT tier (additive — chip hidden when absent or trust is off). */
   grapeRankTier?: string;
   wotEnabled: boolean;
@@ -101,7 +105,7 @@ function CirclesAndCommunities({ circleSlot, communitiesSlot }: { circleSlot?: R
   );
 }
 
-export function IdentityProfileLayout({ data, actions, networkSlot, overflowSlot, circleSlot, communitiesSlot, vouchSlot, onZapLud16, children }: { data: IdentityProfileData; actions: ReactNode; networkSlot?: ReactNode; overflowSlot?: ReactNode; circleSlot?: ReactNode; communitiesSlot?: ReactNode; vouchSlot?: ReactNode; onZapLud16?: () => void; children: ReactNode }) {
+export function IdentityProfileLayout({ data, actions, networkSlot, overflowSlot, circleSlot, communitiesSlot, vouchSlot, onZapLud16, onSeeNetwork, children }: { data: IdentityProfileData; actions: ReactNode; networkSlot?: ReactNode; overflowSlot?: ReactNode; circleSlot?: ReactNode; communitiesSlot?: ReactNode; vouchSlot?: ReactNode; onZapLud16?: () => void; /** Opens the following/followers list from the counts under the name. */ onSeeNetwork?: () => void; children: ReactNode }) {
   const joined = data.joinedAt ? new Date(data.joinedAt * 1000).toLocaleDateString(undefined, { month: "short", year: "numeric" }) : null;
   const showTrust = data.wotEnabled && !!data.grapeRankTier && data.grapeRankTier !== "none";
   const liveStream = useProfileLiveStream(data.pubkey);
@@ -153,6 +157,9 @@ export function IdentityProfileLayout({ data, actions, networkSlot, overflowSlot
               {data.nip05 && (
                 <Nip05Badge nip05={data.nip05} pubkey={data.pubkey} className="mt-0.5" textClassName="text-[11px] text-muted-foreground" iconClassName="w-3 h-3" />
               )}
+              {/* Counts under the name, as on every social app: important, not
+                  the loudest thing on the page, and on a phone's first screen. */}
+              <IdentityCounts followers={data.followers} following={data.following} lastActiveAt={data.lastActiveAt} onSeeNetwork={onSeeNetwork} />
               {!data.isOwnProfile && (
                 <button
                   type="button"
@@ -247,9 +254,8 @@ export function IdentityProfileLayout({ data, actions, networkSlot, overflowSlot
 
         {/* ── Main column ───────────────────────────────────────── */}
         <main className="min-w-0">
-          {/* Headline stats (Following/Followers/Posts) now live at the top of
-              the Presence card in `children`, so the identity summary is one
-              block instead of two stacked cards showing "posts" twice. */}
+          {/* Follower counts live under the name (IdentityCounts); the main
+              column opens with the quiet totals line and the media shelf. */}
           {children}
         </main>
       </div>

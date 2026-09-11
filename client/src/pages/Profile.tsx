@@ -69,7 +69,6 @@ import { IdentityCommunitiesCard, useSubjectCommunityRows } from "@/components/p
 import { LiveBannerOverlay, useProfileLiveStream } from "@/components/profile/LiveNowBanner";
 import { ProfileLayoutSwitch } from "@/components/profile/ProfileLayoutSwitch";
 import { IdentityProfileMain } from "@/components/profile/IdentityProfileMain";
-import { IdentityNetworkCard } from "@/components/profile/IdentityNetworkCard";
 import { IdentityCircleCard } from "@/components/profile/IdentityCircleCard";
 import { isMutedPubkey, mutePubkey, unmutePubkey } from "@/lib/spam-filter";
 import { recordProfileVisit } from "@/lib/recent-profiles";
@@ -1587,7 +1586,6 @@ export default function Profile() {
     }
   };
 
-  const crewCount = profileStats?.followingCount || userFollowList.length || 0;
   const orbitCount = profileStats?.followersCount || 0;
   const signalStrength = useMemo(() => getSignalStrength(profileStats?.lastSeen), [profileStats?.lastSeen]);
   const profileIsLive = pubkey ? isUserLive(pubkey) : false;
@@ -2338,30 +2336,21 @@ export default function Profile() {
             website: profileContent?.website,
             lud16: profileContent?.lud16,
             joinedAt: profileStats?.timeJoined,
-            followers: profileStats?.followersCount,
-            following: profileStats?.followingCount,
+            // Measured only: an unanswered Primal zero-fills these, and the
+            // counts under the name must dash out rather than read "0".
+            followers: profileStats?.measured ? profileStats.followersCount : undefined,
+            following: profileStats?.measured ? profileStats.followingCount : undefined,
             notes: profileStats?.noteCount,
+            lastActiveAt: profileStats?.lastSeen ?? (allNotes?.length ? Math.max(...allNotes.map((e) => e.created_at)) : undefined),
             grapeRankTier,
             wotEnabled,
           }}
           actions={identityActions}
           onZapLud16={handleZap}
-          networkSlot={
-            // Dropped on mobile: stacked into one column it lands a few hundred
-            // pixels from the headline "289 FOLLOWING / 39 FOLLOWERS" showing
-            // the same two numbers. The counts themselves are now the way in.
-            isMobileProfile ? undefined : (
-              <IdentityNetworkCard
-                following={crewCount}
-                // Raw, so "we don't know" stays undefined instead of becoming
-                // a zero the card would print. orbitCount coerces to 0.
-                // `measured` is what makes that true: without it an unanswered
-                // Primal delivered a real 0, not undefined.
-                followers={profileStats?.measured ? profileStats.followersCount : undefined}
-                onSeeAll={openNetwork}
-              />
-            )
-          }
+          // The counts under the name are the way into the network list, on
+          // every width. The rail's "Connections" button showed the same two
+          // numbers a second time, so it is gone.
+          onSeeNetwork={openNetwork}
           overflowSlot={identityOverflow}
           circleSlot={identityCircle}
           communitiesSlot={subjectCommunityRows2.length > 0 ? <IdentityCommunitiesCard rows={subjectCommunityRows2} /> : undefined}
