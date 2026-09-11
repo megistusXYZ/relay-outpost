@@ -166,6 +166,11 @@ function loadLedger(): MentionLedger {
   }
 }
 
+/** The raw ledger, for Activity's group-mention rows (concord-activity-mentions filters it). */
+export function readMentionLedger(): MentionLedger {
+  return loadLedger();
+}
+
 function saveLedger(ledger: MentionLedger, opts?: { silent?: boolean }): void {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(ledger)); } catch {}
   // silent: prune-persists happen INSIDE getMentionCounts, which listeners call
