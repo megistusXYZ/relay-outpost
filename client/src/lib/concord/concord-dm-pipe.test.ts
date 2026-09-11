@@ -15,6 +15,7 @@ vi.stubGlobal("window", { dispatchEvent: () => true });
 import { routeGroupRumor } from "./concord-dm-pipe";
 import { listPendingInvites } from "./concord-invites";
 import { listReports, reportTags } from "./concord-reports";
+import { listJoinRequests } from "./concord-join-requests";
 
 const hex = (c: string) => c.repeat(64);
 const ME = hex("a"), SENDER = hex("b");
@@ -40,6 +41,13 @@ describe("what rides the DM pipe but isn't a DM", () => {
   it("keeps a malformed invite or report out of the DMs all the same", () => {
     expect(routeGroupRumor(ME, { ...base, rumorKind: 1984, content: "hi", tags: [] })).toMatchObject({ kind: "report", isNew: false });
     expect(routeGroupRumor(ME, { ...base, rumorKind: 3313, content: "not json", tags: [] })).toMatchObject({ kind: "invite", isNew: false });
+  });
+
+  it("a request to join goes to the moderator's waiting list, and a malformed one is still no DM", () => {
+    const tags = [["p", ME], ["concord", hex("c")]];
+    expect(routeGroupRumor(ME, { ...base, rumorKind: 9021, content: "hi, I'm from the meetup", tags })).toMatchObject({ kind: "request", isNew: true });
+    expect(listJoinRequests(ME, hex("c"))[0].note).toBe("hi, I'm from the meetup");
+    expect(routeGroupRumor(ME, { ...base, rumorId: hex("2"), rumorKind: 9021, content: "x", tags: [] })).toMatchObject({ kind: "request", isNew: false });
   });
 
   it("leaves an ordinary DM for the DM thread", () => {

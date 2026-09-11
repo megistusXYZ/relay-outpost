@@ -431,6 +431,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       if (routed.isNew && routed.kind === "report") {
         toast({ title: "A message was reported", description: "Someone reported a message in a group chat you moderate. Open the group's Manage to review it." });
       }
+      if (routed.isNew && routed.kind === "request") {
+        toast({ title: "Someone asked to join", description: "Open the group chat's Manage to let them in or decline." });
+      }
       return;
     }
 

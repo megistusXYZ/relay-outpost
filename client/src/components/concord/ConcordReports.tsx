@@ -33,21 +33,6 @@ export function useGroupReports(communityId: string): GroupReport[] {
   return reports;
 }
 
-/** A count on the Manage button, so a waiting report is seen without opening anything. */
-export function ReportCountBadge({ communityId }: { communityId: string }) {
-  const n = useGroupReports(communityId).length;
-  if (!n) return null;
-  return (
-    <span
-      className="min-w-[16px] h-4 px-1 rounded-full bg-amber-500 text-[9px] font-semibold leading-4 text-black text-center tabular-nums"
-      aria-label={`${n} report${n === 1 ? "" : "s"} to review`}
-      data-testid="manage-report-count"
-    >
-      {n > 9 ? "9+" : n}
-    </span>
-  );
-}
-
 export function ConcordReports({ communityId, roomName }: {
   communityId: string;
   /** A room's name by id, for saying where it happened. */

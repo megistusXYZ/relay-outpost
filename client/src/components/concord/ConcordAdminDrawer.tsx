@@ -17,6 +17,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { DoorOpen, Flag, Hash, History as HistoryIcon, Lock, Settings2, Shield, Trash2, Users } from "lucide-react";
 import { ConcordReports } from "./ConcordReports";
+import { ConcordJoinRequests } from "./ConcordJoinRequests";
 import { SpaceAdminDrawer } from "@/components/space/SpaceAdminDrawer";
 import { SpaceAdminSection } from "@/components/space/SpaceAdminSection";
 import type { SpaceAdminSectionDef } from "@/components/space/space-admin-sections";
@@ -89,6 +90,13 @@ export function ConcordAdminDrawer({
 
   const renderSection = useCallback((section: SpaceAdminSectionDef) => {
     switch (section.id) {
+      case "requests":
+        // People who asked to join through an ask link; let in with a direct invite.
+        return (
+          <SpaceAdminSection can={caps.manageMembers} title={section.label} icon={DoorOpen}>
+            <ConcordJoinRequests community={community} />
+          </SpaceAdminSection>
+        );
       case "reports":
         // Messages members reported to the moderators; only they see this.
         return (

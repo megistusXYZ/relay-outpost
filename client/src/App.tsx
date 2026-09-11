@@ -218,6 +218,10 @@ const ConcordInviteAcceptLazy = lazy(() => lazyRetry(() => import("@/pages/Conco
 function LazyConcordInviteAccept({ naddr }: { naddr: string }) {
   return <Suspense fallback={null}><ConcordInviteAcceptLazy naddr={naddr} /></Suspense>;
 }
+const ConcordAskLazy = lazy(() => lazyRetry(() => import("@/pages/ConcordAsk")));
+function LazyConcordAsk({ npub }: { npub: string }) {
+  return <Suspense fallback={null}><ConcordAskLazy npub={npub} /></Suspense>;
+}
 
 // App-shell components moved off the eager entry chunk. Each is either
 // mount-gated (HeaderAudioPlayer only renders while audio is active),
@@ -440,6 +444,7 @@ function Router() {
         <Route path="/outposts" component={Outposts} />
         <Route path="/outposts/c/:communityId">{(params) => <LazyConcordOutpost communityId={params.communityId} />}</Route>
         <Route path="/invite/:naddr">{(params) => <LazyConcordInviteAccept naddr={params.naddr} />}</Route>
+        <Route path="/ask/:npub">{(params) => <LazyConcordAsk npub={params.npub} />}</Route>
         <Route path="/outposts/:relayEncoded">{(params) => <OutpostDetail relayEncoded={params.relayEncoded} />}</Route>
         {/* Legacy slug — the own-account page moved to /account when "outpost"
             was rebranded to Communities. Preserve query (?tab=…) and hash so
@@ -1199,7 +1204,8 @@ function AppLayout() {
   // route guard below already renders /invite in place instead of bouncing,
   // but the full-screen launch overlay (opaque, z-100) was still covering it,
   // so recipients saw the marketing landing and the invite looked broken.
-  const onInvitePage = location.startsWith("/invite/");
+  // An ask link (/ask/, concord-join-requests) is the same kind of door.
+  const onInvitePage = location.startsWith("/invite/") || location.startsWith("/ask/");
   // /discover is the signed-out visitor's ENTIRE navigation (buildNavDestinations
   // returns only Discover for guests), so the launch overlay must stand aside
   // there — the bento IS the shop window, with its own sign-in row. And the
@@ -1392,6 +1398,16 @@ function AppLayout() {
         const dest = window.location.pathname + window.location.search + window.location.hash;
         sessionStorage.setItem("relay-outpost-post-auth-redirect", dest);
         sessionStorage.setItem("relay-outpost-concord-invite-pending", "1");
+      } catch {}
+      return;
+    }
+
+    // Concord ask link: the same, minus auto-join. The page asks them to sign
+    // in, and brings them back to it (the #fragment names the group).
+    if (window.location.pathname.startsWith("/ask/")) {
+      try {
+        const dest = window.location.pathname + window.location.search + window.location.hash;
+        sessionStorage.setItem("relay-outpost-post-auth-redirect", dest);
       } catch {}
       return;
     }
