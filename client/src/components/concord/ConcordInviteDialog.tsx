@@ -11,6 +11,9 @@ import { QRCodeSVG } from "qrcode.react";
 import { Link2, Copy, Check, Trash2, Loader2, QrCode, Send, X, RotateCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { EXPIRY_CHOICES, expiryAfter, linkExpiry, type ExpiryChoice } from "@/lib/concord/concord-invite-links";
+import { syncInviteListNow, INVITE_LIST_SYNCED_EVENT } from "@/lib/concord/concord-invite-list-live";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ProfileSearchInput } from "@/components/ProfileSearchInput";
 import type { SelectedRecipient } from "@/components/ProfileSearchInput";
@@ -24,10 +27,12 @@ import { mintInviteLink, rebuildInviteLink, revokeInviteLink, sendDirectInvite }
 import { getInviteSigners, putInviteSigner, type StoredCommunity, type StoredInviteSigner } from "@/lib/concord/concord-keys";
 import { listSentInvites, recordSentInvite, removeSentInvite, isInGroup, type SentInvite } from "@/lib/concord/concord-sent-invites";
 
-export function ConcordInviteDialog({ open, onOpenChange, community, memberPubkeys }: {
+export function ConcordInviteDialog({ open, onOpenChange, community, memberPubkeys, linkJoins }: {
   open: boolean; onOpenChange: (o: boolean) => void; community: StoredCommunity;
   /** Live member pubkeys — used to show whether a sent invite's recipient has since joined. */
   memberPubkeys?: string[];
+  /** How many people joined through each of my links, by label (their Joins say which). */
+  linkJoins?: Map<string, number>;
 }) {
   const { pubkey } = useNostrAuth();
   const { toast } = useToast();
@@ -40,6 +45,8 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
   const [inviteRecipient, setInviteRecipient] = useState<SelectedRecipient | null>(null);
   const [sendingInvite, setSendingInvite] = useState(false);
   const [reinviting, setReinviting] = useState<string | null>(null);
+  const [label, setLabel] = useState("");
+  const [expiry, setExpiry] = useState<ExpiryChoice>("never");
 
   const memberSet = useMemo(() => new Set(memberPubkeys ?? []), [memberPubkeys]);
 
@@ -50,33 +57,49 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
     if (pubkey) getInviteSigners(pubkey, community.community_id).then(setLinks);
     reloadSent();
   }, [pubkey, community.community_id, reloadSent]);
-  useEffect(() => { if (open) reload(); }, [open, reload]);
+  // Your links live in your Invite List too (CORD-05 §4), so links made or
+  // turned off on your other devices show up here, and these reach them.
+  const syncLinks = useCallback(() => {
+    const signer = getGlobalSigner();
+    if (!pubkey || !signer?.nip44) return;
+    syncInviteListNow(signer, pubkey).then(() => reload()).catch(() => {});
+  }, [pubkey, reload]);
+  useEffect(() => { if (open) { reload(); syncLinks(); } }, [open, reload, syncLinks]);
+  useEffect(() => {
+    window.addEventListener(INVITE_LIST_SYNCED_EVENT, reload);
+    return () => window.removeEventListener(INVITE_LIST_SYNCED_EVENT, reload);
+  }, [reload]);
 
   const mint = useCallback(async () => {
     if (!pubkey) return;
     setMinting(true);
     try {
       const base = window.location.origin;
-      const url = await mintInviteLink(pubkey, community, base, (e, r) => publishEvent(e, r), { creatorNpub: formatNpub(pubkey) });
+      const url = await mintInviteLink(pubkey, community, base, (e, r) => publishEvent(e, r), {
+        creatorNpub: formatNpub(pubkey), label: label.trim() || undefined, expiresAt: expiryAfter(expiry),
+      });
       setLastLink(url);
       await navigator.clipboard?.writeText(url).catch(() => {});
       setCopied(true); setTimeout(() => setCopied(false), 1500);
       toast({ title: "Invite link created & copied" });
+      setLabel("");
       reload();
+      syncLinks();
     } catch (err) {
       toast({ title: "Couldn't create invite", description: String((err as Error)?.message ?? err), variant: "destructive" });
     } finally { setMinting(false); }
-  }, [pubkey, community, reload, toast]);
+  }, [pubkey, community, label, expiry, reload, syncLinks, toast]);
 
   const revoke = useCallback(async (link: StoredInviteSigner) => {
     if (!pubkey) return;
-    await revokeInviteLink(link.linkSignerSecret, community.relays, (e, r) => publishEvent(e, r));
+    await revokeInviteLink(link.linkSignerSecret, community.relays, (e, r) => publishEvent(e, r), link.publishedAt);
     await putInviteSigner(pubkey, { ...link, revoked: true });
     // Don't keep showing a QR/copy row for a link that just died.
     setLastLink((cur) => (cur && cur === rebuildInviteLink(link, community, window.location.origin) ? null : cur));
     toast({ title: "Invite revoked" });
     reload();
-  }, [pubkey, community, reload, toast]);
+    syncLinks();
+  }, [pubkey, community, reload, syncLinks, toast]);
 
   const invitePerson = useCallback(async () => {
     const signer = getGlobalSigner();
@@ -143,6 +166,32 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 min-w-0">
+          <div className="space-y-2">
+            <Input
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              maxLength={40}
+              placeholder="Name this link (optional), e.g. Bio link"
+              className="h-11 md:h-9 text-sm"
+              data-testid="input-invite-label"
+            />
+            <div className="flex items-center gap-1.5 flex-wrap" role="radiogroup" aria-label="Link stops working">
+              <span className="text-[11px] text-muted-foreground/60 mr-0.5">Stops working</span>
+              {EXPIRY_CHOICES.map((c) => (
+                <button
+                  key={c.id}
+                  role="radio"
+                  aria-checked={expiry === c.id}
+                  onClick={() => setExpiry(c.id)}
+                  className={`h-9 md:h-7 px-2.5 rounded-full text-xs border transition-colors ${expiry === c.id ? "border-primary/60 bg-primary/10 text-foreground" : "border-border/40 text-muted-foreground/70 hover:text-foreground"}`}
+                  data-testid={`invite-expiry-${c.id}`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground/50">Name a link to see how many people join with it.</p>
+          </div>
           <Button onClick={mint} disabled={minting} className="w-full h-11 md:h-9" data-testid="button-mint-invite">
             {minting ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Creating…</> : <><Link2 className="w-4 h-4 mr-1.5" /> Create invite link</>}
           </Button>
@@ -170,13 +219,23 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
           {activeLinks.length > 0 && (
             <div className="space-y-1.5">
               <p className="text-[11px] font-medium text-muted-foreground/70">Active links</p>
-              {activeLinks.map((l) => (
-                <div key={l.linkSignerPubkey} className="flex items-center gap-1 pl-3 pr-1 py-1 rounded-lg border border-border/20 min-w-0">
+              {activeLinks.map((l) => {
+                const ends = linkExpiry(l.expiresAt);
+                const joins = l.label ? linkJoins?.get(l.label) ?? 0 : null;
+                return (
+                <div key={l.linkSignerPubkey} className="flex items-center gap-1 pl-3 pr-1 py-1 rounded-lg border border-border/20 min-w-0" data-testid={`invite-link-${l.linkSignerPubkey.slice(0, 8)}`}>
                   <Link2 className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <div className="text-[10px] font-mono text-muted-foreground/60 truncate">{l.linkSignerPubkey.slice(0, 16)}…</div>
-                    {l.createdAt > 0 && <div className="text-[10px] text-muted-foreground/40">created {formatCompactTime(Math.floor(l.createdAt / 1000))}</div>}
+                    <div className="text-xs font-medium text-foreground/90 truncate">{l.label || "Invite link"}</div>
+                    <div className="text-[10px] text-muted-foreground/50 truncate">
+                      {[
+                        l.createdAt > 0 ? `Made ${formatCompactTime(Math.floor(l.createdAt / 1000))}` : null,
+                        joins !== null ? `${joins} joined` : null,
+                      ].filter(Boolean).join(" · ")}
+                      {ends && <span className={ends.expired ? "text-amber-500" : undefined}>{l.createdAt > 0 || joins !== null ? " · " : ""}{ends.text}</span>}
+                    </div>
                   </div>
+                  {!ends?.expired && (<>
                   <button
                     onClick={() => copyLink(l)}
                     className="flex items-center justify-center h-11 w-11 md:h-9 md:w-9 shrink-0 rounded-lg hover:bg-muted/40 text-muted-foreground/50 hover:text-foreground transition-colors"
@@ -193,11 +252,13 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
                   >
                     <QrCode className="w-4 h-4" />
                   </button>
+                  </>)}
                   <button onClick={() => revoke(l)} className="flex items-center justify-center h-11 w-11 md:h-9 md:w-9 shrink-0 rounded-lg hover:bg-destructive/10 text-muted-foreground/50 hover:text-destructive transition-colors" title="Revoke (deletes the link everywhere)" data-testid={`button-revoke-${l.linkSignerPubkey.slice(0, 8)}`}>
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

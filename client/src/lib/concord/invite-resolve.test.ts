@@ -141,12 +141,12 @@ describe("resolveInviteBundle (fetch + decrypt, cached)", () => {
     expect(await resolveInviteBundle({ naddr, fragment }, async () => tomb)).toBeNull();
   });
 
-  it("returns null for an expired bundle", async () => {
+  it("still previews an expired bundle: past it, joining refuses but the preview renders (CORD-05 §1)", async () => {
     const expired = finalizeEvent(
       { kind: KIND_INVITE_BUNDLE, created_at: 3, tags: [["d", ""], ["vsk", String(VSK.INVITE)]], content: encryptBundle({ ...baseBundle, expires_at: 1 }, token) },
       linkSk,
     );
-    expect(await resolveInviteBundle({ naddr, fragment }, async () => expired)).toBeNull();
+    expect((await resolveInviteBundle({ naddr, fragment }, async () => expired))?.expires_at).toBe(1);
   });
 
   it("returns null when the relays yield no event, and does NOT poison the cache", async () => {

@@ -45,13 +45,16 @@ export interface InviteDisplay {
  *   icon  → photo       (fallback: undefined → lock glyph)
  */
 export function bundleToDisplay(
-  bundle: Pick<InviteBundle, "name" | "icon" | "channels" | "label">,
+  bundle: Pick<InviteBundle, "name" | "icon" | "channels" | "label" | "expires_at">,
+  now = Date.now(),
 ): InviteDisplay {
   const title = bundle.name?.trim() || "Group chat invite";
 
   const desc = typeof bundle.label === "string" ? bundle.label.trim() : "";
   let subtitle: string;
-  if (desc) {
+  if (bundle.expires_at && now > bundle.expires_at) {
+    subtitle = "This invite has expired";
+  } else if (desc) {
     subtitle = desc;
   } else if (Array.isArray(bundle.channels) && bundle.channels.length) {
     const n = bundle.channels.length;
@@ -110,8 +113,9 @@ export type FetchBundleEvent = (linkSigner: string, relays: string[]) => Promise
 
 /**
  * Resolve the group bundle for an invite link, cached by naddr so it fetches +
- * decrypts once. Returns the decrypted bundle, or null on ANY failure (no
- * token, malformed, revoked, expired, unreachable, or undecryptable/legacy) —
+ * decrypts once. Returns the decrypted bundle (an expired one too: its preview
+ * still renders), or null on ANY failure (no token, malformed, revoked,
+ * unreachable, or undecryptable/legacy) —
  * the caller renders the generic card for null. A transient "no event found"
  * is NOT cached (a later render can retry); definitive negatives are.
  */
@@ -143,16 +147,35 @@ export async function resolveInviteBundle(
       dead.add(key);
       return null;
     }
-    if (bundle.expires_at && Date.now() > bundle.expires_at) {
-      dead.add(key);
-      return null;
-    }
+    // An expired bundle still previews (CORD-05 §1); bundleToDisplay says it expired.
     resolved.set(key, bundle);
     return bundle;
   })().finally(() => inflight.delete(key));
 
   inflight.set(key, p);
   return p;
+}
+
+/**
+ * What looking an invite up found. A fetch has three outcomes, not two
+ * (RELAY_REACHABILITY.md): the bundle, relays that answered without it, and
+ * relays we never reached. Only a tombstone proves a link was turned off.
+ */
+export type InviteLookup =
+  | { status: "ok" | "expired"; bundle: InviteBundle }
+  | { status: "revoked" | "missing" | "unreachable" | "broken" };
+
+export function classifyInviteFetch(
+  fetched: { reached: boolean; event: Event | null },
+  token: Uint8Array,
+  now = Date.now(),
+): InviteLookup {
+  const { event } = fetched;
+  if (!event) return { status: fetched.reached ? "missing" : "unreachable" };
+  if (isRevokedBundleEvent(event)) return { status: "revoked" };
+  const bundle = decryptBundle(event.content, token);
+  if (!bundle) return { status: "broken" };
+  return { status: bundle.expires_at && now > bundle.expires_at ? "expired" : "ok", bundle };
 }
 
 /** Test-only: clear the module cache between cases. */
