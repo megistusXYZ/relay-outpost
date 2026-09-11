@@ -25,7 +25,9 @@ import { governancePlanes, publishToPlane, publishControlEdition, decodeStreamEv
 import { buildControlEdition, parseControlEdition, VSK, type Member } from "./concord-events";
 import { adoptBaseRekey, type StoredCommunity } from "./concord-keys";
 import { recordFromBundle, bundleFromCommunity, type InviteBundle } from "./concord-invites";
-import { receiveRekey, type RekeyAuthority } from "./concord-rekey";
+import { receiveRekey, sendRekey, type RekeyAuthority } from "./concord-rekey";
+import { baseRekeyAddress } from "./concord-crypto";
+import { PERM } from "./concord-events";
 
 const signer = (sk: Uint8Array) => ({
   signEvent: async (t: unknown) => finalizeEvent({ ...(t as object) } as never, sk),
@@ -205,5 +207,54 @@ describe("writing the admin plane", () => {
 
   it("the owner's own view of the admin plane holds its key, so it can answer relay AUTH as that address", () => {
     expect(governancePlanes(ownerView).find((p) => p.pk === signerKey.pk)!.sk).toBeDefined();
+  });
+});
+
+/**
+ * Our base rotations mint the split (CORD-06 §2, §3): "A Rotator MUST mint the
+ * split on any base rotation." Members get a 104-byte blob naming the new
+ * control_pk; staff get the 136-byte form carrying the new control_root too,
+ * so they can keep writing. We used to mint the legacy 72-byte form, which a
+ * current app reads as "this group has no admin address any more".
+ */
+describe("our base rotations mint the split", () => {
+  const staffSk = generateSecretKey();
+  const staffPk = getPublicKey(staffSk);
+  const newRoot = new Uint8Array(32).fill(8);
+  const newControlRoot = generateSecretKey();
+  const newControlPk = groupKey(LABEL_CONTROL_SIGNER, newControlRoot, cid, 1n).pk;
+  const auth: RekeyAuthority = {
+    ownerPubkey: owner,
+    roster: [
+      { pubkey: memberPk, joinedAt: 0, roleIds: [], permissions: 0n, rank: 3 } as Member,
+      { pubkey: staffPk, joinedAt: 0, roleIds: [], permissions: PERM.BAN | PERM.MANAGE_CHANNELS, rank: 1 } as Member,
+    ],
+  };
+  async function rotate() {
+    const published: Event[] = [];
+    await sendRekey(signer(ownerSk), owner, member, {
+      scopeId: rekeyScopeId(), prevEpoch: 0, prevKey: root, newKey: newRoot,
+      remaining: [{ pubkey: memberPk }, { pubkey: staffPk, staff: true }],
+      control: { pk: newControlPk, root: newControlRoot },
+    }, async (e) => { published.push(e); });
+    const plane = baseRekeyAddress(root, cid, 1n);
+    return published.filter((e) => e.pubkey === plane.pk).map((e) => decodeStreamEvent(plane, e)!);
+  }
+  const held = { scopeId: rekeyScopeId(), myCurrentKey: root, myCurrentEpoch: 0, communityId: cid };
+
+  it("a member's blob names the new admin address and never carries the staff secret", async () => {
+    const res = await receiveRekey(signer(memberSk), memberPk, owner, held, await rotate(), auth);
+    expect(res.status).toBe("rekeyed");
+    if (res.status === "rekeyed") {
+      expect(bytesToHex(res.newKey)).toBe(bytesToHex(newRoot));
+      expect(res.controlPk).toBe(newControlPk);
+      expect(res.controlRoot).toBeUndefined();
+    }
+  });
+
+  it("staff also receive the new control_root, so they keep writing at the split address", async () => {
+    const res = await receiveRekey(signer(staffSk), staffPk, owner, held, await rotate(), auth);
+    expect(res.status).toBe("rekeyed");
+    if (res.status === "rekeyed") expect(res.controlRoot).toBe(bytesToHex(newControlRoot));
   });
 });

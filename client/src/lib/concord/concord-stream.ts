@@ -203,6 +203,21 @@ export interface DecodedRumor {
  * forged sender). Returns null on any failure. Pure given (plane, wrap).
  */
 export function decodeStreamEvent(plane: GroupKey, wrap: Event): DecodedRumor | null {
+  const decoded = decodeStreamEventWithSeal(plane, wrap);
+  if (!decoded) return null;
+  const { seal: _seal, ...rumor } = decoded;
+  return rumor;
+}
+
+/**
+ * Decode, keeping the verified author-signed seal. The governance plane needs
+ * it: a Refounding republishes each current edition at the new epoch by
+ * re-wrapping its ORIGINAL seal (CORD-01: "a re-wrap MUST carry the exact
+ * bytes forward"). Re-sealing under the refounder would change its author.
+ * Chat decoding keeps using decodeStreamEvent, so message caches never hold
+ * seals.
+ */
+export function decodeStreamEventWithSeal(plane: GroupKey, wrap: Event): (DecodedRumor & { seal: Seal }) | null {
   const seal = unwrapStream(plane, wrap);
   if (!seal) return null;
   // The seal must be a validly author-signed event.
@@ -213,7 +228,7 @@ export function decodeStreamEvent(plane: GroupKey, wrap: Event): DecodedRumor | 
   try {
     const rumor = JSON.parse(rumorJson) as DecodedRumor;
     if (rumor.pubkey !== seal.pubkey) return null; // sender attribution
-    return rumor;
+    return { ...rumor, seal };
   } catch {
     return null;
   }
@@ -322,7 +337,8 @@ export function subscribeGovernance(
   return subscribe(community.relays, { kinds: [1059], authors: [...planes.keys()] }, (wrap) => {
     const plane = planes.get(wrap.pubkey);
     if (!plane) return;
-    const rumor = decodeStreamEvent(plane, wrap);
+    // With the seal: an edition's seal is what a Refounding republishes.
+    const rumor = decodeStreamEventWithSeal(plane, wrap);
     if (rumor) onRumor(rumor);
   });
 }

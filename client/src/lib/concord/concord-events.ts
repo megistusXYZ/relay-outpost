@@ -14,6 +14,7 @@
  * The structural checks (highest version per entity, chain-intactness,
  * lower-rumor-id tie-break) and the permission/roster math live here too.
  */
+import type { Seal } from "./concord-crypto";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
 import { u64BE, concatBytes } from "./concord-crypto";
@@ -75,7 +76,20 @@ export const PERM = {
   CREATE_INVITE: 1n << 6n,
   VIEW_AUDIT_LOG: 1n << 8n,
   MENTION_EVERYONE: 1n << 9n,
+  PIN_MESSAGES: 1n << 11n,
 } as const;
+
+/**
+ * Staff (CORD-04 §3, normative): the owner plus anyone holding one of these
+ * bits. Staff hold the control_root and write the admin plane, and a
+ * Refounding hands them the new one in the 136-byte blob.
+ */
+export const STAFF_PERMS =
+  PERM.MANAGE_ROLES | PERM.MANAGE_CHANNELS | PERM.MANAGE_METADATA | PERM.BAN | PERM.CREATE_INVITE | PERM.PIN_MESSAGES;
+
+export function isStaff(member: { permissions: bigint }): boolean {
+  return (member.permissions & STAFF_PERMS) !== 0n;
+}
 
 /** Owner's rank; lower position = higher authority, owner is supreme. */
 export const OWNER_POSITION = 0;
@@ -110,6 +124,11 @@ export interface ControlEdition {
   content: string;
   /** the rumor id of the event carrying this edition (tie-breaker). */
   rumorId: string;
+  /**
+   * The author-signed seal it arrived in, when decoded with one. A Refounding
+   * republishes current editions by re-wrapping these verbatim (compactionOf).
+   */
+  seal?: Seal;
   /** author pubkey. */
   pubkey: string;
 }
@@ -468,7 +487,7 @@ export function editionKey(ed: ControlEdition): string {
 }
 
 // ── Control-edition parse + id ───────────────────────────────────────────────
-export function parseControlEdition(ev: { kind: number; pubkey: string; id: string; content: string; tags: string[][] }): ControlEdition | null {
+export function parseControlEdition(ev: { kind: number; pubkey: string; id: string; content: string; tags: string[][]; seal?: Seal }): ControlEdition | null {
   if (ev.kind !== KIND_CONTROL_EDITION) return null;
   const get = (k: string) => ev.tags.find((t) => t[0] === k);
   const vskTag = get("vsk"); const eidTag = get("eid"); const evTag = get("ev");
@@ -481,7 +500,28 @@ export function parseControlEdition(ev: { kind: number; pubkey: string; id: stri
     ep: get("ep")?.[1],
     vac: vacTag && vacTag.length >= 4 ? [vacTag[1], vacTag[2], vacTag[3]] : undefined,
     content: ev.content, rumorId: ev.id, pubkey: ev.pubkey,
+    ...(ev.seal ? { seal: ev.seal } : {}),
   };
+}
+
+/**
+ * The compaction a Refounding republishes at the new epoch (CORD-06 §3): the
+ * seal of the winning head of every entity the fold holds. Someone joining
+ * after the removal holds only the new epoch, and a fresh joiner accepts an
+ * authority-verified head whose parent dangles (CORD-04 §1), so the heads are
+ * enough. Editions decoded without a seal can't be republished and are left
+ * out: the removal itself must never wait on them.
+ */
+export function compactionOf(editions: ControlEdition[], ownerPubkey: string): Seal[] {
+  const state = foldEditions(editions, ownerPubkey);
+  const out: Seal[] = [];
+  for (const [coord, head] of state.heads) {
+    const winner = editions.find((e) =>
+      `${e.vsk}:${e.eid}` === coord && e.ev === head.ev && !!e.seal &&
+      computeEditionId(e.eid, e.ev, e.ep, e.content) === head.hash);
+    if (winner?.seal) out.push(winner.seal);
+  }
+  return out;
 }
 
 /**
