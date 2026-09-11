@@ -23,6 +23,7 @@ import type { Seal } from "@/lib/concord/concord-crypto";
 import { saveRosterSnapshot } from "@/lib/concord/concord-roster";
 import { putCommunity, updateCommunity, deleteCommunity, adoptBaseRekey, type StoredCommunity } from "@/lib/concord/concord-keys";
 import { reconcilePatch } from "@/lib/concord/concord-reconcile";
+import { controlWrapFor, openControlWrap } from "@/lib/concord/concord-control-wrap";
 
 export type { MembershipEvent };
 
@@ -301,6 +302,29 @@ export function useConcordGovernance(community: StoredCommunity | null | undefin
     if (!ch || !owner) return null;
     return privateRoomHolders(roomId, ch.epoch, [...rekeys.values()], { ownerPubkey: owner, roster: folded.roster });
   }, [community, rekeys, owner, folded.roster]);
+
+  // A promotion delivers the admin-plane secret in my grant (CORD-04 §3).
+  // Adopt it once, and only if it opens to a secret that derives to the
+  // group's current admin address (openControlWrap checks both), so this
+  // device's admin edits go where current apps read. Guarded on the epoch
+  // inside the write, so a rotation landing meanwhile is never overwritten.
+  useEffect(() => {
+    if (!pubkey || !community?.control_pk || community.control_root) return;
+    const found = controlWrapFor([...editions.values()], folded.state.heads, pubkey);
+    if (!found) return;
+    const signer = getGlobalSigner();
+    if (!signer?.nip44) return;
+    let cancelled = false;
+    const { community_id: cid, root_epoch: epoch, control_pk: controlPk } = community;
+    void openControlWrap(signer, found.granter, found.wrap, { communityId: cid, epoch, controlPk })
+      .then(async (root) => {
+        if (cancelled || !root) return;
+        const wrote = await updateCommunity(pubkey, cid, (row) =>
+          row.root_epoch !== epoch || row.control_pk !== controlPk || row.control_root === root ? null : { control_root: root });
+        if (wrote) window.dispatchEvent(new CustomEvent(COMMUNITY_UPDATED_EVENT, { detail: cid }));
+      });
+    return () => { cancelled = true; };
+  }, [pubkey, community, editions, folded.state]);
 
   // The group's current editions as signed seals, for a removal to republish
   // at the new epoch (concord-events compactionOf). Computed on demand.
