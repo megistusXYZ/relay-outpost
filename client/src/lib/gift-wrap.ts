@@ -25,6 +25,8 @@ export const KIND_FILE_MESSAGE = 15;
 export const KIND_DIRECT_INVITE_RUMOR = 3313;
 /** A report to a group chat's moderators (concord-reports): NIP-56-shaped, on the same pipe. */
 export const KIND_GROUP_REPORT_RUMOR = 1984;
+/** A request to join a group chat (concord-join-requests): NIP-29's join request, on the same pipe. */
+export const KIND_JOIN_REQUEST_RUMOR = 9021;
 
 export interface UnwrappedGiftWrap {
   senderPubkey: string;
@@ -138,7 +140,7 @@ export async function unwrapGiftWrap(
         SIGNER_CRYPTO_TIMEOUT,
       );
       const rumor = JSON.parse(rumorJson);
-      if (rumor.kind !== KIND_RUMOR && rumor.kind !== KIND_FILE_MESSAGE && rumor.kind !== KIND_DIRECT_INVITE_RUMOR && rumor.kind !== KIND_GROUP_REPORT_RUMOR) return null;
+      if (rumor.kind !== KIND_RUMOR && rumor.kind !== KIND_FILE_MESSAGE && rumor.kind !== KIND_DIRECT_INVITE_RUMOR && rumor.kind !== KIND_GROUP_REPORT_RUMOR && rumor.kind !== KIND_JOIN_REQUEST_RUMOR) return null;
       if (rumor.pubkey && rumor.pubkey !== seal.pubkey) return null;
 
       const recipientTag = rumor.tags?.find((t: string[]) => t[0] === "p");

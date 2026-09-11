@@ -56,7 +56,7 @@ import { getChannelWrapTimes, CHANGED_EVENT as UNREAD_CHANGED_EVENT, READ_EVENT 
 import { writeChannelLastRead } from "@/lib/concord/concord-channel-unread";
 import { ConcordSearchSheet } from "./ConcordSearchSheet";
 import type { SearchHit } from "@/lib/concord/concord-search";
-import { ReportCountBadge } from "./ConcordReports";
+import { ManageCountBadge } from "./ManageCountBadge";
 import { ConcordReportDialog } from "./ConcordReportDialog";
 import { isMuted, setChannelMuted, useMutedChannels, MUTE_CHANGED_EVENT } from "@/lib/concord/concord-mute";
 import { mentionKey, useConcordMentionCounts } from "@/lib/concord/concord-mentions";
@@ -990,7 +990,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           >
             <Shield className="w-3.5 h-3.5" />
             Manage
-            <ReportCountBadge communityId={community.community_id} />
+            <ManageCountBadge communityId={community.community_id} />
           </button>
         )}
         <SpaceOverflowMenu
@@ -1117,7 +1117,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             >
               <Shield className="w-3.5 h-3.5" />
               Manage
-              <ReportCountBadge communityId={community.community_id} />
+              <ManageCountBadge communityId={community.community_id} />
             </button>
           )}
           <SpaceOverflowMenu

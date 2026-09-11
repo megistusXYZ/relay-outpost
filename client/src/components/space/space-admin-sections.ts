@@ -63,9 +63,9 @@ export interface SpaceAdminSectionDef {
  * that let them wait.
  */
 export const SPACE_ADMIN_SECTIONS: readonly SpaceAdminSectionDef[] = [
-  // NIP-29 only: a Concord community admits through invites, so there is no
-  // queue of strangers to approve and no section to render.
-  { id: "requests", label: "Waiting to join", capability: "manageMembers", backends: ["nip29"] },
+  // NIP-29's join requests, and on Concord the people who asked through an ask
+  // link (concord-join-requests); let in with a direct invite, or declined.
+  { id: "requests", label: "Waiting to join", capability: "manageMembers", backends: ["nip29", "concord"] },
   // Concord only: messages members reported to the moderators (concord-reports),
   // who are exactly the people this capability covers. Waiting on someone, so
   // it sits with the door, above the roster. NIP-29 reports are public events.

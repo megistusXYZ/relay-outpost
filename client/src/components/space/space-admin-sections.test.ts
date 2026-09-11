@@ -14,7 +14,7 @@ const ids = (caps: Parameters<typeof visibleSections>[0], b: Parameters<typeof v
 describe("visibleSections — two gates, asked separately", () => {
   it("shows a Concord owner everything Concord has", () => {
     expect(ids(concordCapabilities(member(0n, OWNER_POSITION)), "concord"))
-      .toEqual(["reports", "people", "roles", "history", "channels", "access", "details", "danger"]);
+      .toEqual(["requests", "reports", "people", "roles", "history", "channels", "access", "details", "danger"]);
   });
 
   it("shows a NIP-29 admin everything NIP-29 has", () => {
@@ -26,8 +26,8 @@ describe("visibleSections — two gates, asked separately", () => {
     expect(ids(nip29Capabilities(admins(ME), ME), "nip29")).not.toContain("channels");
   });
 
-  it("never shows Waiting-to-join on Concord — there is no queue of strangers", () => {
-    expect(ids(concordCapabilities(member(0n, OWNER_POSITION)), "concord")).not.toContain("requests");
+  it("shows Waiting-to-join on Concord too: an ask link lets people ask to join", () => {
+    expect(ids(concordCapabilities(member(0n, OWNER_POSITION)), "concord")).toContain("requests");
   });
 });
 
@@ -64,8 +64,8 @@ describe("the backend gate does work the capability gate cannot", () => {
 });
 
 describe("partial authority renders partially", () => {
-  it("gives a KICK-only Concord moderator Reports and People, and nothing else", () => {
-    expect(ids(concordCapabilities(member(PERM.KICK)), "concord")).toEqual(["reports", "people"]);
+  it("gives a KICK-only Concord moderator the waiting list, Reports and People, and nothing else", () => {
+    expect(ids(concordCapabilities(member(PERM.KICK)), "concord")).toEqual(["requests", "reports", "people"]);
   });
 
   it("shows Reports only in a group chat: a NIP-29 room's reports are public events", () => {
