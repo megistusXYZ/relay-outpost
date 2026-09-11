@@ -40,6 +40,7 @@ const AUDIT_META: Record<AuditAction, { icon: typeof Ban; color: string; verb: s
   ban: { icon: Ban, color: "text-destructive/70", verb: "banned", hasTarget: true },
   kick: { icon: UserMinus, color: "text-amber-500/70", verb: "removed", hasTarget: true },
   unban: { icon: ShieldCheck, color: "text-emerald-500/70", verb: "unbanned", hasTarget: true },
+  delete_message: { icon: Trash2, color: "text-muted-foreground/60", verb: "removed a message by", hasTarget: true },
   make_admin: { icon: Shield, color: "text-primary/70", verb: "made admin", hasTarget: true },
   remove_admin: { icon: ShieldOff, color: "text-muted-foreground/60", verb: "removed admin from", hasTarget: true },
   grant_role: { icon: Shield, color: "text-primary/70", verb: "gave a role to", hasTarget: true },

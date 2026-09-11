@@ -32,8 +32,8 @@ import { senderColor } from "@/lib/sender-color";
 import { ConcordMediaView } from "./ConcordMediaView";
 import { getCachedMessages, cacheMessage, deleteCachedMessages, getCachedReactions, cacheReaction, removeCachedReaction, type StoredCommunity, type StoredChannel, type CachedReaction } from "@/lib/concord/concord-keys";
 import { liveChannels } from "@/lib/concord/concord-live-channels";
-import { subscribeChannel, publishChannelMessage, publishTyping, subscribeTyping, channelReadPlanes, channelPlaneKey, type DecodedRumor } from "@/lib/concord/concord-stream";
-import { buildMessageRumor, buildReplyRumor, buildReactionRumor, buildDeleteRumor, buildEditRumor, effectiveTime, hasPermission, PERM, KIND_REACTION, KIND_DELETE, KIND_EDIT, KIND_MESSAGE, KIND_REPLY, KIND_TIMER_NOTICE, VSK, type RumorTemplate } from "@/lib/concord/concord-events";
+import { subscribeChannel, publishChannelMessage, publishTyping, subscribeTyping, channelReadPlanes, channelPlaneKey, publishGuestbook, type DecodedRumor } from "@/lib/concord/concord-stream";
+import { buildMessageRumor, buildReplyRumor, buildReactionRumor, buildDeleteRumor, buildEditRumor, buildAuditRumor, mayDelete, effectiveTime, hasPermission, PERM, KIND_REACTION, KIND_DELETE, KIND_EDIT, KIND_MESSAGE, KIND_REPLY, KIND_TIMER_NOTICE, VSK, type RumorTemplate } from "@/lib/concord/concord-events";
 import { encryptAndUpload, mediaToTag, mediaFromTags, type ConcordMedia } from "@/lib/concord/concord-media";
 import { useConcordGovernance } from "./useConcordGovernance";
 import { ConcordInviteDialog } from "./ConcordInviteDialog";
@@ -61,7 +61,7 @@ import { ConcordAdminDrawer } from "./ConcordAdminDrawer";
 import { SpaceOverflowMenu } from "@/components/space/SpaceOverflowMenu";
 import { ConcordMessageActions } from "./ConcordMessageActions";
 
-interface ChatMsg { id: string; pubkey: string; content: string; t: number; media?: ConcordMedia[]; replyTo?: { id: string; pubkey: string }; rootId?: string; root?: RootRef; kind?: number; expiresAt?: number; seal?: Seal; epoch?: number; edited?: boolean; deleted?: boolean; mentions?: string[] }
+interface ChatMsg { id: string; pubkey: string; content: string; t: number; media?: ConcordMedia[]; replyTo?: { id: string; pubkey: string }; rootId?: string; root?: RootRef; kind?: number; expiresAt?: number; seal?: Seal; epoch?: number; edited?: boolean; deleted?: boolean; deletedBy?: string; mentions?: string[] }
 /** A message's kind, for the `k` tag of what targets it (CORD-03). Rows cached
  *  before the kind was recorded fall back on their thread pointer. */
 const kindOf = (m: ChatMsg) => m.kind ?? (m.rootId ? KIND_REPLY : KIND_MESSAGE);
@@ -220,6 +220,30 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   const [voiceOpen, setVoiceOpen] = useState(false);
   useEffect(() => { setVoiceOpen(false); }, [activeChannel?.id]);
   const isOwner = pubkey === community.owner;
+  // Who may delete whose message is a roster question (mayDelete), and the
+  // channel listener outlives many folds: it reads the current one from here.
+  const govRef = useRef({ state: govState, owner: community.owner });
+  govRef.current = { state: govState, owner: community.owner };
+  // Deletes that arrived before their target, or before the deleter's role:
+  // target id → who asked. Re-checked when the roster changes (below).
+  const pendingDeletesRef = useRef(new Map<string, string[]>());
+  useEffect(() => {
+    const pending = pendingDeletesRef.current;
+    if (pending.size === 0) return;
+    setMessages((prev) => {
+      let changed = false;
+      const next = prev.map((m) => {
+        if (m.deleted) return m;
+        const by = (pending.get(m.id) ?? []).find((d) => mayDelete(d, m.pubkey, govState, community.owner));
+        if (!by) return m;
+        changed = true;
+        const del = { ...m, deleted: true, deletedBy: by, content: "", media: undefined };
+        if (pubkey && activeChannel) void cacheMessage(pubkey, community.community_id, activeChannel.id, del);
+        return del;
+      });
+      return changed ? next : prev;
+    });
+  }, [govState, community.owner, community.community_id, pubkey, activeChannel]);
   const canManageChannels = isOwner || (!!myMember && hasPermission(myMember, PERM.MANAGE_CHANNELS));
   const [adminOpen, setAdminOpen] = useState(false);
   const caps = useMemo(() => concordCapabilities(myMember), [myMember]);
@@ -365,7 +389,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     // Deletes that arrived before their target (out-of-order / late join): keyed
     // targetId → author, applied the moment the target message/reaction shows up,
     // so "deleted for everyone" is reliable regardless of delivery order.
-    const pendingDeletes = new Map<string, string>();
+    const pendingDeletes = new Map<string, string[]>();
+    pendingDeletesRef.current = pendingDeletes;
     setMessages([]); setReactions(new Map()); setTimerNotices([]);
     // Merge — never replace: the live subscription can decode a new message
     // while these IDB reads are in flight, and its wrap is already in the
@@ -397,7 +422,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       if (rumor.kind === KIND_REACTION) {
         const targetId = rumor.tags.find((t) => t[0] === "e")?.[1];
         if (!targetId) return;
-        if (pendingDeletes.get(rumor.id) === rumor.pubkey) return; // was un-reacted before it arrived
+        if (pendingDeletes.get(rumor.id)?.includes(rumor.pubkey)) return; // was un-reacted before it arrived
         const emojiTag = rumor.tags.find((t) => t[0] === "emoji");
         const r: CachedReaction = { id: rumor.id, pubkey: rumor.pubkey, targetId, emoji: rumor.content, emojiUrl: emojiTag?.[2], t: effectiveTime(rumor) };
         void cacheReaction(pubkey, communityId, channelId, r);
@@ -407,7 +432,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       if (rumor.kind === KIND_DELETE) {
         const targetId = rumor.tags.find((t) => t[0] === "e")?.[1];
         if (!targetId) return;
-        pendingDeletes.set(targetId, rumor.pubkey); // catch a target that arrives later
+        pendingDeletes.set(targetId, [...(pendingDeletes.get(targetId) ?? []), rumor.pubkey]); // catch a target that arrives later
         // A delete targets either a reaction (un-react) or a message (tombstone).
         setReactions((prev) => {
           const target = prev.get(targetId);
@@ -416,8 +441,9 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           const next = new Map(prev); next.delete(targetId); return next;
         });
         setMessages((prev) => prev.map((m) => {
-          if (m.id !== targetId || m.pubkey !== rumor.pubkey || m.deleted) return m; // only the author
-          const del = { ...m, deleted: true, content: "", media: undefined };
+          // The author, or a moderator who outranks them (CORD-04 §5).
+          if (m.id !== targetId || m.deleted || !mayDelete(rumor.pubkey, m.pubkey, govRef.current.state, govRef.current.owner)) return m;
+          const del = { ...m, deleted: true, deletedBy: rumor.pubkey, content: "", media: undefined };
           void cacheMessage(pubkey, communityId, channelId, del);
           return del;
         }));
@@ -442,7 +468,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       const mentions = rumor.tags.filter((t) => t[0] === "p" && t[1]).map((t) => t[1]);
       let msg: ChatMsg = { id: rumor.id, pubkey: rumor.pubkey, content: rumor.content, t: effectiveTime(rumor), media: media.length ? media : undefined, replyTo, root, rootId: root?.id, kind, expiresAt: expiresAt(rumor), seal: pinSealOf(rumor), epoch: epochOf(rumor), mentions: mentions.length ? mentions : undefined };
       // Apply a delete that landed before this message did.
-      if (pendingDeletes.get(msg.id) === msg.pubkey) msg = { ...msg, deleted: true, content: "", media: undefined };
+      const lateBy = (pendingDeletes.get(msg.id) ?? []).find((d) => mayDelete(d, msg.pubkey, govRef.current.state, govRef.current.owner));
+      if (lateBy) msg = { ...msg, deleted: true, deletedBy: lateBy, content: "", media: undefined };
       void cacheMessage(pubkey, communityId, channelId, msg);
       setMessages((prev) => {
         if (prev.some((m) => m.id === msg.id)) return prev;
@@ -786,15 +813,20 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   }, [pubkey, activeChannel, community]);
 
   const deleteMessage = useCallback((msg: ChatMsg) => {
-    if (!pubkey || !activeChannel || msg.pubkey !== pubkey) return;
+    if (!pubkey || !activeChannel || !mayDelete(pubkey, msg.pubkey, govState, community.owner)) return;
     const ms = Math.floor(Date.now() % 1000), now = Math.floor(Date.now() / 1000);
-    setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, deleted: true, content: "", media: undefined } : m)); // optimistic
-    void cacheMessage(pubkey, community.community_id, activeChannel.id, { ...msg, deleted: true, content: "", media: undefined });
+    setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, deleted: true, deletedBy: pubkey, content: "", media: undefined } : m)); // optimistic
+    void cacheMessage(pubkey, community.community_id, activeChannel.id, { ...msg, deleted: true, deletedBy: pubkey, content: "", media: undefined });
     publishMut(buildDeleteRumor(pubkey, activeChannel.id, BigInt(channelEpoch), msg.id, ms, now, kindOf(msg)));
+    // Removing someone else's message is a moderation act: it goes on the record.
+    if (msg.pubkey !== pubkey) {
+      const signer = getGlobalSigner();
+      if (signer) void publishGuestbook(signer, pubkey, community, buildAuditRumor(pubkey, "delete_message", now, { target: msg.pubkey }), (e, relays) => publishEvent(e, relays)).catch(() => null);
+    }
     // A pinner deleting their own pinned message takes it off the list too, so
     // members who can't see the delete (it lives on the old epoch) lose it.
     if (canPin && pinnedIds.has(msg.id)) void changePins({ unpin: msg.id }, "Unpinned");
-  }, [pubkey, activeChannel, community, channelEpoch, publishMut, canPin, pinnedIds, changePins]);
+  }, [pubkey, activeChannel, community, channelEpoch, publishMut, canPin, pinnedIds, changePins, govState]);
 
   const saveEdit = useCallback((msg: ChatMsg, text: string) => {
     const trimmed = text.trim();
@@ -1097,8 +1129,12 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       <AlertDialog open={!!pendingDelete} onOpenChange={(o) => { if (!o) setPendingDelete(null); }}>
         <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm">Delete message?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs">This removes it for everyone. This can't be undone.</AlertDialogDescription>
+            <AlertDialogTitle className="text-sm">{pendingDelete && pendingDelete.pubkey !== pubkey ? "Remove this message?" : "Delete message?"}</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              {pendingDelete && pendingDelete.pubkey !== pubkey
+                ? "It's removed for everyone and noted in the moderation history. This can't be undone."
+                : "This removes it for everyone. This can't be undone."}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="text-xs">Cancel</AlertDialogCancel>
@@ -1197,6 +1233,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             <SystemLine pubkey={item.pubkey} action={item.action} timer={item.timer} />
           ) : (
           <ConcordMessageRow msgId={item.msg.id} pubkey={item.msg.pubkey} content={item.msg.content} media={item.msg.media} mine={item.msg.pubkey === pubkey}
+            removable={!!pubkey && item.msg.pubkey !== pubkey && mayDelete(pubkey, item.msg.pubkey, govState, community.owner)}
+            removedByModerator={!!item.msg.deletedBy && item.msg.deletedBy !== item.msg.pubkey}
             t={item.msg.t} grouped={grouped}
             edited={item.msg.edited} deleted={item.msg.deleted} mentionedMe={!!pubkey && !!item.msg.mentions?.includes(pubkey)}
             reactions={reactionsByMessage.get(item.msg.id)} myPubkey={pubkey}
@@ -1338,6 +1376,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           onStartEdit={setEditingId}
           onSaveEdit={saveEdit}
           onRequestDelete={setPendingDelete}
+          canRemove={(author) => !!pubkey && mayDelete(pubkey, author, govState, community.owner)}
         />
       )}
     </div>
@@ -1350,7 +1389,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
  * and media behave identically. "Reply" on a message here answers it in this
  * thread (the composer shows which); by default a reply answers the starter.
  */
-function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messagesById, editingId, embedded, onClose, draft, onDraftChange, answering, onReplyTo, onCancelReplyTo, sending, onSend, focusNonce, readOnly, onReact, onStartEdit, onSaveEdit, onRequestDelete }: {
+function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messagesById, editingId, embedded, onClose, draft, onDraftChange, answering, onReplyTo, onCancelReplyTo, sending, onSend, focusNonce, readOnly, onReact, onStartEdit, onSaveEdit, onRequestDelete, canRemove }: {
   root: ChatMsg;
   /** See ConcordChat's own `embedded`: this panel is `absolute inset-0` over the
    *  chat's box, so embedded its bottom edge is the panel's, not the screen's. */
@@ -1377,12 +1416,16 @@ function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messa
   onStartEdit: (id: string | null) => void;
   onSaveEdit: (msg: ChatMsg, text: string) => void;
   onRequestDelete: (msg: ChatMsg) => void;
+  /** May I remove this author's message as a moderator (mayDelete)? */
+  canRemove?: (author: string) => boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (focusNonce > 0) inputRef.current?.focus(); }, [focusNonce]);
   const row = (m: ChatMsg) => (
     <ConcordMessageRow
       msgId={m.id} pubkey={m.pubkey} content={m.content} media={m.media} mine={m.pubkey === myPubkey}
+      removable={m.pubkey !== myPubkey && !!canRemove?.(m.pubkey)}
+      removedByModerator={!!m.deletedBy && m.deletedBy !== m.pubkey}
       t={m.t} edited={m.edited} deleted={m.deleted} mentionedMe={!!myPubkey && !!m.mentions?.includes(myPubkey)}
       reactions={reactionsByMessage.get(m.id)} myPubkey={myPubkey}
       replyTo={m.replyTo} parent={m.replyTo ? messagesById.get(m.replyTo.id) : undefined}
@@ -1595,8 +1638,12 @@ function ThreadFace({ pubkey }: { pubkey: string }) {
   );
 }
 
-function ConcordMessageRow({ msgId, pubkey, content, media, mine, t, grouped, edited, deleted, mentionedMe, reactions, myPubkey, replyTo, parent, thread, onOpenThread, editing, onReact, onReply, onReplyInThread, readOnly, pinned, onTogglePin, onStartEdit, onCancelEdit, onSaveEdit, onRequestDelete }: {
+function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, removedByModerator, t, grouped, edited, deleted, mentionedMe, reactions, myPubkey, replyTo, parent, thread, onOpenThread, editing, onReact, onReply, onReplyInThread, readOnly, pinned, onTogglePin, onStartEdit, onCancelEdit, onSaveEdit, onRequestDelete }: {
   msgId: string; pubkey: string; content: string; media?: ConcordMedia[]; mine: boolean; t?: number; grouped?: boolean; edited?: boolean; deleted?: boolean; mentionedMe?: boolean;
+  /** Someone else's message I may remove (a moderator who outranks them). */
+  removable?: boolean;
+  /** Deleted by someone other than its author. */
+  removedByModerator?: boolean;
   reactions?: Map<string, ReactionAgg>; myPubkey?: string | null;
   replyTo?: { id: string; pubkey: string }; parent?: ChatMsg; editing: boolean;
   /** Set when replies hang off this message — renders the thread chip. */
@@ -1662,7 +1709,7 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, t, grouped, ed
         </div>
         )}
         {deleted ? (
-          <p className="text-sm italic text-muted-foreground/40">This message was deleted</p>
+          <p className="text-sm italic text-muted-foreground/40">{removedByModerator ? "Removed by a moderator" : "This message was deleted"}</p>
         ) : editing ? (
           <div className="flex items-center gap-1.5 mt-0.5">
             <input autoFocus value={editText} onChange={(e) => setEditText(e.target.value)}
@@ -1718,7 +1765,7 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, t, grouped, ed
       {/* One Signal-style actions menu — hover on desktop, always subtle on mobile */}
       {!deleted && !editing && (
         <div className="shrink-0 self-start opacity-60 reveal-on-hover">
-          <ConcordMessageActions content={content} mine={mine} onReact={onReact} onReply={onReply} onReplyInThread={onReplyInThread} readOnly={readOnly} pinned={pinned} onTogglePin={onTogglePin} onEdit={onStartEdit} onDelete={onRequestDelete} />
+          <ConcordMessageActions content={content} mine={mine} onReact={onReact} onReply={onReply} onReplyInThread={onReplyInThread} readOnly={readOnly} pinned={pinned} onTogglePin={onTogglePin} onEdit={onStartEdit} onDelete={onRequestDelete} removable={removable} />
         </div>
       )}
     </div>

@@ -358,6 +358,8 @@ function stripOwner(rec: StoredCommunity & { ownerPubkey?: string }): StoredComm
 // persist across remount/reload; the live subscription only appends new ones.
 export interface CachedMessage {
   id: string; pubkey: string; content: string; t: number; media?: import("./concord-media").ConcordMedia[];
+  /** Who deleted it, when it was deleted: the author, or a moderator who outranks them. */
+  deletedBy?: string;
   /** The message this one answers: the quoted one, or a threaded reply's parent. */
   replyTo?: { id: string; pubkey: string };
   /** A threaded reply's root (concord-replies), and its id for grouping. */

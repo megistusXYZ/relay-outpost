@@ -425,6 +425,19 @@ export function mayKick(signer: string, target: string, state: FoldedState, owne
   return hasPermissionBit(s.perms, PERM.KICK) && canActOn(s.rank, standingAuthority(target, state, ownerPubkey).rank);
 }
 
+/**
+ * May `signer` delete `author`'s message (CORD-04 §5)? Their own, always.
+ * Anyone else's takes MANAGE_MESSAGES (it writes to Chat planes, §3) and a rank
+ * strictly above the author's; the owner may delete anyone's, and nobody the owner's.
+ */
+export function mayDelete(signer: string, author: string, state: FoldedState, ownerPubkey: string): boolean {
+  if (signer === author) return true;
+  if (author === ownerPubkey) return false;
+  if (signer === ownerPubkey) return true;
+  const s = standingAuthority(signer, state, ownerPubkey);
+  return hasPermissionBit(s.perms, PERM.MANAGE_MESSAGES) && canActOn(s.rank, standingAuthority(author, state, ownerPubkey).rank);
+}
+
 /** A Join/Leave's verb: the `action` tag our earlier versions wrote, else the content (CORD-02 §5). */
 export function joinLeaveVerb(ev: { content?: string; tags: string[][] }): "join" | "leave" {
   const tagged = ev.tags.find((t) => t[0] === "action")?.[1];
@@ -498,7 +511,7 @@ export function parseSnapshotRumor(
 }
 
 /** The moderation actions recorded in the audit log. */
-export type AuditAction = "kick" | "ban" | "unban" | "make_admin" | "remove_admin" | "rename_channel" | "delete_channel" | "edit_metadata" | "dissolve" | "grant_role" | "revoke_role" | "edit_role";
+export type AuditAction = "kick" | "ban" | "unban" | "make_admin" | "remove_admin" | "rename_channel" | "delete_channel" | "edit_metadata" | "dissolve" | "grant_role" | "revoke_role" | "edit_role" | "delete_message";
 
 /** One decoded audit entry (who did what, to whom, when, why). */
 export interface AuditEntry { id: string; actor: string; action: AuditAction; target?: string; reason?: string; detail?: string; t: number }
