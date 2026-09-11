@@ -13,16 +13,20 @@ export interface MembershipEvent { pubkey: string; action: "join" | "leave"; t: 
 /** What a chat system line can announce: joins/leaves + neutral moderation
  *  outcomes (removed/banned). Role changes deliberately have NO system line —
  *  promote/demote stays audit-log-only. */
-export type SystemAction = "join" | "leave" | "kick" | "ban";
+export type SystemAction = "join" | "leave" | "kick" | "ban" | "timer";
 
 /** One system-line event (the `pubkey` is the AFFECTED member — for kick/ban
  *  that's the target, never the acting admin; the reason is never included). */
-export interface SystemEvent { pubkey: string; action: SystemAction; t: number }
+export interface SystemEvent {
+  pubkey: string; action: SystemAction; t: number;
+  /** For a "timer" line: the new disappearing-messages timer in seconds (0 = off). */
+  timer?: number;
+}
 
 /** A chat-timeline item: a real message, or a system line (join/leave/kick/ban). */
 export type TimelineItem<M> =
   | { kind: "msg"; t: number; msg: M }
-  | { kind: "sys"; t: number; id: string; pubkey: string; action: SystemAction };
+  | { kind: "sys"; t: number; id: string; pubkey: string; action: SystemAction; timer?: number };
 
 /**
  * Interleave messages with system lines into one time-ordered list. System
@@ -35,7 +39,7 @@ export function buildChatTimeline<M extends { t: number }>(
   includeSystem: boolean,
 ): TimelineItem<M>[] {
   const items: TimelineItem<M>[] = messages.map((m) => ({ kind: "msg", t: m.t, msg: m }));
-  if (includeSystem) for (const e of systemEvents) items.push({ kind: "sys", t: e.t, id: `${e.pubkey}-${e.t}-${e.action}`, pubkey: e.pubkey, action: e.action });
+  if (includeSystem) for (const e of systemEvents) items.push({ kind: "sys", t: e.t, id: `${e.pubkey}-${e.t}-${e.action}`, pubkey: e.pubkey, action: e.action, ...(e.timer !== undefined ? { timer: e.timer } : {}) });
   return items.sort((a, b) => a.t - b.t);
 }
 

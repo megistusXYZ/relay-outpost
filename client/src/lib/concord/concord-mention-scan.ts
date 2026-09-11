@@ -36,6 +36,7 @@
  * follow-up).
  */
 import { readMessageShape } from "./concord-replies";
+import { isExpired, expiresAt } from "./concord-disappearing";
 import type { Event } from "nostr-tools";
 import { persistentPoolSubscribe } from "@/lib/nostr";
 import { decryptionQueue } from "@/lib/decryption-queue";
@@ -175,6 +176,9 @@ async function processWrap(
   }
   const routed = routeRumor(rumor, held.channelId, held.epoch);
   if (routed.type === "message" || routed.type === "reply") {
+    // Past its expiry: refused at ingest, never stored (CORD-08 §3). Marked, so
+    // neither this pass nor the live chat decrypts it again.
+    if (isExpired(rumor, Math.floor(Date.now() / 1000))) { await markStreamProcessed(pk, wrap.id); return; }
     // Read with ConcordChat's own reader (concord-replies), so the cache row
     // is indistinguishable from a live-decoded one, thread and all.
     const media = mediaFromTags(rumor.tags);
@@ -191,6 +195,7 @@ async function processWrap(
       rootId: shape.root?.id,
       kind: shape.kind,
       mentions: mentions.length ? mentions : undefined,
+      expiresAt: expiresAt(rumor),
     };
     await cacheMessage(pk, c.community_id, held.channelId, msg);
     await markStreamProcessed(pk, wrap.id); // cache first, mark second

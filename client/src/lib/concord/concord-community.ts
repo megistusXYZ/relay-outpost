@@ -11,7 +11,8 @@ import { deriveCommunityId, randomBytes32, groupKey, LABEL_CONTROL_SIGNER } from
 import { VSK, buildControlEdition, buildJoinLeaveRumor, computeEditionId, type CommunityMetadata } from "./concord-events";
 import { putCommunity, publishCommunityList, type StoredCommunity, type StoredChannel } from "./concord-keys";
 import { nextMetadataEdition, type MetadataChanges, type MetadataHead } from "./concord-metadata-edition";
-import { publishControlEdition, publishGuestbook } from "./concord-stream";
+import { publishControlEdition, publishGuestbook, publishChannelMessage } from "./concord-stream";
+import { buildTimerNotice } from "./concord-disappearing";
 
 export interface CreateCommunityOpts {
   name: string;
@@ -178,4 +179,28 @@ export async function editMetadata(
   await publishCommunityList(signer, myPubkey, publishSelf).catch(() => {});
 
   return updated;
+}
+
+/**
+ * After the disappearing-messages timer changes, one notice into each room this
+ * device holds the key for (CORD-08 §4): "Alice set disappearing messages to 7
+ * days". Informational and best-effort: the group's settings are the authority,
+ * so a room that gets no notice still follows the timer.
+ */
+export async function postTimerNotices(
+  signer: ISigner,
+  myPubkey: string,
+  community: StoredCommunity,
+  seconds: number,
+  publish: PublishFn,
+): Promise<void> {
+  const now = Math.floor(Date.now() / 1000);
+  await Promise.all(community.channels
+    .filter((ch) => !ch.isPrivate || !!ch.key)
+    .map((ch) => {
+      // A public room rides the group's epoch; a private one its own.
+      const epoch = BigInt(ch.isPrivate ? ch.epoch : community.root_epoch);
+      return publishChannelMessage(signer, myPubkey, community, ch,
+        buildTimerNotice(myPubkey, ch.id, epoch, seconds, Date.now() % 1000, now), publish).catch(() => null);
+    }));
 }

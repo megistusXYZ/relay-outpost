@@ -60,6 +60,8 @@ export interface MetadataChanges {
   icon?: string;
   about?: string;
   allowMemberInvites?: boolean;
+  /** The disappearing-messages timer in seconds; 0 turns it off (CORD-08 §1). */
+  messageExpiration?: number;
 }
 
 /**
@@ -156,6 +158,9 @@ export function nextMetadataEdition(
   if (ours("allow_member_invites", changes.allowMemberInvites !== undefined)) {
     content.allow_member_invites = changes.allowMemberInvites ?? base.allowMemberInvites ?? false;
   }
+  // Written only when someone set it here; untouched, the raw content above
+  // already carries the group's timer through, including another app's.
+  if (changes.messageExpiration !== undefined) content.message_expiration = Math.max(0, Math.floor(changes.messageExpiration));
 
   // Highest head wins, and the FOLD wins a tie — its hash is the one other
   // clients already hold, so chaining onto ours would fork off a private

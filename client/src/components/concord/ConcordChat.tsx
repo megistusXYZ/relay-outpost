@@ -28,10 +28,10 @@ import { useConcordProfile } from "./ConcordIdentity";
 import { ConcordReactionPill } from "./ConcordReactionPill";
 import { senderColor } from "@/lib/sender-color";
 import { ConcordMediaView } from "./ConcordMediaView";
-import { getCachedMessages, cacheMessage, getCachedReactions, cacheReaction, removeCachedReaction, type StoredCommunity, type StoredChannel, type CachedReaction } from "@/lib/concord/concord-keys";
+import { getCachedMessages, cacheMessage, deleteCachedMessages, getCachedReactions, cacheReaction, removeCachedReaction, type StoredCommunity, type StoredChannel, type CachedReaction } from "@/lib/concord/concord-keys";
 import { liveChannels } from "@/lib/concord/concord-live-channels";
 import { subscribeChannel, publishChannelMessage, publishTyping, subscribeTyping, type DecodedRumor } from "@/lib/concord/concord-stream";
-import { buildMessageRumor, buildReplyRumor, buildReactionRumor, buildDeleteRumor, buildEditRumor, effectiveTime, hasPermission, PERM, KIND_REACTION, KIND_DELETE, KIND_EDIT, KIND_MESSAGE, KIND_REPLY, type RumorTemplate } from "@/lib/concord/concord-events";
+import { buildMessageRumor, buildReplyRumor, buildReactionRumor, buildDeleteRumor, buildEditRumor, effectiveTime, hasPermission, PERM, KIND_REACTION, KIND_DELETE, KIND_EDIT, KIND_MESSAGE, KIND_REPLY, KIND_TIMER_NOTICE, type RumorTemplate } from "@/lib/concord/concord-events";
 import { encryptAndUpload, mediaToTag, mediaFromTags, type ConcordMedia } from "@/lib/concord/concord-media";
 import { useConcordGovernance } from "./useConcordGovernance";
 import { ConcordInviteDialog } from "./ConcordInviteDialog";
@@ -42,6 +42,8 @@ import { ConcordMessageBody, ConcordContentPreview, ConcordChannelNavProvider } 
 import { buildChatTimeline, firstUnreadIndex, moderationSystemEvents, chatRowMeta, chatClockTime, type SystemAction } from "@/lib/concord/concord-activity";
 import { groupThreads, type ThreadMeta } from "@/lib/concord/concord-threads";
 import { readMessageShape, threadReplyRef, type RootRef } from "@/lib/concord/concord-replies";
+import { disappearingTimer, stampExpiration, isExpired, expiresAt, timerLines, timerNoticeText, timerSpan } from "@/lib/concord/concord-disappearing";
+import { Timer as TimerIcon } from "lucide-react";
 import { useGoBack } from "@/hooks/use-go-back";
 import { computeUnreadChannels, newestActivity, readChannelLastRead } from "@/lib/concord/concord-channel-unread";
 import { getChannelWrapTimes, CHANGED_EVENT as UNREAD_CHANGED_EVENT, READ_EVENT } from "@/lib/concord/concord-unread";
@@ -53,7 +55,7 @@ import { ConcordAdminDrawer } from "./ConcordAdminDrawer";
 import { SpaceOverflowMenu } from "@/components/space/SpaceOverflowMenu";
 import { ConcordMessageActions } from "./ConcordMessageActions";
 
-interface ChatMsg { id: string; pubkey: string; content: string; t: number; media?: ConcordMedia[]; replyTo?: { id: string; pubkey: string }; rootId?: string; root?: RootRef; kind?: number; edited?: boolean; deleted?: boolean; mentions?: string[] }
+interface ChatMsg { id: string; pubkey: string; content: string; t: number; media?: ConcordMedia[]; replyTo?: { id: string; pubkey: string }; rootId?: string; root?: RootRef; kind?: number; expiresAt?: number; edited?: boolean; deleted?: boolean; mentions?: string[] }
 /** A message's kind, for the `k` tag of what targets it (CORD-03). Rows cached
  *  before the kind was recorded fall back on their thread pointer. */
 const kindOf = (m: ChatMsg) => m.kind ?? (m.rootId ? KIND_REPLY : KIND_MESSAGE);
@@ -226,6 +228,20 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   const otherChannelsUnread = unreadChannels.size > 0;
   const { toast } = useToast();
   const [messages, setMessages] = useState<ChatMsg[]>([]);
+  // The group's disappearing-messages timer (CORD-08): what we stamp on what we
+  // send. Messages keep the expiry they were sent under, whatever it is now.
+  const timer = disappearingTimer(govState.metadata);
+  /** Timer notices this room received; believed only from staff (timerLines). */
+  const [timerNotices, setTimerNotices] = useState<DecodedRumor[]>([]);
+  // A clock for hiding what expires while the room is open. It only ticks
+  // while something here can expire.
+  const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000));
+  const anyExpiring = messages.some((m) => m.expiresAt !== undefined);
+  useEffect(() => {
+    if (!anyExpiring) return;
+    const id = setInterval(() => setNowSec(Math.floor(Date.now() / 1000)), 30_000);
+    return () => clearInterval(id);
+  }, [anyExpiring]);
   const [reactions, setReactions] = useState<Map<string, CachedReaction>>(new Map()); // reactionId → reaction
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -322,12 +338,18 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     // targetId → author, applied the moment the target message/reaction shows up,
     // so "deleted for everyone" is reliable regardless of delivery order.
     const pendingDeletes = new Map<string, string>();
-    setMessages([]); setReactions(new Map());
+    setMessages([]); setReactions(new Map()); setTimerNotices([]);
     // Merge — never replace: the live subscription can decode a new message
     // while these IDB reads are in flight, and its wrap is already in the
     // processed ledger. Clobbering state with the cached snapshot lost that
     // message until the next remount re-read the cache.
-    getCachedMessages(pubkey, communityId, channelId).then((cached) => {
+    getCachedMessages(pubkey, communityId, channelId).then((all) => {
+      // Past its expiry: purged from this device for good, never shown.
+      // "Hiding is not disappearing" (CORD-08 §3).
+      const now = Math.floor(Date.now() / 1000);
+      const expired = all.filter((m) => m.expiresAt !== undefined && m.expiresAt <= now);
+      if (expired.length) void deleteCachedMessages(pubkey, expired.map((m) => m.id));
+      const cached = expired.length ? all.filter((m) => !expired.includes(m)) : all;
       if (!cancelled && cached.length) setMessages((prev) => mergeCachedHistory(cached, prev, (m) => m.id, (m) => m.t));
     });
     getCachedReactions(pubkey, communityId, channelId).then((cached) => {
@@ -338,6 +360,12 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       });
     });
     const onMessage = (rumor: DecodedRumor) => {
+      // Past its expiry: refused at ingest, never stored (CORD-08 §3).
+      if (isExpired(rumor, Math.floor(Date.now() / 1000))) return;
+      if (rumor.kind === KIND_TIMER_NOTICE) {
+        setTimerNotices((prev) => (prev.some((n) => n.id === rumor.id) ? prev : [...prev, rumor]));
+        return;
+      }
       if (rumor.kind === KIND_REACTION) {
         const targetId = rumor.tags.find((t) => t[0] === "e")?.[1];
         if (!targetId) return;
@@ -384,7 +412,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       // reads it with the same function, so a cached row matches this one.
       const { replyTo, root, kind } = readMessageShape(rumor);
       const mentions = rumor.tags.filter((t) => t[0] === "p" && t[1]).map((t) => t[1]);
-      let msg: ChatMsg = { id: rumor.id, pubkey: rumor.pubkey, content: rumor.content, t: effectiveTime(rumor), media: media.length ? media : undefined, replyTo, root, rootId: root?.id, kind, mentions: mentions.length ? mentions : undefined };
+      let msg: ChatMsg = { id: rumor.id, pubkey: rumor.pubkey, content: rumor.content, t: effectiveTime(rumor), media: media.length ? media : undefined, replyTo, root, rootId: root?.id, kind, expiresAt: expiresAt(rumor), mentions: mentions.length ? mentions : undefined };
       // Apply a delete that landed before this message did.
       if (pendingDeletes.get(msg.id) === msg.pubkey) msg = { ...msg, deleted: true, content: "", media: undefined };
       void cacheMessage(pubkey, communityId, channelId, msg);
@@ -500,10 +528,17 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   // Threads: replies collapse out of the channel and live under their starter,
   // which stays in place with a "N replies" chip. A reply whose starter isn't in
   // this channel keeps rendering inline (groupThreads' fallback) — never hidden.
-  const threading = useMemo(() => groupThreads(messages), [messages]);
+  // What has expired is never shown, including in quoted cards and threads.
+  const visible = useMemo(() => messages.filter((m) => m.expiresAt === undefined || m.expiresAt > nowSec), [messages, nowSec]);
+  const threading = useMemo(() => groupThreads(visible), [visible]);
   const timeline = useMemo(
-    () => buildChatTimeline(threading.timeline, [...govEvents, ...removals], isDefaultChannel),
-    [threading.timeline, govEvents, removals, isDefaultChannel],
+    // Joins, leaves and removals show in the first room only; a timer change
+    // shows in every room, since each room got its own notice.
+    () => buildChatTimeline(threading.timeline, [
+      ...(isDefaultChannel ? [...govEvents, ...removals] : []),
+      ...timerLines(timerNotices, govState, community.owner),
+    ], true),
+    [threading.timeline, govEvents, removals, isDefaultChannel, timerNotices, govState, community.owner],
   );
   // First timeline item newer than where we left off → the "New" divider slot.
   const firstUnreadIdx = firstUnreadIndex(timeline, openLastRead);
@@ -530,8 +565,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     const now = Math.floor(Date.now() / 1000);
     // Replying in the room quotes inline (kind 9 + q), as Armada and Vector
     // do; a reply in a thread goes through the thread's own composer.
-    const rumor = buildMessageRumor(pubkey, activeChannel.id, BigInt(channelEpoch), text, ms, now,
-      parent ? { quote: { id: parent.id, pubkey: parent.pubkey } } : {});
+    const rumor = stampExpiration(buildMessageRumor(pubkey, activeChannel.id, BigInt(channelEpoch), text, ms, now,
+      parent ? { quote: { id: parent.id, pubkey: parent.pubkey } } : {}), timer);
     // p-tags on the rumor (inside the encrypted content) keep in-app mention
     // notifications + row highlight working — same rumor-tag scheme as before.
     for (const pk of mentions) if (!rumor.tags.some((t) => t[0] === "p" && t[1] === pk)) rumor.tags.push(["p", pk]);
@@ -556,9 +591,9 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     }
     else clearMentionTags();
     setSending(false);
-  }, [draft, staged, replyingTo, pubkey, activeChannel, community, channelEpoch, resolveContent, getMentionTags, clearMentionTags, toast]);
+  }, [draft, staged, replyingTo, pubkey, activeChannel, community, channelEpoch, resolveContent, getMentionTags, clearMentionTags, toast, timer]);
 
-  const messagesById = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages]);
+  const messagesById = useMemo(() => new Map(visible.map((m) => [m.id, m])), [visible]);
 
   // A thread takes the right slot, so on desktop it stands in for the Members
   // panel rather than squeezing a fourth column — and hands the slot back when
@@ -602,8 +637,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     const root = answering.root ?? (rootMsg ? { id: rootMsg.id, pubkey: rootMsg.pubkey, kind: kindOf(rootMsg) } : undefined);
     const ms = Math.floor(Date.now() % 1000);
     const now = Math.floor(Date.now() / 1000);
-    const rumor = buildReplyRumor(pubkey, activeChannel.id, BigInt(channelEpoch), text, ms, now,
-      threadReplyRef({ id: answering.id, pubkey: answering.pubkey, kind: kindOf(answering), root }));
+    const rumor = stampExpiration(buildReplyRumor(pubkey, activeChannel.id, BigInt(channelEpoch), text, ms, now,
+      threadReplyRef({ id: answering.id, pubkey: answering.pubkey, kind: kindOf(answering), root })), timer);
     const wrap = await publishChannelMessage(signer, pubkey, community, activeChannel, rumor, (e, relays) => publishEvent(e, relays));
     if (!wrap) {
       setThreadDraft(text); setThreadParent(parent);
@@ -614,7 +649,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       });
     }
     setThreadSending(false);
-  }, [threadDraft, threadParent, threadRoot, messagesById, pubkey, activeChannel, community, channelEpoch, toast]);
+  }, [threadDraft, threadParent, threadRoot, messagesById, pubkey, activeChannel, community, channelEpoch, toast, timer]);
 
   const onDraftChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -654,14 +689,14 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       setReactions((prev) => { const next = new Map(prev); next.delete(mine); return next; }); // optimistic
       void removeCachedReaction(pubkey, mine);
     } else {
-      rumor = buildReactionRumor(pubkey, activeChannel.id, BigInt(channelEpoch), emoji, target, ms, now, emojiUrl ? { shortcode: emoji, url: emojiUrl } : undefined);
+      rumor = stampExpiration(buildReactionRumor(pubkey, activeChannel.id, BigInt(channelEpoch), emoji, target, ms, now, emojiUrl ? { shortcode: emoji, url: emojiUrl } : undefined), timer);
       const id = getEventHash({ ...rumor } as never);
       const r: CachedReaction = { id, pubkey, targetId: target.id, emoji, emojiUrl, t: now * 1000 + ms };
       setReactions((prev) => { const next = new Map(prev); next.set(id, r); return next; }); // optimistic
       void cacheReaction(pubkey, community.community_id, activeChannel.id, r);
     }
     await publishChannelMessage(signer, pubkey, community, activeChannel, rumor, (e, relays) => publishEvent(e, relays)).catch(() => null);
-  }, [pubkey, activeChannel, community, channelEpoch, reactionsByMessage]);
+  }, [pubkey, activeChannel, community, channelEpoch, reactionsByMessage, timer]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ChatMsg | null>(null);
@@ -686,8 +721,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     const ms = Math.floor(Date.now() % 1000), now = Math.floor(Date.now() / 1000);
     setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, content: trimmed, edited: true } : m)); // optimistic
     void cacheMessage(pubkey, community.community_id, activeChannel.id, { ...msg, content: trimmed, edited: true });
-    publishMut(buildEditRumor(pubkey, activeChannel.id, BigInt(channelEpoch), msg.id, trimmed, ms, now, kindOf(msg)));
-  }, [pubkey, activeChannel, community, channelEpoch, publishMut]);
+    publishMut(stampExpiration(buildEditRumor(pubkey, activeChannel.id, BigInt(channelEpoch), msg.id, trimmed, ms, now, kindOf(msg)), timer));
+  }, [pubkey, activeChannel, community, channelEpoch, publishMut, timer]);
 
   // Encrypt + upload a picked file, then stage it for the next send.
   const pickFile = useCallback(async (file: File | undefined) => {
@@ -772,7 +807,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
         ) : (
         <button onClick={() => setChannelSheetOpen(true)} className="flex items-center gap-1.5 min-w-0 flex-1 h-10 px-2 rounded-lg text-left active:bg-muted/30 transition-colors" data-testid="concord-channel-picker">
           {activeChannel?.isPrivate ? <Lock className="w-4 h-4 shrink-0 text-muted-foreground/50" /> : <Hash className="w-4 h-4 shrink-0 text-muted-foreground/50" />}
-          <span className="text-sm font-semibold truncate">{activeChannel?.name}</span>
+          <span className="text-sm font-semibold truncate">{activeChannel?.name}</span>{timer > 0 && <DisappearingBadge seconds={timer} />}
           <ChevronDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground/50" />
           {otherChannelMentions > 0 ? (
             <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shrink-0" aria-label={`${otherChannelMentions} mention${otherChannelMentions === 1 ? "" : "s"} in other channels`} data-testid="concord-picker-mentions">
@@ -898,7 +933,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
         {!single && (
           <>
             {activeChannel?.isPrivate ? <Lock className="w-4 h-4 text-muted-foreground/50 shrink-0" /> : <Hash className="w-4 h-4 text-muted-foreground/50 shrink-0" />}
-            <span className="text-sm font-semibold truncate">{activeChannel?.name}</span>
+            <span className="text-sm font-semibold truncate">{activeChannel?.name}</span>{timer > 0 && <DisappearingBadge seconds={timer} />}
           </>
         )}
         <div className="ml-auto flex items-center gap-1">
@@ -1045,7 +1080,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             </div>
           )}
           {item.kind === "sys" ? (
-            <SystemLine pubkey={item.pubkey} action={item.action} />
+            <SystemLine pubkey={item.pubkey} action={item.action} timer={item.timer} />
           ) : (
           <ConcordMessageRow msgId={item.msg.id} pubkey={item.msg.pubkey} content={item.msg.content} media={item.msg.media} mine={item.msg.pubkey === pubkey}
             t={item.msg.t} grouped={grouped}
@@ -1385,12 +1420,13 @@ function TypingIndicator({ pubkeys }: { pubkeys: string[] }) {
 /** Subtle centered system line — WhatsApp/Signal style. Joins/leaves plus the
  *  neutral moderation outcomes; copy stays minimal and NEVER carries a reason
  *  (reasons are admin-only, in the audit log). */
-function SystemLine({ pubkey, action }: { pubkey: string; action: SystemAction }) {
+function SystemLine({ pubkey, action, timer }: { pubkey: string; action: SystemAction; timer?: number }) {
   const { name } = useConcordProfile(pubkey);
   const suffix =
     action === "join" ? "joined"
     : action === "leave" ? "left"
     : action === "kick" ? "was removed by an admin"
+    : action === "timer" ? timerNoticeText(timer ?? 0)
     : "was banned by an admin";
   return (
     <div className="flex justify-center my-1" data-testid="concord-system-line">
@@ -1567,5 +1603,16 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, t, grouped, ed
         </div>
       )}
     </div>
+  );
+}
+
+/** The room's disappearing-messages clock (CORD-08), shown only while the timer is set. */
+function DisappearingBadge({ seconds }: { seconds: number }) {
+  const label = `Messages disappear after ${timerSpan(seconds)}`;
+  return (
+    <span className="flex items-center gap-1 shrink-0 text-[11px] text-muted-foreground/60" title={label} aria-label={label} data-testid="concord-disappearing-badge">
+      <TimerIcon className="w-3.5 h-3.5" />
+      <span className="hidden md:inline">{timerSpan(seconds)}</span>
+    </span>
   );
 }

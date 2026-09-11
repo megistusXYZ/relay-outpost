@@ -32,6 +32,8 @@ export const KIND_KICK = 3309;
 export const KIND_SNAPSHOT = 3312;
 export const KIND_DIRECT_INVITE = 3313;
 export const KIND_TYPING = 23311;
+/** A disappearing-messages timer notice (CORD-08 §4), the kind NIP-17 clients use too. */
+export const KIND_TIMER_NOTICE = 1740;
 /** The Community List (CORD-02 §8): addressable fragments, `d` = the fragment index. */
 export const KIND_COMMUNITY_LIST = 33302;
 /** The retired single-event list. Read forever, since a device's groups may only be there; never written. */
