@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { freshScrollState } from "./scroll-restore";
 import {
   saveScrollPosition,
   getSavedScrollPosition,
@@ -512,5 +513,48 @@ describe("position persistence — surviving a discarded document", () => {
   it("keeps a null anchor null rather than inventing an id", () => {
     const back = deserializePositions(serializePositions(new Map([["k", pos(90, null)]])));
     expect(back.get("k")!.anchorId).toBeNull();
+  });
+});
+
+/**
+ * Reported on mobile (2026-09-11): tapping a nav icon opened the next page in
+ * the middle or near the bottom. A tab switch REPLACES the history entry, and
+ * the replaced entry kept the old page's scroll token, so the restorer handed
+ * the new page the old page's offset. A position belongs to the page it was
+ * saved on.
+ */
+describe("a saved position belongs to the page it was saved on", () => {
+  it("a page that takes over the history entry (a tab switch) opens fresh, never at the old page's offset", () => {
+    saveScrollPosition("tok-tab-switch", { scrollTop: 3200, anchorId: null, anchorOffset: 0, path: "/discover" });
+    expect(getSavedScrollPosition("tok-tab-switch", "/messages")).toBeUndefined();
+  });
+
+  it("the same page still gets its place back (Back)", () => {
+    saveScrollPosition("tok-same-page", { scrollTop: 3200, anchorId: null, anchorOffset: 0, path: "/discover" });
+    expect(getSavedScrollPosition("tok-same-page", "/discover")?.scrollTop).toBe(3200);
+  });
+});
+
+describe("the page a position was saved on survives a reload", () => {
+  it("keeps the page through sessionStorage, so a reload or an iOS-reclaimed PWA still opens other pages fresh", () => {
+    const map = new Map([["tok-reload", { scrollTop: 900, anchorId: null, anchorOffset: 0, path: "/discover", savedAt: 1 }]]);
+    const back = deserializePositions(serializePositions(map));
+    expect(back.get("tok-reload")?.path).toBe("/discover");
+  });
+});
+
+/**
+ * "Top every time" (owner call, 2026-09-11). Two tab taps replace the SAME
+ * history entry, so Discover → Chats → Discover finds a position saved on
+ * Discover itself and the page check alone would restore it. A tab tap writes
+ * a fresh token instead, so the page it opens has nothing to restore.
+ */
+describe("a tab tap opens its page at the top, every time", () => {
+  it("gives the entry a token no position was saved under, and a new one each tap", () => {
+    saveScrollPosition("tok-round-trip", { scrollTop: 1000, anchorId: null, anchorOffset: 0, path: "/discover" });
+    const first = freshScrollState();
+    expect(first._scrollToken).not.toBe("tok-round-trip");
+    expect(getSavedScrollPosition(first._scrollToken, "/discover")).toBeUndefined();
+    expect(freshScrollState()._scrollToken).not.toBe(first._scrollToken);
   });
 });

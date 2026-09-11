@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { tabTap } from "./footer-nav";
 import { isNavDestinationActive, isChatOverlayRoute, isChatsTabActive, isCommunitiesTabActive, isNewsTabActive } from "./footer-nav";
 
 // The footer's two chat-adjacent tabs. Feed/Alerts are trivial prefix checks;
@@ -200,5 +201,20 @@ describe("isNavDestinationActive — one predicate for both footer layouts", () 
       const lit = ids.filter((id) => isNavDestinationActive(id, loc, "", true));
       expect(lit.length, `${loc} lit ${lit.join(",")}`).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+/**
+ * X's tab bar (2026-09-11, reported on mobile): tapping the tab you are
+ * already on takes you back to the top of it. It used to do nothing at all.
+ */
+describe("tabTap — what tapping a footer tab does", () => {
+  it("re-tapping the tab you're on scrolls back to the top", () => {
+    expect(tabTap("/discover", "/discover")).toBe("scroll-to-top");
+  });
+
+  it("tapping another tab, or the current tab from one of its inner pages, goes to that tab", () => {
+    expect(tabTap("/discover", "/messages")).toBe("navigate");
+    expect(tabTap("/messages/npub1abc", "/messages")).toBe("navigate");
   });
 });

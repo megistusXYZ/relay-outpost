@@ -39,6 +39,13 @@ export interface SavedScrollPosition {
   anchorIndex?: number | null;
   /** Pixels the container was scrolled past the anchor row's top (feed only). */
   intraOffset?: number;
+  /**
+   * The page (pathname) this position was saved on. A position belongs to its
+   * page: a tab switch REPLACES the history entry, the new page inherits the
+   * old one's token, and without this the new page opened at the old page's
+   * offset. Absent on positions saved before it was recorded.
+   */
+  path?: string;
   savedAt: number;
 }
 
@@ -100,6 +107,9 @@ export function deserializePositions(raw: string | null): Map<string, SavedScrol
         anchorOffset: Number.isFinite(value.anchorOffset) ? value.anchorOffset : 0,
         anchorIndex: Number.isFinite(value.anchorIndex) ? value.anchorIndex : null,
         intraOffset: Number.isFinite(value.intraOffset) ? value.intraOffset : undefined,
+        // Without the page, every position restored after a reload would match
+        // any page again, and tab switches would inherit offsets once more.
+        path: typeof value.path === "string" ? value.path : undefined,
         savedAt: Number.isFinite(value.savedAt) ? value.savedAt : 0,
       });
     }
@@ -162,10 +172,26 @@ export function getScrollToken(): string | null {
   }
 }
 
+function newScrollToken(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+/**
+ * History state for a navigation that must open its page at the top: a fresh
+ * token, so no saved position can apply. The footer's tab taps use it ("top
+ * every time", owner call 2026-09-11): two tab taps replace the SAME entry,
+ * so without it Discover → Chats → Discover could restore Discover's old
+ * offset. Pass as wouter's `navigate(to, { state })`; the history patch keeps
+ * the caller's keys over the entry's old ones.
+ */
+export function freshScrollState(): { _scrollToken: string } {
+  return { _scrollToken: newScrollToken() };
+}
+
 export function ensureScrollToken(): string {
   let token = getScrollToken();
   if (!token) {
-    token = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    token = newScrollToken();
     try {
       history.replaceState({ ...history.state, _scrollToken: token }, "");
     } catch {}
@@ -173,18 +199,32 @@ export function ensureScrollToken(): string {
   return token;
 }
 
+/** The page the app is on now; undefined outside a browser. */
+function currentPath(): string | undefined {
+  try { return typeof location !== "undefined" ? location.pathname : undefined; } catch { return undefined; }
+}
+
 export function saveScrollPosition(token: string, pos: Omit<SavedScrollPosition, "savedAt">) {
   // Re-inserting moves the key to the end of the Map's iteration order, so
   // pruning always drops the least-recently-updated entries.
   positions.delete(token);
-  positions.set(token, { ...pos, savedAt: Date.now() });
+  positions.set(token, { ...pos, path: pos.path ?? currentPath(), savedAt: Date.now() });
   prune();
   scheduleFlush();
 }
 
-export function getSavedScrollPosition(token: string | null): SavedScrollPosition | undefined {
+/**
+ * The position saved for this history entry, if it was saved on `path` (the
+ * current page by default). A position saved on another page is ignored: that
+ * page took over the entry (a tab switch or a redirect replaces it), and the
+ * new page opens at the top rather than at the old page's offset.
+ */
+export function getSavedScrollPosition(token: string | null, path: string | undefined = currentPath()): SavedScrollPosition | undefined {
   if (!token) return undefined;
-  return positions.get(token);
+  const saved = positions.get(token);
+  if (!saved) return undefined;
+  if (saved.path && path && saved.path !== path) return undefined;
+  return saved;
 }
 
 /**

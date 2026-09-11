@@ -1,4 +1,7 @@
 import { useState, useEffect, memo } from "react";
+import { tabTap } from "@/lib/footer-nav";
+import { scrollPageToTop } from "@/lib/scroll-root";
+import { freshScrollState } from "@/lib/scroll-restore";
 import { useLocation, useSearch } from "wouter";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -200,14 +203,17 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
   const historyBase = iaCollapsed ? "/messages" : "/";
   const goTab = (target: string) => (e: React.MouseEvent) => {
     e.preventDefault();
-    if (location === target) return;
+    // Re-tapping the tab you're on takes you back to its top, as X does.
+    if (tabTap(location, target) === "scroll-to-top") { scrollPageToTop(); return; }
     // Push only from the BOTTOM of the app's stack (index 0); replace
     // everywhere else. Deciding by pathname (`location !== historyBase`)
     // accumulated one duplicate base entry per base→tab→base round trip — the
     // stack never stopped growing and Back had to chew through copies of the
     // base. The index says what the pathname can't: whether an entry is
     // already beneath us.
-    setLocation(target, { replace: appHistoryIndex() > 0 });
+    // A fresh scroll token: every tab tap opens its page at the top, never at
+    // an offset the (possibly replaced) entry saved earlier.
+    setLocation(target, { replace: appHistoryIndex() > 0, state: freshScrollState() });
   };
 
   // Chats badge = DM unread + Concord: mentions of you count as NUMBERS, a
