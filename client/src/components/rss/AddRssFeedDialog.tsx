@@ -39,7 +39,7 @@ import { useBackClosable } from "@/hooks/use-back-closable";
 import { useKeyboardViewport } from "@/hooks/use-keyboard-viewport";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import { formatDistanceToNow } from "date-fns";
-import type { MusicTrack } from "@/lib/music";
+import { episodeTrack, podcastFeedToSaved } from "@/lib/podcast-episode";
 import {
   type SavedFeed,
   SUGGESTED_FEEDS,
@@ -387,26 +387,7 @@ function FeedPreviewPanel({ feed, isAdded, onBack, onAdd }: {
   const updated = relativeTime(feed.newestItemPubdate || feed.lastUpdateTime);
   const cleanDescription = useMemo(() => stripHtml(feed.description).slice(0, 400), [feed.description]);
 
-  const toTrack = (ep: PodcastEpisode): MusicTrack | null => {
-    if (!ep.audioUrl) return null;
-    return {
-      id: `rss-${encodeURIComponent(ep.audioUrl)}`,
-      title: ep.title || "Untitled Episode",
-      artist: feed.author || feed.title || "Podcast",
-      artistPubkey: "",
-      audioUrl: ep.audioUrl,
-      coverUrl: ep.thumbnail || feed.image || "",
-      description: ep.description || "",
-      genre: "Podcast",
-      duration: ep.duration || 0,
-      createdAt: ep.pubDate ? Math.floor(new Date(ep.pubDate).getTime() / 1000) : 0,
-      source: "podcast" as const,
-      albumTitle: feed.title || undefined,
-      transcriptUrl: ep.transcriptUrl,
-      transcriptType: ep.transcriptType,
-      chaptersUrl: ep.chaptersUrl,
-    };
-  };
+  const toTrack = (ep: PodcastEpisode) => episodeTrack(ep, { title: feed.title, author: feed.author, image: feed.image });
 
   return (
     <div className="space-y-4" data-testid="feed-preview">
@@ -700,14 +681,7 @@ function AddFeedBody({
   // Persist artwork + author (+ V4V support) onto the SavedFeed so the library
   // keeps rich cards and the News priority strip can show the ⚡ badge.
   const addPodcast = useCallback((feed: PodcastFeed) => {
-    addWithToast({
-      name: feed.title,
-      url: feed.url,
-      category: "Podcast",
-      feedImage: feed.image || undefined,
-      author: feed.author || undefined,
-      v4v: feedSupportsValue(feed) || undefined,
-    });
+    addWithToast(podcastFeedToSaved(feed));
   }, [addWithToast]);
 
   const clearQuery = useCallback(() => {

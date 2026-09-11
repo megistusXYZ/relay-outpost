@@ -45,6 +45,26 @@ export function orderStream<T extends MergeableItem>(items: MergedItem<T>[]): Me
   return [...items].sort((a, b) => timeOf(b.item) - timeOf(a.item));
 }
 
+/** Shorter than this and it's a trailer or a teaser clip, not an episode. */
+const MIN_EPISODE_SECONDS = 180;
+
+/**
+ * The Listen lane: playable episodes from the shows you follow, newest first.
+ * Anything known to be under three minutes (trailers, teaser clips) stays
+ * out; an episode whose feed gives no length can't be told from a clip, so it
+ * stays in.
+ */
+export function listenEpisodes<T extends MergeableItem>(items: MergedItem<T>[]): MergedItem<T>[] {
+  return orderStream(
+    items.filter((m) => {
+      const item = m.item as MergeableItem & { audioUrl?: string; duration?: number };
+      if (!item.audioUrl) return false;
+      const knownLength = typeof item.duration === "number" && item.duration > 0;
+      return !(knownLength && item.duration! < MIN_EPISODE_SECONDS);
+    }),
+  );
+}
+
 export interface NewsMutes {
   mutedSources?: Iterable<string>;
   mutedKeywords?: Iterable<string>;
@@ -78,12 +98,14 @@ export interface DayGroup<T extends MergeableItem = MergeableItem> {
  * Stories in time groups: Today / Yesterday / weekday / date, newest day
  * first. Within a day the given order is kept, so the stream's frozen order
  * (useStableOrder) survives and nothing reshuffles as feeds stream in. A story
- * dated in the future (a publisher's clock or time zone slip) counts as today;
- * stories with no usable date go in a last "Earlier" group.
+ * dated in the future (a publisher's clock or time zone slip) counts as today.
+ * Anything a week old or more shares one last "Earlier" group (a date heading
+ * over each single old row was clutter), with undated stories at its end.
  */
 export function groupByDay<T extends MergeableItem>(ordered: MergedItem<T>[], now: number): DayGroup<T>[] {
   const today = startOfLocalDay(now);
   const byDay = new Map<number, MergedItem<T>[]>();
+  const earlier: MergedItem<T>[] = [];
   const undated: MergedItem<T>[] = [];
   for (const m of ordered) {
     const t = Date.parse(m.item.pubDate || "");
@@ -92,6 +114,11 @@ export function groupByDay<T extends MergeableItem>(ordered: MergedItem<T>[], no
       continue;
     }
     const day = Math.min(startOfLocalDay(t), today);
+    // The same boundary where day labels stop naming the weekday (day-label.ts).
+    if (Math.round((today - day) / DAY_MS) >= DAYS_WITH_OWN_HEADING) {
+      earlier.push(m);
+      continue;
+    }
     const group = byDay.get(day);
     if (group) group.push(m);
     else byDay.set(day, [m]);
@@ -99,9 +126,14 @@ export function groupByDay<T extends MergeableItem>(ordered: MergedItem<T>[], no
   const groups: DayGroup<T>[] = [...byDay.entries()]
     .sort((a, b) => b[0] - a[0])
     .map(([day, items]) => ({ label: chatDayLabel(day, now), items }));
-  if (undated.length > 0) groups.push({ label: "Earlier", items: undated });
+  const rest = [...earlier, ...undated];
+  if (rest.length > 0) groups.push({ label: "Earlier", items: rest });
   return groups;
 }
+
+const DAY_MS = 86_400_000;
+/** Today, Yesterday and the weekdays before it; older days share "Earlier". */
+const DAYS_WITH_OWN_HEADING = 7;
 
 /**
  * Everything but the lead, compared by story id (guid, id or link), not by

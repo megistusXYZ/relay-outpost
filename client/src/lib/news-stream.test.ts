@@ -4,7 +4,7 @@
  * after the page felt "forced with our agenda and presets".
  */
 import { describe, expect, it } from "vitest";
-import { groupByDay, orderStream, pickLead, withoutLead, withoutMuted } from "./news-stream";
+import { groupByDay, listenEpisodes, orderStream, pickLead, withoutLead, withoutMuted } from "./news-stream";
 import type { MergedItem } from "./rss-merge";
 
 const NOW = Date.parse("2026-09-10T18:00:00Z");
@@ -73,6 +73,27 @@ describe("the order", () => {
 });
 
 /**
+ * The Listen lane (News redesign, part 4) is the new episodes from the shows
+ * you follow. Trailers and teaser clips crowd a feed of episodes, so anything
+ * known to be under three minutes stays out; an episode whose length the feed
+ * doesn't give can't be told from a clip, so it stays in.
+ */
+describe("the Listen lane's episodes", () => {
+  it("keeps playable episodes of three minutes or more (or of unknown length), newest first", () => {
+    const episode = (id: string, hoursAgo: number, duration?: number) =>
+      story(id, hoursAgo, { audioUrl: `https://cdn.example/${id}.mp3`, duration });
+    const listed = listenEpisodes([
+      episode("long-older", 5, 3600),
+      story("an-article", 1),
+      episode("trailer", 2, 90),
+      episode("long-newest", 3, 1800),
+      episode("unknown-length", 4),
+    ]);
+    expect(listed.map((m) => (m.item as { id: string }).id)).toEqual(["long-newest", "unknown-length", "long-older"]);
+  });
+});
+
+/**
  * The stream no longer hides stories by our own scoring (it used to drop
  * "low-priority" items once you had any read history). The only things it
  * leaves out are the ones you chose to mute.
@@ -108,6 +129,25 @@ describe("time groups", () => {
       ["Today", ["today-morning", "today-afternoon"]],
       ["Yesterday", ["yesterday"]],
       ["Monday", ["monday"]],
+    ]);
+  });
+
+  /**
+   * With one daily show in Listen (or a slow news source), every day past a
+   * week got its own date heading over a single row: 25 headings down to
+   * "Aug 17" in the browser, 2026-09-10. Past a week the date isn't worth a
+   * heading; those share one last group.
+   */
+  it("gathers anything a week old or more into one last 'Earlier' group, with undated stories at its end", () => {
+    const ordered = [
+      story("friday", 0, { pubDate: at(9, 4, 9) }),
+      story("undated", 0, { pubDate: "" }),
+      story("a-week-ago", 0, { pubDate: at(9, 3, 20) }),
+      story("two-weeks-ago", 0, { pubDate: at(8, 27, 9) }),
+    ];
+    expect(ids(groupByDay(ordered, now))).toEqual([
+      ["Friday", ["friday"]],
+      ["Earlier", ["a-week-ago", "two-weeks-ago", "undated"]],
     ]);
   });
 
