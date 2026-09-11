@@ -18,6 +18,7 @@ import type { Seal } from "./concord-crypto";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
 import { u64BE, concatBytes } from "./concord-crypto";
+import { grantLocator, banlistLocator, LEGACY_BANLIST_EID } from "./concord-locators";
 
 // ── Rumor / event kinds ──────────────────────────────────────────────────────
 export const KIND_MESSAGE = 9;
@@ -649,19 +650,43 @@ function liftedBans(winners: Map<string, ControlEdition>, hashOf?: Map<ControlEd
  * Per entity coordinate (vsk:eid) the highest `ev` wins, tie-breaking on the
  * lexicographically-lower rumor id (never timestamp, per CORD-04).
  */
+/**
+ * Where a Grant or the Banlist sits, once the group is known (CORD-02 A.6):
+ * 1 at the spec's derived coordinate, 0 at this client's old one (the member's
+ * pubkey, `"ba"×32`), -1 at neither — stray, and dropped. Everything else is 0.
+ * The spec's is applied last, so it wins where a member (or the list) has both,
+ * whatever order they arrived in.
+ */
+function coordRank(e: ControlEdition, communityId?: string): number {
+  if (!communityId || (e.vsk !== VSK.GRANT && e.vsk !== VSK.BANLIST)) return 0;
+  if (e.vsk === VSK.BANLIST) return e.eid === banlistLocator(communityId) ? 1 : e.eid === LEGACY_BANLIST_EID ? 0 : -1;
+  let member: unknown;
+  try { member = JSON.parse(e.content)?.member; } catch { return -1; }
+  if (typeof member !== "string" || !/^[0-9a-f]{64}$/.test(member)) return -1;
+  return e.eid === grantLocator(communityId, member) ? 1 : e.eid === member ? 0 : -1;
+}
+
 function applyEditions(
   admitted: Iterable<ControlEdition>,
   hashOf?: Map<ControlEdition, string>,
+  /** Known, it tells the spec's Grant and Banlist coordinates from old and stray ones. */
+  communityId?: string,
 ): FoldedState {
   const byCoord = new Map<string, ControlEdition>();
   // Names from EVERY admitted banlist edition, gathered before the winner-only
   // reduction below discards the rest. See FoldedState.banlistSeen.
   const seenBans = new Set<string>();
-  for (const e of admitted) {
+  const all = [...admitted];
+  // Once a Banlist exists at the spec's coordinate, it alone feeds the heal set.
+  // Its first edition was composed from every ban known then, the old list
+  // included, so the old list's names can only bring back ones since lifted
+  // (found on the wire: an unban that moved the list was undone by the next ban).
+  const specBanlist = !!communityId && all.some((e) => e.vsk === VSK.BANLIST && coordRank(e, communityId) === 1);
+  for (const e of all) {
     const coord = `${e.vsk}:${e.eid}`;
     const cur = byCoord.get(coord);
     if (!cur || e.ev > cur.ev || (e.ev === cur.ev && e.rumorId < cur.rumorId)) byCoord.set(coord, e);
-    if (e.vsk === VSK.BANLIST) {
+    if (e.vsk === VSK.BANLIST && coordRank(e, communityId) >= (specBanlist ? 1 : 0)) {
       try {
         const names = JSON.parse(e.content);
         if (Array.isArray(names)) for (const n of names) if (typeof n === "string") seenBans.add(n);
@@ -682,7 +707,12 @@ function applyEditions(
     const hash = hashOf?.get(e);
     if (hash) state.heads.set(coord, { ev: e.ev, hash });
   }
-  for (const e of byCoord.values()) {
+  // Stray Grant/Banlist coordinates dropped; the spec's applied after the old
+  // ones (a stable sort, so everything else keeps its order).
+  const ordered = [...byCoord.values()]
+    .filter((e) => coordRank(e, communityId) >= 0)
+    .sort((a, b) => coordRank(a, communityId) - coordRank(b, communityId));
+  for (const e of ordered) {
     try {
       const data = JSON.parse(e.content);
       switch (e.vsk) {
@@ -855,7 +885,12 @@ function authorizeEdition(
  *   Repeat until no new admissions (fixpoint). Non-admitted editions are dropped
  *   — never applied — so downstream (`computeRoster`) is unchanged.
  */
-export function foldEditions(editions: ControlEdition[], ownerPubkey: string): FoldedState {
+export function foldEditions(
+  editions: ControlEdition[],
+  ownerPubkey: string,
+  /** The group's id: with it, Grants and the Banlist are read at the spec's coordinates as well as the old ones. */
+  communityId?: string,
+): FoldedState {
   // Index editions by their own hash so we can verify `ep` links + `vac`
   // citations. A malformed eid (not 32-byte hex) can't be a real edition.
   const byHash = new Map<string, ControlEdition>();
@@ -922,7 +957,7 @@ export function foldEditions(editions: ControlEdition[], ownerPubkey: string): F
   let changed = true;
   while (changed) {
     changed = false;
-    const state = applyEditions(admitted, hashOf);
+    const state = applyEditions(admitted, hashOf, communityId);
     for (const e of candidates) {
       if (admitted.has(e)) continue;
       if (authorizeEdition(e, state, ownerPubkey, byHash, admitted)) {
@@ -932,7 +967,7 @@ export function foldEditions(editions: ControlEdition[], ownerPubkey: string): F
     }
   }
 
-  return applyEditions(admitted, hashOf);
+  return applyEditions(admitted, hashOf, communityId);
 }
 
 // ── Roster (CORD-04 §Roster) ──────────────────────────────────────────────────

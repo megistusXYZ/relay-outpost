@@ -27,7 +27,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Tags, Check } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Role } from "@/lib/concord/concord-events";
-import { BANLIST_EID } from "@/lib/concord/concord-banlist";
+import { grantLocator, banlistLocator } from "@/lib/concord/concord-locators";
 
 export function ConcordMembers({ community, onCommunityChange, showActivity = true }: {
   community: StoredCommunity; onCommunityChange: (c: StoredCommunity) => void;
@@ -67,7 +67,7 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
           // The head the relays actually hold — NOT a literal version. The
           // banlist is multi-writer, so this device's own history is only a
           // floor (removeMember reads that from the community record).
-          banHead: state.heads.get(`${VSK.BANLIST}:${BANLIST_EID}`),
+          banHead: state.heads.get(`${VSK.BANLIST}:${banlistLocator(community.community_id)}`),
           // Private rooms get new keys too, sent only to the people in them.
           privateRoomHolders,
           // The group's current settings, republished at the new epoch so
@@ -98,7 +98,7 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
         // only written by the device that published, so a second device would
         // restart this member's chain at v1 — onto a coordinate that already
         // holds one, where the loser's payload is simply discarded.
-        state.heads.get(`${VSK.GRANT}:${target}`), state.heads.size > 0,
+        state.heads.get(`${VSK.GRANT}:${grantLocator(community.community_id, target)}`), state.heads.size > 0,
         (e, r) => publishEvent(e, r), (e) => publishEvent(e, community.relays),
         // Their roles now: Admin is given or taken, the rest kept. Without it
         // "remove admin" published an empty grant and wiped every other role.
@@ -132,7 +132,7 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
       const before = state.grants.get(target) ?? [];
       const updated = await setMemberRoles(signer, pubkey, community, target,
         { before, after: rolesAfter(before, give ? { add: roleId } : { remove: roleId }), roles: state.roles },
-        state.heads.get(`${VSK.GRANT}:${target}`), state.heads.size > 0,
+        state.heads.get(`${VSK.GRANT}:${grantLocator(community.community_id, target)}`), state.heads.size > 0,
         (e, r) => publishEvent(e, r), (e) => publishEvent(e, community.relays));
       onCommunityChange(updated);
       toast({ title: give ? "Role given" : "Role taken away" });
@@ -165,7 +165,7 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
         // Every ban we know about, so a fork still heals; the fold already
         // leaves out names a later edition lifted.
         currentBanlist: [...state.banlistSeen],
-        banHead: state.heads.get(`${VSK.BANLIST}:${BANLIST_EID}`),
+        banHead: state.heads.get(`${VSK.BANLIST}:${banlistLocator(community.community_id)}`),
       }, (e, r) => publishEvent(e, r));
       onCommunityChange(updated);
       toast({ title: "Ban lifted", description: "They'll need a new invite to come back." });
