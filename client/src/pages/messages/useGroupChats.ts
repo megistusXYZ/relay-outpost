@@ -1,26 +1,20 @@
 /**
  * Concord group-chat list data for the Chats page: local communities from the
- * key store, plus the kind-13302 self-backup pull so a second browser (or a
- * cache-cleared one) rehydrates its group chats on load.
- *
- * The 13302 sync effect is transplanted from Outposts.tsx's Concord state block
- * — the hub keeps its own copy this PR (intentional, idempotent duplication);
- * PR 3 deletes the hub copy once this one has shipped.
+ * key store, plus the Community List sync (kind 33302) so a second browser (or
+ * a cache-cleared one) rehydrates its group chats on load.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Event } from "nostr-tools";
 import { use$ } from "applesauce-react/hooks";
 import { combineLatest, of } from "rxjs";
-import { getCommunities, syncCommunityList, type StoredCommunity } from "@/lib/concord/concord-keys";
-import { KIND_COMMUNITY_LIST } from "@/lib/concord/concord-events";
+import { getCommunities, type StoredCommunity } from "@/lib/concord/concord-keys";
+import { syncCommunityListNow, COMMUNITY_LIST_SYNCED_EVENT } from "@/lib/concord/community-list-live";
 import { useConcordEnabled } from "@/lib/concord/concord-prefs";
 import { ensureConcordUnreadWatcher } from "@/lib/concord/concord-unread";
 import { getRosterSnapshot, resolveGroupName, ROSTER_CHANGED_EVENT } from "@/lib/concord/concord-roster";
 import { getGlobalSigner } from "@/lib/nip42-auth";
-import { queryAnswered } from "@/lib/relay-reach";
-import { publishEvent, persistentPoolSubscribe, eventStore, fetchProfilesCached } from "@/lib/nostr";
+import { persistentPoolSubscribe, eventStore, fetchProfilesCached } from "@/lib/nostr";
 import { getDisplayName, KIND_METADATA, shortenNpub, formatNpub } from "@/lib/nostr-helpers";
-import { getActiveDefaultRelays } from "@/lib/outpost-relays";
 import { RECORD_RECONCILED_EVENT } from "@/components/concord/useConcordGovernance";
 
 interface UseGroupChats {
@@ -41,45 +35,18 @@ export function useGroupChats(pubkey: string | null | undefined): UseGroupChats 
     getCommunities(pubkey).then(setGroups).catch(() => {});
   }, [concordEnabled, pubkey]);
 
-  // Load local communities + pull the 13302 backup on mount so a second
-  // browser with the same account rehydrates. (Transplanted from Outposts.tsx.)
+  // Load local communities and sync the Community List on mount, so a second
+  // browser with the same account rehydrates.
   useEffect(() => {
     if (!concordEnabled || !pubkey) { setGroups([]); return; }
     let cancelled = false;
     const load = () => getCommunities(pubkey).then((cs) => { if (!cancelled) setGroups(cs); });
     load();
     const signer = getGlobalSigner();
-    if (signer) {
-      // Read FIRST, and only sync if the relays actually answered.
-      //
-      // syncCommunityList merges local with remote and then publishes the local
-      // list when it holds anything remote didn't. An unanswered read looks
-      // exactly like "remote has nothing", so a browser with a PARTIAL local
-      // list — a second device, or one whose cache was cleared — would publish
-      // that partial list over a richer kind-13302 and drop every community it
-      // had never heard of. kind-13302 is replaceable; the publish is the wipe.
-      //
-      // The old shape could not express this: it resolved `latest` on both EOSE
-      // and a 4s timer, so "nobody answered" and "there is no backup" arrived
-      // as the same `null`. The 4s was itself under nostr-tools' own give-up.
-      (async () => {
-        const { events, answered } = await queryAnswered(
-          getActiveDefaultRelays(),
-          { kinds: [KIND_COMMUNITY_LIST], authors: [pubkey], limit: 1 },
-        );
-        if (!answered || cancelled) return;
-        const latest = events.length
-          ? [...events].sort((a, b) => b.created_at - a.created_at)[0]
-          : null;
-        const added = await syncCommunityList(
-          signer,
-          pubkey,
-          async () => latest,
-          (e) => publishEvent(e, getActiveDefaultRelays()),
-        );
-        if (added && !cancelled) load();
-      })().catch(() => {});
-    }
+    // Your groups from your other devices, and this device's for them. The sync
+    // writes nothing unless a relay answered, and never rebuilds the List from
+    // this device's groups alone (lib/concord/community-list-sync.ts).
+    if (signer) syncCommunityListNow(signer, pubkey).catch(() => {});
     // A freshly-received direct invite may be accepted from anywhere (the
     // pending-invites card lives at the top of the list) — refresh on it.
     const onInvite = () => { void load(); };
@@ -89,10 +56,14 @@ export function useGroupChats(pubkey: string | null | undefined): UseGroupChats 
     // is exactly the surface those mirrors always claimed to serve and never
     // reached — they wrote to IndexedDB and notified nobody.
     window.addEventListener(RECORD_RECONCILED_EVENT, onInvite);
+    // A sync (here, or after a join or leave anywhere in the app) added,
+    // dropped or advanced a group.
+    window.addEventListener(COMMUNITY_LIST_SYNCED_EVENT, onInvite);
     return () => {
       cancelled = true;
       window.removeEventListener("concord-invite-received", onInvite);
       window.removeEventListener(RECORD_RECONCILED_EVENT, onInvite);
+      window.removeEventListener(COMMUNITY_LIST_SYNCED_EVENT, onInvite);
     };
   }, [concordEnabled, pubkey]);
 

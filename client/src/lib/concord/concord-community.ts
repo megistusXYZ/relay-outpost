@@ -30,7 +30,7 @@ type PublishSelfFn = (event: Event) => Promise<unknown>;
  * Create a Concord community owned by `myPubkey`. Mints the root secret + salt,
  * derives the id, opens a default public "general" channel, persists the keys
  * locally, publishes the metadata + channel editions + a guestbook join, and
- * writes the 13302 self-backup. Returns the stored record (also the route param).
+ * syncs your Community List. Returns the stored record (also the route param).
  */
 export async function createCommunity(
   signer: ISigner,
@@ -131,8 +131,8 @@ export async function createChannel(
 
 /**
  * Edit the outpost's name and/or image (vsk-0 metadata edition N+1, chained to
- * the tracked previous edition). Updates the local record + resyncs the 13302
- * backup. Owner/admin gated in the UI. Returns the updated community.
+ * the tracked previous edition). Updates the local record + syncs your
+ * Community List. Owner/admin gated in the UI. Returns the updated community.
  */
 export async function editMetadata(
   signer: ISigner,

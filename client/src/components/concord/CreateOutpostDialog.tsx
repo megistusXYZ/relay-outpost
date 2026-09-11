@@ -123,5 +123,5 @@ export function CreateOutpostDialog({ open, onOpenChange, onCreated }: {
   );
 }
 
-/** Republish the 13302 backup — imported here so callers have one entry point. */
+/** Sync your Community List — imported here so callers have one entry point. */
 export { publishCommunityList };

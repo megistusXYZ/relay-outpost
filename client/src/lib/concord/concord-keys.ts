@@ -1,21 +1,19 @@
 /**
- * Concord key store (CORD-02 §Community List): the per-user vault of the
- * symmetric key material for every community they belong to.
+ * Concord key store: the per-user vault of the symmetric key material for
+ * every community they belong to.
  *
  * Two layers:
  *  - IndexedDB (`concord-keys` DB) — the local source of truth, namespaced by
  *    the signed-in user's pubkey (survives logout, like `dm-cache.ts`).
- *  - kind 13302 — a NIP-44 self-encrypted backup of the same list on the user's
- *    write relays. This is recovery + multi-device: a second browser (or a
- *    cache-cleared one) rehydrates its keys by pulling + decrypting 13302 on
- *    login. Published eagerly on every change (the #1 risk is key loss).
- *
- * The merge logic (`mergeCommunityLists`) is pure and unit-tested; the IDB and
- * relay I/O around it is not (this repo device-QAs I/O).
+ *  - The Community List (CORD-02 §8, kind 33302) — the member's own groups,
+ *    NIP-44 to themselves, on their relays: recovery and multi-device. A second
+ *    browser (or a cache-cleared one) takes its keys up from it, and a group
+ *    left on one device drops off the others. The rules are in
+ *    community-list.ts, the sync in community-list-sync.ts; publishCommunityList
+ *    below runs it after every change (the #1 risk is key loss).
  */
 import type { Event } from "nostr-tools";
 import type { ISigner } from "applesauce-signers";
-import { KIND_COMMUNITY_LIST } from "./concord-events";
 
 // ── Stored shapes ─────────────────────────────────────────────────────────────
 export interface StoredChannel {
@@ -104,7 +102,8 @@ export interface StoredCommunity {
    * earlier epochs stay readable after a rekey (CORD-03 §3: clients query
    * "every epoch pubkey they hold") — without this, one removal-rekey makes the
    * whole governance history (roster joins, audit log) undecryptable and the
-   * members list collapses to just the owner. Local + 13302-backup state only,
+   * members list collapses to just the owner. Local state (the Community List
+   * carries only the earliest root, as its seed),
    * never on the community wire.
    */
   priorRoots?: { root: string; epoch: number; control_pk?: string }[];
@@ -145,58 +144,6 @@ export function adoptBaseRekey(
     ...c, community_root: newRootHex, root_epoch: newEpoch, priorRoots: prior,
     control_pk: control.controlPk, control_root: control.controlRoot,
   };
-}
-
-/** kind-13302 list entry (seed = lowest epoch seen, current = highest). */
-interface ListEntry {
-  community_id: string;
-  seed: StoredCommunity;
-  current: StoredCommunity;
-  added_at: number;
-}
-interface CommunityList {
-  entries: ListEntry[];
-  tombstones: { community_id: string; removed_at: number }[];
-}
-
-const LIST_CAP = 50; // CORD-02: at most 50 memberships in a 13302 list.
-
-// ── Pure merge (CORD-02 merge rules) ─────────────────────────────────────────
-/**
- * Merge two community lists. Rules (CORD-02):
- *  - a tombstone beats an entry (removal wins), keeping the later removed_at;
- *  - for a surviving entry, `current` keeps the HIGHER root_epoch, `seed` the
- *    LOWER; an epoch tie keeps the higher added_at (deterministic enough for
- *    Slice 2, where no rekey divergence exists yet).
- */
-export function mergeCommunityLists(a: CommunityList, b: CommunityList): CommunityList {
-  const tomb = new Map<string, number>();
-  for (const t of [...a.tombstones, ...b.tombstones]) {
-    tomb.set(t.community_id, Math.max(tomb.get(t.community_id) ?? 0, t.removed_at));
-  }
-  const entries = new Map<string, ListEntry>();
-  for (const e of [...a.entries, ...b.entries]) {
-    const t = tomb.get(e.community_id);
-    if (t !== undefined && t >= e.added_at) continue; // tombstoned after this entry
-    const prev = entries.get(e.community_id);
-    if (!prev) { entries.set(e.community_id, e); continue; }
-    const current = pickHigher(prev.current, e.current);
-    const seed = pickLower(prev.seed, e.seed);
-    entries.set(e.community_id, { community_id: e.community_id, current, seed, added_at: Math.min(prev.added_at, e.added_at) });
-  }
-  return {
-    entries: [...entries.values()],
-    tombstones: [...tomb.entries()].map(([community_id, removed_at]) => ({ community_id, removed_at })),
-  };
-}
-
-function pickHigher(x: StoredCommunity, y: StoredCommunity): StoredCommunity {
-  if (y.root_epoch > x.root_epoch) return y;
-  if (y.root_epoch < x.root_epoch) return x;
-  return y.addedAt >= x.addedAt ? y : x;
-}
-function pickLower(x: StoredCommunity, y: StoredCommunity): StoredCommunity {
-  return y.root_epoch < x.root_epoch ? y : x;
 }
 
 // ── IndexedDB ─────────────────────────────────────────────────────────────────
@@ -320,8 +267,7 @@ export async function putCommunity(ownerPubkey: string, record: StoredCommunity)
  * exists NOW, so a stale snapshot cannot participate at all.
  *
  * Returns false when the row is gone — a `put` there would RESURRECT a community
- * the user just left, keys and all, and `toList` emits no tombstone that could
- * outrank it — or when `mutate` declines by returning null.
+ * the user just left, keys and all — or when `mutate` declines by returning null.
  */
 export async function updateCommunity(
   ownerPubkey: string,
@@ -501,61 +447,31 @@ export async function getInviteSigners(ownerPubkey: string, communityId: string)
   } catch { return []; }
 }
 
-// ── kind 13302 self-backup ────────────────────────────────────────────────────
-function toList(records: StoredCommunity[]): CommunityList {
-  return {
-    entries: records.map((r) => ({ community_id: r.community_id, seed: r, current: r, added_at: r.addedAt })),
-    tombstones: [],
-  };
-}
+// ── The Community List (kind 33302) ──────────────────────────────────────────
+type CommunityListSync = (signer: ISigner, ownerPubkey: string) => Promise<unknown>;
+let communityListSync: CommunityListSync | null = null;
 
-/** Encrypt the local list to self and publish a replaceable kind-13302 backup. */
-export async function publishCommunityList(
-  signer: ISigner,
-  ownerPubkey: string,
-  publish: (event: Event) => Promise<unknown>,
-): Promise<void> {
-  if (!signer.nip44) return;
-  const list = toList(await getCommunities(ownerPubkey));
-  if (list.entries.length > LIST_CAP) list.entries = list.entries.slice(0, LIST_CAP);
-  const content = await signer.nip44.encrypt(ownerPubkey, JSON.stringify(list));
-  const tmpl = { kind: KIND_COMMUNITY_LIST, created_at: Math.floor(Date.now() / 1000), tags: [], content };
-  const signed = await signer.signEvent(tmpl);
-  await publish(signed);
+/**
+ * The app registers the relay-backed sync at startup (main.tsx,
+ * community-list-live.ts). Until then, and in tests, publishing the List does
+ * nothing: this module never builds a List from its own records, which is how
+ * the retired kind-13302 backup could erase groups held only elsewhere.
+ */
+export function registerCommunityListSync(sync: CommunityListSync): void {
+  communityListSync = sync;
 }
 
 /**
- * Pull the latest kind-13302, decrypt, and merge into the local store. Returns
- * true if anything was added (so the caller can refresh the hub). Local-only
- * additions are pushed back by re-publishing afterward.
+ * Bring your Community List in step with this device, so a join, a key change
+ * or a leave here reaches your other devices. It reads before it writes, and
+ * writes only what the List lacks (community-list-sync.ts). `_publish` served
+ * the retired backup, whose relays varied by caller; the List now goes to the
+ * relays it is read from.
  */
-export async function syncCommunityList(
+export async function publishCommunityList(
   signer: ISigner,
   ownerPubkey: string,
-  fetchLatest: () => Promise<Event | null>,
-  publish: (event: Event) => Promise<unknown>,
-): Promise<boolean> {
-  if (!signer.nip44) return false;
-  const remoteEvent = await fetchLatest().catch(() => null);
-  const local = toList(await getCommunities(ownerPubkey));
-  let remote: CommunityList = { entries: [], tombstones: [] };
-  if (remoteEvent) {
-    try {
-      const json = await signer.nip44.decrypt(ownerPubkey, remoteEvent.content);
-      const parsed = JSON.parse(json);
-      if (Array.isArray(parsed.entries)) remote = { entries: parsed.entries, tombstones: parsed.tombstones ?? [] };
-    } catch { /* corrupt backup — keep local */ }
-  }
-  const merged = mergeCommunityLists(local, remote);
-  const localIds = new Set(local.entries.map((e) => e.community_id));
-  let added = false;
-  for (const e of merged.entries) {
-    if (!localIds.has(e.community_id)) { await putCommunity(ownerPubkey, e.current); added = true; }
-  }
-  // Push local additions the remote didn't have.
-  const remoteIds = new Set(remote.entries.map((e) => e.community_id));
-  if (local.entries.some((e) => !remoteIds.has(e.community_id))) {
-    await publishCommunityList(signer, ownerPubkey, publish).catch(() => {});
-  }
-  return added;
+  _publish?: (event: Event) => Promise<unknown>,
+): Promise<void> {
+  await communityListSync?.(signer, ownerPubkey);
 }

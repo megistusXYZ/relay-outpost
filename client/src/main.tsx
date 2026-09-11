@@ -9,6 +9,8 @@ import { installRelayFrameGuard } from "./lib/relay-frame-guard";
 import { isUnactionableError } from "./lib/error-noise";
 import { reportCrash, normalizeErrorEvent, normalizeRejection } from "./lib/crash-report";
 import { attachServiceWorkerUpdateSignals } from "./lib/app-update";
+import { registerCommunityListSync } from "./lib/concord/concord-keys";
+import { syncCommunityListNow } from "./lib/concord/community-list-live";
 
 // nostr-tools' WebSocket message handler logs caught errors through a debug
 // global `window.printer.maybe(...)` that only exists in its author's dev setup.
@@ -34,6 +36,11 @@ if (typeof window !== "undefined" && !window.printer) {
 // handler so malformed frames are dropped + logged instead. See
 // lib/relay-frame-guard.ts for the full autopsy.
 installRelayFrameGuard();
+
+// Every join, key change and leave reaches your other devices through the
+// Community List (lib/concord/community-list-live.ts). Registered here so the
+// key store never needs the relay layer, and tests never reach a relay.
+registerCommunityListSync(syncCommunityListNow);
 
 // Own scroll restoration ourselves. Left at the browser default ('auto'), the
 // UA ALSO tries to restore scroll on history back/forward — and on real iOS
