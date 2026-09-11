@@ -42,6 +42,8 @@ export interface SpaceCapabilities {
   removeMessages: boolean;
   /** Create/rename/delete channels WITHIN the space. Concord-only concept. */
   manageChannels: boolean;
+  /** Make roles and give people roles below one's own. Concord-only: a NIP-29 group has one admin bit. */
+  manageRoles: boolean;
   /** Read the moderation history. */
   viewAuditLog: boolean;
   /**
@@ -52,6 +54,7 @@ export interface SpaceCapabilities {
 }
 
 export const NO_CAPABILITIES: SpaceCapabilities = {
+  manageRoles: false,
   editMetadata: false,
   manageMembers: false,
   invite: false,
@@ -76,6 +79,7 @@ export function concordCapabilities(member: Member | null | undefined): SpaceCap
   if (!member) return NO_CAPABILITIES;
   return {
     editMetadata: hasPermission(member, PERM.MANAGE_METADATA),
+    manageRoles: hasPermission(member, PERM.MANAGE_ROLES),
     manageMembers: hasPermission(member, PERM.KICK) || hasPermission(member, PERM.BAN),
     invite: hasPermission(member, PERM.CREATE_INVITE),
     removeMessages: hasPermission(member, PERM.MANAGE_MESSAGES),
@@ -122,6 +126,7 @@ export function nip29Capabilities(
     invite: true,
     removeMessages: true,
     manageChannels: false,
+    manageRoles: false,
     viewAuditLog: true,
     dissolve: true,
   };

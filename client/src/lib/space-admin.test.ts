@@ -29,7 +29,7 @@ describe("concordCapabilities — nine bits, reported as nine", () => {
     const caps = concordCapabilities(member(0n, OWNER_POSITION));
     expect(caps).toEqual({
       editMetadata: true, manageMembers: true, invite: true, removeMessages: true,
-      manageChannels: true, viewAuditLog: true, dissolve: true,
+      manageChannels: true, viewAuditLog: true, manageRoles: true, dissolve: true,
     });
   });
 
@@ -41,6 +41,14 @@ describe("concordCapabilities — nine bits, reported as nine", () => {
     expect(caps.editMetadata).toBe(false);
     expect(caps.removeMessages).toBe(false);
     expect(caps.manageChannels).toBe(false);
+    expect(caps.manageRoles).toBe(false);
+  });
+
+  it("gives Roles only to MANAGE_ROLES", () => {
+    const caps = concordCapabilities(member(PERM.MANAGE_ROLES));
+    expect(caps.manageRoles).toBe(true);
+    expect(caps.manageMembers).toBe(false);
+    expect(caps.editMetadata).toBe(false);
   });
 
   it("treats BAN as sufficient for manageMembers, like KICK", () => {

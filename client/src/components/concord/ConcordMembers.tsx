@@ -21,7 +21,12 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import type { StoredCommunity } from "@/lib/concord/concord-keys";
 import { hasPermission, canActOn, PERM, VSK, OWNER_POSITION, type Member, type AuditEntry, type AuditAction } from "@/lib/concord/concord-events";
-import { removeMember, setAdmin, unbanMember, ADMIN_ROLE_ID } from "@/lib/concord/concord-governance";
+import { removeMember, setAdmin, unbanMember, setMemberRoles, ADMIN_ROLE_ID } from "@/lib/concord/concord-governance";
+import { grantableRoles, rolesAfter } from "@/lib/concord/concord-roles";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Tags, Check } from "lucide-react";
+import type { ReactNode } from "react";
+import type { Role } from "@/lib/concord/concord-events";
 import { BANLIST_EID } from "@/lib/concord/concord-banlist";
 
 export function ConcordMembers({ community, onCommunityChange, showActivity = true }: {
@@ -94,7 +99,10 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
         // restart this member's chain at v1 — onto a coordinate that already
         // holds one, where the loser's payload is simply discarded.
         state.heads.get(`${VSK.GRANT}:${target}`), state.heads.size > 0,
-        (e, r) => publishEvent(e, r), (e) => publishEvent(e, community.relays));
+        (e, r) => publishEvent(e, r), (e) => publishEvent(e, community.relays),
+        // Their roles now: Admin is given or taken, the rest kept. Without it
+        // "remove admin" published an empty grant and wiped every other role.
+        state.grants.get(target) ?? []);
       onCommunityChange(updated);
       toast({ title: makeAdmin ? "Made admin" : "Removed admin" });
     } catch (err) {
@@ -113,6 +121,28 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
     // this right, which is why banning worked while granting never did.
   }, [pubkey, community, state, onCommunityChange, toast]);
 
+  // Give or take one custom role: the grant carries all their roles, so the
+  // others stay as they are.
+  const [roleBusy, setRoleBusy] = useState<string | null>(null);
+  const doSetRole = useCallback(async (target: string, roleId: string, give: boolean) => {
+    const signer = getGlobalSigner();
+    if (!pubkey || !signer) return;
+    setRoleBusy(target);
+    try {
+      const before = state.grants.get(target) ?? [];
+      const updated = await setMemberRoles(signer, pubkey, community, target,
+        { before, after: rolesAfter(before, give ? { add: roleId } : { remove: roleId }), roles: state.roles },
+        state.heads.get(`${VSK.GRANT}:${target}`), state.heads.size > 0,
+        (e, r) => publishEvent(e, r), (e) => publishEvent(e, community.relays));
+      onCommunityChange(updated);
+      toast({ title: give ? "Role given" : "Role taken away" });
+    } catch (err) {
+      toast({ title: "Couldn't change roles", description: String((err as Error)?.message ?? err), variant: "destructive" });
+    } finally {
+      setRoleBusy(null);
+    }
+  }, [pubkey, community, state, onCommunityChange, toast]);
+
   // My own rank/permissions decide what I can do. Admins moderate members they
   // outrank; only the owner grants/revokes admin.
   const myRank = isOwner ? OWNER_POSITION : (myMember?.rank ?? Infinity);
@@ -121,6 +151,8 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
     (isOwner || (!!myMember && (hasPermission(myMember, PERM.KICK) || hasPermission(myMember, PERM.BAN))));
   const canToggleAdmin = (target: Member) =>
     isOwner && target.pubkey !== pubkey && target.rank !== OWNER_POSITION;
+  // Custom roles I may hand out (Admin keeps its own toggle), on people I outrank.
+  const assignable = grantableRoles(state, community.owner, pubkey ?? "").filter((r) => r.role_id !== ADMIN_ROLE_ID);
   // Lifting a ban is a banlist edition, so it takes BAN, like making one.
   const canUnban = isOwner || (!!myMember && hasPermission(myMember, PERM.BAN));
 
@@ -164,7 +196,11 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
               adminBusy={adminBusy === m.pubkey}
               onRemove={() => setPending({ target: m.pubkey, ban: false })}
               onBan={() => setPending({ target: m.pubkey, ban: true })}
-              onToggleAdmin={(make) => setPendingAdmin({ target: m.pubkey, make })} />
+              onToggleAdmin={(make) => setPendingAdmin({ target: m.pubkey, make })}
+              roles={m.roleIds.filter((id) => id !== ADMIN_ROLE_ID).map((id) => state.roles.get(id)).filter((r): r is Role => !!r)}
+              rolePicker={assignable.length > 0 && m.pubkey !== pubkey && canActOn(myRank, m.rank)
+                ? <MemberRolePicker roles={assignable} held={m.roleIds} busy={roleBusy === m.pubkey} onToggle={(roleId, give) => doSetRole(m.pubkey, roleId, give)} />
+                : undefined} />
           ))}
         </div>
       )}
@@ -281,9 +317,13 @@ function BannedRow({ pubkey, onUnban }: { pubkey: string; onUnban: () => void })
   );
 }
 
-function MemberRow({ member, isSelf, isAdmin, canModerate, canToggleAdmin, adminBusy, onRemove, onBan, onToggleAdmin }: {
+function MemberRow({ member, isSelf, isAdmin, canModerate, canToggleAdmin, adminBusy, onRemove, onBan, onToggleAdmin, roles, rolePicker }: {
   member: Member; isSelf: boolean; isAdmin: boolean; canModerate: boolean; canToggleAdmin: boolean;
   adminBusy: boolean; onRemove: () => void; onBan: () => void; onToggleAdmin: (make: boolean) => void;
+  /** Their custom roles, shown as chips. */
+  roles: Role[];
+  /** Give or take roles, when I may. */
+  rolePicker?: ReactNode;
 }) {
   const { name, avatar, hasProfile, nip05, claimedName } = useConcordProfile(member.pubkey);
   const owner = member.rank === OWNER_POSITION;
@@ -318,9 +358,20 @@ function MemberRow({ member, isSelf, isAdmin, canModerate, canToggleAdmin, admin
             <span className="flex items-center gap-1 shrink-0">{owner ? <><Crown className="w-2.5 h-2.5 text-amber-500/70" /> Owner</> : isAdmin ? <><Shield className="w-2.5 h-2.5 text-brand/60" /> Admin</> : "Member"}</span>
             {joined && <span className="truncate">· {joined}</span>}
           </p>
+          {roles.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-0.5">
+              {roles.map((r) => (
+                <span key={r.role_id} className="text-[10px] leading-4 px-1.5 rounded-full border border-border/40 text-muted-foreground"
+                  style={r.color ? { color: `#${r.color.toString(16).padStart(6, "0")}`, borderColor: `#${r.color.toString(16).padStart(6, "0")}55` } : undefined}>
+                  {r.name}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </Link>
       <div className="flex items-center gap-1 reveal-on-hover">
+        {rolePicker}
         {canToggleAdmin && (
           adminBusy
             ? <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground/50 mx-1.5" />
@@ -336,5 +387,41 @@ function MemberRow({ member, isSelf, isAdmin, canModerate, canToggleAdmin, admin
         )}
       </div>
     </div>
+  );
+}
+
+/** Give or take someone's roles: the ones I may hand out, ticked where they hold them. */
+function MemberRolePicker({ roles, held, busy, onToggle }: {
+  roles: Role[]; held: string[]; busy: boolean; onToggle: (roleId: string, give: boolean) => void;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button className="p-2.5 md:p-1.5 rounded hover:bg-muted/50 text-muted-foreground/50 hover:text-foreground" title="Roles" aria-label="Roles" data-testid="concord-member-roles">
+          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Tags className="w-3.5 h-3.5" />}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-56 p-1.5 z-[230]" data-testid="concord-member-roles-menu">
+        <p className="px-2 py-1 text-[11px] text-muted-foreground/60">Roles</p>
+        {roles.map((r) => {
+          const on = held.includes(r.role_id);
+          return (
+            <button
+              key={r.role_id}
+              disabled={busy}
+              onClick={() => onToggle(r.role_id, !on)}
+              role="menuitemcheckbox"
+              aria-checked={on}
+              className="w-full flex items-center gap-2 px-2 py-2 md:py-1.5 rounded-md text-sm text-left hover:bg-muted/40 disabled:opacity-50 transition-colors"
+            >
+              <span className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center ${on ? "bg-primary border-primary text-primary-foreground" : "border-border"}`}>
+                {on && <Check className="w-3 h-3" />}
+              </span>
+              <span className="truncate">{r.name}</span>
+            </button>
+          );
+        })}
+      </PopoverContent>
+    </Popover>
   );
 }

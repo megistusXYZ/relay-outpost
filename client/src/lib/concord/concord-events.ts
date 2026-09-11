@@ -106,6 +106,9 @@ export const OWNER_POSITION = 0;
  *  publish stack; concord-governance re-exports it. */
 export const ADMIN_ROLE_ID = "ad".repeat(32);
 
+/** At most this many Roles per Community; a client folds the lowest role_ids (CORD-04 §2). */
+export const ROLE_CAP = 100;
+
 const EDITION_LABEL = "vector-community/v1/edition";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -481,7 +484,7 @@ export function parseSnapshotRumor(
 }
 
 /** The moderation actions recorded in the audit log. */
-export type AuditAction = "kick" | "ban" | "unban" | "make_admin" | "remove_admin" | "rename_channel" | "delete_channel" | "edit_metadata" | "dissolve";
+export type AuditAction = "kick" | "ban" | "unban" | "make_admin" | "remove_admin" | "rename_channel" | "delete_channel" | "edit_metadata" | "dissolve" | "grant_role" | "revoke_role" | "edit_role";
 
 /** One decoded audit entry (who did what, to whom, when, why). */
 export interface AuditEntry { id: string; actor: string; action: AuditAction; target?: string; reason?: string; detail?: string; t: number }
@@ -681,14 +684,19 @@ function applyEditions(
             raw: data && typeof data === "object" && !Array.isArray(data) ? data : undefined,
           };
           break;
-        case VSK.ROLE:
+        case VSK.ROLE: {
+          // No Role may claim position 0, the owner's, not even one the owner
+          // signs: nobody could outrank it (CORD-04 §3).
+          const position = Number(data.position);
+          if (!Number.isInteger(position) || position < 1) break;
           state.roles.set(data.role_id, {
-            role_id: data.role_id, name: data.name ?? "", position: Number(data.position) || 0,
+            role_id: data.role_id, name: data.name ?? "", position,
             permissions: parsePermissions(String(data.permissions ?? "0")),
             scope: data.scope?.kind === "channel" ? { kind: "channel", channel_id: data.scope.channel_id } : { kind: "server" },
             color: data.color,
           });
           break;
+        }
         case VSK.CHANNEL: {
           // TOLERANT DUAL-READ (Armada interop): our writer repeats the channel
           // id inside the content (always equal to the edition eid); Armada's
@@ -719,6 +727,11 @@ function applyEditions(
           break;
       }
     } catch { /* skip malformed content */ }
+  }
+  // A Community carries at most ROLE_CAP Roles: the lowest role_ids, the rest
+  // ignored, so every client folds the same set (CORD-04 §2).
+  if (state.roles.size > ROLE_CAP) {
+    for (const id of [...state.roles.keys()].sort().slice(ROLE_CAP)) state.roles.delete(id);
   }
   return state;
 }
@@ -785,8 +798,10 @@ function authorizeEdition(
       if (!hasPermissionBit(signer.perms, PERM.MANAGE_ROLES)) return false;
       const data = safeParse(e.content);
       const position = Number(data?.position) || 0;
-      // Can't create/modify a role at or above one's own rank.
-      return outranks(position);
+      // Can't claim a position at or above one's own rank, nor touch a role
+      // that outranks you as it stands: moving it down is still acting on
+      // something above you.
+      return outranks(position) && outranks(state.roles.get(e.eid)?.position ?? Infinity);
     }
     case VSK.GRANT: {
       if (!hasPermissionBit(signer.perms, PERM.MANAGE_ROLES)) return false;
