@@ -10,7 +10,7 @@ import { ComposeEmojiPicker } from "@/components/ComposeEmojiPicker";
 
 const QUICK = ["👍", "❤️", "😂", "🎉", "😮", "😢"];
 
-export function ConcordMessageActions({ content, mine, onReact, onReply, onReplyInThread, readOnly, pinned, onTogglePin, onEdit, onDelete }: {
+export function ConcordMessageActions({ content, mine, onReact, onReply, onReplyInThread, readOnly, pinned, onTogglePin, onEdit, onDelete, removable }: {
   content: string;
   mine: boolean;
   onReact: (emoji: string, emojiUrl?: string) => void;
@@ -25,6 +25,8 @@ export function ConcordMessageActions({ content, mine, onReact, onReply, onReply
   onTogglePin?: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  /** Someone else's message I may remove, as a moderator who outranks them (CORD-04 §5). */
+  removable?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -60,7 +62,9 @@ export function ConcordMessageActions({ content, mine, onReact, onReply, onReply
         {onTogglePin && !readOnly && <MenuItem icon={pinned ? PinOff : Pin} label={pinned ? "Unpin" : "Pin"} onClick={() => act(onTogglePin)} testid="concord-menu-pin" />}
         <MenuItem icon={copied ? Check : Copy} label={copied ? "Copied" : "Copy text"} onClick={copy} testid="concord-menu-copy" />
         {mine && !readOnly && <MenuItem icon={Pencil} label="Edit" onClick={() => act(onEdit)} testid="concord-menu-edit" />}
-        {mine && <MenuItem icon={Trash2} label="Delete" onClick={() => act(onDelete)} destructive testid="concord-menu-delete" />}
+        {(mine || removable) && (
+          <MenuItem icon={Trash2} label={mine ? "Delete" : "Remove for everyone"} onClick={() => act(onDelete)} destructive testid={mine ? "concord-menu-delete" : "concord-menu-remove"} />
+        )}
       </PopoverContent>
     </Popover>
   );
