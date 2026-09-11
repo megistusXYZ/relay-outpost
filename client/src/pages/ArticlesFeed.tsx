@@ -36,7 +36,7 @@ import {
 } from "@/lib/nostr-helpers";
 import { estimateReadingTime } from "@/lib/nip23";
 import { usePrimalStats } from "@/hooks/use-primal-stats";
-import { prefetchStatsImmediate, primalStatsCache, fetchPrimalArticles } from "@/lib/primal-cache";
+import { prefetchStatsImmediate, primalStatsCache, fetchPrimalArticles, getCachedFollowerCount, requestFollowerCounts, onFollowerCountUpdate } from "@/lib/primal-cache";
 import { useToast } from "@/hooks/use-toast";
 import { UnifiedArticleSearch } from "@/components/UnifiedArticleSearch";
 import { KIND_METADATA, getProfileContent } from "@/lib/nostr-helpers";
@@ -69,6 +69,13 @@ import {
 } from "@/components/ui/popover";
 import type { Event } from "nostr-tools";
 import { useSpamFilter } from "@/hooks/use-spam-filter";
+import { useProfileFloor } from "@/hooks/use-profile-floor";
+import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
+import { useStrictnessPreset } from "@/lib/trust-preset";
+import { articleFloor, recentArticleCounts } from "@/lib/article-floor";
+import { getFirstSeen } from "@/lib/account-age";
+import { computeEngagementScore } from "@/lib/engagement";
+import { effectivePow } from "@/lib/nip13-pow";
 import { GuestWall } from "@/components/GuestWall";
 
 const KIND_TEXT_NOTE = 1;
@@ -459,7 +466,6 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
   // Moderation: articles were the one feed skipping the shared spam/mute/report
   // filter. `filter` identity bumps on any mute/report, purging live.
   const { filter: moderationFilter } = useSpamFilter();
-  const visibleArticles = useMemo(() => moderationFilter(articles), [articles, moderationFilter]);
   const [hasMoreArticles, setHasMoreArticles] = useState(true);
   const relayUntilRef = useRef(Math.floor(Date.now() / 1000));
   const primalUntilRef = useRef(Math.floor(Date.now() / 1000));
@@ -472,6 +478,57 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
   const loadingMoreRef = useRef(false);
   const [statsVersion, setStatsVersion] = useState(0);
   const [topicsDropdownOpen, setTopicsDropdownOpen] = useState(false);
+
+  // ── Who gets into Latest and Trending (lib/article-floor.ts) ──────────────
+  // People you follow always. Anyone else needs a real profile (a name and a
+  // picture), one earned signal at your Open / Balanced / Strict preset, and a
+  // person's pace (no more than 3 articles a day). Following and one author's
+  // own list aren't filtered; held-back articles are simply not shown. Articles
+  // used to skip every stranger gate the For You feed applies.
+  const { scores: wotScores, flaggedPubkeys, requestScoresBulk } = useGrapeRankScores();
+  const { preset } = useStrictnessPreset();
+  const { profileGetter, profileSettledGetter, profileVersion } = useProfileFloor(articles);
+  const [followerVersion, setFollowerVersion] = useState(0);
+  useEffect(() => onFollowerCountUpdate(() => setFollowerVersion((v) => v + 1)), []);
+  // Engagement and follower counts come from Primal; without them the floor
+  // steps down rather than emptying the feed (see articleFloor).
+  const [primalSignals, setPrimalSignals] = useState(true);
+  const floorApplies = tab !== "following" && !scopedAuthor;
+  useEffect(() => {
+    if (!floorApplies || articles.length === 0) return;
+    const authors = Array.from(new Set(articles.map((e) => e.pubkey)));
+    requestScoresBulk(authors);
+    requestFollowerCounts(authors);
+  }, [floorApplies, articles, requestScoresBulk]);
+  const followSet = useMemo(() => new Set(follows), [follows]);
+  const visibleArticles = useMemo(() => {
+    const moderated = moderationFilter(articles);
+    if (!floorApplies) return moderated;
+    const now = Math.floor(Date.now() / 1000);
+    const pace = recentArticleCounts(articles, now);
+    return moderated.filter((e) =>
+      articleFloor(
+        {
+          isFollowed: followSet.has(e.pubkey) || e.pubkey === pubkey,
+          wotScore: wotScores?.get(e.pubkey),
+          flagged: !!flaggedPubkeys?.has(e.pubkey),
+          profile: profileGetter(e.pubkey),
+          profileSettled: profileSettledGetter(e.pubkey),
+          engagementScore: computeEngagementScore(primalStatsCache.get(e.id) ?? null),
+          firstSeen: getFirstSeen(e.pubkey),
+          followerCount: getCachedFollowerCount(e.pubkey),
+          powDifficulty: effectivePow(e),
+          signalsAvailable: primalSignals,
+          articlesInLastDay: pace.get(e.pubkey) ?? 0,
+        },
+        preset,
+        now,
+      ) === "show",
+    );
+    // profileVersion / followerVersion / statsVersion re-run the floor when a
+    // profile, follower count or engagement arrives after the articles did.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [articles, moderationFilter, floorApplies, followSet, pubkey, wotScores, flaggedPubkeys, profileVersion, followerVersion, statsVersion, primalSignals, preset]);
 
   useEffect(() => {
     const key = "relay-outpost-scroll-/articles";
@@ -614,11 +671,13 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
     // would just paginate through others' articles we then filter out. The
     // relay query (authors: [pubkey]) is the correct author-scoped source.
     if (tab !== "following" && !scopedAuthor && (primalHasMoreRef.current || !isMore)) {
-      fetchPrimalArticles(PAGE_SIZE, primalUntil, topic).then(({ articles }) => {
+      fetchPrimalArticles(PAGE_SIZE, primalUntil, topic).then(({ articles, statsLoaded }) => {
         primalCollected.push(...articles);
+        setPrimalSignals(statsLoaded);
         primalDone = true;
         tryFinalize();
       }).catch(() => {
+        setPrimalSignals(false);
         primalFailed = true;
         primalDone = true;
         tryFinalize();
