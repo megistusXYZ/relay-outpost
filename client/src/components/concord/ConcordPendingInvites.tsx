@@ -48,13 +48,15 @@ export function ConcordPendingInvites({ onAccepted }: { onAccepted?: () => void 
     if (!pubkey || !signer || busy) return;
     setBusy(inv.bundle.community_id);
     try {
-      const record = await adoptInviteBundle(pubkey, signer, inv.bundle,
+      const result = await adoptInviteBundle(pubkey, signer, inv.bundle,
         (e, r) => publishEvent(e, r), (e) => publishEvent(e, inv.bundle.relays));
-      if (!record) throw new Error("This invite didn't verify.");
+      if (result.status === "invalid") throw new Error("This invite didn't verify.");
+      // Kept in the list: the owner's record may just not have reached the relays yet.
+      if (result.status === "unverified") throw new Error("Couldn't confirm this group yet: its own record didn't open with this invite. Try again in a moment.");
       removePendingInvite(pubkey, inv.bundle.community_id);
-      toast({ title: "Joined", description: record.name });
+      toast({ title: result.status === "already" ? "You're already in this group" : "Joined", description: result.record.name });
       onAccepted?.();
-      setLocation(`/outposts/c/${record.community_id}`);
+      setLocation(`/outposts/c/${result.record.community_id}`);
     } catch (err) {
       toast({ title: "Couldn't join", description: String((err as Error)?.message ?? err), variant: "destructive" });
       setBusy(null);

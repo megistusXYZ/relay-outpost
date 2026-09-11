@@ -11,9 +11,11 @@ import { v2 as nip44v2 } from "nostr-tools/nip44";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import type { ISigner } from "applesauce-signers";
 import { bundleKeyFromToken, legacyBundleKeyFromToken, verifyCommunityId } from "./concord-crypto";
-import { KIND_INVITE_BUNDLE, VSK, buildJoinLeaveRumor } from "./concord-events";
-import { putCommunity, publishCommunityList, putInviteSigner, getInviteSigners, type StoredCommunity, type StoredInviteSigner } from "./concord-keys";
-import { publishGuestbook } from "./concord-stream";
+import { KIND_INVITE_BUNDLE, KIND_CONTROL_EDITION, VSK, buildJoinLeaveRumor, parseControlEdition, type ControlEdition } from "./concord-events";
+import { putCommunity, getCommunity, publishCommunityList, putInviteSigner, getInviteSigners, type StoredCommunity, type StoredInviteSigner } from "./concord-keys";
+import { publishGuestbook, subscribeGovernance } from "./concord-stream";
+import { checkHeldBundle, anchorsGenesis } from "./concord-invite-guard";
+import { persistentPoolSubscribe } from "@/lib/nostr";
 import { inviteAttribution } from "./concord-invite-links";
 import { createGiftWrap, publishWithFallback } from "@/lib/dm";
 import { fetchDMRelayList, hasDMRelayList, getDMRelaysForContact } from "@/lib/outbox";
@@ -337,7 +339,7 @@ export async function acceptInviteLink(
   fetchBundle: (linkSignerPubkey: string, relays: string[]) => Promise<Event | null>,
   publish: PublishFn,
   publishSelf: (e: Event) => Promise<unknown>,
-): Promise<StoredCommunity | null> {
+): Promise<JoinResult | null> {
   const frag = decodeFragment(fragment);
   if (!frag) return null;
   let decoded: nip19.DecodedResult;
@@ -380,6 +382,52 @@ export function recordFromBundle(bundle: InviteBundle, bootstrapRelays: string[]
 }
 
 /**
+ * What accepting an invite did. `already`: you hold this group; any rooms you
+ * were missing were added, and `kept` says the invite carried other keys (an
+ * old link, say), so yours were kept. `unverified`: the owner's own record
+ * didn't open under the invite's keys, or couldn't be read yet — nothing was
+ * kept or announced. `invalid`: the group id doesn't match its owner, or the
+ * bundle is malformed.
+ */
+export type JoinResult =
+  | { status: "joined"; record: StoredCommunity }
+  | { status: "already"; record: StoredCommunity; added: number; kept?: true }
+  | { status: "unverified" }
+  | { status: "invalid" };
+
+/** How long a join waits for the owner's record on the admin plane. */
+const ANCHOR_WAIT_MS = 5000;
+
+/**
+ * The genesis anchor, read live: subscribe to the admin plane the invite's keys
+ * open, and settle as soon as the owner's record shows (anchorsGenesis), or say
+ * no after the wait. Nothing found is never an admit.
+ */
+function liveGenesisAnchor(me: string) {
+  return (record: StoredCommunity) => new Promise<boolean>((resolve) => {
+    const editions: ControlEdition[] = [];
+    let settled = false;
+    let sub: { close: () => void } | null = null;
+    const settle = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      sub?.close();
+      resolve(ok);
+    };
+    const timer = setTimeout(() => settle(anchorsGenesis(editions, record)), ANCHOR_WAIT_MS);
+    sub = subscribeGovernance(me, record, (rumor) => {
+      if (rumor.kind !== KIND_CONTROL_EDITION) return;
+      const ed = parseControlEdition(rumor);
+      if (!ed) return;
+      editions.push(ed);
+      if (anchorsGenesis(editions, record)) settle(true);
+    }, (relays, filter, onevent) => persistentPoolSubscribe(relays, filter, { onevent }));
+    if (settled) sub.close();
+  });
+}
+
+/**
  * Adopt an invite bundle: verify the community id (anti-spoof), persist the
  * keys, publish a guestbook join and sync your Community List. Shared by link acceptance
  * and direct-invite (3313) acceptance. Returns null if the bundle doesn't verify.
@@ -395,23 +443,41 @@ export async function adoptInviteBundle(
    *  worked to fetch the bundle (Armada-style bundles ship `channels: []` and
    *  rely entirely on governance self-heal over these relays). */
   bootstrapRelays: string[] = [],
-): Promise<StoredCommunity | null> {
-  if (!verifyCommunityId(bundle.community_id, bundle.owner, bundle.owner_salt)) return null; // anti-spoof
+  /** The genesis anchor (CORD-05 §1): does the owner's record open under these keys? Tests pass a fake. */
+  anchor: (record: StoredCommunity) => Promise<boolean> = liveGenesisAnchor(ownerPubkey),
+): Promise<JoinResult> {
+  if (!verifyCommunityId(bundle.community_id, bundle.owner, bundle.owner_salt)) return { status: "invalid" }; // anti-spoof
   // CORD-05 §1 bounds: a bundle is attacker-crafted input — reject an insane
   // channel count (Vector's ceiling is 256) and truncate relays to the cap.
   // TOLERANT DUAL-READ: an ABSENT channels list reads as none (the governance
   // stream is the source of truth for Armada-style bundles); a PRESENT
   // non-array is still rejected as malformed.
   const channels = bundle.channels ?? [];
-  if (!Array.isArray(channels) || channels.length > 256) return null;
+  if (!Array.isArray(channels) || channels.length > 256) return { status: "invalid" };
 
+  // The held-base rule: an invite for a group you're in only adds rooms you
+  // were missing, and never moves your keys (concord-invite-guard).
+  const held = await getCommunity(ownerPubkey, bundle.community_id).catch(() => null);
+  const check = checkHeldBundle(held, { ...bundle, channels });
+  if (check.kind === "refused") return { status: "already", record: held!, added: 0, kept: true };
+  if (check.kind === "held") {
+    if (check.added > 0) {
+      await putCommunity(ownerPubkey, check.record);
+      await publishCommunityList(signer, ownerPubkey, publishSelf).catch(() => {});
+    }
+    return { status: "already", record: check.record, added: check.added };
+  }
+
+  // The genesis anchor: keep a new group only once its owner's record opens
+  // under the keys this invite delivered.
   const record = recordFromBundle({ ...bundle, channels }, bootstrapRelays);
+  if (!(await anchor(record).catch(() => false))) return { status: "unverified" };
   await putCommunity(ownerPubkey, record);
   // The Join names the link it came through, so its creator can count joins per link (CORD-05 §1).
   const via = inviteAttribution(bundle) ?? undefined;
   await publishGuestbook(signer, ownerPubkey, record, buildJoinLeaveRumor(ownerPubkey, true, Math.floor(Date.now() / 1000), 0, via), publish).catch(() => null);
   await publishCommunityList(signer, ownerPubkey, publishSelf).catch(() => {});
-  return record;
+  return { status: "joined", record };
 }
 
 // ── Pending direct invites (received 3313s awaiting explicit Accept) ─────────
