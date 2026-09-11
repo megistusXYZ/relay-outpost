@@ -14,7 +14,7 @@ import { nextChannelEdition, type ChannelChanges, type ChannelHead } from "./con
 import { nextGrantEdition, type GrantHead } from "./concord-grant-edition";
 import { putCommunity, deleteCommunity, publishCommunityList, adoptBaseRekey, type StoredCommunity, type StoredChannel } from "./concord-keys";
 import { markLeft } from "./community-list-memory";
-import { nextBanlistEdition, type BanlistHead } from "./concord-banlist";
+import { nextBanlistEdition, nextUnbanEdition, type BanlistHead } from "./concord-banlist";
 import { refreshInviteLinks } from "./concord-invites";
 import { publishControlEdition, publishGuestbook, publishGuestbookSnapshot, publishDissolution, channelPlaneKey, controlWritePlane } from "./concord-stream";
 import { sendRekey, resecurePrivateRooms } from "./concord-rekey";
@@ -373,6 +373,41 @@ export async function editChannel(
     buildAuditRumor(authorPubkey, change.delete ? "delete_channel" : "rename_channel", now, { detail: next.content.name }),
     publish).catch(() => null);
   await publishCommunityList(signer, authorPubkey, publishSelf).catch(() => {});
+  return updated;
+}
+
+/**
+ * Lift a ban (CORD-04 §4): the next banlist edition without them, one past the
+ * head the relays hold, and an "unban" line in the activity record. The fold
+ * treats the name as lifted, so the next ban anyone makes does not bring it
+ * back. Their keys were rotated when they were banned: coming back takes a new
+ * invite.
+ */
+export async function unbanMember(
+  signer: ISigner,
+  actorPubkey: string,
+  community: StoredCommunity,
+  target: string,
+  opts: {
+    /** Every ban we know about (FoldedState.banlistSeen), so forks still heal. */
+    currentBanlist: string[];
+    /** The winning banlist edition from the live fold, if one has folded. */
+    banHead?: BanlistHead;
+  },
+  publish: PublishFn,
+): Promise<StoredCommunity> {
+  const now = Math.floor(Date.now() / 1000);
+  const next = nextUnbanEdition(target, opts.currentBanlist, opts.banHead, {
+    version: community.banVersion, eid: community.banEid, snapshot: community.banSnapshot,
+  });
+  const eid = computeEditionId(next.eid, next.version, next.prevHash, JSON.stringify(next.banlist));
+  await publishControlEdition(signer, actorPubkey, community,
+    buildControlEdition(actorPubkey, VSK.BANLIST, next.eid, next.version, next.banlist, now,
+      next.prevHash ? { prevHash: next.prevHash } : undefined),
+    publish);
+  const updated = { ...community, banVersion: next.version, banEid: eid, banSnapshot: next.banlist };
+  await putCommunity(actorPubkey, updated).catch(() => {});
+  await publishGuestbook(signer, actorPubkey, updated, buildAuditRumor(actorPubkey, "unban", now, { target }), publish).catch(() => null);
   return updated;
 }
 

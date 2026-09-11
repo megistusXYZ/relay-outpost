@@ -95,6 +95,42 @@ export function nextBanlistEdition(
   foldHead: BanlistHead | undefined,
   cursor: BanlistCursor | undefined,
 ): NextBanlistEdition {
+  const { head, merged } = startFrom(foldedBanlist, foldHead, cursor);
+  // Capped like every other list this store persists (PRIOR_ROOTS_CAP,
+  // SNAPSHOT_CHUNK_CAP): the payload is persisted on StoredCommunity. Oldest
+  // entries go first, and the ban being made now is never the one dropped.
+  const banlist = merged.includes(target)
+    ? merged.slice(-BANLIST_CAP)
+    : [...merged.slice(-(BANLIST_CAP - 1)), target].sort();
+  return { eid: BANLIST_EID, version: head ? head.ev + 1 : 1, prevHash: head?.hash, banlist };
+}
+
+/**
+ * Lift a ban (CORD-04 §4): the next edition, one past the head, carrying every
+ * ban we know about except theirs. The fold then treats their name as lifted
+ * (a later edition on the same chain dropped it), so the next ban anyone makes
+ * does not quietly bring it back. Their keys were rotated when they were
+ * banned, so coming back takes a new invite.
+ */
+export function nextUnbanEdition(
+  target: string,
+  foldedBanlist: Iterable<string>,
+  foldHead: BanlistHead | undefined,
+  cursor: BanlistCursor | undefined,
+): NextBanlistEdition {
+  const { head, merged } = startFrom(foldedBanlist, foldHead, cursor);
+  return {
+    eid: BANLIST_EID, version: head ? head.ev + 1 : 1, prevHash: head?.hash,
+    banlist: merged.filter((n) => n !== target).slice(-BANLIST_CAP),
+  };
+}
+
+/** The head to chain onto, and every ban we know about. */
+function startFrom(
+  foldedBanlist: Iterable<string>,
+  foldHead: BanlistHead | undefined,
+  cursor: BanlistCursor | undefined,
+): { head?: BanlistHead; merged: string[] } {
   // Only a head with a usable parent hash can be chained onto. A version > 1
   // whose `ep` is missing fails chainIntact in every folder and is dropped
   // silently — worse than a tie, because the publisher still reports success.
@@ -115,22 +151,5 @@ export function nextBanlistEdition(
   // that moderator.
   const foldBehind = !foldHead || foldHead.ev < (cursor?.version ?? 0);
   const known = foldBehind ? (cursor?.snapshot ?? []) : [];
-
-  // Capped like every other list this store persists (PRIOR_ROOTS_CAP,
-  // SNAPSHOT_CHUNK_CAP). banSnapshot rides on StoredCommunity, which
-  // publishCommunityList packs — twice per record — into a single NIP-44
-  // plaintext with a hard 65535-byte ceiling; past it encrypt throws, every
-  // caller swallows it, and the multi-device key backup silently stops updating.
-  // Oldest entries go first, and the ban being made now is never the one dropped.
-  const merged = [...new Set([...foldedBanlist, ...known])].sort();
-  const banlist = merged.includes(target)
-    ? merged.slice(-BANLIST_CAP)
-    : [...merged.slice(-(BANLIST_CAP - 1)), target].sort();
-
-  return {
-    eid: BANLIST_EID,
-    version: head ? head.ev + 1 : 1,
-    prevHash: head?.hash,
-    banlist,
-  };
+  return { head, merged: [...new Set([...foldedBanlist, ...known])].sort() };
 }

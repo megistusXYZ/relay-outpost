@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import type { StoredCommunity } from "@/lib/concord/concord-keys";
 import { hasPermission, canActOn, PERM, VSK, OWNER_POSITION, type Member, type AuditEntry, type AuditAction } from "@/lib/concord/concord-events";
-import { removeMember, setAdmin, ADMIN_ROLE_ID } from "@/lib/concord/concord-governance";
+import { removeMember, setAdmin, unbanMember, ADMIN_ROLE_ID } from "@/lib/concord/concord-governance";
 import { BANLIST_EID } from "@/lib/concord/concord-banlist";
 
 export function ConcordMembers({ community, onCommunityChange, showActivity = true }: {
@@ -37,6 +37,8 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
   const [reason, setReason] = useState("");
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [activityOpen, setActivityOpen] = useState(false);
+  const [pendingUnban, setPendingUnban] = useState<string | null>(null);
+  const [unbanBusy, setUnbanBusy] = useState(false);
 
   const isOwner = pubkey === community.owner;
   // Owner + admins see the activity log + banned list; members see neither.
@@ -119,6 +121,28 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
     (isOwner || (!!myMember && (hasPermission(myMember, PERM.KICK) || hasPermission(myMember, PERM.BAN))));
   const canToggleAdmin = (target: Member) =>
     isOwner && target.pubkey !== pubkey && target.rank !== OWNER_POSITION;
+  // Lifting a ban is a banlist edition, so it takes BAN, like making one.
+  const canUnban = isOwner || (!!myMember && hasPermission(myMember, PERM.BAN));
+
+  const doUnban = useCallback(async (target: string) => {
+    const signer = getGlobalSigner();
+    if (!pubkey || !signer) return;
+    setUnbanBusy(true);
+    try {
+      const updated = await unbanMember(signer, pubkey, community, target, {
+        // Every ban we know about, so a fork still heals; the fold already
+        // leaves out names a later edition lifted.
+        currentBanlist: [...state.banlistSeen],
+        banHead: state.heads.get(`${VSK.BANLIST}:${BANLIST_EID}`),
+      }, (e, r) => publishEvent(e, r));
+      onCommunityChange(updated);
+      toast({ title: "Ban lifted", description: "They'll need a new invite to come back." });
+    } catch (err) {
+      toast({ title: "Couldn't lift the ban", description: String((err as Error)?.message ?? err), variant: "destructive" });
+    } finally {
+      setUnbanBusy(false); setPendingUnban(null);
+    }
+  }, [pubkey, community, state, onCommunityChange, toast]);
 
   return (
     <div className="rounded-xl border border-border/30 p-4 space-y-3" data-testid="concord-members">
@@ -142,6 +166,13 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
               onBan={() => setPending({ target: m.pubkey, ban: true })}
               onToggleAdmin={(make) => setPendingAdmin({ target: m.pubkey, make })} />
           ))}
+        </div>
+      )}
+
+      {canUnban && banned.length > 0 && (
+        <div className="space-y-1 pt-1" data-testid="concord-banned">
+          <p className="text-[11px] font-medium text-muted-foreground/70">Banned</p>
+          {banned.map((pk) => <BannedRow key={pk} pubkey={pk} onUnban={() => setPendingUnban(pk)} />)}
         </div>
       )}
 
@@ -207,6 +238,45 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!pendingUnban} onOpenChange={(o) => { if (!o && !unbanBusy) setPendingUnban(null); }}>
+        <AlertDialogContent className="max-w-sm z-[220]" overlayClassName="z-[219]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm">Lift this ban?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              They'll be able to come back, but they'll need a new invite: their old keys stopped working when they were banned.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-xs" disabled={unbanBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); if (pendingUnban) doUnban(pendingUnban); }}
+              disabled={unbanBusy}
+              className="text-xs"
+              data-testid="concord-unban-confirm"
+            >
+              {unbanBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Unban"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+/** A banned person, with the one thing to do about it. */
+function BannedRow({ pubkey, onUnban }: { pubkey: string; onUnban: () => void }) {
+  const { name, avatar } = useConcordProfile(pubkey);
+  return (
+    <div className="flex items-center gap-2.5 p-2 rounded-lg" data-testid={`concord-banned-${pubkey.slice(0, 8)}`}>
+      <Avatar className="w-8 h-8 border border-border/30 shrink-0 opacity-60">
+        {avatar && <AvatarImage src={avatar} alt={name} />}
+        <AvatarFallback className="text-[10px] bg-muted/40 text-muted-foreground font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+      </Avatar>
+      <p className="text-sm truncate flex-1 min-w-0 text-muted-foreground">{name}</p>
+      <button onClick={onUnban} className="h-10 md:h-7 px-3 rounded-full text-[11px] font-medium text-brand hover:bg-brand/10 transition-colors" data-testid={`concord-unban-${pubkey.slice(0, 8)}`}>
+        Unban
+      </button>
     </div>
   );
 }
