@@ -72,7 +72,7 @@ import { useSpamFilter } from "@/hooks/use-spam-filter";
 import { useProfileFloor } from "@/hooks/use-profile-floor";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { useStrictnessPreset } from "@/lib/trust-preset";
-import { articleFloor, recentArticleCounts } from "@/lib/article-floor";
+import { floorArticles } from "@/lib/article-floor";
 import { getFirstSeen } from "@/lib/account-age";
 import { computeEngagementScore } from "@/lib/engagement";
 import { effectivePow } from "@/lib/nip13-pow";
@@ -504,27 +504,23 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
   const visibleArticles = useMemo(() => {
     const moderated = moderationFilter(articles);
     if (!floorApplies) return moderated;
-    const now = Math.floor(Date.now() / 1000);
-    const pace = recentArticleCounts(articles, now);
-    return moderated.filter((e) =>
-      articleFloor(
-        {
-          isFollowed: followSet.has(e.pubkey) || e.pubkey === pubkey,
-          wotScore: wotScores?.get(e.pubkey),
-          flagged: !!flaggedPubkeys?.has(e.pubkey),
-          profile: profileGetter(e.pubkey),
-          profileSettled: profileSettledGetter(e.pubkey),
-          engagementScore: computeEngagementScore(primalStatsCache.get(e.id) ?? null),
-          firstSeen: getFirstSeen(e.pubkey),
-          followerCount: getCachedFollowerCount(e.pubkey),
-          powDifficulty: effectivePow(e),
-          signalsAvailable: primalSignals,
-          articlesInLastDay: pace.get(e.pubkey) ?? 0,
-        },
-        preset,
-        now,
-      ) === "show",
-    );
+    return floorArticles<Event>(
+      moderated,
+      {
+        isFollowed: (pk) => followSet.has(pk) || pk === pubkey,
+        wotScore: (pk) => wotScores?.get(pk),
+        flagged: (pk) => !!flaggedPubkeys?.has(pk),
+        profile: profileGetter,
+        profileSettled: profileSettledGetter,
+        engagementScore: (e) => computeEngagementScore(primalStatsCache.get(e.id) ?? null),
+        firstSeen: getFirstSeen,
+        followerCount: getCachedFollowerCount,
+        powDifficulty: effectivePow,
+        signalsAvailable: primalSignals,
+      },
+      preset,
+      Math.floor(Date.now() / 1000),
+    ).shown;
     // profileVersion / followerVersion / statsVersion re-run the floor when a
     // profile, follower count or engagement arrives after the articles did.
     // eslint-disable-next-line react-hooks/exhaustive-deps

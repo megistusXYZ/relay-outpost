@@ -13,7 +13,7 @@
  * hidden quietly. People you follow are never filtered.
  */
 import { describe, expect, it } from "vitest";
-import { articleFloor, recentArticleCounts, type ArticleAuthorFacts } from "./article-floor";
+import { articleFloor, floorArticles, recentArticleCounts, type ArticleAuthorFacts, type ArticleFloorLookup } from "./article-floor";
 
 const NOW = 1_789_100_000;
 
@@ -160,5 +160,50 @@ describe("recentArticleCounts — how many articles each author published in the
       NOW,
     );
     expect(counts.get("writer")).toBe(1);
+  });
+});
+
+/**
+ * The same floor wherever articles are shown (2026-09-11): the Discover
+ * Articles card still showed the flooders and nameless accounts the Articles
+ * page had stopped showing, because it ran only a title-and-length check.
+ */
+describe("floorArticles — one floor for every surface that shows articles", () => {
+  const H = 3600;
+  const piece = (pubkey: string, d: string, ago: number) => ({ pubkey, created_at: NOW - ago, tags: [["d", d]] });
+  const full = { name: "Writer", picture: "https://example.com/w.png" };
+
+  function lookup(over: Partial<ArticleFloorLookup> = {}): ArticleFloorLookup {
+    const profiles: Record<string, ArticleAuthorFacts["profile"]> = {
+      flooder: full, trusted: full, followed: null, nameless: {},
+    };
+    return {
+      isFollowed: (pk) => pk === "followed",
+      wotScore: (pk) => (pk === "flooder" || pk === "trusted" ? 5 : undefined),
+      flagged: () => false,
+      profile: (pk) => profiles[pk] ?? null,
+      profileSettled: (pk) => pk !== "loading",
+      engagementScore: () => 0,
+      firstSeen: () => null,
+      followerCount: () => undefined,
+      powDifficulty: () => 0,
+      signalsAvailable: true,
+      ...over,
+    };
+  }
+
+  it("keeps, in order, only what passes: no floods, no nameless strangers; people you follow always", () => {
+    const flood = [1, 2, 3, 4].map((n) => piece("flooder", `f${n}`, n * H));
+    const followed = piece("followed", "mine", 5 * H);
+    const nameless = piece("nameless", "n", 6 * H);
+    const trusted = piece("trusted", "t", 7 * H);
+    const { shown } = floorArticles([...flood, followed, nameless, trusted], lookup(), "balanced", NOW);
+    expect(shown).toEqual([followed, trusted]);
+  });
+
+  it("counts the authors still loading, so a surface can wait instead of showing too little", () => {
+    const { shown, holding } = floorArticles([piece("loading", "l", H), piece("trusted", "t", 2 * H)], lookup(), "balanced", NOW);
+    expect(shown.map((a) => a.pubkey)).toEqual(["trusted"]);
+    expect(holding).toBe(1);
   });
 });

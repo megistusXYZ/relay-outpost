@@ -128,3 +128,57 @@ export function articleFloor(
   });
   return admitted ? "show" : "hide";
 }
+
+/** Where a surface looks up the facts about each article and its author. */
+export interface ArticleFloorLookup<T extends ArticleStamp = ArticleStamp> {
+  isFollowed(pubkey: string): boolean;
+  wotScore(pubkey: string): number | undefined;
+  flagged(pubkey: string): boolean;
+  profile(pubkey: string): ArticleAuthorFacts["profile"];
+  profileSettled(pubkey: string): boolean;
+  engagementScore(article: T): number;
+  firstSeen(pubkey: string): number | null;
+  followerCount(pubkey: string): number | undefined;
+  powDifficulty(article: T): number;
+  signalsAvailable: boolean;
+}
+
+/**
+ * The floor over a whole list, for every surface that shows articles (the
+ * Articles page and the Discover Articles card), so none of them shows what
+ * another hides. Order is kept. `holding` counts articles whose author's
+ * profile is still loading, so a surface can wait rather than show too little.
+ * The pace rule counts from the list it is given.
+ */
+export function floorArticles<T extends ArticleStamp>(
+  articles: T[],
+  look: ArticleFloorLookup<T>,
+  preset: StrictnessPreset,
+  nowSeconds: number,
+): { shown: T[]; holding: number } {
+  const pace = recentArticleCounts(articles, nowSeconds);
+  const shown: T[] = [];
+  let holding = 0;
+  for (const a of articles) {
+    const decision = articleFloor(
+      {
+        isFollowed: look.isFollowed(a.pubkey),
+        wotScore: look.wotScore(a.pubkey),
+        flagged: look.flagged(a.pubkey),
+        profile: look.profile(a.pubkey),
+        profileSettled: look.profileSettled(a.pubkey),
+        engagementScore: look.engagementScore(a),
+        firstSeen: look.firstSeen(a.pubkey),
+        followerCount: look.followerCount(a.pubkey),
+        powDifficulty: look.powDifficulty(a),
+        signalsAvailable: look.signalsAvailable,
+        articlesInLastDay: pace.get(a.pubkey) ?? 0,
+      },
+      preset,
+      nowSeconds,
+    );
+    if (decision === "show") shown.push(a);
+    else if (decision === "hold") holding++;
+  }
+  return { shown, holding };
+}
