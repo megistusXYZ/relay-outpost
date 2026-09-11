@@ -14,6 +14,8 @@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useConcordProfile } from "@/components/concord/ConcordIdentity";
 import { facepileMembers } from "@/lib/concord/concord-roster";
+import type { CommunityImage } from "@/lib/concord/concord-image";
+import { useCommunityImage } from "@/components/concord/useCommunityImage";
 import { cn } from "@/lib/utils";
 
 function MemberFace({ pubkey, size, className, style }: {
@@ -36,6 +38,7 @@ function MemberFace({ pubkey, size, className, style }: {
 export function GroupAvatar({
   members,
   picture,
+  image,
   name,
   myPubkey,
   size = 40,
@@ -45,6 +48,8 @@ export function GroupAvatar({
   members: readonly string[];
   /** Custom group image (metadata.picture) — wins over the facepile when set. */
   picture?: string;
+  /** The group's encrypted photo (the spec's `icon`) — wins over `picture` once it opens. */
+  image?: CommunityImage;
   /** Group name — drives the initials fallback when there are no faces. */
   name: string;
   /** Signed-in pubkey, so the facepile favours OTHER members when capped. */
@@ -53,11 +58,14 @@ export function GroupAvatar({
   size?: number;
   className?: string;
 }) {
+  const opened = useCommunityImage(image);
+  const photo = opened ?? picture;
+
   // 1. Custom group picture — a single round avatar, group initials fallback.
-  if (picture) {
+  if (photo) {
     return (
       <Avatar className={cn("border border-primary/25", className)} style={{ width: `${size}px`, height: `${size}px` }}>
-        <AvatarImage src={picture} alt={name} />
+        <AvatarImage src={photo} alt={name} />
         <AvatarFallback className="bg-brand/20 text-brand font-bold" style={{ fontSize: `${Math.round(size * 0.3)}px` }}>
           {name.slice(0, 2).toUpperCase()}
         </AvatarFallback>

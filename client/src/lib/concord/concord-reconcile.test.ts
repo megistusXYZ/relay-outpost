@@ -144,6 +144,39 @@ describe("reconcilePatch — metadata, anchored", () => {
     expect(reconcilePatch(rec({ icon: "keep" }), f)).toBeNull();
   });
 
+  // The spec's `icon` is an encrypted-photo pointer; it's how Armada and
+  // Vector groups carry a photo at all.
+  const photo = { url: "https://blossom.example/x.enc", key: "8a".repeat(32), nonce: "eb".repeat(16), hash: "bc".repeat(32) };
+  const withRaw = (raw: Record<string, unknown>) => fold({ meta: { name: "Group", raw: { name: "Group", ...raw } } });
+
+  it("takes the group's encrypted photo from the edition", () => {
+    expect(reconcilePatch(rec(), withRaw({ icon: photo }))?.iconImage).toEqual(photo);
+  });
+
+  it("has nothing to say when it already holds that photo", () => {
+    expect(reconcilePatch(rec({ iconImage: photo }), withRaw({ icon: photo }))).toBeNull();
+  });
+
+  it("drops the photo when the edition clears it or names one that can't be fetched safely", () => {
+    for (const icon of [null, "", { ...photo, url: "http://blossom.example/x.enc" }]) {
+      const patch = reconcilePatch(rec({ iconImage: photo }), withRaw({ icon }));
+      expect(patch).toHaveProperty("iconImage");
+      expect(patch?.iconImage).toBeUndefined();
+    }
+  });
+
+  // An edition is the group's whole metadata, and every editor carries each
+  // field through (CORD-02 §6): one without `icon` means the photo was removed.
+  it("drops the photo when the latest edition no longer has one", () => {
+    const patch = reconcilePatch(rec({ iconImage: photo }), withRaw({}));
+    expect(patch).toHaveProperty("iconImage");
+    expect(patch?.iconImage).toBeUndefined();
+  });
+
+  it("says nothing about a photo the group never had", () => {
+    expect(reconcilePatch(rec(), withRaw({}))).toBeNull();
+  });
+
   it("closes invites when the live policy closed them", () => {
     expect(reconcilePatch(rec({ allowMemberInvites: true }), fold({ meta: { name: "Group", allowMemberInvites: false } }))?.allowMemberInvites).toBe(false);
   });

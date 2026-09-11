@@ -22,7 +22,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { GroupAvatar } from "@/components/GroupAvatar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { getGlobalSigner } from "@/lib/nip42-auth";
@@ -173,12 +173,7 @@ function InviteTargetList({ onOpenChange, recipientPubkey, recipientName, open }
             const busy = sending === c.community_id;
             return (
               <div key={c.community_id} className="flex items-center gap-2.5 min-h-11 md:min-h-0 py-1.5" data-testid={`invite-target-${c.community_id.slice(0, 8)}`}>
-                <Avatar className="w-8 h-8 shrink-0 border border-border/30">
-                  {c.icon && <AvatarImage src={c.icon} alt="" />}
-                  <AvatarFallback className="text-[10px] bg-brand/10 text-brand font-semibold">
-                    {c.name.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <GroupAvatar members={[]} picture={c.icon} image={c.iconImage} name={c.name} size={32} className="shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm truncate">{c.name}</p>
                   {at && <p className="text-[11px] text-muted-foreground/50">Invited {formatCompactTime(at)}</p>}

@@ -21,6 +21,7 @@ import { SpaceAdminSection } from "@/components/space/SpaceAdminSection";
 import type { SpaceAdminSectionDef } from "@/components/space/space-admin-sections";
 import { concordCapabilities } from "@/lib/space-admin";
 import type { StoredCommunity, StoredChannel } from "@/lib/concord/concord-keys";
+import { useCommunityImage } from "./useCommunityImage";
 import { VSK, type Member, type AuditEntry, type FoldedState } from "@/lib/concord/concord-events";
 import { membersMayInvite } from "@/lib/concord/concord-invite-gate";
 import type { MembershipEvent } from "./useConcordGovernance";
@@ -65,6 +66,7 @@ export function ConcordAdminDrawer({
   const [createOpen, setCreateOpen] = useState(false);
   const [settingsChannel, setSettingsChannel] = useState<StoredChannel | undefined>();
   const caps = useMemo(() => concordCapabilities(myMember), [myMember]);
+  const photo = useCommunityImage(community.iconImage);
   // Same precedence the invite gate enforces — fold over record — so the
   // sentence in the Access section is the rule, not a second reading of it.
   const invitesOpenToMembers = membersMayInvite(community, govState.metadata);
@@ -215,7 +217,7 @@ export function ConcordAdminDrawer({
         caps={caps}
         ready={ready}
         spaceName={community.name}
-        spaceAvatar={community.icon}
+        spaceAvatar={photo ?? community.icon}
         standingLine={standingLine}
         renderSection={renderSection}
       />
