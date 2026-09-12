@@ -4,10 +4,33 @@
  * else, because the preview drops media links and had no fallback.
  */
 import { describe, it, expect } from "vitest";
-import { pinMediaLabel } from "./concord-pin-preview";
+import { pinMediaLabel, pinnedCard } from "./concord-pin-preview";
 import { mediaToTag } from "./concord-media";
 
 const pinned = (content: string, tags: string[][] = []) => ({ content, tags });
+
+/**
+ * Found in the browser: the Pinned list showed "Handled · about 2 months ago"
+ * and nothing else. The pinned message was a GIF, and the list rendered only
+ * words. A pin carries the author's rumor, tags and all, so it can show the
+ * message itself, the way Discord and Slack do.
+ */
+describe("what a pinned message shows in the list", () => {
+  it("a GIF-only pin shows the GIF from its own proof", () => {
+    const gif = mediaToTag({ url: "https://media.tenor.com/x.gif", mime: "image/gif" });
+    const card = pinnedCard(pinned("", [gif]));
+    expect(card.text).toBe("");
+    expect(card.media.map((m) => m.url)).toEqual(["https://media.tenor.com/x.gif"]);
+    expect(card.inRoom).toBe(false);
+  });
+
+  it("when the room holds the message, its current words win, marked edited, and it can be jumped to", () => {
+    const card = pinnedCard(pinned("first draft"), { content: "final words", edited: true });
+    expect(card.text).toBe("final words");
+    expect(card.edited).toBe(true);
+    expect(card.inRoom).toBe(true);
+  });
+});
 
 describe("a pinned message with nothing to read", () => {
   it("a photo reads 'Photo', never blank", () => {
