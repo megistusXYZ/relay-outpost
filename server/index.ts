@@ -145,6 +145,15 @@ const heavyLimiter = rateLimit({
 });
 app.use("/api/tts", heavyLimiter);
 app.use("/api/og", heavyLimiter);
+// Call tokens (/.well-known/concord/av) live outside /api, so none of the
+// limits above reach them. A call join asks once; 30 a minute per IP is plenty.
+const callTokenLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use("/.well-known/concord/av", callTokenLimiter);
 // RSS gets its OWN generous bucket. It was on the SHARED heavyLimiter (20/min
 // across tts+og+stream+rss+image-proxy), but the News "All feeds" view fans out
 // to dozens of feeds on open — so it exhausted the shared 20/min and 429'd its
