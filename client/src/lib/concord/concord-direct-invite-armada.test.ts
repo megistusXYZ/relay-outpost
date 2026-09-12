@@ -115,6 +115,21 @@ describe("a direct invite we send, as Armada receives it", () => {
     expect(inboxSend.event.tags.some((t) => t[0] === "k" && t[1] === "3313")).toBe(true);
   });
 
+  it("carries the group's photo the way Armada shows it: the spec's encrypted icon, not our own field", async () => {
+    // Found with Armada: the invite page showed a letter where the photo goes.
+    // Armada reads `icon` as the encrypted image pointer (CORD-02 §6).
+    const handled = person();
+    const me = person();
+    const photo = { url: "https://blossom.example/abc.bin", key: hex32(), nonce: bytesToHex(generateSecretKey()).slice(0, 32), hash: hex32(), ext: "jpg" };
+    const group = { ...groupOwnedBy(me.pubkey), iconImage: photo } as StoredCommunity;
+    const sent: Event[] = [];
+    await sendDirectInvite(me.signer, me.pubkey, handled.pubkey, group, async (event) => { sent.push(event); });
+    const opened = await armadaUnwrap(sent[0], handled);
+    const bundle = armadaParse(opened!.rumor.kind, opened!.rumor.content);
+    expect(bundle?.icon).toMatchObject({ url: photo.url, key: photo.key, nonce: photo.nonce, hash: photo.hash });
+    expect(bundle).not.toHaveProperty("iconImage");
+  });
+
   it("the copied check can refuse: a group whose owner doesn't reproduce its id is dropped", () => {
     const g = groupOwnedBy(getPublicKey(generateSecretKey()));
     expect(armadaParse(3313, JSON.stringify({ ...g, owner: getPublicKey(generateSecretKey()) }))).toBeUndefined();

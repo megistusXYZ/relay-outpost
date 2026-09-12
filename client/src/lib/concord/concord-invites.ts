@@ -138,11 +138,20 @@ export interface InviteBundle {
   label?: string;
 }
 
-export function encryptBundle(bundle: InviteBundle, token: Uint8Array): string {
+/**
+ * A bundle as other apps read it: the group's encrypted photo goes out as the
+ * spec's `icon` object (CORD-02 §6), which is where Armada and Vector look.
+ * Every invite path sends this, a link and a direct invite alike; a direct
+ * invite that skipped it reached Armada with no photo.
+ */
+export function bundleToWire(bundle: InviteBundle): Omit<InviteBundle, "iconImage" | "icon"> & { icon?: string | CommunityImage } {
   const { iconImage, ...rest } = bundle;
-  const wire = iconImage ? { ...rest, icon: iconImage } : rest;
+  return iconImage ? { ...rest, icon: iconImage } : rest;
+}
+
+export function encryptBundle(bundle: InviteBundle, token: Uint8Array): string {
   // New links always use the canonical cross-client key.
-  return nip44v2.encrypt(JSON.stringify(wire), bundleKeyFromToken(token));
+  return nip44v2.encrypt(JSON.stringify(bundleToWire(bundle)), bundleKeyFromToken(token));
 }
 /**
  * TOLERANT DUAL-READ (Armada interop). `icon` is a plain URL from us, or the
@@ -566,7 +575,7 @@ export async function sendDirectInvite(
   publish: (event: Event, relays: string[]) => Promise<unknown>,
 ): Promise<boolean> {
   const bundle = bundleFromCommunity(community, undefined, undefined, undefined);
-  const result = await createGiftWrap(signer, senderPubkey, recipientPubkey, JSON.stringify(bundle), {
+  const result = await createGiftWrap(signer, senderPubkey, recipientPubkey, JSON.stringify(bundleToWire(bundle)), {
     rumorKind: KIND_DIRECT_INVITE,
     outerTags: [["k", String(KIND_DIRECT_INVITE)]],
   });
