@@ -208,33 +208,48 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
     </div>
   );
 
-  // About content, shared by the mobile "About" tab and the desktop Members
-  // panel's collapsible About section (so the two can't drift).
+  // About, shared by the desktop side and the phone's Group sheet (so the two
+  // can't drift). Stacked, not a row: beside a photo in a 280px side, the
+  // description wrapped a word per line, the encryption note ran to five, and
+  // Manage was a chip squeezed against them. Who the group is, then what you
+  // can do in it.
+  // One door replaces four scattered ones, and it follows the capability
+  // model, so an admin holding MANAGE_METADATA can rename the space they help run.
+  const canManage = hasAnyCapability(concordCapabilities(myMember));
   const aboutInner = (
     <>
-      <div className="flex items-start gap-3">
-        <GroupAvatar members={rosterPks} picture={community.icon} image={community.iconImage} name={displayName} myPubkey={pubkey} size={48} className="shrink-0" />
+      <div className="flex items-center gap-3">
+        <GroupAvatar members={rosterPks} picture={community.icon} image={community.iconImage} name={displayName} myPubkey={pubkey} size={44} className="shrink-0" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold truncate">{displayName}</p>
-          {/* The group's own description leads; live folded metadata wins over
-              the local snapshot so members see the owner's edits (their
-              stored record never rewrites on remote editions). */}
-          {aboutText ? (
-            <p className="text-sm text-foreground/80 mt-1 whitespace-pre-wrap break-words" data-testid="concord-about-description">{aboutText}</p>
-          ) : null}
-          <p className="text-[11px] text-muted-foreground/50 mt-2 flex items-start gap-1.5"><Lock className="w-3 h-3 mt-0.5 text-muted-foreground/50 shrink-0" aria-hidden="true" /> <span>End-to-end encrypted group chat on Nostr — no relay required.</span></p>
+          <p className="text-[15px] font-semibold leading-snug break-words line-clamp-2">{displayName}</p>
+          <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground/70" title="End-to-end encrypted group chat on Nostr — no relay required.">
+            <Lock className="w-3 h-3 shrink-0" aria-hidden="true" /> End-to-end encrypted
+          </p>
         </div>
-        {/* One door replaces four scattered ones. Note this WIDENS reach on
-            purpose: the old pencil was owner-only, while the drawer follows the
-            capability model, so an admin holding MANAGE_METADATA can finally
-            rename the space they help run. */}
-        {hasAnyCapability(concordCapabilities(myMember)) && (
-          <button onClick={() => setAdminOpen(true)} className="shrink-0 flex items-center gap-1 px-3 py-2 md:px-2.5 md:py-1.5 rounded-lg border border-border/40 text-xs font-medium hover:bg-muted/30 transition-colors" data-testid="button-manage-outpost">
-            <Settings2 className="w-3 h-3" /> Manage
-            <ManageCountBadge communityId={community.community_id} />
-          </button>
-        )}
       </div>
+      {/* The group's own description; live folded metadata wins over the local
+          snapshot so members see the owner's edits (their stored record never
+          rewrites on remote editions). */}
+      {aboutText ? (
+        <p className="text-sm leading-relaxed text-foreground/85 whitespace-pre-wrap break-words" data-testid="concord-about-description">{aboutText}</p>
+      ) : null}
+      {/* What you can do here, side by side. Manage leads for admins: one clear
+          door, with what's waiting on it, not a chip beside the description. */}
+      {(canManage || canInvite) && (
+        <div className={`grid gap-2 ${canManage && canInvite ? "grid-cols-2" : "grid-cols-1"}`}>
+          {canManage && (
+            <button onClick={() => setAdminOpen(true)} className="flex min-h-11 md:min-h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors" data-testid="button-manage-outpost">
+              <Settings2 className="w-3.5 h-3.5" /> Manage
+              <ManageCountBadge communityId={community.community_id} />
+            </button>
+          )}
+          {canInvite && (
+            <button onClick={() => setInviteOpen(true)} className="flex min-h-11 md:min-h-9 items-center justify-center gap-1.5 rounded-lg border border-brand/25 dark:border-brand/20 bg-brand/5 dark:bg-white/[0.03] px-3 text-xs font-medium text-brand hover:bg-brand/10 transition-colors" data-testid="button-about-invite">
+              <Link2 className="w-3.5 h-3.5" /> Invite
+            </button>
+          )}
+        </div>
+      )}
       {/* The group's id and its relays are for the curious and for support, not
           for reading: behind a disclosure, not in the way. */}
       <details className="group/details text-[11px] text-muted-foreground/60" data-testid="concord-about-details">
@@ -259,27 +274,14 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
         </div>
       </details>
 
-      <div className="space-y-1.5" data-testid="concord-about-channels">
-        <div className="flex items-center justify-between gap-2">
-          <p className="font-medium text-foreground/70 uppercase tracking-wider text-[10px]">Rooms</p>
+      {/* No rooms list here: rooms have their own section, beside the chat on
+          desktop and at the top of the phone's Group sheet. */}
 
-        </div>
-        <div className="space-y-1">
-          {community.channels.map((ch) => (
-            <p key={ch.id} className="flex items-center gap-1.5 text-xs text-foreground/75 min-w-0">
-              {ch.isPrivate ? <Lock className="w-3 h-3 shrink-0 text-muted-foreground/50" /> : <Hash className="w-3 h-3 shrink-0 text-muted-foreground/50" />}
-              <span className="truncate">{ch.name}</span>
-            </p>
-          ))}
-        </div>
-      </div>
-
-      {/* Ending the space is authority and lives in Manage now. LEAVING is not —
+      {/* Ending the space is authority and lives in Manage. LEAVING is not —
           it is the most member-level action there is, and burying it behind an
           admin drawer would hide it from everyone who actually needs it. */}
-      <div className="pt-3 border-t border-destructive/15">
-        <p className="font-medium text-destructive/70 uppercase tracking-wider text-[10px] mb-2">Danger zone</p>
-        <button onClick={() => setDanger("leave")} className="flex items-center gap-1.5 py-2 md:py-0 text-xs text-destructive hover:underline" data-testid="button-leave-outpost">
+      <div className="border-t border-border/30 pt-2">
+        <button onClick={() => setDanger("leave")} className="flex min-h-11 md:min-h-8 items-center gap-1.5 text-xs text-destructive/80 hover:text-destructive transition-colors" data-testid="button-leave-outpost">
           <LogOut className="w-3.5 h-3.5" /> {isOwner ? "Step back from group chat" : "Leave group chat"}
         </button>
       </div>
@@ -304,12 +306,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
         open={layout.sections.about} onToggle={() => update((l) => toggleSection(l, "about"))}
         fill={where === "pane"} testId={`concord-${where === "pane" ? "section" : "sheet"}-about`}
       >
-        <div className={`${where === "pane" ? "px-3.5 pb-4" : "px-1 pb-3"} space-y-4`} data-testid="concord-about">
-          {canInvite && (
-            <button onClick={() => setInviteOpen(true)} className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg border border-brand/20 dark:border-brand/15 bg-brand/5 dark:bg-white/[0.03] text-xs font-medium text-brand hover:bg-brand/10 transition-colors" data-testid="button-about-invite">
-              <Link2 className="w-3.5 h-3.5" /> Invite people
-            </button>
-          )}
+        <div className={`${where === "pane" ? "px-3.5 pb-4" : "px-1 pb-3"} space-y-3.5`} data-testid="concord-about">
           {aboutInner}
         </div>
       </ChatPaneSection>
