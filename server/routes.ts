@@ -8,6 +8,7 @@ import { Agent, fetch as undiciFetch } from "undici";
 import { db } from "./db";
 import { SERVER_APP_VERSION } from "./version";
 import { registerSignupTelemetryRoutes } from "./analytics/signup-telemetry";
+import { registerConcordAvRoutes } from "./concord-av";
 import { scheduledPosts, podcastTrendSnapshots } from "@shared/schema";
 import { resolveBuzzDirectory } from "@shared/buzz-directory";
 import { safeStreamContentType, safeImageContentType } from "./media-safety";
@@ -370,6 +371,8 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   registerSignupTelemetryRoutes(app);
+  // Call tokens for encrypted group-chat calls (Concord CORD-07).
+  registerConcordAvRoutes(app);
 
   // Deployed app version — the same build-stamped string baked into the client
   // bundle (see script/build.ts). The client's update check polls this and
