@@ -7,11 +7,10 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { useGoBack } from "@/hooks/use-go-back";
-import { ChevronDown, MessageSquare, Info, Copy, Check, Link2, Lock, Hash, Plus, Users, Settings2 } from "lucide-react";
+import { ChevronDown, Copy, Check, Link2, Lock, Settings2 } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useKeyboardViewport } from "@/hooks/use-keyboard-viewport";
-import { PageTabs } from "@/components/PageTabs";
 import { useToast } from "@/hooks/use-toast";
 import { getCommunity, type StoredCommunity } from "@/lib/concord/concord-keys";
 import { recordRecentDestination } from "@/lib/recent-destinations";
@@ -22,15 +21,12 @@ import { ManageCountBadge } from "@/components/concord/ManageCountBadge";
 import { canInviteToCommunity, rosterPubkeys } from "@/lib/concord/concord-invite-gate";
 import { ConcordMembers } from "@/components/concord/ConcordMembers";
 import { ConcordInviteDialog } from "@/components/concord/ConcordInviteDialog";
-import { ConcordCreateChannelDialog } from "@/components/concord/ConcordCreateChannelDialog";
 import { useConcordGovernance, COMMUNITY_UPDATED_EVENT } from "@/components/concord/useConcordGovernance";
 import { isStaff } from "@/lib/concord/concord-events";
 import { ConcordAdminDrawer } from "@/components/concord/ConcordAdminDrawer";
 import { concordCapabilities, hasAnyCapability } from "@/lib/space-admin";
 import { liveChannels } from "@/lib/concord/concord-live-channels";
-import { hasPermission, PERM } from "@/lib/concord/concord-events";
-import { Pencil, Trash2, LogOut } from "lucide-react";
-import { getGlobalSigner } from "@/lib/nip42-auth";
+import { LogOut } from "lucide-react";
 import { useHeaderIdentitySlot } from "@/hooks/use-header-identity-slot";
 import { ConcordDangerDialog } from "@/components/concord/ConcordDangerDialog";
 import { useChatLayout } from "@/hooks/use-chat-layout";
@@ -48,7 +44,6 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
   const goBack = useGoBack();
   const { toast } = useToast();
   const [community, setCommunity] = useState<StoredCommunity | null | undefined>(undefined);
-  const [tab, setTab] = useState<"chat" | "members" | "about">("chat");
   const [adminOpen, setAdminOpen] = useState(false);
   // ?channel= deep-link (Chats-list rows open the first UNREAD channel).
   // Captured once on mount — the ?invite=1 effect below strips the search.
@@ -77,7 +72,6 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
   const [inviteOpen, setInviteOpen] = useState(false);
   // (No editOpen here: the edit dialog is the admin drawer's. This page held a
   //  second mount whose open flag nothing ever set — dead since it was added.)
-  const [createChannelOpen, setCreateChannelOpen] = useState(false);
   const [danger, setDanger] = useState<null | "dissolve" | "leave">(null);
   // The top bar's identity slot is tracked LIVE: on desktop the header bar
   // (and the slot with it) unmounts while the sidebar is expanded, so a
@@ -86,24 +80,21 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
   const slotEl = useHeaderIdentitySlot();
   // Mobile keyboard: size the fixed chat overlay to the visual viewport so the
   // composer rides the on-screen keyboard (same mechanics as the DM thread).
-  const kb = useKeyboardViewport(tab === "chat" && !!community);
+  const kb = useKeyboardViewport(!!community);
   const isOwner = !!community && pubkey === community.owner;
   // Owner + admins (CREATE_INVITE) manage invite links; members forward them —
   // unless the owner opened invites to everyone (allowMemberInvites policy).
   const { state: govState, roster: govRoster, myMember, events: govEvents, auditLog: govAuditLog, deleted, linkJoins: govLinkJoins, compaction: govCompaction } = useConcordGovernance(community);
   // A group its owner deleted takes nobody new.
   const canInvite = !deleted && canInviteToCommunity({ community, pubkey, myMember, govMetadata: govState.metadata });
-  // Same gate as ConcordChat's rail button — the About tab hosts the only
-  // "New channel" entry point visible while the group has a single channel.
-  const canManageChannels = isOwner || (!!myMember && hasPermission(myMember, PERM.MANAGE_CHANNELS));
 
   // Hide the mobile bottom nav while the full-screen chat is up (same event
-  // contract as the DM thread); restore it on tab switch or unmount.
+  // contract as the DM thread); restore it on unmount.
   useEffect(() => {
-    const chatUp = tab === "chat" && !!community;
+    const chatUp = !!community;
     window.dispatchEvent(new Event(chatUp ? "dm-thread-open" : "dm-thread-close"));
     return () => { window.dispatchEvent(new Event("dm-thread-close")); };
-  }, [tab, community]);
+  }, [community]);
   useEffect(() => {
     if (!pubkey) return;
     getCommunity(pubkey, communityId).then(setCommunity);
@@ -146,7 +137,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
       label: displayName || undefined,
     });
   }, [pubkey, communityId, displayName]);
-  // Group description for the About tab. Once the live governance fold has
+  // Group description for About. Once the live governance fold has
   // metadata it's authoritative (owner edits arrive as vsk-0 editions and a
   // member's stored record never rewrites) — including an owner CLEARING the
   // description, so an empty live value must not fall back to the snapshot.
@@ -350,7 +341,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
         open={inviteOpen} onOpenChange={setInviteOpen} community={community} memberPubkeys={rosterPks} linkJoins={govLinkJoins}
         govState={govState} myMember={myMember} roster={govRoster} compaction={govCompaction} onCommunityChange={setCommunity}
       />
-      {/* Same component the chat mounts — the About tab needs its own door, but
+      {/* Same component the chat mounts — this page (About's Manage, the group menu) needs its own door, but
           not its own copy of what is behind it. */}
       <ConcordAdminDrawer
         open={adminOpen}
@@ -367,10 +358,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
         // channels was the one surface that could not see half of them.
         channels={drawerChannels}
         onDissolve={() => setDanger("dissolve")}
-        onChannelCreated={() => setTab("chat")}
       />
-      {/* About-tab "New channel" — on create, land in Chat where the new rail shows. */}
-      <ConcordCreateChannelDialog open={createChannelOpen} onOpenChange={setCreateChannelOpen} community={community} onCommunityChange={setCommunity} onCreated={() => setTab("chat")} />
 
       {/* Non-scrolling header zone: banner + tabs. On desktop the tabs are gone
           (chat is a persistent 3-pane), so this zone only renders when it has
