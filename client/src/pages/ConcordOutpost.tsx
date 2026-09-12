@@ -33,6 +33,14 @@ import { Pencil, Trash2, LogOut } from "lucide-react";
 import { getGlobalSigner } from "@/lib/nip42-auth";
 import { useHeaderIdentitySlot } from "@/hooks/use-header-identity-slot";
 import { ConcordDangerDialog } from "@/components/concord/ConcordDangerDialog";
+import { useChatLayout } from "@/hooks/use-chat-layout";
+import { ChatPaneSection } from "@/components/concord/ChatPaneSection";
+import { PaneResizeHandle } from "@/components/ui/pane-resize-handle";
+import { SpaceOverflowMenu } from "@/components/space/SpaceOverflowMenu";
+import { fitPanes, resizePane, resetPane, showPane, togglePane, toggleSection, PANE_LIMITS } from "@/lib/chat-layout";
+
+/** The desktop row's own chrome: its side padding (2 × 16) and the gap before Members + About. */
+const PANES_CHROME = 32 + 12;
 
 export default function ConcordOutpost({ communityId }: { communityId: string }) {
   const { pubkey } = useNostrAuth();
@@ -48,17 +56,22 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
     try { return new URLSearchParams(window.location.search).get("channel") ?? undefined; } catch { return undefined; }
   });
   const isMobile = useIsMobile();
-  // Desktop 3-pane: the Members panel is persistent-but-collapsible (👥 in the
-  // chat header). About is a collapsible section at the top of that panel.
-  const [membersCollapsed, setMembersCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem("ro_chat_members_collapsed") === "1"; } catch { return false; }
-  });
-  const toggleMembersPanel = () => setMembersCollapsed((v) => {
-    const next = !v;
-    try { localStorage.setItem("ro_chat_members_collapsed", next ? "1" : "0"); } catch {}
-    return next;
-  });
-  const [aboutSectionOpen, setAboutSectionOpen] = useState(false);
+  // Desktop: rooms | chat | Members + About, each side resizable and foldable,
+  // each section closable; the phone's Group sheet shares the sections' state.
+  // One layout per device, for every group (lib/chat-layout).
+  const { layout, update } = useChatLayout();
+  const [panesEl, setPanesEl] = useState<HTMLDivElement | null>(null);
+  const [panesWidth, setPanesWidth] = useState(0);
+  useEffect(() => {
+    if (!panesEl || typeof ResizeObserver === "undefined") return;
+    const measure = () => setPanesWidth(Math.max(0, panesEl.clientWidth - PANES_CHROME));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(panesEl);
+    return () => ro.disconnect();
+  }, [panesEl]);
+  // Phone: the group's name in the top bar opens the Group sheet.
+  const [groupSheetNonce, setGroupSheetNonce] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -179,7 +192,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
   // drift.
   const identityStrip = (
     <div className="flex w-full items-center gap-2 min-w-0 pr-1">
-      <button onClick={() => setExpanded((v) => !v)} className="flex items-center gap-2 min-w-0 flex-1 text-left">
+      <button onClick={isMobile ? () => setGroupSheetNonce((n) => n + 1) : () => setExpanded((v) => !v)} className="flex items-center gap-2 min-w-0 flex-1 text-left" data-testid="concord-identity-name">
         <GroupAvatar members={rosterPks} picture={community.icon} image={community.iconImage} name={displayName} myPubkey={pubkey} size={28} className="shrink-0" />
         <span className="text-sm font-bold truncate">{displayName}</span>
         <span className="shrink-0 inline-flex" title="End-to-end encrypted" aria-label="End-to-end encrypted"><Lock className="w-3 h-3 text-muted-foreground/50" /></span>
@@ -189,7 +202,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
           <Link2 className="w-4 h-4" />
         </button>
       )}
-      <button onClick={() => setExpanded((v) => !v)} className="flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 shrink-0">
+      <button onClick={isMobile ? () => setGroupSheetNonce((n) => n + 1) : () => setExpanded((v) => !v)} aria-label="Group details" className="flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 shrink-0">
         <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
       </button>
     </div>
@@ -273,6 +286,65 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
     </>
   );
 
+  // Members + About: the desktop's right side, and below Rooms in the phone's
+  // Group sheet. Same sections, same open state.
+  const infoSections = (where: "pane" | "sheet") => (
+    <>
+      <ChatPaneSection
+        title="Members" count={rosterPks.length}
+        open={layout.sections.members} onToggle={() => update((l) => toggleSection(l, "members"))}
+        fill={where === "pane"} testId={`concord-${where === "pane" ? "section" : "sheet"}-members`}
+      >
+        <div className={where === "pane" ? "px-3.5 pb-4" : "px-1 pb-3"}>
+          <ConcordMembers community={community} onCommunityChange={setCommunity} inSection />
+        </div>
+      </ChatPaneSection>
+      <ChatPaneSection
+        title="About"
+        open={layout.sections.about} onToggle={() => update((l) => toggleSection(l, "about"))}
+        fill={where === "pane"} testId={`concord-${where === "pane" ? "section" : "sheet"}-about`}
+      >
+        <div className={`${where === "pane" ? "px-3.5 pb-4" : "px-1 pb-3"} space-y-4`} data-testid="concord-about">
+          {canInvite && (
+            <button onClick={() => setInviteOpen(true)} className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg border border-brand/20 dark:border-brand/15 bg-brand/5 dark:bg-white/[0.03] text-xs font-medium text-brand hover:bg-brand/10 transition-colors" data-testid="button-about-invite">
+              <Link2 className="w-3.5 h-3.5" /> Invite people
+            </button>
+          )}
+          {aboutInner}
+        </div>
+      </ChatPaneSection>
+    </>
+  );
+
+  // Desktop: the group's name above the rooms list opens the same menu as ⋯.
+  const groupHeader = (
+    <div className="flex h-12 shrink-0 items-center border-b border-border/20 px-1.5">
+      <SpaceOverflowMenu
+        triggerClassName="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1.5 text-left hover:bg-muted/30 transition-colors"
+        triggerIconClassName="w-4 h-4"
+        triggerTestId="concord-group-menu"
+        triggerLabel={`${displayName} options`}
+        triggerContent={
+          <>
+            <GroupAvatar members={rosterPks} picture={community.icon} image={community.iconImage} name={displayName} myPubkey={pubkey} size={24} className="shrink-0" />
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold">{displayName}</span>
+            <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground/50" aria-hidden="true" />
+          </>
+        }
+        onManage={hasAnyCapability(concordCapabilities(myMember)) ? () => setAdminOpen(true) : undefined}
+        onInvite={canInvite ? () => setInviteOpen(true) : undefined}
+        onLeave={() => setDanger("leave")}
+        petnameSubject={{ kind: "group", id: community.community_id, realName: community.name }}
+        isOwner={isOwner}
+        muteContext={{ communityId: community.community_id }}
+      />
+    </div>
+  );
+
+  // What each side actually gets in this window (a one-room group has no rooms side).
+  const oneRoom = drawerChannels.length <= 1;
+  const fit = fitPanes(oneRoom ? { ...layout, collapsed: { ...layout.collapsed, rooms: true } } : layout, panesWidth || Number.POSITIVE_INFINITY);
+
   return (
     <div className="flex flex-col h-[calc(100svh-4.25rem-7rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] md:h-[calc(100dvh-5rem)]" data-testid="page-concord-outpost">
       {/* Identity in the top bar */}
@@ -307,7 +379,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
           (chat is a persistent 3-pane), so this zone only renders when it has
           real content — the expanded banner or the sidebar-expanded identity
           fallback — never an empty padded strip above the panes. */}
-      {(isMobile || expanded || !slotEl) && (
+      {(expanded || !slotEl) && (
       <div className="shrink-0 w-full max-w-2xl mx-auto px-3 sm:px-4 pt-4 space-y-4">
       {/* Inline fallback strip: on desktop with the sidebar expanded the top
           bar (and its identity slot) is unmounted, so the same condensed
@@ -328,31 +400,18 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
         </div>
       )}
 
-      {/* Tab pills — mobile only. Desktop replaces them with the 3-pane layout
-          (channels | messages | persistent Members panel). */}
-      {isMobile && (
-      <PageTabs
-        ariaLabel="Group chat sections"
-        active={tab}
-        onChange={(key) => setTab(key as typeof tab)}
-        tabs={([["chat", "Chat", MessageSquare], ["members", "Members", Users], ["about", "About", Info]] as const).map(([key, label, Icon]) => ({
-          key,
-          label,
-          icon: Icon,
-          testId: `concord-tab-${key}`,
-        }))}
-      />
-      )}
+      {/* No tabs on phones: the chat fills the screen, and Rooms, Members and
+          About live in the Group sheet (the group's name, or 👥). */}
 
       </div>
       )}{/* /header zone */}
 
       {!isMobile ? (
-        /* Desktop 3-pane: [channels | messages | Members panel]. Channels come
-           from ConcordChat (multi-channel only). The Members panel is persistent
-           but collapsible (👥 in the chat header → toggleMembersPanel), with
-           About as a collapsible section pinned to its top. */
-        <div className="flex flex-1 min-h-0 px-4 pb-4 gap-3">
+        /* Desktop: [rooms | chat | Members + About]. The rooms side lives in
+           ConcordChat (it owns the room list's unread and mention state); both
+           sides take their width from the layout, drag to resize, fold away
+           past their narrowest, and give way in a narrow window (fitPanes). */
+        <div ref={setPanesEl} className="flex flex-1 min-h-0 px-4 pb-4" data-testid="concord-panes">
           <ConcordChat community={community} onCommunityChange={setCommunity}
             initialChannelId={initialChannelId}
             onInvite={canInvite ? () => setInviteOpen(true) : undefined}
@@ -362,45 +421,43 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
             // danger section is owner-only), so say which is which.
             onLeave={() => setDanger("leave")}
             onDissolve={() => setDanger("dissolve")}
-            membersCollapsed={membersCollapsed}
-            onToggleMembers={toggleMembersPanel} />
-          {!membersCollapsed && (
-            <aside className="glass-card flex flex-col w-[280px] shrink-0 rounded-xl border border-brand/15 dark:border-brand/10 overflow-hidden" data-testid="concord-members-panel">
-              {/* About — collapsible section pinned to the top */}
-              <div className="shrink-0 border-b border-brand/10">
-                <button
-                  onClick={() => setAboutSectionOpen((v) => !v)}
-                  className="flex w-full items-center gap-2 px-3.5 py-3 text-left hover:bg-muted/20 transition-colors"
-                  aria-expanded={aboutSectionOpen}
-                  data-testid="concord-panel-about-toggle"
-                >
-                  <Info className="w-4 h-4 text-brand/70 shrink-0" />
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground/70 flex-1">About</span>
-                  <ChevronDown className={`w-4 h-4 text-muted-foreground/50 transition-transform ${aboutSectionOpen ? "rotate-180" : ""}`} />
-                </button>
-                {aboutSectionOpen && (
-                  <div className="px-3.5 pb-4 pt-0.5 space-y-4" data-testid="concord-about">
-                    {canInvite && (
-                      <button onClick={() => setInviteOpen(true)} className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg border border-brand/20 dark:border-brand/15 bg-brand/5 dark:bg-white/[0.03] text-xs font-medium text-brand hover:bg-brand/10 transition-colors" data-testid="button-about-invite">
-                        <Link2 className="w-3.5 h-3.5" /> Invite people
-                      </button>
-                    )}
-                    {aboutInner}
-                  </div>
-                )}
+            // 👥: hides the side, or shows it, folding the rooms list if the
+            // window has no room for both.
+            membersCollapsed={fit.info === 0}
+            onToggleMembers={() => update((l) => (fit.info === 0 ? showPane(l, "info", panesWidth || Number.POSITIVE_INFINITY) : togglePane(l, "info")))}
+            layout={layout}
+            onLayoutChange={update}
+            roomsWidth={fit.rooms}
+            roomsCollapsed={fit.rooms === 0}
+            onToggleRooms={() => update((l) => (fit.rooms === 0 ? showPane(l, "rooms", panesWidth || Number.POSITIVE_INFINITY) : togglePane(l, "rooms")))}
+            groupHeader={groupHeader}
+            roomsHandle={
+              <PaneResizeHandle
+                paneSide="left" width={fit.rooms} min={PANE_LIMITS.rooms.min} max={PANE_LIMITS.rooms.max}
+                label="Resize the rooms list"
+                onResize={(w, drag) => update((l) => resizePane(l, "rooms", w, drag))}
+                onReset={() => update((l) => resetPane(l, "rooms"))}
+                testId="concord-resize-rooms"
+              />
+            } />
+          {fit.info > 0 && (
+            <>
+              <div className="flex w-3 shrink-0 justify-center">
+                <PaneResizeHandle
+                  paneSide="right" width={fit.info} min={PANE_LIMITS.info.min} max={PANE_LIMITS.info.max}
+                  label="Resize members and about"
+                  onResize={(w, drag) => update((l) => resizePane(l, "info", w, drag))}
+                  onReset={() => update((l) => resetPane(l, "info"))}
+                  testId="concord-resize-info"
+                />
               </div>
-              {/* Members — primary content of the panel */}
-              <div className="flex items-center gap-2 px-3.5 py-3 shrink-0">
-                <Users className="w-4 h-4 text-brand/70 shrink-0" />
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground/70">Members</span>
-              </div>
-              <div className="flex-1 min-h-0 overflow-y-auto px-3.5 pb-4">
-                <ConcordMembers community={community} onCommunityChange={setCommunity} />
-              </div>
-            </aside>
+              <aside style={{ width: fit.info }} className="glass-card flex flex-col shrink-0 gap-1 rounded-xl border border-brand/15 dark:border-brand/10 overflow-hidden py-1.5" data-testid="concord-members-panel">
+                {infoSections("pane")}
+              </aside>
+            </>
           )}
         </div>
-      ) : tab === "chat" ? (
+      ) : (
         // Mobile: immersive full-screen, like the DM thread (the bottom nav hides
         // via dm-thread-open). Desktop: inline pane filling the remaining height.
         // The overlay sits inside <main>'s z-0 stacking context, so it can never
@@ -412,20 +469,13 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
         >
           <ConcordChat community={community} onCommunityChange={setCommunity} viewportNudge={kb.height}
             initialChannelId={initialChannelId}
-            onOverview={() => setTab("members")}
             onInvite={canInvite ? () => setInviteOpen(true) : undefined}
             onLeave={() => setDanger("leave")}
-            onDissolve={() => setDanger("dissolve")} />
-        </div>
-      ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto w-full max-w-2xl mx-auto px-3 sm:px-4 pt-3 pb-24">
-        {tab === "members" ? (
-          <ConcordMembers community={community} onCommunityChange={setCommunity} />
-        ) : (
-        <div className="rounded-xl border border-border/30 p-4 space-y-4" data-testid="concord-about">
-          {aboutInner}
-        </div>
-        )}
+            onDissolve={() => setDanger("dissolve")}
+            layout={layout}
+            onLayoutChange={update}
+            groupSheetExtras={infoSections("sheet")}
+            openGroupSheet={groupSheetNonce} />
         </div>
       )}
 

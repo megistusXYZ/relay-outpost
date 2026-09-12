@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { MoreHorizontal, Users, Settings, Link2, LogOut, Bell, BellOff, Pencil, ShieldCheck, Search } from "lucide-react";
 import {
   DropdownMenu,
@@ -49,6 +49,8 @@ export function SpaceOverflowMenu({
   isOwner,
   muteContext,
   attention,
+  triggerContent,
+  triggerLabel,
 }: {
   triggerClassName: string;
   triggerIconClassName: string;
@@ -77,6 +79,12 @@ export function SpaceOverflowMenu({
    * (there is no admission queue), not a missing feature.
    */
   attention?: number;
+  /**
+   * What the trigger shows instead of ⋯ — the group chat's side panel opens
+   * this same menu from the group's name. Same items either way.
+   */
+  triggerContent?: ReactNode;
+  triggerLabel?: string;
 }) {
   // Hooks must run unconditionally — the early return comes after.
   const communityMuted = useCommunityMuted(muteContext?.communityId ?? "");
@@ -91,8 +99,8 @@ export function SpaceOverflowMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className={`relative ${triggerClassName}`} title="More options" aria-label="More options" data-testid={triggerTestId}>
-          <MoreHorizontal className={triggerIconClassName} />
+        <button className={`relative ${triggerClassName}`} title={triggerLabel ?? "More options"} aria-label={triggerLabel ?? "More options"} data-testid={triggerTestId}>
+          {triggerContent ?? <MoreHorizontal className={triggerIconClassName} />}
           {showAttention && (
             <span
               className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-amber-500 text-[9px] font-semibold leading-4 text-black"

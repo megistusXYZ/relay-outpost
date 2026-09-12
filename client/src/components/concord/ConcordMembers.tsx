@@ -29,11 +29,13 @@ import type { ReactNode } from "react";
 import type { Role } from "@/lib/concord/concord-events";
 import { grantLocator, banlistLocator } from "@/lib/concord/concord-locators";
 
-export function ConcordMembers({ community, onCommunityChange, showActivity = true }: {
+export function ConcordMembers({ community, onCommunityChange, showActivity = true, inSection = false }: {
   community: StoredCommunity; onCommunityChange: (c: StoredCommunity) => void;
   /** False when the admin drawer renders the log as its own "Moderation history"
    *  section — otherwise the same log appears twice in one drawer. */
   showActivity?: boolean;
+  /** Inside a group chat's Members section, which already names it and counts: no heading or card of its own. */
+  inSection?: boolean;
 }) {
   const { pubkey } = useNostrAuth();
   const { toast } = useToast();
@@ -177,12 +179,14 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
   }, [pubkey, community, state, onCommunityChange, toast]);
 
   return (
-    <div className="rounded-xl border border-border/30 p-4 space-y-3" data-testid="concord-members">
+    <div className={inSection ? "space-y-3" : "rounded-xl border border-border/30 p-4 space-y-3"} data-testid="concord-members">
+      {!inSection && (
       <div className="flex items-center gap-2">
         <Users className="w-4 h-4 text-brand/70" />
         <p className="text-sm font-semibold">Members</p>
         <span className="text-[11px] text-muted-foreground/40">{roster.length}</span>
       </div>
+      )}
 
       {roster.length === 0 ? (
         <p className="text-xs text-muted-foreground/50 py-4 text-center">Loading roster…</p>
