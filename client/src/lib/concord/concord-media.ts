@@ -24,6 +24,12 @@ export interface ConcordMedia {
   name?: string;
   /** "WxH" for images/video, powers aspect-ratio before decrypt. */
   dim?: string;
+  /** A display name, where the file name isn't one (Armada's games). */
+  summary?: string;
+  /** A plain icon or preview image link (Armada's games: `thumb`, or `image`). */
+  thumb?: string;
+  /** A game's shared session id (`webxdc`, or Vector's `webxdc-topic`). */
+  webxdc?: string;
 }
 
 export const isEncrypted = (m: ConcordMedia): boolean => !!m.key && !!m.iv;
@@ -38,6 +44,9 @@ export function mediaToTag(m: ConcordMedia): string[] {
   if (m.iv) parts.push(`decryption-nonce ${m.iv}`);
   if (m.dim) parts.push(`dim ${m.dim}`);
   if (m.name) parts.push(`name ${m.name}`);
+  if (m.summary) parts.push(`summary ${m.summary}`);
+  if (m.thumb) parts.push(`thumb ${m.thumb}`);
+  if (m.webxdc) parts.push(`webxdc ${m.webxdc}`);
   return ["imeta", ...parts];
 }
 
@@ -57,6 +66,9 @@ export function tagToMedia(tag: string[]): ConcordMedia | null {
     iv: kv["decryption-nonce"],
     dim: kv.dim,
     name: kv.name,
+    summary: kv.summary,
+    thumb: kv.thumb ?? kv.image,
+    webxdc: kv.webxdc ?? kv["webxdc-topic"],
   };
 }
 
