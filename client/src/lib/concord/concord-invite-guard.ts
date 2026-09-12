@@ -68,6 +68,18 @@ export function absorbHeldInvites(
     if (check.kind !== "held") continue;
     if (channels.length > 0) consumed = true;
     record = check.record; added += check.added;
+    // A room held here as public that the invite hands a key for: the group
+    // made it private, on a new stream under that key. A private room moves
+    // only to a newer generation: the counter is monotonic (CORD-03 §2), so an
+    // older or equal epoch is a stale copy and never replaces the key I hold.
+    for (const ch of channels) {
+      if (typeof ch.key !== "string" || typeof ch.epoch !== "number") continue;
+      const i = record.channels.findIndex((c) => c.id === ch.id && (!c.isPrivate || ch.epoch > c.epoch));
+      if (i < 0) continue;
+      const moved = { id: ch.id, key: ch.key, epoch: ch.epoch, name: ch.name ?? record.channels[i].name, isPrivate: true };
+      record = { ...record, channels: record.channels.map((c, j) => (j === i ? moved : c)) };
+      added += 1;
+    }
   }
   return { record, added, consumed };
 }
