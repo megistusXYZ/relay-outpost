@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useBackClosable } from "@/hooks/use-back-closable";
 import { createPortal } from "react-dom";
-import { Hash, Lock, Plus, Send, ImagePlus, Loader2, X, CornerUpLeft, ChevronDown, Users, BellOff, MessageSquare, ArrowLeft, Link2, Shield, Headphones } from "lucide-react";
+import { Hash, Lock, Plus, Send, ImagePlus, Loader2, X, CornerUpLeft, ChevronDown, Users, BellOff, MessageSquare, ArrowLeft, Link2, Shield, Headphones, PanelLeft } from "lucide-react";
 import { hangoutOf } from "@/lib/concord/concord-hangout";
 import { AudioSpaceLightbox } from "@/components/AudioSpaceCard";
 import { getEventHash, nip19 } from "nostr-tools";
@@ -64,6 +64,9 @@ import { ConcordCreateChannelDialog } from "./ConcordCreateChannelDialog";
 import { concordCapabilities, hasAnyCapability } from "@/lib/space-admin";
 import { ConcordAdminDrawer } from "./ConcordAdminDrawer";
 import { SpaceOverflowMenu } from "@/components/space/SpaceOverflowMenu";
+import { ChatPaneSection } from "./ChatPaneSection";
+import { toggleSection, type ChatLayout } from "@/lib/chat-layout";
+import type { ReactNode } from "react";
 import { ConcordMessageActions } from "./ConcordMessageActions";
 
 interface ChatMsg { id: string; pubkey: string; content: string; t: number; media?: ConcordMedia[]; replyTo?: { id: string; pubkey: string }; rootId?: string; root?: RootRef; kind?: number; expiresAt?: number; seal?: Seal; epoch?: number; edited?: boolean; deleted?: boolean; deletedBy?: string; mentions?: string[] }
@@ -137,7 +140,41 @@ function useChannelUnread(
   return unread;
 }
 
-export function ConcordChat({ community, onCommunityChange, onOverview, onInvite, onLeave, onDissolve, viewportNudge, membersCollapsed, onToggleMembers, initialChannelId, createChannelOpen, onCreateChannelClose, embedded }: {
+/** The phone sheet's rooms: a section you can close when the sheet is the Group sheet, the bare list when it's only the room picker. */
+function SheetRooms({ layout, onLayoutChange, grouped, count, children }: {
+  layout?: ChatLayout;
+  onLayoutChange?: (change: (l: ChatLayout) => ChatLayout) => void;
+  grouped: boolean;
+  count: number;
+  children: ReactNode;
+}) {
+  if (!grouped || !layout || !onLayoutChange) return <>{children}</>;
+  return (
+    <ChatPaneSection title="Rooms" count={count} open={layout.sections.rooms} onToggle={() => onLayoutChange((l) => toggleSection(l, "rooms"))} testId="concord-sheet-rooms">
+      <div className="pb-2">{children}</div>
+    </ChatPaneSection>
+  );
+}
+
+/** The desktop rooms list's body: a section you can close under the host's layout, a plain scroller without one. */
+function RoomsSide({ layout, onLayoutChange, count, action, children }: {
+  layout?: ChatLayout;
+  onLayoutChange?: (change: (l: ChatLayout) => ChatLayout) => void;
+  count: number;
+  action: ReactNode;
+  children: ReactNode;
+}) {
+  if (!layout || !onLayoutChange) return <div className="flex-1 overflow-y-auto">{children}</div>;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col pt-1.5">
+      <ChatPaneSection title="Rooms" count={count} open={layout.sections.rooms} onToggle={() => onLayoutChange((l) => toggleSection(l, "rooms"))} action={action} fill testId="concord-section-rooms">
+        {children}
+      </ChatPaneSection>
+    </div>
+  );
+}
+
+export function ConcordChat({ community, onCommunityChange, onOverview, onInvite, onLeave, onDissolve, viewportNudge, membersCollapsed, onToggleMembers, initialChannelId, createChannelOpen, onCreateChannelClose, embedded, layout, onLayoutChange, roomsWidth, groupHeader, roomsHandle, groupSheetExtras, openGroupSheet, roomsCollapsed, onToggleRooms }: {
   community: StoredCommunity;
   onCommunityChange: (c: StoredCommunity) => void;
   /**
@@ -184,6 +221,30 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
    *  When defined, the desktop header shows a 👥 toggle wired to onToggleMembers. */
   membersCollapsed?: boolean;
   onToggleMembers?: () => void;
+  /**
+   * The host's layout (lib/chat-layout): the desktop rooms side and every
+   * section's open state. Absent (the Chats-tab mount), the rail keeps its
+   * fixed width and the phone sheet lists rooms only.
+   */
+  layout?: ChatLayout;
+  onLayoutChange?: (change: (l: ChatLayout) => ChatLayout) => void;
+  /** Desktop rooms side width, from the host's fit (0 = folded, or no room for it). */
+  roomsWidth?: number;
+  /** Desktop: the group's name and menu, above the rooms list. */
+  groupHeader?: ReactNode;
+  /** Desktop: the divider that resizes the rooms side. */
+  roomsHandle?: ReactNode;
+  /** Phone: the host's Members + About sections, below Rooms in the Group sheet. */
+  groupSheetExtras?: ReactNode;
+  /** Phone: bump to open the Group sheet from the host (the group's name in the top bar). */
+  openGroupSheet?: number;
+  /**
+   * Desktop: whether the rooms side is hidden (folded, or no room for it) and
+   * the header button that brings it back. Without it a folded rooms list had
+   * no way home: its divider folds away with it.
+   */
+  roomsCollapsed?: boolean;
+  onToggleRooms?: () => void;
 }) {
   const { pubkey } = useNostrAuth();
   const { state: govState, roster: govRoster, myMember, events: govEvents, auditLog, deleted: groupDeleted, removals, linkJoins: inviteLinkJoins, compaction: govCompaction } = useConcordGovernance(community);
@@ -340,7 +401,11 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   // Hand-rolled full-screen portal (not a Radix root), so it joins the
   // modal-back contract itself: Back closes the channel sheet, not the chat
   // under it (lib/modal-history.ts).
-  useBackClosable(channelSheetOpen && !single, () => setChannelSheetOpen(false));
+  // With the host's Members + About in it, the sheet is the Group sheet and
+  // opens for a one-room group too.
+  const sheetAvailable = !single || !!groupSheetExtras;
+  useBackClosable(channelSheetOpen && sheetAvailable, () => setChannelSheetOpen(false));
+  useEffect(() => { if (openGroupSheet) setChannelSheetOpen(true); }, [openGroupSheet]);
   // Canonical "go to channel" (used by the rail, the mobile sheet, and in-message
   // #channel links): switch the active channel + close the mobile picker sheet.
   const selectChannelById = useCallback((id: string) => {
@@ -896,20 +961,33 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
 
 
 
+  const addRoomButton = canManageChannels ? (
+    <button onClick={() => setCreateOpen(true)} className="flex items-center justify-center w-6 h-6 shrink-0 rounded-md text-muted-foreground/50 hover:text-brand hover:bg-brand/10 transition-colors" title="New room" aria-label="New room" data-testid="concord-add-channel">
+      <Plus className="w-3.5 h-3.5" />
+    </button>
+  ) : null;
+  const showRoomsSide = !single && (!layout || (roomsWidth ?? 0) > 0);
+
   return (
     <div className="relative flex flex-1 min-h-0 md:rounded-xl md:border md:border-border/30 overflow-hidden" data-testid="concord-chat">
-      {/* Desktop channel sidebar — hidden while the group has one channel */}
-      {!single && (
-      <aside className="hidden md:flex flex-col w-56 shrink-0 border-r border-border/20 bg-muted/5 dark:bg-black/10" data-testid="concord-channel-sidebar">
+      {/* Desktop rooms side, hidden while the group has one room. Under the
+          host's layout (lib/chat-layout) it's resizable and foldable, with the
+          group's name and menu on top and Rooms as a section you can close;
+          without one (the Chats-tab mount) it's the fixed rail. */}
+      {showRoomsSide && (
+      <aside
+        className={`hidden md:flex flex-col shrink-0 border-r border-border/20 bg-muted/5 dark:bg-black/10 ${layout ? "" : "w-56"}`}
+        style={layout ? { width: roomsWidth } : undefined}
+        data-testid="concord-channel-sidebar"
+      >
+        {layout ? groupHeader : (
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/20 shrink-0">
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">Rooms</span>
-          {canManageChannels && (
-            <button onClick={() => setCreateOpen(true)} className="flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground/50 hover:text-brand hover:bg-brand/10 transition-colors" title="New room" data-testid="concord-add-channel">
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-          )}
+          {addRoomButton}
         </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+        )}
+        <RoomsSide layout={layout} onLayoutChange={onLayoutChange} count={channels.length} action={addRoomButton}>
+        <div className="p-2 space-y-0.5">
           {channels.map((ch) => (
             <button
               key={ch.id}
@@ -931,8 +1009,10 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             </button>
           ))}
         </div>
+        </RoomsSide>
       </aside>
       )}
+      {showRoomsSide && layout && roomsHandle && <div className="hidden md:flex">{roomsHandle}</div>}
 
       {/* Message pane */}
       <div className="relative flex flex-col flex-1 min-w-0 min-h-0">
@@ -972,8 +1052,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           ) : null}
         </button>
         )}
-        {onOverview && (
-          <button onClick={onOverview} className="flex items-center justify-center w-10 h-10 rounded-full text-muted-foreground/60 hover:text-foreground active:bg-muted/40 transition-colors" title="Members & about" data-testid="concord-chat-overview">
+        {(onOverview || groupSheetExtras) && (
+          <button onClick={groupSheetExtras ? () => setChannelSheetOpen(true) : onOverview} className="flex items-center justify-center w-10 h-10 rounded-full text-muted-foreground/60 hover:text-foreground active:bg-muted/40 transition-colors" title="Members & about" data-testid="concord-chat-overview">
             <Users className="w-[18px] h-[18px]" />
           </button>
         )}
@@ -999,7 +1079,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           triggerTestId="concord-channel-settings-mobile"
           onManage={undefined}
           onSearch={() => setSearchOpen(true)}
-          onMembers={onOverview}
+          onMembers={groupSheetExtras ? () => setChannelSheetOpen(true) : onOverview}
           onInvite={openInvite}
           onLeave={onLeave}
           petnameSubject={{ kind: "group", id: community.community_id, realName: community.name }}
@@ -1008,7 +1088,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
         />
       </div>
       {/* Mobile channel sheet (above the z-[55] chat overlay, below z-[210] dialogs) */}
-      {channelSheetOpen && !single && typeof document !== "undefined" && createPortal(
+      {channelSheetOpen && sheetAvailable && typeof document !== "undefined" && createPortal(
         // Portalled to <body>: <main> is `relative z-0`, which makes it a
         // stacking context, so every z-index inside it — including this
         // z-[80] — collapses into that one z-0 layer and loses to the z-50
@@ -1017,7 +1097,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
         // sheet's last rows sat under a fully-lit navbar that took the tap.
         <div className="fixed inset-0 z-[80] md:hidden" data-testid="concord-channel-sheet">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setChannelSheetOpen(false)} />
-          <div className="absolute bottom-0 left-0 right-0 flex max-h-[70vh] flex-col rounded-t-2xl border-t border-border/30 bg-background">
+          <div className={`absolute bottom-0 left-0 right-0 flex ${groupSheetExtras ? "max-h-[85svh]" : "max-h-[70vh]"} flex-col rounded-t-2xl border-t border-border/30 bg-background`} data-testid={groupSheetExtras ? "concord-group-sheet" : undefined}>
             {/* Pinned header: grab handle (tap closes) + explicit ✕, above the scrolling list. */}
             <div className="relative shrink-0 px-3 pt-3">
               <button
@@ -1038,9 +1118,12 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
               >
                 <X className="w-5 h-5" />
               </button>
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50 px-2 mb-1.5">Rooms</p>
+              {/* As the Group sheet each section carries its own title. */}
+              {!groupSheetExtras && <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50 px-2 mb-1.5">Rooms</p>}
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-[max(env(safe-area-inset-bottom,0px),0.75rem)]">
+              {!single && (
+              <SheetRooms layout={layout} onLayoutChange={onLayoutChange} grouped={!!groupSheetExtras} count={channels.length}>
               <div className="space-y-0.5">
                 {channels.map((ch) => (
                   <button
@@ -1068,6 +1151,9 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
                   <Plus className="w-4 h-4" /> New room
                 </button>
               )}
+              </SheetRooms>
+              )}
+              {groupSheetExtras}
             </div>
           </div>
         </div>,
@@ -1086,6 +1172,20 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           mechanism would exist and nothing would reach it. */}
       {(!single || hasAnyCapability(caps) || canManageChannels || onOverview || openInvite || onLeave || onToggleMembers) && (
       <div className="hidden md:flex items-center gap-2 px-4 py-2.5 border-b border-border/20 shrink-0" data-testid="concord-channel-header">
+        {!single && onToggleRooms && (
+          <button
+            onClick={onToggleRooms}
+            className={`-ml-1.5 flex items-center justify-center w-7 h-7 shrink-0 rounded-full transition-colors ${
+              roomsCollapsed ? "text-muted-foreground/50 hover:text-foreground hover:bg-muted/40" : "text-brand bg-brand/10 hover:bg-brand/15"
+            }`}
+            title={roomsCollapsed ? "Show rooms" : "Hide rooms"}
+            aria-label={roomsCollapsed ? "Show rooms" : "Hide rooms"}
+            aria-pressed={!roomsCollapsed}
+            data-testid="concord-toggle-rooms"
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
+        )}
         {!single && (
           <>
             {activeHangout ? <Headphones className="w-4 h-4 text-muted-foreground/50 shrink-0" /> : activeChannel?.isPrivate ? <Lock className="w-4 h-4 text-muted-foreground/50 shrink-0" /> : <Hash className="w-4 h-4 text-muted-foreground/50 shrink-0" />}
