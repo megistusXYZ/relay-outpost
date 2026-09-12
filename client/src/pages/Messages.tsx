@@ -46,6 +46,7 @@ import { ImageLightbox, type LightboxImage } from "@/components/ImageLightbox";
 import { ComposeEmojiPicker } from "@/components/ComposeEmojiPicker";
 import { useCustomEmojis } from "@/hooks/use-custom-emojis";
 import { AutoGrowTextarea } from "@/components/AutoGrowTextarea";
+import { DAY_CHIP, NEW_TAG, COMPOSER_FIELD } from "@/lib/chat-look";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useKeyboardViewport } from "@/hooks/use-keyboard-viewport";
 import {
@@ -2714,7 +2715,7 @@ export default function Messages() {
           {otherChatAlert && (
             <button
               onClick={() => { setOtherChatAlert(null); navigateToConversation(otherChatAlert); }}
-              className="flex items-center gap-2.5 mx-3 mt-2 px-3 min-h-11 rounded-xl border border-primary/25 bg-primary/10 text-left"
+              className="flex items-center gap-2.5 mx-3 mt-2 px-3 min-h-11 rounded-xl border border-brand/25 bg-brand/10 text-left"
               data-testid="other-chat-alert"
             >
               <MessageCircle className="w-4 h-4 shrink-0 text-brand" />
@@ -2769,16 +2770,15 @@ export default function Messages() {
                 if (item.type === "date-separator") {
                   return (
                     <div key={item.key} className="dm-date-separator my-2">
-                      <span className="text-[10px] font-medium text-muted-foreground/60 whitespace-nowrap">{item.label}</span>
+                      <span className={DAY_CHIP}>{item.label}</span>
                     </div>
                   );
                 }
                 if (item.type === "unread") {
                   return (
                     <div key={item.key} data-dm-unread-divider className="flex items-center gap-2 my-2 px-1">
-                      <div className="flex-1 h-px bg-brand/30" />
-                      <span className="text-[10px] font-semibold text-brand/80 uppercase tracking-wider whitespace-nowrap">Unread</span>
-                      <div className="flex-1 h-px bg-brand/30" />
+                      <div className="flex-1 h-px bg-brand/60" />
+                      <span className={NEW_TAG}>New</span>
                     </div>
                   );
                 }
@@ -2796,8 +2796,9 @@ export default function Messages() {
                   >
                     {isMine && !isDeletedPreview && (
                       <button
-                        className="opacity-0 group-hover:opacity-100 group-active:opacity-60 focus:opacity-100 transition-opacity p-1 text-muted-foreground/50 cursor-pointer shrink-0 mb-1 hidden md:block"
+                        className="reveal-on-hover p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer shrink-0 mb-1 hidden md:block transition-colors"
                         onClick={() => setDeleteConfirm({ type: "message", id: msg.id, isMine: true })}
+                        aria-label="Delete message" title="Delete message"
                         data-testid={`button-delete-msg-${msg.id}`}
                       >
                         <Trash2 className="w-3 h-3" />
@@ -2860,8 +2861,9 @@ export default function Messages() {
                     </div>
                     {!isMine && !isDeletedPreview && (
                       <button
-                        className="opacity-0 group-hover:opacity-100 group-active:opacity-60 focus:opacity-100 transition-opacity p-1 text-muted-foreground/50 cursor-pointer shrink-0 mb-1 hidden md:block"
+                        className="reveal-on-hover p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer shrink-0 mb-1 hidden md:block transition-colors"
                         onClick={() => setDeleteConfirm({ type: "message", id: msg.id, isMine: false })}
+                        aria-label="Hide message" title="Hide message"
                         data-testid={`button-hide-msg-${msg.id}`}
                       >
                         <EyeOff className="w-3 h-3" />
@@ -2939,7 +2941,7 @@ export default function Messages() {
               </div>
             </div>
           ) : (
-            <div className="p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-3 border-t border-border/40 shrink-0">
+            <div className="p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-3 shrink-0">
               <div className="w-full md:max-w-[46rem] md:mx-auto">
               {uploading && (
                 <div className="flex items-center gap-2 px-2 pb-2 text-[11px] text-muted-foreground/70">
@@ -2973,10 +2975,12 @@ export default function Messages() {
                   onChange={handleFileUpload}
                   data-testid="input-file-upload"
                 />
+                {/* One field holding attach, emoji and the text (lib/chat-look). */}
+                <div className={`flex flex-1 min-w-0 items-end pl-0.5 pr-2 rounded-3xl ${COMPOSER_FIELD}`} data-testid="dm-composer-field">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="shrink-0"
+                  className="shrink-0 h-11 w-11 md:h-9 md:w-9 rounded-full text-muted-foreground hover:text-brand hover:bg-transparent"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
                   data-testid="button-attach-media"
@@ -3001,6 +3005,7 @@ export default function Messages() {
                   />
                 </div>
                 <AutoGrowTextarea
+                  className="min-h-11 md:min-h-9 rounded-none border-0 bg-transparent px-1.5 py-2.5 md:py-2 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                   placeholder="Type a message..."
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
@@ -3015,8 +3020,10 @@ export default function Messages() {
                   enterKeyHint={isMobile ? "enter" : "send"}
                   data-testid="input-message-compose"
                 />
+                </div>
                 <Button
                   size="icon"
+                  className="shrink-0 h-11 w-11 md:h-10 md:w-10 rounded-full shadow-sm"
                   onClick={sendMessage}
                   disabled={!newMessage.trim() && pendingMedia.length === 0}
                   data-testid="button-send-message"

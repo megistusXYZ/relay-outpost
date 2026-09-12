@@ -1494,7 +1494,13 @@ html[data-perf="lite"] .space-bg-nebula {
     content: '';
     flex: 1;
     height: 1px;
-    background: hsl(var(--border) / 0.3);
+    /* Full-strength hairlines either side of the day chip (lib/chat-look DAY_CHIP):
+       at 0.3 they vanished, and the chip looked like it was floating. */
+    background: hsl(var(--border));
+  }
+  .dark .dm-date-separator::before,
+  .dark .dm-date-separator::after {
+    background: hsl(0 0% 100% / 0.07);
   }
 
   .glass-bubble-own {

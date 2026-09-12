@@ -106,10 +106,6 @@ const ALLOWED: Record<string, { count: number; why: string }> = {
     count: 1,
     why: "DECORATION. A relative timestamp on a live-chat line — information, not a control. Always-on would stamp every line of a fast-moving chat on the narrowest screens.",
   },
-  "client/src/pages/Messages.tsx": {
-    count: 2,
-    why: "MITIGATED. Both carry `hidden md:block`, so they are desktop-only by construction, and touch gets the long-press sheet (onTouchStart :2719 → sheet :2804) offering the same delete/hide. This is precisely the mitigation ChatListRow lacked, which is why that one was a defect and these are not.",
-  },
   "client/src/pages/Search.tsx": {
     count: 1,
     why: "DECORATION. A '+' hint at the end of a feed row; the row itself is the control.",
