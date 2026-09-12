@@ -19,9 +19,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
-import { ensureConcordUnreadWatcher, useConcordUnread } from "@/lib/concord/concord-unread";
-import { concordChatsBadgeCount, useConcordMentionCounts } from "@/lib/concord/concord-mentions";
-import { ensureConcordMentionScanner } from "@/lib/concord/concord-mention-scan";
+import { useChatsBadge } from "@/hooks/use-chats-badge";
 import { useTheme } from "@/hooks/use-theme";
 import { formatNpub, shortenNpub } from "@/lib/nostr-helpers";
 import { queryClient } from "@/lib/queryClient";
@@ -347,11 +345,9 @@ export function DesktopStoriesRail() {
   const { isDark } = useTheme();
   const reducedMotion = !!useReducedMotion();
   const { pubkey, profile } = useNostrAuth();
-  const { unreadCount, unreadDmCount } = useNotifications();
-  const concordUnread = useConcordUnread();
-  const concordMentions = useConcordMentionCounts();
-  useEffect(() => { void ensureConcordUnreadWatcher(pubkey); ensureConcordMentionScanner(pubkey); }, [pubkey]);
-  const chatsUnread = unreadDmCount + concordChatsBadgeCount(concordUnread, concordMentions);
+  const { unreadCount } = useNotifications();
+  // Chats badge (lib/chats-badge): empty while private mode masks the chats.
+  const chatsUnread = useChatsBadge(pubkey).total;
 
   const displayName = profile?.display_name || profile?.name || null;
   const npub = pubkey ? shortenNpub(formatNpub(pubkey)) : null;
