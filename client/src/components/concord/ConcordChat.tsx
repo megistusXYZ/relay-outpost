@@ -1442,6 +1442,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           onSaveEdit={saveEdit}
           onRequestDelete={setPendingDelete}
           canRemove={(author) => !!pubkey && mayDelete(pubkey, author, govState, community.owner)}
+          onReport={pubkey ? setReporting : undefined}
         />
       )}
     </div>
@@ -1454,7 +1455,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
  * and media behave identically. "Reply" on a message here answers it in this
  * thread (the composer shows which); by default a reply answers the starter.
  */
-function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messagesById, editingId, embedded, onClose, draft, onDraftChange, answering, onReplyTo, onCancelReplyTo, sending, onSend, focusNonce, readOnly, onReact, onStartEdit, onSaveEdit, onRequestDelete, canRemove }: {
+function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messagesById, editingId, embedded, onClose, draft, onDraftChange, answering, onReplyTo, onCancelReplyTo, sending, onSend, focusNonce, readOnly, onReact, onStartEdit, onSaveEdit, onRequestDelete, canRemove, onReport }: {
   root: ChatMsg;
   /** See ConcordChat's own `embedded`: this panel is `absolute inset-0` over the
    *  chat's box, so embedded its bottom edge is the panel's, not the screen's. */
@@ -1483,6 +1484,8 @@ function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messa
   onRequestDelete: (msg: ChatMsg) => void;
   /** May I remove this author's message as a moderator (mayDelete)? */
   canRemove?: (author: string) => boolean;
+  /** Report someone else's message to the group's moderators (concord-reports), as the room does. */
+  onReport?: (msg: ChatMsg) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (focusNonce > 0) inputRef.current?.focus(); }, [focusNonce]);
@@ -1490,6 +1493,7 @@ function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messa
     <ConcordMessageRow
       msgId={m.id} pubkey={m.pubkey} content={m.content} media={m.media} mine={m.pubkey === myPubkey}
       removable={m.pubkey !== myPubkey && !!canRemove?.(m.pubkey)}
+      onReport={onReport && m.pubkey !== myPubkey && !m.deleted ? () => onReport(m) : undefined}
       removedByModerator={!!m.deletedBy && m.deletedBy !== m.pubkey}
       t={m.t} edited={m.edited} deleted={m.deleted} mentionedMe={!!myPubkey && !!m.mentions?.includes(myPubkey)}
       reactions={reactionsByMessage.get(m.id)} myPubkey={myPubkey}
