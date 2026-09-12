@@ -30,6 +30,7 @@ import { useConcordProfile } from "./ConcordIdentity";
 import { ConcordReactionPill } from "./ConcordReactionPill";
 import { senderColor } from "@/lib/sender-color";
 import { ACTIVE_ROOM, DAY_CHIP, NEW_TAG, COMPOSER_FIELD } from "@/lib/chat-look";
+import { useRoomInUrl, isRestoringRoom } from "@/lib/room-url";
 import { ConcordMediaView } from "./ConcordMediaView";
 import { getCachedMessages, cacheMessage, deleteCachedMessages, getCachedReactions, cacheReaction, removeCachedReaction, type StoredCommunity, type StoredChannel, type CachedReaction } from "@/lib/concord/concord-keys";
 import { liveChannels } from "@/lib/concord/concord-live-channels";
@@ -176,7 +177,7 @@ function RoomsSide({ layout, onLayoutChange, count, action, children }: {
   );
 }
 
-export function ConcordChat({ community, onCommunityChange, onOverview, onInvite, onLeave, onDissolve, viewportNudge, membersCollapsed, onToggleMembers, initialChannelId, createChannelOpen, onCreateChannelClose, embedded, layout, onLayoutChange, roomsWidth, groupHeader, roomsHandle, groupSheetExtras, openGroupSheet, roomsCollapsed, onToggleRooms }: {
+export function ConcordChat({ community, onCommunityChange, onOverview, onInvite, onLeave, onDissolve, viewportNudge, membersCollapsed, onToggleMembers, initialChannelId, createChannelOpen, onCreateChannelClose, embedded, layout, onLayoutChange, roomsWidth, groupHeader, roomsHandle, groupSheetExtras, openGroupSheet, roomsCollapsed, onToggleRooms, roomInUrl }: {
   community: StoredCommunity;
   onCommunityChange: (c: StoredCommunity) => void;
   /**
@@ -246,6 +247,9 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
    * no way home: its divider folds away with it.
    */
   roomsCollapsed?: boolean;
+  /** This chat owns the page's `?channel=` (the group's own page). Mounted
+   *  inside another page, it leaves that page's link alone. */
+  roomInUrl?: boolean;
   onToggleRooms?: () => void;
 }) {
   const { pubkey } = useNostrAuth();
@@ -276,6 +280,21 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     () => channels.find((c) => c.id === activeId) ?? channels[0],
     [channels, activeId],
   );
+  // The link follows the room on screen (lib/room-url), whichever way it was
+  // switched: the rooms side, the phone sheet, a #room link, search, a new room.
+  useRoomInUrl(roomInUrl ? activeChannel?.id : undefined);
+  // …and the room follows the link, when the link changes under an open group
+  // (a notification or a Chats row for another room). A room this chat just
+  // wrote is already the active one, so this never fights a switch.
+  useEffect(() => {
+    // Back after a room was picked in the phone sheet shows the link as it was
+    // before the pick for a moment; that isn't a link to follow (lib/room-url).
+    if (isRestoringRoom()) return;
+    if (roomInUrl && initialChannelId && initialChannelId !== activeId && channels.some((c) => c.id === initialChannelId)) setActiveId(initialChannelId);
+    // Only a change of link: re-running on activeId would undo every switch
+    // until the new room's link had been written.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialChannelId]);
   // Hangout rooms (concord-hangout.ts): the voice room lives in the folded
   // room's custom fields, so only members see it and other apps see text.
   const hangoutIds = useMemo(
