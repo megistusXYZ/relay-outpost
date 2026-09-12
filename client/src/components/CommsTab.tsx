@@ -23,6 +23,11 @@ import { Nip29AdminDrawer } from "@/components/space/Nip29AdminDrawer";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { useSidebar } from "@/components/ui/sidebar";
+import { useChatLayout } from "@/hooks/use-chat-layout";
+import { ChatPaneSection } from "@/components/concord/ChatPaneSection";
+import { PaneResizeHandle } from "@/components/ui/pane-resize-handle";
+import { fitPanes, resizePane, resetPane, showPane, togglePane, toggleSection, PANE_LIMITS, type ChatLayout } from "@/lib/chat-layout";
+import { sideRooms } from "@/lib/community-room-order";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,7 +64,7 @@ import {
   AlertCircle,
   Settings,
   Link2,
-  Pin, WifiOff, RefreshCw } from "lucide-react";
+  Pin, WifiOff, RefreshCw, PanelLeft } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { joinDoor, readDoor } from "@/lib/nip29-door";
 import { Label } from "@/components/ui/label";
@@ -1068,7 +1073,14 @@ function ChatRoomView({
   initialInviteCode,
   trustFilterEnabled,
   isHiddenByTrust,
-  onTrustHidden }: {
+  onTrustHidden,
+  layout,
+  onLayoutChange,
+  infoWidth,
+  infoHandle,
+  onToggleInfo,
+  roomsHidden,
+  onToggleRooms }: {
   relayUrl: string;
   group: GroupMetadata;
   isInitiallyJoined: boolean;
@@ -1094,9 +1106,23 @@ function ChatRoomView({
   trustFilterEnabled?: boolean;
   isHiddenByTrust?: (pubkey: string) => boolean;
   onTrustHidden?: (count: number) => void;
+  /**
+   * Desktop, from the host's layout (lib/chat-layout, shared with group chats):
+   * section state, the Members + About side's width (0 = hidden) and divider,
+   * and the header buttons that show or hide each side.
+   */
+  layout?: ChatLayout;
+  onLayoutChange?: (change: (l: ChatLayout) => ChatLayout) => void;
+  infoWidth?: number;
+  infoHandle?: React.ReactNode;
+  onToggleInfo?: () => void;
+  roomsHidden?: boolean;
+  onToggleRooms?: () => void;
 }) {
   const { pubkey, signer } = useNostrAuth();
   const { toast } = useToast();
+  // Phones keep the full-screen room and the Members pop-up; the sides are desktop only.
+  const { isMobile } = useSidebar();
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [rawEvents, setRawEvents] = useState<NostrEvent[]>([]);
   const [systemEvents, setSystemEvents] = useState<ChatSystemEvent[]>([]);
@@ -2017,12 +2043,89 @@ function ChatRoomView({
     }
   }, [toast]);
 
+  // Who's here: the Members pop-up and the desktop side show the same list.
+  const membersList = (
+    <>
+      {admins.length > 0 && (
+        <div className="mb-1">
+          <span className="text-[9px] font-medium uppercase tracking-wider text-brand/60 px-2">Admins</span>
+          {admins.map((a) => (
+            <MemberRow
+              key={a.pubkey}
+              memberPubkey={a.pubkey}
+              isAdmin={true}
+              canRemove={false}
+            />
+          ))}
+        </div>
+      )}
+      {members.filter((m) => !admins.some((a) => a.pubkey === m)).length > 0 && (
+        <div>
+          <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/40 px-2">Members</span>
+          {members
+            .filter((m) => !admins.some((a) => a.pubkey === m))
+            .map((m) => (
+              <MemberRow
+                key={m}
+                memberPubkey={m}
+                isAdmin={false}
+                canRemove={isMod}
+                onRemove={(pk) => setRemoveUserConfirm(pk)}
+              />
+            ))}
+        </div>
+      )}
+      {members.length === 0 && (
+        <div className="flex flex-col items-center gap-2 py-8 text-center">
+          <Users className="w-6 h-6 text-muted-foreground/20" />
+          <p className="text-xs text-muted-foreground/50">
+            {rosterReached === false
+              ? "Couldn't load who's here. Try again in a moment."
+              : "No members yet"}
+          </p>
+        </div>
+      )}
+    </>
+  );
+
+  // Desktop: Members + About beside the chat, each a section you can close.
+  const infoSide = layout && onLayoutChange && !isMobile && (infoWidth ?? 0) > 0 ? (
+    <>
+      <div className="flex">{infoHandle}</div>
+      <aside style={{ width: infoWidth }} className="flex shrink-0 flex-col gap-1 overflow-hidden border-l border-border/30 bg-muted/5 dark:bg-black/10 py-1.5" data-testid="comms-info-side">
+        <ChatPaneSection
+          title="Members" count={members.length}
+          open={layout.sections.members} onToggle={() => onLayoutChange((l) => toggleSection(l, "members"))}
+          fill testId="comms-section-members"
+        >
+          <div className="space-y-0.5 px-1.5 pb-3">{membersList}</div>
+        </ChatPaneSection>
+        <ChatPaneSection
+          title="About"
+          open={layout.sections.about} onToggle={() => onLayoutChange((l) => toggleSection(l, "about"))}
+          fill testId="comms-section-about"
+        >
+          <div className="space-y-2 px-3.5 pb-3 text-sm" data-testid="comms-about">
+            <p className="font-semibold break-words">{group.name || group.id}</p>
+            {group.about
+              ? <p className="whitespace-pre-wrap break-words text-foreground/80">{group.about}</p>
+              : <p className="text-xs text-muted-foreground/50">No description yet.</p>}
+            <p className="text-[11px] text-muted-foreground/50">
+              {group.isPrivate ? "Private room" : "Public room"}{group.isRestricted ? " · only members can post" : ""}
+            </p>
+          </div>
+        </ChatPaneSection>
+      </aside>
+    </>
+  ) : null;
+
   return (
     // h-full fills the ChannelRoomFrame overlay (a fixed, body-portaled panel
     // sized to the visual viewport — same full-height contract as Messages /
     // ConcordChat). min-h-0 lets the scrolling message list shrink instead of
     // pushing the pinned composer off-screen.
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex h-full min-h-0">
+    <div className="flex min-w-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 px-3 py-2.5 border-b border-border/40 bg-muted/20 dark:bg-white/[0.02] shrink-0">
         <button onClick={onBack} className="p-2 rounded-md hover:bg-muted/60 text-muted-foreground/70 hover:text-foreground shrink-0" aria-label="Back">
           <ArrowLeft className="w-[18px] h-[18px]" />
@@ -2046,6 +2149,18 @@ function ChatRoomView({
           )}
         </div>
         <div className="flex items-center gap-0.5 ml-auto shrink-0">
+          {onToggleRooms && !isMobile && (
+            <button
+              onClick={onToggleRooms}
+              className={`p-2 rounded-md transition-colors ${roomsHidden ? "text-muted-foreground/60 hover:text-foreground hover:bg-muted/60" : "text-brand hover:bg-brand/10"}`}
+              title={roomsHidden ? "Show rooms" : "Hide rooms"}
+              aria-label={roomsHidden ? "Show rooms" : "Hide rooms"}
+              aria-pressed={!roomsHidden}
+              data-testid="comms-toggle-rooms"
+            >
+              <PanelLeft className="w-[18px] h-[18px]" />
+            </button>
+          )}
           {onTogglePin && (
             <button
               onClick={onTogglePin}
@@ -2057,10 +2172,12 @@ function ChatRoomView({
             </button>
           )}
           <button
-            onClick={() => { fetchProfilesCached(members); setShowMembersPanel(true); }}
+            // Desktop with the layout: shows or hides the Members + About side.
+            onClick={() => { fetchProfilesCached(members); if (onToggleInfo && !isMobile) onToggleInfo(); else setShowMembersPanel(true); }}
             className="p-2 rounded-md hover:bg-muted/60 text-muted-foreground/70 hover:text-foreground flex items-center gap-1"
             title="Members"
             aria-label="Members"
+            data-testid="comms-toggle-members"
           >
             <Users className="w-[18px] h-[18px]" />
             {members.length > 0 && <span className="text-[11px] font-medium">{members.length}</span>}
@@ -2397,6 +2514,8 @@ function ChatRoomView({
           <p className="text-xs text-muted-foreground/50">Sign in to participate in this chat</p>
         </div>
       )}
+    </div>
+    {infoSide}
 
       <ResponsiveFormPanel
         open={!!deleteConfirm}
@@ -2544,45 +2663,7 @@ function ChatRoomView({
         }
       >
         <div className="space-y-0.5 -mx-2 px-2">
-          {admins.length > 0 && (
-            <div className="mb-1">
-              <span className="text-[9px] font-medium uppercase tracking-wider text-brand/60 px-2">Admins</span>
-              {admins.map((a) => (
-                <MemberRow
-                  key={a.pubkey}
-                  memberPubkey={a.pubkey}
-                  isAdmin={true}
-                  canRemove={false}
-                />
-              ))}
-            </div>
-          )}
-          {members.filter((m) => !admins.some((a) => a.pubkey === m)).length > 0 && (
-            <div>
-              <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/40 px-2">Members</span>
-              {members
-                .filter((m) => !admins.some((a) => a.pubkey === m))
-                .map((m) => (
-                  <MemberRow
-                    key={m}
-                    memberPubkey={m}
-                    isAdmin={false}
-                    canRemove={isMod}
-                    onRemove={(pk) => setRemoveUserConfirm(pk)}
-                  />
-                ))}
-            </div>
-          )}
-          {members.length === 0 && (
-            <div className="flex flex-col items-center gap-2 py-8 text-center">
-              <Users className="w-6 h-6 text-muted-foreground/20" />
-              <p className="text-xs text-muted-foreground/50">
-                {rosterReached === false
-                  ? "Couldn't load who's here. Try again in a moment."
-                  : "No members yet"}
-              </p>
-            </div>
-          )}
+          {membersList}
         </div>
       </ResponsiveFormPanel>
 
@@ -3173,6 +3254,20 @@ export function CommsTab({
   const [activeFilter, setActiveFilter] = useState<RoomFilter>("all");
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(() => getPinnedRooms(relayUrl));
   const [activityMap, setActivityMap] = useState<Record<string, number>>({});
+  // Desktop layout of an open room: rooms | chat | Members + About, the same
+  // layout (and saved widths and sections) as group chats (lib/chat-layout).
+  const { layout, update: updateLayout } = useChatLayout();
+  const { isMobile: layoutIsMobile } = useSidebar();
+  const [roomRowEl, setRoomRowEl] = useState<HTMLDivElement | null>(null);
+  const [roomRowWidth, setRoomRowWidth] = useState(0);
+  useEffect(() => {
+    if (!roomRowEl || typeof ResizeObserver === "undefined") return;
+    const measure = () => setRoomRowWidth(roomRowEl.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(roomRowEl);
+    return () => ro.disconnect();
+  }, [roomRowEl]);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const activityFetchedRef = useRef<Set<string>>(new Set());
 
@@ -3700,10 +3795,84 @@ export function CommsTab({
   }
 
   if (selectedGroup) {
+    const available = roomRowWidth || Number.POSITIVE_INFINITY;
+    const fit = layoutIsMobile ? { rooms: 0, info: 0 } : fitPanes(layout, available);
+    const beside = sideRooms(groups, { pinned: pinnedIds, joined: joinedGroupIds, activity: activityMap }, selectedGroup.id);
     return (
       <>
         <ChannelRoomFrame>
+          <div ref={setRoomRowEl} className="flex h-full min-h-0" data-testid="comms-room-row">
+            {fit.rooms > 0 && (
+              <>
+                <aside style={{ width: fit.rooms }} className="flex shrink-0 flex-col border-r border-border/30 bg-muted/5 dark:bg-black/10" data-testid="comms-rooms-side">
+                  <div className="flex h-12 shrink-0 items-center border-b border-border/30 px-3.5">
+                    <span className="truncate text-sm font-semibold">{relayUrl.replace(/^wss?:\/\//, "").replace(/\/$/, "")}</span>
+                  </div>
+                  <div className="flex min-h-0 flex-1 flex-col pt-1.5">
+                    <ChatPaneSection
+                      title="Rooms" count={beside.length}
+                      open={layout.sections.rooms} onToggle={() => updateLayout((l) => toggleSection(l, "rooms"))}
+                      fill testId="comms-section-rooms"
+                    >
+                      <div className="space-y-0.5 p-2">
+                        {beside.map((g) => (
+                          <button
+                            key={g.id}
+                            onClick={() => setSelectedGroup(g)}
+                            className={`flex items-center gap-1.5 w-full px-2.5 py-1.5 rounded-lg text-sm text-left transition-colors ${
+                              g.id === selectedGroup.id ? "bg-accent text-accent-foreground dark:bg-brand/15 dark:text-brand font-medium" : "text-muted-foreground/70 hover:text-foreground hover:bg-muted/30"
+                            }`}
+                            data-testid={`comms-side-room-${g.id.slice(0, 12)}`}
+                          >
+                            <Hash className="w-3.5 h-3.5 shrink-0 opacity-60" />
+                            <span className="truncate flex-1">{g.name || g.id}</span>
+                            {g.id !== selectedGroup.id && (activityMap[g.id] ?? 0) > readChannelLastRead(relayUrl, g.id) && (
+                              <span className="w-2 h-2 rounded-full bg-primary shrink-0" aria-label="Unread" />
+                            )}
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => setSelectedGroup(null)}
+                          className="flex items-center gap-1.5 w-full px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground/60 hover:text-foreground hover:bg-muted/30 transition-colors"
+                          data-testid="comms-side-all-rooms"
+                        >
+                          All rooms
+                        </button>
+                      </div>
+                    </ChatPaneSection>
+                  </div>
+                </aside>
+                <div className="flex">
+                  <PaneResizeHandle
+                    paneSide="left" width={fit.rooms} min={PANE_LIMITS.rooms.min} max={PANE_LIMITS.rooms.max}
+                    label="Resize the rooms list"
+                    onResize={(w, drag) => updateLayout((l) => resizePane(l, "rooms", w, drag))}
+                    onReset={() => updateLayout((l) => resetPane(l, "rooms"))}
+                    testId="comms-resize-rooms"
+                  />
+                </div>
+              </>
+            )}
+            <div className="flex min-w-0 flex-1 flex-col">
             <ChatRoomView
+              // One room's messages and state per mount: switching rooms from
+              // the side list must not carry the last room's state over.
+              key={selectedGroup.id}
+              layout={layout}
+              onLayoutChange={updateLayout}
+              infoWidth={fit.info}
+              onToggleInfo={() => updateLayout((l) => (fit.info === 0 ? showPane(l, "info", available) : togglePane(l, "info")))}
+              roomsHidden={fit.rooms === 0}
+              onToggleRooms={() => updateLayout((l) => (fit.rooms === 0 ? showPane(l, "rooms", available) : togglePane(l, "rooms")))}
+              infoHandle={
+                <PaneResizeHandle
+                  paneSide="right" width={fit.info} min={PANE_LIMITS.info.min} max={PANE_LIMITS.info.max}
+                  label="Resize members and about"
+                  onResize={(w, drag) => updateLayout((l) => resizePane(l, "info", w, drag))}
+                  onReset={() => updateLayout((l) => resetPane(l, "info"))}
+                  testId="comms-resize-info"
+                />
+              }
               relayUrl={relayUrl}
               group={selectedGroup}
               isInitiallyJoined={joinedGroupIds.has(selectedGroup.id)}
@@ -3724,6 +3893,8 @@ export function CommsTab({
               isHiddenByTrust={isHiddenByTrust}
               onTrustHidden={onTrustHidden}
             />
+            </div>
+          </div>
         </ChannelRoomFrame>
         {createChannelWizard}
       </>
