@@ -160,7 +160,7 @@ export function ComposeEmojiPicker({ onInsert, onGifSelect, disabled, hideSticke
           // shrink-0: a fixed-size icon button has no business absorbing a
           // flex row's overflow. Without it this was the only shrinkable item
           // in the chat composer and got squeezed from 32px to 18.
-          className="w-8 h-8 shrink-0 flex items-center justify-center rounded-md text-brand/60 hover:text-brand/90 hover:bg-brand/10 dark:hover:bg-brand/15 transition-colors cursor-pointer disabled:opacity-40"
+          className="touch-target w-8 h-8 shrink-0 flex items-center justify-center rounded-md text-brand/60 hover:text-brand/90 hover:bg-brand/10 dark:hover:bg-brand/15 transition-colors cursor-pointer disabled:opacity-40"
           disabled={disabled}
           onClick={(e) => e.stopPropagation()}
           data-testid="button-compose-emoji-picker"
