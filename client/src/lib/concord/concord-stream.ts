@@ -17,6 +17,7 @@ import {
   LABEL_CONTROL, LABEL_GUESTBOOK, LABEL_CHANNEL, KIND_SEAL_ENC, KIND_SEAL_PLAIN, KIND_STREAM_WRAP, KIND_EPHEMERAL_WRAP, type GroupKey, type Seal,
 } from "./concord-crypto";
 import { KIND_MESSAGE, KIND_REPLY, KIND_REACTION, KIND_DELETE, KIND_EDIT, KIND_TYPING, KIND_TIMER_NOTICE, KIND_CONTROL_EDITION, KIND_JOIN_LEAVE, buildTypingRumor, buildSnapshotRumor, SNAPSHOT_CHUNK, SNAPSHOT_CHUNK_CAP, type RumorTemplate } from "./concord-events";
+import { buildPresenceRumor, KIND_CALL_PRESENCE, type CallPresence } from "./concord-presence";
 import type { StoredCommunity, StoredChannel } from "./concord-keys";
 import { isStreamProcessed, markStreamProcessed } from "./concord-keys";
 import { registerPlaneAuth } from "./concord-plane-auth";
@@ -393,6 +394,50 @@ export function subscribeTyping(
   return subscribe(community.relays, { kinds: [KIND_EPHEMERAL_WRAP], authors: [plane.pk] }, (wrap) => {
     const rumor = decodeStreamEvent(plane, wrap);
     if (rumor && rumor.kind === KIND_TYPING) onTyping(rumor.pubkey);
+  });
+}
+
+// ── Call presence (ephemeral 21059 / 23313, CORD-07 §4) ──────────────────────
+/**
+ * Tell the room you're in its call ("joined", with your media-server seat) or
+ * that you left. Rides the ephemeral wrap like typing, but with the ENCRYPTED
+ * seal CORD-02 §5 requires of every room message. Rejects when no relay took
+ * it, so the heartbeat that calls it can decide what to do.
+ */
+export async function publishCallPresence(
+  signer: ISigner,
+  authorPubkey: string,
+  community: StoredCommunity,
+  channel: StoredChannel,
+  presence: CallPresence,
+  publish: (event: Event, relays: string[]) => Promise<unknown>,
+): Promise<void> {
+  const plane = channelPlaneKey(community, channel);
+  const epoch = channel.isPrivate ? channel.epoch : community.root_epoch;
+  const now = Date.now();
+  const rumor = buildPresenceRumor(authorPubkey, channel.id, BigInt(epoch), presence, now % 1000, Math.floor(now / 1000));
+  await publishToPlane(signer, authorPubkey, plane, rumor, KIND_SEAL_ENC, (e) => publish(e, community.relays), Math.floor(now / 1000), KIND_EPHEMERAL_WRAP);
+}
+
+/**
+ * Listen for who's in a room's call. Passes on only presence bound to this
+ * room and epoch (the binding every room message commits to), never the
+ * typing chatter that shares the ephemeral stream.
+ */
+export function subscribeCallPresence(
+  community: StoredCommunity,
+  channel: StoredChannel,
+  onPresence: (rumor: DecodedRumor) => void,
+  subscribe: (relays: string[], filter: { kinds: number[]; authors: string[] }, onevent: (e: Event) => void) => StreamSub,
+): StreamSub {
+  const plane = channelPlaneKey(community, channel);
+  const epoch = String(channel.isPrivate ? channel.epoch : community.root_epoch);
+  registerPlaneAuth(community.relays, [plane]);
+  return subscribe(community.relays, { kinds: [KIND_EPHEMERAL_WRAP], authors: [plane.pk] }, (wrap) => {
+    const rumor = decodeStreamEvent(plane, wrap);
+    if (!rumor || rumor.kind !== KIND_CALL_PRESENCE) return;
+    const tag = (name: string) => rumor.tags.find((t) => t[0] === name)?.[1];
+    if (tag("channel") === channel.id && tag("epoch") === epoch) onPresence(rumor);
   });
 }
 
