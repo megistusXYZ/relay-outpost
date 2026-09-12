@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useBackClosable } from "@/hooks/use-back-closable";
 import { createPortal } from "react-dom";
-import { Hash, Lock, Plus, Send, ImagePlus, Loader2, X, ChevronDown, Users, BellOff, MessageSquare, ArrowLeft, Link2, Shield, Headphones, PanelLeft, Pin } from "lucide-react";
+import { Hash, Lock, Plus, Send, ImagePlus, Loader2, X, ChevronDown, Users, BellOff, MessageSquare, ArrowLeft, Link2, Shield, Headphones, PanelLeft, Pin, BarChart3 } from "lucide-react";
 import { hangoutOf } from "@/lib/concord/concord-hangout";
 import { AudioSpaceLightbox } from "@/components/AudioSpaceCard";
 import { getEventHash, nip19 } from "nostr-tools";
@@ -36,6 +36,10 @@ import { getCachedMessages, cacheMessage, deleteCachedMessages, getCachedReactio
 import { liveChannels } from "@/lib/concord/concord-live-channels";
 import { subscribeChannel, publishChannelMessage, publishTyping, subscribeTyping, channelReadPlanes, channelPlaneKey, publishGuestbook, type DecodedRumor } from "@/lib/concord/concord-stream";
 import { buildMessageRumor, buildReplyRumor, buildReactionRumor, buildDeleteRumor, buildEditRumor, buildAuditRumor, mayDelete, effectiveTime, hasPermission, PERM, KIND_REACTION, KIND_DELETE, KIND_EDIT, KIND_MESSAGE, KIND_REPLY, KIND_TIMER_NOTICE, VSK, type RumorTemplate } from "@/lib/concord/concord-events";
+import { KIND_POLL, KIND_POLL_VOTE, readPoll, readVote, tallyPollVotes, buildVoteRumor, buildPollRumor, type ParsedPoll, type PollTally, type PollVote, type PollOption, type PollType } from "@/lib/concord/concord-polls";
+import { getEventHash as hashRumor } from "nostr-tools";
+import { ConcordPollCard } from "./ConcordPollCard";
+import { ConcordPollComposer } from "./ConcordPollComposer";
 import { encryptAndUpload, mediaToTag, mediaFromTags, type ConcordMedia } from "@/lib/concord/concord-media";
 import { useConcordGovernance } from "./useConcordGovernance";
 import { ConcordInviteDialog } from "./ConcordInviteDialog";
@@ -72,7 +76,7 @@ import { toggleSection, type ChatLayout } from "@/lib/chat-layout";
 import type { ReactNode } from "react";
 import { ConcordMessageActions } from "./ConcordMessageActions";
 
-interface ChatMsg { id: string; pubkey: string; content: string; t: number; media?: ConcordMedia[]; replyTo?: { id: string; pubkey: string }; rootId?: string; root?: RootRef; kind?: number; expiresAt?: number; seal?: Seal; epoch?: number; edited?: boolean; deleted?: boolean; deletedBy?: string; mentions?: string[] }
+interface ChatMsg { id: string; pubkey: string; content: string; t: number; media?: ConcordMedia[]; replyTo?: { id: string; pubkey: string }; rootId?: string; root?: RootRef; kind?: number; expiresAt?: number; seal?: Seal; epoch?: number; edited?: boolean; deleted?: boolean; deletedBy?: string; mentions?: string[]; poll?: ParsedPoll; vote?: { pollId: string; optionIds: string[] } }
 /** A message's kind, for the `k` tag of what targets it (CORD-03). Rows cached
  *  before the kind was recorded fall back on their thread pointer. */
 const kindOf = (m: ChatMsg) => m.kind ?? (m.rootId ? KIND_REPLY : KIND_MESSAGE);
@@ -111,7 +115,8 @@ function useChannelUnread(
     if (!pubkey || channelIds.length < 2) return; // single-channel groups render no rail
     let cancelled = false;
     Promise.all(channelIds.map(async (id) => {
-      const msgs = await getCachedMessages(pubkey, communityId, id);
+      // A vote is kept as a row but isn't a message: it doesn't make a room unread.
+      const msgs = (await getCachedMessages(pubkey, communityId, id)).filter((m) => m.kind !== KIND_POLL_VOTE);
       return [id, msgs.length ? msgs[msgs.length - 1].t : 0] as const;
     })).then((entries) => { if (!cancelled) setCachedLatest(new Map(entries)); });
     return () => { cancelled = true; };
@@ -549,6 +554,20 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
         }));
         return;
       }
+      // A message this room already holds is left as it is: a re-read (Jump
+      // to an older pin, the one-time poll catch-up) decodes the original, and
+      // caching that would overwrite a stored edit or deletion with it.
+      if (messagesRef.current.some((m) => m.id === rumor.id)) return;
+      if (rumor.kind === KIND_POLL_VOTE) {
+        // A vote in a poll (Armada's): kept as a row so the count survives a
+        // reload (the stream ledger won't decode it twice), never shown as one.
+        const read = readVote(rumor);
+        if (!read) return;
+        const v: ChatMsg = { id: rumor.id, pubkey: rumor.pubkey, content: "", t: read.vote.ms, kind: KIND_POLL_VOTE, expiresAt: expiresAt(rumor), vote: { pollId: read.pollId, optionIds: read.vote.optionIds } };
+        void cacheMessage(pubkey, communityId, channelId, v);
+        setMessages((prev) => (prev.some((m) => m.id === v.id) ? prev : insertSorted(prev, v, (m) => m.t)));
+        return;
+      }
       const media = mediaFromTags(rumor.tags);
       // What it answers: a quote in the room (kind 9 + q), or a reply in a
       // thread (kind 1111, grouped under its root). The background scanner
@@ -556,6 +575,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       const { replyTo, root, kind } = readMessageShape(rumor);
       const mentions = rumor.tags.filter((t) => t[0] === "p" && t[1]).map((t) => t[1]);
       let msg: ChatMsg = { id: rumor.id, pubkey: rumor.pubkey, content: rumor.content, t: effectiveTime(rumor), media: media.length ? media : undefined, replyTo, root, rootId: root?.id, kind, expiresAt: expiresAt(rumor), seal: pinSealOf(rumor), epoch: epochOf(rumor), mentions: mentions.length ? mentions : undefined };
+      // A poll (Armada's): a room message whose question is its text, with options to vote on.
+      if (rumor.kind === KIND_POLL) msg = { ...msg, kind: KIND_POLL, poll: readPoll(rumor) };
       // Apply a delete that landed before this message did.
       const lateBy = (pendingDeletes.get(msg.id) ?? []).find((d) => mayDelete(d, msg.pubkey, govRef.current.state, govRef.current.owner));
       if (lateBy) msg = { ...msg, deleted: true, deletedBy: lateBy, content: "", media: undefined };
@@ -676,7 +697,19 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   // which stays in place with a "N replies" chip. A reply whose starter isn't in
   // this channel keeps rendering inline (groupThreads' fallback) — never hidden.
   // What has expired is never shown, including in quoted cards and threads.
-  const visible = useMemo(() => messages.filter((m) => m.expiresAt === undefined || m.expiresAt > nowSec), [messages, nowSec]);
+  // Votes are rows in `messages` so they persist, but never rows on screen.
+  const visible = useMemo(() => messages.filter((m) => m.kind !== KIND_POLL_VOTE && (m.expiresAt === undefined || m.expiresAt > nowSec)), [messages, nowSec]);
+  // …they only ever feed their poll's count (CORD.md "Polls").
+  const votesByPoll = useMemo(() => {
+    const by = new Map<string, PollVote[]>();
+    for (const m of messages) {
+      if (m.kind !== KIND_POLL_VOTE || !m.vote || (m.expiresAt !== undefined && m.expiresAt <= nowSec)) continue;
+      const list = by.get(m.vote.pollId) ?? [];
+      list.push({ pubkey: m.pubkey, optionIds: m.vote.optionIds, ms: m.t });
+      by.set(m.vote.pollId, list);
+    }
+    return by;
+  }, [messages, nowSec]);
   const threading = useMemo(() => groupThreads(visible), [visible]);
   const timeline = useMemo(
     // Joins, leaves and removals show in the first room only; a timer change
@@ -860,6 +893,73 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     }
     return map;
   }, [reactions, pubkey]);
+
+  // Vote in a poll (Armada's, CORD.md "Polls"): a kind-1018 side event into
+  // the room. Shown at once; taken back, and said so, if no relay takes it.
+  const sendVote = useCallback(async (pollId: string, optionIds: string[]): Promise<boolean> => {
+    const signer = getGlobalSigner();
+    if (!pubkey || !signer || !activeChannel || optionIds.length === 0) return false;
+    const now = Date.now();
+    const rumor = stampExpiration(buildVoteRumor(pubkey, activeChannel.id, BigInt(channelEpoch), pollId, optionIds, now % 1000, Math.floor(now / 1000)), timer);
+    const mine: ChatMsg = { id: hashRumor(rumor as never), pubkey, content: "", t: now, kind: KIND_POLL_VOTE, vote: { pollId, optionIds } };
+    setMessages((prev) => insertSorted(prev, mine, (m) => m.t));
+    const wrap = await publishChannelMessage(signer, pubkey, community, activeChannel, rumor, (e, relays) => publishEvent(e, relays));
+    if (!wrap) {
+      setMessages((prev) => prev.filter((m) => m.id !== mine.id));
+      toast({ title: "Couldn't send your vote", description: "No relay accepted it. Try again in a moment.", variant: "destructive" });
+      return false;
+    }
+    void cacheMessage(pubkey, community.community_id, activeChannel.id, mine);
+    return true;
+  }, [pubkey, activeChannel, community, channelEpoch, timer, toast]);
+
+  // Create a poll (Armada's format, CORD.md "Polls"): a kind-1068 room
+  // message, shown at once; taken back, and said so, if no relay takes it.
+  const [pollOpen, setPollOpen] = useState(false);
+  const sendPoll = useCallback(async (draft: { question: string; options: PollOption[]; pollType: PollType; endsAt: number | undefined }): Promise<boolean> => {
+    const signer = getGlobalSigner();
+    if (!pubkey || !signer || !activeChannel) return false;
+    const now = Date.now();
+    const rumor = stampExpiration(buildPollRumor(pubkey, activeChannel.id, BigInt(channelEpoch), draft.question, draft.options, draft.pollType, draft.endsAt, now % 1000, Math.floor(now / 1000)), timer);
+    const mine: ChatMsg = {
+      id: hashRumor(rumor as never), pubkey, content: draft.question, t: now, kind: KIND_POLL,
+      poll: { options: draft.options, pollType: draft.pollType, endsAt: draft.endsAt },
+    };
+    setMessages((prev) => insertSorted(prev, mine, (m) => m.t));
+    const wrap = await publishChannelMessage(signer, pubkey, community, activeChannel, rumor, (e, relays) => publishEvent(e, relays));
+    if (!wrap) {
+      setMessages((prev) => prev.filter((m) => m.id !== mine.id));
+      toast({ title: "Couldn't create the poll", description: "No relay accepted it. Your draft is still there.", variant: "destructive" });
+      return false;
+    }
+    void cacheMessage(pubkey, community.community_id, activeChannel.id, mine);
+    return true;
+  }, [pubkey, activeChannel, community, channelEpoch, timer, toast]);
+
+  // Polls Armada sent before this app knew them were read by the background
+  // scanner and marked seen, so the live feed skips them. Once per room, the
+  // room's recent history is read again for polls and votes only (replay:
+  // past the stream ledger); everything else stays exactly as it is.
+  useEffect(() => {
+    if (!pubkey || !activeChannel || groupDeleted) return;
+    const key = `ro_concord_poll_replay_v1:${community.community_id}:${activeChannel.id}`;
+    try { if (localStorage.getItem(key)) return; } catch { return; }
+    let sub: { close: () => void } | null = null;
+    let done = false;
+    const onlyPolls = (r: DecodedRumor) => { if (r.kind === KIND_POLL || r.kind === KIND_POLL_VOTE) onMessageRef.current?.(r); };
+    const finish = () => {
+      if (done) return;
+      done = true;
+      try { localStorage.setItem(key, "1"); } catch { /* try again next open */ }
+      setTimeout(() => sub?.close(), 0);
+    };
+    const cap = setTimeout(finish, 15000);
+    sub = subscribeChannel(pubkey, community, activeChannel, onlyPolls, (relays, filter, onevent) =>
+      persistentPoolSubscribe(relays, filter, { onevent, oneose: () => { clearTimeout(cap); finish(); } }), { replay: true });
+    return () => { clearTimeout(cap); sub?.close(); };
+    // The room, not its every re-render: community/activeChannel are read fresh when it runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pubkey, community.community_id, activeChannel?.id, groupDeleted]);
 
   const toggleReaction = useCallback(async (target: { id: string; pubkey: string; kind?: number }, emoji: string, emojiUrl?: string) => {
     const signer = getGlobalSigner();
@@ -1489,6 +1589,12 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             pinned={pinnedIds.has(item.msg.id)}
             onTogglePin={canPin && !groupDeleted ? () => togglePin(item.msg) : undefined}
             onReport={pubkey && item.msg.pubkey !== pubkey && !item.msg.deleted ? () => setReporting(item.msg) : undefined}
+            poll={item.msg.kind === KIND_POLL && item.msg.poll ? {
+              poll: item.msg.poll,
+              tally: tallyPollVotes(votesByPoll.get(item.msg.id) ?? [], item.msg.poll.options, item.msg.poll.endsAt, pubkey ?? undefined),
+              canVote: !!pubkey && !groupDeleted,
+              onVote: (ids: string[]) => sendVote(item.msg.id, ids),
+            } : undefined}
             onStartEdit={() => setEditingId(item.msg.id)}
             onCancelEdit={() => setEditingId(null)}
             onSaveEdit={(text) => saveEdit(item.msg, text)}
@@ -1572,6 +1678,11 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             <ImagePlus className="w-[18px] h-[18px]" />
           </button>
           <ComposeEmojiPicker hideStickers onInsert={(t) => setDraft((d) => d + t)} onGifSelect={(url) => setStaged({ url, mime: "image/gif" })} />
+          {/* A poll, in Armada's format, so both apps show and count it. */}
+          <button onClick={() => setPollOpen(true)} className="flex items-center justify-center w-10 h-full md:w-8 shrink-0 text-muted-foreground hover:text-brand transition-colors" title="Create a poll" aria-label="Create a poll" data-testid="concord-poll-create">
+            <BarChart3 className="w-[18px] h-[18px]" />
+          </button>
+          <ConcordPollComposer open={pollOpen} onOpenChange={setPollOpen} onCreate={sendPoll} />
           <input
             ref={composerRef}
             value={draft}
@@ -1899,7 +2010,7 @@ function ThreadFace({ pubkey }: { pubkey: string }) {
   );
 }
 
-function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, removedByModerator, t, grouped, edited, deleted, mentionedMe, reactions, myPubkey, replyTo, parent, thread, onOpenThread, editing, onReact, onReply, onReplyInThread, readOnly, pinned, onTogglePin, onReport, onStartEdit, onCancelEdit, onSaveEdit, onRequestDelete }: {
+function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, removedByModerator, t, grouped, edited, deleted, mentionedMe, reactions, myPubkey, replyTo, parent, thread, onOpenThread, editing, onReact, onReply, onReplyInThread, readOnly, pinned, onTogglePin, onReport, onStartEdit, onCancelEdit, onSaveEdit, onRequestDelete, poll }: {
   msgId: string; pubkey: string; content: string; media?: ConcordMedia[]; mine: boolean; t?: number; grouped?: boolean; edited?: boolean; deleted?: boolean; mentionedMe?: boolean;
   /** Someone else's message I may remove (a moderator who outranks them). */
   removable?: boolean;
@@ -1920,6 +2031,8 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
   /** Report it to the group's moderators: offered on someone else's message. */
   onReport?: () => void;
   onStartEdit: () => void; onCancelEdit: () => void; onSaveEdit: (text: string) => void; onRequestDelete: () => void;
+  /** A poll (Armada's): its options, the count so far, and how to vote. */
+  poll?: { poll: ParsedPoll; tally: PollTally; canVote: boolean; onVote: (optionIds: string[]) => Promise<boolean> };
 }) {
   const { name, avatar, hasProfile } = useConcordProfile(pubkey);
   // Member identity is a real Nostr pubkey, so the avatar/name open the profile
@@ -2004,6 +2117,7 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
                 {media.map((m, i) => <ConcordMediaView key={i} media={m} />)}
               </div>
             )}
+            {poll && <ConcordPollCard poll={poll.poll} tally={poll.tally} canVote={poll.canVote} onVote={poll.onVote} />}
           </>
         )}
         {thread && thread.count > 0 && onOpenThread && (

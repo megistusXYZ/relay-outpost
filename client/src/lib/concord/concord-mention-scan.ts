@@ -212,7 +212,7 @@ async function processWrap(
     await markStreamProcessed(pk, wrap.id);
     return;
   }
-  // reaction / delete / edit / control / join_leave: deliberately UNMARKED —
+  // reaction / delete / edit / control / join_leave / poll / vote: deliberately UNMARKED —
   // the live pipeline owns their ordering (pendingDeletes, tombstones). They
   // decode again on channel open; that is the correctness-over-thrift trade.
 }
