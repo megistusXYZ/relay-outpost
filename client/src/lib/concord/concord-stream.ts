@@ -293,6 +293,10 @@ export function subscribeChannel(
   channel: StoredChannel,
   onMessage: (rumor: DecodedRumor) => void,
   subscribe: (relays: string[], filter: { kinds: number[]; authors: string[] }, onevent: (e: Event) => void) => StreamSub,
+  /** `replay`: decode wraps the stream ledger has already seen. The ledger
+   *  outlives the message cache, so reaching back for a message the cache let
+   *  go (Jump to an older pin) must read past it. The caller dedupes. */
+  opts: { replay?: boolean } = {},
 ): StreamSub {
   // One plane per held epoch (public channels span base rekeys, CORD-03 §3);
   // each wrap decodes with the plane that authored it and binds to ITS epoch.
@@ -303,7 +307,7 @@ export function subscribeChannel(
   return subscribe(community.relays, { kinds: [1059], authors: [...planes.keys()] }, async (wrap) => {
     const held = planes.get(wrap.pubkey);
     if (!held) return;
-    if (await isStreamProcessed(ownerPubkey, wrap.id)) return;
+    if (!opts.replay && await isStreamProcessed(ownerPubkey, wrap.id)) return;
     void markStreamProcessed(ownerPubkey, wrap.id);
     // With its seal: a pin carries a message's original seal (CORD-04 §7).
     const rumor = decodeStreamEventWithSeal(held.plane, wrap);

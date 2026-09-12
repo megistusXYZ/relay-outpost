@@ -50,7 +50,7 @@ import { pinsLocator, readPinList, nextPinList, visiblePins, makePinEntry, PIN_E
 import { planeConvKey, type Seal } from "@/lib/concord/concord-crypto";
 import { setRoomPins } from "@/lib/concord/concord-governance";
 import { ConcordPinsButton } from "./ConcordPinned";
-import { pinnedCard } from "@/lib/concord/concord-pin-preview";
+import { pinnedCard, pinFetchWindow } from "@/lib/concord/concord-pin-preview";
 import { useGoBack } from "@/hooks/use-go-back";
 import { computeUnreadChannels, newestActivity, readChannelLastRead } from "@/lib/concord/concord-channel-unread";
 import { getChannelWrapTimes, CHANGED_EVENT as UNREAD_CHANGED_EVENT, READ_EVENT } from "@/lib/concord/concord-unread";
@@ -547,6 +547,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       // Calm rules: no mention toast — you're already looking at this channel;
       // cross-channel mentions surface as quiet count badges (concord-mentions).
     };
+    // Jump to an older pin feeds what it fetches through this same handler.
+    onMessageRef.current = onMessage;
     // A deleted group is sealed (CORD-02 §9): its history stays readable from
     // this device, but nothing new is listened for.
     const sub = groupDeleted ? { close() {} } : subscribeChannel(pubkey, community, activeChannel, onMessage, (relays, filter, onevent) =>
@@ -578,6 +580,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true;
+      onMessageRef.current = null;
       sub.close();
       window.removeEventListener("online", catchUp);
       document.removeEventListener("visibilitychange", onVisible);
@@ -860,6 +863,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   }, [pubkey, activeChannel, community, channelEpoch, reactionsByMessage, timer]);
 
   // ── Pins (CORD-04 §7) ───────────────────────────────────────────────────
+  // The open room's message handler, set by the loader effect above.
+  const onMessageRef = useRef<((rumor: DecodedRumor) => void) | null>(null);
   const canPin = isOwner || (!!myMember && hasPermission(myMember, PERM.PIN_MESSAGES));
   const pinEid = activeChannel ? pinsLocator(community.community_id, activeChannel.id) : "";
   const pinContent = pinEid ? govState.pinLists.get(pinEid) : undefined;
@@ -912,8 +917,42 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     const held = messages.find((m) => m.id === p.id);
     return pinnedCard(p.rumor, held ? { content: held.content, media: held.media, edited: held.edited } : undefined);
   }, [messages]);
-  // Jump lands the way a search result does: scrolled to, and flashed.
-  const jumpToPin = useCallback((id: string) => { if (activeChannel) setJumpTarget({ roomId: activeChannel.id, msgId: id }); }, [activeChannel]);
+  // Jump lands the way a search result does: scrolled to, and flashed. A pin
+  // older than this device's history (the cache, plus the relays' newest
+  // batch) is fetched first, by asking for the stretch around its own time.
+  const jumpToPin = useCallback(async (pin: VerifiedPin): Promise<boolean> => {
+    if (!activeChannel || !pubkey) return false;
+    const room = activeChannel;
+    const held = () => messagesRef.current.some((m) => m.id === pin.id);
+    if (!held()) {
+      const onMessage = onMessageRef.current;
+      if (!onMessage) return false;
+      const { since, until } = pinFetchWindow(pin.rumor.created_at);
+      await new Promise<void>((resolve) => {
+        let sub: { close: () => void } | null = null;
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true; clearTimeout(timer);
+          setTimeout(() => sub?.close(), 0);
+          resolve();
+        };
+        const timer = setTimeout(finish, 8000);
+        // Replay: the stream ledger outlives the cache, so a message this
+        // device read once and then let go would otherwise be skipped unread.
+        sub = subscribeChannel(pubkey, community, room, onMessage, (relays, filter, onevent) =>
+          persistentPoolSubscribe(relays, { ...filter, since, until }, { onevent, oneose: finish }), { replay: true });
+      });
+      // Decrypting trails the relays' answer: give the message a moment to land.
+      for (let i = 0; i < 20 && !held(); i++) await new Promise((r) => setTimeout(r, 100));
+      if (!held()) {
+        toast({ title: "Couldn't find that message", description: "The group's relays didn't send it back. Try again in a moment." });
+        return false;
+      }
+    }
+    setJumpTarget({ roomId: room.id, msgId: pin.id });
+    return true;
+  }, [activeChannel, pubkey, community, toast]);
   // One pin button in each header (desktop, phone); both open the same list.
   const pinsProps = {
     pins,

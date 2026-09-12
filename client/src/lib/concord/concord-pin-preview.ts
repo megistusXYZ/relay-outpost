@@ -15,6 +15,18 @@ export interface PinnedCard {
   inRoom: boolean;
 }
 
+/** Either side of a message's own time, to absorb clock skew between sender and relays. */
+const PIN_FETCH_SLACK = 3600;
+
+/**
+ * The stretch of a room's stream to ask the relays for, to reach a pinned
+ * message older than what this device holds. A stream wrap carries its
+ * message's own time, untweaked (CORD-01), so a narrow window finds it.
+ */
+export function pinFetchWindow(createdAt: number): { since: number; until: number } {
+  return { since: createdAt - PIN_FETCH_SLACK, until: createdAt + PIN_FETCH_SLACK };
+}
+
 /**
  * The message a pin points at. The room's copy wins when this device holds it
  * (an edit, its media); otherwise the pin's own proof, the author's rumor with
