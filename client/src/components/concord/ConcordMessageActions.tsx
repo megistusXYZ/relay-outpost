@@ -9,6 +9,9 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { ComposeEmojiPicker } from "@/components/ComposeEmojiPicker";
 
 const QUICK = ["👍", "❤️", "😂", "🎉", "😮", "😢"];
+/** The three a hover toolbar offers without opening the menu. */
+const TOOLBAR = QUICK.slice(0, 3);
+const TOOL = "msg-toolbar-quick items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors";
 
 export function ConcordMessageActions({ content, mine, onReact, onReply, onReplyInThread, readOnly, pinned, onTogglePin, onEdit, onDelete, removable, onReport }: {
   content: string;
@@ -37,10 +40,25 @@ export function ConcordMessageActions({ content, mine, onReact, onReply, onReply
   const copy = () => { try { navigator.clipboard?.writeText(content); } catch {} setCopied(true); setTimeout(() => setCopied(false), 1200); };
 
   return (
+    <>
+    {/* On a device with a real hover these ride in the row's floating toolbar
+        (.msg-toolbar in index.css). On touch they're hidden: the ⋯ menu below
+        has every one of them. No display utilities here — the class owns it. */}
+    {!readOnly && (
+      <>
+        {TOOLBAR.map((e) => (
+          <button key={e} onClick={() => onReact(e)} className={`msg-toolbar-quick ${TOOL} text-[15px]`} title={`React ${e}`} aria-label={`React ${e}`} data-testid={`concord-toolbar-react-${e}`}>{e}</button>
+        ))}
+        <button onClick={onReply} className={TOOL} title="Reply" aria-label="Reply" data-testid="concord-toolbar-reply"><Reply className="w-4 h-4" /></button>
+        {onReplyInThread && (
+          <button onClick={onReplyInThread} className={TOOL} title="Reply in thread" aria-label="Reply in thread" data-testid="concord-toolbar-thread"><MessageSquare className="w-4 h-4" /></button>
+        )}
+      </>
+    )}
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
-          className="flex items-center justify-center w-9 h-9 md:w-7 md:h-7 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 transition-colors"
+          className="flex items-center justify-center w-9 h-9 md:w-7 md:h-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           title="Message actions" data-testid="concord-msg-actions"
         >
           <MoreHorizontal className="w-4 h-4" />
@@ -70,6 +88,7 @@ export function ConcordMessageActions({ content, mine, onReact, onReply, onReply
         )}
       </PopoverContent>
     </Popover>
+    </>
   );
 }
 

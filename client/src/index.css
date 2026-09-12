@@ -1294,6 +1294,44 @@ html[data-perf="lite"] .space-bg-nebula {
     }
   }
 
+  /* A group-chat message's actions (ConcordChat + ConcordMessageActions). Asked
+     as the same capability question as .reveal-on-hover, not a width: with a
+     real hover they float on the row's top edge as a small toolbar — quick
+     reactions, Reply, Thread, ⋯ — the way Discord and Armada do it. On touch
+     none of this applies: the cluster stays inline and only the ⋯ shows, since
+     its menu holds every quick action too.
+     Hidden, the toolbar takes no pointer events: it overhangs the row above,
+     and an invisible target there would steal that row's hover. */
+  .msg-toolbar-quick {
+    display: none;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .msg-toolbar-quick {
+      display: inline-flex;
+    }
+    .msg-toolbar.msg-toolbar {
+      position: absolute;
+      top: -0.75rem;
+      right: 0.5rem;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 0.125rem;
+      padding: 0.125rem;
+      border-radius: 0.625rem;
+      border: 1px solid hsl(var(--border));
+      background: hsl(var(--popover));
+      box-shadow: 0 1px 2px hsl(var(--foreground) / 0.06), 0 6px 16px -6px hsl(var(--foreground) / 0.18);
+      pointer-events: none;
+    }
+    .group:hover .msg-toolbar.msg-toolbar,
+    .msg-toolbar.msg-toolbar:focus-within,
+    .msg-toolbar.msg-toolbar:has([data-state="open"]) {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+
   /* The other half of the same problem. Making a control VISIBLE on a phone is
      not the same as making it HITTABLE: the ops console's remove-member button
      is `p-0.5` around a 10px icon, about a 14px target, against the ~44px a
