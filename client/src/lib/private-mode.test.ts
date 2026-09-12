@@ -9,7 +9,7 @@
  *  - The eye always flips the current state.
  */
 import { describe, it, expect } from "vitest";
-import { nextMaskedState } from "./private-mode";
+import { nextMaskedState, maskChips } from "./private-mode";
 
 describe("nextMaskedState", () => {
   it("opens masked iff the standing setting is on", () => {
@@ -29,5 +29,30 @@ describe("nextMaskedState", () => {
   it("the eye flips regardless of the setting", () => {
     expect(nextMaskedState("toggle", true, true)).toBe(false);
     expect(nextMaskedState("toggle", false, false)).toBe(true);
+  });
+});
+
+/**
+ * Owner (2026-09-12): the 6px blur was see-through — avatars, colours,
+ * verified dots and row shapes all read through it — and the chips above it
+ * still said "People 9, Communities 16". Masked must be unrecognisable: the
+ * list isn't drawn at all (a branded panel stands in), and the chips say how
+ * many of nothing.
+ */
+describe("what a masked chat list still says", () => {
+  const chips = [
+    { key: "all", label: "All", count: 26, unread: 1 },
+    { key: "people", label: "People", count: 9, unread: 0 },
+  ];
+
+  it("the filter chips keep their names but say nothing about how many or what's waiting", () => {
+    expect(maskChips(chips, true)).toEqual([
+      { key: "all", label: "All", count: null, unread: 0 },
+      { key: "people", label: "People", count: null, unread: 0 },
+    ]);
+  });
+
+  it("unmasked, the chips are left exactly as they were", () => {
+    expect(maskChips(chips, false)).toBe(chips);
   });
 });

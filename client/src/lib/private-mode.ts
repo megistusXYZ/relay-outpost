@@ -117,6 +117,18 @@ function subscribe(cb: () => void): () => void {
   return () => listeners.delete(cb);
 }
 
+/**
+ * The chat-filter chips as a masked list may show them: their names and no
+ * number at all, so nothing says how many people, groups or communities there
+ * are, or where something is waiting. Unmasked, the chips come back untouched.
+ */
+export function maskChips<C extends { count: number; unread: number }>(
+  chips: C[],
+  masked: boolean,
+): Array<Omit<C, "count"> & { count: number | null }> {
+  return masked ? chips.map((c) => ({ ...c, count: null, unread: 0 })) : chips;
+}
+
 /** Reactive read of the session mask state. */
 export function usePrivateMasked(): boolean {
   return useSyncExternalStore(subscribe, isPrivateMasked, () => false);

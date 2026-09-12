@@ -47,7 +47,8 @@ import { getMyDMReceiveRelays } from "@/lib/outbox";
 import { getOutpostRelays, getOutpostMeta, saveOutpostMeta, type OutpostRelay } from "@/lib/outpost-relays";
 import { getPinnedFeeds, groupPinsByRelay, pinUrl, normalizeUrl, type PinnedFeed } from "@/lib/pinned-feeds";
 import { unpinRoomEverywhere } from "@/lib/room-pins";
-import { usePrivateMasked, togglePrivateMasked, revealPrivateMasked, ensurePrivateModeRearm } from "@/lib/private-mode";
+import { usePrivateMasked, togglePrivateMasked, revealPrivateMasked, ensurePrivateModeRearm, maskChips, getPrivateModeSetting } from "@/lib/private-mode";
+import { PrivateModeShield } from "@/components/PrivateModeShield";
 import { displayNameWith, getPetname, matchesQueryWith, usePetnamesVersion, isShowingRealNames, toggleShowRealNames, hasAnyPetnames, type PetnameKind } from "@/lib/petnames";
 import { petnameImageUrlSync } from "@/lib/petname-images";
 import { PetnameDialog } from "@/components/PetnameDialog";
@@ -679,29 +680,13 @@ export function ChatList({
     ? sections.length === 0 && !needsPeopleForRequests
     : entries.length === 0;
   // ── Private mode (the screen-share shield; lib/private-mode.ts) ────────────
-  // People + Group rows blur; Communities stay legible (public places, private
-  // people — the grilled Q1 call). While masked a row tap REVEALS instead of
-  // navigating: one stray tap during a screen-share must never open a full
-  // conversation. Blur is a screen shield, not encryption — the text is still
-  // in the DOM; the DMs underneath are already encrypted.
+  // Masked, the list isn't drawn at all: one branded panel stands in for it
+  // (components/PrivateModeShield) and the chips lose their numbers. It was a
+  // 6px blur over the rows, and avatars, colours, verified dots and row shapes
+  // all read through it (owner, 2026-09-12). Rows that aren't drawn can't be
+  // read through, guessed from their shape, or pulled from the page.
   ensurePrivateModeRearm();
   const privateMasked = usePrivateMasked();
-  /** Blur + intercept: the child renders normally (so layout never jumps),
-   *  aria-hidden (a screen reader on a shared machine is the same leak), with
-   *  a full-row transparent button on top that reveals — which also makes the
-   *  row's own menus unreachable while masked, deliberately. */
-  const MaskedRow = ({ children }: { children: React.ReactNode }) => (
-    <div className="relative">
-      <div className="blur-[6px] select-none" aria-hidden="true">{children}</div>
-      <button
-        type="button"
-        className="absolute inset-0 w-full cursor-pointer"
-        onClick={revealPrivateMasked}
-        aria-label="Private mode — tap to show chats"
-        data-testid="masked-row-reveal"
-      />
-    </div>
-  );
 
   // One row, rendered the same whether the list is flat or sectioned.
   const renderEntry = (entry: ChatEntry) => {
@@ -908,23 +893,10 @@ export function ChatList({
                     )}
                     </>
                   );
-                  // Masked, the WHOLE block blurs — parent row and nested room
-                  // rows together (owner call, 2026-08-18, reversing the
-                  // "communities are public places" carve-out): a community
-                  // being public does not make YOUR membership public, plenty
-                  // of outposts are private or encrypted, and a shield with
-                  // one section still showing names reads as a bug — which is
-                  // exactly how it was reported.
-                  return privateMasked
-                    ? <MaskedRow key={`outpost-${o.url}`}>{outpostBlock}</MaskedRow>
-                    : <Fragment key={`outpost-${o.url}`}>{outpostBlock}</Fragment>;
+                  return <Fragment key={`outpost-${o.url}`}>{outpostBlock}</Fragment>;
                 }
                 if (entry.kind === "group") {
                   const g = entry.group;
-                  // Concord community rows blur whole like every other row —
-                  // the name-keeping special case died with the carve-out
-                  // above; membership is the sensitive fact the eye exists to
-                  // hide, public place or not.
                   const groupRow = (
                     <ChatListRow
                       key={`group-${g.communityId}`}
@@ -933,7 +905,7 @@ export function ChatList({
                       onOpenGroup={onOpenGroup}
                     />
                   );
-                  return privateMasked ? <MaskedRow key={`group-${g.communityId}`}>{groupRow}</MaskedRow> : groupRow;
+                  return groupRow;
                 }
                 const conv = entry.conv;
                 const profile = profiles.get(conv.pubkey) || null;
@@ -959,7 +931,7 @@ export function ChatList({
                     onNickname={(pk) => setPetnameTarget({ kind: "person", id: pk, realName: name })}
                   />
                 );
-                return privateMasked ? <MaskedRow key={conv.pubkey}>{dmRow}</MaskedRow> : dmRow;
+                return dmRow;
   };
 
   // Four surfaces render this list: this file's desktop dropdown, mobile sheet
@@ -1267,7 +1239,7 @@ export function ChatList({
               needs somewhere to find the glance. */}
           {filterOptions.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 min-w-0" role="tablist" aria-label="Filter chats">
-              {filterOptions.map((opt) => {
+              {maskChips(filterOptions, privateMasked).map((opt) => {
                 const active = activeFilter === opt.key;
                 return (
                   <button
@@ -1292,9 +1264,9 @@ export function ChatList({
                       <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold tabular-nums">
                         {opt.unread}
                       </span>
-                    ) : (
+                    ) : opt.count !== null ? (
                       <span className="text-[11px] text-muted-foreground/60 tabular-nums">{opt.count}</span>
-                    )}
+                    ) : null}
                   </button>
                 );
               })}
@@ -1328,21 +1300,6 @@ export function ChatList({
         </div>
       )}
 
-      {/* The reveal affordance — calm and in the brand voice, not a red lock:
-          this shields a screen, it doesn't encrypt anything (that already
-          happened underneath). Sits above the rows so the first thing a
-          shared screen shows is the shield, not a beat of readable names. */}
-      {privateMasked && (
-        <button
-          type="button"
-          onClick={revealPrivateMasked}
-          className="mx-3 mt-2 mb-1 flex items-center justify-center gap-2 rounded-lg border border-primary/25 bg-primary/[0.07] hover:bg-primary/[0.12] px-3 py-2 text-xs font-medium text-brand transition-colors"
-          data-testid="private-mode-pill"
-        >
-          <ShieldCheck className="w-3.5 h-3.5" />
-          Private mode — tap to show
-        </button>
-      )}
 
       {(hiddenConvos.size > 0 || hiddenMsgIds.size > 0) && (
         <div className="flex items-center border-b border-border/20 px-1">
@@ -1403,7 +1360,11 @@ export function ChatList({
         className="flex-1 overflow-y-auto overscroll-contain"
         data-testid="container-conversation-list"
       >
-        {showDeleted ? (
+        {privateMasked ? (
+          // Ahead of everything else the list can show (the deleted view, the
+          // loader, notices, invites, rows): masked, none of it is drawn.
+          <PrivateModeShield onShow={revealPrivateMasked} rearms={getPrivateModeSetting()} />
+        ) : showDeleted ? (
           <div className="p-3 space-y-3">
             {hiddenConvos.size > 0 && (
               <div>
@@ -1603,18 +1564,11 @@ export function ChatList({
                   <div className="px-3 pt-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50" data-testid="chat-section-people">
                     People
                   </div>
-                  {/* The count ("6 requests") is chat information too. */}
-                  {privateMasked ? (
-                    <MaskedRow>
-                      <RequestsRow total={totalRequestCount} unread={requestUnreadCount} onOpen={() => {}} />
-                    </MaskedRow>
-                  ) : (
-                    <RequestsRow
-                      total={totalRequestCount}
-                      unread={requestUnreadCount}
-                      onOpen={() => setDmTab("requests")}
-                    />
-                  )}
+                  <RequestsRow
+                    total={totalRequestCount}
+                    unread={requestUnreadCount}
+                    onOpen={() => setDmTab("requests")}
+                  />
                 </div>
               )}
               {visibleSections.map((section) => (
@@ -1636,17 +1590,11 @@ export function ChatList({
                       rendered among your friends is the thing the split exists
                       to prevent, and it is a spam-and-abuse surface. */}
                   {section.title === "People" && dmTab === "primary" && totalRequestCount > 0 && (
-                    privateMasked ? (
-                      <MaskedRow>
-                        <RequestsRow total={totalRequestCount} unread={requestUnreadCount} onOpen={() => {}} />
-                      </MaskedRow>
-                    ) : (
-                      <RequestsRow
-                        total={totalRequestCount}
-                        unread={requestUnreadCount}
-                        onOpen={() => setDmTab("requests")}
-                      />
-                    )
+                    <RequestsRow
+                      total={totalRequestCount}
+                      unread={requestUnreadCount}
+                      onOpen={() => setDmTab("requests")}
+                    />
                   )}
                   {section.entries.map(renderEntry)}
                 </div>
