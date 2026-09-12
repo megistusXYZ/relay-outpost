@@ -10,6 +10,7 @@ import { useLocation } from "wouter";
 import type { Event } from "nostr-tools";
 import { pool } from "@/lib/nostr";
 import { KIND_GROUP_METADATA, parseGroupMetadata, type GroupMetadata } from "@/lib/nip29";
+import { classifyRoom } from "@/lib/room-content-filter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Lock, MessagesSquare } from "lucide-react";
@@ -36,7 +37,10 @@ export function GuestChannelPreview({ relayUrl, channelId }: { relayUrl: string;
     return () => { cancelled = true; clearTimeout(t); try { sub.close(); } catch {} };
   }, [relayUrl, channelId]);
 
-  const title = meta?.name || "Chat channel";
+  // A guest can't opt in to explicit rooms, so a room flagged either way shows
+  // nothing of itself here: no name, picture or description (lib/room-content-filter).
+  const blocked = !!meta && classifyRoom(meta) !== "ok";
+  const title = blocked ? "Room unavailable" : meta?.name || "Chat channel";
   const isPrivate = !!meta && (meta.isPrivate || meta.isClosed || meta.isRestricted);
 
   const signIn = () => {
@@ -53,7 +57,7 @@ export function GuestChannelPreview({ relayUrl, channelId }: { relayUrl: string;
           <ArrowLeft className="w-5 h-5" />
         </button>
         <Avatar className="w-8 h-8 shrink-0">
-          {meta?.picture && <AvatarImage src={meta.picture} alt={title} />}
+          {meta?.picture && !blocked && <AvatarImage src={meta.picture} alt={title} />}
           <AvatarFallback className="text-xs bg-brand/10 text-brand">{title.slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
@@ -65,24 +69,33 @@ export function GuestChannelPreview({ relayUrl, channelId }: { relayUrl: string;
       {/* Gated body — public channel info, chat behind sign-in */}
       <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center text-center px-8 gap-4">
         <Avatar className="w-20 h-20 shrink-0">
-          {meta?.picture && <AvatarImage src={meta.picture} alt={title} />}
+          {meta?.picture && !blocked && <AvatarImage src={meta.picture} alt={title} />}
           <AvatarFallback className="text-xl bg-brand/10 text-brand">{title.slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <div className="space-y-1.5 max-w-sm">
           <h1 className="text-lg font-bold">{title}</h1>
-          {meta?.about && <p className="text-sm text-muted-foreground line-clamp-4 whitespace-pre-wrap break-words">{meta.about}</p>}
+          {meta?.about && !blocked && <p className="text-sm text-muted-foreground line-clamp-4 whitespace-pre-wrap break-words">{meta.about}</p>}
+          {blocked && <p className="text-sm text-muted-foreground" data-testid="guest-preview-unavailable">This room isn't shown on Relay Outpost.</p>}
         </div>
+        {!blocked && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
           {isPrivate ? <Lock className="w-4 h-4 shrink-0" /> : <MessagesSquare className="w-4 h-4 shrink-0" />}
           <span>{isPrivate ? "Private channel — sign in and join to see the chat" : "Sign in to see the conversation and join in"}</span>
         </div>
+        )}
       </div>
 
-      {/* Sign-in bar */}
+      {/* Sign-in bar — or, for a room that isn't shown, the way home */}
       <div className="shrink-0 border-t border-border/40 px-3 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+        {blocked ? (
+          <Button variant="outline" onClick={() => navigate("/")} className="w-full min-h-[44px]" data-testid="guest-preview-home">
+            Back to Relay Outpost
+          </Button>
+        ) : (
         <Button onClick={signIn} className="w-full min-h-[44px]" data-testid="guest-preview-signin">
           Sign in to see &amp; join the chat
         </Button>
+        )}
       </div>
     </div>
   );

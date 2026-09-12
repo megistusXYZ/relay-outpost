@@ -9,6 +9,10 @@ import { nip29Capabilities, hasAnyCapability } from "@/lib/space-admin";
 import { insertSorted } from "@/lib/message-list";
 import { senderColor } from "@/lib/sender-color";
 import { ACTIVE_ROOM, UNREAD_DOT, DAY_CHIP, NEW_TAG, COMPOSER_FIELD, REACTION_ON, REACTION_OFF, MSG_TOOLBAR, MSG_TOOL } from "@/lib/chat-look";
+import { screenRooms, classifyRoom } from "@/lib/room-content-filter";
+import { getSensitiveContentSetting } from "@/lib/sensitive-content";
+import { EyeOff as RoomsHiddenIcon } from "lucide-react";
+import { useRoomInUrl, isRestoringRoom } from "@/lib/room-url";
 import { buildChatRenderItems, type ChatSystemEvent, type ChatRenderItem } from "@/lib/chat-render-items";
 import { withSignerTimeout, SIGNER_SIGN_TIMEOUT } from "@/lib/signer-timeout";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
@@ -3450,17 +3454,36 @@ export function CommsTab({
     return () => { stale = true; };
   }, [relayUrl, refreshNonce]);
 
+  // Explicit rooms are left out unless the viewer chose to see sensitive
+  // content (Settings, with its 18+ check); rooms that sexualise minors never
+  // show (lib/room-content-filter).
+  const showExplicit = useMemo(() => !getSensitiveContentSetting(), []);
+  // A room link that points at a room the list leaves out: said so, never opened.
+  const [blockedLink, setBlockedLink] = useState<null | "explicit" | "minors">(null);
+
   const initialChannelHandledRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!initialChannelId) return;
+    // No room in the link (back to all rooms): the next link, even to the same
+    // room, is handled afresh.
+    if (!initialChannelId) { initialChannelHandledRef.current = null; return; }
+    // Back after a room was picked in the phone sheet shows the link as it was
+    // before the pick for a moment; not a link to open, and not marked handled,
+    // so the restored link is (lib/room-url).
+    if (isRestoringRoom()) return;
     const key = `${relayUrl}::${initialChannelId}`;
     if (initialChannelHandledRef.current === key) return;
+    const openLinked = (g: GroupMetadata) => {
+      const verdict = classifyRoom(g);
+      if (verdict === "minors" || (verdict === "explicit" && !showExplicit)) { setBlockedLink(verdict); return; }
+      setBlockedLink(null);
+      setSelectedGroup(g);
+    };
 
     // Fast path: the invited channel showed up in the bulk discovery pass.
     const match = groups.find((g) => g.id === initialChannelId);
     if (match) {
       initialChannelHandledRef.current = key;
-      setSelectedGroup(match);
+      openLinked(match);
       return;
     }
 
@@ -3481,7 +3504,7 @@ export function CommsTab({
         if (cancelled) return;
         if (meta) {
           setGroups((prev) => (prev.some((g) => g.id === meta.id) ? prev : [...prev, meta]));
-          setSelectedGroup(meta);
+          openLinked(meta);
         } else {
           setSelectedGroup({
             id: initialChannelId,
@@ -3560,8 +3583,20 @@ export function CommsTab({
     }
   }, []);
 
+  // The room on screen, kept in the link (lib/room-url). While a room link is
+  // still being worked out (the list loading, or the room fetched by itself)
+  // there's no answer yet, so the link is left alone: clearing it then would
+  // cancel the very fetch that opens the room.
+  const linkKey = initialChannelId ? `${relayUrl}::${initialChannelId}` : null;
+  const linkPending = !!linkKey && !selectedGroup && !blockedLink
+    && (loading || resolvingInviteChannel || initialChannelHandledRef.current !== linkKey);
+  useRoomInUrl(selectedGroup ? selectedGroup.id : linkPending ? undefined : null);
+
+  // Every list below reads the screened rooms, never the raw relay answer.
+  const screened = useMemo(() => screenRooms(groups, { showExplicit }), [groups, showExplicit]);
+
   const filteredAndSorted = useMemo(() => {
-    let filtered = groups;
+    let filtered = screened.shown;
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -3590,7 +3625,7 @@ export function CommsTab({
       const bTs = activityMap[b.id] || 0;
       return bTs - aTs;
     });
-  }, [groups, searchQuery, activeFilter, pinnedIds, activityMap, isGroupJoined]);
+  }, [screened, searchQuery, activeFilter, pinnedIds, activityMap, isGroupJoined]);
 
   const visibleRooms = useMemo(() => filteredAndSorted.slice(0, visibleCount), [filteredAndSorted, visibleCount]);
   const hasMore = visibleCount < filteredAndSorted.length;
@@ -3852,7 +3887,7 @@ export function CommsTab({
   if (selectedGroup) {
     const available = roomRowWidth || Number.POSITIVE_INFINITY;
     const fit = layoutIsMobile ? { rooms: 0, info: 0 } : fitPanes(layout, available);
-    const beside = sideRooms(groups, { pinned: pinnedIds, joined: joinedGroupIds, activity: activityMap }, selectedGroup.id);
+    const beside = sideRooms(screened.shown, { pinned: pinnedIds, joined: joinedGroupIds, activity: activityMap }, selectedGroup.id);
     // Your rooms: the desktop's left side and the phone's Group sheet show the
     // same list (44px rows on a phone, compact on a pointer).
     const roomsList = (
@@ -3978,8 +4013,8 @@ export function CommsTab({
     );
   }
 
-  const joinedCount = groups.filter((g) => isGroupJoined(g.id)).length;
-  const pinnedCount = groups.filter((g) => pinnedIds.has(g.id)).length;
+  const joinedCount = screened.shown.filter((g) => isGroupJoined(g.id)).length;
+  const pinnedCount = screened.shown.filter((g) => pinnedIds.has(g.id)).length;
 
   return (
     // No negative bottom margin here. It used to carry `-mb-16` to eat the
@@ -3994,14 +4029,58 @@ export function CommsTab({
           <h2 className="text-xs font-brand tracking-wider uppercase text-brand">Rooms</h2>
           {loading && <RelayOutpostInlineLoader className="w-3.5 h-3.5" />}
         </div>
-        {groups.length > 0 && (
+        {screened.shown.length > 0 && (
           <span className="text-[10px] text-muted-foreground/40">
-            {filteredAndSorted.length === groups.length
-              ? `${groups.length} rooms`
-              : `${filteredAndSorted.length} of ${groups.length} rooms`}
+            {filteredAndSorted.length === screened.shown.length
+              ? `${screened.shown.length} rooms`
+              : `${filteredAndSorted.length} of ${screened.shown.length} rooms`}
           </span>
         )}
       </div>
+
+      {/* What the list left out, said plainly rather than looking complete. */}
+      {screened.hidden > 0 && (
+        <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground" data-testid="comms-rooms-hidden">
+          <RoomsHiddenIcon className="w-3.5 h-3.5 shrink-0" />
+          <span>
+            {screened.hidden} {screened.hidden === 1 ? "room" : "rooms"} hidden{showExplicit ? "" : " for explicit content"}
+          </span>
+          {!showExplicit && (
+            <Link href="/settings" className="inline-flex min-h-8 items-center text-brand hover:underline underline-offset-2" data-testid="comms-rooms-hidden-settings">
+              Change in Settings
+            </Link>
+          )}
+        </p>
+      )}
+
+      {/* A link to a room the list leaves out: explained, never opened. */}
+      {blockedLink && (
+        <div className="rounded-xl border border-border bg-card p-4 dark:border-white/[0.08] dark:bg-white/[0.03]" data-testid="comms-room-link-blocked">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground" aria-hidden="true">
+              <RoomsHiddenIcon className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">This room isn't shown</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {blockedLink === "explicit"
+                  ? "It's marked as explicit. You can allow explicit rooms in Settings, under sensitive content."
+                  : "It breaks Relay Outpost's content rules, so it can't be opened here."}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {blockedLink === "explicit" && (
+                  <Link href="/settings" className="inline-flex min-h-11 md:min-h-8 items-center rounded-lg border border-border px-3 text-xs font-medium hover:bg-accent transition-colors">
+                    Open Settings
+                  </Link>
+                )}
+                <button onClick={() => setBlockedLink(null)} className="inline-flex min-h-11 md:min-h-8 items-center rounded-lg px-3 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors" data-testid="comms-room-link-blocked-dismiss">
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {groups.length > 0 && (
         <>

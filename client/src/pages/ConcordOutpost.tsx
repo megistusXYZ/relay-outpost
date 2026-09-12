@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useGoBack } from "@/hooks/use-go-back";
 import { ChevronDown, Copy, Check, Link2, Lock, Settings2 } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
@@ -45,11 +45,12 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
   const { toast } = useToast();
   const [community, setCommunity] = useState<StoredCommunity | null | undefined>(undefined);
   const [adminOpen, setAdminOpen] = useState(false);
-  // ?channel= deep-link (Chats-list rows open the first UNREAD channel).
-  // Captured once on mount — the ?invite=1 effect below strips the search.
-  const [initialChannelId] = useState<string | undefined>(() => {
-    try { return new URLSearchParams(window.location.search).get("channel") ?? undefined; } catch { return undefined; }
-  });
+  // ?channel= — the room on screen. Read live: ConcordChat writes it as rooms
+  // switch (lib/room-url), and a link to another room of this group (a
+  // notification, a Chats row) must switch the open group to it. It used to be
+  // captured once on mount, so such links changed nothing.
+  const search = useSearch();
+  const initialChannelId = new URLSearchParams(search).get("channel") ?? undefined;
   const isMobile = useIsMobile();
   // Desktop: rooms | chat | Members + About, each side resizable and foldable,
   // each section closable; the phone's Group sheet shares the sections' state.
@@ -114,7 +115,10 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
     try {
       if (new URLSearchParams(window.location.search).get("invite") === "1" && isOwner) {
         setInviteOpen(true);
-        window.history.replaceState(null, "", window.location.pathname);
+        // Only the nudge goes: stripping the whole query also dropped the room.
+        const url = new URL(window.location.href);
+        url.searchParams.delete("invite");
+        window.history.replaceState(null, "", url.pathname + url.search + url.hash);
       }
     } catch {}
   }, [isOwner]);
@@ -398,7 +402,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
            past their narrowest, and give way in a narrow window (fitPanes). */
         <div ref={setPanesEl} className="flex flex-1 min-h-0 px-4 pb-4" data-testid="concord-panes">
           <ConcordChat community={community} onCommunityChange={setCommunity}
-            initialChannelId={initialChannelId}
+            initialChannelId={initialChannelId} roomInUrl
             onInvite={canInvite ? () => setInviteOpen(true) : undefined}
             // Two acts, two props. The ternary used to live here because
             // ConcordChat aliased dissolve to onLeave; each receiver already
@@ -453,7 +457,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
           style={kb.height ? { height: `${kb.height}px`, top: `${kb.offsetTop}px`, bottom: "auto" } : undefined}
         >
           <ConcordChat community={community} onCommunityChange={setCommunity} viewportNudge={kb.height}
-            initialChannelId={initialChannelId}
+            initialChannelId={initialChannelId} roomInUrl
             onInvite={canInvite ? () => setInviteOpen(true) : undefined}
             onLeave={() => setDanger("leave")}
             onDissolve={() => setDanger("dissolve")}

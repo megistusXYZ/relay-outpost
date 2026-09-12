@@ -5031,8 +5031,10 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
 
         {activeTab === "channels" && (() => {
           const commsTab = (opts: { createChannelOpen?: boolean; onCreateChannelClose?: () => void }) => (
+            // Not keyed by the room: CommsTab writes ?channel= as rooms switch
+            // (lib/room-url), and a key on it remounted the whole tab on every
+            // switch. A changed link is followed by CommsTab's own link effect.
             <CommsTab
-              key={liveChannel || "default"}
               relayUrl={relayUrl}
               createChannelOpen={opts.createChannelOpen}
               onCreateChannelClose={opts.onCreateChannelClose}
