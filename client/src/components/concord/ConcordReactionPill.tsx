@@ -15,6 +15,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { ConcordIdentity } from "./ConcordIdentity";
+import { REACTION_ON, REACTION_OFF } from "@/lib/chat-look";
 
 interface ConcordReactionPillProps {
   emoji: string;
@@ -58,10 +59,7 @@ export function ConcordReactionPill({ emoji, emojiUrl, reactors, reacted, onReac
   const [open, setOpen] = useState(false);
 
   const pillClass = `flex items-center gap-1 h-8 px-2 md:h-6 md:px-1.5 rounded-full border text-xs transition-colors ${
-    reacted
-      // --brand, not --primary: dark --primary is near-white, so a reacted pill read as plain text there.
-      ? "border-brand/40 bg-brand/10 text-brand font-medium"
-      : "border-border/70 bg-muted/40 hover:bg-muted/80 hover:border-border text-foreground/75 dark:border-white/[0.08] dark:bg-white/[0.04] dark:hover:bg-white/[0.08]"
+    reacted ? REACTION_ON : REACTION_OFF
   }`;
 
   const pillInner = (

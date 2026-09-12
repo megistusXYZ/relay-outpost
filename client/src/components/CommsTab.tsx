@@ -8,6 +8,7 @@ import { getPinnedRooms, setPinnedRooms } from "@/lib/room-pins";
 import { nip29Capabilities, hasAnyCapability } from "@/lib/space-admin";
 import { insertSorted } from "@/lib/message-list";
 import { senderColor } from "@/lib/sender-color";
+import { ACTIVE_ROOM, UNREAD_DOT, DAY_CHIP, NEW_TAG, COMPOSER_FIELD, REACTION_ON, REACTION_OFF, MSG_TOOLBAR, MSG_TOOL } from "@/lib/chat-look";
 import { buildChatRenderItems, type ChatSystemEvent, type ChatRenderItem } from "@/lib/chat-render-items";
 import { withSignerTimeout, SIGNER_SIGN_TIMEOUT } from "@/lib/signer-timeout";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
@@ -332,7 +333,7 @@ function JoinRequestRow({
   const content = profile ? getProfileContent(profile) : undefined;
 
   return (
-    <div className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/20 transition-colors">
+    <div className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/60 dark:hover:bg-white/[0.04] transition-colors">
       <Avatar className="w-8 h-8 shrink-0">
         {avatar && <AvatarImage src={avatar} alt={name} />}
         <AvatarFallback className="text-[9px] bg-brand/10 text-brand">
@@ -399,10 +400,10 @@ function MemberRow({
   const npub = useMemo(() => nip19.npubEncode(memberPubkey), [memberPubkey]);
 
   return (
-    <div className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/20 transition-colors">
+    <div className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/60 dark:hover:bg-white/[0.04] transition-colors">
       <Link
         href={`/profile/${npub}`}
-        className="flex items-center gap-2 flex-1 min-w-0 min-h-[44px] no-underline rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        className="flex items-center gap-2 flex-1 min-w-0 min-h-[44px] no-underline rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
         data-testid={`member-profile-link-${memberPubkey.slice(0, 12)}`}
         aria-label={`View ${name}'s profile`}
       >
@@ -414,7 +415,8 @@ function MemberRow({
         </Avatar>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-medium text-foreground/80 truncate">{name}</span>
+            {/* The same colour this person's name wears in the room. */}
+            <span className="text-[13px] font-medium text-foreground/85 truncate" style={profile ? { color: senderColor(memberPubkey) } : undefined}>{name}</span>
             <PersonBadges pubkey={memberPubkey} nip05={content?.nip05} claimedName={content?.display_name || content?.name} showCollision={!!profile} />
             <WotDot pubkey={memberPubkey} />
             {isAdmin && (
@@ -553,7 +555,8 @@ function ChatMessageBubble({
   onReactCustom,
   mentionsMe,
   onPin,
-  isPinnedMsg }: {
+  isPinnedMsg,
+  myPubkey }: {
   msg: GroupMessage;
   isMine: boolean;
   isClusterStart: boolean;
@@ -576,6 +579,8 @@ function ChatMessageBubble({
   mentionsMe?: boolean;
   onPin?: (id: string | null) => void;
   isPinnedMsg?: boolean;
+  /** Mine, so my own reactions show as mine. */
+  myPubkey?: string | null;
 }) {
   const profile = use$(() => eventStore.replaceable(KIND_METADATA, msg.pubkey), [msg.pubkey]);
   // No profile in the store yet → trigger a fetch so the raw npub resolves to a
@@ -628,12 +633,12 @@ function ChatMessageBubble({
   }
 
   const actionToolbar = (showActions || (isMod && false)) ? (
-    <div className={`flex items-center gap-0.5 self-center shrink-0 transition-opacity ${showActions ? "opacity-100" : "opacity-0"}`}>
+    <div className={`flex items-center gap-0.5 self-center shrink-0 transition-opacity ${MSG_TOOLBAR} ${showActions ? "opacity-100" : "opacity-0"}`}>
       {onReact && (
         <button
           ref={emojiTriggerRef}
           onClick={(e) => { e.stopPropagation(); setShowEmojiPicker((prev) => !prev); }}
-          className="p-1.5 sm:p-1 rounded-full hover:bg-muted/50 text-muted-foreground/50 hover:text-muted-foreground"
+          className={`p-1.5 sm:p-1 ${MSG_TOOL}`}
           title="React"
         >
           <Smile className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
@@ -642,7 +647,7 @@ function ChatMessageBubble({
       {onReply && (
         <button
           onClick={(e) => { e.stopPropagation(); onReply(msg.id); setShowActions(false); }}
-          className="p-1.5 sm:p-1 rounded-full hover:bg-muted/50 text-muted-foreground/50 hover:text-muted-foreground"
+          className={`p-1.5 sm:p-1 ${MSG_TOOL}`}
           title="Reply"
         >
           <Reply className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
@@ -651,7 +656,7 @@ function ChatMessageBubble({
       {isMod && onPin && (
         <button
           onClick={(e) => { e.stopPropagation(); onPin(isPinnedMsg ? null : msg.id); }}
-          className={`p-1.5 sm:p-1 rounded-full hover:bg-brand/10 ${isPinnedMsg ? "text-brand" : "text-muted-foreground/50 hover:text-brand"}`}
+          className={`p-1.5 sm:p-1 rounded-md hover:bg-brand/10 ${isPinnedMsg ? "text-brand" : "text-muted-foreground/50 hover:text-brand"}`}
           title={isPinnedMsg ? "Unpin message" : "Pin message"}
         >
           <Pin className={`w-4 h-4 sm:w-3.5 sm:h-3.5 ${isPinnedMsg ? "fill-current" : ""}`} />
@@ -660,7 +665,7 @@ function ChatMessageBubble({
       {isMod && onDelete && (
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(msg.id); }}
-          className="p-1.5 sm:p-1 rounded-full hover:bg-red-500/10 text-muted-foreground/50 hover:text-red-500"
+          className="p-1.5 sm:p-1 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
           title="Delete message"
         >
           <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
@@ -669,7 +674,7 @@ function ChatMessageBubble({
       {isMod && onRemoveUser && !isMine && (
         <button
           onClick={(e) => { e.stopPropagation(); onRemoveUser(msg.pubkey); }}
-          className="p-1.5 sm:p-1 rounded-full hover:bg-red-500/10 text-muted-foreground/50 hover:text-red-500"
+          className="p-1.5 sm:p-1 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
           title="Remove user from group"
         >
           <UserMinus className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
@@ -680,7 +685,7 @@ function ChatMessageBubble({
 
   return (
     <div
-      className={`group flex items-end gap-1.5 px-2 sm:px-3 ${isMine ? "justify-end" : "justify-start"} ${isClusterStart ? "mt-2.5" : "mt-0.5"} ${mentionsMe ? "bg-brand/[0.07]/[0.10] rounded-lg py-0.5 border-l-2 border-brand/60" : ""}`}
+      className={`group flex items-end gap-1.5 px-2 sm:px-3 ${isMine ? "justify-end" : "justify-start"} ${isClusterStart ? "mt-2.5" : "mt-0.5"} ${mentionsMe ? "bg-brand/[0.07] rounded-lg py-0.5 shadow-[inset_2px_0_0_hsl(var(--brand)/0.7)]" : ""}`}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => { setShowActions(false); setShowEmojiPicker(false); }}
       onTouchStart={(e) => { const t = e.touches[0]; touchRef.current = { x: t.clientX, y: t.clientY, t: Date.now() }; }}
@@ -718,7 +723,7 @@ function ChatMessageBubble({
           <Link
             href={`/profile/${npub}`}
             onClick={(e) => e.stopPropagation()}
-            className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
             aria-label={`View ${name}'s profile`}
             data-testid={`chat-avatar-link-${msg.pubkey.slice(0, 12)}`}
           >
@@ -743,7 +748,7 @@ function ChatMessageBubble({
             <Link
               href={`/profile/${npub}`}
               onClick={(e) => e.stopPropagation()}
-              className={`block min-w-0 truncate -my-1 py-1 rounded no-underline text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${profile ? "hover:opacity-80" : "text-muted-foreground hover:text-foreground/70"}`}
+              className={`block min-w-0 truncate -my-1 py-1 rounded no-underline text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${profile ? "hover:opacity-80" : "text-muted-foreground hover:text-foreground/70"}`}
               // Slack-style deterministic sender hue (curated AA palette, see
               // lib/sender-color.ts) — resolved names only; a raw-npub fallback
               // stays muted/neutral, never colored.
@@ -771,7 +776,7 @@ function ChatMessageBubble({
           {msg.replyTo && (() => {
             const repliedMsg = allMessages?.find((m) => m.id === msg.replyTo);
             return (
-              <div className="mb-1 rounded-md border-l-2 border-primary/50 bg-black/[0.06] dark:bg-white/[0.07] px-2 py-1">
+              <div className="mb-1 rounded-md border-l-2 border-brand/60 bg-black/[0.06] dark:bg-white/[0.07] px-2 py-1">
                 <ReplyPreviewAuthor pubkey={replyToDeleted ? undefined : repliedMsg?.pubkey} />
                 <p className="text-[10px] opacity-70 truncate mt-0.5 leading-snug">
                   {replyToDeleted
@@ -806,10 +811,10 @@ function ChatMessageBubble({
                   <button
                     key={emoji}
                     onClick={(e) => { e.stopPropagation(); onReact?.(msg.id, emoji); }}
-                    className="inline-flex items-center gap-1 px-2 py-1 sm:py-0.5 min-h-7 sm:min-h-0 rounded-full text-sm sm:text-[11px] bg-muted/40 hover:bg-muted/60 active:bg-muted/70 border border-border/20 transition-colors"
+                    className={`inline-flex items-center gap-1 px-2 py-1 sm:py-0.5 min-h-7 sm:min-h-0 rounded-full text-sm sm:text-[11px] border transition-colors ${myPubkey && pubkeys?.includes(myPubkey) ? REACTION_ON : REACTION_OFF}`}
                   >
                     <span className="inline-flex items-center">{display}</span>
-                    <span className="text-muted-foreground/60">{count}</span>
+                    <span className="tabular-nums opacity-80">{count}</span>
                   </button>
                 );
                 if (pubkeys && pubkeys.length > 0) {
@@ -2051,7 +2056,9 @@ function ChatRoomView({
     <>
       {admins.length > 0 && (
         <div className="mb-1">
-          <span className="text-[9px] font-medium uppercase tracking-wider text-brand/60 px-2">Admins</span>
+          <p className="px-2 pb-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+            Admins <span className="font-medium tabular-nums text-muted-foreground/50">— {admins.length}</span>
+          </p>
           {admins.map((a) => (
             <MemberRow
               key={a.pubkey}
@@ -2064,7 +2071,9 @@ function ChatRoomView({
       )}
       {members.filter((m) => !admins.some((a) => a.pubkey === m)).length > 0 && (
         <div>
-          <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/40 px-2">Members</span>
+          <p className="px-2 pb-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+            Members <span className="font-medium tabular-nums text-muted-foreground/50">— {members.filter((m) => !admins.some((a) => a.pubkey === m)).length}</span>
+          </p>
           {members
             .filter((m) => !admins.some((a) => a.pubkey === m))
             .map((m) => (
@@ -2277,7 +2286,7 @@ function ChatRoomView({
         const pinnedMsg = messages.find((m) => m.id === pinnedMessageId);
         if (!pinnedMsg) return null;
         return (
-          <div className="flex items-center gap-2 px-3 py-1.5 border-b border-primary/15 bg-primary/[0.06] shrink-0" data-testid="pinned-banner">
+          <div className="flex items-center gap-2 px-3 py-1.5 border-b border-brand/15 bg-brand/[0.05] shrink-0" data-testid="pinned-banner">
             <Pin className="w-3 h-3 text-brand fill-current shrink-0" />
             <span className="text-[10px] font-semibold uppercase tracking-wider text-brand shrink-0">Pinned</span>
             <button
@@ -2333,17 +2342,16 @@ function ChatRoomView({
             const item = row.item;
             if (item.type === "date") {
               return (
-                <div key={item.key} className="dm-date-separator my-2">
-                  <span className="text-[10px] font-medium text-muted-foreground/60 whitespace-nowrap">{item.label}</span>
+                <div key={item.key} className="dm-date-separator my-2 px-2 sm:px-3">
+                  <span className={DAY_CHIP}>{item.label}</span>
                 </div>
               );
             }
             if (item.type === "unread") {
               return (
-                <div key={item.key} className="flex items-center gap-2 my-2" data-testid="chat-unread-divider">
-                  <div className="flex-1 h-px bg-primary/30" />
-                  <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-brand">New</span>
-                  <div className="flex-1 h-px bg-primary/30" />
+                <div key={item.key} className="flex items-center gap-2 my-2 px-2 sm:px-3" data-testid="chat-unread-divider">
+                  <div className="flex-1 h-px bg-brand/60" />
+                  <span className={NEW_TAG}>New</span>
                 </div>
               );
             }
@@ -2382,6 +2390,7 @@ function ChatRoomView({
                 mentionsMe={!!pubkey && msg.pubkey !== pubkey && msg.tags.some((t) => t[0] === "p" && t[1] === pubkey)}
                 onPin={isMod ? handlePin : undefined}
                 isPinnedMsg={pinnedMessageId === msg.id}
+                myPubkey={pubkey}
               />
             );
           })
@@ -2389,11 +2398,11 @@ function ChatRoomView({
       </div>
 
       {canCompose && (
-        <div className="shrink-0 border-t border-border/30 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <div className="shrink-0 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           {replyTo && (() => {
             const repliedMsg = messages.find((m) => m.id === replyTo);
             return (
-              <div className="flex items-center gap-2 mb-1.5 rounded-md border-l-2 border-brand/40 bg-brand/[0.06]/[0.08] px-2.5 py-1.5">
+              <div className="flex items-center gap-2 mb-1.5 rounded-md border-l-2 border-brand bg-brand/[0.06] px-2.5 py-1.5">
                 <div className="flex-1 min-w-0">
                   <ReplyPreviewAuthor pubkey={deletedIds.has(replyTo) ? undefined : repliedMsg?.pubkey} />
                   <p className="text-[10px] text-muted-foreground/60 truncate mt-0.5 leading-snug">
@@ -2418,10 +2427,12 @@ function ChatRoomView({
               className="hidden"
               onChange={handleMediaUpload}
             />
+            {/* One field holding attach, emoji and the text (lib/chat-look). */}
+            <div className={`flex flex-1 min-w-0 items-end pl-0.5 pr-2 rounded-3xl ${COMPOSER_FIELD}`} data-testid="comms-composer-field">
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              className="h-11 w-11 sm:h-8 sm:w-8 inline-flex items-center justify-center rounded hover:bg-muted/50 text-muted-foreground/50 hover:text-muted-foreground shrink-0"
+              className="h-11 w-11 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-brand transition-colors shrink-0"
               title="Upload media"
               aria-label="Upload media"
             >
@@ -2431,7 +2442,7 @@ function ChatRoomView({
               <button
                 ref={composeEmojiTriggerRef}
                 onClick={() => setShowComposeEmoji((prev) => !prev)}
-                className="h-11 w-11 sm:h-8 sm:w-8 inline-flex items-center justify-center rounded hover:bg-muted/50 text-muted-foreground/50 hover:text-muted-foreground"
+                className="h-11 w-11 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-brand transition-colors"
                 title="Insert emoji"
                 aria-label="Insert emoji"
               >
@@ -2476,9 +2487,10 @@ function ChatRoomView({
                 }
               }}
               placeholder="Message"
-              className="flex-1 min-w-0 min-h-10 sm:min-h-9 max-h-[120px] resize-none rounded-2xl px-4 py-2 text-base sm:text-sm leading-snug bg-muted/30 border-border/30 focus-visible:ring-ring"
+              className="flex-1 min-w-0 min-h-11 sm:min-h-9 max-h-[120px] resize-none rounded-none border-0 bg-transparent px-1.5 py-2.5 sm:py-2 text-base sm:text-sm leading-snug shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
               disabled={sending}
             />
+            </div>
             <Button
               size="sm"
               onClick={handleSend}
@@ -3845,22 +3857,24 @@ export function CommsTab({
     // same list (44px rows on a phone, compact on a pointer).
     const roomsList = (
       <div className="space-y-0.5 p-2">
-        {beside.map((g) => (
+        {beside.map((g) => {
+          const active = g.id === selectedGroup.id;
+          const unread = !active && (activityMap[g.id] ?? 0) > readChannelLastRead(relayUrl, g.id);
+          return (
           <button
             key={g.id}
             onClick={() => setSelectedGroup(g)}
             className={`flex items-center gap-1.5 w-full px-2.5 min-h-11 md:min-h-0 md:py-1.5 rounded-lg text-sm text-left transition-colors ${
-              g.id === selectedGroup.id ? "bg-accent text-accent-foreground dark:bg-brand/15 dark:text-brand font-medium" : "text-muted-foreground/70 hover:text-foreground hover:bg-muted/30"
+              active ? ACTIVE_ROOM : `${unread ? "text-foreground font-medium" : "text-muted-foreground"} hover:text-foreground hover:bg-accent/70 dark:hover:bg-white/[0.05]`
             }`}
             data-testid={`comms-side-room-${g.id.slice(0, 12)}`}
           >
             <Hash className="w-3.5 h-3.5 shrink-0 opacity-60" />
             <span className="truncate flex-1">{g.name || g.id}</span>
-            {g.id !== selectedGroup.id && (activityMap[g.id] ?? 0) > readChannelLastRead(relayUrl, g.id) && (
-              <span className="w-2 h-2 rounded-full bg-primary shrink-0" aria-label="Unread" />
-            )}
+            {unread && <span className={UNREAD_DOT} aria-label="Unread" />}
           </button>
-        ))}
+          );
+        })}
         <button
           onClick={() => setSelectedGroup(null)}
           className="flex items-center gap-1.5 w-full px-2.5 min-h-11 md:min-h-0 md:py-1.5 rounded-lg text-xs text-muted-foreground/60 hover:text-foreground hover:bg-muted/30 transition-colors"

@@ -29,6 +29,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { useConcordProfile } from "./ConcordIdentity";
 import { ConcordReactionPill } from "./ConcordReactionPill";
 import { senderColor } from "@/lib/sender-color";
+import { ACTIVE_ROOM, DAY_CHIP, NEW_TAG, COMPOSER_FIELD } from "@/lib/chat-look";
 import { ConcordMediaView } from "./ConcordMediaView";
 import { getCachedMessages, cacheMessage, deleteCachedMessages, getCachedReactions, cacheReaction, removeCachedReaction, type StoredCommunity, type StoredChannel, type CachedReaction } from "@/lib/concord/concord-keys";
 import { liveChannels } from "@/lib/concord/concord-live-channels";
@@ -1438,7 +1439,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           {meta.dayDivider && (
             <div className="flex items-center gap-3 my-2 select-none" data-testid="concord-day-divider">
               <div className="flex-1 h-px bg-border dark:bg-white/[0.07]" />
-              <span className="h-5 px-2.5 inline-flex items-center rounded-full border border-border bg-card text-[10px] font-semibold uppercase tracking-wider text-muted-foreground tabular-nums dark:border-white/[0.08] dark:bg-white/[0.03]">{meta.dayDivider}</span>
+              <span className={DAY_CHIP}>{meta.dayDivider}</span>
               <div className="flex-1 h-px bg-border dark:bg-white/[0.07]" />
             </div>
           )}
@@ -1447,7 +1448,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           {idx === firstUnreadIdx && (
             <div className="flex items-center gap-2 my-2" data-testid="concord-unread-divider">
               <div className="flex-1 h-px bg-brand/60" />
-              <span className="h-4 px-1.5 inline-flex items-center rounded bg-brand text-[10px] font-bold uppercase tracking-wider text-primary-foreground">New</span>
+              <span className={NEW_TAG}>New</span>
             </div>
           )}
           {item.kind === "sys" ? (
@@ -1547,7 +1548,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*" className="hidden" onChange={(e) => pickFile(e.target.files?.[0])} data-testid="concord-file-input" />
           {/* One field holding attach, emoji and the text; it lifts with a brand
               ring on focus. Border-box height, so the border sits inside h-11. */}
-          <div className="flex flex-1 min-w-0 items-center h-11 md:h-10 pr-1.5 rounded-full border border-border bg-card shadow-[0_1px_2px_hsl(var(--foreground)/0.05)] transition-[border-color,box-shadow] focus-within:border-brand/50 focus-within:ring-[3px] focus-within:ring-brand/15 dark:border-white/[0.09] dark:bg-white/[0.03] dark:shadow-none" data-testid="concord-composer-field">
+          <div className={`flex flex-1 min-w-0 items-center h-11 md:h-10 pr-1.5 rounded-full ${COMPOSER_FIELD}`} data-testid="concord-composer-field">
           <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="flex items-center justify-center w-11 h-full md:w-9 shrink-0 rounded-l-full text-muted-foreground hover:text-brand disabled:opacity-40 transition-colors" title="Attach" data-testid="concord-attach">
             <ImagePlus className="w-[18px] h-[18px]" />
           </button>
@@ -1734,10 +1735,6 @@ function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messa
  *  - mentions → small violet COUNT badge (the only place numbers come from).
  *  - unread  → the existing plain activity dot, never a number.
  */
-/** The room you're in. A solid violet pill in light; in dark, where --primary
- *  is near-white, a deep violet fill with bright violet text. */
-const ACTIVE_ROOM = "bg-primary text-primary-foreground font-medium shadow-sm shadow-primary/25 dark:bg-brand/[0.16] dark:text-brand-strong dark:shadow-none dark:ring-1 dark:ring-inset dark:ring-brand/20";
-
 function ChannelRowSignal({ muted, mentions, unread, onUnmute, testId, active }: {
   /** On the room you're in: its signals invert to read on the solid pill. */
   active?: boolean;
