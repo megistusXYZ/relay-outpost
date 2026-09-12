@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useBackClosable } from "@/hooks/use-back-closable";
 import { createPortal } from "react-dom";
-import { Hash, Lock, Plus, Send, ImagePlus, Loader2, X, CornerUpLeft, ChevronDown, Users, BellOff, MessageSquare, ArrowLeft, Link2, Shield, Headphones, PanelLeft, Pin } from "lucide-react";
+import { Hash, Lock, Plus, Send, ImagePlus, Loader2, X, ChevronDown, Users, BellOff, MessageSquare, ArrowLeft, Link2, Shield, Headphones, PanelLeft, Pin } from "lucide-react";
 import { hangoutOf } from "@/lib/concord/concord-hangout";
 import { AudioSpaceLightbox } from "@/components/AudioSpaceCard";
 import { getEventHash, nip19 } from "nostr-tools";
@@ -1011,7 +1011,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
               key={ch.id}
               onClick={() => setActiveId(ch.id)}
               className={`flex items-center gap-1.5 w-full px-2.5 py-1.5 rounded-lg text-sm text-left transition-colors ${
-                ch.id === activeChannel?.id ? "bg-accent text-accent-foreground dark:bg-brand/15 dark:text-brand font-medium" : "text-muted-foreground/70 hover:text-foreground hover:bg-muted/30"
+                ch.id === activeChannel?.id ? ACTIVE_ROOM : `${unreadChannels.has(ch.id) ? "text-foreground font-medium" : "text-muted-foreground"} hover:text-foreground hover:bg-accent/70 dark:hover:bg-white/[0.05]`
               } ${mutedChannels.has(ch.id) ? "opacity-50" : ""}`}
               data-testid={`concord-channel-side-${ch.id.slice(0, 8)}`}
             >
@@ -1022,6 +1022,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
                 mentions={mentionCounts.get(mentionKey(community.community_id, ch.id)) ?? 0}
                 unread={unreadChannels.has(ch.id)}
                 onUnmute={() => setChannelMuted(community.community_id, ch.id, false)}
+                active={ch.id === activeChannel?.id}
                 testId={`concord-channel-dot-${ch.id.slice(0, 8)}`}
               />
             </button>
@@ -1155,7 +1156,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
                     key={ch.id}
                     onClick={() => { setActiveId(ch.id); setChannelSheetOpen(false); }}
                     className={`flex items-center gap-2 w-full px-3 py-2.5 rounded-xl text-sm text-left transition-colors ${
-                      ch.id === activeChannel?.id ? "bg-accent text-accent-foreground dark:bg-brand/15 dark:text-brand font-medium" : "text-foreground/80 active:bg-muted/30"
+                      ch.id === activeChannel?.id ? ACTIVE_ROOM : `${unreadChannels.has(ch.id) ? "text-foreground font-medium" : "text-foreground/75"} active:bg-accent`
                     } ${mutedChannels.has(ch.id) ? "opacity-50" : ""}`}
                     data-testid={`concord-channel-${ch.id.slice(0, 8)}`}
                   >
@@ -1166,6 +1167,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
                       mentions={mentionCounts.get(mentionKey(community.community_id, ch.id)) ?? 0}
                       unread={unreadChannels.has(ch.id)}
                       onUnmute={() => setChannelMuted(community.community_id, ch.id, false)}
+                      active={ch.id === activeChannel?.id}
                       testId={`concord-channel-dot-sheet-${ch.id.slice(0, 8)}`}
                     />
                   </button>
@@ -1393,19 +1395,20 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           // header — grouping it under the last-read message would orphan it.
           const grouped = meta.grouped && idx !== firstUnreadIdx;
           return (
-          <div key={item.kind === "msg" ? item.msg.id : item.id} className={grouped && !meta.dayDivider ? "-mt-2" : undefined}>
+          <div key={item.kind === "msg" ? item.msg.id : item.id} className={grouped && !meta.dayDivider ? "-mt-2.5" : undefined}>
           {meta.dayDivider && (
-            <div className="flex items-center gap-2 my-1.5 select-none" data-testid="concord-day-divider">
-              <div className="flex-1 h-px bg-border/40" />
-              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50 tabular-nums">{meta.dayDivider}</span>
-              <div className="flex-1 h-px bg-border/40" />
+            <div className="flex items-center gap-3 my-2 select-none" data-testid="concord-day-divider">
+              <div className="flex-1 h-px bg-border dark:bg-white/[0.07]" />
+              <span className="h-5 px-2.5 inline-flex items-center rounded-full border border-border bg-card text-[10px] font-semibold uppercase tracking-wider text-muted-foreground tabular-nums dark:border-white/[0.08] dark:bg-white/[0.03]">{meta.dayDivider}</span>
+              <div className="flex-1 h-px bg-border dark:bg-white/[0.07]" />
             </div>
           )}
+          {/* A brand rule ending in a solid tag, like Discord's red one. Dark
+              --primary-foreground is near-black, which is what reads on dark --brand. */}
           {idx === firstUnreadIdx && (
             <div className="flex items-center gap-2 my-2" data-testid="concord-unread-divider">
-              <div className="flex-1 h-px bg-primary/30" />
-              <span className="text-[10px] font-medium uppercase tracking-wider text-brand/70">New</span>
-              <div className="flex-1 h-px bg-primary/30" />
+              <div className="flex-1 h-px bg-brand/60" />
+              <span className="h-4 px-1.5 inline-flex items-center rounded bg-brand text-[10px] font-bold uppercase tracking-wider text-primary-foreground">New</span>
             </div>
           )}
           {item.kind === "sys" ? (
@@ -1439,7 +1442,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       </div>
       </ConcordChannelNavProvider>
       {/* Composer */}
-      <div className="border-t border-border/20 shrink-0 relative">
+      <div className="shrink-0 relative">
         {/* Jump-to-latest sits ON the composer's top edge (`bottom-full`), not
             at a measured offset from the pane's bottom. It was `bottom-[68px]`
             — the composer's height on one device — and the composer grows with
@@ -1465,8 +1468,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           </div>
         )}
         {replyingTo && (
-          <div className="flex items-center gap-2 px-3 pt-2.5 text-xs" data-testid="concord-replying-to">
-            <div className="w-0.5 self-stretch bg-primary/50 rounded-full" />
+          <div className="flex items-center gap-2 mx-3 mt-2.5 pl-2.5 pr-1 py-1.5 rounded-lg bg-brand/[0.06] text-xs" data-testid="concord-replying-to">
+            <div className="w-0.5 self-stretch bg-brand rounded-full" />
             <div className="min-w-0 flex-1">
               <ReplyingToLabel pubkey={replyingTo.pubkey} />
               <p className="text-muted-foreground/60 truncate"><ConcordContentPreview content={replyingTo.content} fallback={replyingTo.media?.length ? "Attachment" : undefined} /></p>
@@ -1501,9 +1504,12 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
         {/* env(safe-area-inset-bottom) is a VIEWPORT constant — it has no idea
             where this element is. Embedded, the composer ends mid-page and was
             paying ~34px to clear a home indicator hundreds of pixels below it. */}
-        <div className={`flex items-center gap-1.5 px-3 pt-2.5 ${embedded ? "pb-2.5" : "pb-[max(env(safe-area-inset-bottom,0px),0.625rem)]"} md:pb-2.5`}>
+        <div className={`flex items-center gap-2 px-3 pt-2.5 ${embedded ? "pb-2.5" : "pb-[max(env(safe-area-inset-bottom,0px),0.625rem)]"} md:pb-2.5`}>
           <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*" className="hidden" onChange={(e) => pickFile(e.target.files?.[0])} data-testid="concord-file-input" />
-          <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="flex items-center justify-center w-11 h-11 md:w-9 md:h-9 shrink-0 rounded-full text-muted-foreground/60 hover:text-brand hover:bg-brand/10 disabled:opacity-40 transition-colors" title="Attach" data-testid="concord-attach">
+          {/* One field holding attach, emoji and the text; it lifts with a brand
+              ring on focus. Border-box height, so the border sits inside h-11. */}
+          <div className="flex flex-1 min-w-0 items-center h-11 md:h-10 pr-1.5 rounded-full border border-border bg-card shadow-[0_1px_2px_hsl(var(--foreground)/0.05)] transition-[border-color,box-shadow] focus-within:border-brand/50 focus-within:ring-[3px] focus-within:ring-brand/15 dark:border-white/[0.09] dark:bg-white/[0.03] dark:shadow-none" data-testid="concord-composer-field">
+          <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="flex items-center justify-center w-11 h-full md:w-9 shrink-0 rounded-l-full text-muted-foreground hover:text-brand disabled:opacity-40 transition-colors" title="Attach" data-testid="concord-attach">
             <ImagePlus className="w-[18px] h-[18px]" />
           </button>
           <ComposeEmojiPicker hideStickers onInsert={(t) => setDraft((d) => d + t)} onGifSelect={(url) => setStaged({ url, mime: "image/gif" })} />
@@ -1518,10 +1524,11 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             // never gets to give anything back. On a 350px phone that pushed
             // Send 21px past the content box (clipped by the panel) and crushed
             // the only shrinkable sibling, the emoji trigger, from 32px to 18.
-            className="flex-1 min-w-0 h-11 md:h-10 px-3 rounded-full bg-muted/20 border border-border/30 text-base md:text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
+            className="flex-1 min-w-0 h-full px-2 bg-transparent text-base md:text-sm placeholder:text-muted-foreground/70 focus:outline-none"
             data-testid="concord-composer"
           />
-          <button onClick={send} disabled={(!draft.trim() && !staged) || sending} className="flex items-center justify-center w-11 h-11 md:w-10 md:h-10 shrink-0 rounded-full bg-primary text-primary-foreground disabled:opacity-40 transition-opacity" data-testid="concord-send">
+          </div>
+          <button onClick={send} disabled={(!draft.trim() && !staged) || sending} className="flex items-center justify-center w-11 h-11 md:w-10 md:h-10 shrink-0 rounded-full bg-primary text-primary-foreground shadow-sm hover:opacity-90 disabled:opacity-40 disabled:shadow-none transition-opacity" data-testid="concord-send">
             <Send className="w-4 h-4" />
           </button>
         </div>
@@ -1688,7 +1695,13 @@ function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messa
  *  - mentions → small violet COUNT badge (the only place numbers come from).
  *  - unread  → the existing plain activity dot, never a number.
  */
-function ChannelRowSignal({ muted, mentions, unread, onUnmute, testId }: {
+/** The room you're in. A solid violet pill in light; in dark, where --primary
+ *  is near-white, a deep violet fill with bright violet text. */
+const ACTIVE_ROOM = "bg-primary text-primary-foreground font-medium shadow-sm shadow-primary/25 dark:bg-brand/[0.16] dark:text-brand-strong dark:shadow-none dark:ring-1 dark:ring-inset dark:ring-brand/20";
+
+function ChannelRowSignal({ muted, mentions, unread, onUnmute, testId, active }: {
+  /** On the room you're in: its signals invert to read on the solid pill. */
+  active?: boolean;
   muted: boolean;
   mentions: number;
   unread: boolean;
@@ -1704,7 +1717,7 @@ function ChannelRowSignal({ muted, mentions, unread, onUnmute, testId }: {
         aria-label="Muted room — unmute"
         onClick={(e) => { e.stopPropagation(); onUnmute(); }}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onUnmute(); } }}
-        className="flex items-center justify-center w-5 h-5 -mr-1 rounded shrink-0 text-muted-foreground/50 hover:text-foreground transition-colors"
+        className={`flex items-center justify-center w-5 h-5 -mr-1 rounded shrink-0 transition-colors ${active ? "opacity-70 hover:opacity-100" : "text-muted-foreground/50 hover:text-foreground"}`}
         data-testid={`${testId}-muted`}
       >
         <BellOff className="w-3.5 h-3.5" />
@@ -1714,7 +1727,7 @@ function ChannelRowSignal({ muted, mentions, unread, onUnmute, testId }: {
   if (mentions > 0) {
     return (
       <span
-        className="min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shrink-0"
+        className={`min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold shrink-0 ${active ? "bg-primary-foreground text-primary dark:bg-brand dark:text-primary-foreground" : "bg-brand text-primary-foreground"}`}
         aria-label={`${mentions} mention${mentions === 1 ? "" : "s"}`}
         data-testid={`${testId}-mentions`}
       >
@@ -1724,7 +1737,7 @@ function ChannelRowSignal({ muted, mentions, unread, onUnmute, testId }: {
   }
   if (unread) {
     return (
-      <span className="w-2 h-2 rounded-full bg-primary shrink-0 shadow-[0_0_6px_rgba(139,92,246,0.6)]" aria-label="Unread messages" data-testid={testId} />
+      <span className={`w-2 h-2 rounded-full shrink-0 ${active ? "bg-primary-foreground dark:bg-brand" : "bg-brand shadow-[0_0_6px_hsl(var(--brand)/0.55)]"}`} aria-label="Unread messages" data-testid={testId} />
     );
   }
   return null;
@@ -1783,16 +1796,25 @@ function SystemLine({ pubkey, action, timer }: { pubkey: string; action: SystemA
 /** A compact quote of the parent message shown above a reply. npub/nprofile
  *  tokens resolve to @DisplayName (instead of being stripped as bech32 noise);
  *  note/naddr refs collapse to "Shared a post" via ConcordContentPreview. */
-function QuotedParent({ parent, replyPubkey }: { parent?: ChatMsg; replyPubkey: string }) {
-  const { name } = useConcordProfile(parent?.pubkey ?? replyPubkey);
+function QuotedParent({ parent, replyPubkey, mine }: { parent?: ChatMsg; replyPubkey: string; mine: boolean }) {
+  const pk = parent?.pubkey ?? replyPubkey;
+  const { name, avatar, hasProfile } = useConcordProfile(pk);
   return (
-    <div className="flex items-center gap-1.5 mb-0.5 text-[11px] text-muted-foreground/60 min-w-0">
-      <CornerUpLeft className="w-3 h-3 shrink-0 text-muted-foreground/40" />
+    // Sits above the row, indented to the text column (28px avatar + 10px gap),
+    // with a spine that leaves the avatar's centre and turns into the quote —
+    // Discord's reply line, in our hairline colour.
+    <div className="relative flex items-center gap-1.5 pl-[38px] mb-1 text-xs leading-[18px] min-w-0" data-testid="concord-reply-quote">
+      <span aria-hidden className="absolute left-[13px] top-[9px] h-[11px] w-[21px] rounded-tl-md border-l-2 border-t-2 border-border dark:border-white/15" />
+      <Avatar className="w-4 h-4 shrink-0">
+        {avatar && <AvatarImage src={avatar} alt="" />}
+        <AvatarFallback className="text-[7px] bg-brand/10 text-brand font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+      </Avatar>
       {/* Capped, not shrink-0: a long unbroken display name is another thing
           that can push this row past the screen, and the reply line is the one
-          place a name is context rather than content. */}
-      <span className="font-medium text-foreground/60 shrink-0 max-w-[45%] truncate">{name}</span>
-      <span className="truncate">
+          place a name is context rather than content. Same colour as the
+          person's name everywhere else in the chat. */}
+      <span className="font-semibold text-foreground/80 shrink-0 max-w-[45%] truncate" style={!mine && hasProfile ? { color: senderColor(pk) } : undefined}>{name}</span>
+      <span className="truncate text-muted-foreground">
         {parent
           ? <ConcordContentPreview content={parent.content} fallback={parent.media?.length ? "Attachment" : undefined} />
           : "message"}
@@ -1853,8 +1875,14 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
   useEffect(() => { if (editing) setEditText(content); }, [editing, content]);
   const chips = reactions ? [...reactions.values()].filter((a) => a.reactors.size > 0) : [];
   const showTime = typeof t === "number";
+  const highlight = mentionedMe && !deleted;
   return (
-    <div className={`flex items-start gap-2.5 group relative rounded-lg ${mentionedMe && !deleted ? "bg-primary/[0.06] border-l-2 border-primary/50 -ml-0.5 pl-2 py-0.5" : ""}`} data-testid="concord-message" data-msg-id={msgId}>
+    // The whole turn tints on hover, bleeding into the column's padding
+    // (-mx-2/px-2). A message that mentions me holds a brand tint and a left
+    // rule, drawn as an inset shadow so it moves nothing.
+    <div className={`group relative -mx-2 px-2 py-0.5 rounded-lg transition-colors ${highlight ? "bg-brand/[0.07] shadow-[inset_2px_0_0_hsl(var(--brand)/0.7)] hover:bg-brand/[0.1]" : "hover:bg-foreground/[0.03] dark:hover:bg-white/[0.035]"}`} data-testid="concord-message" data-msg-id={msgId}>
+      {replyTo && <QuotedParent parent={parent} replyPubkey={replyTo.pubkey} mine={!!myPubkey && (parent?.pubkey ?? replyTo.pubkey) === myPubkey} />}
+      <div className="flex items-start gap-2.5">
       {grouped ? (
         // Grouped under the same author: the avatar slot becomes a hover-reveal
         // timestamp gutter (Discord/Slack), so the row stays anchored to the
@@ -1867,7 +1895,7 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
       ) : (
         <AuthorHoverCard pubkey={pubkey}>
           <Link href={authorNpub ? `/profile/${authorNpub}` : "#"} onClick={(e: React.MouseEvent) => e.stopPropagation()} className="shrink-0" aria-label={`View ${name}'s profile`}>
-            <Avatar className="w-7 h-7 shrink-0 border border-border/30 cursor-pointer hover:ring-2 hover:ring-primary/30 transition-shadow">
+            <Avatar className="w-7 h-7 shrink-0 border border-border/30 cursor-pointer hover:ring-2 hover:ring-brand/40 transition-shadow">
               {avatar && <AvatarImage src={avatar} alt={name} />}
               <AvatarFallback className="text-[10px] bg-brand/10 text-brand font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
@@ -1875,7 +1903,6 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
         </AuthorHoverCard>
       )}
       <div className="min-w-0 flex-1">
-        {replyTo && <QuotedParent parent={parent} replyPubkey={replyTo.pubkey} />}
         {/* Group header: sender name + a subtle absolute time. Slack-style
             deterministic sender hue for OTHER members' resolved names (shared
             curated AA palette — lib/sender-color.ts); your own name and raw-npub
@@ -1885,7 +1912,7 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
           <AuthorHoverCard pubkey={pubkey}>
             <Link href={authorNpub ? `/profile/${authorNpub}` : "#"} onClick={(e: React.MouseEvent) => e.stopPropagation()} className="min-w-0 no-underline">
               <span
-                className={`text-xs font-semibold truncate cursor-pointer hover:underline underline-offset-2 ${!mine && hasProfile ? "" : "text-foreground/90"}`}
+                className={`text-[13px] font-semibold truncate cursor-pointer hover:underline underline-offset-2 ${!mine && hasProfile ? "" : "text-foreground/90"}`}
                 style={!mine && hasProfile ? { color: senderColor(pubkey) } : undefined}
               >{name}</span>
             </Link>
@@ -1902,7 +1929,7 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
           <div className="flex items-center gap-1.5 mt-0.5">
             <input autoFocus value={editText} onChange={(e) => setEditText(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") onSaveEdit(editText); if (e.key === "Escape") onCancelEdit(); }}
-              className="flex-1 h-8 px-2.5 rounded-lg bg-muted/20 border border-border/30 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30" data-testid="concord-edit-input" />
+              className="flex-1 h-8 px-2.5 rounded-lg bg-card border border-border text-sm focus:outline-none focus:border-brand/50 focus:ring-[3px] focus:ring-brand/15" data-testid="concord-edit-input" />
             <button onClick={() => onSaveEdit(editText)} className="text-[11px] text-brand hover:underline" data-testid="concord-edit-save">Save</button>
             <button onClick={onCancelEdit} className="text-[11px] text-muted-foreground/60 hover:underline">Cancel</button>
           </div>
@@ -1950,12 +1977,15 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
           </div>
         )}
       </div>
-      {/* One Signal-style actions menu — hover on desktop, always subtle on mobile */}
+      {/* One actions cluster. With a real hover it floats on the row's top
+          edge as a toolbar (.msg-toolbar); on touch it's the ⋯ alone, inline
+          and always there at rest. */}
       {!deleted && !editing && (
-        <div className="shrink-0 self-start opacity-60 reveal-on-hover">
+        <div className="msg-toolbar shrink-0 self-start opacity-60 reveal-on-hover">
           <ConcordMessageActions content={content} mine={mine} onReact={onReact} onReply={onReply} onReplyInThread={onReplyInThread} readOnly={readOnly} pinned={pinned} onTogglePin={onTogglePin} onEdit={onStartEdit} onDelete={onRequestDelete} removable={removable} onReport={onReport} />
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { publishEvent } from "@/lib/nostr";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { useConcordProfile } from "./ConcordIdentity";
+import { senderColor } from "@/lib/sender-color";
 import { PersonBadges } from "@/components/PersonBadges";
 import { useConcordGovernance } from "./useConcordGovernance";
 import { ConcordActivityLog } from "./ConcordActivityLog";
@@ -51,6 +52,17 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
   // Owner + admins see the activity log + banned list; members see neither.
   const canAudit = isOwner || (!!myMember && hasPermission(myMember, PERM.VIEW_AUDIT_LOG));
   const banned = [...state.banlist];
+  // Owner, then admins, then everyone else, each under its own heading — the
+  // way a member list reads in Discord or Armada. Rank order holds inside each.
+  const sections = useMemo(() => {
+    const byRank = [...roster].sort((a, b) => a.rank - b.rank);
+    const isAdmin = (m: Member) => m.rank !== OWNER_POSITION && m.roleIds.includes(ADMIN_ROLE_ID);
+    return [
+      { label: "Owner", people: byRank.filter((m) => m.rank === OWNER_POSITION) },
+      { label: "Admins", people: byRank.filter(isAdmin) },
+      { label: "Members", people: byRank.filter((m) => m.rank !== OWNER_POSITION && !isAdmin(m)) },
+    ].filter((s) => s.people.length > 0);
+  }, [roster]);
 
   const doRemove = useCallback(async () => {
     const signer = getGlobalSigner();
@@ -191,8 +203,13 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
       {roster.length === 0 ? (
         <p className="text-xs text-muted-foreground/50 py-4 text-center">Loading roster…</p>
       ) : (
-        <div className="space-y-1.5">
-          {roster.sort((a, b) => a.rank - b.rank).map((m) => (
+        <div className="space-y-3">
+          {sections.map((s) => (
+          <div key={s.label} className="space-y-0.5" data-testid={`concord-members-${s.label.toLowerCase()}`}>
+            <p className="px-2 pb-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+              {s.label} <span className="font-medium tabular-nums text-muted-foreground/50">— {s.people.length}</span>
+            </p>
+          {s.people.map((m) => (
             <MemberRow key={m.pubkey} member={m} isSelf={m.pubkey === pubkey}
               isAdmin={m.roleIds.includes(ADMIN_ROLE_ID)}
               canModerate={canModerate(m)}
@@ -205,6 +222,8 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
               rolePicker={assignable.length > 0 && m.pubkey !== pubkey && canActOn(myRank, m.rank)
                 ? <MemberRolePicker roles={assignable} held={m.roleIds} busy={roleBusy === m.pubkey} onToggle={(roleId, give) => doSetRole(m.pubkey, roleId, give)} />
                 : undefined} />
+          ))}
+          </div>
           ))}
         </div>
       )}
@@ -334,7 +353,7 @@ function MemberRow({ member, isSelf, isAdmin, canModerate, canToggleAdmin, admin
   const joined = member.joinedAt > 0 ? `joined ${formatDistanceToNow(new Date(member.joinedAt), { addSuffix: true })}` : null;
   const npub = useMemo(() => { try { return nip19.npubEncode(member.pubkey); } catch { return ""; } }, [member.pubkey]);
   return (
-    <div className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-muted/20 transition-colors group">
+    <div className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-accent/60 dark:hover:bg-white/[0.04] transition-colors group">
       {/* Avatar + name click through to the member's profile so people can
           connect; moderation controls stay OUTSIDE the link. */}
       <Link
@@ -348,8 +367,9 @@ function MemberRow({ member, isSelf, isAdmin, canModerate, canToggleAdmin, admin
           <AvatarFallback className="text-[10px] bg-brand/10 text-brand font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium truncate flex items-center gap-1.5 group-hover:text-brand transition-colors">
-            <span className="truncate">{name}</span>
+          <p className="text-sm font-medium truncate flex items-center gap-1.5">
+            {/* The same colour this person's name wears in the chat, so the list and the conversation match. */}
+            <span className="truncate" style={!isSelf && hasProfile ? { color: senderColor(member.pubkey) } : undefined}>{name}</span>
             {/* Positive-only: a check when a domain vouches for the key, a warning
                 only for a real name collision, nothing otherwise. Never
                 "Unverified" — absence of data is not an accusation. Collision
