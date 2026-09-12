@@ -1080,7 +1080,8 @@ function ChatRoomView({
   infoHandle,
   onToggleInfo,
   roomsHidden,
-  onToggleRooms }: {
+  onToggleRooms,
+  roomsList }: {
   relayUrl: string;
   group: GroupMetadata;
   isInitiallyJoined: boolean;
@@ -1118,6 +1119,8 @@ function ChatRoomView({
   onToggleInfo?: () => void;
   roomsHidden?: boolean;
   onToggleRooms?: () => void;
+  /** The community's rooms (the host's list), for the phone's Group sheet. */
+  roomsList?: React.ReactNode;
 }) {
   const { pubkey, signer } = useNostrAuth();
   const { toast } = useToast();
@@ -2088,6 +2091,24 @@ function ChatRoomView({
     </>
   );
 
+  // About this room: the desktop side and the phone's Group sheet show the same.
+  const aboutContent = (
+    <div className="space-y-2 text-sm" data-testid="comms-about">
+      <p className="font-semibold break-words">{group.name || group.id}</p>
+      {group.about
+        ? <p className="leading-relaxed whitespace-pre-wrap break-words text-foreground/80">{group.about}</p>
+        : <p className="text-xs text-muted-foreground/50">No description yet.</p>}
+      <p className="text-[11px] text-muted-foreground/60">
+        {group.isPrivate ? "Private room" : "Public room"}{group.isRestricted ? " · only members can post" : ""}
+      </p>
+    </div>
+  );
+
+  // With the host's layout the Members pop-up is the Group sheet (it only opens
+  // on phones then: on desktop 👥 shows the side instead), with the same
+  // closable sections as the desktop and a group chat's sheet.
+  const groupSheet = !!(layout && onLayoutChange);
+
   // Desktop: Members + About beside the chat, each a section you can close.
   const infoSide = layout && onLayoutChange && !isMobile && (infoWidth ?? 0) > 0 ? (
     <>
@@ -2105,15 +2126,7 @@ function ChatRoomView({
           open={layout.sections.about} onToggle={() => onLayoutChange((l) => toggleSection(l, "about"))}
           fill testId="comms-section-about"
         >
-          <div className="space-y-2 px-3.5 pb-3 text-sm" data-testid="comms-about">
-            <p className="font-semibold break-words">{group.name || group.id}</p>
-            {group.about
-              ? <p className="whitespace-pre-wrap break-words text-foreground/80">{group.about}</p>
-              : <p className="text-xs text-muted-foreground/50">No description yet.</p>}
-            <p className="text-[11px] text-muted-foreground/50">
-              {group.isPrivate ? "Private room" : "Public room"}{group.isRestricted ? " · only members can post" : ""}
-            </p>
-          </div>
+          <div className="px-3.5 pb-3">{aboutContent}</div>
         </ChatPaneSection>
       </aside>
     </>
@@ -2639,7 +2652,9 @@ function ChatRoomView({
         open={showMembersPanel}
         onOpenChange={setShowMembersPanel}
         contentClassName="border-primary/20"
-        title={
+        title={groupSheet ? (
+          <span className="truncate">{group.name || group.id}</span>
+        ) : (
           <>
             <Users className="w-4 h-4 text-brand" />
             Members
@@ -2649,7 +2664,7 @@ function ChatRoomView({
               </span>
             )}
           </>
-        }
+        )}
         footer={
           <div className="flex justify-end">
             <Button
@@ -2662,9 +2677,37 @@ function ChatRoomView({
           </div>
         }
       >
-        <div className="space-y-0.5 -mx-2 px-2">
-          {membersList}
-        </div>
+        {groupSheet && layout && onLayoutChange ? (
+          <div className="-mx-2 space-y-1" data-testid="comms-group-sheet">
+            {roomsList && (
+              <ChatPaneSection
+                title="Rooms"
+                open={layout.sections.rooms} onToggle={() => onLayoutChange((l) => toggleSection(l, "rooms"))}
+                testId="comms-sheet-rooms"
+              >
+                <div className="pb-2">{roomsList}</div>
+              </ChatPaneSection>
+            )}
+            <ChatPaneSection
+              title="Members" count={members.length}
+              open={layout.sections.members} onToggle={() => onLayoutChange((l) => toggleSection(l, "members"))}
+              testId="comms-sheet-members"
+            >
+              <div className="space-y-0.5 px-1 pb-2">{membersList}</div>
+            </ChatPaneSection>
+            <ChatPaneSection
+              title="About"
+              open={layout.sections.about} onToggle={() => onLayoutChange((l) => toggleSection(l, "about"))}
+              testId="comms-sheet-about"
+            >
+              <div className="px-2 pb-3">{aboutContent}</div>
+            </ChatPaneSection>
+          </div>
+        ) : (
+          <div className="space-y-0.5 -mx-2 px-2">
+            {membersList}
+          </div>
+        )}
       </ResponsiveFormPanel>
 
       <Nip29AdminDrawer
@@ -3798,6 +3841,35 @@ export function CommsTab({
     const available = roomRowWidth || Number.POSITIVE_INFINITY;
     const fit = layoutIsMobile ? { rooms: 0, info: 0 } : fitPanes(layout, available);
     const beside = sideRooms(groups, { pinned: pinnedIds, joined: joinedGroupIds, activity: activityMap }, selectedGroup.id);
+    // Your rooms: the desktop's left side and the phone's Group sheet show the
+    // same list (44px rows on a phone, compact on a pointer).
+    const roomsList = (
+      <div className="space-y-0.5 p-2">
+        {beside.map((g) => (
+          <button
+            key={g.id}
+            onClick={() => setSelectedGroup(g)}
+            className={`flex items-center gap-1.5 w-full px-2.5 min-h-11 md:min-h-0 md:py-1.5 rounded-lg text-sm text-left transition-colors ${
+              g.id === selectedGroup.id ? "bg-accent text-accent-foreground dark:bg-brand/15 dark:text-brand font-medium" : "text-muted-foreground/70 hover:text-foreground hover:bg-muted/30"
+            }`}
+            data-testid={`comms-side-room-${g.id.slice(0, 12)}`}
+          >
+            <Hash className="w-3.5 h-3.5 shrink-0 opacity-60" />
+            <span className="truncate flex-1">{g.name || g.id}</span>
+            {g.id !== selectedGroup.id && (activityMap[g.id] ?? 0) > readChannelLastRead(relayUrl, g.id) && (
+              <span className="w-2 h-2 rounded-full bg-primary shrink-0" aria-label="Unread" />
+            )}
+          </button>
+        ))}
+        <button
+          onClick={() => setSelectedGroup(null)}
+          className="flex items-center gap-1.5 w-full px-2.5 min-h-11 md:min-h-0 md:py-1.5 rounded-lg text-xs text-muted-foreground/60 hover:text-foreground hover:bg-muted/30 transition-colors"
+          data-testid="comms-side-all-rooms"
+        >
+          All rooms
+        </button>
+      </div>
+    );
     return (
       <>
         <ChannelRoomFrame>
@@ -3814,31 +3886,7 @@ export function CommsTab({
                       open={layout.sections.rooms} onToggle={() => updateLayout((l) => toggleSection(l, "rooms"))}
                       fill testId="comms-section-rooms"
                     >
-                      <div className="space-y-0.5 p-2">
-                        {beside.map((g) => (
-                          <button
-                            key={g.id}
-                            onClick={() => setSelectedGroup(g)}
-                            className={`flex items-center gap-1.5 w-full px-2.5 py-1.5 rounded-lg text-sm text-left transition-colors ${
-                              g.id === selectedGroup.id ? "bg-accent text-accent-foreground dark:bg-brand/15 dark:text-brand font-medium" : "text-muted-foreground/70 hover:text-foreground hover:bg-muted/30"
-                            }`}
-                            data-testid={`comms-side-room-${g.id.slice(0, 12)}`}
-                          >
-                            <Hash className="w-3.5 h-3.5 shrink-0 opacity-60" />
-                            <span className="truncate flex-1">{g.name || g.id}</span>
-                            {g.id !== selectedGroup.id && (activityMap[g.id] ?? 0) > readChannelLastRead(relayUrl, g.id) && (
-                              <span className="w-2 h-2 rounded-full bg-primary shrink-0" aria-label="Unread" />
-                            )}
-                          </button>
-                        ))}
-                        <button
-                          onClick={() => setSelectedGroup(null)}
-                          className="flex items-center gap-1.5 w-full px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground/60 hover:text-foreground hover:bg-muted/30 transition-colors"
-                          data-testid="comms-side-all-rooms"
-                        >
-                          All rooms
-                        </button>
-                      </div>
+                      {roomsList}
                     </ChatPaneSection>
                   </div>
                 </aside>
@@ -3863,6 +3911,7 @@ export function CommsTab({
               infoWidth={fit.info}
               onToggleInfo={() => updateLayout((l) => (fit.info === 0 ? showPane(l, "info", available) : togglePane(l, "info")))}
               roomsHidden={fit.rooms === 0}
+              roomsList={roomsList}
               onToggleRooms={() => updateLayout((l) => (fit.rooms === 0 ? showPane(l, "rooms", available) : togglePane(l, "rooms")))}
               infoHandle={
                 <PaneResizeHandle
