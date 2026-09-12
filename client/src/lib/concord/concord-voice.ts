@@ -89,6 +89,16 @@ export function voiceSenderKey(mediaKey: Uint8Array, identity: string): Uint8Arr
   return hkdf32(mediaKey, info(LABEL_VOICE_SENDER, sha256(utf8ToBytes(identity))));
 }
 
+/**
+ * The frame key to install for a caller (CORD-07 §4, Armada's rule): their
+ * real key when we can verify the seat (our own, or one exactly one member
+ * claims), otherwise 32 random bytes, so an unclaimed or contested caller's
+ * audio and video never decode, rather than playing under a borrowed name.
+ */
+export function callerFrameKey(mediaKey: Uint8Array, identity: string, verified: boolean): Uint8Array {
+  return verified ? voiceSenderKey(mediaKey, identity) : crypto.getRandomValues(new Uint8Array(32));
+}
+
 /** CORD-02 Appendix A.1: utf8(label) || 0x00 || id[32] || epoch_be[8] (epoch omitted where a shape has none). */
 function info(label: string, id32: Uint8Array, epoch?: bigint): Uint8Array {
   if (id32.length !== 32) throw new Error("call keys: id must be 32 bytes");

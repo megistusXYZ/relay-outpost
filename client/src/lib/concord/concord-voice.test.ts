@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { bytesToHex } from "@noble/hashes/utils.js";
-import { voiceKeys, voiceSenderKey, roomVoiceKeys, buildAvTokenRequest } from "./concord-voice";
+import { voiceKeys, voiceSenderKey, roomVoiceKeys, buildAvTokenRequest, callerFrameKey } from "./concord-voice";
 import { issueAvToken } from "../../../../server/concord-av";
 
 const SECRET = new Uint8Array(32).fill(0x11);
@@ -57,5 +57,17 @@ describe("call keys", () => {
     expect(res.status).toBe(200);
     // Two same-second requests from one room stay distinct (the nonce), so neither is taken for a replay.
     expect(buildAvTokenRequest(keys, url, now)).not.toBe(buildAvTokenRequest(keys, url, now));
+  });
+
+  it("keys a caller we can verify with their real frame key, and one we can't with a key that opens nothing", () => {
+    const { mediaKey } = voiceKeys(SECRET, CHANNEL_ID, 0n);
+    const seat = "0123456789abcdef0123456789abcdef";
+    const REAL = "bb0406988b998a791df740f7990ae6f7cb1413067c180f62621028650af0349a";
+    expect(bytesToHex(callerFrameKey(mediaKey, seat, true))).toBe(REAL);
+    // Unverified (unclaimed or contested): their audio and video must never decode.
+    const blocked = callerFrameKey(mediaKey, seat, false);
+    expect(blocked).toHaveLength(32);
+    expect(bytesToHex(blocked)).not.toBe(REAL);
+    expect(bytesToHex(callerFrameKey(mediaKey, seat, false))).not.toBe(bytesToHex(blocked));
   });
 });
