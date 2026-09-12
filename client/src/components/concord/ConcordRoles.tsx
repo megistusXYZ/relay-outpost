@@ -19,6 +19,7 @@ import { grantableRoles, newRolePosition, withChoices, MODERATOR_PRESET, ROLE_PE
 import { OWNER_POSITION, STAFF_PERMS, VSK, type Role } from "@/lib/concord/concord-events";
 import type { StoredCommunity } from "@/lib/concord/concord-keys";
 import { useConcordGovernance } from "./useConcordGovernance";
+import { SpaceAdminAction } from "@/components/space/SpaceAdminSection";
 
 /** A small, legible palette; 0 means the theme's own color (CORD-04 §2). */
 const ROLE_COLORS = [0, 0x3b82f6, 0x10b981, 0xf59e0b, 0xef4444, 0x8b5cf6, 0xec4899];
@@ -93,15 +94,15 @@ export function ConcordRoles({ community }: { community: StoredCommunity }) {
           ))}
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-3 pt-1">
+      <div className="flex flex-wrap items-center gap-2 pt-1">
         {!hasModerator && (
-          <button onClick={() => setEditing({ preset: MODERATOR_PRESET })} className="flex items-center gap-1 text-[11px] text-primary hover:underline" data-testid="concord-role-add-moderator">
-            <Shield className="w-3 h-3" /> Add a Moderator role
-          </button>
+          <SpaceAdminAction icon={Shield} onClick={() => setEditing({ preset: MODERATOR_PRESET })} testId="concord-role-add-moderator">
+            Add a Moderator role
+          </SpaceAdminAction>
         )}
-        <button onClick={() => setEditing({})} className="flex items-center gap-1 text-[11px] text-primary hover:underline" data-testid="concord-role-new">
-          <Plus className="w-3 h-3" /> New role
-        </button>
+        <SpaceAdminAction icon={Plus} onClick={() => setEditing({})} testId="concord-role-new">
+          New role
+        </SpaceAdminAction>
       </div>
       {editing && (
         <ConcordRoleDialog

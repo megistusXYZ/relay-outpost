@@ -16,6 +16,7 @@ import { askLink, listJoinRequests, resolveJoinRequest, JOIN_REQUESTS_CHANGED_EV
 import type { StoredCommunity } from "@/lib/concord/concord-keys";
 import { useConcordProfile } from "./ConcordIdentity";
 import { formatCompactTime } from "@/lib/time";
+import { SpaceAdminAction } from "@/components/space/SpaceAdminSection";
 
 /** This viewer's waiting requests for a group, kept current. */
 export function useJoinRequests(communityId: string): JoinRequest[] {
@@ -49,10 +50,9 @@ export function ConcordJoinRequests({ community }: { community: StoredCommunity 
         <p className="text-[11px] text-muted-foreground/70">
           Anyone with an ask link can ask to join. Requests come to you and the owner, and you decide who gets in.
         </p>
-        <button onClick={copy} disabled={!link} className="flex items-center gap-1.5 text-[11px] text-primary hover:underline disabled:opacity-50" data-testid="copy-ask-link">
-          {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+        <SpaceAdminAction icon={copied ? Check : Copy} onClick={copy} disabled={!link} testId="copy-ask-link">
           {copied ? "Copied" : "Copy ask link"}
-        </button>
+        </SpaceAdminAction>
       </div>
       {requests.length === 0
         ? <p className="text-[11px] text-muted-foreground/60">Nobody is waiting.</p>

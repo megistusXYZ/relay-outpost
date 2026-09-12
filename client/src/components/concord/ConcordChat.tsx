@@ -1008,6 +1008,12 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
               />
             </button>
           ))}
+          {/* Findable, not just a 24px "+" in the header. */}
+          {canManageChannels && (
+            <button onClick={() => setCreateOpen(true)} className="flex items-center gap-1.5 w-full px-2.5 py-1.5 rounded-lg text-sm text-brand/80 hover:text-brand hover:bg-brand/10 transition-colors" data-testid="concord-add-channel-row">
+              <Plus className="w-3.5 h-3.5 shrink-0" /> New room
+            </button>
+          )}
         </div>
         </RoomsSide>
       </aside>

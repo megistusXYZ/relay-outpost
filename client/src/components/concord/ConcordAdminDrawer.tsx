@@ -15,11 +15,11 @@
  * answer to "who may open this", instead of one answer per host.
  */
 import { useCallback, useMemo, useState } from "react";
-import { DoorOpen, Flag, Hash, History as HistoryIcon, Lock, Settings2, Shield, Trash2, Users } from "lucide-react";
+import { DoorOpen, Flag, Hash, History as HistoryIcon, Lock, Pencil, Plus, Settings2, Shield, Trash2, Users } from "lucide-react";
 import { ConcordReports } from "./ConcordReports";
 import { ConcordJoinRequests } from "./ConcordJoinRequests";
 import { SpaceAdminDrawer } from "@/components/space/SpaceAdminDrawer";
-import { SpaceAdminSection } from "@/components/space/SpaceAdminSection";
+import { SpaceAdminSection, SpaceAdminAction } from "@/components/space/SpaceAdminSection";
 import type { SpaceAdminSectionDef } from "@/components/space/space-admin-sections";
 import { concordCapabilities } from "@/lib/space-admin";
 import type { StoredCommunity, StoredChannel } from "@/lib/concord/concord-keys";
@@ -110,7 +110,7 @@ export function ConcordAdminDrawer({
         // suppressed because `history` renders the same log as its own section.
         return (
           <SpaceAdminSection can={caps.manageMembers} title={section.label} icon={Users}>
-            <ConcordMembers community={community} onCommunityChange={onCommunityChange} showActivity={false} />
+            <ConcordMembers community={community} onCommunityChange={onCommunityChange} showActivity={false} inSection />
           </SpaceAdminSection>
         );
       case "roles":
@@ -134,9 +134,9 @@ export function ConcordAdminDrawer({
             title={section.label}
             icon={Hash}
             action={
-              <button onClick={() => setCreateOpen(true)} className="text-[11px] text-primary hover:underline" data-testid="space-admin-new-channel">
+              <SpaceAdminAction tone="primary" icon={Plus} onClick={() => setCreateOpen(true)} testId="space-admin-new-channel">
                 New room
-              </button>
+              </SpaceAdminAction>
             }
           >
             <div className="space-y-0.5">
@@ -147,7 +147,7 @@ export function ConcordAdminDrawer({
                 <button
                   key={c.id}
                   onClick={() => setSettingsChannel(c)}
-                  className="w-full flex items-center gap-2 text-xs text-muted-foreground/80 px-0.5 py-2 md:py-1.5 rounded-md hover:bg-muted/20 text-left transition-colors"
+                  className="w-full flex items-center gap-2 text-sm text-muted-foreground/80 px-1.5 min-h-11 md:min-h-9 rounded-md hover:bg-muted/30 text-left transition-colors"
                   data-testid={`space-admin-channel-${c.id.slice(0, 8)}`}
                 >
                   <Hash className="w-3 h-3 shrink-0 text-muted-foreground/50" />
@@ -185,9 +185,9 @@ export function ConcordAdminDrawer({
                   {bannedCount} {bannedCount === 1 ? "person is" : "people are"} banned. You can lift a ban under People.
                 </p>
               )}
-              <button onClick={() => setEditOpen(true)} className="text-[11px] text-primary hover:underline" data-testid="space-admin-edit-access">
+              <SpaceAdminAction icon={DoorOpen} onClick={() => setEditOpen(true)} testId="space-admin-edit-access">
                 Change who can invite
-              </button>
+              </SpaceAdminAction>
             </div>
           </SpaceAdminSection>
         );
@@ -197,9 +197,9 @@ export function ConcordAdminDrawer({
             <div className="space-y-2">
               <p className="text-xs text-foreground/80 truncate">{community.name}</p>
               {community.about && <p className="text-[11px] text-muted-foreground/60 line-clamp-2">{community.about}</p>}
-              <button onClick={() => setEditOpen(true)} className="text-[11px] text-primary hover:underline" data-testid="space-admin-edit-details">
+              <SpaceAdminAction icon={Pencil} onClick={() => setEditOpen(true)} testId="space-admin-edit-details">
                 Edit name, image &amp; description
-              </button>
+              </SpaceAdminAction>
             </div>
           </SpaceAdminSection>
         );
@@ -213,9 +213,9 @@ export function ConcordAdminDrawer({
               <p className="text-[11px] text-muted-foreground/60">
                 Ends this group chat for everyone. Nobody can undo it, including you.
               </p>
-              <button onClick={onDissolve} className="text-[11px] text-destructive hover:underline" data-testid="space-admin-dissolve">
+              <SpaceAdminAction tone="destructive" icon={Trash2} onClick={onDissolve} testId="space-admin-dissolve">
                 Delete this group chat
-              </button>
+              </SpaceAdminAction>
             </div>
           </SpaceAdminSection>
         );

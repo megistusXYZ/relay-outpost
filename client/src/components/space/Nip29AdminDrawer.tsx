@@ -17,9 +17,9 @@
  * case to design for on this backend, unlike Concord.
  */
 import { useCallback } from "react";
-import { DoorOpen, History as HistoryIcon, Settings2, Trash2, UserPlus, Users } from "lucide-react";
+import { DoorOpen, History as HistoryIcon, Pencil, Settings2, Trash2, UserPlus, Users } from "lucide-react";
 import { SpaceAdminDrawer } from "./SpaceAdminDrawer";
-import { SpaceAdminSection } from "./SpaceAdminSection";
+import { SpaceAdminSection, SpaceAdminAction } from "./SpaceAdminSection";
 import type { SpaceAdminSectionDef } from "./space-admin-sections";
 import type { SpaceCapabilities } from "@/lib/space-admin";
 import { Nip29ModerationLog } from "./Nip29ModerationLog";
@@ -104,9 +104,9 @@ export function Nip29AdminDrawer({
             ) : pendingCount === 0 ? (
               <p className="text-[11px] text-muted-foreground/60">Nobody is waiting.</p>
             ) : (
-              <button onClick={onOpenRequests} className="text-[11px] text-primary hover:underline" data-testid="nip29-admin-requests">
+              <SpaceAdminAction tone="primary" icon={Users} onClick={onOpenRequests} testId="nip29-admin-requests">
                 Review {pendingCount} waiting
-              </button>
+              </SpaceAdminAction>
             )}
           </SpaceAdminSection>
         );
@@ -117,13 +117,13 @@ export function Nip29AdminDrawer({
               <p className="text-[11px] text-muted-foreground/60">
                 {memberCount} {memberCount === 1 ? "member" : "members"}
               </p>
-              <div className="flex flex-wrap items-center gap-3">
-                <button onClick={onOpenMembers} className="text-[11px] text-primary hover:underline" data-testid="nip29-admin-members">
+              <div className="flex flex-wrap items-center gap-2">
+                <SpaceAdminAction icon={Users} onClick={onOpenMembers} testId="nip29-admin-members">
                   Manage members
-                </button>
-                <button onClick={onAddMember} className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline" data-testid="nip29-admin-add-member">
-                  <UserPlus className="w-3 h-3" /> Add someone
-                </button>
+                </SpaceAdminAction>
+                <SpaceAdminAction icon={UserPlus} onClick={onAddMember} testId="nip29-admin-add-member">
+                  Add someone
+                </SpaceAdminAction>
               </div>
             </div>
           </SpaceAdminSection>
@@ -177,9 +177,9 @@ export function Nip29AdminDrawer({
                   Until we can read the current settings, they can't be changed from here.
                 </p>
               ) : (
-                <button onClick={onOpenSettings} className="text-[11px] text-primary hover:underline" data-testid="nip29-admin-edit-access">
+                <SpaceAdminAction icon={DoorOpen} onClick={onOpenSettings} testId="nip29-admin-edit-access">
                   Change who can get in
-                </button>
+                </SpaceAdminAction>
               )}
             </div>
           </SpaceAdminSection>
@@ -190,9 +190,9 @@ export function Nip29AdminDrawer({
             <div className="space-y-2">
               <p className="text-xs text-foreground/80 truncate">{groupName}</p>
               {about && <p className="text-[11px] text-muted-foreground/60 line-clamp-2">{about}</p>}
-              <button onClick={onOpenSettings} className="text-[11px] text-primary hover:underline" data-testid="nip29-admin-edit-details">
+              <SpaceAdminAction icon={Pencil} onClick={onOpenSettings} testId="nip29-admin-edit-details">
                 Edit name, image &amp; description
-              </button>
+              </SpaceAdminAction>
             </div>
           </SpaceAdminSection>
         );
@@ -205,9 +205,9 @@ export function Nip29AdminDrawer({
               <p className="text-[11px] text-muted-foreground/60">
                 Asks the relay to delete this room for everyone. If the relay declines, it stays.
               </p>
-              <button onClick={onDelete} className="text-[11px] text-destructive hover:underline" data-testid="nip29-admin-delete">
+              <SpaceAdminAction tone="destructive" icon={Trash2} onClick={onDelete} testId="nip29-admin-delete">
                 Delete this room
-              </button>
+              </SpaceAdminAction>
             </div>
           </SpaceAdminSection>
         );
