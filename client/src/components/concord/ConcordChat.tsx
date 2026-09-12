@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useBackClosable } from "@/hooks/use-back-closable";
 import { createPortal } from "react-dom";
-import { Hash, Lock, Plus, Send, ImagePlus, Loader2, X, CornerUpLeft, ChevronDown, Users, BellOff, MessageSquare, ArrowLeft, Link2, Shield, Headphones, PanelLeft } from "lucide-react";
+import { Hash, Lock, Plus, Send, ImagePlus, Loader2, X, CornerUpLeft, ChevronDown, Users, BellOff, MessageSquare, ArrowLeft, Link2, Shield, Headphones, PanelLeft, Pin } from "lucide-react";
 import { hangoutOf } from "@/lib/concord/concord-hangout";
 import { AudioSpaceLightbox } from "@/components/AudioSpaceCard";
 import { getEventHash, nip19 } from "nostr-tools";
@@ -49,7 +49,8 @@ import { Timer as TimerIcon } from "lucide-react";
 import { pinsLocator, readPinList, nextPinList, visiblePins, makePinEntry, PIN_ENTRY_CAP, PIN_CONTENT_CAP, type PinChange, type PinSeal, type VerifiedPin } from "@/lib/concord/concord-pins";
 import { planeConvKey, type Seal } from "@/lib/concord/concord-crypto";
 import { setRoomPins } from "@/lib/concord/concord-governance";
-import { ConcordPinnedBar, ConcordPinnedSheet, ConcordPinsUnavailable } from "./ConcordPinned";
+import { ConcordPinsButton } from "./ConcordPinned";
+import { pinnedCard } from "@/lib/concord/concord-pin-preview";
 import { useGoBack } from "@/hooks/use-go-back";
 import { computeUnreadChannels, newestActivity, readChannelLastRead } from "@/lib/concord/concord-channel-unread";
 import { getChannelWrapTimes, CHANGED_EVENT as UNREAD_CHANGED_EVENT, READ_EVENT } from "@/lib/concord/concord-unread";
@@ -859,7 +860,6 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   }, [pubkey, activeChannel, community, channelEpoch, reactionsByMessage, timer]);
 
   // ── Pins (CORD-04 §7) ───────────────────────────────────────────────────
-  const [pinsOpen, setPinsOpen] = useState(false);
   const canPin = isOwner || (!!myMember && hasPermission(myMember, PERM.PIN_MESSAGES));
   const pinEid = activeChannel ? pinsLocator(community.community_id, activeChannel.id) : "";
   const pinContent = pinEid ? govState.pinLists.get(pinEid) : undefined;
@@ -906,8 +906,26 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     if (!seal || !key) { toast({ title: "This message can't be pinned from this device", description: "It arrived before this app kept what a pin needs. Newer messages can be pinned." }); return; }
     void changePins({ pin: makePinEntry(seal, key) }, "Pinned");
   }, [pinnedIds, changePins, convKeyAt, toast]);
-  // The room's current words when this device holds them (an edit), else the proof's.
-  const textOfPin = useCallback((p: VerifiedPin) => messages.find((m) => m.id === p.id)?.content || p.rumor.content, [messages]);
+  // The message a pin points at: the room's copy when this device holds it
+  // (an edit, its media), else the pin's own proof.
+  const cardOfPin = useCallback((p: VerifiedPin) => {
+    const held = messages.find((m) => m.id === p.id);
+    return pinnedCard(p.rumor, held ? { content: held.content, media: held.media, edited: held.edited } : undefined);
+  }, [messages]);
+  // Jump lands the way a search result does: scrolled to, and flashed.
+  const jumpToPin = useCallback((id: string) => { if (activeChannel) setJumpTarget({ roomId: activeChannel.id, msgId: id }); }, [activeChannel]);
+  // One pin button in each header (desktop, phone); both open the same list.
+  const pinsProps = {
+    pins,
+    unavailable: pinView.status === "unavailable" && pinContent !== undefined,
+    cardOf: cardOfPin,
+    canPin,
+    onUnpin: (id: string) => void changePins({ unpin: id }, "Unpinned"),
+    onJump: jumpToPin,
+    spaceLine: activeChannel?.isPrivate
+      ? `space for about ${Math.max(0, Math.floor((PIN_CONTENT_CAP - new TextEncoder().encode(pinContent ?? "").length) / 1900))} more`
+      : `${pins.length} of ${PIN_ENTRY_CAP}`,
+  };
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ChatMsg | null>(null);
@@ -1058,6 +1076,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           ) : null}
         </button>
         )}
+        <ConcordPinsButton {...pinsProps} canUnpin={canPin && !groupDeleted} compact />
         {(onOverview || groupSheetExtras) && (
           <button onClick={groupSheetExtras ? () => setChannelSheetOpen(true) : onOverview} className="flex items-center justify-center w-10 h-10 rounded-full text-muted-foreground/60 hover:text-foreground active:bg-muted/40 transition-colors" title="Members & about" data-testid="concord-chat-overview">
             <Users className="w-[18px] h-[18px]" />
@@ -1199,6 +1218,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           </>
         )}
         <div className="ml-auto flex items-center gap-1">
+          <ConcordPinsButton {...pinsProps} canUnpin={canPin && !groupDeleted} />
           {onToggleMembers && (
             <button
               onClick={onToggleMembers}
@@ -1341,17 +1361,6 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       {voiceOpen && activeHangout && (
         <AudioSpaceLightbox space={{ ...activeHangout, room: activeChannel?.name || activeHangout.room }} onClose={() => setVoiceOpen(false)} />
       )}
-      {/* The room's pins (CORD-04 §7): the newest above the conversation, all of them in a list. */}
-      {pins.length > 0 ? (
-        <ConcordPinnedBar pins={pins} textOf={textOfPin} preview={(t) => <ConcordContentPreview content={t} />} onOpen={() => setPinsOpen(true)} />
-      ) : pinView.status === "unavailable" && pinContent !== undefined ? <ConcordPinsUnavailable /> : null}
-      <ConcordPinnedSheet open={pinsOpen} onOpenChange={setPinsOpen} pins={pins} textOf={textOfPin}
-        editedOf={(p) => !!messages.find((m) => m.id === p.id)?.edited}
-        preview={(t) => <ConcordContentPreview content={t} />}
-        canUnpin={canPin && !groupDeleted} onUnpin={(id) => void changePins({ unpin: id }, "Unpinned")}
-        spaceLine={activeChannel?.isPrivate
-          ? `${pins.length} pinned · space for about ${Math.max(0, Math.floor((PIN_CONTENT_CAP - new TextEncoder().encode(pinContent ?? "").length) / 1900))} more`
-          : `${pins.length} of ${PIN_ENTRY_CAP} pinned`} />
       <div ref={scrollRef} onScroll={onMessagesScroll} className="flex-1 overflow-y-auto overflow-x-hidden px-3 md:px-4 py-3">
         {/* Reading-width cap: messages stay scannable next to the sidebar.
             `justify-end` bottom-anchors a short conversation against the
@@ -1883,8 +1892,10 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
           </AuthorHoverCard>
           {mine && <span className="text-[9px] text-brand/60 font-normal shrink-0">you</span>}
           {showTime && <time className="text-[10px] font-normal text-muted-foreground/40 tabular-nums shrink-0" data-testid="concord-message-time">{chatClockTime(t!)}</time>}
+          {pinned && !deleted && <PinnedMark />}
         </div>
         )}
+        {grouped && pinned && !deleted && <PinnedMark />}
         {deleted ? (
           <p className="text-sm italic text-muted-foreground/40">{removedByModerator ? "Removed by a moderator" : "This message was deleted"}</p>
         ) : editing ? (
@@ -1946,6 +1957,15 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
         </div>
       )}
     </div>
+  );
+}
+
+/** On a pinned message in the room, so what the header's pin list holds is visible where it was said. */
+function PinnedMark() {
+  return (
+    <span className="inline-flex items-center gap-0.5 shrink-0 text-[10px] font-medium text-brand/80" data-testid="concord-pinned-mark">
+      <Pin className="w-3 h-3" /> Pinned
+    </span>
   );
 }
 
