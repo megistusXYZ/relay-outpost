@@ -12,10 +12,9 @@ import type { SpaceCapabilities, SpaceBackend } from "@/lib/space-admin";
  *
  *  - `manageChannels` is false on NIP-29 because a NIP-29 group IS the room.
  *    Capability and existence happen to agree, so a caps check alone would work.
- *  - `removeMessages` is TRUE for a Concord admin holding PERM.MANAGE_MESSAGES
- *    — the permission is real — but ConcordChat's receive-side fold drops any
- *    delete whose author is not the message's own author. The bit is honest and
- *    the button would still be a silent no-op.
+ *  - `reports` exist only on Concord (concord-reports): a NIP-29 room's
+ *    reports are public NIP-56 events, not a queue waiting on its moderators.
+ *    `manageMembers` is true on both backends; the concept is not.
  *
  * That second case is the whole argument. A capability can be legitimately true
  * on a backend that has nowhere to put it, so the table carries what the
@@ -24,8 +23,9 @@ import type { SpaceCapabilities, SpaceBackend } from "@/lib/space-admin";
  *
  * Two capabilities deliberately have NO section:
  *  - `removeMessages` — removal belongs on the message row, in the moment,
- *    where NIP-29 already puts it. A drawer is the wrong place to hunt for a
- *    message, and on Concord it cannot work at all (above).
+ *    where both backends put it (Concord's "Remove for everyone", for a
+ *    moderator who outranks the author). A drawer is the wrong place to hunt
+ *    for a message.
  *  - `invite` — inviting is member-level, not authority. It stays in the ⋯ menu
  *    where every member reaches it. Putting it behind an admin door would REMOVE
  *    a capability from most of the people who have it.
