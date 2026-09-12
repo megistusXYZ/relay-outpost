@@ -85,7 +85,10 @@ export function ConcordEditOutpostDialog({ open, onOpenChange, community, onComm
   // touched. What gets published is composed at save time, so a fold landing
   // mid-edit updates what they can see without editing what they are typing.
   useEffect(() => {
-    if (!open) { setDirty({}); return; }
+    // Keep the same object when there's nothing to clear: a fresh {} is a new
+    // `dirty` every run, and `dirty` is a dep, so this effect looped forever
+    // while the dialog was closed (effect-reset-loop.test.ts).
+    if (!open) { setDirty((d) => (Object.keys(d).length ? {} : d)); return; }
     if (!dirty.name) setName(folded?.name ?? community.name);
     if (!dirty.icon) {
       setIcon(folded?.picture ?? community.icon ?? "");
