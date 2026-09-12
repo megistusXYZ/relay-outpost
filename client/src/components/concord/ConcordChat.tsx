@@ -916,6 +916,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   // Create a poll (Armada's format, CORD.md "Polls"): a kind-1068 room
   // message, shown at once; taken back, and said so, if no relay takes it.
   const [pollOpen, setPollOpen] = useState(false);
+  const [plusOpen, setPlusOpen] = useState(false);
   const sendPoll = useCallback(async (draft: { question: string; options: PollOption[]; pollType: PollType; endsAt: number | undefined }): Promise<boolean> => {
     const signer = getGlobalSigner();
     if (!pubkey || !signer || !activeChannel) return false;
@@ -1671,17 +1672,28 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             paying ~34px to clear a home indicator hundreds of pixels below it. */}
         <div className={`flex items-center gap-2 px-3 pt-2.5 ${embedded ? "pb-2.5" : "pb-[max(env(safe-area-inset-bottom,0px),0.625rem)]"} md:pb-2.5`}>
           <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*" className="hidden" onChange={(e) => pickFile(e.target.files?.[0])} data-testid="concord-file-input" />
-          {/* One field holding attach, emoji and the text; it lifts with a brand
-              ring on focus. Border-box height, so the border sits inside h-11. */}
+          {/* One field: + (attach, poll) on the left, the text, emoji on the
+              right (used most, so one tap). It lifts with a brand ring on
+              focus. Border-box height, so the border sits inside h-11. */}
           <div className={`flex flex-1 min-w-0 items-center h-11 md:h-10 pr-1.5 rounded-full ${COMPOSER_FIELD}`} data-testid="concord-composer-field">
-          <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="flex items-center justify-center w-11 h-full md:w-9 shrink-0 rounded-l-full text-muted-foreground hover:text-brand disabled:opacity-40 transition-colors" title="Attach" data-testid="concord-attach">
-            <ImagePlus className="w-[18px] h-[18px]" />
-          </button>
-          <ComposeEmojiPicker hideStickers onInsert={(t) => setDraft((d) => d + t)} onGifSelect={(url) => setStaged({ url, mime: "image/gif" })} />
-          {/* A poll, in Armada's format, so both apps show and count it. */}
-          <button onClick={() => setPollOpen(true)} className="flex items-center justify-center w-10 h-full md:w-8 shrink-0 text-muted-foreground hover:text-brand transition-colors" title="Create a poll" aria-label="Create a poll" data-testid="concord-poll-create">
-            <BarChart3 className="w-[18px] h-[18px]" />
-          </button>
+          {/* modal={false}: a modal menu closing while the poll panel opens
+              can leave the page's pointer lock behind. */}
+          <DropdownMenu open={plusOpen} onOpenChange={setPlusOpen} modal={false}>
+            <DropdownMenuTrigger asChild>
+              <button disabled={uploading} className="group flex items-center justify-center w-11 h-full md:w-9 shrink-0 rounded-l-full text-muted-foreground hover:text-brand data-[state=open]:text-brand disabled:opacity-40 transition-colors" aria-label={plusOpen ? "Close" : "Add a file or poll"} title="Add" data-testid="concord-composer-plus">
+                <Plus className="w-5 h-5 transition-transform duration-150 group-data-[state=open]:rotate-45 motion-reduce:transition-none" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="start" sideOffset={10} className="min-w-[12rem] rounded-xl p-1">
+              <DropdownMenuItem onSelect={() => fileInputRef.current?.click()} className="gap-2.5 min-h-11 md:min-h-9 rounded-lg px-2.5 cursor-pointer" data-testid="concord-attach">
+                <ImagePlus className="w-4 h-4 text-muted-foreground" /> Photo, video or audio
+              </DropdownMenuItem>
+              {/* A poll, in Armada's format, so both apps show and count it. */}
+              <DropdownMenuItem onSelect={() => setTimeout(() => setPollOpen(true), 0)} className="gap-2.5 min-h-11 md:min-h-9 rounded-lg px-2.5 cursor-pointer" data-testid="concord-poll-create">
+                <BarChart3 className="w-4 h-4 text-muted-foreground" /> Poll
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <ConcordPollComposer open={pollOpen} onOpenChange={setPollOpen} onCreate={sendPoll} />
           <input
             ref={composerRef}
@@ -1697,6 +1709,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             className="flex-1 min-w-0 h-full px-2 bg-transparent text-base md:text-sm placeholder:text-muted-foreground/70 focus:outline-none"
             data-testid="concord-composer"
           />
+          <ComposeEmojiPicker hideStickers onInsert={(t) => setDraft((d) => d + t)} onGifSelect={(url) => setStaged({ url, mime: "image/gif" })} />
           </div>
           <button onClick={send} disabled={(!draft.trim() && !staged) || sending} className="flex items-center justify-center w-11 h-11 md:w-10 md:h-10 shrink-0 rounded-full bg-primary text-primary-foreground shadow-sm hover:opacity-90 disabled:opacity-40 disabled:shadow-none transition-opacity" data-testid="concord-send">
             <Send className="w-4 h-4" />
