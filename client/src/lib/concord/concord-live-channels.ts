@@ -28,10 +28,17 @@ import type { StoredCommunity, StoredChannel } from "./concord-keys";
 export function liveChannels(community: StoredCommunity, gov: FoldedState): StoredChannel[] {
   // Folded names win over stored ones — a rename propagates, and a device that
   // never saw the rename still holds the key that makes the channel usable.
-  const result = community.channels.map((c) => {
-    const fc = gov.channels.get(c.id);
-    return fc && fc.name ? { ...c, name: fc.name } : c;
-  });
+  const result = community.channels
+    // A room the group made private that this device holds only as public
+    // (a stored private room is one whose key is held): its conversation moved
+    // to a new stream under a new key (CORD-03 §2). Listing the stale public
+    // copy kept this device reading and posting on the old stream, where
+    // nobody sees it. Withheld until its key arrives.
+    .filter((c) => !(gov.channels.get(c.id)?.private && !c.isPrivate))
+    .map((c) => {
+      const fc = gov.channels.get(c.id);
+      return fc && fc.name ? { ...c, name: fc.name } : c;
+    });
   const localIds = new Set(community.channels.map((c) => c.id));
   for (const fc of gov.channels.values()) {
     // PRIVATE channels are withheld on purpose: their key is not derivable from

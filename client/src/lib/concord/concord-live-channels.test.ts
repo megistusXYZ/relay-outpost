@@ -64,6 +64,15 @@ describe("liveChannels", () => {
     expect(out.map((c) => c.id)).toEqual(["p"]);
   });
 
+  it("a room the group made private, held here only as public, is no longer offered", () => {
+    // Found with Armada: it makes a public room private on a NEW stream with a
+    // new key ("privatising protects the future only", CORD-03 §2). Listing our
+    // stale public copy kept this device reading and posting on the old stream,
+    // where nobody on Armada sees it. Until the key arrives, no row.
+    const out = liveChannels(community(chan("a", "general"), chan("p", "plans")), folded({ channel_id: "p", name: "plans", private: true }));
+    expect(out.map((c) => c.id)).toEqual(["a"]);
+  });
+
   it("reaches a count of 2 from the fold alone", () => {
     // `canDelete` gates on this count. Reading it off the raw record disabled
     // Delete with "needs at least one channel" while the drawer listed several.

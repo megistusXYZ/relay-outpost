@@ -76,6 +76,27 @@ describe("room keys handed over in an invite to a group you're in", () => {
     expect(out.added).toBe(2);
   });
 
+  it("a key for a room I hold as public moves it to that key: the group made it private", () => {
+    // Armada makes a public room private on a new stream, at channel epoch 1
+    // (a room's own counter, not the group's), and hands the key out by invite.
+    const privatised = { id: GENERAL, key: NEWSECRET, epoch: 1, name: "general" };
+    const out = absorbHeldInvites(held, [{ from: OWNER, bundle: bundle({ channels: [privatised] }) }], onlyOwner);
+    expect(out.record.channels.find((c) => c.id === GENERAL)).toEqual({ id: GENERAL, key: NEWSECRET, epoch: 1, name: "general", isPrivate: true });
+    expect(out.added).toBe(1);
+    expect(out.consumed).toBe(true);
+  });
+
+  it("a private room I hold moves only to a newer key, never back to an older one", () => {
+    // SECRET is held at epoch 1. The room was made public and private again,
+    // so its counter climbed (CORD-03 §2: monotonic, never resetting).
+    const newer = absorbHeldInvites(held, [{ from: OWNER, bundle: bundle({ channels: [{ id: SECRET, key: NEWSECRET, epoch: 3, name: "secret" }] }) }], onlyOwner);
+    expect(newer.record.channels.find((c) => c.id === SECRET)).toMatchObject({ key: NEWSECRET, epoch: 3, isPrivate: true });
+    for (const epoch of [0, 1]) {
+      const stale = absorbHeldInvites(held, [{ from: OWNER, bundle: bundle({ channels: [{ id: SECRET, key: NEWSECRET, epoch, name: "secret" }] }) }], onlyOwner);
+      expect(stale.record.channels.find((c) => c.id === SECRET)?.key).toBe(hex("e"));
+    }
+  });
+
   it("with nothing waiting for this group, there's nothing to clear", () => {
     expect(absorbHeldInvites(held, [], onlyOwner)).toEqual({ record: held, added: 0, consumed: false });
   });

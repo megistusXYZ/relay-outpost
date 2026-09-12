@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useConcordProfile } from "./ConcordIdentity";
 import { listPendingInvites, removePendingInvite, adoptInviteBundle, type PendingInvite } from "@/lib/concord/concord-invites";
 import { getCommunity } from "@/lib/concord/concord-keys";
-import { checkHeldBundle } from "@/lib/concord/concord-invite-guard";
+import { absorbHeldInvites } from "@/lib/concord/concord-invite-guard";
 
 export function ConcordPendingInvites({ onAccepted }: { onAccepted?: () => void }) {
   const { pubkey } = useNostrAuth();
@@ -35,8 +35,9 @@ export function ConcordPendingInvites({ onAccepted }: { onAccepted?: () => void 
     for (const inv of list) {
       const existing = await getCommunity(pubkey, inv.bundle.community_id).catch(() => null);
       if (!existing) { filtered.push(inv); continue; }
-      const check = checkHeldBundle(existing, inv.bundle);
-      if (check.kind !== "held" || check.added === 0) removePendingInvite(pubkey, inv.bundle.community_id);
+      // Anything a room could still gain, a missing one or a new key, with
+      // every sender allowed: who may hand it out is checked on the group's page.
+      if (absorbHeldInvites(existing, [inv], () => true).added === 0) removePendingInvite(pubkey, inv.bundle.community_id);
     }
     setInvites(filtered);
   }, [pubkey]);
