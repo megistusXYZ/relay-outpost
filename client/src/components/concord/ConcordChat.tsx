@@ -1343,11 +1343,11 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       )}
       {/* The room's pins (CORD-04 §7): the newest above the conversation, all of them in a list. */}
       {pins.length > 0 ? (
-        <ConcordPinnedBar pins={pins} textOf={textOfPin} preview={(t) => <ConcordContentPreview content={t} />} onOpen={() => setPinsOpen(true)} />
+        <ConcordPinnedBar pins={pins} textOf={textOfPin} preview={(t, f) => <ConcordContentPreview content={t} fallback={f} />} onOpen={() => setPinsOpen(true)} />
       ) : pinView.status === "unavailable" && pinContent !== undefined ? <ConcordPinsUnavailable /> : null}
       <ConcordPinnedSheet open={pinsOpen} onOpenChange={setPinsOpen} pins={pins} textOf={textOfPin}
         editedOf={(p) => !!messages.find((m) => m.id === p.id)?.edited}
-        preview={(t) => <ConcordContentPreview content={t} />}
+        preview={(t, f) => <ConcordContentPreview content={t} fallback={f} />}
         canUnpin={canPin && !groupDeleted} onUnpin={(id) => void changePins({ unpin: id }, "Unpinned")}
         spaceLine={activeChannel?.isPrivate
           ? `${pins.length} pinned · space for about ${Math.max(0, Math.floor((PIN_CONTENT_CAP - new TextEncoder().encode(pinContent ?? "").length) / 1900))} more`

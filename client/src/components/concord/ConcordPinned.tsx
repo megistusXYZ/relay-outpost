@@ -2,15 +2,23 @@
  * A room's pins (CORD-04 §7): a bar above the conversation with the newest
  * pin, and the list of all of them. Each pin is a proof, so it shows the
  * author's own words even to someone who joined after they were written.
+ *
+ * A pin always says something: its words, or what it is when it has none
+ * ("Photo", "GIF", "Attachment"). A media-only pin used to read "Handled:"
+ * and nothing else, in the bar and in the list alike.
  */
 import type { ReactNode } from "react";
 import { Pin, PinOff, ChevronRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { VerifiedPin } from "@/lib/concord/concord-pins";
+import { pinMediaLabel } from "@/lib/concord/concord-pin-preview";
 import { useConcordProfile } from "./ConcordIdentity";
 
-type Preview = (content: string) => ReactNode;
+/** Renders a pin's words; `fallback` names what it is when it has none. */
+type Preview = (content: string, fallback: string) => ReactNode;
+
+const fallbackOf = (pin: VerifiedPin) => pinMediaLabel(pin.rumor) || "Message";
 
 /** The newest pin, above the conversation; tapping it opens the list. */
 export function ConcordPinnedBar({ pins, textOf, preview, onOpen }: {
@@ -25,16 +33,23 @@ export function ConcordPinnedBar({ pins, textOf, preview, onOpen }: {
   return (
     <button
       onClick={onOpen}
-      className="w-full flex items-center gap-2 px-3 md:px-4 py-2 border-b border-border/20 bg-muted/10 text-left hover:bg-muted/20 transition-colors"
+      className="group w-full flex items-center gap-3 px-3 md:px-4 py-2 border-b border-border/20 bg-brand/[0.04] text-left hover:bg-brand/[0.08] transition-colors"
+      aria-label={pins.length > 1 ? `${pins.length} pinned messages` : "Pinned message"}
       data-testid="concord-pinned-bar"
     >
-      <Pin className="w-3.5 h-3.5 shrink-0 text-brand/70" />
-      <span className="min-w-0 flex-1 truncate text-xs">
-        <span className="font-medium text-foreground/80">{name}:</span>{" "}
-        <span className="text-muted-foreground">{preview(textOf(latest))}</span>
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand" aria-hidden="true">
+        <Pin className="h-3.5 w-3.5" />
       </span>
-      {pins.length > 1 && <span className="shrink-0 text-[11px] text-muted-foreground/60 tabular-nums">{pins.length} pinned</span>}
-      <ChevronRight className="w-3.5 h-3.5 shrink-0 text-muted-foreground/40" />
+      <span className="min-w-0 flex-1 leading-tight">
+        <span className="block text-[11px] font-medium text-brand/80">
+          {pins.length > 1 ? `Pinned · ${pins.length}` : "Pinned"}
+        </span>
+        <span className="block truncate text-xs">
+          <span className="font-medium text-foreground/85">{name}</span>
+          <span className="text-muted-foreground"> · {preview(textOf(latest), fallbackOf(latest))}</span>
+        </span>
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
     </button>
   );
 }
@@ -64,13 +79,16 @@ export function ConcordPinnedSheet({ open, onOpenChange, pins, textOf, editedOf,
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-md max-h-[calc(100dvh-4rem)] overflow-y-auto" data-testid="concord-pinned-sheet">
-        <DialogHeader>
-          <DialogTitle className="text-base flex items-center gap-2"><Pin className="w-4 h-4 text-brand/70" /> Pinned</DialogTitle>
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-md max-h-[calc(100dvh-4rem)] overflow-y-auto gap-3" data-testid="concord-pinned-sheet">
+        <DialogHeader className="space-y-1 text-left">
+          <DialogTitle className="text-base flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand/10 text-brand" aria-hidden="true"><Pin className="h-3.5 w-3.5" /></span>
+            Pinned
+          </DialogTitle>
+          <p className="text-[11px] text-muted-foreground/70">{spaceLine}</p>
         </DialogHeader>
-        <p className="text-[11px] text-muted-foreground/60">{spaceLine}</p>
         {pins.length === 0 ? (
-          <p className="py-6 text-center text-xs text-muted-foreground/60">Nothing is pinned in this room.</p>
+          <p className="py-8 text-center text-sm text-muted-foreground/60">Nothing is pinned in this room.</p>
         ) : (
           <div className="space-y-2">
             {[...pins].reverse().map((p) => (
@@ -89,19 +107,23 @@ function PinnedRow({ pin, text, edited, preview, onUnpin }: {
 }) {
   const { name } = useConcordProfile(pin.rumor.pubkey);
   return (
-    <div className="rounded-lg border border-border/30 p-2.5" data-testid="concord-pinned-row">
+    <div className="rounded-xl border border-border/30 bg-background/60 p-3" data-testid="concord-pinned-row">
       <div className="flex items-center gap-2 min-w-0">
-        <span className="text-xs font-medium truncate">{name}</span>
-        <span className="shrink-0 text-[10px] text-muted-foreground/50">{formatDistanceToNow(new Date(pin.rumor.created_at * 1000), { addSuffix: true })}</span>
+        <span className="min-w-0 truncate text-sm font-medium">{name}</span>
+        <span className="shrink-0 text-[11px] text-muted-foreground/60">{formatDistanceToNow(new Date(pin.rumor.created_at * 1000), { addSuffix: true })}</span>
         {onUnpin && (
-          <button onClick={onUnpin} className="ml-auto shrink-0 h-9 md:h-7 px-2.5 flex items-center gap-1 rounded-full text-[11px] text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors" data-testid="concord-unpin">
-            <PinOff className="w-3 h-3" /> Unpin
+          <button
+            onClick={onUnpin}
+            className="ml-auto shrink-0 inline-flex min-h-11 md:min-h-8 items-center gap-1 rounded-lg border border-border/40 px-2.5 text-xs text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
+            data-testid="concord-unpin"
+          >
+            <PinOff className="h-3.5 w-3.5" /> Unpin
           </button>
         )}
       </div>
-      <div className="mt-1 text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-        {preview(text)}
-        {edited && <span className="ml-1 text-[10px] text-muted-foreground/40">(edited)</span>}
+      <div className="mt-1.5 text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+        {preview(text, fallbackOf(pin))}
+        {edited && <span className="ml-1 text-[10px] text-muted-foreground/50">(edited)</span>}
       </div>
     </div>
   );
