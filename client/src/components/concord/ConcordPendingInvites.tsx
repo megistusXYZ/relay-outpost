@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useConcordProfile } from "./ConcordIdentity";
 import { listPendingInvites, removePendingInvite, adoptInviteBundle, type PendingInvite } from "@/lib/concord/concord-invites";
 import { getCommunity } from "@/lib/concord/concord-keys";
+import { checkHeldBundle } from "@/lib/concord/concord-invite-guard";
 
 export function ConcordPendingInvites({ onAccepted }: { onAccepted?: () => void }) {
   const { pubkey } = useNostrAuth();
@@ -26,12 +27,16 @@ export function ConcordPendingInvites({ onAccepted }: { onAccepted?: () => void 
   const reload = useCallback(async () => {
     if (!pubkey) { setInvites([]); return; }
     const list = listPendingInvites(pubkey);
-    // Drop invites for outposts we already joined (e.g. accepted on another tab).
+    // A group you're already in isn't offered again. Its invite may still hand
+    // you a private room (CORD-05 §6), which the group's own screen takes once
+    // it can check who sent it (useConcordGovernance); clear only the ones with
+    // nothing left to give.
     const filtered: PendingInvite[] = [];
     for (const inv of list) {
       const existing = await getCommunity(pubkey, inv.bundle.community_id).catch(() => null);
-      if (existing) removePendingInvite(pubkey, inv.bundle.community_id);
-      else filtered.push(inv);
+      if (!existing) { filtered.push(inv); continue; }
+      const check = checkHeldBundle(existing, inv.bundle);
+      if (check.kind !== "held" || check.added === 0) removePendingInvite(pubkey, inv.bundle.community_id);
     }
     setInvites(filtered);
   }, [pubkey]);

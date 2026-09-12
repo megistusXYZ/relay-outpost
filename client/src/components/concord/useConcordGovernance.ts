@@ -23,7 +23,9 @@ import { KIND_KICK, ADMIN_ROLE_ID, VSK } from "@/lib/concord/concord-events";
 import { joinCountsByLabel } from "@/lib/concord/concord-invite-links";
 import { parseControlEdition, editionKey, parseSnapshotRumor, foldEditions, computeRoster, KIND_CONTROL_EDITION, KIND_JOIN_LEAVE, KIND_AUDIT, KIND_REKEY, KIND_SNAPSHOT, type ControlEdition, type FoldedState, type Member, type AuditEntry } from "@/lib/concord/concord-events";
 import { computeMembershipEvents, computeAuditLog, type RawRumor, type MembershipEvent } from "@/lib/concord/concord-activity";
-import { receiveRekey, receiveChannelGrant, privateRoomHolders } from "@/lib/concord/concord-rekey";
+import { receiveRekey, receiveChannelGrant, privateRoomHolders, isAuthorizedRotator } from "@/lib/concord/concord-rekey";
+import { listPendingInvites, removePendingInvite } from "@/lib/concord/concord-invites";
+import { absorbHeldInvites } from "@/lib/concord/concord-invite-guard";
 import { compactionOf } from "@/lib/concord/concord-events";
 import type { Seal } from "@/lib/concord/concord-crypto";
 import { saveRosterSnapshot } from "@/lib/concord/concord-roster";
@@ -203,8 +205,9 @@ export function useConcordGovernance(community: StoredCommunity | null | undefin
   //    this device to the new epoch (retaining the prior root for history);
   //    "removed" means WE were evicted — drop the local keys.
   //  - channel scope, key held → rotate/drop that private channel's key.
-  //  - channel scope, key NOT held → an explicit grant delivery (the ONLY way
-  //    a member gains a private channel; invites never carry those keys).
+  //  - channel scope, key NOT held → an explicit grant delivery (one of two
+  //    ways a member gains a private channel; the other is a direct invite,
+  //    taken by the effect below).
   // Everything here is idempotent: an already-applied rotation filters out on
   // the prevepoch/continuity checks, so re-runs (and the second hook instance
   // on another tab) are no-ops.
@@ -285,6 +288,35 @@ export function useConcordGovernance(community: StoredCommunity | null | undefin
     })();
     return () => { cancelled = true; };
   }, [pubkey, community, rekeys, folded.roster, folded.state, owner]);
+
+  // ── Rooms handed over in a direct invite (CORD-03 §2, CORD-05 §6) ──────────
+  // A private room's key can arrive in an invite to a group you're already in:
+  // Armada's "Add members" sends it that way. The invite waits in the pending
+  // store; here it's taken for this group, room by room, only from someone who
+  // may hand that room out (the rekey rule), and never moves a key you hold
+  // (concord-invite-guard). Found with Armada: the pending list dropped
+  // held-group invites unread, so the room never appeared.
+  useEffect(() => {
+    if (!pubkey || !community || !owner || folded.deleted) return;
+    let cancelled = false;
+    const absorb = async () => {
+      const waiting = listPendingInvites(pubkey).filter((p) => p.bundle.community_id === community.community_id);
+      if (waiting.length === 0) return;
+      const auth = { ownerPubkey: owner, roster: folded.roster };
+      const out = absorbHeldInvites(community, waiting, (from, roomId) => isAuthorizedRotator(from, auth, roomId));
+      if (out.added > 0) {
+        await putCommunity(pubkey, out.record);
+        const signer = getGlobalSigner();
+        if (signer) void publishCommunityList(signer, pubkey).catch(() => {});
+        window.dispatchEvent(new CustomEvent(COMMUNITY_UPDATED_EVENT, { detail: community.community_id }));
+      }
+      if (out.consumed) removePendingInvite(pubkey, community.community_id);
+    };
+    void absorb().catch(() => {});
+    const onInvite = () => { if (!cancelled) void absorb().catch(() => {}); };
+    window.addEventListener("concord-invite-received", onInvite);
+    return () => { cancelled = true; window.removeEventListener("concord-invite-received", onInvite); };
+  }, [pubkey, community, owner, folded.roster, folded.deleted]);
 
   // Persist the member pubkeys so surfaces without a live fold (the merged
   // chat list) can apply the 2-person "present as person" rule. Only once the

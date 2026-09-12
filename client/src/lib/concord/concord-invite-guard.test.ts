@@ -7,7 +7,7 @@
  * dropped.
  */
 import { describe, it, expect } from "vitest";
-import { checkHeldBundle, anchorsGenesis } from "./concord-invite-guard";
+import { checkHeldBundle, anchorsGenesis, absorbHeldInvites } from "./concord-invite-guard";
 import { VSK, type ControlEdition } from "./concord-events";
 import type { InviteBundle } from "./concord-invites";
 import type { StoredCommunity } from "./concord-keys";
@@ -29,6 +29,56 @@ const held: StoredCommunity = {
 const bundle = (over: Partial<InviteBundle> = {}): InviteBundle => ({
   community_id: CID, owner: OWNER, owner_salt: SALT, community_root: ROOT, root_epoch: 2, control_pk: CPK,
   channels: [{ id: GENERAL, epoch: 2, name: "general" }], relays: ["wss://r.example"], name: "Book Club", ...over,
+});
+
+/**
+ * A private room's key is "handed over in its invite" (CORD-03 §2, CORD-05 §6).
+ * Armada's "Add members" sends it that way, to someone already in the group.
+ * Found with Armada: the invite landed in pending, and the pending list
+ * dropped it because the group was held, so the room never appeared.
+ */
+describe("room keys handed over in an invite to a group you're in", () => {
+  const room = { id: NEWROOM, key: NEWSECRET, epoch: 0, name: "Test Room" };
+  const onlyOwner = (pk: string) => pk === OWNER;
+
+  it("an invite from someone who may hand out rooms gives me the private room I'm missing", () => {
+    const out = absorbHeldInvites(held, [{ from: OWNER, bundle: bundle({ channels: [room] }) }], onlyOwner);
+    expect(out.added).toBe(1);
+    expect(out.consumed).toBe(true);
+    expect(out.record.channels.find((c) => c.id === NEWROOM)).toEqual({ id: NEWROOM, key: NEWSECRET, epoch: 0, name: "Test Room", isPrivate: true });
+  });
+
+  it("never from someone who can't hand out rooms, but kept: their role may not have reached us yet", () => {
+    const out = absorbHeldInvites(held, [{ from: ADMIN, bundle: bundle({ channels: [room] }) }], onlyOwner);
+    expect(out).toEqual({ record: held, added: 0, consumed: false });
+  });
+
+  it("the right to hand out rooms is asked per room", () => {
+    const secretOnly = (pk: string, roomId: string) => pk === ADMIN && roomId === NEWROOM;
+    const other = { id: hex("d"), key: hex("f"), epoch: 1, name: "Other" };
+    const out = absorbHeldInvites(held, [{ from: ADMIN, bundle: bundle({ channels: [room, other] }) }], secretOnly);
+    expect(out.record.channels.map((c) => c.name)).toEqual(["general", "secret", "Test Room"]);
+  });
+
+  it("never moves a key I hold, even from the owner", () => {
+    const out = absorbHeldInvites(held, [{ from: OWNER, bundle: bundle({ community_root: OLD_ROOT, channels: [room] }) }], onlyOwner);
+    expect(out).toEqual({ record: held, added: 0, consumed: true });
+  });
+
+  it("takes rooms from every waiting invite for this group, and none for another", () => {
+    const other = { id: hex("d"), key: hex("f"), epoch: 1, name: "Other" };
+    const out = absorbHeldInvites(held, [
+      { from: OWNER, bundle: bundle({ channels: [room] }) },
+      { from: OWNER, bundle: bundle({ channels: [room, other] }) },
+      { from: OWNER, bundle: bundle({ community_id: hex("b"), channels: [{ id: hex("b"), key: hex("b"), epoch: 1, name: "Elsewhere" }] }) },
+    ], onlyOwner);
+    expect(out.record.channels.map((c) => c.name)).toEqual(["general", "secret", "Test Room", "Other"]);
+    expect(out.added).toBe(2);
+  });
+
+  it("with nothing waiting for this group, there's nothing to clear", () => {
+    expect(absorbHeldInvites(held, [], onlyOwner)).toEqual({ record: held, added: 0, consumed: false });
+  });
 });
 
 describe("an invite for a group you're already in (CORD-05 §1)", () => {

@@ -11,7 +11,7 @@ import { parseReport, stashReport, KIND_GROUP_REPORT } from "./concord-reports";
 import { parseJoinRequest, stashJoinRequest, KIND_JOIN_REQUEST } from "./concord-join-requests";
 
 export type RoutedRumor =
-  | { kind: "invite"; isNew: boolean; name?: string }
+  | { kind: "invite"; isNew: boolean; name?: string; communityId?: string }
   | { kind: "report"; isNew: boolean }
   | { kind: "request"; isNew: boolean };
 
@@ -21,7 +21,7 @@ export function routeGroupRumor(
 ): RoutedRumor | null {
   if (u.rumorKind === KIND_DIRECT_INVITE) {
     const stashed = stashDirectInviteRumor(owner, u);
-    return { kind: "invite", isNew: !!stashed?.isNew, ...(stashed?.bundle.name ? { name: stashed.bundle.name } : {}) };
+    return { kind: "invite", isNew: !!stashed?.isNew, ...(stashed?.bundle.name ? { name: stashed.bundle.name } : {}), ...(stashed ? { communityId: stashed.bundle.community_id } : {}) };
   }
   if (u.rumorKind === KIND_GROUP_REPORT) {
     const report = parseReport(u);

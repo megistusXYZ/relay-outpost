@@ -5,6 +5,7 @@ import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { unwrapGiftWrap, seedProcessedWraps } from "@/lib/gift-wrap";
 import { routeGroupRumor } from "@/lib/concord/concord-dm-pipe";
+import { getCommunity } from "@/lib/concord/concord-keys";
 import { toast } from "@/hooks/use-toast";
 import * as dmCache from "@/lib/dm-cache";
 import { readDmLastRead, READSTATE_CHANGED_EVENT, READSTATE_HYDRATED_EVENT } from "@/lib/dm-read";
@@ -426,7 +427,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     const routed = routeGroupRumor(currentPubkey, unwrapped);
     if (routed) {
       if (routed.isNew && routed.kind === "invite") {
-        toast({ title: "Private chat invite", description: `You've been invited to ${routed.name ?? "a private chat"}. Open Chats to accept it.` });
+        // An invite to a group you're in carries a private room, taken when the
+        // group opens (useConcordGovernance): there's nothing to accept.
+        const inGroup = routed.communityId ? await getCommunity(currentPubkey, routed.communityId).catch(() => null) : null;
+        toast(inGroup
+          ? { title: "New private room", description: `You were added to a private room in ${inGroup.name ?? routed.name ?? "a group chat"}. Open the group to see it.` }
+          : { title: "Private chat invite", description: `You've been invited to ${routed.name ?? "a private chat"}. Open Chats to accept it.` });
       }
       if (routed.isNew && routed.kind === "report") {
         toast({ title: "A message was reported", description: "Someone reported a message in a group chat you moderate. Open the group's Manage to review it." });
