@@ -400,6 +400,10 @@ export interface CachedMessage {
   seal?: import("./concord-crypto").Seal;
   epoch?: number;
   edited?: boolean; deleted?: boolean; mentions?: string[];
+  /** A poll (kind 1068, Armada's): its options and settings. */
+  poll?: import("./concord-polls").ParsedPoll;
+  /** A vote in a poll (kind 1018): kept as a row so the count survives a reload, never shown as one. */
+  vote?: { pollId: string; optionIds: string[] };
 }
 
 /**

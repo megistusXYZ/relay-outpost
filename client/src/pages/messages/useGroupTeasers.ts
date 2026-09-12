@@ -15,6 +15,7 @@ import type { Event } from "nostr-tools";
 import { use$ } from "applesauce-react/hooks";
 import { combineLatest, of } from "rxjs";
 import { getCachedMessages, type CachedMessage, type StoredCommunity } from "@/lib/concord/concord-keys";
+import { KIND_POLL_VOTE } from "@/lib/concord/concord-polls";
 import { eventStore, fetchProfilesCached } from "@/lib/nostr";
 import { getDisplayName, KIND_METADATA, shortenNpub, formatNpub } from "@/lib/nostr-helpers";
 import { formatGroupTeaser } from "./helpers";
@@ -49,7 +50,8 @@ export function useGroupTeasers(
           // msgs are sorted ascending — walk back to the newest non-deleted one.
           for (let i = msgs.length - 1; i >= 0; i--) {
             const m = msgs[i];
-            if (m.deleted) continue;
+            // A vote in a poll is kept as a row but has no words: never the teaser.
+            if (m.deleted || m.kind === KIND_POLL_VOTE) continue;
             if (!best || m.t > best.msg.t) best = { msg: m, channelName: ch.name, channelId: ch.id };
             break;
           }

@@ -20,6 +20,7 @@ import { KIND_MESSAGE, KIND_REPLY, KIND_REACTION, KIND_DELETE, KIND_EDIT, KIND_T
 import type { StoredCommunity, StoredChannel } from "./concord-keys";
 import { isStreamProcessed, markStreamProcessed } from "./concord-keys";
 import { registerPlaneAuth } from "./concord-plane-auth";
+import { KIND_POLL, KIND_POLL_VOTE } from "./concord-polls";
 import { LABEL_CONTROL_SIGNER } from "./concord-crypto";
 
 // ── Plane key derivation (CORD-02/03) ────────────────────────────────────────
@@ -247,6 +248,8 @@ export type RoutedRumor =
   | { type: "delete"; rumor: DecodedRumor }
   | { type: "edit"; rumor: DecodedRumor }
   | { type: "timer"; rumor: DecodedRumor }
+  | { type: "poll"; rumor: DecodedRumor }
+  | { type: "vote"; rumor: DecodedRumor }
   | { type: "control"; rumor: DecodedRumor }
   | { type: "join_leave"; rumor: DecodedRumor }
   | { type: "ignored" };
@@ -263,12 +266,16 @@ export function routeRumor(rumor: DecodedRumor, expectChannelId?: string, expect
     case KIND_REACTION:
     case KIND_DELETE:
     case KIND_EDIT:
-    case KIND_TIMER_NOTICE: {
+    case KIND_TIMER_NOTICE:
+    // Armada's polls (CORD.md "Polls"): bound to the room like any chat rumor.
+    // Dropped here before, so a poll made in Armada never appeared at all.
+    case KIND_POLL:
+    case KIND_POLL_VOTE: {
       const ch = rumor.tags.find((t) => t[0] === "channel")?.[1];
       const ep = rumor.tags.find((t) => t[0] === "epoch")?.[1];
       if (expectChannelId !== undefined && ch !== expectChannelId) return { type: "ignored" };
       if (expectEpoch !== undefined && ep !== String(expectEpoch)) return { type: "ignored" };
-      const type = rumor.kind === KIND_MESSAGE ? "message" : rumor.kind === KIND_REPLY ? "reply" : rumor.kind === KIND_REACTION ? "reaction" : rumor.kind === KIND_DELETE ? "delete" : rumor.kind === KIND_TIMER_NOTICE ? "timer" : "edit";
+      const type = rumor.kind === KIND_MESSAGE ? "message" : rumor.kind === KIND_REPLY ? "reply" : rumor.kind === KIND_REACTION ? "reaction" : rumor.kind === KIND_DELETE ? "delete" : rumor.kind === KIND_TIMER_NOTICE ? "timer" : rumor.kind === KIND_POLL ? "poll" : rumor.kind === KIND_POLL_VOTE ? "vote" : "edit";
       return { type, rumor };
     }
     case KIND_CONTROL_EDITION: return { type: "control", rumor };
@@ -313,7 +320,9 @@ export function subscribeChannel(
     const rumor = decodeStreamEventWithSeal(held.plane, wrap);
     if (!rumor) return;
     const routed = routeRumor(rumor, channel.id, held.epoch);
-    if (routed.type === "message" || routed.type === "reply" || routed.type === "reaction" || routed.type === "delete" || routed.type === "edit" || routed.type === "timer") onMessage(routed.rumor);
+    // Polls and their votes too (Armada's, CORD.md "Polls"): routed but not
+    // passed on here, a poll still never reached the chat.
+    if (routed.type === "message" || routed.type === "reply" || routed.type === "reaction" || routed.type === "delete" || routed.type === "edit" || routed.type === "timer" || routed.type === "poll" || routed.type === "vote") onMessage(routed.rumor);
   });
 }
 
