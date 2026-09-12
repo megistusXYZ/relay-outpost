@@ -57,7 +57,25 @@ else
   fi
 fi
 
-gh pr merge "$PR" --squash --delete-branch
+INFO=$(gh pr view "$PR" --json headRefName,baseRefName,isCrossRepository)
+HEAD_REF=$(jq -r '.headRefName' <<<"$INFO")
+BASE_REF=$(jq -r '.baseRefName' <<<"$INFO")
+CROSS=$(jq -r '.isCrossRepository' <<<"$INFO")
+
+# PRs stacked on this one's branch follow it to its base first, so deleting
+# the branch below can't strand or close them. GitHub only retargets them on
+# its own when it deletes the branch itself, which --delete-branch didn't do
+# from a detached worktree (see below).
+for DEP in $(gh pr list --base "$HEAD_REF" --state open --json number --jq '.[].number'); do
+  echo "Retargeting stacked #$DEP from $HEAD_REF to $BASE_REF."
+  gh pr edit "$DEP" --base "$BASE_REF" >/dev/null
+done
+
+# No --delete-branch: in a detached worktree (the ship script's) gh merges,
+# then fails to find a local branch ("not on any branch") and exits before
+# deleting the remote one. It also switched a normal checkout to main. The
+# state check below is the answer either way.
+gh pr merge "$PR" --squash || echo "(gh pr merge exited nonzero — checking what actually happened)"
 
 # Report what actually happened, not what we asked for. `gh pr merge` exits 0
 # on an already-merged PR, so an unconditional "Merged." here would be a
@@ -65,6 +83,14 @@ gh pr merge "$PR" --squash --delete-branch
 STATE=$(gh pr view "$PR" --json state --jq '.state')
 if [[ "$STATE" == "MERGED" ]]; then
   echo "#$PR is merged."
+  # A fork's branch isn't ours to delete.
+  if [[ "$CROSS" != "true" ]]; then
+    if gh api -X DELETE "repos/{owner}/{repo}/git/refs/heads/$HEAD_REF" >/dev/null 2>&1; then
+      echo "Deleted branch $HEAD_REF."
+    else
+      echo "Branch $HEAD_REF not deleted (already gone, or protected)."
+    fi
+  fi
 else
   echo "#$PR is $STATE — NOT merged. Check the output above." >&2
   exit 1

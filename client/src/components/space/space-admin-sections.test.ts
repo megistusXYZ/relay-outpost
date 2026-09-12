@@ -41,11 +41,10 @@ describe("the backend gate does work the capability gate cannot", () => {
     expect(ids(caps, "nip29")).not.toContain("channels");
   });
 
-  it("is the ONLY thing stopping removeMessages becoming a dead Concord control", () => {
-    // The load-bearing case. A Concord admin with MANAGE_MESSAGES has a
-    // genuinely true capability — the permission is real and the descriptor is
-    // right to report it. But ConcordChat's fold drops any delete whose author
-    // is not the message author, so a button would silently do nothing.
+  it("gives removeMessages no section: removal lives on the message row", () => {
+    // A Concord admin with MANAGE_MESSAGES has a genuinely true capability,
+    // honoured on the row itself ("Remove for everyone", mayDelete). A drawer
+    // is the wrong place to hunt for a message, so no section claims it.
     const caps = concordCapabilities(member(PERM.MANAGE_MESSAGES));
     expect(caps.removeMessages).toBe(true);
     // No section claims that capability, on any backend.
