@@ -45,6 +45,33 @@ export function checkHeldBundle(held: StoredCommunity | null, bundle: InviteBund
   return { kind: "held", record: { ...held, channels: [...held.channels, ...missing] }, added: missing.length };
 }
 
+/**
+ * Rooms handed over in direct invites to a group you already hold. A private
+ * room's key travels in an invite (CORD-03 §2, CORD-05 §6); Armada's "Add
+ * members" sends one to people already in the group. Each invite passes the
+ * held-base rule, and a room is taken only from someone who may hand it out.
+ * `consumed` says the waiting invites can be cleared; one from someone not yet
+ * allowed is kept, since their role may not have reached us.
+ */
+export function absorbHeldInvites(
+  held: StoredCommunity,
+  invites: { from: string; bundle: InviteBundle }[],
+  mayGrant: (pubkey: string, roomId: string) => boolean,
+): { record: StoredCommunity; added: number; consumed: boolean } {
+  let record = held, added = 0, consumed = false;
+  for (const inv of invites) {
+    if (inv.bundle.community_id !== held.community_id) continue;
+    const channels = (Array.isArray(inv.bundle.channels) ? inv.bundle.channels : [])
+      .filter((ch) => ch && typeof ch.id === "string" && mayGrant(inv.from, ch.id));
+    const check = checkHeldBundle(record, { ...inv.bundle, channels });
+    if (check.kind === "refused") { consumed = true; continue; }
+    if (check.kind !== "held") continue;
+    if (channels.length > 0) consumed = true;
+    record = check.record; added += check.added;
+  }
+  return { record, added, consumed };
+}
+
 export function anchorsGenesis(editions: ControlEdition[], bundle: Pick<InviteBundle, "community_id" | "owner">): boolean {
   const bound = editions.some((e) => e.vsk === VSK.METADATA && e.eid === bundle.community_id);
   const ownerSigned = editions.some((e) => e.pubkey === bundle.owner);
