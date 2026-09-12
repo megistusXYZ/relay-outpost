@@ -9,7 +9,7 @@
  * author's own message even to someone who joined after it was written.
  */
 import { useState } from "react";
-import { Pin, PinOff, CornerDownRight } from "lucide-react";
+import { Pin, PinOff, CornerDownRight, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -30,14 +30,17 @@ export function ConcordPinsButton({ pins, unavailable, cardOf, canPin, canUnpin,
   canPin: boolean;
   canUnpin: boolean;
   onUnpin: (id: string) => void;
-  /** Scroll the room to the message. */
-  onJump: (id: string) => void;
+  /** Scroll the room to the message, fetching it first when it's older than
+   *  what this device holds. False when it couldn't be found. */
+  onJump: (pin: VerifiedPin) => Promise<boolean>;
   /** How much room is left: a count for a public room, an estimate for a private one. */
   spaceLine: string;
   /** The phone header, which is short on room: shown only when there's something to open. */
   compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  // The pin whose message is being fetched, so its Jump can say so.
+  const [finding, setFinding] = useState<string | null>(null);
   if (compact && pins.length === 0 && !unavailable) return null;
   const count = pins.length;
   return (
@@ -72,8 +75,16 @@ export function ConcordPinsButton({ pins, unavailable, cardOf, canPin, canUnpin,
               body={canPin ? "Pin a message from its ⋯ menu and it stays here for everyone." : "When someone pins a message, it stays here for everyone."} />
           ) : (
             [...pins].reverse().map((p) => (
-              <PinnedMessage key={p.id} pin={p} card={cardOf(p)}
-                onJump={() => { setOpen(false); onJump(p.id); }}
+              <PinnedMessage key={p.id} pin={p} card={cardOf(p)} finding={finding === p.id}
+                // The list stays open while an older message is fetched, and
+                // closes once there's somewhere to land.
+                onJump={async () => {
+                  if (finding) return;
+                  setFinding(p.id);
+                  const ok = await onJump(p);
+                  setFinding(null);
+                  if (ok) setOpen(false);
+                }}
                 onUnpin={canUnpin ? () => onUnpin(p.id) : undefined} />
             ))
           )}
@@ -84,8 +95,8 @@ export function ConcordPinsButton({ pins, unavailable, cardOf, canPin, canUnpin,
 }
 
 /** One pinned message, shown as the message: who, when, what they said or shared. */
-function PinnedMessage({ pin, card, onJump, onUnpin }: {
-  pin: VerifiedPin; card: PinnedCard; onJump: () => void; onUnpin?: () => void;
+function PinnedMessage({ pin, card, finding, onJump, onUnpin }: {
+  pin: VerifiedPin; card: PinnedCard; finding: boolean; onJump: () => void; onUnpin?: () => void;
 }) {
   const author = pin.rumor.pubkey;
   const { name, avatar, hasProfile } = useConcordProfile(author);
@@ -118,20 +129,18 @@ function PinnedMessage({ pin, card, onJump, onUnpin }: {
           )}
         </div>
       </div>
-      {(card.inRoom || onUnpin) && (
-        <div className="mt-2 flex items-center justify-end gap-1.5">
-          {card.inRoom && (
-            <button onClick={onJump} className="inline-flex min-h-11 md:min-h-7 items-center gap-1 rounded-lg px-2.5 text-xs font-medium text-brand hover:bg-brand/10 transition-colors" data-testid="concord-pin-jump">
-              <CornerDownRight className="h-3.5 w-3.5" /> Jump
-            </button>
-          )}
+      {/* Jump on every pin: one older than this device's history is fetched first. */}
+      <div className="mt-2 flex items-center justify-end gap-1.5">
+          <button onClick={onJump} disabled={finding} aria-busy={finding}
+            className="inline-flex min-h-11 md:min-h-7 items-center gap-1 rounded-lg px-2.5 text-xs font-medium text-brand hover:bg-brand/10 disabled:opacity-70 transition-colors" data-testid="concord-pin-jump">
+            {finding ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Finding…</> : <><CornerDownRight className="h-3.5 w-3.5" /> Jump</>}
+          </button>
           {onUnpin && (
             <button onClick={onUnpin} className="inline-flex min-h-11 md:min-h-7 items-center gap-1 rounded-lg px-2.5 text-xs text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors" data-testid="concord-unpin">
               <PinOff className="h-3.5 w-3.5" /> Unpin
             </button>
           )}
-        </div>
-      )}
+      </div>
     </div>
   );
 }

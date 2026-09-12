@@ -4,7 +4,7 @@
  * else, because the preview drops media links and had no fallback.
  */
 import { describe, it, expect } from "vitest";
-import { pinMediaLabel, pinnedCard } from "./concord-pin-preview";
+import { pinMediaLabel, pinnedCard, pinFetchWindow } from "./concord-pin-preview";
 import { mediaToTag } from "./concord-media";
 
 const pinned = (content: string, tags: string[][] = []) => ({ content, tags });
@@ -29,6 +29,19 @@ describe("what a pinned message shows in the list", () => {
     expect(card.text).toBe("final words");
     expect(card.edited).toBe(true);
     expect(card.inRoom).toBe(true);
+  });
+});
+
+/**
+ * Found reading the room's loader: it shows this device's cache plus what the
+ * relays hand back for an unbounded filter, their newest batch. A pin from
+ * months ago is in neither, so Jump had nothing to land on. A stream wrap
+ * carries its message's own time, untweaked (CORD-01), so the relays can be
+ * asked for just the stretch around it.
+ */
+describe("reaching an older pin", () => {
+  it("asks the relays for an hour either side of when it was sent", () => {
+    expect(pinFetchWindow(1_700_000_000)).toEqual({ since: 1_699_996_400, until: 1_700_003_600 });
   });
 });
 
