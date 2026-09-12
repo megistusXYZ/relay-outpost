@@ -31,6 +31,15 @@ describe("judging a room by its name and description", () => {
     expect(classifyRoom({ name: "s3xy chat" })).toBe("explicit");
     expect(classifyRoom({ name: "nüdes" })).toBe("explicit");
   });
+
+  it("reads plurals as the word they're built on", () => {
+    // Found live on the relay that prompted this: a plural slipped past the
+    // list, which only held the singular.
+    expect(classifyRoom({ name: "Cute dicks" })).toBe("explicit");
+    expect(classifyRoom({ name: "cocks and more" })).toBe("explicit");
+    // …without turning ordinary words into list words.
+    expect(classifyRoom({ name: "Sussex cyclists" })).toBe("ok");
+  });
 });
 
 describe("a relay's room list", () => {

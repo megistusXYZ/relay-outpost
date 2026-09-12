@@ -4046,7 +4046,7 @@ export function CommsTab({
             {screened.hidden} {screened.hidden === 1 ? "room" : "rooms"} hidden{showExplicit ? "" : " for explicit content"}
           </span>
           {!showExplicit && (
-            <Link href="/settings" className="inline-flex min-h-8 items-center text-brand hover:underline underline-offset-2" data-testid="comms-rooms-hidden-settings">
+            <Link href="/settings#content-prefs" className="inline-flex min-h-8 items-center text-brand hover:underline underline-offset-2" data-testid="comms-rooms-hidden-settings">
               Change in Settings
             </Link>
           )}
@@ -4064,12 +4064,12 @@ export function CommsTab({
               <p className="text-sm font-medium">This room isn't shown</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {blockedLink === "explicit"
-                  ? "It's marked as explicit. You can allow explicit rooms in Settings, under sensitive content."
+                  ? "It's marked as explicit. To see explicit rooms, turn off “Blur sensitive content” in Settings."
                   : "It breaks Relay Outpost's content rules, so it can't be opened here."}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {blockedLink === "explicit" && (
-                  <Link href="/settings" className="inline-flex min-h-11 md:min-h-8 items-center rounded-lg border border-border px-3 text-xs font-medium hover:bg-accent transition-colors">
+                  <Link href="/settings#content-prefs" className="inline-flex min-h-11 md:min-h-8 items-center rounded-lg border border-border px-3 text-xs font-medium hover:bg-accent transition-colors">
                     Open Settings
                   </Link>
                 )}

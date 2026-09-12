@@ -48,7 +48,10 @@ function words(text: string): string[] {
 
 export function classifyRoom(room: { name?: string; about?: string }): RoomVerdict {
   const seen = new Set(words(`${room.name ?? ""} ${room.about ?? ""}`));
-  const has = (list: Set<string>) => [...seen].some((w) => list.has(w));
+  // A plural reads as the word it's built on ("dicks" is "dick"). Found live:
+  // the lists hold singulars, and a plural room name slipped past them.
+  const has = (list: Set<string>) => [...seen].some((w) =>
+    list.has(w) || (w.endsWith("s") && list.has(w.slice(0, -1))) || (w.endsWith("es") && list.has(w.slice(0, -2))));
   if (has(EXPLOITATION)) return "minors";
   if (!has(SEXUAL)) return "ok";
   return has(MINOR) ? "minors" : "explicit";
