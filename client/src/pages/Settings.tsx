@@ -1665,14 +1665,16 @@ function ContentSection() {
   };
 
   return (
-    <RowSection label="Content" testId="section-content-prefs">
+    // id: linked from Communities' "N rooms hidden" line (/settings#content-prefs),
+    // which the deep-link effect in Settings() scrolls to.
+    <RowSection id="content-prefs" label="Content" testId="section-content-prefs">
       <Row icon={Film} label="Auto-play videos" sub="Play videos as you scroll — off = tap to play">
         <Switch checked={autoplayMedia} onCheckedChange={handleAutoplayChange} data-testid="switch-autoplay-media" />
       </Row>
       <Row icon={ImageIcon} label="Blur images until tapped" sub="Off shows images immediately">
         <Switch checked={imageLoading === "blur"} onCheckedChange={handleImageBlurChange} data-testid="switch-image-blur" />
       </Row>
-      <Row icon={ShieldAlert} label="Blur sensitive content" sub="Flagged posts stay hidden until revealed">
+      <Row icon={ShieldAlert} label="Blur sensitive content" sub="Flagged posts and explicit rooms stay hidden until you choose to see them">
         <Switch checked={sensitiveContent === "hide"} onCheckedChange={handleSensitiveChange} data-testid="switch-sensitive-blur" />
       </Row>
       <Dialog open={ageScreenOpen} onOpenChange={(open) => { if (!open) setAgeScreenOpen(false); }}>
@@ -2201,14 +2203,36 @@ export default function Settings() {
   }, []);
 
   // Deep-link support: /settings#news-alerts (linked from the News priority
-  // strip) scrolls to that section once the page has painted.
+  // strip), /settings#content-prefs (Communities' "rooms hidden" line) scrolls
+  // to that section and flashes it, so the eye lands on the right row.
+  //
+  // Retried rather than fired once: arriving by an in-app link, the router's
+  // new-page scroll-to-top ran AFTER the single 150ms attempt and undid it
+  // (a direct load landed, a tap from Communities didn't). It stops as soon as
+  // the section sits at the top, so it never fights the reader's own scrolling.
   useEffect(() => {
     const hash = window.location.hash.replace(/^#/, "");
     if (!hash) return;
-    const t = setTimeout(() => {
-      document.getElementById(hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 150);
-    return () => clearTimeout(t);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let landed = false;
+    const attempt = (n: number) => {
+      const el = document.getElementById(hash);
+      if (el && !landed) {
+        const top = el.getBoundingClientRect().top;
+        if (top >= 0 && top < window.innerHeight * 0.4) {
+          landed = true;
+          el.classList.remove("thread-parent-flash");
+          void el.offsetWidth;
+          el.classList.add("thread-parent-flash");
+          timers.push(setTimeout(() => el.classList.remove("thread-parent-flash"), 1600));
+          return;
+        }
+        el.scrollIntoView({ behavior: "auto", block: "start" });
+      }
+      if (n < 10) timers.push(setTimeout(() => attempt(n + 1), 150));
+    };
+    timers.push(setTimeout(() => attempt(0), 150));
+    return () => { for (const t of timers) clearTimeout(t); };
   }, []);
 
   const settingsCategories: SettingsCategory[] = [
