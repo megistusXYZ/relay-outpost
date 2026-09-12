@@ -4,10 +4,37 @@
  * aspect ratio from `dim` so the layout doesn't jump while decrypting.
  */
 import { useEffect, useState } from "react";
-import { Loader2, FileWarning, Download } from "lucide-react";
+import { Loader2, FileWarning, Download, Gamepad2 } from "lucide-react";
 import { resolveMediaUrl, isEncrypted, mediaKind, type ConcordMedia } from "@/lib/concord/concord-media";
+import { gameCard, isGame } from "@/lib/concord/concord-game";
 
 export function ConcordMediaView({ media }: { media: ConcordMedia }) {
+  // A game never downloads here: Relay Outpost can't run one yet, so its card
+  // says so instead of offering a .xdc file nobody can open.
+  return isGame(media) ? <ConcordGameCard media={media} /> : <MediaFile media={media} />;
+}
+
+/** A game (webxdc app, as Armada sends them): its icon and name, and "Coming soon". */
+function ConcordGameCard({ media }: { media: ConcordMedia }) {
+  const { name, icon } = gameCard(media);
+  const [iconFailed, setIconFailed] = useState(false);
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/20 px-3 py-2.5 max-w-full sm:max-w-[320px]" data-testid="concord-game-card">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand/10">
+        {icon && !iconFailed
+          ? <img src={icon} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setIconFailed(true)} className="h-full w-full object-cover" />
+          : <Gamepad2 className="h-5 w-5 text-brand" />}
+      </div>
+      {/* The name gets the room: a pill beside it cut "The Legend of Zelda: Link" to "The Leg…" on a phone. */}
+      <div className="min-w-0 flex-1">
+        <p className="line-clamp-2 break-words text-sm font-medium leading-snug">{name}</p>
+        <p className="text-xs text-muted-foreground">Game · coming soon</p>
+      </div>
+    </div>
+  );
+}
+
+function MediaFile({ media }: { media: ConcordMedia }) {
   const [url, setUrl] = useState<string | null>(isEncrypted(media) ? null : media.url);
   const [failed, setFailed] = useState(false);
   const kind = mediaKind(media);

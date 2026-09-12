@@ -32,6 +32,7 @@ import { senderColor } from "@/lib/sender-color";
 import { ACTIVE_ROOM, DAY_CHIP, NEW_TAG, COMPOSER_FIELD } from "@/lib/chat-look";
 import { useRoomInUrl, isRestoringRoom } from "@/lib/room-url";
 import { ConcordMediaView } from "./ConcordMediaView";
+import { withoutGameLinks } from "@/lib/concord/concord-game";
 import { getCachedMessages, cacheMessage, deleteCachedMessages, getCachedReactions, cacheReaction, removeCachedReaction, type StoredCommunity, type StoredChannel, type CachedReaction } from "@/lib/concord/concord-keys";
 import { liveChannels } from "@/lib/concord/concord-live-channels";
 import { subscribeChannel, publishChannelMessage, publishTyping, subscribeTyping, channelReadPlanes, channelPlaneKey, publishGuestbook, type DecodedRumor } from "@/lib/concord/concord-stream";
@@ -2048,6 +2049,8 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
   poll?: { poll: ParsedPoll; tally: PollTally; canVote: boolean; onVote: (optionIds: string[]) => Promise<boolean> };
 }) {
   const { name, avatar, hasProfile } = useConcordProfile(pubkey);
+  // Armada puts a game's .xdc link in the text too; the game's card already stands for it.
+  const shownText = withoutGameLinks(content, media);
   // Member identity is a real Nostr pubkey, so the avatar/name open the profile
   // and (on desktop) surface the same rich hover card as an @-mention — turning a
   // group chat into a place to discover and connect with people.
@@ -2124,7 +2127,7 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
                 still sets this row's minimum and pushes it wider than the
                 screen. `anywhere` is the value that counts toward intrinsic
                 sizing, which is what actually stops the overflow. */}
-            {content && <div className="post-content-text reply-content-text break-words [overflow-wrap:anywhere] whitespace-pre-wrap"><ConcordMessageBody id={msgId} pubkey={pubkey} content={content} />{edited && <span className="ml-1 text-[10px] text-muted-foreground/40">(edited)</span>}</div>}
+            {shownText && <div className="post-content-text reply-content-text break-words [overflow-wrap:anywhere] whitespace-pre-wrap"><ConcordMessageBody id={msgId} pubkey={pubkey} content={shownText} />{edited && <span className="ml-1 text-[10px] text-muted-foreground/40">(edited)</span>}</div>}
             {media && media.length > 0 && (
               <div className="flex flex-col gap-1.5 mt-1.5">
                 {media.map((m, i) => <ConcordMediaView key={i} media={m} />)}
