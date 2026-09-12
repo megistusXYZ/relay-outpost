@@ -35,11 +35,9 @@ import { MessagesIcon } from "@/components/icons/MessagesIcon";
 import { NotificationIcon } from "@/components/icons/NotificationIcon";
 import { useNWC } from "@/contexts/NWCContext";
 import { useNotifications } from "@/contexts/NotificationContext";
-import { ensureConcordUnreadWatcher, useConcordUnread } from "@/lib/concord/concord-unread";
+import { useChatsBadge } from "@/hooks/use-chats-badge";
 import { hasSeenList } from "@/lib/concord/community-list-memory";
 import { wipeConcordDevice } from "@/lib/concord/concord-keys";
-import { concordChatsBadgeCount, useConcordMentionCounts } from "@/lib/concord/concord-mentions";
-import { ensureConcordMentionScanner } from "@/lib/concord/concord-mention-scan";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { PublicBetaBadge } from "@/components/PublicBetaBadge";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
@@ -84,14 +82,9 @@ export function AppSidebar() {
     window.addEventListener("balance-visibility-changed", sync);
     return () => window.removeEventListener("balance-visibility-changed", sync);
   }, []);
-  const { unreadCount, unreadDmCount } = useNotifications();
-  // Chats badge combines DM unread (a count) with Concord: mentions of you
-  // count as numbers, plain community activity as presence (1), muted as 0.
-  // Matches the mobile footer's combined badge; watcher/scanner are idempotent.
-  const concordUnread = useConcordUnread();
-  const concordMentions = useConcordMentionCounts();
-  useEffect(() => { void ensureConcordUnreadWatcher(pubkey); ensureConcordMentionScanner(pubkey); }, [pubkey]);
-  const chatsUnread = unreadDmCount + concordChatsBadgeCount(concordUnread, concordMentions);
+  const { unreadCount } = useNotifications();
+  // Chats badge, the same everywhere (lib/chats-badge); empty while private mode masks the chats.
+  const chatsUnread = useChatsBadge(pubkey).total;
   // Detect whether the signed-in pubkey owns at least one outpost relay.
   // Mirrors the gating used elsewhere: an OutpostRelay flagged `isAdmin`
   // means the operator console is unlocked for that relay. We re-read on

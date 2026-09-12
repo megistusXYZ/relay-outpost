@@ -5,12 +5,10 @@ import { freshScrollState } from "@/lib/scroll-restore";
 import { useLocation, useSearch } from "wouter";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { useChatsBadge } from "@/hooks/use-chats-badge";
 import { openCreateStudio } from "@/components/CreateStudio";
 import { useOutpostCompose } from "@/contexts/OutpostComposeContext";
 import { OutpostIcon } from "@/components/icons/OutpostIcon";
-import { ensureConcordUnreadWatcher, useConcordUnread } from "@/lib/concord/concord-unread";
-import { concordChatsBadgeCount, useConcordMentionCounts } from "@/lib/concord/concord-mentions";
-import { ensureConcordMentionScanner } from "@/lib/concord/concord-mention-scan";
 import { isNavDestinationActive } from "@/lib/footer-nav";
 import { buildFooterTabs, NAV_ICONS, type NavDestination, type NavDestinationId } from "@/lib/nav-destinations";
 import { useIaCollapsed } from "@/lib/ia-prefs";
@@ -165,7 +163,7 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
   const [location, setLocation] = useLocation();
   const search = useSearch();
   const { pubkey } = useNostrAuth();
-  const { unreadCount, unreadDmCount } = useNotifications();
+  const { unreadCount } = useNotifications();
   const newsUnread = useNewsUnread();
   const { outpostCompose } = useOutpostCompose();
   const [dmThreadOpen, setDmThreadOpen] = useState(false);
@@ -216,12 +214,9 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
     setLocation(target, { replace: appHistoryIndex() > 0, state: freshScrollState() });
   };
 
-  // Chats badge = DM unread + Concord: mentions of you count as NUMBERS, a
-  // community with mere activity contributes 1 (presence), muted contributes 0.
-  const concordUnread = useConcordUnread();
-  const concordMentions = useConcordMentionCounts();
-  useEffect(() => { void ensureConcordUnreadWatcher(pubkey); ensureConcordMentionScanner(pubkey); }, [pubkey]);
-  const chatsUnread = unreadDmCount + concordChatsBadgeCount(concordUnread, concordMentions);
+  // Chats badge (lib/chats-badge): DMs, mentions, one per active group, and
+  // nothing at all while private mode masks the chats.
+  const chatsUnread = useChatsBadge(pubkey).total;
 
   // The footer finally reads the SAME source as the rail and the launcher. It
   // used to hardcode its five slots, which is why its order (Feed·News·+·

@@ -23,13 +23,11 @@ import { useNeedsYouCount } from "@/contexts/NeedsYouContext";
 import { useIaCollapsed } from "@/lib/ia-prefs";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { useChatsBadge } from "@/hooks/use-chats-badge";
 import { useNWC } from "@/contexts/NWCContext";
 import { useTheme } from "@/hooks/use-theme";
-import { ensureConcordUnreadWatcher, useConcordUnread } from "@/lib/concord/concord-unread";
 import { hasSeenList } from "@/lib/concord/community-list-memory";
 import { wipeConcordDevice } from "@/lib/concord/concord-keys";
-import { concordChatsBadgeCount, useConcordMentionCounts } from "@/lib/concord/concord-mentions";
-import { ensureConcordMentionScanner } from "@/lib/concord/concord-mention-scan";
 import { openCreateStudio } from "@/components/CreateStudio";
 import { isNavDestinationActive } from "@/lib/footer-nav";
 import { primeKeyboard } from "@/lib/keyboard-handoff";
@@ -243,11 +241,10 @@ export function OrbitMenu() {
   const { pubkey, profile, logout } = useNostrAuth();
   // Sign-out option: take this account's private group chats off the device too.
   const [wipeChats, setWipeChats] = useState(false);
-  const { unreadCount, unreadDmCount, notifications, lastSeenTimestamp } = useNotifications();
-  const concordUnread = useConcordUnread();
-  const concordMentions = useConcordMentionCounts();
-  useEffect(() => { void ensureConcordUnreadWatcher(pubkey); ensureConcordMentionScanner(pubkey); }, [pubkey]);
-  const chatsUnread = unreadDmCount + concordChatsBadgeCount(concordUnread, concordMentions);
+  const { unreadCount, notifications, lastSeenTimestamp } = useNotifications();
+  // Chats badge and card (lib/chats-badge): both empty while private mode masks the chats.
+  const chats = useChatsBadge(pubkey);
+  const chatsUnread = chats.total;
   const iaCollapsed = useIaCollapsed();
   const { isConnected: walletConnected } = useNWC();
 
@@ -846,9 +843,9 @@ export function OrbitMenu() {
       // same store the chats list renders from — nothing is decrypted here).
       if (pubkey && chatsUnread > 0) {
         const bits: string[] = [];
-        if (unreadDmCount > 0) bits.push(`${unreadDmCount} unread`);
-        if (concordUnread.size > 0) bits.push(`${concordUnread.size} active communit${concordUnread.size === 1 ? "y" : "ies"}`);
-        if (unreadDmCount > 0) {
+        if (chats.dmUnread > 0) bits.push(`${chats.dmUnread} unread`);
+        if (chats.activeGroups > 0) bits.push(`${chats.activeGroups} active communit${chats.activeGroups === 1 ? "y" : "ies"}`);
+        if (chats.dmUnread > 0) {
           try {
             const convos = await getConversationList(pubkey);
             const latest = convos
@@ -913,7 +910,7 @@ export function OrbitMenu() {
     return () => {
       alive = false;
     };
-  }, [open, pubkey, chatsUnread, unreadDmCount, concordUnread, unreadCount, notifications, lastSeenTimestamp, rssUnread]);
+  }, [open, pubkey, chats, unreadCount, notifications, lastSeenTimestamp, rssUnread]);
 
   // ——— Grid entries (inventory-complete vs the old drawer) ———
   // Fixed 4×2 grid, most-used first: Feed · Chats · News · Alerts /
