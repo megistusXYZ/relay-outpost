@@ -39,3 +39,25 @@ function subscribe(onChange: () => void): () => void {
 export function useConcordEnabled(): boolean {
   return useSyncExternalStore(subscribe, () => (isConcordEnabled() ? "1" : "0"), () => "0") === "1";
 }
+
+/**
+ * Encrypted calls (Concord CORD-07), DEFAULT OFF while they're being proven:
+ * only an explicit "1" shows the Call button and call bar. Stored on this
+ * device only, never in the NIP-78 synced settings, because a synced setting
+ * publishes an event on every change.
+ */
+const CALLS_KEY = "ro_concord_calls";
+
+export function isConcordCallsEnabled(): boolean {
+  try { return localStorage.getItem(CALLS_KEY) === "1"; } catch { return false; }
+}
+
+export function setConcordCallsEnabled(on: boolean): void {
+  try { localStorage.setItem(CALLS_KEY, on ? "1" : "0"); } catch {}
+  try { window.dispatchEvent(new Event(CHANGED)); } catch {}
+}
+
+/** Reactive read of the calls switch. */
+export function useConcordCallsEnabled(): boolean {
+  return useSyncExternalStore(subscribe, () => (isConcordCallsEnabled() ? "1" : "0"), () => "0") === "1";
+}

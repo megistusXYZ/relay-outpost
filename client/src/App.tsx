@@ -20,6 +20,7 @@ import { AudioPlayerProvider } from "@/contexts/AudioPlayerContext";
 import { PiPProvider } from "@/contexts/PiPContext";
 import { PersistentMediaProvider } from "@/contexts/PersistentMediaContext";
 import { LiveMiniPlayerProvider } from "@/contexts/LiveMiniPlayerContext";
+import { ConcordCallProvider } from "@/contexts/ConcordCallContext";
 import { TTSProvider } from "@/contexts/TextToSpeechContext";
 import { OutpostComposeProvider } from "@/contexts/OutpostComposeContext";
 import { SpeechReaderBar } from "@/components/SpeechReaderBar";
@@ -1536,6 +1537,7 @@ function App() {
             <PiPProvider>
             <PersistentMediaProvider>
               <LiveMiniPlayerProvider>
+              <ConcordCallProvider>
               <TTSProvider>
               <OutpostComposeProvider>
               <SpaceBackground />
@@ -1559,6 +1561,7 @@ function App() {
               <FeedbackDrawer />
               </OutpostComposeProvider>
               </TTSProvider>
+              </ConcordCallProvider>
               </LiveMiniPlayerProvider>
             </PersistentMediaProvider>
             </PiPProvider>

@@ -14,7 +14,7 @@ import {
   ChevronDown, RotateCcw, BarChart3, ChevronRight, Flame, Share,
   Wallet, Bell, Newspaper, Compass, BookOpen, MessageSquarePlus, KeyRound, QrCode, Puzzle,
   Smartphone, Globe, Eye, EyeOff, Lock, Inbox, Tag, Wrench, ShieldCheck, PanelLeft, Bug, Sparkles,
-  Copy, RefreshCw, LifeBuoy, Info, LayoutGrid } from "lucide-react";
+  Copy, RefreshCw, LifeBuoy, Info, LayoutGrid, Phone } from "lucide-react";
 import { useIaCollapsed, setIaCollapsed } from "@/lib/ia-prefs";
 import { useNewsTrendingOn, setNewsTrendingOn } from "@/lib/news-trending";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -52,7 +52,7 @@ import { getShowClientTag, setShowClientTag } from "@/hooks/use-show-client-tag"
 import { isDiscoverV2, setDiscoverV2 } from "@/lib/discover-prefs";
 import { getPreferredLanguages, setPreferredLanguages, isLanguagesAuto, clearPreferredLanguages, getDeviceLanguages } from "@/lib/language";
 import { translationEnabled, setTranslationEnabled, translationCapable, getAutoTranslateLangs, removeAutoTranslateLang, languageName } from "@/lib/translate";
-import { isConcordEnabled, setConcordEnabled } from "@/lib/concord/concord-prefs";
+import { isConcordEnabled, setConcordEnabled, isConcordCallsEnabled, setConcordCallsEnabled } from "@/lib/concord/concord-prefs";
 import { hasUnseenChangelog } from "@/lib/changelog";
 import {
   getBlossomServers, setBlossomServers, fetchBlossomServerList, publishBlossomServerList, DEFAULT_BLOSSOM_SERVERS } from "@/lib/media-upload";
@@ -943,10 +943,15 @@ function langLabel(code: string): string {
 function ChatsSection() {
   const [on, setOn] = useState(() => isConcordEnabled());
   const toggle = (v: boolean) => { setOn(v); setConcordEnabled(v); };
+  const [calls, setCalls] = useState(() => isConcordCallsEnabled());
+  const toggleCalls = (v: boolean) => { setCalls(v); setConcordCallsEnabled(v); };
   return (
     <RowSection label="Chats" testId="section-concord">
       <Row icon={ShieldCheck} label="Private chats (beta)" sub="End-to-end-encrypted communities — keys stay on this device">
         <Switch checked={on} onCheckedChange={toggle} data-testid="switch-concord-enabled" />
+      </Row>
+      <Row icon={Phone} label="Encrypted calls (beta)" sub="Voice, video and screen share in group chats. Still being tested; this device only">
+        <Switch checked={calls} onCheckedChange={toggleCalls} data-testid="switch-concord-calls" />
       </Row>
     </RowSection>
   );

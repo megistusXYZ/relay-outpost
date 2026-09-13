@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
+import { PERMISSIONS_POLICY } from "./permissions-policy";
 import { serveStatic } from "./static";
 import { startScheduler } from "./scheduler";
 import { createServer } from "http";
@@ -89,7 +90,7 @@ app.use(helmet({
 app.use((_req, res, next) => {
   res.setHeader(
     "Permissions-Policy",
-    "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), accelerometer=(), gyroscope=(), interest-cohort=()",
+    PERMISSIONS_POLICY,
   );
   next();
 });

@@ -32,6 +32,8 @@ import { senderColor } from "@/lib/sender-color";
 import { ACTIVE_ROOM, DAY_CHIP, NEW_TAG, COMPOSER_FIELD } from "@/lib/chat-look";
 import { useRoomInUrl, isRestoringRoom } from "@/lib/room-url";
 import { ConcordMediaView } from "./ConcordMediaView";
+import { ConcordCallButton, ConcordCallBar, ConcordCallStage } from "./ConcordCallControls";
+import { useConcordCall, callRoomKey } from "@/contexts/ConcordCallContext";
 import { withoutGameLinks } from "@/lib/concord/concord-game";
 import { getCachedMessages, cacheMessage, deleteCachedMessages, getCachedReactions, cacheReaction, removeCachedReaction, type StoredCommunity, type StoredChannel, type CachedReaction } from "@/lib/concord/concord-keys";
 import { liveChannels } from "@/lib/concord/concord-live-channels";
@@ -473,6 +475,13 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   // Epoch a rumor must bind to — must match what subscribeChannel expects, or
   // routeRumor drops it (private channels bind to the channel epoch).
   const channelEpoch = activeChannel ? (activeChannel.isPrivate ? activeChannel.epoch : community.root_epoch) : 0;
+  // The app-level call hides its floating bar while its room is on screen.
+  const { setOnScreen } = useConcordCall();
+  useEffect(() => {
+    setOnScreen(activeChannel ? callRoomKey(community.community_id, activeChannel.id) : null);
+    return () => setOnScreen(null);
+  }, [community.community_id, activeChannel?.id, setOnScreen]);
+  const callTitle = single ? community.name : (activeChannel?.name ?? community.name);
 
   // Subscribe to the active channel. Load cached history first (survives tab
   // switches + reloads), then the live subscription only appends new messages.
@@ -1239,6 +1248,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
         </button>
         )}
         <ConcordPinsButton {...pinsProps} canUnpin={canPin && !groupDeleted} compact />
+        {!groupDeleted && <ConcordCallButton community={community} channel={activeChannel} title={callTitle} compact />}
         {(onOverview || groupSheetExtras) && (
           <button onClick={groupSheetExtras ? () => setChannelSheetOpen(true) : onOverview} className="flex items-center justify-center w-10 h-10 rounded-full text-muted-foreground/60 hover:text-foreground active:bg-muted/40 transition-colors" title="Members & about" data-testid="concord-chat-overview">
             <Users className="w-[18px] h-[18px]" />
@@ -1382,6 +1392,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
         )}
         <div className="ml-auto flex items-center gap-1">
           <ConcordPinsButton {...pinsProps} canUnpin={canPin && !groupDeleted} />
+          {!groupDeleted && <ConcordCallButton community={community} channel={activeChannel} title={callTitle} />}
           {onToggleMembers && (
             <button
               onClick={onToggleMembers}
@@ -1524,6 +1535,9 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       {voiceOpen && activeHangout && (
         <AudioSpaceLightbox space={{ ...activeHangout, room: activeChannel?.name || activeHangout.room }} onClose={() => setVoiceOpen(false)} />
       )}
+      {/* The room's call: who's in it and a Join, or the controls and the callers. */}
+      {!groupDeleted && <ConcordCallBar community={community} channel={activeChannel} title={callTitle} />}
+      <ConcordCallStage community={community} channel={activeChannel} />
       <div ref={scrollRef} onScroll={onMessagesScroll} className="flex-1 overflow-y-auto overflow-x-hidden px-3 md:px-4 py-3">
         {/* Reading-width cap: messages stay scannable next to the sidebar.
             `justify-end` bottom-anchors a short conversation against the
