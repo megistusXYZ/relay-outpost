@@ -3,6 +3,8 @@ import { Rocket, Radio, ShieldCheck, Lock, ArrowLeft, Eye, EyeOff, UserPlus, Che
 import { LoginOptions } from "@/components/LoginOptions";
 import { LandingMarketing } from "@/components/landing/LandingMarketing";
 import { RotatingTagline } from "@/components/landing/RotatingTagline";
+import { InviteGreeting } from "@/components/landing/InviteGreeting";
+import { LookAroundLink } from "@/components/landing/LookAroundLink";
 import { PublicBetaBadge } from "@/components/PublicBetaBadge";
 import { AmbientVideo } from "@/components/landing/HeroAmbientVideo";
 import { loadSignupDraft } from "@/lib/account-draft";
@@ -688,6 +690,9 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
                 <div className="h-px w-5 sm:w-8 bg-gradient-to-l from-transparent to-white/15" />
               </div>
 
+              {/* Arrived from a friend's invite: say who, before anything else. */}
+              <InviteGreeting />
+
               <h1 className="max-w-xl text-balance text-center font-brand text-2xl sm:text-3xl md:text-[2.5rem] font-semibold leading-[1.1] tracking-tight text-white">
                 One outpost for everything you{" "}
                 <span className="text-brand drop-shadow-[0_0_18px_rgba(139,92,246,0.5)]">say.</span>
@@ -723,6 +728,11 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
             <p className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.25em] sm:tracking-[0.3em] text-white/45">
               No email or phone number required
             </p>
+
+            {/* See what's here before signing up: Discover and News are open to
+                read (lib/guest-limits.ts guestCanBrowse); the overlay stands
+                aside on those pages. */}
+            <LookAroundLink />
 
             {/* Resume signup chip — surfaces only if the user previously
                 started creating an account and the page got reset (mobile

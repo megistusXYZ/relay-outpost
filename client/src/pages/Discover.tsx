@@ -19,6 +19,8 @@
  *    that opening /news is what clears it.
  */
 import { useState, useEffect, useMemo, useCallback, useRef, type ReactNode, type ComponentType } from "react";
+import { guestCanBrowse } from "@/lib/guest-limits";
+import { GuestLookingAround } from "@/components/GuestLookingAround";
 import { useLocation } from "wouter";
 import { useQueries } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -1478,7 +1480,7 @@ export default function Discover() {
   // invite, a channel preview) are separate routes and stay open; this page
   // is pure exploration, so guests meet the wall outright, in place, with
   // the URL intact for the post-signup return.
-  if (!pubkey) {
+  if (!pubkey && !guestCanBrowse(window.location.pathname)) {
     return (
       <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 pb-24" data-testid="page-discover">
         <div className="max-w-2xl mx-auto pt-8">
@@ -1503,6 +1505,7 @@ export default function Discover() {
 
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 pb-24 space-y-4" data-testid="page-discover">
+      {!pubkey && <GuestLookingAround />}
       {/* No page title — the nav labels this tab (Outposts hub precedent). */}
 
       <UniversalBar />
