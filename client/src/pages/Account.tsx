@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
-import { ChevronRight, Pencil, Wallet, ShieldCheck, Wrench, UserPlus, Users, Settings, Sun, Moon, Eclipse, LogOut, Unplug, Fingerprint, CalendarDays } from "lucide-react";
+import { ChevronRight, Pencil, Wallet, ShieldCheck, Wrench, UserPlus, Users, Settings, Sun, Moon, Eclipse, LogOut, Unplug, Fingerprint, CalendarDays, KeyRound } from "lucide-react";
+import { useKeyBackupNudge } from "@/hooks/use-key-backup";
 import {
   listAccounts,
   switchAccount,
@@ -68,6 +69,7 @@ export default function Account() {
   });
   const otherAccounts = accounts.filter((a) => a.pubkey !== pubkey);
   const iaCollapsed = useIaCollapsed();
+  const keyBackup = useKeyBackupNudge();
   useDocumentTitle("Account");
 
   // Signed-out users have no account to show.
@@ -142,6 +144,16 @@ export default function Account() {
         <Section label="Your account">
           <Row icon={<Pencil className="w-5 h-5" />} label="Edit profile" onClick={go("/account?edit=profile")} testId="account-edit-profile" />
           <Row icon={<UserPlus className="w-5 h-5" />} label="Invite a friend" onClick={go("/account?invite=1")} testId="account-invite" />
+          {/* Until the key is backed up: it's the only way back into this account elsewhere. */}
+          {keyBackup.state !== "none" && (
+            <Row
+              icon={<KeyRound className="w-5 h-5" />}
+              label="Back up your key"
+              onClick={go("/key-backup")}
+              trailing={<span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">Not backed up</span>}
+              testId="account-key-backup"
+            />
+          )}
           <Row icon={<Wallet className="w-5 h-5" />} label="Wallet" onClick={go("/account?tab=wallet")} testId="account-wallet" />
           {/* Calendar's re-point, and it was the ONLY genuine orphan of the
               collapse: with simplified navigation on, /calendar left the nav and

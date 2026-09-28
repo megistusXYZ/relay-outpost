@@ -13,6 +13,7 @@ import { BitcoinIcon } from "@/components/FeedIcons";
 import { savePodcastFeed, KIND_PODCAST_RSS, PODCAST_D_TAG } from "@/lib/music";
 import { WtfAlienIcon } from "@/components/icons/WtfAlienIcon";
 import { generateLocalAccount, encryptSecretKeyAsync, saveLocalAccountStrict, loadLocalAccount, clearLocalAccount, downloadBackupFile, saveCredentialToPasswordManager, decryptStored, markOnboardingComplete, type NewLocalAccount, type StoredLocalAccount } from "@/lib/local-account";
+import { markAccountCreated, markBackedUp } from "@/lib/key-backup";
 import { DEFAULT_RELAYS } from "@/lib/relay-constants";
 import { getDiscoverFeedRelays } from "@/lib/discover-relays";
 import { getPreferredLanguages } from "@/lib/language";
@@ -498,6 +499,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
       // section for the storage caveat the user is shown.
       nsec: account?.nsec,
     });
+    if (account) markBackedUp(account.pubkey, Date.now());
     setDownloaded(true);
     setDownloadJustSaved(true);
     setShowVerify(true);
@@ -680,6 +682,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
     try {
       await navigator.clipboard.writeText(account.nsec);
       setCopiedNsec(true);
+      markBackedUp(account.pubkey, Date.now());
       setTimeout(() => setCopiedNsec(false), 2000);
       toast({ title: "Secret key copied", description: "Paste it somewhere safe — anyone holding it controls the account." });
     } catch {
@@ -758,6 +761,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
       });
       if (result === "credential-api") {
         setSavedEncryptedToManager(true);
+        markBackedUp(account.pubkey, Date.now());
         setSavedToManager(true);
         toast({
           title: "Offered to your password manager",
@@ -795,6 +799,8 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
     setIsWorking(true);
     try {
       await loginWithLocalKey(account.secretKey, { isNewAccount: true });
+      // The backup reminder waits a day from here (lib/key-backup.ts).
+      markAccountCreated(account.pubkey, Date.now());
       // Publish kind 0 metadata in background
       const dn = displayName.trim();
       const metadata: Record<string, string> = {
@@ -1729,6 +1735,37 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                   </span>
                 </label>
 
+                {/* Up front, not under Advanced: the backup is the only way back into
+                    this account on another device, and people skipped what they never saw.
+                    Still optional; skipping it earns a reminder later (lib/key-backup.ts). */}
+                <div className={`rounded-md p-3 space-y-2.5 ${isOverlay ? "border border-white/10 bg-white/[0.03]" : "border border-border/40 bg-foreground/[0.02]"}`} data-testid="panel-save-backup">
+                  <div>
+                    <p className={`text-xs font-semibold ${titleCls}`}>Save a backup</p>
+                    <p className={`text-xs leading-relaxed ${descCls}`}>It's the only way back into this account on another phone or browser. We keep no copy.</p>
+                  </div>
+                  <Button
+                    onClick={handleDownloadBackup}
+                    variant="outline"
+                    className={`w-full text-xs font-brand uppercase tracking-widest transition-all ${downloadJustSaved ? (isOverlay ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700") : (isOverlay ? "border-white/20 text-white/80" : "")}`}
+                    data-testid="button-download-backup"
+                  >
+                    {downloadJustSaved ? <CheckCircle2 className="w-4 h-4 mr-2" /> : downloaded ? <Check className="w-4 h-4 mr-2" /> : <Download className="w-4 h-4 mr-2" />}
+                    {downloadJustSaved ? "Saved — keep it safe" : downloaded ? "Backup saved — download again" : "Download backup file"}
+                  </Button>
+                  {!passkeyBlob && (
+                    <Button
+                      onClick={handleSaveEncryptedToManager}
+                      disabled={savingEncryptedToManager}
+                      variant="outline"
+                      className={`w-full text-xs font-brand uppercase tracking-widest transition-all ${savedEncryptedToManager ? (isOverlay ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700") : (isOverlay ? "border-white/20 text-white/80" : "")}`}
+                      data-testid="button-save-ncryptsec-to-password-manager"
+                    >
+                      {savingEncryptedToManager ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : savedEncryptedToManager ? <Check className="w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                      {savingEncryptedToManager ? "Saving…" : savedEncryptedToManager ? "Saved to password manager" : "Save to password manager"}
+                    </Button>
+                  )}
+                </div>
+
                 <div className={`rounded-md ${isOverlay ? "border border-white/10" : "border border-border/40"}`}>
                   <button
                     type="button"
@@ -1738,8 +1775,8 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                   >
                     <ChevronDown className={`w-4 h-4 transition-transform ${showSecureAdvanced ? "rotate-180" : ""} ${ghostBtnCls}`} />
                     <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-semibold ${titleCls}`}>Advanced: backup &amp; recovery</p>
-                      <p className={`text-xs ${descCls}`}>Download a backup, view your public username, or reveal your recovery code.</p>
+                      <p className={`text-xs font-semibold ${titleCls}`}>Advanced: username &amp; recovery code</p>
+                      <p className={`text-xs ${descCls}`}>View your public username, or reveal your raw recovery code.</p>
                     </div>
                   </button>
                   {showSecureAdvanced && (
@@ -1752,17 +1789,6 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                           {copiedNpub ? "Copied" : "Copy"}
                         </Button>
                       </div>
-
-                      <Button
-                        onClick={handleDownloadBackup}
-                        variant="outline"
-                        className={`w-full text-xs font-brand uppercase tracking-widest transition-all ${downloadJustSaved ? (isOverlay ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700") : (isOverlay ? "border-white/20 text-white/80" : "")}`}
-                        data-testid="button-download-backup"
-                      >
-                        {downloadJustSaved ? <CheckCircle2 className="w-4 h-4 mr-2" /> : downloaded ? <Check className="w-4 h-4 mr-2" /> : <Download className="w-4 h-4 mr-2" />}
-                        {downloadJustSaved ? "Saved — keep it safe" : downloaded ? "Backup saved — download again" : "Download backup file"}
-                      </Button>
-                      <p className={`text-[11px] leading-relaxed ${subtleCls}`}>The backup is the only thing that moves your account between devices and browsers. We keep no copy.</p>
 
                       <div className={`rounded-md ${isOverlay ? "border border-white/10" : "border border-border/40"}`}>
                         <button
@@ -1789,18 +1815,6 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                         )}
                       </div>
 
-                      {!passkeyBlob && (
-                        <Button
-                          onClick={handleSaveEncryptedToManager}
-                          disabled={savingEncryptedToManager}
-                          variant="outline"
-                          className={`w-full text-xs font-brand uppercase tracking-widest transition-all ${savedEncryptedToManager ? (isOverlay ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700") : (isOverlay ? "border-white/20 text-white/80" : "")}`}
-                          data-testid="button-save-ncryptsec-to-password-manager"
-                        >
-                          {savingEncryptedToManager ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : savedEncryptedToManager ? <Check className="w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                          {savingEncryptedToManager ? "Saving…" : savedEncryptedToManager ? "Saved to password manager" : "Save to password manager"}
-                        </Button>
-                      )}
                     </div>
                   )}
                 </div>
