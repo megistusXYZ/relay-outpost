@@ -11,7 +11,7 @@ import { NostrAuthProvider, useNostrAuth, LOGIN_METHOD_KEY } from "@/contexts/No
 // listener at boot so the lazily-loaded Settings page can still offer the
 // native PWA install prompt (Chromium fires the event once, early).
 import "@/hooks/use-pwa-install";
-import { loadLocalAccount } from "@/lib/local-account";
+import { loadLocalAccount, isNewAccount } from "@/lib/local-account";
 import { InviteAcceptCard } from "@/components/InviteAcceptCard";
 import { NWCProvider, useNWC } from "@/contexts/NWCContext";
 import type { NWCTransaction } from "@/contexts/NWCContext";
@@ -72,6 +72,7 @@ import { useIaCollapsed, isIaCollapsed } from "@/lib/ia-prefs";
 import { parentRouteOf } from "@/lib/back-affordance";
 import { useNewsTrendingOn } from "@/lib/news-trending";
 import { shouldLandOnChats, hasLanded, markLanded, postAuthLandingPath, CHATS_PATH } from "@/lib/ia-landing";
+import { isWelcomed } from "@/lib/welcome";
 // Chunk-load resilience (retry → one-shot stale-deploy reload) for every
 // React.lazy site app-wide — extracted to lib/lazy-retry.ts so pages that
 // code-split locally (Home, Search, MyOutpost, ChatList) share it too.
@@ -127,6 +128,7 @@ const lazyChunks = {
   ShieldMatrix: () => lazyRetry(() => import("@/pages/ShieldMatrix")),
   WtfIsThis: () => lazyRetry(() => import("@/pages/WtfIsThis")),
   FirstTenMinutes: () => lazyRetry(() => import("@/pages/FirstTenMinutes")),
+  Welcome: () => lazyRetry(() => import("@/pages/Welcome")),
   SettingUpOutpost: () => lazyRetry(() => import("@/pages/SettingUpOutpost")),
   ConnectingWallet: () => lazyRetry(() => import("@/pages/ConnectingWallet")),
   UsingContentCalendar: () => lazyRetry(() => import("@/pages/UsingContentCalendar")),
@@ -197,6 +199,7 @@ const Covenant = lazy(lazyChunks.Covenant);
 const ChildSafety = lazy(lazyChunks.ChildSafety);
 const ShieldMatrix = lazy(lazyChunks.ShieldMatrix);
 const WtfIsThis = lazy(lazyChunks.WtfIsThis);
+const Welcome = lazy(lazyChunks.Welcome);
 const FirstTenMinutes = lazy(lazyChunks.FirstTenMinutes);
 const SettingUpOutpost = lazy(lazyChunks.SettingUpOutpost);
 const ConnectingWallet = lazy(lazyChunks.ConnectingWallet);
@@ -400,6 +403,7 @@ function Router() {
         <Route path="/help/nostr-vs-alternatives" component={NostrVsAlternatives} />
         <Route path="/whats-new" component={WhatsNew} />
         <Route path="/help" component={WtfIsThis} />
+        <Route path="/welcome" component={Welcome} />
         {/* Legacy /wtf links → /help (keeps old bookmarks/shares working) */}
         <Route path="/wtf/:rest*">{(params) => <RouteRedirect to={`/help/${(params as { rest?: string }).rest ?? ""}`} />}</Route>
         <Route path="/wtf">{() => <RouteRedirect to="/help" />}</Route>
@@ -1253,9 +1257,11 @@ function AppLayout() {
       // A genuine invite deep link is unaffected: the stashed
       // relay-outpost-post-auth-redirect is consumed later with {replace:true}
       // and wins over whatever this chose.
-        let dest = postAuthLandingPath(null, isIaCollapsed());
+        // A brand-new account meets the welcome once (lib/welcome.ts).
+        const account = { isNew: isNewAccount(pubkey), welcomed: isWelcomed(pubkey) };
+        let dest = postAuthLandingPath(null, isIaCollapsed(), account);
         try {
-          dest = postAuthLandingPath(localStorage.getItem("relay-outpost-default-landing-page"), isIaCollapsed());
+          dest = postAuthLandingPath(localStorage.getItem("relay-outpost-default-landing-page"), isIaCollapsed(), account);
           sessionStorage.setItem("relay-outpost-landing-redirected", "1");
           // Keep the two landing ledgers coherent. This path performs an
           // arrival, so the IA rule must not perform a second one later; it

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { shouldLandOnChats, postAuthLandingPath, CHATS_PATH } from "./ia-landing";
+import { shouldLandOnChats, postAuthLandingPath, CHATS_PATH, WELCOME_PATH } from "./ia-landing";
 
 const A = "a".repeat(64);
 const base = {
@@ -96,5 +96,16 @@ describe("postAuthLandingPath", () => {
     expect(postAuthLandingPath("news", true)).toBe(CHATS_PATH);
     expect(postAuthLandingPath("", true)).toBe(CHATS_PATH);
     expect(postAuthLandingPath(undefined, true)).toBe(CHATS_PATH);
+  });
+});
+
+describe("a brand-new account's first landing", () => {
+  it("opens the welcome screen once, then lands on Chats as usual", () => {
+    expect(postAuthLandingPath(null, true, { isNew: true, welcomed: false })).toBe(WELCOME_PATH);
+    expect(WELCOME_PATH).toBe("/welcome");
+    // Already welcomed on this device: back to the normal landing.
+    expect(postAuthLandingPath(null, true, { isNew: true, welcomed: true })).toBe(CHATS_PATH);
+    // A key signed in from elsewhere is not a new member: no welcome.
+    expect(postAuthLandingPath(null, true, { isNew: false, welcomed: false })).toBe(CHATS_PATH);
   });
 });
