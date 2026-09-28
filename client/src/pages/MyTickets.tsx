@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useSearch, useLocation } from "wouter";
+import { PageToolbar } from "@/components/PageToolbar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -165,7 +166,7 @@ export default function MyTickets() {
   if (selected) {
     const recipient = recipientFromIssue(selected.event);
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+      <div className="max-w-2xl mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-6 space-y-4">
         <Button variant="ghost" size="sm" onClick={() => { setSelectedId(null); if (deepLinkId) navigate("/tickets"); }} data-testid="button-mytickets-back">
           <ChevronLeft className="w-3.5 h-3.5 mr-1" /> All tickets
         </Button>
@@ -220,24 +221,23 @@ export default function MyTickets() {
 
   // List view.
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <Inbox className="w-4 h-4 text-brand" />
-        <h1 className="text-base font-brand uppercase tracking-widest">Tickets &amp; Feedback</h1>
-        <span className="text-xs text-muted-foreground/60">{tickets.length}</span>
+    <div className="max-w-2xl mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-6 space-y-4">
+      <PageToolbar
+        inStack
+        status={<span>{tickets.length} {tickets.length === 1 ? "ticket" : "tickets"}</span>}
+      >
         {/* Creating belongs where reading happens: summon the same global
             feedback composer the What's New footer uses. */}
         <Button
           size="sm"
-          className="ml-auto h-8 gap-1.5 rounded-full"
+          className="h-8 gap-1.5 rounded-full"
           onClick={() => window.dispatchEvent(new CustomEvent("relay-outpost:open-feedback", { detail: { initialType: "question" } }))}
           data-testid="button-mytickets-new"
         >
           <Send className="w-3.5 h-3.5" />
           New ticket
         </Button>
-      </div>
-      <p className="text-xs text-muted-foreground/60">Feedback you've sent to relay operators, and their replies.</p>
+      </PageToolbar>
 
       {tickets.length === 0 ? (
         <Card className="glass-card p-6 text-center space-y-3">

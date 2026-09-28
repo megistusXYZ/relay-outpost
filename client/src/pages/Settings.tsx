@@ -7,7 +7,7 @@ import { useNostrAuth, isPWAStandalone } from "@/contexts/NostrAuthContext";
 import { ShieldMatrixIcon } from "@/components/icons/ShieldMatrixIcon";
 import { AccountIcon } from "@/components/icons/AccountIcon";
 import {
-  Settings as SettingsIcon, ExternalLink, Zap, Unplug, Fingerprint,
+  ExternalLink, Zap, Unplug, Fingerprint,
   CheckCircle2, ShieldAlert, X, Plus, Radio, Check,
   Radar, Clock, TrendingUp, Award, Sun, Moon, Eclipse, Search, Volume2, MessageCircle,
   HardDrive, Trash2, Satellite, Type, Sliders, Film, ImageIcon, Antenna, MessageSquare, CornerUpLeft,
@@ -2289,16 +2289,6 @@ export default function Settings() {
   return (
     <div className="px-3 sm:px-4 py-4 sm:py-6 pb-[calc(7rem+env(safe-area-inset-bottom))]" data-testid="page-settings">
       <div className="max-w-2xl lg:max-w-5xl mx-auto">
-
-        <div className="relative rounded-md overflow-hidden border border-border dark:border-brand/15 glass-settings-header shadow-sm dark:shadow-none mb-4">
-          <div className="absolute inset-0 pointer-events-none glass-settings-header-glow" />
-          <div className="relative px-3 py-2.5 flex items-center gap-2.5">
-            <SettingsIcon className="w-4 h-4 text-brand/70" />
-            <h1 className="text-base font-semibold text-foreground" data-testid="text-settings-title">
-              Settings
-            </h1>
-          </div>
-        </div>
 
         <div className="lg:grid lg:grid-cols-[12rem_1fr] lg:gap-8 lg:items-start">
           <SettingsNav items={settingsCategories} />

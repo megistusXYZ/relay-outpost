@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { Link } from "wouter";
+import { PageToolbar } from "@/components/PageToolbar";
 import { NostrPost } from "@/components/NostrPost";
 import { useNostrBookmarks } from "@/hooks/use-nostr-bookmarks";
 import { use$ } from "applesauce-react/hooks";
@@ -568,18 +569,12 @@ export default function Bookmarks({ embedded = false }: { embedded?: boolean } =
   return (
     <div className={embedded ? "" : "px-3 sm:px-4 py-4 sm:py-6"} data-testid="page-bookmarks">
       <div className={embedded ? "" : "max-w-2xl mx-auto"}>
-        <div className="mb-4 sm:mb-6">
-          <div className="flex items-center gap-2">
-            <Bookmark className="w-5 h-5 text-brand/70" />
-            <h1 className="text-lg font-semibold text-foreground" data-testid="text-bookmarks-title">Bookmarks</h1>
-          </div>
-          {!isLoading && (
-            <p className="text-sm text-muted-foreground mt-1">
-              {totalCount} {totalCount === 1 ? "saved item" : "saved items"}
-              {activeFilter !== "all" && ` · ${filteredAndSorted.length} matching`}
-            </p>
-          )}
-        </div>
+        {!isLoading && (
+          <PageToolbar
+            testId="bookmarks-count"
+            status={<span>{totalCount} {totalCount === 1 ? "saved item" : "saved items"}{activeFilter !== "all" && ` · ${filteredAndSorted.length} matching`}</span>}
+          />
+        )}
 
         {!pubkey ? (
           <div className="flex flex-col items-center justify-center py-16 text-center" data-testid="container-bookmarks-signin">

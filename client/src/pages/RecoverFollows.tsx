@@ -32,7 +32,7 @@ import {
   loadFlagSeen, saveFlagSeen, computeNewlyFlagged, loadReviewed, saveReviewed,
 } from "@/lib/wot-history";
 import {
-  History, ShieldCheck, RotateCcw, Clock, UserMinus, VolumeX, Check, ShieldQuestion, Heart, ChevronDown,
+  History, ShieldCheck, RotateCcw, Clock, UserMinus, VolumeX, Check, ShieldQuestion, ChevronDown,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { Event } from "nostr-tools";
@@ -528,16 +528,7 @@ export default function FollowListHealth() {
   const trustedFlagged = flaggedVerdicts.filter((v) => v.suppressed);
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-10 space-y-5">
-      <div className="flex items-center gap-2.5">
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/15 text-brand">
-          <Heart className="h-4 w-4" />
-        </span>
-        <div>
-          <h1 className="text-lg font-brand uppercase tracking-widest leading-tight">Follow list health</h1>
-          <p className="text-xs text-muted-foreground/70">Keep your follows healthy — recover, review, and tidy up.</p>
-        </div>
-      </div>
+    <div className="max-w-xl mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-10 space-y-5">
 
       <RecoverFollowsCard />
 

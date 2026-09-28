@@ -376,16 +376,7 @@ export default function Followers() {
     <div className="px-3 sm:px-4 py-4 sm:py-6" data-testid="page-followers">
       <div className={`mx-auto ${viewMode === "constellation" ? "max-w-4xl" : "max-w-2xl"} transition-all`}>
         <div className="mb-4 sm:mb-5">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div>
-              <div className="flex items-center gap-2">
-                <Orbit className="w-5 h-5 text-brand/70" />
-                <h1 className="text-lg font-semibold text-foreground" data-testid="text-followers-title">Followers</h1>
-              </div>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {loaded ? "People who follow you" : "Loading..."}
-              </p>
-            </div>
+          <div className="flex min-h-9 items-center justify-end gap-3 flex-wrap">
             {loaded && followerPubkeys.length > 0 && (
               <div className="flex items-center gap-2" data-testid="container-view-controls-followers">
                 <div className="relative">
