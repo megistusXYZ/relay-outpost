@@ -2391,7 +2391,9 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
   }, []);
 
   // The suggestion line is about your news sources, so it lives in News.
-  const showSuggestedLine = isAllMode && lane === "news" && libraryStatus === "suggested";
+  // Signed in only: Keep and Edit settle YOUR library, and a visitor reading
+  // News before signing up has no library to settle (lib/guest-limits.ts).
+  const showSuggestedLine = !!pubkey && isAllMode && lane === "news" && libraryStatus === "suggested";
 
   const handleAddFeed = useCallback((feed: SavedFeed) => {
     setFeeds(prev => {

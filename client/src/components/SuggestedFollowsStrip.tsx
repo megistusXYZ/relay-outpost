@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
-import { useToast } from "@/hooks/use-toast";
-import { eventStore, fetchProfilesCached, publishEvent } from "@/lib/nostr";
-import { clientTags, KIND_FOLLOW_LIST, KIND_METADATA, getDisplayName, getAvatarUrl } from "@/lib/nostr-helpers";
-import { signWithTimeout } from "@/lib/signer-timeout";
-import { loadFollowBase, cacheFollowEvent } from "@/lib/follow-list";
+import { useFollowAction } from "@/hooks/use-follow-action";
+import { eventStore, fetchProfilesCached } from "@/lib/nostr";
+import { KIND_METADATA, getDisplayName, getAvatarUrl } from "@/lib/nostr-helpers";
 import { CURATED_SEED_PUBKEYS } from "@/lib/curated-seed-follows";
 import { Check, Plus } from "lucide-react";
 import type { Event } from "nostr-tools";
@@ -22,8 +20,7 @@ interface Props {
 // follow picker anymore (new accounts auto-follow one anchor); this strip
 // is the organic one-click path out of a quiet feed.
 export function SuggestedFollowsStrip({ limit = 8, className }: Props) {
-  const { pubkey: myPubkey, signer, follows, updateFollows } = useNostrAuth();
-  const { toast } = useToast();
+  const { pubkey: myPubkey, follows } = useNostrAuth();
 
   // Full candidate pool (no slice) — the render slices AFTER dropping
   // unresolved profiles, so the strip stays a full 2×4 as long as enough
@@ -34,7 +31,7 @@ export function SuggestedFollowsStrip({ limit = 8, className }: Props) {
   }, [follows, myPubkey]);
 
   const [profiles, setProfiles] = useState<Map<string, Event | null>>(new Map());
-  const [pending, setPending] = useState<Set<string>>(new Set());
+  const { follow, pending } = useFollowAction();
   const [completed, setCompleted] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -63,65 +60,13 @@ export function SuggestedFollowsStrip({ limit = 8, className }: Props) {
     return () => clearInterval(i);
   }, [candidates]);
 
-  const inFlightRef = useRef(false);
-
+  // Following goes through the shared hook, the one guarded path that loads
+  // the user's real list before publishing (never a copy of it: see
+  // lib/follow-list-builders.test.ts). This strip only remembers what it followed.
   const handleFollow = useCallback(async (targetPubkey: string) => {
-    if (!myPubkey || !signer) return;
-    if (pending.has(targetPubkey) || completed.has(targetPubkey)) return;
-    if (inFlightRef.current) return;
-    inFlightRef.current = true;
-    setPending(prev => new Set(prev).add(targetPubkey));
-    let optimisticApplied = false;
-    try {
-      // Authoritative current kind-3 + wipe guard (shared safeguard). This strip
-      // shows at zero follows, but the guard protects the hydration-race case
-      // where an existing account briefly looks empty.
-      const { base: fresh, blocked } = await loadFollowBase(myPubkey, follows?.length ?? 0);
-      if (blocked) {
-        toast({ title: "Couldn't load your follow list", description: "Try again in a moment.", variant: "destructive" });
-        return;
-      }
-      const existingTags: string[][] = fresh ? [...fresh.tags] : [];
-      const alreadyTagged = existingTags.some(t => t[0] === "p" && t[1] === targetPubkey);
-      const newTags = alreadyTagged ? existingTags : [...existingTags, ["p", targetPubkey]];
-      const tpl = {
-        kind: KIND_FOLLOW_LIST,
-        created_at: Math.floor(Date.now() / 1000),
-        tags: newTags,
-        content: fresh?.content || "",
-      };
-      const signed = await signWithTimeout(signer, tpl);
-      if (!signed) {
-        toast({ title: "Couldn't sign follow event", variant: "destructive" });
-        return;
-      }
-      updateFollows(prev => prev.includes(targetPubkey) ? prev : [...prev, targetPubkey]);
-      optimisticApplied = true;
-      setCompleted(prev => new Set(prev).add(targetPubkey));
-      const ok = await publishEvent(signed);
-      cacheFollowEvent(signed as Event, { force: true });
-      if (!ok) {
-        toast({ title: "Follow published locally but relays didn't confirm", description: "We'll retry in the background." });
-      }
-    } catch (err) {
-      if (optimisticApplied) {
-        updateFollows(prev => prev.filter(pk => pk !== targetPubkey));
-        setCompleted(prev => {
-          const n = new Set(prev);
-          n.delete(targetPubkey);
-          return n;
-        });
-      }
-      toast({ title: "Couldn't publish follow", variant: "destructive" });
-    } finally {
-      setPending(prev => {
-        const n = new Set(prev);
-        n.delete(targetPubkey);
-        return n;
-      });
-      inFlightRef.current = false;
-    }
-  }, [myPubkey, signer, pending, completed, updateFollows, toast]);
+    if (completed.has(targetPubkey)) return;
+    if (await follow(targetPubkey)) setCompleted((prev) => new Set(prev).add(targetPubkey));
+  }, [follow, completed]);
 
   // Only profiles that actually resolved get a card — a user should never see
   // an "OP / Operator" placeholder. The strip pops in once real names exist.
