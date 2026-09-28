@@ -22,6 +22,9 @@ const LANDED_KEY = "ro_ia_landed";
 
 export const CHATS_PATH = "/messages";
 
+/** The one-time welcome a brand-new account sees after signing up. */
+export const WELCOME_PATH = "/welcome";
+
 /**
  * Pure decision. The caller supplies the environment so the rule can be tested
  * without a DOM, and so every guard is visible in one place.
@@ -88,7 +91,15 @@ export function markLanded(): void {
  * The user's explicit Settings choice still wins over both. It is a preference
  * they set on purpose; the collapse was never a reason to ignore it.
  */
-export function postAuthLandingPath(saved: string | null | undefined, collapsed: boolean): string {
+export function postAuthLandingPath(
+  saved: string | null | undefined,
+  collapsed: boolean,
+  /** A brand-new account (created here, not signed in from elsewhere), and whether it has seen the welcome. */
+  account?: { isNew: boolean; welcomed: boolean },
+): string {
+  // A new member meets the welcome once: an empty inbox explains nothing.
+  // (An invite deep link still wins: it's applied after this, with replace.)
+  if (account?.isNew && !account.welcomed) return WELCOME_PATH;
   if (saved && saved.startsWith("/")) return saved;
   return collapsed ? CHATS_PATH : "/search";
 }
