@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent } from "react";
+import { guestCanBrowse } from "@/lib/guest-limits";
+import { GuestLookingAround } from "@/components/GuestLookingAround";
 import { Link, useSearch, useLocation } from "wouter";
 import type { Event as NostrEvent } from "nostr-tools";
 import { createPortal } from "react-dom";
@@ -2485,7 +2487,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
   // guests meet the wall outright — the reader, the feeds, and the trending
   // machinery behind them are membership. All hooks above have run; this
   // gates the RENDER only.
-  if (!pubkey) {
+  if (!pubkey && !guestCanBrowse(window.location.pathname)) {
     return (
       <div className={embedded ? "" : "max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6"} data-testid="page-rss-feed">
         <div className="max-w-2xl mx-auto pt-8">
@@ -2497,6 +2499,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
 
   return (
     <div className={embedded ? "" : "max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6"} data-testid="page-rss-feed">
+      {!pubkey && !embedded && <div className="mb-4"><GuestLookingAround /></div>}
       {/* One calm column at every width (2026-09 redesign): the desktop
           magazine breakout (hero + rail + grid) is gone. */}
       <div className="max-w-2xl mx-auto w-full">

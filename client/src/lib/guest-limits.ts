@@ -30,3 +30,16 @@ export function capForGuest<T>(items: T[], loggedIn: boolean, cap: number = GUES
   if (loggedIn || items.length <= cap) return { shown: items, walled: false };
   return { shown: items.slice(0, cap), walled: true };
 }
+
+/**
+ * Pages a signed-out visitor may look around, to read (owner decision
+ * 2026-09-28, loosening the 2026-08-14 hard wall): Discover and News, so people
+ * can see what's here before signing up. Chats, communities and search stay
+ * membership. Any action inside an open page still asks them to sign up.
+ */
+const GUEST_BROWSABLE = ["/discover", "/news"];
+
+export function guestCanBrowse(path: string): boolean {
+  const pathname = path.split(/[?#]/)[0];
+  return GUEST_BROWSABLE.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
