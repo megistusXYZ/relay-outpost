@@ -16,7 +16,7 @@
 
 export interface PersonCandidate {
   pubkey: string;
-  source: "network" | "trending";
+  source: "network" | "trending" | "curated";
   /** How many of the viewer's follows follow them — the card's "why". */
   followedByCount?: number;
 }
@@ -35,10 +35,12 @@ export function rankPeopleToFollow(opts: {
   networkCounts: Map<string, number>;
   /** Fallback pool, already in its own order (curation preserved). */
   trending: string[];
+  /** Last fallback: the hand-picked starter accounts, so a brand-new member is never shown nothing. */
+  curated?: string[];
   flagged: Set<string>;
   limit?: number;
 }): PersonCandidate[] {
-  const { viewer, followSet, networkCounts, trending, flagged, limit = 6 } = opts;
+  const { viewer, followSet, networkCounts, trending, curated = [], flagged, limit = 6 } = opts;
 
   const excluded = (pubkey: string) =>
     pubkey === viewer || followSet.has(pubkey) || flagged.has(pubkey);
@@ -49,9 +51,31 @@ export function rankPeopleToFollow(opts: {
     .map(([pubkey, count]) => ({ pubkey, source: "network" as const, followedByCount: count }));
 
   const seen = new Set(network.map((c) => c.pubkey));
-  const fallback: PersonCandidate[] = trending
-    .filter((pubkey) => !excluded(pubkey) && !seen.has(pubkey))
-    .map((pubkey) => ({ pubkey, source: "trending" as const }));
+  const fallback: PersonCandidate[] = [];
+  for (const pubkey of trending) {
+    if (excluded(pubkey) || seen.has(pubkey)) continue;
+    seen.add(pubkey);
+    fallback.push({ pubkey, source: "trending" });
+  }
+  for (const pubkey of curated) {
+    if (excluded(pubkey) || seen.has(pubkey)) continue;
+    seen.add(pubkey);
+    fallback.push({ pubkey, source: "curated" });
+  }
 
   return [...network, ...fallback].slice(0, limit);
+}
+
+/** Follows of their own (beyond the seed account) before a feed stops feeling empty. */
+const OWN_FOLLOWS_TO_STOP = 3;
+
+/**
+ * Should a member still be offered people to follow on their feed? A new
+ * account follows only the seed account (lib/curated-seed-follows.ts), so its
+ * feed is one person; "zero follows", the old test, never fires for it.
+ * Suggest until they've chosen three people of their own.
+ */
+export function needsFollowSuggestions(follows: string[], seeds: string[]): boolean {
+  const seedSet = new Set(seeds);
+  return follows.filter((pubkey) => !seedSet.has(pubkey)).length < OWN_FOLLOWS_TO_STOP;
 }

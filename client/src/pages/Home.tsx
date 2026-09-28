@@ -36,6 +36,9 @@ import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { type SignalTier, getSignalTierLabel } from "@/lib/graperank";
 import { BrowsePacksDialog } from "@/components/BrowsePacksDialog";
 import { SuggestedFollowsStrip } from "@/components/SuggestedFollowsStrip";
+import { PeopleToFollowStrip } from "@/components/PeopleToFollowStrip";
+import { needsFollowSuggestions } from "@/lib/discover-people";
+import { buildAnchorFollows } from "@/lib/curated-seed-follows";
 import { TuneAntennaIllustration, NoSignalIllustration, RadarSweepIllustration, StaticNoiseIllustration } from "@/components/EmptyStateIllustrations";
 import { getDisplayName, getAvatarUrl } from "@/lib/nostr-helpers";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -2875,6 +2878,10 @@ export default function Home() {
   }, [feedMode, trendingSelector, loadTrending]);
 
   const isFollowsEmpty = feedMode === "open_comms" && follows.length === 0;
+  // A new account follows only the seed account, so its Following feed is one
+  // person and "zero follows" never fires for it. Offer people until they've
+  // chosen three of their own (lib/discover-people.ts).
+  const offerPeople = feedMode === "open_comms" && follows.length > 0 && needsFollowSuggestions(follows, buildAnchorFollows(null));
   const isFollowsLoading = feedMode === "open_comms" && follows.length > 0 && displayedEvents.length === 0 && isInitialLoading;
   // Global feed: keep the loader up (bounded — see grace timer) while raw
   // candidates exist but none have resolved profiles yet, instead of flashing
@@ -3447,6 +3454,7 @@ export default function Home() {
           </div>
         ) : (
           <>
+            {offerPeople && <PeopleToFollowStrip className="mb-4" />}
             {isCustomMode && activeCustomFeed && (feedStyle === "photos" || feedStyle === "video") ? (
               // Photos/Video style chip on a saved feed → Instagram-Explore
               // media mosaic instead of post cards. Consumes the same
