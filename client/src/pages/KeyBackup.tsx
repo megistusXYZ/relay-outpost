@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { loadLocalAccount, downloadBackupFile } from "@/lib/local-account";
 import { getWriteRelays } from "@/lib/outbox";
+import { markBackedUp } from "@/lib/key-backup";
 
 /**
  * Re-download the ENCRYPTED (NIP-49 ncryptsec) key backup for a local account.
@@ -45,6 +46,7 @@ export default function KeyBackup() {
         displayName: account.label,
         relays: getWriteRelays(pubkey),
       });
+      markBackedUp(pubkey, Date.now());
       setDone(true);
       toast({ title: "Encrypted backup downloaded", description: "Store it somewhere only you can reach." });
     } catch {

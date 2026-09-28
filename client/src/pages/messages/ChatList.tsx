@@ -49,6 +49,7 @@ import { getPinnedFeeds, groupPinsByRelay, pinUrl, normalizeUrl, type PinnedFeed
 import { unpinRoomEverywhere } from "@/lib/room-pins";
 import { usePrivateMasked, togglePrivateMasked, revealPrivateMasked, ensurePrivateModeRearm, maskChips, getPrivateModeSetting } from "@/lib/private-mode";
 import { PrivateModeShield } from "@/components/PrivateModeShield";
+import { KeyBackupNudge } from "@/components/KeyBackupNudge";
 import { displayNameWith, getPetname, matchesQueryWith, usePetnamesVersion, isShowingRealNames, toggleShowRealNames, hasAnyPetnames, type PetnameKind } from "@/lib/petnames";
 import { petnameImageUrlSync } from "@/lib/petname-images";
 import { PetnameDialog } from "@/components/PetnameDialog";
@@ -1360,6 +1361,8 @@ export function ChatList({
         className="flex-1 overflow-y-auto overscroll-contain"
         data-testid="container-conversation-list"
       >
+        {/* A key that lives only in this browser, not yet backed up (never while masked). */}
+        {!privateMasked && <KeyBackupNudge />}
         {privateMasked ? (
           // Ahead of everything else the list can show (the deleted view, the
           // loader, notices, invites, rows): masked, none of it is drawn.
