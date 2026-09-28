@@ -9,7 +9,7 @@
  *  - never the viewer, never someone already followed
  */
 import { describe, it, expect } from "vitest";
-import { rankPeopleToFollow } from "./discover-people";
+import { rankPeopleToFollow, needsFollowSuggestions } from "./discover-people";
 
 const ME = "me".padEnd(64, "0");
 const pk = (n: string) => n.padEnd(64, "f");
@@ -95,5 +95,39 @@ describe("rankPeopleToFollow", () => {
   it("carries the followed-by count so the card can say WHY", () => {
     const out = rankPeopleToFollow({ ...base(), networkCounts: new Map([[pk("a"), 4]]) });
     expect(out[0].followedByCount).toBe(4);
+  });
+});
+
+describe("a new member's suggestions when the network has nothing yet", () => {
+  const pk = (c: string) => c.repeat(64);
+  const [JACK, NAT, LYN, SPAM] = [pk("a"), pk("b"), pk("c"), pk("d")];
+
+  it("falls back to the curated starter list after trending, with the same exclusions", () => {
+    const out = rankPeopleToFollow({
+      viewer: ME,
+      followSet: new Set([JACK]),       // the seed follow every new account starts with
+      networkCounts: new Map(),          // one follow: no overlap signal yet
+      trending: [],                      // trending didn't answer
+      curated: [JACK, NAT, SPAM, LYN, NAT],
+      flagged: new Set([SPAM]),
+    });
+    expect(out).toEqual([
+      { pubkey: NAT, source: "curated" },
+      { pubkey: LYN, source: "curated" },
+    ]);
+  });
+});
+
+describe("when a new member still needs people to follow", () => {
+  const pk = (c: string) => c.repeat(64);
+  const JACK = pk("a");
+  const seeds = [JACK];
+
+  it("keeps suggesting until they've followed three people of their own", () => {
+    expect(needsFollowSuggestions([JACK], seeds)).toBe(true);          // just the seed account
+    expect(needsFollowSuggestions([JACK, pk("b"), pk("c")], seeds)).toBe(true);
+    expect(needsFollowSuggestions([JACK, pk("b"), pk("c"), pk("e")], seeds)).toBe(false);
+    // Three of their own with no seed at all: done, too.
+    expect(needsFollowSuggestions([pk("b"), pk("c"), pk("e")], seeds)).toBe(false);
   });
 });

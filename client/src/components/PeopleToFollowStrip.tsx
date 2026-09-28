@@ -35,6 +35,7 @@ import { useFollowsOfFollows } from "@/hooks/use-follows-of-follows";
 import { useFollowAction } from "@/hooks/use-follow-action";
 import { rankPeopleToFollow, type PersonCandidate } from "@/lib/discover-people";
 import { fetchTrendingAuthors } from "@/lib/discover-people-data";
+import { CURATED_SEED_PUBKEYS } from "@/lib/curated-seed-follows";
 import { isSpamPubkey, isMutedPubkey, fetchSpamList, onSpamListChange, onMuteChange } from "@/lib/spam-filter";
 import { eventStore, fetchProfilesCached } from "@/lib/nostr";
 import { KIND_METADATA, getAvatarUrl } from "@/lib/nostr-helpers";
@@ -70,9 +71,16 @@ export function PeopleToFollowStrip({ className = "" }: { className?: string }) 
   const { follow, pending, isFollowing, canFollow } = useFollowAction();
 
   const [trending, setTrending] = useState<string[]>([]);
+  // Answered, even if empty: only then may the curated starters stand in. Adding
+  // them earlier let their (usually cached) profiles win the first-fill latch
+  // and push real trending people out.
+  const [trendingAnswered, setTrendingAnswered] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    fetchTrendingAuthors(RANK_POOL * 2).then((pks) => { if (!cancelled) setTrending(pks); });
+    fetchTrendingAuthors(RANK_POOL * 2)
+      .then((pks) => { if (!cancelled) setTrending(pks); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setTrendingAnswered(true); });
     return () => { cancelled = true; };
   }, []);
 
@@ -106,25 +114,46 @@ export function PeopleToFollowStrip({ className = "" }: { className?: string }) 
       followSet,
       networkCounts: counts,
       trending: trending.filter(clean),
+      // The hand-picked starters, last, and only once trending has answered
+      // with nothing: a fallback, never a competitor.
+      curated: trendingAnswered && trending.length === 0 ? CURATED_SEED_PUBKEYS.filter(clean) : [],
       flagged: flaggedPubkeys ?? new Set(),
       limit: RANK_POOL,
     });
     // floorVersion re-runs the spam/mute checks when those lists ARRIVE.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pubkey, followSet, fofCounts, trending, flaggedPubkeys, floorVersion]);
+  }, [pubkey, followSet, fofCounts, trending, trendingAnswered, flaggedPubkeys, floorVersion]);
+
+  // The curated starters on their own: what a new member sees while their
+  // trust floor is still loading (holdCards below).
+  const curatedRanked: PersonCandidate[] = useMemo(() => rankPeopleToFollow({
+    viewer: pubkey,
+    followSet,
+    networkCounts: new Map(),
+    trending: [],
+    curated: CURATED_SEED_PUBKEYS.filter((pk) => !isSpamPubkey(pk) && !isMutedPubkey(pk)),
+    flagged: new Set(),
+    limit: SHOW_LIMIT,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [pubkey, followSet, floorVersion]);
 
   // Store-poll until profiles resolve (the SuggestedFollowsStrip /
   // IdentityCircleCard pattern — there is no awaitable "profiles ready").
   const [profiles, setProfiles] = useState<Map<string, Event | null>>(new Map());
-  const rankedKey = ranked.map((c) => c.pubkey).join(",");
+  const holdForFloor = !!pubkey && wotEnabled && !flaggedPubkeys;
+  const watched = useMemo(
+    () => (holdForFloor ? [...ranked, ...curatedRanked] : ranked),
+    [holdForFloor, ranked, curatedRanked],
+  );
+  const rankedKey = watched.map((c) => c.pubkey).join(",");
   useEffect(() => {
-    if (ranked.length === 0) return;
-    try { fetchProfilesCached(ranked.map((c) => c.pubkey)); } catch { /* store-poll below */ }
+    if (watched.length === 0) return;
+    try { fetchProfilesCached(watched.map((c) => c.pubkey)); } catch { /* store-poll below */ }
     const tick = () => {
       setProfiles((prev) => {
         let changed = false;
         const next = new Map(prev);
-        for (const c of ranked) {
+        for (const c of watched) {
           const ev = (eventStore.getReplaceable?.(KIND_METADATA, c.pubkey) ?? null) as Event | null;
           if (ev && next.get(c.pubkey) !== ev) { next.set(c.pubkey, ev); changed = true; }
           else if (!next.has(c.pubkey)) { next.set(c.pubkey, null); changed = true; }
@@ -172,7 +201,23 @@ export function PeopleToFollowStrip({ className = "" }: { className?: string }) 
   // hold sits ABOVE the latch so the pinned set can never be captured from
   // unfloored candidates. Guests and WoT-off viewers have no shield to wait
   // for.
-  const holdForFloor = !!pubkey && wotEnabled && !flaggedPubkeys;
+  // (holdForFloor is declared above, where the profile poll needs it.)
+
+  // …except for the curated starters. They're hand-vetted, not algorithmic, so
+  // they don't need the trust floor to be safe to show (spam and mutes still
+  // screen them). Without this a brand-new member, whose first trust
+  // calculation is still running, saw no suggestions at all. Never latched:
+  // once the floor lands, the normal ranked set pins as before.
+  const holdCards = useMemo(() => {
+    if (!holdForFloor) return [];
+    const out: Array<PersonCandidate & { name: string; avatar: string }> = [];
+    for (const c of curatedRanked) {
+      const p = usableProfile(profiles.get(c.pubkey) ?? null);
+      if (p) out.push({ ...c, ...p });
+      if (out.length >= SHOW_LIMIT) break;
+    }
+    return out;
+  }, [holdForFloor, curatedRanked, profiles]);
 
   // LATCH GRACE. The pin exists to stop churn, but pinning on FIRST fill let
   // trending (instant, session-cached) win the race against friends-of-follows
@@ -193,9 +238,12 @@ export function PeopleToFollowStrip({ className = "" }: { className?: string }) 
 
   const stillSafe = (pk: string) =>
     !(flaggedPubkeys?.has(pk)) && !isSpamPubkey(pk) && !isMutedPubkey(pk);
-  const cards = (frozenRef.current ?? []).filter((c) => stillSafe(c.pubkey));
+  const cards = (holdForFloor
+    ? (holdCards.length >= MIN_TO_SHOW ? holdCards : [])
+    : (frozenRef.current ?? [])
+  ).filter((c) => stillSafe(c.pubkey));
 
-  if (holdForFloor || cards.length === 0) return null;
+  if (cards.length === 0) return null;
 
   const openProfile = (pk: string) => {
     try { setLocation(`/profile/${nip19.npubEncode(pk)}`); } catch { /* bad pk — no-op */ }
@@ -227,7 +275,7 @@ export function PeopleToFollowStrip({ className = "" }: { className?: string }) 
               <span className="text-xs font-medium truncate w-full">{c.name}</span>
               {/* The WHY, because an unexplained recommendation is an ad. */}
               <span className="text-[10px] text-muted-foreground/70 truncate w-full">
-                {c.source === "network" ? `Followed by ${c.followedByCount} you follow` : "Trending now"}
+                {c.source === "network" ? `Followed by ${c.followedByCount} you follow` : c.source === "curated" ? "Recommended" : "Trending now"}
               </span>
             </button>
             {canFollow && (
