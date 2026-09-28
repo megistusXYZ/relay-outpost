@@ -1,4 +1,5 @@
 import type { Event } from "nostr-tools";
+import { searchPeopleRanked } from "./people-search";
 import { registerProfileInAllCaches, isProfileCached } from "./nostr";
 
 export interface BrainstormHit {
@@ -57,29 +58,20 @@ export function brainstormWotToInfluence(wotRank: number | undefined): number | 
   return wotRank / 100;
 }
 
+/**
+ * People around a topic, ranked through the viewer's web of trust. Uses the
+ * same NIP-50 relay as people search; the relay returns no numeric scores, so
+ * `wotScores` is empty and badges come from the normal score path.
+ */
 export async function discoverByTopic(topic: string, limit: number = 20): Promise<{ events: Event[]; wotScores: Map<string, number | null> }> {
-  const events: Event[] = [];
   const wotScores = new Map<string, number | null>();
-
   try {
-    const res = await fetch(`/api/brainstorm/discover?topic=${encodeURIComponent(topic)}&limit=${limit}`, {
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data: BrainstormResponse = await res.json();
-
-    if (data.error || !data.hits) return { events, wotScores };
-
-    for (const hit of data.hits) {
-      if (!hit.pubkey) continue;
-      const event = brainstormHitToKind0Event(hit);
-      registerProfileInAllCaches(event);
-      events.push(event);
-      wotScores.set(hit.pubkey, brainstormWotToInfluence(hit.wot_rank));
-    }
-  } catch {}
-
-  return { events, wotScores };
+    const ranked = await searchPeopleRanked(topic, limit);
+    for (const event of ranked.data) registerProfileInAllCaches(event);
+    return { events: ranked.data, wotScores };
+  } catch {
+    return { events: [], wotScores };
+  }
 }
 
 const _prefetchedPubkeys = new Set<string>();
@@ -271,27 +263,3 @@ export async function lookupProfileDirect(pubkey: string): Promise<{ event: Even
   }
 }
 
-export async function searchBrainstorm(query: string, limit: number = 20): Promise<{ events: Event[]; wotScores: Map<string, number | null> }> {
-  const events: Event[] = [];
-  const wotScores = new Map<string, number | null>();
-
-  try {
-    const res = await fetch(`/api/brainstorm/search?q=${encodeURIComponent(query)}&limit=${limit}`, {
-      signal: AbortSignal.timeout(6000),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data: BrainstormResponse = await res.json();
-
-    if (data.error || !data.hits) return { events, wotScores };
-
-    for (const hit of data.hits) {
-      if (!hit.pubkey) continue;
-      const event = brainstormHitToKind0Event(hit);
-      registerProfileInAllCaches(event);
-      events.push(event);
-      wotScores.set(hit.pubkey, brainstormWotToInfluence(hit.wot_rank));
-    }
-  } catch {}
-
-  return { events, wotScores };
-}

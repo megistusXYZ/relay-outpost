@@ -1,7 +1,7 @@
 import { eventStore, trackEventRelay, DEFAULT_RELAYS, throttledPoolSubscribe, registerProfileInAllCaches } from "./nostr";
 import { replyTargetOf, THREAD_REPLY_KINDS, KIND_NIP22_COMMENT } from "./reply-target";
 import type { Event } from "nostr-tools";
-import { searchBrainstorm } from "./brainstorm-search";
+import { searchPeopleRanked } from "./people-search";
 
 // Primal's cache hosts, tried in order. `cache.primal.net` is the documented
 // entry point and stays first, but MEASURED 2026-08-03 it flaps: six probes
@@ -1347,15 +1347,15 @@ export async function searchUsersWithStatus(query: string, limit: number = 10): 
   let attempted = 0;
   let reachable = 0;
 
+  // Ranked through the viewer's web of trust (NosFabrica's NIP-50 relay).
+  // Counted as reachable only when it actually connected.
   attempted++;
   try {
-    const { events, wotScores } = await searchBrainstorm(query, limit);
-    reachable++;
-    if (events.length > 0) {
-      if (wotScores.size > 0) {
-        (searchUsers as any).__lastWotScores = wotScores;
-      }
-      return { events, attempted, reachable, allBackendsFailed: false };
+    const ranked = await searchPeopleRanked(query, limit);
+    if (ranked.reached) reachable++;
+    if (ranked.data.length > 0) {
+      for (const event of ranked.data) registerProfileInAllCaches(event);
+      return { events: ranked.data, attempted, reachable, allBackendsFailed: false };
     }
   } catch {}
 
@@ -1381,8 +1381,11 @@ export async function searchUsersWithStatus(query: string, limit: number = 10): 
     const searchRelays = ["wss://relay.nostr.band", "wss://search.nos.today"];
     // maxWait: querySync otherwise waits for EOSE from every relay; relay.nostr.band
     // is known to connect but never EOSE, which would hang People search forever.
+    // querySync never throws, so "it returned" is not "someone answered":
+    // count these relays only when one of them actually connected.
+    const { canReachAny } = await import("./relay-reach");
+    if (await canReachAny(searchRelays)) reachable++;
     const events = await pool.querySync(searchRelays, { kinds: [0], search: query, limit }, { maxWait: 5000 });
-    reachable++;
     for (const event of events) {
       registerProfileInAllCaches(event);
       profiles.push(event);
