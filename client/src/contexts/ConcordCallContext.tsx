@@ -19,11 +19,12 @@ import type { Room, RemoteTrack } from "livekit-client";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { getGlobalSigner } from "@/lib/nip42-auth";
 import { persistentPoolSubscribe, publishEvent } from "@/lib/nostr";
-import type { StoredChannel, StoredCommunity } from "@/lib/concord/concord-keys";
+import { getCommunity, type StoredChannel, type StoredCommunity } from "@/lib/concord/concord-keys";
+import { useToast } from "@/hooks/use-toast";
 import { effectiveTime } from "@/lib/concord/concord-events";
 import { roomVoiceKeys, callerFrameKey, type VoiceKeys } from "@/lib/concord/concord-voice";
 import { callRoster, matchCallers } from "@/lib/concord/concord-presence";
-import { planCallerKeys, startPresenceHeartbeat, callerLabel, type CallerLabel, type KeyState } from "@/lib/concord/concord-call";
+import { planCallerKeys, startPresenceHeartbeat, callerLabel, callKeysForRoom, type CallerLabel, type KeyState } from "@/lib/concord/concord-call";
 import { publishCallPresence, subscribeCallPresence } from "@/lib/concord/concord-stream";
 import type { JoinedCall } from "@/lib/concord/concord-call-e2ee";
 
@@ -74,6 +75,8 @@ export const useConcordCall = () => useContext(Ctx);
 /** Presence older than this can't change the roster (a "joined" goes stale at 90s). */
 const RUMOR_KEEP_MS = 3 * 60 * 1000;
 const RESYNC_MS = 5_000;
+/** How often an ongoing call re-reads its group for a rekey (someone removed). */
+const KEY_CHECK_MS = 10_000;
 
 type PresenceRumor = { kind: number; pubkey: string; content: string; created_at: number; tags: string[][] };
 
@@ -93,6 +96,9 @@ interface Session {
   stopBeat: () => Promise<void>;
   closePresence: () => void;
   tick: ReturnType<typeof setInterval>;
+  /** Re-reads the group so a rekey moves the call (or ends it for us). */
+  keyCheck?: ReturnType<typeof setInterval>;
+  checking?: boolean;
 }
 
 export function ConcordCallProvider({ children }: { children: React.ReactNode }) {
@@ -102,6 +108,7 @@ export function ConcordCallProvider({ children }: { children: React.ReactNode })
   const [error, setError] = useState<string | null>(null);
   const [onScreen, setOnScreen] = useState<string | null>(null);
   const session = useRef<Session | null>(null);
+  const { toast } = useToast();
 
   /** Re-decide every seat's key and redraw the callers. Cheap; runs on every room event and every 5s. */
   const resync = useCallback(() => {
@@ -154,6 +161,7 @@ export function ConcordCallProvider({ children }: { children: React.ReactNode })
     if (!s) return;
     session.current = null;
     clearInterval(s.tick);
+    if (s.keyCheck) clearInterval(s.keyCheck);
     s.closePresence();
     await s.stopBeat();
     await s.room.disconnect().catch(() => {});
@@ -220,16 +228,42 @@ export function ConcordCallProvider({ children }: { children: React.ReactNode })
       ]) room.on(ev, resync);
       room.on(lk.RoomEvent.Disconnected, () => { if (session.current === s) void leave(); });
 
-      await room.localParticipant.setMicrophoneEnabled(true).catch(() => {
-        setError("Your microphone isn't available, so you've joined muted");
-      });
+      // Joined MUTED: tapping Call by accident, or joining to listen, never
+      // opens the mic. The first unmute asks for microphone permission.
+
+      // A rekey (someone removed) rolls the call keys with the room's keys
+      // (CORD-07 §1): the call moves to the new room, and whoever lost the
+      // room's key leaves. Re-read the stored group while in the call, on or
+      // off its room. A failed read is retried, never taken as "no access".
+      s.keyCheck = setInterval(async () => {
+        if (session.current !== s || s.checking) return;
+        s.checking = true;
+        try {
+          let stored: StoredCommunity | null;
+          try { stored = await getCommunity(s.ownPubkey, s.community.community_id); } catch { return; }
+          if (session.current !== s) return;
+          const latest = stored?.channels.find((c) => c.id === s.channel.id);
+          const decision = stored ? callKeysForRoom(s.keys, stored, latest) : "leave";
+          if (decision === "rejoin" && stored && latest) {
+            await joinRef.current(stored, latest, s.title);
+            toast({ title: "Call secured again", description: "The group's keys changed, so the call moved to its new room." });
+          } else if (decision === "leave") {
+            await leave();
+            setError("You no longer have access to this room, so the call ended");
+          }
+        } finally {
+          s.checking = false;
+        }
+      }, KEY_CHECK_MS);
       resync();
     } catch (err) {
       setError(String((err as Error)?.message ?? err));
     } finally {
       setJoining(false);
     }
-  }, [pubkey, leave, resync]);
+  }, [pubkey, leave, resync, toast]);
+  const joinRef = useRef(join);
+  joinRef.current = join;
 
   const toggle = useCallback(async (which: "mic" | "camera" | "screen") => {
     const s = session.current;

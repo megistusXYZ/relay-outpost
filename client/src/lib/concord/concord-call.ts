@@ -8,7 +8,7 @@
  * caller's audio and video never play under someone else's name.
  */
 import { matchCallers, type CallerMatch, type CallPresence, type CallSeat } from "./concord-presence";
-import type { VoiceKeys } from "./concord-voice";
+import { roomVoiceKeys, type VoiceKeys } from "./concord-voice";
 
 /** What a seat's installed key is: its real frame key, or one that opens nothing. */
 export type KeyState = "sender" | "blocked";
@@ -93,4 +93,36 @@ export type CallerLabel = { kind: "member"; pubkey: string } | { kind: "verifyin
 export function callerLabel(match: CallerMatch, firstSeenMs: number, nowMs: number): CallerLabel {
   if (match.member) return { kind: "member", pubkey: match.member };
   return nowMs - firstSeenMs < VERIFY_GRACE_MS ? { kind: "verifying" } : { kind: "unverified" };
+}
+
+/**
+ * What an ongoing call does given its room's latest record (re-read while in
+ * the call): the keys that record gives, compared with the ones we joined on.
+ */
+export function callKeysForRoom(
+  current: VoiceKeys,
+  group: { community_root: string; root_epoch: number },
+  /** Undefined when the room is gone: deleted, or the group left. */
+  room: { id: string; key?: string; epoch: number; isPrivate: boolean } | undefined,
+): "stay" | "rejoin" | "leave" {
+  return callKeysChange(current, room ? roomVoiceKeys(group, room) : null);
+}
+
+/**
+ * Can this browser encrypt a call? LiveKit's frame encryption needs a Web
+ * Worker plus one of two browser features: RTCRtpScriptTransform (Safari) or
+ * encoded streams on RTCRtpSender (Chromium). Checked BEFORE loading LiveKit
+ * (12 MB), so the Call button can say "can't encrypt calls here" up front
+ * instead of failing after the tap. joinCall still refuses on its own if the
+ * worker won't start. Pass `window` (or a stand-in in tests).
+ */
+export function canEncryptCalls(env: {
+  Worker?: unknown;
+  RTCRtpScriptTransform?: unknown;
+  RTCRtpSender?: { prototype?: { createEncodedStreams?: unknown } };
+}): boolean {
+  if (typeof env.Worker !== "function") return false;
+  const scriptTransform = typeof env.RTCRtpScriptTransform === "function";
+  const encodedStreams = typeof env.RTCRtpSender?.prototype?.createEncodedStreams === "function";
+  return scriptTransform || encodedStreams;
 }

@@ -5,7 +5,7 @@
  *
  * Types only from LiveKit here: the library loads when you join, not before.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Loader2, Maximize2, Mic, MicOff, MonitorUp, MonitorX, Phone, PhoneOff, ShieldCheck, Video, VideoOff, X } from "lucide-react";
 import type { Participant, Track } from "livekit-client";
@@ -16,7 +16,15 @@ import { persistentPoolSubscribe } from "@/lib/nostr";
 import type { StoredChannel, StoredCommunity } from "@/lib/concord/concord-keys";
 import { callRoster } from "@/lib/concord/concord-presence";
 import { subscribeCallPresence } from "@/lib/concord/concord-stream";
-import type { CallerLabel } from "@/lib/concord/concord-call";
+import { canEncryptCalls, type CallerLabel } from "@/lib/concord/concord-call";
+
+/** Said wherever a call can't start here: calls are end to end encrypted or not at all. */
+const NO_ENCRYPTION = "This browser can't encrypt calls. Try an up-to-date Chrome, Safari or Firefox.";
+
+/** Checked once, without loading LiveKit. */
+function useCanEncryptCalls(): boolean {
+  return useMemo(() => typeof window !== "undefined" && canEncryptCalls(window as never), []);
+}
 import { useConcordCall, callRoomKey, type ActiveCall, type CallParticipant } from "@/contexts/ConcordCallContext";
 import { useConcordCallsEnabled } from "@/lib/concord/concord-prefs";
 
@@ -59,18 +67,19 @@ export function ConcordCallButton({ community, channel, title, compact }: {
   const { joining, join } = useConcordCall();
   const here = useHereCall(community, channel);
   const enabled = useConcordCallsEnabled();
+  const canEncrypt = useCanEncryptCalls();
   if (!enabled && !here) return null;
   const size = compact ? "w-10 h-10" : "w-7 h-7";
   const icon = compact ? "w-[18px] h-[18px]" : "w-4 h-4";
   return (
     <button
-      onClick={() => { if (channel && !here && !joining) void join(community, channel, title); }}
-      disabled={!channel || joining}
+      onClick={() => { if (channel && !here && !joining && canEncrypt) void join(community, channel, title); }}
+      disabled={!channel || joining || (!here && !canEncrypt)}
       className={`flex items-center justify-center ${size} shrink-0 rounded-full transition-colors disabled:opacity-60 ${
         here ? "text-emerald-600 bg-emerald-500/10 dark:text-emerald-400" : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/40"
       }`}
-      title={here ? "You're in this room's call" : "Start or join a call"}
-      aria-label={here ? "In this room's call" : "Start or join a call"}
+      title={here ? "You're in this room's call" : canEncrypt ? "Start or join a call" : NO_ENCRYPTION}
+      aria-label={here ? "In this room's call" : canEncrypt ? "Start or join a call" : NO_ENCRYPTION}
       aria-pressed={!!here}
       data-testid="concord-call-button"
     >
@@ -88,6 +97,7 @@ export function ConcordCallBar({ community, channel, title }: {
   const { join, joining, error, leave, toggleMic, toggleCamera, toggleScreen } = useConcordCall();
   const here = useHereCall(community, channel);
   const enabled = useConcordCallsEnabled();
+  const canEncrypt = useCanEncryptCalls();
   // No listening for a room's call until calls are switched on here.
   const count = useRoomCallCount(community, channel, enabled && !here);
 
@@ -100,11 +110,12 @@ export function ConcordCallBar({ community, channel, title }: {
         <div className="min-w-0 flex-1">
           {count > 0 && <p className="text-xs font-medium text-foreground/90">{count} in the call</p>}
           {error && <p className="text-[11px] text-destructive truncate" data-testid="concord-call-error">{error}</p>}
+          {count > 0 && !canEncrypt && <p className="text-[11px] text-muted-foreground truncate" data-testid="concord-call-cant-encrypt">{NO_ENCRYPTION}</p>}
         </div>
         {count > 0 && channel && (
           <button
             onClick={() => void join(community, channel, title)}
-            disabled={joining}
+            disabled={joining || !canEncrypt}
             className="h-11 md:h-8 px-3.5 rounded-lg bg-emerald-600 text-white text-xs font-medium shrink-0 hover:bg-emerald-600/90 disabled:opacity-60 transition-colors"
             data-testid="concord-call-join"
           >
