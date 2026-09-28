@@ -48,7 +48,7 @@ import {
   restartDiscovery,
   NIP_66_MONITOR_RELAYS,
 } from "@/hooks/use-outpost-directory-search";
-import { resolveTile } from "@/lib/discover-tiles";
+import { resolveTile, imagesEmptyLine } from "@/lib/discover-tiles";
 import {
   discoverNewsFeeds,
   fetchNewestArticle,
@@ -1411,7 +1411,7 @@ function ImagesShelfTile() {
         </span>
       )}
       {(state.status === "empty" || (state.status === "ready" && images && images.length === 0)) && (
-        <span className="block text-xs text-muted-foreground">Quiet right now — tap to browse.</span>
+        <span className="block text-xs text-muted-foreground" data-testid="images-tile-empty">{imagesEmptyLine(follows?.length ?? 0)}</span>
       )}
       {state.status === "unreachable" && unreachableBody("the image relays")}
     </TileShell>
