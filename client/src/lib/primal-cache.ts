@@ -1,6 +1,7 @@
 import { eventStore, trackEventRelay, DEFAULT_RELAYS, throttledPoolSubscribe, registerProfileInAllCaches } from "./nostr";
 import { replyTargetOf, THREAD_REPLY_KINDS, KIND_NIP22_COMMENT } from "./reply-target";
 import type { Event } from "nostr-tools";
+import { adjustStats } from "./stat-adjust";
 import { searchBrainstorm } from "./brainstorm-search";
 
 // Primal's cache hosts, tried in order. `cache.primal.net` is the documented
@@ -1641,6 +1642,11 @@ class PrimalStatsCache {
     this.notify(eventId, stats);
     this.notifyAny();
     persistStatsToStorage(this.cache);
+  }
+
+  /** Move one count by your own action (repost +1, undo -1). See adjustStats. */
+  adjust(eventId: string, field: "replies" | "reposts" | "likes" | "zaps", delta: number) {
+    this.set(eventId, adjustStats(this.cache.get(eventId), field, delta));
   }
 
   update(stats: Record<string, EventStats>) {
