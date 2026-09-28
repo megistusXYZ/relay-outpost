@@ -1820,7 +1820,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                   <div className="flex-1" />
                   <Button onClick={handleFinish} disabled={!acknowledged || isWorking} className={`text-xs font-brand uppercase tracking-widest ${primaryBtnCls}`} data-testid="button-finish-create">
                     {isWorking ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : null}
-                    {isWorking ? "Signing in…" : "Go to my feed"}
+                    {isWorking ? "Signing in…" : "Finish"}
                   </Button>
                 </div>
               </div>
