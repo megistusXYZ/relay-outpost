@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { FailureMemory } from "@shared/failure-memory";
 import { createPortal } from "react-dom";
 import { TrendingUp, TrendingDown, Copy, Check, ArrowRightLeft, Box, Fuel, ChevronDown, ArrowUpRight, ArrowDownLeft, Info, RefreshCw, Wallet, Eye, EyeOff } from "lucide-react";
 import { useLocation } from "wouter";
@@ -192,14 +193,27 @@ async function fetchZapActivity(pubkey: string, force?: boolean, nwcTransactions
 
 let sharedPriceCache: { price: number; ts: number } | null = null;
 
-async function fetchPrice(): Promise<PriceData | null> {
+// CoinGecko rate-limits (429) quickly; after a refusal go straight to the
+// fallbacks for five minutes instead of asking again on every tick. And one
+// request in flight at a time: every mounted tracker used to fetch its own.
+const priceSources = new FailureMemory(5 * 60 * 1000);
+let priceInFlight: Promise<PriceData | null> | null = null;
+
+function fetchPrice(): Promise<PriceData | null> {
+  if (!priceInFlight) priceInFlight = fetchPriceFresh().finally(() => { priceInFlight = null; });
+  return priceInFlight;
+}
+
+async function fetchPriceFresh(): Promise<PriceData | null> {
   try {
-    const res = await fetch(
-      "https://api.coingecko.com/api/v3/coins/bitcoin?localization=false&tickers=false&community_data=false&developer_data=false&sparkline=false",
-      { signal: AbortSignal.timeout(8000) }
-    );
-    if (!res.ok) throw new Error("CoinGecko failed");
-    const d = await res.json();
+    const d = await priceSources.run("coingecko", async () => {
+      const res = await fetch(
+        "https://api.coingecko.com/api/v3/coins/bitcoin?localization=false&tickers=false&community_data=false&developer_data=false&sparkline=false",
+        { signal: AbortSignal.timeout(8000) }
+      );
+      if (!res.ok) throw new Error("CoinGecko failed");
+      return res.json();
+    });
     const md = d.market_data;
     return {
       price: md.current_price.usd,
@@ -249,6 +263,7 @@ async function fetchPrice(): Promise<PriceData | null> {
 }
 
 async function fetchSparkline(): Promise<number[]> {
+  if (priceSources.isDown("coingecko")) return [];
   try {
     const res = await fetch(
       "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=7&interval=daily",
