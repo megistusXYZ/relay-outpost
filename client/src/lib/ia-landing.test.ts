@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { shouldLandOnChats, postAuthLandingPath, CHATS_PATH, WELCOME_PATH } from "./ia-landing";
+import { shouldLandOnChats, postAuthLandingPath, holdHomeForLanding, CHATS_PATH, WELCOME_PATH } from "./ia-landing";
 
 const A = "a".repeat(64);
 const base = {
@@ -107,5 +107,35 @@ describe("a brand-new account's first landing", () => {
     expect(postAuthLandingPath(null, true, { isNew: true, welcomed: true })).toBe(CHATS_PATH);
     // A key signed in from elsewhere is not a new member: no welcome.
     expect(postAuthLandingPath(null, true, { isNew: false, welcomed: false })).toBe(CHATS_PATH);
+  });
+});
+
+describe("holdHomeForLanding: don't start the feed on the way to Chats", () => {
+  const PK = "a".repeat(64);
+  const arrivedAt = (pathname: string) => ({ pathname, search: "", hash: "" });
+  const base = { location: "/", pubkey: PK, collapsed: true, landed: false };
+
+  it("a signed-in launch at / holds the feed: it's about to land on Chats", () => {
+    expect(holdHomeForLanding({ ...base, arrival: arrivedAt("/") })).toBe(true);
+  });
+
+  it("tapping Feed after arriving somewhere else shows the feed (reported 2026-09-29: Discover → Feed was blank)", () => {
+    // Arrived at /discover (or a reload on Chats): the tab never landed, but
+    // this is a tap, not an arrival, and nothing is going to redirect it.
+    expect(holdHomeForLanding({ ...base, arrival: arrivedAt("/discover") })).toBe(false);
+    expect(holdHomeForLanding({ ...base, arrival: arrivedAt("/messages") })).toBe(false);
+  });
+
+  it("once the tab has landed, / is the feed", () => {
+    expect(holdHomeForLanding({ ...base, arrival: arrivedAt("/"), landed: true })).toBe(false);
+  });
+
+  it("only while the location is / itself", () => {
+    expect(holdHomeForLanding({ ...base, location: "/messages", arrival: arrivedAt("/") })).toBe(false);
+  });
+
+  it("signed out, or the expanded layout: no landing, no hold", () => {
+    expect(holdHomeForLanding({ ...base, pubkey: null, arrival: arrivedAt("/") })).toBe(false);
+    expect(holdHomeForLanding({ ...base, collapsed: false, arrival: arrivedAt("/") })).toBe(false);
   });
 });

@@ -103,3 +103,32 @@ export function postAuthLandingPath(
   if (saved && saved.startsWith("/")) return saved;
   return collapsed ? CHATS_PATH : "/search";
 }
+
+/**
+ * Hold the feed back while a launch is about to land on Chats, so it isn't
+ * downloaded and mounted only to be dropped a frame later.
+ *
+ * Decided on the ARRIVAL (the URL the tab opened at), never on the current
+ * location alone: the landing effect runs for the arrival only, so a later tap
+ * to "/" (Discover → Feed) in a tab that arrived elsewhere is never
+ * redirected, and holding the feed there left the page blank (2026-09-29).
+ */
+export function holdHomeForLanding(env: {
+  /** The current location. */
+  location: string;
+  /** Where this tab opened. */
+  arrival: { pathname: string; search: string; hash: string };
+  pubkey: string | null | undefined;
+  collapsed: boolean;
+  landed: boolean;
+}): boolean {
+  if (env.location !== "/") return false;
+  return shouldLandOnChats({
+    pubkey: env.pubkey,
+    collapsed: env.collapsed,
+    pathname: env.arrival.pathname,
+    search: env.arrival.search,
+    hash: env.arrival.hash,
+    landed: env.landed,
+  });
+}
