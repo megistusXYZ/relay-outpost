@@ -207,3 +207,17 @@ describe("floorArticles — one floor for every surface that shows articles", ()
     expect(holding).toBe(1);
   });
 });
+
+describe("articleFloor — a trusted author needs nothing else (Discover's Articles tile)", () => {
+  // Discover's Articles candidates have already passed its trust gate (0.50+
+  // or followed), so the tile scores them as trusted and doesn't wait for
+  // engagement numbers or profiles (that wait took 20-56s on production).
+  it("shows a trusted author while their profile is still loading and engagement is unknown", () => {
+    expect(articleFloor(facts({ wotScore: 0.5, profile: null, profileSettled: false, signalsAvailable: false }), "strict", NOW)).toBe("show");
+  });
+
+  it("still hides a trusted author who floods, and one your network flagged", () => {
+    expect(articleFloor(facts({ wotScore: 0.9, articlesInLastDay: 9 }), "balanced", NOW)).toBe("hide");
+    expect(articleFloor(facts({ wotScore: 0.9, flagged: true }), "balanced", NOW)).toBe("hide");
+  });
+});

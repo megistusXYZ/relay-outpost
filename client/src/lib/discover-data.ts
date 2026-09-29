@@ -264,7 +264,13 @@ async function fetchNewestArticleFresh(follows: readonly string[]): Promise<Reac
   // sockets are already warm. Follows' own long-form is fetched alongside the
   // general pool and ordered FIRST (owner rule, 2026-08-27) — general fills
   // whatever your writers didn't publish this week.
-  const [served, events, followsArticles] = await Promise.all([
+  // The trusted list and the most trusted writers' own long-form are read
+  // alongside the general pool, not after it (the tile waited on all three).
+  const topP = loadDiscoverTrust([], trustOpts);
+  const trustedArticlesP = topP.then((t) => (t.reached && t.top.length > 0
+    ? collectOnce(FAST_RELAYS, { kinds: [KIND_LONG_FORM], authors: t.top.slice(0, 200), limit: 30 }, 8_000)
+    : ([] as Event[])));
+  const [served, events, followsArticles, trustedArticles] = await Promise.all([
     anyServed(FAST_RELAYS),
     // 40, not the 2 the tile shows: the tile runs the Articles floor
     // (lib/article-floor.ts), which needs enough left over after it, and
@@ -273,16 +279,15 @@ async function fetchNewestArticleFresh(follows: readonly string[]): Promise<Reac
     follows.length > 0
       ? collectOnce(FAST_RELAYS, { kinds: [KIND_LONG_FORM], authors: follows.slice(0, 100), limit: 15 }, 8_000)
       : Promise.resolve([] as Event[]),
+    trustedArticlesP,
   ]);
   // Every candidate, your writers first. The tile floors them and shows the
   // top TWO that pass (one headline over a tall empty card undersold it).
   // Only highly trusted writers (and your follows) on the front door: gate
   // the pool, and top it up with the most trusted people's own long-form.
+  if (!(await topP).reached) return { data: [], reached: false };
   const trust = await loadDiscoverTrust([...events, ...followsArticles].map((e) => e.pubkey), trustOpts);
   if (!trust.reached) return { data: [], reached: false };
-  const trustedArticles = trust.top.length > 0
-    ? await collectOnce(FAST_RELAYS, { kinds: [KIND_LONG_FORM], authors: trust.top.slice(0, 200), limit: 30 }, 8_000)
-    : [];
   const gate = { follows: followSet, scores: trust.scores };
   const candidates = preferFollowed(
     survivingArticles(gateByTrust([...followsArticles, ...events, ...trustedArticles], (e) => e.pubkey, gate)),

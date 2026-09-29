@@ -83,6 +83,7 @@ import { FOCUS_RING } from "@/lib/a11y";
 import { usePeopleTypeahead } from "@/hooks/use-people-typeahead";
 import { PeopleToFollowStrip } from "@/components/PeopleToFollowStrip";
 import { useDiscoverTrust } from "@/hooks/use-discover-trust";
+import { DISCOVER_MIN_SCORE } from "@/lib/discover-trust";
 import { getDisplayName, getAvatarUrl, getProfileContent } from "@/lib/nostr-helpers";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import type { ArticleData } from "@/lib/nip23";
@@ -773,13 +774,17 @@ function ArticlesTile() {
   }, [candidateEvents, requestScoresBulk]);
   const followSet = useMemo(() => new Set(follows ?? []), [follows]);
   const floored = useMemo(() => {
-    if (signals === null || candidateEvents.length === 0) return null;
+    // No wait for Primal's engagement numbers or for profiles: every candidate
+    // already passed Discover's trust gate (0.50+ or followed; discover-data.ts),
+    // and a trusted author is shown on trust alone (article-floor.ts). That wait
+    // took 20-56s on production. The flood and flagged checks still apply.
+    if (candidateEvents.length === 0) return null;
     const byEvent = new Map(candidates.map((a) => [a.event, a] as const));
     const { shown, holding } = floorArticles<ArticleData["event"]>(
       moderationFilter(candidateEvents),
       {
         isFollowed: (pk) => followSet.has(pk) || pk === pubkey,
-        wotScore: (pk) => wotScores?.get(pk),
+        wotScore: (pk) => wotScores?.get(pk) ?? DISCOVER_MIN_SCORE,
         flagged: (pk) => !!flaggedPubkeys?.has(pk),
         profile: profileGetter,
         profileSettled: profileSettledGetter,
@@ -787,7 +792,7 @@ function ArticlesTile() {
         firstSeen: getFirstSeen,
         followerCount: getCachedFollowerCount,
         powDifficulty: effectivePow,
-        signalsAvailable: signals,
+        signalsAvailable: signals ?? false,
       },
       preset,
       Math.floor(Date.now() / 1000),
