@@ -10,7 +10,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { RelayOutpostLoader, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
+import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
+import { ChatListSkeleton } from "./ChatListSkeleton";
 import { MessagesIcon } from "@/components/icons/MessagesIcon";
 import { ConcordPendingInvites } from "@/components/concord/ConcordPendingInvites";
 import {
@@ -1463,13 +1464,14 @@ export function ChatList({
           // must never blank the populated list; the spinning refresh icon is
           // the only "refreshing" signal. This is the mobile "list flashes then
           // goes blank" fix: keep cached conversations sticky across refreshes.
-          <div className="flex flex-col items-center justify-center py-12">
-            <RelayOutpostLoader size="md" label="Loading conversations..." />
+          // Rows the shape of real ones, so the list fills in place.
+          <div className="flex flex-col">
+            <ChatListSkeleton />
             {loadingTooLong && (
               <Button
                 variant="outline"
                 size="sm"
-                className="mt-4"
+                className="mt-4 self-center"
                 onClick={() => loadConversations()}
                 data-testid="button-retry-conversations"
               >
