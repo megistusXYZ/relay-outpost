@@ -2,9 +2,9 @@
  * People search through NosFabrica's NIP-50 relay (search.brainstorm.world).
  *
  * The relay ranks kind-0 profiles through an observer's web of trust: the
- * signed-in viewer's own when we pass `observer:<hex>` (first use queues a
- * GrapeRank run for them on NosFabrica's side, and the relay falls back to
- * its default observer meanwhile), and its own default observer otherwise.
+ * signed-in viewer's own (first use queues a GrapeRank run for them on
+ * NosFabrica's side, and the relay falls back to its default observer
+ * meanwhile), and DEFAULT_LENS for anyone signed out.
  * It replaced the Meili HTTP API on brainstorm.world, which on 2026-09-28
  * began answering with its web app's HTML.
  *
@@ -17,6 +17,12 @@ import type { Reached } from "./relay-reach";
 export const PEOPLE_SEARCH_RELAY = "wss://search.brainstorm.world";
 
 const HEX64 = /^[0-9a-f]{64}$/;
+
+/**
+ * Whose web of trust ranks searches for people who aren't signed in (owner
+ * call, 2026-09-28): npub1healthsx3swcgtknff7zwpg8aj2q7h49zecul5rz490f6z2zp59qnfvp8p.
+ */
+export const DEFAULT_LENS = "be7bf5de068c1d842ed34a7c270507ec940f5ea51671cfd062a95e9d09420d0a";
 const MAX_LIMIT = 100;
 
 /** Who is signed in, so searches rank through their own web of trust. */
@@ -36,7 +42,8 @@ export function peopleSearchFilter(query: string, observer: string | null, limit
     .filter((w) => w && !/^(observer|include|sort|filter):/i.test(w))
     .join(" ");
   if (!words) return null;
-  const search = observer && HEX64.test(observer) ? `${words} observer:${observer}` : words;
+  const lens = observer && HEX64.test(observer) ? observer : DEFAULT_LENS;
+  const search = `${words} observer:${lens}`;
   return { kinds: [0], search, limit: Math.max(1, Math.min(MAX_LIMIT, limit)) };
 }
 

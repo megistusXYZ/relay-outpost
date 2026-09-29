@@ -6,7 +6,7 @@
  * jack first in ~0.2s, where the unranked corpus leads with spam clones.
  */
 import { describe, it, expect, vi } from "vitest";
-import { peopleSearchFilter, searchPeopleRanked, PEOPLE_SEARCH_RELAY } from "./people-search";
+import { peopleSearchFilter, searchPeopleRanked, PEOPLE_SEARCH_RELAY, DEFAULT_LENS } from "./people-search";
 
 const VIEWER = "82341f882b6eabcd2ba7f1ef90aad961cf074af15b9ef44a09f9d2a8fbfbe6a2";
 
@@ -15,12 +15,18 @@ describe("peopleSearchFilter", () => {
     expect(peopleSearchFilter("jack", VIEWER, 10)).toEqual({ kinds: [0], search: `jack observer:${VIEWER}`, limit: 10 });
   });
 
-  it("signed out, sends the words alone so the relay's default observer ranks", () => {
-    expect(peopleSearchFilter("jack mallers", null, 10)).toEqual({ kinds: [0], search: "jack mallers", limit: 10 });
+  // Owner call (2026-09-28): signed out, rank through npub1healthsx3… (hex
+  // be7bf5de…), not whatever default the relay happens to use.
+  it("signed out, ranks through the default lens", () => {
+    expect(peopleSearchFilter("jack mallers", null, 10)).toEqual({ kinds: [0], search: `jack mallers observer:${DEFAULT_LENS}`, limit: 10 });
   });
 
-  it("never sends an npub as the observer (the relay would silently ignore it)", () => {
-    expect(peopleSearchFilter("jack", "npub1sg6plzptd64u62a878hep2kev88swjh3tw00gjsfl8f237lmu63q0uf63m", 10)?.search).toBe("jack");
+  it("never sends an npub as the observer; falls back to the default lens", () => {
+    expect(peopleSearchFilter("jack", "npub1sg6plzptd64u62a878hep2kev88swjh3tw00gjsfl8f237lmu63q0uf63m", 10)?.search).toBe(`jack observer:${DEFAULT_LENS}`);
+  });
+
+  it("the default lens is npub1healthsx3…", () => {
+    expect(DEFAULT_LENS).toBe("be7bf5de068c1d842ed34a7c270507ec940f5ea51671cfd062a95e9d09420d0a");
   });
 
   it("typed search tokens can't change whose trust ranks the results", () => {
@@ -29,7 +35,7 @@ describe("peopleSearchFilter", () => {
   });
 
   it("tidies whitespace and keeps the limit sane", () => {
-    expect(peopleSearchFilter("  jack   mallers ", null, 5000)).toEqual({ kinds: [0], search: "jack mallers", limit: 100 });
+    expect(peopleSearchFilter("  jack   mallers ", VIEWER, 5000)).toEqual({ kinds: [0], search: `jack mallers observer:${VIEWER}`, limit: 100 });
   });
 
   it("an empty query asks nothing", () => {
