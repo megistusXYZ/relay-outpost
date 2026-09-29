@@ -1,4 +1,6 @@
 import type { Event } from "nostr-tools";
+import { ownMapScores } from "./own-trust-map";
+import { searchPeopleRanked } from "./people-search";
 import { registerProfileInAllCaches, isProfileCached } from "./nostr";
 
 export interface BrainstormHit {
@@ -57,29 +59,20 @@ export function brainstormWotToInfluence(wotRank: number | undefined): number | 
   return wotRank / 100;
 }
 
+/**
+ * People around a topic, ranked through the viewer's web of trust. Uses the
+ * same NIP-50 relay as people search; the relay returns no numeric scores, so
+ * `wotScores` is empty and badges come from the normal score path.
+ */
 export async function discoverByTopic(topic: string, limit: number = 20): Promise<{ events: Event[]; wotScores: Map<string, number | null> }> {
-  const events: Event[] = [];
   const wotScores = new Map<string, number | null>();
-
   try {
-    const res = await fetch(`/api/brainstorm/discover?topic=${encodeURIComponent(topic)}&limit=${limit}`, {
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data: BrainstormResponse = await res.json();
-
-    if (data.error || !data.hits) return { events, wotScores };
-
-    for (const hit of data.hits) {
-      if (!hit.pubkey) continue;
-      const event = brainstormHitToKind0Event(hit);
-      registerProfileInAllCaches(event);
-      events.push(event);
-      wotScores.set(hit.pubkey, brainstormWotToInfluence(hit.wot_rank));
-    }
-  } catch {}
-
-  return { events, wotScores };
+    const ranked = await searchPeopleRanked(topic, limit);
+    for (const event of ranked.data) registerProfileInAllCaches(event);
+    return { events: ranked.data, wotScores };
+  } catch {
+    return { events: [], wotScores };
+  }
 }
 
 const _prefetchedPubkeys = new Set<string>();
@@ -215,10 +208,21 @@ async function fetchWotChunk(chunk: string[]): Promise<Map<string, number>> {
 // Score any number of pubkeys: de-dupe in-flight keys, chunk the rest, run chunks
 // with bounded concurrency, and merge. No 30-cap drop, no single-flight that
 // strands later authors on the slow per-author path.
-export async function fetchBrainstormWotBatch(pubkeys: string[]): Promise<Map<string, number>> {
+export async function fetchBrainstormWotBatch(pubkeys: string[], observer?: string | null): Promise<Map<string, number>> {
   if (pubkeys.length === 0) return new Map();
-  if (Date.now() < _batchCooldownUntil) return new Map();
 
+  // A viewer with their own trust map (kind 10040) is scored through it
+  // first, read in the browser; everyone else, and anyone their services
+  // have no card for, goes to the server's default-lens score cards.
+  const own = observer ? await ownMapScores(observer, pubkeys).catch(() => new Map<string, number>()) : new Map<string, number>();
+  const rest = pubkeys.filter((pk) => !own.has(pk));
+  if (rest.length === 0 || Date.now() < _batchCooldownUntil) return own;
+  const fromLens = await fetchLensBatch(rest);
+  own.forEach((v, k) => fromLens.set(k, v));
+  return fromLens;
+}
+
+async function fetchLensBatch(pubkeys: string[]): Promise<Map<string, number>> {
   const unique = Array.from(new Set(pubkeys));
   const watched = new Set<Promise<Map<string, number>>>();
   const need: string[] = [];
@@ -271,27 +275,3 @@ export async function lookupProfileDirect(pubkey: string): Promise<{ event: Even
   }
 }
 
-export async function searchBrainstorm(query: string, limit: number = 20): Promise<{ events: Event[]; wotScores: Map<string, number | null> }> {
-  const events: Event[] = [];
-  const wotScores = new Map<string, number | null>();
-
-  try {
-    const res = await fetch(`/api/brainstorm/search?q=${encodeURIComponent(query)}&limit=${limit}`, {
-      signal: AbortSignal.timeout(6000),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data: BrainstormResponse = await res.json();
-
-    if (data.error || !data.hits) return { events, wotScores };
-
-    for (const hit of data.hits) {
-      if (!hit.pubkey) continue;
-      const event = brainstormHitToKind0Event(hit);
-      registerProfileInAllCaches(event);
-      events.push(event);
-      wotScores.set(hit.pubkey, brainstormWotToInfluence(hit.wot_rank));
-    }
-  } catch {}
-
-  return { events, wotScores };
-}

@@ -22,6 +22,8 @@ export interface InteractionIndex {
   reactors: Map<string, Map<string, Event>>;
   reposters: Map<string, Set<string>>;
   repliedByViewer: Set<string>;
+  /** Target ids the viewer quoted (their kind-1 carrying a `q` tag to it). */
+  quotedByViewer: Set<string>;
 }
 
 /** Every `e`-tag id an event references (deduped). Reactions/reposts/replies are
@@ -38,8 +40,13 @@ export function eTagTargets(event: Event): string[] {
   return ids;
 }
 
+/** Every `q`-tag id (a quoted event) an event carries, deduped. */
+function qTagTargets(event: Event): string[] {
+  return [...new Set(event.tags.filter((t) => t[0] === "q" && t[1]).map((t) => t[1]))];
+}
+
 export function createInteractionIndex(): InteractionIndex {
-  return { reactors: new Map(), reposters: new Map(), repliedByViewer: new Set() };
+  return { reactors: new Map(), reposters: new Map(), repliedByViewer: new Set(), quotedByViewer: new Set() };
 }
 
 /**
@@ -74,9 +81,14 @@ export function addToIndex(
     return targets;
   }
   if (event.kind === KIND_NOTE && viewerPubkey && event.pubkey === viewerPubkey) {
-    const targets = eTagTargets(event);
-    for (const id of targets) index.repliedByViewer.add(id);
-    return targets;
+    const replied = eTagTargets(event);
+    for (const id of replied) index.repliedByViewer.add(id);
+    // A quote (NIP-18 `q` tag) is a boost with commentary: it lights the
+    // repost icon as your contribution, kept apart from kind-6 reposts so
+    // "Undo repost" never offers to delete a quote.
+    const quoted = qTagTargets(event);
+    for (const id of quoted) index.quotedByViewer.add(id);
+    return [...new Set([...replied, ...quoted])];
   }
   return [];
 }
@@ -97,6 +109,8 @@ export interface DerivedInteraction {
   myReactionContent: string | null;
   myReactionEmojiUrl: string | undefined;
   hasReposted: boolean;
+  /** The viewer quoted this post. Shown with the repost icon, not a repost. */
+  hasQuoted: boolean;
   hasReplied: boolean;
 }
 
@@ -115,6 +129,7 @@ export function deriveInteraction(
     myReactionContent: myReaction?.content ?? null,
     myReactionEmojiUrl: emojiTag?.[2],
     hasReposted: viewerPubkey ? (index.reposters.get(targetId)?.has(viewerPubkey) ?? false) : false,
+    hasQuoted: index.quotedByViewer.has(targetId),
     hasReplied: index.repliedByViewer.has(targetId),
   };
 }

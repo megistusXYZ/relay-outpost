@@ -4,28 +4,46 @@
  * earns tests here is the set-building and folding logic where a silent
  * mistake produces a confidently wrong tile.
  */
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+// Records which relays each one-shot read asks, delivers whatever the test
+// put on the (fake) relays for that filter, and answers at once (EOSE).
+let relayEvents: (filter: { kinds?: number[]; authors?: string[] }) => unknown[] = () => [];
+const subscribeSpy = vi.fn((_relays: string[], filter: { kinds?: number[]; authors?: string[] }, handlers: { onevent?: (e: unknown) => void; oneose?: () => void }) => {
+  setTimeout(() => {
+    for (const e of relayEvents(filter)) handlers.onevent?.(e);
+    handlers.oneose?.();
+  }, 0);
+  return { close: () => {} };
+});
 vi.mock("@/lib/nostr", () => ({
   eventStore: { add: () => {}, getEvent: () => null },
-  throttledPoolSubscribe: () => ({ close: () => {} }),
-  FAST_RELAYS: [],
+  throttledPoolSubscribe: (...a: Parameters<typeof subscribeSpy>) => subscribeSpy(...a),
+  // A general relay: the marketplace shelf must NOT read from it.
+  FAST_RELAYS: ["wss://relay.primal.net"],
   getRelaysForPurpose: () => [],
 }));
 vi.mock("@/lib/primal-cache", () => ({
   fetchGlobalFeed: async () => ({ posts: [], profiles: [], statsLoaded: false }),
+  prefetchStatsImmediate: async () => {},
   getCachedFollowerCount: () => undefined,
   primalStatsCache: new Map(),
 }));
 const activitySpy = vi.fn(async () => new Map<string, number>());
 vi.mock("@/lib/community-activity", () => ({ fetchCommunityActivity: (...a: unknown[]) => activitySpy(...a) }));
+// Trust scores come from the server's score cards (the network boundary).
+let scoreOf: Record<string, number> = {};
+vi.mock("@/lib/brainstorm-search", () => ({
+  fetchBrainstormWotBatch: async (pks: string[]) => new Map(pks.filter((p) => p in scoreOf).map((p) => [p, scoreOf[p]] as const)),
+}));
 vi.mock("@/lib/relay-reach", () => ({
   canReachAny: async () => true,
   canReachRelay: async () => true,
   relayRefusedUs: () => undefined,
 }));
 
-import { discoverNewsFeeds, summarizePulse, fetchCommunityPulse, feedSnippet, survivingArticles } from "./discover-data";
+import { discoverNewsFeeds, summarizePulse, fetchCommunityPulse, feedSnippet, survivingArticles, fetchMarketShelf, fetchNextCalendarEvent, fetchImagesTeaser, setDiscoverTrust, resetDiscoverAnswers } from "./discover-data";
+import { LISTING_RELAYS, KIND_CLASSIFIED_LISTING } from "./listing";
 import { ALL_NEWS_FEEDS, ALL_PODCAST_FEEDS, DEFAULT_FEEDS, STARTER_URLS_V2, type SavedFeed } from "./rss-feeds";
 
 /**
@@ -139,5 +157,103 @@ describe("survivingArticles", () => {
     const now = Math.floor(Date.now() / 1000);
     const out = survivingArticles([art(now - 5000, "older"), art(now - 100, "newer")]);
     expect(out[0].title).toBe("newer");
+  });
+});
+
+/**
+ * Discover's marketplace shelf is the front door to the Marketplace, so it
+ * shows only what Conduit's marketplace relay carries, exactly like the
+ * Marketplace page (owner report, 2026-09-28: the shelf led with a steroid
+ * shop's Clomid and Testosterone listings, published to general relays such
+ * as relay.primal.net, where 22 of 40 recent listings were that one seller).
+ */
+describe("Discover's marketplace shelf", () => {
+  it("reads only Conduit's marketplace relay, never the general relays", async () => {
+    subscribeSpy.mockClear();
+    await fetchMarketShelf();
+    const asked = subscribeSpy.mock.calls
+      .filter((c) => c[1].kinds?.includes(KIND_CLASSIFIED_LISTING))
+      .map((c) => c[0]);
+    expect(asked.length).toBeGreaterThan(0);
+    for (const relays of asked) expect(relays).toEqual(LISTING_RELAYS);
+  });
+});
+
+/**
+ * PR 2 of "Discover shows only highly trusted people" (owner, 2026-09-29):
+ * Events and the Marketplace shelf show only hosts and sellers at 0.50+
+ * (or people you follow), and say so when the trusted list can't be read.
+ */
+describe("Discover's Events and Marketplace tiles show only trusted people", () => {
+  beforeEach(() => resetDiscoverAnswers());
+  afterEach(() => vi.unstubAllGlobals());
+  const TRUSTED = "a".repeat(64);
+  const STRANGER = "b".repeat(64);
+  const soon = Math.floor(Date.now() / 1000) + 3600;
+  const later = soon + 86400;
+  const event = (pubkey: string, start: number, title: string) => ({
+    id: pubkey.slice(0, 8) + start, kind: 31923, pubkey, created_at: 1, content: "", sig: "s",
+    tags: [["d", title], ["title", title], ["start", String(start)]],
+  });
+  const listing = (pubkey: string, title: string) => ({
+    id: pubkey.slice(0, 8) + title, kind: 30402, pubkey, created_at: Math.floor(Date.now() / 1000), content: "", sig: "s",
+    tags: [["d", title], ["title", title], ["image", "https://img.example/" + title + ".jpg"], ["price", "10", "USD"]],
+  });
+  const trustedList = (ok: boolean) => vi.stubGlobal("fetch", vi.fn(async () => ok
+    ? { ok: true, json: async () => ({ authors: [TRUSTED] }) }
+    : { ok: false, json: async () => ({}) }));
+
+  it("Events: the next event from a trusted host, even when a stranger's is sooner", async () => {
+    trustedList(true);
+    scoreOf = { [TRUSTED]: 0.9, [STRANGER]: 0.1 };
+    setDiscoverTrust({ follows: new Set(), wotEnabled: false, ownScores: null });
+    relayEvents = (f) => (f.kinds?.includes(31923) ? [event(STRANGER, soon, "Spam meetup"), event(TRUSTED, later, "Bitcoin meetup")] : []);
+    const r = await fetchNextCalendarEvent();
+    expect(r.reached).toBe(true);
+    expect(r.data?.title).toBe("Bitcoin meetup");
+  });
+
+  it("Marketplace: only trusted sellers' listings", async () => {
+    trustedList(true);
+    scoreOf = { [TRUSTED]: 0.9, [STRANGER]: 0.1 };
+    setDiscoverTrust({ follows: new Set(["f".repeat(64)]), wotEnabled: false, ownScores: null });
+    relayEvents = (f) => (f.kinds?.includes(KIND_CLASSIFIED_LISTING) ? [listing(STRANGER, "Pills"), listing(TRUSTED, "Hat")] : []);
+    const r = await fetchMarketShelf();
+    expect(r.data?.map((t) => t.title)).toEqual(["Hat"]);
+  });
+
+  it("Marketplace: one listing per seller, and no placeholder \"Test\" listings", async () => {
+    trustedList(true);
+    const OTHER = "c".repeat(64);
+    scoreOf = { [TRUSTED]: 0.9, [OTHER]: 0.8 };
+    setDiscoverTrust({ follows: new Set(["f".repeat(64)]), wotEnabled: false, ownScores: null });
+    relayEvents = (f) => (f.kinds?.includes(KIND_CLASSIFIED_LISTING)
+      ? [listing(TRUSTED, "Coffee"), listing(TRUSTED, "Coffee beans"), listing(OTHER, "Test"), listing(OTHER, "Hat")]
+      : []);
+    const r = await fetchMarketShelf();
+    expect(r.data?.map((t) => t.title).sort()).toEqual(["Coffee", "Hat"].sort());
+  });
+
+  it("Images: trusted people's photos for a visitor who follows nobody, strangers' left out", async () => {
+    trustedList(true);
+    scoreOf = { [TRUSTED]: 0.9, [STRANGER]: 0.1 };
+    setDiscoverTrust({ follows: new Set(), wotEnabled: false, ownScores: null });
+    const photo = (pubkey: string, n: number) => ({
+      id: pubkey.slice(0, 6) + n, kind: 20, pubkey, created_at: Math.floor(Date.now() / 1000) - 60, sig: "s",
+      content: "", tags: [["imeta", `url https://img.example/${pubkey.slice(0, 4)}${n}.jpg`, "m image/jpeg"], ["title", "pic"]],
+    });
+    relayEvents = (f) => (f.kinds?.includes(20) ? [photo(STRANGER, 1), photo(TRUSTED, 2)] : []);
+    const r = await fetchImagesTeaser([], new Set());
+    expect(r.reached).toBe(true);
+    expect((r.data ?? []).map((i) => i.authorPk)).toEqual([TRUSTED]);
+  });
+
+  it("when the trusted list can't be read, Events says so and shows nothing", async () => {
+    trustedList(false);
+    setDiscoverTrust({ follows: new Set(["e".repeat(64)]), wotEnabled: false, ownScores: null });
+    relayEvents = (f) => (f.kinds?.includes(31923) ? [event(TRUSTED, later, "Bitcoin meetup")] : []);
+    const r = await fetchNextCalendarEvent();
+    expect(r.reached).toBe(false);
+    expect(r.data).toBeNull();
   });
 });

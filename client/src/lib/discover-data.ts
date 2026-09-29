@@ -21,7 +21,8 @@ import type { Event } from "nostr-tools";
 import { eventStore, throttledPoolSubscribe, FAST_RELAYS, getRelaysForPurpose } from "@/lib/nostr";
 import { canReachAny, canReachRelay, relayRefusedUs, type Reached } from "@/lib/relay-reach";
 import { KIND_LONG_FORM, parseArticle, type ArticleData } from "@/lib/nip23";
-import { fetchGlobalFeed, getCachedFollowerCount, primalStatsCache } from "@/lib/primal-cache";
+import { fetchGlobalFeed, getCachedFollowerCount, primalStatsCache, prefetchStatsImmediate } from "@/lib/primal-cache";
+import { replyTargetOf } from "@/lib/reply-target";
 import { filterSpamEvents, MIN_FOLLOWERS_GLOBAL, isReportedEvent, isReportedPubkey } from "@/lib/spam-filter";
 import { computeEngagementScore } from "@/lib/engagement";
 import { getFirstSeen } from "@/lib/account-age";
@@ -30,7 +31,9 @@ import { getContentWarning } from "@/lib/sensitive-content";
 import { pickMarketListings, formatListingPrice, CATALOG_MUTED_SELLERS, KIND_CLASSIFIED_LISTING, LISTING_RELAYS } from "@/lib/listing";
 import { rankDiscoverFeed } from "@/lib/discover-rank";
 import { isPromoBait, preferFollowed } from "@/lib/discover-curation";
-import { rankTopics, pickNextUpcoming, pickImageShelf, isSensitiveMedia, type RankedTopic, type ShelfImage } from "@/lib/discover-tiles";
+import { rankTopics, pickNextUpcoming, pickImageShelf, isSensitiveMedia, hasContent, type RankedTopic, type ShelfImage } from "@/lib/discover-tiles";
+import { saveSnapshot, readSnapshot, type SnapshotStore } from "@/lib/tile-snapshot";
+import { loadDiscoverTrust, gateByTrust, chooseDiscoverLens } from "@/lib/discover-trust";
 import { getEventMediaInfo } from "@/lib/media-utils";
 import { parseCalendarEvent, KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT, type CalendarEventData } from "@/lib/calendar-events";
 import type { SavedFeed } from "@/lib/rss-feeds";
@@ -96,23 +99,103 @@ const ANSWER_TTL_MS = 5 * 60 * 1000;
 const answerMemo = new Map<string, { at: number; value: Reached<unknown> }>();
 const inFlight = new Map<string, Promise<Reached<unknown>>>();
 
+/**
+ * Whose snapshots to read and write. Set by the Discover page during render,
+ * before any tile fires its fetch (child effects run before a parent's).
+ */
+let snapshotViewer: string | null = null;
+export function setDiscoverViewer(pubkey: string | null): void {
+  snapshotViewer = pubkey;
+}
+/**
+ * Discover shows only highly trusted people (lib/discover-trust.ts). The page
+ * sets whose trust applies during render, like the snapshot viewer.
+ */
+let trustOpts: { follows: ReadonlySet<string>; wotEnabled: boolean; ownScores: ReadonlyMap<string, number> | null } = {
+  follows: new Set(), wotEnabled: false, ownScores: null,
+};
+export function setDiscoverTrust(opts: typeof trustOpts): void {
+  trustOpts = opts;
+}
+/** Memo/snapshot key suffix: answers from different lenses never mix, and
+ *  snapshots saved before the trust gate are never painted. */
+function lensKey(): string {
+  return `trusted:${chooseDiscoverLens(trustOpts)}`;
+}
+
+/** Forget every remembered tile answer (tests; also safe on account switch). */
+export function resetDiscoverAnswers(): void {
+  answerMemo.clear();
+  inFlight.clear();
+  paintedFromSnapshot.clear();
+}
+
+/** Keys that already painted from a snapshot this session: only once each. */
+const paintedFromSnapshot = new Set<string>();
+/** On a snapshot answer: the fresh answer that will replace it. */
+const REFRESH = Symbol("discover-refresh");
+
+/**
+ * Apply a tile's answer, and if it was a snapshot, apply the fresh one too
+ * when it lands. Unreached or refused refreshes are dropped: the snapshot
+ * stays up rather than blanking a tile that has content to a failure state.
+ */
+export function followAnswer<T>(answer: Promise<Reached<T>>, apply: (r: Reached<T>) => void): Promise<void> {
+  return answer.then((r) => {
+    apply(r);
+    const next = (r as { [REFRESH]?: Promise<Reached<T>> })[REFRESH];
+    if (next) {
+      next.then((fresh) => { if (fresh.reached && !fresh.refusedReason) apply(fresh); }).catch(() => {});
+    }
+  });
+}
+
+function snapshotStore(): SnapshotStore | null {
+  try { return typeof localStorage !== "undefined" ? localStorage : null; } catch { return null; }
+}
+
+function startFlight<T>(key: string, fetchFresh: () => Promise<Reached<T>>): Promise<Reached<T>> {
+  const pending = inFlight.get(key);
+  if (pending) return pending as Promise<Reached<T>>;
+  const viewer = snapshotViewer;
+  const flight = (async () => {
+    try {
+      const value = await fetchFresh();
+      if (value.reached && !value.refusedReason) {
+        answerMemo.set(key, { at: Date.now(), value });
+        // Only content is worth painting next time; an empty answer would
+        // just paint "Quiet" early and could be wrong by then.
+        const store = snapshotStore();
+        if (store && hasContent(value.data)) saveSnapshot(store, viewer, key, value, Date.now());
+      }
+      return value;
+    } finally {
+      inFlight.delete(key); // reached results live in answerMemo; failures re-run
+    }
+  })();
+  inFlight.set(key, flight as Promise<Reached<unknown>>);
+  return flight;
+}
+
 async function remembered<T>(key: string, fetchFresh: () => Promise<Reached<T>>): Promise<Reached<T>> {
   const hit = answerMemo.get(key);
   if (hit && Date.now() - hit.at <= ANSWER_TTL_MS) return hit.value as Reached<T>;
-  const pending = inFlight.get(key);
-  if (pending) return pending as Promise<Reached<T>>;
 
-  const flight = (async () => {
-    const value = await fetchFresh();
-    if (value.reached && !value.refusedReason) answerMemo.set(key, { at: Date.now(), value });
-    return value;
-  })();
-  inFlight.set(key, flight as Promise<Reached<unknown>>);
-  try {
-    return await flight;
-  } finally {
-    inFlight.delete(key); // reached results live in answerMemo; failures re-run
+  // Instant paint (stale-while-revalidate): the first ask of a session gets
+  // this device's last good answer for this account at once, while the fresh
+  // fetch runs. The answer carries that fetch (REFRESH); followAnswer applies
+  // it when it lands, so the tile updates in place with no skeleton flash.
+  const store = snapshotStore();
+  if (store && !paintedFromSnapshot.has(key)) {
+    const snap = readSnapshot<Reached<T>>(store, snapshotViewer, key, Date.now());
+    if (snap && snap.reached && hasContent(snap.data)) {
+      paintedFromSnapshot.add(key);
+      const out = { ...snap };
+      Object.defineProperty(out, REFRESH, { value: startFlight(key, fetchFresh), enumerable: false });
+      return out;
+    }
   }
+  return startFlight(key, fetchFresh);
 }
 
 /**
@@ -171,7 +254,7 @@ export function survivingArticles(events: Event[]): ArticleData[] {
 }
 
 export function fetchNewestArticle(follows: readonly string[] = []): Promise<Reached<ArticleData[]>> {
-  return remembered(`article:${follows.length > 0 ? "F" : "g"}`, () => fetchNewestArticleFresh(follows));
+  return remembered(`article:${follows.length > 0 ? "F" : "g"}:${lensKey()}`, () => fetchNewestArticleFresh(follows));
 }
 
 async function fetchNewestArticleFresh(follows: readonly string[]): Promise<Reached<ArticleData[]>> {
@@ -181,7 +264,13 @@ async function fetchNewestArticleFresh(follows: readonly string[]): Promise<Reac
   // sockets are already warm. Follows' own long-form is fetched alongside the
   // general pool and ordered FIRST (owner rule, 2026-08-27) — general fills
   // whatever your writers didn't publish this week.
-  const [served, events, followsArticles] = await Promise.all([
+  // The trusted list and the most trusted writers' own long-form are read
+  // alongside the general pool, not after it (the tile waited on all three).
+  const topP = loadDiscoverTrust([], trustOpts);
+  const trustedArticlesP = topP.then((t) => (t.reached && t.top.length > 0
+    ? collectOnce(FAST_RELAYS, { kinds: [KIND_LONG_FORM], authors: t.top.slice(0, 200), limit: 30 }, 8_000)
+    : ([] as Event[])));
+  const [served, events, followsArticles, trustedArticles] = await Promise.all([
     anyServed(FAST_RELAYS),
     // 40, not the 2 the tile shows: the tile runs the Articles floor
     // (lib/article-floor.ts), which needs enough left over after it, and
@@ -190,17 +279,24 @@ async function fetchNewestArticleFresh(follows: readonly string[]): Promise<Reac
     follows.length > 0
       ? collectOnce(FAST_RELAYS, { kinds: [KIND_LONG_FORM], authors: follows.slice(0, 100), limit: 15 }, 8_000)
       : Promise.resolve([] as Event[]),
+    trustedArticlesP,
   ]);
   // Every candidate, your writers first. The tile floors them and shows the
   // top TWO that pass (one headline over a tall empty card undersold it).
+  // Only highly trusted writers (and your follows) on the front door: gate
+  // the pool, and top it up with the most trusted people's own long-form.
+  if (!(await topP).reached) return { data: [], reached: false };
+  const trust = await loadDiscoverTrust([...events, ...followsArticles].map((e) => e.pubkey), trustOpts);
+  if (!trust.reached) return { data: [], reached: false };
+  const gate = { follows: followSet, scores: trust.scores };
   const candidates = preferFollowed(
-    survivingArticles([...followsArticles, ...events]),
+    survivingArticles(gateByTrust([...followsArticles, ...events, ...trustedArticles], (e) => e.pubkey, gate)),
     (a) => followSet.has(a),
     (a) => a.event.pubkey,
   );
   // Events in hand are themselves proof someone answered, even if the reach
   // probe lost its race with a relay that dropped right after serving us.
-  return { data: candidates, reached: served || events.length > 0 || followsArticles.length > 0 };
+  return { data: candidates, reached: served || events.length > 0 || followsArticles.length > 0 || trustedArticles.length > 0 };
 }
 
 // ── Feed teaser ──────────────────────────────────────────────────────────────
@@ -257,7 +353,7 @@ export function fetchFeedTeaser(flagged: Set<string> = new Set(), follows: reado
   // Key on shield readiness (empty vs applied) AND follows presence: a memo
   // taken before either loaded must not be served after — otherwise the tile
   // keeps a pre-shield or follows-blind pick for the 5-minute TTL.
-  return remembered(`teaser:${flagged.size > 0 ? "f" : "0"}:${follows.length > 0 ? "F" : "g"}`, () => fetchFeedTeaserFresh(flagged, follows));
+  return remembered(`teaser:${flagged.size > 0 ? "f" : "0"}:${follows.length > 0 ? "F" : "g"}:${lensKey()}`, () => fetchFeedTeaserFresh(flagged, follows));
 }
 
 async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly string[]): Promise<Reached<Event[]>> {
@@ -285,15 +381,53 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
       now: Math.floor(Date.now() / 1000),
       getEngagement: (id: string) => computeEngagementScore(primalStatsCache.get(id) ?? null),
     }).filter((e) => !isPromoBait(e.content));
-    return preferFollowed(ranked, (a) => followSet.has(a), (e) => e.pubkey).slice(0, 3);
+    // One post per person: a front door of three posts by one account
+    // undersells the network.
+    const seenAuthors = new Set<string>();
+    const onePerAuthor = ranked.filter((e) => (seenAuthors.has(e.pubkey) ? false : (seenAuthors.add(e.pubkey), true)));
+    return preferFollowed(onePerAuthor, (a) => followSet.has(a), (e) => e.pubkey).slice(0, 3);
   };
 
   // Primal never rejects and FAILS OPEN to [] — an empty answer is
   // structurally ambiguous (down, timeout, or genuinely quiet), so only a
   // non-empty one counts as reached.
-  const [primal, followsPosts] = await Promise.all([fetchGlobalFeed(30, sinceSecs), followsPostsP]);
-  if (primal.posts.length > 0 || followsPosts.length > 0) {
-    return { data: pick([...followsPosts, ...primal.posts], "primal"), reached: true };
+  // Only highly trusted people (and your follows) on the front door. The
+  // most trusted accounts post rarely (measured: the top 300 wrote 14
+  // top-level posts in a day), so the pool is wide and trust does the
+  // filtering: Primal's trending, a recent sample from the note relays, and
+  // the top trusted people's last day. Every author is then checked against
+  // the whole trusted list (~20,000 people at 0.50+), not just its top.
+  const [primal, followsPosts, recentPosts] = await Promise.all([
+    fetchGlobalFeed(30, sinceSecs),
+    followsPostsP,
+    collectOnce(getRelaysForPurpose("notes"), { kinds: [1], since: sinceSecs, limit: 300 }, 8_000),
+  ]);
+  const trustTop = await loadDiscoverTrust([], trustOpts);
+  if (!trustTop.reached) return { data: [], reached: false };
+  const trustedPosts = trustTop.top.length > 0
+    ? await collectOnce(getRelaysForPurpose("notes"), { kinds: [1], authors: trustTop.top.slice(0, 300), since: Math.floor(Date.now() / 1000) - 24 * 3600, limit: 150 }, 8_000)
+    : [];
+  const pool = [...followsPosts, ...primal.posts, ...recentPosts, ...trustedPosts];
+  const trust = await loadDiscoverTrust(pool.map((e) => e.pubkey), trustOpts);
+  if (!trust.reached) return { data: [], reached: false };
+  const gate = { follows: followSet, scores: trust.scores };
+  if (pool.length > 0) {
+    // Top-level posts only: the trusted top-up otherwise brings in short
+    // replies ("Looks great 🧡"), which say nothing on a front door.
+    const gated = gateByTrust(pool, (e) => e.pubkey, gate)
+      .filter((e) => replyTargetOf(e) === null);
+    // Engagement for ranking: relay-fetched posts come without Primal stats.
+    await prefetchStatsImmediate(gated.slice(0, 80).map((e) => e.id)).catch(() => {});
+    // Everyone here is trusted at 0.50+ or followed, which is the earned
+    // signal the Primal-fed stranger gates (followers, engagement, account
+    // age) stand in for. Posts fetched straight from relays have no Primal
+    // stats, so those gates dropped every one ("Quiet right now" over 20,000
+    // trusted people). The lighter floor still applies: language, spam, no
+    // profile, content warnings. Profiles are fetched first so "no profile"
+    // means none, not "not loaded yet".
+    const missing = [...new Set(gated.map((e) => e.pubkey))].filter((pk) => !eventStore.getEvent({ kind: 0, pubkey: pk, identifier: "" })).slice(0, 60);
+    if (missing.length > 0) await collectOnce(getRelaysForPurpose("notes"), { kinds: [0], authors: missing }, 3_000);
+    return { data: pick(gated, "relay"), reached: true };
   }
   // (unreached below returns [] — the type's empty, the flag carries the truth)
 
@@ -307,7 +441,7 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
   // resolve "named") and the tile lies "Quiet right now" over a busy network.
   const authors = [...new Set(events.map((e) => e.pubkey))].slice(0, 40);
   if (authors.length > 0) await collectOnce(relays, { kinds: [0], authors }, 3_000);
-  return { data: pick(events, "relay"), reached: true };
+  return { data: pick(gateByTrust(events, (e) => e.pubkey, gate), "relay"), reached: true };
 }
 
 // ── Communities (joined path) ────────────────────────────────────────────────
@@ -378,7 +512,7 @@ export function summarizePulse(
 // ── Next calendar event ──────────────────────────────────────────────────────
 
 export async function fetchNextCalendarEvent(): Promise<Reached<CalendarEventData | null>> {
-  return remembered("calendar", fetchNextCalendarEventFresh);
+  return remembered(`calendar:${lensKey()}`, fetchNextCalendarEventFresh);
 }
 
 async function fetchNextCalendarEventFresh(): Promise<Reached<CalendarEventData | null>> {
@@ -386,11 +520,18 @@ async function fetchNextCalendarEventFresh(): Promise<Reached<CalendarEventData 
     anyServed(FAST_RELAYS),
     collectOnce(FAST_RELAYS, { kinds: [KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT], limit: 60 }, 11_000),
   ]);
-  const parsed = events
+  // Only events hosted by highly trusted people (or your follows), topped up
+  // with the most trusted people's own events (lib/discover-trust.ts).
+  const trust = await loadDiscoverTrust(events.map((e) => e.pubkey), trustOpts);
+  if (!trust.reached) return { data: null, reached: false };
+  const trustedEvents = trust.top.length > 0
+    ? await collectOnce(FAST_RELAYS, { kinds: [KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT], authors: trust.top.slice(0, 300), limit: 60 }, 8_000)
+    : [];
+  const parsed = gateByTrust([...events, ...trustedEvents], (e) => e.pubkey, { follows: trustOpts.follows, scores: trust.scores })
     .map(parseCalendarEvent)
     .filter((e): e is CalendarEventData => e !== null && !!e.title);
   const next = pickNextUpcoming(parsed, Math.floor(Date.now() / 1000));
-  return { data: next, reached: served || events.length > 0 };
+  return { data: next, reached: served || events.length > 0 || trustedEvents.length > 0 };
 }
 
 // ── Video teaser ─────────────────────────────────────────────────────────────
@@ -434,7 +575,7 @@ export async function fetchImagesTeaser(
   follows: readonly string[],
   flagged: ReadonlySet<string>,
 ): Promise<Reached<ShelfImage[]>> {
-  return remembered(`images:${follows.length}:${flagged.size > 0 ? "f" : "0"}`, () => fetchImagesTeaserFresh(follows, flagged));
+  return remembered(`images:${follows.length}:${flagged.size > 0 ? "f" : "0"}:${lensKey()}`, () => fetchImagesTeaserFresh(follows, flagged));
 }
 
 async function fetchImagesTeaserFresh(
@@ -472,12 +613,21 @@ async function fetchImagesTeaserFresh(
   // user with a thin follow graph — the person the front door most needs to
   // not scare off. A quiet tile (its door still opens the images feed, where
   // the full trust filters run) beats a roulette thumbnail.
-  const candidates = toCandidates(networkEvents);
-  return { data: pickImageShelf(candidates, 8), reached: served || networkEvents.length > 0 };
+  // People you follow, plus highly trusted people (owner call, 2026-09-29):
+  // the front door can show a visitor photos now, but only from people the
+  // lens trusts at 0.50+, never an unvetted stranger's.
+  const trust = await loadDiscoverTrust([], trustOpts);
+  if (!trust.reached) return { data: [], reached: false };
+  const trustedEvents = trust.top.length > 0
+    ? await collectOnce(FAST_RELAYS, { kinds: [1, 20], authors: trust.top.slice(0, 300), since, limit: 80 }, 8_000)
+    : [];
+  const gate = { follows: new Set(follows), scores: trust.scores };
+  const candidates = toCandidates(gateByTrust([...networkEvents, ...trustedEvents], (e) => e.pubkey, gate));
+  return { data: pickImageShelf(candidates, 8), reached: served || networkEvents.length > 0 || trustedEvents.length > 0 };
 }
 
 export async function fetchVideoTeaser(): Promise<Reached<VideoTeaser | null>> {
-  return remembered("video", fetchVideoTeaserFresh);
+  return remembered(`video:${lensKey()}`, fetchVideoTeaserFresh);
 }
 
 // ── Marketplace tile ─────────────────────────────────────────────────────────
@@ -491,23 +641,41 @@ export interface MarketTeaser {
 }
 
 export async function fetchMarketShelf(): Promise<Reached<MarketTeaser[] | null>> {
-  return remembered("market", fetchMarketShelfFresh);
+  // "market:conduit", not "market": snapshots saved before the shelf was
+  // limited to Conduit could hold the steroid-shop listings, and a new key
+  // makes every device ignore them at once.
+  return remembered(`market:conduit:${lensKey()}`, fetchMarketShelfFresh);
 }
 
 async function fetchMarketShelfFresh(): Promise<Reached<MarketTeaser[] | null>> {
-  // Conduit's relay carries the densest listing set; the generals fill in.
-  const relays = [...LISTING_RELAYS, ...FAST_RELAYS.slice(0, 3)];
+  // Only Conduit's marketplace relay, like the Marketplace page this tile
+  // opens (owner call, 2026-09-28). The general relays used to fill in, and
+  // they carry what Conduit doesn't: a steroid shop's Clomid/Testosterone
+  // listings led the front door (22 of 40 recent listings on relay.primal.net).
+  const relays = [...LISTING_RELAYS];
   const [served, events] = await Promise.all([
     anyServed(relays),
     collectOnce(relays, { kinds: [KIND_CLASSIFIED_LISTING], limit: 40 }, 11_000),
   ]);
+  // Only highly trusted sellers (or your follows), topped up with the most
+  // trusted sellers' own listings on Conduit (lib/discover-trust.ts).
+  const trust = await loadDiscoverTrust(events.map((e) => e.pubkey), trustOpts);
+  if (!trust.reached) return { data: null, reached: false };
+  const trustedListings = trust.top.length > 0
+    ? await collectOnce(relays, { kinds: [KIND_CLASSIFIED_LISTING], authors: trust.top.slice(0, 300), limit: 40 }, 8_000)
+    : [];
+  const gated = gateByTrust([...events, ...trustedListings], (e) => e.pubkey, { follows: trustOpts.follows, scores: trust.scores });
   // A marketplace door that shows words undersells the room behind it
   // (ImagesShelf precedent) — image-bearing, unsold, front-door-safe.
-  const teasers = pickMarketListings(events.filter((e) => !isSensitiveMedia(e)), {
+  const teasers = pickMarketListings(gated.filter((e) => !isSensitiveMedia(e)), {
     isReported: (e) => isReportedEvent(e.id) || isReportedPubkey(e.pubkey),
     mutedSellers: CATALOG_MUTED_SELLERS,
   })
     .filter((l) => !l.sold && l.images.length > 0)
+    // Front-door quality: no placeholder listings ("Test"), and one listing
+    // per seller so a single shop can't fill the shelf.
+    .filter((l) => !/^\s*test(ing)?\s*\d*\s*$/i.test(l.title))
+    .filter((l, i, all) => all.findIndex((o) => o.pubkey === l.pubkey) === i)
     .slice(0, 6)
     .map((l) => ({
       id: l.id,
@@ -516,7 +684,7 @@ async function fetchMarketShelfFresh(): Promise<Reached<MarketTeaser[] | null>> 
       image: l.images[0],
       timeMs: l.publishedAt * 1000,
     }));
-  return { data: teasers.length > 0 ? teasers : null, reached: served || events.length > 0 };
+  return { data: teasers.length > 0 ? teasers : null, reached: served || events.length > 0 || trustedListings.length > 0 };
 }
 
 async function fetchVideoTeaserFresh(): Promise<Reached<VideoTeaser | null>> {
@@ -526,14 +694,20 @@ async function fetchVideoTeaserFresh(): Promise<Reached<VideoTeaser | null>> {
     // lives; 34235/34236 is the legacy/archive pair (see VIDEO_EVENT_KINDS).
     collectOnce(FAST_RELAYS, { kinds: [21, 22, 34235, 34236], limit: 20 }, 11_000),
   ]);
-  const teasers = events
+  // Only highly trusted people (and your follows) on the front door.
+  const trust = await loadDiscoverTrust(events.map((e) => e.pubkey), trustOpts);
+  if (!trust.reached) return { data: null, reached: false };
+  const trustedVideos = trust.top.length > 0
+    ? await collectOnce(FAST_RELAYS, { kinds: [21, 22, 34235, 34236], authors: trust.top.slice(0, 200), limit: 20 }, 8_000)
+    : [];
+  const teasers = gateByTrust([...events, ...trustedVideos], (e) => e.pubkey, { follows: trustOpts.follows, scores: trust.scores })
     .sort((a, b) => b.created_at - a.created_at)
     // Same front-door label gate as the images shelf (discover-tiles).
     .filter((e) => !isSensitiveMedia(e))
     .map(videoTeaserOf)
     .filter((t): t is VideoTeaser => t !== null);
   const pick = teasers.find((t) => !!t.poster) ?? teasers[0] ?? null;
-  return { data: pick, reached: served || events.length > 0 };
+  return { data: pick, reached: served || events.length > 0 || trustedVideos.length > 0 };
 }
 
 // ── Network topics ───────────────────────────────────────────────────────────

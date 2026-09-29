@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { nonBlockingAppCss } from "./shared/non-blocking-css";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { readFileSync } from "fs";
@@ -37,6 +38,13 @@ export default defineConfig(async ({ mode }) => {
       : {},
     plugins: [
       react(),
+      // The app stylesheet must not block the first paint: the inline launch
+      // splash sat behind it (shared/non-blocking-css.ts).
+      {
+        name: "ro-non-blocking-app-css",
+        apply: "build",
+        transformIndexHtml: { order: "post", handler: (html: string) => nonBlockingAppCss(html) },
+      },
       runtimeErrorOverlay({
         filter: (error: Error) => {
           const msg = error.message || "";

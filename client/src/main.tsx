@@ -9,6 +9,7 @@ import { installRelayFrameGuard } from "./lib/relay-frame-guard";
 import { isUnactionableError } from "./lib/error-noise";
 import { reportCrash, normalizeErrorEvent, normalizeRejection } from "./lib/crash-report";
 import { attachServiceWorkerUpdateSignals } from "./lib/app-update";
+import { reloadOntoFreshShell } from "./lib/sw-shell";
 import { registerCommunityListSync } from "./lib/concord/concord-keys";
 import { syncCommunityListNow } from "./lib/concord/community-list-live";
 
@@ -196,11 +197,23 @@ createRoot(document.getElementById("root")!).render(<App />);
 // app appearing. window.__roHideSplash is idempotent and self-removes the node;
 // it's also a no-op after the first call and after the index.html failsafe.
 declare global {
-  interface Window { __roHideSplash?: () => void }
+  interface Window { __roHideSplash?: () => void; __roCss?: Promise<void> }
 }
 (function handOffSplash() {
-  const hide = () => { try { window.__roHideSplash?.(); } catch {} };
   if (typeof window === "undefined") return;
+  // The app stylesheet loads without blocking paint in production builds
+  // (shared/non-blocking-css.ts): keep the splash until it's in, capped so a
+  // stylesheet that never arrives can't hold the splash forever. Dev injects
+  // CSS through JS, so there is nothing to wait for.
+  let cssIn = !import.meta.env.PROD || !window.__roCss;
+  let wanted = false;
+  const reallyHide = () => { try { window.__roHideSplash?.(); } catch {} };
+  const hide = () => { wanted = true; if (cssIn) reallyHide(); };
+  if (!cssIn) {
+    const release = () => { cssIn = true; if (wanted) reallyHide(); };
+    window.__roCss!.then(release, release);
+    setTimeout(release, 4000);
+  }
   if (typeof requestAnimationFrame === "function") {
     requestAnimationFrame(() => requestAnimationFrame(hide));
   } else {
@@ -234,10 +247,12 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   let reloadStarted = false;
   let reloadScheduled = false;
 
+  // Every automatic reload moves onto the newest build, so the worker (which
+  // answers launches from its cached page) fetches the fresh page first.
   const startReload = () => {
     if (reloadStarted) return;
     reloadStarted = true;
-    window.location.reload();
+    void reloadOntoFreshShell();
   };
 
   const scheduleSafeReload = () => {

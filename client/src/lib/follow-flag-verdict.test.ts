@@ -140,10 +140,12 @@ describe("computeFlagVerdict — reach-relative standing shield", () => {
     expect(v.mitigationApplied).toBeLessThan(1);
   });
 
-  it("no standing means no mitigation (none tier ⇒ Seff 0 ⇒ R 1 ⇒ mitigation 0)", () => {
+  // A KNOWN zero standing (scored, below the weak line). A missing score is
+  // unknown and weighs as modest standing (see "target standing unknown").
+  it("known zero standing means no mitigation (none tier ⇒ Seff 0 ⇒ R 1 ⇒ mitigation 0)", () => {
     const v = computeFlagVerdict(input({
       reporters: [reporter(10, MODERATE_INF)], reporterCount: 1,
-      severity: "mild", targetInfluence: null,
+      severity: "mild", targetInfluence: 0,
     }));
     expect(v.mitigationApplied).toBe(0);
     expect(v.effectiveEvidence).toBe(v.evidence);
@@ -477,5 +479,26 @@ describe("reportTypesFromEvent — read the type wherever the writer put it", ()
       tags.filter((t) => t[0] === "p" && t[1] === TGT && t[2]).map((t) => t[2]);
     expect(oldReader([["p", TGT, "", "illegal"]])).toEqual([]);
     expect(reportTypesFromEvent({ tags: [["p", TGT, "", "illegal"]] }, TGT)).toEqual(["illegal"]);
+  });
+});
+
+describe("computeFlagVerdict — target standing unknown (no score)", () => {
+  // Owner call (2026-09-28): no score is unknown, not zero standing. It is
+  // weighed like a modest standing, so one trusted flag no longer reads as a
+  // strong signal on its own, while a real pile-up still does.
+  it("one trusted flag on an unscored account is worth a look, not a strong signal", () => {
+    const v = computeFlagVerdict(input({ targetInfluence: null, reporterCount: 1, severity: "neutral" }));
+    expect(v.level).toBe("worth-a-look");
+    expect(v.summary).toMatch(/standing isn't known/);
+  });
+
+  it("a real pile-up of trusted flags on an unscored account is still strong", () => {
+    const v = computeFlagVerdict(input({ targetInfluence: null, reporterCount: 9, severity: "severe" }));
+    expect(v.level).toBe("strong");
+  });
+
+  it("a KNOWN zero standing still shields nothing", () => {
+    const v = computeFlagVerdict(input({ targetInfluence: 0, reporterCount: 1, severity: "neutral" }));
+    expect(v.level).toBe("strong");
   });
 });

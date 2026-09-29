@@ -3,7 +3,6 @@ import { Switch, Route, useLocation, useSearch, Link } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { FeedbackDrawer } from "@/components/FeedbackDrawer";
 import { useToast } from "@/hooks/use-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NostrAuthProvider, useNostrAuth, LOGIN_METHOD_KEY } from "@/contexts/NostrAuthContext";
@@ -29,15 +28,14 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { DesktopStoriesRail } from "@/components/DesktopStoriesRail";
 import { BrandMark } from "@/components/BrandMark";
 import { useClassicSidebar } from "@/lib/desktop-chrome";
-import { OrbitMenu, openOrbitMenu } from "@/components/OrbitMenu";
-import { CreatePostFAB } from "@/components/CreatePost";
+import { openOrbitMenu, SHELL_OVERLAY_EVENTS, FEEDBACK_EVENTS } from "@/lib/shell-events";
+import { DeferredShell } from "@/components/DeferredShell";
 import { ScrollToTopButton } from "@/components/ScrollToTopButton";
 import { ScrollRestoreDebugOverlay } from "@/components/ScrollRestoreDebugOverlay";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { MobileFooter } from "@/components/MobileFooter";
 import { UpdateReadyPill } from "@/components/UpdateReadyPill";
-import { CreateStudio } from "@/components/CreateStudio";
 import { MiniPlayer } from "@/components/MiniPlayer";
 import { SignerDisconnectedBanner } from "@/components/SignerDisconnectedBanner";
 import { UnifiedBtcBadge } from "@/components/BtcPriceTracker";
@@ -241,6 +239,12 @@ const GuestArticlePreview = lazy(() => lazyNamed(() => import("@/components/Gues
 const GuestDiscussionPreview = lazy(() => lazyNamed(() => import("@/components/GuestDiscussionPreview"), "GuestDiscussionPreview"));
 const GalaxyWarpOverlay = lazy(() => lazyNamed(() => import("@/components/GalaxyWarpOverlay"), "GalaxyWarpOverlay"));
 const HeaderAudioPlayer = lazy(() => lazyNamed(() => import("@/components/HeaderAudioPlayer"), "HeaderAudioPlayer"));
+// Overlays nobody sees at launch: loaded after the first screen by
+// DeferredShell, which replays any open that arrives before they have.
+const CreatePostFAB = lazy(() => lazyNamed(() => import("@/components/CreatePost"), "CreatePostFAB"));
+const CreateStudio = lazy(() => lazyNamed(() => import("@/components/CreateStudio"), "CreateStudio"));
+const OrbitMenu = lazy(() => lazyNamed(() => import("@/components/OrbitMenu"), "OrbitMenu"));
+const FeedbackDrawer = lazy(() => lazyNamed(() => import("@/components/FeedbackDrawer"), "FeedbackDrawer"));
 
 function OutpostDetail({ relayEncoded }: { relayEncoded: string }) {
   const relayUrl = decodeURIComponent(relayEncoded);
@@ -1079,6 +1083,21 @@ const HeaderBar = memo(function HeaderBar({ scrollHidden }: { scrollHidden: bool
 function useScrollSaver() {}
 
 function AppContent({ mainRef, scrollHidden }: { mainRef: React.RefObject<HTMLElement>; scrollHidden: boolean }) {
+  // A signed-in launch at "/" is about to land on Chats (AppLayout's landing
+  // effect). Don't start Home on the way: it would download and mount the
+  // feed only to be dropped a frame later, competing with Chats for the
+  // network and the main thread.
+  const { pubkey: landingPubkey } = useNostrAuth();
+  const landingCollapsed = useIaCollapsed();
+  const [landingLocation] = useLocation();
+  const holdHomeForLanding = landingLocation === "/" && shouldLandOnChats({
+    pubkey: landingPubkey,
+    collapsed: landingCollapsed,
+    pathname: window.location.pathname,
+    search: window.location.search,
+    hash: window.location.hash,
+    landed: hasLanded(),
+  });
   const { state: sidebarState, isMobile: sidebarIsMobile } = useSidebar();
   const { isReading, inline } = useTTS();
   const { currentTrack } = useAudioPlayer();
@@ -1116,16 +1135,18 @@ function AppContent({ mainRef, scrollHidden }: { mainRef: React.RefObject<HTMLEl
           <PullToRefresh onRefresh={async () => { await queryClient.invalidateQueries(); window.dispatchEvent(new CustomEvent("nostr-soft-refresh")); }} scrollContainerSelector="main">
             <LandingRedirect />
             <Router />
-            <HomeKeepAlive renderHome={() => <Home />} fallback={<LazyFallback />} errorFallback={<RouteErrorFallback />} />
+            {!holdHomeForLanding && <HomeKeepAlive renderHome={() => <Home />} fallback={<LazyFallback />} errorFallback={<RouteErrorFallback />} />}
           </PullToRefresh>
         </main>
       </div>
       <ScrollToTopButton containerRef={mainRef} />
       <ScrollRestoreDebugOverlay />
       <ZapNotificationWatcher />
-      <CreatePostFAB />
-      <CreateStudio />
-      <OrbitMenu />
+      <DeferredShell events={SHELL_OVERLAY_EVENTS}>
+        <CreatePostFAB />
+        <CreateStudio />
+        <OrbitMenu />
+      </DeferredShell>
       <MiniPlayer hidden={scrollHidden} />
       <SpeechReaderBar hidden={scrollHidden} />
       <MobileFooter hidden={scrollHidden} />
@@ -1227,6 +1248,12 @@ function AppLayout() {
   // so marketing changes can be QA'd without logging the dev session out.
   const forceLandingPreview = import.meta.env.DEV && typeof window !== "undefined" && new URLSearchParams(window.location.search).has("landing-preview");
   const overlayMode: "full" | "cockpit" | "dimmed" | "hidden" | "warping_to_cockpit" = warpingOut ? "cockpit" : (forceLandingPreview ? overlayState : ((pubkey || onInfoPage || onInvitePage || onDiscoverPage) ? "hidden" : overlayState));
+  // The overlay renders nothing in "hidden" mode, which is every signed-in
+  // launch, so its chunk (the landing + sign-in tree) loads only once it has
+  // been needed. Latched, so its own fade-out still plays after a sign-in.
+  const galaxyNeededRef = useRef(false);
+  if (overlayMode !== "hidden") galaxyNeededRef.current = true;
+  const galaxyNeeded = galaxyNeededRef.current;
 
   // Introduce logged-out visitors to the Help hub with the nav expanded on
   // desktop (so they can see Search / Feed / News while they read). Auto-opens
@@ -1506,9 +1533,9 @@ function AppLayout() {
       {!!pubkey && <InviteAcceptCard />}
       {/* Own boundary: signed-in users mount this in "hidden" mode (renders
           null), so the lazy chunk must never suspend the app shell itself. */}
-      <Suspense fallback={null}>
+      {galaxyNeeded && <Suspense fallback={null}>
         <GalaxyWarpOverlay mode={overlayMode} onLaunch={handleLaunch} onWarpStarted={handleCockpitWarpStarted} onWarpComplete={handleWarpComplete} onDimmedSignIn={handleDimmedSignIn} onCockpitBack={handleCockpitBack} onWarpToCockpitComplete={handleWarpToCockpitComplete} />
-      </Suspense>
+      </Suspense>}
     </SidebarProvider>
   );
 }
@@ -1564,7 +1591,9 @@ function App() {
                 </Switch>
               </Suspense>
               <Toaster />
-              <FeedbackDrawer />
+              <DeferredShell events={FEEDBACK_EVENTS}>
+                <FeedbackDrawer />
+              </DeferredShell>
               </OutpostComposeProvider>
               </TTSProvider>
               </ConcordCallProvider>

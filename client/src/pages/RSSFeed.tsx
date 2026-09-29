@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent } from "react";
+import { discussionSignals } from "@/lib/discussion-signals";
 import { guestCanBrowse } from "@/lib/guest-limits";
 import { GuestLookingAround } from "@/components/GuestLookingAround";
 import { Link, useSearch, useLocation } from "wouter";
@@ -765,6 +766,7 @@ function NostrDiscussion({ url, isMobile, onCountChange }: { url: string; isMobi
         selfPubkey: pubkey,
         scoreGetter: (pk) => scores?.get(pk),
         flaggedPubkeys: flaggedPubkeys ?? undefined,
+        ...discussionSignals(),
       }),
     [rawEvents, preset, followSet, pubkey, scores, flaggedPubkeys],
   );
@@ -2505,36 +2507,15 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
       {/* One calm column at every width (2026-09 redesign): the desktop
           magazine breakout (hero + rail + grid) is gone. */}
       <div className="max-w-2xl mx-auto w-full">
-      {/* Title header: only on the standalone page. On the focused News view
-          (embedded) it's redundant — refresh + Add Feed are relocated into
-          Row A (mobile) and a slim desktop action bar below. */}
-      {!embedded && (
-        <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg font-semibold text-foreground whitespace-nowrap" data-testid="text-rss-title">
-              News
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-11 w-11"
-              onClick={handleRefresh}
-              disabled={isAllMode ? mergedFetching : isFetching}
-              aria-label="Refresh"
-              data-testid="button-refresh-feed"
-            >
-              <RefreshCw className={`w-4 h-4 ${(isAllMode ? mergedFetching : isFetching) ? "animate-spin" : ""}`} />
-            </Button>
-          </div>
-        </div>
-      )}
 
         {/* Search (the app's search pill, which opens find-and-add), then your
             sources. Mark all read, the source filter and Visit site belong to
             a single source's view only. */}
         <div className="mb-4 space-y-2.5">
+        {/* No title row (lib/page-titles.test.ts): refresh sits beside the
+            search pill. Embedded, the News view carries its own refresh. */}
+        <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
         <AddRssFeedDialog
           onAdd={handleAddFeed}
           existingUrls={existingUrls}
@@ -2552,6 +2533,21 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
             </button>
           }
         />
+        </div>
+        {!embedded && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-11 w-11 shrink-0"
+            onClick={handleRefresh}
+            disabled={isAllMode ? mergedFetching : isFetching}
+            aria-label="Refresh"
+            data-testid="button-refresh-feed"
+          >
+            <RefreshCw className={`w-4 h-4 ${(isAllMode ? mergedFetching : isFetching) ? "animate-spin" : ""}`} />
+          </Button>
+        )}
+        </div>
         {isAllMode && (
           <PageTabs
             ariaLabel="News or Listen"

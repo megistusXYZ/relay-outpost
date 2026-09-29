@@ -16,6 +16,7 @@ import type { PublishRejection } from "./publish-rejection";
 import { recordFirstSeen } from "./account-age";
 export { DEFAULT_RELAYS } from "./relay-constants";
 import { DEFAULT_RELAYS } from "./relay-constants";
+import { openLaunchRelays } from "./launch-relays";
 
 export const eventStore = new EventStore();
 // enablePing: keepalive probes (browser fallback = a dummy REQ/EOSE roundtrip)
@@ -383,17 +384,15 @@ export function warmRelayConnections() {
   const priority = allRelays.filter((u) => fastSet.has(u));
   const deferred = allRelays.filter((u) => !fastSet.has(u));
 
+  // Also lights the splash's relay ring, one dot per real connect.
   function connectBatch(urls: string[]) {
-    for (const url of urls) {
-      const start = Date.now();
-      pool.ensureRelay(url).then(() => {
-        const elapsed = Date.now() - start;
+    openLaunchRelays(urls, (url) => pool.ensureRelay(url), {
+      connected: (url, elapsed) => {
         markRelaySuccess(url, elapsed);
         trackRelayActivity(url);
-      }).catch(() => {
-        markRelayFailure(url);
-      });
-    }
+      },
+      failed: markRelayFailure,
+    });
   }
 
   connectBatch(priority);

@@ -42,24 +42,11 @@ export default function WhatsNew() {
             maskImage: "linear-gradient(to bottom, #000 0%, #000 30%, rgba(0,0,0,0.4) 64%, transparent 92%)",
           }}
         />
-        <div className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-in fade-in duration-300" data-testid="page-whats-new">
-        {/* No hero back here: the app chrome's back is 50px above this line
-            and owns the route (back-affordance.ts parentRouteOf). */}
-        <div className="flex items-center gap-3 mb-1">
-          <div className="flex items-center gap-2">
-            <WhatsNewIcon className="w-6 h-6 text-brand dark:text-brand/80" />
-            <div>
-              <h1 className="text-lg sm:text-xl font-black uppercase tracking-[0.06em] leading-none text-brand dark:text-brand/90" style={{ fontStyle: "italic" }}>
-                What's New
-              </h1>
-              <p className="text-[10px] text-brand/40 dark:text-brand/30 font-bold uppercase tracking-[0.2em] mt-0.5 ml-0.5">
-                what we've been shipping
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6 space-y-5">
+        <div className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-8 animate-in fade-in duration-300" data-testid="page-whats-new">
+        {/* No hero back or title: the app chrome's back owns the route
+            (back-affordance.ts), and pages open with their content
+            (lib/page-titles.test.ts). */}
+        <div className="space-y-5">
           {CHANGELOG.map((entry) => (
             <section
               key={entry.date}

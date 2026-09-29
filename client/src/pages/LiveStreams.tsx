@@ -1636,7 +1636,7 @@ function StreamDetail({ stream }: { stream: LiveEventData }) {
                 </Button>
               </div>
             </div>
-            <h1 className="text-lg font-bold text-foreground dark:text-white/90">{stream.title}</h1>
+            <h1 className="text-lg font-bold text-foreground dark:text-white/90" data-testid="stream-title">{stream.title}</h1>
             {stream.summary && (
               <p className="text-sm text-muted-foreground dark:text-white/40 line-clamp-2">{stream.summary}</p>
             )}
@@ -2312,20 +2312,6 @@ export default function LiveStreams() {
   return (
     <div className="px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5 overflow-x-hidden" data-testid="page-live-streams">
       <MissionBriefing pageId="live" steps={LIVE_STREAMS_BRIEFING} />
-      <div className="flex items-center gap-3 mb-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg font-semibold text-foreground" data-testid="text-page-title">Live Streams</h1>
-            {liveCount > 0 && (
-              <Badge className="bg-red-600/80 text-white text-[10px] animate-pulse">
-                {liveCount} LIVE
-              </Badge>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground/70">Watch live broadcasts and join the conversation</p>
-        </div>
-      </div>
-
       <div className="flex items-center gap-1.5 border-b border-border/30 pb-0.5 overflow-x-auto no-scrollbar">
         {tabs.map(tab => (
           <button

@@ -125,14 +125,6 @@ export function NewsTrending({ embedded = false }: { embedded?: boolean }) {
   return (
     <div className={embedded ? "" : "max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6"} data-testid="page-news-trending">
       {!pubkey && !embedded && <div className="mb-4"><GuestLookingAround /></div>}
-      {!embedded && (
-        <div className="flex items-center gap-2 mb-4">
-          {/* No "← Discover" back (owner call, 2026-08-14): the bottom bar's
-              Discover tab already returns to the bento in one tap. */}
-          <h1 className="text-lg font-semibold" data-testid="text-news-trending-title">Trending news</h1>
-        </div>
-      )}
-
       {/* Topic lens — the "from the jump" selection (decision 3). */}
       <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 mb-3" role="tablist" aria-label="News topics" data-testid="news-topic-lens">
         {TOPICS.map((t) => {

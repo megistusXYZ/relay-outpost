@@ -72,6 +72,30 @@ describe("reposts", () => {
   });
 });
 
+describe("quotes", () => {
+  // A quote is the viewer's note with a q tag. It lights the repost icon
+  // ("you boosted this") without claiming a kind-6 repost, so Undo repost
+  // and the repost guard still only see real reposts.
+  const quote = (target: string, by: string) => ev({ kind: 1, pubkey: by, tags: [["q", target], ["p", "author"]] });
+
+  it("the viewer's quote marks hasQuoted, not hasReposted or hasReplied", () => {
+    const idx = buildInteractionIndex([quote("p", "me")], "me");
+    const d = deriveInteraction(idx, "p", "me");
+    expect(d.hasQuoted).toBe(true);
+    expect(d.hasReposted).toBe(false);
+    expect(d.hasReplied).toBe(false);
+  });
+
+  it("someone else's quote doesn't mark the viewer", () => {
+    const idx = buildInteractionIndex([quote("p", "other")], "me");
+    expect(deriveInteraction(idx, "p", "me").hasQuoted).toBe(false);
+  });
+
+  it("a quote arriving live reports its target as changed", () => {
+    expect(addToIndex(createInteractionIndex(), quote("z", "me"), "me")).toEqual(["z"]);
+  });
+});
+
 describe("replies (viewer-only)", () => {
   it("marks hasReplied only for the viewer's own replies", () => {
     const idx = buildInteractionIndex([reply("p", "me"), reply("q", "other")], "me");
@@ -102,6 +126,7 @@ describe("empty state", () => {
       myReactionContent: null,
       myReactionEmojiUrl: undefined,
       hasReposted: false,
+      hasQuoted: false,
       hasReplied: false,
     });
   });

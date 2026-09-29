@@ -12,14 +12,21 @@ export interface RelayPreference {
  * A `"both"` relay counts for read AND write. Capped at `limit`. Returns `[]` for an
  * empty/undefined list so callers can apply their own fallback.
  */
+// Lives in shared/ so the server's trust-map reader applies the same rule.
+import { isJunkRelay } from "@shared/relay-junk";
+export { isJunkRelay };
+
 export function selectRelaysByMode(
   prefs: RelayPreference[] | undefined,
   mode: "read" | "write",
   limit = 5,
+  /** false for the viewer's own list: it's where they publish, keep it whole. */
+  { dropJunk = true }: { dropJunk?: boolean } = {},
 ): string[] {
   if (!prefs || prefs.length === 0) return [];
   return prefs
     .filter((p) => p.mode === mode || p.mode === "both")
     .map((p) => p.url)
+    .filter((url) => !dropJunk || !isJunkRelay(url))
     .slice(0, limit);
 }

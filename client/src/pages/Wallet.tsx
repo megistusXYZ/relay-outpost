@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { PageToolbar } from "@/components/PageToolbar";
 import { MissionBriefing, WALLET_BRIEFING } from "@/components/MissionBriefing";
 import { isToday, isYesterday, isThisWeek, isThisMonth, format as formatDate } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
@@ -2627,16 +2628,6 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
       <div className={embedded ? "" : "px-3 sm:px-4 py-4 sm:py-6"} data-testid="page-wallet">
         <MissionBriefing pageId="wallet" steps={WALLET_BRIEFING} />
         <div className={embedded ? "space-y-6" : "max-w-lg mx-auto space-y-6"}>
-          <div className="space-y-1">
-            <h1 className="text-lg font-semibold text-foreground flex items-center gap-2" data-testid="text-wallet-title">
-              <BtcZapIcon className="w-5 h-5 text-amber-500/80" />
-              Lightning Wallet
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              Connect your Lightning wallet to send and receive sats
-            </p>
-          </div>
-
           {/* Above the connect form on purpose: "where are my zaps?" is the
               question that brings a wallet-less user to this page, and the
               answer is not the NWC paste box. */}
@@ -2739,32 +2730,22 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
         <NpubCashClaimCard myPubkey={myPubkey} lud16={myLightningAddress} signer={signer ?? null} />
         <MakeZappableCard myPubkey={myPubkey} signer={signer ?? null} profileEvent={myProfile} profileLoaded={myProfile !== undefined} />
         <NpubCashUsernameCard myPubkey={myPubkey} signer={signer ?? null} profileEvent={myProfile} currentLud16={myLightningAddress} />
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <div className="space-y-0.5">
-              <h1 className="text-lg font-semibold text-foreground flex items-center gap-2" data-testid="text-wallet-title">
-                <BtcZapIcon className="w-5 h-5 text-amber-500/80" />
-                Lightning Wallet
-              </h1>
-              <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/80 animate-pulse" />
-                <span className="text-[11px] font-brand uppercase tracking-wider text-muted-foreground/70">NWC Connected</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {!isMobile && (
-              <Button variant="outline" size="sm" onClick={() => setShowScanner(true)} data-testid="button-scan-qr">
-                <ScanLine className="w-3.5 h-3.5 mr-1.5" />
-                Scan
-              </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={() => { setDisconnectStep(1); setShowDisconnectConfirm(true); }} data-testid="button-disconnect-wallet">
-              <Unplug className="w-3.5 h-3.5 mr-1.5" />
-              Disconnect
+        <PageToolbar
+          inStack
+          testId="wallet-status"
+          status={<><span className="w-1.5 h-1.5 rounded-full bg-emerald-400/80 animate-pulse" />Wallet connected</>}
+        >
+          {!isMobile && (
+            <Button variant="outline" size="sm" onClick={() => setShowScanner(true)} data-testid="button-scan-qr">
+              <ScanLine className="w-3.5 h-3.5 mr-1.5" />
+              Scan
             </Button>
-          </div>
-        </div>
+          )}
+          <Button variant="outline" size="sm" onClick={() => { setDisconnectStep(1); setShowDisconnectConfirm(true); }} data-testid="button-disconnect-wallet">
+            <Unplug className="w-3.5 h-3.5 mr-1.5" />
+            Disconnect
+          </Button>
+        </PageToolbar>
 
         <div className="relative overflow-hidden rounded-xl" data-testid="card-wallet-balance">
           <div className="absolute inset-0 bg-gradient-to-br from-[#0d0a1a] via-[#110e24] to-[#0a0816]" />

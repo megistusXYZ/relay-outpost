@@ -2,7 +2,6 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
 import { Link } from "wouter";
-import { useGoBack } from "@/hooks/use-go-back";
 import { pool, DEFAULT_RELAYS, eventStore, sortByLatency, throttledPoolSubscribe, fetchProfilesCached } from "@/lib/nostr";
 import { TrustTierDot } from "@/components/NostrPost";
 import { fetchRelayLists, getRelayList } from "@/lib/outbox";
@@ -74,7 +73,6 @@ import {
   UserCircle,
   Target,
   Globe,
-  ArrowLeft,
   ExternalLink,
   Repeat2,
   Heart,
@@ -1907,7 +1905,6 @@ function NetworkPulse({ pubkey }: { pubkey?: string }) {
 
 export default function AnalyticsDashboard({ embedded = false }: { embedded?: boolean } = {}) {
   useDocumentTitle("Console");
-  const goBack = useGoBack();
 
   const urlPubkey = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
@@ -2508,28 +2505,6 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
 
   return (
     <div className={embedded ? "space-y-6" : "max-w-6xl mx-auto px-3 sm:px-6 py-3 sm:py-6 space-y-6 pb-24"} data-testid="analytics-dashboard">
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          {!embedded && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-7 h-7 sm:w-8 sm:h-8 shrink-0"
-              onClick={() => goBack("/")}
-              data-testid="button-back"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-          )}
-          <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-brand/70 shrink-0" />
-          <h1 className="text-base sm:text-lg font-semibold text-foreground" data-testid="page-title">
-            Analytics Dashboard
-          </h1>
-        </div>
-        <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground ml-9 sm:ml-10">
-          Engagement analytics & reporting
-        </p>
-      </div>
       <NetworkPulse pubkey={urlPubkey || undefined} />
       <Card className="glass-card overflow-hidden min-w-0" data-testid="report-builder">
         <div className="p-3 sm:p-6 space-y-4 sm:space-y-5">

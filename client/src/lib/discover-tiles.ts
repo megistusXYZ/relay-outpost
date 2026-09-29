@@ -25,7 +25,7 @@ export interface TileState<T> {
 }
 
 /** Is there anything to show? Arrays count their items; anything else is truthy-or-not. */
-function hasContent(data: unknown): boolean {
+export function hasContent(data: unknown): boolean {
   if (Array.isArray(data)) return data.length > 0;
   return data !== null && data !== undefined;
 }

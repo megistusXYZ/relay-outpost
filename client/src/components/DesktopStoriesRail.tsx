@@ -2,8 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useLocation, useSearch } from "wouter";
 import { useReducedMotion } from "framer-motion";
 import { ArrowRight, ChevronRight, Lock, Rocket } from "lucide-react";
-import { openOrbitMenu } from "@/components/OrbitMenu";
-import { openCreateStudio } from "@/components/CreateStudio";
+import { openOrbitMenu, openCreateStudio } from "@/lib/shell-events";
 import { buildNavDestinations, NAV_ICONS, type NavDestination } from "@/lib/nav-destinations";
 import { useNeedsYouCount } from "@/contexts/NeedsYouContext";
 import { useIaCollapsed } from "@/lib/ia-prefs";
