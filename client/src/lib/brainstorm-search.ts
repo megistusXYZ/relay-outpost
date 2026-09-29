@@ -1,4 +1,5 @@
 import type { Event } from "nostr-tools";
+import { ownMapScores } from "./own-trust-map";
 import { searchPeopleRanked } from "./people-search";
 import { registerProfileInAllCaches, isProfileCached } from "./nostr";
 
@@ -207,10 +208,21 @@ async function fetchWotChunk(chunk: string[]): Promise<Map<string, number>> {
 // Score any number of pubkeys: de-dupe in-flight keys, chunk the rest, run chunks
 // with bounded concurrency, and merge. No 30-cap drop, no single-flight that
 // strands later authors on the slow per-author path.
-export async function fetchBrainstormWotBatch(pubkeys: string[]): Promise<Map<string, number>> {
+export async function fetchBrainstormWotBatch(pubkeys: string[], observer?: string | null): Promise<Map<string, number>> {
   if (pubkeys.length === 0) return new Map();
-  if (Date.now() < _batchCooldownUntil) return new Map();
 
+  // A viewer with their own trust map (kind 10040) is scored through it
+  // first, read in the browser; everyone else, and anyone their services
+  // have no card for, goes to the server's default-lens score cards.
+  const own = observer ? await ownMapScores(observer, pubkeys).catch(() => new Map<string, number>()) : new Map<string, number>();
+  const rest = pubkeys.filter((pk) => !own.has(pk));
+  if (rest.length === 0 || Date.now() < _batchCooldownUntil) return own;
+  const fromLens = await fetchLensBatch(rest);
+  own.forEach((v, k) => fromLens.set(k, v));
+  return fromLens;
+}
+
+async function fetchLensBatch(pubkeys: string[]): Promise<Map<string, number>> {
   const unique = Array.from(new Set(pubkeys));
   const watched = new Set<Promise<Map<string, number>>>();
   const need: string[] = [];

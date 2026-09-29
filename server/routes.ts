@@ -54,6 +54,8 @@ import { radioStationFromUrl } from "@shared/radio-station";
 import { registerOgCardRoutes } from "./og-cards";
 import { registerTranslateRoute } from "./translate";
 import { FailureMemory } from "@shared/failure-memory";
+import { createScoreCardReader } from "./score-cards";
+import { DEFAULT_LENS } from "@shared/default-lens";
 
 /**
  * Outside services that failed recently answer "unavailable" at once for a
@@ -2958,6 +2960,20 @@ export async function registerRoutes(
   const BRAINSTORM_SEARCH_API = "https://brainstorm.world";
 
   /**
+   * Trust scores for everyone without a trust map of their own: NIP-85 score
+   * cards through the default lens (owner call, 2026-09-28), shared by every
+   * request and cached (score-cards.ts). The map lives on general relays.
+   */
+  const scoreCards = createScoreCardReader({
+    lens: DEFAULT_LENS,
+    // nos.lol measured never answering a 10040 read (6s timeout), so it's out.
+    mapRelays: ["wss://purplepag.es", "wss://relay.damus.io"],
+  });
+  // Read the lens's map (and one card) at startup, so the first visitor after
+  // a deploy doesn't wait for it. Best-effort; failures just mean a cold read.
+  void scoreCards.scores([DEFAULT_LENS]).catch(() => {});
+
+  /**
    * One Brainstorm (Meili) call. A 404 is a real answer ("no such document");
    * anything that isn't JSON is NOT, it's the upstream failing. On 2026-09-28
    * brainstorm.world began serving its web app's HTML on these paths, and we
@@ -3100,56 +3116,16 @@ export async function registerRoutes(
       if (batch.length === 0) return res.json({ scores: {} });
       const scores: Record<string, number> = {};
 
-      const toFetch: string[] = [];
-      for (const pk of batch) {
-        const cached = wotScoreCache.get(pk);
-        const ttl = cached && cached.score < 0 ? WOT_MISS_TTL : WOT_SCORE_TTL;
-        if (cached && now - cached.ts < ttl) {
-          scores[pk] = cached.score;
-        } else {
-          toFetch.push(pk);
-        }
-      }
-
+      // Score cards through the default lens (score-cards.ts). A number is a
+      // rank; -1 means the relay answered and has no card for that person
+      // (the client leaves it for the per-person refine step); anyone left
+      // out couldn't be asked, so nothing is claimed about them.
+      const { scores: got } = await scoreCards.scores(batch);
       let unanswered = 0;
-      if (toFetch.length > 0) {
-        const CONCURRENT = 30;
-        for (let i = 0; i < toFetch.length; i += CONCURRENT) {
-          const chunk = toFetch.slice(i, i + CONCURRENT);
-          await Promise.allSettled(
-            chunk.map(async (pk: string) => {
-              let data: { success?: boolean; document?: { pubkey?: string; wot_rank?: number } };
-              try {
-                data = await fetchBrainstormJson(`/api/search/profiles/meili/document/${pk}`, 3000);
-              } catch {
-                // Brainstorm didn't answer: we know NOTHING about this author.
-                // Never turn that into -1 ("no trust data"); leave it unknown.
-                unanswered++;
-                return;
-              }
-              if (data.success && data.document?.pubkey === pk && data.document.wot_rank !== undefined) {
-                const score = data.document.wot_rank / 100;
-                scores[pk] = score;
-                wotScoreCache.set(pk, { score, ts: Date.now() });
-                return;
-              }
-              // Brainstorm answered and has no data for this pubkey — cache +
-              // return a miss so the client marks it "No data" now rather than
-              // re-querying it on the slow lazy path.
-              scores[pk] = -1;
-              wotScoreCache.set(pk, { score: -1, ts: Date.now() });
-            })
-          );
-        }
-      }
-
-      if (wotScoreCache.size > 1500) {
-        let oldestKey: string | null = null;
-        let oldestTs = Infinity;
-        for (const [k, v] of wotScoreCache) {
-          if (v.ts < oldestTs) { oldestTs = v.ts; oldestKey = k; }
-        }
-        if (oldestKey) wotScoreCache.delete(oldestKey);
+      for (const pk of batch) {
+        if (!got.has(pk)) { unanswered++; continue; }
+        const score = got.get(pk);
+        scores[pk] = score === null || score === undefined ? -1 : score;
       }
 
       // Nothing answered: a failure, so the client pauses and keeps these
