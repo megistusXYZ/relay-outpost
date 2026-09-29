@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Compass, X } from "lucide-react";
+import { Compass } from "lucide-react";
+import { useLocation } from "wouter";
+import { CompactNotice, NoticeAction } from "@/components/CompactNotice";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useIaCollapsed } from "@/lib/ia-prefs";
 import {
@@ -31,6 +33,7 @@ export function IaMovedNotice({ className = "" }: { className?: string }) {
   // Read once per mount: the value only changes via the dismiss below, and
   // re-reading storage on every render would gain nothing.
   const [seen, setSeen] = useState(() => hasSeenIaMovedNotice(pubkey));
+  const [, setLocation] = useLocation();
 
   if (!shouldShowIaMovedNotice({ pubkey, collapsed, stored: seen ? "1" : null })) return null;
 
@@ -39,30 +42,16 @@ export function IaMovedNotice({ className = "" }: { className?: string }) {
     setSeen(true);
   };
 
+  // One line (owner, 2026-09-29: the paragraph was too big): the map itself,
+  // and the way back.
   return (
-    <div
-      className={`flex items-start gap-3 rounded-xl border border-brand/20 bg-gradient-to-br from-brand/[0.06] to-brand/[0.03] px-4 py-3 ${className}`}
-      data-testid="ia-moved-notice"
-    >
-      <Compass className="mt-0.5 h-4 w-4 shrink-0 text-brand/80" aria-hidden="true" />
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-medium text-foreground/85">Fewer places to look</p>
-        <p className="text-[12px] leading-relaxed text-muted-foreground/70">
-          Your feed and news are both in <span className="text-foreground/75">Discover</span> now.
-          Your communities moved into <span className="text-foreground/75">Chats</span>, and your
-          calendar is under <span className="text-foreground/75">You</span>. Nothing was removed —
-          you can switch back any time in Settings.
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={dismissNotice}
-        className="-mr-1.5 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground/50 transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        aria-label="Dismiss"
-        data-testid="ia-moved-notice-dismiss"
-      >
-        <X className="h-4 w-4" />
-      </button>
-    </div>
+    <CompactNotice
+      icon={Compass}
+      body={<>Feed &amp; news → <b className="font-medium text-foreground/80">Discover</b> · Communities → <b className="font-medium text-foreground/80">Chats</b> · Calendar → <b className="font-medium text-foreground/80">You</b></>}
+      actions={<NoticeAction onClick={() => setLocation("/settings?section=feed")} testId="ia-moved-notice-switch-back">Switch back</NoticeAction>}
+      onDismiss={dismissNotice}
+      className={className}
+      testId="ia-moved-notice"
+    />
   );
 }
