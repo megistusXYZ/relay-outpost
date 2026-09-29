@@ -24,7 +24,7 @@ import { checkForUpdatesNow, repairApp } from "@/lib/app-update";
 import { getHideMessagePreviews, setHideMessagePreviews } from "@/lib/message-previews";
 import { getPrivateModeSetting, setPrivateModeSetting } from "@/lib/private-mode";
 import { useFeedbackUnread } from "@/hooks/use-feedback-unread";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { FOCUS_RING } from "@/lib/a11y";
 import { useTheme } from "@/hooks/use-theme";
 import { useContrast, type ContrastLevel } from "@/hooks/use-contrast";
@@ -38,6 +38,7 @@ import { hasPassedAgeScreen, isAdultBirthDate, recordAgeScreenPassed } from "@/l
 import { fetchDMRelayList, getLocalDMRelays, setLocalDMRelays, publishDMRelayList, DM_FALLBACK_RELAYS } from "@/lib/outbox";
 import { getOutpostRelays } from "@/lib/outpost-relays";
 import { Link } from "wouter";
+import { settingsSectionFor } from "@/lib/settings-section";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useToast } from "@/hooks/use-toast";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
@@ -351,76 +352,67 @@ function NewsAlertsSection() {
 interface SettingsCategory { id: string; label: string }
 
 /** A labeled, anchored group of settings sections that the nav can jump to. */
-function CategoryGroup({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+/** One Settings section. Only the chosen one renders (settingsSectionFor);
+ *  the section picker already names it, so its heading is for screen readers. */
+function CategoryGroup({ id, title, active, children }: { id: string; title: string; active: string; children: React.ReactNode }) {
+  if (id !== active) return null;
   return (
-    <section id={id} className="scroll-mt-24 space-y-4" data-testid={`settings-group-${id}`}>
-      <h2 className="px-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/60">{title}</h2>
+    <section id={id} aria-labelledby={`settings-heading-${id}`} className="space-y-4" data-testid={`settings-group-${id}`}>
+      <h2 id={`settings-heading-${id}`} className="sr-only">{title}</h2>
       {children}
     </section>
   );
 }
 
-/** Category navigation: a sticky left rail on desktop only. Highlights the
- *  in-view category (scrollspy) and jumps on click. Mobile has no jump-nav —
- *  it relies on the grouped scroll and category headings. */
-function SettingsNav({ items }: { items: SettingsCategory[] }) {
-  const [active, setActive] = useState(items[0]?.id ?? "");
+/**
+ * The section picker (owner call, 2026-09-28: the long page with a pinned
+ * "jump to" bar didn't look good). Phones and tablets: a row of tabs at the
+ * top that scrolls away with the page, nothing pinned. Desktop: a quiet list
+ * on the left. Either way it switches which ONE section shows.
+ */
+function SettingsNav({ items, active, onSelect }: { items: SettingsCategory[]; active: string; onSelect: (id: string) => void }) {
+  const tabsRef = useRef<HTMLDivElement>(null);
+  // Keep the chosen tab in view on a phone when it sits off the row's edge.
   useEffect(() => {
-    if (typeof IntersectionObserver === "undefined") return;
-    const els = items
-      .map((i) => document.getElementById(i.id))
-      .filter((el): el is HTMLElement => !!el);
-    if (els.length === 0) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible[0]) setActive(visible[0].target.id);
-      },
-      { rootMargin: "-20% 0px -70% 0px", threshold: 0 },
-    );
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
-  }, [items]);
-
-  const go = (id: string) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
-    setActive(id);
-  };
+    const el = tabsRef.current?.querySelector<HTMLElement>(`[data-section="${active}"]`);
+    el?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [active]);
 
   return (
     <>
-      {/* Mobile (< lg): a "jump to section" selector that pins flush to the top as
-          a solid full-bleed sub-bar when scrolling (desktop rail is hidden). */}
-      <div className="lg:hidden sticky top-0 z-30 -mx-3 sm:-mx-4 mb-4 border-b border-border/50 bg-background/95 backdrop-blur-md px-3 sm:px-4 py-2.5">
-        <Select value={active} onValueChange={(v) => go(v)}>
-          <SelectTrigger className="w-full min-h-11 border-border bg-accent" data-testid="settings-mobile-nav">
-            <SelectValue placeholder="Jump to a section" />
-          </SelectTrigger>
-          <SelectContent>
-            {items.map((i) => (
-              <SelectItem key={i.id} value={i.id} data-testid={`settings-nav-mobile-${i.id}`}>
-                {i.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div
+        ref={tabsRef}
+        role="tablist"
+        aria-label="Settings sections"
+        className="lg:hidden -mx-3 sm:-mx-4 mb-5 flex gap-1 overflow-x-auto no-scrollbar border-b border-border/40 px-3 sm:px-4"
+        data-testid="settings-mobile-nav"
+      >
+        {items.map((i) => (
+          <button
+            key={i.id}
+            type="button"
+            role="tab"
+            aria-selected={active === i.id}
+            data-section={i.id}
+            onClick={() => onSelect(i.id)}
+            data-testid={`settings-nav-mobile-${i.id}`}
+            className={`-mb-px min-h-11 shrink-0 whitespace-nowrap border-b-2 px-3 text-sm transition-colors ${active === i.id ? "border-brand font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            {i.label}
+          </button>
+        ))}
       </div>
 
-      {/* Desktop (>= lg): a sticky vertical rail with scrollspy highlight. */}
-      <nav className="hidden lg:block sticky top-4 self-start">
+      <nav aria-label="Settings sections" className="hidden lg:block">
         <ul className="space-y-0.5">
           {items.map((i) => (
             <li key={i.id}>
               <button
                 type="button"
-                onClick={() => go(i.id)}
+                onClick={() => onSelect(i.id)}
+                aria-current={active === i.id ? "page" : undefined}
                 data-testid={`settings-nav-${i.id}`}
-                className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${active === i.id ? "bg-accent font-medium text-brand" : "text-muted-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground"}`}
+                className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${active === i.id ? "bg-accent font-medium text-foreground" : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground"}`}
               >
                 {i.label}
               </button>
@@ -2250,6 +2242,20 @@ export default function Settings() {
     ...(pubkey ? [{ id: "account", label: "Account" }] : []),
   ];
 
+  // One section at a time; the address says which (?section=…, or an anchor
+  // from an older link). Switching replaces the entry, so Back leaves Settings
+  // instead of stepping through every section you looked at.
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const section = settingsSectionFor(
+    { search, hash: typeof window !== "undefined" ? window.location.hash : "" },
+    settingsCategories.map((c) => c.id),
+  );
+  const selectSection = (id: string) => {
+    navigate(`/settings?section=${id}`, { replace: true });
+    document.querySelector("main")?.scrollTo({ top: 0 });
+  };
+
   // Real-world sign-in methods. The labels describe what the user actually did
   // to connect; the sub-line is the key-custody guarantee.
   const signInRow = pubkey && (() => {
@@ -2291,16 +2297,16 @@ export default function Settings() {
       <div className="max-w-2xl lg:max-w-5xl mx-auto">
 
         <div className="lg:grid lg:grid-cols-[12rem_1fr] lg:gap-8 lg:items-start">
-          <SettingsNav items={settingsCategories} />
+          <SettingsNav items={settingsCategories} active={section} onSelect={selectSection} />
 
           <div className="min-w-0 space-y-7">
 
-            <CategoryGroup id="appearance" title="Appearance">
+            <CategoryGroup active={section} id="appearance" title="Appearance">
               <AppearanceSection />
               <AppSection />
             </CategoryGroup>
 
-            <CategoryGroup id="feed" title="Feed & content">
+            <CategoryGroup active={section} id="feed" title="Feed & content">
               <LaunchSection />
               <DiscoverSection />
               <NewsAlertsSection />
@@ -2309,7 +2315,7 @@ export default function Settings() {
               <ReadAloudSection />
             </CategoryGroup>
 
-            <CategoryGroup id="network" title="Network">
+            <CategoryGroup active={section} id="network" title="Network">
               <RowSection label="Relays" testId="section-relay-status">
                 <LinkRow
                   href="/relays"
@@ -2330,7 +2336,7 @@ export default function Settings() {
               </RowSection>
             </CategoryGroup>
 
-            <CategoryGroup id="safety" title="Safety">
+            <CategoryGroup active={section} id="safety" title="Safety">
               <RowSection testId="section-privacy">
                 <HideMessagePreviewsRow />
                 <LinkRow
@@ -2350,7 +2356,7 @@ export default function Settings() {
             </CategoryGroup>
 
             {pubkey && (
-              <CategoryGroup id="tools" title="Tools">
+              <CategoryGroup active={section} id="tools" title="Tools">
                 <RowSection>
                   <LinkRow
                     href="/tools"
@@ -2363,7 +2369,7 @@ export default function Settings() {
               </CategoryGroup>
             )}
 
-            <CategoryGroup id="help" title="Help">
+            <CategoryGroup active={section} id="help" title="Help">
               <RowSection>
                 <ActionRow
                   icon={MessageSquarePlus}
@@ -2377,7 +2383,7 @@ export default function Settings() {
             </CategoryGroup>
 
             {pubkey && (
-              <CategoryGroup id="account" title="Account">
+              <CategoryGroup active={section} id="account" title="Account">
                 <RowSection>
                   {/* The menu's "Account" chip moved onto the identity chip's
                       sheet — this row keeps /account one tap from Settings. */}
