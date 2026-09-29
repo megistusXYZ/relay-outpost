@@ -2,7 +2,6 @@ import { SearchPill } from "@/components/SearchPill";
 import { useEffect, useMemo, useState, useCallback, useRef, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation, useSearch } from "wouter";
-import { useGoBack } from "@/hooks/use-go-back";
 import { use$ } from "applesauce-react/hooks";
 import { eventStore, subscribeToFeed, DEFAULT_RELAYS, pool, publishEvent, fetchProfilesCached, throttledPoolSubscribe, verifySignedEventKind } from "@/lib/nostr";
 import { isVideoUrl as sharedIsVideoUrl } from "@/lib/media-frame";
@@ -19,7 +18,7 @@ import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
   AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-import { openCreateStudio } from "@/components/CreateStudio";
+import { openCreateStudio } from "@/lib/shell-events";
 import { InviteFriend } from "@/components/InviteFriend";
 import { QRCodeSVG } from "qrcode.react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -36,7 +35,7 @@ import {
   Eye, EyeOff, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon,
   Music, Zap, QrCode, ScrollText, Heart, Repeat2, Filter, ChevronDown, ChevronUp, ChevronRight,
   Upload, ShieldCheck, Search, ArrowUpDown, ExternalLink, Lock,
-  Calendar, Clock, Plus, Trash2, Play, Video, Bookmark, Terminal, BarChart3, ArrowLeft, Wrench } from "lucide-react";
+  Calendar, Clock, Plus, Trash2, Play, Video, Bookmark, Terminal, BarChart3, Wrench } from "lucide-react";
 import { format, addDays, addWeeks, addMonths, getDay } from "date-fns";
 import type { ISigner } from "applesauce-signers";
 import { RelayOutpostLoader, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
@@ -222,7 +221,6 @@ function parseRelayListFromEvent(event: Event): RelayInfo[] {
 export default function MyOutpost() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const goBack = useGoBack();
   const search = useSearch();
   const { pubkey, signer, profile, follows, attemptReconnect } = useNostrAuth();
   const { livePubkeys } = useLiveStatus();
@@ -1962,14 +1960,8 @@ export default function MyOutpost() {
           )}
           {activeManageItem && (
             <div data-testid="container-manage-body">
-              <button
-                type="button"
-                onClick={() => goBack("/account/menu")}
-                className="inline-flex items-center gap-1.5 mb-4 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                data-testid="button-manage-back"
-              >
-                <ChevronRight className="w-3.5 h-3.5 rotate-180" /> Back
-              </button>
+              {/* No in-page Back: the top bar's back is the only one, and it
+                  climbs to the You menu on a cold link (parentRouteOf). */}
               {activeTab === "flight_log" && pubkey && <FlightLogTab pubkey={pubkey} />}
               {activeTab !== "flight_log" && (
                 <Suspense fallback={<div className="py-16 text-center text-sm text-muted-foreground">Loading…</div>}>

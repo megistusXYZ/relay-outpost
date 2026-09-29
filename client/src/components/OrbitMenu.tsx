@@ -28,7 +28,7 @@ import { useNWC } from "@/contexts/NWCContext";
 import { useTheme } from "@/hooks/use-theme";
 import { hasSeenList } from "@/lib/concord/community-list-memory";
 import { wipeConcordDevice } from "@/lib/concord/concord-keys";
-import { openCreateStudio } from "@/components/CreateStudio";
+import { openCreateStudio } from "@/lib/shell-events";
 import { isNavDestinationActive } from "@/lib/footer-nav";
 import { primeKeyboard } from "@/lib/keyboard-handoff";
 import { formatNpub, shortenNpub, getDisplayName, getAvatarUrl, getProfileContent } from "@/lib/nostr-helpers";
@@ -92,10 +92,9 @@ import {
 //
 // One global event opens it from anywhere (the mobile header trigger today) —
 // mirrors the CreateStudio open pattern.
-export const OPEN_ORBIT_MENU = "open-orbit-menu";
-export function openOrbitMenu() {
-  window.dispatchEvent(new CustomEvent(OPEN_ORBIT_MENU));
-}
+// (lib/shell-events.ts, so openers don't pull this overlay into the launch bundle)
+import { OPEN_ORBIT_MENU, openOrbitMenu } from "@/lib/shell-events";
+export { OPEN_ORBIT_MENU, openOrbitMenu };
 
 interface StoryEntry {
   id: string;

@@ -1,3 +1,4 @@
+import { PageToolbar } from "@/components/PageToolbar";
 import { SearchPill } from "@/components/SearchPill";
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import {
@@ -1877,6 +1878,8 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
     }
   };
 
+  const showViewToggle = view !== "artist-detail" && view !== "album-detail" && view !== "search-results" && view !== "browse";
+
   return (
     <div className={embedded ? "" : "px-3 sm:px-4 py-4 sm:py-6"} data-testid="page-audio-feed">
       <div className={embedded ? "" : "max-w-5xl mx-auto"}>
@@ -1884,44 +1887,35 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
             or a detail view (back + contextual title). Embedded top-level views
             skip it entirely — the hub chip already says "Audio", and the grid
             toggle rides the search row below instead. */}
-        {(!embedded || showBackButton) && (
-        <div className="flex items-center gap-3 mb-4">
-          {showBackButton && (
+        {/* No title (lib/page-titles.test.ts). The row exists only when it
+            carries a control: a drill-in's back, or the standalone grid toggle.
+            Embedded top-level views put the toggle on the search row below. */}
+        {(showBackButton || (!embedded && showViewToggle)) && (
+        <PageToolbar
+          status={showBackButton && (
             <button
               onClick={goBack}
-              className="flex items-center justify-center w-9 h-9 rounded-md hover:bg-muted/30 transition-colors shrink-0"
+              className="-ml-2 flex items-center justify-center w-9 h-9 rounded-md hover:bg-muted/30 transition-colors shrink-0"
+              aria-label="Back"
               data-testid="button-back"
             >
               <ArrowLeft className="w-5 h-5 text-muted-foreground" />
             </button>
           )}
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0">
-            <Headphones className="w-5 h-5 text-brand/70" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-lg font-semibold text-foreground" data-testid="text-page-title">
-              {view === "artist-detail" ? "Artist" :
-               view === "album-detail" ? "Album" :
-               view === "genre-results" ? selectedGenre || "Genre" :
-               view === "search-results" ? "Search" :
-               view === "artists" ? "Artists" :
-               "Audio"}
-            </h1>
-            <p className="text-xs text-muted-foreground/70" data-testid="text-audio-count">
-            </p>
-          </div>
-          {view !== "artist-detail" && view !== "album-detail" && view !== "search-results" && view !== "browse" && (
+        >
+          {showViewToggle && (
             <Button
               variant="ghost"
               size="icon"
               onClick={() => { hasUserToggledView.current = true; setViewMode(viewMode === "grid" ? "list" : "grid"); }}
-              className="text-muted-foreground/80 shrink-0 ml-auto"
+              className="text-muted-foreground/80 shrink-0"
+              aria-label={viewMode === "grid" ? "Show as list" : "Show as grid"}
               data-testid="button-toggle-view-mode"
             >
               {viewMode === "grid" ? <LayoutList className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
             </Button>
           )}
-        </div>
+        </PageToolbar>
         )}
 
         {/* ONE control row: [search] [grid toggle] — the view switcher is a

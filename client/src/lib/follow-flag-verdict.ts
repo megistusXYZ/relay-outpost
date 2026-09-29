@@ -245,7 +245,12 @@ export function computeFlagVerdict(input: FlagVerdictInput): FlagVerdict {
   // toward 0 until overwhelming evidence dominates it (principle 4). R never
   // reaches 1 while a shield stands, and never 0 while there is evidence.
   const standingTier = getSignalTier(targetInfluence);
-  const seff = SHIELD[standingTier] * RESIST[severity];
+  // No score at all is unknown, not zero standing (owner call, 2026-09-28):
+  // weigh it like a modest ("low") standing, so one trusted flag isn't a
+  // strong signal on its own while a real pile-up still is. A KNOWN score
+  // below the weak line keeps its zero shield.
+  const standingUnknown = targetInfluence === null || targetInfluence === undefined;
+  const seff = SHIELD[standingUnknown ? "low" : standingTier] * RESIST[severity];
   const denom = evidence + seff;
   const ratio = denom > 0 ? evidence / denom : 0;
 
@@ -278,7 +283,7 @@ export function computeFlagVerdict(input: FlagVerdictInput): FlagVerdict {
 
   const summary = reassuring
     ? `Trusted in your network — ${reasonPhrase(severity, input.reasonLabel)} by ${reporterPhrase(input)}`
-    : `${levelLabel(level)} — ${reasonPhrase(severity, input.reasonLabel)} by ${reporterPhrase(input)}, ${standingPhrase(standingTier)}`;
+    : `${levelLabel(level)} — ${reasonPhrase(severity, input.reasonLabel)} by ${reporterPhrase(input)}, ${standingUnknown ? "and their standing isn't known yet" : standingPhrase(standingTier)}`;
 
   return {
     pubkey: input.pubkey,

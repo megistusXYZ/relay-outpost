@@ -184,11 +184,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
 
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-3 sm:space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
-          <Radio className="w-5 h-5 text-brand dark:text-brand/80" />
-          <h1 className="text-base sm:text-lg font-brand tracking-wider uppercase">Relay Control</h1>
-        </div>
+      <div className="flex min-h-9 items-center justify-end gap-3 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap justify-end">
           {adminRelays.length > 1 ? (
             <Select value={selectedRelay} onValueChange={setSelectedRelay}>

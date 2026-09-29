@@ -832,12 +832,6 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
   return (
     <div className={embedded ? "" : "max-w-5xl mx-auto px-3 sm:px-4 py-4"}>
       <MissionBriefing pageId="articles" steps={ARTICLES_BRIEFING} />
-      {!embedded && (
-        <div className="flex items-center gap-2 mb-4">
-          <h1 className="text-lg font-semibold text-foreground" data-testid="heading-articles">Articles</h1>
-        </div>
-      )}
-
       {/* One slim control row: sort (Following·Latest·Trending) + Write. */}
       <div data-testid="articles-tab-switcher">
       <div className="hidden sm:flex items-center justify-between gap-2 mb-4">

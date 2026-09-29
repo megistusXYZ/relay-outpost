@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { getVanishTargetRelays, getVanishTargetRelaysAsync, publishVanishRequest, performFullLocalWipe, type VanishRelayResult } from "@/lib/nip62-vanish";
 import { shortenNpub, formatNpub } from "@/lib/nostr-helpers";
+import { PageToolbar } from "@/components/PageToolbar";
 import { ArrowLeft, AlertTriangle, CheckCircle2, Loader2, UserX, XCircle } from "lucide-react";
 
 // Local copies of Settings' section chrome — this page is a separate lazy chunk
@@ -342,24 +343,11 @@ export default function SettingsDanger() {
       <div className="max-w-2xl mx-auto space-y-4">
         {/* Chrome back owns the route (back-affordance.ts maps it to /settings
             on cold entry) — the "Back to settings" link here duplicated it. */}
-        <div className="relative rounded-md overflow-hidden border border-border dark:border-brand/15 glass-settings-header shadow-sm dark:shadow-none">
-          <div className="absolute inset-0 pointer-events-none glass-settings-header-glow" />
-          <div className="relative p-4 sm:p-5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-md flex items-center justify-center shrink-0"
-              style={{ background: "rgba(220, 60, 60, 0.10)", border: "1px solid rgba(220, 60, 60, 0.18)" }}
-            >
-              <AlertTriangle className="w-5 h-5 text-red-500/70" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-foreground" data-testid="text-danger-title">
-                Advanced &amp; danger zone
-              </h1>
-              <p className="text-xs text-muted-foreground/60">
-                Irreversible account actions. Read carefully before you act.
-              </p>
-            </div>
-          </div>
-        </div>
+        <PageToolbar
+          testId="danger-warning"
+          inStack
+          status={<><AlertTriangle className="w-3.5 h-3.5 shrink-0 text-red-500/80" /><span>Irreversible account actions. Read carefully before you act.</span></>}
+        />
 
         <AccountIdentitySection />
       </div>

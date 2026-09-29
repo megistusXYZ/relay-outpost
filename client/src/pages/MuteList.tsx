@@ -131,19 +131,7 @@ export default function MuteList() {
     !isLoading && mutedPubkeys.length === 0 && mutedKeywords.length === 0 && mutedHashtags.length === 0 && mutedThreads.length === 0;
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-10 space-y-5" data-testid="page-muted">
-      <div className="flex items-center gap-2.5">
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/15 text-brand">
-          <VolumeX className="h-4 w-4" />
-        </span>
-        <h1 className="text-lg font-brand uppercase tracking-widest">Muted</h1>
-      </div>
-
-      <p className="text-sm text-muted-foreground leading-relaxed">
-        People, words, hashtags and threads you've hidden. Only you can see this list: it's encrypted
-        and saved to your relays, so the same mutes apply in other apps that support private mute lists,
-        like Amethyst.
-      </p>
+    <div className="max-w-xl mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-10 space-y-5" data-testid="page-muted">
 
       {syncNote && (
         <p className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground" role="status" data-testid="mute-sync-note">

@@ -13,6 +13,7 @@ import type { Event } from "nostr-tools";
 import { Tag, Search, X } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
+import { PageToolbar } from "@/components/PageToolbar";
 import { GuestWall } from "@/components/GuestWall";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { RelayOutpostLoader } from "@/components/RelayOutpostLoader";
@@ -191,16 +192,12 @@ export default function Marketplace() {
 
   return (
     <div className="px-3 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-6xl mx-auto" data-testid="page-marketplace">
-      <div className="mb-5">
-        <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.15em] text-brand/70">
-          <Tag className="w-3 h-3" />
-          <span>Marketplace</span>
-        </div>
-        <h1 className="text-lg font-semibold tracking-tight mt-1">Things for sale, from people you can talk to</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Listings from across the open network. Buying happens with the seller or their marketplace — never through us.
-        </p>
-      </div>
+      {/* No title block (lib/page-titles.test.ts). The one line kept is the
+          promise: we're the rails, never the checkout. */}
+      <PageToolbar
+        testId="marketplace-note"
+        status={<span>Buying happens with the seller or their marketplace — never through us.</span>}
+      />
 
       {state.status === "ready" && (
         <div className="mb-5 space-y-3">

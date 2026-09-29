@@ -60,6 +60,9 @@ import {
   fetchMarketShelf,
   fetchNetworkTopics,
   feedSnippet,
+  followAnswer,
+  setDiscoverViewer,
+  setDiscoverTrust,
   type CommunityPulse,
   type VideoTeaser,
   type MarketTeaser,
@@ -79,6 +82,8 @@ import { normalizeUrl } from "@/lib/pinned-feeds";
 import { FOCUS_RING } from "@/lib/a11y";
 import { usePeopleTypeahead } from "@/hooks/use-people-typeahead";
 import { PeopleToFollowStrip } from "@/components/PeopleToFollowStrip";
+import { useDiscoverTrust } from "@/hooks/use-discover-trust";
+import { DISCOVER_MIN_SCORE } from "@/lib/discover-trust";
 import { getDisplayName, getAvatarUrl, getProfileContent } from "@/lib/nostr-helpers";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import type { ArticleData } from "@/lib/nip23";
@@ -491,8 +496,7 @@ function FeedTile() {
   const load = useCallback(() => {
     const id = ++seq.current;
     setTeaser(null);
-    fetchFeedTeaser(flaggedPubkeys ?? new Set(), follows ?? [])
-      .then((r) => { if (seq.current === id) setTeaser(r); })
+    followAnswer(fetchFeedTeaser(flaggedPubkeys ?? new Set(), follows ?? []), (r) => { if (seq.current === id) setTeaser(r); })
       .catch(() => { if (seq.current === id) setTeaser({ data: [], reached: false }); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flaggedPubkeys, follows]);
@@ -585,8 +589,7 @@ function CommunitiesTile() {
   const loadPulse = useCallback(() => {
     const id = ++pulseSeq.current;
     setPulse(null);
-    fetchCommunityPulse(urlsKey ? urlsKey.split(",") : [], RECENT_ACTIVITY_WINDOW_MS)
-      .then((r) => { if (pulseSeq.current === id) setPulse(r); })
+    followAnswer(fetchCommunityPulse(urlsKey ? urlsKey.split(",") : [], RECENT_ACTIVITY_WINDOW_MS), (r) => { if (pulseSeq.current === id) setPulse(r); })
       .catch(() => { if (pulseSeq.current === id) setPulse({ data: null, reached: false }); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlsKey]);
@@ -731,8 +734,7 @@ function ArticlesTile() {
   const load = useCallback(() => {
     const id = ++seq.current;
     setArticle(null);
-    fetchNewestArticle(follows ?? [])
-      .then((r) => { if (seq.current === id) setArticle(r); })
+    followAnswer(fetchNewestArticle(follows ?? []), (r) => { if (seq.current === id) setArticle(r); })
       .catch(() => { if (seq.current === id) setArticle({ data: [], reached: false }); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [follows]);
@@ -772,13 +774,17 @@ function ArticlesTile() {
   }, [candidateEvents, requestScoresBulk]);
   const followSet = useMemo(() => new Set(follows ?? []), [follows]);
   const floored = useMemo(() => {
-    if (signals === null || candidateEvents.length === 0) return null;
+    // No wait for Primal's engagement numbers or for profiles: every candidate
+    // already passed Discover's trust gate (0.50+ or followed; discover-data.ts),
+    // and a trusted author is shown on trust alone (article-floor.ts). That wait
+    // took 20-56s on production. The flood and flagged checks still apply.
+    if (candidateEvents.length === 0) return null;
     const byEvent = new Map(candidates.map((a) => [a.event, a] as const));
     const { shown, holding } = floorArticles<ArticleData["event"]>(
       moderationFilter(candidateEvents),
       {
         isFollowed: (pk) => followSet.has(pk) || pk === pubkey,
-        wotScore: (pk) => wotScores?.get(pk),
+        wotScore: (pk) => wotScores?.get(pk) ?? DISCOVER_MIN_SCORE,
         flagged: (pk) => !!flaggedPubkeys?.has(pk),
         profile: profileGetter,
         profileSettled: profileSettledGetter,
@@ -786,7 +792,7 @@ function ArticlesTile() {
         firstSeen: getFirstSeen,
         followerCount: getCachedFollowerCount,
         powDifficulty: effectivePow,
-        signalsAvailable: signals,
+        signalsAvailable: signals ?? false,
       },
       preset,
       Math.floor(Date.now() / 1000),
@@ -1042,7 +1048,15 @@ function ResultRow({ label, hint, onPick, testId, avatar }: {
 function LiveTile() {
   const [, setLocation] = useLocation();
   const { follows } = useNostrAuth();
-  const { livePubkeys, getLiveStream } = useLiveStatus();
+  const { livePubkeys: everyoneLive, getLiveStream } = useLiveStatus();
+  // Only streams hosted by highly trusted people (or your follows) on the
+  // front door (lib/discover-trust.ts). Held until the answer is in.
+  const liveList = useMemo(() => Array.from(everyoneLive), [everyoneLive]);
+  const trust = useDiscoverTrust(liveList);
+  const livePubkeys = useMemo(
+    () => new Set(trust.checked ? liveList.filter(trust.admit) : []),
+    [liveList, trust.checked, trust.admit],
+  );
 
   const followsSet = useMemo(() => new Set(follows ?? []), [follows]);
   const networkLive = useMemo(
@@ -1100,6 +1114,8 @@ function LiveTile() {
         <span className="block text-xs text-muted-foreground" data-testid="live-tile-count">
           {livePubkeys.size} {livePubkeys.size === 1 ? "stream" : "streams"} on right now
         </span>
+      ) : trust.checked && !trust.reached ? (
+        <span className="block text-xs text-muted-foreground" data-testid="live-tile-unchecked">Couldn't check who's trusted right now. Tap to see every stream.</span>
       ) : (
         <span className="block text-xs text-muted-foreground">See who's broadcasting.</span>
       )}
@@ -1181,8 +1197,7 @@ function EventsTile() {
   const load = useCallback(() => {
     const id = ++seq.current;
     setTeaser(null);
-    fetchNextCalendarEvent()
-      .then((r) => { if (seq.current === id) setTeaser(r); })
+    followAnswer(fetchNextCalendarEvent(), (r) => { if (seq.current === id) setTeaser(r); })
       .catch(() => { if (seq.current === id) setTeaser({ data: null, reached: false }); });
   }, []);
   useEffect(() => { load(); return () => { seq.current++; }; }, [load]);
@@ -1233,8 +1248,7 @@ function VideosTile() {
   const load = useCallback(() => {
     const id = ++seq.current;
     setTeaser(null);
-    fetchVideoTeaser()
-      .then((r) => { if (seq.current === id) setTeaser(r); })
+    followAnswer(fetchVideoTeaser(), (r) => { if (seq.current === id) setTeaser(r); })
       .catch(() => { if (seq.current === id) setTeaser({ data: null, reached: false }); });
   }, []);
   useEffect(() => { load(); return () => { seq.current++; }; }, [load]);
@@ -1284,8 +1298,7 @@ function MarketplaceShelfTile() {
   const load = useCallback(() => {
     const id = ++seq.current;
     setTeaser(null);
-    fetchMarketShelf()
-      .then((r) => { if (seq.current === id) setTeaser(r); })
+    followAnswer(fetchMarketShelf(), (r) => { if (seq.current === id) setTeaser(r); })
       .catch(() => { if (seq.current === id) setTeaser({ data: null, reached: false }); });
   }, []);
   useEffect(() => { load(); return () => { seq.current++; }; }, [load]);
@@ -1360,8 +1373,7 @@ function ImagesShelfTile() {
   const load = useCallback(() => {
     const id = ++seq.current;
     setTeaser(null);
-    fetchImagesTeaser(follows ?? [], flaggedPubkeys ?? new Set())
-      .then((r) => { if (seq.current === id) setTeaser(r); })
+    followAnswer(fetchImagesTeaser(follows ?? [], flaggedPubkeys ?? new Set()), (r) => { if (seq.current === id) setTeaser(r); })
       .catch(() => { if (seq.current === id) setTeaser({ data: [], reached: false }); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [follows, flaggedPubkeys]);
@@ -1411,7 +1423,7 @@ function ImagesShelfTile() {
         </span>
       )}
       {(state.status === "empty" || (state.status === "ready" && images && images.length === 0)) && (
-        <span className="block text-xs text-muted-foreground">Quiet right now — tap to browse.</span>
+        <span className="block text-xs text-muted-foreground" data-testid="images-tile-empty">Quiet right now — tap to browse.</span>
       )}
       {state.status === "unreachable" && unreachableBody("the image relays")}
     </TileShell>
@@ -1474,6 +1486,15 @@ function TopicsStrip() {
 export default function Discover() {
   useDocumentTitle("Discover");
   const { pubkey } = useNostrAuth();
+  // Tiles read and write this account's last-known answers (tile-snapshot).
+  // Set during render: the tiles' fetch effects run before this component's.
+  setDiscoverViewer(pubkey ?? null);
+  // Discover shows only highly trusted people (lib/discover-trust.ts): whose
+  // trust applies, also set during render for the same reason.
+  const { follows: viewerFollows } = useNostrAuth();
+  const { wotEnabled: viewerWot, scores: viewerScores } = useGrapeRankScores();
+  const followSetForTrust = useMemo(() => new Set(viewerFollows ?? []), [viewerFollows]);
+  setDiscoverTrust({ follows: followSetForTrust, wotEnabled: !!pubkey && viewerWot, ownScores: viewerScores ?? null });
 
   // Hard wall (owner decision, 2026-08-14): browse surfaces are membership —
   // the legacy-social model. Shared deep links (a post, an article, an
@@ -1546,7 +1567,7 @@ export default function Discover() {
           would fight the grid; a strip is a bonus. Renders 4-6 cards or
           NOTHING — additive content claims nothing by being absent, which is
           why it carries no reach states (unlike the tiles, which are doors). */}
-      <PeopleToFollowStrip />
+      <PeopleToFollowStrip strictTrust />
     </div>
   );
 }

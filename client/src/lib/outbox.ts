@@ -131,8 +131,19 @@ export function fetchRelayLists(pubkeys: string[], opts?: { force?: boolean }) {
   }
 }
 
+/**
+ * Who is signed in. Other people's relay lists are cleaned of test, staging
+ * and local relays before we connect to them (isJunkRelay); the viewer's own
+ * list is where they publish, so it is used exactly as written.
+ */
+let outboxViewer: string | null = null;
+export function setOutboxViewer(pubkey: string | null): void {
+  outboxViewer = pubkey;
+}
+const listOptions = (pubkey: string) => ({ dropJunk: pubkey !== outboxViewer });
+
 export function getWriteRelays(pubkey: string, fallback: string[] = DEFAULT_RELAYS): string[] {
-  const relays = selectRelaysByMode(relayListCache.get(pubkey), "write");
+  const relays = selectRelaysByMode(relayListCache.get(pubkey), "write", 5, listOptions(pubkey));
   return relays.length > 0 ? relays : fallback;
 }
 
@@ -184,7 +195,7 @@ export function getRelayListTimestamp(pubkey: string): number {
 }
 
 export function getReadRelays(pubkey: string, fallback: string[] = DEFAULT_RELAYS): string[] {
-  const relays = selectRelaysByMode(relayListCache.get(pubkey), "read");
+  const relays = selectRelaysByMode(relayListCache.get(pubkey), "read", 5, listOptions(pubkey));
   return relays.length > 0 ? relays : fallback;
 }
 

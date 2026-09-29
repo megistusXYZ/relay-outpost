@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { nip19 } from "nostr-tools";
-import { ShieldCheck, BadgeCheck, Heart, MoreVertical, Pencil, Trash2, Clock } from "lucide-react";
+import { BadgeCheck, Heart, MoreVertical, Pencil, Trash2, Clock } from "lucide-react";
 import { use$ } from "applesauce-react/hooks";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useDocumentTitle } from "@/hooks/use-document-title";
@@ -281,13 +281,7 @@ export default function TrustReviews() {
   if (!pubkey) return null;
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-10 space-y-5" data-testid="page-trust-reviews">
-      <div className="flex items-center gap-2.5">
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/15 text-brand">
-          <ShieldCheck className="h-4 w-4" />
-        </span>
-        <h1 className="text-lg font-brand uppercase tracking-widest">Trust reviews</h1>
-      </div>
+    <div className="max-w-xl mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-10 space-y-5" data-testid="page-trust-reviews">
 
       {/* Segmented toggle: received vs authored */}
       <div

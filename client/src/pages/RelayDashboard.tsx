@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { DEFAULT_RELAYS, pool, getBlockedRelays, isRelayBlocked, blockRelay, unblockRelay, fetchBlockedRelayList, publishBlockedRelayList, eventStore, throttledPoolSubscribe, publishEvent, verifySignedEventKind } from "@/lib/nostr";
+import { PageToolbar } from "@/components/PageToolbar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1109,14 +1110,10 @@ export default function RelayDashboard() {
   const connectedCount = Array.from(statuses.values()).filter(s => s.connected).length;
 
   return (
-    <div className="max-w-2xl mx-auto px-2 sm:px-4 py-4">
-      <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
-        <div className="flex items-center gap-2">
-          <h1 className="text-lg font-semibold text-foreground" data-testid="text-relay-title">Relays</h1>
-          <Badge variant="secondary" className="text-[11px]" data-testid="badge-relay-status">
-            {connectedCount} of {enabledCount} connected
-          </Badge>
-        </div>
+    <div className="max-w-2xl mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-4">
+      <PageToolbar
+        status={<span data-testid="badge-relay-status">{connectedCount} of {enabledCount} connected</span>}
+      >
         <Button
           variant="ghost"
           size="sm"
@@ -1127,7 +1124,7 @@ export default function RelayDashboard() {
           <RefreshCw className={`w-3.5 h-3.5 mr-1 ${testingAll ? "animate-spin" : ""}`} />
           Check all
         </Button>
-      </div>
+      </PageToolbar>
 
       {pubkey && (
         <Card className="glass-card border-border/40 p-4 mb-5" data-testid="section-relay-routes">
