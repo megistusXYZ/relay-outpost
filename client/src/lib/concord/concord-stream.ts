@@ -379,7 +379,9 @@ export async function publishTyping(
   const plane = channelPlaneKey(community, channel);
   const epoch = channel.isPrivate ? channel.epoch : community.root_epoch;
   const rumor = buildTypingRumor(authorPubkey, channel.id, BigInt(epoch), Math.floor(Date.now() / 1000));
-  await publishToPlane(signer, authorPubkey, plane, rumor, KIND_SEAL_PLAIN, (e) => publish(e, community.relays), Math.floor(Date.now() / 1000), KIND_EPHEMERAL_WRAP).catch(() => null);
+  // The ENCRYPTED seal: CORD-02 §5 requires it on every Chat Plane event,
+  // ephemeral included (only the Control Plane may be plaintext).
+  await publishToPlane(signer, authorPubkey, plane, rumor, KIND_SEAL_ENC, (e) => publish(e, community.relays), Math.floor(Date.now() / 1000), KIND_EPHEMERAL_WRAP).catch(() => null);
 }
 
 /** Subscribe a channel's ephemeral typing stream → calls back with each typist. */
