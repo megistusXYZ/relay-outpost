@@ -69,7 +69,13 @@ import { isEdgeBackSwipe, shouldAttachCustomBackSwipe, detectBackGestureEnv } fr
 import { useIaCollapsed, isIaCollapsed } from "@/lib/ia-prefs";
 import { parentRouteOf } from "@/lib/back-affordance";
 import { useNewsTrendingOn } from "@/lib/news-trending";
-import { shouldLandOnChats, hasLanded, markLanded, postAuthLandingPath, CHATS_PATH } from "@/lib/ia-landing";
+import { shouldLandOnChats, holdHomeForLanding, hasLanded, markLanded, postAuthLandingPath, CHATS_PATH } from "@/lib/ia-landing";
+
+// Where this tab opened, captured once at boot: the Chats landing is about
+// arriving, so only the arrival may hold the feed back (lib/ia-landing.ts).
+const ARRIVAL = typeof window !== "undefined"
+  ? { pathname: window.location.pathname, search: window.location.search, hash: window.location.hash }
+  : { pathname: "", search: "", hash: "" };
 import { isWelcomed } from "@/lib/welcome";
 // Chunk-load resilience (retry → one-shot stale-deploy reload) for every
 // React.lazy site app-wide — extracted to lib/lazy-retry.ts so pages that
@@ -1090,12 +1096,11 @@ function AppContent({ mainRef, scrollHidden }: { mainRef: React.RefObject<HTMLEl
   const { pubkey: landingPubkey } = useNostrAuth();
   const landingCollapsed = useIaCollapsed();
   const [landingLocation] = useLocation();
-  const holdHomeForLanding = landingLocation === "/" && shouldLandOnChats({
+  const holdHome = holdHomeForLanding({
+    location: landingLocation,
+    arrival: ARRIVAL,
     pubkey: landingPubkey,
     collapsed: landingCollapsed,
-    pathname: window.location.pathname,
-    search: window.location.search,
-    hash: window.location.hash,
     landed: hasLanded(),
   });
   const { state: sidebarState, isMobile: sidebarIsMobile } = useSidebar();
@@ -1135,7 +1140,7 @@ function AppContent({ mainRef, scrollHidden }: { mainRef: React.RefObject<HTMLEl
           <PullToRefresh onRefresh={async () => { await queryClient.invalidateQueries(); window.dispatchEvent(new CustomEvent("nostr-soft-refresh")); }} scrollContainerSelector="main">
             <LandingRedirect />
             <Router />
-            {!holdHomeForLanding && <HomeKeepAlive renderHome={() => <Home />} fallback={<LazyFallback />} errorFallback={<RouteErrorFallback />} />}
+            {!holdHome && <HomeKeepAlive renderHome={() => <Home />} fallback={<LazyFallback />} errorFallback={<RouteErrorFallback />} />}
           </PullToRefresh>
         </main>
       </div>

@@ -30,8 +30,8 @@ describe("the launch bundle", () => {
   });
 
   it("a signed-in launch landing on Chats doesn't start Home on the way", () => {
-    expect(app).toMatch(/\{!holdHomeForLanding && <HomeKeepAlive /);
-    expect(app).toMatch(/const holdHomeForLanding = landingLocation === "\/" && shouldLandOnChats\(/);
+    expect(app).toMatch(/\{!holdHome && <HomeKeepAlive /);
+    expect(app).toMatch(/const holdHome = holdHomeForLanding\(\{[\s\S]*?arrival: ARRIVAL/);
   });
 
   it("the landing/sign-in overlay loads only once it has been needed", () => {
