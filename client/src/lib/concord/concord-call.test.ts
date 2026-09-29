@@ -4,7 +4,7 @@
  * someone joins or presence changes, exactly as Armada decides it.
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { planCallerKeys, startPresenceHeartbeat, callKeysChange, callerLabel, type KeyState } from "./concord-call";
+import { planCallerKeys, startPresenceHeartbeat, callKeysChange, callerLabel, callKeysForRoom, canEncryptCalls, type KeyState } from "./concord-call";
 import { voiceKeys } from "./concord-voice";
 import type { CallPresence } from "./concord-presence";
 import type { CallSeat } from "./concord-presence";
@@ -76,5 +76,42 @@ describe("how a caller is named on screen", () => {
     expect(callerLabel({ identity: "seat-z", member: null, contested: false }, t0, t0 + 5_000)).toEqual({ kind: "verifying" });
     expect(callerLabel({ identity: "seat-z", member: null, contested: false }, t0, t0 + 16_000)).toEqual({ kind: "unverified" });
     expect(callerLabel({ identity: "seat-x", member: null, contested: true }, t0, t0 + 20_000)).toEqual({ kind: "unverified" });
+  });
+});
+
+describe("an ongoing call when its room's record changes", () => {
+  const hex = (b: number) => "".padStart(64, b.toString(16).padStart(2, "0"));
+  const ROOM = hex(0x22);
+  const group = (rootEpoch: number) => ({ community_root: hex(0x11), root_epoch: rootEpoch });
+  const pub = { id: ROOM, epoch: 0, isPrivate: false };
+
+  it("rejoins the new room when someone's removal rekeys the group", () => {
+    const joined = voiceKeys(new Uint8Array(32).fill(0x11), new Uint8Array(32).fill(0x22), 0n);
+    expect(callKeysForRoom(joined, group(0), pub)).toBe("stay");
+    expect(callKeysForRoom(joined, group(1), pub)).toBe("rejoin");
+  });
+
+  it("follows a private room onto its new key, and leaves when the key or the room is gone", () => {
+    const priv = (keyByte: number | null, epoch: number) =>
+      ({ id: ROOM, key: keyByte === null ? undefined : hex(keyByte), epoch, isPrivate: true });
+    const joined = voiceKeys(new Uint8Array(32).fill(0x33), new Uint8Array(32).fill(0x22), 4n);
+    expect(callKeysForRoom(joined, group(0), priv(0x33, 4))).toBe("stay");
+    expect(callKeysForRoom(joined, group(0), priv(0x44, 5))).toBe("rejoin");   // rotated
+    expect(callKeysForRoom(joined, group(0), priv(null, 5))).toBe("leave");    // removed from the room
+    expect(callKeysForRoom(joined, group(0), undefined)).toBe("leave");        // room deleted, or group left
+  });
+});
+
+describe("whether this browser can encrypt a call", () => {
+  class Worker {}
+  it("is yes with Safari's script transforms or Chromium's encoded streams, and a worker to run them", () => {
+    expect(canEncryptCalls({ Worker, RTCRtpScriptTransform: class {} })).toBe(true);
+    expect(canEncryptCalls({ Worker, RTCRtpSender: { prototype: { createEncodedStreams() {} } } })).toBe(true);
+  });
+
+  it("is no without either, or without workers, so the Call button can say so before anyone taps it", () => {
+    expect(canEncryptCalls({ Worker, RTCRtpSender: { prototype: {} } })).toBe(false);
+    expect(canEncryptCalls({ RTCRtpScriptTransform: class {} })).toBe(false);
+    expect(canEncryptCalls({})).toBe(false);
   });
 });
