@@ -60,6 +60,8 @@ import {
   fetchMarketShelf,
   fetchNetworkTopics,
   feedSnippet,
+  followAnswer,
+  setDiscoverViewer,
   type CommunityPulse,
   type VideoTeaser,
   type MarketTeaser,
@@ -491,8 +493,7 @@ function FeedTile() {
   const load = useCallback(() => {
     const id = ++seq.current;
     setTeaser(null);
-    fetchFeedTeaser(flaggedPubkeys ?? new Set(), follows ?? [])
-      .then((r) => { if (seq.current === id) setTeaser(r); })
+    followAnswer(fetchFeedTeaser(flaggedPubkeys ?? new Set(), follows ?? []), (r) => { if (seq.current === id) setTeaser(r); })
       .catch(() => { if (seq.current === id) setTeaser({ data: [], reached: false }); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flaggedPubkeys, follows]);
@@ -585,8 +586,7 @@ function CommunitiesTile() {
   const loadPulse = useCallback(() => {
     const id = ++pulseSeq.current;
     setPulse(null);
-    fetchCommunityPulse(urlsKey ? urlsKey.split(",") : [], RECENT_ACTIVITY_WINDOW_MS)
-      .then((r) => { if (pulseSeq.current === id) setPulse(r); })
+    followAnswer(fetchCommunityPulse(urlsKey ? urlsKey.split(",") : [], RECENT_ACTIVITY_WINDOW_MS), (r) => { if (pulseSeq.current === id) setPulse(r); })
       .catch(() => { if (pulseSeq.current === id) setPulse({ data: null, reached: false }); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlsKey]);
@@ -731,8 +731,7 @@ function ArticlesTile() {
   const load = useCallback(() => {
     const id = ++seq.current;
     setArticle(null);
-    fetchNewestArticle(follows ?? [])
-      .then((r) => { if (seq.current === id) setArticle(r); })
+    followAnswer(fetchNewestArticle(follows ?? []), (r) => { if (seq.current === id) setArticle(r); })
       .catch(() => { if (seq.current === id) setArticle({ data: [], reached: false }); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [follows]);
@@ -1181,8 +1180,7 @@ function EventsTile() {
   const load = useCallback(() => {
     const id = ++seq.current;
     setTeaser(null);
-    fetchNextCalendarEvent()
-      .then((r) => { if (seq.current === id) setTeaser(r); })
+    followAnswer(fetchNextCalendarEvent(), (r) => { if (seq.current === id) setTeaser(r); })
       .catch(() => { if (seq.current === id) setTeaser({ data: null, reached: false }); });
   }, []);
   useEffect(() => { load(); return () => { seq.current++; }; }, [load]);
@@ -1233,8 +1231,7 @@ function VideosTile() {
   const load = useCallback(() => {
     const id = ++seq.current;
     setTeaser(null);
-    fetchVideoTeaser()
-      .then((r) => { if (seq.current === id) setTeaser(r); })
+    followAnswer(fetchVideoTeaser(), (r) => { if (seq.current === id) setTeaser(r); })
       .catch(() => { if (seq.current === id) setTeaser({ data: null, reached: false }); });
   }, []);
   useEffect(() => { load(); return () => { seq.current++; }; }, [load]);
@@ -1284,8 +1281,7 @@ function MarketplaceShelfTile() {
   const load = useCallback(() => {
     const id = ++seq.current;
     setTeaser(null);
-    fetchMarketShelf()
-      .then((r) => { if (seq.current === id) setTeaser(r); })
+    followAnswer(fetchMarketShelf(), (r) => { if (seq.current === id) setTeaser(r); })
       .catch(() => { if (seq.current === id) setTeaser({ data: null, reached: false }); });
   }, []);
   useEffect(() => { load(); return () => { seq.current++; }; }, [load]);
@@ -1360,8 +1356,7 @@ function ImagesShelfTile() {
   const load = useCallback(() => {
     const id = ++seq.current;
     setTeaser(null);
-    fetchImagesTeaser(follows ?? [], flaggedPubkeys ?? new Set())
-      .then((r) => { if (seq.current === id) setTeaser(r); })
+    followAnswer(fetchImagesTeaser(follows ?? [], flaggedPubkeys ?? new Set()), (r) => { if (seq.current === id) setTeaser(r); })
       .catch(() => { if (seq.current === id) setTeaser({ data: [], reached: false }); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [follows, flaggedPubkeys]);
@@ -1474,6 +1469,9 @@ function TopicsStrip() {
 export default function Discover() {
   useDocumentTitle("Discover");
   const { pubkey } = useNostrAuth();
+  // Tiles read and write this account's last-known answers (tile-snapshot).
+  // Set during render: the tiles' fetch effects run before this component's.
+  setDiscoverViewer(pubkey ?? null);
 
   // Hard wall (owner decision, 2026-08-14): browse surfaces are membership —
   // the legacy-social model. Shared deep links (a post, an article, an

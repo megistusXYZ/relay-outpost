@@ -30,7 +30,8 @@ import { getContentWarning } from "@/lib/sensitive-content";
 import { pickMarketListings, formatListingPrice, CATALOG_MUTED_SELLERS, KIND_CLASSIFIED_LISTING, LISTING_RELAYS } from "@/lib/listing";
 import { rankDiscoverFeed } from "@/lib/discover-rank";
 import { isPromoBait, preferFollowed } from "@/lib/discover-curation";
-import { rankTopics, pickNextUpcoming, pickImageShelf, isSensitiveMedia, type RankedTopic, type ShelfImage } from "@/lib/discover-tiles";
+import { rankTopics, pickNextUpcoming, pickImageShelf, isSensitiveMedia, hasContent, type RankedTopic, type ShelfImage } from "@/lib/discover-tiles";
+import { saveSnapshot, readSnapshot, type SnapshotStore } from "@/lib/tile-snapshot";
 import { getEventMediaInfo } from "@/lib/media-utils";
 import { parseCalendarEvent, KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT, type CalendarEventData } from "@/lib/calendar-events";
 import type { SavedFeed } from "@/lib/rss-feeds";
@@ -96,23 +97,80 @@ const ANSWER_TTL_MS = 5 * 60 * 1000;
 const answerMemo = new Map<string, { at: number; value: Reached<unknown> }>();
 const inFlight = new Map<string, Promise<Reached<unknown>>>();
 
+/**
+ * Whose snapshots to read and write. Set by the Discover page during render,
+ * before any tile fires its fetch (child effects run before a parent's).
+ */
+let snapshotViewer: string | null = null;
+export function setDiscoverViewer(pubkey: string | null): void {
+  snapshotViewer = pubkey;
+}
+/** Keys that already painted from a snapshot this session: only once each. */
+const paintedFromSnapshot = new Set<string>();
+/** On a snapshot answer: the fresh answer that will replace it. */
+const REFRESH = Symbol("discover-refresh");
+
+/**
+ * Apply a tile's answer, and if it was a snapshot, apply the fresh one too
+ * when it lands. Unreached or refused refreshes are dropped: the snapshot
+ * stays up rather than blanking a tile that has content to a failure state.
+ */
+export function followAnswer<T>(answer: Promise<Reached<T>>, apply: (r: Reached<T>) => void): Promise<void> {
+  return answer.then((r) => {
+    apply(r);
+    const next = (r as { [REFRESH]?: Promise<Reached<T>> })[REFRESH];
+    if (next) {
+      next.then((fresh) => { if (fresh.reached && !fresh.refusedReason) apply(fresh); }).catch(() => {});
+    }
+  });
+}
+
+function snapshotStore(): SnapshotStore | null {
+  try { return typeof localStorage !== "undefined" ? localStorage : null; } catch { return null; }
+}
+
+function startFlight<T>(key: string, fetchFresh: () => Promise<Reached<T>>): Promise<Reached<T>> {
+  const pending = inFlight.get(key);
+  if (pending) return pending as Promise<Reached<T>>;
+  const viewer = snapshotViewer;
+  const flight = (async () => {
+    try {
+      const value = await fetchFresh();
+      if (value.reached && !value.refusedReason) {
+        answerMemo.set(key, { at: Date.now(), value });
+        // Only content is worth painting next time; an empty answer would
+        // just paint "Quiet" early and could be wrong by then.
+        const store = snapshotStore();
+        if (store && hasContent(value.data)) saveSnapshot(store, viewer, key, value, Date.now());
+      }
+      return value;
+    } finally {
+      inFlight.delete(key); // reached results live in answerMemo; failures re-run
+    }
+  })();
+  inFlight.set(key, flight as Promise<Reached<unknown>>);
+  return flight;
+}
+
 async function remembered<T>(key: string, fetchFresh: () => Promise<Reached<T>>): Promise<Reached<T>> {
   const hit = answerMemo.get(key);
   if (hit && Date.now() - hit.at <= ANSWER_TTL_MS) return hit.value as Reached<T>;
-  const pending = inFlight.get(key);
-  if (pending) return pending as Promise<Reached<T>>;
 
-  const flight = (async () => {
-    const value = await fetchFresh();
-    if (value.reached && !value.refusedReason) answerMemo.set(key, { at: Date.now(), value });
-    return value;
-  })();
-  inFlight.set(key, flight as Promise<Reached<unknown>>);
-  try {
-    return await flight;
-  } finally {
-    inFlight.delete(key); // reached results live in answerMemo; failures re-run
+  // Instant paint (stale-while-revalidate): the first ask of a session gets
+  // this device's last good answer for this account at once, while the fresh
+  // fetch runs. The answer carries that fetch (REFRESH); followAnswer applies
+  // it when it lands, so the tile updates in place with no skeleton flash.
+  const store = snapshotStore();
+  if (store && !paintedFromSnapshot.has(key)) {
+    const snap = readSnapshot<Reached<T>>(store, snapshotViewer, key, Date.now());
+    if (snap && snap.reached && hasContent(snap.data)) {
+      paintedFromSnapshot.add(key);
+      const out = { ...snap };
+      Object.defineProperty(out, REFRESH, { value: startFlight(key, fetchFresh), enumerable: false });
+      return out;
+    }
   }
+  return startFlight(key, fetchFresh);
 }
 
 /**
