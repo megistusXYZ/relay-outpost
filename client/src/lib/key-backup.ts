@@ -10,6 +10,12 @@ const NUDGE_AFTER_MS = 24 * 60 * 60 * 1000;
 export interface BackupFacts {
   /** The secret key lives in this browser (a local account), not in a signer app, extension or bunker. */
   keyInThisBrowser: boolean;
+  /**
+   * The account was made in Relay Outpost (lib/local-account isNewAccount).
+   * Someone who brought their own key (a pasted nsec, a key file) already has
+   * it, so there's nothing to remind them of.
+   */
+  createdHere: boolean;
   /** When the account was created here; undefined for accounts older than this record. */
   createdAt: number | undefined;
   /** When a backup was last made (file, password manager, or copied key). */
@@ -22,7 +28,7 @@ export interface BackupFacts {
  * What to show: nothing, the Account-page row, or the Account row plus a nudge.
  */
 export function backupNudge(facts: BackupFacts, now: number): "none" | "row" | "nudge" {
-  if (!facts.keyInThisBrowser || facts.backedUpAt !== undefined) return "none";
+  if (!facts.keyInThisBrowser || !facts.createdHere || facts.backedUpAt !== undefined) return "none";
   if (facts.snoozedUntil !== undefined && now < facts.snoozedUntil) return "row";
   if (facts.createdAt !== undefined && now - facts.createdAt >= NUDGE_AFTER_MS) return "nudge";
   return "row";
@@ -66,7 +72,7 @@ export function snoozeBackupNudge(pubkey: string, now: number): void {
 }
 
 /** The facts backupNudge decides on, for this account. */
-export function backupFacts(pubkey: string, keyInThisBrowser: boolean): BackupFacts {
+export function backupFacts(pubkey: string, keyInThisBrowser: boolean, createdHere: boolean): BackupFacts {
   const r = readAll()[pubkey] ?? {};
-  return { keyInThisBrowser, createdAt: r.createdAt, backedUpAt: r.backedUpAt, snoozedUntil: r.snoozedUntil };
+  return { keyInThisBrowser, createdHere, createdAt: r.createdAt, backedUpAt: r.backedUpAt, snoozedUntil: r.snoozedUntil };
 }
