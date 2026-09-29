@@ -2300,6 +2300,8 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
   // clobber a rollback). Optimistic setState in the action handlers below is
   // unchanged; the index reconciles once the event lands in the store.
   const derivedInteraction = useInteraction(event.id);
+  // The repost icon shows your boost: a repost, or a quote of this post.
+  const boosted = hasReposted || derivedInteraction.hasQuoted;
   useEffect(() => {
     setHasReposted(derivedInteraction.hasReposted);
   }, [derivedInteraction.hasReposted]);
@@ -2533,16 +2535,14 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
       setHasReposted(true);
       setIsReposting(false);
       eventStore.add(signedEvent);
+      primalStatsCache.adjust(event.id, "reposts", 1);
       window.dispatchEvent(new CustomEvent("nostr-repost-created", {
         detail: { repostEvent: signedEvent, originalEvent: event } }));
       const { relays: userRelays, userSelected: isUserSelected } = getPublishTarget();
       publishEvent(signedEvent, userRelays, event.pubkey, isUserSelected).catch((err) => {
         console.error(err);
         setHasReposted(false);
-        const rollback = primalStatsCache.get(event.id);
-        if (rollback && rollback.reposts > 0) {
-          primalStatsCache.set(event.id, { ...rollback, reposts: rollback.reposts - 1 });
-        }
+        primalStatsCache.adjust(event.id, "reposts", -1);
         toast({ title: "Failed", description: "Could not repost.", variant: "destructive" });
       });
     } catch (err) {
@@ -2634,10 +2634,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
     );
     if (!myRepost) return;
     setHasReposted(false);
-    const existing = primalStatsCache.get(event.id);
-    if (existing && existing.reposts > 0) {
-      primalStatsCache.set(event.id, { ...existing, reposts: existing.reposts - 1 });
-    }
+    primalStatsCache.adjust(event.id, "reposts", -1);
     try {
       const deleteEvent = {
         kind: 5,
@@ -2649,10 +2646,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
       publishEvent(signed, userRelays3, undefined, isUserSelected3).catch((err) => {
         console.error(err);
         setHasReposted(true);
-        const cur = primalStatsCache.get(event.id);
-        if (cur) {
-          primalStatsCache.set(event.id, { ...cur, reposts: cur.reposts + 1 });
-        }
+        primalStatsCache.adjust(event.id, "reposts", 1);
         toast({ title: "Failed", description: "Could not undo repost.", variant: "destructive" });
       });
       window.dispatchEvent(new CustomEvent("nostr-repost-removed", {
@@ -2661,10 +2655,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
     } catch (err) {
       console.error(err);
       setHasReposted(true);
-      const cur = primalStatsCache.get(event.id);
-      if (cur) {
-        primalStatsCache.set(event.id, { ...cur, reposts: cur.reposts + 1 });
-      }
+      primalStatsCache.adjust(event.id, "reposts", 1);
       toast({ title: "Failed", description: "Could not undo repost.", variant: "destructive" });
     }
   };
@@ -3147,7 +3138,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
             <Button
               variant="ghost"
               size="icon"
-              className={`w-8 h-8 sm:w-9 sm:h-9 ${hasReposted ? "stat-glow-reposts" : "text-muted-foreground"}`}
+              className={`w-8 h-8 sm:w-9 sm:h-9 ${boosted ? "stat-glow-reposts" : "text-muted-foreground"}`}
               data-testid={`button-repost-${event.id}`}
             >
               {isReposting ? <RelayOutpostInlineLoader className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Repeat className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
@@ -3197,7 +3188,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
             )}
           </DropdownMenuContent>
         </DropdownMenu>
-        <span className={`text-[11px] sm:text-xs -ml-0.5 sm:-ml-1 mr-0.5 sm:mr-1 min-w-[1ch] shrink-0 transition-opacity duration-200 ${repostCount > 0 ? "opacity-100" : "opacity-0"} ${hasReposted ? "stat-glow-reposts" : "text-muted-foreground"}`} data-testid={`text-repost-count-${event.id}`}>
+        <span className={`text-[11px] sm:text-xs -ml-0.5 sm:-ml-1 mr-0.5 sm:mr-1 min-w-[1ch] shrink-0 transition-opacity duration-200 ${repostCount > 0 ? "opacity-100" : "opacity-0"} ${boosted ? "stat-glow-reposts" : "text-muted-foreground"}`} data-testid={`text-repost-count-${event.id}`}>
           {formatCount(repostCount || 0)}
         </span>
 

@@ -53,6 +53,7 @@ import { usePrimalStats } from "@/hooks/use-primal-stats";
 import { primalStatsCache } from "@/lib/primal-cache";
 import { useToast } from "@/hooks/use-toast";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
+import { useViewerInteraction } from "@/contexts/InteractionIndexContext";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { ZapDialog } from "@/components/ZapDialog";
 import { BtcZapIcon } from "@/components/icons/BtcZapIcon";
@@ -75,6 +76,9 @@ export function MediaInteractionBar({ event, vertical, onCommentClick }: MediaIn
   const stats = usePrimalStats(event.id);
 
   const [hasReposted, setHasReposted] = useState(false);
+  // The repost icon shows your boost: a repost, or a quote of this post.
+  const { hasQuoted } = useViewerInteraction(event.id);
+  const boosted = hasReposted || hasQuoted;
   const [hasLiked, setHasLiked] = useState(false);
   const [isReposting, setIsReposting] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
@@ -143,14 +147,12 @@ export function MediaInteractionBar({ event, vertical, onCommentClick }: MediaIn
       setHasReposted(true);
       setIsReposting(false);
       eventStore.add(signedEvent);
+      primalStatsCache.adjust(event.id, "reposts", 1);
       const { relays: userRelays, userSelected: isUserSelected } = getPublishTarget();
       publishEvent(signedEvent, userRelays, undefined, isUserSelected).catch((err) => {
         console.error(err);
         setHasReposted(false);
-        const rollback = primalStatsCache.get(event.id);
-        if (rollback && rollback.reposts > 0) {
-          primalStatsCache.set(event.id, { ...rollback, reposts: rollback.reposts - 1 });
-        }
+        primalStatsCache.adjust(event.id, "reposts", -1);
         toast({ title: "Failed", description: "Could not repost.", variant: "destructive" });
       });
     } catch (err) {
@@ -298,8 +300,8 @@ export function MediaInteractionBar({ event, vertical, onCommentClick }: MediaIn
             variant="ghost"
             size="icon"
             className={vertical
-              ? `w-9 h-9 rounded-full ${hasReposted ? "text-green-800 dark:text-green-400" : "text-white/90"}`
-              : `w-7 h-7 ${hasReposted ? "text-green-500/80" : "text-muted-foreground/80"}`
+              ? `w-9 h-9 rounded-full ${boosted ? "text-green-800 dark:text-green-400" : "text-white/90"}`
+              : `w-7 h-7 ${boosted ? "text-green-500/80" : "text-muted-foreground/80"}`
             }
             onClick={handleRepost}
             disabled={isReposting || hasReposted}
@@ -313,7 +315,7 @@ export function MediaInteractionBar({ event, vertical, onCommentClick }: MediaIn
             </span>
           )}
           {!vertical && repostCount > 0 && (
-            <span className={`text-[11px] -ml-1 mr-0.5 ${hasReposted ? "text-green-500/80" : "text-muted-foreground/70"}`} data-testid={`text-media-repost-count-${event.id}`}>
+            <span className={`text-[11px] -ml-1 mr-0.5 ${boosted ? "text-green-500/80" : "text-muted-foreground/70"}`} data-testid={`text-media-repost-count-${event.id}`}>
               {repostCount}
             </span>
           )}

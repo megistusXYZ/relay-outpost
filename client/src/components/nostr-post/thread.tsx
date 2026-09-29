@@ -87,6 +87,7 @@ import { useToast } from "@/hooks/use-toast";
 import { mutePubkey } from "@/lib/spam-filter";
 import { copyNostrId } from "@/lib/clipboard-bridge";
 import { ConfirmAction } from "@/components/ConfirmAction";
+import { useViewerInteraction } from "@/contexts/InteractionIndexContext";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { ZapDialog } from "@/components/ZapDialog";
 import { ReportDialog } from "@/components/ReportDialog";
@@ -741,20 +742,28 @@ export function QuoteComposer({
       const signedEvent = await signWithTimeout(signer, eventTemplate);
       const { relays: userRelays, userSelected: isUserSelected } = getPublishTarget();
       // Optimistic: surface the quote immediately, publish in the background.
+      // A quote counts toward the post's reposts, like every other client's
+      // boost count, and your quote lights its repost icon (hasQuoted).
       eventStore.add(signedEvent);
+      primalStatsCache.adjust(quotedEvent.id, "reposts", 1);
       setContent("");
       onClose();
       publishEvent(signedEvent, userRelays, undefined, isUserSelected)
         .then((ok) => { if (!ok) throw new Error("Quote was rejected by all relays"); })
         .catch((err) => {
           console.error(err);
+          primalStatsCache.adjust(quotedEvent.id, "reposts", -1);
           toast({
             title: "Couldn't post quote",
             description: "Your quote didn't reach any relays.",
             variant: "destructive",
             action: (
               <button
-                onClick={() => { publishEvent(signedEvent, userRelays, undefined, isUserSelected).catch(() => {}); }}
+                onClick={() => {
+                  publishEvent(signedEvent, userRelays, undefined, isUserSelected)
+                    .then((ok) => { if (ok) primalStatsCache.adjust(quotedEvent.id, "reposts", 1); })
+                    .catch(() => {});
+                }}
                 className="shrink-0 px-3 py-1.5 rounded-md text-xs font-medium bg-foreground/10 hover:bg-foreground/20 transition-colors"
               >
                 Retry
@@ -993,6 +1002,9 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
   const likeInFlightRef = useRef(false);
   const [showZapDialog, setShowZapDialog] = useState(false);
   const [hasReposted, setHasReposted] = useState(false);
+  // The repost icon shows your boost: a repost, or a quote of this post.
+  const { hasQuoted } = useViewerInteraction(event.id);
+  const boosted = hasReposted || hasQuoted;
   const [hasLiked, setHasLiked] = useState(false);
   const [myReactionContent, setMyReactionContent] = useState<string | null>(null);
   const [myReactionEmojiUrl, setMyReactionEmojiUrl] = useState<string | undefined>(undefined);
@@ -1195,14 +1207,12 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
       setHasReposted(true);
       setIsReposting(false);
       eventStore.add(signedEvent);
+      primalStatsCache.adjust(event.id, "reposts", 1);
       const { relays: userRelays, userSelected: isUserSelected } = getPublishTarget();
       publishEvent(signedEvent, userRelays, event.pubkey, isUserSelected).catch((err) => {
         console.error(err);
         setHasReposted(false);
-        const rollback = primalStatsCache.get(event.id);
-        if (rollback && rollback.reposts > 0) {
-          primalStatsCache.set(event.id, { ...rollback, reposts: rollback.reposts - 1 });
-        }
+        primalStatsCache.adjust(event.id, "reposts", -1);
         toast({ title: "Failed", description: "Could not repost.", variant: "destructive" });
       });
     } catch (err) {
@@ -1224,10 +1234,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
     );
     if (!myRepost) return;
     setHasReposted(false);
-    const existing = primalStatsCache.get(event.id);
-    if (existing && existing.reposts > 0) {
-      primalStatsCache.set(event.id, { ...existing, reposts: existing.reposts - 1 });
-    }
+    primalStatsCache.adjust(event.id, "reposts", -1);
     try {
       const deleteEvent = {
         kind: 5,
@@ -1240,20 +1247,14 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
       publishEvent(signed, userRelays3, undefined, isUserSelected3).catch((err) => {
         console.error(err);
         setHasReposted(true);
-        const cur = primalStatsCache.get(event.id);
-        if (cur) {
-          primalStatsCache.set(event.id, { ...cur, reposts: cur.reposts + 1 });
-        }
+        primalStatsCache.adjust(event.id, "reposts", 1);
         toast({ title: "Failed", description: "Could not undo repost.", variant: "destructive" });
       });
       toast({ title: "Repost removed" });
     } catch (err) {
       console.error(err);
       setHasReposted(true);
-      const cur = primalStatsCache.get(event.id);
-      if (cur) {
-        primalStatsCache.set(event.id, { ...cur, reposts: cur.reposts + 1 });
-      }
+      primalStatsCache.adjust(event.id, "reposts", 1);
       toast({ title: "Failed", description: "Could not undo repost.", variant: "destructive" });
     }
   };
@@ -1525,7 +1526,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
             <Button
               variant="ghost"
               size="icon"
-              className={`w-6 h-6 ${hasReposted ? "stat-glow-reposts" : "text-muted-foreground"}`}
+              className={`w-6 h-6 ${boosted ? "stat-glow-reposts" : "text-muted-foreground"}`}
               data-testid={`button-thread-repost-${event.id}`}
             >
               {isReposting ? <RelayOutpostInlineLoader className="w-3 h-3" /> : <Repeat className="w-3 h-3" />}
@@ -1563,7 +1564,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
           </DropdownMenuContent>
         </DropdownMenu>
         {repostCount > 0 && (
-          <span className={`text-[11px] -ml-0.5 mr-0.5 ${hasReposted ? "stat-glow-reposts" : "text-muted-foreground"}`} data-testid={`text-thread-repost-count-${event.id}`}>
+          <span className={`text-[11px] -ml-0.5 mr-0.5 ${boosted ? "stat-glow-reposts" : "text-muted-foreground"}`} data-testid={`text-thread-repost-count-${event.id}`}>
             {formatCount(repostCount)}
           </span>
         )}
