@@ -9,6 +9,7 @@ import { installRelayFrameGuard } from "./lib/relay-frame-guard";
 import { isUnactionableError } from "./lib/error-noise";
 import { reportCrash, normalizeErrorEvent, normalizeRejection } from "./lib/crash-report";
 import { attachServiceWorkerUpdateSignals } from "./lib/app-update";
+import { reloadOntoFreshShell } from "./lib/sw-shell";
 import { registerCommunityListSync } from "./lib/concord/concord-keys";
 import { syncCommunityListNow } from "./lib/concord/community-list-live";
 
@@ -246,10 +247,12 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   let reloadStarted = false;
   let reloadScheduled = false;
 
+  // Every automatic reload moves onto the newest build, so the worker (which
+  // answers launches from its cached page) fetches the fresh page first.
   const startReload = () => {
     if (reloadStarted) return;
     reloadStarted = true;
-    window.location.reload();
+    void reloadOntoFreshShell();
   };
 
   const scheduleSafeReload = () => {

@@ -26,6 +26,8 @@
 //    the very first install fires updatefound + controllerchange (via
 //    clients.claim()) even though the user just loaded the latest version.
 
+import { onShellUpdated, reloadOntoFreshShell } from "./sw-shell";
+
 // Same expression as APP_VERSION in nip34-feedback.ts — duplicated on purpose
 // so this module stays dependency-free (importable from main.tsx and tests
 // without dragging in the nostr/DM stack).
@@ -147,6 +149,10 @@ export function attachServiceWorkerUpdateSignals(
   registration: ServiceWorkerRegistration,
 ): void {
   registrationRef = registration;
+  // The worker opened this launch from its cached page and has since found a
+  // newer one (sw.js): this build is out of date. Only ever sent to a page the
+  // worker served, so it needs no first-visit gate.
+  onShellUpdated(() => reportUpdate("sw", null));
   if (!wasControlledAtBoot) return;
 
   if (registration.waiting) reportUpdate("sw", null);
@@ -215,8 +221,9 @@ export function startAppUpdatePolling(): void {
   if (!import.meta.env.PROD) return;
   if (RUNNING_APP_VERSION === "dev" || RUNNING_APP_VERSION === "unknown") return;
 
-  // A fresh page load just fetched the served build — it IS current. Arm the
-  // throttle from now so a quick tab-switch right after load doesn't poll.
+  // Arm the throttle from now so a quick tab-switch right after load doesn't
+  // poll. A launch served from the worker's cached page may be one build
+  // behind; the worker says so itself ("ro-shell-updated", wired above).
   lastPollAt = Date.now();
 
   document.addEventListener("visibilitychange", () => {
@@ -244,7 +251,7 @@ export function applyUpdate(): void {
     const reload = () => {
       if (reloaded) return;
       reloaded = true;
-      try { window.location.reload(); } catch {}
+      void reloadOntoFreshShell();
     };
     try {
       navigator.serviceWorker.addEventListener("controllerchange", reload, { once: true });
@@ -254,7 +261,9 @@ export function applyUpdate(): void {
     setTimeout(reload, 1500);
     return;
   }
-  try { window.location.reload(); } catch {}
+  // The worker answers launches from its cached page, so have it fetch the new
+  // one first, or the reload would land on the old build again.
+  void reloadOntoFreshShell();
 }
 
 export type UpdateCheckResult = "update-ready" | "up-to-date" | "unavailable";

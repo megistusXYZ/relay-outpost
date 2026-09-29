@@ -1,9 +1,19 @@
-const CACHE_VERSION = 'relay-outpost-v6';
+const CACHE_VERSION = 'relay-outpost-v7';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const FONT_CACHE = `${CACHE_VERSION}-fonts`;
+// The app's page (index.html is the same for every route). Kept across cache
+// versions on purpose: a worker update must never cost the next launch its
+// instant open.
+const SHELL_CACHE = 'relay-outpost-shell';
+const SHELL_KEY = '/__ro_shell';
+const SHELL_AT = 'x-ro-cached-at';
+// A shell older than this is asked for fresh first (with a short wait), so
+// someone returning after days doesn't open a build whose lazy chunks may be
+// gone from the server.
+const SHELL_FRESH_MS = 24 * 60 * 60 * 1000;
+const SHELL_WAIT_MS = 3000;
 
 const STATIC_ASSETS = [
-  '/',
   '/manifest.json',
   '/favicon.png',
   '/favicon-192.png',
@@ -20,29 +30,36 @@ const FONT_ORIGINS = [
 
 self.addEventListener('install', (event) => {
   // Activate a freshly installed worker immediately instead of leaving it in
-  // the `waiting` state. Combined with clients.claim() on activate and the
-  // network-first strategy for HTML/JS/CSS below, this lets new deploys roll
-  // out to users automatically — no manual "Update" click required. The
-  // mid-session chunk-mismatch problem this used to cause is handled on the
-  // page side (main.tsx): the controllerchange reload is deferred until the
-  // tab is backgrounded, and a vite:preloadError handler recovers if the
-  // running page ever requests a chunk the new deploy removed.
+  // the `waiting` state. Combined with clients.claim() on activate, new
+  // workers roll out with no manual "Update" click. The mid-session
+  // chunk-mismatch problem this used to cause is handled on the page side
+  // (main.tsx): reloads are deferred until the tab is backgrounded, and a
+  // vite:preloadError handler recovers if the running page ever requests a
+  // chunk a new deploy removed.
   self.skipWaiting();
-  event.waitUntil(
+  event.waitUntil(Promise.all([
     caches.open(STATIC_CACHE)
-      .then((cache) => cache.addAll(STATIC_ASSETS))
-  );
+      .then((cache) => cache.addAll(STATIC_ASSETS)),
+    // Keep the page now, so the very next launch opens from cache. Never fails
+    // the install: without it, the first launch simply asks the network.
+    fetchShell(undefined)
+      .then((next) => keepShell(next, Promise.resolve(null)))
+      .catch(() => {}),
+  ]));
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
+    Promise.resolve()
+      .then(() => self.registration.navigationPreload && self.registration.navigationPreload.enable())
+      .catch(() => {})
+      .then(() => caches.keys())
+      .then((keys) => Promise.all(
         keys
-          .filter((key) => key !== STATIC_CACHE && key !== FONT_CACHE)
+          .filter((key) => key !== STATIC_CACHE && key !== FONT_CACHE && key !== SHELL_CACHE)
           .map((key) => caches.delete(key))
-      );
-    }).then(() => self.clients.claim())
+      ))
+      .then(() => self.clients.claim())
   );
 });
 
@@ -64,6 +81,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Vite's build output: the file name carries a hash of its content, so a
+  // cached copy is always right and never needs the network.
+  if (url.origin === self.location.origin && url.pathname.startsWith('/assets/')) {
+    event.respondWith(cacheFirst(request, STATIC_CACHE));
+    return;
+  }
+
   if (
     request.destination === 'script' ||
     request.destination === 'style' ||
@@ -81,11 +105,79 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request));
+  if (request.mode === 'navigate' && isAppPage(url)) {
+    // Both registered synchronously, as the event requires.
+    const opened = openShell(event);
+    event.respondWith(opened.then((o) => o.response));
+    event.waitUntil(opened.then((o) => o.background).catch(() => {}));
     return;
   }
 });
+
+/** Every route of the app is served the same index.html; files and server
+ *  endpoints (/.well-known, sitemap.xml, maintenance.html…) are not. */
+function isAppPage(url) {
+  if (url.origin !== self.location.origin) return false;
+  if (url.pathname.startsWith('/.well-known/')) return false;
+  return !/\.[a-z0-9]+$/i.test(url.pathname);
+}
+
+/**
+ * Open the app from its cached page: answer at once, fetch the fresh page
+ * behind it (the browser's navigation preload when it has one), keep it, and
+ * tell open pages when it changed so they can move onto it quietly.
+ * Returns the response and the background work to keep the worker alive for.
+ */
+async function openShell(event) {
+  const cache = await caches.open(SHELL_CACHE);
+  const cached = await cache.match(SHELL_KEY);
+  // Read the old page's text now: the response itself goes to the browser.
+  const before = cached ? cached.clone().text() : Promise.resolve(null);
+  const fresh = fetchShell(event.preloadResponse);
+
+  if (cached && Date.now() - Number(cached.headers.get(SHELL_AT) || 0) < SHELL_FRESH_MS) {
+    return { response: cached, background: fresh.then((next) => keepShell(next, before)) };
+  }
+
+  // First open, or a stale page: the network first, the old page as a fallback.
+  const kept = fresh.then(async (next) => {
+    await keepShell(next.clone(), before);
+    return next;
+  });
+  const background = kept.catch(() => {});
+  if (!cached) {
+    return { response: kept.catch(() => new Response('Offline', { status: 503, statusText: 'Service Unavailable' })), background };
+  }
+  const response = Promise.race([
+    kept.catch(() => cached),
+    new Promise((resolve) => setTimeout(() => resolve(cached), SHELL_WAIT_MS)),
+  ]);
+  return { response, background };
+}
+
+async function fetchShell(preloadResponse) {
+  let res;
+  try { res = preloadResponse ? await preloadResponse : undefined; } catch { res = undefined; }
+  if (!res) res = await fetch('/', { cache: 'no-store', credentials: 'same-origin' });
+  if (!res || !res.ok) throw new Error('shell ' + (res && res.status));
+  return res;
+}
+
+/** Keep a fresh page as the shell. Tells open pages when it differs from the
+ *  one they were given (`previousText`: a promise of its text, or of null). */
+async function keepShell(next, previousText) {
+  const body = await next.text();
+  const before = await previousText;
+  const headers = new Headers(next.headers);
+  headers.set(SHELL_AT, String(Date.now()));
+  const cache = await caches.open(SHELL_CACHE);
+  await cache.put(SHELL_KEY, new Response(body, { status: 200, headers }));
+  if (before !== null && before !== body) {
+    const all = await self.clients.matchAll({ type: 'window' });
+    all.forEach((c) => c.postMessage({ type: 'ro-shell-updated' }));
+  }
+  return body;
+}
 
 async function networkFirst(request) {
   try {
@@ -98,10 +190,6 @@ async function networkFirst(request) {
   } catch {
     const cached = await caches.match(request);
     if (cached) return cached;
-    if (request.mode === 'navigate') {
-      const fallback = await caches.match('/');
-      if (fallback) return fallback;
-    }
     return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
   }
 }
@@ -138,5 +226,17 @@ async function staleWhileRevalidate(request, cacheName) {
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') {
     self.skipWaiting();
+    return;
+  }
+  // "Restart onto the new version": fetch the page fresh and keep it BEFORE
+  // the page reloads, so the reload can't be answered with the old one.
+  if (event.data && event.data.type === 'ro-refresh-shell') {
+    const port = event.ports && event.ports[0];
+    event.waitUntil(
+      fetchShell(undefined)
+        .then((next) => keepShell(next, Promise.resolve(null)))
+        .then(() => { if (port) port.postMessage({ ok: true }); })
+        .catch(() => { if (port) port.postMessage({ ok: false }); })
+    );
   }
 });
