@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { setPeopleSearchViewer } from "@/lib/people-search";
+import { setOutboxViewer } from "@/lib/outbox";
 import type { ReactNode } from "react";
 import { ExtensionSigner, NostrConnectSigner, PrivateKeySigner, type ISigner } from "applesauce-signers";
 import { loadSettingsFromRelay, initSettingsSync, scheduleSyncToRelay, teardownSettingsSync, handleAccountSwitch } from "@/lib/nip78-settings";
@@ -290,6 +291,8 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     startEventStorePruning(pubkey ?? undefined);
     startIdleConnectionCleanup();
+    // Your own relay list is used as written; others' are cleaned of junk.
+    setOutboxViewer(pubkey ?? null);
   }, [pubkey]);
 
   useEffect(() => {

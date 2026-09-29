@@ -9,7 +9,7 @@
  * states.
  */
 import { describe, it, expect } from "vitest";
-import { resolveTile, rankTopics, pickNextUpcoming, markRising, pickImageShelf, isSensitiveMedia, type TileState } from "./discover-tiles";
+import { resolveTile, rankTopics, pickNextUpcoming, markRising, pickImageShelf, isSensitiveMedia, imagesEmptyLine, type TileState } from "./discover-tiles";
 import type { Reached } from "./relay-reach";
 
 const reached = <T,>(data: T): Reached<T> => ({ data, reached: true });
@@ -206,5 +206,19 @@ describe("isSensitiveMedia", () => {
 
   it("unlabelled clean posts pass", () => {
     expect(isSensitiveMedia(ev([["t", "art"]], "a chart of relay counts"))).toBe(false);
+  });
+});
+
+describe("imagesEmptyLine", () => {
+  // The Images tile only ever shows people you follow (no strangers' photos on
+  // the front door). For someone who follows nobody, an empty shelf says
+  // nothing about the network, so "Quiet right now" was a false claim; the
+  // performance QA (2026-09-28) found every visitor seeing it.
+  it("someone who follows nobody is told where photos come from, not that it's quiet", () => {
+    expect(imagesEmptyLine(0)).toBe("Photos from people you follow show up here.");
+  });
+
+  it("someone with a network that posted nothing recently hears it's quiet", () => {
+    expect(imagesEmptyLine(12)).toBe("Quiet right now — tap to browse.");
   });
 });

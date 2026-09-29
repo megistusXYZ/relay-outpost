@@ -25,7 +25,7 @@ export interface TileState<T> {
 }
 
 /** Is there anything to show? Arrays count their items; anything else is truthy-or-not. */
-function hasContent(data: unknown): boolean {
+export function hasContent(data: unknown): boolean {
   if (Array.isArray(data)) return data.length > 0;
   return data !== null && data !== undefined;
 }
@@ -184,4 +184,15 @@ export function isSensitiveMedia(event: { tags: string[][]; content: string }): 
     if (t[0] === "t" && t[1] && SENSITIVE_TAGS.has(t[1].toLowerCase())) return true;
   }
   return /\bnsfw\b/i.test(event.content);
+}
+
+/**
+ * What the Images tile says when it has nothing to show. It only ever shows
+ * people you follow, so with no follows an empty shelf is not evidence of a
+ * quiet network; say where photos come from instead.
+ */
+export function imagesEmptyLine(followCount: number): string {
+  return followCount === 0
+    ? "Photos from people you follow show up here."
+    : "Quiet right now — tap to browse.";
 }

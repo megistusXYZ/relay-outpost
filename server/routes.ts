@@ -53,6 +53,14 @@ import { pickItemImage } from "./rss-image";
 import { radioStationFromUrl } from "@shared/radio-station";
 import { registerOgCardRoutes } from "./og-cards";
 import { registerTranslateRoute } from "./translate";
+import { FailureMemory } from "@shared/failure-memory";
+
+/**
+ * Outside services that failed recently answer "unavailable" at once for a
+ * minute instead of costing every request their full timeout (performance QA,
+ * 2026-09-28: buzz.directory refusing, Brainstorm serving a web page).
+ */
+const upstreams = new FailureMemory(60_000);
 import { parseDiscussParam, buildDiscussMeta, buildOgHtml } from "./discuss-og";
 
 type OgData = { title: string; description: string; image: string; siteName: string; url: string; video?: boolean; audioUrl?: string; radioStation?: string };
@@ -196,7 +204,9 @@ type ExternalOgResult =
  * Used by /api/og (client link previews) and the crawler-facing ?discuss=
  * unfurl. Callers must run isSafeExternalOgUrl first.
  */
-async function fetchExternalOgData(targetUrl: string, timeoutMs = 9000): Promise<ExternalOgResult> {
+// 4.5s, not 9s: a preview that slow has already lost to the plain link, and
+// waiting longer only held a request slot (performance QA, 2026-09-28).
+async function fetchExternalOgData(targetUrl: string, timeoutMs = 4500): Promise<ExternalOgResult> {
   const cached = ogCache.get(targetUrl);
   if (cached) return { ok: true, data: cached };
 
@@ -977,11 +987,20 @@ export async function registerRoutes(
       return res.json(data);
     }
 
+    // A site that just timed out or failed is skipped for a minute for ALL
+    // its pages, not only the one URL the negative cache already remembers.
+    const siteKey = `og:${new URL(targetUrl).hostname}`;
+    if (upstreams.isDown(siteKey)) {
+      res.set('Cache-Control', 'public, max-age=60');
+      return res.status(502).json({ error: "Temporarily unavailable" });
+    }
     const result = await fetchExternalOgData(targetUrl);
     if (result.ok) {
+      upstreams.succeeded(siteKey);
       res.set('Cache-Control', 'public, max-age=3600');
       return res.json(result.data);
     }
+    if (result.status >= 500) upstreams.failed(siteKey);
     return res.status(result.status).json({ error: result.error });
   });
 
@@ -1490,12 +1509,15 @@ export async function registerRoutes(
     const cached = buzzDirectoryCache.get("all");
     if (cached) return res.json(cached);
     try {
-      const r = await fetch("https://buzz.directory/", {
-        headers: { "User-Agent": "RelayOutpost/1.0 (+https://relayop.xyz)" },
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!r.ok) return res.status(502).json({ error: "directory unavailable" });
-      const html = await r.text();
+      const html = await upstreams.run("buzz-directory", async () => {
+        const r = await fetch("https://buzz.directory/", {
+          headers: { "User-Agent": "RelayOutpost/1.0 (+https://relayop.xyz)" },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!r.ok) throw new Error(`Upstream ${r.status}`);
+        return r.text();
+      }).catch(() => null);
+      if (html === null) return res.status(502).json({ error: "directory unavailable" });
       // Each community's relay url comes from its OWN detail page (deep-link
       // ground truth) — the ws host is not derivable from the listing slug,
       // and Buzz's wildcard NIP-11 makes a wrong guess look alive.
@@ -2935,6 +2957,23 @@ export async function registerRoutes(
 
   const BRAINSTORM_SEARCH_API = "https://brainstorm.world";
 
+  /**
+   * One Brainstorm (Meili) call. A 404 is a real answer ("no such document");
+   * anything that isn't JSON is NOT, it's the upstream failing. On 2026-09-28
+   * brainstorm.world began serving its web app's HTML on these paths, and we
+   * turned that into "-1, no trust data" for every author in the app.
+   */
+  async function fetchBrainstormJson<T>(path: string, timeoutMs: number): Promise<T> {
+    return upstreams.run("brainstorm", async () => {
+      const r = await fetch(`${BRAINSTORM_SEARCH_API}${path}`, { signal: AbortSignal.timeout(timeoutMs) });
+      if (r.status === 404) return { success: false } as T;
+      if (!r.ok) throw new Error(`Upstream ${r.status}`);
+      const type = r.headers.get("content-type") ?? "";
+      if (!type.includes("json")) throw new Error(`Brainstorm answered ${type || "no content type"}, not JSON`);
+      return (await r.json()) as T;
+    });
+  }
+
   const profilePrefetchCache = new Map<string, { data: string; ts: number }>();
   const PROFILE_PREFETCH_TTL = 5 * 60 * 1000;
 
@@ -2950,12 +2989,9 @@ export async function registerRoutes(
         return res.set({ "Content-Type": "application/json", "Cache-Control": "public, max-age=120" }).end(cached.data);
       }
 
-      const upstream = await fetch(
-        `${BRAINSTORM_SEARCH_API}/api/search/profiles/meili/document/${pk}`,
-        { signal: AbortSignal.timeout(3000) }
+      const raw = await fetchBrainstormJson<{ success?: boolean; document?: Record<string, unknown> }>(
+        `/api/search/profiles/meili/document/${pk}`, 3000,
       );
-      if (!upstream.ok) throw new Error(`Upstream ${upstream.status}`);
-      const raw = await upstream.json() as { success?: boolean; document?: Record<string, unknown> };
       const hit = (raw.success && raw.document?.pubkey === pk) ? raw.document : null;
       const data = JSON.stringify({ hit });
 
@@ -2983,12 +3019,9 @@ export async function registerRoutes(
       const q = req.query.q as string;
       const limit = parseInt(req.query.limit as string) || 20;
       if (!q || !q.trim()) return res.json({ hits: [], estimatedTotalHits: 0 });
-      const upstream = await fetch(
-        `${BRAINSTORM_SEARCH_API}/api/search/profiles/meili?q=${encodeURIComponent(q.trim())}&limit=${limit}`,
-        { signal: AbortSignal.timeout(8000) }
-      );
-      if (!upstream.ok) throw new Error(`Upstream ${upstream.status}`);
-      const data = await upstream.text();
+      const data = JSON.stringify(await fetchBrainstormJson<unknown>(
+        `/api/search/profiles/meili?q=${encodeURIComponent(q.trim())}&limit=${limit}`, 8000,
+      ));
       res.set({ "Content-Type": "application/json", "Cache-Control": "public, max-age=60" }).end(data);
     } catch (err: any) {
       console.error("[brainstorm-search] error:", err?.message || err);
@@ -3011,12 +3044,9 @@ export async function registerRoutes(
         return res.set({ "Content-Type": "application/json", "Cache-Control": "public, max-age=60" }).end(cached.data);
       }
 
-      const upstream = await fetch(
-        `${BRAINSTORM_SEARCH_API}/api/search/profiles/meili?q=${encodeURIComponent(topic)}&limit=${limit}`,
-        { signal: AbortSignal.timeout(8000) }
+      const rawData = await fetchBrainstormJson<any>(
+        `/api/search/profiles/meili?q=${encodeURIComponent(topic)}&limit=${limit}`, 8000,
       );
-      if (!upstream.ok) throw new Error(`Upstream ${upstream.status}`);
-      const rawData = await upstream.json() as any;
       if (rawData.hits && Array.isArray(rawData.hits)) {
         rawData.hits.sort((a: any, b: any) => (b.wot_rank ?? 0) - (a.wot_rank ?? 0));
       }
@@ -3081,29 +3111,31 @@ export async function registerRoutes(
         }
       }
 
+      let unanswered = 0;
       if (toFetch.length > 0) {
         const CONCURRENT = 30;
         for (let i = 0; i < toFetch.length; i += CONCURRENT) {
           const chunk = toFetch.slice(i, i + CONCURRENT);
           await Promise.allSettled(
             chunk.map(async (pk: string) => {
+              let data: { success?: boolean; document?: { pubkey?: string; wot_rank?: number } };
               try {
-                const upstream = await fetch(
-                  `${BRAINSTORM_SEARCH_API}/api/search/profiles/meili/document/${pk}`,
-                  { signal: AbortSignal.timeout(3000) }
-                );
-                if (upstream.ok) {
-                  const data = await upstream.json() as { success?: boolean; document?: { pubkey?: string; wot_rank?: number } };
-                  if (data.success && data.document?.pubkey === pk && data.document.wot_rank !== undefined) {
-                    const score = data.document.wot_rank / 100;
-                    scores[pk] = score;
-                    wotScoreCache.set(pk, { score, ts: Date.now() });
-                    return;
-                  }
-                }
-              } catch { /* fall through to miss */ }
-              // No data for this pubkey — cache + return a miss so the client marks
-              // it "No data" now rather than re-querying it on the slow lazy path.
+                data = await fetchBrainstormJson(`/api/search/profiles/meili/document/${pk}`, 3000);
+              } catch {
+                // Brainstorm didn't answer: we know NOTHING about this author.
+                // Never turn that into -1 ("no trust data"); leave it unknown.
+                unanswered++;
+                return;
+              }
+              if (data.success && data.document?.pubkey === pk && data.document.wot_rank !== undefined) {
+                const score = data.document.wot_rank / 100;
+                scores[pk] = score;
+                wotScoreCache.set(pk, { score, ts: Date.now() });
+                return;
+              }
+              // Brainstorm answered and has no data for this pubkey — cache +
+              // return a miss so the client marks it "No data" now rather than
+              // re-querying it on the slow lazy path.
               scores[pk] = -1;
               wotScoreCache.set(pk, { score: -1, ts: Date.now() });
             })
@@ -3120,7 +3152,12 @@ export async function registerRoutes(
         if (oldestKey) wotScoreCache.delete(oldestKey);
       }
 
-      res.set("Cache-Control", "public, max-age=120").json({ scores });
+      // Nothing answered: a failure, so the client pauses and keeps these
+      // authors unknown. Partly answered: send what we know, uncached.
+      if (unanswered > 0 && Object.keys(scores).length === 0) {
+        return res.status(503).json({ scores: {}, error: "Trust scores unavailable" });
+      }
+      res.set("Cache-Control", unanswered > 0 ? "no-store" : "public, max-age=120").json({ scores });
     } catch (err: any) {
       console.error("[brainstorm-wot-batch] error:", err?.message || err);
       res.status(502).json({ scores: {}, error: "Batch WoT lookup failed" });
@@ -3147,12 +3184,9 @@ export async function registerRoutes(
               const parsed = JSON.parse(cached.data);
               return parsed.hit || null;
             }
-            const upstream = await fetch(
-              `${BRAINSTORM_SEARCH_API}/api/search/profiles/meili/document/${pk}`,
-              { signal: AbortSignal.timeout(3000) }
-            );
-            if (!upstream.ok) return null;
-            const data = await upstream.json() as { success?: boolean; document?: Record<string, unknown> };
+            const data = await fetchBrainstormJson<{ success?: boolean; document?: Record<string, unknown> }>(
+              `/api/search/profiles/meili/document/${pk}`, 3000,
+            ).catch(() => ({ success: false } as { success?: boolean; document?: Record<string, unknown> }));
             if (data.success && data.document?.pubkey === pk) {
               const hitData = JSON.stringify({ hit: data.document });
               profilePrefetchCache.set(pk, { data: hitData, ts: Date.now() });

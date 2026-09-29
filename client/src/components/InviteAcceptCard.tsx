@@ -20,6 +20,8 @@ import { Loader2, X } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useToast } from "@/hooks/use-toast";
 import type { Event } from "nostr-tools";
+import { nip19 } from "nostr-tools";
+import { Link } from "wouter";
 import {
   eventStore, publishEvent, fetchProfilesCached, getCachedProfile, verifySignedEventKind,
 } from "@/lib/nostr";
@@ -265,17 +267,27 @@ export function InviteAcceptCard() {
       <div className="pointer-events-auto mx-auto w-full max-w-md rounded-2xl border border-border/40 bg-background/95 backdrop-blur shadow-lg shadow-black/25 p-3 animate-in fade-in slide-in-from-top-2 duration-200">
         {step === "follow" ? (
           <div className="flex items-center gap-3">
-            <Avatar className="w-10 h-10 shrink-0">
-              <AvatarImage src={avatar} />
-              <AvatarFallback className="text-xs">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              {/* A community link can be forwarded or scanned off a QR, so
-                  claiming it was addressed to this reader would be a lie —
-                  say what we actually know: who made it. */}
-              <p className="text-sm font-semibold truncate">{source === "link" ? `${name} created this invite` : `${name} invited you`}</p>
-              <p className="text-xs text-muted-foreground truncate">Follow to connect</p>
-            </div>
+            {/* Face and name open the inviter's profile, so you can see who
+                they are before following. This card stays up over the page,
+                so Follow is still one tap away once you've looked. */}
+            <Link
+              href={inviterHex ? `/profile/${nip19.npubEncode(inviterHex)}` : "#"}
+              className="flex flex-1 min-w-0 items-center gap-3 rounded-lg outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-brand/40"
+              aria-label={`Open ${name}'s profile`}
+              data-testid="link-invite-profile"
+            >
+              <Avatar className="w-10 h-10 shrink-0">
+                <AvatarImage src={avatar} />
+                <AvatarFallback className="text-xs">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                {/* A community link can be forwarded or scanned off a QR, so
+                    claiming it was addressed to this reader would be a lie —
+                    say what we actually know: who made it. */}
+                <p className="text-sm font-semibold truncate">{source === "link" ? `${name} created this invite` : `${name} invited you`}</p>
+                <p className="text-xs text-muted-foreground truncate">Follow to connect · tap to view profile</p>
+              </div>
+            </Link>
             <Button
               onClick={handleFollow}
               disabled={working}

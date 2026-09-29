@@ -41,6 +41,13 @@ describe("parentRouteOf", () => {
     expect(parentRouteOf("/live/naddr1abc")).toBe("/live");
   });
 
+  // The Manage pages (/account?tab=wallet, bookmarks, analytics…) lost their
+  // own "‹ Back" (it went to the You menu); the top bar's back must land there
+  // on a cold link too, not on the messages tab. Location carries no query.
+  it("your account pages climb to the You menu", () => {
+    expect(parentRouteOf("/account")).toBe("/account/menu");
+  });
+
   it("unmapped routes defer to the caller's default", () => {
     expect(parentRouteOf("/thread/abc")).toBeNull();
     expect(parentRouteOf("/")).toBeNull();

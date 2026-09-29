@@ -816,13 +816,7 @@ export default function ImagesFeed({ embedded = false, sort }: { embedded?: bool
             zero header, straight into images. */}
         {sort === undefined && (
           <div className="flex items-center gap-2 px-3 py-2">
-            {!embedded && (
-              <>
-                <ImageIcon className="w-5 h-5 text-brand/70" />
-                <h1 className="text-lg font-semibold text-foreground" data-testid="text-page-title">Images</h1>
-              </>
-            )}
-            <div className={embedded ? "" : "ml-auto"}>
+            <div>
               <MediaSortBar value={sortMode} onChange={setSortMode} compact />
             </div>
           </div>
@@ -861,10 +855,8 @@ export default function ImagesFeed({ embedded = false, sort }: { embedded?: bool
   return (
     <div className={embedded ? "" : "px-2 sm:px-4 py-4 sm:py-6"} data-testid="page-images-feed">
       <div className={embedded ? "" : "max-w-6xl mx-auto"}>
-        {/* ONE control row: title (standalone only) · sort · view controls. */}
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
-          {!embedded && <ImageIcon className="w-5 h-5 text-brand/70" />}
-          {!embedded && <h1 className="text-lg font-semibold text-foreground" data-testid="text-page-title">Images</h1>}
+        {/* ONE control row: sort · view controls (no title, lib/page-titles.test.ts). */}
+        <div className="flex min-h-9 items-center gap-2 mb-3 flex-wrap">
           {sort === undefined && <MediaSortBar value={sortMode} onChange={setSortMode} compact />}
           <div className="ml-auto flex items-center gap-1">
             {viewMode === "grid" && (

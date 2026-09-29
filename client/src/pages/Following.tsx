@@ -375,13 +375,7 @@ export default function Following() {
     <div className="px-3 sm:px-4 py-4 sm:py-6" data-testid="page-following">
       <div className={`mx-auto ${viewMode === "constellation" ? "max-w-4xl" : "max-w-2xl"} transition-all`}>
         <div className="mb-4 sm:mb-5">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div>
-              <h1 className="text-lg font-semibold text-foreground" data-testid="text-following-title">Following</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                People you follow
-              </p>
-            </div>
+          <div className="flex min-h-9 items-center justify-end gap-3 flex-wrap">
             {follows.length > 0 && (
               <div className="flex items-center gap-2" data-testid="container-view-controls-following">
                 <div className="relative">

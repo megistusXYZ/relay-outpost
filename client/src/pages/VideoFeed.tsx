@@ -1635,10 +1635,8 @@ export default function VideoFeed({ embedded = false, sort }: { embedded?: boole
           notification dot — merged into one adaptive control). */}
       <NewPostsPill count={bufferedCount} onClick={revealBufferedAtTop} />
       <div className={embedded ? "" : "max-w-4xl mx-auto"}>
-        {/* ONE control row: title (standalone only) · sort · view controls. */}
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
-          {!embedded && <Video className="w-5 h-5 text-brand/70" />}
-          {!embedded && <h1 className="text-lg font-semibold text-foreground" data-testid="text-page-title">Videos</h1>}
+        {/* ONE control row: sort · view controls (no title, lib/page-titles.test.ts). */}
+        <div className="flex min-h-9 items-center gap-2 mb-3 flex-wrap">
           {sort === undefined && <MediaSortBar value={sortMode} onChange={setSortMode} compact />}
           <div className="ml-auto flex items-center gap-1">
             {isMobile && (

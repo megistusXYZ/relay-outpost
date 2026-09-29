@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import {
-  Wrench, Wallet, Radio, Bookmark, BarChart3, Terminal, ScrollText, ChevronRight,
+  Wallet, Radio, Bookmark, BarChart3, Terminal, ScrollText, ChevronRight,
   Users, ShieldCheck, RefreshCw, HardDrive, VolumeX, KeyRound, Inbox,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -97,20 +97,6 @@ export default function Tools() {
       />
       <div className="relative z-10 px-3 sm:px-4 py-4 sm:py-6 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <div className="max-w-2xl mx-auto">
-
-        <div className="relative rounded-md overflow-hidden border border-border dark:border-brand/15 glass-settings-header shadow-sm dark:shadow-none mb-4 sm:mb-5">
-          <div className="absolute inset-0 pointer-events-none glass-settings-header-glow" />
-          <div className="relative p-4 sm:p-5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-md flex items-center justify-center shrink-0"
-              style={{ background: "rgba(140, 100, 220, 0.12)", border: "1px solid rgba(140, 100, 220, 0.18)" }}
-            >
-              <Wrench className="w-5 h-5 text-brand/70" />
-            </div>
-            <h1 className="text-lg font-semibold text-foreground" data-testid="text-tools-title">
-              Tools
-            </h1>
-          </div>
-        </div>
 
         <div className="space-y-4 sm:space-y-5">
           {tools.map((t) => (

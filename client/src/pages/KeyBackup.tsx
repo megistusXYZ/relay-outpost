@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { KeyRound, Download, ShieldCheck, Lock } from "lucide-react";
+import { Download, ShieldCheck, Lock } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useToast } from "@/hooks/use-toast";
@@ -55,13 +55,7 @@ export default function KeyBackup() {
   };
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-10 space-y-5" data-testid="page-key-backup">
-      <div className="flex items-center gap-2.5">
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/15 text-brand">
-          <KeyRound className="h-4 w-4" />
-        </span>
-        <h1 className="text-lg font-brand uppercase tracking-widest">Back up your key</h1>
-      </div>
+    <div className="max-w-xl mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-10 space-y-5" data-testid="page-key-backup">
 
       <Card className="glass-card p-5 sm:p-6 space-y-4">
         <div className="flex items-start gap-2.5 rounded-lg border border-brand/25 bg-brand/[0.05] p-3">

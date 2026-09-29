@@ -2,6 +2,7 @@ import { eventStore, trackEventRelay, DEFAULT_RELAYS, throttledPoolSubscribe, re
 import { replyTargetOf, THREAD_REPLY_KINDS, KIND_NIP22_COMMENT } from "./reply-target";
 import type { Event } from "nostr-tools";
 import { searchPeopleRanked } from "./people-search";
+import { adjustStats } from "./stat-adjust";
 
 // Primal's cache hosts, tried in order. `cache.primal.net` is the documented
 // entry point and stays first, but MEASURED 2026-08-03 it flaps: six probes
@@ -24,6 +25,8 @@ let ws: WebSocket | null = null;
 let wsReady = false;
 let connectPromise: Promise<void> | null = null;
 let reconnectDelay = 1000;
+/** Hosts that failed since the last successful open (resets on open). */
+let failedHostsInARow = 0;
 const MAX_RECONNECT_DELAY = 30000;
 
 setTimeout(() => ensureConnection().catch(() => {}), 100);
@@ -104,26 +107,34 @@ function createConnection(): Promise<void> {
 
       const socket = new WebSocket(PRIMAL_CACHE_URLS[primalHostIndex]);
 
-      // Advance to the next host on failure. Without this the list is
-      // decoration: ensureConnection would retry the same flapping host with a
-      // longer delay forever.
-      const tryNextHost = () => {
+      // Every way a connect can fail must SETTLE this promise. A refused host
+      // (a 503 on the upgrade) fires error then close; the old handlers
+      // cleared the timeout and never rejected, so ensureConnection() waited
+      // forever and every Primal read hung (the Discover Feed tile sat on its
+      // skeleton for minutes, 2026-09-28). Fail once, move to the next host
+      // once, and let ensureConnection retry.
+      let settled = false;
+      const fail = (why: string) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(connectionTimeout);
         primalHostIndex = (primalHostIndex + 1) % PRIMAL_CACHE_URLS.length;
+        try { socket.close(); } catch {}
+        reject(new Error(why));
       };
 
       const connectionTimeout = setTimeout(() => {
-        if (!wsReady) {
-          try { socket.close(); } catch {}
-          tryNextHost();
-          reject(new Error("Connection timeout"));
-        }
+        if (!wsReady) fail("Connection timeout");
       }, 8000);
 
       socket.onopen = () => {
+        if (settled) { try { socket.close(); } catch {} return; }
+        settled = true;
         clearTimeout(connectionTimeout);
         ws = socket;
         wsReady = true;
         reconnectDelay = 1000;
+        failedHostsInARow = 0;
         // This host answered — stay on it until it stops.
         resolve();
       };
@@ -131,13 +142,13 @@ function createConnection(): Promise<void> {
       socket.onmessage = handleMessage;
 
       socket.onerror = () => {
-        clearTimeout(connectionTimeout);
-        // A 502 from the host surfaces here, not as a close with a code we can
-        // read. Rotate so the next attempt reaches a different machine.
-        if (!wsReady) tryNextHost();
+        // A 502/503 from the host surfaces here, not as a close with a code we
+        // can read. Rotate so the next attempt reaches a different machine.
+        if (!wsReady) fail("Host refused the connection");
       };
 
       socket.onclose = () => {
+        if (!wsReady) fail("Closed before opening");
         clearTimeout(connectionTimeout);
         wsReady = false;
         if (ws === socket) ws = null;
@@ -166,7 +177,16 @@ async function ensureConnection(): Promise<void> {
   connectPromise = createConnection()
     .catch((err) => {
       console.warn("[Primal] Connection failed, will retry:", err.message);
-      reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY);
+      // Try every host once straight away; back off only when all of them
+      // have failed in a row. A single refusing host shouldn't cost callers
+      // a multi-second wait when the next one is up.
+      failedHostsInARow++;
+      const tryNextNow = failedHostsInARow < PRIMAL_CACHE_URLS.length;
+      if (!tryNextNow) {
+        failedHostsInARow = 0;
+        reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY);
+      }
+      const delay = tryNextNow ? 0 : reconnectDelay;
       return new Promise<void>((resolve) => {
         setTimeout(async () => {
           connectPromise = null;
@@ -176,7 +196,7 @@ async function ensureConnection(): Promise<void> {
           } catch {
             resolve();
           }
-        }, reconnectDelay);
+        }, delay);
       });
     })
     .finally(() => {
@@ -1644,6 +1664,11 @@ class PrimalStatsCache {
     this.notify(eventId, stats);
     this.notifyAny();
     persistStatsToStorage(this.cache);
+  }
+
+  /** Move one count by your own action (repost +1, undo -1). See adjustStats. */
+  adjust(eventId: string, field: "replies" | "reposts" | "likes" | "zaps", delta: number) {
+    this.set(eventId, adjustStats(this.cache.get(eventId), field, delta));
   }
 
   update(stats: Record<string, EventStats>) {
