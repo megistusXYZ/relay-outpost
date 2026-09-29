@@ -7,6 +7,8 @@ import { eventStore, fetchProfilesCached } from "@/lib/nostr";
 import { KIND_METADATA, getDisplayName, getAvatarUrl } from "@/lib/nostr-helpers";
 import { CURATED_SEED_PUBKEYS } from "@/lib/curated-seed-follows";
 import { Check, Plus } from "lucide-react";
+import { Link } from "wouter";
+import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
 
 interface Props {
@@ -97,15 +99,24 @@ export function SuggestedFollowsStrip({ limit = 8, className }: Props) {
               className="flex flex-col items-center gap-1.5 p-2 rounded-md border border-border/30 bg-background/30"
               data-testid={`suggested-follow-${pk.slice(0, 8)}`}
             >
-              <Avatar className="w-10 h-10">
-                {avatar && <AvatarImage src={avatar} alt={name} />}
-                <AvatarFallback className="text-[10px] bg-muted/50">
-                  {name.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <p className="text-[10px] font-medium truncate w-full text-center" title={name}>
-                {name}
-              </p>
+              {/* Face and name open the profile, so you can see who you'd be
+                  following first; Follow stays its own button below. */}
+              <Link
+                href={`/profile/${nip19.npubEncode(pk)}`}
+                className="flex w-full flex-col items-center gap-1.5 rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-brand/40"
+                aria-label={`Open ${name}'s profile`}
+                data-testid={`link-suggested-profile-${pk.slice(0, 8)}`}
+              >
+                <Avatar className="w-10 h-10">
+                  {avatar && <AvatarImage src={avatar} alt="" />}
+                  <AvatarFallback className="text-[10px] bg-muted/50">
+                    {name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <p className="text-[10px] font-medium truncate w-full text-center" title={name}>
+                  {name}
+                </p>
+              </Link>
               <Button
                 size="sm"
                 variant={done ? "secondary" : "outline"}
