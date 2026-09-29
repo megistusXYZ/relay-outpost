@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
+import { setPeopleSearchViewer } from "@/lib/people-search";
 import { setOutboxViewer } from "@/lib/outbox";
 import type { ReactNode } from "react";
 import { ExtensionSigner, NostrConnectSigner, PrivateKeySigner, type ISigner } from "applesauce-signers";
@@ -1217,6 +1218,9 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
       newsBookmarkSyncInitRef.current = false;
     };
   }, [pubkey, signer]);
+
+  // People search ranks through the signed-in viewer's web of trust.
+  useEffect(() => { setPeopleSearchViewer(pubkey ?? null); }, [pubkey]);
 
   return (
     <NostrAuthContext.Provider value={{
