@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent } from "react";
+import { discussionSignals } from "@/lib/discussion-signals";
 import { guestCanBrowse } from "@/lib/guest-limits";
 import { GuestLookingAround } from "@/components/GuestLookingAround";
 import { Link, useSearch, useLocation } from "wouter";
@@ -765,6 +766,7 @@ function NostrDiscussion({ url, isMobile, onCountChange }: { url: string; isMobi
         selfPubkey: pubkey,
         scoreGetter: (pk) => scores?.get(pk),
         flaggedPubkeys: flaggedPubkeys ?? undefined,
+        ...discussionSignals(),
       }),
     [rawEvents, preset, followSet, pubkey, scores, flaggedPubkeys],
   );

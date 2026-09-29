@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { discussionSignals } from "@/lib/discussion-signals";
 import type { Event } from "nostr-tools";
 import { eventStore, FAST_RELAYS, fetchProfiles, throttledPoolSubscribe, persistentPoolSubscribe } from "@/lib/nostr";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
@@ -295,6 +296,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       selfPubkey: currentPubkey,
       scoreGetter: (pk) => scoresRef.current?.get(pk),
       flaggedPubkeys: flaggedRef.current ?? undefined,
+      ...discussionSignals(),
     })) {
       return;
     }
