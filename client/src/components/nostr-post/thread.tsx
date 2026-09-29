@@ -130,6 +130,7 @@ import {
   ParsedPreviewText,
   RawEventDialog,
 } from "../NostrPost";
+import { normalizeNostrClientLinks } from "@/lib/nostr-client-links";
 
 function useCommentTrustVisible() {
   const [visible] = useState(() => {
@@ -1027,7 +1028,9 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
     return { name: c.display_name || c.name, nip05: c.nip05 };
   }, [authorProfile]);
   const avatarUrl = getAvatarUrl(authorProfile);
-  const { text: textContent, media: replyMediaItems } = useMemo(() => extractMediaFromContent(event.content), [event.content]);
+  // Normalized first: a link to another Nostr client stays in the text as a
+  // nostr: reference (shown natively) instead of being stripped with the URLs.
+  const { text: textContent, media: replyMediaItems } = useMemo(() => extractMediaFromContent(normalizeNostrClientLinks(event.content)), [event.content]);
   const isOwnReply = myPubkey === event.pubkey;
   const isOP = !!(opPubkey && event.pubkey === opPubkey);
   const hasReplyMedia = replyMediaItems.length > 0;

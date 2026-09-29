@@ -151,6 +151,7 @@ import { contentComponents, getEventEmojiMap, emojifyChildren, MentionProfileLin
 import { isCustomEmoji, getCustomEmojiShortcode, useCustomEmojis, type CustomEmoji } from "@/hooks/use-custom-emojis";
 import { MediaRenderer } from "@/components/MediaRenderer";
 import { formatDistanceToNow } from "date-fns";
+import { normalizeNostrClientLinks } from "@/lib/nostr-client-links";
 
 /**
  * Every live subscription this room opens against its own relay.
@@ -223,7 +224,9 @@ function ChatContentRenderer({ content, tags, eventId, pubkey }: { content: stri
     created_at: 0,
     kind: 9,
     tags: tags || [],
-    content: content,
+    // Links to other Nostr clients as nostr: references, shown natively; raw,
+    // the text dropped them and the media side skipped them.
+    content: normalizeNostrClientLinks(content),
     sig: "" }), [content, tags, eventId, pubkey]);
 
   const rawRenderedContent = useRenderedContent(pseudoEvent, chatContentComponents, {
