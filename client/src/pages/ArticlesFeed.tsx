@@ -4,6 +4,7 @@ import { use$ } from "applesauce-react/hooks";
 import { eventStore, pool, DEFAULT_RELAYS, FAST_RELAYS, fetchProfiles, publishEvent, throttledPoolSubscribe } from "@/lib/nostr";
 import { getPublishTarget } from "@/lib/outpost-relays";
 import { KIND_LONG_FORM, parseArticle, type ArticleData } from "@/lib/nip23";
+import { trendingArticles } from "@/lib/trending-articles";
 import { clientTags } from "@/lib/nostr-helpers";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
 import { createShareMention } from "@/lib/share-mention";
@@ -222,24 +223,6 @@ const PAGE_SIZE = 30;
 const SEARCH_DEBOUNCE = 350;
 const MIN_CONTENT_LENGTH = 300;
 const MIN_TITLE_LENGTH = 5;
-
-function rawEngagement(stats: { zapAmount: number; replies: number; likes: number; reposts: number } | undefined): number {
-  return (stats?.zapAmount ? Math.log10(stats.zapAmount + 1) * 3 : 0)
-    + (stats?.replies ?? 0) * 2
-    + (stats?.likes ?? 0)
-    + (stats?.reposts ?? 0) * 1.5;
-}
-
-function hotScore(article: ArticleData, stats: { zapAmount: number; replies: number; likes: number; reposts: number } | undefined): number {
-  const engagement = rawEngagement(stats);
-  if (engagement <= 0) return -1;
-  const now = Date.now() / 1000;
-  const ageHours = Math.max(1, (now - article.publishedAt) / 3600);
-  const velocity = engagement / Math.sqrt(ageHours);
-  const hasImage = article.image ? 1.15 : 1;
-  const hasSummary = article.summary ? 1.05 : 1;
-  return velocity * hasImage * hasSummary;
-}
 
 function formatZapAmount(sats: number): string {
   if (sats >= 1_000_000) return `${(sats / 1_000_000).toFixed(1)}M`;
@@ -767,30 +750,16 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
     return parsed.sort((a, b) => b.publishedAt - a.publishedAt);
   }, [visibleArticles, tab]);
 
-  const sortedArticles = useMemo(() => {
+  // Trending ranks by Primal's engagement numbers, but never drops an article
+  // whose numbers haven't come (lib/trending-articles.ts): it used to say
+  // "No articles" over a page of fetched ones while they loaded or when
+  // Primal was down.
+  const { sortedArticles, trendingRanked } = useMemo(() => {
     if (tab === "trending") {
-      const withStats = parsedArticles
-        .map((a) => {
-          const stats = primalStatsCache.get(a.event.id);
-          return { article: a, stats, score: hotScore(a, stats) };
-        })
-        .filter((x) => x.score > 0);
-
-      withStats.sort((a, b) => b.score - a.score);
-
-      const deduped: ArticleData[] = [];
-      const authorHits = new Map<string, number>();
-      const AUTHOR_SPACING = 5;
-      for (const x of withStats) {
-        const pk = x.article.event.pubkey;
-        const last = authorHits.get(pk);
-        if (last !== undefined && deduped.length - last < AUTHOR_SPACING) continue;
-        authorHits.set(pk, deduped.length);
-        deduped.push(x.article);
-      }
-      return deduped;
+      const t = trendingArticles(parsedArticles, (id) => primalStatsCache.get(id), Date.now() / 1000);
+      return { sortedArticles: t.articles, trendingRanked: t.ranked };
     }
-    return parsedArticles;
+    return { sortedArticles: parsedArticles, trendingRanked: true };
   }, [parsedArticles, tab, statsVersion]);
 
 
@@ -1026,6 +995,11 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
           <p className="text-[11px] text-muted-foreground/50 mb-3 uppercase tracking-wider">
             {sortedArticles.length} article{sortedArticles.length !== 1 ? "s" : ""}
           </p>
+          {tab === "trending" && !trendingRanked && (
+            <p className="text-xs text-muted-foreground mb-3" data-testid="text-trending-unranked">
+              Newest first for now: engagement numbers aren't in yet.
+            </p>
+          )}
 
           <div className="space-y-2">
             {sortedArticles.map((article, i) => {
