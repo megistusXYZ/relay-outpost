@@ -18,11 +18,10 @@ export const PEOPLE_SEARCH_RELAY = "wss://search.brainstorm.world";
 
 const HEX64 = /^[0-9a-f]{64}$/;
 
-/**
- * Whose web of trust ranks searches for people who aren't signed in (owner
- * call, 2026-09-28): npub1healthsx3swcgtknff7zwpg8aj2q7h49zecul5rz490f6z2zp59qnfvp8p.
- */
-export const DEFAULT_LENS = "be7bf5de068c1d842ed34a7c270507ec940f5ea51671cfd062a95e9d09420d0a";
+// Whose web of trust ranks for anyone signed out (shared with the server's
+// score cards; owner call, 2026-09-28).
+import { DEFAULT_LENS } from "@shared/default-lens";
+export { DEFAULT_LENS };
 const MAX_LIMIT = 100;
 
 /** Who is signed in, so searches rank through their own web of trust. */

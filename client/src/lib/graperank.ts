@@ -5,8 +5,6 @@ import { getGlobalSigner } from "@/lib/nip42-auth";
 
 const BRAINSTORM_API = "/api/graperank";
 const NIP85_RELAY = "wss://nip85.nosfabrica.com";
-const NIP85_PROVIDER = "5d06ceb1e92db19b2c250b15743527f6baad171042d79f7b6e2764e093133121";
-const KIND_NIP85 = 30382;
 
 const CACHE_TTL = 5 * 60 * 1000;
 const MAX_CACHE = 500;
@@ -416,70 +414,6 @@ function clearLsScores(observerPubkey: string) {
 
 export { loadLsScores, saveLsScores, clearLsScores };
 
-export async function fetchNip85ScoresBulk(pubkeys: string[]): Promise<Map<string, number>> {
-  const results = new Map<string, number>();
-  if (pubkeys.length === 0) return results;
-
-  const MAX_BATCH = 50;
-  const batches: string[][] = [];
-  for (let i = 0; i < pubkeys.length; i += MAX_BATCH) {
-    batches.push(pubkeys.slice(i, i + MAX_BATCH));
-  }
-
-  for (const batch of batches) {
-    try {
-      const events = await Promise.race([
-        pool.querySync([NIP85_RELAY], {
-          kinds: [KIND_NIP85],
-          authors: [NIP85_PROVIDER],
-          "#d": batch,
-          limit: batch.length * 3,
-        }),
-        new Promise<never[]>((resolve) => setTimeout(() => resolve([]), 5000)),
-      ]);
-
-      if (!events || events.length === 0) continue;
-
-      const byPubkey = new Map<string, typeof events>();
-      for (const ev of events) {
-        const dTag = ev.tags.find((t: string[]) => t[0] === "d");
-        if (!dTag || !dTag[1]) continue;
-        const pk = dTag[1];
-        if (!byPubkey.has(pk)) byPubkey.set(pk, []);
-        byPubkey.get(pk)!.push(ev);
-      }
-
-      for (const [pk, pkEvents] of byPubkey) {
-        let bestEvent: typeof events[0] | null = null;
-        for (const ev of pkEvents) {
-          const metric = getEventMetricType(ev);
-          if (metric === "rank" || metric === "graperank" || metric === "influence") {
-            if (!bestEvent || ev.created_at > bestEvent.created_at) bestEvent = ev;
-          }
-        }
-        if (!bestEvent) {
-          for (const ev of pkEvents) {
-            if (!bestEvent || ev.created_at > bestEvent.created_at) bestEvent = ev;
-          }
-        }
-        if (bestEvent) {
-          const contentData = parseNip85Content(bestEvent);
-          if (contentData) {
-            const influence = extractNip85Influence(contentData);
-            if (influence !== null) {
-              results.set(pk, influence);
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.warn("[GrapeRank] NIP-85 bulk fetch error:", err);
-    }
-  }
-
-  console.log(`[GrapeRank] NIP-85 bulk: ${pubkeys.length} requested, ${results.size} returned`);
-  return results;
-}
 
 const inflightRequests = new Map<string, Promise<GrapeRankScore | null>>();
 
@@ -841,7 +775,7 @@ async function fetchGrapeRankScoreInner(
     return fetchPublicScore(targetPubkey);
   }
 
-  const nip85Promise = fetchNip85Score(targetPubkey).catch(() => null);
+  const nip85Promise = fetchNip85Score(targetPubkey, observerPubkey).catch(() => null);
   const authScorePromise = fetchAuthenticatedScore(targetPubkey, observerPubkey).catch(() => null);
 
   type RaceResult = { source: "auth"; score: GrapeRankScore | null } | { source: "nip85"; score: GrapeRankScore | null };
@@ -878,17 +812,13 @@ async function fetchPublicScore(targetPubkey: string): Promise<GrapeRankScore | 
   try {
     const setupRes = await fetch(`${BRAINSTORM_API}/setup/${targetPubkey}`);
     if (!setupRes.ok) {
-      return fetchNip85Score(targetPubkey);
+      return null;
     }
     const setupData = await setupRes.json();
     if (!Array.isArray(setupData) || setupData.length === 0) {
-      return fetchNip85Score(targetPubkey);
+      return null;
     }
 
-    const nip85Result = await fetchNip85Score(targetPubkey);
-    if (nip85Result && nip85Result.influence !== null) {
-      return nip85Result;
-    }
 
     const score: GrapeRankScore = {
       influence: null,
@@ -902,131 +832,33 @@ async function fetchPublicScore(targetPubkey: string): Promise<GrapeRankScore | 
     setCache(targetPubkey, null, score);
     return score;
   } catch {
-    return fetchNip85Score(targetPubkey);
-  }
-}
-
-interface Nip85ContentData {
-  influence?: number;
-  rank?: number;
-  average?: number;
-  confidence?: number;
-  followers?: number;
-  followedBy?: number;
-}
-
-function parseNip85Content(event: { content: string; tags: string[][] }): Nip85ContentData | null {
-  try {
-    const parsed = JSON.parse(event.content);
-    if (typeof parsed !== "object" || parsed === null) return null;
-    return parsed as Nip85ContentData;
-  } catch {
     return null;
   }
 }
 
-function extractNip85Influence(contentData: Nip85ContentData): number | null {
-  if (typeof contentData.influence === "number" && isFinite(contentData.influence)) {
-    return contentData.influence;
-  }
-  if (typeof contentData.rank === "number" && isFinite(contentData.rank)) {
-    return contentData.rank;
-  }
-  if (typeof contentData.average === "number" && isFinite(contentData.average)) {
-    return contentData.average;
-  }
-  return null;
-}
-
-function extractNip85Followers(contentData: Nip85ContentData): number {
-  if (typeof contentData.followers === "number" && contentData.followers >= 0) {
-    return contentData.followers;
-  }
-  if (typeof contentData.followedBy === "number" && contentData.followedBy >= 0) {
-    return contentData.followedBy;
-  }
-  return 0;
-}
-
-function getEventMetricType(event: { tags: string[][] }): string | null {
-  for (const tag of event.tags) {
-    if (tag[0] === "t" && tag[1]) return tag[1];
-    if (tag[0] === "metric" && tag[1]) return tag[1];
-  }
-  return null;
-}
-
-async function fetchNip85Score(targetPubkey: string): Promise<GrapeRankScore | null> {
+/**
+ * One person's score from the OBSERVER'S OWN trust map (kind 10040 → rank
+ * service → kind-30382 card), read in the browser. It used to query a
+ * hard-coded provider key that publishes nothing and read the rank from the
+ * card's content; cards carry it as a `rank` tag (0-100). No map, no card,
+ * or no observer: null, and nothing is claimed.
+ */
+async function fetchNip85Score(targetPubkey: string, observerPubkey: string | null): Promise<GrapeRankScore | null> {
+  if (!observerPubkey) return null;
   try {
-    const events = await Promise.race([
-      pool.querySync([NIP85_RELAY], {
-        kinds: [KIND_NIP85],
-        authors: [NIP85_PROVIDER],
-        "#d": [targetPubkey],
-        limit: 10,
-      }),
-      new Promise<never[]>((resolve) => setTimeout(() => resolve([]), 4000)),
-    ]);
-
-    if (!events || events.length === 0) return null;
-
-    let rankEvent: typeof events[0] | null = null;
-    let followersEvent: typeof events[0] | null = null;
-    let genericEvent: typeof events[0] | null = null;
-
-    for (const ev of events) {
-      const metric = getEventMetricType(ev);
-      if (metric === "rank" || metric === "graperank" || metric === "influence") {
-        if (!rankEvent || ev.created_at > rankEvent.created_at) rankEvent = ev;
-      } else if (metric === "followers" || metric === "followedBy") {
-        if (!followersEvent || ev.created_at > followersEvent.created_at) followersEvent = ev;
-      } else {
-        if (!genericEvent || ev.created_at > genericEvent.created_at) genericEvent = ev;
-      }
-    }
-
-    let influence: number | null = null;
-    let followedByCount = 0;
-    let latestTimestamp = 0;
-
-    const primaryEvent = rankEvent || genericEvent;
-    if (primaryEvent) {
-      const contentData = parseNip85Content(primaryEvent);
-      if (contentData) {
-        influence = extractNip85Influence(contentData);
-        followedByCount = extractNip85Followers(contentData);
-      }
-      latestTimestamp = Math.max(latestTimestamp, primaryEvent.created_at);
-    }
-
-    if (followersEvent) {
-      const followersData = parseNip85Content(followersEvent);
-      if (followersData) {
-        const fc = extractNip85Followers(followersData);
-        if (fc > followedByCount) followedByCount = fc;
-        if (influence === null) {
-          influence = extractNip85Influence(followersData);
-        }
-      }
-      latestTimestamp = Math.max(latestTimestamp, followersEvent.created_at);
-    }
-
-    if (influence === null && followedByCount === 0) return null;
-
-    const lastCalc = latestTimestamp > 0
-      ? new Date(latestTimestamp * 1000).toISOString()
-      : null;
-
+    const { ownMapScores } = await import("./own-trust-map");
+    const influence = (await ownMapScores(observerPubkey, [targetPubkey])).get(targetPubkey);
+    if (influence === undefined) return null;
     const score: GrapeRankScore = {
       influence,
       trustedReporters: null,
-      followedByCount,
+      followedByCount: 0,
       followingCount: 0,
       mutedByCount: 0,
       relationship: "none",
-      lastCalculated: lastCalc,
+      lastCalculated: null,
     };
-    setCache(targetPubkey, null, score);
+    setCache(targetPubkey, observerPubkey, score);
     return score;
   } catch {
     return null;
@@ -1376,4 +1208,4 @@ export function clearGrapeRankCache() {
   connectionScoresCache = null;
 }
 
-export { NIP85_RELAY, NIP85_PROVIDER };
+export { NIP85_RELAY };

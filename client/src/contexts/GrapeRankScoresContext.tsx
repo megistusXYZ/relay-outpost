@@ -410,15 +410,16 @@ export function GrapeRankScoresProvider({ children }: { children: ReactNode }) {
     bulkInFlightRef.current = true;
     const gen = lazyGenerationRef.current;
 
-    // Global (Meili wot_rank) prewarm: fast + batched, but a fixed-root-observer
-    // metric — so its values are written as provisional and every author is
-    // queued for per-observer refinement. Misses (-1 markers from the server)
-    // are NOT written into the map: "Meili has no data" must render as neutral
+    // Score-card prewarm (NIP-85): the viewer's own trust map if they have one,
+    // else the server's default lens. Fast + batched, but not the viewer's
+    // personal GrapeRank, so values are written as provisional and every
+    // author is queued for per-observer refinement. Misses (-1: the relay
+    // answered with no card) are NOT written into the map: "Meili has no data" must render as neutral
     // and stay resolvable by the per-observer path, never as a sticky "No data"
     // verdict (the July 2026 feed-badge bug). If the batch API is cooling down
     // it returns an empty map, which simply sends everyone straight to the
     // per-observer queue.
-    fetchBrainstormWotBatch(batch)
+    fetchBrainstormWotBatch(batch, pubkey)
       .then(results => {
         if (!mountedRef.current || gen !== lazyGenerationRef.current) return;
         const room = LAZY_MAX_PENDING - lazyQueueRef.current.size;
