@@ -373,9 +373,17 @@ function CategoryGroup({ id, title, active, children }: { id: string; title: str
 function SettingsNav({ items, active, onSelect }: { items: SettingsCategory[]; active: string; onSelect: (id: string) => void }) {
   const tabsRef = useRef<HTMLDivElement>(null);
   // Keep the chosen tab in view on a phone when it sits off the row's edge.
+  // Sideways only: scrollIntoView also moved the row (and the page) up and
+  // down, since each tab is a pixel taller than the row it sits in.
   useEffect(() => {
-    const el = tabsRef.current?.querySelector<HTMLElement>(`[data-section="${active}"]`);
-    el?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    const row = tabsRef.current;
+    const el = row?.querySelector<HTMLElement>(`[data-section="${active}"]`);
+    if (!row || !el) return;
+    const r = row.getBoundingClientRect();
+    const e = el.getBoundingClientRect();
+    const EDGE = 12;
+    if (e.left < r.left) row.scrollBy({ left: e.left - r.left - EDGE });
+    else if (e.right > r.right) row.scrollBy({ left: e.right - r.right + EDGE });
   }, [active]);
 
   return (

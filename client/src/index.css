@@ -1206,6 +1206,18 @@ html[data-perf="lite"] .space-bg-nebula {
     display: none;
   }
 
+  /* Sideways-scrolling rows (tab bars, chip rows, rails) scroll sideways
+     only. `overflow-x: auto` alone makes the y axis `auto` too, so a child
+     a pixel taller than the row (tabs sit on their underline with -mb-px)
+     made the row wiggle up and down on a phone (Settings, 2026-09-29).
+     Vertical swipes pass through to the page. Something that really scrolls
+     both ways says so with overflow-auto / overflow-y-auto and is left alone.
+     No touch-action, per the note above. Pinned by scroll-rows.test.ts. */
+  .overflow-x-auto:not(.overflow-y-auto):not(.overflow-auto) {
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+  }
+
   .animate-spin-slow {
     animation: spinSlow 3s linear infinite;
   }
