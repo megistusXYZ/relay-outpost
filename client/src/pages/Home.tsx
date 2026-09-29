@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense } from "react";
+import { reachAdmits } from "@/lib/trust-reach";
 import { cn } from "@/lib/utils";
 import { flushSync } from "react-dom";
 import { eventStore, pool, subscribeToFeed, subscribeToFeedPersistent, fetchProfilesCached, fetchInteractionsCached, isProfileFetchSettled, FAST_RELAYS, getRelaysForPurpose, markFeedDataLoaded, hasFeedData, throttledPoolSubscribe } from "@/lib/nostr";
@@ -1897,15 +1898,12 @@ export default function Home() {
     let deduped = baseFilteredEvents;
 
     if (feedMode === "raw_signal" && pubkey && effectiveReachDepth !== "off") {
-      deduped = deduped.filter((e) => {
-        if (followSet.has(e.pubkey)) return true;
-        if (effectiveReachDepth === "1hop") return false;
-        if (fofSet.has(e.pubkey)) return true;
-        if (effectiveReachDepth === "2hops") return false;
-        const score = grapeRankScores?.get(e.pubkey);
-        if (effectiveReachDepth === "3hops") return score !== undefined;
-        return score !== undefined && score > 0;
-      });
+      // "No score" is unknown, not untrusted (lib/trust-reach.ts).
+      deduped = deduped.filter((e) => reachAdmits(effectiveReachDepth, {
+        followed: followSet.has(e.pubkey),
+        followOfFollow: fofSet.has(e.pubkey),
+        score: grapeRankScores?.get(e.pubkey),
+      }));
     }
 
     // Discover v2 "interesting mix" (flag-gated, For You only): engagement +
