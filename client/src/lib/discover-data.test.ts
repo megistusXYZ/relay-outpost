@@ -6,10 +6,16 @@
  */
 import { describe, it, expect, vi } from "vitest";
 
+// Records which relays each one-shot read asks, and answers at once (EOSE).
+const subscribeSpy = vi.fn((_relays: string[], _filter: { kinds?: number[] }, handlers: { oneose?: () => void }) => {
+  setTimeout(() => handlers.oneose?.(), 0);
+  return { close: () => {} };
+});
 vi.mock("@/lib/nostr", () => ({
   eventStore: { add: () => {}, getEvent: () => null },
-  throttledPoolSubscribe: () => ({ close: () => {} }),
-  FAST_RELAYS: [],
+  throttledPoolSubscribe: (...a: Parameters<typeof subscribeSpy>) => subscribeSpy(...a),
+  // A general relay: the marketplace shelf must NOT read from it.
+  FAST_RELAYS: ["wss://relay.primal.net"],
   getRelaysForPurpose: () => [],
 }));
 vi.mock("@/lib/primal-cache", () => ({
@@ -25,7 +31,8 @@ vi.mock("@/lib/relay-reach", () => ({
   relayRefusedUs: () => undefined,
 }));
 
-import { discoverNewsFeeds, summarizePulse, fetchCommunityPulse, feedSnippet, survivingArticles } from "./discover-data";
+import { discoverNewsFeeds, summarizePulse, fetchCommunityPulse, feedSnippet, survivingArticles, fetchMarketShelf } from "./discover-data";
+import { LISTING_RELAYS, KIND_CLASSIFIED_LISTING } from "./listing";
 import { ALL_NEWS_FEEDS, ALL_PODCAST_FEEDS, DEFAULT_FEEDS, STARTER_URLS_V2, type SavedFeed } from "./rss-feeds";
 
 /**
@@ -139,5 +146,23 @@ describe("survivingArticles", () => {
     const now = Math.floor(Date.now() / 1000);
     const out = survivingArticles([art(now - 5000, "older"), art(now - 100, "newer")]);
     expect(out[0].title).toBe("newer");
+  });
+});
+
+/**
+ * Discover's marketplace shelf is the front door to the Marketplace, so it
+ * shows only what Conduit's marketplace relay carries, exactly like the
+ * Marketplace page (owner report, 2026-09-28: the shelf led with a steroid
+ * shop's Clomid and Testosterone listings, published to general relays such
+ * as relay.primal.net, where 22 of 40 recent listings were that one seller).
+ */
+describe("Discover's marketplace shelf", () => {
+  it("reads only Conduit's marketplace relay, never the general relays", async () => {
+    subscribeSpy.mockClear();
+    await fetchMarketShelf();
+    const asked = subscribeSpy.mock.calls
+      .filter((c) => c[1].kinds?.includes(KIND_CLASSIFIED_LISTING))
+      .map((c) => c[0]);
+    expect(asked).toEqual([LISTING_RELAYS]);
   });
 });
