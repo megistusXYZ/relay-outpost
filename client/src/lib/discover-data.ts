@@ -549,12 +549,18 @@ export interface MarketTeaser {
 }
 
 export async function fetchMarketShelf(): Promise<Reached<MarketTeaser[] | null>> {
-  return remembered("market", fetchMarketShelfFresh);
+  // "market:conduit", not "market": snapshots saved before the shelf was
+  // limited to Conduit could hold the steroid-shop listings, and a new key
+  // makes every device ignore them at once.
+  return remembered("market:conduit", fetchMarketShelfFresh);
 }
 
 async function fetchMarketShelfFresh(): Promise<Reached<MarketTeaser[] | null>> {
-  // Conduit's relay carries the densest listing set; the generals fill in.
-  const relays = [...LISTING_RELAYS, ...FAST_RELAYS.slice(0, 3)];
+  // Only Conduit's marketplace relay, like the Marketplace page this tile
+  // opens (owner call, 2026-09-28). The general relays used to fill in, and
+  // they carry what Conduit doesn't: a steroid shop's Clomid/Testosterone
+  // listings led the front door (22 of 40 recent listings on relay.primal.net).
+  const relays = [...LISTING_RELAYS];
   const [served, events] = await Promise.all([
     anyServed(relays),
     collectOnce(relays, { kinds: [KIND_CLASSIFIED_LISTING], limit: 40 }, 11_000),
