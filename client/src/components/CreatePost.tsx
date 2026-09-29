@@ -24,6 +24,8 @@ import { KIND_PICTURE } from "@/lib/media-frame";
 import { parseImetaTags } from "@/lib/media-utils";
 import { KIND_MUSIC_TRACK } from "@/lib/music";
 import { useOutpostCompose } from "@/contexts/OutpostComposeContext";
+import { noteComposeAction } from "@/lib/note-compose";
+import { OPEN_NOTE_COMPOSER } from "@/lib/shell-events";
 import { ComposeEmojiPicker, useEmojiTags } from "@/components/ComposeEmojiPicker";
 import { useCustomEmojis } from "@/hooks/use-custom-emojis";
 import type { CustomEmoji } from "@/hooks/use-custom-emojis";
@@ -223,6 +225,30 @@ export function CreatePostFAB() {
     };
     window.addEventListener("open-compose", handler);
     return () => window.removeEventListener("open-compose", handler);
+  }, []);
+
+  // Start a note the way this button does, wherever you are: in a community
+  // it goes to that community's composer. Create › Note asks for it by event
+  // (it used to click this button, which isn't rendered on Chats).
+  const startNoteRef = useRef<() => void>(() => {});
+  startNoteRef.current = () => {
+    const action = noteComposeAction(outpostCompose);
+    if (action.kind === "none") return;
+    if (action.kind === "horizon") {
+      window.dispatchEvent(new CustomEvent("horizon-new-entry"));
+      return;
+    }
+    if (action.kind === "outpost") {
+      outpostCompose?.triggerCompose(action.type);
+      return;
+    }
+    setDraftCount(getDraftCount());
+    setIsOpen(true);
+  };
+  useEffect(() => {
+    const handler = () => startNoteRef.current();
+    window.addEventListener(OPEN_NOTE_COMPOSER, handler);
+    return () => window.removeEventListener(OPEN_NOTE_COMPOSER, handler);
   }, []);
 
   useEffect(() => {
@@ -982,7 +1008,9 @@ export function CreatePostFAB() {
   }, []);
 
   if (!pubkey) return null;
-  if (location.startsWith("/messages")) return null;
+  // Chats has its own composer, so no floating button there. The note
+  // composer itself still opens there when asked (Create › Note).
+  const onChats = location.startsWith("/messages");
 
   return (
     <>
@@ -1746,30 +1774,19 @@ export function CreatePostFAB() {
         </div>
       )}
 
-      <Button
-        onClick={() => {
-          if (outpostCompose) {
-            if (outpostCompose.activeTab === "horizon") {
-              if (outpostCompose.canPostHorizon) {
-                window.dispatchEvent(new CustomEvent("horizon-new-entry"));
-              }
-              return;
-            }
-            outpostCompose.triggerCompose(outpostCompose.activeTab === "topics" ? "topic" : "note");
-            return;
-          }
-          setDraftCount(getDraftCount());
-          setIsOpen(true);
-        }}
-        size="icon"
-        className={`fixed z-40 rounded-full bg-foreground text-background shadow-lg hidden md:flex transition-all duration-300 ${
-          outpostCompose?.activeTab === "horizon" && !outpostCompose?.canPostHorizon ? "opacity-0 pointer-events-none" : ""
-        }`}
-        style={{ bottom: "1.5rem", right: "1.5rem" }}
-        data-testid="button-fab-compose"
-      >
-        <RelayOutpostIcon className="w-5 h-5" />
-      </Button>
+      {!onChats && (
+        <Button
+          onClick={() => startNoteRef.current()}
+          size="icon"
+          className={`fixed z-40 rounded-full bg-foreground text-background shadow-lg hidden md:flex transition-all duration-300 ${
+            outpostCompose?.activeTab === "horizon" && !outpostCompose?.canPostHorizon ? "opacity-0 pointer-events-none" : ""
+          }`}
+          style={{ bottom: "1.5rem", right: "1.5rem" }}
+          data-testid="button-fab-compose"
+        >
+          <RelayOutpostIcon className="w-5 h-5" />
+        </Button>
+      )}
 
       <RelayPublishPicker
         open={showRelayPicker}
