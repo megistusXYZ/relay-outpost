@@ -1321,6 +1321,32 @@ export function TextWithUnresolvedNostr({ text, inlineOnly, nested }: { text: st
   return <>{parts}</>;
 }
 
+/**
+ * A nostr reference shown natively. Top-level (nested: false): naddr → an
+ * addressable card, note/nevent → a full EmbeddedNote, npub/nprofile → a
+ * mention. Same shared resolver the embedded-note renderer uses, so they
+ * can't drift.
+ */
+function NostrEmbedFor({ decoded, encoded }: { decoded: unknown; encoded: string }) {
+  const res = resolveNostrEmbed(decoded as any, { nested: false });
+  if (res.render === "mention") return <MentionProfileLink pubkey={res.pubkey} />;
+  if (res.render === "address-card") return <EmbeddedAddressCard kind={res.kind} pubkey={res.pubkey} identifier={res.identifier} relays={res.relays} encoded={encoded} />;
+  if (res.render === "note-embed") return <EmbeddedNote eventId={res.eventId} encoded={encoded} relays={res.relays} />;
+  return <span className="text-brand dark:text-brand/90">{encoded.slice(0, 16)}...</span>;
+}
+
+/**
+ * The same, from a `nostr:<bech32>` URI: what a link to another Nostr client
+ * becomes (lib/nostr-client-links.ts). Loaded lazily by MediaRenderer's
+ * LinkPreviewCard, which can't import this module statically (cycle).
+ */
+export function NostrRefEmbed({ uri }: { uri: string }) {
+  const encoded = uri.replace(/^nostr:/i, "");
+  let decoded: unknown;
+  try { decoded = nip19.decode(encoded); } catch { return null; }
+  return <NostrEmbedFor decoded={decoded} encoded={encoded} />;
+}
+
 export const contentComponents: ComponentMap = {
   text: ({ node }) => <TextWithUnresolvedNostr text={node.value} />,
   link: ({ node }) => {
@@ -1336,16 +1362,7 @@ export const contentComponents: ComponentMap = {
       decoding="async"
     />
   ),
-  mention: ({ node }) => {
-    // Top-level (nested: false): naddr → addressable card, note/nevent → full
-    // EmbeddedNote. Same shared resolver the embedded-note renderer uses, so the
-    // two can't drift.
-    const res = resolveNostrEmbed(node.decoded as any, { nested: false });
-    if (res.render === "mention") return <MentionProfileLink pubkey={res.pubkey} />;
-    if (res.render === "address-card") return <EmbeddedAddressCard kind={res.kind} pubkey={res.pubkey} identifier={res.identifier} relays={res.relays} encoded={node.encoded} />;
-    if (res.render === "note-embed") return <EmbeddedNote eventId={res.eventId} encoded={node.encoded} relays={res.relays} />;
-    return <span className="text-brand dark:text-brand/90">{node.encoded.slice(0, 16)}...</span>;
-  },
+  mention: ({ node }) => <NostrEmbedFor decoded={node.decoded} encoded={node.encoded} />,
   // X/Primal-style: inline colored link, same size as body text, no box.
   hashtag: ({ node }) => (
     <a

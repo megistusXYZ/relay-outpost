@@ -5,6 +5,8 @@ import { ensureNewsLibraryMigrated } from "@/lib/news-library";
 import App from "./App";
 import "./index.css";
 import { installScrollClickGuard } from "./lib/scroll-click-guard";
+import { installNativeLinks } from "./lib/native-links";
+import { navigate } from "wouter/use-browser-location";
 import { installRelayFrameGuard } from "./lib/relay-frame-guard";
 import { isUnactionableError } from "./lib/error-noise";
 import { reportCrash, normalizeErrorEvent, normalizeRejection } from "./lib/crash-report";
@@ -69,6 +71,14 @@ ensureNewsLibraryMigrated();
 
 // Prevent scroll gestures from registering as taps (accidental dialog opens).
 installScrollClickGuard();
+
+// Links to other Nostr clients (primal, njump, snort, a nostr: URI…) open our
+// own page for the same thing, on every surface. After the scroll guard, so a
+// swallowed scroll-tap never counts as a link tap (lib/native-links.ts).
+installNativeLinks({
+  navigate: (route) => navigate(route),
+  openTab: (url) => { window.open(url, "_blank", "noopener"); },
+});
 
 // Ask the browser to keep our IndexedDB durable. Without this, under storage
 // pressure (notably iOS/Safari, which can evict non-persisted web-app data) the

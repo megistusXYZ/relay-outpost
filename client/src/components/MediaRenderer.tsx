@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect, lazy, Suspense } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
@@ -34,7 +34,7 @@ import {
   isKnownVideoLink,
   type EmbedType,
 } from "@/lib/media-utils";
-import { normalizeNostrClientLinks } from "@/lib/nostr-client-links";
+import { normalizeNostrClientLinks, nostrRefFromUrl } from "@/lib/nostr-client-links";
 import { InlineEmbedPlayer } from "@/components/InlineEmbedPlayer";
 import { GroupInviteCard } from "@/components/GroupInviteCard";
 import { detectGroupInvite } from "@/lib/concord/invite-detect";
@@ -71,6 +71,10 @@ import {
 } from "@/lib/media-ratio";
 import { getContentWarning, getSensitiveContentSetting, isCwRevealed, markCwRevealed } from "@/lib/sensitive-content";
 import { useBlossomHeal } from "@/hooks/use-blossom-heal";
+
+// NostrPost imports this module, so its embed is loaded lazily (it's already
+// in the launch bundle, so this resolves at once).
+const LazyNostrRefEmbed = lazy(() => import("@/components/NostrPost").then((m) => ({ default: m.NostrRefEmbed })));
 
 function SensitiveContentOverlay({
   reason,
@@ -1212,6 +1216,19 @@ interface LinkPreviewCardProps {
  * no layout shift, and the #fragment secret never leaves the client.
  */
 export function LinkPreviewCard(props: LinkPreviewCardProps) {
+  // A link to another Nostr client (primal, njump, snort…) is shown natively:
+  // the note, profile or article itself, not an external preview of the other
+  // client's page (owner, 2026-09-29).
+  const nostrRef = nostrRefFromUrl(props.url);
+  if (nostrRef) {
+    return (
+      <div data-testid="link-preview-nostr">
+        <Suspense fallback={<div className="h-16 rounded-lg bg-muted/40" />}>
+          <LazyNostrRefEmbed uri={nostrRef} />
+        </Suspense>
+      </div>
+    );
+  }
   const invite = detectGroupInvite(props.url);
   if (invite) return <GroupInviteCard invite={invite} compact={props.compact} />;
   // Audio-space room links (Corny Chat & co) upgrade the same way: detected
