@@ -62,6 +62,7 @@ import {
   feedSnippet,
   followAnswer,
   setDiscoverViewer,
+  setDiscoverTrust,
   type CommunityPulse,
   type VideoTeaser,
   type MarketTeaser,
@@ -1472,6 +1473,12 @@ export default function Discover() {
   // Tiles read and write this account's last-known answers (tile-snapshot).
   // Set during render: the tiles' fetch effects run before this component's.
   setDiscoverViewer(pubkey ?? null);
+  // Discover shows only highly trusted people (lib/discover-trust.ts): whose
+  // trust applies, also set during render for the same reason.
+  const { follows: viewerFollows } = useNostrAuth();
+  const { wotEnabled: viewerWot, scores: viewerScores } = useGrapeRankScores();
+  const followSetForTrust = useMemo(() => new Set(viewerFollows ?? []), [viewerFollows]);
+  setDiscoverTrust({ follows: followSetForTrust, wotEnabled: !!pubkey && viewerWot, ownScores: viewerScores ?? null });
 
   // Hard wall (owner decision, 2026-08-14): browse surfaces are membership —
   // the legacy-social model. Shared deep links (a post, an article, an

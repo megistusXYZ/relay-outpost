@@ -79,3 +79,23 @@ export function scoresFromCards(
   }
   return out;
 }
+
+/**
+ * The people a lens trusts at `minRank` (0-100) and above, highest rank
+ * first: Discover's source of authors (owner call, 2026-09-29: only highly
+ * trusted people, rank 50+). Same rules as scoresFromCards: the first-listed
+ * service decides a person's rank; cards without a usable rank, or from
+ * services the lens doesn't list, don't count.
+ */
+export function trustedAuthorsFromCards(
+  cards: readonly NostrEventLike[],
+  services: readonly string[],
+  minRank: number,
+): string[] {
+  const subjects = [...new Set(cards.map((c) => c.tags.find((t) => t[0] === "d")?.[1]).filter((d): d is string => !!d))];
+  const scores = scoresFromCards(subjects, cards, services, false);
+  return [...scores]
+    .filter(([, s]) => typeof s === "number" && s * 100 >= minRank)
+    .sort((a, b) => (b[1] as number) - (a[1] as number))
+    .map(([pk]) => pk);
+}

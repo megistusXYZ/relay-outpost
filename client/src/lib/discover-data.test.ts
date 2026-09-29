@@ -20,6 +20,7 @@ vi.mock("@/lib/nostr", () => ({
 }));
 vi.mock("@/lib/primal-cache", () => ({
   fetchGlobalFeed: async () => ({ posts: [], profiles: [], statsLoaded: false }),
+  prefetchStatsImmediate: async () => {},
   getCachedFollowerCount: () => undefined,
   primalStatsCache: new Map(),
 }));

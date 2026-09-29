@@ -10,7 +10,7 @@
  * hour, scores for 30 minutes, "no card" for 5.
  */
 import WebSocket from "ws";
-import { rankServicesFromMap, scoresFromCards, KIND_TRUST_MAP, KIND_SCORE_CARD } from "@shared/nip85";
+import { rankServicesFromMap, scoresFromCards, trustedAuthorsFromCards, KIND_TRUST_MAP, KIND_SCORE_CARD } from "@shared/nip85";
 
 export interface RelayAnswer {
   /** The socket opened. */
@@ -19,10 +19,10 @@ export interface RelayAnswer {
   answered: boolean;
   events: any[];
 }
-export type RelayQuery = (relay: string, filter: Record<string, any>) => Promise<RelayAnswer>;
+export type RelayQuery = (relay: string, filter: Record<string, any>, timeoutMs?: number) => Promise<RelayAnswer>;
 
 /** One REQ against one relay, with reached and answered kept apart. */
-export const queryRelay: RelayQuery = (relay, filter) =>
+export const queryRelay: RelayQuery = (relay, filter, timeoutMs = 6_000) =>
   new Promise((resolve) => {
     const events: any[] = [];
     let reached = false;
@@ -35,7 +35,7 @@ export const queryRelay: RelayQuery = (relay, filter) =>
       try { ws.close(); } catch {}
       resolve({ reached, answered, events });
     };
-    const timer = setTimeout(() => finish(false), 6_000);
+    const timer = setTimeout(() => finish(false), timeoutMs);
     try {
       ws = new WebSocket(relay);
     } catch {
@@ -68,11 +68,25 @@ const CHUNK = 100;
 const FALLBACK_CARD_RELAY = "wss://nip85.nosfabrica.com";
 const MAX_CACHED = 5_000;
 
+/**
+ * One read asks for everything the relay allows (scores.brainstorm.world:
+ * max_limit 100,000). Paging by time can't work here: the service publishes
+ * in bulk, 5,000+ cards stamped with the same second. Measured: ~14k cards
+ * in the first 6s, so the list read gets a long allowance; it runs hourly on
+ * the server, never on a visitor's request path once warm.
+ */
+const DEFAULT_PAGE = 100_000;
+const LIST_READ_MS = 45_000;
+/** Enough pages for tens of thousands of cards, bounded all the same. */
+const MAX_PAGES = 12;
+const TRUSTED_TTL = 60 * 60 * 1000;
+
 export function createScoreCardReader(opts: {
   lens: string;
   mapRelays: string[];
   query?: RelayQuery;
   now?: () => number;
+  pageSize?: number;
 }) {
   const query = opts.query ?? queryRelay;
   const now = opts.now ?? Date.now;
@@ -149,5 +163,68 @@ export function createScoreCardReader(opts: {
     return { scores: out, reached };
   }
 
-  return { scores };
+  const trusted = new Map<number, { at: number; authors: string[] }>();
+
+  /**
+   * Everyone the lens trusts at `minRank` (0-100) and above, highest first:
+   * Discover's authors (owner call, 2026-09-29). Every card the lens's
+   * services publish, read in pages, once an hour. `reached: false` with no
+   * authors when the cards couldn't be read, never an empty "nobody".
+   */
+  const refreshing = new Map<number, Promise<{ authors: string[]; reached: boolean }>>();
+
+  async function trustedAuthors(minRank: number): Promise<{ authors: string[]; reached: boolean }> {
+    const hit = trusted.get(minRank);
+    if (hit && now() - hit.at < TRUSTED_TTL) return { authors: hit.authors, reached: true };
+    // Older than an hour: keep serving it while ONE fresh read replaces it.
+    // Only a server with no list at all makes the caller wait.
+    let running = refreshing.get(minRank);
+    if (!running) {
+      running = readTrusted(minRank).finally(() => refreshing.delete(minRank));
+      refreshing.set(minRank, running);
+    }
+    if (hit) return { authors: hit.authors, reached: true };
+    return running;
+  }
+
+  async function readTrusted(minRank: number): Promise<{ authors: string[]; reached: boolean }> {
+    const list = await lensServices();
+    if (list.length === 0) return { authors: [], reached: false };
+    const pageSize = opts.pageSize ?? DEFAULT_PAGE;
+    const cards: any[] = [];
+    const seenIds = new Set<string>();
+    let reached = false;
+    const keep = (events: any[]) => {
+      for (const e of events) {
+        if (e?.id && seenIds.has(e.id)) continue;
+        if (e?.id) seenIds.add(e.id);
+        cards.push(e);
+      }
+    };
+    for (const s of list) {
+      const relay = s.relay ?? FALLBACK_CARD_RELAY;
+      const base = { kinds: [KIND_SCORE_CARD], authors: [s.service], limit: pageSize };
+      let until: number | undefined;
+      for (let page = 0; page < MAX_PAGES; page++) {
+        // Newest first. A read can stop mid-second (measured: ~23k cards,
+        // with 20k+ sharing one second), so the page's oldest second is read
+        // again on its own and the next page starts before it.
+        const a = await query(relay, { ...base, ...(until !== undefined ? { until } : {}) }, LIST_READ_MS);
+        if (a.reached) reached = true;
+        keep(a.events);
+        if (a.events.length === 0) break;
+        const oldest = Math.min(...a.events.map((e) => e.created_at ?? 0));
+        const bucket = await query(relay, { ...base, since: oldest, until: oldest }, LIST_READ_MS);
+        keep(bucket.events);
+        if (a.answered && a.events.length < pageSize) break;
+        until = oldest - 1;
+      }
+    }
+    if (!reached) return { authors: [], reached: false };
+    const authors = trustedAuthorsFromCards(cards, list.map((s) => s.service), minRank);
+    trusted.set(minRank, { at: now(), authors });
+    return { authors, reached: true };
+  }
+
+  return { scores, trustedAuthors };
 }

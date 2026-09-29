@@ -6,7 +6,7 @@
  * Wire-checked: jack ranks 91-97 through the default lens's service.
  */
 import { describe, it, expect } from "vitest";
-import { rankServicesFromMap, scoresFromCards } from "./nip85";
+import { rankServicesFromMap, scoresFromCards, trustedAuthorsFromCards } from "./nip85";
 
 const SVC_A = "a".repeat(64);
 const SVC_B = "b".repeat(64);
@@ -84,5 +84,32 @@ describe("scoresFromCards", () => {
   it("ranks outside 0-100 are clamped", () => {
     const s = scoresFromCards([JACK], [card(SVC_A, JACK, "140")], [SVC_A], true);
     expect(s.get(JACK)).toBe(1);
+  });
+});
+
+describe("trustedAuthorsFromCards", () => {
+  // Discover shows only people the lens trusts highly (owner call, 2026-09-29:
+  // rank 50+). Measured: the default lens has ~900+ people at 50+.
+  const cards = [
+    card(SVC_A, JACK, "97"),
+    card(SVC_A, FIATJAF, "98"),
+    card(SVC_A, NEWBIE, "49"),
+    card(SVC_A, "f".repeat(64), "50"),
+    card(SVC_A, "9".repeat(64), null),
+    card("e".repeat(64), "8".repeat(64), "99"),
+  ];
+
+  it("keeps people at the threshold and above, highest rank first", () => {
+    expect(trustedAuthorsFromCards(cards, [SVC_A], 50)).toEqual([FIATJAF, JACK, "f".repeat(64)]);
+  });
+
+  it("ignores cards without a usable rank and cards from services the lens doesn't list", () => {
+    expect(trustedAuthorsFromCards(cards, [SVC_A], 0)).not.toContain("9".repeat(64));
+    expect(trustedAuthorsFromCards(cards, [SVC_A], 0)).not.toContain("8".repeat(64));
+  });
+
+  it("the first-listed service decides when two services score the same person", () => {
+    const two = [card(SVC_B, JACK, "90"), card(SVC_A, JACK, "20")];
+    expect(trustedAuthorsFromCards(two, [SVC_A, SVC_B], 50)).toEqual([]);
   });
 });
