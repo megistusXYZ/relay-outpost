@@ -1,3 +1,4 @@
+import { CollapsibleBio } from "@/components/profile/CollapsibleBio";
 import { SearchPill } from "@/components/SearchPill";
 import { useEffect, useRef, useMemo, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
@@ -2329,7 +2330,13 @@ export default function Profile() {
             // Render the bio through the shared note renderer so nostr: mentions
             // resolve to @names and URLs linkify — not raw npub/event strings.
             aboutNode: profileContent?.about
-              ? <LinkifiedText text={profileContent.about} className="text-sm text-foreground/85 whitespace-pre-wrap break-words leading-relaxed" data-testid="identity-about" />
+              ? (
+                // Phones: three lines and "Show more", so every profile reads the same length.
+                <CollapsibleBio
+                  text={profileContent.about}
+                  render={(t) => <LinkifiedText text={t} className="text-sm text-foreground/85 whitespace-pre-wrap break-words leading-relaxed" data-testid="identity-about" />}
+                />
+              )
               : undefined,
             nip05: profileContent?.nip05,
             website: profileContent?.website,
