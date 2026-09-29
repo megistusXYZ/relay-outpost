@@ -570,7 +570,7 @@ export async function fetchImagesTeaser(
   follows: readonly string[],
   flagged: ReadonlySet<string>,
 ): Promise<Reached<ShelfImage[]>> {
-  return remembered(`images:${follows.length}:${flagged.size > 0 ? "f" : "0"}`, () => fetchImagesTeaserFresh(follows, flagged));
+  return remembered(`images:${follows.length}:${flagged.size > 0 ? "f" : "0"}:${lensKey()}`, () => fetchImagesTeaserFresh(follows, flagged));
 }
 
 async function fetchImagesTeaserFresh(
@@ -608,8 +608,17 @@ async function fetchImagesTeaserFresh(
   // user with a thin follow graph — the person the front door most needs to
   // not scare off. A quiet tile (its door still opens the images feed, where
   // the full trust filters run) beats a roulette thumbnail.
-  const candidates = toCandidates(networkEvents);
-  return { data: pickImageShelf(candidates, 8), reached: served || networkEvents.length > 0 };
+  // People you follow, plus highly trusted people (owner call, 2026-09-29):
+  // the front door can show a visitor photos now, but only from people the
+  // lens trusts at 0.50+, never an unvetted stranger's.
+  const trust = await loadDiscoverTrust([], trustOpts);
+  if (!trust.reached) return { data: [], reached: false };
+  const trustedEvents = trust.top.length > 0
+    ? await collectOnce(FAST_RELAYS, { kinds: [1, 20], authors: trust.top.slice(0, 300), since, limit: 80 }, 8_000)
+    : [];
+  const gate = { follows: new Set(follows), scores: trust.scores };
+  const candidates = toCandidates(gateByTrust([...networkEvents, ...trustedEvents], (e) => e.pubkey, gate));
+  return { data: pickImageShelf(candidates, 8), reached: served || networkEvents.length > 0 || trustedEvents.length > 0 };
 }
 
 export async function fetchVideoTeaser(): Promise<Reached<VideoTeaser | null>> {

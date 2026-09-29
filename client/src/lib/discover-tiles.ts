@@ -185,14 +185,3 @@ export function isSensitiveMedia(event: { tags: string[][]; content: string }): 
   }
   return /\bnsfw\b/i.test(event.content);
 }
-
-/**
- * What the Images tile says when it has nothing to show. It only ever shows
- * people you follow, so with no follows an empty shelf is not evidence of a
- * quiet network; say where photos come from instead.
- */
-export function imagesEmptyLine(followCount: number): string {
-  return followCount === 0
-    ? "Photos from people you follow show up here."
-    : "Quiet right now — tap to browse.";
-}

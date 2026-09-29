@@ -42,7 +42,7 @@ vi.mock("@/lib/relay-reach", () => ({
   relayRefusedUs: () => undefined,
 }));
 
-import { discoverNewsFeeds, summarizePulse, fetchCommunityPulse, feedSnippet, survivingArticles, fetchMarketShelf, fetchNextCalendarEvent, setDiscoverTrust, resetDiscoverAnswers } from "./discover-data";
+import { discoverNewsFeeds, summarizePulse, fetchCommunityPulse, feedSnippet, survivingArticles, fetchMarketShelf, fetchNextCalendarEvent, fetchImagesTeaser, setDiscoverTrust, resetDiscoverAnswers } from "./discover-data";
 import { LISTING_RELAYS, KIND_CLASSIFIED_LISTING } from "./listing";
 import { ALL_NEWS_FEEDS, ALL_PODCAST_FEEDS, DEFAULT_FEEDS, STARTER_URLS_V2, type SavedFeed } from "./rss-feeds";
 
@@ -232,6 +232,20 @@ describe("Discover's Events and Marketplace tiles show only trusted people", () 
       : []);
     const r = await fetchMarketShelf();
     expect(r.data?.map((t) => t.title).sort()).toEqual(["Coffee", "Hat"].sort());
+  });
+
+  it("Images: trusted people's photos for a visitor who follows nobody, strangers' left out", async () => {
+    trustedList(true);
+    scoreOf = { [TRUSTED]: 0.9, [STRANGER]: 0.1 };
+    setDiscoverTrust({ follows: new Set(), wotEnabled: false, ownScores: null });
+    const photo = (pubkey: string, n: number) => ({
+      id: pubkey.slice(0, 6) + n, kind: 20, pubkey, created_at: Math.floor(Date.now() / 1000) - 60, sig: "s",
+      content: "", tags: [["imeta", `url https://img.example/${pubkey.slice(0, 4)}${n}.jpg`, "m image/jpeg"], ["title", "pic"]],
+    });
+    relayEvents = (f) => (f.kinds?.includes(20) ? [photo(STRANGER, 1), photo(TRUSTED, 2)] : []);
+    const r = await fetchImagesTeaser([], new Set());
+    expect(r.reached).toBe(true);
+    expect((r.data ?? []).map((i) => i.authorPk)).toEqual([TRUSTED]);
   });
 
   it("when the trusted list can't be read, Events says so and shows nothing", async () => {

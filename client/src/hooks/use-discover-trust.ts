@@ -12,7 +12,7 @@ import { admitToDiscover, loadDiscoverTrust } from "@/lib/discover-trust";
  * flash unvetted faces; `reached: false` means the trusted list couldn't be
  * read, and `admit` then lets only people you follow through.
  */
-export function useDiscoverTrust(pubkeys: readonly string[]) {
+export function useDiscoverTrust(pubkeys: readonly string[], enabled = true) {
   const { pubkey, follows } = useNostrAuth();
   const { wotEnabled, scores } = useGrapeRankScores();
   const followSet = useMemo(() => new Set(follows ?? []), [follows]);
@@ -20,12 +20,13 @@ export function useDiscoverTrust(pubkeys: readonly string[]) {
   const [state, setState] = useState<{ reached: boolean | null; scores: Map<string, number> }>({ reached: null, scores: new Map() });
 
   useEffect(() => {
+    if (!enabled) return;
     let live = true;
     loadDiscoverTrust(key ? key.split(",") : [], { follows: followSet, wotEnabled: !!pubkey && wotEnabled, ownScores: scores ?? null })
       .then((t) => { if (live) setState({ reached: t.reached, scores: t.scores }); })
       .catch(() => { if (live) setState({ reached: false, scores: new Map() }); });
     return () => { live = false; };
-  }, [key, followSet, pubkey, wotEnabled, scores]);
+  }, [enabled, key, followSet, pubkey, wotEnabled, scores]);
 
   const admit = useCallback(
     (pk: string) => admitToDiscover(pk, { follows: followSet, scores: state.scores }),
