@@ -6,7 +6,7 @@ import { useLocation, useSearch } from "wouter";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useChatsBadge } from "@/hooks/use-chats-badge";
-import { openCreateStudio } from "@/components/CreateStudio";
+import { openCreateStudio } from "@/lib/shell-events";
 import { useOutpostCompose } from "@/contexts/OutpostComposeContext";
 import { OutpostIcon } from "@/components/icons/OutpostIcon";
 import { isNavDestinationActive } from "@/lib/footer-nav";

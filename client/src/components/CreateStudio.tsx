@@ -25,10 +25,9 @@ import {
 
 // One global event opens the studio from anywhere (sidebar, mobile footer,
 // Command Post header). Mounted once at the app root.
-export const OPEN_CREATE_STUDIO = "open-create-studio";
-export function openCreateStudio() {
-  window.dispatchEvent(new CustomEvent(OPEN_CREATE_STUDIO));
-}
+// (lib/shell-events.ts, so openers don't pull this overlay into the launch bundle)
+import { OPEN_CREATE_STUDIO, openCreateStudio } from "@/lib/shell-events";
+export { OPEN_CREATE_STUDIO, openCreateStudio };
 
 type Step = "picker" | "photo" | "video" | "audio" | "podcast";
 

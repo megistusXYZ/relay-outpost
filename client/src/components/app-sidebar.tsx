@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 import { Rss, Search, LogOut, Unplug, Fingerprint, PanelLeftClose, Plus, ChevronsUpDown, GalleryVerticalEnd } from "lucide-react";
-import { openCreateStudio } from "@/components/CreateStudio";
+import { openCreateStudio } from "@/lib/shell-events";
 import { AccountIcon } from "@/components/icons/AccountIcon";
 import { SidebarOutposts } from "@/components/SidebarOutposts";
 import { SidebarWallet } from "@/components/SidebarWallet";
