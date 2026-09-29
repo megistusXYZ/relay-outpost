@@ -18,7 +18,7 @@ import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
   AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-import { openCreateStudio } from "@/components/CreateStudio";
+import { openCreateStudio } from "@/lib/shell-events";
 import { InviteFriend } from "@/components/InviteFriend";
 import { QRCodeSVG } from "qrcode.react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
