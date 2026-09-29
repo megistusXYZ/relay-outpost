@@ -23,6 +23,7 @@
  * kind-3 path (wipe footgun, 51023d6). No publish logic lives here.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useDiscoverTrust } from "@/hooks/use-discover-trust";
 import { useLocation } from "wouter";
 import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
@@ -63,7 +64,11 @@ function usableProfile(ev: Event | null): { name: string; avatar: string } | nul
   }
 }
 
-export function PeopleToFollowStrip({ className = "" }: { className?: string }) {
+export function PeopleToFollowStrip({ className = "", strictTrust = false }: {
+  className?: string;
+  /** Discover's front door: only people trusted at 0.50+ (lib/discover-trust.ts). */
+  strictTrust?: boolean;
+}) {
   const [, setLocation] = useLocation();
   const { pubkey, follows } = useNostrAuth();
   const { flaggedPubkeys, wotEnabled } = useGrapeRankScores();
@@ -232,14 +237,23 @@ export function PeopleToFollowStrip({ className = "" }: { className?: string }) 
     const t = setTimeout(() => setLatchGraceOver(true), 8_000);
     return () => clearTimeout(t);
   }, []);
-  const freshHasNetwork = fresh.some((c) => c.source === "network");
-  const readyToLatch = !holdForFloor && (freshHasNetwork || !expectNetwork || latchGraceOver);
-  if (readyToLatch && !frozenRef.current && fresh.length >= MIN_TO_SHOW) frozenRef.current = fresh;
+  // Discover (strictTrust): only highly trusted people, checked BEFORE the
+  // strip settles on its cards, so an untrusted face never flashes in.
+  const trustPks = useMemo(
+    () => (strictTrust ? [...fresh, ...holdCards].map((c) => c.pubkey) : []),
+    [strictTrust, fresh, holdCards],
+  );
+  const trust = useDiscoverTrust(trustPks, strictTrust);
+  const trustedFresh = strictTrust ? (trust.checked ? fresh.filter((c) => trust.admit(c.pubkey)) : []) : fresh;
+  const freshHasNetwork = trustedFresh.some((c) => c.source === "network");
+  const readyToLatch = !holdForFloor && (!strictTrust || trust.checked) && (freshHasNetwork || !expectNetwork || latchGraceOver);
+  if (readyToLatch && !frozenRef.current && trustedFresh.length >= MIN_TO_SHOW) frozenRef.current = trustedFresh;
 
   const stillSafe = (pk: string) =>
     !(flaggedPubkeys?.has(pk)) && !isSpamPubkey(pk) && !isMutedPubkey(pk);
+  const trustedHold = strictTrust ? (trust.checked ? holdCards.filter((c) => trust.admit(c.pubkey)) : []) : holdCards;
   const cards = (holdForFloor
-    ? (holdCards.length >= MIN_TO_SHOW ? holdCards : [])
+    ? (trustedHold.length >= MIN_TO_SHOW ? trustedHold : [])
     : (frozenRef.current ?? [])
   ).filter((c) => stillSafe(c.pubkey));
 
