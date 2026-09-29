@@ -163,17 +163,7 @@ export default function MediaServers() {
   if (!pubkey) return null;
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-10 space-y-5" data-testid="page-media-servers">
-      <div className="flex items-center gap-2.5">
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/15 text-brand">
-          <HardDrive className="h-4 w-4" />
-        </span>
-        <h1 className="text-lg font-brand uppercase tracking-widest">Media servers</h1>
-      </div>
-
-      <p className="text-sm text-muted-foreground/70 leading-relaxed">
-        Where your images &amp; videos live. Uploads try your servers first, then fall back to the default host.
-      </p>
+    <div className="max-w-xl mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-10 space-y-5" data-testid="page-media-servers">
 
       <Card className="glass-card p-4 sm:p-5 space-y-3">
         {loading ? (

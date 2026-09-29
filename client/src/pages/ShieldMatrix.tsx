@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { PageToolbar } from "@/components/PageToolbar";
 import { MissionBriefing, SHIELD_MATRIX_BRIEFING } from "@/components/MissionBriefing";
 import { use$ } from "applesauce-react/hooks";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ import { useNostrMuteList } from "@/hooks/use-nostr-mute-list";
 import { eventStore, fetchProfilesCached } from "@/lib/nostr";
 import {
   ShieldCheck, VolumeX, X, Plus, Flag,
-  Search, ChevronDown, ChevronUp, RotateCcw, ArrowLeft, Lock,
+  Search, ChevronDown, ChevronUp, RotateCcw, Lock,
   Check, AlertTriangle, Sliders,
 } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
@@ -1501,62 +1502,38 @@ export default function ShieldMatrix({ embedded = false }: { embedded?: boolean 
     <div className={embedded ? "" : "min-h-screen"}>
       <MissionBriefing pageId="shield-matrix" steps={SHIELD_MATRIX_BRIEFING} />
       <div className={embedded ? "space-y-5" : "max-w-2xl mx-auto px-4 py-5 space-y-5"}>
-        <div className="relative overflow-hidden rounded-xl border border-brand/20 dark:border-brand/15"
-          style={{ background: "linear-gradient(135deg, rgba(139, 92, 246, 0.06) 0%, rgba(124, 58, 237, 0.03) 50%, rgba(109, 40, 217, 0.06) 100%)" }}
+        {/* No hero title (lib/page-titles.test.ts): the status line and the
+            custom-tiers shortcut it carried live in the shared toolbar. */}
+        <PageToolbar
+          inStack
+          testId="trust-status"
+          status={
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${wotEnabled ? "bg-emerald-500" : "bg-slate-500/50"}`} />
+                WoT {wotEnabled ? "Active" : "Off"}
+              </span>
+              {wotEnabled && <span data-testid="text-spam-known">{threatCount} known threats</span>}
+              {wotEnabled && <span data-testid="text-spam-flagged">{flaggedPubkeys?.size ?? 0} flagged</span>}
+              <span data-testid="text-spam-muted">{mutedPubkeys.length} muted</span>
+              <span data-testid="text-spam-keywords">{mutedKeywords.length} keywords</span>
+              <span data-testid="text-spam-reports">{reportedItems.length} reported</span>
+            </div>
+          }
         >
-          <div className="absolute inset-0 opacity-20 pointer-events-none"
-            style={{ background: "radial-gradient(ellipse at 30% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 60%), radial-gradient(ellipse at 70% 80%, rgba(124, 58, 237, 0.1) 0%, transparent 50%)" }}
-          />
-          <div className="relative px-4 py-4 sm:px-5 sm:py-5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="w-11 h-11 shrink-0 rounded-lg bg-brand/10 dark:bg-brand/15 border border-brand/20 flex items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.1)] dark:shadow-[0_0_20px_rgba(139,92,246,0.15)]">
-                  <ShieldMatrixIcon className="w-5.5 h-5.5 text-brand/80" />
-                </div>
-                <div className="min-w-0">
-                  <h1 className="text-lg font-bold text-foreground/95 tracking-tight flex flex-wrap items-center gap-x-2 gap-y-1">
-                    Trust &amp; safety
-                    {customTiersActive && (
-                      <button
-                        type="button"
-                        onClick={() => document.getElementById("trust-tiers")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                        className="shrink-0 whitespace-nowrap rounded-md border border-brand/15 bg-brand/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-brand/80 transition-colors hover:bg-brand/20 hover:text-brand-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
-                        data-testid="button-custom-tiers"
-                        title="Edit custom trust tiers"
-                        aria-label="Custom tiers active — edit trust tiers"
-                      >
-                        Custom Tiers
-                      </button>
-                    )}
-                  </h1>
-                  <p className="text-xs text-muted-foreground/55 mt-0.5">
-                    Web of Trust &amp; moderation
-                  </p>
-                </div>
-              </div>
-              {!embedded && (
-                <Link href="/settings" className="shrink-0">
-                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground/50 hover:text-muted-foreground gap-1.5 h-8">
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    Settings
-                  </Button>
-                </Link>
-              )}
-            </div>
-
-            <div className="flex flex-wrap gap-x-5 gap-y-1.5 mt-3 text-xs">
-              <div className="flex items-center gap-1.5">
-                <div className={`w-2 h-2 rounded-full ${wotEnabled ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]" : "bg-slate-500/50"}`} />
-                <span className="text-muted-foreground/60">WoT {wotEnabled ? "Active" : "Off"}</span>
-              </div>
-              {wotEnabled && <span className="text-muted-foreground/40" data-testid="text-spam-known">{threatCount} known threats</span>}
-              {wotEnabled && <span className="text-muted-foreground/40" data-testid="text-spam-flagged">{flaggedPubkeys?.size ?? 0} flagged</span>}
-              <span className="text-muted-foreground/40" data-testid="text-spam-muted">{mutedPubkeys.length} muted</span>
-              <span className="text-muted-foreground/40" data-testid="text-spam-keywords">{mutedKeywords.length} keywords</span>
-              <span className="text-muted-foreground/40" data-testid="text-spam-reports">{reportedItems.length} reported</span>
-            </div>
-          </div>
-        </div>
+          {customTiersActive && (
+            <button
+              type="button"
+              onClick={() => document.getElementById("trust-tiers")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="whitespace-nowrap rounded-md border border-brand/15 bg-brand/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-brand/80 transition-colors hover:bg-brand/20 hover:text-brand-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+              data-testid="button-custom-tiers"
+              title="Edit custom trust tiers"
+              aria-label="Custom tiers active — edit trust tiers"
+            >
+              Custom Tiers
+            </button>
+          )}
+        </PageToolbar>
 
         {/* ① TRUST — automatic protection from your social graph */}
         <div className="space-y-3">

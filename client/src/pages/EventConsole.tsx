@@ -43,7 +43,6 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import {
-  Terminal,
   Play,
   Pause,
   Square,
@@ -1845,16 +1844,6 @@ export default function EventConsole({ embedded = false }: { embedded?: boolean 
   return (
     <div className={embedded ? "" : "px-3 sm:px-4 py-3 sm:py-6"} data-testid="page-event-console">
       <div className={embedded ? "space-y-4 pb-6" : "max-w-3xl mx-auto space-y-4 pb-6"}>
-        <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-base sm:text-lg font-semibold text-foreground" data-testid="text-page-title">
-            <Terminal className="w-4 h-4 sm:w-5 sm:h-5 text-brand/70 shrink-0" />
-            Event Console
-          </h1>
-          <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed" data-testid="text-page-subtitle">
-            Query relays directly. Build filters, subscribe to live events, and inspect raw event data.
-          </p>
-        </div>
-
         <ArchivesLookup
           externalEventId={archivesEventId}
           externalPubkey={archivesPubkey}

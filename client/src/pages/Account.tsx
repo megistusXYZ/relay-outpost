@@ -99,11 +99,8 @@ export default function Account() {
   const LoginMethodIcon = loginMethod === "bunker" ? Unplug : Fingerprint;
 
   return (
-    <div className="mx-auto w-full max-w-lg md:max-w-2xl px-3 sm:px-4 md:px-6 pt-2 md:pt-6 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
-      {/* Title — the app's top bar already provides the single Back button. */}
-      <div className="flex items-center h-12">
-        <h1 className="text-lg font-brand uppercase tracking-widest">Account</h1>
-      </div>
+    <div className="mx-auto w-full max-w-lg md:max-w-2xl px-3 sm:px-4 md:px-6 pt-4 sm:pt-6 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
+      {/* No title block: pages open with their content (lib/page-titles.test.ts). */}
 
       {/* Your face and your name, so this opens the page that IS your face and
           your name. It used to go to the edit form — the same place the "Edit
@@ -113,7 +110,7 @@ export default function Account() {
           is the profile. */}
       <button
         onClick={go(`/profile/${npubFull}`)}
-        className="w-full flex items-center gap-3 rounded-xl border border-border/40 bg-card/40 p-3 mt-1 mb-4 text-left transition-colors hover:bg-primary/[0.04]"
+        className="w-full flex items-center gap-3 rounded-xl border border-border/40 bg-card/40 p-3 mb-4 text-left transition-colors hover:bg-primary/[0.04]"
         data-testid="button-account-profile"
       >
         <Avatar className="w-12 h-12 border border-border shrink-0">
