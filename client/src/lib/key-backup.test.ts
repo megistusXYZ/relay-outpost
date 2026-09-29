@@ -10,9 +10,18 @@ const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 const T0 = 1_790_000_000_000; // the account was created here
 
-const fresh = { keyInThisBrowser: true, createdAt: T0, backedUpAt: undefined, snoozedUntil: undefined };
+const fresh = { keyInThisBrowser: true, createdHere: true, createdAt: T0, backedUpAt: undefined, snoozedUntil: undefined };
 
 describe("key backup reminders", () => {
+  it("never bothers someone who brought their own key (pasted nsec, key file): they already have it", () => {
+    // Reported 2026-09-29: "Not backed up" showed for people who signed in
+    // with their own nsec. Only an account made HERE has a key nobody else
+    // has seen yet.
+    const imported = { ...fresh, createdHere: false, createdAt: undefined };
+    expect(backupNudge(imported, T0 + HOUR)).toBe("none");
+    expect(backupNudge(imported, T0 + 30 * DAY)).toBe("none");
+  });
+
   it("lists it on the Account page right away, and nudges once the account is a day old", () => {
     expect(backupNudge(fresh, T0 + HOUR)).toBe("row");
     expect(backupNudge(fresh, T0 + DAY + HOUR)).toBe("nudge");
@@ -46,11 +55,11 @@ describe("what this device remembers about backups", () => {
 
   it("nudges a day after sign-up, backs off for three days on Later, and stops for good after a backup", () => {
     markAccountCreated(ME, T0);
-    expect(backupNudge(backupFacts(ME, true), T0 + DAY + HOUR)).toBe("nudge");
+    expect(backupNudge(backupFacts(ME, true, true), T0 + DAY + HOUR)).toBe("nudge");
     snoozeBackupNudge(ME, T0 + DAY + HOUR);
-    expect(backupNudge(backupFacts(ME, true), T0 + 3 * DAY)).toBe("row");
-    expect(backupNudge(backupFacts(ME, true), T0 + 4 * DAY + 2 * HOUR)).toBe("nudge");
+    expect(backupNudge(backupFacts(ME, true, true), T0 + 3 * DAY)).toBe("row");
+    expect(backupNudge(backupFacts(ME, true, true), T0 + 4 * DAY + 2 * HOUR)).toBe("nudge");
     markBackedUp(ME, T0 + 5 * DAY);
-    expect(backupNudge(backupFacts(ME, true), T0 + 30 * DAY)).toBe("none");
+    expect(backupNudge(backupFacts(ME, true, true), T0 + 30 * DAY)).toBe("none");
   });
 });
