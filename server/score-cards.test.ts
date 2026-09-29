@@ -89,3 +89,74 @@ describe("reading the lens's map", () => {
     expect(typeof r === "string" ? r : r.scores.get(JACK)).toBe(0.91);
   });
 });
+
+describe("the lens's trusted authors (Discover)", () => {
+  const cardAt = (subject: string, rank: string, at: number) => ({ id: subject + at, kind: 30382, pubkey: SVC, created_at: at, tags: [["d", subject], ["rank", rank]] });
+  const A = "a".repeat(64), B = "b".repeat(64), C = "c".repeat(64);
+
+  it("lists everyone at the threshold: pages, plus a full read of each page's cut-off second", async () => {
+    // Measured on scores.brainstorm.world: a read stops after ~23k cards, and
+    // the service stamps 20k+ cards with the same second. So each page's
+    // oldest second is read again on its own (since = until = that second),
+    // and the next page starts before it.
+    const D = "d".repeat(64);
+    const query: RelayQuery = vi.fn(async (_relay, filter) => {
+      if (filter.kinds?.[0] === 10040) return { reached: true, answered: true, events: [lensMap] };
+      if (filter.since !== undefined) return { reached: true, answered: true, events: [cardAt(B, "40", 200), cardAt(D, "80", 200)] };
+      if (filter.until === undefined) return { reached: true, answered: false, events: [cardAt(A, "90", 300), cardAt(B, "40", 200)] };
+      return { reached: true, answered: true, events: [cardAt(C, "70", 100)] };
+    });
+    const reader = createScoreCardReader({ lens: LENS, mapRelays: ["wss://purplepag.es"], query });
+    const r = await reader.trustedAuthors(50);
+    expect(r).toEqual({ authors: [A, D, C], reached: true });
+    const cardCalls = (query as any).mock.calls.filter((c: any[]) => c[1].kinds[0] === 30382).map((c: any[]) => c[1]);
+    expect(cardCalls[1]).toMatchObject({ since: 200, until: 200 });
+    expect(cardCalls[2]).toMatchObject({ until: 199 });
+  });
+
+  it("a card relay we couldn't reach gives no list, and says so", async () => {
+    const query: RelayQuery = vi.fn(async (_relay, filter) =>
+      filter.kinds?.[0] === 10040
+        ? { reached: true, answered: true, events: [lensMap] }
+        : { reached: false, answered: false, events: [] });
+    const r = await createScoreCardReader({ lens: LENS, mapRelays: ["wss://purplepag.es"], query }).trustedAuthors(50);
+    expect(r).toEqual({ authors: [], reached: false });
+  });
+
+  it("is read once an hour, not per visitor", async () => {
+    const query: RelayQuery = vi.fn(async (_relay, filter) =>
+      filter.kinds?.[0] === 10040
+        ? { reached: true, answered: true, events: [lensMap] }
+        : { reached: true, answered: true, events: [cardAt(A, "90", 300)] });
+    const reader = createScoreCardReader({ lens: LENS, mapRelays: ["wss://purplepag.es"], query });
+    await reader.trustedAuthors(50);
+    const n = (query as any).mock.calls.length;
+    await reader.trustedAuthors(50);
+    expect((query as any).mock.calls.length).toBe(n);
+  });
+});
+
+describe("the trusted list stays served while it refreshes", () => {
+  const A = "a".repeat(64), B = "b".repeat(64);
+  const cardAt = (subject: string, rank: string) => ({ id: subject, kind: 30382, pubkey: SVC, created_at: 1, tags: [["d", subject], ["rank", rank]] });
+
+  it("an hour-old list is served at once while one fresh read replaces it", async () => {
+    let t = 0;
+    let listRead = 0;
+    const query: RelayQuery = vi.fn(async (_relay, filter) => {
+      if (filter.kinds?.[0] === 10040) return { reached: true, answered: true, events: [lensMap] };
+      if (filter.since === undefined) listRead++;
+      // Before the hour the relay holds A; by the refresh it holds B.
+      return { reached: true, answered: true, events: [cardAt(t === 0 ? A : B, "90")] };
+    });
+    const reader = createScoreCardReader({ lens: LENS, mapRelays: ["wss://purplepag.es"], query, now: () => t });
+    expect((await reader.trustedAuthors(50)).authors).toEqual([A]);
+    t = 61 * 60 * 1000;
+    const stale = await reader.trustedAuthors(50);
+    expect(stale).toEqual({ authors: [A], reached: true });
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+    expect((await reader.trustedAuthors(50)).authors).toEqual([B]);
+    expect(listRead).toBe(2);
+  });
+});

@@ -2969,9 +2969,17 @@ export async function registerRoutes(
     // nos.lol measured never answering a 10040 read (6s timeout), so it's out.
     mapRelays: ["wss://purplepag.es", "wss://relay.damus.io"],
   });
+  /** Discover shows only people the lens ranks 50+ (owner call, 2026-09-29). */
+  const DISCOVER_MIN_RANK = 50;
+  /** How many of the most trusted people tiles fetch content from directly. */
+  const DISCOVER_TOP = 300;
   // Read the lens's map (and one card) at startup, so the first visitor after
-  // a deploy doesn't wait for it. Best-effort; failures just mean a cold read.
+  // a deploy doesn't wait for it, then Discover's trusted list (rank 50+),
+  // refreshed hourly in the background. Best-effort; a failure means a cold read.
   void scoreCards.scores([DEFAULT_LENS]).catch(() => {});
+  const warmTrusted = () => void scoreCards.trustedAuthors(DISCOVER_MIN_RANK).catch(() => {});
+  warmTrusted();
+  setInterval(warmTrusted, 55 * 60 * 1000).unref?.();
 
   /**
    * One Brainstorm (Meili) call. A 404 is a real answer ("no such document");
@@ -3096,6 +3104,30 @@ export async function registerRoutes(
   const wotScoreCache = new Map<string, { score: number; ts: number }>();
   const WOT_SCORE_TTL = 30 * 60 * 1000; // wot_rank changes slowly — keep popular accounts warm
   const WOT_MISS_TTL = 5 * 60 * 1000;   // re-check unknown accounts sooner (may get indexed)
+
+  // Discover shows only people the lens trusts highly (owner call,
+  // 2026-09-29: rank 50+). The list is every score card the default lens's
+  // services publish, read once an hour (score-cards.ts). 503 when the cards
+  // couldn't be read, so tiles say so instead of showing unvetted content.
+  app.get("/api/discover/trusted-authors", async (_req, res) => {
+    try {
+      // Never hold a visitor for the first read after a deploy (measured ~80s):
+      // after 5s say so honestly; the read carries on in the background.
+      const result = await Promise.race([
+        scoreCards.trustedAuthors(DISCOVER_MIN_RANK),
+        new Promise<null>((r) => setTimeout(() => r(null), 5_000)),
+      ]);
+      if (!result || !result.reached) return res.status(503).json({ authors: [], error: "Couldn't read who's trusted right now" });
+      const { authors } = result;
+      // The full list runs to ~20,000 people (measured 2026-09-29); tiles only
+      // need the top of it to fetch content by author, and check any other
+      // author through /api/brainstorm/wot-batch (rank 50+ passes).
+      res.set("Cache-Control", "public, max-age=600").json({ authors: authors.slice(0, DISCOVER_TOP), count: authors.length, minRank: DISCOVER_MIN_RANK });
+    } catch (err: any) {
+      console.error("[discover-trusted-authors] error:", err?.message || err);
+      res.status(503).json({ authors: [], error: "Couldn't read who's trusted right now" });
+    }
+  });
 
   app.post("/api/brainstorm/wot-batch", async (req, res) => {
     try {
