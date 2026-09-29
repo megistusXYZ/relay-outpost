@@ -123,6 +123,13 @@ function lensKey(): string {
   return `trusted:${chooseDiscoverLens(trustOpts)}`;
 }
 
+/** Forget every remembered tile answer (tests; also safe on account switch). */
+export function resetDiscoverAnswers(): void {
+  answerMemo.clear();
+  inFlight.clear();
+  paintedFromSnapshot.clear();
+}
+
 /** Keys that already painted from a snapshot this session: only once each. */
 const paintedFromSnapshot = new Set<string>();
 /** On a snapshot answer: the fresh answer that will replace it. */
@@ -500,7 +507,7 @@ export function summarizePulse(
 // ── Next calendar event ──────────────────────────────────────────────────────
 
 export async function fetchNextCalendarEvent(): Promise<Reached<CalendarEventData | null>> {
-  return remembered("calendar", fetchNextCalendarEventFresh);
+  return remembered(`calendar:${lensKey()}`, fetchNextCalendarEventFresh);
 }
 
 async function fetchNextCalendarEventFresh(): Promise<Reached<CalendarEventData | null>> {
@@ -508,11 +515,18 @@ async function fetchNextCalendarEventFresh(): Promise<Reached<CalendarEventData 
     anyServed(FAST_RELAYS),
     collectOnce(FAST_RELAYS, { kinds: [KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT], limit: 60 }, 11_000),
   ]);
-  const parsed = events
+  // Only events hosted by highly trusted people (or your follows), topped up
+  // with the most trusted people's own events (lib/discover-trust.ts).
+  const trust = await loadDiscoverTrust(events.map((e) => e.pubkey), trustOpts);
+  if (!trust.reached) return { data: null, reached: false };
+  const trustedEvents = trust.top.length > 0
+    ? await collectOnce(FAST_RELAYS, { kinds: [KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT], authors: trust.top.slice(0, 300), limit: 60 }, 8_000)
+    : [];
+  const parsed = gateByTrust([...events, ...trustedEvents], (e) => e.pubkey, { follows: trustOpts.follows, scores: trust.scores })
     .map(parseCalendarEvent)
     .filter((e): e is CalendarEventData => e !== null && !!e.title);
   const next = pickNextUpcoming(parsed, Math.floor(Date.now() / 1000));
-  return { data: next, reached: served || events.length > 0 };
+  return { data: next, reached: served || events.length > 0 || trustedEvents.length > 0 };
 }
 
 // ── Video teaser ─────────────────────────────────────────────────────────────
@@ -616,7 +630,7 @@ export async function fetchMarketShelf(): Promise<Reached<MarketTeaser[] | null>
   // "market:conduit", not "market": snapshots saved before the shelf was
   // limited to Conduit could hold the steroid-shop listings, and a new key
   // makes every device ignore them at once.
-  return remembered("market:conduit", fetchMarketShelfFresh);
+  return remembered(`market:conduit:${lensKey()}`, fetchMarketShelfFresh);
 }
 
 async function fetchMarketShelfFresh(): Promise<Reached<MarketTeaser[] | null>> {
@@ -629,13 +643,25 @@ async function fetchMarketShelfFresh(): Promise<Reached<MarketTeaser[] | null>> 
     anyServed(relays),
     collectOnce(relays, { kinds: [KIND_CLASSIFIED_LISTING], limit: 40 }, 11_000),
   ]);
+  // Only highly trusted sellers (or your follows), topped up with the most
+  // trusted sellers' own listings on Conduit (lib/discover-trust.ts).
+  const trust = await loadDiscoverTrust(events.map((e) => e.pubkey), trustOpts);
+  if (!trust.reached) return { data: null, reached: false };
+  const trustedListings = trust.top.length > 0
+    ? await collectOnce(relays, { kinds: [KIND_CLASSIFIED_LISTING], authors: trust.top.slice(0, 300), limit: 40 }, 8_000)
+    : [];
+  const gated = gateByTrust([...events, ...trustedListings], (e) => e.pubkey, { follows: trustOpts.follows, scores: trust.scores });
   // A marketplace door that shows words undersells the room behind it
   // (ImagesShelf precedent) — image-bearing, unsold, front-door-safe.
-  const teasers = pickMarketListings(events.filter((e) => !isSensitiveMedia(e)), {
+  const teasers = pickMarketListings(gated.filter((e) => !isSensitiveMedia(e)), {
     isReported: (e) => isReportedEvent(e.id) || isReportedPubkey(e.pubkey),
     mutedSellers: CATALOG_MUTED_SELLERS,
   })
     .filter((l) => !l.sold && l.images.length > 0)
+    // Front-door quality: no placeholder listings ("Test"), and one listing
+    // per seller so a single shop can't fill the shelf.
+    .filter((l) => !/^\s*test(ing)?\s*\d*\s*$/i.test(l.title))
+    .filter((l, i, all) => all.findIndex((o) => o.pubkey === l.pubkey) === i)
     .slice(0, 6)
     .map((l) => ({
       id: l.id,
@@ -644,7 +670,7 @@ async function fetchMarketShelfFresh(): Promise<Reached<MarketTeaser[] | null>> 
       image: l.images[0],
       timeMs: l.publishedAt * 1000,
     }));
-  return { data: teasers.length > 0 ? teasers : null, reached: served || events.length > 0 };
+  return { data: teasers.length > 0 ? teasers : null, reached: served || events.length > 0 || trustedListings.length > 0 };
 }
 
 async function fetchVideoTeaserFresh(): Promise<Reached<VideoTeaser | null>> {
