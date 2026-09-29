@@ -82,6 +82,7 @@ import { normalizeUrl } from "@/lib/pinned-feeds";
 import { FOCUS_RING } from "@/lib/a11y";
 import { usePeopleTypeahead } from "@/hooks/use-people-typeahead";
 import { PeopleToFollowStrip } from "@/components/PeopleToFollowStrip";
+import { useDiscoverTrust } from "@/hooks/use-discover-trust";
 import { getDisplayName, getAvatarUrl, getProfileContent } from "@/lib/nostr-helpers";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import type { ArticleData } from "@/lib/nip23";
@@ -1042,7 +1043,15 @@ function ResultRow({ label, hint, onPick, testId, avatar }: {
 function LiveTile() {
   const [, setLocation] = useLocation();
   const { follows } = useNostrAuth();
-  const { livePubkeys, getLiveStream } = useLiveStatus();
+  const { livePubkeys: everyoneLive, getLiveStream } = useLiveStatus();
+  // Only streams hosted by highly trusted people (or your follows) on the
+  // front door (lib/discover-trust.ts). Held until the answer is in.
+  const liveList = useMemo(() => Array.from(everyoneLive), [everyoneLive]);
+  const trust = useDiscoverTrust(liveList);
+  const livePubkeys = useMemo(
+    () => new Set(trust.checked ? liveList.filter(trust.admit) : []),
+    [liveList, trust.checked, trust.admit],
+  );
 
   const followsSet = useMemo(() => new Set(follows ?? []), [follows]);
   const networkLive = useMemo(
@@ -1100,6 +1109,8 @@ function LiveTile() {
         <span className="block text-xs text-muted-foreground" data-testid="live-tile-count">
           {livePubkeys.size} {livePubkeys.size === 1 ? "stream" : "streams"} on right now
         </span>
+      ) : trust.checked && !trust.reached ? (
+        <span className="block text-xs text-muted-foreground" data-testid="live-tile-unchecked">Couldn't check who's trusted right now. Tap to see every stream.</span>
       ) : (
         <span className="block text-xs text-muted-foreground">See who's broadcasting.</span>
       )}
