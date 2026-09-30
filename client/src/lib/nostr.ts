@@ -1092,6 +1092,9 @@ export function throttledPoolSubscribe(
   opts: {
     onevent?: (event: any) => void;
     oneose?: () => void;
+    /** One relay genuinely finished answering; never for a relay that failed
+     *  to connect (nostr-tools invents an EOSE for those). */
+    onrelayeose?: (relay: string) => void;
   },
 ): { close(): void } {
   if (!filters || relays.length === 0) {
@@ -1157,7 +1160,10 @@ export function throttledPoolSubscribe(
         oneose() {
           respondedRelays.add(relay);
           queueMicrotask(() => {
-            if (!closedWithoutAnswering) markRelaySuccess(relay, Date.now() - start);
+            if (!closedWithoutAnswering) {
+              markRelaySuccess(relay, Date.now() - start);
+              opts.onrelayeose?.(relay);
+            }
           });
           eoseCount++;
           closer.close();

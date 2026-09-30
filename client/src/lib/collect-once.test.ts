@@ -12,10 +12,11 @@ import { collectOnce, type Subscribe } from "./collect-once";
 const ev = (id: string) => ({ id, pubkey: "p", created_at: 1, kind: 1, tags: [], content: "", sig: "" }) as any;
 
 /** A fake relay subscription: a script of events and an EOSE time (or never). */
-function fakeRelays(script: { at: number; id: string }[], eoseAt: number | null) {
+function fakeRelays(script: { at: number; id: string }[], eoseAt: number | null, relayEose: { relay: string; at: number }[] = []) {
   const closed = vi.fn();
   const subscribe: Subscribe = (_relays, _filter, handlers) => {
     for (const s of script) setTimeout(() => handlers.onevent(ev(s.id)), s.at);
+    for (const r of relayEose) setTimeout(() => handlers.onrelayeose?.(r.relay), r.at);
     if (eoseAt !== null) setTimeout(() => handlers.oneose(), eoseAt);
     return { close: closed };
   };
@@ -69,5 +70,24 @@ describe("collectOnce", () => {
     const p = collectOnce(fakeRelays([{ at: 10, id: "a" }], 100).subscribe, ["wss://a"], {}, 8000, { onEvent });
     await settleTime(p);
     expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({ id: "a" }));
+  });
+
+  it("most relays answered 'nothing' and one is dead: settles on that answer, not the 8 s cap", async () => {
+    // Measured 2026-09-30 with relay.primal.net down: the trusted-people
+    // lookups for Events, Videos and Articles came back empty from the three
+    // healthy relays in under a second, then waited 8 s for the dead one.
+    const relays = ["wss://a", "wss://b", "wss://c", "wss://dead"];
+    const answered = [{ relay: "wss://a", at: 300 }, { relay: "wss://b", at: 400 }, { relay: "wss://c", at: 500 }];
+    const p = collectOnce(fakeRelays([], null, answered).subscribe, relays, {}, 8000);
+    const took = await settleTime(p);
+    expect(await p).toEqual([]);
+    expect(took).toBeLessThanOrEqual(1500);
+  });
+
+  it("only one of four answered 'nothing': keeps waiting (not a majority)", async () => {
+    const relays = ["wss://a", "wss://b", "wss://c", "wss://d"];
+    const p = collectOnce(fakeRelays([], null, [{ relay: "wss://a", at: 300 }]).subscribe, relays, {}, 8000);
+    const took = await settleTime(p);
+    expect(took).toBeGreaterThanOrEqual(8000);
   });
 });
