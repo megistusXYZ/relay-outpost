@@ -67,6 +67,48 @@ describe("loadDiscoverTrust", () => {
     expect(r.scores.get(pk("c"))).toBe(0.2);
   });
 
+  // A score we couldn't ask for is not a low score. Measured 2026-09-30: the
+  // score lookups are limited to 30 a minute per IP; past that every author
+  // came back without a score, the gate dropped them all, and the Feed tile
+  // said "Quiet right now" over a busy network.
+  describe("people whose score couldn't be read", () => {
+    const opts = { follows: new Set<string>(), wotEnabled: false, ownScores: null };
+
+    it("are reported, apart from people who have no score", async () => {
+      const r = await loadDiscoverTrust([pk("a"), pk("c"), pk("d")], opts, {
+        fetchTop: async () => [pk("b")],
+        // a: scored. c: the server answered "no score card" (-1). d: no answer.
+        fetchScores: async () => new Map([[pk("a"), 0.97], [pk("c"), -1]]),
+      });
+      expect([...r.unscored]).toEqual([pk("d")]);
+    });
+
+    it("the lookup failed outright: everyone asked about is unread", async () => {
+      const r = await loadDiscoverTrust([pk("a"), pk("c")], opts, {
+        fetchTop: async () => [pk("b")],
+        fetchScores: async () => { throw new Error("HTTP 429"); },
+      });
+      expect(r.reached).toBe(true);
+      expect([...r.unscored].sort()).toEqual([pk("a"), pk("c")]);
+    });
+
+    it("never includes people you follow or people on the top list: they're admitted anyway", async () => {
+      const r = await loadDiscoverTrust([pk("a"), pk("b"), pk("c")], { ...opts, follows: new Set([pk("a")]) }, {
+        fetchTop: async () => [pk("b")],
+        fetchScores: async () => new Map(),
+      });
+      expect([...r.unscored]).toEqual([pk("c")]);
+    });
+
+    it("is empty when everyone was answered, and under your own lens", async () => {
+      const answered = await loadDiscoverTrust([pk("a")], opts, { fetchTop: async () => [], fetchScores: async () => new Map([[pk("a"), 0.1]]) });
+      expect(answered.unscored.size).toBe(0);
+      const own = new Map(Array.from({ length: 120 }, (_, i) => [i.toString(16).padStart(64, "0"), 0.9] as const));
+      const mine = await loadDiscoverTrust([pk("a")], { follows: new Set(), wotEnabled: true, ownScores: own }, { fetchTop: vi.fn(), fetchScores: vi.fn() });
+      expect(mine.unscored.size).toBe(0);
+    });
+  });
+
   it("own lens: your own highest-trusted people, without asking the server", async () => {
     const own = new Map(Array.from({ length: 120 }, (_, i) => [i.toString(16).padStart(64, "0"), i >= 100 ? 0.9 : 0.6] as const));
     const fetchTop = vi.fn();

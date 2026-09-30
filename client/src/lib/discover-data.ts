@@ -37,7 +37,7 @@ import { rankDiscoverFeed } from "@/lib/discover-rank";
 import { isPromoBait, preferFollowed } from "@/lib/discover-curation";
 import { rankTopics, pickNextUpcoming, pickImageShelf, isSensitiveMedia, hasContent, type RankedTopic, type ShelfImage } from "@/lib/discover-tiles";
 import { saveSnapshot, readSnapshot, type SnapshotStore } from "@/lib/tile-snapshot";
-import { loadDiscoverTrust, gateByTrust, chooseDiscoverLens } from "@/lib/discover-trust";
+import { loadDiscoverTrust, gateByTrust, chooseDiscoverLens, emptyIsUnproven } from "@/lib/discover-trust";
 import { getEventMediaInfo } from "@/lib/media-utils";
 import { parseCalendarEvent, KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT, type CalendarEventData } from "@/lib/calendar-events";
 import type { SavedFeed } from "@/lib/rss-feeds";
@@ -291,6 +291,8 @@ async function fetchNewestArticleFresh(follows: readonly string[]): Promise<Reac
     (a) => followSet.has(a),
     (a) => a.event.pubkey,
   );
+  // Nothing to show while some writers' scores couldn't be read: not "nothing new".
+  if (candidates.length === 0 && emptyIsUnproven(trust)) return { data: [], reached: false };
   // Events in hand are themselves proof someone answered, even if the reach
   // probe lost its race with a relay that dropped right after serving us.
   return { data: candidates, reached: served || events.length > 0 || followsArticles.length > 0 || trustedArticles.length > 0 };
@@ -438,7 +440,12 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
     // means none, not "not loaded yet".
     const missing = [...new Set(gated.map((e) => e.pubkey))].filter((pk) => !eventStore.getEvent({ kind: 0, pubkey: pk, identifier: "" })).slice(0, 60);
     if (missing.length > 0) await collectOnce(getRelaysForPurpose("notes"), { kinds: [0], authors: missing }, 3_000);
-    return { data: pick(gated, "relay"), reached: true };
+    const picked = pick(gated, "relay");
+    // An empty pick while some authors' scores couldn't be read (the lookup
+    // is rate limited per IP) is not "Quiet right now": measured 2026-09-30,
+    // that emptied this tile over a busy network.
+    if (picked.length === 0 && emptyIsUnproven(trust)) return { data: [], reached: false };
+    return { data: picked, reached: true };
   }
   // (unreached below returns [] — the type's empty, the flag carries the truth)
 
@@ -453,7 +460,13 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
   // resolve "named") and the tile lies "Quiet right now" over a busy network.
   const authors = [...new Set(events.map((e) => e.pubkey))].slice(0, 40);
   if (authors.length > 0) await collectOnce(relays, { kinds: [0], authors }, 3_000);
-  return { data: pick(gateByTrust(events, (e) => e.pubkey, gate), "relay"), reached: true };
+  // These authors weren't in the pool above, so nobody has asked about them
+  // yet; gating them on the pool's scores dropped everyone off the top list.
+  const fallbackTrust = await loadDiscoverTrust(events.map((e) => e.pubkey), trustOpts);
+  if (!fallbackTrust.reached) return { data: [], reached: false };
+  const picked = pick(gateByTrust(events, (e) => e.pubkey, { follows: followSet, scores: fallbackTrust.scores }), "relay");
+  if (picked.length === 0 && emptyIsUnproven(fallbackTrust)) return { data: [], reached: false };
+  return { data: picked, reached: true };
 }
 
 // ── Communities (joined path) ────────────────────────────────────────────────
@@ -543,6 +556,8 @@ async function fetchNextCalendarEventFresh(): Promise<Reached<CalendarEventData 
     .map(parseCalendarEvent)
     .filter((e): e is CalendarEventData => e !== null && !!e.title);
   const next = pickNextUpcoming(parsed, Math.floor(Date.now() / 1000));
+  // No event while some hosts' scores couldn't be read: not "nothing scheduled".
+  if (next === null && emptyIsUnproven(trust)) return { data: null, reached: false };
   return { data: next, reached: served || events.length > 0 || trustedEvents.length > 0 };
 }
 
@@ -696,6 +711,8 @@ async function fetchMarketShelfFresh(): Promise<Reached<MarketTeaser[] | null>> 
       image: l.images[0],
       timeMs: l.publishedAt * 1000,
     }));
+  // An empty shelf while some sellers' scores couldn't be read: not "nothing listed".
+  if (teasers.length === 0 && emptyIsUnproven(trust)) return { data: null, reached: false };
   return { data: teasers.length > 0 ? teasers : null, reached: served || events.length > 0 || trustedListings.length > 0 };
 }
 
@@ -719,6 +736,8 @@ async function fetchVideoTeaserFresh(): Promise<Reached<VideoTeaser | null>> {
     .map(videoTeaserOf)
     .filter((t): t is VideoTeaser => t !== null);
   const pick = teasers.find((t) => !!t.poster) ?? teasers[0] ?? null;
+  // No video while some authors' scores couldn't be read: not "quiet".
+  if (pick === null && emptyIsUnproven(trust)) return { data: null, reached: false };
   return { data: pick, reached: served || events.length > 0 || trustedVideos.length > 0 };
 }
 
