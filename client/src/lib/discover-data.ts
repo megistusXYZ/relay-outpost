@@ -22,6 +22,7 @@ import { eventStore, throttledPoolSubscribe, FAST_RELAYS, getRelaysForPurpose } 
 import { collectOnce as collectOnceWith } from "@/lib/collect-once";
 import { anyOf } from "@/lib/any-of";
 import { sampleRelays } from "@/lib/discover-sample-relays";
+import { fetchServerFeedSample, readRecentSample } from "@/lib/feed-sample-source";
 import { canReachAny, canReachRelay, relayRefusedUs, type Reached } from "@/lib/relay-reach";
 import { KIND_LONG_FORM, parseArticle, type ArticleData } from "@/lib/nip23";
 import { fetchGlobalFeed, getCachedFollowerCount, primalStatsCache, prefetchStatsImmediate } from "@/lib/primal-cache";
@@ -405,7 +406,14 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
   const [primal, followsPosts, recentPosts, trusted] = await Promise.all([
     fetchGlobalFeed(30, sinceSecs),
     followsPostsP,
-    collectOnce(sampleRelays(getRelaysForPurpose("notes")), { kinds: [1], since: sinceSecs, limit: 300 }, 8_000),
+    // The recent sample: the trusted part of one shared sample from our
+    // server; the app's own 300 notes per relay only when the server can't
+    // answer or the viewer's own trust map applies (lib/feed-sample-source.ts).
+    readRecentSample({
+      lens: chooseDiscoverLens(trustOpts),
+      server: () => fetchServerFeedSample().then((notes) => { notes?.forEach((e) => eventStore.add(e)); return notes; }),
+      direct: () => collectOnce(sampleRelays(getRelaysForPurpose("notes")), { kinds: [1], since: sinceSecs, limit: 300 }, 8_000),
+    }),
     trustedPostsP,
   ]);
   if (!trusted.reached) return { data: [], reached: false };

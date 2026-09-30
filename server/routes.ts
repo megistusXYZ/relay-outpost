@@ -56,6 +56,7 @@ import { registerTranslateRoute } from "./translate";
 import { FailureMemory } from "@shared/failure-memory";
 import { createScoreCardReader } from "./score-cards";
 import { createRelayDirectoryReader } from "./relay-directory";
+import { createFeedSampleReader } from "./feed-sample";
 import { DEFAULT_LENS } from "@shared/default-lens";
 
 /**
@@ -3148,6 +3149,26 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error("[relay-directory] error:", err?.message || err);
       res.status(503).json({ relays: [], error: "Couldn't read the relay directory right now" });
+    }
+  });
+
+  // The Feed tile's recent sample, taken once for everyone and cut down to
+  // the notes by trusted people (feed-sample.ts): megabytes of relay reads
+  // and several score lookups per visitor became one small list. 503 when
+  // the trusted list or the relays couldn't be read; the app then takes the
+  // sample itself.
+  const feedSample = createFeedSampleReader({ trusted: () => scoreCards.trustedAuthors(DISCOVER_MIN_RANK) });
+  app.get("/api/discover/feed-sample", async (_req, res) => {
+    try {
+      const result = await Promise.race([
+        feedSample.read(),
+        new Promise<null>((r) => setTimeout(() => r(null), 6_000)),
+      ]);
+      if (!result || !result.reached) return res.status(503).json({ notes: [], error: "Couldn't take the feed sample right now" });
+      res.set("Cache-Control", "public, max-age=60").json({ notes: result.notes });
+    } catch (err: any) {
+      console.error("[discover-feed-sample] error:", err?.message || err);
+      res.status(503).json({ notes: [], error: "Couldn't take the feed sample right now" });
     }
   });
 
