@@ -18,18 +18,42 @@ export function ScrollRestoreDebugOverlay() {
   const [, force] = useState(0);
   const rafRef = useRef<number>(0);
 
+  // The witness for "the page moved under the reader": the saved anchor row's
+  // position in the CONTENT (its on-screen top plus scrollTop), read after each
+  // frame paints. Scrolling does not change it; content growing above the row
+  // does. Counts per history entry, resets when the entry changes.
+  const motionRef = useRef({ token: null as string | null, last: null as number | null, moves: 0, max: 0 });
+
   useEffect(() => {
     if (!enabled) return;
     let alive = true;
+    const ch = typeof MessageChannel !== "undefined" ? new MessageChannel() : null;
+    if (ch) {
+      ch.port1.onmessage = () => {
+        if (!alive) return;
+        const st = getRestoreDebugState();
+        const m = motionRef.current;
+        if (m.token !== st.token) { m.token = st.token; m.last = null; m.moves = 0; m.max = 0; }
+        const c = document.querySelector<HTMLElement>(".feed-scroll-container");
+        const id = st.saved?.anchorId;
+        const el = id && c ? c.querySelector<HTMLElement>(`[data-event-id="${cssEscape(id)}"]:not([inert] *)`) : null;
+        if (!c || !el) { m.last = null; return; }
+        const abs = Math.round(el.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop);
+        if (m.last != null && Math.abs(abs - m.last) > 2) { m.moves++; m.max = Math.max(m.max, Math.abs(abs - m.last)); }
+        m.last = abs;
+      };
+    }
     const tick = () => {
       if (!alive) return;
       force((n) => (n + 1) & 0xffff);
+      ch?.port2.postMessage(0);
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => {
       alive = false;
       cancelAnimationFrame(rafRef.current);
+      ch?.port1.close();
     };
   }, [enabled]);
 
@@ -86,6 +110,8 @@ export function ScrollRestoreDebugOverlay() {
         "Δ to saved",
         s.saved && scrollTop != null ? String(Math.round(scrollTop - s.saved.scrollTop)) : "—",
       )}
+      {row("held px", container?.style.paddingTop ? container.style.paddingTop : "—")}
+      {row("moved under reader", `${motionRef.current.moves}× (max ${motionRef.current.max}px)`, motionRef.current.moves ? "#f87171" : "#4ade80")}
     </div>
   );
 }
