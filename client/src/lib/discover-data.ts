@@ -19,6 +19,7 @@
  */
 import type { Event } from "nostr-tools";
 import { eventStore, throttledPoolSubscribe, FAST_RELAYS, getRelaysForPurpose } from "@/lib/nostr";
+import { collectOnce as collectOnceWith } from "@/lib/collect-once";
 import { canReachAny, canReachRelay, relayRefusedUs, type Reached } from "@/lib/relay-reach";
 import { KIND_LONG_FORM, parseArticle, type ArticleData } from "@/lib/nip23";
 import { fetchGlobalFeed, getCachedFollowerCount, primalStatsCache, prefetchStatsImmediate } from "@/lib/primal-cache";
@@ -52,27 +53,19 @@ async function anyServed(urls: string[]): Promise<boolean> {
   return results.some(Boolean);
 }
 
-/** One-shot collect over a pool subscription: resolves on EOSE or the cap. */
+/**
+ * One-shot collect over a pool subscription (lib/collect-once.ts): EOSE, the
+ * cap, or posts in hand that have stopped arriving, whichever comes first.
+ * Every post also warms the shared store so the page a tile links to opens hot.
+ */
 function collectOnce(relays: string[], filter: object, capMs: number): Promise<Event[]> {
-  return new Promise((resolve) => {
-    const collected: Event[] = [];
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      try { sub.close(); } catch { /* already closed */ }
-      resolve(collected);
-    };
-    const sub = throttledPoolSubscribe(relays, filter as { kinds: number[] }, {
-      onevent: (e: Event) => {
-        // Warm the shared store so the page a tile links to opens hot.
-        eventStore.add(e);
-        collected.push(e);
-      },
-      oneose: finish,
-    });
-    setTimeout(finish, capMs);
-  });
+  return collectOnceWith(
+    (r, f, h) => throttledPoolSubscribe(r, f as { kinds: number[] }, h),
+    relays,
+    filter,
+    capMs,
+    { onEvent: (e) => eventStore.add(e) },
+  );
 }
 
 // ── Answer memo ──────────────────────────────────────────────────────────────
@@ -397,16 +390,23 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
   // filtering: Primal's trending, a recent sample from the note relays, and
   // the top trusted people's last day. Every author is then checked against
   // the whole trusted list (~20,000 people at 0.50+), not just its top.
-  const [primal, followsPosts, recentPosts] = await Promise.all([
+  // The trusted people's last day is asked for at the same time as the rest:
+  // it only needs the trusted list (served by our server), not the pool, and
+  // waiting for the pool first cost a whole second lookup (~8 s measured).
+  const trustedPostsP: Promise<{ reached: boolean; posts: Event[] }> = loadDiscoverTrust([], trustOpts).then(async (t) => ({
+    reached: t.reached,
+    posts: t.reached && t.top.length > 0
+      ? await collectOnce(getRelaysForPurpose("notes"), { kinds: [1], authors: t.top.slice(0, 300), since: Math.floor(Date.now() / 1000) - 24 * 3600, limit: 150 }, 8_000)
+      : [],
+  }));
+  const [primal, followsPosts, recentPosts, trusted] = await Promise.all([
     fetchGlobalFeed(30, sinceSecs),
     followsPostsP,
     collectOnce(getRelaysForPurpose("notes"), { kinds: [1], since: sinceSecs, limit: 300 }, 8_000),
+    trustedPostsP,
   ]);
-  const trustTop = await loadDiscoverTrust([], trustOpts);
-  if (!trustTop.reached) return { data: [], reached: false };
-  const trustedPosts = trustTop.top.length > 0
-    ? await collectOnce(getRelaysForPurpose("notes"), { kinds: [1], authors: trustTop.top.slice(0, 300), since: Math.floor(Date.now() / 1000) - 24 * 3600, limit: 150 }, 8_000)
-    : [];
+  if (!trusted.reached) return { data: [], reached: false };
+  const trustedPosts = trusted.posts;
   const pool = [...followsPosts, ...primal.posts, ...recentPosts, ...trustedPosts];
   const trust = await loadDiscoverTrust(pool.map((e) => e.pubkey), trustOpts);
   if (!trust.reached) return { data: [], reached: false };
