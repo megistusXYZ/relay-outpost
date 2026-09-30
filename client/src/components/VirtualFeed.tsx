@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import {
   useVirtualizer,
   observeElementOffset,
@@ -62,6 +63,8 @@ type ScrollRect = { width: number; height: number };
 const COLD_VEIL_CAP_MS = 1500;
 /** Frames the anchor row must hold still after landing before the veil lifts (~130ms at 60fps). */
 const COLD_VEIL_STILL_FRAMES = 8;
+/** How long after a touch or wheel the page still counts as scrolled by the reader (a fling's momentum can run this long). */
+const USER_SCROLL_WINDOW_MS = 4000;
 
 export function VirtualFeed<T>({
   items,
@@ -179,8 +182,38 @@ export function VirtualFeed<T>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // A row above the reader re-measuring at rest (a late image): react-virtual
+  // scrolls to compensate at once, but re-renders the rows' positions with a
+  // normal (scheduled) update — on a busy main thread that lands frames later,
+  // and for those frames the reader sees the page jump by the delta and back
+  // (measured 2026-09-30: −600/+600 over 60ms when two images above loaded
+  // 60ms apart). At rest, make that re-render synchronous so the scroll write
+  // and the moved rows paint in the same frame. While scrolling react-virtual
+  // notifies with sync=true and flushes itself; nothing to add there.
+  const [, rerenderNow] = useReducer((x: number) => x + 1, 0);
+  const lastUserInputAtRef = useRef(-Infinity);
+  useEffect(() => {
+    if (!scrollEl) return;
+    const mark = () => { lastUserInputAtRef.current = performance.now(); };
+    scrollEl.addEventListener("touchstart", mark, { passive: true });
+    scrollEl.addEventListener("touchmove", mark, { passive: true });
+    scrollEl.addEventListener("wheel", mark, { passive: true });
+    return () => {
+      scrollEl.removeEventListener("touchstart", mark);
+      scrollEl.removeEventListener("touchmove", mark);
+      scrollEl.removeEventListener("wheel", mark);
+    };
+  }, [scrollEl]);
+  const onIdleChange = useCallback((_instance: unknown, sync: boolean) => {
+    // A microtask: the notify can come from a ref callback inside a React
+    // commit, where flushSync is not allowed; the microtask runs right after
+    // (and after a ResizeObserver callback, still before paint).
+    if (!sync) queueMicrotask(() => flushSync(rerenderNow));
+  }, []);
+
   const virtualizer = useVirtualizer({
     count: items.length,
+    onChange: onIdleChange,
     getScrollElement: () => scrollEl,
     estimateSize: () => estimateSize + gap,
     overscan,
@@ -188,9 +221,17 @@ export function VirtualFeed<T>({
     initialOffset,
     scrollMargin,
     // Frozen while hidden: `<main>` belongs to the page on top.
+    // "Scrolling" only when the reader is: a scroll event alone is not enough.
+    // On iOS-like devices react-virtual DEFERS its compensation for a row
+    // above re-measuring while it believes the page is scrolling, and its own
+    // compensation write fires a scroll event — so when two images above the
+    // reader loaded 60ms apart, the second delta was deferred and flushed
+    // ~150ms later as a visible jump (measured 2026-09-30). A touch or wheel
+    // in the last USER_SCROLL_WINDOW_MS is what makes scrolling real; that
+    // window covers a fling's momentum, where a write would kill it.
     observeElementOffset: (instance, cb) =>
       observeElementOffset(instance, (offset, isScrolling) => {
-        if (activeRef.current) cb(offset, isScrolling);
+        if (activeRef.current) cb(offset, isScrolling && performance.now() - lastUserInputAtRef.current < USER_SCROLL_WINDOW_MS);
       }),
     observeElementRect: (instance, cb) =>
       observeElementRect(instance, (rect) => {

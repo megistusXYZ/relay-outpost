@@ -38,4 +38,17 @@ describe("VirtualFeed back-restore on a cold feed", () => {
     expect(src).toMatch(/new ResizeObserver\(remeasure\)/);
     expect(src).toMatch(/mo\?\.observe\(el, \{ childList: true, subtree: true \}\)/);
   });
+
+  it("a late image above the reader: the compensating scroll and the moved rows paint in the same frame", () => {
+    // At rest react-virtual notifies with sync=false and schedules the
+    // re-render; the rows then moved frames after the scroll write.
+    expect(src).toMatch(/if \(!sync\) queueMicrotask\(\(\) => flushSync\(rerenderNow\)\)/);
+    expect(src).toMatch(/onChange: onIdleChange/);
+  });
+
+  it("counts the page as scrolling only after a real touch or wheel, so its own compensation write cannot defer the next one", () => {
+    expect(src).toMatch(/cb\(offset, isScrolling && performance\.now\(\) - lastUserInputAtRef\.current < USER_SCROLL_WINDOW_MS\)/);
+    expect(src).toMatch(/const USER_SCROLL_WINDOW_MS = 4000;/);
+    for (const ev of ["touchstart", "touchmove", "wheel"]) expect(src).toContain(`scrollEl.addEventListener("${ev}", mark, { passive: true })`);
+  });
 });
