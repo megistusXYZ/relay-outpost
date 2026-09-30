@@ -27,7 +27,8 @@ import { useDiscoverTrust } from "@/hooks/use-discover-trust";
 import { useLocation } from "wouter";
 import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
-import { Check, Plus, UserPlus } from "lucide-react";
+import { Check, Plus } from "lucide-react";
+import { TILE_TITLE } from "@/components/discover-tile-title";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
@@ -266,8 +267,7 @@ export function PeopleToFollowStrip({ className = "", strictTrust = false }: {
   return (
     <div className={`space-y-2 ${className}`} data-testid="people-to-follow-strip">
       <div className="flex items-center gap-2 px-1">
-        <UserPlus className="w-4 h-4 text-brand/70" />
-        <span className="text-sm font-semibold">People to follow</span>
+        <span className={TILE_TITLE}>People to follow</span>
       </div>
       <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
         {cards.map((c) => (
