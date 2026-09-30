@@ -50,7 +50,25 @@ export interface DiscoverTrust {
   top: string[];
   /** Scores for the candidates asked about (and, own lens, everyone scored). */
   scores: Map<string, number>;
+  /**
+   * Candidates whose score couldn't be read (the lookup failed, was rate
+   * limited, or left them out). Not the same as having no score: the server
+   * answers -1 for a person with no score card. Nobody here is admitted, so
+   * a tile left empty while this is non-empty hasn't earned "quiet"
+   * (see `emptyIsUnproven`).
+   */
+  unscored: Set<string>;
   lens: "own" | "default";
+}
+
+/**
+ * An empty tile may only say "quiet" when everyone in its pool could be
+ * checked. If some couldn't, the honest answer is "couldn't reach" (with
+ * Retry): measured 2026-09-30, a rate-limited score lookup emptied the Feed
+ * tile and it said "Quiet right now" over a busy network.
+ */
+export function emptyIsUnproven(trust: Pick<DiscoverTrust, "unscored">): boolean {
+  return trust.unscored.size > 0;
 }
 
 export interface DiscoverTrustDeps {
@@ -67,15 +85,18 @@ export async function loadDiscoverTrust(
 ): Promise<DiscoverTrust> {
   const lens = chooseDiscoverLens(opts);
   if (lens === "own" && opts.ownScores) {
-    return { reached: true, top: highlyTrusted(opts.ownScores).slice(0, TOP_SIZE), scores: new Map(opts.ownScores), lens };
+    return { reached: true, top: highlyTrusted(opts.ownScores).slice(0, TOP_SIZE), scores: new Map(opts.ownScores), unscored: new Set(), lens };
   }
   const top = await deps.fetchTop().catch(() => null);
-  if (!top) return { reached: false, top: [], scores: new Map(), lens };
+  if (!top) return { reached: false, top: [], scores: new Map(), unscored: new Set(), lens };
   const unique = [...new Set(candidates)].filter((pk) => !opts.follows.has(pk));
   const scores = unique.length > 0 ? await deps.fetchScores(unique).catch(() => new Map<string, number>()) : new Map<string, number>();
   // Everyone on the top list is trusted by definition, even if not asked about.
   for (const pk of top) if (!scores.has(pk)) scores.set(pk, DISCOVER_MIN_SCORE);
-  return { reached: true, top, scores, lens };
+  // Whoever is still without an entry was never answered about: the server
+  // sends a number for everyone it could check (-1 = no score card).
+  const unscored = new Set(unique.filter((pk) => !scores.has(pk)));
+  return { reached: true, top, scores, unscored, lens };
 }
 
 const defaultDeps: DiscoverTrustDeps = {

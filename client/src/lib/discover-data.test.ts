@@ -8,16 +8,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Records which relays each one-shot read asks, delivers whatever the test
 // put on the (fake) relays for that filter, and answers at once (EOSE).
-let relayEvents: (filter: { kinds?: number[]; authors?: string[] }) => unknown[] = () => [];
-const subscribeSpy = vi.fn((_relays: string[], filter: { kinds?: number[]; authors?: string[] }, handlers: { onevent?: (e: unknown) => void; oneose?: () => void }) => {
+let relayEvents: (filter: { kinds?: number[]; authors?: string[]; limit?: number }) => unknown[] = () => [];
+const subscribeSpy = vi.fn((_relays: string[], filter: { kinds?: number[]; authors?: string[]; limit?: number }, handlers: { onevent?: (e: unknown) => void; oneose?: () => void }) => {
   setTimeout(() => {
     for (const e of relayEvents(filter)) handlers.onevent?.(e);
     handlers.oneose?.();
   }, 0);
   return { close: () => {} };
 });
+// Profiles the app already holds (the Feed tile drops authors with none).
+let profileOf: Record<string, { name: string; picture?: string }> = {};
 vi.mock("@/lib/nostr", () => ({
-  eventStore: { add: () => {}, getEvent: () => null },
+  eventStore: { add: () => {}, getEvent: (q: { pubkey: string }) => (profileOf[q.pubkey] ? { content: JSON.stringify(profileOf[q.pubkey]) } : null) },
   throttledPoolSubscribe: (...a: Parameters<typeof subscribeSpy>) => subscribeSpy(...a),
   // A general relay: the marketplace shelf must NOT read from it.
   FAST_RELAYS: ["wss://relay.primal.net"],
@@ -32,9 +34,13 @@ vi.mock("@/lib/primal-cache", () => ({
 const activitySpy = vi.fn(async () => new Map<string, number>());
 vi.mock("@/lib/community-activity", () => ({ fetchCommunityActivity: (...a: unknown[]) => activitySpy(...a) }));
 // Trust scores come from the server's score cards (the network boundary).
+// Like the server: a number for everyone it could check (-1 = no score card).
+// `scoresDown` is a lookup that couldn't be made (rate limit, cooldown): no
+// answer about anyone.
 let scoreOf: Record<string, number> = {};
+let scoresDown = false;
 vi.mock("@/lib/brainstorm-search", () => ({
-  fetchBrainstormWotBatch: async (pks: string[]) => new Map(pks.filter((p) => p in scoreOf).map((p) => [p, scoreOf[p]] as const)),
+  fetchBrainstormWotBatch: async (pks: string[]) => new Map(scoresDown ? [] : pks.map((p) => [p, p in scoreOf ? scoreOf[p] : -1] as const)),
 }));
 vi.mock("@/lib/relay-reach", () => ({
   canReachAny: async () => true,
@@ -42,7 +48,7 @@ vi.mock("@/lib/relay-reach", () => ({
   relayRefusedUs: () => undefined,
 }));
 
-import { discoverNewsFeeds, summarizePulse, fetchCommunityPulse, feedSnippet, survivingArticles, fetchMarketShelf, fetchNextCalendarEvent, fetchImagesTeaser, setDiscoverTrust, resetDiscoverAnswers } from "./discover-data";
+import { discoverNewsFeeds, summarizePulse, fetchCommunityPulse, feedSnippet, survivingArticles, fetchMarketShelf, fetchNextCalendarEvent, fetchImagesTeaser, fetchVideoTeaser, fetchNewestArticle, fetchFeedTeaser, setDiscoverTrust, resetDiscoverAnswers } from "./discover-data";
 import { LISTING_RELAYS, KIND_CLASSIFIED_LISTING } from "./listing";
 import { ALL_NEWS_FEEDS, ALL_PODCAST_FEEDS, DEFAULT_FEEDS, STARTER_URLS_V2, type SavedFeed } from "./rss-feeds";
 
@@ -246,6 +252,100 @@ describe("Discover's Events and Marketplace tiles show only trusted people", () 
     const r = await fetchImagesTeaser([], new Set());
     expect(r.reached).toBe(true);
     expect((r.data ?? []).map((i) => i.authorPk)).toEqual([TRUSTED]);
+  });
+
+  // Measured 2026-09-30: score lookups are limited to 30 a minute per IP.
+  // Past that nobody got a score, the gate dropped everyone, and tiles said
+  // "Quiet right now" / "Nothing scheduled" over a busy network.
+  describe("when people's scores couldn't be read", () => {
+    const visitor = () => setDiscoverTrust({ follows: new Set(), wotEnabled: false, ownScores: null });
+    const video = (pubkey: string, title: string) => ({
+      id: pubkey.slice(0, 8) + title, kind: 21, pubkey, created_at: Math.floor(Date.now() / 1000) - 60, content: "", sig: "s",
+      tags: [["title", title], ["imeta", "url https://v.example/a.mp4", "image https://v.example/a.jpg"]],
+    });
+    beforeEach(() => { resetDiscoverAnswers(); scoresDown = false; trustedList(true); visitor(); });
+    afterEach(() => { scoresDown = false; profileOf = {}; });
+
+    it("Events: an empty tile says it couldn't reach, not that nothing is scheduled", async () => {
+      scoresDown = true;
+      relayEvents = (f) => (f.kinds?.includes(31923) && !f.authors ? [event(STRANGER, soon, "Meetup by someone unchecked")] : []);
+      const r = await fetchNextCalendarEvent();
+      expect(r).toEqual({ data: null, reached: false });
+    });
+
+    it("Events: the same person, checked and scored low, really is nothing to show", async () => {
+      scoreOf = { [STRANGER]: 0.1 };
+      relayEvents = (f) => (f.kinds?.includes(31923) && !f.authors ? [event(STRANGER, soon, "Spam meetup")] : []);
+      const r = await fetchNextCalendarEvent();
+      expect(r).toEqual({ data: null, reached: true });
+    });
+
+    it("Events: whatever could be vetted is still shown", async () => {
+      scoresDown = true;
+      relayEvents = (f) => (f.kinds?.includes(31923) ? [event(STRANGER, soon, "Unchecked"), event(TRUSTED, later, "Bitcoin meetup")] : []);
+      const r = await fetchNextCalendarEvent();
+      expect(r.reached).toBe(true);
+      expect(r.data?.title).toBe("Bitcoin meetup");
+    });
+
+    it("Marketplace: an empty shelf says it couldn't reach", async () => {
+      scoresDown = true;
+      relayEvents = (f) => (f.kinds?.includes(KIND_CLASSIFIED_LISTING) && !f.authors ? [listing(STRANGER, "Hat")] : []);
+      const r = await fetchMarketShelf();
+      expect(r).toEqual({ data: null, reached: false });
+    });
+
+    it("Videos: an empty tile says it couldn't reach", async () => {
+      scoresDown = true;
+      relayEvents = (f) => (f.kinds?.includes(21) && !f.authors ? [video(STRANGER, "A talk")] : []);
+      const r = await fetchVideoTeaser();
+      expect(r).toEqual({ data: null, reached: false });
+    });
+
+    it("Articles: an empty tile says it couldn't reach", async () => {
+      scoresDown = true;
+      const article = { id: "art1", kind: 30023, pubkey: STRANGER, created_at: Math.floor(Date.now() / 1000) - 60, content: "Body of the article.", sig: "s", tags: [["d", "a"], ["title", "An essay"], ["published_at", String(Math.floor(Date.now() / 1000) - 60)]] };
+      relayEvents = (f) => (f.kinds?.includes(30023) && !f.authors ? [article] : []);
+      const r = await fetchNewestArticle([]);
+      expect(r).toEqual({ data: [], reached: false });
+    });
+
+    it("Feed: an empty tile says it couldn't reach, not 'Quiet right now'", async () => {
+      scoresDown = true;
+      const post = { id: "n1".padEnd(64, "0"), kind: 1, pubkey: STRANGER, created_at: Math.floor(Date.now() / 1000) - 60, content: "A thoughtful post about relays.", sig: "s", tags: [] };
+      relayEvents = (f) => (f.kinds?.includes(1) && !f.authors ? [post] : []);
+      const r = await fetchFeedTeaser();
+      expect(r).toEqual({ data: [], reached: false });
+    });
+
+    it("Feed, relay fallback: its authors are asked about too, and a trusted one is shown", async () => {
+      // Off the top list, trusted at 0.9. The fallback used to gate on the
+      // (empty) pool's scores, so everyone off the top list was dropped unasked.
+      const WRITER = "c".repeat(64);
+      scoreOf = { [WRITER]: 0.9 };
+      profileOf = { [WRITER]: { name: "Writer", picture: "https://img.example/w.jpg" } };
+      const post = { id: "n3".padEnd(64, "0"), kind: 1, pubkey: WRITER, created_at: Math.floor(Date.now() / 1000) - 60, content: "A thoughtful post about relays and how they work.", sig: "s", tags: [] };
+      relayEvents = (f) => (f.kinds?.includes(1) && !f.authors && f.limit === 30 ? [post] : []);
+      const r = await fetchFeedTeaser();
+      expect(r.reached).toBe(true);
+      expect(r.data.map((e) => e.pubkey)).toEqual([WRITER]);
+    });
+
+    it("Feed, relay fallback: empty with scores unread says it couldn't reach", async () => {
+      scoresDown = true;
+      const post = { id: "n4".padEnd(64, "0"), kind: 1, pubkey: STRANGER, created_at: Math.floor(Date.now() / 1000) - 60, content: "A thoughtful post about relays and how they work.", sig: "s", tags: [] };
+      relayEvents = (f) => (f.kinds?.includes(1) && !f.authors && f.limit === 30 ? [post] : []);
+      const r = await fetchFeedTeaser();
+      expect(r).toEqual({ data: [], reached: false });
+    });
+
+    it("Feed: the same person, checked and scored low, really is quiet", async () => {
+      scoreOf = { [STRANGER]: 0.1 };
+      const post = { id: "n2".padEnd(64, "0"), kind: 1, pubkey: STRANGER, created_at: Math.floor(Date.now() / 1000) - 60, content: "Buy my coin.", sig: "s", tags: [] };
+      relayEvents = (f) => (f.kinds?.includes(1) && !f.authors ? [post] : []);
+      const r = await fetchFeedTeaser();
+      expect(r).toEqual({ data: [], reached: true });
+    });
   });
 
   it("when the trusted list can't be read, Events says so and shows nothing", async () => {
