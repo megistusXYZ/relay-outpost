@@ -21,6 +21,7 @@ import type { Event } from "nostr-tools";
 import { eventStore, throttledPoolSubscribe, FAST_RELAYS, getRelaysForPurpose } from "@/lib/nostr";
 import { collectOnce as collectOnceWith } from "@/lib/collect-once";
 import { anyOf } from "@/lib/any-of";
+import { sampleRelays } from "@/lib/discover-sample-relays";
 import { canReachAny, canReachRelay, relayRefusedUs, type Reached } from "@/lib/relay-reach";
 import { KIND_LONG_FORM, parseArticle, type ArticleData } from "@/lib/nip23";
 import { fetchGlobalFeed, getCachedFollowerCount, primalStatsCache, prefetchStatsImmediate } from "@/lib/primal-cache";
@@ -270,7 +271,7 @@ async function fetchNewestArticleFresh(follows: readonly string[]): Promise<Reac
     // 40, not the 2 the tile shows: the tile runs the Articles floor
     // (lib/article-floor.ts), which needs enough left over after it, and
     // enough of a flooder's articles in hand to see the flood.
-    collectOnce(FAST_RELAYS, { kinds: [KIND_LONG_FORM], limit: 40 }, 11_000),
+    collectOnce(sampleRelays(FAST_RELAYS), { kinds: [KIND_LONG_FORM], limit: 40 }, 11_000),
     follows.length > 0
       ? collectOnce(FAST_RELAYS, { kinds: [KIND_LONG_FORM], authors: follows.slice(0, 100), limit: 15 }, 8_000)
       : Promise.resolve([] as Event[]),
@@ -404,7 +405,7 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
   const [primal, followsPosts, recentPosts, trusted] = await Promise.all([
     fetchGlobalFeed(30, sinceSecs),
     followsPostsP,
-    collectOnce(getRelaysForPurpose("notes"), { kinds: [1], since: sinceSecs, limit: 300 }, 8_000),
+    collectOnce(sampleRelays(getRelaysForPurpose("notes")), { kinds: [1], since: sinceSecs, limit: 300 }, 8_000),
     trustedPostsP,
   ]);
   if (!trusted.reached) return { data: [], reached: false };
@@ -436,8 +437,9 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
   // Primal said nothing, which proves nothing. Ask the relays — with reach
   // measured first, so "empty" is only ever claimed after somebody answered.
   const relays = getRelaysForPurpose("notes");
-  if (!(await canReachAny(relays))) return { data: [], reached: false };
-  const events = await collectOnce(relays, { kinds: [1], limit: 30, since: sinceSecs }, 8_000);
+  const sample = sampleRelays(relays);
+  if (!(await canReachAny(sample))) return { data: [], reached: false };
+  const events = await collectOnce(sample, { kinds: [1], limit: 30, since: sinceSecs }, 8_000);
   // hideNoProfile needs kind-0s, and unlike Primal the relays do not volunteer
   // them — without this second hop the floor drops EVERY post (no author can
   // resolve "named") and the tile lies "Quiet right now" over a busy network.
@@ -520,7 +522,7 @@ export async function fetchNextCalendarEvent(): Promise<Reached<CalendarEventDat
 async function fetchNextCalendarEventFresh(): Promise<Reached<CalendarEventData | null>> {
   const [served, events] = await Promise.all([
     anyServed(FAST_RELAYS),
-    collectOnce(FAST_RELAYS, { kinds: [KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT], limit: 60 }, 11_000),
+    collectOnce(sampleRelays(FAST_RELAYS), { kinds: [KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT], limit: 60 }, 11_000),
   ]);
   // Only events hosted by highly trusted people (or your follows), topped up
   // with the most trusted people's own events (lib/discover-trust.ts).
@@ -694,7 +696,7 @@ async function fetchVideoTeaserFresh(): Promise<Reached<VideoTeaser | null>> {
     anyServed(FAST_RELAYS),
     // All four video generations — NIP-71 21/22 is where new publishing
     // lives; 34235/34236 is the legacy/archive pair (see VIDEO_EVENT_KINDS).
-    collectOnce(FAST_RELAYS, { kinds: [21, 22, 34235, 34236], limit: 20 }, 11_000),
+    collectOnce(sampleRelays(FAST_RELAYS), { kinds: [21, 22, 34235, 34236], limit: 20 }, 11_000),
   ]);
   // Only highly trusted people (and your follows) on the front door.
   const trust = await loadDiscoverTrust(events.map((e) => e.pubkey), trustOpts);
