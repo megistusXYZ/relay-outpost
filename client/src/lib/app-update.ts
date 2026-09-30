@@ -27,6 +27,7 @@
 //    clients.claim()) even though the user just loaded the latest version.
 
 import { onShellUpdated, reloadOntoFreshShell } from "./sw-shell";
+import { installUpdateOnReturn } from "./update-on-return";
 
 // Same expression as APP_VERSION in nip34-feedback.ts — duplicated on purpose
 // so this module stays dependency-free (importable from main.tsx and tests
@@ -231,6 +232,22 @@ export function startAppUpdatePolling(): void {
     if (!shouldPollNow(Date.now(), lastPollAt)) return;
     lastPollAt = Date.now();
     void pollAndCompare();
+  });
+
+  // Back after a long break with a newer build out: move onto it by itself
+  // (lib/update-on-return.ts). Installed apps resume rather than relaunch, so
+  // without this a phone ran an old build until someone forced the update.
+  // A dismissed pill means "not now", not "never", so this asks the server.
+  installUpdateOnReturn({
+    checkForUpdate: async () => {
+      if (state.ready) return true;
+      const server = await fetchServerVersion();
+      lastPollAt = Date.now();
+      if (!server || !shouldOfferUpdate(RUNNING_APP_VERSION, server)) return false;
+      reportUpdate("poll", server);
+      return true;
+    },
+    apply: applyUpdate,
   });
 }
 
