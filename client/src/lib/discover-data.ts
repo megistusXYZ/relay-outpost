@@ -20,6 +20,7 @@
 import type { Event } from "nostr-tools";
 import { eventStore, throttledPoolSubscribe, FAST_RELAYS, getRelaysForPurpose } from "@/lib/nostr";
 import { collectOnce as collectOnceWith } from "@/lib/collect-once";
+import { anyOf } from "@/lib/any-of";
 import { canReachAny, canReachRelay, relayRefusedUs, type Reached } from "@/lib/relay-reach";
 import { KIND_LONG_FORM, parseArticle, type ArticleData } from "@/lib/nip23";
 import { fetchGlobalFeed, getCachedFollowerCount, primalStatsCache, prefetchStatsImmediate } from "@/lib/primal-cache";
@@ -49,8 +50,9 @@ import { normalizeUrl } from "@/lib/pinned-feeds";
  * would convert a refusal into an answer (the Buzz case in relay-reach.ts).
  */
 async function anyServed(urls: string[]): Promise<boolean> {
-  const results = await Promise.all(urls.map(async (u) => (await canReachRelay(u)) && !relayRefusedUs(u)));
-  return results.some(Boolean);
+  // The first relay that served us answers the question: waiting for all of
+  // them held Events and Videos until the slowest check gave up (~8 s).
+  return anyOf(urls.map(async (u) => (await canReachRelay(u)) && !relayRefusedUs(u)));
 }
 
 /**
