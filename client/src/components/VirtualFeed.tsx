@@ -6,8 +6,8 @@ import {
   measureElement as measureRowElement,
 } from "@tanstack/react-virtual";
 import { setFeedScrollBridge } from "@/lib/feed-scroll-bridge";
-import { getPendingRestoreAnchor, scrollRestoreDebugEnabled } from "@/lib/scroll-restore";
-import { computeIndexAnchor, resolveRestoreTarget, type RowRect } from "@/lib/feed-anchor";
+import { getPendingRestoreAnchor, isRestoreActive, scrollRestoreDebugEnabled, type SavedScrollPosition } from "@/lib/scroll-restore";
+import { computeIndexAnchor, restoreTargetWhenLoaded, type RowRect } from "@/lib/feed-anchor";
 import { useSurfaceActive } from "@/contexts/SurfaceActiveContext";
 
 interface VirtualFeedProps<T> {
@@ -58,6 +58,11 @@ type ScrollRect = { width: number; height: number };
  * unmount the very rows Back is about to reveal — so the index-restore path
  * above never runs for a kept-alive return: nothing was lost.
  */
+/** A cold landing shows itself after this even if the rows never arrived or are still settling. */
+const COLD_VEIL_CAP_MS = 1500;
+/** Frames the anchor row must hold still after landing before the veil lifts (~130ms at 60fps). */
+const COLD_VEIL_STILL_FRAMES = 8;
+
 export function VirtualFeed<T>({
   items,
   getKey,
@@ -91,22 +96,50 @@ export function VirtualFeed<T>({
   // restorer has consumed the pending flag (child layout effects run first). The
   // pinned items snapshot (Home.tsx) keeps `items` identity stable across the
   // thread round-trip, so an index resolved here stays meaningful.
-  const restoreTargetRef = useRef<{ index: number; intraOffset: number } | null | undefined>(undefined);
-  if (restoreTargetRef.current === undefined) {
-    const saved = getPendingRestoreAnchor();
-    restoreTargetRef.current = saved
-      ? resolveRestoreTarget(
-          { anchorId: saved.anchorId, anchorIndex: saved.anchorIndex ?? null, intraOffset: saved.intraOffset ?? 0 },
-          items,
-          // getKey takes (item, index); the resolver only needs id-by-item and
-          // callers derive the id from the item alone (event.id), so index is nominal.
-          (it) => getKey(it, 0),
-        )
-      : null;
-    if (scrollRestoreDebugEnabled()) {
-      try { console.debug(`[scroll-restore] VirtualFeed mount indexTarget=${JSON.stringify(restoreTargetRef.current)} saved=${JSON.stringify(saved)}`); } catch {}
+  // The saved position is read ONCE, synchronously, on first render — while
+  // the restore window is still pending/active (child layout effects run
+  // first). The TARGET is resolved when the rows are there: after a reload
+  // Home rebuilds cold and its items arrive hundreds of ms after this mounts,
+  // so resolving at mount found nothing and gave up (see
+  // restoreTargetWhenLoaded). The pinned items snapshot (Home.tsx) keeps
+  // `items` identity stable across the thread round-trip, so an index resolved
+  // here stays meaningful.
+  const restoreSavedRef = useRef<SavedScrollPosition | null | undefined>(undefined);
+  if (restoreSavedRef.current === undefined) restoreSavedRef.current = getPendingRestoreAnchor();
+  const restoreTargetRef = useRef<{ index: number; intraOffset: number } | null>(null);
+  if (!restoreTargetRef.current && restoreSavedRef.current) {
+    const saved = restoreSavedRef.current;
+    const r = restoreTargetWhenLoaded(
+      { anchorId: saved.anchorId, anchorIndex: saved.anchorIndex ?? null, intraOffset: saved.intraOffset ?? 0 },
+      items,
+      // getKey takes (item, index); the resolver only needs id-by-item and
+      // callers derive the id from the item alone (event.id), so index is nominal.
+      (it) => getKey(it, 0),
+    );
+    if (r !== "wait") {
+      restoreTargetRef.current = r;
+      restoreSavedRef.current = null; // resolved: never ask again
+      if (scrollRestoreDebugEnabled()) {
+        try { console.debug(`[scroll-restore] VirtualFeed indexTarget=${JSON.stringify(r)} rows=${items.length} saved=${JSON.stringify(saved)}`); } catch {}
+      }
     }
   }
+  const hasRestoreTarget = !!restoreTargetRef.current;
+  // An index restore is a FRESH mount (a rebuild after a reload, or a drill-in
+  // past the kept-alive depth): every row above the anchor measures for the
+  // first time while the reader watches, and the landing churns (measured
+  // 2026-09-30: seven visible moves, up to 673px, in 1.5s). So it settles
+  // under a veil from mount: the rows lay out and measure but stay invisible
+  // until the anchor row has held still for COLD_VEIL_STILL_FRAMES after
+  // landing (or a cap), then appear in place.
+  const [veiled, setVeiled] = useState(() => !!restoreSavedRef.current || !!restoreTargetRef.current);
+  useEffect(() => {
+    if (!veiled) return;
+    const t = setTimeout(() => setVeiled(false), COLD_VEIL_CAP_MS);
+    return () => clearTimeout(t);
+    // The cap runs from mount; the landing lifts the veil earlier when it is still.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // First-paint seed: place the container near the target row's ESTIMATED offset
   // so the initial rendered range already brackets the anchor (no top-of-feed
@@ -176,6 +209,50 @@ export function VirtualFeed<T>({
     },
   });
 
+  // While the app-level restorer is landing a back-return it re-pins the
+  // anchor row from the DOM every frame, so the virtualizer must not ALSO
+  // compensate rows above re-measuring. On iOS-like devices (real iPhones,
+  // and any touch Mac) react-virtual DEFERS that compensation while the page
+  // counts as scrolling and flushes it afterwards: the flush landed 250–400ms
+  // after everything had settled, on top of the DOM correction, and moved the
+  // page 269–358px (measured 2026-09-30, cold rebuild after a reload). Outside
+  // the window this is react-virtual's own default rule. An instance property
+  // in this react-virtual, not an option.
+  virtualizer.shouldAdjustScrollPositionOnItemSizeChange = (item, _delta, instance) => {
+    if (isRestoreActive()) return false;
+    // The two fields react-virtual's own default rule reads; typed private,
+    // public at runtime.
+    const v = instance as unknown as { getScrollOffset(): number; scrollAdjustments: number };
+    return item.start < v.getScrollOffset() + v.scrollAdjustments && (!instance.itemSizeCache.has(item.key) || instance.scrollDirection !== "backward");
+  };
+
+  // The margin goes stale when something above the feed appears or changes
+  // height after mount (a notice, chips): every row offset in the model is
+  // then off by that much, the capture saves it, and the next return lands
+  // that far from the true place (measured 2026-09-30: a 98px banner → 97px
+  // off). Re-measure when the feed's ancestors resize or the scroller's
+  // subtree changes; setState bails out when the value is unchanged.
+  useEffect(() => {
+    const el = scrollEl;
+    const feed = parentRef.current;
+    if (!el || !feed || typeof ResizeObserver === "undefined") return;
+    let raf = 0;
+    const remeasure = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => { raf = 0; if (activeRef.current) measureScrollMargin(el); });
+    };
+    const ro = new ResizeObserver(remeasure);
+    for (let n: HTMLElement | null = feed.parentElement; n && n !== el; n = n.parentElement) ro.observe(n);
+    const mo = typeof MutationObserver !== "undefined" ? new MutationObserver(remeasure) : null;
+    mo?.observe(el, { childList: true, subtree: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      mo?.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrollEl]);
+
   // Reveal after a kept-alive hide: replay a `<main>` resize that happened while
   // frozen, re-measure the scroll margin against the real layout, and re-measure
   // the mounted rows (a rotation while hidden rewraps them). Each is a no-op when
@@ -210,17 +287,45 @@ export function VirtualFeed<T>({
     didIndexRestoreRef.current = true;
 
     const apply = () => {
-      // align:"start" writes scrollTop to the row's top; += lands within the row.
-      virtualizer.scrollToIndex(target.index, { align: "start" });
-      if (target.intraOffset) scrollEl.scrollTop += target.intraOffset;
+      // One absolute offset: the row's start plus how far the reader was into
+      // it. NOT scrollToIndex + a scrollTop nudge: scrollToIndex keeps a
+      // reconcile loop alive for up to 5s that re-scrolls to the row's TOP
+      // whenever a row above it measures — on a cold feed that is every few
+      // frames, and each write wiped the intra-row offset (measured 2026-09-30:
+      // a 269px jump 277ms after landing, after every restorer had let go).
+      // scrollToOffset's loop is satisfied by the next frame and goes quiet;
+      // rows above re-measuring are compensated by the virtualizer's own
+      // adjustment, and the app-level anchor correction takes the residual.
+      const start = virtualizer.getOffsetForIndex(target.index, "start")?.[0];
+      if (start == null) return;
+      virtualizer.scrollToOffset(Math.max(0, start + target.intraOffset));
     };
     apply();
+    const cold = veiled; // the veil is on from mount for every index restore
     // Re-assert ONCE after the target row has mounted/measured: the first call
     // used estimates for the offset, the second lands on the true measured start.
-    const raf = requestAnimationFrame(apply);
-    return () => cancelAnimationFrame(raf);
+    let raf = requestAnimationFrame(() => {
+      apply();
+      if (!cold) return;
+      // Lift the veil once the anchor row has held still long enough.
+      const startAt = performance.now();
+      let last: number | null = null;
+      let still = 0;
+      const watch = () => {
+        const row = parentRef.current?.querySelector<HTMLElement>(`:scope > [data-index="${target.index}"]`);
+        const top = row ? Math.round(row.getBoundingClientRect().top) : null;
+        still = top !== null && last !== null && Math.abs(top - last) <= 1 ? still + 1 : 0;
+        last = top;
+        // Still, and the app-level restorer has let go (its window corrects the
+        // anchor while rows above measure) — or the cap.
+        if ((still >= COLD_VEIL_STILL_FRAMES && !isRestoreActive()) || performance.now() - startAt > COLD_VEIL_CAP_MS) { setVeiled(false); return; }
+        raf = requestAnimationFrame(watch);
+      };
+      raf = requestAnimationFrame(watch);
+    });
+    return () => { cancelAnimationFrame(raf); setVeiled(false); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scrollEl]);
+  }, [scrollEl, hasRestoreTarget]);
 
   // Bridge for the app-level restorer:
   //  • scrollToEventId — reach a virtualized-out row by id (scrollToIndex mounts it).
@@ -278,7 +383,7 @@ export function VirtualFeed<T>({
       // scroll anchoring (which double-corrects against our own scroll
       // adjustments when a row above the viewport re-measures).
       className={className ? `virtual-feed ${className}` : "virtual-feed"}
-      style={{ position: "relative", width: "100%", height: `${virtualizer.getTotalSize()}px` }}
+      style={{ position: "relative", width: "100%", height: `${virtualizer.getTotalSize()}px`, visibility: veiled ? "hidden" : undefined }}
       data-testid="container-feed"
     >
       {virtualItems.map((vi) => (

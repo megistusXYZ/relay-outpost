@@ -135,3 +135,33 @@ describe("computeIndexAnchor — fully-visible anchor (viewport known)", () => {
     expect(computeIndexAnchor(rows, 600)).toEqual({ index: 1, intraOffset: 100 });
   });
 });
+
+// ---------------------------------------------------------------------------
+// A feed that is still loading (Home after a reload). Resolving once at mount
+// found no rows and gave up; the target must wait for the rows instead.
+// ---------------------------------------------------------------------------
+import { restoreTargetWhenLoaded } from "@/lib/feed-anchor";
+
+describe("restoreTargetWhenLoaded — the target is the post, and it waits for it", () => {
+  const saved = { anchorId: "c", anchorIndex: 2, intraOffset: 26 };
+  const id = (s: string) => s;
+
+  it("waits while the list is empty instead of giving up", () => {
+    expect(restoreTargetWhenLoaded(saved, [], id)).toBe("wait");
+  });
+
+  it("resolves the moment the post is in the list, wherever a fresh ranking put it", () => {
+    expect(restoreTargetWhenLoaded(saved, ["a", "b", "c", "d"], id)).toEqual({ index: 2, intraOffset: 26 });
+    expect(restoreTargetWhenLoaded(saved, ["x", "y", "z", "w", "c"], id)).toEqual({ index: 4, intraOffset: 26 });
+  });
+
+  it("keeps waiting while the post is not among the rows yet — the rest of the feed may still arrive", () => {
+    expect(restoreTargetWhenLoaded(saved, ["x", "y"], id)).toBe("wait");
+  });
+
+  it("a save without a post id lands by row index once that row exists", () => {
+    const byIndex = { anchorId: null, anchorIndex: 2, intraOffset: 0 };
+    expect(restoreTargetWhenLoaded(byIndex, ["x", "y"], id)).toBe("wait");
+    expect(restoreTargetWhenLoaded(byIndex, ["x", "y", "z"], id)).toEqual({ index: 2, intraOffset: 0 });
+  });
+});

@@ -131,3 +131,32 @@ export function resolveRestoreTarget<T>(
 export function estimatePixelIndex(scrollTop: number, estimateWithGap: number): number {
   return Math.floor(scrollTop / estimateWithGap);
 }
+
+/**
+ * The restore target for a feed that may still be LOADING. After a reload
+ * (or a drill-in past the kept-alive depth) Home rebuilds cold: the feed
+ * mounts with no rows, or a first batch, and the rest arrives over the next
+ * second. Resolving once at mount found nothing and gave up, so Back landed
+ * wherever the estimates put it (measured 2026-09-30: 133px off, with 206px
+ * jumps). And a fresh feed is ranked afresh: the post the reader was on was
+ * row 2 when they left and row ~40 once the list had loaded.
+ *
+ * So: the target is the post (by id) as soon as it is in the list; "wait"
+ * until then — it may still arrive. Only a save without an id lands by row
+ * index, once that row exists.
+ */
+export function restoreTargetWhenLoaded<T>(
+  saved: SavedIndexAnchor,
+  items: T[],
+  getId: (item: T) => string,
+): { index: number; intraOffset: number } | "wait" {
+  const { anchorId, anchorIndex, intraOffset } = saved;
+  if (anchorId != null) {
+    for (let i = 0; i < items.length; i++) {
+      if (getId(items[i]) === anchorId) return { index: i, intraOffset };
+    }
+    return "wait";
+  }
+  if (anchorIndex != null && anchorIndex >= 0 && anchorIndex < items.length) return { index: anchorIndex, intraOffset };
+  return "wait";
+}
