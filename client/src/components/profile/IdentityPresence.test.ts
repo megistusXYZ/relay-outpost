@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
+import path from "path";
 import { rankTopics, countsLine, totalsLine } from "./IdentityPresence";
 
 const ev = (content: string, tags: string[][] = []) => ({ content, tags });
@@ -100,5 +102,15 @@ describe("totalsLine — lifetime totals as one quiet line", () => {
 
   it("leaves out totals that are zero or unknown", () => {
     expect(totalsLine({ totalPosts: 9, totalReplies: 0, totalArticles: undefined })).toEqual(["9 posts"]);
+  });
+});
+
+describe("the New here badge", () => {
+  // Owner, 2026-09-30: no sparkle on "New here" — a sprout says "just started".
+  const src = readFileSync(path.resolve(import.meta.dirname, "IdentityPresence.tsx"), "utf8");
+
+  it("shows a sprout, not a sparkle", () => {
+    expect(src).toMatch(/<Sprout [^>]*\/> New here/);
+    expect(src).not.toMatch(/Sparkles/);
   });
 });

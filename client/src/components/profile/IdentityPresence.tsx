@@ -20,7 +20,7 @@
  * them the loudest thing on the page and, on a phone, put them below the
  * fold. What stays here is one quiet line: totals, then topics.
  */
-import { Sparkles } from "lucide-react";
+import { Sprout } from "lucide-react";
 
 const DAY = 86_400;
 
@@ -165,7 +165,7 @@ export function IdentityPresence({
           ))}
           {isNew && (
             <span className="ml-0.5 inline-flex items-center gap-1 rounded-full bg-brand/10 text-brand text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5">
-              <Sparkles className="w-3 h-3" /> New here
+              <Sprout className="w-3 h-3" aria-hidden="true" /> New here
             </span>
           )}
         </div>
