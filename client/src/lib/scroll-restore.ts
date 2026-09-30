@@ -450,8 +450,15 @@ export function usesIndexRestore(
 
 /** Frames to wait for scrollToIndex's two-frame assert before counting quiet frames. */
 export const INDEX_RESTORE_MIN_ASSERT_FRAMES = 2;
-/** Consecutive quiet (no scrollHeight change) frames past the assert that mean "settled". */
-export const INDEX_RESTORE_QUIET_FRAMES = 2;
+/**
+ * Consecutive quiet (no scrollHeight change) frames past the assert that mean
+ * "settled". Was 2: a COLD feed (Home rebuilt after a reload) measures its rows
+ * in batches with gaps of more than two frames between them, so the window
+ * released mid-churn and the landing drifted 286px (measured 2026-09-30).
+ * Eight frames (~130ms) spans those gaps; a warm feed is quiet from the start
+ * and releases just as fast as before.
+ */
+export const INDEX_RESTORE_QUIET_FRAMES = 8;
 /** Absolute cap so a pathologically decode-churning anchor never babysits
  *  forever. Was 350ms when release keyed on height-quiet alone; now that it
  *  also requires the anchor pinned at its saved offset (the drift fix), slow

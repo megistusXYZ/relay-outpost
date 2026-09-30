@@ -314,32 +314,32 @@ describe("shouldReleaseIndexRestore — hold the window through media decode", (
     return -1; // never released within the sequence
   }
 
-  it("releases on the earliest frame with 2 quiet frames past the assert when height is stable from the start", () => {
-    // Height never changes → quietFrames reaches 2 at frame 3 (frames 2 & 3
-    // quiet, both past the assert). NOT at the old hard frame 2.
-    const stable = new Array(10).fill(1000);
-    expect(releaseFrameFor(stable)).toBe(3);
+  it("releases on the earliest frame with the quiet run complete past the assert when height is stable from the start", () => {
+    // Height never changes → quiet frames are counted from the assert frame,
+    // so the run completes INDEX_RESTORE_QUIET_FRAMES frames later. NOT at the
+    // old hard frame 2.
+    const stable = new Array(20).fill(1000);
+    expect(releaseFrameFor(stable)).toBe(INDEX_RESTORE_MIN_ASSERT_FRAMES + INDEX_RESTORE_QUIET_FRAMES - 1);
     expect(releaseFrameFor(stable)).toBeGreaterThan(INDEX_RESTORE_MIN_ASSERT_FRAMES);
   });
 
   it("does NOT release while scrollHeight keeps growing (late media decode resets the quiet run)", () => {
-    // Height grows every frame through frame 12, then goes quiet. It must hold
-    // past the old 2-rAF release and only let go once decode stops.
-    const growing = [1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1750, 1750, 1750, 1750];
+    // Height grows every frame through frame 8, then goes quiet. It must hold
+    // past the old 2-rAF release and only let go once the quiet run completes.
+    const growing = [1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, ...new Array(20).fill(1750)];
     const rf = releaseFrameFor(growing);
-    // The 2 quiet frames only appear at the end (frames 10 & 11 stable → release
-    // at frame 11), well after the hard-2 point.
-    expect(rf).toBe(11);
+    // Frame 9 is the first 1750 (still a change); the quiet run starts at 10.
+    expect(rf).toBe(9 + INDEX_RESTORE_QUIET_FRAMES);
     expect(rf).toBeGreaterThan(2);
   });
 
   it("a height bump that interrupts the quiet run defers release", () => {
-    // One quiet frame (frame 2), then a bump at frame 3 resets the run before it
-    // reaches 2; quiet again → release two quiet frames later (frame 5). Without
-    // the bump this same start would have released at frame 3.
-    const heights = [1000, 1000, 1100, 1100, 1100, 1100];
-    expect(releaseFrameFor(heights)).toBe(5);
-    expect(releaseFrameFor([1000, 1000, 1000, 1000])).toBe(3); // no bump → frame 3
+    // One quiet frame (frame 2), then a bump at frame 3 resets the run; quiet
+    // again → release a full quiet run later. Without the bump the same start
+    // releases a bump's worth earlier.
+    const heights = [1000, 1000, 1100, ...new Array(20).fill(1100)];
+    expect(releaseFrameFor(heights)).toBe(3 + INDEX_RESTORE_QUIET_FRAMES);
+    expect(releaseFrameFor(new Array(20).fill(1000))).toBe(INDEX_RESTORE_MIN_ASSERT_FRAMES + INDEX_RESTORE_QUIET_FRAMES - 1);
   });
 
   it("falls back to the hard time cap when the height never goes quiet (pathological churn)", () => {
@@ -454,7 +454,7 @@ describe("shouldReleaseIndexRestore — anchor must be settled", () => {
 
   it("releases once quiet AND the anchor is settled", () => {
     expect(
-      shouldReleaseIndexRestore({ frame: 10, quietFrames: 5, elapsedMs: 200, anchorSettled: true }),
+      shouldReleaseIndexRestore({ frame: 10, quietFrames: INDEX_RESTORE_QUIET_FRAMES, elapsedMs: 200, anchorSettled: true }),
     ).toBe(true);
   });
 
@@ -556,5 +556,14 @@ describe("a tab tap opens its page at the top, every time", () => {
     expect(first._scrollToken).not.toBe("tok-round-trip");
     expect(getSavedScrollPosition(first._scrollToken, "/discover")).toBeUndefined();
     expect(freshScrollState()._scrollToken).not.toBe(first._scrollToken);
+  });
+});
+
+describe("shouldReleaseIndexRestore — a cold feed measures in batches", () => {
+  it("two quiet frames between measurement batches do not release; the default quiet run does", () => {
+    const base = { frame: 20, elapsedMs: 300, anchorSettled: true };
+    expect(shouldReleaseIndexRestore({ ...base, quietFrames: 2 })).toBe(false);
+    expect(shouldReleaseIndexRestore({ ...base, quietFrames: INDEX_RESTORE_QUIET_FRAMES })).toBe(true);
+    expect(INDEX_RESTORE_QUIET_FRAMES).toBe(8);
   });
 });
