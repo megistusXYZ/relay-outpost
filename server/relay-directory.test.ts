@@ -72,11 +72,13 @@ describe("relay directory reader", () => {
     expect(r.relays).toHaveLength(1);
   });
 
-  it("no monitor answers: says so, and asks again next time", async () => {
+  it("no monitor answers: says so, and asks again a minute later", async () => {
     const answers = { [A]: down, [B]: down };
-    const { reader, query } = setup(answers);
+    const { reader, query, advance } = setup(answers);
     expect(await reader.read()).toEqual({ reached: false, relays: [] });
     answers[A] = ok(report("wss://one.example"));
+    expect(await reader.read()).toEqual({ reached: false, relays: [] });
+    advance(RETRY_MS);
     const r = await reader.read();
     expect(r.reached).toBe(true);
     expect(r.relays).toHaveLength(1);

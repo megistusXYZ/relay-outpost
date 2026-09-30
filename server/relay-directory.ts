@@ -7,13 +7,12 @@
  * (shared/relay-directory.ts), so the server reads the monitors and hands
  * the list over.
  *
- * One read serves everyone for FRESH_MS. After that the list in hand is
- * still served while a new one is read, so nobody waits on a refresh. A
- * refresh that fails, or comes back with nothing, never replaces a list we
- * have; that list is kept for KEEP_MS at most. With no list, a monitor we
- * couldn't ask is `reached: false`, never an empty directory.
+ * One read serves everyone for FRESH_MS and nobody waits on a refresh
+ * (shared-read.ts). With no list, a monitor we couldn't ask is
+ * `reached: false`, never an empty directory.
  */
 import { queryRelay, type RelayQuery } from "./score-cards";
+import { createSharedRead } from "./shared-read";
 import { directoryFromReports, KIND_RELAY_REPORT, NIP_66_MONITOR_RELAYS, REPORT_LIMIT, type DirectoryEntry } from "@shared/relay-directory";
 
 export const FRESH_MS = 30 * 60 * 1000;
@@ -35,15 +34,13 @@ export function createRelayDirectoryReader(opts: {
 } = {}) {
   const monitors = opts.monitors ?? NIP_66_MONITOR_RELAYS;
   const query = opts.query ?? queryRelay;
-  const now = opts.now ?? Date.now;
-  let held: { at: number; relays: DirectoryEntry[] } | null = null;
-  let reading: Promise<DirectoryAnswer> | null = null;
-  let lastTryAt = -Infinity;
 
-  function readMonitors(): Promise<DirectoryAnswer> {
-    if (reading) return reading;
-    lastTryAt = now();
-    reading = (async () => {
+  const shared = createSharedRead<DirectoryEntry>({
+    freshMs: FRESH_MS,
+    keepMs: KEEP_MS,
+    retryMs: RETRY_MS,
+    now: opts.now,
+    read: async () => {
       const answers = await Promise.all(
         monitors.map((m) =>
           Promise.resolve()
@@ -51,23 +48,15 @@ export function createRelayDirectoryReader(opts: {
             .catch(() => ({ reached: false, answered: false, events: [] as any[] })),
         ),
       );
-      const relays = directoryFromReports(answers.flatMap((a) => a.events));
+      const items = directoryFromReports(answers.flatMap((a) => a.events));
       // A monitor cut off mid-answer still told us about real relays.
-      const reached = relays.length > 0 || answers.some((a) => a.answered);
-      if (relays.length > 0) held = { at: now(), relays };
-      return { reached, relays };
-    })().finally(() => { reading = null; });
-    return reading;
-  }
+      return { reached: items.length > 0 || answers.some((a) => a.answered), items };
+    },
+  });
 
   async function read(): Promise<DirectoryAnswer> {
-    const age = held ? now() - held.at : Infinity;
-    if (held && age < KEEP_MS) {
-      if (age >= FRESH_MS && now() - lastTryAt >= RETRY_MS) void readMonitors().catch(() => {});
-      return { reached: true, relays: held.relays };
-    }
-    held = null;
-    return readMonitors();
+    const { reached, items } = await shared.read();
+    return { reached, relays: items };
   }
 
   return { read };
