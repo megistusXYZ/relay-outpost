@@ -1687,6 +1687,49 @@ export interface MediaRendererProps {
   priority?: boolean;
 }
 
+/**
+ * How many of a post's links get a preview card. Each card asks our server for
+ * the page's preview; a spam post with 285 links froze the page for over a
+ * minute (2026-09-30). Past this, the links are listed plainly behind
+ * "N more links" and fetch nothing.
+ */
+export const MAX_LINK_PREVIEWS = 3;
+
+function MoreLinks({ urls }: { urls: string[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="space-y-1.5">
+      <button
+        type="button"
+        className="inline-flex items-center gap-1.5 min-h-[44px] text-xs font-medium text-muted-foreground hover:text-foreground"
+        aria-expanded={open}
+        data-testid="button-more-links"
+        onClick={(e) => { e.stopPropagation(); e.preventDefault(); setOpen((v) => !v); }}
+      >
+        <Link2 className="w-3.5 h-3.5" aria-hidden="true" />
+        {open ? "Hide links" : `${urls.length} more ${urls.length === 1 ? "link" : "links"}`}
+      </button>
+      {open && (
+        <ul className="space-y-1 text-xs" data-testid="more-links-list">
+          {urls.map((url) => (
+            <li key={url} className="truncate">
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand/90 hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {url.replace(/^https?:\/\/(www\.)?/, "")}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function MediaRenderer({ event, compact = false, priority = false }: MediaRendererProps) {
   const profileEvent = use$(eventStore.replaceable(0, event.pubkey));
   const videoAuthorInfo = useMemo(() => {
@@ -1861,11 +1904,15 @@ export function MediaRenderer({ event, compact = false, priority = false }: Medi
     () => new Set(contentLinks.map((link) => radioStationFromUrl(link.url)?.pageUrl).filter((u): u is string => !!u)),
     [contentLinks],
   );
+  // Cards for the first few links only; the rest stay one tap away as plain
+  // links (see MAX_LINK_PREVIEWS).
+  const previewLinks = useMemo(() => contentLinks.slice(0, MAX_LINK_PREVIEWS), [contentLinks]);
+  const moreLinks = useMemo(() => contentLinks.slice(MAX_LINK_PREVIEWS).map((link) => link.url), [contentLinks]);
   // The links whose previews come from the page itself (not the URL alone),
   // in post order: a station found on several of them belongs to the first.
   const ogLinkUrls = useMemo(
-    () => contentLinks.map((link) => link.url).filter((u) => !detectGroupInvite(u) && !audioSpaceFromUrl(u) && !radioStationFromUrl(u)),
-    [contentLinks],
+    () => previewLinks.map((link) => link.url).filter((u) => !detectGroupInvite(u) && !audioSpaceFromUrl(u) && !radioStationFromUrl(u)),
+    [previewLinks],
   );
 
   const hasMedia = allImageUrls.size > 0 || allVideoUrls.size > 0 || allAudioUrls.size > 0 || contentEmbeds.length > 0 || contentLinks.length > 0 || contentZapStreams.length > 0 || contentMusicLinks.length > 0;
@@ -1965,12 +2012,13 @@ export function MediaRenderer({ event, compact = false, priority = false }: Medi
         )
       )}
 
-      {contentLinks.map((link) => {
+      {previewLinks.map((link) => {
         const hidePreviewImage = allImageUrls.size > 0 && allAudioUrls.size > 0;
         return (
           <LinkPreviewCard key={link.url} url={link.url} compact={compact} displayedImageUrls={allImageUrls} hideImage={hidePreviewImage} isVideo={isKnownVideoLink(link.url)} linkedStations={linkedStations} earlierLinks={ogLinkUrls.slice(0, Math.max(0, ogLinkUrls.indexOf(link.url)))} />
         );
       })}
+      {moreLinks.length > 0 && <MoreLinks urls={moreLinks} />}
     </div>
   );
 }
