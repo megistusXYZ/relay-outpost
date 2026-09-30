@@ -416,6 +416,21 @@ describe("Discover tiles fed by the server's samples", () => {
     expect(scoreAsks).toEqual([]);
   });
 
+  it("Events: a placeholder event is passed over for the next real one (owner, 2026-09-30)", async () => {
+    server({ events: [
+      sign(31923, [["d", "oshi"], ["title", "Test Oshi"], ["start", String(soon)]], "Test summary text"),
+      sign(31923, [["d", "meetup"], ["title", "Bitcoin meetup"], ["start", String(soon + 86400)]], "Coffee and a talk on self-custody."),
+    ] });
+    const r = await fetchNextCalendarEvent();
+    expect(r.data?.title).toBe("Bitcoin meetup");
+  });
+
+  it("Events: when the only upcoming event is a placeholder, there is nothing scheduled", async () => {
+    server({ events: [sign(31923, [["d", "oshi"], ["title", "Test Oshi"], ["start", String(soon)]], "Test summary text")] });
+    const r = await fetchNextCalendarEvent();
+    expect(r).toEqual({ data: null, reached: true });
+  });
+
   it("Videos: shown from the server's sample, with no broad relay read and no score lookup", async () => {
     server({ videos: [sign(21, [["title", "A talk"], ["imeta", "url https://v.example/a.mp4", "image https://v.example/a.jpg"]])] });
     const r = await fetchVideoTeaser();

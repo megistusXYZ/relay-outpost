@@ -36,7 +36,7 @@ import { getContentWarning } from "@/lib/sensitive-content";
 import { pickMarketListings, formatListingPrice, CATALOG_MUTED_SELLERS, KIND_CLASSIFIED_LISTING, LISTING_RELAYS } from "@/lib/listing";
 import { rankDiscoverFeed } from "@/lib/discover-rank";
 import { isPromoBait, preferFollowed } from "@/lib/discover-curation";
-import { rankTopics, pickNextUpcoming, pickImageShelf, isSensitiveMedia, hasContent, type RankedTopic, type ShelfImage } from "@/lib/discover-tiles";
+import { rankTopics, pickNextUpcoming, pickImageShelf, isSensitiveMedia, hasContent, isPlaceholderPost, type RankedTopic, type ShelfImage } from "@/lib/discover-tiles";
 import { saveSnapshot, readSnapshot, type SnapshotStore } from "@/lib/tile-snapshot";
 import { loadDiscoverTrust, gateByTrust, chooseDiscoverLens, emptyIsUnproven } from "@/lib/discover-trust";
 import { getEventMediaInfo } from "@/lib/media-utils";
@@ -616,7 +616,10 @@ async function fetchNextCalendarEventFresh(): Promise<Reached<CalendarEventData 
     : [];
   const parsed = gateByTrust([...events, ...trustedEvents], (e) => e.pubkey, { follows: trustOpts.follows, scores: trust.scores })
     .map(parseCalendarEvent)
-    .filter((e): e is CalendarEventData => e !== null && !!e.title);
+    .filter((e): e is CalendarEventData => e !== null && !!e.title)
+    // Front-door quality: no placeholder events ("Test Oshi", "Test summary
+    // text") ahead of real ones (lib/discover-tiles.ts).
+    .filter((e) => !isPlaceholderPost({ title: e.title, description: e.description }));
   const next = pickNextUpcoming(parsed, Math.floor(Date.now() / 1000));
   // No event while some hosts' scores couldn't be read: not "nothing scheduled".
   if (next === null && emptyIsUnproven(trust)) return { data: null, reached: false };
@@ -770,7 +773,7 @@ async function fetchMarketShelfFresh(): Promise<Reached<MarketTeaser[] | null>> 
     .filter((l) => !l.sold && l.images.length > 0)
     // Front-door quality: no placeholder listings ("Test"), and one listing
     // per seller so a single shop can't fill the shelf.
-    .filter((l) => !/^\s*test(ing)?\s*\d*\s*$/i.test(l.title))
+    .filter((l) => !isPlaceholderPost({ title: l.title }))
     .filter((l, i, all) => all.findIndex((o) => o.pubkey === l.pubkey) === i)
     .slice(0, 6)
     .map((l) => ({

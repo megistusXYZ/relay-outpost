@@ -9,7 +9,7 @@
  * states.
  */
 import { describe, it, expect } from "vitest";
-import { resolveTile, rankTopics, pickNextUpcoming, markRising, pickImageShelf, isSensitiveMedia, type TileState } from "./discover-tiles";
+import { resolveTile, rankTopics, pickNextUpcoming, markRising, pickImageShelf, isSensitiveMedia, isPlaceholderPost, type TileState } from "./discover-tiles";
 import type { Reached } from "./relay-reach";
 
 const reached = <T,>(data: T): Reached<T> => ({ data, reached: true });
@@ -206,5 +206,39 @@ describe("isSensitiveMedia", () => {
 
   it("unlabelled clean posts pass", () => {
     expect(isSensitiveMedia(ev([["t", "art"]], "a chart of relay counts"))).toBe(false);
+  });
+});
+
+/**
+ * The front door shows no placeholder posts (owner, 2026-09-30). The Events
+ * tile led with "Test Oshi" ("Test summary text"), an upcoming event by a
+ * trusted host; the same live sample held "Test Event" ("Just testing to see
+ * if I can create an event…"), "Test", "Testing" and "Teste" ("meu evento de
+ * mentira": my fake event).
+ */
+describe("isPlaceholderPost", () => {
+  it("a title that is only a test word is a placeholder", () => {
+    for (const title of ["Test", "testing", "Teste", "Test 2", "  TEST  ", "Tester"]) {
+      expect(isPlaceholderPost({ title }), title).toBe(true);
+    }
+  });
+
+  it("a title that starts with a test word is a placeholder when its description is empty or says test", () => {
+    expect(isPlaceholderPost({ title: "Test Oshi", description: "Test summary text" })).toBe(true);
+    expect(isPlaceholderPost({ title: "Test Event", description: "Just testing to see if I can create an event with a virtual link" })).toBe(true);
+    expect(isPlaceholderPost({ title: "Testing", description: "Nostr Cal test" })).toBe(true);
+    expect(isPlaceholderPost({ title: "Test Event", description: "" })).toBe(true);
+    expect(isPlaceholderPost({ title: "Test event", description: "   " })).toBe(true);
+  });
+
+  it("a real event that happens to start with a test word stays", () => {
+    expect(isPlaceholderPost({ title: "Testing Bitcoin wallets", description: "Bring your phone: we set up and back up three wallets together." })).toBe(false);
+    expect(isPlaceholderPost({ title: "Test your node", description: "A hands-on evening at the hackerspace." })).toBe(false);
+  });
+
+  it("titles that only contain the letters, or mention a test later, stay", () => {
+    for (const title of ["Testnet workshop", "Contest night", "Latest news", "Bitcoin test drive", "Protest march"]) {
+      expect(isPlaceholderPost({ title, description: "" }), title).toBe(false);
+    }
   });
 });

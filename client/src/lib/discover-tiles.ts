@@ -80,6 +80,32 @@ export function rankTopics(
 
 // ── Next calendar event (pure) ───────────────────────────────────────────────
 
+const TEST_WORD = /^(test|testing|teste|tester)$/i;
+
+/**
+ * A placeholder someone posted to try an app, not something to show on the
+ * front door (owner, 2026-09-30). The Events tile led with "Test Oshi"
+ * ("Test summary text"), an upcoming event by a trusted host.
+ *
+ * A title that is only a test word ("Test", "Testing 2", "Teste") is one.
+ * A title that merely STARTS with a test word is one only when its
+ * description is empty or reads as a test too, so a real "Testing Bitcoin
+ * wallets" meetup that says what it is stays. Titles that just contain the
+ * letters ("Testnet", "Contest") are never matched.
+ */
+export function isPlaceholderPost(post: { title: string; description?: string }): boolean {
+  const words = post.title.trim().split(/\s+/);
+  if (!words[0] || !TEST_WORD.test(words[0])) return false;
+  const rest = words.slice(1);
+  if (rest.length === 0 || (rest.length === 1 && /^\d+$/.test(rest[0]))) return true;
+  const description = (post.description ?? "").trim();
+  if (description === "") return true;
+  const described = description.split(/\s+/);
+  // "Test summary text", "Just testing to see if…", or a few words that include one ("Nostr Cal test").
+  if (TEST_WORD.test(described[0].replace(/\W+$/, "")) || (/^just$/i.test(described[0]) && TEST_WORD.test((described[1] ?? "").replace(/\W+$/, "")))) return true;
+  return described.length <= 5 && described.some((w) => TEST_WORD.test(w.replace(/\W+$/, "")));
+}
+
 /**
  * The soonest event that has not passed. 31923 carries unix startTime; 31922
  * all-day events carry a YYYY-MM-DD startDate (parsed as local midnight). An
