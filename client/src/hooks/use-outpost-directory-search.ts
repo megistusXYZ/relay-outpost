@@ -28,10 +28,18 @@ import {
   joinedUrlSet,
   toDirMatches,
 } from "@/lib/outpost-directory";
+import { fetchServerDirectory, readDirectory } from "@/lib/relay-directory-source";
+import {
+  directoryFromReports,
+  KIND_RELAY_REPORT,
+  NIP_66_MONITOR_RELAYS,
+  REPORT_LIMIT,
+  type DirectoryEntry,
+} from "@shared/relay-directory";
 
 /** Exported for reachability gating: a consumer claiming "the directory is
  *  empty" must first prove one of these monitors actually answered. */
-export const NIP_66_MONITOR_RELAYS = ["wss://relaypag.es", "wss://monitorlizard.nostr1.com"];
+export { NIP_66_MONITOR_RELAYS };
 
 // ---------------------------------------------------------------------------
 // Module-level discovery store (one NIP-66 subscription for the whole app).
@@ -61,9 +69,10 @@ function updateDiscoveredRelays(fn: (prev: DiscoveredOutpost[]) => DiscoveredOut
 
 /**
  * Idempotently kick off the NIP-66 relay-directory discovery. Safe to call from
- * any consumer, any number of times — only the first call runs. The
- * subscription self-closes after EOSE or a 15s cap, then enriches the top
- * relays with NIP-11 metadata + a rough active-user count. Results persist for
+ * any consumer, any number of times — only the first call runs. The list
+ * comes from the server; if it can't answer, from the monitors themselves (a
+ * subscription that self-closes after EOSE or a 15s cap). The top relays are
+ * then enriched with NIP-11 metadata + a rough active-user count. Results persist for
  * the app's lifetime (never torn down on unmount), so later consumers see them
  * instantly.
  */
@@ -73,74 +82,42 @@ export function ensureDiscoveryStarted(): void {
   setDiscovery({ loading: true });
   discoveryRunning = true;
 
-  const relayMap = new Map<string, DiscoveredOutpost>();
-  let closed = false;
+  // The server's shared list first (lib/relay-directory-source.ts): reading
+  // the monitors here cost 6.5 MB on the landing page.
+  readDirectory({ server: () => fetchServerDirectory(), monitors: readMonitors })
+    .then(finalize, () => finalize([]));
 
-  const sub = pool.subscribeMany(
-    NIP_66_MONITOR_RELAYS,
-    { kinds: [30166], limit: 2000 },
-    {
-      onevent(e: NostrEvent) {
-        if (closed) return;
-        const dTag = e.tags.find((t) => t[0] === "d")?.[1];
-        if (!dTag) return;
-
-        const relayUrl =
-          dTag.startsWith("wss://") || dTag.startsWith("ws://") ? dTag : "wss://" + dTag;
-        const originalUrl = relayUrl.replace(/\/+$/, "");
-        const normalizedUrl = originalUrl.toLowerCase();
-
-        const existing = relayMap.get(normalizedUrl);
-        if (existing && existing.lastSeen >= e.created_at) return;
-
-        const supportedNips = e.tags
-          .filter((t) => t[0] === "N")
-          .map((t) => parseInt(t[1], 10))
-          .filter((n) => !isNaN(n));
-
-        const requirements = e.tags
-          .filter((t) => t[0] === "R")
-          .map((t) => t[1]?.toLowerCase())
-          .filter(Boolean) as string[];
-
-        const software = e.tags.find((t) => t[0] === "s")?.[1] || "";
-        const relayType = e.tags.find((t) => t[0] === "T")?.[1] || "";
-
-        relayMap.set(normalizedUrl, {
-          url: originalUrl,
-          supportedNips,
-          requirements,
-          software,
-          relayType,
-          lastSeen: e.created_at,
-          nip11: null,
-          nip11Loading: false,
-          activeUserCount: null,
-        });
-      },
-      oneose() {
+  function readMonitors(): Promise<DirectoryEntry[]> {
+    return new Promise((resolve) => {
+      const reports: NostrEvent[] = [];
+      let closed = false;
+      const timer = setTimeout(() => done(), 15000);
+      const done = () => {
         if (closed) return;
         closed = true;
         clearTimeout(timer);
         sub.close();
-        finalize(relayMap);
-      },
-    },
-  );
+        resolve(directoryFromReports(reports));
+      };
+      const sub = pool.subscribeMany(
+        NIP_66_MONITOR_RELAYS,
+        { kinds: [KIND_RELAY_REPORT], limit: REPORT_LIMIT },
+        {
+          onevent(e: NostrEvent) { if (!closed) reports.push(e); },
+          oneose: done,
+        },
+      );
+    });
+  }
 
-  const timer = setTimeout(() => {
-    if (!closed) {
-      closed = true;
-      sub.close();
-      finalize(relayMap);
-    }
-  }, 15000);
-
-  function finalize(map: Map<string, DiscoveredOutpost>) {
+  function finalize(entries: DirectoryEntry[]) {
     discoveryRunning = false;
-    const results = Array.from(map.values()).sort(
-      (a, b) => b.supportedNips.length - a.supportedNips.length,
-    );
+    const results: DiscoveredOutpost[] = entries.map((e) => ({
+      ...e,
+      nip11: null,
+      nip11Loading: false,
+      activeUserCount: null,
+    }));
     setDiscovery({ relays: results, loading: false });
 
     // Enrichment is bounded to what any consumer actually renders. The Outposts
