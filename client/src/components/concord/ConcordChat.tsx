@@ -78,6 +78,7 @@ import { ChatPaneSection } from "./ChatPaneSection";
 import { toggleSection, type ChatLayout } from "@/lib/chat-layout";
 import type { ReactNode } from "react";
 import { ConcordMessageActions } from "./ConcordMessageActions";
+import { ClampedText, LINES, textForLines } from "@/components/ClampedText";
 
 interface ChatMsg { id: string; pubkey: string; content: string; t: number; media?: ConcordMedia[]; replyTo?: { id: string; pubkey: string }; rootId?: string; root?: RootRef; kind?: number; expiresAt?: number; seal?: Seal; epoch?: number; edited?: boolean; deleted?: boolean; deletedBy?: string; mentions?: string[]; poll?: ParsedPoll; vote?: { pollId: string; optionIds: string[] } }
 /** A message's kind, for the `k` tag of what targets it (CORD-03). Rows cached
@@ -2065,6 +2066,10 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
   const { name, avatar, hasProfile } = useConcordProfile(pubkey);
   // Armada puts a game's .xdc link in the text too; the game's card already stands for it.
   const shownText = withoutGameLinks(content, media);
+  // A really long paste is cut at 20 lines with Show more (owner, 2026-09-30);
+  // while cut, only what those lines can show is rendered.
+  const [textExpanded, setTextExpanded] = useState(false);
+  const cutText = textForLines(shownText, LINES.chat, textExpanded);
   // Member identity is a real Nostr pubkey, so the avatar/name open the profile
   // and (on desktop) surface the same rich hover card as an @-mention — turning a
   // group chat into a place to discover and connect with people.
@@ -2141,7 +2146,19 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
                 still sets this row's minimum and pushes it wider than the
                 screen. `anywhere` is the value that counts toward intrinsic
                 sizing, which is what actually stops the overflow. */}
-            {shownText && <div className="post-content-text reply-content-text break-words [overflow-wrap:anywhere] whitespace-pre-wrap"><ConcordMessageBody id={msgId} pubkey={pubkey} content={shownText} />{edited && <span className="ml-1 text-[10px] text-muted-foreground/40">(edited)</span>}</div>}
+            {/* Only a really long paste is ever cut: 20 lines, then Show more (owner, 2026-09-30). */}
+            {shownText && (
+              <ClampedText
+                lines={LINES.chat}
+                className="post-content-text reply-content-text break-words [overflow-wrap:anywhere] whitespace-pre-wrap"
+                testId={`group-message-text-${msgId.slice(0, 8)}`}
+                toggleTestId={`button-group-message-more-${msgId.slice(0, 8)}`}
+                expanded={textExpanded}
+                onExpandedChange={setTextExpanded}
+              >
+                <ConcordMessageBody id={msgId} pubkey={pubkey} content={cutText} />{edited && <span className="ml-1 text-[10px] text-muted-foreground/40">(edited)</span>}
+              </ClampedText>
+            )}
             {media && media.length > 0 && (
               <div className="flex flex-col gap-1.5 mt-1.5">
                 {media.map((m, i) => <ConcordMediaView key={i} media={m} />)}

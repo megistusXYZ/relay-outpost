@@ -89,6 +89,7 @@ import { useHideMessagePreviews } from "@/lib/message-previews";
 import { getDMDisplayName, mergeChatEntries, URL_REGEX, type ConversationPreview, type DmTab, type GroupPreview, type ProfileInfo } from "./messages/helpers";
 import { lazyRetry } from "@/lib/lazy-retry";
 import messagesEmptyBg from "../assets/images/messages-empty-bg.webp";
+import { ClampedText, LINES, textForLines } from "@/components/ClampedText";
 
 // Camera + QR decoder and the invite-link parser stay out of the main bundle
 // until someone taps Scan / Join. Owned here (not in ChatList) so the empty-state
@@ -504,6 +505,26 @@ function renderWithCustomEmoji(text: string, emojiMap: Map<string, string>, jumb
   return out.length ? out : <span key={`${keyBase}-t0`}>{text}</span>;
 }
 
+/** A message's text split into plain text and links (each link classified as media or not). */
+function splitUrls(text: string): { type: "text" | "url"; value: string; mediaType?: string }[] {
+  const segments: { type: "text" | "url"; value: string; mediaType?: string }[] = [];
+  let lastIndex = 0;
+  let match;
+  const regex = new RegExp(URL_REGEX.source, "g");
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ type: "text", value: text.slice(lastIndex, match.index) });
+    }
+    const url = match[1];
+    segments.push({ type: "url", value: url, mediaType: classifyUrl(url) });
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    segments.push({ type: "text", value: text.slice(lastIndex) });
+  }
+  return segments;
+}
+
 function DMMessageContent({ content, userPubkey, fileMetadata, isMine }: { content: string; userPubkey?: string; fileMetadata?: FileMetadata; isMine?: boolean }) {
   const { emojis } = useCustomEmojis();
   const emojiMap = useMemo(() => new Map(emojis.map((e) => [e.shortcode, e.url])), [emojis]);
@@ -542,24 +563,15 @@ function DMMessageContent({ content, userPubkey, fileMetadata, isMine }: { conte
       return [{ type: "url" as const, value: url, mediaType }];
     }
 
-    const segments: { type: "text" | "url"; value: string; mediaType?: string }[] = [];
-    let lastIndex = 0;
-    let match;
-    const regex = new RegExp(URL_REGEX.source, "g");
-    while ((match = regex.exec(displayText)) !== null) {
-      if (match.index > lastIndex) {
-        segments.push({ type: "text", value: displayText.slice(lastIndex, match.index) });
-      }
-      const url = match[1];
-      const mt = classifyUrl(url);
-      segments.push({ type: "url", value: url, mediaType: mt });
-      lastIndex = regex.lastIndex;
-    }
-    if (lastIndex < displayText.length) {
-      segments.push({ type: "text", value: displayText.slice(lastIndex) });
-    }
-    return segments;
+    return splitUrls(displayText);
   }, [displayText, fileMetadata, fileIsEncrypted, resolvedFileUrl]);
+
+  // Only a really long paste is ever cut: 20 lines, then Show more (owner,
+  // 2026-09-30). While cut, only what those lines can show is rendered; the
+  // media and invite cards still come from the whole message.
+  const [expanded, setExpanded] = useState(false);
+  const shownText = textForLines(displayText, LINES.chat, expanded);
+  const shownParts = useMemo(() => (shownText === displayText ? parts : splitUrls(shownText)), [shownText, displayText, parts]);
 
   const mediaUrls = useMemo(() => parts.filter(p => p.type === "url" && (p.mediaType === "image" || p.mediaType === "video" || p.mediaType === "audio")), [parts]);
   const mediaUrlSet = useMemo(() => new Set(mediaUrls.map(p => p.value)), [mediaUrls]);
@@ -577,10 +589,10 @@ function DMMessageContent({ content, userPubkey, fileMetadata, isMine }: { conte
     [parts],
   );
 
-  const textParts = useMemo(() => parts.filter(seg => {
+  const textParts = useMemo(() => shownParts.filter(seg => {
     if (seg.type === "url" && (mediaUrlSet.has(seg.value) || inviteUrlSet.has(seg.value))) return false;
     return true;
-  }), [parts, mediaUrlSet, inviteUrlSet]);
+  }), [shownParts, mediaUrlSet, inviteUrlSet]);
 
   const hasTextContent = textParts.some(p =>
     (p.type === "text" && p.value.trim()) || (p.type === "url")
@@ -660,7 +672,16 @@ function DMMessageContent({ content, userPubkey, fileMetadata, isMine }: { conte
         </div>
       )}
       {hasTextContent ? (
-        <p className={`${isMine ? "text-[#f0eef8]" : ""} ${isEmojiOnly ? "whitespace-pre-wrap break-words text-4xl leading-tight" : "reply-content-text whitespace-pre-wrap break-words"}`}>
+        <ClampedText
+          as="p"
+          lines={LINES.chat}
+          className={`${isMine ? "text-[#f0eef8]" : ""} ${isEmojiOnly ? "whitespace-pre-wrap break-words text-4xl leading-tight" : "reply-content-text whitespace-pre-wrap break-words"}`}
+          testId="dm-message-text"
+          toggleTestId="button-dm-message-more"
+          toggleClassName={`mt-1 text-xs font-medium ${isMine ? "text-[#f0eef8]/85" : "text-brand/80"}`}
+          expanded={expanded}
+          onExpandedChange={setExpanded}
+        >
           {textParts.map((seg, i) => {
             if (seg.type === "url") {
               return (
@@ -682,7 +703,7 @@ function DMMessageContent({ content, userPubkey, fileMetadata, isMine }: { conte
             }
             return <span key={i}>{renderWithCustomEmoji(seg.value, emojiMap, isEmojiOnly, i)}</span>;
           })}
-        </p>
+        </ClampedText>
       ) : null}
       {invites.map((inv) => (
         // Definite width (like chat media above) so the fixed-height card

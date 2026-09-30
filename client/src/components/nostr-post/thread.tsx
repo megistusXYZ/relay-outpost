@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { ClampedText, LINES, textForLines } from "@/components/ClampedText";
 import { createPortal } from "react-dom";
 import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
@@ -921,8 +922,10 @@ export function ParentPostPreview({ event, variant = "card" }: { event: Event; v
   const timeAgo = useMemo(() => {
     try { return formatDistanceToNow(new Date(event.created_at * 1000), { addSuffix: true }); } catch { return ""; }
   }, [event.created_at]);
+  // Only what three lines can show is ever rendered here (one parent was
+  // 46,238 characters).
   const contentText = useMemo(() => {
-    return event.content.replace(/https?:\/\/\S+/g, "").trim();
+    return textForLines(event.content.replace(/https?:\/\/\S+/g, "").trim(), LINES.context, false);
   }, [event.content]);
   // Parent was ONLY a shared reference (quote/article token, no prose):
   // ParsedPreviewText strips those tokens, which would leave the preview
@@ -974,13 +977,21 @@ export function ParentPostPreview({ event, variant = "card" }: { event: Event; v
         <span className="text-[11px] text-muted-foreground/60">{timeAgo}</span>
       </div>
       {contentText && (
-        <p className="text-[11px] text-foreground/80 leading-relaxed whitespace-pre-wrap break-words" data-testid={`text-parent-content-${event.id}`}>
+        // Context, not the post: three lines at most, and tapping opens the
+        // parent (owner, 2026-09-30; one of these ran to 21,450 px).
+        <ClampedText
+          as="p"
+          lines={LINES.context}
+          expandable={false}
+          className="text-[11px] text-foreground/80 leading-relaxed whitespace-pre-wrap break-words"
+          testId={`text-parent-content-${event.id}`}
+        >
           {refOnly ? (
             <span className="italic text-muted-foreground/70">Shared a post</span>
           ) : (
             <ParsedPreviewText text={contentText} />
           )}
-        </p>
+        </ClampedText>
       )}
     </div>
   );
@@ -1082,21 +1093,16 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
   const tr = useTranslation(event);
   const replyProse = tr.showing && tr.translatedProse !== null ? tr.translatedProse : textContent;
 
-  const REPLY_TRUNCATE_CHARS = 300;
-  const replyNeedsTruncation = replyProse.length > REPLY_TRUNCATE_CHARS;
+  // Long replies are cut by the lines they take on screen (ClampedText,
+  // LINES.post), not at 300 characters, which never cut a long list. While
+  // cut, only what those lines can show is rendered.
   const [replyExpanded, setReplyExpanded] = useState(false);
-
-  const replyDisplayText = useMemo(() => {
-    if (!replyNeedsTruncation || replyExpanded) return replyProse;
-    const truncated = replyProse.slice(0, REPLY_TRUNCATE_CHARS);
-    const lastSpace = truncated.lastIndexOf(" ");
-    return (lastSpace > REPLY_TRUNCATE_CHARS * 0.6 ? truncated.slice(0, lastSpace) : truncated) + "...";
-  }, [replyProse, replyNeedsTruncation, replyExpanded]);
+  const replyDisplayText = textForLines(replyProse, LINES.post, replyExpanded);
 
   const replyTruncatedEvent = useMemo(() => {
     // Translated views need a fresh object identity — the content renderer
     // caches per event and would otherwise serve the untranslated render.
-    if ((!replyNeedsTruncation || replyExpanded) && !tr.showing) return event;
+    if (replyDisplayText === replyProse && !tr.showing) return event;
     const derived = { ...event, content: replyDisplayText };
     // The spread copies applesauce's parse cache too (an enumerable symbol
     // property on the event) — strip both reply cache slots, or the renderer
@@ -1104,12 +1110,9 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
     Reflect.deleteProperty(derived, Symbol.for("reply-content-expanded-v2"));
     Reflect.deleteProperty(derived, Symbol.for("reply-content-truncated-v2"));
     return derived;
-  }, [event, replyNeedsTruncation, replyExpanded, replyDisplayText, tr.showing]);
+  }, [event, replyDisplayText, tr.showing]);
 
-  const replyCacheKey = useMemo(
-    () => replyExpanded ? Symbol.for("reply-content-expanded-v2") : Symbol.for("reply-content-truncated-v2"),
-    [replyExpanded]
-  );
+  const replyCacheKey = replyDisplayText === replyProse ? Symbol.for("reply-content-expanded-v2") : Symbol.for("reply-content-truncated-v2");
 
   const rawRenderedContent = useRenderedContent(replyTruncatedEvent, contentComponents, {
     cacheKey: replyCacheKey,
@@ -1373,7 +1376,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
     }
   };
 
-  const isShortReply = textContent.length <= 120 && textContent.length > 0 && !hasReplyMedia && !replyNeedsTruncation;
+  const isShortReply = textContent.length <= 120 && textContent.length > 0 && !hasReplyMedia;
 
   return (
     <div className={`group/reply overflow-visible ${isBubbles ? `thread-reply-item rounded-xl ${isOP ? "thread-reply-item-op" : ""}` : `thread-reply-flat ${isOP ? "thread-reply-flat-op" : ""}`}`} data-testid={`thread-reply-content-${event.id}`}>
@@ -1491,18 +1494,17 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
       />
       <div className="px-3 sm:px-3.5 py-2.5 sm:py-3">
         {renderedContent && (
-          <div className={`post-content-text reply-content-text leading-relaxed whitespace-pre-wrap break-words ${isBubbles ? `rounded-lg px-2.5 py-1.5 ${isShortReply ? "w-fit max-w-[85%]" : ""} ${isOwnReply ? "glass-bubble-reply-own" : "glass-bubble-reply"}` : ""}`} data-testid={`text-thread-content-${event.id}`}>
-            {renderedContent}
-          </div>
-        )}
-        {replyNeedsTruncation && (
-          <button
-            onClick={(e) => { e.stopPropagation(); setReplyExpanded(!replyExpanded); }}
-            className="text-[11px] text-brand/80 mt-1 cursor-pointer font-medium tracking-wide"
-            data-testid={`button-toggle-reply-expand-${event.id}`}
+          <ClampedText
+            lines={LINES.post}
+            className={`post-content-text reply-content-text leading-relaxed whitespace-pre-wrap break-words ${isBubbles ? `rounded-lg px-2.5 py-1.5 ${isShortReply ? "w-fit max-w-[85%]" : ""} ${isOwnReply ? "glass-bubble-reply-own" : "glass-bubble-reply"}` : ""}`}
+            testId={`text-thread-content-${event.id}`}
+            toggleTestId={`button-toggle-reply-expand-${event.id}`}
+            toggleClassName="text-[11px] text-brand/80 mt-1 cursor-pointer font-medium tracking-wide"
+            expanded={replyExpanded}
+            onExpandedChange={setReplyExpanded}
           >
-            {replyExpanded ? "Show less" : "Show more"}
-          </button>
+            {renderedContent}
+          </ClampedText>
         )}
         <TranslateLine tr={tr} eventId={event.id} />
         <MediaRenderer event={event} compact />
