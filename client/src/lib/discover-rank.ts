@@ -112,3 +112,37 @@ export function rankDiscoverFeed<T extends RankableEvent>(events: T[], opts: Dis
 
   return out;
 }
+
+/** How much Primal's counts can lift a post: 25% at most (trust can lift one by 50%). */
+export const ENGAGEMENT_SUPPORT = 0.25;
+/** Counts at which the lift is full (the "high" engagement tier). */
+const FULL_SUPPORT_AT = 50;
+
+/**
+ * The Discover Feed tile's order (owner, 2026-09-30): trust plus freshness.
+ *
+ * Our own signals drive it: the author's trust score (0.50 is the bar, 1.0
+ * the top; follows count as 1.0) and how recent the post is. Primal's like
+ * and reply counts, when already in hand, only nudge the order, capped at
+ * ENGAGEMENT_SUPPORT: "Primal is fine in support, not as the main". The tile
+ * used to wait on those counts to rank at all (2 s on a first visit,
+ * measured) and let them outweigh everything else.
+ */
+export function rankByTrustAndFreshness<T extends RankableEvent>(
+  events: T[],
+  opts: {
+    now: number;
+    /** 0-1: the author's trust score. */
+    trustOf: (pubkey: string) => number;
+    /** Engagement already in hand for a post (never fetched for this); 0 when unknown. */
+    engagementOf?: (id: string) => number;
+  },
+): T[] {
+  const lift = (id: string) => {
+    const engagement = Math.max(0, opts.engagementOf?.(id) ?? 0);
+    return ENGAGEMENT_SUPPORT * Math.min(1, Math.log10(1 + engagement) / Math.log10(1 + FULL_SUPPORT_AT));
+  };
+  // The Discover ranker, with engagement's term reduced to the capped lift and
+  // trust in the proximity slot: score = (1 + lift) × recency × (0.5 + trust).
+  return rankDiscoverFeed(events, { now: opts.now, getEngagement: lift, getProximity: opts.trustOf });
+}

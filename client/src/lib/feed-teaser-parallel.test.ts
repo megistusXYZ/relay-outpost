@@ -12,11 +12,22 @@ const src = readFileSync(path.resolve(import.meta.dirname, "discover-data.ts"), 
 const teaser = src.slice(src.indexOf("async function fetchFeedTeaserFresh("), src.indexOf("// ── Communities"));
 
 describe("the Feed tile's lookups", () => {
-  it("start the trusted people's posts together with the trending pool, not after it", () => {
+  it("start the trusted people's posts together with the rest of the pool, not after it", () => {
     const all = teaser.match(/await Promise\.all\(\[([\s\S]*?)\]\);/);
     expect(all, "one Promise.all for the pool").not.toBeNull();
     expect(all![1]).toContain("trustedPostsP");
-    expect(all![1]).toContain("fetchGlobalFeed(");
+    expect(all![1]).toContain("recentSample.sample");
+  });
+
+  // Owner, 2026-09-30: Primal is support, not the main. Its trending posts are
+  // asked for up front, alongside everything else, but the tile doesn't wait
+  // for them: it gives them a short grace once its own sources are in hand.
+  it("ask Primal up front, and never wait on it beyond a short grace", () => {
+    const pool = teaser.indexOf("await Promise.all([");
+    expect(teaser.indexOf("fetchGlobalFeed(")).toBeGreaterThan(-1);
+    expect(teaser.indexOf("fetchGlobalFeed(")).toBeLessThan(pool);
+    expect(teaser.slice(pool)).toMatch(/Promise\.race\(\[primalP, new Promise<Event\[\]>\(\(r\) => setTimeout\(\(\) => r\(\[\]\), PRIMAL_GRACE_MS\)\)\]\)/);
+    expect(teaser).not.toMatch(/await prefetchStatsImmediate/);
   });
 
   it("don't wait on the pool before asking for the trusted list", () => {

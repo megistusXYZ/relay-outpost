@@ -68,3 +68,25 @@ export function createFeedSampleReader(opts: {
 
   return { read };
 }
+
+/**
+ * The trust scores of a sample's authors, sent with the notes: the Feed tile
+ * ranks by trust plus freshness (owner, 2026-09-30) and doesn't look up the
+ * authors this server vetted. Only scores already in memory: without the full
+ * list this sends none rather than make a visitor wait on the score relay
+ * (the tile then ranks by freshness alone). No score card, no score.
+ */
+export async function ranksForNotes(
+  notes: readonly SampleNote[],
+  cards: {
+    needsRelay: (pubkeys: readonly string[]) => boolean;
+    scores: (pubkeys: readonly string[]) => Promise<{ scores: Map<string, number | null> }>;
+  },
+): Promise<Record<string, number>> {
+  const authors = [...new Set(notes.map((n) => n.pubkey))];
+  if (authors.length === 0 || cards.needsRelay(authors)) return {};
+  const { scores } = await cards.scores(authors);
+  const out: Record<string, number> = {};
+  for (const [pk, score] of scores) if (typeof score === "number") out[pk] = score;
+  return out;
+}

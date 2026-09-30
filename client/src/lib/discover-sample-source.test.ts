@@ -24,18 +24,18 @@ describe("fetchServerFeedSample", () => {
     const f = respond(200, { notes: [a, b] });
     const got = await fetchServerFeedSample(f);
     expect(f.mock.calls[0][0]).toBe("/api/discover/feed-sample");
-    expect(got?.map((e) => e.id)).toEqual([a.id, b.id]);
+    expect(got?.events.map((e) => e.id)).toEqual([a.id, b.id]);
   });
 
   it("drops a note whose signature doesn't check out", async () => {
     const real = signed("gm");
     const forged = { ...signed("original"), content: "changed after signing" };
     const got = await fetchServerFeedSample(respond(200, { notes: [forged, real, { id: "junk" }] }));
-    expect(got?.map((e) => e.id)).toEqual([real.id]);
+    expect(got?.events.map((e) => e.id)).toEqual([real.id]);
   });
 
   it("the server found no trusted notes: an empty answer, not a failure", async () => {
-    expect(await fetchServerFeedSample(respond(200, { notes: [] }))).toEqual([]);
+    expect((await fetchServerFeedSample(respond(200, { notes: [] })))?.events).toEqual([]);
   });
 
   it("no usable answer is null", async () => {
@@ -46,6 +46,44 @@ describe("fetchServerFeedSample", () => {
     expect(await fetchServerFeedSample(respond(200, null))).toBeNull();
     expect(await fetchServerFeedSample(vi.fn(async () => { throw new Error("offline"); }))).toBeNull();
     expect(await fetchServerFeedSample(vi.fn(async () => ({ ok: true, json: async () => { throw new Error("bad json"); } }) as any))).toBeNull();
+  });
+});
+
+/**
+ * The Feed tile ranks by trust plus freshness (owner, 2026-09-30). The
+ * server vetted the sample's authors, so the app doesn't look them up; the
+ * server sends their trust scores with the notes instead. Without them every
+ * vetted author would count as exactly the bar (0.50) and trust couldn't
+ * tell them apart.
+ */
+describe("the trust scores that come with the feed sample", () => {
+  const a = signed("gm");
+  const pk = a.pubkey;
+
+  it("are read alongside the notes", async () => {
+    const got = await fetchServerFeedSample(respond(200, { notes: [a], ranks: { [pk]: 0.83 } }));
+    expect(got?.ranks.get(pk)).toBe(0.83);
+  });
+
+  it("only well-formed scores are kept", async () => {
+    const got = await fetchServerFeedSample(respond(200, { notes: [a], ranks: { [pk]: 1.7, ["b".repeat(64)]: "high", nope: 0.5, ["c".repeat(64)]: 0.6 } }));
+    expect([...(got?.ranks ?? new Map())]).toEqual([["c".repeat(64), 0.6]]);
+  });
+
+  it("a server that sends none is fine: no scores", async () => {
+    const got = await fetchServerFeedSample(respond(200, { notes: [a] }));
+    expect(got?.ranks.size).toBe(0);
+  });
+
+  it("they reach the tile with the sample", async () => {
+    const ranks = new Map([[pk, 0.9]]);
+    const s = startTrustedSample({ lens: "default", server: async () => ({ events: [a], ranks }), direct: async () => [] });
+    expect((await s.sample).ranks.get(pk)).toBe(0.9);
+  });
+
+  it("the app's own sample has none (its authors are looked up instead)", async () => {
+    const s = startTrustedSample({ lens: "default", server: async () => null, direct: async () => [a] });
+    expect((await s.sample).ranks.size).toBe(0);
   });
 });
 
@@ -85,24 +123,24 @@ describe("the sample a tile ends up with", () => {
 
   it("default trust: the server's sample is enough, and it's already vetted", async () => {
     const direct = vi.fn(async () => mine);
-    expect(await readTrustedSample({ lens: "default", server: async () => theirs, direct })).toEqual({ events: theirs, vetted: true });
+    expect(await readTrustedSample({ lens: "default", server: async () => theirs, direct })).toEqual({ events: theirs, vetted: true, ranks: new Map() });
     expect(direct).not.toHaveBeenCalled();
   });
 
   it("default trust, server found nothing: that's the answer", async () => {
     const direct = vi.fn(async () => mine);
-    expect(await readTrustedSample({ lens: "default", server: async () => [], direct })).toEqual({ events: [], vetted: true });
+    expect(await readTrustedSample({ lens: "default", server: async () => [], direct })).toEqual({ events: [], vetted: true, ranks: new Map() });
     expect(direct).not.toHaveBeenCalled();
   });
 
   it("the server couldn't answer, or failed outright: the app takes its own sample, which nobody has vetted", async () => {
-    expect(await readTrustedSample({ lens: "default", server: async () => null, direct: async () => mine })).toEqual({ events: mine, vetted: false });
-    expect(await readTrustedSample({ lens: "default", server: async () => { throw new Error("boom"); }, direct: async () => mine })).toEqual({ events: mine, vetted: false });
+    expect(await readTrustedSample({ lens: "default", server: async () => null, direct: async () => mine })).toEqual({ events: mine, vetted: false, ranks: new Map() });
+    expect(await readTrustedSample({ lens: "default", server: async () => { throw new Error("boom"); }, direct: async () => mine })).toEqual({ events: mine, vetted: false, ranks: new Map() });
   });
 
   it("the viewer's own trust map decides: the server's pick isn't theirs, so the app samples", async () => {
     const server = vi.fn(async () => theirs);
-    expect(await readTrustedSample({ lens: "own", server, direct: async () => mine })).toEqual({ events: mine, vetted: false });
+    expect(await readTrustedSample({ lens: "own", server, direct: async () => mine })).toEqual({ events: mine, vetted: false, ranks: new Map() });
     expect(server).not.toHaveBeenCalled();
   });
 });
@@ -123,7 +161,7 @@ describe("startTrustedSample", () => {
   it("says the server answered, with the sample", async () => {
     const s = startTrustedSample({ lens: "default", server: async () => theirs, direct: async () => mine });
     expect(await s.fromServer).toBe(true);
-    expect(await s.sample).toEqual({ events: theirs, vetted: true });
+    expect(await s.sample).toEqual({ events: theirs, vetted: true, ranks: new Map() });
   });
 
   it("says the server didn't answer without waiting for the app's own read", async () => {
