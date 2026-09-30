@@ -2,6 +2,8 @@ import type { Event } from "nostr-tools";
 import { ownMapScores } from "./own-trust-map";
 import { searchPeopleRanked } from "./people-search";
 import { registerProfileInAllCaches, isProfileCached } from "./nostr";
+import { createScoreBatcher } from "./score-batch";
+import { WOT_BATCH_MAX } from "@shared/wot-batch";
 
 export interface BrainstormHit {
   id: string;
@@ -141,11 +143,7 @@ let _batchLastSuccessAt = 0;
 let _batchLastFailAt = 0;
 let _batchLastError = "";
 
-// Per-pubkey in-flight de-dupe so overlapping callers (prewarm + the bulk queue,
-// or two threads sharing authors) never re-fetch the same key concurrently.
-const _inflightByPubkey = new Map<string, Promise<Map<string, number>>>();
-const WOT_CHUNK = 50;        // ≤ server input cap; one upstream batch
-const WOT_CHUNK_CONCURRENCY = 4; // chunks in flight at once (bounds load on busy threads)
+const WOT_CHUNK_CONCURRENCY = 4; // requests in flight at once (bounds load on busy threads)
 
 export type BrainstormBatchEvent =
   | { type: "cooldown"; until: number; at: number; error: string }
@@ -175,7 +173,7 @@ export function clearBrainstormBatchCooldown() {
   _batchCooldownUntil = 0;
 }
 
-// Fetch one chunk (≤ WOT_CHUNK pubkeys) via the server batch proxy.
+// Fetch one chunk (≤ WOT_BATCH_MAX pubkeys) via the server batch proxy.
 async function fetchWotChunk(chunk: string[]): Promise<Map<string, number>> {
   const scores = new Map<string, number>();
   try {
@@ -205,9 +203,9 @@ async function fetchWotChunk(chunk: string[]): Promise<Map<string, number>> {
   return scores;
 }
 
-// Score any number of pubkeys: de-dupe in-flight keys, chunk the rest, run chunks
-// with bounded concurrency, and merge. No 30-cap drop, no single-flight that
-// strands later authors on the slow per-author path.
+// Score any number of pubkeys. Callers asking at the same moment share a
+// request, nobody is asked about twice at once, and requests are split at
+// the server's cap (lib/score-batch.ts).
 export async function fetchBrainstormWotBatch(pubkeys: string[], observer?: string | null): Promise<Map<string, number>> {
   if (pubkeys.length === 0) return new Map();
 
@@ -222,41 +220,16 @@ export async function fetchBrainstormWotBatch(pubkeys: string[], observer?: stri
   return fromLens;
 }
 
-async function fetchLensBatch(pubkeys: string[]): Promise<Map<string, number>> {
-  const unique = Array.from(new Set(pubkeys));
-  const watched = new Set<Promise<Map<string, number>>>();
-  const need: string[] = [];
-  for (const pk of unique) {
-    const existing = _inflightByPubkey.get(pk);
-    if (existing) watched.add(existing);
-    else need.push(pk);
-  }
+// Lookups made at the same moment share one request (lib/score-batch.ts).
+const lensBatcher = createScoreBatcher({
+  send: fetchWotChunk,
+  maxPerRequest: WOT_BATCH_MAX,
+  windowMs: 30,
+  concurrency: WOT_CHUNK_CONCURRENCY,
+});
 
-  const chunks: string[][] = [];
-  for (let i = 0; i < need.length; i += WOT_CHUNK) chunks.push(need.slice(i, i + WOT_CHUNK));
-
-  // Concurrency-limited chunk runner. Register each chunk's promise per-pubkey
-  // BEFORE awaiting so a concurrent call reuses it instead of double-fetching.
-  let next = 0;
-  const startNext = (): Promise<void> => {
-    if (next >= chunks.length) return Promise.resolve();
-    const chunk = chunks[next++];
-    const cp = fetchWotChunk(chunk);
-    const cleanup = () => { for (const pk of chunk) if (_inflightByPubkey.get(pk) === cp) _inflightByPubkey.delete(pk); };
-    cp.then(cleanup, cleanup);
-    for (const pk of chunk) _inflightByPubkey.set(pk, cp);
-    watched.add(cp);
-    return cp.then(() => startNext());
-  };
-  await Promise.all(
-    Array.from({ length: Math.min(WOT_CHUNK_CONCURRENCY, chunks.length) }, () => startNext()),
-  );
-
-  const merged = new Map<string, number>();
-  for (const m of await Promise.all(Array.from(watched))) {
-    m.forEach((v, k) => merged.set(k, v));
-  }
-  return merged;
+function fetchLensBatch(pubkeys: string[]): Promise<Map<string, number>> {
+  return lensBatcher.ask(pubkeys);
 }
 
 export async function lookupProfileDirect(pubkey: string): Promise<{ event: Event | null; wotScore: number | null }> {

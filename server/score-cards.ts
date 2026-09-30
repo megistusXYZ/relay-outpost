@@ -186,9 +186,13 @@ export function createScoreCardReader(opts: {
     }
     const order = list.map((s) => s.service);
 
+    // Chunks are asked at the same time: a request may carry 200 people, and
+    // one after another two cold relay answers (3-5 s each, measured) would
+    // outlast the app's 8 s wait.
+    const chunks: string[][] = [];
+    for (let i = 0; i < need.length; i += CHUNK) chunks.push(need.slice(i, i + CHUNK));
     let reached = false;
-    for (let i = 0; i < need.length; i += CHUNK) {
-      const chunk = need.slice(i, i + CHUNK);
+    await Promise.all(chunks.map(async (chunk) => {
       const answers = await Promise.all(
         [...byRelay].map(([relay, authors]) =>
           query(relay, { kinds: [KIND_SCORE_CARD], authors, "#d": chunk, limit: chunk.length * authors.length }),
@@ -201,7 +205,7 @@ export function createScoreCardReader(opts: {
         out.set(pk, score);
         cache.set(pk, { at: now(), score });
       }
-    }
+    }));
     while (cache.size > MAX_CACHED) cache.delete(cache.keys().next().value as string);
     if (fillFromList()) reached = true;
     return { scores: out, reached };

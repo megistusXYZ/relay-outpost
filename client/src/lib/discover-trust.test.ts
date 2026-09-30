@@ -109,6 +109,35 @@ describe("loadDiscoverTrust", () => {
     });
   });
 
+  // The Feed tile's sample comes from our server already cut down to
+  // trusted people (server/feed-sample.ts). Asking the same server about the
+  // same people again was one of a cold load's score lookups (52 people,
+  // measured 2026-09-30).
+  describe("people the server already vetted", () => {
+    const opts = { follows: new Set<string>(), wotEnabled: false, ownScores: null };
+
+    it("aren't asked about again, and are admitted", async () => {
+      const fetchScores = vi.fn(async (pks: string[]) => new Map(pks.map((p) => [p, -1] as const)));
+      const r = await loadDiscoverTrust([pk("a"), pk("c")], { ...opts, vetted: new Set([pk("a")]) }, { fetchTop: async () => [], fetchScores });
+      expect(fetchScores).toHaveBeenCalledWith([pk("c")]);
+      expect(admitToDiscover(pk("a"), { follows: opts.follows, scores: r.scores })).toBe(true);
+      expect(admitToDiscover(pk("c"), { follows: opts.follows, scores: r.scores })).toBe(false);
+      expect(r.unscored.size).toBe(0);
+    });
+
+    it("when everyone was vetted, nothing is asked at all", async () => {
+      const fetchScores = vi.fn();
+      await loadDiscoverTrust([pk("a")], { ...opts, vetted: new Set([pk("a")]) }, { fetchTop: async () => [], fetchScores });
+      expect(fetchScores).not.toHaveBeenCalled();
+    });
+
+    it("counts for nothing under your own lens: your map decides", async () => {
+      const own = new Map(Array.from({ length: 120 }, (_, i) => [i.toString(16).padStart(64, "0"), 0.9] as const));
+      const r = await loadDiscoverTrust([pk("a")], { follows: new Set(), wotEnabled: true, ownScores: own, vetted: new Set([pk("a")]) }, { fetchTop: vi.fn(), fetchScores: vi.fn() });
+      expect(admitToDiscover(pk("a"), { follows: new Set(), scores: r.scores })).toBe(false);
+    });
+  });
+
   it("own lens: your own highest-trusted people, without asking the server", async () => {
     const own = new Map(Array.from({ length: 120 }, (_, i) => [i.toString(16).padStart(64, "0"), i >= 100 ? 0.9 : 0.6] as const));
     const fetchTop = vi.fn();

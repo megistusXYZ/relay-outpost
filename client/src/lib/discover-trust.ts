@@ -80,7 +80,17 @@ export interface DiscoverTrustDeps {
 
 export async function loadDiscoverTrust(
   candidates: readonly string[],
-  opts: { follows: ReadonlySet<string>; wotEnabled: boolean; ownScores: ReadonlyMap<string, number> | null },
+  opts: {
+    follows: ReadonlySet<string>;
+    wotEnabled: boolean;
+    ownScores: ReadonlyMap<string, number> | null;
+    /**
+     * People our server already checked against the default lens's trusted
+     * list (the Feed tile's sample, server/feed-sample.ts). Not asked about
+     * again; admitted. Ignored under the viewer's own lens.
+     */
+    vetted?: ReadonlySet<string>;
+  },
   deps: DiscoverTrustDeps = defaultDeps,
 ): Promise<DiscoverTrust> {
   const lens = chooseDiscoverLens(opts);
@@ -89,10 +99,12 @@ export async function loadDiscoverTrust(
   }
   const top = await deps.fetchTop().catch(() => null);
   if (!top) return { reached: false, top: [], scores: new Map(), unscored: new Set(), lens };
-  const unique = [...new Set(candidates)].filter((pk) => !opts.follows.has(pk));
+  const unique = [...new Set(candidates)].filter((pk) => !opts.follows.has(pk) && !opts.vetted?.has(pk));
   const scores = unique.length > 0 ? await deps.fetchScores(unique).catch(() => new Map<string, number>()) : new Map<string, number>();
   // Everyone on the top list is trusted by definition, even if not asked about.
   for (const pk of top) if (!scores.has(pk)) scores.set(pk, DISCOVER_MIN_SCORE);
+  // So is everyone the server vetted: it used the same list these scores come from.
+  for (const pk of opts.vetted ?? []) if (!scores.has(pk)) scores.set(pk, DISCOVER_MIN_SCORE);
   // Whoever is still without an entry was never answered about: the server
   // sends a number for everyone it could check (-1 = no score card).
   const unscored = new Set(unique.filter((pk) => !scores.has(pk)));

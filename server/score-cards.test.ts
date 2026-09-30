@@ -268,3 +268,24 @@ describe("score lookups are answered from the full list the server already reads
     expect(lookups).toEqual([[NOBODY]]);
   });
 });
+
+describe("a large lookup with no list in hand", () => {
+  it("asks the relay about its chunks at the same time, not one after another", async () => {
+    // One request may carry 200 people (shared/wot-batch.ts). A cold relay
+    // answer takes 3-5 s (measured 2026-09-30); two in a row would outlast
+    // the app's 8 s wait.
+    let inFlight = 0, most = 0;
+    const query: RelayQuery = vi.fn(async (_relay, filter) => {
+      if (filter.kinds?.[0] === 10040) return { reached: true, answered: true, events: [lensMap] };
+      inFlight++; most = Math.max(most, inFlight);
+      await new Promise((r) => setTimeout(r, 5));
+      inFlight--;
+      return { reached: true, answered: true, events: [] };
+    });
+    const people = Array.from({ length: 200 }, (_, i) => i.toString(16).padStart(64, "0"));
+    const r = await createScoreCardReader({ lens: LENS, mapRelays: ["wss://purplepag.es"], query }).scores(people);
+    expect(r.reached).toBe(true);
+    expect(r.scores.size).toBe(200);
+    expect(most).toBe(2);
+  });
+});

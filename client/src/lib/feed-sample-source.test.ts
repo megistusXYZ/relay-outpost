@@ -53,26 +53,26 @@ describe("readRecentSample", () => {
   const mine = [signed("from my own sample")];
   const theirs = [signed("from the server")];
 
-  it("default trust: the server's sample is enough", async () => {
+  it("default trust: the server's sample is enough, and it's already vetted", async () => {
     const direct = vi.fn(async () => mine);
-    expect(await readRecentSample({ lens: "default", server: async () => theirs, direct })).toBe(theirs);
+    expect(await readRecentSample({ lens: "default", server: async () => theirs, direct })).toEqual({ notes: theirs, vetted: true });
     expect(direct).not.toHaveBeenCalled();
   });
 
   it("default trust, server found nothing: that's the answer", async () => {
     const direct = vi.fn(async () => mine);
-    expect(await readRecentSample({ lens: "default", server: async () => [], direct })).toEqual([]);
+    expect(await readRecentSample({ lens: "default", server: async () => [], direct })).toEqual({ notes: [], vetted: true });
     expect(direct).not.toHaveBeenCalled();
   });
 
-  it("the server couldn't answer, or failed outright: the app takes its own sample", async () => {
-    expect(await readRecentSample({ lens: "default", server: async () => null, direct: async () => mine })).toBe(mine);
-    expect(await readRecentSample({ lens: "default", server: async () => { throw new Error("boom"); }, direct: async () => mine })).toBe(mine);
+  it("the server couldn't answer, or failed outright: the app takes its own sample, which nobody has vetted", async () => {
+    expect(await readRecentSample({ lens: "default", server: async () => null, direct: async () => mine })).toEqual({ notes: mine, vetted: false });
+    expect(await readRecentSample({ lens: "default", server: async () => { throw new Error("boom"); }, direct: async () => mine })).toEqual({ notes: mine, vetted: false });
   });
 
   it("the viewer's own trust map decides: the server's pick isn't theirs, so the app samples", async () => {
     const server = vi.fn(async () => theirs);
-    expect(await readRecentSample({ lens: "own", server, direct: async () => mine })).toBe(mine);
+    expect(await readRecentSample({ lens: "own", server, direct: async () => mine })).toEqual({ notes: mine, vetted: false });
     expect(server).not.toHaveBeenCalled();
   });
 });
@@ -88,5 +88,12 @@ describe("the Feed tile uses it", () => {
     const reads = src.match(/limit: 300 \}/g) ?? [];
     expect(reads).toHaveLength(1);
     expect(src).toMatch(/direct: \(\) => collectOnce\(sampleRelays\(getRelaysForPurpose\("notes"\)\), \{ kinds: \[1\], since: sinceSecs, limit: 300 \}/);
+  });
+});
+
+describe("the Feed tile doesn't re-ask about people the server vetted", () => {
+  const src = readFileSync(path.resolve(import.meta.dirname, "discover-data.ts"), "utf8");
+  it("passes the server sample's authors to the trust check as vetted", () => {
+    expect(src).toMatch(/vetted: recent\.vetted \? new Set\(recent\.notes\.map\(\(e\) => e\.pubkey\)\) : undefined/);
   });
 });

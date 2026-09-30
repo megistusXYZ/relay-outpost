@@ -57,6 +57,7 @@ import { FailureMemory } from "@shared/failure-memory";
 import { createScoreCardReader } from "./score-cards";
 import { createRelayDirectoryReader } from "./relay-directory";
 import { createFeedSampleReader } from "./feed-sample";
+import { WOT_BATCH_MAX } from "@shared/wot-batch";
 import { DEFAULT_LENS } from "@shared/default-lens";
 
 /**
@@ -3187,7 +3188,7 @@ export async function registerRoutes(
       if (!Array.isArray(pubkeys) || pubkeys.length === 0) {
         return res.json({ scores: {} });
       }
-      const batch = pubkeys.slice(0, 80).filter((pk: string) => typeof pk === "string" && /^[0-9a-f]{64}$/i.test(pk));
+      const batch = pubkeys.slice(0, WOT_BATCH_MAX).filter((pk: string) => typeof pk === "string" && /^[0-9a-f]{64}$/i.test(pk));
       if (batch.length === 0) return res.json({ scores: {} });
       const scores: Record<string, number> = {};
 
