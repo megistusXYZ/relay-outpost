@@ -18,7 +18,7 @@
  *  - The bento must NOT mark news read — the unread count's whole meaning is
  *    that opening /news is what clears it.
  */
-import { useState, useEffect, useMemo, useCallback, useRef, type ReactNode, type ComponentType } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, type ReactNode } from "react";
 import { guestCanBrowse } from "@/lib/guest-limits";
 import { GuestLookingAround } from "@/components/GuestLookingAround";
 import { useLocation } from "wouter";
@@ -27,7 +27,8 @@ import { queryClient } from "@/lib/queryClient";
 import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
 import { formatDistanceToNow } from "date-fns";
-import { Newspaper, TrendingUp, Users, BookOpen, ChevronRight, Radio, Headphones, Calendar, Clapperboard, Hash, ImageIcon, Tag } from "lucide-react";
+import { ChevronRight, Hash } from "lucide-react";
+import { TILE_TITLE } from "@/components/discover-tile-title";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SearchPill } from "@/components/SearchPill";
@@ -148,8 +149,7 @@ function detectProfileTarget(raw: string): string | null {
  * area, and an optional footer OUTSIDE the main button (retry lives there —
  * nested buttons are invalid HTML and the retry must not navigate).
  */
-function TileShell({ icon: Icon, label, chip, onOpen, testId, children, footer, fresh }: {
-  icon: ComponentType<{ className?: string }>;
+function TileShell({ label, chip, onOpen, testId, children, footer, fresh }: {
   label: string;
   chip?: ReactNode;
   onOpen: () => void;
@@ -177,8 +177,7 @@ function TileShell({ icon: Icon, label, chip, onOpen, testId, children, footer, 
         data-testid={testId}
       >
         <span className="flex items-center gap-2 mb-1.5">
-          <Icon className="w-4 h-4 text-brand/70 shrink-0" />
-          <span className="text-sm font-semibold">{label}</span>
+          <span className={TILE_TITLE}>{label}</span>
           {chip}
           <ChevronRight className="w-4 h-4 ml-auto shrink-0 text-muted-foreground/40" />
         </span>
@@ -426,8 +425,7 @@ function NewsHeroTile() {
         )}
         <span className="block p-3 sm:p-4">
           <span className="flex items-center gap-2 mb-2">
-            <Newspaper className="w-4 h-4 text-brand/70 shrink-0" />
-            <span className="text-sm font-semibold">News</span>
+            <span className={TILE_TITLE}>News</span>
             {unread > 0 && (
               <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-brand text-white text-[10px] font-semibold tabular-nums" data-testid="news-tile-unread">
                 {unread}
@@ -521,7 +519,6 @@ function FeedTile() {
 
   return (
     <TileShell
-      icon={TrendingUp}
       label="Feed"
       chip={fresh > 0 ? <FreshChip count={fresh} /> : undefined}
       fresh={fresh > 0}
@@ -719,7 +716,7 @@ function CommunitiesTile() {
   }
 
   return (
-    <TileShell icon={Users} label="Communities" onOpen={() => setLocation("/outposts")} testId="tile-communities" footer={footer}>
+    <TileShell label="Communities" onOpen={() => setLocation("/outposts")} testId="tile-communities" footer={footer}>
       {body}
     </TileShell>
   );
@@ -814,7 +811,6 @@ function ArticlesTile() {
 
   return (
     <TileShell
-      icon={BookOpen}
       label="Articles"
       chip={fresh > 0 ? <FreshChip count={fresh} /> : undefined}
       fresh={fresh > 0}
@@ -1077,7 +1073,7 @@ function LiveTile() {
   const chip = anyLive ? (
     <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-red-500" data-testid="live-tile-chip">
       <span className="w-1.5 h-1.5 rounded-full bg-red-500 live-dot" />
-      Live
+      On air
     </span>
   ) : undefined;
 
@@ -1105,7 +1101,7 @@ function LiveTile() {
   }, [hostPks]);
 
   return (
-    <TileShell icon={Radio} label="Live" chip={chip} onOpen={() => setLocation("/live")} testId="tile-live">
+    <TileShell label="Live" chip={chip} onOpen={() => setLocation("/live")} testId="tile-live">
       {networkLive.length > 0 ? (
         <>
           <span className="block text-xs font-medium text-foreground/90" data-testid="live-tile-host">
@@ -1168,7 +1164,6 @@ function PodcastsTile() {
     : null;
   return (
     <TileShell
-      icon={Headphones}
       label="Audio"
       chip={freshN > 0 && !isError ? <FreshChip count={freshN} /> : undefined}
       fresh={freshN > 0 && !isError}
@@ -1224,7 +1219,6 @@ function EventsTile() {
 
   return (
     <TileShell
-      icon={Calendar}
       label="Events"
       chip={freshN > 0 ? <FreshChip count={freshN} /> : undefined}
       fresh={freshN > 0}
@@ -1269,7 +1263,6 @@ function VideosTile() {
 
   return (
     <TileShell
-      icon={Clapperboard}
       label="Videos"
       chip={freshN > 0 ? <FreshChip count={freshN} /> : undefined}
       fresh={freshN > 0}
@@ -1319,7 +1312,6 @@ function MarketplaceShelfTile() {
 
   return (
     <TileShell
-      icon={Tag}
       label="Marketplace"
       chip={freshN > 0 ? <FreshChip count={freshN} /> : undefined}
       fresh={freshN > 0}
@@ -1395,7 +1387,6 @@ function ImagesShelfTile() {
 
   return (
     <TileShell
-      icon={ImageIcon}
       label="Images"
       chip={freshN > 0 ? <FreshChip count={freshN} /> : undefined}
       fresh={freshN > 0}
