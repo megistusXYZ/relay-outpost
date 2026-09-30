@@ -13,6 +13,8 @@
  * (server/feed-sample.ts). The app takes it itself only when the server can't
  * answer, or when the viewer's own trust map decides who's trusted.
  */
+import { isSignedEvent, type SignedEvent } from "./discover-samples";
+
 /** The app's FAST_RELAYS without damus (a test keeps the two in step). */
 export const FEED_SAMPLE_RELAYS = ["wss://relay.snort.social", "wss://nostr.land", "wss://relay.primal.net"];
 export const FEED_SAMPLE_WINDOW_SECS = 6 * 3600;
@@ -21,30 +23,11 @@ export const FEED_SAMPLE_LIMIT = 300;
 /** The most the server hands over (measured: ~40 trusted notes in a sample). */
 export const FEED_SAMPLE_MAX_NOTES = 150;
 
-export interface SampleNote {
-  id: string;
-  pubkey: string;
-  created_at: number;
-  kind: number;
-  tags: string[][];
-  content: string;
-  sig: string;
-}
-
-const HEX64 = /^[0-9a-f]{64}$/;
-const HEX128 = /^[0-9a-f]{128}$/;
+export type SampleNote = SignedEvent;
 
 /** A well-formed signed kind-1 note (the signature itself is checked by whoever shows it). */
 export function isNote(x: unknown): x is SampleNote {
-  const e = x as SampleNote | null;
-  return !!e && typeof e === "object"
-    && e.kind === 1
-    && typeof e.id === "string" && HEX64.test(e.id)
-    && typeof e.pubkey === "string" && HEX64.test(e.pubkey)
-    && typeof e.sig === "string" && HEX128.test(e.sig)
-    && typeof e.created_at === "number"
-    && typeof e.content === "string"
-    && Array.isArray(e.tags) && e.tags.every((t) => Array.isArray(t) && t.every((v) => typeof v === "string"));
+  return isSignedEvent(x, [1]);
 }
 
 /** The sample's notes by trusted people: one copy each, newest first. */

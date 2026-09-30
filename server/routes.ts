@@ -57,6 +57,8 @@ import { FailureMemory } from "@shared/failure-memory";
 import { createScoreCardReader } from "./score-cards";
 import { createRelayDirectoryReader } from "./relay-directory";
 import { createFeedSampleReader } from "./feed-sample";
+import { createDiscoverSampleReader } from "./trusted-sample";
+import { isDiscoverSampleName } from "@shared/discover-samples";
 import { WOT_BATCH_MAX } from "@shared/wot-batch";
 import { createScoreLookupGate } from "./score-lookup-gate";
 import { DEFAULT_LENS } from "@shared/default-lens";
@@ -3172,6 +3174,27 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error("[discover-feed-sample] error:", err?.message || err);
       res.status(503).json({ notes: [], error: "Couldn't take the feed sample right now" });
+    }
+  });
+
+  // Discover's broad samples for Articles, Events and Videos, taken once for
+  // everyone and cut down to trusted people (trusted-sample.ts), like the
+  // Feed tile's sample above. 503 when the trusted list or the relays
+  // couldn't be read; the app then takes the sample itself.
+  const discoverSamples = createDiscoverSampleReader({ trusted: () => scoreCards.trustedAuthors(DISCOVER_MIN_RANK) });
+  app.get("/api/discover/sample/:name", async (req, res) => {
+    const name = req.params.name;
+    if (!isDiscoverSampleName(name)) return res.status(404).json({ events: [], error: "No such sample" });
+    try {
+      const result = await Promise.race([
+        discoverSamples.read(name),
+        new Promise<null>((r) => setTimeout(() => r(null), 6_000)),
+      ]);
+      if (!result || !result.reached) return res.status(503).json({ events: [], error: "Couldn't take the sample right now" });
+      res.set("Cache-Control", "public, max-age=120").json({ events: result.events });
+    } catch (err: any) {
+      console.error("[discover-sample] error:", err?.message || err);
+      res.status(503).json({ events: [], error: "Couldn't take the sample right now" });
     }
   });
 

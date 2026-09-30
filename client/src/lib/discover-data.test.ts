@@ -5,6 +5,7 @@
  * mistake produces a confidently wrong tile.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { generateSecretKey, getPublicKey, finalizeEvent } from "nostr-tools";
 
 // Records which relays each one-shot read asks, delivers whatever the test
 // put on the (fake) relays for that filter, and answers at once (EOSE).
@@ -39,8 +40,13 @@ vi.mock("@/lib/community-activity", () => ({ fetchCommunityActivity: (...a: unkn
 // answer about anyone.
 let scoreOf: Record<string, number> = {};
 let scoresDown = false;
+/** Every score lookup the tiles made: who was asked about. */
+let scoreAsks: string[][] = [];
 vi.mock("@/lib/brainstorm-search", () => ({
-  fetchBrainstormWotBatch: async (pks: string[]) => new Map(scoresDown ? [] : pks.map((p) => [p, p in scoreOf ? scoreOf[p] : -1] as const)),
+  fetchBrainstormWotBatch: async (pks: string[]) => {
+    scoreAsks.push(pks);
+    return new Map(scoresDown ? [] : pks.map((p) => [p, p in scoreOf ? scoreOf[p] : -1] as const));
+  },
 }));
 vi.mock("@/lib/relay-reach", () => ({
   canReachAny: async () => true,
@@ -355,5 +361,99 @@ describe("Discover's Events and Marketplace tiles show only trusted people", () 
     const r = await fetchNextCalendarEvent();
     expect(r.reached).toBe(false);
     expect(r.data).toBeNull();
+  });
+});
+
+/**
+ * Articles, Events and Videos take their broad sample from our server, which
+ * has already kept only trusted people's events (measured 2026-09-30, per
+ * visitor before this: articles 981 KB, events 118 KB, videos 132 KB of
+ * relay reads, plus a score lookup per tile).
+ */
+describe("Discover tiles fed by the server's samples", () => {
+  const soon = Math.floor(Date.now() / 1000) + 3600;
+  const recent = Math.floor(Date.now() / 1000) - 600;
+  const key = generateSecretKey();
+  const AUTHOR = getPublicKey(key);
+  const sign = (kind: number, tags: string[][], content = "") => finalizeEvent({ kind, created_at: recent, tags, content }, key);
+
+  /** Our server: the trusted list, and whichever samples the test provides. Anything else: 503. */
+  const server = (samples: Record<string, unknown[]>) => vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+    if (url.includes("/api/discover/trusted-authors")) return { ok: true, json: async () => ({ authors: [] }) };
+    const name = url.match(/\/api\/discover\/sample\/(\w+)/)?.[1];
+    if (name && name in samples) return { ok: true, json: async () => JSON.parse(JSON.stringify({ events: samples[name] })) };
+    return { ok: false, json: async () => ({}) };
+  }));
+  const broadRelayReads = (kind: number) =>
+    subscribeSpy.mock.calls.filter(([, f]) => f.kinds?.includes(kind) && !f.authors).length;
+
+  beforeEach(() => {
+    resetDiscoverAnswers(); subscribeSpy.mockClear(); scoreAsks = []; scoreOf = {}; scoresDown = false;
+    relayEvents = () => [];
+    setDiscoverTrust({ follows: new Set(), wotEnabled: false, ownScores: null });
+  });
+
+  it("Events: shown from the server's sample, with no broad relay read and no score lookup", async () => {
+    server({ events: [sign(31923, [["d", "meetup"], ["title", "Bitcoin meetup"], ["start", String(soon)]])] });
+    const r = await fetchNextCalendarEvent();
+    expect(r.reached).toBe(true);
+    expect(r.data?.title).toBe("Bitcoin meetup");
+    expect(broadRelayReads(31923)).toBe(0);
+    expect(scoreAsks).toEqual([]);
+  });
+
+  it("Videos: shown from the server's sample, with no broad relay read and no score lookup", async () => {
+    server({ videos: [sign(21, [["title", "A talk"], ["imeta", "url https://v.example/a.mp4", "image https://v.example/a.jpg"]])] });
+    const r = await fetchVideoTeaser();
+    expect(r.reached).toBe(true);
+    expect(r.data?.title).toBe("A talk");
+    expect(broadRelayReads(21)).toBe(0);
+    expect(scoreAsks).toEqual([]);
+  });
+
+  it("Articles: shown from the server's sample, with no broad relay read and no score lookup", async () => {
+    // The tile only shows real articles: a title, a summary or image, 300+ characters.
+    server({ articles: [sign(30023, [["d", "essay"], ["title", "An essay"], ["summary", "What it says"], ["published_at", String(recent)]], "The body of the essay. ".repeat(20))] });
+    const r = await fetchNewestArticle([]);
+    expect(r.reached).toBe(true);
+    expect(r.data.map((a) => a.title)).toEqual(["An essay"]);
+    expect(broadRelayReads(30023)).toBe(0);
+    expect(scoreAsks).toEqual([]);
+  });
+
+  it("the server's sample is empty: the relays were reached and nothing is by trusted people", async () => {
+    server({ videos: [] });
+    const r = await fetchVideoTeaser();
+    expect(r).toEqual({ data: null, reached: true });
+    expect(broadRelayReads(21)).toBe(0);
+  });
+
+  it("an event whose signature doesn't check out is not shown on the server's word", async () => {
+    const forged = { ...sign(21, [["title", "Real title"], ["imeta", "url https://v.example/a.mp4", "image https://v.example/a.jpg"]]), tags: [["title", "Swapped title"]] };
+    server({ videos: [forged] });
+    relayEvents = () => [];
+    const r = await fetchVideoTeaser();
+    expect(r.data).toBeNull();
+    // Not an answer to build on, so the app took its own sample.
+    expect(broadRelayReads(21)).toBe(1);
+  });
+
+  it("the server can't answer: the app takes its own sample and checks its authors", async () => {
+    server({});
+    scoreOf = { [AUTHOR]: 0.9 };
+    relayEvents = (f) => (f.kinds?.includes(21) && !f.authors ? [sign(21, [["title", "From a relay"], ["imeta", "url https://v.example/b.mp4", "image https://v.example/b.jpg"]])] : []);
+    const r = await fetchVideoTeaser();
+    expect(r.data?.title).toBe("From a relay");
+    expect(broadRelayReads(21)).toBe(1);
+    expect(scoreAsks).toEqual([[AUTHOR]]);
+  });
+
+  it("your own trust map decides: the server's pick isn't yours, so the app samples", async () => {
+    const own = new Map(Array.from({ length: 120 }, (_, i) => [i.toString(16).padStart(64, "0"), 0.9] as const));
+    setDiscoverTrust({ follows: new Set(), wotEnabled: true, ownScores: own });
+    server({ videos: [sign(21, [["title", "Server pick"], ["imeta", "url https://v.example/a.mp4", "image https://v.example/a.jpg"]])] });
+    const r = await fetchVideoTeaser();
+    expect(r.data).toBeNull();
+    expect(broadRelayReads(21)).toBe(1);
   });
 });

@@ -14,8 +14,8 @@
  * `reached: false`, never "nobody posted". The notes are handed over signed;
  * the app checks the signatures, so nothing here has to be taken on trust.
  */
-import { queryRelay, type RelayQuery } from "./score-cards";
-import { createSharedRead } from "./shared-read";
+import type { RelayQuery } from "./score-cards";
+import { createTrustedRead } from "./trusted-sample";
 import { trustedNotes, FEED_SAMPLE_RELAYS, FEED_SAMPLE_WINDOW_SECS, FEED_SAMPLE_LIMIT, type SampleNote } from "@shared/feed-sample";
 
 /** Notes are "recent": a sample is reused for two minutes. */
@@ -37,31 +37,17 @@ export function createFeedSampleReader(opts: {
   query?: RelayQuery;
   now?: () => number;
 }) {
-  const relays = opts.relays ?? FEED_SAMPLE_RELAYS;
-  const query = opts.query ?? queryRelay;
-  const now = opts.now ?? Date.now;
-
-  const shared = createSharedRead<SampleNote>({
+  const shared = createTrustedRead<SampleNote>({
+    relays: opts.relays ?? FEED_SAMPLE_RELAYS,
+    filter: (nowSecs) => ({ kinds: [1], since: nowSecs - FEED_SAMPLE_WINDOW_SECS, limit: FEED_SAMPLE_LIMIT }),
+    pick: trustedNotes,
+    trusted: opts.trusted,
     freshMs: FRESH_MS,
     keepMs: KEEP_MS,
     retryMs: RETRY_MS,
-    now,
-    read: async () => {
-      const list = await opts.trusted();
-      if (!list.reached) return { reached: false, items: [] };
-      const since = Math.floor(now() / 1000) - FEED_SAMPLE_WINDOW_SECS;
-      const answers = await Promise.all(
-        relays.map((r) =>
-          Promise.resolve()
-            .then(() => query(r, { kinds: [1], since, limit: FEED_SAMPLE_LIMIT }, READ_MS))
-            .catch(() => ({ reached: false, answered: false, events: [] as any[] })),
-        ),
-      );
-      const events = answers.flatMap((a) => a.events);
-      // A relay cut off mid-answer still sent real notes.
-      const reached = events.length > 0 || answers.some((a) => a.answered);
-      return { reached, items: trustedNotes(events, new Set(list.authors)) };
-    },
+    readMs: READ_MS,
+    query: opts.query,
+    now: opts.now,
   });
 
   async function read(): Promise<FeedSampleAnswer> {
