@@ -588,3 +588,104 @@ export function restoreToAnchor(container: HTMLElement, saved: SavedScrollPositi
   }
   return true;
 }
+
+// ---------------------------------------------------------------------------
+// Hold the ground above the anchor.
+//
+// Measured 2026-09-30 (headless Chromium at phone width, scroll anchoring off
+// to match WebKit): coming back to a profile, the block ABOVE the reader was
+// 1,400px when they left and 1,172px on the first frame back, then regrew to
+// 1,400px within 200ms as the header's async sections arrived. Each arrival
+// pushed the timeline down and the per-frame re-pin scrolled it back a frame
+// later: the post under the reader's thumb dropped 79px and snapped back, then
+// 149px and back. On iPhone there is no scroll anchoring and the re-pin loop
+// stopped at the first touch, so every later arrival moved the page under the
+// finger — the "flutter" on back.
+//
+// So instead of chasing the anchor with scroll writes, hold the space: whatever
+// is missing above the anchor compared with when the reader left is added as
+// padding on the container, and given back by the same amount as the content
+// arrives. The first frame paints at the saved place; later growth changes the
+// padding in the same frame (the caller runs `update` from a ResizeObserver,
+// which fires before paint), so nothing on screen moves — and no scroll write
+// ever fights the reader, so the hold keeps working after they start scrolling.
+// ---------------------------------------------------------------------------
+
+export interface GroundHold {
+  /**
+   * Re-measure. Holds whatever is missing above the anchor; with `pin`, also
+   * puts the anchor at its saved on-screen offset (a scroll write — only while
+   * the reader hasn't touched the page). Returns the held px.
+   */
+  update(opts: { pin: boolean }): number;
+  /** Held px right now. */
+  held(): number;
+  /** Has the anchor row been on the page yet? Until then `update` only seeds the saved scrollTop. */
+  ready(): boolean;
+  /**
+   * Drop the hold. Any residual held space goes together with a compensating
+   * scroll, so what the reader is looking at does not move.
+   */
+  release(): void;
+}
+
+function paddingTopOf(el: HTMLElement): number {
+  try {
+    const v = parseFloat(getComputedStyle(el).paddingTop);
+    return Number.isFinite(v) ? v : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Null only without an anchor id (a page with no rows): the caller keeps the
+ * plain scrollTop path. The row list often mounts a commit after the page, so
+ * the anchor may not be there on the first pass; until it is, `update` seeds
+ * the saved scrollTop and the hold engages the moment the row appears.
+ */
+export function holdGroundAboveAnchor(container: HTMLElement, saved: SavedScrollPosition): GroundHold | null {
+  if (!saved.anchorId) return null;
+  const anchorId = saved.anchorId;
+  // The container's own padding-top comes from its class; the hold sits on top
+  // of it, inline, and the inline value is cleared when nothing is held.
+  container.style.paddingTop = "";
+  const basePad = paddingTopOf(container);
+  const savedAbsTop = saved.scrollTop + saved.anchorOffset;
+  let extra = 0;
+  let ready = false;
+  const apply = (px: number) => {
+    extra = px;
+    container.style.paddingTop = px > 0 ? `${basePad + px}px` : "";
+  };
+  return {
+    update({ pin }) {
+      const el = findAnchorElement(container, anchorId);
+      if (!el) {
+        if (pin) {
+          const maxTop = Math.max(container.scrollHeight - container.clientHeight, 0);
+          const seed = Math.min(saved.scrollTop, maxTop);
+          if (Math.abs(container.scrollTop - seed) > 1) container.scrollTop = seed;
+        }
+        return extra;
+      }
+      ready = true;
+      // Where the anchor sits in the content right now, without the space we hold.
+      const natural = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - extra;
+      const need = Math.max(0, Math.round(savedAbsTop - natural));
+      if (need !== extra) apply(need);
+      if (pin) {
+        const target = natural + extra - saved.anchorOffset;
+        if (Math.abs(container.scrollTop - target) > 1) container.scrollTop = target;
+      }
+      return extra;
+    },
+    held: () => extra,
+    ready: () => ready,
+    release() {
+      const residual = extra;
+      apply(0);
+      if (residual > 0) container.scrollTop = container.scrollTop - residual;
+    },
+  };
+}
