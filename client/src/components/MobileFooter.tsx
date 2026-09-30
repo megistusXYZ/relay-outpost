@@ -1,6 +1,8 @@
 import { useState, useEffect, memo } from "react";
 import { tabTap } from "@/lib/footer-nav";
-import { scrollPageToTop } from "@/lib/scroll-root";
+import { scrollPageToTop, isPageAtTop } from "@/lib/scroll-root";
+import { emitTabRetap } from "@/lib/tab-retap";
+import { formatNpub } from "@/lib/nostr-helpers";
 import { freshScrollState } from "@/lib/scroll-restore";
 import { useLocation, useSearch } from "wouter";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
@@ -30,7 +32,7 @@ import { YouAvatarIcon } from "@/components/YouAvatarIcon";
 function FooterTab({ tab, active, onNavigate }: {
   tab: NavDestination;
   active: boolean;
-  onNavigate: (target: string) => (e: React.MouseEvent) => void;
+  onNavigate: (tab: NavDestination) => (e: React.MouseEvent) => void;
 }) {
   const path = tab.path ?? "/";
   const testId = FOOTER_TESTIDS[tab.id] ?? tab.id;
@@ -39,7 +41,7 @@ function FooterTab({ tab, active, onNavigate }: {
   return (
     <a
       href={path}
-      onClick={onNavigate(path)}
+      onClick={onNavigate(tab)}
       aria-label={`Navigate to ${tab.title}`}
       className={`mobile-nav-item ${active ? "mobile-nav-active" : ""}`}
       data-testid={`mobile-nav-${testId}`}
@@ -199,10 +201,24 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
   // app instead of returning to Chats.
   const iaCollapsed = useIaCollapsed();
   const historyBase = iaCollapsed ? "/messages" : "/";
-  const goTab = (target: string) => (e: React.MouseEvent) => {
+  const goTab = (tab: NavDestination) => (e: React.MouseEvent) => {
     e.preventDefault();
-    // Re-tapping the tab you're on takes you back to its top, as X does.
-    if (tabTap(location, target) === "scroll-to-top") { scrollPageToTop(); return; }
+    const target = tab.path ?? "/";
+    // A second tap on the tab you're on: back to its top, as X does, and
+    // once there, that tab's next most useful thing (lib/footer-nav.ts).
+    // `unread` is what the tab's badge shows.
+    const action = tabTap({ tab: tab.id, location, target, atTop: isPageAtTop(), unread: tab.count ?? 0 });
+    switch (action) {
+      case "scroll-to-top": scrollPageToTop(); return;
+      // Your profile, the same place the card at the top of the Account page
+      // opens. Pushed, so Back returns to the Account page.
+      case "open-profile": if (pubkey) setLocation(`/profile/${formatNpub(pubkey)}`); return;
+      // The page answers these itself, in this same tap (lib/tab-retap.ts).
+      case "focus-search": emitTabRetap(tab.id, "focus-search"); return;
+      case "first-unread": emitTabRetap(tab.id, "first-unread"); return;
+      case "nothing": return;
+      case "navigate": break;
+    }
     // Push only from the BOTTOM of the app's stack (index 0); replace
     // everywhere else. Deciding by pathname (`location !== historyBase`)
     // accumulated one duplicate base entry per base→tab→base round trip — the

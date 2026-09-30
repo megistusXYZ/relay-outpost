@@ -18,6 +18,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageTabs } from "@/components/PageTabs";
+import { onTabRetap } from "@/lib/tab-retap";
+import { firstUnreadSection } from "@/lib/activity-first-unread";
 import { ConcordActivityMentions } from "@/components/concord/ConcordActivityMentions";
 import { MessageSquare, Heart, Repeat, Zap, UserPlus, AtSign, CheckCheck, ChevronDown, ChevronRight, LifeBuoy, ShieldAlert, VolumeX, Flag, DoorOpen } from "lucide-react";
 import { AdmissionQueue } from "@/components/AdmissionQueue";
@@ -197,6 +199,7 @@ const AggregatedNotificationItem = memo(function AggregatedNotificationItem({ gr
         !group.hasUnread ? "opacity-80" : ""
       }`}
       onClick={handleClick}
+      data-unread={group.hasUnread ? "true" : undefined}
       data-testid={`notification-aggregated-${group.key}`}
     >
       <div className="relative shrink-0">
@@ -574,6 +577,7 @@ const NotificationItem = memo(function NotificationItem({ notification, onRead }
         notification.read ? "opacity-80" : ""
       }`}
       onClick={handleCardClick}
+      data-unread={notification.read ? undefined : "true"}
       data-testid={`notification-item-${notification.id}`}
     >
       <div className="relative shrink-0" onClick={handleAvatarClick}>
@@ -958,6 +962,31 @@ export default function Notifications() {
   }, [grouped]);
 
   const activeLabel = filter === "all" ? "notifications" : TYPE_LABEL[filter].toLowerCase();
+
+  // A second tap on the Activity tab, already at the top, takes you to your
+  // first unread item (lib/footer-nav.ts): its section is opened if it was
+  // collapsed (or filtered out of view), then the item is scrolled to.
+  // Nothing is marked as read by getting there.
+  const goToFirstUnread = () => {
+    const where = firstUnreadSection(grouped, filter);
+    if (!where) return;
+    if (where.showAll) setFilter("all");
+    setCollapsedSections((prev) => {
+      if (!prev.has(where.type)) return prev;
+      const next = new Set(prev);
+      next.delete(where.type);
+      return next;
+    });
+    // After the section has rendered open.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      document
+        .querySelector(`[data-testid="notification-group-${where.type}"] [data-unread="true"]`)
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }));
+  };
+  const goToFirstUnreadRef = useRef(goToFirstUnread);
+  goToFirstUnreadRef.current = goToFirstUnread;
+  useEffect(() => onTabRetap("activity", "first-unread", () => goToFirstUnreadRef.current()), []);
 
   return (
     <div className="max-w-2xl mx-auto px-3 sm:px-6 py-4 sm:py-6" data-testid="page-notifications">

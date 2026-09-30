@@ -83,6 +83,7 @@ import { FOCUS_RING } from "@/lib/a11y";
 import { usePeopleTypeahead } from "@/hooks/use-people-typeahead";
 import { PeopleToFollowStrip } from "@/components/PeopleToFollowStrip";
 import { useDiscoverTrust } from "@/hooks/use-discover-trust";
+import { onTabRetap } from "@/lib/tab-retap";
 import { DISCOVER_MIN_SCORE } from "@/lib/discover-trust";
 import { getDisplayName, getAvatarUrl, getProfileContent } from "@/lib/nostr-helpers";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -908,6 +909,11 @@ function UniversalBar() {
     [joinedMatches, dirMatches, peopleResults.length],
   );
   const open = focused && !!raw;
+
+  // A second tap on the Discover tab, already at the top, puts you here
+  // (lib/footer-nav.ts). Focused inside the tap itself: iOS only opens the
+  // keyboard for a focus() made while the tap is still being handled.
+  useEffect(() => onTabRetap("discover", "focus-search", () => inputRef.current?.focus()), []);
 
   return (
     <div className="relative" data-testid="discover-command-bar">

@@ -24,9 +24,21 @@ export function scrollRootFor(el: Element | null): Element | null {
  * break exactly the return it exists for.
  */
 export function scrollPageToTop(root: Element | null = typeof document !== "undefined" ? document.querySelector("main") : null): void {
-  if (!root) return;
-  const scrollers = [root, ...root.querySelectorAll(".overflow-y-auto, .overflow-auto")].filter(
+  for (const el of scrolledScrollers(root)) el.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/**
+ * Is the page already at its top? Then a second tap on its tab has nothing to
+ * scroll back to and can do that tab's next thing instead (lib/footer-nav.ts).
+ * Reads exactly what scrollPageToTop would move.
+ */
+export function isPageAtTop(root: Element | null = typeof document !== "undefined" ? document.querySelector("main") : null): boolean {
+  return scrolledScrollers(root).length === 0;
+}
+
+function scrolledScrollers(root: Element | null): HTMLElement[] {
+  if (!root) return [];
+  return [root, ...root.querySelectorAll(".overflow-y-auto, .overflow-auto")].filter(
     (el): el is HTMLElement => el instanceof HTMLElement && el.scrollTop > 0 && !el.closest("[inert]"),
   );
-  for (const el of scrollers) el.scrollTo({ top: 0, behavior: "smooth" });
 }

@@ -41,7 +41,7 @@ import { indicatorHeight, pullArmed } from "@/lib/pull-to-refresh";
 import { ChatListRow } from "./ChatListRow";
 import { IaMovedNotice } from "@/components/IaMovedNotice";
 import { buildCreateActions } from "./create-actions";
-import { getDMDisplayName, formatMessageTime, needsSynthesizedPeopleSection, sectionChatEntries, communitiesForTab, chatFilterOptions, applyChatFilter, resolveChatFilter, type ChatFilter, type ChatEntry, type ConversationPreview, type DmTab, type OutpostPreview, type ProfileInfo } from "./helpers";
+import { getDMDisplayName, formatMessageTime, needsSynthesizedPeopleSection, sectionChatEntries, communitiesForTab, chatFilterOptions, applyChatFilter, resolveChatFilter, firstUnreadChat, type ChatFilter, type ChatEntry, type ConversationPreview, type DmTab, type OutpostPreview, type ProfileInfo } from "./helpers";
 import { refreshOutcome, type RefreshOutcome } from "./refresh-outcome";
 import { canReachAny } from "@/lib/relay-reach";
 import { getMyDMReceiveRelays } from "@/lib/outbox";
@@ -49,6 +49,7 @@ import { getOutpostRelays, getOutpostMeta, saveOutpostMeta, type OutpostRelay } 
 import { getPinnedFeeds, groupPinsByRelay, pinUrl, normalizeUrl, type PinnedFeed } from "@/lib/pinned-feeds";
 import { unpinRoomEverywhere } from "@/lib/room-pins";
 import { usePrivateMasked, togglePrivateMasked, revealPrivateMasked, ensurePrivateModeRearm, maskChips, getPrivateModeSetting } from "@/lib/private-mode";
+import { onTabRetap } from "@/lib/tab-retap";
 import { PrivateModeShield } from "@/components/PrivateModeShield";
 import { KeyBackupNudge } from "@/components/KeyBackupNudge";
 import { displayNameWith, getPetname, matchesQueryWith, usePetnamesVersion, isShowingRealNames, toggleShowRealNames, hasAnyPetnames, type PetnameKind } from "@/lib/petnames";
@@ -689,6 +690,23 @@ export function ChatList({
   // read through, guessed from their shape, or pulled from the page.
   ensurePrivateModeRearm();
   const privateMasked = usePrivateMasked();
+
+  // A second tap on the Chats tab, already at the top, opens your first unread
+  // chat (lib/footer-nav.ts): the first unread row as the list shows them,
+  // opened exactly as a tap on the row would. With none in the list but
+  // unread requests waiting, it opens Requests. Never while private mode
+  // hides the rows.
+  const shownEntries = iaCollapsed ? visibleSections.flatMap((section) => section.entries) : entries;
+  const openFirstUnread = () => {
+    if (privateMasked) return;
+    const chat = firstUnreadChat(shownEntries);
+    if (chat?.kind === "dm") navigateToConversation(chat.pubkey);
+    else if (chat?.kind === "group") onOpenGroup(chat.communityId, chat.channelId);
+    else if (dmTab === "primary" && requestUnreadCount > 0) setDmTab("requests");
+  };
+  const openFirstUnreadRef = useRef(openFirstUnread);
+  openFirstUnreadRef.current = openFirstUnread;
+  useEffect(() => onTabRetap("chats", "first-unread", () => openFirstUnreadRef.current()), []);
 
   // One row, rendered the same whether the list is flat or sectioned.
   const renderEntry = (entry: ChatEntry) => {

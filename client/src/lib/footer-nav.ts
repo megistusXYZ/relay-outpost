@@ -5,6 +5,7 @@
  *
  * `location` is wouter's pathname-only location string.
  */
+import type { NavDestinationId } from "./nav-destinations";
 
 /**
  * Routes that host a full-screen chat overlay (DM thread, Concord group chat).
@@ -125,11 +126,43 @@ export function isNavDestinationActive(
   }
 }
 
+export type TabTapAction =
+  | "navigate"
+  | "scroll-to-top"
+  /** You: open your own profile. */
+  | "open-profile"
+  /** Discover: put the cursor in its search box. */
+  | "focus-search"
+  /** Chats: open the first unread chat. Activity: go to the first unread item. */
+  | "first-unread"
+  | "nothing";
+
 /**
- * What tapping a footer tab does. Re-tapping the tab you are on takes you back
- * to its top, as X does (it used to do nothing). Any other tap, including this
- * tab from one of its inner pages, goes to the tab.
+ * What tapping a footer tab does.
+ *
+ * A tap on another tab, or on this tab from one of its inner pages, goes to
+ * the tab. A second tap on the tab you're on follows one ladder everywhere
+ * (owner, 2026-09-30): scrolled down, it takes you back to the top, as X
+ * does; already at the top, it does the most useful next thing for that tab.
+ * You skips the first rung: the Account page is a short menu, so a second
+ * tap opens your profile straight away, the same as tapping the card.
+ *
+ * `unread` is what the tab's badge counts. With nothing unread there is no
+ * "first unread" to go to, and the tap does nothing rather than something
+ * surprising. It never marks anything as read.
  */
-export function tabTap(location: string, target: string): "scroll-to-top" | "navigate" {
-  return location === target ? "scroll-to-top" : "navigate";
+export function tabTap(tap: {
+  /** The tab that was tapped. */
+  tab: NavDestinationId;
+  location: string;
+  target: string;
+  atTop: boolean;
+  unread: number;
+}): TabTapAction {
+  if (tap.location !== tap.target) return "navigate";
+  if (tap.tab === "you") return "open-profile";
+  if (!tap.atTop) return "scroll-to-top";
+  if (tap.tab === "discover") return "focus-search";
+  if (tap.tab === "chats" || tap.tab === "activity") return tap.unread > 0 ? "first-unread" : "nothing";
+  return "nothing";
 }

@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { tabTap } from "./footer-nav";
+import { readFileSync } from "fs";
+import path from "path";
 import { isNavDestinationActive, isChatOverlayRoute, isChatsTabActive, isCommunitiesTabActive, isNewsTabActive } from "./footer-nav";
 
 // The footer's two chat-adjacent tabs. Feed/Alerts are trivial prefix checks;
@@ -207,14 +209,84 @@ describe("isNavDestinationActive — one predicate for both footer layouts", () 
 /**
  * X's tab bar (2026-09-11, reported on mobile): tapping the tab you are
  * already on takes you back to the top of it. It used to do nothing at all.
+ *
+ * Owner, 2026-09-30: a second tap should do more than that. The ladder is
+ * the same on every tab: scrolled down, it goes to the top; already at the
+ * top, it does the most useful next thing for that tab. You is the
+ * exception: the Account page is a short menu, so a second tap opens your
+ * profile straight away.
  */
 describe("tabTap — what tapping a footer tab does", () => {
-  it("re-tapping the tab you're on scrolls back to the top", () => {
-    expect(tabTap("/discover", "/discover")).toBe("scroll-to-top");
-  });
+  const tap = (over: Partial<Parameters<typeof tabTap>[0]>) =>
+    tabTap({ tab: "discover", location: "/discover", target: "/discover", atTop: true, unread: 0, ...over });
 
   it("tapping another tab, or the current tab from one of its inner pages, goes to that tab", () => {
-    expect(tabTap("/discover", "/messages")).toBe("navigate");
-    expect(tabTap("/messages/npub1abc", "/messages")).toBe("navigate");
+    expect(tap({ tab: "chats", location: "/discover", target: "/messages" })).toBe("navigate");
+    expect(tap({ tab: "chats", location: "/messages/npub1abc", target: "/messages" })).toBe("navigate");
+    expect(tap({ tab: "you", location: "/account/settings", target: "/account/menu" })).toBe("navigate");
+  });
+
+  it("scrolled down: a second tap goes back to the top, on every tab but You", () => {
+    expect(tap({ tab: "discover", atTop: false })).toBe("scroll-to-top");
+    expect(tap({ tab: "chats", location: "/messages", target: "/messages", atTop: false, unread: 3 })).toBe("scroll-to-top");
+    expect(tap({ tab: "activity", location: "/notifications", target: "/notifications", atTop: false, unread: 3 })).toBe("scroll-to-top");
+    expect(tap({ tab: "feed", location: "/", target: "/", atTop: false })).toBe("scroll-to-top");
+  });
+
+  it("You: a second tap on the Account page opens your profile, wherever the page is scrolled", () => {
+    expect(tap({ tab: "you", location: "/account/menu", target: "/account/menu", atTop: true })).toBe("open-profile");
+    expect(tap({ tab: "you", location: "/account/menu", target: "/account/menu", atTop: false })).toBe("open-profile");
+  });
+
+  it("Discover, already at the top: puts you in the search box", () => {
+    expect(tap({ tab: "discover", atTop: true })).toBe("focus-search");
+  });
+
+  it("Chats, already at the top: opens your first unread chat, or does nothing when none is unread", () => {
+    expect(tap({ tab: "chats", location: "/messages", target: "/messages", unread: 2 })).toBe("first-unread");
+    expect(tap({ tab: "chats", location: "/messages", target: "/messages", unread: 0 })).toBe("nothing");
+  });
+
+  it("Activity, already at the top: goes to your first unread item, or does nothing when none is unread", () => {
+    expect(tap({ tab: "activity", location: "/notifications", target: "/notifications", unread: 5 })).toBe("first-unread");
+    expect(tap({ tab: "activity", location: "/notifications", target: "/notifications", unread: 0 })).toBe("nothing");
+  });
+
+  it("the older tabs have no second step: at the top, a second tap does nothing", () => {
+    expect(tap({ tab: "feed", location: "/", target: "/" })).toBe("nothing");
+    expect(tap({ tab: "news", location: "/news", target: "/news", unread: 4 })).toBe("nothing");
+    expect(tap({ tab: "communities", location: "/outposts", target: "/outposts" })).toBe("nothing");
+  });
+});
+
+/**
+ * The decision is only worth something if the footer acts on every answer
+ * and each page is listening for its own. There is no ESLint here to notice
+ * a case that was never handled or a listener that was never mounted.
+ */
+describe("the footer and the pages act on it", () => {
+  const read = (rel: string) => readFileSync(path.resolve(import.meta.dirname, rel), "utf8");
+  const footer = read("../components/MobileFooter.tsx");
+
+  it("the footer asks with where the page is scrolled and what the tab's badge shows", () => {
+    expect(footer).toMatch(/tabTap\(\{ tab: tab\.id, location, target, atTop: isPageAtTop\(\), unread: tab\.count \?\? 0 \}\)/);
+  });
+
+  it("the footer handles every answer", () => {
+    for (const action of ["scroll-to-top", "open-profile", "focus-search", "first-unread", "nothing", "navigate"]) {
+      expect(footer, action).toContain(`case "${action}":`);
+    }
+    expect(footer).toMatch(/case "open-profile": if \(pubkey\) setLocation\(`\/profile\/\$\{formatNpub\(pubkey\)\}`\)/);
+  });
+
+  it("Discover's search box, the chat list and Activity each listen for their own tab", () => {
+    expect(read("../pages/Discover.tsx")).toMatch(/onTabRetap\("discover", "focus-search", \(\) => inputRef\.current\?\.focus\(\)\)/);
+    expect(read("../pages/messages/ChatList.tsx")).toMatch(/onTabRetap\("chats", "first-unread"/);
+    expect(read("../pages/Notifications.tsx")).toMatch(/onTabRetap\("activity", "first-unread"/);
+  });
+
+  it("Activity's unread items can be found on the page", () => {
+    const page = read("../pages/Notifications.tsx");
+    expect(page.match(/data-unread=\{/g) ?? []).toHaveLength(2); // single and grouped items
   });
 });
