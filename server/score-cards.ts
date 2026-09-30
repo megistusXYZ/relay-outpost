@@ -152,6 +152,15 @@ export function createScoreCardReader(opts: {
     return fullList.complete ? null : undefined;
   }
 
+  /**
+   * Whether `scores(pubkeys)` would have to ask the relay: someone in it is
+   * neither covered by the full list nor remembered from a recent lookup.
+   * The per-IP limit counts only these (score-lookup-gate.ts).
+   */
+  function needsRelay(pubkeys: readonly string[]): boolean {
+    return pubkeys.some((pk) => fromFullList(pk) === undefined && !fresh(pk));
+  }
+
   async function scores(pubkeys: readonly string[]): Promise<{ scores: Map<string, number | null>; reached: boolean }> {
     const out = new Map<string, number | null>();
     const need: string[] = [];
@@ -281,5 +290,5 @@ export function createScoreCardReader(opts: {
     return { authors, reached: true };
   }
 
-  return { scores, trustedAuthors };
+  return { scores, needsRelay, trustedAuthors };
 }
