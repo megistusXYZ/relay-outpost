@@ -12,11 +12,17 @@ import { collectOnce, type Subscribe } from "./collect-once";
 const ev = (id: string) => ({ id, pubkey: "p", created_at: 1, kind: 1, tags: [], content: "", sig: "" }) as any;
 
 /** A fake relay subscription: a script of events and an EOSE time (or never). */
-function fakeRelays(script: { at: number; id: string }[], eoseAt: number | null, relayEose: { relay: string; at: number }[] = []) {
+function fakeRelays(
+  script: { at: number; id: string }[],
+  eoseAt: number | null,
+  relayEose: { relay: string; at: number }[] = [],
+  relayDeclined: { relay: string; at: number }[] = [],
+) {
   const closed = vi.fn();
   const subscribe: Subscribe = (_relays, _filter, handlers) => {
     for (const s of script) setTimeout(() => handlers.onevent(ev(s.id)), s.at);
     for (const r of relayEose) setTimeout(() => handlers.onrelayeose?.(r.relay), r.at);
+    for (const r of relayDeclined) setTimeout(() => handlers.onrelaydeclined?.(r.relay), r.at);
     if (eoseAt !== null) setTimeout(() => handlers.oneose(), eoseAt);
     return { close: closed };
   };
@@ -87,6 +93,31 @@ describe("collectOnce", () => {
   it("only one of four answered 'nothing': keeps waiting (not a majority)", async () => {
     const relays = ["wss://a", "wss://b", "wss://c", "wss://d"];
     const p = collectOnce(fakeRelays([], null, [{ relay: "wss://a", at: 300 }]).subscribe, relays, {}, 8000);
+    const took = await settleTime(p);
+    expect(took).toBeGreaterThanOrEqual(8000);
+  });
+
+  it("a relay that declines (rate limit, auth) has answered: it leaves the count instead of being waited for", async () => {
+    // Measured 2026-09-30: relay.damus.io refused ("read bandwidth budget
+    // exhausted … per IP"), relay.primal.net was dead, and the two relays
+    // that answered "nothing" were not a majority of four, so empty lookups
+    // waited the full cap. Two of the three that could still answer is.
+    const relays = ["wss://a", "wss://b", "wss://declines", "wss://dead"];
+    const p = collectOnce(
+      fakeRelays([], null, [{ relay: "wss://a", at: 300 }, { relay: "wss://b", at: 500 }], [{ relay: "wss://declines", at: 200 }]).subscribe,
+      relays, {}, 8000,
+    );
+    const took = await settleTime(p);
+    expect(await p).toEqual([]);
+    expect(took).toBeLessThanOrEqual(1500);
+  });
+
+  it("declines alone are not an answer: with nobody answering it keeps waiting", async () => {
+    const relays = ["wss://a", "wss://b", "wss://dead"];
+    const p = collectOnce(
+      fakeRelays([], null, [], [{ relay: "wss://a", at: 200 }, { relay: "wss://b", at: 300 }]).subscribe,
+      relays, {}, 8000,
+    );
     const took = await settleTime(p);
     expect(took).toBeGreaterThanOrEqual(8000);
   });
