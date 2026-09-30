@@ -1095,6 +1095,9 @@ export function throttledPoolSubscribe(
     /** One relay genuinely finished answering; never for a relay that failed
      *  to connect (nostr-tools invents an EOSE for those). */
     onrelayeose?: (relay: string) => void;
+    /** The relay closed the subscription itself (rate limit, auth, failed
+     *  connection): it won't answer this one. */
+    onrelaydeclined?: (relay: string) => void;
   },
 ): { close(): void } {
   if (!filters || relays.length === 0) {
@@ -1153,7 +1156,12 @@ export function throttledPoolSubscribe(
         // the 10s safetyTimeout, so a real EOSE always wins and the ceiling
         // still bounds the wait.
         maxWait: 9500,
-        onclose() { closedWithoutAnswering = true; },
+        onclose(reasons: string[]) {
+          closedWithoutAnswering = true;
+          // The relay itself closed it (rate limit, auth-required, a failed
+          // connection), not us after its EOSE: it has given its answer.
+          if (!(reasons ?? []).every((r) => r === "closed by caller")) opts.onrelaydeclined?.(relay);
+        },
         onevent(event: any) {
           opts.onevent?.(event);
         },

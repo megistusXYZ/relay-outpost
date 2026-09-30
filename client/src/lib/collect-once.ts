@@ -8,6 +8,8 @@ export type Subscribe = (
     oneose: () => void;
     /** One relay genuinely finished answering (not a failed connection). */
     onrelayeose?: (relay: string) => void;
+    /** One relay said no (rate limit, auth, failed connection): it won't answer. */
+    onrelaydeclined?: (relay: string) => void;
   },
 ) => { close: () => void };
 
@@ -57,7 +59,15 @@ export function collectOnce(
     };
 
     const answered = new Set<string>();
-    const majority = Math.floor(relays.length / 2) + 1;
+    const declined = new Set<string>();
+    // Empty in hand: settle once a majority of the relays that can still
+    // answer have (a relay that declined, e.g. damus's per-IP rate limit, has
+    // given its answer); at least one real answer, never on declines alone.
+    const maybeSettleEmpty = () => {
+      if (collected.length > 0 || answered.size === 0) return;
+      const canAnswer = relays.length - declined.size;
+      if (answered.size >= Math.floor(canAnswer / 2) + 1) armQuiet();
+    };
 
     const cap = setTimeout(finish, capMs);
     sub = subscribe(relays, filter, {
@@ -71,7 +81,12 @@ export function collectOnce(
       onrelayeose: (relay) => {
         if (done) return;
         answered.add(relay);
-        if (answered.size >= majority && collected.length === 0) armQuiet();
+        maybeSettleEmpty();
+      },
+      onrelaydeclined: (relay) => {
+        if (done || answered.has(relay)) return;
+        declined.add(relay);
+        maybeSettleEmpty();
       },
     });
     // Finished while subscribing (a synchronous EOSE): close what just opened.
