@@ -689,3 +689,80 @@ export function holdGroundAboveAnchor(container: HTMLElement, saved: SavedScroll
     },
   };
 }
+
+/** Release once nothing is held and the page has been quiet this long. */
+export const GROUND_HOLD_QUIET_MS = 500;
+/** Never babysit a pathologically growing page forever. */
+export const GROUND_HOLD_CAP_MS = 12000;
+
+/**
+ * Run a hold until it settles: re-measure whenever anything in the container
+ * changes size (ResizeObserver fires before paint, so the space is given back
+ * in the same frame the content takes it) or the DOM changes; release once
+ * nothing is held and the page has been quiet for GROUND_HOLD_QUIET_MS, or at
+ * the cap. Returns a stop that releases early; safe to call more than once.
+ */
+export function runGroundHold(
+  container: HTMLElement,
+  hold: GroundHold,
+  { pin, onDone, quietMs = GROUND_HOLD_QUIET_MS, capMs = GROUND_HOLD_CAP_MS }: { pin: () => boolean; onDone?: () => void; quietMs?: number; capMs?: number },
+): () => void {
+  const startAt = Date.now();
+  let lastActivityAt = startAt;
+  let lastHeight = container.scrollHeight;
+  let lastHeld = hold.update({ pin: pin() });
+  let stopped = false;
+  const tick = () => {
+    if (stopped) return;
+    const held = hold.update({ pin: pin() });
+    const h = container.scrollHeight;
+    if (held !== lastHeld || h !== lastHeight) {
+      lastHeld = held;
+      lastHeight = h;
+      lastActivityAt = Date.now();
+    }
+  };
+  // A size change anywhere above the anchor reaches one of these ancestors.
+  const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(tick) : null;
+  const observed = new Set<Element>();
+  const observe = (root: Element) => {
+    if (!ro) return;
+    const nodes = root.querySelectorAll(":scope > *, :scope > * > *, :scope > * > * > *, :scope > * > * > * > *, [data-event-id]");
+    for (let i = 0; i < nodes.length && observed.size < 600; i++) {
+      if (observed.has(nodes[i])) continue;
+      observed.add(nodes[i]);
+      ro.observe(nodes[i]);
+    }
+  };
+  observe(container);
+  const mo = typeof MutationObserver !== "undefined"
+    ? new MutationObserver((records) => {
+        for (const r of records) {
+          r.addedNodes.forEach((n) => {
+            if (n.nodeType !== 1) return;
+            if (ro && observed.size < 600 && !observed.has(n as Element)) {
+              observed.add(n as Element);
+              ro.observe(n as Element);
+            }
+            observe(n as Element);
+          });
+        }
+        tick();
+      })
+    : null;
+  mo?.observe(container, { childList: true, subtree: true });
+  const stop = () => {
+    if (stopped) return;
+    stopped = true;
+    clearInterval(timer);
+    ro?.disconnect();
+    mo?.disconnect();
+    hold.release();
+    onDone?.();
+  };
+  const timer = setInterval(() => {
+    const now = Date.now();
+    if ((hold.held() === 0 && now - lastActivityAt >= quietMs) || now - startAt >= capMs) stop();
+  }, 100);
+  return stop;
+}
