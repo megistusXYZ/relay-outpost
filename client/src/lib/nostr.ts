@@ -1114,6 +1114,12 @@ export function throttledPoolSubscribe(
     return { close() {} };
   }
   const healthyRelays = filterBlockedRelays(getHealthyRelays(relays));
+  // Relays we won't ask (cooling down after a failure, or blocked) can never
+  // answer: say so now, or a caller counting answers waits for them until its
+  // cap (Discover: 8 s after damus was benched for a refused connection).
+  for (const relay of relays) {
+    if (!healthyRelays.includes(relay)) opts.onrelaydeclined?.(relay);
+  }
   const closers: Array<{ close(): void }> = [];
   let eoseCount = 0;
   let completed = false;
