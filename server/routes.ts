@@ -55,6 +55,7 @@ import { registerOgCardRoutes } from "./og-cards";
 import { registerTranslateRoute } from "./translate";
 import { FailureMemory } from "@shared/failure-memory";
 import { createScoreCardReader } from "./score-cards";
+import { createRelayDirectoryReader } from "./relay-directory";
 import { DEFAULT_LENS } from "@shared/default-lens";
 
 /**
@@ -3126,6 +3127,27 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error("[discover-trusted-authors] error:", err?.message || err);
       res.status(503).json({ authors: [], error: "Couldn't read who's trusted right now" });
+    }
+  });
+
+  // The relay directory, read from the monitors once for everyone
+  // (relay-directory.ts): 6.5 MB of monitor reports per visitor became one
+  // small list. 503 when no monitor could be asked; the app then reads the
+  // monitors itself, so "empty" is never claimed on the server's say-so.
+  const relayDirectory = createRelayDirectoryReader();
+  app.get("/api/relay-directory", async (_req, res) => {
+    try {
+      // Never hold a visitor for a slow first read; it carries on in the
+      // background and the next visitor gets it.
+      const result = await Promise.race([
+        relayDirectory.read(),
+        new Promise<null>((r) => setTimeout(() => r(null), 6_000)),
+      ]);
+      if (!result || !result.reached) return res.status(503).json({ relays: [], error: "Couldn't read the relay directory right now" });
+      res.set("Cache-Control", "public, max-age=300").json({ relays: result.relays });
+    } catch (err: any) {
+      console.error("[relay-directory] error:", err?.message || err);
+      res.status(503).json({ relays: [], error: "Couldn't read the relay directory right now" });
     }
   });
 
