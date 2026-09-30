@@ -58,6 +58,7 @@ import { createScoreCardReader } from "./score-cards";
 import { createRelayDirectoryReader } from "./relay-directory";
 import { createFeedSampleReader } from "./feed-sample";
 import { WOT_BATCH_MAX } from "@shared/wot-batch";
+import { createScoreLookupGate } from "./score-lookup-gate";
 import { DEFAULT_LENS } from "@shared/default-lens";
 
 /**
@@ -3096,9 +3097,10 @@ export async function registerRoutes(
     }
   });
 
-  const wotBatchRateLimit = new Map<string, number[]>();
-  const WOT_BATCH_RATE_WINDOW = 60_000;
-  const WOT_BATCH_RATE_MAX = 30; // our own proxy; the client now sends a few chunked calls/thread
+  // 30 a minute per IP, counting only lookups that will ask the score relay
+  // (score-lookup-gate.ts). Lookups answered from memory, which since the
+  // full list is kept is nearly all of them, don't count.
+  const scoreLookupGate = createScoreLookupGate({ max: 30, windowMs: 60_000 });
 
   // score >= 0 is a real wot_rank/100; score < 0 is a cached "miss" (Meili has no
   // data) — cached briefly so we don't re-hammer unknown accounts. The client
@@ -3175,21 +3177,15 @@ export async function registerRoutes(
 
   app.post("/api/brainstorm/wot-batch", async (req, res) => {
     try {
-      const clientIp = req.ip || "unknown";
-      const now = Date.now();
-      const timestamps = (wotBatchRateLimit.get(clientIp) || []).filter(t => t > now - WOT_BATCH_RATE_WINDOW);
-      if (timestamps.length >= WOT_BATCH_RATE_MAX) {
-        return res.status(429).json({ scores: {}, error: "Rate limit exceeded" });
-      }
-      timestamps.push(now);
-      wotBatchRateLimit.set(clientIp, timestamps);
-
       const { pubkeys } = req.body;
       if (!Array.isArray(pubkeys) || pubkeys.length === 0) {
         return res.json({ scores: {} });
       }
       const batch = pubkeys.slice(0, WOT_BATCH_MAX).filter((pk: string) => typeof pk === "string" && /^[0-9a-f]{64}$/i.test(pk));
       if (batch.length === 0) return res.json({ scores: {} });
+      if (!scoreLookupGate.allow(req.ip || "unknown", { needsRelay: scoreCards.needsRelay(batch) })) {
+        return res.status(429).json({ scores: {}, error: "Rate limit exceeded" });
+      }
       const scores: Record<string, number> = {};
 
       // Score cards through the default lens (score-cards.ts). A number is a

@@ -289,3 +289,59 @@ describe("a large lookup with no list in hand", () => {
     expect(most).toBe(2);
   });
 });
+
+/**
+ * The per-IP limit on score lookups only counts lookups that will ask the
+ * relay (score-lookup-gate.ts), so the reader has to say which those are.
+ */
+describe("whether a lookup needs the relay", () => {
+  const A = "a".repeat(64), NOBODY = "c".repeat(64);
+  const card = (subject: string, rank: string) => ({ id: subject + rank, kind: 30382, pubkey: SVC, created_at: 300, tags: [["d", subject], ["rank", rank]] });
+  const relay = (listAnswered = true): RelayQuery => vi.fn(async (_relay, filter) => {
+    if (filter.kinds?.[0] === 10040) return { reached: true, answered: true, events: [lensMap] };
+    if (filter["#d"]) return { reached: true, answered: true, events: [card(A, "90")].filter((c) => filter["#d"].includes(c.tags[0][1])) };
+    return { reached: true, answered: listAnswered, events: [card(A, "90")] };
+  });
+
+  it("with no list in hand, it does", () => {
+    const reader = createScoreCardReader({ lens: LENS, mapRelays: ["wss://purplepag.es"], query: relay() });
+    expect(reader.needsRelay([A])).toBe(true);
+  });
+
+  it("with the full list in hand, it doesn't: not for people on it, not for people missing from it", async () => {
+    const reader = createScoreCardReader({ lens: LENS, mapRelays: ["wss://purplepag.es"], query: relay() });
+    await reader.trustedAuthors(50);
+    expect(reader.needsRelay([A, NOBODY])).toBe(false);
+  });
+
+  it("a list that was cut off can't speak for people missing from it", async () => {
+    const reader = createScoreCardReader({ lens: LENS, mapRelays: ["wss://purplepag.es"], query: relay(false) });
+    await reader.trustedAuthors(50);
+    expect(reader.needsRelay([A])).toBe(false);
+    expect(reader.needsRelay([A, NOBODY])).toBe(true);
+  });
+
+  it("someone just looked up is remembered, so asking again needs no relay", async () => {
+    const reader = createScoreCardReader({ lens: LENS, mapRelays: ["wss://purplepag.es"], query: relay() });
+    await reader.scores([A, NOBODY]);
+    expect(reader.needsRelay([A, NOBODY])).toBe(false);
+  });
+
+  it("a list too old to use means the relay again", async () => {
+    let t = 0;
+    const reader = createScoreCardReader({ lens: LENS, mapRelays: ["wss://purplepag.es"], query: relay(), now: () => t });
+    await reader.trustedAuthors(50);
+    t = FULL_LIST_KEEP_MS + 1;
+    expect(reader.needsRelay([NOBODY])).toBe(true);
+  });
+
+  it("agrees with what a lookup then does", async () => {
+    const query = relay();
+    const reader = createScoreCardReader({ lens: LENS, mapRelays: ["wss://purplepag.es"], query });
+    await reader.trustedAuthors(50);
+    const before = (query as any).mock.calls.length;
+    expect(reader.needsRelay([A, NOBODY])).toBe(false);
+    await reader.scores([A, NOBODY]);
+    expect((query as any).mock.calls.length).toBe(before);
+  });
+});
