@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback, memo, isValidElement, cloneElement, type ReactNode } from "react";
+import { ClampedText, LINES, textForLines } from "@/components/ClampedText";
 import { createPortal } from "react-dom";
 import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
@@ -1134,9 +1135,16 @@ export function EmbeddedNote({ eventId, encoded, relays, parentEventId }: { even
         // event/article naddr → EmbeddedAddressCard), which are invalid inside <p>.
         // `nested` keeps note/nevent as shallow chips so a quoted note can't expand
         // another full EmbeddedNote (no infinite note-in-note).
-        <div className="text-xs text-foreground/75 leading-relaxed whitespace-pre-wrap break-words">
+        // Context, not the post: three lines at most, and tapping the card
+        // opens the quoted post (owner, 2026-09-30).
+        <ClampedText
+          lines={LINES.context}
+          expandable={false}
+          className="text-xs text-foreground/75 leading-relaxed whitespace-pre-wrap break-words"
+          testId={`embedded-note-text-${eventId.slice(0, 8)}`}
+        >
           <TextWithUnresolvedNostr text={previewText} nested />
-        </div>
+        </ClampedText>
       )}
       {imageUrls.length > 0 && (
         <div className={`grid gap-1.5 ${imageUrls.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
@@ -2404,14 +2412,14 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
       .trim();
   }, [textContent, tr.showing, tr.translatedProse]);
 
-  const TRUNCATE_CHARS = 300;
-  // The focused thread note is shown in full — never clamp it behind "Show more"
-  // (the reader opened it to read it; collapsing the quote/reference is excise).
-  const needsTruncation = !focused && proseText.length > TRUNCATE_CHARS;
+  // Long text is cut by the lines it takes on screen, not by characters
+  // (ClampedText, LINES.post): a 300-character rule never cut a long list of
+  // short lines. The focused thread note is shown in full: the reader opened
+  // it to read it.
   const isOwnPost = pubkey === event.pubkey;
   const hasMedia = mediaItems.length > 0;
   const hasOnlyMedia = hasMedia && proseText.length === 0;
-  const isShortMessage = proseText.length <= 120 && proseText.length > 0 && !hasMedia && !needsTruncation;
+  const isShortMessage = proseText.length <= 120 && proseText.length > 0 && !hasMedia;
   const feedStyle = useFeedStyle();
   const isBubbles = feedStyle === "bubbles";
   // Full-bleed applies to media-dominant posts only, and only in the `clean`
@@ -2422,7 +2430,6 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
     () => isMediaFeedEnabled() && !isBubbles && !compact && isMediaDominant(event),
     [isBubbles, compact, event],
   );
-  const [isExpanded, setIsExpanded] = useState(false);
   // Post-menu open state — drives the caret's 180° disclosure flip.
   const [postMenuOpen, setPostMenuOpen] = useState(false);
   const [featureDialogOpen, setFeatureDialogOpen] = useState(false);
@@ -2430,25 +2437,23 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
   // renders per-post in feeds, and the gate must cost nothing when closed.
   const canFeature = useMemo(() => postMenuOpen && getAdminOutposts().length > 0, [postMenuOpen]);
 
-  const displayText = useMemo(() => {
-    if (!needsTruncation || isExpanded) return proseText;
-    const truncated = proseText.slice(0, TRUNCATE_CHARS);
-    const lastSpace = truncated.lastIndexOf(" ");
-    return (lastSpace > TRUNCATE_CHARS * 0.6 ? truncated.slice(0, lastSpace) : truncated) + "...";
-  }, [proseText, needsTruncation, isExpanded]);
+  const [isExpanded, setIsExpanded] = useState(false);
+  // While cut, render only what eight lines can show (a 46,238-character post
+  // rendered in full cost every feed it was in); the focused note in full.
+  const displayText = focused ? proseText : textForLines(proseText, LINES.post, isExpanded);
 
   const truncatedEvent = useMemo(() => {
     // A translated view must present a fresh object identity — the content
     // renderer caches per event, and handing it the original `event` would
     // serve the untranslated render back.
-    if ((!needsTruncation || isExpanded) && !tr.showing) return event;
+    if (displayText === proseText && !tr.showing) return event;
     const derived = { ...event, content: displayText };
     // The spread copies applesauce's parse cache too (it lives on the event as
     // an enumerable symbol property) — strip it, or the renderer serves the
     // ORIGINAL parse and the translated/truncated text never appears.
     Reflect.deleteProperty(derived, contentCacheKey);
     return derived;
-  }, [event, needsTruncation, isExpanded, displayText, tr.showing]);
+  }, [event, displayText, tr.showing]);
 
   const rawRenderedContent = useRenderedContent(truncatedEvent, contentComponents, {
     cacheKey: contentCacheKey,
@@ -3060,18 +3065,16 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
       <div className={`${compact ? "mx-4 sm:mx-5 mt-4 mb-5 sm:mb-6" : isBubbles ? "mx-5 sm:mx-8 mt-5 mb-6 sm:mb-8" : "mx-5 sm:mx-8 mt-4 mb-4 sm:mb-5"}`}>
         <div className={`${isBubbles ? "rounded-xl glass-inner" : ""} ${isBubbles && isShortMessage ? "w-fit max-w-[85%]" : ""} ${hasOnlyMedia ? "p-0 overflow-hidden" : isBubbles ? (compact ? "px-2.5 sm:px-3 py-2.5 sm:py-3" : "px-3 sm:px-4 py-3 sm:py-4") : ""}`}>
           {renderedContent && !hasOnlyMedia && proseText.length > 0 && (
-            <div className={`post-content-text whitespace-pre-wrap break-words ${hasMedia ? "mb-2" : ""} ${compact ? "text-sm sm:text-xs leading-[1.7]" : isBubbles ? "post-bubbles-text leading-[1.85]" : "post-clean-text leading-[1.45]"}`} data-testid={`text-content-${event.id}`}>
-              {renderedContent}
-            </div>
-          )}
-          {needsTruncation && (
-            <button
-              onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
-              className="text-xs text-brand/80 mt-1.5 cursor-pointer font-medium tracking-wide"
-              data-testid={`button-toggle-expand-${event.id}`}
+            <ClampedText
+              lines={focused ? undefined : LINES.post}
+              className={`post-content-text whitespace-pre-wrap break-words ${hasMedia ? "mb-2" : ""} ${compact ? "text-sm sm:text-xs leading-[1.7]" : isBubbles ? "post-bubbles-text leading-[1.85]" : "post-clean-text leading-[1.45]"}`}
+              testId={`text-content-${event.id}`}
+              toggleTestId={`button-toggle-expand-${event.id}`}
+              expanded={isExpanded}
+              onExpandedChange={setIsExpanded}
             >
-              {isExpanded ? "Show less" : "Show more"}
-            </button>
+              {renderedContent}
+            </ClampedText>
           )}
 
           <TranslateLine tr={tr} eventId={event.id} />
