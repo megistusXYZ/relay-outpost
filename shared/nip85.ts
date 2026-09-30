@@ -92,9 +92,18 @@ export function trustedAuthorsFromCards(
   services: readonly string[],
   minRank: number,
 ): string[] {
+  return trustedAuthorsFromRanks(ranksFromCards(cards, services), minRank);
+}
+
+/** Everyone these cards are about, with their rank (0-1; null = a card without a usable rank). */
+export function ranksFromCards(cards: readonly NostrEventLike[], services: readonly string[]): Map<string, number | null> {
   const subjects = [...new Set(cards.map((c) => c.tags.find((t) => t[0] === "d")?.[1]).filter((d): d is string => !!d))];
-  const scores = scoresFromCards(subjects, cards, services, false);
-  return [...scores]
+  return scoresFromCards(subjects, cards, services, false);
+}
+
+/** The people ranked `minRank` (0-100) and above, highest first. */
+export function trustedAuthorsFromRanks(ranks: ReadonlyMap<string, number | null>, minRank: number): string[] {
+  return [...ranks]
     .filter(([, s]) => typeof s === "number" && s * 100 >= minRank)
     .sort((a, b) => (b[1] as number) - (a[1] as number))
     .map(([pk]) => pk);

@@ -5,7 +5,7 @@
  * author in the app came to read "no data" when the old API died).
  */
 import { describe, it, expect, vi } from "vitest";
-import { createScoreCardReader, type RelayQuery } from "./score-cards";
+import { createScoreCardReader, FULL_LIST_KEEP_MS, type RelayQuery } from "./score-cards";
 
 const LENS = "be7bf5de068c1d842ed34a7c270507ec940f5ea51671cfd062a95e9d09420d0a";
 const SVC = "78ed0837" + "0".repeat(56);
@@ -158,5 +158,113 @@ describe("the trusted list stays served while it refreshes", () => {
     await new Promise((r) => setTimeout(r, 0));
     expect((await reader.trustedAuthors(50)).authors).toEqual([B]);
     expect(listRead).toBe(2);
+  });
+});
+
+/**
+ * Measured 2026-09-30: a score lookup the score relay hasn't served lately
+ * takes 3-5 s for 50 people, longer with several at once. After a restart
+ * our own cache is empty, a Discover load sends about eight at once, and the
+ * slowest passed the 6 s timeout: tiles said "Couldn't reach" (or, before
+ * #208, "Quiet right now"). The hourly trusted-list read already downloads
+ * every card (155,000 people), so lookups are answered from that.
+ */
+describe("score lookups are answered from the full list the server already reads", () => {
+  const A = "a".repeat(64), LOW = "b".repeat(64), NOBODY = "c".repeat(64);
+  const card = (subject: string, rank: string, created_at = 300) =>
+    ({ id: subject + rank, kind: 30382, pubkey: SVC, created_at, tags: [["d", subject], ["rank", rank]] });
+
+  /** A relay holding A (90) and LOW (20). `listAnswered: false` cuts the list read off. */
+  function setup(opts: { listAnswered?: boolean } = {}) {
+    let t = 0;
+    const lookups: string[][] = [];
+    const query: RelayQuery = vi.fn(async (_relay, filter) => {
+      if (filter.kinds?.[0] === 10040) return { reached: true, answered: true, events: [lensMap] };
+      if (filter["#d"]) {
+        lookups.push(filter["#d"]);
+        return { reached: true, answered: true, events: [card(A, "90"), card(LOW, "20")].filter((c) => filter["#d"].includes(c.tags[0][1])) };
+      }
+      return { reached: true, answered: opts.listAnswered ?? true, events: [card(A, "90"), card(LOW, "20")] };
+    });
+    const reader = createScoreCardReader({ lens: LENS, mapRelays: ["wss://purplepag.es"], query, now: () => t });
+    return { reader, lookups, advance: (ms: number) => { t += ms; } };
+  }
+
+  it("once the list is read, a lookup doesn't ask the relay at all", async () => {
+    const { reader, lookups } = setup();
+    await reader.trustedAuthors(50);
+    const r = await reader.scores([A, LOW, NOBODY]);
+    expect(r.reached).toBe(true);
+    expect(r.scores.get(A)).toBe(0.9);
+    expect(r.scores.get(LOW)).toBe(0.2);
+    expect(lookups).toEqual([]);
+  });
+
+  it("someone missing from a complete list has no score card: unranked, not unknown", async () => {
+    const { reader } = setup();
+    await reader.trustedAuthors(50);
+    const r = await reader.scores([NOBODY]);
+    expect(r.scores.has(NOBODY)).toBe(true);
+    expect(r.scores.get(NOBODY)).toBeNull();
+  });
+
+  it("a list read that was cut off proves nothing about who's missing: the relay is asked about them", async () => {
+    const { reader, lookups } = setup({ listAnswered: false });
+    await reader.trustedAuthors(50);
+    const r = await reader.scores([A, NOBODY]);
+    expect(r.scores.get(A)).toBe(0.9);
+    expect(lookups).toEqual([[NOBODY]]);
+    expect(r.scores.get(NOBODY)).toBeNull();
+  });
+
+  it("before the list is read, lookups ask the relay as they always did", async () => {
+    const { reader, lookups } = setup();
+    const r = await reader.scores([A]);
+    expect(r.scores.get(A)).toBe(0.9);
+    expect(lookups).toEqual([[A]]);
+  });
+
+  it("right after a restart: what the relay didn't answer in time is filled from the list that arrived meanwhile", async () => {
+    let releaseList: () => void = () => {};
+    const listGate = new Promise<void>((r) => { releaseList = r; });
+    let releaseLookup: () => void = () => {};
+    const lookupGate = new Promise<void>((r) => { releaseLookup = r; });
+    const query: RelayQuery = vi.fn(async (_relay, filter) => {
+      if (filter.kinds?.[0] === 10040) return { reached: true, answered: true, events: [lensMap] };
+      // The lookup times out at the relay (reached, never answered).
+      if (filter["#d"]) { await lookupGate; return { reached: true, answered: false, events: [] }; }
+      await listGate;
+      return { reached: true, answered: true, events: [card(A, "90")] };
+    });
+    const reader = createScoreCardReader({ lens: LENS, mapRelays: ["wss://purplepag.es"], query });
+    const list = reader.trustedAuthors(50);
+    const lookup = reader.scores([A, NOBODY]);
+    releaseList();
+    await list;
+    releaseLookup();
+    const r = await lookup;
+    expect(r.reached).toBe(true);
+    expect(r.scores.get(A)).toBe(0.9);
+    expect(r.scores.get(NOBODY)).toBeNull();
+  });
+
+  it("and with no list yet, what the relay didn't answer stays unknown (nothing is made up)", async () => {
+    const query: RelayQuery = vi.fn(async (_relay, filter) => {
+      if (filter.kinds?.[0] === 10040) return { reached: true, answered: true, events: [lensMap] };
+      if (filter["#d"]) return { reached: true, answered: false, events: [] };
+      return new Promise(() => {}); // a list read that hasn't finished
+    });
+    const reader = createScoreCardReader({ lens: LENS, mapRelays: ["wss://purplepag.es"], query });
+    void reader.trustedAuthors(50);
+    const r = await reader.scores([A]);
+    expect(r.scores.has(A)).toBe(false);
+  });
+
+  it("a list that hasn't been refreshed for hours isn't trusted for lookups", async () => {
+    const { reader, lookups, advance } = setup();
+    await reader.trustedAuthors(50);
+    advance(FULL_LIST_KEEP_MS + 1);
+    await reader.scores([NOBODY]);
+    expect(lookups).toEqual([[NOBODY]]);
   });
 });
