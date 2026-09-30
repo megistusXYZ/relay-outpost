@@ -464,6 +464,27 @@ export function resolveChatFilter(filter: ChatFilter, options: ChatFilterOption[
   return options.some((o) => o.key === filter) ? filter : "all";
 }
 
+/** What opening a chat from the list needs: the same thing a tap on its row passes. */
+export type ChatToOpen =
+  | { kind: "dm"; pubkey: string }
+  | { kind: "group"; communityId: string; channelId?: string };
+
+/**
+ * The first unread chat in the order the list shows them: what a second tap
+ * on the Chats tab opens (lib/footer-nav.ts). A group opens on the room its
+ * row previewed, else its first unread room, exactly as a tap on the row
+ * does. Muted groups are skipped; joined communities carry no unread.
+ */
+export function firstUnreadChat(entries: readonly ChatEntry[]): ChatToOpen | null {
+  for (const e of entries) {
+    if (e.kind === "dm" && e.conv.unread) return { kind: "dm", pubkey: e.conv.pubkey };
+    if (e.kind === "group" && e.group.unread && !e.group.muted) {
+      return { kind: "group", communityId: e.group.communityId, channelId: e.group.teaserChannelId ?? e.group.firstUnreadChannelId };
+    }
+  }
+  return null;
+}
+
 export function applyChatFilter(sections: ChatSection[], filter: ChatFilter): ChatSection[] {
   if (filter === "all") return sections;
   return sections.filter((s) => FILTER_BY_TITLE[s.title] === filter);

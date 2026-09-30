@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mergeChatEntries, sectionChatEntries, orderCommunitiesByActivity, needsSynthesizedPeopleSection, communitiesForTab, formatGroupTeaser, looksLikeOpaquePayload, chatFilterOptions, applyChatFilter, resolveChatFilter, type ChatEntry, type GroupPreview } from "./helpers";
+import { mergeChatEntries, sectionChatEntries, orderCommunitiesByActivity, needsSynthesizedPeopleSection, communitiesForTab, formatGroupTeaser, looksLikeOpaquePayload, chatFilterOptions, applyChatFilter, resolveChatFilter, firstUnreadChat, type ChatEntry, type GroupPreview } from "./helpers";
 import type { ConversationPreview } from "./helpers";
 
 const dm = (pubkey: string, lastTimestamp: number, unread = false): ConversationPreview =>
@@ -452,5 +452,46 @@ describe("communitiesForTab", () => {
 
   it("leaves the primary list alone", () => {
     expect(communitiesForTab("primary", outposts)).toEqual(outposts);
+  });
+});
+
+/**
+ * A second tap on the Chats tab, already at the top, opens your first unread
+ * chat (owner, 2026-09-30): the first one in the order the list shows them,
+ * opened exactly as tapping its row would.
+ */
+describe("firstUnreadChat", () => {
+  const person = (pubkey: string, unread: boolean): ChatEntry =>
+    ({ kind: "dm", conv: { pubkey, lastMessage: "hi", lastTimestamp: 1, unread } });
+  const groupChat = (communityId: string, over: Partial<GroupPreview> = {}): ChatEntry =>
+    ({ kind: "group", group: { communityId, name: communityId, channelCount: 1, lastActivity: 1, unread: false, mentions: 0, muted: false, members: [], ...over } as GroupPreview });
+  const community: ChatEntry = { kind: "outpost", outpost: { url: "wss://relay.example", label: "Relay" } as any };
+
+  it("is the first unread row from the top, whatever kind it is", () => {
+    expect(firstUnreadChat([person("alice", false), person("bob", true), groupChat("g1", { unread: true })]))
+      .toEqual({ kind: "dm", pubkey: "bob" });
+    expect(firstUnreadChat([person("alice", false), groupChat("g1", { unread: true }), person("bob", true)]))
+      .toEqual({ kind: "group", communityId: "g1", channelId: undefined });
+  });
+
+  it("a group opens where tapping its row would: the previewed room, else its first unread room", () => {
+    expect(firstUnreadChat([groupChat("g1", { unread: true, teaserChannelId: "teased", firstUnreadChannelId: "first" })]))
+      .toEqual({ kind: "group", communityId: "g1", channelId: "teased" });
+    expect(firstUnreadChat([groupChat("g1", { unread: true, firstUnreadChannelId: "first" })]))
+      .toEqual({ kind: "group", communityId: "g1", channelId: "first" });
+  });
+
+  it("a muted group is never what it opens", () => {
+    expect(firstUnreadChat([groupChat("quiet", { unread: true, muted: true }), person("bob", true)]))
+      .toEqual({ kind: "dm", pubkey: "bob" });
+  });
+
+  it("joined communities have no unread of their own to open", () => {
+    expect(firstUnreadChat([community, person("bob", true)])).toEqual({ kind: "dm", pubkey: "bob" });
+  });
+
+  it("nothing unread: nothing to open", () => {
+    expect(firstUnreadChat([person("alice", false), groupChat("g1"), community])).toBeNull();
+    expect(firstUnreadChat([])).toBeNull();
   });
 });
