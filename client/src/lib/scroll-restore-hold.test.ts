@@ -21,7 +21,7 @@
  * Node test env: the container and anchor are stand-ins that model layout the
  * way a browser does — padding pushes the content down, scrollTop offsets it.
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { holdGroundAboveAnchor, type SavedScrollPosition } from "./scroll-restore";
 
 const BASE_PAD = 68;
@@ -146,5 +146,58 @@ describe("holdGroundAboveAnchor — the page never moves under the reader", () =
   it("is not available without an anchor id (the caller keeps the plain scrollTop path)", () => {
     const p = page({ scrollTop: 0, naturalTop: 1172 });
     expect(holdGroundAboveAnchor(p.container, { ...saved, anchorId: null })).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The runner: re-measures from a ResizeObserver, releases when settled.
+// ---------------------------------------------------------------------------
+import { runGroundHold } from "./scroll-restore";
+
+describe("runGroundHold — measure on resize, release when settled", () => {
+  class FakeRO {
+    static cbs: Array<() => void> = [];
+    constructor(cb: () => void) { FakeRO.cbs.push(cb); }
+    observe() {}
+    disconnect() {}
+  }
+  class FakeMO { observe() {} disconnect() {} }
+  beforeEach(() => {
+    FakeRO.cbs = [];
+    (globalThis as any).ResizeObserver = FakeRO;
+    (globalThis as any).MutationObserver = FakeMO;
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    delete (globalThis as any).ResizeObserver;
+    delete (globalThis as any).MutationObserver;
+    vi.useRealTimers();
+  });
+
+  it("gives the space back from the resize callback and releases once nothing is held and the page is quiet", () => {
+    const p = page({ scrollTop: 1400, naturalTop: 1172 });
+    const hold = holdGroundAboveAnchor(p.container, saved)!;
+    const done = vi.fn();
+    runGroundHold(p.container, hold, { pin: () => false, onDone: done });
+    expect(p.heldPx()).toBe(228);
+    p.state.naturalTop = 1400; // the header arrived
+    FakeRO.cbs.forEach((cb) => cb());
+    expect(hold.held()).toBe(0);
+    expect(done).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(700);
+    expect(done).toHaveBeenCalledTimes(1);
+    expect(p.container.style.paddingTop).toBe("");
+  });
+
+  it("stop() releases early, with a compensating scroll for what was still held, and is safe to call twice", () => {
+    const p = page({ scrollTop: 1400, naturalTop: 1172 });
+    const hold = holdGroundAboveAnchor(p.container, saved)!;
+    const done = vi.fn();
+    const stop = runGroundHold(p.container, hold, { pin: () => false, onDone: done });
+    stop();
+    stop();
+    expect(done).toHaveBeenCalledTimes(1);
+    expect(p.container.style.paddingTop).toBe("");
+    expect(p.container.scrollTop).toBe(1400 - 228);
   });
 });

@@ -15,6 +15,7 @@ import {
   INDEX_RESTORE_MIN_ASSERT_FRAMES,
   cancelPendingRestore,
   holdGroundAboveAnchor,
+  runGroundHold,
 } from "@/lib/scroll-restore";
 import { captureFeedIndexAnchor } from "@/lib/feed-scroll-bridge";
 import { appHistoryIndex } from "@/lib/app-history";
@@ -293,6 +294,8 @@ export function useScrollRestore(
         // The listeners above cancel the whole restore on user input. Here the
         // reader's touch only ends the pinning (scroll writes) and lets saves
         // resume; the hold is pure layout and keeps working under their finger.
+        // runGroundHold re-measures from a ResizeObserver (before paint) and
+        // releases once nothing is held and the page is quiet.
         el.removeEventListener("wheel", onUserInput);
         el.removeEventListener("touchstart", onUserInput);
         window.removeEventListener("keydown", onUserInput);
@@ -307,69 +310,16 @@ export function useScrollRestore(
         el.addEventListener("touchstart", onTouch, { passive: true });
         window.addEventListener("keydown", onTouch);
 
-        const startAt = Date.now();
-        let lastActivityAt = startAt;
-        let lastHeight = el.scrollHeight;
-        let lastHeld = hold.update({ pin: true });
-        const tick = () => {
-          if (cancelled) return;
-          const held = hold.update({ pin: !touched });
-          const h = el.scrollHeight;
-          if (held !== lastHeld || h !== lastHeight) {
-            lastHeld = held;
-            lastHeight = h;
-            lastActivityAt = Date.now();
-          }
-        };
-        // A size change anywhere above the anchor reaches one of these
-        // ancestors. ResizeObserver runs before paint, so the space is given
-        // back in the same frame the content takes it.
-        const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(tick) : null;
-        const observed = new Set<Element>();
-        const observe = (root: Element) => {
-          if (!ro) return;
-          const nodes = root.querySelectorAll(":scope > *, :scope > * > *, :scope > * > * > *, :scope > * > * > * > *, [data-event-id]");
-          for (let i = 0; i < nodes.length && observed.size < 600; i++) {
-            if (observed.has(nodes[i])) continue;
-            observed.add(nodes[i]);
-            ro.observe(nodes[i]);
-          }
-        };
-        observe(el);
-        const mo = typeof MutationObserver !== "undefined"
-          ? new MutationObserver((records) => {
-              for (const r of records) {
-                r.addedNodes.forEach((n) => {
-                  if (n.nodeType !== 1) return;
-                  if (ro && observed.size < 600 && !observed.has(n as Element)) {
-                    observed.add(n as Element);
-                    ro.observe(n as Element);
-                  }
-                  observe(n as Element);
-                });
-              }
-              tick();
-            })
-          : null;
-        mo?.observe(el, { childList: true, subtree: true });
-        const finish = () => {
-          cancelled = true;
-          clearInterval(timer);
-          ro?.disconnect();
-          mo?.disconnect();
-          el.removeEventListener("wheel", onTouch);
-          el.removeEventListener("touchstart", onTouch);
-          window.removeEventListener("keydown", onTouch);
-          hold.release();
-          cleanup();
-        };
-        // Release once nothing is held and the page has been quiet for a
-        // while; never babysit a pathologically growing page forever.
-        const timer = setInterval(() => {
-          const now = Date.now();
-          if ((hold.held() === 0 && now - lastActivityAt >= SETTLE_QUIET_MS) || now - startAt >= HARD_CAP_MS) finish();
-        }, 100);
-        return finish;
+        const stop = runGroundHold(el, hold, {
+          pin: () => !touched,
+          onDone: () => {
+            el.removeEventListener("wheel", onTouch);
+            el.removeEventListener("touchstart", onTouch);
+            window.removeEventListener("keydown", onTouch);
+            cleanup();
+          },
+        });
+        return stop;
       }
 
       const startAt = Date.now();
