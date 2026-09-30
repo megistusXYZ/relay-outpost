@@ -22,7 +22,7 @@ import { eventStore, throttledPoolSubscribe, FAST_RELAYS, getRelaysForPurpose } 
 import { collectOnce as collectOnceWith } from "@/lib/collect-once";
 import { anyOf } from "@/lib/any-of";
 import { sampleRelays } from "@/lib/discover-sample-relays";
-import { fetchServerFeedSample, fetchServerSample, readTrustedSample, type TrustedSample } from "@/lib/discover-sample-source";
+import { fetchServerFeedSample, fetchServerSample, startTrustedSample, type TrustedSample } from "@/lib/discover-sample-source";
 import type { DiscoverSampleName } from "@shared/discover-samples";
 import { canReachAny, canReachRelay, relayRefusedUs, type Reached } from "@/lib/relay-reach";
 import { KIND_LONG_FORM, parseArticle, type ArticleData } from "@/lib/nip23";
@@ -80,9 +80,14 @@ function collectOnce(relays: string[], filter: object, capMs: number): Promise<E
  * when the server can't answer or the viewer's own trust map applies
  * (lib/discover-sample-source.ts). Server events warm the shared store like
  * relay events do, so the page a tile links to opens hot.
+ *
+ * The server's sample also carries the most trusted people's own posts of
+ * that kind, so when it is in hand (`vetted`) a tile does NOT make its own
+ * relay lookup for them: that lookup uploaded 256 KB of keys per visitor for
+ * 41 KB back and held every tile for at least a second (measured 2026-09-30).
  */
-function broadSample(name: DiscoverSampleName, direct: () => Promise<Event[]>): Promise<TrustedSample> {
-  return readTrustedSample({
+function broadSample(name: DiscoverSampleName, direct: () => Promise<Event[]>): StartedSample {
+  return startTrustedSample({
     lens: chooseDiscoverLens(trustOpts),
     server: () => fetchServerSample(name).then((events) => { events?.forEach((e) => eventStore.add(e)); return events; }),
     direct,
@@ -90,11 +95,28 @@ function broadSample(name: DiscoverSampleName, direct: () => Promise<Event[]>): 
 }
 
 /**
+ * A sample being read. `fromServer` is known in milliseconds, long before
+ * `sample` when the app has to read the relays itself; a tile decides on it
+ * whether to make its other relay reads, so they start together with the
+ * app's own read, never after it.
+ */
+type StartedSample = ReturnType<typeof startTrustedSample>;
+
+/**
  * The authors of a sample our server already cut down to trusted people:
  * they aren't asked about again (one score lookup fewer per tile).
  */
 function vettedAuthors(sample: TrustedSample): Set<string> | undefined {
   return sample.vetted ? new Set(sample.events.map((e) => e.pubkey)) : undefined;
+}
+
+/**
+ * Did a relay serve us? A sample from our server settles it (the server only
+ * answers after the relays did), so nothing is probed; otherwise the relays
+ * are asked, as before.
+ */
+function servedGiven(started: StartedSample, relays: string[]): Promise<boolean> {
+  return started.fromServer.then((fromServer) => fromServer || anyServed(relays));
 }
 
 // ── Answer memo ──────────────────────────────────────────────────────────────
@@ -289,15 +311,18 @@ async function fetchNewestArticleFresh(follows: readonly string[]): Promise<Reac
   // The trusted list and the most trusted writers' own long-form are read
   // alongside the general pool, not after it (the tile waited on all three).
   const topP = loadDiscoverTrust([], trustOpts);
-  const trustedArticlesP = topP.then((t) => (t.reached && t.top.length > 0
+  // 40, not the 2 the tile shows: the tile runs the Articles floor
+  // (lib/article-floor.ts), which needs enough left over after it, and
+  // enough of a flooder's articles in hand to see the flood.
+  const started = broadSample("articles", () => collectOnce(sampleRelays(FAST_RELAYS), { kinds: [KIND_LONG_FORM], limit: 40 }, 11_000));
+  // Only when the server's sample (which includes them) isn't in hand; then
+  // alongside the app's own broad read, not after it.
+  const trustedArticlesP = Promise.all([topP, started.fromServer]).then(([t, fromServer]) => (!fromServer && t.reached && t.top.length > 0
     ? collectOnce(FAST_RELAYS, { kinds: [KIND_LONG_FORM], authors: t.top.slice(0, 200), limit: 30 }, 8_000)
     : ([] as Event[])));
   const [served, sample, followsArticles, trustedArticles] = await Promise.all([
-    anyServed(FAST_RELAYS),
-    // 40, not the 2 the tile shows: the tile runs the Articles floor
-    // (lib/article-floor.ts), which needs enough left over after it, and
-    // enough of a flooder's articles in hand to see the flood.
-    broadSample("articles", () => collectOnce(sampleRelays(FAST_RELAYS), { kinds: [KIND_LONG_FORM], limit: 40 }, 11_000)),
+    servedGiven(started, FAST_RELAYS),
+    started.sample,
     follows.length > 0
       ? collectOnce(FAST_RELAYS, { kinds: [KIND_LONG_FORM], authors: follows.slice(0, 100), limit: 15 }, 8_000)
       : Promise.resolve([] as Event[]),
@@ -426,23 +451,27 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
   // The trusted people's last day is asked for at the same time as the rest:
   // it only needs the trusted list (served by our server), not the pool, and
   // waiting for the pool first cost a whole second lookup (~8 s measured).
-  const trustedPostsP: Promise<{ reached: boolean; posts: Event[] }> = loadDiscoverTrust([], trustOpts).then(async (t) => ({
+  // The recent sample: the trusted part of one shared sample from our
+  // server; the app's own 300 notes per relay only when the server can't
+  // answer or the viewer's own trust map applies (lib/discover-sample-source.ts).
+  const recentSample = startTrustedSample({
+    lens: chooseDiscoverLens(trustOpts),
+    server: () => fetchServerFeedSample().then((notes) => { notes?.forEach((e) => eventStore.add(e)); return notes; }),
+    direct: () => collectOnce(sampleRelays(getRelaysForPurpose("notes")), { kinds: [1], since: sinceSecs, limit: 300 }, 8_000),
+  });
+  // The server's sample already holds the trusted people's last day, so this
+  // lookup only runs when that sample isn't in hand; then alongside the
+  // app's own read, not after it.
+  const trustedPostsP: Promise<{ reached: boolean; posts: Event[] }> = Promise.all([loadDiscoverTrust([], trustOpts), recentSample.fromServer]).then(async ([t, fromServer]) => ({
     reached: t.reached,
-    posts: t.reached && t.top.length > 0
+    posts: !fromServer && t.reached && t.top.length > 0
       ? await collectOnce(getRelaysForPurpose("notes"), { kinds: [1], authors: t.top.slice(0, 300), since: Math.floor(Date.now() / 1000) - 24 * 3600, limit: 150 }, 8_000)
       : [],
   }));
   const [primal, followsPosts, recent, trusted] = await Promise.all([
     fetchGlobalFeed(30, sinceSecs),
     followsPostsP,
-    // The recent sample: the trusted part of one shared sample from our
-    // server; the app's own 300 notes per relay only when the server can't
-    // answer or the viewer's own trust map applies (lib/discover-sample-source.ts).
-    readTrustedSample({
-      lens: chooseDiscoverLens(trustOpts),
-      server: () => fetchServerFeedSample().then((notes) => { notes?.forEach((e) => eventStore.add(e)); return notes; }),
-      direct: () => collectOnce(sampleRelays(getRelaysForPurpose("notes")), { kinds: [1], since: sinceSecs, limit: 300 }, 8_000),
-    }),
+    recentSample.sample,
     trustedPostsP,
   ]);
   if (!trusted.reached) return { data: [], reached: false };
@@ -574,16 +603,15 @@ export async function fetchNextCalendarEvent(): Promise<Reached<CalendarEventDat
 }
 
 async function fetchNextCalendarEventFresh(): Promise<Reached<CalendarEventData | null>> {
-  const [served, sample] = await Promise.all([
-    anyServed(FAST_RELAYS),
-    broadSample("events", () => collectOnce(sampleRelays(FAST_RELAYS), { kinds: [KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT], limit: 60 }, 11_000)),
-  ]);
+  const started = broadSample("events", () => collectOnce(sampleRelays(FAST_RELAYS), { kinds: [KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT], limit: 60 }, 11_000));
+  const [served, sample] = await Promise.all([servedGiven(started, FAST_RELAYS), started.sample]);
   const events = sample.events;
   // Only events hosted by highly trusted people (or your follows), topped up
   // with the most trusted people's own events (lib/discover-trust.ts).
   const trust = await loadDiscoverTrust(events.map((e) => e.pubkey), { ...trustOpts, vetted: vettedAuthors(sample) });
   if (!trust.reached) return { data: null, reached: false };
-  const trustedEvents = trust.top.length > 0
+  // The server's sample includes the most trusted people's own events.
+  const trustedEvents = !sample.vetted && trust.top.length > 0
     ? await collectOnce(FAST_RELAYS, { kinds: [KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT], authors: trust.top.slice(0, 300), limit: 60 }, 8_000)
     : [];
   const parsed = gateByTrust([...events, ...trustedEvents], (e) => e.pubkey, { follows: trustOpts.follows, scores: trust.scores })
@@ -650,8 +678,13 @@ async function fetchImagesTeaserFresh(
   // the feed runs on (and the fetchNetworkTopics precedent); the global
   // window only fills in when the network yields nothing to show.
   const networkAuthors = follows.slice(0, 150);
-  const [served, networkEvents] = await Promise.all([
-    anyServed(FAST_RELAYS),
+  // The most trusted people's photos come from our server's sample. It has
+  // no broad read of its own to fall back to (a stranger's photo never
+  // reaches the front door), so without it the lookup below runs instead.
+  const started = broadSample("images", async () => []);
+  const [served, sample, networkEvents] = await Promise.all([
+    servedGiven(started, FAST_RELAYS),
+    started.sample,
     networkAuthors.length > 0
       ? collectOnce(FAST_RELAYS, { kinds: [1, 20], authors: networkAuthors, since, limit: 60 }, 8_000)
       : Promise.resolve([] as Event[]),
@@ -677,11 +710,13 @@ async function fetchImagesTeaserFresh(
   // People you follow, plus highly trusted people (owner call, 2026-09-29):
   // the front door can show a visitor photos now, but only from people the
   // lens trusts at 0.50+, never an unvetted stranger's.
-  const trust = await loadDiscoverTrust([], trustOpts);
+  const trust = await loadDiscoverTrust([], { ...trustOpts, vetted: vettedAuthors(sample) });
   if (!trust.reached) return { data: [], reached: false };
-  const trustedEvents = trust.top.length > 0
-    ? await collectOnce(FAST_RELAYS, { kinds: [1, 20], authors: trust.top.slice(0, 300), since, limit: 80 }, 8_000)
-    : [];
+  const trustedEvents = sample.vetted
+    ? sample.events
+    : trust.top.length > 0
+      ? await collectOnce(FAST_RELAYS, { kinds: [1, 20], authors: trust.top.slice(0, 300), since, limit: 80 }, 8_000)
+      : [];
   const gate = { follows: new Set(follows), scores: trust.scores };
   const candidates = toCandidates(gateByTrust([...networkEvents, ...trustedEvents], (e) => e.pubkey, gate));
   return { data: pickImageShelf(candidates, 8), reached: served || networkEvents.length > 0 || trustedEvents.length > 0 };
@@ -751,17 +786,16 @@ async function fetchMarketShelfFresh(): Promise<Reached<MarketTeaser[] | null>> 
 }
 
 async function fetchVideoTeaserFresh(): Promise<Reached<VideoTeaser | null>> {
-  const [served, sample] = await Promise.all([
-    anyServed(FAST_RELAYS),
-    // All four video generations — NIP-71 21/22 is where new publishing
-    // lives; 34235/34236 is the legacy/archive pair (see VIDEO_EVENT_KINDS).
-    broadSample("videos", () => collectOnce(sampleRelays(FAST_RELAYS), { kinds: [21, 22, 34235, 34236], limit: 20 }, 11_000)),
-  ]);
+  // All four video generations — NIP-71 21/22 is where new publishing
+  // lives; 34235/34236 is the legacy/archive pair (see VIDEO_EVENT_KINDS).
+  const started = broadSample("videos", () => collectOnce(sampleRelays(FAST_RELAYS), { kinds: [21, 22, 34235, 34236], limit: 20 }, 11_000));
+  const [served, sample] = await Promise.all([servedGiven(started, FAST_RELAYS), started.sample]);
   const events = sample.events;
   // Only highly trusted people (and your follows) on the front door.
   const trust = await loadDiscoverTrust(events.map((e) => e.pubkey), { ...trustOpts, vetted: vettedAuthors(sample) });
   if (!trust.reached) return { data: null, reached: false };
-  const trustedVideos = trust.top.length > 0
+  // The server's sample includes the most trusted people's own videos.
+  const trustedVideos = !sample.vetted && trust.top.length > 0
     ? await collectOnce(FAST_RELAYS, { kinds: [21, 22, 34235, 34236], authors: trust.top.slice(0, 200), limit: 20 }, 8_000)
     : [];
   const teasers = gateByTrust([...events, ...trustedVideos], (e) => e.pubkey, { follows: trustOpts.follows, scores: trust.scores })

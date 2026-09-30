@@ -57,7 +57,7 @@ import { FailureMemory } from "@shared/failure-memory";
 import { createScoreCardReader } from "./score-cards";
 import { createRelayDirectoryReader } from "./relay-directory";
 import { createFeedSampleReader } from "./feed-sample";
-import { createDiscoverSampleReader } from "./trusted-sample";
+import { createDiscoverSampleReader, ROUTE_WAIT_MS } from "./trusted-sample";
 import { isDiscoverSampleName } from "@shared/discover-samples";
 import { WOT_BATCH_MAX } from "@shared/wot-batch";
 import { createScoreLookupGate } from "./score-lookup-gate";
@@ -3167,7 +3167,7 @@ export async function registerRoutes(
     try {
       const result = await Promise.race([
         feedSample.read(),
-        new Promise<null>((r) => setTimeout(() => r(null), 6_000)),
+        new Promise<null>((r) => setTimeout(() => r(null), ROUTE_WAIT_MS)),
       ]);
       if (!result || !result.reached) return res.status(503).json({ notes: [], error: "Couldn't take the feed sample right now" });
       res.set("Cache-Control", "public, max-age=60").json({ notes: result.notes });
@@ -3188,7 +3188,7 @@ export async function registerRoutes(
     try {
       const result = await Promise.race([
         discoverSamples.read(name),
-        new Promise<null>((r) => setTimeout(() => r(null), 6_000)),
+        new Promise<null>((r) => setTimeout(() => r(null), ROUTE_WAIT_MS)),
       ]);
       if (!result || !result.reached) return res.status(503).json({ events: [], error: "Couldn't take the sample right now" });
       res.set("Cache-Control", "public, max-age=120").json({ events: result.events });

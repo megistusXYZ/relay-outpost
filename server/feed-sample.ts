@@ -15,15 +15,15 @@
  * the app checks the signatures, so nothing here has to be taken on trust.
  */
 import type { RelayQuery } from "./score-cards";
-import { createTrustedRead } from "./trusted-sample";
-import { trustedNotes, FEED_SAMPLE_RELAYS, FEED_SAMPLE_WINDOW_SECS, FEED_SAMPLE_LIMIT, type SampleNote } from "@shared/feed-sample";
+import { createTrustedRead, RELAY_ANSWER_MS } from "./trusted-sample";
+import { trustedNotes, FEED_SAMPLE_RELAYS, FEED_SAMPLE_WINDOW_SECS, FEED_SAMPLE_LIMIT, FEED_SAMPLE_TOP, type SampleNote } from "@shared/feed-sample";
+import { TOP_LOOKUP_RELAYS } from "@shared/discover-samples";
 
 /** Notes are "recent": a sample is reused for two minutes. */
 export const FRESH_MS = 2 * 60 * 1000;
 /** Past this a sample isn't recent any more; the app takes its own. */
 export const KEEP_MS = 15 * 60 * 1000;
 export const RETRY_MS = 30 * 1000;
-const READ_MS = 8_000;
 
 export interface FeedSampleAnswer {
   reached: boolean;
@@ -34,18 +34,29 @@ export function createFeedSampleReader(opts: {
   /** Everyone the default lens trusts enough for Discover. */
   trusted: () => Promise<{ authors: string[]; reached: boolean }>;
   relays?: readonly string[];
+  /** Where the most trusted people's last day is asked for. */
+  topRelays?: readonly string[];
   query?: RelayQuery;
   now?: () => number;
 }) {
   const shared = createTrustedRead<SampleNote>({
-    relays: opts.relays ?? FEED_SAMPLE_RELAYS,
-    filter: (nowSecs) => ({ kinds: [1], since: nowSecs - FEED_SAMPLE_WINDOW_SECS, limit: FEED_SAMPLE_LIMIT }),
+    requests: (nowSecs, trustedAuthors) => {
+      const top = trustedAuthors.slice(0, FEED_SAMPLE_TOP.authors);
+      return [
+        { relays: opts.relays ?? FEED_SAMPLE_RELAYS, filter: { kinds: [1], since: nowSecs - FEED_SAMPLE_WINDOW_SECS, limit: FEED_SAMPLE_LIMIT } },
+        // The most trusted people's last day, which the Feed tile also asked
+        // the relays for: asked once here and handed over with the sample.
+        ...(top.length > 0
+          ? [{ relays: opts.topRelays ?? TOP_LOOKUP_RELAYS, filter: { kinds: [1], authors: top, since: nowSecs - (FEED_SAMPLE_TOP.windowSecs ?? 0), limit: FEED_SAMPLE_TOP.limit } }]
+          : []),
+      ];
+    },
     pick: trustedNotes,
     trusted: opts.trusted,
     freshMs: FRESH_MS,
     keepMs: KEEP_MS,
     retryMs: RETRY_MS,
-    readMs: READ_MS,
+    readMs: RELAY_ANSWER_MS,
     query: opts.query,
     now: opts.now,
   });

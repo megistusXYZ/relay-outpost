@@ -15,26 +15,42 @@ const note = (id: string, pubkey: string, created_at: number) =>
   ({ id: hex(id), pubkey, created_at, kind: 1, tags: [], content: "gm", sig: hex("f", 128) });
 const R1 = "wss://one.example";
 const R2 = "wss://two.example";
+/** A relay only the top-people lookup goes to. */
+const TOP = "wss://top.example";
+
+const down = () => ({ reached: false, answered: false, events: [] as any[] });
 
 function setup(opts: {
   answers: Record<string, () => { reached: boolean; answered: boolean; events: any[] }>;
   trusted?: { authors: string[]; reached: boolean };
 }) {
   let t = 1_790_000_000_000;
-  const query = vi.fn<RelayQuery>(async (relay) => opts.answers[relay]());
+  const query = vi.fn<RelayQuery>(async (relay) => (opts.answers[relay] ?? down)());
   const trusted = vi.fn(async () => opts.trusted ?? { authors: [ALICE], reached: true });
-  const reader = createFeedSampleReader({ relays: [R1, R2], query, trusted, now: () => t });
+  const reader = createFeedSampleReader({ relays: [R1, R2], topRelays: [TOP], query, trusted, now: () => t });
   return { reader, query, trusted, advance: (ms: number) => { t += ms; } };
 }
 const ok = (...events: any[]) => () => ({ reached: true, answered: true, events });
-const down = () => ({ reached: false, answered: false, events: [] });
 
 describe("feed sample reader", () => {
   it("asks each relay for the newest notes of the last six hours", async () => {
     const { reader, query } = setup({ answers: { [R1]: ok(), [R2]: ok() } });
     await reader.read();
-    expect(query).toHaveBeenCalledTimes(2);
-    expect(query.mock.calls[0][1]).toEqual({ kinds: [1], since: 1_790_000_000 - 6 * 3600, limit: 300 });
+    const asked = query.mock.calls.map((c) => [c[0], c[1]]);
+    const broad = { kinds: [1], since: 1_790_000_000 - 6 * 3600, limit: 300 };
+    expect(asked).toEqual(expect.arrayContaining([[R1, broad], [R2, broad]]));
+  });
+
+  it("also asks, once, for the most trusted people's last day, and hands it over with the sample", async () => {
+    const { reader, query } = setup({
+      answers: { [R1]: ok(note("2", MALLORY, 300)), [R2]: ok(), [TOP]: ok(note("9", ALICE, 50)) },
+    });
+    const r = await reader.read();
+    expect(query.mock.calls.map((c) => [c[0], c[1]])).toContainEqual(
+      [TOP, { kinds: [1], authors: [ALICE], since: 1_790_000_000 - 24 * 3600, limit: 150 }],
+    );
+    expect(query).toHaveBeenCalledTimes(3);
+    expect(r.notes.map((e) => e.id)).toEqual([hex("9")]);
   });
 
   it("hands over only the notes by trusted people, newest first, one copy each", async () => {
@@ -70,6 +86,6 @@ describe("feed sample reader", () => {
     await reader.read();
     advance(FRESH_MS - 1);
     await reader.read();
-    expect(query).toHaveBeenCalledTimes(2);
+    expect(query).toHaveBeenCalledTimes(3);
   });
 });

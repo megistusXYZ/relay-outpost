@@ -9,7 +9,7 @@ import { describe, it, expect, vi } from "vitest";
 import { readFileSync } from "fs";
 import path from "path";
 import { generateSecretKey, finalizeEvent } from "nostr-tools";
-import { fetchServerFeedSample, fetchServerSample, readTrustedSample } from "./discover-sample-source";
+import { fetchServerFeedSample, fetchServerSample, startTrustedSample } from "./discover-sample-source";
 
 const signed = (content: string, created_at = 1_790_000_000) =>
   finalizeEvent({ kind: 1, created_at, tags: [], content }, generateSecretKey());
@@ -78,7 +78,8 @@ describe("fetchServerSample (articles, events, videos)", () => {
   });
 });
 
-describe("readTrustedSample", () => {
+describe("the sample a tile ends up with", () => {
+  const readTrustedSample = (sources: Parameters<typeof startTrustedSample>[0]) => startTrustedSample(sources).sample;
   const mine = [signed("from my own sample")];
   const theirs = [signed("from the server")];
 
@@ -106,11 +107,50 @@ describe("readTrustedSample", () => {
   });
 });
 
+/**
+ * A tile decides two things from "did the server's sample arrive": whether
+ * to look the most trusted people up itself, and whether to probe a relay.
+ * Both must be decided as soon as the server has (or hasn't) answered, not
+ * when the app's own read finishes: otherwise, with the server down, the
+ * tile's second relay read would only start after its first (8 s + 8 s,
+ * the wait #199 removed).
+ */
+describe("startTrustedSample", () => {
+  const mine = [signed("from my own sample")];
+  const theirs = [signed("from the server")];
+  const never = new Promise<never>(() => {});
+
+  it("says the server answered, with the sample", async () => {
+    const s = startTrustedSample({ lens: "default", server: async () => theirs, direct: async () => mine });
+    expect(await s.fromServer).toBe(true);
+    expect(await s.sample).toEqual({ events: theirs, vetted: true });
+  });
+
+  it("says the server didn't answer without waiting for the app's own read", async () => {
+    const s = startTrustedSample({ lens: "default", server: async () => null, direct: () => never });
+    expect(await s.fromServer).toBe(false);
+  });
+
+  it("own lens: not from the server, known at once, and the server isn't asked", async () => {
+    const server = vi.fn(async () => theirs);
+    const s = startTrustedSample({ lens: "own", server, direct: () => never });
+    expect(await s.fromServer).toBe(false);
+    expect(server).not.toHaveBeenCalled();
+  });
+
+  it("starts the app's own read only after the server couldn't answer", async () => {
+    const direct = vi.fn(async () => mine);
+    const s = startTrustedSample({ lens: "default", server: async () => theirs, direct });
+    await s.sample;
+    expect(direct).not.toHaveBeenCalled();
+  });
+});
+
 describe("the Feed tile uses it", () => {
   const src = readFileSync(path.resolve(import.meta.dirname, "discover-data.ts"), "utf8");
 
-  it("the recent sample goes through readTrustedSample, by lens", () => {
-    expect(src).toMatch(/readTrustedSample\(\{\s*lens: chooseDiscoverLens\(trustOpts\),\s*server: \(\) => fetchServerFeedSample\(\)/);
+  it("the recent sample goes through startTrustedSample, by lens", () => {
+    expect(src).toMatch(/startTrustedSample\(\{\s*lens: chooseDiscoverLens\(trustOpts\),\s*server: \(\) => fetchServerFeedSample\(\)/);
   });
 
   it("the 300-note read only exists as the fallback", () => {
@@ -139,10 +179,20 @@ describe("Articles, Events and Videos take their broad sample from the server to
   });
 
   it("the server's sample goes through the same lens check and signature check as the Feed's", () => {
-    expect(src).toMatch(/function broadSample\([^)]*\)[^{]*\{\s*return readTrustedSample\(\{\s*lens: chooseDiscoverLens\(trustOpts\),\s*server: \(\) => fetchServerSample\(name\)/);
+    expect(src).toMatch(/function broadSample\([^)]*\)[^{]*\{\s*return startTrustedSample\(\{\s*lens: chooseDiscoverLens\(trustOpts\),\s*server: \(\) => fetchServerSample\(name\)/);
   });
 
-  it("none of the three asks for scores of people the server vetted", () => {
-    expect(src.match(/vetted: vettedAuthors\(/g) ?? []).toHaveLength(4); // feed + the three
+  it("no tile asks for scores of people the server vetted", () => {
+    expect(src.match(/vetted: vettedAuthors\(/g) ?? []).toHaveLength(5); // feed, articles, events, videos, images
+  });
+
+  it("with the server's sample in hand, no tile looks the most trusted people up itself or probes a relay", () => {
+    // Every top-people lookup sits behind "the server's sample isn't in hand".
+    const lookups = src.match(/authors: t(?:rust)?\.top\.slice\(0, \d+\)/g) ?? [];
+    const guarded = src.match(/(?:!sample\.vetted|!fromServer|sample\.vetted\s*\?\s*sample\.events\s*:)[^;]*?authors: t(?:rust)?\.top\.slice\(0, \d+\)/g) ?? [];
+    // Marketplace reads Conduit's relay and has no server sample: its lookup stays.
+    expect(lookups.length - guarded.length).toBe(1);
+    expect(guarded).toHaveLength(5);
+    expect(src.match(/servedGiven\(started, FAST_RELAYS\)/g) ?? []).toHaveLength(4); // articles, events, videos, images
   });
 });

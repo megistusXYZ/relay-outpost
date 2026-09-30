@@ -5,8 +5,10 @@
  * each fast relay (measured 2026-09-30: 981 KB, 118 KB and 132 KB) and then
  * ask this server which of the authors are trusted. The server holds the
  * trusted list, so it takes each sample, keeps the events by trusted people
- * and hands those over (shared/discover-samples.ts). Each sample asks the
- * relays exactly what the app's own read asks.
+ * and hands those over (shared/discover-samples.ts). With each sample go the
+ * most trusted people's own posts of that kind, which every tile also asked
+ * the relays for (256 KB of keys uploaded per visitor for 41 KB of answers,
+ * measured). Each sample asks the relays exactly what the app's own reads ask.
  *
  * One read serves everyone for FRESH_MS and nobody waits on a refresh
  * (shared-read.ts). A trusted list or relays we couldn't read are
@@ -15,16 +17,23 @@
  */
 import { queryRelay, type RelayQuery } from "./score-cards";
 import { createSharedRead } from "./shared-read";
-import { FEED_SAMPLE_RELAYS } from "@shared/feed-sample";
-import { DISCOVER_SAMPLES, trustedSample, type DiscoverSampleName, type SignedEvent } from "@shared/discover-samples";
+import { DISCOVER_SAMPLES, SAMPLE_RELAYS, TOP_LOOKUP_RELAYS, sampleRequests, trustedSample, type DiscoverSampleName, type SampleDef, type SignedEvent } from "@shared/discover-samples";
 
 /** Articles, events and videos move slowly: a sample is reused for five minutes. */
 export const FRESH_MS = 5 * 60 * 1000;
 /** Past this the app takes its own sample rather than show an old one as newest. */
 export const KEEP_MS = 60 * 60 * 1000;
 export const RETRY_MS = 30 * 1000;
-/** The app's own read gives the relays 11 s; most answer in 1-2 s. */
-const READ_MS = 11_000;
+/**
+ * How long one relay gets to answer. The read waits for every relay, so this
+ * is how long a silent one can hold it. Measured 2026-09-30: relays that
+ * answer do so in 0.6-2.7 s; damus accepted the connection and never
+ * answered, and with the 11 s the app's own read allows, the first read
+ * outlasted ROUTE_WAIT_MS and every visitor got a 503.
+ */
+export const RELAY_ANSWER_MS = 4_000;
+/** How long a sample route holds a visitor for a first read before saying it can't answer. */
+export const ROUTE_WAIT_MS = 6_000;
 
 export interface SampleAnswer {
   reached: boolean;
@@ -32,12 +41,13 @@ export interface SampleAnswer {
 }
 
 /**
- * One relay read, cut down to trusted people, shared by everyone.
- * `filter` is what each relay is asked; `pick` is what's kept of the answers.
+ * One set of relay reads, cut down to trusted people, shared by everyone.
+ * `requests` is what the relays are asked (given the trusted list, highest
+ * first, so a read can ask for the most trusted people's own posts); `pick`
+ * is what's kept of the answers.
  */
 export function createTrustedRead<T>(opts: {
-  relays: readonly string[];
-  filter: (nowSecs: number) => Record<string, unknown>;
+  requests: (nowSecs: number, trustedAuthors: readonly string[]) => { relays: readonly string[]; filter: Record<string, unknown> }[];
   pick: (events: unknown[], trusted: ReadonlySet<string>) => T[];
   /** Everyone the default lens trusts enough for Discover. */
   trusted: () => Promise<{ authors: string[]; reached: boolean }>;
@@ -58,11 +68,12 @@ export function createTrustedRead<T>(opts: {
     read: async () => {
       const list = await opts.trusted();
       if (!list.reached) return { reached: false, items: [] };
-      const filter = opts.filter(Math.floor(now() / 1000));
+      const asks = opts.requests(Math.floor(now() / 1000), list.authors)
+        .flatMap(({ relays, filter }) => relays.map((relay) => ({ relay, filter })));
       const answers = await Promise.all(
-        opts.relays.map((r) =>
+        asks.map(({ relay, filter }) =>
           Promise.resolve()
-            .then(() => query(r, filter, opts.readMs))
+            .then(() => query(relay, filter, opts.readMs))
             .catch(() => ({ reached: false, answered: false, events: [] as any[] })),
         ),
       );
@@ -76,22 +87,25 @@ export function createTrustedRead<T>(opts: {
 
 export function createDiscoverSampleReader(opts: {
   trusted: () => Promise<{ authors: string[]; reached: boolean }>;
+  /** Where the broad reads go. */
   relays?: readonly string[];
+  /** Where the most trusted people's own posts are asked for. */
+  topRelays?: readonly string[];
   query?: RelayQuery;
   now?: () => number;
 }) {
+  const relays = { broad: opts.relays ?? SAMPLE_RELAYS, top: opts.topRelays ?? TOP_LOOKUP_RELAYS };
   const names = Object.keys(DISCOVER_SAMPLES) as DiscoverSampleName[];
   const reads = new Map(names.map((name) => {
-    const def = DISCOVER_SAMPLES[name];
+    const def: SampleDef = DISCOVER_SAMPLES[name];
     return [name, createTrustedRead<SignedEvent>({
-      relays: opts.relays ?? FEED_SAMPLE_RELAYS,
-      filter: () => ({ kinds: [...def.kinds], limit: def.limit }),
+      requests: (nowSecs, trustedAuthors) => sampleRequests(def, nowSecs, trustedAuthors, relays),
       pick: (events, trusted) => trustedSample(events, trusted, def),
       trusted: opts.trusted,
       freshMs: FRESH_MS,
       keepMs: KEEP_MS,
       retryMs: RETRY_MS,
-      readMs: READ_MS,
+      readMs: RELAY_ANSWER_MS,
       query: opts.query,
       now: opts.now,
     })] as const;

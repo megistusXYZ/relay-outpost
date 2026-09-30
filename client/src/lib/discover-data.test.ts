@@ -10,11 +10,16 @@ import { generateSecretKey, getPublicKey, finalizeEvent } from "nostr-tools";
 // Records which relays each one-shot read asks, delivers whatever the test
 // put on the (fake) relays for that filter, and answers at once (EOSE).
 let relayEvents: (filter: { kinds?: number[]; authors?: string[]; limit?: number }) => unknown[] = () => [];
+/** How long the (fake) relays take to answer a read; 0 unless a test makes one slow. */
+let relayDelayMs: (filter: { kinds?: number[]; authors?: string[]; limit?: number }) => number = () => 0;
+/** When each read was started, in ms since the test began. */
+let readsStarted: { filter: { kinds?: number[]; authors?: string[]; limit?: number }; at: number }[] = [];
 const subscribeSpy = vi.fn((_relays: string[], filter: { kinds?: number[]; authors?: string[]; limit?: number }, handlers: { onevent?: (e: unknown) => void; oneose?: () => void }) => {
+  readsStarted.push({ filter, at: performance.now() });
   setTimeout(() => {
     for (const e of relayEvents(filter)) handlers.onevent?.(e);
     handlers.oneose?.();
-  }, 0);
+  }, relayDelayMs(filter));
   return { close: () => {} };
 });
 // Profiles the app already holds (the Feed tile drops authors with none).
@@ -48,9 +53,11 @@ vi.mock("@/lib/brainstorm-search", () => ({
     return new Map(scoresDown ? [] : pks.map((p) => [p, p in scoreOf ? scoreOf[p] : -1] as const));
   },
 }));
+/** How many times a tile probed a relay to see whether it serves us. */
+let reachProbes = 0;
 vi.mock("@/lib/relay-reach", () => ({
   canReachAny: async () => true,
-  canReachRelay: async () => true,
+  canReachRelay: async () => { reachProbes++; return true; },
   relayRefusedUs: () => undefined,
 }));
 
@@ -378,18 +385,25 @@ describe("Discover tiles fed by the server's samples", () => {
   const sign = (kind: number, tags: string[][], content = "") => finalizeEvent({ kind, created_at: recent, tags, content }, key);
 
   /** Our server: the trusted list, and whichever samples the test provides. Anything else: 503. */
+  /** Someone on the most-trusted list, whose own posts every tile also looks up. */
+  const TOPPER = "d".repeat(64);
   const server = (samples: Record<string, unknown[]>) => vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-    if (url.includes("/api/discover/trusted-authors")) return { ok: true, json: async () => ({ authors: [] }) };
+    if (url.includes("/api/discover/trusted-authors")) return { ok: true, json: async () => ({ authors: [TOPPER] }) };
+    if (url.includes("/api/discover/feed-sample") && "notes" in samples) return { ok: true, json: async () => JSON.parse(JSON.stringify({ notes: samples.notes })) };
     const name = url.match(/\/api\/discover\/sample\/(\w+)/)?.[1];
     if (name && name in samples) return { ok: true, json: async () => JSON.parse(JSON.stringify({ events: samples[name] })) };
     return { ok: false, json: async () => ({}) };
   }));
   const broadRelayReads = (kind: number) =>
     subscribeSpy.mock.calls.filter(([, f]) => f.kinds?.includes(kind) && !f.authors).length;
+  /** Relay lookups of the most trusted people's own posts of this kind. */
+  const topRelayLookups = (kind: number) =>
+    subscribeSpy.mock.calls.filter(([, f]) => f.kinds?.includes(kind) && f.authors?.includes(TOPPER)).length;
+  const relayReads = (kind: number) => subscribeSpy.mock.calls.filter(([, f]) => f.kinds?.includes(kind)).length;
 
   beforeEach(() => {
     resetDiscoverAnswers(); subscribeSpy.mockClear(); scoreAsks = []; scoreOf = {}; scoresDown = false;
-    relayEvents = () => [];
+    relayEvents = () => []; relayDelayMs = () => 0; readsStarted = [];
     setDiscoverTrust({ follows: new Set(), wotEnabled: false, ownScores: null });
   });
 
@@ -455,5 +469,101 @@ describe("Discover tiles fed by the server's samples", () => {
     const r = await fetchVideoTeaser();
     expect(r.data).toBeNull();
     expect(broadRelayReads(21)).toBe(1);
+  });
+
+  /**
+   * Each tile also asked the relays what the most trusted people posted: the
+   * same question for every visitor on the default trust list, so the
+   * server's sample now carries the answer (measured 2026-09-30: 256 KB of
+   * keys uploaded per visitor for 41 KB back, and a wait of at least a
+   * second). With the server's sample in hand a guest's tile reads no relay.
+   */
+  describe("the most trusted people's posts come with the server's sample", () => {
+    const video = (title: string) => sign(21, [["title", title], ["imeta", "url https://v.example/a.mp4", "image https://v.example/a.jpg"]]);
+
+    it("Events: no relay is read at all, and nobody's reach is probed", async () => {
+      server({ events: [sign(31923, [["d", "meetup"], ["title", "Bitcoin meetup"], ["start", String(soon)]])] });
+      reachProbes = 0;
+      const r = await fetchNextCalendarEvent();
+      expect(r.data?.title).toBe("Bitcoin meetup");
+      expect(relayReads(31923)).toBe(0);
+      expect(reachProbes).toBe(0);
+    });
+
+    it("Videos: no relay is read at all", async () => {
+      server({ videos: [video("A talk")] });
+      const r = await fetchVideoTeaser();
+      expect(r.data?.title).toBe("A talk");
+      expect(relayReads(21)).toBe(0);
+    });
+
+    it("Articles: no relay is read at all for someone who follows nobody", async () => {
+      server({ articles: [sign(30023, [["d", "essay"], ["title", "An essay"], ["summary", "What it says"], ["published_at", String(recent)]], "The body of the essay. ".repeat(20))] });
+      const r = await fetchNewestArticle([]);
+      expect(r.data.map((a) => a.title)).toEqual(["An essay"]);
+      expect(relayReads(30023)).toBe(0);
+    });
+
+    it("Articles: your follows' articles are still read from the relays", async () => {
+      server({ articles: [] });
+      const FRIEND = "f".repeat(64);
+      await fetchNewestArticle([FRIEND]);
+      const reads = subscribeSpy.mock.calls.filter(([, f]) => f.kinds?.includes(30023));
+      expect(reads).toHaveLength(1);
+      expect(reads[0][1].authors).toEqual([FRIEND]);
+    });
+
+    it("Images: trusted people's photos from the server's sample, with no relay read", async () => {
+      server({ images: [sign(20, [["imeta", "url https://img.example/a.jpg", "m image/jpeg"], ["title", "pic"]])] });
+      const r = await fetchImagesTeaser([], new Set());
+      expect(r.reached).toBe(true);
+      expect((r.data ?? []).map((i) => i.authorPk)).toEqual([AUTHOR]);
+      expect(relayReads(20)).toBe(0);
+    });
+
+    it("Feed: the most trusted people's last day isn't looked up again", async () => {
+      profileOf = { [AUTHOR]: { name: "Author", picture: "https://img.example/a.jpg" } };
+      server({ notes: [sign(1, [], "A thoughtful post about relays and how they work.")] });
+      const r = await fetchFeedTeaser();
+      expect(r.data.map((e) => e.pubkey)).toEqual([AUTHOR]);
+      expect(relayReads(1)).toBe(0);
+      profileOf = {};
+    });
+
+    /**
+     * With the server down a tile makes two relay reads: the broad one and
+     * the top people's. They must start together. Started one after the
+     * other they cost 8 s + 8 s (the wait #199 removed from the Feed tile).
+     */
+    it("the server can't answer: Articles and Feed start both their relay reads together, not one after the other", async () => {
+      server({});
+      const SLOW = 300;
+      relayDelayMs = (f) => (f.authors ? 0 : SLOW); // the broad reads are slow
+      const gap = (kind: number) => {
+        const broad = readsStarted.find((r) => r.filter.kinds?.includes(kind) && !r.filter.authors);
+        const top = readsStarted.find((r) => r.filter.kinds?.includes(kind) && r.filter.authors?.includes(TOPPER));
+        expect(broad, `broad read of kind ${kind}`).toBeDefined();
+        expect(top, `top-people lookup of kind ${kind}`).toBeDefined();
+        return top!.at - broad!.at;
+      };
+      readsStarted = [];
+      await fetchNewestArticle([]);
+      expect(gap(30023)).toBeLessThan(SLOW / 2);
+      readsStarted = [];
+      await fetchFeedTeaser();
+      expect(gap(1)).toBeLessThan(SLOW / 2);
+      relayDelayMs = () => 0;
+    });
+
+    it("the server can't answer: the app reads the relays itself, the top people's posts included", async () => {
+      server({});
+      await fetchVideoTeaser();
+      expect(broadRelayReads(21)).toBe(1);
+      expect(topRelayLookups(21)).toBe(1);
+      await fetchNextCalendarEvent();
+      expect(topRelayLookups(31923)).toBe(1);
+      await fetchImagesTeaser([], new Set());
+      expect(topRelayLookups(20)).toBe(1);
+    });
   });
 });
