@@ -31,9 +31,12 @@ vi.mock("@/lib/nostr", () => ({
   FAST_RELAYS: ["wss://relay.primal.net"],
   getRelaysForPurpose: () => [],
 }));
+// Primal, as the tiles see it. Tests can make it slow, silent or populated.
+let primalFeed: () => Promise<{ posts: unknown[]; profiles: unknown[]; statsLoaded: boolean }> = async () => ({ posts: [], profiles: [], statsLoaded: false });
+let primalStats: () => Promise<void> = async () => {};
 vi.mock("@/lib/primal-cache", () => ({
-  fetchGlobalFeed: async () => ({ posts: [], profiles: [], statsLoaded: false }),
-  prefetchStatsImmediate: async () => {},
+  fetchGlobalFeed: () => primalFeed(),
+  prefetchStatsImmediate: () => primalStats(),
   getCachedFollowerCount: () => undefined,
   primalStatsCache: new Map(),
 }));
@@ -387,9 +390,9 @@ describe("Discover tiles fed by the server's samples", () => {
   /** Our server: the trusted list, and whichever samples the test provides. Anything else: 503. */
   /** Someone on the most-trusted list, whose own posts every tile also looks up. */
   const TOPPER = "d".repeat(64);
-  const server = (samples: Record<string, unknown[]>) => vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+  const server = (samples: Record<string, any>) => vi.stubGlobal("fetch", vi.fn(async (url: string) => {
     if (url.includes("/api/discover/trusted-authors")) return { ok: true, json: async () => ({ authors: [TOPPER] }) };
-    if (url.includes("/api/discover/feed-sample") && "notes" in samples) return { ok: true, json: async () => JSON.parse(JSON.stringify({ notes: samples.notes })) };
+    if (url.includes("/api/discover/feed-sample") && "notes" in samples) return { ok: true, json: async () => JSON.parse(JSON.stringify({ notes: samples.notes, ranks: samples.ranks })) };
     const name = url.match(/\/api\/discover\/sample\/(\w+)/)?.[1];
     if (name && name in samples) return { ok: true, json: async () => JSON.parse(JSON.stringify({ events: samples[name] })) };
     return { ok: false, json: async () => ({}) };
@@ -579,6 +582,50 @@ describe("Discover tiles fed by the server's samples", () => {
       expect(topRelayLookups(31923)).toBe(1);
       await fetchImagesTeaser([], new Set());
       expect(topRelayLookups(20)).toBe(1);
+    });
+  });
+
+  /**
+   * Owner, 2026-09-30: the Feed tile ranks by trust plus freshness, our own
+   * signals. Primal is "fine in support, not the main": its trending posts
+   * join if they arrive in time (and still pass our trust check), its counts
+   * only nudge the order, and the tile never waits on it. Measured before:
+   * waiting on Primal's counts took 2 s of a 2.2 s tile on a first visit.
+   */
+  describe("the Feed tile: trust plus freshness, Primal in support", () => {
+    const k2 = generateSecretKey();
+    const OTHER = getPublicKey(k2);
+    const note = (key: Uint8Array, content: string, hoursAgo = 1) =>
+      finalizeEvent({ kind: 1, created_at: Math.floor(Date.now() / 1000) - hoursAgo * 3600, tags: [], content }, key);
+    const named = { name: "Someone", picture: "https://img.example/p.jpg" };
+    afterEach(() => { primalFeed = async () => ({ posts: [], profiles: [], statsLoaded: false }); primalStats = async () => {}; profileOf = {}; });
+
+    it("the more trusted person's post comes first, by the scores the server sent", async () => {
+      profileOf = { [AUTHOR]: named, [OTHER]: named };
+      server({ notes: [note(key, "A careful post about running a relay."), note(k2, "Another careful post about running a relay.")], ranks: { [AUTHOR]: 0.6, [OTHER]: 0.95 } });
+      const r = await fetchFeedTeaser();
+      expect(r.data.map((e) => e.pubkey)).toEqual([OTHER, AUTHOR]);
+    });
+
+    it("never waits on Primal: a Primal that doesn't answer doesn't hold the tile", async () => {
+      profileOf = { [AUTHOR]: named };
+      primalFeed = () => new Promise(() => {});
+      primalStats = () => new Promise(() => {});
+      server({ notes: [note(key, "A careful post about running a relay.")], ranks: { [AUTHOR]: 0.8 } });
+      const t0 = performance.now();
+      const r = await fetchFeedTeaser();
+      expect(r.data.map((e) => e.pubkey)).toEqual([AUTHOR]);
+      expect(performance.now() - t0).toBeLessThan(1500);
+    });
+
+    it("Primal's trending posts still join when they arrive in time, if our trust check lets them", async () => {
+      const STRANGER_KEY = generateSecretKey();
+      profileOf = { [AUTHOR]: named, [OTHER]: named, [getPublicKey(STRANGER_KEY)]: named };
+      scoreOf = { [OTHER]: 0.9 }; // the stranger has no score: not trusted
+      primalFeed = async () => ({ posts: [note(k2, "Trending and trusted: a long post about relays."), note(STRANGER_KEY, "Trending but a stranger: buy my token.")], profiles: [], statsLoaded: false });
+      server({ notes: [note(key, "A careful post about running a relay.", 3)], ranks: { [AUTHOR]: 0.7 } });
+      const r = await fetchFeedTeaser();
+      expect(r.data.map((e) => e.pubkey).sort()).toEqual([AUTHOR, OTHER].sort());
     });
   });
 });

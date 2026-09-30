@@ -26,19 +26,18 @@ import { fetchServerFeedSample, fetchServerSample, startTrustedSample, type Trus
 import type { DiscoverSampleName } from "@shared/discover-samples";
 import { canReachAny, canReachRelay, relayRefusedUs, type Reached } from "@/lib/relay-reach";
 import { KIND_LONG_FORM, parseArticle, type ArticleData } from "@/lib/nip23";
-import { fetchGlobalFeed, getCachedFollowerCount, primalStatsCache, prefetchStatsImmediate } from "@/lib/primal-cache";
+import { fetchGlobalFeed, primalStatsCache, prefetchStatsImmediate } from "@/lib/primal-cache";
 import { replyTargetOf } from "@/lib/reply-target";
-import { filterSpamEvents, MIN_FOLLOWERS_GLOBAL, isReportedEvent, isReportedPubkey } from "@/lib/spam-filter";
+import { filterSpamEvents, isReportedEvent, isReportedPubkey } from "@/lib/spam-filter";
 import { computeEngagementScore } from "@/lib/engagement";
-import { getFirstSeen } from "@/lib/account-age";
 import { ensureLanguageDetector, getPreferredLanguages, languageAllowed } from "@/lib/language";
 import { getContentWarning } from "@/lib/sensitive-content";
 import { pickMarketListings, formatListingPrice, CATALOG_MUTED_SELLERS, KIND_CLASSIFIED_LISTING, LISTING_RELAYS } from "@/lib/listing";
-import { rankDiscoverFeed } from "@/lib/discover-rank";
+import { rankByTrustAndFreshness } from "@/lib/discover-rank";
 import { isPromoBait, preferFollowed } from "@/lib/discover-curation";
 import { rankTopics, pickNextUpcoming, pickImageShelf, isSensitiveMedia, hasContent, isPlaceholderPost, type RankedTopic, type ShelfImage } from "@/lib/discover-tiles";
 import { saveSnapshot, readSnapshot, type SnapshotStore } from "@/lib/tile-snapshot";
-import { loadDiscoverTrust, gateByTrust, chooseDiscoverLens, emptyIsUnproven } from "@/lib/discover-trust";
+import { loadDiscoverTrust, gateByTrust, chooseDiscoverLens, emptyIsUnproven, DISCOVER_MIN_SCORE } from "@/lib/discover-trust";
 import { getEventMediaInfo } from "@/lib/media-utils";
 import { parseCalendarEvent, KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT, type CalendarEventData } from "@/lib/calendar-events";
 import type { SavedFeed } from "@/lib/rss-feeds";
@@ -72,6 +71,15 @@ function collectOnce(relays: string[], filter: object, capMs: number): Promise<E
     { onEvent: (e) => eventStore.add(e) },
   );
 }
+
+/**
+ * How long the Feed tile gives Primal's trending posts once our own sources
+ * are in hand: none. Primal is support, not the main (owner, 2026-09-30).
+ * Its posts join when they have already arrived (as they do whenever our
+ * own sources are slow); measured with 300 ms here, the tile spent that
+ * whole wait on a Primal answer that came back empty.
+ */
+const PRIMAL_GRACE_MS = 0;
 
 // ── Broad samples ────────────────────────────────────────────────────────────
 /**
@@ -356,11 +364,11 @@ async function fetchNewestArticleFresh(follows: readonly string[]): Promise<Reac
  * language + content-warning). Deliberately WITHOUT `profileSettledGetter`:
  * that getter reports the app's own profile pipeline, which a one-shot call
  * has not primed, so every author would sit in "unsettled" grace and nothing
- * would survive. fetchGlobalFeed delivers the kind-0s in the same response, so
- * profileGetter alone resolves named authors immediately — and an author with
- * no profile at all is exactly what the front door should drop.
+ * would survive. The tile fetches the missing kind-0s before flooring, so
+ * profileGetter resolves named authors, and an author with no profile at
+ * all is exactly what the front door should drop.
  */
-function floorTeaser(posts: Event[], langs: string[], mode: "primal" | "relay", flagged: Set<string>): Event[] {
+function floorTeaser(posts: Event[], langs: string[], flagged: Set<string>): Event[] {
   const floored = filterSpamEvents(posts, {
     allEvents: posts,
     hideMachineReadable: true,
@@ -377,23 +385,9 @@ function floorTeaser(posts: Event[], langs: string[], mode: "primal" | "relay", 
     },
     crossAuthorDedupe: true,
     languageAllowed: (e: Event) => languageAllowed(e.content, langs),
-    // The engagement-fed gates run ONLY on the Primal path, because they are
-    // fed by Primal: minFollowers reads getCachedFollowerCount and the combo
-    // gate's escape hatches (engagement, follower count, first-seen) are all
-    // caches that Primal populates. On the relay fallback — which runs exactly
-    // when Primal is down — those caches are empty, every stranger fails every
-    // hatch, and the "floor" silently becomes a wall: 30 fresh posts in hand
-    // and a tile that says "Quiet right now". A lighter floor on the fallback
-    // is honest; an empty confident claim is not.
-    ...(mode === "primal"
-      ? {
-          minFollowers: MIN_FOLLOWERS_GLOBAL,
-          followerCountGetter: getCachedFollowerCount,
-          newAccountComboGate: true,
-          firstSeenGetter: getFirstSeen,
-          engagementScoreGetter: (e: Event) => computeEngagementScore(primalStatsCache.get(e.id) ?? null),
-        }
-      : {}),
+    // No follower-count or engagement gates: they were fed by Primal's caches
+    // and ran only on Primal's own posts. Everyone here has passed the trust
+    // check (0.50+ or followed), the earned signal those gates stood in for.
   });
   // NSFW is render-time in Home (NostrPost blurs); a bare teaser has no blur,
   // so content warnings are dropped rather than shown naked on the landing.
@@ -422,15 +416,19 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
     ? collectOnce(getRelaysForPurpose("notes"), { kinds: [1], authors: follows.slice(0, 100), since: Math.floor(Date.now() / 1000) - 24 * 3600, limit: 40 }, 8_000)
     : Promise.resolve([]);
 
-  // Top THREE of the same vetted ranking (language, spam floor, flagged
-  // shield, engagement) — the tile was showing one post over a tall empty
-  // card, which read as a quiet network over a busy one.
-  const pick = (posts: Event[], mode: "primal" | "relay"): Event[] => {
+  // Top THREE (the tile was showing one post over a tall empty card, which
+  // read as a quiet network over a busy one), past the floor (language, spam,
+  // flagged shield), ranked by trust plus freshness (owner, 2026-09-30): our
+  // own signals drive the order. Primal's like and reply counts, when already
+  // in hand, only nudge it (lib/discover-rank.ts). Your follows count as the
+  // most trusted.
+  const pick = (posts: Event[], trustOf: (pubkey: string) => number): Event[] => {
     const seen = new Set<string>();
     const deduped = posts.filter((e) => (seen.has(e.id) ? false : (seen.add(e.id), true)));
-    const ranked = rankDiscoverFeed(floorTeaser(deduped, langs, mode, flagged), {
+    const ranked = rankByTrustAndFreshness(floorTeaser(deduped, langs, flagged), {
       now: Math.floor(Date.now() / 1000),
-      getEngagement: (id: string) => computeEngagementScore(primalStatsCache.get(id) ?? null),
+      trustOf: (pk) => (followSet.has(pk) ? 1 : trustOf(pk)),
+      engagementOf: (id) => computeEngagementScore(primalStatsCache.get(id) ?? null),
     }).filter((e) => !isPromoBait(e.content));
     // One post per person: a front door of three posts by one account
     // undersells the network.
@@ -439,14 +437,12 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
     return preferFollowed(onePerAuthor, (a) => followSet.has(a), (e) => e.pubkey).slice(0, 3);
   };
 
-  // Primal never rejects and FAILS OPEN to [] — an empty answer is
-  // structurally ambiguous (down, timeout, or genuinely quiet), so only a
-  // non-empty one counts as reached.
   // Only highly trusted people (and your follows) on the front door. The
   // most trusted accounts post rarely (measured: the top 300 wrote 14
   // top-level posts in a day), so the pool is wide and trust does the
-  // filtering: Primal's trending, a recent sample from the note relays, and
-  // the top trusted people's last day. Every author is then checked against
+  // filtering: a recent sample from the note relays and the top trusted
+  // people's last day (both from our server when it can answer), with
+  // Primal's trending in support. Every author is then checked against
   // the whole trusted list (~20,000 people at 0.50+), not just its top.
   // The trusted people's last day is asked for at the same time as the rest:
   // it only needs the trusted list (served by our server), not the pool, and
@@ -456,7 +452,7 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
   // answer or the viewer's own trust map applies (lib/discover-sample-source.ts).
   const recentSample = startTrustedSample({
     lens: chooseDiscoverLens(trustOpts),
-    server: () => fetchServerFeedSample().then((notes) => { notes?.forEach((e) => eventStore.add(e)); return notes; }),
+    server: () => fetchServerFeedSample().then((got) => { got?.events.forEach((e) => eventStore.add(e)); return got; }),
     direct: () => collectOnce(sampleRelays(getRelaysForPurpose("notes")), { kinds: [1], since: sinceSecs, limit: 300 }, 8_000),
   });
   // The server's sample already holds the trusted people's last day, so this
@@ -468,16 +464,21 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
       ? await collectOnce(getRelaysForPurpose("notes"), { kinds: [1], authors: t.top.slice(0, 300), since: Math.floor(Date.now() / 1000) - 24 * 3600, limit: 150 }, 8_000)
       : [],
   }));
-  const [primal, followsPosts, recent, trusted] = await Promise.all([
-    fetchGlobalFeed(30, sinceSecs),
+  // Primal in support, never the main (owner, 2026-09-30): its trending
+  // posts join if they have arrived by the time ours are in hand (plus
+  // PRIMAL_GRACE_MS, which is none). The tile never waits for it, and its
+  // posts pass the same trust check as everyone else's.
+  const primalP = fetchGlobalFeed(30, sinceSecs).then((r) => r.posts, () => [] as Event[]);
+  const [followsPosts, recent, trusted] = await Promise.all([
     followsPostsP,
     recentSample.sample,
     trustedPostsP,
   ]);
+  const primalPosts = await Promise.race([primalP, new Promise<Event[]>((r) => setTimeout(() => r([]), PRIMAL_GRACE_MS))]);
   if (!trusted.reached) return { data: [], reached: false };
   const trustedPosts = trusted.posts;
   const recentPosts = recent.events;
-  const pool = [...followsPosts, ...primal.posts, ...recentPosts, ...trustedPosts];
+  const pool = [...followsPosts, ...recentPosts, ...trustedPosts, ...primalPosts];
   // The server's sample is already cut down to trusted people, so its
   // authors aren't asked about again (one score lookup fewer per load).
   const trust = await loadDiscoverTrust(pool.map((e) => e.pubkey), {
@@ -491,8 +492,10 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
     // replies ("Looks great 🧡"), which say nothing on a front door.
     const gated = gateByTrust(pool, (e) => e.pubkey, gate)
       .filter((e) => replyTargetOf(e) === null);
-    // Engagement for ranking: relay-fetched posts come without Primal stats.
-    await prefetchStatsImmediate(gated.slice(0, 80).map((e) => e.id)).catch(() => {});
+    // Primal's counts are support: asked for, never waited on. Whatever has
+    // arrived by the next render nudges the order then (the tile used to wait
+    // on them: 2 s of a 2.2 s first visit, measured).
+    void prefetchStatsImmediate(gated.slice(0, 80).map((e) => e.id)).catch(() => {});
     // Everyone here is trusted at 0.50+ or followed, which is the earned
     // signal the Primal-fed stranger gates (followers, engagement, account
     // age) stand in for. Posts fetched straight from relays have no Primal
@@ -502,7 +505,9 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
     // means none, not "not loaded yet".
     const missing = [...new Set(gated.map((e) => e.pubkey))].filter((pk) => !eventStore.getEvent({ kind: 0, pubkey: pk, identifier: "" })).slice(0, 60);
     if (missing.length > 0) await collectOnce(getRelaysForPurpose("notes"), { kinds: [0], authors: missing }, 3_000);
-    const picked = pick(gated, "relay");
+    // Trust: the scores our server sent for the authors it vetted, else the
+    // ones looked up here; the bar if neither is known.
+    const picked = pick(gated, (pk) => recent.ranks.get(pk) ?? trust.scores.get(pk) ?? DISCOVER_MIN_SCORE);
     // An empty pick while some authors' scores couldn't be read (the lookup
     // is rate limited per IP) is not "Quiet right now": measured 2026-09-30,
     // that emptied this tile over a busy network.
@@ -511,7 +516,7 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
   }
   // (unreached below returns [] — the type's empty, the flag carries the truth)
 
-  // Primal said nothing, which proves nothing. Ask the relays — with reach
+  // Nothing in the pool, which proves nothing. Ask the relays, with reach
   // measured first, so "empty" is only ever claimed after somebody answered.
   const relays = getRelaysForPurpose("notes");
   const sample = sampleRelays(relays);
@@ -526,7 +531,7 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
   // yet; gating them on the pool's scores dropped everyone off the top list.
   const fallbackTrust = await loadDiscoverTrust(events.map((e) => e.pubkey), trustOpts);
   if (!fallbackTrust.reached) return { data: [], reached: false };
-  const picked = pick(gateByTrust(events, (e) => e.pubkey, { follows: followSet, scores: fallbackTrust.scores }), "relay");
+  const picked = pick(gateByTrust(events, (e) => e.pubkey, { follows: followSet, scores: fallbackTrust.scores }), (pk) => fallbackTrust.scores.get(pk) ?? DISCOVER_MIN_SCORE);
   if (picked.length === 0 && emptyIsUnproven(fallbackTrust)) return { data: [], reached: false };
   return { data: picked, reached: true };
 }

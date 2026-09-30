@@ -56,7 +56,7 @@ import { registerTranslateRoute } from "./translate";
 import { FailureMemory } from "@shared/failure-memory";
 import { createScoreCardReader } from "./score-cards";
 import { createRelayDirectoryReader } from "./relay-directory";
-import { createFeedSampleReader } from "./feed-sample";
+import { createFeedSampleReader, ranksForNotes } from "./feed-sample";
 import { createDiscoverSampleReader, ROUTE_WAIT_MS } from "./trusted-sample";
 import { isDiscoverSampleName } from "@shared/discover-samples";
 import { WOT_BATCH_MAX } from "@shared/wot-batch";
@@ -3170,7 +3170,9 @@ export async function registerRoutes(
         new Promise<null>((r) => setTimeout(() => r(null), ROUTE_WAIT_MS)),
       ]);
       if (!result || !result.reached) return res.status(503).json({ notes: [], error: "Couldn't take the feed sample right now" });
-      res.set("Cache-Control", "public, max-age=60").json({ notes: result.notes });
+      // The authors' trust scores ride along: the Feed tile ranks by trust
+      // plus freshness and doesn't look these (server-vetted) authors up.
+      res.set("Cache-Control", "public, max-age=60").json({ notes: result.notes, ranks: await ranksForNotes(result.notes, scoreCards) });
     } catch (err: any) {
       console.error("[discover-feed-sample] error:", err?.message || err);
       res.status(503).json({ notes: [], error: "Couldn't take the feed sample right now" });

@@ -21,17 +21,39 @@ const SERVER_WAIT_MS = 7_000;
 
 type FetchLike = (url: string, init?: { signal?: AbortSignal }) => Promise<{ ok: boolean; json: () => Promise<unknown> }>;
 
-/** The server's sample; [] when it found no trusted notes; null when it couldn't answer. */
-export async function fetchServerFeedSample(fetchImpl: FetchLike = fetch): Promise<Event[] | null> {
+/** A sample from our server, with the trust scores of its authors when the server sent them. */
+export interface ServerSample {
+  events: Event[];
+  /** Author → trust score (0-1) on the default lens. */
+  ranks: ReadonlyMap<string, number>;
+}
+
+const HEX64 = /^[0-9a-f]{64}$/;
+
+function readRanks(raw: unknown): Map<string, number> {
+  const ranks = new Map<string, number>();
+  if (!raw || typeof raw !== "object") return ranks;
+  for (const [pk, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (HEX64.test(pk) && typeof v === "number" && v >= 0 && v <= 1) ranks.set(pk, v);
+  }
+  return ranks;
+}
+
+/**
+ * The server's Feed sample, with its authors' trust scores (the Feed tile
+ * ranks by trust plus freshness, and these authors aren't looked up);
+ * no events when it found no trusted notes; null when it couldn't answer.
+ */
+export async function fetchServerFeedSample(fetchImpl: FetchLike = fetch): Promise<ServerSample | null> {
   try {
     const res = await fetchImpl("/api/discover/feed-sample", { signal: AbortSignal.timeout(SERVER_WAIT_MS) });
     if (!res.ok) return null;
-    const body = (await res.json()) as { notes?: unknown } | null;
+    const body = (await res.json()) as { notes?: unknown; ranks?: unknown } | null;
     if (!body || !Array.isArray(body.notes)) return null;
     const notes = body.notes.filter((n): n is Event => isNote(n) && verifyEvent(n as Event));
     // Notes were sent and none held up: not an answer to build on.
     if (body.notes.length > 0 && notes.length === 0) return null;
-    return notes;
+    return { events: notes, ranks: readRanks(body.ranks) };
   } catch {
     return null;
   }
@@ -61,12 +83,14 @@ export interface TrustedSample {
   events: Event[];
   /** From our server, which already kept only trusted people's events. */
   vetted: boolean;
+  /** The authors' trust scores, when the server sent them. */
+  ranks: ReadonlyMap<string, number>;
 }
 
 export interface TrustedSampleSources {
   /** Whose trust applies (lib/discover-trust.ts). */
   lens: "own" | "default";
-  server: () => Promise<Event[] | null>;
+  server: () => Promise<Event[] | ServerSample | null>;
   direct: () => Promise<Event[]>;
 }
 
@@ -78,13 +102,15 @@ export interface TrustedSampleSources {
  * after it.
  */
 export function startTrustedSample(sources: TrustedSampleSources): { fromServer: Promise<boolean>; sample: Promise<TrustedSample> } {
-  const server: Promise<Event[] | null> = sources.lens === "default"
-    ? Promise.resolve().then(sources.server).catch(() => null)
+  const server: Promise<ServerSample | null> = sources.lens === "default"
+    ? Promise.resolve().then(sources.server)
+        .then((got) => (got === null ? null : Array.isArray(got) ? { events: got, ranks: new Map() } : got))
+        .catch(() => null)
     : Promise.resolve(null);
   return {
-    fromServer: server.then((events) => events !== null),
-    sample: server.then(async (events) => (events !== null
-      ? { events, vetted: true }
-      : { events: await sources.direct(), vetted: false })),
+    fromServer: server.then((got) => got !== null),
+    sample: server.then(async (got) => (got !== null
+      ? { events: got.events, vetted: true, ranks: got.ranks }
+      : { events: await sources.direct(), vetted: false, ranks: new Map() })),
   };
 }

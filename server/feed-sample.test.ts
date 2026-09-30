@@ -5,7 +5,9 @@
  * A relay or a trusted list we couldn't read is never "nobody posted".
  */
 import { describe, it, expect, vi } from "vitest";
-import { createFeedSampleReader, FRESH_MS } from "./feed-sample";
+import { readFileSync } from "fs";
+import path from "path";
+import { createFeedSampleReader, ranksForNotes, FRESH_MS } from "./feed-sample";
 import type { RelayQuery } from "./score-cards";
 
 const hex = (c: string, n = 64) => c.repeat(n);
@@ -87,5 +89,42 @@ describe("feed sample reader", () => {
     advance(FRESH_MS - 1);
     await reader.read();
     expect(query).toHaveBeenCalledTimes(3);
+  });
+});
+
+/**
+ * The Feed tile ranks by trust plus freshness (owner, 2026-09-30). The app
+ * doesn't look up the authors the server vetted, so the server sends their
+ * scores with the notes, from the full list it keeps in memory. It never
+ * makes a visitor wait on the score relay for them: without the list, the
+ * tile ranks by freshness alone.
+ */
+describe("trust scores sent with the feed sample", () => {
+  const n = (id: string, pubkey: string) => note(id, pubkey, 100);
+  const cards = (scores: Record<string, number | null>, inMemory = true) => ({
+    needsRelay: vi.fn(() => !inMemory),
+    scores: vi.fn(async (pks: readonly string[]) => ({ scores: new Map(pks.filter((p) => p in scores).map((p) => [p, scores[p]] as const)), reached: true })),
+  });
+
+  it("gives each author's score, from memory", async () => {
+    const c = cards({ [ALICE]: 0.83, [MALLORY]: 0.61 });
+    expect(await ranksForNotes([n("1", ALICE), n("2", ALICE), n("3", MALLORY)], c)).toEqual({ [ALICE]: 0.83, [MALLORY]: 0.61 });
+    expect(c.scores).toHaveBeenCalledWith([ALICE, MALLORY]);
+  });
+
+  it("someone with no score card gets no score, not a made-up one", async () => {
+    expect(await ranksForNotes([n("1", ALICE)], cards({ [ALICE]: null }))).toEqual({});
+  });
+
+  it("without the list in memory, sends none rather than make the visitor wait on the relay", async () => {
+    const c = cards({ [ALICE]: 0.83 }, false);
+    expect(await ranksForNotes([n("1", ALICE)], c)).toEqual({});
+    expect(c.scores).not.toHaveBeenCalled();
+  });
+
+  it("the route sends them with the notes", () => {
+    const routes = readFileSync(path.resolve(import.meta.dirname, "routes.ts"), "utf8");
+    const route = routes.slice(routes.indexOf('app.get("/api/discover/feed-sample"'), routes.indexOf('app.get("/api/discover/sample/:name"'));
+    expect(route).toMatch(/ranks: await ranksForNotes\(result\.notes, scoreCards\)/);
   });
 });
