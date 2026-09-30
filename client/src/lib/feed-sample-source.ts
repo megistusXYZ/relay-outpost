@@ -33,16 +33,22 @@ export async function fetchServerFeedSample(fetchImpl: FetchLike = fetch): Promi
   }
 }
 
+export interface RecentSample {
+  notes: Event[];
+  /** From our server, which already kept only trusted people's notes. */
+  vetted: boolean;
+}
+
 export async function readRecentSample(sources: {
   /** Whose trust applies (lib/discover-trust.ts). */
   lens: "own" | "default";
   server: () => Promise<Event[] | null>;
   direct: () => Promise<Event[]>;
-}): Promise<Event[]> {
+}): Promise<RecentSample> {
   if (sources.lens === "default") {
     let fromServer: Event[] | null = null;
     try { fromServer = await sources.server(); } catch { fromServer = null; }
-    if (fromServer) return fromServer;
+    if (fromServer) return { notes: fromServer, vetted: true };
   }
-  return sources.direct();
+  return { notes: await sources.direct(), vetted: false };
 }

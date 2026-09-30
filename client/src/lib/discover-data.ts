@@ -405,7 +405,7 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
       ? await collectOnce(getRelaysForPurpose("notes"), { kinds: [1], authors: t.top.slice(0, 300), since: Math.floor(Date.now() / 1000) - 24 * 3600, limit: 150 }, 8_000)
       : [],
   }));
-  const [primal, followsPosts, recentPosts, trusted] = await Promise.all([
+  const [primal, followsPosts, recent, trusted] = await Promise.all([
     fetchGlobalFeed(30, sinceSecs),
     followsPostsP,
     // The recent sample: the trusted part of one shared sample from our
@@ -420,8 +420,14 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
   ]);
   if (!trusted.reached) return { data: [], reached: false };
   const trustedPosts = trusted.posts;
+  const recentPosts = recent.notes;
   const pool = [...followsPosts, ...primal.posts, ...recentPosts, ...trustedPosts];
-  const trust = await loadDiscoverTrust(pool.map((e) => e.pubkey), trustOpts);
+  // The server's sample is already cut down to trusted people, so its
+  // authors aren't asked about again (one score lookup fewer per load).
+  const trust = await loadDiscoverTrust(pool.map((e) => e.pubkey), {
+    ...trustOpts,
+    vetted: recent.vetted ? new Set(recent.notes.map((e) => e.pubkey)) : undefined,
+  });
   if (!trust.reached) return { data: [], reached: false };
   const gate = { follows: followSet, scores: trust.scores };
   if (pool.length > 0) {
