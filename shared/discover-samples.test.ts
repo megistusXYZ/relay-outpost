@@ -9,7 +9,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import path from "path";
-import { DISCOVER_SAMPLES, isDiscoverSampleName, isSignedEvent, trustedSample } from "./discover-samples";
+import { DISCOVER_SAMPLES, SAMPLE_RELAYS, TOP_LOOKUP_RELAYS, isDiscoverSampleName, isSignedEvent, sampleRequests, trustedSample } from "./discover-samples";
 
 const hex = (c: string, n = 64) => c.repeat(n);
 const ALICE = hex("a");
@@ -75,8 +75,8 @@ describe("isSignedEvent", () => {
 });
 
 describe("sample names", () => {
-  it("are articles, events and videos, and nothing else", () => {
-    expect(["articles", "events", "videos"].every(isDiscoverSampleName)).toBe(true);
+  it("are articles, events, videos and images, and nothing else", () => {
+    expect(["articles", "events", "videos", "images"].every(isDiscoverSampleName)).toBe(true);
     expect(isDiscoverSampleName("notes")).toBe(false);
     expect(isDiscoverSampleName("__proto__")).toBe(false);
     expect(isDiscoverSampleName("constructor")).toBe(false);
@@ -96,5 +96,57 @@ describe("the server asks the relays what the app would ask", () => {
   it("videos: the newest 20 of every video kind", () => {
     expect(DISCOVER_SAMPLES.videos).toMatchObject({ kinds: [21, 22, 34235, 34236], limit: 20 });
     expect(src).toMatch(/\{ kinds: \[21, 22, 34235, 34236\], limit: 20 \}/);
+  });
+});
+
+/**
+ * Each tile also asked the relays what the most trusted people posted: the
+ * same question for every visitor on the default trust list. Measured
+ * 2026-09-30: 256 KB of keys uploaded per visitor for 41 KB of answers, and
+ * a wait of at least a second. The server asks once.
+ */
+describe("sampleRequests — what the relays are asked for a sample", () => {
+  const people = Array.from({ length: 400 }, (_, i) => i.toString(16).padStart(64, "0"));
+  const now = 1_790_000_000;
+
+  it("articles: the newest 40 from anyone, and the newest 30 by the 200 most trusted", () => {
+    expect(sampleRequests(DISCOVER_SAMPLES.articles, now, people)).toEqual([
+      { relays: SAMPLE_RELAYS, filter: { kinds: [30023], limit: 40 } },
+      { relays: TOP_LOOKUP_RELAYS, filter: { kinds: [30023], authors: people.slice(0, 200), limit: 30 } },
+    ]);
+  });
+
+  it("images: only the 300 most trusted people's last day, never a stranger's", () => {
+    expect(sampleRequests(DISCOVER_SAMPLES.images, now, people)).toEqual([
+      { relays: TOP_LOOKUP_RELAYS, filter: { kinds: [1, 20], authors: people.slice(0, 300), since: now - 86400, limit: 80 } },
+    ]);
+  });
+
+  it("with nobody on the trusted list, only the broad read is left", () => {
+    expect(sampleRequests(DISCOVER_SAMPLES.events, now, [])).toEqual([
+      { relays: SAMPLE_RELAYS, filter: { kinds: [31922, 31923], limit: 60 } },
+    ]);
+    expect(sampleRequests(DISCOVER_SAMPLES.images, now, [])).toEqual([]);
+  });
+
+  it("the broad reads skip damus; the small top-people lookups ask every fast relay", () => {
+    const src = readFileSync(path.resolve(import.meta.dirname, "../client/src/lib/nostr.ts"), "utf8");
+    const block = src.match(/export const FAST_RELAYS = \[([^\]]*)\]/)?.[1] ?? "";
+    const fast = [...block.matchAll(/"(wss:\/\/[^"]+)"/g)].map((m) => m[1]);
+    expect([...TOP_LOOKUP_RELAYS].sort()).toEqual([...fast].sort());
+    expect(SAMPLE_RELAYS).toEqual(fast.filter((r) => r !== "wss://relay.damus.io"));
+  });
+});
+
+describe("the server asks for the top people's posts what the app would ask", () => {
+  const src = readFileSync(path.resolve(import.meta.dirname, "../client/src/lib/discover-data.ts"), "utf8");
+  it.each([
+    ["articles", /\{ kinds: \[KIND_LONG_FORM\], authors: t\.top\.slice\(0, 200\), limit: 30 \}/],
+    ["events", /\{ kinds: \[KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT\], authors: trust\.top\.slice\(0, 300\), limit: 60 \}/],
+    ["videos", /\{ kinds: \[21, 22, 34235, 34236\], authors: trust\.top\.slice\(0, 200\), limit: 20 \}/],
+    ["images", /\{ kinds: \[1, 20\], authors: trust\.top\.slice\(0, 300\), since, limit: 80 \}/],
+    ["feed", /\{ kinds: \[1\], authors: t\.top\.slice\(0, 300\), since: Math\.floor\(Date\.now\(\) \/ 1000\) - 24 \* 3600, limit: 150 \}/],
+  ])("%s", (_name, pattern) => {
+    expect(src).toMatch(pattern as RegExp);
   });
 });

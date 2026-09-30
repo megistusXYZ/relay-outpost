@@ -13,21 +13,77 @@
  * The app takes a sample itself only when the server can't answer, or when
  * the viewer's own trust map decides who's trusted.
  */
+/** The fast relays without damus: where the broad reads go (damus budgets reads per IP). */
+export const SAMPLE_RELAYS = ["wss://relay.snort.social", "wss://nostr.land", "wss://relay.primal.net"];
+/**
+ * Every fast relay: where the most trusted people's own posts are asked for.
+ * Those answers are small (41 KB across five lookups, measured 2026-09-30),
+ * so damus is asked too, as the app's own lookup asks it.
+ */
+export const TOP_LOOKUP_RELAYS = ["wss://relay.damus.io", ...SAMPLE_RELAYS];
+
+/** The most trusted people's own posts: how many people, how many events, how far back. */
+export interface TopLookup {
+  authors: number;
+  limit: number;
+  /** Only events this recent. Absent: their newest, whenever. */
+  windowSecs?: number;
+}
+
 export interface SampleDef {
   kinds: readonly number[];
-  /** How many events one relay is asked for. The app's own read asks the same. */
-  limit: number;
+  /**
+   * The broad read: how many of the newest from anyone one relay is asked
+   * for. Absent: the sample is only the top people's (Images).
+   */
+  limit?: number;
+  /**
+   * Every tile also asked the relays what the most trusted people posted.
+   * That is the same question for every visitor on the default trust list
+   * (256 KB of keys uploaded per visitor for 41 KB of answers, measured
+   * 2026-09-30, and a wait of at least a second), so the server asks it
+   * once and the answer rides along with the sample.
+   */
+  top: TopLookup;
   /** The most the server hands over (the newest). */
   max: number;
 }
 
+/** Each entry asks the relays exactly what the app's own reads ask (a test pins them). */
 export const DISCOVER_SAMPLES = {
   // Long-form bodies are large (up to 33 KB each, measured), so the cap
   // matters here: 36 trusted articles were 145 KB compressed.
-  articles: { kinds: [30023], limit: 40, max: 40 },
-  events: { kinds: [31922, 31923], limit: 60, max: 120 },
-  videos: { kinds: [21, 22, 34235, 34236], limit: 20, max: 40 },
+  articles: { kinds: [30023], limit: 40, top: { authors: 200, limit: 30 }, max: 40 },
+  events: { kinds: [31922, 31923], limit: 60, top: { authors: 300, limit: 60 }, max: 120 },
+  videos: { kinds: [21, 22, 34235, 34236], limit: 20, top: { authors: 200, limit: 20 }, max: 40 },
+  // No broad read: a stranger's photo never reaches the front door.
+  images: { kinds: [1, 20], top: { authors: 300, limit: 80, windowSecs: 24 * 3600 }, max: 80 },
 } as const satisfies Record<string, SampleDef>;
+
+/** What the relays are asked for one sample: the broad read, and the top people's own. */
+export function sampleRequests(
+  def: SampleDef,
+  nowSecs: number,
+  /** The trusted list, highest first. */
+  trustedAuthors: readonly string[],
+  relays: { broad: readonly string[]; top: readonly string[] } = { broad: SAMPLE_RELAYS, top: TOP_LOOKUP_RELAYS },
+): { relays: readonly string[]; filter: Record<string, unknown> }[] {
+  const out: { relays: readonly string[]; filter: Record<string, unknown> }[] = [];
+  if (def.limit !== undefined) out.push({ relays: relays.broad, filter: { kinds: [...def.kinds], limit: def.limit } });
+  const top = trustedAuthors.slice(0, def.top.authors);
+  if (top.length > 0) {
+    out.push({
+      relays: relays.top,
+      filter: {
+        kinds: [...def.kinds],
+        authors: top,
+        ...(def.top.windowSecs !== undefined ? { since: nowSecs - def.top.windowSecs } : {}),
+        limit: def.top.limit,
+      },
+    });
+  }
+  return out;
+}
 
 export type DiscoverSampleName = keyof typeof DISCOVER_SAMPLES;
 

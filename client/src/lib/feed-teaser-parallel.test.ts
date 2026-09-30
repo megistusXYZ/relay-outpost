@@ -21,6 +21,8 @@ describe("the Feed tile's lookups", () => {
 
   it("don't wait on the pool before asking for the trusted list", () => {
     const beforeAll = teaser.slice(0, teaser.indexOf("await Promise.all(["));
-    expect(beforeAll).toMatch(/const trustedPostsP(?::[^=]+)? = loadDiscoverTrust\(\[\], trustOpts\)/);
+    // Asked for at once, and its relay lookup decided as soon as the server's
+    // sample has or hasn't arrived (milliseconds), never on the app's own read.
+    expect(beforeAll).toMatch(/const trustedPostsP(?::[^=]+)? = Promise\.all\(\[loadDiscoverTrust\(\[\], trustOpts\), recentSample\.fromServer\]\)/);
   });
 });

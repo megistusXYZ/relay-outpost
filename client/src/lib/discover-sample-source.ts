@@ -63,16 +63,28 @@ export interface TrustedSample {
   vetted: boolean;
 }
 
-export async function readTrustedSample(sources: {
+export interface TrustedSampleSources {
   /** Whose trust applies (lib/discover-trust.ts). */
   lens: "own" | "default";
   server: () => Promise<Event[] | null>;
   direct: () => Promise<Event[]>;
-}): Promise<TrustedSample> {
-  if (sources.lens === "default") {
-    let fromServer: Event[] | null = null;
-    try { fromServer = await sources.server(); } catch { fromServer = null; }
-    if (fromServer) return { events: fromServer, vetted: true };
-  }
-  return { events: await sources.direct(), vetted: false };
+}
+
+/**
+ * Start reading a sample. `fromServer` settles as soon as the server has
+ * answered or hasn't (milliseconds), well before `sample` does when the app
+ * has to take its own. Tiles decide on `fromServer` whether to make their
+ * other relay reads, so those start alongside the app's own read instead of
+ * after it.
+ */
+export function startTrustedSample(sources: TrustedSampleSources): { fromServer: Promise<boolean>; sample: Promise<TrustedSample> } {
+  const server: Promise<Event[] | null> = sources.lens === "default"
+    ? Promise.resolve().then(sources.server).catch(() => null)
+    : Promise.resolve(null);
+  return {
+    fromServer: server.then((events) => events !== null),
+    sample: server.then(async (events) => (events !== null
+      ? { events, vetted: true }
+      : { events: await sources.direct(), vetted: false })),
+  };
 }

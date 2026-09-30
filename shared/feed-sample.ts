@@ -13,15 +13,25 @@
  * (server/feed-sample.ts). The app takes it itself only when the server can't
  * answer, or when the viewer's own trust map decides who's trusted.
  */
-import { isSignedEvent, type SignedEvent } from "./discover-samples";
+import { isSignedEvent, SAMPLE_RELAYS, type SignedEvent, type TopLookup } from "./discover-samples";
 
 /** The app's FAST_RELAYS without damus (a test keeps the two in step). */
-export const FEED_SAMPLE_RELAYS = ["wss://relay.snort.social", "wss://nostr.land", "wss://relay.primal.net"];
+export const FEED_SAMPLE_RELAYS = SAMPLE_RELAYS;
 export const FEED_SAMPLE_WINDOW_SECS = 6 * 3600;
 /** How many notes one relay is asked for. */
 export const FEED_SAMPLE_LIMIT = 300;
-/** The most the server hands over (measured: ~40 trusted notes in a sample). */
-export const FEED_SAMPLE_MAX_NOTES = 150;
+/**
+ * The most trusted people's last day, which the Feed tile also asked the
+ * relays for; the server asks once and it rides along with the sample
+ * (see `SampleDef.top` in discover-samples.ts).
+ */
+export const FEED_SAMPLE_TOP: TopLookup = { authors: 300, limit: 150, windowSecs: 24 * 3600 };
+/**
+ * The most the server hands over (measured: ~100 trusted notes in a sample,
+ * plus a dozen from the most trusted people's last day). Roomy on purpose:
+ * the tile ranks by engagement, so an older note must not be cut for age.
+ */
+export const FEED_SAMPLE_MAX_NOTES = 300;
 
 export type SampleNote = SignedEvent;
 
