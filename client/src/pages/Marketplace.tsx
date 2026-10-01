@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { ListingDialog } from "@/components/ListingCard";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { queryAnswered } from "@/lib/relay-reach";
+import { newCursor, pageOlder, olderNotShown, type PagerCursor } from "@/lib/catalog-pager";
 import { FAST_RELAYS, fetchProfilesCached } from "@/lib/nostr";
 import { isReportedEvent, isReportedPubkey } from "@/lib/spam-filter";
 import { getSignalTier } from "@/lib/graperank";
@@ -96,6 +97,15 @@ export default function Marketplace() {
   const { flaggedPubkeys } = useGrapeRankScores();
   const [state, setState] = useState<PageState>({ status: "loading" });
   const [openListing, setOpenListing] = useState<Listing | null>(null);
+  // Older batches, fetched as the reader reaches the end (lib/catalog-pager.ts).
+  // Each is APPENDED below what is already on the shelf and ranked within
+  // itself, so nothing above the reader ever reorders when more arrives.
+  const [older, setOlder] = useState<Listing[][]>([]);
+  // idle: more may exist · loading · stalled: the relay didn't answer ·
+  // dry: the relay answered that there is no more.
+  const [more, setMore] = useState<"idle" | "loading" | "stalled" | "dry">("idle");
+  const cursorRef = useRef<PagerCursor>(newCursor());
+  const shownRef = useRef<Listing[][]>([]);
   // The typical shop controls: search + category chips, both client-side
   // over the loaded set. Category vocabulary comes from sellers' own t tags.
   const [query, setQuery] = useState("");
@@ -104,32 +114,46 @@ export default function Marketplace() {
   // lead the grid. "Newest" is one tap away and pure chronology.
   const [sort, setSort] = useState<"trusted" | "newest">("trusted");
   const { getAuthorInfluence } = useGrapeRankScores();
+  const chunks = useMemo(() => (state.status === "ready" ? [state.listings, ...older] : []), [state, older]);
+  shownRef.current = chunks;
+  const loadedCount = useMemo(() => chunks.reduce((n, c) => n + c.length, 0), [chunks]);
   const categories = useMemo(
-    () => (state.status === "ready" ? rankListingCategories(state.listings).slice(0, 12) : []),
-    [state],
+    () => (chunks.length > 0 ? rankListingCategories(chunks.flat()).slice(0, 12) : []),
+    [chunks],
   );
   const visible = useMemo(() => {
-    if (state.status !== "ready") return [];
-    const filtered = filterListings(state.listings, { query, category: category ?? undefined });
-    return sort === "trusted"
-      ? rankListingsTrustFirst(filtered, (pk) => getSignalTier(getAuthorInfluence(pk)))
-      : filtered;
-  }, [state, query, category, sort, getAuthorInfluence]);
+    // Batch by batch: filter and rank inside each, then lay them end to end.
+    return chunks.flatMap((chunk) => {
+      const filtered = filterListings(chunk, { query, category: category ?? undefined });
+      return sort === "trusted"
+        ? rankListingsTrustFirst(filtered, (pk) => getSignalTier(getAuthorInfluence(pk)))
+        : filtered;
+    });
+  }, [chunks, query, category, sort, getAuthorInfluence]);
   const tierOf = (pk: string) => getSignalTier(getAuthorInfluence(pk));
 
   const loadSeq = useRef(0);
+  const assemble = useCallback((events: Event[]) =>
+    pickMarketListings(events, {
+      flagged: flaggedPubkeys ?? undefined,
+      mutedSellers: CATALOG_MUTED_SELLERS,
+      // What YOU reported disappears from the shelf immediately — same
+      // id-or-author rule the feeds use — without waiting for the
+      // network-level flag to catch up.
+      isReported: (e) => isReportedEvent(e.id) || isReportedPubkey(e.pubkey),
+    }), [flaggedPubkeys]);
+  /** One page of the marketplace relay's catalog, at or before `until`. */
+  const fetchPage = useCallback(
+    (until: number) => queryAnswered(LISTING_RELAYS, { kinds: [KIND_CLASSIFIED_LISTING], limit: 100, until }, 8_000)
+      .then((res) => ({ events: res.events as Event[], answered: res.answered })),
+    [],
+  );
   const load = useCallback(() => {
     const seq = ++loadSeq.current;
     setState({ status: "loading" });
-    const assemble = (events: Event[]) =>
-      pickMarketListings(events, {
-        flagged: flaggedPubkeys ?? undefined,
-        mutedSellers: CATALOG_MUTED_SELLERS,
-        // What YOU reported disappears from the shelf immediately — same
-        // id-or-author rule the feeds use — without waiting for the
-        // network-level flag to catch up.
-        isReported: (e) => isReportedEvent(e.id) || isReportedPubkey(e.pubkey),
-      });
+    setOlder([]);
+    setMore("idle");
+    const cursor = (cursorRef.current = newCursor());
     (async () => {
       // DEEP-PAGE the marketplace relay: it answers 100 events per REQ but
       // pages cleanly by `until` (measured 2026-08-27 — 800 unique in 8
@@ -137,23 +161,22 @@ export default function Marketplace() {
       // market; the pager streams pages into the grid until the relay
       // genuinely runs dry or the cap. Pages arrive OLDER than what's
       // shown, so streaming appends — never reorders under the reader.
-      const PAGE_CAP = 30;
-      const seen = new Set<string>();
+      // The opening batch: 30 pages (3,000 listings), streamed into the grid.
+      // It is no longer the whole of what can be reached — older batches
+      // follow as the reader gets to the end (loadOlder below).
+      const OPENING_PAGES = 30;
       const accumulated: Event[] = [];
-      let answeredAny = false;
       const generalsP = queryAnswered(FAST_RELAYS.slice(0, 4), { kinds: [KIND_CLASSIFIED_LISTING], limit: 200 }, 10_000);
-      let until = Math.floor(Date.now() / 1000) + 60;
-      for (let page = 0; page < PAGE_CAP; page++) {
-        const res = await queryAnswered(LISTING_RELAYS, { kinds: [KIND_CLASSIFIED_LISTING], limit: 100, until }, 8_000);
-        if (loadSeq.current !== seq) return;
-        answeredAny = answeredAny || res.answered || res.events.length > 0;
-        const fresh = (res.events as Event[]).filter((e) => !seen.has(e.id));
-        if (fresh.length === 0) break;
-        fresh.forEach((e) => seen.add(e.id));
-        accumulated.push(...fresh);
-        until = Math.min(...fresh.map((e) => e.created_at)) - 1;
-        setState({ status: "ready", listings: assemble(accumulated) });
-      }
+      const opening = await pageOlder(fetchPage, cursor, OPENING_PAGES, {
+        shouldStop: () => loadSeq.current !== seq,
+        onPage: (fresh) => {
+          accumulated.push(...fresh);
+          setState({ status: "ready", listings: assemble(accumulated) });
+        },
+      });
+      if (loadSeq.current !== seq) return;
+      let answeredAny = opening.answeredAny;
+      const seen = cursor.seen;
       const gen = await generalsP;
       if (loadSeq.current !== seq) return;
       answeredAny = answeredAny || gen.answered || gen.events.length > 0;
@@ -165,8 +188,23 @@ export default function Marketplace() {
         return;
       }
       setState({ status: "ready", listings: assemble(accumulated) });
+      setMore(cursor.dry ? "dry" : opening.stalled ? "stalled" : "idle");
     })();
-  }, [flaggedPubkeys]);
+  }, [assemble, fetchPage]);
+
+  /** The next batch back in time: 10 pages, appended under what is shown. */
+  const OLDER_PAGES = 10;
+  const loadOlder = useCallback(async () => {
+    const seq = loadSeq.current;
+    const cursor = cursorRef.current;
+    if (cursor.dry) { setMore("dry"); return; }
+    setMore("loading");
+    const res = await pageOlder(fetchPage, cursor, OLDER_PAGES, { shouldStop: () => loadSeq.current !== seq });
+    if (loadSeq.current !== seq) return;
+    const batch = olderNotShown(assemble(res.fresh), shownRef.current);
+    if (batch.length > 0) setOlder((prev) => [...prev, batch]);
+    setMore(cursor.dry ? "dry" : res.stalled ? "stalled" : "idle");
+  }, [assemble, fetchPage]);
   useEffect(() => { if (myPubkey) load(); return () => { loadSeq.current++; }; }, [load, myPubkey]);
 
   // Render cap with an infinite-scroll sentinel: thousands of cards in the
@@ -177,9 +215,14 @@ export default function Marketplace() {
   useEffect(() => { setDisplayLimit(DISPLAY_STEP); }, [query, category]);
 
   const sellers = useMemo(
-    () => (state.status === "ready" ? Array.from(new Set(state.listings.map((l) => l.pubkey))) : []),
-    [state],
+    () => Array.from(new Set(chunks.flat().map((l) => l.pubkey))),
+    [chunks],
   );
+  // While a search or a category is on, older batches are fetched only when
+  // asked for: an automatic refill would walk the relay's entire catalog for a
+  // word that matches nothing (it stopped answering at page 60 when probed).
+  const filtering = query.trim() !== "" || category !== null;
+  const atEndOfLoaded = visible.length <= displayLimit;
   useEffect(() => { if (sellers.length > 0) fetchProfilesCached(sellers.slice(0, 60)); }, [sellers]);
 
   if (!myPubkey) {
@@ -278,8 +321,9 @@ export default function Marketplace() {
         </p>
       )}
       {state.status === "ready" && state.listings.length > 0 && visible.length === 0 && (
-        <p className="py-20 text-center text-sm text-muted-foreground" data-testid="marketplace-no-match">
-          Nothing matches{query ? ` "${query}"` : ""}{category ? ` in ${category}` : ""} — try fewer words or another category.
+        <p className="pt-20 pb-6 text-center text-sm text-muted-foreground" data-testid="marketplace-no-match">
+          Nothing matches{query ? ` "${query}"` : ""}{category ? ` in ${category}` : ""}
+          {more === "dry" ? " — try fewer words or another category." : ` in the newest ${loadedCount.toLocaleString()} listings.`}
         </p>
       )}
       {visible.length > 0 && (
@@ -290,11 +334,31 @@ export default function Marketplace() {
             ))}
           </div>
           <InfiniteScrollSentinel
-            onLoadMore={() => setDisplayLimit((n) => n + DISPLAY_STEP)}
-            isLoading={false}
-            hasMore={visible.length > displayLimit}
+            onLoadMore={() => {
+              if (!atEndOfLoaded) setDisplayLimit((n) => n + DISPLAY_STEP);
+              else if (!filtering && more === "idle") { setDisplayLimit((n) => n + DISPLAY_STEP); void loadOlder(); }
+            }}
+            isLoading={more === "loading"}
+            hasMore={!atEndOfLoaded || (!filtering && more === "idle")}
           />
         </>
+      )}
+      {/* The far end of the shelf: what happens past the last listing loaded. */}
+      {state.status === "ready" && state.listings.length > 0 && atEndOfLoaded && (
+        <div className="flex flex-col items-center gap-2 py-8 text-sm text-muted-foreground" data-testid="marketplace-end">
+          {more === "loading" ? (
+            <span data-testid="marketplace-older-loading">Fetching older listings…</span>
+          ) : more === "dry" ? (
+            <span data-testid="marketplace-end-dry">That's everything on the shelves — {loadedCount.toLocaleString()} listings.</span>
+          ) : (
+            <>
+              {more === "stalled" && <span data-testid="marketplace-older-stalled">The marketplace relay didn't answer.</span>}
+              <Button size="sm" variant="outline" className="min-h-[44px] md:min-h-9" onClick={() => void loadOlder()} data-testid="button-marketplace-older">
+                {more === "stalled" ? "Try again" : filtering ? "Search older listings" : "Load older listings"}
+              </Button>
+            </>
+          )}
+        </div>
       )}
 
       {openListing && (
