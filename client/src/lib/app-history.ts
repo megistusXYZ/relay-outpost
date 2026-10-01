@@ -89,6 +89,25 @@ export function wentBackward(h: HistoryLike = window.history): boolean {
 /** Marker so a second install (HMR, tests) is a no-op instead of a double-stamp. */
 const INSTALLED = Symbol.for("relay-outpost.app-history-installed");
 
+/**
+ * Hear every in-app navigation (a pushState) with its destination, before it
+ * happens. The quiet-update policy uses this as its best boundary: a page
+ * that is about to open can open on the new version instead.
+ */
+type NavigationListener = (url: string) => void;
+const navigationListeners = new Set<NavigationListener>();
+export function onAppNavigation(listener: NavigationListener): () => void {
+  navigationListeners.add(listener);
+  return () => navigationListeners.delete(listener);
+}
+function announceNavigation(url: string | URL | null | undefined): void {
+  if (url == null) return;
+  const href = String(url);
+  for (const l of Array.from(navigationListeners)) {
+    try { l(href); } catch {}
+  }
+}
+
 export function installAppHistory(h: HistoryLike = window.history): void {
   const holder = h as HistoryLike & { [INSTALLED]?: boolean };
   if (holder[INSTALLED]) return;
@@ -105,6 +124,7 @@ export function installAppHistory(h: HistoryLike = window.history): void {
   const origPush = h.pushState.bind(h);
   const origReplace = h.replaceState.bind(h);
   h.pushState = (data: unknown, unused: string, url?: string | URL | null) => {
+    announceNavigation(url);
     origPush(stampState(data, (readAppIndex(h.state) ?? 0) + 1), unused, url);
     // Advance the direction tracker on every push — wouter routes, guard
     // pushes, everything — so a later popstate compares against where we

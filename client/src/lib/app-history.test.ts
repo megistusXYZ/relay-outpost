@@ -24,6 +24,7 @@ import {
   appHistoryIndex,
   canGoBackInApp,
   APP_HISTORY_KEY,
+  onAppNavigation,
 } from "./app-history";
 
 /** A minimal history double that behaves like the real one for state. */
@@ -134,5 +135,20 @@ describe("installAppHistory", () => {
     expect(appHistoryIndex(h as any)).toBe(4);   // reload kept the depth
     h.pushState(null, "", "/b");
     expect(appHistoryIndex(h as any)).toBe(5);   // +1, not +2 from double-patch
+  });
+});
+
+describe("onAppNavigation", () => {
+  it("hears each in-app navigation with its destination, before the entry is pushed", () => {
+    const h = fakeHistory();
+    installAppHistory(h as any);
+    const heard: string[] = [];
+    const off = onAppNavigation((url) => heard.push(url + " @" + readAppIndex(h.state)));
+    h.pushState({}, "", "/discover");
+    h.pushState({}, "", "/thread/abc");
+    off();
+    h.pushState({}, "", "/messages");
+    // The index seen by the listener is the entry being LEFT (the push comes after).
+    expect(heard).toEqual(["/discover @0", "/thread/abc @1"]);
   });
 });
