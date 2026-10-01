@@ -910,7 +910,13 @@ export function QuoteComposer({
  * `variant="card"` is the original bordered quote, kept for the collapsed mode
  * someone opts into in Settings.
  */
-export function ParentPostPreview({ event, variant = "card" }: { event: Event; variant?: "card" | "spine" }) {
+/**
+ * variant "note" is the margin note (reply-margin.ts): the same content as
+ * "card", but it sits on the PAGE rather than inside a post card, so it gets a
+ * real card surface and border. On the light page the inset card's 15% tint
+ * and 20% border all but vanished (measured 2026-10-01).
+ */
+export function ParentPostPreview({ event, variant = "card" }: { event: Event; variant?: "card" | "spine" | "note" }) {
   const [, navigate] = useLocation();
   const parentAuthorProfile = use$(() => eventStore.replaceable(KIND_METADATA, event.pubkey), [event.pubkey]);
   const fallback = shortenNpub(formatNpub(event.pubkey));
@@ -949,7 +955,9 @@ export function ParentPostPreview({ event, variant = "card" }: { event: Event; v
         // what comes next, and a line that fades out at the bottom says the
         // opposite of that.
         ? "relative pl-6 pb-3 cursor-pointer group/parent"
-        : "rounded-lg bg-muted/15 border border-border/20 border-l-2 border-l-brand/40 dark:border-l-brand/30 p-2.5 space-y-1.5 shadow-sm dark:shadow-md dark:shadow-black/20 cursor-pointer hover:bg-muted/25 transition-colors"}
+        : variant === "note"
+          ? "rounded-lg bg-card border border-border/60 dark:border-white/[0.07] border-l-2 border-l-brand/50 dark:border-l-brand/40 p-2.5 space-y-1.5 shadow-sm shadow-black/[0.04] dark:shadow-none cursor-pointer hover:border-border transition-colors"
+          : "rounded-lg bg-muted/15 border border-border/20 border-l-2 border-l-brand/40 dark:border-l-brand/30 p-2.5 space-y-1.5 shadow-sm dark:shadow-md dark:shadow-black/20 cursor-pointer hover:bg-muted/25 transition-colors"}
       data-testid={`parent-preview-${event.id}`}
       onClick={(e) => { e.stopPropagation(); navigate(noteUrl); }}
     >
@@ -974,7 +982,7 @@ export function ParentPostPreview({ event, variant = "card" }: { event: Event; v
         <Link href={profileUrl} data-testid={`link-parent-name-${event.id}`} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
           <span className="text-[11px] font-semibold text-foreground/80 cursor-pointer truncate max-w-[160px]">{name}</span>
         </Link>
-        <span className="text-[11px] text-muted-foreground/60">{timeAgo}</span>
+        <span className={`text-[11px] ${variant === "note" ? "text-muted-foreground" : "text-muted-foreground/60"}`}>{timeAgo}</span>
       </div>
       {contentText && (
         // Context, not the post: three lines at most, and tapping opens the

@@ -3002,12 +3002,15 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
       {/* Margin notes (nostr-post/reply-margin.ts): where the surface has a
           margin, the context below is set beside the post instead of inside
           it. Same states — found, never asked, loading — in a different place. */}
-      {inMargin && marginSlot?.el && createPortal(
+      {/* A parent that does not exist leaves no note at all: a bare "In reply
+          to" over nothing is a label for something that isn't there. (With the
+          setting off, the line stays: it still names who was answered.) */}
+      {inMargin && marginSlot?.el && !(parentNotFound && replyContextOn) && createPortal(
         <div data-testid={`margin-note-${event.id}`}>
           {/* The reply-context setting holds here too. Off: the margin names
               who is being answered and offers the context on a tap — the same
               choice the card gives, in the same words. On: the note shows. */}
-          <div className="flex items-center gap-1.5 mb-1.5 text-[11px] text-muted-foreground/70">
+          <div className="flex items-center gap-1.5 mb-1.5 text-[11px] text-muted-foreground">
             <CornerUpLeft className="w-3 h-3 shrink-0" />
             <span>In reply to</span>
             {!replyContextOn && replyToName && (
@@ -3017,7 +3020,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
             )}
             {!replyContextOn && (
               <button
-                className="ml-auto shrink-0 flex items-center gap-0.5 text-[11px] text-muted-foreground/70 hover:text-foreground cursor-pointer"
+                className="ml-auto shrink-0 flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
                 onClick={handleShowParent}
                 data-testid={`button-margin-show-parent-${event.id}`}
               >
@@ -3027,11 +3030,11 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
             )}
           </div>
           {!showParentPost ? null : parentEvent ? (
-            <ParentPostPreview event={parentEvent} variant="card" />
+            <ParentPostPreview event={parentEvent} variant="note" />
           ) : parentNotFound ? null : parentUnreached ? (
             <button
               onClick={(e) => { e.stopPropagation(); retryParentFetch(); }}
-              className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/40 dark:bg-muted/20 border border-border dark:border-border/20 text-[11px] text-muted-foreground/80 cursor-pointer w-full text-left"
+              className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/40 dark:bg-muted/20 border border-border dark:border-border/20 text-[11px] text-muted-foreground cursor-pointer w-full text-left"
               data-testid={`parent-retry-${event.id}`}
             >
               Context didn't load — tap to retry
@@ -3039,7 +3042,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
           ) : (
             <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/40 dark:bg-muted/20 border border-border dark:border-border/20" data-testid={`parent-loading-${event.id}`}>
               <RelayOutpostInlineLoader />
-              <span className="text-[11px] text-muted-foreground/80">Loading…</span>
+              <span className="text-[11px] text-muted-foreground">Loading…</span>
             </div>
           )}
         </div>,
