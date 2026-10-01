@@ -532,3 +532,33 @@ export function sectionChatEntries(
   if (communities.length) sections.push({ title: "Communities", entries: communities });
   return sections;
 }
+
+/**
+ * The chat home's ⋯ menu (owner, 2026-10-01: "too much and clutter").
+ *
+ * The header rail held search, the private-mode eye, refresh, the New button,
+ * then a wrapping row of counted chips with a Real-names toggle, then a
+ * Messages/Deleted tab bar: four rows of controls before the first chat.
+ * Every messenger shows one row — search and compose — and keeps the rest
+ * behind one menu. The menu is built here so the order and the conditions
+ * are one table, in the order people reach for them: the move you make
+ * before sharing a screen first, then checking for mail, then the glances.
+ */
+export type ChatHomeMenuItem = { key: "private" | "refresh" | "real-names" | "deleted"; label: string };
+
+export function chatHomeMenu(o: {
+  isMobile: boolean;
+  privateMasked: boolean;
+  hasPetnames: boolean;
+  showingRealNames: boolean;
+  deletedCount: number;
+}): ChatHomeMenuItem[] {
+  const items: ChatHomeMenuItem[] = [{ key: "private", label: o.privateMasked ? "Show chats" : "Hide chats" }];
+  // Touch refreshes by pulling the list; the button would be a second
+  // spelling of one gesture. Desktop has no pull and keeps it.
+  if (!o.isMobile) items.push({ key: "refresh", label: "Check for new messages" });
+  // A real-names switch for someone who renamed nobody is a dead control.
+  if (o.hasPetnames) items.push({ key: "real-names", label: o.showingRealNames ? "Show your names" : "Show real names" });
+  if (o.deletedCount > 0) items.push({ key: "deleted", label: `Deleted (${o.deletedCount})` });
+  return items;
+}
