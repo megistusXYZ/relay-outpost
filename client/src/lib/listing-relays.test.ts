@@ -1,13 +1,19 @@
 /**
  * Where to ask for what a person sells (the profile's Shop tab).
  *
- * Measured 2026-10-01 on a seller with six listings: the lookup asked the
- * marketplace relay plus only the first three fast relays, and waited for all
- * of them. The marketplace relay now answers a read with an AUTH challenge and
- * then nothing (0 of 7 direct probes answered, 20 s each), so every lookup ran
- * its full 8 s; and of the other three only damus had the listings, so a
- * rate-limited damus meant no Shop tab at all (3 of 6 loads). A fourth default
- * relay that was never asked had all of them, in one second.
+ * Measured 2026-10-01 on one seller's profile: the lookup asked the
+ * marketplace relay plus only the first three fast relays, and waited for ALL
+ * of them, so one relay that didn't finish held it for the full 8 s on every
+ * load; and when neither of the two relays that had the listings delivered in
+ * that time there was no Shop tab at all (3 of 6 loads). A default relay that
+ * was never asked had the listings, in one second.
+ *
+ * CORRECTION to the first version of this note: it said the marketplace relay
+ * "answers a read with an AUTH challenge and then nothing". That was a
+ * command-line probe. From a browser the same relay sends the challenge and
+ * then answers normally (catalog: 100 events in 0.5 s; this seller: 50 in
+ * 0.4 s, 6 of 6) — it ignores sockets without a browser Origin. Which relay
+ * held the old lookup was never pinned down; the fix does not depend on it.
  */
 import { describe, it, expect } from "vitest";
 import { sellerListingRelays, collapseRelistings, LISTING_RELAYS, type Listing } from "./listing";
