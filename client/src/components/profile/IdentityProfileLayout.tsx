@@ -276,10 +276,14 @@ export function IdentityProfileLayout({ data, actions, miniActions, networkSlot,
               the big card has left, then the stream's companion — the time
               spine and the pictures from the stretch being read — which
               IdentityProfileMain renders into the slot (it owns the stream). */}
-          <div className="hidden lg:flex flex-col gap-4 sticky top-4" data-testid="identity-rail-pinned">
+          {/* Never taller than the screen: a pinned block that runs past the
+              bottom can't be scrolled to — its last card was simply cut off
+              (owner report, 2026-10-01). The spine gives way first: it scrolls
+              inside itself; the identity and the pictures keep their size. */}
+          <div className="hidden lg:flex flex-col gap-4 sticky top-4 max-h-[calc(100dvh-6rem)]" data-testid="identity-rail-pinned">
             {pinned && (
               <div
-                className="flex flex-wrap xl:flex-nowrap items-center gap-2.5 rounded-xl border border-border/60 dark:border-white/[0.07] bg-card p-2.5 shadow-sm shadow-black/[0.04] dark:shadow-none motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200"
+                className="flex flex-wrap xl:flex-nowrap items-center gap-2.5 rounded-xl border border-border/60 dark:border-white/[0.07] bg-card p-2.5 shrink-0 shadow-sm shadow-black/[0.04] dark:shadow-none motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200"
                 data-testid="identity-rail-mini"
               >
                 <Avatar className="w-10 h-10 shrink-0 border border-border">
@@ -297,7 +301,7 @@ export function IdentityProfileLayout({ data, actions, miniActions, networkSlot,
                 {miniActions}
               </div>
             )}
-            <div id={COMPANION_SLOT_ID} className="flex flex-col gap-4" />
+            <div id={COMPANION_SLOT_ID} className="flex flex-col gap-4 min-h-0" />
           </div>
         </aside>
 

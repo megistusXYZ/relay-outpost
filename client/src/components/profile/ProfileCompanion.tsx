@@ -76,8 +76,15 @@ export function ProfileCompanion({
 
   // The dot sits beside the active row.
   useLayoutEffect(() => {
-    const on = spineRef.current?.querySelector<HTMLElement>("[data-on='true']");
+    const list = spineRef.current;
+    const on = list?.querySelector<HTMLElement>("[data-on='true']");
     setThumbTop(on ? on.offsetTop + on.offsetHeight / 2 - 6 : null);
+    // Keep the active row inside the spine's own scroll box. Done by hand:
+    // scrollIntoView would be free to scroll the page as well.
+    if (list && on) {
+      if (on.offsetTop < list.scrollTop) list.scrollTop = on.offsetTop - 8;
+      else if (on.offsetTop + on.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = on.offsetTop + on.offsetHeight - list.clientHeight + 8;
+    }
   }, [current, chapters, slot]);
 
   const scrollTo = (el: Element | null | undefined) => {
@@ -98,14 +105,21 @@ export function ProfileCompanion({
   const goOlder = () => scrollTo(streamRef.current?.lastElementChild);
 
   if (!slot || chapters.length === 0) return null;
-  const from = mediaForChapter(media, current);
+  // Three pictures: one wide, two below. More made the panel taller than the
+  // room a pinned rail has.
+  const from = mediaForChapter(media, current, 3);
 
   return createPortal(
     <>
-      <section className="rounded-xl border border-border/60 dark:border-white/[0.07] bg-card p-3 shadow-sm shadow-black/[0.04] dark:shadow-none" data-testid="companion-spine">
+      {/* The spine is the part that gives way when the screen is short or the
+          history long: it scrolls inside itself and keeps the active row in
+          view, so the pictures below are never pushed off the screen. */}
+      <section className="flex flex-col min-h-[8.5rem] rounded-xl border border-border/60 dark:border-white/[0.07] bg-card p-3 shadow-sm shadow-black/[0.04] dark:shadow-none" data-testid="companion-spine">
         <h2 className={`${TILE_TITLE} mb-2`}>Jump through time</h2>
-        <div ref={spineRef} className="relative pl-6">
-          <span className="absolute left-[7px] top-1.5 bottom-1.5 w-0.5 rounded bg-border/70" aria-hidden="true" />
+        {/* No scrollbar (owner call): the spine still scrolls by wheel, touch and
+            by following the page; a soft fade at each end says there is more. */}
+        <div ref={spineRef} className="relative pl-6 min-h-0 overflow-y-auto no-scrollbar py-2 [mask-image:linear-gradient(to_bottom,transparent,black_10px,black_calc(100%-10px),transparent)]">
+          <span className="absolute left-[7px] top-3 bottom-3 w-0.5 rounded bg-border/70" aria-hidden="true" />
           {thumbTop !== null && (
             <span
               className="absolute left-0.5 w-3 h-3 rounded-full bg-primary ring-4 ring-primary/15 motion-safe:transition-[top] motion-safe:duration-300 motion-safe:ease-out"
@@ -145,7 +159,7 @@ export function ProfileCompanion({
       </section>
 
       {from.items.length > 0 && (
-        <section className="rounded-xl border border-border/60 dark:border-white/[0.07] bg-card p-3 shadow-sm shadow-black/[0.04] dark:shadow-none" data-testid="companion-media">
+        <section className="shrink-0 rounded-xl border border-border/60 dark:border-white/[0.07] bg-card p-3 shadow-sm shadow-black/[0.04] dark:shadow-none" data-testid="companion-media">
           <div className="flex items-baseline justify-between mb-2">
             <h2 className={TILE_TITLE}>{from.fallback ? "Recent" : "From this time"}</h2>
             {!from.fallback && <span className="text-[11px] text-muted-foreground" data-testid="companion-media-label">{from.label}</span>}
@@ -159,7 +173,7 @@ export function ProfileCompanion({
                 type="button"
                 onClick={() => goToPost(m.eventId)}
                 className={`group relative overflow-hidden rounded-lg bg-muted/30 border border-border/40 hover:ring-2 hover:ring-primary/30 transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                  i === 0 ? "col-span-2 aspect-video" : "aspect-[4/3]"
+                  i === 0 ? "col-span-2 aspect-[2/1]" : "aspect-[4/3]"
                 }`}
                 aria-label={m.isVideo ? "Video — go to the post" : "Photo — go to the post"}
                 title="Go to the post"
