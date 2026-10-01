@@ -7,7 +7,7 @@
  * Reuses the profile page's already-loaded data (allNotes / replyNotes /
  * mediaUrls) and the shared NostrPost renderer — no data-layer fork.
  */
-import { Fragment, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { nip19, type Event } from "nostr-tools";
 import { useLocation } from "wouter";
 import { NostrPost } from "@/components/NostrPost";
@@ -26,6 +26,7 @@ import { chipDimmed } from "@/lib/profile-chips";
 import { extractMediaFromContent } from "@/lib/media-utils";
 import { timeChapter, streamChapters, type CompanionMedia } from "@/lib/profile-companion";
 import { ProfileCompanion } from "@/components/profile/ProfileCompanion";
+import { ReplyMarginContext, MARGIN_NOTES_MIN_WIDTH } from "@/components/nostr-post/reply-margin";
 import { Play } from "lucide-react";
 import { TILE_TITLE } from "@/components/discover-tile-title";
 
@@ -38,6 +39,56 @@ import { TILE_TITLE } from "@/components/discover-tile-title";
 type StreamFilter = "all" | "posts" | "replies" | "articles" | "media";
 
 /** Videos render as a poster + ▶ in the montage; images as <img>. */
+
+/** True from the width where the profile has a right margin for notes. */
+function useHasMargin(): boolean {
+  const query = `(min-width: ${MARGIN_NOTES_MIN_WIDTH}px)`;
+  const [wide, setWide] = useState(() => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(query).matches);
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia(query);
+    const onChange = () => setWide(mq.matches);
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [query]);
+  return wide;
+}
+
+/**
+ * One row of the stream. On a wide screen it carries a margin slot to its
+ * right, level with the post: a reply's context is set there (margin notes).
+ * The slot is clipped to the row's own height, so a note can never run into
+ * the next row's.
+ */
+function StreamRow({ event, repostedBy, hasMargin }: { event: Event; repostedBy: { pubkey: string; timestamp: number } | null; hasMargin: boolean }) {
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  const margin = useMemo(() => ({ eventId: event.id, el: hasMargin ? slot : null }), [event.id, hasMargin, slot]);
+  return (
+    <div className="relative">
+      {/* data-stream-id: the rail's picture tiles jump to their post,
+          which flashes a ring so the eye lands on it. */}
+      <div data-stream-id={event.id} className="scroll-mt-4 rounded-xl border border-border/60 bg-card overflow-hidden hover:border-border transition-[border-color,box-shadow] data-[flash=true]:ring-2 data-[flash=true]:ring-primary/50">
+        <ErrorBoundary>
+          {event.kind === KIND_LONG_FORM
+            ? <ArticleStreamRow event={event} />
+            : (
+              <ReplyMarginContext.Provider value={margin}>
+                <NostrPost event={event} repostedBy={repostedBy} />
+              </ReplyMarginContext.Provider>
+            )}
+        </ErrorBoundary>
+      </div>
+      {hasMargin && (
+        <aside
+          ref={setSlot}
+          className="absolute top-1 bottom-0 left-full ml-5 w-[280px] 2xl:w-[300px] overflow-hidden"
+          data-testid="margin-note-slot"
+        />
+      )}
+    </div>
+  );
+}
 
 export function IdentityProfileMain({
   allNotes,
@@ -173,6 +224,7 @@ export function IdentityProfileMain({
   // A row's time is the time it is SORTED by — a repost's is when it was
   // reposted — the same rule the headings below use.
   const streamRef = useRef<HTMLDivElement | null>(null);
+  const hasMargin = useHasMargin();
   const companionChapters = useMemo(
     () => streamChapters(stream.map((e) => ({ ts: repostMap?.get(e.id)?.timestamp ?? e.created_at }))),
     [stream, repostMap],
@@ -337,15 +389,7 @@ export function IdentityProfileMain({
                     <div className="flex-1 h-px bg-border/40" />
                   </div>
                 )}
-                {/* data-stream-id: the rail's picture tiles jump to their post,
-                    which flashes a ring so the eye lands on it. */}
-                <div data-stream-id={event.id} className="scroll-mt-4 rounded-xl border border-border/60 bg-card overflow-hidden hover:border-border transition-[border-color,box-shadow] data-[flash=true]:ring-2 data-[flash=true]:ring-primary/50">
-                  <ErrorBoundary>
-                    {event.kind === KIND_LONG_FORM
-                      ? <ArticleStreamRow event={event} />
-                      : <NostrPost event={event} repostedBy={repostMap?.get(event.id) || null} />}
-                  </ErrorBoundary>
-                </div>
+                <StreamRow event={event} repostedBy={repostMap?.get(event.id) || null} hasMargin={hasMargin} />
               </Fragment>
             );
           });
