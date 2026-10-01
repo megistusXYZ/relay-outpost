@@ -39,6 +39,38 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.12.0",
+    date: "2026-09-30",
+    title: "Opens faster, stays put, talks to more apps",
+    changes: [
+      { type: "new", text: "Group chats grew up. Private, encrypted groups now do what you'd expect from a chat app — polls, pinned messages, disappearing messages, photos, search, roles, invite links, asking to join — and they work with other apps that speak the same standard, so a group started somewhere else opens here with its rooms, its people and its history. What you've read and what you've muted follows you to every device." },
+      { type: "new", text: "A first day that makes sense. New here? You're welcomed once, shown how to keep your key safe before anything else, and offered real people to follow instead of an empty page. Not ready to sign up? Look around first — Discover and News are open to visitors." },
+      { type: "new", text: "News is calm now: only the sources you chose, one quiet column, your stories by day. Beside it there's a Listen lane for the shows you follow — and a suggested podcast can be opened and played before you decide to follow it. Internet radio stations shared in a post play right there." },
+      { type: "improved", text: "It opens. The app starts from what's already on your phone instead of waiting for the network, the white flash before the logo is gone, and new versions arrive by themselves at a quiet moment — no button to press, nothing to repair. If you're mid-post or on a call, it waits." },
+      { type: "improved", text: "You keep your place. Go into a post, come back, and you land on the exact line you left — nothing slides, nothing reloads under you. Pictures that load late above you no longer shove the page down on iPhone." },
+      { type: "improved", text: "Discover's front door only shows people who've earned it: every tile draws from highly trusted accounts, loads in about a second instead of nine, and paints your last visit instantly while it refreshes. And when we can't read someone's score, we say so — \"no score\" means unknown, not untrusted." },
+      { type: "improved", text: "Chats lost its clutter: one search box that finds both your conversations and new people, one New button, and everything else behind a single menu. Hide your chats in a tap before you share your screen." },
+      { type: "improved", text: "On a big screen, a profile keeps you company. Scroll someone's posts and the side of the page stays with you — who they are, a Follow button that never leaves, a timeline to jump through their history, and the pictures from the stretch you're reading." },
+      { type: "improved", text: "Your mute list is one private list that other apps respect, and the Articles page only surfaces writers with a reputation — the airdrop essays are gone." },
+      { type: "fixed", text: "Small things you'll feel: a like is one tap and counts once, a note reposted twice shows once, links to other Nostr apps open in the right place, long posts fold at the same length everywhere, and the calendar tells you plainly when it couldn't reach your relays instead of pretending your week is empty." },
+      { type: "fixed", text: "Under the hood, a security pass: location data is stripped from videos you upload, an invite link asks before connecting you to its relay, and several doors that should have been locked now are. The code is public — read it." },
+    ],
+    feedback: [
+      {
+        quote: "It shows a white screen or dark screen for way too long before the logo.",
+        attribution: "Beta tester — the report behind the new launch",
+      },
+      {
+        quote: "I don't want people going into settings to repair the app or update. So easy a grandma would understand.",
+        attribution: "The brief for updates. We removed the button.",
+      },
+      {
+        quote: "I don't like how this opens up an extra search section.",
+        attribution: "Chats has one search box now. Keep them coming — the Send feedback button is right below.",
+      },
+    ],
+  },
+  {
     version: "1.11.0",
     date: "2026-08-27",
     title: "Curated by the people who run the place",
