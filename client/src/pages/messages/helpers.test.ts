@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mergeChatEntries, sectionChatEntries, orderCommunitiesByActivity, needsSynthesizedPeopleSection, communitiesForTab, formatGroupTeaser, looksLikeOpaquePayload, chatFilterOptions, applyChatFilter, resolveChatFilter, firstUnreadChat, type ChatEntry, type GroupPreview } from "./helpers";
+import { mergeChatEntries, sectionChatEntries, orderCommunitiesByActivity, needsSynthesizedPeopleSection, communitiesForTab, formatGroupTeaser, looksLikeOpaquePayload, chatFilterOptions, applyChatFilter, resolveChatFilter, firstUnreadChat, chatHomeMenu, type ChatEntry, type GroupPreview } from "./helpers";
 import type { ConversationPreview } from "./helpers";
 
 const dm = (pubkey: string, lastTimestamp: number, unread = false): ConversationPreview =>
@@ -493,5 +493,33 @@ describe("firstUnreadChat", () => {
   it("nothing unread: nothing to open", () => {
     expect(firstUnreadChat([person("alice", false), groupChat("g1"), community])).toBeNull();
     expect(firstUnreadChat([])).toBeNull();
+  });
+});
+
+describe("the chat home's ⋯ menu", () => {
+  const base = { isMobile: false, privateMasked: false, hasPetnames: false, showingRealNames: false, deletedCount: 0 };
+
+  it("desktop, nothing renamed, nothing deleted: hide chats, then check for new messages", () => {
+    expect(chatHomeMenu(base).map((i) => i.key)).toEqual(["private", "refresh"]);
+  });
+
+  it("touch has no refresh item: pulling the list is the refresh", () => {
+    expect(chatHomeMenu({ ...base, isMobile: true }).map((i) => i.key)).toEqual(["private"]);
+  });
+
+  it("real names only exists for someone with petnames, and flips its wording", () => {
+    expect(chatHomeMenu({ ...base, hasPetnames: true }).find((i) => i.key === "real-names")?.label).toBe("Show real names");
+    expect(chatHomeMenu({ ...base, hasPetnames: true, showingRealNames: true }).find((i) => i.key === "real-names")?.label).toBe("Show your names");
+  });
+
+  it("the deleted folder appears only once something is in it, last, with its count", () => {
+    expect(chatHomeMenu({ ...base, deletedCount: 0 }).some((i) => i.key === "deleted")).toBe(false);
+    const full = chatHomeMenu({ ...base, hasPetnames: true, deletedCount: 3 });
+    expect(full.map((i) => i.key)).toEqual(["private", "refresh", "real-names", "deleted"]);
+    expect(full[3].label).toBe("Deleted (3)");
+  });
+
+  it("while chats are hidden the first item is the way back", () => {
+    expect(chatHomeMenu({ ...base, privateMasked: true })[0].label).toBe("Show chats");
   });
 });

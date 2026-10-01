@@ -29,7 +29,7 @@ import {
   Search,
   ShieldCheck,
   Undo2,
-  Users, } from "lucide-react";
+  Users, MoreHorizontal, } from "lucide-react";
 import { nip19 } from "nostr-tools";
 import type { ISigner } from "applesauce-signers";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -41,7 +41,7 @@ import { indicatorHeight, pullArmed } from "@/lib/pull-to-refresh";
 import { ChatListRow } from "./ChatListRow";
 import { IaMovedNotice } from "@/components/IaMovedNotice";
 import { buildCreateActions } from "./create-actions";
-import { getDMDisplayName, formatMessageTime, needsSynthesizedPeopleSection, sectionChatEntries, communitiesForTab, chatFilterOptions, applyChatFilter, resolveChatFilter, firstUnreadChat, type ChatFilter, type ChatEntry, type ConversationPreview, type DmTab, type OutpostPreview, type ProfileInfo } from "./helpers";
+import { getDMDisplayName, formatMessageTime, needsSynthesizedPeopleSection, sectionChatEntries, communitiesForTab, chatFilterOptions, applyChatFilter, resolveChatFilter, firstUnreadChat, chatHomeMenu, type ChatFilter, type ChatEntry, type ConversationPreview, type DmTab, type OutpostPreview, type ProfileInfo } from "./helpers";
 import { refreshOutcome, type RefreshOutcome } from "./refresh-outcome";
 import { canReachAny } from "@/lib/relay-reach";
 import { getMyDMReceiveRelays } from "@/lib/outbox";
@@ -967,6 +967,16 @@ export function ChatList({
     onFindCommunity: () => setLocation("/outposts"),
   });
 
+  // The ⋯ menu (helpers.chatHomeMenu): every utility that used to be its own
+  // control on the rail or the filter row.
+  const deletedCount = hiddenConvos.size + hiddenMsgIds.size;
+  const homeMenu = chatHomeMenu({ isMobile, privateMasked, hasPetnames: hasAnyPetnames(), showingRealNames: isShowingRealNames(), deletedCount });
+  const runHomeMenu = (key: (typeof homeMenu)[number]["key"]) => {
+    if (key === "private") togglePrivateMasked();
+    else if (key === "refresh") doRefresh();
+    else if (key === "real-names") toggleShowRealNames();
+    else if (key === "deleted") setShowDeleted(true);
+  };
   return (
     <>
       {/* No "Messages" title — the bottom nav labels this tab. Back, the
@@ -1141,62 +1151,61 @@ export function ChatList({
             searchExpanded ? "max-w-0 opacity-0 invisible -ml-1.5" : "max-w-72 opacity-100 visible"
           }`}
         >
-          {/* The real↔custom names glance moved to the filter row below
-              (owner call, 2026-08-18): it is the rarest control that lived on
-              this rail and only exists for people with petnames, so it was
-              costing the most contested strip on the screen its calm. */}
-          {/* The instant half of Private mode ("the eye hides your chats now;
-              the setting makes them start hidden") — always present so the
-              I'm-about-to-share-my-screen move is one tap, never a Settings
-              trip. Wallet-balance idiom. */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 shrink-0 touch-target"
-            onClick={togglePrivateMasked}
-            aria-label={privateMasked ? "Show chats" : "Hide chats (private mode)"}
-            title={privateMasked ? "Show chats" : "Hide chats (private mode)"}
-            data-testid="button-private-mode"
-          >
-            {privateMasked
-              ? <Eye className="w-4 h-4 text-brand" />
-              : <EyeOff className="w-4 h-4 text-muted-foreground/70" />}
-          </Button>
-          {/* Desktop-only (owner call, 2026-08-18): touch drives the SAME
-              doRefresh via pull-to-refresh on the list below — the native
-              idiom — so the button would be a second spelling of one gesture.
-              Desktop has no pull and keeps it. */}
-          {!isMobile && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 shrink-0 touch-target"
-              // Wrapped so the click event isn't passed as forceDecrypt — a plain
-              // refresh must respect batched-decryption mode; the deliberate
-              // decrypt pass has its own affordance (decryptPending in Messages).
-              onClick={doRefresh}
-              disabled={refreshing}
-              aria-label={refreshing ? "Checking for new messages" : "Check for new messages"}
-              title="Check for new messages"
-              data-testid="button-refresh-conversations"
-            >
-              {refreshResult === "up-to-date"
-                ? <Check className="w-4 h-4 text-emerald-500" data-testid="icon-refresh-done" />
-                : refreshResult === "unreachable"
-                  ? <RefreshCw className="w-4 h-4 text-amber-500" data-testid="icon-refresh-unreachable" />
-                  : <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />}
-            </Button>
-          )}
-          {/* min-w-0 + truncate, not shrink-0: this text now shares a row with
+          {/* min-w-0 + truncate, not shrink-0: this text shares a row with
               the search pill, and the 2.2s confirmation must never push the New
-              button off-screen on a phone. The icon (green check / amber) and
-              the button's title carry the same state at every width. */}
+              button off-screen on a phone. */}
           {refreshResult === "up-to-date" && (
             <span className="text-[11px] text-muted-foreground min-w-0 truncate" data-testid="text-refresh-done">Up to date</span>
           )}
           {refreshResult === "unreachable" && (
             <span className="text-[11px] text-amber-600 dark:text-amber-500 min-w-0 truncate" data-testid="text-refresh-unreachable">Couldn't reach — try again</span>
           )}
+          {/* ONE menu for the utilities (owner call, 2026-10-01: the rail was
+              "too much and clutter"). The private-mode eye, refresh, the
+              real-names glance and the Deleted folder each used to be their
+              own control — four rows of chrome before the first chat. The
+              list of items and their order is helpers.chatHomeMenu. While
+              chats are hidden the trigger wears the eye, so the way back is
+              visible without opening anything. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 shrink-0 touch-target"
+                aria-label={privateMasked ? "Chats are hidden — more" : "More"}
+                title="More"
+                data-testid="button-chat-home-menu"
+              >
+                {privateMasked
+                  ? <Eye className="w-4 h-4 text-brand" />
+                  : <MoreHorizontal className="w-4 h-4 text-muted-foreground/70" />}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="glass-dropdown min-w-[220px]">
+              {homeMenu.map((item) => (
+                <DropdownMenuItem
+                  key={item.key}
+                  className="gap-2.5 cursor-pointer py-2"
+                  onClick={() => runHomeMenu(item.key)}
+                  disabled={item.key === "refresh" && refreshing}
+                  data-testid={`menu-chat-home-${item.key}`}
+                >
+                  {item.key === "private" && (privateMasked ? <Eye className="w-4 h-4 text-brand" /> : <EyeOff className="w-4 h-4" />)}
+                  {item.key === "refresh" && (
+                    refreshResult === "up-to-date"
+                      ? <Check className="w-4 h-4 text-emerald-500" data-testid="icon-refresh-done" />
+                      : refreshResult === "unreachable"
+                        ? <RefreshCw className="w-4 h-4 text-amber-500" data-testid="icon-refresh-unreachable" />
+                        : <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+                  )}
+                  {item.key === "real-names" && <BookUser className="w-4 h-4" />}
+                  {item.key === "deleted" && <Archive className="w-4 h-4" />}
+                  <span className="text-sm">{item.label}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           {/* A LABELLED, FILLED CTA — not a ghost "+".
               Starting a conversation is the single most important action on an
               empty or near-empty chat home, and it was rendered as the lowest-
@@ -1239,107 +1248,65 @@ export function ChatList({
         </div>
       </div>
 
-      {/* THE CHAT-HOME FILTER. One row, identical on desktop and mobile — the
-          same chips, the same order, the same counts; only the horizontal
-          scroll is a phone concession, and it is harmless on a wide screen.
-          Self-hiding: `chatFilterOptions` returns nothing below two categories,
-          so a new account with only DMs never sees a control that cannot do
-          anything. Hidden entirely inside Requests and the deleted view, both
-          of which are already a filtered slice — a filter within a filter is
-          two controls fighting over one list. */}
-      {(filterOptions.length > 0 || hasAnyPetnames()) && dmTab === "primary" && !showDeleted && (
+      {/* THE CHAT-HOME FILTER. One line, identical on desktop and mobile — the
+          same chips, the same order; the line scrolls sideways rather than
+          wrapping, so it can never grow into a second or third row of chrome
+          (the counted chips plus the real-names toggle used to wrap into
+          three). A chip carries its unread badge and nothing else: on a chat
+          home the question is "where is something waiting for me", not "how
+          many rows are down there". Self-hiding: `chatFilterOptions` returns
+          nothing below two categories. Hidden inside Requests and the deleted
+          view, both already a filtered slice. */}
+      {filterOptions.length > 0 && dmTab === "primary" && !showDeleted && (
         <div
-          className="flex flex-wrap items-center gap-1.5 px-3 py-2 border-b border-border/20 shrink-0"
+          className="flex items-center gap-1.5 px-3 py-2 border-b border-border/20 shrink-0 overflow-x-auto no-scrollbar"
+          role="tablist"
+          aria-label="Filter chats"
           data-testid="chat-filter-row"
         >
-          {/* The tablist wraps ONLY the filters: the real-names glance below
-              shares the row but is a toggle, not a tab, and putting it inside
-              a tablist would announce it as one. The row itself renders when
-              EITHER exists — a petname user with a single chat category still
-              needs somewhere to find the glance. */}
-          {filterOptions.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 min-w-0" role="tablist" aria-label="Filter chats">
-              {maskChips(filterOptions, privateMasked).map((opt) => {
-                const active = activeFilter === opt.key;
-                return (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => setChatFilter(opt.key)}
-                    className={`shrink-0 flex items-center gap-1.5 rounded-full border px-3 min-h-[36px] text-xs font-medium transition-colors ${
-                      active
-                        ? "border-primary/40 bg-primary/15 text-foreground"
-                        : "border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted/40"
-                    }`}
-                    data-testid={`chat-filter-${opt.key}`}
-                  >
-                    {opt.label}
-                    {/* Unread wins the slot when there is any: on a chat home the
-                        question is "where is something waiting for me", not "how
-                        many rows are down there". Falls back to the plain total so
-                        the chip is never bare. */}
-                    {opt.unread > 0 ? (
-                      <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold tabular-nums">
-                        {opt.unread}
-                      </span>
-                    ) : opt.count !== null ? (
-                      <span className="text-[11px] text-muted-foreground/60 tabular-nums">{opt.count}</span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          {/* The real↔custom flip: one tap shows every subject's REAL name and
-              avatar (session-only — a glance, not a mode). Moved here from the
-              header rail (owner call, 2026-08-18) — it was the rarest control
-              up there. Rendered ONLY when at least one petname exists; a
-              real-names switch for someone who renamed nothing is a dead
-              control. ml-auto keeps it visually apart from the filters: same
-              row, different job. */}
-          {hasAnyPetnames() && (
-            <button
-              type="button"
-              onClick={toggleShowRealNames}
-              aria-label={isShowingRealNames() ? "Show your names" : "Show real names"}
-              title={isShowingRealNames() ? "Showing real names — tap for your names" : "Show real names"}
-              aria-pressed={isShowingRealNames()}
-              className={`ml-auto shrink-0 flex items-center gap-1.5 rounded-full border px-3 min-h-[36px] text-xs font-medium transition-colors ${
-                isShowingRealNames()
-                  ? "border-primary/40 bg-primary/15 text-foreground"
-                  : "border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted/40"
-              }`}
-              data-testid="button-show-real-names"
-            >
-              <BookUser className="w-3.5 h-3.5" />
-              Real names
-            </button>
-          )}
+          {maskChips(filterOptions, privateMasked).map((opt) => {
+            const active = activeFilter === opt.key;
+            return (
+              <button
+                key={opt.key}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setChatFilter(opt.key)}
+                className={`shrink-0 flex items-center gap-1.5 rounded-full border px-3 min-h-[36px] text-xs font-medium transition-colors ${
+                  active
+                    ? "border-primary/40 bg-primary/15 text-foreground"
+                    : "border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                }`}
+                data-testid={`chat-filter-${opt.key}`}
+              >
+                {opt.label}
+                {opt.unread > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold tabular-nums">
+                    {opt.unread}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
 
-
-      {(hiddenConvos.size > 0 || hiddenMsgIds.size > 0) && (
-        <div className="flex items-center border-b border-border/20 px-1">
+      {/* The deleted folder is a view WITHIN this list, opened from the ⋯ menu;
+          this line is its single way out (the Requests view has the same
+          shape). It replaced a permanent Messages/Deleted tab bar that gave a
+          folder most people never open half the header. */}
+      {showDeleted && (
+        <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border/20 shrink-0">
           <button
+            type="button"
             onClick={() => setShowDeleted(false)}
-            className={`flex-1 py-2 text-xs font-medium text-center transition-colors ${!showDeleted ? "text-foreground border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
-            data-testid="tab-active-messages"
+            className="flex items-center gap-1.5 min-h-[44px] md:min-h-[36px] px-2 -ml-2 rounded-lg text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+            data-testid="button-deleted-back"
           >
-            Messages
-          </button>
-          <button
-            onClick={() => setShowDeleted(true)}
-            className={`flex-1 py-2 text-xs font-medium text-center transition-colors flex items-center justify-center gap-1.5 ${showDeleted ? "text-foreground border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
-            data-testid="tab-deleted-messages"
-          >
-            <Archive className="w-3 h-3" />
+            <ArrowLeft className="w-4 h-4" />
             Deleted
-            <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[10px] leading-none">
-              {hiddenConvos.size + hiddenMsgIds.size}
-            </span>
+            <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[10px] leading-none tabular-nums">{deletedCount}</span>
           </button>
         </div>
       )}
