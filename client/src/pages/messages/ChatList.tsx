@@ -967,6 +967,19 @@ export function ChatList({
     onFindCommunity: () => setLocation("/outposts"),
   });
 
+  // "New chat" (menu or sheet) focuses the one search box; the keyboard and
+  // the people results below it are the whole affordance.
+  useEffect(() => {
+    if (!showNewChat) return;
+    searchInputRef.current?.focus();
+    // The intent is spent once the box has focus; left set, a second
+    // "New chat" would change nothing and focus nothing.
+    setShowNewChat(false);
+  }, [showNewChat, setShowNewChat]);
+  // A pasted address is a person too: offered as a row to start the chat.
+  const searchQuery = searchFilter.trim();
+  const keyQuery = searchQuery.startsWith("npub1") || /^[0-9a-f]{64}$/i.test(searchQuery);
+  const showPeopleResults = !privateMasked && searchQuery.length > 0 && (keyQuery || userSearchResults.length > 0 || userSearching);
   // The ⋯ menu (helpers.chatHomeMenu): every utility that used to be its own
   // control on the rail or the filter row.
   const deletedCount = hiddenConvos.size + hiddenMsgIds.size;
@@ -981,74 +994,11 @@ export function ChatList({
     <>
       {/* No "Messages" title — the bottom nav labels this tab. Back, the
           Primary/Requests filter, refresh, and compose share ONE row (below). */}
-      {showNewChat && (
-        <div className="p-3 border-b border-border/40 space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Start a new conversation</p>
-          <div className="relative">
-            <div className="flex items-center gap-2">
-              <SearchPill
-                containerClassName="flex-1"
-                placeholder="Search by name or handle…"
-                value={newChatInput}
-                onChange={(e) => setNewChatInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleNewChat(); }}
-                autoFocus
-                enterKeyHint="done"
-                data-testid="input-new-chat-pubkey"
-              />
-              <Button size="sm" onClick={handleNewChat} disabled={!newChatInput.trim()} data-testid="button-start-chat">
-                Start
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => { setShowNewChat(false); setNewChatInput(""); setUserSearchResults([]); }}
-                data-testid="button-cancel-new-chat"
-              >
-                Cancel
-              </Button>
-            </div>
-
-            {(userSearchResults.length > 0 || userSearching) && (
-              <div className="absolute left-0 right-0 top-full mt-1 z-30 rounded-lg border border-border/40 bg-background/95 backdrop-blur-md shadow-lg overflow-hidden max-h-[280px] overflow-y-auto" data-testid="container-user-search-results">
-                {userSearchResults.map((result) => (
-                  <button
-                    key={result.pubkey}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors text-left cursor-pointer"
-                    onClick={() => handleSelectSearchResult(result.pubkey)}
-                    data-testid={`button-search-result-${result.pubkey.slice(0, 8)}`}
-                  >
-                    <Avatar className="w-8 h-8 border border-border shrink-0">
-                      <AvatarImage src={result.picture} alt={result.displayName || result.name} />
-                      <AvatarFallback className="text-[10px] bg-muted text-muted-foreground">
-                        {(result.displayName || result.name || "?").slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium truncate">{result.displayName || result.name || "Unknown"}</div>
-                      {result.nip05 && (
-                        <Nip05Badge nip05={result.nip05} pubkey={result.pubkey} className="truncate" textClassName="text-[11px] text-primary/60" iconClassName="w-3 h-3" />
-                      )}
-                      {!result.nip05 && (
-                        <div className="text-[11px] text-muted-foreground/50 font-mono truncate">
-                          {nip19.npubEncode(result.pubkey).slice(0, 20)}...
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                ))}
-                {userSearching && (
-                  <div className="flex items-center gap-2 px-3 py-2.5 text-xs text-muted-foreground/60">
-                    <RelayOutpostInlineLoader className="w-3 h-3" />
-                    Searching the network...
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
+      {/* No second search box. "New chat" used to open a "Start a new
+          conversation" strip ABOVE the list's own search — two search fields
+          stacked on one screen (owner, 2026-10-01: "I don't like how this
+          opens up an extra search section"). The one search box now finds
+          chats AND people: New chat simply focuses it. */}
       {pendingDecryptCount > 0 && (
         <div className="p-2 border-b border-border/20">
           <button
@@ -1114,10 +1064,14 @@ export function ChatList({
             // Search results would surface names straight through the blur —
             // the one bypass that defeats the whole shield. Disabled, and says
             // why, until revealed.
-            placeholder={privateMasked ? "Private mode" : "Search conversations..."}
+            placeholder={privateMasked ? "Private mode" : "Search chats or people…"}
             disabled={privateMasked}
             value={privateMasked ? "" : searchFilter}
-            onChange={(e) => setSearchFilter(e.target.value)}
+            // One value, two readers: the list filters its rows on it, and
+            // Messages' people search (debounced, follows first, then the
+            // network) runs on the mirror.
+            onChange={(e) => { setSearchFilter(e.target.value); setNewChatInput(e.target.value); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && keyQuery) handleNewChat(); }}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             data-testid="input-search-conversations"
@@ -1133,6 +1087,9 @@ export function ChatList({
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
               setSearchFilter("");
+              setNewChatInput("");
+              setUserSearchResults([]);
+              setShowNewChat(false);
               setSearchFocused(false);
               searchInputRef.current?.blur();
             }}
@@ -1247,6 +1204,60 @@ export function ChatList({
           )}
         </div>
       </div>
+
+      {/* People who match the search, above the chats that do. Inline, in
+          the list's own section style — not a floating box over the rows. */}
+      {showPeopleResults && (
+        <div className="border-b border-border/20 shrink-0 max-h-[320px] overflow-y-auto" data-testid="container-user-search-results">
+          <div className="px-3 pt-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50" data-testid="chat-section-people-results">People</div>
+          {keyQuery && (
+            <button
+              type="button"
+              className="w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] hover:bg-muted/50 transition-colors text-left cursor-pointer"
+              onClick={handleNewChat}
+              data-testid="button-start-chat"
+            >
+              <span className="w-8 h-8 rounded-full border border-border bg-muted flex items-center justify-center shrink-0"><Plus className="w-4 h-4 text-muted-foreground" /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium">Start a chat</span>
+                <span className="block text-[11px] text-muted-foreground/50 font-mono truncate">{searchQuery.slice(0, 24)}…</span>
+              </span>
+            </button>
+          )}
+          {userSearchResults.map((result) => (
+            <button
+              key={result.pubkey}
+              type="button"
+              className="w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] hover:bg-muted/50 transition-colors text-left cursor-pointer"
+              onClick={() => handleSelectSearchResult(result.pubkey)}
+              data-testid={`button-search-result-${result.pubkey.slice(0, 8)}`}
+            >
+              <Avatar className="w-8 h-8 border border-border shrink-0">
+                <AvatarImage src={result.picture} alt={result.displayName || result.name} />
+                <AvatarFallback className="text-[10px] bg-muted text-muted-foreground">
+                  {(result.displayName || result.name || "?").slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium truncate">{result.displayName || result.name || "Unknown"}</div>
+                {result.nip05 ? (
+                  <Nip05Badge nip05={result.nip05} pubkey={result.pubkey} className="truncate" textClassName="text-[11px] text-primary/60" iconClassName="w-3 h-3" />
+                ) : (
+                  <div className="text-[11px] text-muted-foreground/50 font-mono truncate">
+                    {nip19.npubEncode(result.pubkey).slice(0, 20)}...
+                  </div>
+                )}
+              </div>
+            </button>
+          ))}
+          {userSearching && (
+            <div className="flex items-center gap-2 px-3 py-2.5 text-xs text-muted-foreground/60">
+              <RelayOutpostInlineLoader className="w-3 h-3" />
+              Searching the network...
+            </div>
+          )}
+        </div>
+      )}
 
       {/* THE CHAT-HOME FILTER. One line, identical on desktop and mobile — the
           same chips, the same order; the line scrolls sideways rather than
@@ -1484,7 +1495,9 @@ export function ChatList({
                 {!iaCollapsed && <ConcordPendingInvites onAccepted={onReloadGroups} />}
               </div>
             )}
-            {nothingToShow ? (
+            {/* People were found for this search: "No matches" under them would
+                contradict the rows just above it. */}
+            {nothingToShow && showPeopleResults ? null : nothingToShow ? (
               <div className="text-center py-12 px-4">
                 {dmTab === "primary" ? (
                   <>
