@@ -15,7 +15,7 @@ const profile = read("../../pages/Profile.tsx");
 
 describe("profile pinned rail", () => {
   it("is a desktop-only sticky block at the end of the rail, holding the companion's slot", () => {
-    expect(layout).toMatch(/className="hidden lg:flex flex-col gap-4 sticky top-4" data-testid="identity-rail-pinned"/);
+    expect(layout).toMatch(/className="hidden lg:flex flex-col gap-4 sticky top-4 max-h-\[calc\(100dvh-6rem\)\]" data-testid="identity-rail-pinned"/);
     expect(layout).toMatch(/<div id=\{COMPANION_SLOT_ID\}/);
   });
 
@@ -46,6 +46,16 @@ describe("profile pinned rail", () => {
   it("the spine shows labels only: no counts, no bars", () => {
     const spine = companion.slice(companion.indexOf('data-testid="companion-spine"'), companion.indexOf('data-testid="companion-older"'));
     expect(spine).not.toMatch(/\.length\}|count|%/);
+  });
+
+  it("never runs past the bottom of the screen: the spine scrolls inside itself, the pictures keep their place", () => {
+    // Owner report, 2026-10-01: the pictures card was cut off at the bottom —
+    // a pinned block taller than the screen has no way to be scrolled to.
+    expect(layout).toMatch(/id=\{COMPANION_SLOT_ID\} className="flex flex-col gap-4 min-h-0"/);
+    expect(companion).toMatch(/ref=\{spineRef\} className="relative pl-6 min-h-0 overflow-y-auto/);
+    expect(companion).toMatch(/className="shrink-0 rounded-xl[^"]*" data-testid="companion-media"/);
+    expect(companion).toMatch(/mediaForChapter\(media, current, 3\)/);
+    expect(companion).not.toMatch(/scrollIntoView\(\{ block: "nearest"/);
   });
 
   it("does no scroll work where the rail is not shown", () => {
