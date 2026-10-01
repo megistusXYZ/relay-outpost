@@ -24,7 +24,7 @@ import { isVideoMedia } from "@/lib/media-frame";
 import { mergeProfileStream } from "@/lib/profile-stream";
 import { chipDimmed } from "@/lib/profile-chips";
 import { Play } from "lucide-react";
-import { Images } from "lucide-react";
+import { TILE_TITLE } from "@/components/discover-tile-title";
 
 /**
  * The chip row IS the filter — there is no second control nested inside "All".
@@ -202,8 +202,8 @@ export function IdentityProfileMain({
       {montageMedia.length > 0 && (
         <section className="mb-4 px-3">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-              <Images className="w-3.5 h-3.5" /> Media
+            <h2 className={TILE_TITLE}>
+              Media
             </h2>
             <button onClick={() => selectFilter("media")} className="text-[11px] text-brand hover:underline" data-testid="identity-montage-all">See all</button>
           </div>
