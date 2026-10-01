@@ -7,11 +7,17 @@ import { Link, useLocation } from "wouter";
 import { use$ } from "applesauce-react/hooks";
 import { useRenderedContent, type ComponentMap } from "applesauce-react/hooks";
 import { eventStore, pool, publishEvent, fetchProfiles, fetchProfilesCached, DEFAULT_RELAYS, FAST_RELAYS, getEventRelays, throttledPoolSubscribe } from "@/lib/nostr";
-import { lookupById } from "@/lib/lookup-by-id";
+import { createIdBatcher } from "@/lib/lookup-by-id";
 import type { Subscribe } from "@/lib/collect-once";
 
-/** The app's throttled, health-aware subscribe, in the shape lookupById takes. */
+/** The app's throttled, health-aware subscribe, in the shape the batcher takes. */
 const subscribeById: Subscribe = (relays, filter, handlers) => throttledPoolSubscribe(relays, filter as never, handlers);
+/**
+ * One batcher for every post on screen: reply parents and quoted notes asked
+ * in the same moment travel in one request per relay (lib/lookup-by-id.ts).
+ * A profile of 90 replies made 630 requests; it makes about 7.
+ */
+const idLookups = createIdBatcher(subscribeById);
 import { noteShareId } from "@/lib/share-links";
 import { queryAnswered } from "@/lib/relay-reach";
 import { classifyParentTarget, orderedRelayCandidates, parentRelayCandidates } from "@/lib/parent-resolve";
@@ -1001,9 +1007,9 @@ export function EmbeddedNote({ eventId, encoded, relays, parentEventId }: { even
         parentEventId ? getEventRelays(parentEventId) : [],
         DEFAULT_RELAYS,
       ]);
-      // lookupById: found the moment it arrives, missing by the relays that
-      // answered — never held for the slowest relay (lib/lookup-by-id.ts).
-      promise = lookupById(subscribeById, candidates, eventId, 8_000)
+      // Batched by-id lookup: found the moment it arrives, missing by the
+      // relays that answered — never held for the slowest (lib/lookup-by-id.ts).
+      promise = idLookups.lookup(eventId, candidates)
         .then((res) => {
           const outcome = res.outcome;
           const ev = res.event;
@@ -2271,7 +2277,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
     // Found the moment the parent arrives; "missing" judged by the relays that
     // really answered. The old all-relays wait left found parents sitting
     // 4–8 s behind one stuck relay (lib/lookup-by-id.ts).
-    lookupById(subscribeById, relays, replyTargetId, 8_000).then((res) => {
+    idLookups.lookup(replyTargetId, relays).then((res) => {
       if (!mountedRef.current) return;
       const outcome = res.outcome;
       if (outcome === "found" && res.event) {
