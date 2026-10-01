@@ -147,7 +147,8 @@ import { loadEdition, saveEdition, mergeEditions, editionForSources } from "@/li
 import { stripHtml, formatDuration, type PodcastFeed } from "@/lib/podcast-index";
 import { clusterStories, type StoryCluster } from "@/lib/story-cluster";
 import { useNewsAlertPrefs } from "@/lib/news-alert-settings";
-import { AddRssFeedDialog } from "@/components/rss/AddRssFeedDialog";
+import { AddRssFeedDialog, FeedPreviewPanel } from "@/components/rss/AddRssFeedDialog";
+import { TILE_TITLE } from "@/components/discover-tile-title";
 import { GuestWall } from "@/components/GuestWall";
 import { NewsStoryRow } from "@/components/news/NewsStoryRow";
 
@@ -2337,6 +2338,8 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
   };
 
   // A show suggested from Podcast Index's trending list, followed in one tap.
+  // A suggested show opened for a listen before following it.
+  const [previewShow, setPreviewShow] = useState<PodcastFeed | null>(null);
   const renderSuggestedShow = (feed: PodcastFeed) => {
     const following = existingUrls.has(feed.url);
     return (
@@ -2351,10 +2354,18 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
             onError={(e) => { e.currentTarget.style.display = "none"; }}
           />
         )}
-        <div className="min-w-0 flex-1">
+        {/* The show opens before anyone follows it: episodes, a play button,
+            and Follow inside — nobody has to follow blindly. */}
+        <button
+          type="button"
+          className="min-w-0 flex-1 text-left min-h-[44px] rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={() => setPreviewShow(feed)}
+          data-testid={`button-open-show-${feed.id}`}
+        >
           <p className="truncate text-[15px] font-medium text-foreground">{feed.title}</p>
           {feed.author && <p className="truncate text-xs text-muted-foreground">{feed.author}</p>}
-        </div>
+          <p className="text-xs text-brand/80 mt-0.5">Listen first</p>
+        </button>
         <Button
           variant="outline"
           className="h-11 shrink-0 px-4 text-sm"
@@ -2970,7 +2981,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
 
               {listenMode === "trending" && (
                 <section data-testid="listen-trending">
-                  <h2 className="px-2 text-sm font-semibold text-foreground">Trending on Podcast Index</h2>
+                  <h2 className={`px-2 ${TILE_TITLE}`}>Trending on Podcast Index</h2>
                   <p className="px-2 pt-1 pb-2 text-sm text-muted-foreground">
                     {/* Podcast Index's trending list isn't a measure of listening,
                         so the copy doesn't claim it is. */}
@@ -2979,6 +2990,20 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                   <div className="divide-y divide-border/50">
                     {trending.feeds.map((feed) => renderSuggestedShow(feed))}
                   </div>
+                  <Dialog open={!!previewShow} onOpenChange={(open) => { if (!open) setPreviewShow(null); }}>
+                    <DialogContent className="max-w-md max-h-[85dvh] overflow-y-auto p-5" data-testid="dialog-show-preview">
+                      <DialogTitle className="sr-only">{previewShow?.title ?? "Show"}</DialogTitle>
+                      {previewShow && (
+                        <FeedPreviewPanel
+                          feed={previewShow}
+                          isAdded={existingUrls.has(previewShow.url)}
+                          onBack={() => setPreviewShow(null)}
+                          onAdd={(f) => { handleAddFeed(podcastFeedToSaved(f)); }}
+                          addLabel="Follow"
+                        />
+                      )}
+                    </DialogContent>
+                  </Dialog>
                 </section>
               )}
 
