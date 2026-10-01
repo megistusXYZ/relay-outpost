@@ -20,7 +20,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Nip05Badge } from "@/components/Nip05Badge";
 import { TrustTierGlyph } from "@/components/nostr-post/trust-tier-glyph";
 import { LIVE_BANNER_RING, LiveBannerOverlay, useProfileLiveStream } from "./LiveNowBanner";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { scrollRootFor } from "@/lib/scroll-root";
+import { COMPANION_SLOT_ID } from "@/components/profile/ProfileCompanion";
 import { Pencil } from "lucide-react";
 import { getPetname, usePetnamesVersion } from "@/lib/petnames";
 import { PetnameDialog } from "@/components/PetnameDialog";
@@ -104,7 +107,7 @@ function CirclesAndCommunities({ circleSlot, communitiesSlot }: { circleSlot?: R
   );
 }
 
-export function IdentityProfileLayout({ data, actions, networkSlot, overflowSlot, circleSlot, communitiesSlot, vouchSlot, onZapLud16, onSeeNetwork, children }: { data: IdentityProfileData; actions: ReactNode; networkSlot?: ReactNode; overflowSlot?: ReactNode; circleSlot?: ReactNode; communitiesSlot?: ReactNode; vouchSlot?: ReactNode; onZapLud16?: () => void; /** Opens the following/followers list from the counts under the name. */ onSeeNetwork?: () => void; children: ReactNode }) {
+export function IdentityProfileLayout({ data, actions, miniActions, networkSlot, overflowSlot, circleSlot, communitiesSlot, vouchSlot, onZapLud16, onSeeNetwork, children }: { data: IdentityProfileData; actions: ReactNode; /** Follow + Message for the pinned rail's compact identity (desktop). */ miniActions?: ReactNode; networkSlot?: ReactNode; overflowSlot?: ReactNode; circleSlot?: ReactNode; communitiesSlot?: ReactNode; vouchSlot?: ReactNode; onZapLud16?: () => void; /** Opens the following/followers list from the counts under the name. */ onSeeNetwork?: () => void; children: ReactNode }) {
   const joined = data.joinedAt ? new Date(data.joinedAt * 1000).toLocaleDateString(undefined, { month: "short", year: "numeric" }) : null;
   const showTrust = data.wotEnabled && !!data.grapeRankTier && data.grapeRankTier !== "none";
   const liveStream = useProfileLiveStream(data.pubkey);
@@ -114,6 +117,22 @@ export function IdentityProfileLayout({ data, actions, networkSlot, overflowSlot
   usePetnamesVersion();
   const [petnameOpen, setPetnameOpen] = useState(false);
   const petname = getPetname("person", data.pubkey)?.name;
+
+  // The pinned rail (desktop): once the identity card has scrolled away, a
+  // compact identity takes its place at the top of the rail, so the person
+  // and the Follow button never leave the screen on a long profile.
+  const identityCardRef = useRef<HTMLDivElement | null>(null);
+  const [pinned, setPinned] = useState(false);
+  useEffect(() => {
+    const card = identityCardRef.current;
+    if (!card || typeof IntersectionObserver !== "function") return;
+    const io = new IntersectionObserver(
+      ([entry]) => setPinned(!entry.isIntersecting && entry.boundingClientRect.bottom < (entry.rootBounds?.top ?? 0) + 1),
+      { root: scrollRootFor(card), threshold: 0 },
+    );
+    io.observe(card);
+    return () => io.disconnect();
+  }, []);
 
   return (
     // min-w-0 w-full: this container sits in a column-flex scroller, where a
@@ -140,12 +159,15 @@ export function IdentityProfileLayout({ data, actions, networkSlot, overflowSlot
         className={liveStream ? LIVE_BANNER_RING : undefined}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5 mt-4">
+      {/* Desktop: a wider rail and a reading-width stream (posts ran to 845px
+          a line). The rail's column is as tall as the stream, which is what
+          lets its last block pin for the whole scroll. */}
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,680px)] xl:justify-center gap-5 mt-4">
         {/* ── Left rail ─────────────────────────────────────────── */}
         <aside className="space-y-4">
           {/* Identity — NOT clipped (overflow-visible) so the avatar can lift
               over the banner without its top being cropped. */}
-          <div className="rounded-xl border border-border/60 dark:border-white/[0.07] bg-card p-3 shadow-sm shadow-black/[0.04] dark:shadow-none">
+          <div ref={identityCardRef} className="rounded-xl border border-border/60 dark:border-white/[0.07] bg-card p-3 shadow-sm shadow-black/[0.04] dark:shadow-none">
             {/* The -mt-14 lifts the avatar over the COVER IMAGE — the classic
                 profile idiom. While live, the cover's bottom edge carries the
                 broadcast's title and Watch button, and the lift would land the
@@ -248,6 +270,35 @@ export function IdentityProfileLayout({ data, actions, networkSlot, overflowSlot
           )}
 
           {/* Circle + Vouched-by land here in the next chunk (config lists them). */}
+          {/* ── The pinned rail (desktop only) ──────────────────────
+              Everything above ends after about 900px; a busy profile scrolls
+              for 40,000. This block pins for the rest: a compact identity once
+              the big card has left, then the stream's companion — the time
+              spine and the pictures from the stretch being read — which
+              IdentityProfileMain renders into the slot (it owns the stream). */}
+          <div className="hidden lg:flex flex-col gap-4 sticky top-4" data-testid="identity-rail-pinned">
+            {pinned && (
+              <div
+                className="flex flex-wrap xl:flex-nowrap items-center gap-2.5 rounded-xl border border-border/60 dark:border-white/[0.07] bg-card p-2.5 shadow-sm shadow-black/[0.04] dark:shadow-none motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200"
+                data-testid="identity-rail-mini"
+              >
+                <Avatar className="w-10 h-10 shrink-0 border border-border">
+                  <AvatarImage src={data.avatarUrl} alt="" />
+                  <AvatarFallback className="text-xs bg-muted text-muted-foreground">{data.displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold leading-tight truncate">{data.displayName}</div>
+                  {typeof data.followers === "number" && (
+                    <div className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
+                      {new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(data.followers)} followers
+                    </div>
+                  )}
+                </div>
+                {miniActions}
+              </div>
+            )}
+            <div id={COMPANION_SLOT_ID} className="flex flex-col gap-4" />
+          </div>
         </aside>
 
         {/* ── Main column ───────────────────────────────────────── */}
