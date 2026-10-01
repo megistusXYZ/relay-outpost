@@ -169,28 +169,33 @@ describe("opening the app", () => {
     expect(w.preloadEnable).toHaveBeenCalled();
   });
 
-  it("a page cached over a day ago asks the network first", async () => {
+  // Until 2026-10-01 a page cached over a day ago asked the network first and
+  // waited up to 3 s for it. On a phone the first open of the day is the usual
+  // open, and it sat on the launch image for the whole cold-radio round trip
+  // (0.8 s to first paint on a 600 ms RTT in Chromium, against 0.18 s from
+  // cache). The reason for the wait — a build whose lazy chunks are gone — is
+  // handled on the page side now (lib/sw-shell.ts, lib/update-policy.ts).
+  it("a page cached over a day ago is answered at once too, even on a dead network", async () => {
+    w.fetch.mockResolvedValue(html("A"));
+    await (await w.navigate("/")).settle();
+    w.advance(25 * HOUR);
+    w.fetch.mockImplementation(never);
+    const r = await w.navigate("/");
+    const res = await Promise.race([r.responded!, new Promise<string>((ok) => setTimeout(() => ok("waited"), 50))]);
+    expect(typeof res).not.toBe("string");
+    expect(await (res as Response).text()).toContain("A");
+  });
+
+  it("…and the fresh page is kept behind it for the next launch", async () => {
     w.fetch.mockResolvedValue(html("A"));
     await (await w.navigate("/")).settle();
     w.advance(25 * HOUR);
     w.fetch.mockResolvedValue(html("B"));
     const r = await w.navigate("/");
-    expect(await (await r.responded!).text()).toContain("B");
-  });
-
-  it("…but falls back to it after 3 s rather than wait on a dead network", async () => {
-    vi.useFakeTimers();
-    try {
-      w.fetch.mockResolvedValue(html("A"));
-      await (await w.navigate("/")).settle();
-      w.advance(25 * HOUR);
-      w.fetch.mockImplementation(never);
-      const r = await w.navigate("/");
-      await vi.advanceTimersByTimeAsync(3000);
-      expect(await (await r.responded!).text()).toContain("A");
-    } finally {
-      vi.useRealTimers();
-    }
+    expect(await (await r.responded!).text()).toContain("A");
+    await r.settle();
+    expect(w.posted).toEqual([{ type: "ro-shell-updated" }]);
+    expect(await (await (await w.navigate("/")).responded!).text()).toContain("B");
   });
 
   it("offline with nothing cached says so", async () => {

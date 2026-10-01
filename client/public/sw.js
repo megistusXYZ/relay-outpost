@@ -7,11 +7,6 @@ const FONT_CACHE = `${CACHE_VERSION}-fonts`;
 const SHELL_CACHE = 'relay-outpost-shell';
 const SHELL_KEY = '/__ro_shell';
 const SHELL_AT = 'x-ro-cached-at';
-// A shell older than this is asked for fresh first (with a short wait), so
-// someone returning after days doesn't open a build whose lazy chunks may be
-// gone from the server.
-const SHELL_FRESH_MS = 24 * 60 * 60 * 1000;
-const SHELL_WAIT_MS = 3000;
 
 const STATIC_ASSETS = [
   '/manifest.json',
@@ -127,6 +122,14 @@ function isAppPage(url) {
  * behind it (the browser's navigation preload when it has one), keep it, and
  * tell open pages when it changed so they can move onto it quietly.
  * Returns the response and the background work to keep the worker alive for.
+ *
+ * The kept page is answered whatever its age. A page older than a day used to
+ * ask the network first and wait up to 3 s for it, so the first open of the
+ * day — the common one on a phone — sat on the launch image for the whole
+ * cold-radio round trip. The reason for that wait (a build whose lazy chunks
+ * are gone from the server) is handled on the page side now: a missing chunk
+ * reloads onto the fresh page (lib/sw-shell.ts), and a newer page is moved
+ * onto quietly at the next natural boundary (lib/update-policy.ts).
  */
 async function openShell(event) {
   const cache = await caches.open(SHELL_CACHE);
@@ -135,24 +138,16 @@ async function openShell(event) {
   const before = cached ? cached.clone().text() : Promise.resolve(null);
   const fresh = fetchShell(event.preloadResponse);
 
-  if (cached && Date.now() - Number(cached.headers.get(SHELL_AT) || 0) < SHELL_FRESH_MS) {
+  if (cached) {
     return { response: cached, background: fresh.then((next) => keepShell(next, before)) };
   }
 
-  // First open, or a stale page: the network first, the old page as a fallback.
+  // First open: the network, kept for the next launch.
   const kept = fresh.then(async (next) => {
     await keepShell(next.clone(), before);
     return next;
   });
-  const background = kept.catch(() => {});
-  if (!cached) {
-    return { response: kept.catch(() => new Response('Offline', { status: 503, statusText: 'Service Unavailable' })), background };
-  }
-  const response = Promise.race([
-    kept.catch(() => cached),
-    new Promise((resolve) => setTimeout(() => resolve(cached), SHELL_WAIT_MS)),
-  ]);
-  return { response, background };
+  return { response: kept.catch(() => new Response('Offline', { status: 503, statusText: 'Service Unavailable' })), background: kept.catch(() => {}) };
 }
 
 async function fetchShell(preloadResponse) {
