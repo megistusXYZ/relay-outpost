@@ -39,6 +39,29 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.13.0",
+    date: "2026-10-01",
+    title: "Notes in the margin, a shop on the profile",
+    changes: [
+      { type: "new", text: "Replies explain themselves. On a wide screen, the post someone is answering now sits in the margin right beside their reply — like a note in the margin of a book — so you can read down a profile and see both sides of every exchange without opening anything. Narrower screens keep it inside the card, as before, and if you've turned reply context off we respect that here too." },
+      { type: "new", text: "Sellers get a Shop. If someone has things for sale, their profile grows a Shop tab next to Posts and Media: the whole catalog as a clean grid, full product names, one tile per product even when it's been listed twice. It used to be a strip squeezed in above everything else." },
+      { type: "improved", text: "That context shows up fast. The post being answered now appears the moment any relay has it instead of waiting on the slowest one, and a whole screen of replies is asked for in one go. On a busy profile most of it is there within three seconds where it used to take seven — with far fewer \"didn't load\" notes." },
+      { type: "improved", text: "The side of a profile holds together at every window size. The name stays whole with Follow and Message tucked underneath, the timeline never runs off the bottom of the screen, and there's no scrollbar cutting through it." },
+      { type: "fixed", text: "Reposts are back on profiles. One relay that never finished connecting could hold the whole list hostage; now no single relay can, anywhere in the app. And a shop that only appeared on some visits appears on all of them." },
+      { type: "fixed", text: "Margin notes are readable in light mode — proper cards, proper contrast — and updates to the app now interrupt you for seconds, not minutes." },
+    ],
+    feedback: [
+      {
+        quote: "I think showing the for sale first and on top of the media is too much. Maybe condense the market within the tabs.",
+        attribution: "Beta tester — so it's a tab now",
+      },
+      {
+        quote: "This area seems cut off or broken.",
+        attribution: "It was. Sent with a screenshot, fixed the same day — the Send feedback button below works just as well.",
+      },
+    ],
+  },
+  {
     version: "1.12.0",
     date: "2026-09-30",
     title: "Opens faster, stays put, talks to more apps",
