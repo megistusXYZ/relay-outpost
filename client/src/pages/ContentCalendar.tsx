@@ -48,6 +48,7 @@ import { publishEvent } from "@/lib/nostr";
 import { signWithTimeout } from "@/lib/signer-timeout";
 import type { ISigner } from "applesauce-signers";
 import { getHolidaysForMonth, type Holiday } from "@/lib/calendar-holidays";
+import { calendarEmptyState } from "@/lib/calendar-empty-state";
 import { fetchAllSubscribedFeedEvents, getSubscribedFeeds, getLastFeedErrors, getFeedReminderSettings, getFeedReminderEnabledFeeds, FEED_REMINDER_OPTIONS, getScheduledFeedReminderIds, addScheduledFeedReminderId } from "@/lib/calendar-feeds";
 import { fetchSubscribedCreatorStreams, getSubscribedCreators } from "@/lib/creator-subscriptions";
 import { createGiftWrap, getDMRelaysForContact, publishWithFallback } from "@/lib/dm";
@@ -129,6 +130,8 @@ export default function ContentCalendar() {
 
   const [posts, setPosts] = useState<ScheduledPostWithDecrypted[]>([]);
   const [publishedItems, setPublishedItems] = useState<CalendarItem[]>([]);
+  // null until the relays have been asked; false = we never got to ask.
+  const [publishedReach, setPublishedReach] = useState<boolean | null>(null);
   // All resolved pinned events, window-agnostic. null = first fetch still in
   // flight (drives the saved-events skeletons in the agenda).
   const [pinnedEvents, setPinnedEvents] = useState<CalendarEventData[] | null>(null);
@@ -246,8 +249,11 @@ export default function ContentCalendar() {
     if (!pubkey) return;
     const version = ++fetchVersionRef.current;
     try {
-      const items = await fetchUserPublishedPosts(pubkey, loadStart, loadEnd);
-      if (fetchVersionRef.current === version) setPublishedItems(items);
+      const { data: items, reached } = await fetchUserPublishedPosts(pubkey, loadStart, loadEnd);
+      if (fetchVersionRef.current === version) {
+        setPublishedItems(items);
+        setPublishedReach(reached);
+      }
     } catch (err) {
       console.error("Failed to load published posts:", err);
     }
@@ -749,6 +755,9 @@ export default function ContentCalendar() {
   }
 
   const pinsStillLoading = hasPins && pinnedEvents === null;
+  // Content, loading, genuinely empty, or "we never got to ask" — never the
+  // last stated as the third (lib/calendar-empty-state.ts).
+  const emptyState = calendarEmptyState({ loading, hasItems: agendaDays.length > 0, reachedRelays: publishedReach });
   const pinsFailedToLoad = hasPins && pinnedEvents !== null && pinnedEvents.length === 0;
 
   return (
@@ -900,7 +909,7 @@ export default function ContentCalendar() {
             Subscriptions
           </button>
         </div>
-        <div className="hidden sm:flex sm:items-center sm:gap-1.5 sm:flex-wrap sm:justify-end sm:ml-3">
+        {allItems.length > 0 && <div className="hidden sm:flex sm:items-center sm:gap-1.5 sm:flex-wrap sm:justify-end sm:ml-3">
           {FILTER_CONFIG.map((f) => {
             const active = activeFilters.has(f.key);
             return (
@@ -928,7 +937,7 @@ export default function ContentCalendar() {
               Show all
             </button>
           )}
-        </div>
+        </div>}
       </div>
 
       {/* Week ribbon — the page's compact navigation. The month grid lives
@@ -966,35 +975,48 @@ export default function ContentCalendar() {
         />
       )}
 
-      {loading && agendaDays.length === 0 ? (
+      {emptyState === "loading" ? (
         <div className="flex items-center justify-center py-12">
           <RelayOutpostInlineLoader className="w-6 h-6 text-brand" />
         </div>
-      ) : agendaDays.length === 0 ? (
+      ) : emptyState === "unreachable" ? (
+        <div className="text-center py-12 px-4" data-testid="calendar-unreachable">
+          <CalendarAddIcon className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+          <p className="text-base font-medium text-foreground mb-1">Couldn't reach your relays</p>
+          <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+            Your posts and events are still there — we just couldn't ask for them right now.
+          </p>
+          <Button
+            className="min-h-[44px] px-5 bg-brand hover:bg-brand text-white"
+            onClick={() => { void loadPublishedPosts(); void loadPosts(); }}
+            data-testid="button-calendar-retry"
+          >
+            Try again
+          </Button>
+        </div>
+      ) : emptyState === "empty" ? (
         !pinsStillLoading && (
-          <div className="text-center py-12" data-testid="calendar-empty-state">
+          <div className="text-center py-12 px-4" data-testid="calendar-empty-state">
             <CalendarAddIcon className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Your calendar is empty</p>
-            <p className="text-[10px] text-gray-500 dark:text-gray-500 mb-3">
-              Schedule posts or discover community events to fill your calendar.
+            <p className="text-base font-medium text-foreground mb-1">Your week, in one place</p>
+            <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+              Posts you plan, events you're going to and holidays all show up here. Nothing yet.
             </p>
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
               <Button
-                size="sm"
-                className="h-8 px-4 text-xs bg-brand hover:bg-brand text-white"
+                className="min-h-[44px] px-5 bg-brand hover:bg-brand text-white"
                 onClick={() => window.dispatchEvent(new CustomEvent("open-compose-schedule"))}
               >
-                <Send className="w-3 h-3 mr-1.5" />
-                Schedule Post
+                <Send className="w-4 h-4 mr-2" />
+                Plan a post
               </Button>
               <Button
-                size="sm"
-                variant="outline"
-                className="h-8 px-4 text-xs border-sky-300 dark:border-sky-500/30 text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-500/10"
+                variant="ghost"
+                className="min-h-[44px] px-5 text-brand hover:bg-brand/10"
                 onClick={() => setShowEventSearch(true)}
               >
-                <Search className="w-3 h-3 mr-1.5" />
-                Discover Events
+                <Search className="w-4 h-4 mr-2" />
+                Find events
               </Button>
             </div>
           </div>

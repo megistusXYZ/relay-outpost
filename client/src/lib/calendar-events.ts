@@ -1,4 +1,5 @@
 import type { Event, Filter } from "nostr-tools";
+import { canReachAny, type Reached } from "@/lib/relay-reach";
 import type { ScheduledPostWithDecrypted } from "@/lib/schedule";
 import { pool, filterBlockedRelays, FAST_RELAYS, fetchProfilesCached, DEFAULT_RELAYS } from "@/lib/nostr";
 import { throttledSubscribe } from "@/lib/relay-throttler";
@@ -856,18 +857,26 @@ export async function fetchCalendarEventsByIds(eventIds: string[], refs?: Pinned
   });
 }
 
+/**
+ * The person's own posts in the window, with whether any relay could be
+ * asked at all. A dead relay EOSEs in ~150ms with nothing (nostr-tools
+ * invents it), so "all EOSEd, zero items" looked exactly like "nothing
+ * posted"; the calendar then said "empty" for a network it never reached.
+ * Connecting is the signal (lib/relay-reach.ts).
+ */
 export async function fetchUserPublishedPosts(
   pubkey: string,
   startDate: Date,
   endDate: Date,
-): Promise<CalendarItemPublished[]> {
-  return new Promise((resolve) => {
+): Promise<Reached<CalendarItemPublished[]>> {
+  const outpost = getOutpostRelays().map((r) => r.url);
+  const active = getActiveDefaultRelays();
+  const combined = [...new Set([...outpost, ...active, ...DEFAULT_RELAYS, ...FAST_RELAYS])];
+  const relays = filterBlockedRelays(sortRelaysByScore(getHealthyRelays(combined))).slice(0, 5);
+  if (!(await canReachAny(relays))) return { data: [], reached: false };
+  const data = await new Promise<CalendarItemPublished[]>((resolve) => {
     const items: CalendarItemPublished[] = [];
     const seenIds = new Set<string>();
-    const outpost = getOutpostRelays().map((r) => r.url);
-    const active = getActiveDefaultRelays();
-    const combined = [...new Set([...outpost, ...active, ...DEFAULT_RELAYS, ...FAST_RELAYS])];
-    const relays = filterBlockedRelays(sortRelaysByScore(getHealthyRelays(combined))).slice(0, 5);
     let eoseCount = 0;
     let resolved = false;
     const closers: Array<{ close(): void }> = [];
@@ -925,4 +934,5 @@ export async function fetchUserPublishedPosts(
       closers.push(closer);
     }
   });
+  return { data, reached: true };
 }

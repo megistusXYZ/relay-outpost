@@ -5,6 +5,7 @@
 // month grid survives behind the "Month" affordance as a sheet, not as the
 // page hero.
 import { useRef } from "react";
+import { weekRangeLabel } from "@/lib/calendar-week-label";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, CalendarDays, RefreshCw } from "lucide-react";
 import { addDays, dayKeyLocal } from "@/lib/calendar-agenda";
@@ -45,12 +46,9 @@ export function WeekRibbon({
   const weekEnd = days[6];
   const isCurrentWeek = today >= weekStart && today <= addDays(weekStart, 6);
 
-  // Label the week by the month most of it sits in (the Thursday pivot).
-  const pivot = days[4];
-  const monthLabel = pivot.toLocaleDateString([], {
-    month: "long",
-    ...(pivot.getFullYear() !== today.getFullYear() ? { year: "numeric" } : {}),
-  });
+  // The days this ribbon shows — not the month most of them sit in, which
+  // read "OCTOBER" over Sep 27 – Oct 3.
+  const monthLabel = weekRangeLabel(weekStart);
 
   // Light swipe support: horizontal drags over the chip row page the week.
   const touchStartX = useRef<number | null>(null);
