@@ -7,7 +7,7 @@
  * Reuses the profile page's already-loaded data (allNotes / replyNotes /
  * mediaUrls) and the shared NostrPost renderer — no data-layer fork.
  */
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useRef, useState, type ReactNode } from "react";
 import { nip19, type Event } from "nostr-tools";
 import { useLocation } from "wouter";
 import { NostrPost } from "@/components/NostrPost";
@@ -23,6 +23,9 @@ import { getOptimizedImageUrl } from "@/lib/nostr-helpers";
 import { isVideoMedia } from "@/lib/media-frame";
 import { mergeProfileStream } from "@/lib/profile-stream";
 import { chipDimmed } from "@/lib/profile-chips";
+import { extractMediaFromContent } from "@/lib/media-utils";
+import { timeChapter, streamChapters, type CompanionMedia } from "@/lib/profile-companion";
+import { ProfileCompanion } from "@/components/profile/ProfileCompanion";
 import { Play } from "lucide-react";
 import { TILE_TITLE } from "@/components/discover-tile-title";
 
@@ -35,21 +38,6 @@ import { TILE_TITLE } from "@/components/discover-tile-title";
 type StreamFilter = "all" | "posts" | "replies" | "articles" | "media";
 
 /** Videos render as a poster + ▶ in the montage; images as <img>. */
-
-/** Time "chapter" a post belongs to — turns the stream into a story with
- *  headings (Today / This week / …) instead of undifferentiated scroll. */
-function timeChapter(ts: number): string {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const d = new Date(ts * 1000);
-  d.setHours(0, 0, 0, 0);
-  const diffDays = Math.round((today.getTime() - d.getTime()) / 86_400_000);
-  if (diffDays <= 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return "This week";
-  if (diffDays < 31) return "This month";
-  return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-}
 
 export function IdentityProfileMain({
   allNotes,
@@ -180,6 +168,28 @@ export function IdentityProfileMain({
     return merged;
   }, [filter, merged, replyNotes, replyIds]);
 
+  // The desktop rail's companion (lib/profile-companion.ts): the chapters this
+  // stream shows, and the pictures in it, each tied to its post and chapter.
+  // A row's time is the time it is SORTED by — a repost's is when it was
+  // reposted — the same rule the headings below use.
+  const streamRef = useRef<HTMLDivElement | null>(null);
+  const companionChapters = useMemo(
+    () => streamChapters(stream.map((e) => ({ ts: repostMap?.get(e.id)?.timestamp ?? e.created_at }))),
+    [stream, repostMap],
+  );
+  const companionMedia = useMemo(() => {
+    const out: CompanionMedia[] = [];
+    for (const e of stream) {
+      if (e.kind === KIND_LONG_FORM) continue;
+      const chapter = timeChapter(repostMap?.get(e.id)?.timestamp ?? e.created_at);
+      for (const m of extractMediaFromContent(e.content).media) {
+        if (m.type !== "image" && m.type !== "video") continue;
+        out.push({ eventId: e.id, url: m.url, isVideo: isVideoMedia(m.url, mediaMeta?.[m.url]), poster: mediaMeta?.[m.url]?.poster, chapter });
+      }
+    }
+    return out;
+  }, [stream, repostMap, mediaMeta]);
+
   return (
     <div className="min-w-0">
       {/* Presence — one quiet line: lifetime totals and what they post about.
@@ -297,12 +307,15 @@ export function IdentityProfileMain({
       {/* Media opens the full library (photos · videos · audio · live ·
           articles) via the classic MediaSection's sub-tabs; everything else is
           the note stream, each post its OWN card with breathing room. */}
+      {filter !== "articles" && filter !== "media" && (
+        <ProfileCompanion streamRef={streamRef} chapters={companionChapters} media={companionMedia} hasMore={hasMore} />
+      )}
       {filter === "articles" ? (
         <div>{articlesSlot}</div>
       ) : filter === "media" ? (
         <div>{mediaSlot}</div>
       ) : (
-      <div className="flex flex-col gap-3">
+      <div ref={streamRef} className="flex flex-col gap-3">
         {stream.length === 0 && notesLoaded ? (
           <p className="text-center text-sm text-muted-foreground/60 py-10 rounded-xl border border-border/60 bg-card">
             {filter === "replies" ? "No replies yet." : filter === "posts" ? "No posts yet." : "Nothing here yet."}
@@ -319,12 +332,14 @@ export function IdentityProfileMain({
             return (
               <Fragment key={event.id}>
                 {showChapter && (
-                  <div className="flex items-center gap-2.5 pt-2 first:pt-0" data-testid="identity-chapter">
+                  <div className="flex items-center gap-2.5 pt-2 first:pt-0 scroll-mt-4" data-testid="identity-chapter" data-chapter-heading={chapter}>
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/55">{chapter}</span>
                     <div className="flex-1 h-px bg-border/40" />
                   </div>
                 )}
-                <div className="rounded-xl border border-border/60 bg-card overflow-hidden hover:border-border transition-colors">
+                {/* data-stream-id: the rail's picture tiles jump to their post,
+                    which flashes a ring so the eye lands on it. */}
+                <div data-stream-id={event.id} className="scroll-mt-4 rounded-xl border border-border/60 bg-card overflow-hidden hover:border-border transition-[border-color,box-shadow] data-[flash=true]:ring-2 data-[flash=true]:ring-primary/50">
                   <ErrorBoundary>
                     {event.kind === KIND_LONG_FORM
                       ? <ArticleStreamRow event={event} />

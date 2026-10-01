@@ -2315,7 +2315,12 @@ export default function Profile() {
       </button>
     ) : null;
     return (
-      <div ref={profileScrollRef} className="flex flex-col h-full overflow-y-auto" data-testid="page-profile">
+      // lg:overflow-visible — on desktop this wrapper does not scroll (the
+      // app's <main> does; measured: its scrollHeight equals its height), but
+      // overflow-y-auto still made it the box `position: sticky` and
+      // scrollRootFor resolve against, so the rail's pinned block scrolled
+      // away and the spine never saw a scroll event.
+      <div ref={profileScrollRef} className="flex flex-col h-full overflow-y-auto lg:overflow-visible" data-testid="page-profile">
         <IdentityProfileLayout
           data={{
             pubkey,
@@ -2352,6 +2357,13 @@ export default function Profile() {
             wotEnabled,
           }}
           actions={identityActions}
+          // The pinned rail's compact identity: the same two primaries, small.
+          // No Zap there — two buttons is what the width holds.
+          miniActions={isOwnProfile ? undefined : (
+            <div className="flex shrink-0 gap-1.5 [&_button]:h-8 [&_button]:px-3 [&_button]:text-xs" data-testid="identity-mini-actions">
+              {renderOtherUserHeaderActions("-mini", { hideOverflow: true })}
+            </div>
+          )}
           onZapLud16={handleZap}
           // The counts under the name are the way into the network list, on
           // every width. The rail's "Connections" button showed the same two
