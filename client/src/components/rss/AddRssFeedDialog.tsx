@@ -11,14 +11,12 @@ import {
   X,
   Search,
   TrendingUp,
-  Mic,
   Newspaper,
   Check,
   ArrowLeft,
   Play,
   Pause,
   Zap,
-  Headphones,
   ChevronDown,
   ChevronUp,
   AlertCircle,
@@ -26,11 +24,13 @@ import {
   Loader2,
   Flame,
   Star,
+  Mic,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PageTabs } from "@/components/PageTabs";
+import { TILE_TITLE } from "@/components/discover-tile-title";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -205,9 +205,8 @@ function PodcastRow({ feed, onPreview, onAdd, isAdded, isMobile }: {
         )}
         <div className="flex items-center flex-wrap gap-x-2.5 gap-y-1 mt-1.5">
           {feed.episodeCount > 0 && (
-            <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/40 font-mono">
-              <Headphones className="w-3 h-3" />
-              {feed.episodeCount.toLocaleString()} eps
+            <span className="text-[10px] text-muted-foreground/40 font-mono">
+              {feed.episodeCount.toLocaleString()} episodes
             </span>
           )}
           {updated && <span className="text-[10px] text-muted-foreground/40">Updated {updated}</span>}
@@ -376,11 +375,13 @@ function RisingNowRow({ cat, onPreview, onAdd, existingUrls, enabled }: {
 
 // Enriched in-dialog preview: artwork, author, description, category chips,
 // episode count + last-updated, ⚡ badge, and recent episodes with in-app play.
-function FeedPreviewPanel({ feed, isAdded, onBack, onAdd }: {
+export function FeedPreviewPanel({ feed, isAdded, onBack, onAdd, addLabel = "Add to my feeds" }: {
   feed: PodcastFeed;
   isAdded: boolean;
   onBack: () => void;
   onAdd: (feed: PodcastFeed) => void;
+  /** The verb this surface uses: the dialog adds feeds, the Listen tab follows shows. */
+  addLabel?: string;
 }) {
   const { play, currentTrack, isPlaying, togglePlay } = useAudioPlayer();
   const { episodes, isLoading, isError } = usePodcastPreview(feed, 8);
@@ -408,8 +409,7 @@ function FeedPreviewPanel({ feed, isAdded, onBack, onAdd }: {
           {feed.author && <p className="text-xs text-muted-foreground/60 mt-0.5 truncate">{feed.author}</p>}
           <div className="flex items-center flex-wrap gap-x-2.5 gap-y-1 mt-1.5">
             {feed.episodeCount > 0 && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/40 font-mono">
-                <Headphones className="w-3 h-3" />
+              <span className="text-[10px] text-muted-foreground/40 font-mono">
                 {feed.episodeCount.toLocaleString()} episodes
               </span>
             )}
@@ -432,7 +432,7 @@ function FeedPreviewPanel({ feed, isAdded, onBack, onAdd }: {
           className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 active:scale-[0.99] transition-all"
           data-testid="button-preview-add"
         >
-          <Plus className="w-4 h-4" /> Add to my feeds
+          <Plus className="w-4 h-4" /> {addLabel}
         </button>
       )}
 
@@ -962,9 +962,8 @@ function AddFeedBody({
       {/* Podcasts (Podcast Index). */}
       {piConfigured === true && (searchResults.length > 0 || searchFetching) && (
         <div className="space-y-2">
-          <div className="flex items-center gap-2 px-0.5">
-            <Mic className="w-3.5 h-3.5 text-brand/70" />
-            <span className="text-[11px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Podcasts</span>
+          <div className="px-0.5">
+            <span className={TILE_TITLE}>Podcasts</span>
           </div>
           {searchResults.length === 0 && searchFetching ? (
             <div className="space-y-1.5">
