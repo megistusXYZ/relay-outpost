@@ -6,10 +6,15 @@ import { nip19 } from "nostr-tools";
 import { Link, useLocation } from "wouter";
 import { use$ } from "applesauce-react/hooks";
 import { useRenderedContent, type ComponentMap } from "applesauce-react/hooks";
-import { eventStore, pool, publishEvent, fetchProfiles, fetchProfilesCached, DEFAULT_RELAYS, FAST_RELAYS, getEventRelays } from "@/lib/nostr";
+import { eventStore, pool, publishEvent, fetchProfiles, fetchProfilesCached, DEFAULT_RELAYS, FAST_RELAYS, getEventRelays, throttledPoolSubscribe } from "@/lib/nostr";
+import { lookupById } from "@/lib/lookup-by-id";
+import type { Subscribe } from "@/lib/collect-once";
+
+/** The app's throttled, health-aware subscribe, in the shape lookupById takes. */
+const subscribeById: Subscribe = (relays, filter, handlers) => throttledPoolSubscribe(relays, filter as never, handlers);
 import { noteShareId } from "@/lib/share-links";
 import { queryAnswered } from "@/lib/relay-reach";
-import { classifyParentTarget, orderedRelayCandidates, parentRelayCandidates, resolveFetchOutcome } from "@/lib/parent-resolve";
+import { classifyParentTarget, orderedRelayCandidates, parentRelayCandidates } from "@/lib/parent-resolve";
 import { parseListing, KIND_CLASSIFIED_LISTING, LISTING_RELAYS } from "@/lib/listing";
 import { ListingCard } from "@/components/ListingCard";
 import { getPublishTarget } from "@/lib/outpost-relays";
@@ -996,10 +1001,12 @@ export function EmbeddedNote({ eventId, encoded, relays, parentEventId }: { even
         parentEventId ? getEventRelays(parentEventId) : [],
         DEFAULT_RELAYS,
       ]);
-      promise = queryAnswered(candidates, { ids: [eventId] }, 8_000)
+      // lookupById: found the moment it arrives, missing by the relays that
+      // answered — never held for the slowest relay (lib/lookup-by-id.ts).
+      promise = lookupById(subscribeById, candidates, eventId, 8_000)
         .then((res) => {
-          const outcome = resolveFetchOutcome(res);
-          const ev = outcome === "found" ? (res.events[0] as Event) : null;
+          const outcome = res.outcome;
+          const ev = res.event;
           if (ev) eventStore.add(ev);
           if (outcome === "unreached") embeddedNoteFetchCache.delete(eventId);
           return { event: ev, outcome };
@@ -2261,11 +2268,14 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
       seenOn: getEventRelays(event.id),
       defaults: DEFAULT_RELAYS,
     });
-    queryAnswered(relays, { ids: [replyTargetId] }, 8_000).then((res) => {
+    // Found the moment the parent arrives; "missing" judged by the relays that
+    // really answered. The old all-relays wait left found parents sitting
+    // 4–8 s behind one stuck relay (lib/lookup-by-id.ts).
+    lookupById(subscribeById, relays, replyTargetId, 8_000).then((res) => {
       if (!mountedRef.current) return;
-      const outcome = resolveFetchOutcome(res);
-      if (outcome === "found") {
-        const parent = res.events[0] as Event;
+      const outcome = res.outcome;
+      if (outcome === "found" && res.event) {
+        const parent = res.event;
         eventStore.add(parent);
         setParentEvent(parent);
         fetchProfiles([parent.pubkey], DEFAULT_RELAYS.slice(0, 3));
