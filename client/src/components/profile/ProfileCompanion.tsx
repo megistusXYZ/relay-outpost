@@ -116,8 +116,10 @@ export function ProfileCompanion({
           view, so the pictures below are never pushed off the screen. */}
       <section className="flex flex-col min-h-[8.5rem] rounded-xl border border-border/60 dark:border-white/[0.07] bg-card p-3 shadow-sm shadow-black/[0.04] dark:shadow-none" data-testid="companion-spine">
         <h2 className={`${TILE_TITLE} mb-2`}>Jump through time</h2>
-        <div ref={spineRef} className="relative pl-6 min-h-0 overflow-y-auto [scrollbar-width:thin]">
-          <span className="absolute left-[7px] top-1.5 bottom-1.5 w-0.5 rounded bg-border/70" aria-hidden="true" />
+        {/* No scrollbar (owner call): the spine still scrolls by wheel, touch and
+            by following the page; a soft fade at each end says there is more. */}
+        <div ref={spineRef} className="relative pl-6 min-h-0 overflow-y-auto no-scrollbar py-2 [mask-image:linear-gradient(to_bottom,transparent,black_10px,black_calc(100%-10px),transparent)]">
+          <span className="absolute left-[7px] top-3 bottom-3 w-0.5 rounded bg-border/70" aria-hidden="true" />
           {thumbTop !== null && (
             <span
               className="absolute left-0.5 w-3 h-3 rounded-full bg-primary ring-4 ring-primary/15 motion-safe:transition-[top] motion-safe:duration-300 motion-safe:ease-out"

@@ -45,14 +45,16 @@ describe("profile pinned rail", () => {
 
   it("the spine shows labels only: no counts, no bars", () => {
     const spine = companion.slice(companion.indexOf('data-testid="companion-spine"'), companion.indexOf('data-testid="companion-older"'));
-    expect(spine).not.toMatch(/\.length\}|count|%/);
+    // Nothing per chapter but its label: no number, no sized bar.
+    expect(spine).not.toMatch(/\.length\}|count/i);
+    expect(spine).not.toMatch(/style=\{\{ (width|height)/);
   });
 
   it("never runs past the bottom of the screen: the spine scrolls inside itself, the pictures keep their place", () => {
     // Owner report, 2026-10-01: the pictures card was cut off at the bottom —
     // a pinned block taller than the screen has no way to be scrolled to.
     expect(layout).toMatch(/id=\{COMPANION_SLOT_ID\} className="flex flex-col gap-4 min-h-0"/);
-    expect(companion).toMatch(/ref=\{spineRef\} className="relative pl-6 min-h-0 overflow-y-auto/);
+    expect(companion).toMatch(/ref=\{spineRef\} className="relative pl-6 min-h-0 overflow-y-auto no-scrollbar/); // no visible scrollbar (owner call)
     expect(companion).toMatch(/className="shrink-0 rounded-xl[^"]*" data-testid="companion-media"/);
     expect(companion).toMatch(/mediaForChapter\(media, current, 3\)/);
     expect(companion).not.toMatch(/scrollIntoView\(\{ block: "nearest"/);
