@@ -1472,11 +1472,14 @@ export async function fetchUserAuthoredFeed(pubkey: string, limit: number = 50):
     console.log("[Primal] No reposts from Primal feed API, querying relays for kind 6...");
     try {
       const { pool, DEFAULT_RELAYS } = await import("./nostr");
+      // A short wait: this needs every relay to finish, and the profile's
+      // whole repost section sits behind it. Relays that answer do so in well
+      // under a second; one that is slow or stuck must not hold the rest.
       const repostEvents = await pool.querySync(DEFAULT_RELAYS, {
         kinds: [6],
         authors: [pubkey],
         limit: 30,
-      });
+      }, { maxWait: 4000 } as never);
       console.log("[Primal] Relay kind 6 query returned:", repostEvents.length, "events");
       for (const event of repostEvents) {
         if (event.kind === 6) {

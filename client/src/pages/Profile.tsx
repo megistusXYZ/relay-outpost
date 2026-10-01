@@ -806,7 +806,7 @@ export default function Profile() {
             const fetched = await pool.querySync(DEFAULT_RELAYS.slice(0, 5), {
               kinds: PROFILE_POST_KINDS,
               ids: unmatchedIds,
-            });
+            }, { maxWait: 4000 } as never);
             for (const original of fetched) {
               const rp = repostByOrigId.get(original.id);
               if (rp) {
