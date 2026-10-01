@@ -3004,11 +3004,29 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
           it. Same states — found, never asked, loading — in a different place. */}
       {inMargin && marginSlot?.el && createPortal(
         <div data-testid={`margin-note-${event.id}`}>
+          {/* The reply-context setting holds here too. Off: the margin names
+              who is being answered and offers the context on a tap — the same
+              choice the card gives, in the same words. On: the note shows. */}
           <div className="flex items-center gap-1.5 mb-1.5 text-[11px] text-muted-foreground/70">
             <CornerUpLeft className="w-3 h-3 shrink-0" />
-            In reply to
+            <span>In reply to</span>
+            {!replyContextOn && replyToName && (
+              <Link href={replyToProfileUrl} data-testid={`link-margin-reply-to-${event.id}`} className="min-w-0 truncate text-brand/80 font-medium cursor-pointer">
+                @{replyToName}
+              </Link>
+            )}
+            {!replyContextOn && (
+              <button
+                className="ml-auto shrink-0 flex items-center gap-0.5 text-[11px] text-muted-foreground/70 hover:text-foreground cursor-pointer"
+                onClick={handleShowParent}
+                data-testid={`button-margin-show-parent-${event.id}`}
+              >
+                <CornerDownRight className="w-2.5 h-2.5" />
+                {showParentPost ? "Hide context" : "Show context"}
+              </button>
+            )}
           </div>
-          {parentEvent ? (
+          {!showParentPost ? null : parentEvent ? (
             <ParentPostPreview event={parentEvent} variant="card" />
           ) : parentNotFound ? null : parentUnreached ? (
             <button
