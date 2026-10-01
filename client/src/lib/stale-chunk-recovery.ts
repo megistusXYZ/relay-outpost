@@ -11,6 +11,7 @@
 // the problem (e.g. real network outage, real bug).
 
 import { hasSignupDraft } from "@/lib/account-draft";
+import { reloadOntoFreshShell } from "@/lib/sw-shell";
 
 const SENTINEL_KEY = "relay-outpost-stale-chunk-reload";
 const SENTINEL_TTL_MS = 30_000;
@@ -56,7 +57,9 @@ function clearSentinel(): void {
 // Returns true if a reload was scheduled. Returns false if we recently tried
 // to reload for the same reason and it didn't help — caller should fall
 // through to the error UI in that case.
-export function tryRecoverFromStaleChunk(): boolean {
+export function tryRecoverFromStaleChunk(
+  deps: { reload?: () => void; sw?: Parameters<typeof reloadOntoFreshShell>[1] } = {},
+): boolean {
   // If the user is mid-signup on the root route (where CreateAccountFlow
   // lives), never silently reload — the form lives entirely in component
   // state below the persistence layer for the current step, and a reload
@@ -79,11 +82,18 @@ export function tryRecoverFromStaleChunk(): boolean {
     return false;
   }
   writeSentinel(now);
+  // Onto the FRESH page, the way the update pill restarts. The service worker
+  // answers navigations from the cached page shell for a day
+  // (client/public/sw.js, open-from-cache), so a plain reload came back on the
+  // same stale shell: the chunk failed again, the sentinel refused a second
+  // reload, and the door stayed blank until "Repair app" (reported 2026-09-30,
+  // iOS PWA: Discover → Feed, the first lazy chunk opened after a deploy).
+  // reloadOntoFreshShell asks the worker to fetch and keep the fresh page
+  // first, and still reloads when the worker is silent or absent.
+  const reload = deps.reload ?? (() => { try { window.location.reload(); } catch {} });
   // Defer slightly so any in-flight UI can settle and any console logging
   // has a chance to flush before we tear the page down.
-  setTimeout(() => {
-    try { window.location.reload(); } catch {}
-  }, 50);
+  setTimeout(() => { void reloadOntoFreshShell(reload, deps.sw); }, 50);
   return true;
 }
 
