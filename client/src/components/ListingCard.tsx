@@ -329,8 +329,8 @@ export function useProfileListings(pubkey: string | null | undefined): Listing[]
     const relays = sellerListingRelays(getWriteRelays(pubkey, []), DEFAULT_RELAYS);
     // collectOnce, not an all-relays wait: the catalog shows about a second
     // after the first relay that has it answers. Waiting for every relay ran
-    // the full 8 s on every profile, because the marketplace relay never
-    // finishes an unauthenticated read (lib/listing.ts has the measurement).
+    // the full 8 s on every load measured, because one of them never finished
+    // (lib/listing-relays.test.ts has the measurement).
     // 100, not a couple dozen: a merchant's rail is their whole catalog, and
     // relays answer up to 100 per REQ (measured).
     collectOnce(

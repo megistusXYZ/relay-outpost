@@ -46,10 +46,11 @@ const SELLER_RELAY_CAP = 5;
  * Where to ask for what ONE person sells: the marketplace relay, the relays
  * the seller says they publish to, then every default relay.
  *
- * All the defaults, not the first three: measured 2026-10-01, the marketplace
- * relay answered a read with an AUTH challenge and then nothing, only one of
- * the three fast relays asked had the seller's listings, and a default relay
- * that was never asked had all of them (listing-relays.test.ts).
+ * All the defaults, not the first three: measured 2026-10-01, a lookup over
+ * four relays came back empty on half the loads of one seller's profile while
+ * a default relay that was never asked had the listings. More places to find
+ * them, so no single slow or rate-limiting relay decides whether a shop
+ * exists (listing-relays.test.ts has the measurement, and a correction).
  */
 export function sellerListingRelays(sellerWriteRelays: readonly string[], defaults: readonly string[]): string[] {
   const out: string[] = [];
