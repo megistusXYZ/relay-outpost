@@ -27,11 +27,11 @@ import { getSignalTier, getSignalTierLabel } from "@/lib/graperank";
 import { isReportedEvent, isReportedPubkey } from "@/lib/spam-filter";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { eventStore, fetchProfilesCached, FAST_RELAYS } from "@/lib/nostr";
+import { eventStore, fetchProfilesCached, DEFAULT_RELAYS, throttledPoolSubscribe } from "@/lib/nostr";
+import { collectOnce } from "@/lib/collect-once";
 import { getWriteRelays } from "@/lib/outbox";
-import { queryAnswered } from "@/lib/relay-reach";
 import { getDisplayName, getAvatarUrl, formatNpub, shortenNpub, KIND_METADATA } from "@/lib/nostr-helpers";
-import { formatListingPrice, listingWebUrl, pickMarketListings, KIND_CLASSIFIED_LISTING, LISTING_RELAYS, type Listing } from "@/lib/listing";
+import { formatListingPrice, listingWebUrl, pickMarketListings, sellerListingRelays, collapseRelistings, KIND_CLASSIFIED_LISTING, type Listing } from "@/lib/listing";
 
 function useSellerIdentity(pubkey: string) {
   const profile = use$(() => eventStore.replaceable(KIND_METADATA, pubkey), [pubkey]);
@@ -326,14 +326,24 @@ export function useProfileListings(pubkey: string | null | undefined): Listing[]
     let cancelled = false;
     setListings([]);
     if (!pubkey) return;
-    const relays = Array.from(new Set([...LISTING_RELAYS, ...getWriteRelays(pubkey, []), ...FAST_RELAYS.slice(0, 3)]));
+    const relays = sellerListingRelays(getWriteRelays(pubkey, []), DEFAULT_RELAYS);
+    // collectOnce, not an all-relays wait: the catalog shows about a second
+    // after the first relay that has it answers. Waiting for every relay ran
+    // the full 8 s on every profile, because the marketplace relay never
+    // finishes an unauthenticated read (lib/listing.ts has the measurement).
     // 100, not a couple dozen: a merchant's rail is their whole catalog, and
-    // the marketplace relay answers up to 100 per REQ (measured).
-    queryAnswered(relays, { kinds: [KIND_CLASSIFIED_LISTING], authors: [pubkey], limit: 100 }, 8_000).then((res) => {
+    // relays answer up to 100 per REQ (measured).
+    collectOnce(
+      (r, f, h) => throttledPoolSubscribe(r, f as never, h),
+      relays,
+      { kinds: [KIND_CLASSIFIED_LISTING], authors: [pubkey], limit: 100 },
+      8_000,
+    ).then((events) => {
       if (cancelled) return;
-      setListings(pickMarketListings(res.events as Event[], {
+      // One tile per product: re-listed items collapse (lib/listing.ts).
+      setListings(collapseRelistings(pickMarketListings(events as Event[], {
         isReported: (e) => isReportedEvent(e.id) || isReportedPubkey(e.pubkey),
-      }));
+      })));
     });
     return () => { cancelled = true; };
   }, [pubkey]);
