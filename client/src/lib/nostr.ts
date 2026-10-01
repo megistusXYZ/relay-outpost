@@ -17,6 +17,7 @@ import { recordFirstSeen } from "./account-age";
 export { DEFAULT_RELAYS } from "./relay-constants";
 import { DEFAULT_RELAYS } from "./relay-constants";
 import { openLaunchRelays } from "./launch-relays";
+import { boundEnsureRelay } from "./bounded-connect";
 
 export const eventStore = new EventStore();
 // enablePing: keepalive probes (browser fallback = a dummy REQ/EOSE roundtrip)
@@ -77,6 +78,23 @@ export const DEFAULT_READ_MAX_WAIT_MS = 10_000;
       onauth: params?.onauth ?? sharedSubscriptionAuth(),
       maxWait: params?.maxWait ?? DEFAULT_READ_MAX_WAIT_MS,
     });
+}
+
+/**
+ * Every connect is bounded (lib/bounded-connect.ts has the measurement). The
+ * maxWait default above only bounds a read once its relay is CONNECTED; a
+ * socket stuck in CONNECTING, joined through a connection promise that was
+ * started without a timeout, held every read that included that relay for
+ * good. Assigned on the instance, so the library's own `this.ensureRelay`
+ * calls (subscribe, publish) go through it too.
+ */
+{
+  const pooled = pool as unknown as {
+    ensureRelay: (url: string, params?: { connectionTimeout?: number; abort?: AbortSignal }) => Promise<unknown>;
+  };
+  pooled.ensureRelay = boundEnsureRelay(pooled.ensureRelay.bind(pool), (url) => {
+    try { pool.close([url]); } catch {}
+  });
 }
 
 setPoolRef(pool);
