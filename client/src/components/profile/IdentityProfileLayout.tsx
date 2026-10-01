@@ -286,7 +286,7 @@ export function IdentityProfileLayout({ data, actions, miniActions, networkSlot,
           <div className="hidden lg:flex flex-col gap-4 sticky top-4 max-h-[calc(100dvh-6rem)]" data-testid="identity-rail-pinned">
             {pinned && (
               <div
-                className="flex flex-wrap xl:flex-nowrap items-center gap-2.5 rounded-xl border border-border/60 dark:border-white/[0.07] bg-card p-2.5 shrink-0 shadow-sm shadow-black/[0.04] dark:shadow-none motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200"
+                className="flex flex-wrap items-center gap-x-2.5 gap-y-2 rounded-xl border border-border/60 dark:border-white/[0.07] bg-card p-2.5 shrink-0 shadow-sm shadow-black/[0.04] dark:shadow-none motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200"
                 data-testid="identity-rail-mini"
               >
                 <Avatar className="w-10 h-10 shrink-0 border border-border">
@@ -294,7 +294,7 @@ export function IdentityProfileLayout({ data, actions, miniActions, networkSlot,
                   <AvatarFallback className="text-xs bg-muted text-muted-foreground">{data.displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold leading-tight truncate">{data.displayName}</div>
+                  <div className="text-sm font-semibold leading-tight truncate" title={data.displayName}>{data.displayName}</div>
                   {typeof data.followers === "number" && (
                     <div className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
                       {new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(data.followers)} followers

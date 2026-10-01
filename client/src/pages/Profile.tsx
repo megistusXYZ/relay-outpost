@@ -2361,9 +2361,13 @@ export default function Profile() {
           }}
           actions={identityActions}
           // The pinned rail's compact identity: the same two primaries, small.
-          // No Zap there — two buttons is what the width holds.
+          // No Zap there — two buttons is what the width holds. They take
+          // their OWN row at every rail width: beside the name they squeezed
+          // it to "Vitor Pa…" at 380px and "[B…" at 320px (owner screenshots,
+          // 2026-10-01). Name and count get the full first row; the buttons
+          // share the second equally, whatever the width.
           miniActions={isOwnProfile ? undefined : (
-            <div className="flex w-full xl:w-auto shrink-0 gap-1.5 [&_button]:h-8 [&_button]:px-3 [&_button]:text-xs [&>button]:flex-1 xl:[&>button]:flex-none" data-testid="identity-mini-actions">
+            <div className="flex w-full shrink-0 gap-2 [&_button]:h-8 [&_button]:px-3 [&_button]:text-xs [&>button]:flex-1 [&>button]:min-w-0" data-testid="identity-mini-actions">
               {renderOtherUserHeaderActions("-mini", { hideOverflow: true })}
             </div>
           )}

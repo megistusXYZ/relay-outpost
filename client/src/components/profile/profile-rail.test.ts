@@ -25,6 +25,15 @@ describe("profile pinned rail", () => {
     expect(profile).toMatch(/renderOtherUserHeaderActions\("-mini", \{ hideOverflow: true \}\)/);
   });
 
+  it("the compact identity gives the name its own row at every width; the two buttons share the row beneath", () => {
+    // Beside the name they squeezed it to "Vitor Pa…" (380px rail) and "[B…"
+    // (320px rail) and clipped the follower count (owner screenshots).
+    expect(layout).toMatch(/className="flex flex-wrap items-center gap-x-2\.5 gap-y-2 rounded-xl[^"]*"\s+data-testid="identity-rail-mini"/);
+    expect(layout).not.toContain("xl:flex-nowrap");
+    expect(profile).toMatch(/className="flex w-full shrink-0 gap-2 [^"]*\[&>button\]:flex-1 \[&>button\]:min-w-0" data-testid="identity-mini-actions"/);
+    expect(profile).not.toMatch(/xl:w-auto[^"]*" data-testid="identity-mini-actions"/);
+  });
+
   it("desktop gets a wider rail and a reading-width stream; phones and tablets keep one column", () => {
     expect(layout).toContain("grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,680px)]");
   });
