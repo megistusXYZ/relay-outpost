@@ -5,7 +5,7 @@
  * that fixes it.
  */
 import { describe, it, expect } from "vitest";
-import { mergeProfileStream } from "./profile-stream";
+import { mergeProfileStream, uniqueById } from "./profile-stream";
 
 const ev = (id: string, created_at: number) => ({ id, created_at });
 
@@ -52,5 +52,40 @@ describe("mergeProfileStream", () => {
       new Map(),
     );
     expect(out.map((e) => e.id)).toEqual(["own-new", "unmapped", "own-old"]);
+  });
+});
+
+describe("the same note reposted more than once", () => {
+  // Owner report, 2026-10-01: a profile showed "reposted" twice in a row with
+  // the same note, same counts. Each repost EVENT contributed its original to
+  // the list, so reposting a note twice (or a kind-6 and a kind-16 of it) put
+  // the one original in the stream twice.
+  it("shows the note once", () => {
+    const own = [{ id: "own1", created_at: 100 }];
+    const original = { id: "orig", created_at: 50 };
+    const merged = mergeProfileStream(own, [original, original], new Map([["orig", { timestamp: 200 }]]));
+    expect(merged.map((e) => e.id)).toEqual(["orig", "own1"]);
+  });
+
+  it("…timed by the LATEST repost of it", () => {
+    // repostMap already keeps the newest repost time per original; one row,
+    // at that time.
+    const own = [{ id: "a", created_at: 300 }, { id: "b", created_at: 100 }];
+    const original = { id: "orig", created_at: 10 };
+    const merged = mergeProfileStream(own, [original, { ...original }], new Map([["orig", { timestamp: 200 }]]));
+    expect(merged.map((e) => e.id)).toEqual(["a", "orig", "b"]);
+  });
+
+  it("uniqueById keeps the first of each id, in order", () => {
+    expect(uniqueById([{ id: "x" }, { id: "y" }, { id: "x" }]).map((e) => e.id)).toEqual(["x", "y"]);
+  });
+});
+
+describe("Profile hands the stream one entry per reposted note", () => {
+  it("dedupes the originals it collected from repost events (the classic skin merges that list itself)", async () => {
+    const { readFileSync } = await import("fs");
+    const path = await import("path");
+    const src = readFileSync(path.resolve(import.meta.dirname, "../pages/Profile.tsx"), "utf8");
+    expect(src).toMatch(/setRepostedEvents\(uniqueById\(allOriginals\)\);/);
   });
 });
