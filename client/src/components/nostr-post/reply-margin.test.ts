@@ -42,6 +42,15 @@ describe("margin notes wiring", () => {
     expect(post).toMatch(/isReply && !parentIsQuoted && !replyContextOn && !inMargin &&/);
   });
 
+  it("the margin respects the reply-context setting: off shows who is answered and a Show context tap, like the card", async () => {
+    const post = await read("../NostrPost.tsx");
+    const start = post.indexOf("{inMargin && marginSlot?.el && createPortal(");
+    const block = post.slice(start, post.indexOf("marginSlot.el,", start));
+    expect(block).toMatch(/\{!replyContextOn && \(\s*<button[\s\S]*?onClick=\{handleShowParent\}/);
+    expect(block).toMatch(/\{showParentPost \? "Hide context" : "Show context"\}/);
+    expect(block).toMatch(/\{!showParentPost \? null : parentEvent \? \(/);
+  });
+
   it("the profile stream gives each row a slot level with its post, clipped to the row, only when there is a margin", async () => {
     const main = await read("../profile/IdentityProfileMain.tsx");
     expect(main).toMatch(/el: hasMargin \? slot : null/);
