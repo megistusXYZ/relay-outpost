@@ -20,6 +20,52 @@ export const KIND_CLASSIFIED_LISTING = 30402;
 /** Conduit's relay carries the densest listing set — measured, not guessed. */
 export const LISTING_RELAYS = ["wss://relay.conduit.market"];
 
+/**
+ * One tile per product on a seller's own shop. Sellers re-list the same item
+ * under a new id (measured: 55 listings, 32 distinct product names), and a
+ * grid that repeats a product reads as a broken list. Same seller, same name
+ * (case and spacing ignored) and same price is the same offer; the first in
+ * the list is kept, which pickMarketListings has already sorted unsold-first,
+ * newest-first. A different price or size is a different offer and stays.
+ */
+export function collapseRelistings(listings: readonly Listing[]): Listing[] {
+  const seen = new Set<string>();
+  return listings.filter((l) => {
+    const title = l.title.trim().toLowerCase().replace(/\s+/g, " ");
+    const key = `${l.pubkey}|${title}|${l.price ? `${l.price.amount} ${l.price.currency}` : ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/** A seller's own relays that are worth asking, beside the marketplace relay and the defaults. */
+const SELLER_RELAY_CAP = 5;
+
+/**
+ * Where to ask for what ONE person sells: the marketplace relay, the relays
+ * the seller says they publish to, then every default relay.
+ *
+ * All the defaults, not the first three: measured 2026-10-01, the marketplace
+ * relay answered a read with an AUTH challenge and then nothing, only one of
+ * the three fast relays asked had the seller's listings, and a default relay
+ * that was never asked had all of them (listing-relays.test.ts).
+ */
+export function sellerListingRelays(sellerWriteRelays: readonly string[], defaults: readonly string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const add = (url: string) => {
+    const key = url.trim().toLowerCase().replace(/\/+$/, "");
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push(key);
+  };
+  LISTING_RELAYS.forEach(add);
+  sellerWriteRelays.slice(0, SELLER_RELAY_CAP).forEach(add);
+  defaults.forEach(add);
+  return out;
+}
+
 export interface ListingPrice {
   amount: string;
   currency: string;
