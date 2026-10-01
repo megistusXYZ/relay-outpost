@@ -143,6 +143,7 @@ import { ZapDialog } from "@/components/ZapDialog";
 import { ReportDialog } from "@/components/ReportDialog";
 import { useTTS, type ThreadTTSSegment } from "@/contexts/TextToSpeechContext";
 import { createContext, useContext } from "react";
+import { ReplyMarginContext, contextGoesToMargin } from "@/components/nostr-post/reply-margin";
 import { quotesItsParent } from "@/lib/quote-reply";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PostFrame } from "@/components/PostFrame";
@@ -2290,6 +2291,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
     if (!replyTargetId) return;
     setShowParentPost((prev) => !prev);
   }, [replyTargetId]);
+  const marginSlot = useContext(ReplyMarginContext);
 
   const primalStats = usePrimalStats(event.id);
   const [localReactionCount, setLocalReactionCount] = useState(0);
@@ -2392,6 +2394,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
     () => quotesItsParent(replyTargetId, noteRefs.map((r) => r.id)),
     [replyTargetId, noteRefs],
   );
+  const inMargin = !compact && contextGoesToMargin(marginSlot, event.id, isReply, parentIsQuoted);
 
   const { text: textContent, media: mediaItems } = useMemo(() => extractMediaFromContent(renderContent), [renderContent]);
 
@@ -2996,7 +2999,36 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
       {/* With the spine on, this whole row goes: the thread-line and the parent's
           own byline already say who is being answered, so "Replying to @x" plus
           a Show-context button is three controls for one fact. */}
-      {isReply && !parentIsQuoted && !replyContextOn && (
+      {/* Margin notes (nostr-post/reply-margin.ts): where the surface has a
+          margin, the context below is set beside the post instead of inside
+          it. Same states — found, never asked, loading — in a different place. */}
+      {inMargin && marginSlot?.el && createPortal(
+        <div data-testid={`margin-note-${event.id}`}>
+          <div className="flex items-center gap-1.5 mb-1.5 text-[11px] text-muted-foreground/70">
+            <CornerUpLeft className="w-3 h-3 shrink-0" />
+            In reply to
+          </div>
+          {parentEvent ? (
+            <ParentPostPreview event={parentEvent} variant="card" />
+          ) : parentNotFound ? null : parentUnreached ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); retryParentFetch(); }}
+              className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/40 dark:bg-muted/20 border border-border dark:border-border/20 text-[11px] text-muted-foreground/80 cursor-pointer w-full text-left"
+              data-testid={`parent-retry-${event.id}`}
+            >
+              Context didn't load — tap to retry
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/40 dark:bg-muted/20 border border-border dark:border-border/20" data-testid={`parent-loading-${event.id}`}>
+              <RelayOutpostInlineLoader />
+              <span className="text-[11px] text-muted-foreground/80">Loading…</span>
+            </div>
+          )}
+        </div>,
+        marginSlot.el,
+      )}
+
+      {isReply && !parentIsQuoted && !replyContextOn && !inMargin && (
         <div className={`flex items-center gap-1.5 ${compact ? "px-4 sm:px-5 pt-2.5" : "px-5 sm:px-8 pt-3.5"}`}>
           <CornerUpLeft className="w-3 h-3 text-muted-foreground/70 shrink-0" />
           {replyToName ? (
@@ -3028,7 +3060,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
         </div>
       )}
 
-      {isReply && !parentIsQuoted && showParentPost && (
+      {isReply && !parentIsQuoted && showParentPost && !inMargin && (
         <div className={`${compact ? "mx-4 sm:mx-5" : "mx-5 sm:mx-8"} ${replyContextOn ? (compact ? "pt-2.5" : "pt-3.5") : "mt-2.5"}`}>
           {parentEvent ? (
             <ParentPostPreview event={parentEvent} variant={replyContextOn ? "spine" : "card"} />

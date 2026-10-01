@@ -143,7 +143,7 @@ export function IdentityProfileLayout({ data, actions, miniActions, networkSlot,
     // Circle/montage strips' unshrinkable rows set the min-content. With
     // min-w-0 the container honors the viewport and those strips scroll
     // inside themselves, which is what they were built to do.
-    <div className="max-w-6xl w-full min-w-0 mx-auto px-4 py-5" data-testid="identity-profile-layout">
+    <div className="max-w-6xl min-[1440px]:max-w-[1340px] 2xl:max-w-[1440px] w-full min-w-0 mx-auto px-4 py-5" data-testid="identity-profile-layout">
       {/* Banner — FILLS the band, edge to edge, on every width. A contained
           image with a blurred fill behind it was tried and reverted: it showed
           more of the picture but left the band looking framed rather than
@@ -162,7 +162,10 @@ export function IdentityProfileLayout({ data, actions, miniActions, networkSlot,
       {/* Desktop: a wider rail and a reading-width stream (posts ran to 845px
           a line). The rail's column is as tall as the stream, which is what
           lets its last block pin for the whole scroll. */}
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,680px)] xl:justify-center gap-5 mt-4">
+      {/* From 1440px a third, empty column holds room for margin notes: each
+          reply's context sits there, level with the reply (the stream's rows
+          place them; see IdentityProfileMain's StreamRow). */}
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,680px)] min-[1440px]:grid-cols-[320px_minmax(0,680px)_280px] 2xl:grid-cols-[380px_minmax(0,680px)_300px] xl:justify-center gap-5 mt-4">
         {/* ── Left rail ─────────────────────────────────────────── */}
         <aside className="space-y-4">
           {/* Identity — NOT clipped (overflow-visible) so the avatar can lift
