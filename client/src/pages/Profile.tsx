@@ -69,6 +69,7 @@ import { IdentityProfileLayout } from "@/components/profile/IdentityProfileLayou
 import { IdentityCommunitiesCard, useSubjectCommunityRows } from "@/components/profile/IdentityCommunitiesCard";
 import { LiveBannerOverlay, useProfileLiveStream } from "@/components/profile/LiveNowBanner";
 import { IdentityProfileMain } from "@/components/profile/IdentityProfileMain";
+import { uniqueById } from "@/lib/profile-stream";
 import { IdentityCircleCard } from "@/components/profile/IdentityCircleCard";
 import { isMutedPubkey, mutePubkey, unmutePubkey } from "@/lib/spam-filter";
 import { recordProfileVisit } from "@/lib/recent-profiles";
@@ -826,7 +827,9 @@ export default function Profile() {
               primalStatsCache.update(stats);
             } catch {}
           }
-          setRepostedEvents(allOriginals);
+          // One entry per original: every repost EVENT pushed its original
+          // above, so a note reposted twice was in here twice.
+          setRepostedEvents(uniqueById(allOriginals));
           setRepostVersion((v) => v + 1);
           return;
         }
