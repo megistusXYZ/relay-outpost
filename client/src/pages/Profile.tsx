@@ -2360,7 +2360,7 @@ export default function Profile() {
           // The pinned rail's compact identity: the same two primaries, small.
           // No Zap there — two buttons is what the width holds.
           miniActions={isOwnProfile ? undefined : (
-            <div className="flex shrink-0 gap-1.5 [&_button]:h-8 [&_button]:px-3 [&_button]:text-xs" data-testid="identity-mini-actions">
+            <div className="flex w-full xl:w-auto shrink-0 gap-1.5 [&_button]:h-8 [&_button]:px-3 [&_button]:text-xs [&>button]:flex-1 xl:[&>button]:flex-none" data-testid="identity-mini-actions">
               {renderOtherUserHeaderActions("-mini", { hideOverflow: true })}
             </div>
           )}
