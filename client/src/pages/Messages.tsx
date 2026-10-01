@@ -1972,6 +1972,7 @@ export default function Messages() {
 
     setShowNewChat(false);
     setNewChatInput("");
+    setSearchFilter(""); // the one search box doubles as the people picker
     navigateToConversation(targetPubkey);
   }, [newChatInput, pubkey, toast, openConversation]);
 
@@ -2049,6 +2050,7 @@ export default function Messages() {
     }
     setShowNewChat(false);
     setNewChatInput("");
+    setSearchFilter(""); // the one search box doubles as the people picker
     setUserSearchResults([]);
     navigateToConversation(resultPubkey);
   }, [pubkey, toast, openConversation]);

@@ -39,3 +39,26 @@ describe("chat home chrome", () => {
     expect(src).toContain('data-testid="button-deleted-back"');
   });
 });
+
+describe("New chat uses the one search box", () => {
+  // Owner, 2026-10-01: "I don't like how this opens up an extra search
+  // section" — New chat opened a "Start a new conversation" strip with its
+  // own search field above the list's search field.
+  it("there is no second search field", () => {
+    expect(src).not.toContain('data-testid="input-new-chat-pubkey"');
+    expect(src).not.toContain("Start a new conversation</p>");
+  });
+
+  it("the list's search box also drives the people search, and New chat focuses it", () => {
+    expect(src).toMatch(/onChange=\{\(e\) => \{ setSearchFilter\(e\.target\.value\); setNewChatInput\(e\.target\.value\); \}\}/);
+    expect(src).toMatch(/if \(!showNewChat\) return;\s+searchInputRef\.current\?\.focus\(\);/);
+  });
+
+  it("people results sit inline under the header, with a pasted address offered as a row", () => {
+    const i = src.indexOf('data-testid="container-user-search-results"');
+    expect(i).toBeGreaterThan(0);
+    const block = src.slice(i - 200, i + 600);
+    expect(block).not.toContain("absolute");
+    expect(src).toContain('data-testid="button-start-chat"');
+  });
+});
