@@ -101,6 +101,6 @@ describe("the wiring", () => {
     const src = readFileSync(path.resolve(import.meta.dirname, "app-update.ts"), "utf8");
     const polling = src.slice(src.indexOf("export function startAppUpdatePolling"));
     expect(polling).toMatch(/installUpdateOnReturn\(\{[\s\S]*apply: applyUpdate/);
-    expect(src).toMatch(/void reloadOntoFreshShell\(\)/);
+    expect(src).toMatch(/void reloadOntoFreshShell\(load\)/);
   });
 });

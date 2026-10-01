@@ -27,7 +27,11 @@
 //    clients.claim()) even though the user just loaded the latest version.
 
 import { onShellUpdated, reloadOntoFreshShell } from "./sw-shell";
-import { installUpdateOnReturn } from "./update-on-return";
+import { installUpdateOnReturn, pageLooksBusy } from "./update-on-return";
+import { shouldApplyUpdate, type UpdateContext } from "./update-policy";
+import { onAppNavigation } from "./app-history";
+import { isCallActive } from "./call-presence";
+import { hasSignupDraft } from "./account-draft";
 
 // Same expression as APP_VERSION in nip34-feedback.ts — duplicated on purpose
 // so this module stays dependency-free (importable from main.tsx and tests
@@ -45,9 +49,6 @@ export interface AppUpdateState {
 }
 
 const POLL_MIN_INTERVAL_MS = 5 * 60 * 1000;
-const DISMISS_KEY = "ro-update-dismissed";
-/** Unversioned SW detections use this token for dismissal bookkeeping. */
-const SW_TOKEN = "sw";
 
 /* ----------------------------------------------------------------------------
  * Pure helpers (unit-tested in app-update.test.ts)
@@ -70,21 +71,6 @@ export function shouldPollNow(
   minIntervalMs: number = POLL_MIN_INTERVAL_MS,
 ): boolean {
   return now - lastPollAt >= minIntervalMs;
-}
-
-/**
- * Dismissal contract: dismiss hides the pill until the next DETECTED version
- * change. An unversioned SW signal can never prove it's a *different* update
- * than the one already dismissed, so it stays hidden; only a poll detection
- * with a different version string re-shows.
- */
-export function isDismissed(
-  dismissedToken: string | null,
-  candidateToken: string,
-): boolean {
-  if (!dismissedToken) return false;
-  if (candidateToken === SW_TOKEN) return true;
-  return candidateToken === dismissedToken;
 }
 
 /* ----------------------------------------------------------------------------
@@ -110,22 +96,13 @@ function setState(next: AppUpdateState): void {
   }
 }
 
-function readDismissedToken(): string | null {
-  try { return sessionStorage.getItem(DISMISS_KEY); } catch { return null; }
-}
-
-export function dismissUpdate(): void {
-  try {
-    sessionStorage.setItem(DISMISS_KEY, state.version ?? SW_TOKEN);
-  } catch {}
-  setState({ ...state, ready: false });
-}
+/** When the current update became ready; the idle fallback counts from here. */
+let readyAt: number | null = null;
 
 function reportUpdate(source: "sw" | "poll", version: string | null): void {
-  const token = version ?? SW_TOKEN;
-  if (isDismissed(readDismissedToken(), token)) return;
-  // Already showing — keep the more specific (versioned) info we have.
+  // Already known — keep the more specific (versioned) info we have.
   if (state.ready && (state.version === version || (state.version && !version))) return;
+  if (!state.ready) readyAt = Date.now();
   setState({ ready: true, source, version: version ?? state.version });
 }
 
@@ -248,7 +225,50 @@ export function startAppUpdatePolling(): void {
       return true;
     },
     apply: applyUpdate,
+    alsoBusy: () => isCallActive() || hasSignupDraft(),
   });
+  installQuietUpdates();
+}
+
+/** How often a parked screen is asked whether it may move on. */
+const IDLE_TICK_MS = 30 * 1000;
+
+/**
+ * Quiet updates: the moments at which the app moves onto a ready update
+ * without anyone tapping anything (the decision itself: update-policy.ts).
+ *   - the next in-app navigation opens its page on the new version;
+ *   - going to the background;
+ *   - a parked screen, once the update is old enough and nobody has touched
+ *     it for a while;
+ *   - coming back after a long time away (installUpdateOnReturn above).
+ */
+let quietInstalled = false;
+function installQuietUpdates(): void {
+  if (quietInstalled) return;
+  quietInstalled = true;
+  let lastInputAt = Date.now();
+  const touched = () => { lastInputAt = Date.now(); };
+  for (const ev of ["pointerdown", "keydown", "wheel", "touchstart", "scroll"]) {
+    window.addEventListener(ev, touched, { passive: true, capture: true });
+  }
+  const context = (): UpdateContext => ({
+    ready: state.ready,
+    readyForMs: readyAt === null ? 0 : Date.now() - readyAt,
+    visible: document.visibilityState === "visible",
+    busy: pageLooksBusy(document),
+    inCall: isCallActive(),
+    signupDraft: hasSignupDraft(),
+    idleForMs: Date.now() - lastInputAt,
+  });
+  onAppNavigation((url) => {
+    if (shouldApplyUpdate("navigation", context())) applyUpdate(url);
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden" && shouldApplyUpdate("hidden", context())) applyUpdate();
+  });
+  setInterval(() => {
+    if (shouldApplyUpdate("idle-tick", context())) applyUpdate();
+  }, IDLE_TICK_MS);
 }
 
 /* ----------------------------------------------------------------------------
@@ -261,14 +281,20 @@ export function startAppUpdatePolling(): void {
  * reloads). If a waiting worker exists, promote it first so the reload lands
  * on the new build.
  */
-export function applyUpdate(): void {
+export function applyUpdate(destination?: string): void {
+  // With a destination (an in-app navigation that was about to happen), the
+  // fresh page opens THERE. replace, not assign: the app has already pushed
+  // that entry, so a second one would make Back a no-op.
+  const load = destination
+    ? () => { try { window.location.replace(destination); } catch { window.location.reload(); } }
+    : undefined;
   const waiting = registrationRef?.waiting;
   if (waiting) {
     let reloaded = false;
     const reload = () => {
       if (reloaded) return;
       reloaded = true;
-      void reloadOntoFreshShell();
+      void reloadOntoFreshShell(load);
     };
     try {
       navigator.serviceWorker.addEventListener("controllerchange", reload, { once: true });
@@ -280,7 +306,7 @@ export function applyUpdate(): void {
   }
   // The worker answers launches from its cached page, so have it fetch the new
   // one first, or the reload would land on the old build again.
-  void reloadOntoFreshShell();
+  void reloadOntoFreshShell(load);
 }
 
 export type UpdateCheckResult = "update-ready" | "up-to-date" | "unavailable";
@@ -290,7 +316,6 @@ export type UpdateCheckResult = "update-ready" | "up-to-date" | "unavailable";
  * compare. A manual check clears any earlier dismissal — the user asked.
  */
 export async function checkForUpdatesNow(): Promise<UpdateCheckResult> {
-  try { sessionStorage.removeItem(DISMISS_KEY); } catch {}
 
   try { await registrationRef?.update(); } catch {}
 
@@ -330,6 +355,5 @@ export async function repairApp(): Promise<void> {
       await Promise.allSettled(keys.map((k) => caches.delete(k)));
     }
   } catch {}
-  try { sessionStorage.removeItem(DISMISS_KEY); } catch {}
   try { window.location.reload(); } catch {}
 }

@@ -35,7 +35,7 @@ import { ScrollRestoreDebugOverlay } from "@/components/ScrollRestoreDebugOverla
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { MobileFooter } from "@/components/MobileFooter";
-import { UpdateReadyPill } from "@/components/UpdateReadyPill";
+import { startAppUpdatePolling } from "@/lib/app-update";
 import { MiniPlayer } from "@/components/MiniPlayer";
 import { SignerDisconnectedBanner } from "@/components/SignerDisconnectedBanner";
 import { UnifiedBtcBadge } from "@/components/BtcPriceTracker";
@@ -1089,6 +1089,9 @@ const HeaderBar = memo(function HeaderBar({ scrollHidden }: { scrollHidden: bool
 function useScrollSaver() {}
 
 function AppContent({ mainRef, scrollHidden }: { mainRef: React.RefObject<HTMLElement>; scrollHidden: boolean }) {
+  // Quiet updates (lib/app-update.ts): detect new builds and move onto them at
+  // the next natural boundary. There is no pill; nothing to read or tap.
+  useEffect(() => { startAppUpdatePolling(); }, []);
   // A signed-in launch at "/" is about to land on Chats (AppLayout's landing
   // effect). Don't start Home on the way: it would download and mount the
   // feed only to be dropped a frame later, competing with Chats for the
@@ -1155,9 +1158,6 @@ function AppContent({ mainRef, scrollHidden }: { mainRef: React.RefObject<HTMLEl
       <MiniPlayer hidden={scrollHidden} />
       <SpeechReaderBar hidden={scrollHidden} />
       <MobileFooter hidden={scrollHidden} />
-      {/* "Update ready · Restart" — only renders on a confirmed new build
-          (waiting SW / version poll mismatch). See lib/app-update.ts. */}
-      <UpdateReadyPill />
       {/* PWAInstallNudge removed: no auto install popups — installing lives in
           Settings and the Help & Guides install guide. */}
     </div>

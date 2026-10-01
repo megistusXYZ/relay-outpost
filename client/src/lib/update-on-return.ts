@@ -40,6 +40,8 @@ export function installUpdateOnReturn(opts: {
   apply: () => void;
   now?: () => number;
   doc?: Document;
+  /** Anything else that means "in the middle of something" (a call, the signup flow). */
+  alsoBusy?: () => boolean;
 }): () => void {
   const doc = opts.doc ?? document;
   const now = opts.now ?? Date.now;
@@ -56,7 +58,7 @@ export function installUpdateOnReturn(opts: {
     if (away < AWAY_MS) return;
     let ready = false;
     try { ready = await opts.checkForUpdate(); } catch { ready = false; }
-    if (ready && doc.visibilityState === "visible" && !pageLooksBusy(doc)) opts.apply();
+    if (ready && doc.visibilityState === "visible" && !pageLooksBusy(doc) && !opts.alsoBusy?.()) opts.apply();
   };
 
   doc.addEventListener("visibilitychange", onVisibility);

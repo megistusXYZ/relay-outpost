@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { shouldOfferUpdate, shouldPollNow, isDismissed } from "./app-update";
+import { shouldOfferUpdate, shouldPollNow } from "./app-update";
 
 describe("shouldOfferUpdate", () => {
   const RUNNING = "1.0.0+2026-07-19T22:41";
@@ -59,24 +59,3 @@ describe("shouldPollNow", () => {
   });
 });
 
-describe("isDismissed", () => {
-  it("nothing dismissed → everything shows", () => {
-    expect(isDismissed(null, "sw")).toBe(false);
-    expect(isDismissed(null, "1.0.1+2026-07-20T09:03")).toBe(false);
-  });
-
-  it("same detected version stays hidden after dismissal", () => {
-    const v = "1.0.1+2026-07-20T09:03";
-    expect(isDismissed(v, v)).toBe(true);
-  });
-
-  it("a DIFFERENT detected version re-shows the pill", () => {
-    expect(isDismissed("1.0.1+2026-07-20T09:03", "1.0.2+2026-07-21T10:00")).toBe(false);
-  });
-
-  it("an unversioned SW signal never re-shows past any dismissal", () => {
-    // It cannot prove it's a different update than the one already dismissed.
-    expect(isDismissed("sw", "sw")).toBe(true);
-    expect(isDismissed("1.0.1+2026-07-20T09:03", "sw")).toBe(true);
-  });
-});

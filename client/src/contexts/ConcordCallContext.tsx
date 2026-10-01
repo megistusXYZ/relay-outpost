@@ -12,6 +12,7 @@
  * Off the call's room, a small draggable bar keeps it in reach.
  */
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { setCallActive } from "@/lib/call-presence";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { GripVertical, Maximize2, Mic, MicOff, PhoneOff } from "lucide-react";
@@ -160,6 +161,7 @@ export function ConcordCallProvider({ children }: { children: React.ReactNode })
     const s = session.current;
     if (!s) return;
     session.current = null;
+    setCallActive(false);
     clearInterval(s.tick);
     if (s.keyCheck) clearInterval(s.keyCheck);
     s.closePresence();
@@ -193,6 +195,7 @@ export function ConcordCallProvider({ children }: { children: React.ReactNode })
         createRoom: (e2ee) => new lk.Room({ e2ee, adaptiveStream: true, dynacast: true }) as never,
       });
       const room = joined.room as unknown as Room;
+      setCallActive(true);
 
       // Everyone's audio plays here, so the call keeps sounding on any page.
       const audio = document.createElement("div");
