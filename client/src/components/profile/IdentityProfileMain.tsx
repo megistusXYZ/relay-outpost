@@ -26,6 +26,7 @@ import { chipDimmed } from "@/lib/profile-chips";
 import { extractMediaFromContent } from "@/lib/media-utils";
 import { timeChapter, streamChapters, type CompanionMedia } from "@/lib/profile-companion";
 import { ProfileCompanion } from "@/components/profile/ProfileCompanion";
+import { ProfileShopGrid, useProfileListings } from "@/components/ListingCard";
 import { ReplyMarginContext, MARGIN_NOTES_MIN_WIDTH } from "@/components/nostr-post/reply-margin";
 import { Play } from "lucide-react";
 import { TILE_TITLE } from "@/components/discover-tile-title";
@@ -36,7 +37,7 @@ import { TILE_TITLE } from "@/components/discover-tile-title";
  * already chips; the thing genuinely missing was originals-only, so that became
  * a chip too rather than a mode inside another mode.
  */
-type StreamFilter = "all" | "posts" | "replies" | "articles" | "media";
+type StreamFilter = "all" | "posts" | "replies" | "articles" | "media" | "shop";
 
 /** Videos render as a poster + ▶ in the montage; images as <img>. */
 
@@ -109,6 +110,7 @@ export function IdentityProfileMain({
   articlesSlot,
   onSelectArticles,
   onSeeNetwork,
+  shopPubkey,
 }: {
   allNotes: Event[];
   replyNotes: Event[];
@@ -153,6 +155,13 @@ export function IdentityProfileMain({
   onSelectArticles?: () => void;
   /** Opens the following/followers list from the headline counts. */
   onSeeNetwork?: () => void;
+  /**
+   * Whose listings the Shop chip shows (NIP-99). A "For sale" rail used to
+   * sit above everything on a seller's profile, on top of the Media shelf —
+   * two shelves before the first post (owner, 2026-10-01). It is a chip now,
+   * last in the row, and only for people who actually have something listed.
+   */
+  shopPubkey?: string | null;
 }) {
   const [filter, setFilter] = useState<StreamFilter>("all");
   // Montage = a VISUAL glance: photos + video posters, in post order. Tapping a
@@ -168,6 +177,7 @@ export function IdentityProfileMain({
   const [montageLightbox, setMontageLightbox] = useState<number | null>(null);
   const [montageVideoStart, setMontageVideoStart] = useState<number | null>(null);
 
+  const listings = useProfileListings(shopPubkey);
   const filters: { key: StreamFilter; label: string }[] = [
     { key: "all", label: "All" },
     { key: "posts", label: "Posts" },
@@ -176,6 +186,9 @@ export function IdentityProfileMain({
     // visual, and articles sit exactly there.
     ...(articlesSlot !== undefined ? [{ key: "articles" as const, label: "Articles" }] : []),
     { key: "media", label: "Media" },
+    // Last: what they make, then what they sell. Never offered to someone
+    // with nothing listed — a Shop chip that opens on nothing is a dead control.
+    ...(listings.length > 0 ? [{ key: "shop" as const, label: "Shop" }] : []),
   ];
 
   const selectFilter = (key: StreamFilter) => {
@@ -359,13 +372,15 @@ export function IdentityProfileMain({
       {/* Media opens the full library (photos · videos · audio · live ·
           articles) via the classic MediaSection's sub-tabs; everything else is
           the note stream, each post its OWN card with breathing room. */}
-      {filter !== "articles" && filter !== "media" && (
+      {filter !== "articles" && filter !== "media" && filter !== "shop" && (
         <ProfileCompanion streamRef={streamRef} chapters={companionChapters} media={companionMedia} hasMore={hasMore} />
       )}
       {filter === "articles" ? (
         <div>{articlesSlot}</div>
       ) : filter === "media" ? (
         <div>{mediaSlot}</div>
+      ) : filter === "shop" ? (
+        <ProfileShopGrid listings={listings} />
       ) : (
       <div ref={streamRef} className="flex flex-col gap-3">
         {stream.length === 0 && notesLoaded ? (

@@ -287,22 +287,22 @@ export function ListingCard({ listing, compact = false }: { listing: Listing; co
   );
 }
 
-export function ListingTile({ listing, onOpen }: { listing: Listing; onOpen: () => void }) {
+export function ListingTile({ listing, onOpen, fluid = false }: { listing: Listing; onOpen: () => void; /** Fill the grid cell (the Shop tab) instead of the rail's fixed 120px. */ fluid?: boolean }) {
   const image = listing.images[0];
   return (
     <button
       onClick={(e) => { e.stopPropagation(); onOpen(); }}
-      className="w-[120px] shrink-0 text-left group/tile"
+      className={`${fluid ? "w-full min-w-0" : "w-[120px] shrink-0"} text-left group/tile`}
       data-testid={`listing-tile-${listing.id}`}
     >
-      <div className="w-[120px] h-[120px] rounded-xl overflow-hidden bg-muted/40 ring-1 ring-border/40 flex items-center justify-center">
+      <div className={`${fluid ? "w-full aspect-square" : "w-[120px] h-[120px]"} rounded-xl overflow-hidden bg-muted/40 ring-1 ring-border/40 flex items-center justify-center`}>
         {image ? (
           <img src={image} alt={listing.title} className={`w-full h-full object-cover transition-transform duration-500 group-hover/tile:scale-105 ${listing.sold ? "grayscale opacity-70" : ""}`} loading="lazy" decoding="async" />
         ) : (
           <Tag className="w-6 h-6 text-brand/50" />
         )}
       </div>
-      <p className="mt-1.5 text-xs font-medium text-foreground truncate">{listing.title}</p>
+      <p className={`mt-1.5 font-medium text-foreground ${fluid ? "text-[13px] leading-snug line-clamp-2" : "text-xs truncate"}`}>{listing.title}</p>
       <p className="text-[11px] text-muted-foreground tabular-nums truncate">
         {listing.sold ? "Sold" : listing.price ? formatListingPrice(listing.price) : ""}
       </p>
@@ -315,13 +315,17 @@ export function ListingTile({ listing, onOpen }: { listing: Listing; onOpen: () 
  * listings RESOLVE — an empty rail or a "no listings" line would be clutter
  * on the overwhelming majority of profiles that sell nothing.
  */
-export function ProfileListingsStrip({ pubkey }: { pubkey: string }) {
+/**
+ * What a person has for sale. Empty until listings RESOLVE (and for everyone
+ * who sells nothing), so callers can stay silent: no rail, no tab.
+ */
+export function useProfileListings(pubkey: string | null | undefined): Listing[] {
   const [listings, setListings] = useState<Listing[]>([]);
-  const [openListing, setOpenListing] = useState<Listing | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setListings([]);
+    if (!pubkey) return;
     const relays = Array.from(new Set([...LISTING_RELAYS, ...getWriteRelays(pubkey, []), ...FAST_RELAYS.slice(0, 3)]));
     // 100, not a couple dozen: a merchant's rail is their whole catalog, and
     // the marketplace relay answers up to 100 per REQ (measured).
@@ -333,6 +337,35 @@ export function ProfileListingsStrip({ pubkey }: { pubkey: string }) {
     });
     return () => { cancelled = true; };
   }, [pubkey]);
+
+  return listings;
+}
+
+/**
+ * The Shop tab's body on a profile: the person's whole catalog as a grid.
+ * Tapping a tile opens the listing in place; buying happens with the seller
+ * or their marketplace, never here.
+ */
+export function ProfileShopGrid({ listings }: { listings: Listing[] }) {
+  const [openListing, setOpenListing] = useState<Listing | null>(null);
+  if (listings.length === 0) return null;
+  return (
+    <div className="px-3" data-testid="profile-shop-grid">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3 gap-y-4">
+        {listings.map((l) => (
+          <ListingTile key={`${l.pubkey}:${l.dTag}`} listing={l} fluid onOpen={() => setOpenListing(l)} />
+        ))}
+      </div>
+      {openListing && (
+        <ListingDialog listing={openListing} open onOpenChange={(o) => { if (!o) setOpenListing(null); }} />
+      )}
+    </div>
+  );
+}
+
+export function ProfileListingsStrip({ pubkey }: { pubkey: string }) {
+  const listings = useProfileListings(pubkey);
+  const [openListing, setOpenListing] = useState<Listing | null>(null);
 
   if (listings.length === 0) return null;
   return (

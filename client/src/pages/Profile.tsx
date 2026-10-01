@@ -2377,10 +2377,10 @@ export default function Profile() {
           communitiesSlot={subjectCommunityRows2.length > 0 ? <IdentityCommunitiesCard rows={subjectCommunityRows2} /> : undefined}
           vouchSlot={identityVouches}
         >
-          {/* "For sale" rail (NIP-99) — self-hiding; also rendered in the
-              classic layout above its tab row, so both skins carry it. */}
-          {myPubkey && <ProfileListingsStrip pubkey={pubkey} />}
           <IdentityProfileMain
+            // What they sell is a Shop chip in the stream's own row now, not a
+            // rail above the Media shelf. Signed-in only, as the rail was.
+            shopPubkey={myPubkey ? pubkey : null}
             allNotes={allNotes ?? []}
             repostedEvents={repostedEvents}
             articleEvents={articles}
