@@ -106,6 +106,16 @@ function reportUpdate(source: "sw" | "poll", version: string | null): void {
   setState({ ready: true, source, version: version ?? state.version });
 }
 
+/**
+ * A file of the running build is gone from the server: a newer build is out.
+ * Reported by the pages the app loads ahead of time (lib/lazy-retry.ts
+ * preloadChunk). The quiet update then moves on at the next tap or when
+ * nobody is writing — the pre-load itself never reloads anything.
+ */
+export function noteNewerBuild(): void {
+  reportUpdate("poll", null);
+}
+
 /* ----------------------------------------------------------------------------
  * (a) Service worker signals
  * ------------------------------------------------------------------------- */

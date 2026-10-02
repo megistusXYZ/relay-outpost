@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { pickNamedExport, lazyRetry } from "./lazy-retry";
+import { pickNamedExport, lazyRetry, preloadChunk, preloadPending } from "./lazy-retry";
 import { isChunkLoadError } from "./stale-chunk-recovery";
 
 // vitest runs under `environment: "node"`, which has no sessionStorage — but
@@ -101,5 +101,73 @@ describe("lazyRetry module validation", () => {
     const boom = new Error("network down");
     const thrown = await noRetry(async () => { throw boom; }).catch((e) => e);
     expect(thrown).toBe(boom);
+  });
+});
+
+/**
+ * Measured 2026-10-02 (production build, a deploy while the app was open): the
+ * pages the app loads ahead of time failed at 42 s, the failure recovered like
+ * a real one, and the app reloaded under a half-written message.
+ */
+describe("preloadChunk — pages loaded ahead of time never reload the app", () => {
+  const RECOVERY_KEY = "relay-outpost-chunk-recovery";
+  const gone = () => { const e = new Error("Failed to fetch dynamically imported module: /assets/Home-old.js"); return Promise.reject(e); };
+  beforeEach(() => { sessionStorage.removeItem(RECOVERY_KEY); });
+
+  it("a pre-load whose file is gone starts no recovery, and says a newer build is out", async () => {
+    const onStale = vi.fn();
+    await preloadChunk(() => lazyRetry(gone), onStale);
+    expect(onStale).toHaveBeenCalledOnce();
+    // The recovery ladder was not touched: no reload was scheduled.
+    expect(sessionStorage.getItem(RECOVERY_KEY)).toBeNull();
+  });
+
+  it("…at once: it does not sit through the retries a real page gets", async () => {
+    const load = vi.fn(gone);
+    await preloadChunk(() => lazyRetry(load), () => {});
+    expect(load).toHaveBeenCalledOnce();
+  });
+
+  it("the import that resolves to nothing (Vite, after a preload error) counts as gone too", async () => {
+    const onStale = vi.fn();
+    await preloadChunk(() => lazyRetry(async () => undefined as unknown as { default: any }), onStale);
+    expect(onStale).toHaveBeenCalledOnce();
+  });
+
+  it("a pre-load that works says nothing", async () => {
+    const onStale = vi.fn();
+    await preloadChunk(() => lazyRetry(async () => ({ default: () => null })), onStale);
+    expect(onStale).not.toHaveBeenCalled();
+  });
+
+  it("a failure that isn't a missing file (offline) is not news of a newer build", async () => {
+    const onStale = vi.fn();
+    await preloadChunk(() => lazyRetry(() => Promise.reject(new TypeError("Failed to fetch"))), onStale);
+    expect(onStale).not.toHaveBeenCalled();
+  });
+
+  it("is 'pending' only while it is in flight — so a preload error can be told from a page's", async () => {
+    let finish!: (m: { default: any }) => void;
+    const p = preloadChunk(() => lazyRetry(() => new Promise<{ default: any }>((ok) => { finish = ok; })), () => {});
+    expect(preloadPending()).toBe(true);
+    finish({ default: () => null });
+    await p;
+    expect(preloadPending()).toBe(false);
+  });
+
+  it("a page someone actually opens still recovers: the flag does not leak past the pre-load", async () => {
+    await preloadChunk(() => lazyRetry(gone), () => {});
+    void lazyRetry(gone, 0, 0);
+    await new Promise((ok) => setTimeout(ok, 0));
+    expect(sessionStorage.getItem(RECOVERY_KEY)).toMatch(/^1:/);
+  });
+
+  it("the app pre-loads through it, and the preload-error handler stands down while it runs", async () => {
+    const { readFileSync } = await import("fs");
+    const path = await import("path");
+    const app = readFileSync(path.resolve(import.meta.dirname, "../App.tsx"), "utf8");
+    expect(app).toMatch(/HOT_ROUTES\.forEach\(\(k\) => \{ if \(lazyChunks\[k\]\) void preloadChunk\(lazyChunks\[k\], noteNewerBuild\); \}\);/);
+    const main = readFileSync(path.resolve(import.meta.dirname, "../main.tsx"), "utf8");
+    expect(main).toMatch(/if \(preloadPending\(\)\) return;\s*tryRecoverFromStaleChunk\(\);/);
   });
 });

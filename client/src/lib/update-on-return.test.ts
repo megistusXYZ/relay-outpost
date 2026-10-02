@@ -85,6 +85,35 @@ describe("pageLooksBusy", () => {
     expect(pageLooksBusy(document)).toBe(false);
   });
 
+  const playing = (opts: { muted?: boolean; volume?: number } = {}) => {
+    const v = document.createElement("video");
+    Object.defineProperty(v, "paused", { value: false });
+    Object.defineProperty(v, "muted", { value: opts.muted ?? false });
+    Object.defineProperty(v, "volume", { value: opts.volume ?? 1 });
+    document.body.appendChild(v);
+  };
+
+  it("media someone can hear is busy", () => {
+    playing();
+    expect(pageLooksBusy(document)).toBe(true);
+  });
+
+  // Measured 2026-10-02 (Chromium): the app's own hidden video plays a blank,
+  // muted frame on every screen so picture-in-picture can start. It made every
+  // idle screen "busy", and a ready update was never moved onto.
+  it("silent playback isn't: the app's hidden muted video, a muted clip in the feed", () => {
+    playing({ muted: true });
+    playing({ volume: 0 });
+    expect(pageLooksBusy(document)).toBe(false);
+  });
+
+  it("unsent writing is busy", () => {
+    const t = document.createElement("textarea");
+    t.value = "half a message";
+    document.body.appendChild(t);
+    expect(pageLooksBusy(document)).toBe(true);
+  });
+
   it("a search box with text doesn't count as unsent writing", () => {
     const search = document.createElement("input");
     search.type = "search";

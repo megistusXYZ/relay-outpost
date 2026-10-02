@@ -15,8 +15,15 @@ export const AWAY_MS = 15 * 60 * 1000;
 
 /** Something a restart would lose: unsent writing, or playing media. */
 export function pageLooksBusy(doc: Document): boolean {
+  // Media someone can HEAR. Silent playback is not something a restart loses:
+  // a muted clip in the feed — and the app's own hidden, muted video, kept
+  // playing a blank frame so picture-in-picture can start (PiPContext). That
+  // one made every screen read as busy on browsers that warm it up (measured
+  // 2026-10-02, Chromium: Chats, Discover, Feed and Activity, all idle), so a
+  // ready update was never moved onto at a tap, in the background or when
+  // idle. A call counts as busy through its own check (call-presence).
   for (const m of Array.from(doc.querySelectorAll<HTMLMediaElement>("audio, video"))) {
-    if (!m.paused) return true;
+    if (!m.paused && !m.muted && m.volume > 0) return true;
   }
   const fields = doc.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("textarea, input");
   for (const f of Array.from(fields)) {
