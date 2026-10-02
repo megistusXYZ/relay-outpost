@@ -1,13 +1,18 @@
-// New-user default feed (calm/safe/works-day-one): with no explicit preference, a user
-// should land on "For You" (deep_scan, always populated from trending) — NOT be dropped
-// into a sparse "Following" feed. An explicit saved choice is always honored.
+// Default feed: with no explicit preference a user lands on "For you" (raw_signal) —
+// NOT in a sparse "Following" feed, and (since Trending got its own tab, 2026-10-02)
+// not on the Trending chart either. An explicit saved choice is always honored.
 import { describe, it, expect } from "vitest";
-import { resolveDefaultFeedMode, isReplyEvent } from "./helpers";
+import { resolveDefaultFeedMode, initialFeedMode, DEFAULT_FEED_MODE, isReplyEvent } from "./helpers";
 
 describe("resolveDefaultFeedMode", () => {
-  it("defaults to 'For You' (deep_scan) when there is no saved preference", () => {
-    expect(resolveDefaultFeedMode(null)).toBe("deep_scan");
-    expect(resolveDefaultFeedMode(undefined)).toBe("deep_scan");
+  it("with no saved preference the app opens on For you — the first tab — not on Trending", () => {
+    expect(DEFAULT_FEED_MODE).toBe("raw_signal");
+    expect(resolveDefaultFeedMode(null)).toBe("raw_signal");
+    expect(resolveDefaultFeedMode(undefined)).toBe("raw_signal");
+  });
+
+  it("someone who chose Trending as their launch feed keeps it", () => {
+    expect(resolveDefaultFeedMode("deep_scan")).toBe("deep_scan");
   });
 
   it("honors an explicit 'Following' (open_comms) choice", () => {
@@ -20,7 +25,7 @@ describe("resolveDefaultFeedMode", () => {
   });
 
   it("falls back to 'For You' for an unrecognized value", () => {
-    expect(resolveDefaultFeedMode("garbage")).toBe("deep_scan");
+    expect(resolveDefaultFeedMode("garbage")).toBe("raw_signal");
   });
 
   describe("public Nostr off — decision 4, finally read", () => {
@@ -38,19 +43,19 @@ describe("resolveDefaultFeedMode", () => {
     });
 
     it("changes nothing when public Nostr is on", () => {
-      expect(resolveDefaultFeedMode(null, { publicNostr: true })).toBe("deep_scan");
+      expect(resolveDefaultFeedMode(null, { publicNostr: true })).toBe("raw_signal");
     });
 
     it("changes nothing when the caller says nothing", () => {
       // Every pre-existing call site passes no options and must keep the exact
       // behaviour it had — this is what grandfathers existing accounts.
-      expect(resolveDefaultFeedMode(null, {})).toBe("deep_scan");
-      expect(resolveDefaultFeedMode(null)).toBe("deep_scan");
+      expect(resolveDefaultFeedMode(null, {})).toBe("raw_signal");
+      expect(resolveDefaultFeedMode(null)).toBe("raw_signal");
     });
 
     it("garbage still lands somewhere populated, whichever way the flag reads", () => {
       expect(resolveDefaultFeedMode("garbage", { publicNostr: false })).toBe("open_comms");
-      expect(resolveDefaultFeedMode("garbage", { publicNostr: true })).toBe("deep_scan");
+      expect(resolveDefaultFeedMode("garbage", { publicNostr: true })).toBe("raw_signal");
     });
   });
 });
@@ -79,5 +84,30 @@ describe("isReplyEvent", () => {
   it("does NOT misclassify q-tag quotes or p-tag mentions as replies", () => {
     expect(isReplyEvent([["q", "quotedid"]])).toBe(false);
     expect(isReplyEvent([["p", "mentioned"], ["q", "quoted"]])).toBe(false);
+  });
+});
+
+describe("initialFeedMode — where the page starts, before sign-in and follows have loaded", () => {
+  it("starts on For you when nothing is saved", () => {
+    expect(initialFeedMode(null)).toBe("raw_signal");
+  });
+
+  it("starts on a saved Trending, For you or feed of your own straight away", () => {
+    expect(initialFeedMode("deep_scan")).toBe("deep_scan");
+    expect(initialFeedMode("raw_signal")).toBe("raw_signal");
+    expect(initialFeedMode("custom_abc123")).toBe("custom_abc123");
+  });
+
+  it("a saved Following waits behind the default until the follow list is in", () => {
+    expect(initialFeedMode("open_comms")).toBe("raw_signal");
+  });
+
+  it("Home uses these rules, and takes the first-time trust step wherever For you starts", async () => {
+    const { readFileSync } = await import("fs");
+    const path = await import("path");
+    const home = readFileSync(path.resolve(import.meta.dirname, "../Home.tsx"), "utf8");
+    expect(home).toMatch(/return initialFeedMode\(localStorage\.getItem\("relay-outpost-default-feed-mode"\)\);/);
+    expect(home).not.toMatch(/return "deep_scan";/);
+    expect(home).toMatch(/if \(feedMode === "raw_signal"\) startForYouOnNetwork\(\);/);
   });
 });
