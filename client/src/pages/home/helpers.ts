@@ -97,7 +97,7 @@ export const POLL_SORTS = [
 export type PollSort = typeof POLL_SORTS[number]["value"];
 
 /**
- * Saved "Polls" macro feed sort (SavedOptionsSheet → PollsFeed) — superset of
+ * Saved "Polls" macro feed sort (the feed filter → PollsFeed) — superset of
  * the For You surface's POLL_SORTS: "expiring" is the same mode (labelled
  * "Ending soon" here) and "trending" the same hot-score; "latest" is
  * Saved-only. Values feed lib/poll-sort's sortPolls directly.
@@ -167,33 +167,6 @@ export const BUILT_IN_TABS: Array<{ id: FeedMode; label: string; icon: typeof Ra
   { id: "raw_signal", label: "For You", icon: Antenna, requiresAuth: false },
   { id: "open_comms", label: "Following", icon: MessageSquare, requiresAuth: true },
 ];
-
-/**
- * Saved-pill label — the pill is a value-displaying selector: while the saved
- * lane is the active tab it shows the ACTIVE feed's name ("Images", "Polls",
- * "#naturestr") so the user's current location isn't hidden behind a generic
- * "Saved". Reverts to "Saved" whenever another lane is active, on the empty
- * state, or when the selected custom feed no longer exists (deleted while
- * active). Visual truncation is CSS-side (fixed max-width + ellipsis in the
- * tab), so this stays a pure name derivation.
- */
-export function getSavedTabLabel(
-  feedMode: string,
-  feedStyle: "all" | "photos" | "video" | "polls",
-  customFeeds: ReadonlyArray<{ id: string; name: string }>,
-): string {
-  if (!feedMode.startsWith("custom_")) return "Saved";
-  if (feedMode === "custom_all") {
-    // Macro media feed — which one is on screen is carried by feedStyle.
-    if (feedStyle === "photos") return "Images";
-    if (feedStyle === "video") return "Videos";
-    if (feedStyle === "polls") return "Polls";
-    return "Saved";
-  }
-  const id = feedMode.slice("custom_".length);
-  const name = customFeeds.find((f) => f.id === id)?.name.trim();
-  return name || "Saved";
-}
 
 export function decodePubkey(input: string): string | null {
   const trimmed = input.trim();

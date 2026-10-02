@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Segment } from "./home/FeedOptionsSheet";
+import { Segment } from "@/components/Segment";
 import { MissionBriefing, OUTPOSTS_BRIEFING } from "@/components/MissionBriefing";
 import { Link, useLocation, useSearch } from "wouter";
 import { pool, fetchProfilesCached, eventStore, publishEvent } from "@/lib/nostr";

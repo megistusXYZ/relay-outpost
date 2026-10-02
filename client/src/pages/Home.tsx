@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, type RefObject } from "react";
 import { reachAdmits } from "@/lib/trust-reach";
 import { cn } from "@/lib/utils";
 import { flushSync } from "react-dom";
@@ -32,7 +32,7 @@ import { ArticleFeedCard } from "@/components/ArticleFeedCard";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useSpamFilter } from "@/hooks/use-spam-filter";
 import { useFollowsOfFollows } from "@/hooks/use-follows-of-follows";
-import { Radio, Radar, Plus, Trash2, Antenna, Lock, Hash, Users, Filter, Eye, EyeOff, Type, ChevronDown, ChevronUp, X, Search, Package, Zap, Share2, Copy, Download, ShieldCheck, Grape, Rss, Sparkles, Image as ImageIcon, Video, Vote } from "lucide-react";
+import { Radio, Radar, Plus, Trash2, Antenna, Lock, Hash, Users, Filter, Eye, EyeOff, Type, ChevronDown, ChevronUp, X, Search, Package, Zap, Share2, Copy, Download, ShieldCheck, Grape, Rss, Sparkles, Image as ImageIcon, Video, Vote, SlidersHorizontal } from "lucide-react";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { type SignalTier, getSignalTierLabel } from "@/lib/graperank";
 import { BrowsePacksDialog } from "@/components/BrowsePacksDialog";
@@ -47,13 +47,11 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { computeEngagementScore } from "@/lib/engagement";
 import { useFeedPrefs } from "@/lib/feed-prefs";
 import { useDiscoverPrefs, setDiscoverSort } from "@/lib/discover-prefs";
-import { FeedOptionsSheet, type FeedSortValue, type PresetValue, type ContentFilterValue } from "./home/FeedOptionsSheet";
-import { SavedOptionsSheet } from "./home/SavedOptionsSheet";
+import { FeedFilter, type FeedOrderValue, type PresetValue, type ContentFilterValue } from "./home/FeedFilter";
+import { FeedsList } from "./home/FeedsList";
+import { FEED_TABS, tabForFeedMode, tabTap, feedsTabLabel, feedName, filterGroups, pickTopBy, pickFrom, trendingSelectorOrDefault, type TopBy, type TrendingFrom } from "./home/feed-menu";
 import { MediaGridGallery } from "./home/media-grid";
 
-const SORT_LABELS: Record<FeedSortValue, string> = { popular: "Popular", latest: "Latest", trending: "Trending" };
-const SHOW_LABELS: Record<ContentFilterValue, string> = { posts: "Posts", replies: "Replies", all: "All" };
-const PRESET_LABELS: Record<PresetValue, string> = { open: "Open", balanced: "Balanced", strict: "Strict" };
 import { rankDiscoverFeed } from "@/lib/discover-rank";
 import { getFirstSeen, recordEventsFirstSeen } from "@/lib/account-age";
 import { languageAllowed as langAllowed, getPreferredLanguages, ensureLanguageDetector, LANGUAGES_CHANGED_EVENT } from "@/lib/language";
@@ -116,7 +114,7 @@ import { FeedIcon as FeedIconSvg, FEED_ICON_LIST, isValidFeedIconKey, type FeedI
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { publicNostrEnabled, publicNostrStorageKey } from "@/lib/public-nostr";
-import { FeedMode, type ContentFilter, isReplyEvent, FeedSortMode, TopTimeWindow, TRENDING_SELECTORS, TRENDING_TIME_OPTIONS, type TrendingTimeValue, type ArchivesRange, POLL_SORTS, type PollSort, SAVED_POLL_SORTS, type SavedPollSort, SAVED_POLL_SHOW_OPTIONS, type SavedPollShow, FEED_SORT_OPTIONS, TIME_WINDOW_SORT_MODES, TOP_TIME_WINDOWS, PAGE_SIZE, TRENDING_CACHE_TTL, BUILT_IN_TABS, getFeedSortKey, getTopWindowKey, getSavedTabLabel, isArchivesSelector, getArchivesMetric, decodePubkey, resolveDefaultFeedMode } from "./home/helpers";
+import { FeedMode, type ContentFilter, isReplyEvent, FeedSortMode, TopTimeWindow, TRENDING_SELECTORS, type ArchivesRange, POLL_SORTS, type PollSort, SAVED_POLL_SORTS, type SavedPollSort, SAVED_POLL_SHOW_OPTIONS, type SavedPollShow, FEED_SORT_OPTIONS, TIME_WINDOW_SORT_MODES, TOP_TIME_WINDOWS, PAGE_SIZE, TRENDING_CACHE_TTL, BUILT_IN_TABS, getFeedSortKey, getTopWindowKey, isArchivesSelector, getArchivesMetric, decodePubkey, resolveDefaultFeedMode } from "./home/helpers";
 
 /**
  * How long the network gets before the cached feed is allowed to paint.
@@ -484,22 +482,19 @@ export default function Home() {
     [],
   );
 
-  // X-style feed options sheet (replaces the old stacked header rows). Popular =
-  // algorithmic mix, Latest = chronological, Trending = the top-notes source.
-  const [optionsSheetOpen, setOptionsSheetOpen] = useState(false);
-  // Attached to the active feed tab pill so the desktop options popover drops
-  // from it (mobile keeps the full-width bottom sheet). Only one tab is active
-  // at a time, so this single ref serves both the For you/Following options
-  // popover and the Saved options popover.
-  const feedTabAnchorRef = useRef<HTMLButtonElement>(null);
-  // Saved-pill options sheet (Images/Videos/Polls · sort · custom feeds ·
-  // Tune/Packs/Import) — opened by tapping the active Saved pill, the same
-  // bottom-sheet surface the other two pills use (SavedOptionsSheet).
-  const [savedMenuOpen, setSavedMenuOpen] = useState(false);
+  // The feed's controls (home/feed-menu.ts has the rules): tabs switch, ONE
+  // filter button shows the options of the feed on screen, and the Feeds tab
+  // opens a list to pick from.
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterButtonRef = useRef<HTMLButtonElement>(null);
+  const [feedsOpen, setFeedsOpen] = useState(false);
+  // The Feeds tab, wherever it is — PageTabs only hands out a ref to the
+  // ACTIVE tab, and the list opens from Feeds while another tab is lit.
+  const feedsTabRef = useRef<HTMLElement | null>(null);
   // Sort for the macro Images/Videos feeds — owned HERE so it lives inside the
   // macro dropdown (one chip: "Images · Trending") instead of a second chip row.
   const [mediaSort, setMediaSort] = useState<"trending" | "latest">("trending");
-  // Saved Polls macro feed controls (SavedOptionsSheet -> PollsFeed). Same
+  // Saved Polls macro feed controls (the feed filter -> PollsFeed). Same
   // sessionStorage pattern as the For You pollSort, but distinct keys: the
   // Saved sort has an extra "latest" mode the For You selector doesn't.
   const [savedPollSort, setSavedPollSortState] = useState<SavedPollSort>(() => {
@@ -524,23 +519,18 @@ export default function Home() {
     setSavedPollShowState(v);
     try { sessionStorage.setItem("relay-outpost-saved-poll-show", v); } catch {}
   }, []);
-  const currentSort: FeedSortValue = feedMode === "deep_scan" ? "trending" : (discoverSort === "latest" ? "latest" : "popular");
-  const handleSortChange = useCallback((v: FeedSortValue) => {
-    if (v === "trending") { setFeedMode("deep_scan"); }
-    else {
-      if (feedMode === "deep_scan") setFeedMode("raw_signal");
-      setDiscoverSort(v === "popular" ? "mix" : "latest");
-    }
-    toast({ description: `Sorted by ${SORT_LABELS[v]}` });
-  }, [feedMode, setFeedMode, toast]);
+  // No toast on a pick: the filter stays open with the picked option lit, and
+  // the feed changes behind it. Saying it a third time was noise.
+  const feedOrder: FeedOrderValue = discoverSort === "latest" ? "latest" : "popular";
+  const handleOrderChange = useCallback((v: FeedOrderValue) => {
+    setDiscoverSort(v === "popular" ? "mix" : "latest");
+  }, []);
   const handleContentFilterChange = useCallback((v: ContentFilterValue) => {
     setContentFilter(v);
-    toast({ description: `Showing ${SHOW_LABELS[v]}` });
-  }, [setContentFilter, toast]);
+  }, [setContentFilter]);
   const handlePresetChange = useCallback((p: PresetValue) => {
     applyStrictnessPreset(p);
-    toast({ description: `Strictness: ${PRESET_LABELS[p]}` });
-  }, [applyStrictnessPreset, toast]);
+  }, [applyStrictnessPreset]);
   const [topTimeWindow, setTopTimeWindowState] = useState<TopTimeWindow>("24h");
   const [topFallbackAll, setTopFallbackAll] = useState(false);
   const topFallbackRef = useRef(false);
@@ -572,10 +562,12 @@ export default function Home() {
       return v;
     };
     try {
+      // Trending's own Polls list is gone (polls live under Feeds): a stored
+      // "polls" opens the default chart instead (feed-menu.ts).
       const saved = migrate(sessionStorage.getItem("relay-outpost-trending-selector"));
-      if (saved) return saved;
+      if (saved) return trendingSelectorOrDefault(saved);
       const preset = migrate(localStorage.getItem("relay-outpost-default-filter"));
-      if (preset) return preset;
+      if (preset) return trendingSelectorOrDefault(preset);
     } catch {}
     return "arc_replies";
   });
@@ -619,52 +611,15 @@ export default function Home() {
     try { sessionStorage.setItem("relay-outpost-poll-sort", sort); } catch {}
   }, []);
 
-  // ---- Trending controls in the For You options sheet ----
-  // The metric pill/dropdown + time-range chip rows that used to sit under the
-  // tab bar moved into FeedOptionsSheet; these handlers bridge the sheet's
-  // Metric / Time range / Polls picks onto the same selector + range state.
-  // "1 hour"/"4 hours" live in the sheet's Time range row but are really the
-  // Primal quick-window SELECTORS (a different source from the Archives
-  // charts), so leaving them clears the metric — remember the last Archives
-  // chart and restore it when a longer range brings the user back.
-  const lastArchivesSelectorRef = useRef("arc_replies");
-  useEffect(() => {
-    if (isArchivesSelector(trendingSelector)) lastArchivesSelectorRef.current = trendingSelector;
-  }, [trendingSelector]);
-
-  const trendingTime: TrendingTimeValue | null =
-    trendingSelector === "trending_1h" ? "1h"
-    : trendingSelector === "trending_4h" ? "4h"
-    : isArchivesSelector(trendingSelector) ? archivesRange
-    : null;
-
-  const handleTrendingMetric = useCallback((v: string) => {
-    setTrendingSelector(v);
-    const label = TRENDING_SELECTORS.find((s) => s.value === v)?.label ?? v;
-    toast({ description: `Trending: ${label}` });
-  }, [setTrendingSelector, toast]);
-
-  const handleTrendingTime = useCallback((v: TrendingTimeValue) => {
-    if (v === "1h" || v === "4h") {
-      setTrendingSelector(v === "1h" ? "trending_1h" : "trending_4h");
-    } else {
-      if (!isArchivesSelector(trendingSelector)) setTrendingSelector(lastArchivesSelectorRef.current);
-      setArchivesRange(v);
-    }
-    const label = TRENDING_TIME_OPTIONS.find((o) => o.value === v)?.label ?? v;
-    toast({ description: `Time range: ${label}` });
-  }, [trendingSelector, setTrendingSelector, setArchivesRange, toast]);
-
-  const handlePollSort = useCallback((v: PollSort) => {
-    setPollSort(v);
-    const label = POLL_SORTS.find((s) => s.value === v)?.label ?? v;
-    toast({ description: `Polls: ${label}` });
-  }, [setPollSort, toast]);
-
-  const handlePickPolls = useCallback(() => {
-    setTrendingSelector("polls");
-    toast({ description: "Showing polls" });
-  }, [setTrendingSelector, toast]);
+  // ---- Trending's filter: "Top by" and "From" (home/feed-menu.ts) ----
+  const handleTopBy = useCallback((v: TopBy) => {
+    setTrendingSelector(pickTopBy(v, trendingSelector).selector);
+  }, [trendingSelector, setTrendingSelector]);
+  const handleTrendingFrom = useCallback((v: TrendingFrom) => {
+    const next = pickFrom(v);
+    if (next.selector) setTrendingSelector(next.selector);
+    if (next.range) setArchivesRange(next.range);
+  }, [setTrendingSelector, setArchivesRange]);
   const trendingCacheRef = useRef<Map<string, { posts: Event[]; fetchedAt: number; pollCounts?: Map<string, number> }>>(new Map());
   const trendingPrefetchedRef = useRef(false);
   const followingSubRef = useRef<{ close: () => void } | null>(null);
@@ -781,8 +736,8 @@ export default function Home() {
   // <body>, OUTSIDE the hidden layer — close them so none lingers over it.
   useEffect(() => {
     if (surfaceActive) return;
-    setOptionsSheetOpen(false);
-    setSavedMenuOpen(false);
+    setFilterOpen(false);
+    setFeedsOpen(false);
     setTuneDialogOpen(false);
     setBrowsePacksOpen(false);
     setEditingFeed(null);
@@ -2895,18 +2850,11 @@ export default function Home() {
   const currentSelector = TRENDING_SELECTORS.find((s) => s.value === trendingSelector);
   const currentSelectorLabel = currentSelector?.label ?? "Most Replied";
 
-  const visibleTabs = useMemo(() => {
-    return [
-      { id: "raw_signal" as FeedMode, label: "For you", requiresAuth: false, hint: "Popular posts from across the network" },
-      { id: "open_comms" as FeedMode, label: "Following", requiresAuth: true, hint: "Posts from the people you follow" },
-      { id: "saved" as FeedMode, label: "Saved", requiresAuth: true, hint: "Your saved custom feeds" },
-    ];
-  }, []);
-
-  // Saved pill shows its VALUE while that lane is active ("Images ▾",
-  // "#naturestr ▾"); plain "Saved" otherwise. Derivation (incl. the
-  // deleted-feed fallback) lives in helpers.getSavedTabLabel.
-  const savedTabLabel = getSavedTabLabel(feedMode, feedStyle, customFeeds);
+  // The Feeds tab names the feed on screen while one of its feeds is
+  // ("Photos ▾", "#naturestr ▾"); "Feeds" otherwise (home/feed-menu.ts).
+  const feedsLabel = feedsTabLabel(feedMode, feedStyle, customFeeds);
+  const activeFeedTab = tabForFeedMode(feedMode);
+  const currentFeedName = feedName(feedMode, feedStyle, customFeeds);
 
   const handleSaveFeed = async (feed: { name: string; hashtags: string[]; authorPubkeys: string[]; includeKeywords: string[]; excludeKeywords: string[]; contentType: string; icon?: FeedIconKey }) => {
     setIsSavingFeed(true);
@@ -3062,7 +3010,7 @@ export default function Home() {
     }
   }, [pubkey]);
 
-  // Posts / Replies / All now lives in the FeedOptionsSheet (Show group).
+  // Posts / Replies / All now lives in the feed filter (Show group).
 
   return (
     <ParentUnresolvedContext.Provider value={markUnresolvedParent}>
@@ -3074,102 +3022,79 @@ export default function Home() {
       {!isAtTop && isLiveFeed && <NewPostsPill count={totalNewCount} onClick={mergeAllNew} />}
       <div className="max-w-2xl mx-auto">
         <div className="mb-3 sm:mb-4 space-y-2">
+          {/* Tabs switch; the one filter button shows the options of the feed
+              on screen; Feeds opens a list (home/feed-menu.ts has the rules).
+              Until 2026-10-02 every tap on a tab opened a menu. */}
+          <div className="flex items-center gap-1.5">
           <PageTabs
             testId="container-feed-toggle"
-            activeTabRef={feedTabAnchorRef}
-            active={isCustomMode ? "saved" : feedMode === "deep_scan" ? "raw_signal" : feedMode}
-            tabs={visibleTabs.map((tab) => {
+            className="flex-1 min-w-0"
+            sizing="content"
+            active={activeFeedTab}
+            tabs={FEED_TABS.map((tab) => {
               const needsAuth = tab.requiresAuth && !pubkey;
-              const isActive = tab.id === "raw_signal"
-                ? (feedMode === "raw_signal" || feedMode === "deep_scan")
-                : tab.id === "saved"
-                  ? isCustomMode
-                  : feedMode === tab.id;
               return {
-                key: tab.id,
-                // Saved is a value-displaying selector: active feed's name while
-                // the lane is active, "Saved" otherwise. The fixed max-width
-                // (~14ch) + truncate keeps long custom-feed names from ever
-                // reflowing the tab bar at 320px; chevron/testids unchanged.
-                label: tab.id === "saved"
-                  ? <span className="inline-block max-w-[7em] truncate align-bottom">{savedTabLabel}</span>
+                key: tab.key,
+                // The fixed max-width + truncate keeps a long feed name from
+                // reflowing the row on a narrow phone.
+                label: tab.key === "feeds"
+                  ? <span className="block max-w-[7em] truncate">{feedsLabel}</span>
                   : tab.label,
                 title: tab.hint,
                 dimmed: needsAuth,
-                testId: `button-feed-${tab.id}`,
-                badge: (
-                  <>
-                    {needsAuth && (
-                      <Lock className="w-2.5 h-2.5 shrink-0" />
-                    )}
-                    {/* Chevron on EVERY selectable pill, not just the active
-                        one: a tap now always opens that lane's options (owner
-                        call — "users select what settings they want each
-                        time"), so the affordance must say so on every pill.
-                        A ⌄ that only appeared after you'd already switched
-                        advertised the menu exactly one tap too late. */}
-                    {!needsAuth && (tab.id === "raw_signal" || tab.id === "open_comms" || tab.id === "saved") && (
-                      <ChevronDown
-                        className={`w-3 h-3 shrink-0 ${isActive ? "opacity-80" : "opacity-40"}`}
-                        data-testid={`indicator-feed-options-${tab.id}`}
-                        aria-hidden="true"
-                      />
-                    )}
-                  </>
-                ),
+                // A long feed name gives way; the three fixed labels never do.
+                flexible: tab.key === "feeds",
+                testId: `button-feed-${tab.key}`,
+                badge: needsAuth
+                  ? <Lock className="w-2.5 h-2.5 shrink-0" />
+                  // The one tab that opens something says so.
+                  : tab.key === "feeds"
+                    ? <ChevronDown className={`w-3 h-3 shrink-0 ${activeFeedTab === "feeds" ? "opacity-80" : "opacity-50"}`} data-testid="indicator-feeds-list" aria-hidden="true" />
+                    : undefined,
               };
             })}
             onChange={(key) => {
-              const tab = visibleTabs.find((t) => t.id === key);
-              if (!tab) return;
-              const needsAuth = tab.requiresAuth && !pubkey;
-              const isActive = tab.id === "raw_signal"
-                ? (feedMode === "raw_signal" || feedMode === "deep_scan")
-                : tab.id === "saved"
-                  ? isCustomMode
-                  : feedMode === tab.id;
-              // EVERY tap on a selectable pill opens that lane's options sheet
-              // (owner call: "the menu should open every time — users select
-              // what settings they want each time"). An inactive pill still
-              // switches the lane FIRST — the content changes behind the sheet
-              // immediately, so dismissing the sheet costs one swipe and never
-              // undoes the switch. The chevron on every pill (above) is this
-              // rule's affordance.
-              if (needsAuth) {
+              const tap = tabTap(key as (typeof FEED_TABS)[number]["key"], { feedMode, signedIn: !!pubkey });
+              if (tap.do === "sign-in") {
                 navigate("/login");
-              } else if (tab.id === "raw_signal") {
-                if (!isActive) handleForYouClick();
-                setOptionsSheetOpen(true);
-              } else if (tab.id === "open_comms") {
-                if (!isActive) setFeedMode(tab.id);
-                setOptionsSheetOpen(true);
-              } else if (tab.id === "saved") {
-                if (!isActive) {
-                  if (customFeeds.length === 0) {
-                    // No custom feeds yet — land on the Images macro feed so
-                    // the tab always has content. Images/Videos + "Tune New
-                    // Feed" stay reachable from the pill's dropdown.
-                    setFeedMode("custom_all"); setFeedStyle("photos");
-                  } else {
-                    const lastCustom = customFeeds.find(f => feedMode === `custom_${f.id}`);
-                    setFeedMode(`custom_${lastCustom?.id || customFeeds[0]?.id}`);
-                  }
-                }
-                // Re-running the mode switch when already active would reset a
-                // Videos/Polls pick to Images — hence the isActive guard above.
-                setSavedMenuOpen(true);
+              } else if (tap.do === "open-feeds") {
+                feedsTabRef.current = document.querySelector<HTMLElement>('[data-testid="button-feed-feeds"]');
+                setFilterOpen(false);
+                setFeedsOpen(true);
+              } else if (tap.do === "switch") {
+                if (tap.to === "foryou") handleForYouClick();
+                else setFeedMode(tap.to === "following" ? "open_comms" : "deep_scan");
               } else {
-                setFeedMode(tab.id);
+                // Already here: back to the top, with whatever is new. On
+                // Trending that is a fresh chart (this replaced the Refresh
+                // button that sat inside the old options menu).
+                scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                if (feedMode === "deep_scan") void loadTrending(trendingSelector, { force: true });
+                else mergeAllNew();
               }
             }}
           />
+          <button
+            ref={filterButtonRef}
+            type="button"
+            onClick={() => { setFeedsOpen(false); setFilterOpen((o) => !o); }}
+            className="glass-feed-tabs shrink-0 inline-flex items-center justify-center w-11 h-11 sm:w-auto sm:px-3 sm:gap-1.5 rounded-lg text-foreground/80 hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={`Filter ${currentFeedName}`}
+            aria-expanded={filterOpen}
+            title={`Filter ${currentFeedName}`}
+            data-testid="button-feed-filter"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            <span className="hidden sm:inline text-sm font-medium">Filter</span>
+          </button>
+          </div>
 
           {/* The Sort · Show · Strictness summary row was removed to keep the
               area under the mode pills clean — the active pill's ⌄ (tap it
               again) remains the entry point to the options sheet. */}
 
           {/* The All/Photos/Video feed-style chips and the per-feed sort picker
-              live in the SavedOptionsSheet (tap the active Saved pill) — saved
+              live in the feed filter (home/FeedFilter.tsx) — saved
               feeds render no control row under the pills, matching the other
               feed modes. */}
         </div>
@@ -3177,7 +3102,7 @@ export default function Home() {
         {/* The condensed saved-feed control row (sort · style chips · badges ·
             count · share · settings) was removed — saved feeds show only the
             mode pills, like every other feed mode. Sort and the All/Photos/Video
-            lens now live in the SavedOptionsSheet (tap the active Saved pill);
+            lens now live in the feed filter (home/FeedFilter.tsx);
             per-feed Share/Tune were already there. Only the transient
             time-window feedback lines below survive. */}
         {activeCustomFeed && TIME_WINDOW_SORT_MODES.includes(feedSortMode) && (topWindowLoading || topFallbackAll) && (
@@ -3195,7 +3120,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Strictness (Open/Balanced/Strict) moved into the FeedOptionsSheet;
+        {/* Strictness (Open/Balanced/Strict) moved into the feed filter;
             the granular reach/tier controls live on the Trust & Safety page. */}
         {feedMode === "raw_signal" && !pubkey && (
           <div className="flex items-center gap-2 mb-3">
@@ -3206,8 +3131,8 @@ export default function Home() {
         )}
 
         {/* The Trending metric dropdown + time-range/poll-sort chip rows and the
-            Refresh button moved into FeedOptionsSheet (tap the active For you
-            pill) — Trending renders no control row under the tabs, matching
+            Refresh button are in the feed filter (the Filter button; re-tapping
+            the tab refreshes) — Trending renders no control row under the tabs, matching
             every other feed mode. Only this transient loading feedback line
             survives (posts already on screen, a new chart on its way). */}
         {feedMode === "deep_scan" && trendingLoading && trendingPosts.length > 0 && (
@@ -3497,56 +3422,57 @@ export default function Home() {
         </FeedErrorBoundary>
       </div>
 
-      <SavedOptionsSheet
-        open={savedMenuOpen}
-        onOpenChange={setSavedMenuOpen}
-        anchorRef={feedTabAnchorRef}
+      <FeedsList
+        open={feedsOpen}
+        onOpenChange={setFeedsOpen}
+        anchorRef={feedsTabRef as RefObject<HTMLElement>}
         feedMode={feedMode}
         feedStyle={feedStyle}
-        mediaSort={mediaSort}
-        onPickMacro={(style) => { setFeedMode("custom_all"); setFeedStyle(style); }}
-        onPickSort={setMediaSort}
-        pollSort={savedPollSort}
-        onPollSort={setSavedPollSort}
-        pollShow={savedPollShow}
-        onPollShow={setSavedPollShow}
-        activeFeed={activeCustomFeed}
-        feedSortMode={feedSortMode}
-        onFeedSort={(v) => activeCustomFeed && setFeedSortMode(v, activeCustomFeed.id)}
-        topTimeWindow={topTimeWindow}
-        onTimeWindow={(v) => activeCustomFeed && setTopTimeWindow(v, activeCustomFeed.id)}
-        onPickStyle={setFeedStyle}
         customFeeds={customFeeds}
+        onPickMacro={(style) => { setFeedMode("custom_all"); setFeedStyle(style); }}
         onSelectFeed={(id) => { setFeedMode(`custom_${id}`); setFeedStyle("all"); }}
         onReorder={reorderFeeds}
         onShare={openShareDialog}
         onEdit={(cf) => { setEditingFeed(cf); setTuneDialogOpen(true); }}
         onDelete={(cf) => setDeletingFeed(cf)}
-        onTuneNew={() => { setEditingFeed(null); setTuneDialogOpen(true); }}
-        onBrowsePacks={() => setBrowsePacksOpen(true)}
+        onCreate={() => { setEditingFeed(null); setTuneDialogOpen(true); }}
+        onFindFeeds={() => setBrowsePacksOpen(true)}
         onImport={() => setImportDialogOpen(true)}
       />
-      <FeedOptionsSheet
-        open={optionsSheetOpen}
-        onOpenChange={setOptionsSheetOpen}
-        anchorRef={feedTabAnchorRef}
-        tab={feedMode === "open_comms" ? "following" : "foryou"}
-        currentSort={currentSort}
-        onSort={handleSortChange}
+      <FeedFilter
+        open={filterOpen}
+        onOpenChange={setFilterOpen}
+        anchorRef={filterButtonRef}
+        feedName={currentFeedName}
+        groups={filterGroups({
+          feedMode,
+          feedStyle,
+          strictness: !!pubkey && wotEnabled && wotReady,
+          feedOrderRanks: TIME_WINDOW_SORT_MODES.includes(feedSortMode),
+        })}
+        order={feedOrder}
+        onOrder={handleOrderChange}
         contentFilter={contentFilter}
         onContentFilter={handleContentFilterChange}
-        showStrictness={!!pubkey && wotEnabled && wotReady}
         activePreset={activePreset}
         onPreset={handlePresetChange}
         onAdvanced={() => navigate("/account?tab=shield")}
         trendingSelector={trendingSelector}
-        onTrendingMetric={handleTrendingMetric}
-        trendingTime={trendingTime}
-        onTrendingTime={handleTrendingTime}
-        pollSort={pollSort}
-        onPollSort={handlePollSort}
-        onPickPolls={handlePickPolls}
-        onRefreshTrending={() => loadTrending(trendingSelector, { force: true })}
+        archivesRange={archivesRange}
+        onTopBy={handleTopBy}
+        onFrom={handleTrendingFrom}
+        mediaSort={mediaSort}
+        onMediaSort={setMediaSort}
+        pollSort={savedPollSort}
+        onPollSort={setSavedPollSort}
+        pollShow={savedPollShow}
+        onPollShow={setSavedPollShow}
+        feedSortMode={feedSortMode}
+        onFeedSort={(v) => activeCustomFeed && setFeedSortMode(v, activeCustomFeed.id)}
+        topTimeWindow={topTimeWindow}
+        onTimeWindow={(v) => activeCustomFeed && setTopTimeWindow(v, activeCustomFeed.id)}
+        feedStyle={feedStyle}
+        onFeedStyle={setFeedStyle}
       />
 
       <TuneFrequencyDialog

@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
  * content calls onOpenChange(false) itself). Toggling stays open otherwise.
  */
 export function DesktopOptionsPopover({
-  open, onOpenChange, anchorRef, align = "start", title, testId, width = "w-[380px]", children,
+  open, onOpenChange, anchorRef, align = "start", title, testId, width = "w-[380px]", titleClassName = "text-sm font-brand uppercase tracking-widest mb-4", children,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -25,6 +25,8 @@ export function DesktopOptionsPopover({
   title: ReactNode;
   testId: string;
   width?: string;
+  /** The heading's style; the Home feed panels use a plain sentence-case one. */
+  titleClassName?: string;
   children: ReactNode;
 }) {
   return (
@@ -37,7 +39,7 @@ export function DesktopOptionsPopover({
         className={cn(width, "max-h-[70vh] overflow-y-auto rounded-xl border-brand/15 p-4")}
         data-testid={testId}
       >
-        <h2 className="text-sm font-brand uppercase tracking-widest mb-4">{title}</h2>
+        <h2 className={titleClassName}>{title}</h2>
         {children}
       </PopoverContent>
     </Popover>

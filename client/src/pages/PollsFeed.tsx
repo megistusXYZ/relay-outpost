@@ -24,9 +24,9 @@ export default function PollsFeed({
   embedded: _embedded, sort = "trending", show = "open",
 }: {
   embedded?: boolean;
-  /** SavedOptionsSheet's "Sort" pick — same value vocabulary as Home's pollSort. */
+  /** The feed filter's "Sort" pick — same value vocabulary as Home's pollSort. */
   sort?: PollSortMode;
-  /** SavedOptionsSheet's "Show" pick — "open" hides ended polls. */
+  /** The feed filter's "Show" pick — "open" hides ended polls. */
   show?: PollShowMode;
 }) {
   const fresh = pollsCache && Date.now() - pollsCache.at < CACHE_TTL_MS;
