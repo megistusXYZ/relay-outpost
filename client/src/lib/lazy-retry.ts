@@ -66,11 +66,57 @@ function chunkLoadError(message: string): Error {
   return err;
 }
 
+/**
+ * Loads nobody asked for: the pages the app fetches ahead of time, a while
+ * after launch, so the next tap is instant.
+ *
+ * They must never reload the app. After a deploy the running build's files
+ * are gone, the pre-load fails, and until 2026-10-02 that failure recovered
+ * like a real one — a reload about 45 s after launch, under someone halfway
+ * through a message (measured: the page reloaded at 42 s and the draft was
+ * gone). Nothing is broken on screen when a pre-load fails; all it has found
+ * out is that a newer build exists. So it says that (`onStale`), and the quiet
+ * update moves the app on at the next tap, or when nobody is writing.
+ */
+let preloadsStarting = 0;
+let preloadsPending = 0;
+
+/** A pre-load is in flight: a chunk failure now may be its, not a page's. */
+export function preloadPending(): boolean {
+  return preloadsPending > 0;
+}
+
+export function preloadChunk(load: () => Promise<unknown>, onStale: () => void): Promise<void> {
+  preloadsStarting++;
+  preloadsPending++;
+  let loading: Promise<unknown>;
+  try {
+    loading = load();
+  } catch (err) {
+    loading = Promise.reject(err);
+  } finally {
+    preloadsStarting--;
+  }
+  return loading
+    .then(() => {}, (err) => { if (isChunkLoadError(err)) onStale(); })
+    .finally(() => { preloadsPending--; });
+}
+
 export function lazyRetry<T extends { default: any }>(
   importFn: () => Promise<T>,
   retries = 3,
   interval = 1500
 ): Promise<T> {
+  // Started by preloadChunk (read now, synchronously: the flag is only up
+  // while the pre-load is being started): one try, no recovery.
+  if (preloadsStarting > 0) {
+    return importFn().then((mod) => {
+      if (mod == null || (mod as { default?: unknown }).default == null) {
+        throw chunkLoadError("Pre-loaded chunk resolved without a default export (stale chunk)");
+      }
+      return mod;
+    });
+  }
   return importFn()
     // Validate BEFORE the handler pair below so a bad module is routed into the
     // retry/reload path (a throw inside an onFulfilled handler does NOT reach

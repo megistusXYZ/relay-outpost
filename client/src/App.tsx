@@ -35,7 +35,7 @@ import { ScrollRestoreDebugOverlay } from "@/components/ScrollRestoreDebugOverla
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { MobileFooter } from "@/components/MobileFooter";
-import { startAppUpdatePolling, repairApp } from "@/lib/app-update";
+import { startAppUpdatePolling, repairApp, noteNewerBuild } from "@/lib/app-update";
 import { MiniPlayer } from "@/components/MiniPlayer";
 import { SignerDisconnectedBanner } from "@/components/SignerDisconnectedBanner";
 import { UnifiedBtcBadge } from "@/components/BtcPriceTracker";
@@ -80,7 +80,7 @@ import { isWelcomed } from "@/lib/welcome";
 // Chunk-load resilience (retry → one-shot stale-deploy reload) for every
 // React.lazy site app-wide — extracted to lib/lazy-retry.ts so pages that
 // code-split locally (Home, Search, MyOutpost, ChatList) share it too.
-import { lazyRetry, lazyNamed } from "@/lib/lazy-retry";
+import { lazyRetry, lazyNamed, preloadChunk } from "@/lib/lazy-retry";
 import { resetChunkRecovery } from "@/lib/stale-chunk-recovery";
 
 const lazyChunks = {
@@ -297,7 +297,9 @@ if (typeof window !== "undefined") {
       if (prefetched) return;
       prefetched = true;
       document.removeEventListener("visibilitychange", onVisible);
-      HOT_ROUTES.forEach((k) => lazyChunks[k]?.());
+      // preloadChunk: a pre-load that fails (a deploy removed the file) only
+      // notes that a newer build is out. It never reloads the app.
+      HOT_ROUTES.forEach((k) => { if (lazyChunks[k]) void preloadChunk(lazyChunks[k], noteNewerBuild); });
     };
     const onVisible = () => {
       if (document.visibilityState === "visible") doPrefetch();

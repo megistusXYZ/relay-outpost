@@ -13,6 +13,7 @@ import { reportCrash, normalizeErrorEvent, normalizeRejection } from "./lib/cras
 import { attachServiceWorkerUpdateSignals } from "./lib/app-update";
 import { reloadOntoFreshShell } from "./lib/sw-shell";
 import { tryRecoverFromStaleChunk } from "./lib/stale-chunk-recovery";
+import { preloadPending } from "./lib/lazy-retry";
 import { registerCommunityListSync } from "./lib/concord/concord-keys";
 import { syncCommunityListNow } from "./lib/concord/community-list-live";
 
@@ -297,6 +298,10 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   // together reloaded a page whose chunk kept failing without end.
   window.addEventListener('vite:preloadError', (event) => {
     event.preventDefault?.();
+    // A page fetched ahead of time, not one somebody opened: nothing on screen
+    // is broken, so nothing reloads (lib/lazy-retry.ts preloadChunk). A real
+    // page failing in the same moment still recovers, through its own import.
+    if (preloadPending()) return;
     tryRecoverFromStaleChunk();
   });
 
