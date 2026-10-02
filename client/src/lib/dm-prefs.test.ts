@@ -1,8 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   EMPTY_PREFS, MAX_PINNED, TIMER_OPTIONS, expirationFor, isMutedChat, isPinned, parsePrefs, pinnedFirst,
-  setMutedChat, setPinned, setTimer, timerLabel, timerOf,
-} from "./dm-prefs";
+  setMutedChat, setPinned, setTimer, timerLabel, timerOf, marksAfter, mergeMarks, prefsFromMarks, backfilledMarks, type DmPrefMarks, type DmPrefs } from "./dm-prefs";
 
 const ALICE = "b".repeat(64);
 const GROUP = "group:" + "b".repeat(64) + "," + "c".repeat(64);
@@ -96,5 +95,72 @@ describe("what was stored, read back", () => {
   it("a damaged entry costs that entry, not the rest", () => {
     const p = parsePrefs({ pinned: [ALICE, 7, "", ALICE], muted: "nope", timers: { [ALICE]: 3600, bad: "soon", zero: 0, neg: -5 } });
     expect(p).toEqual({ pinned: [ALICE], muted: [], timers: { [ALICE]: 3600 } });
+  });
+});
+
+describe("chat choices that follow you to your other devices", () => {
+  const A = "aa".repeat(32), B = "bb".repeat(32), G = "group:x,y";
+  const none: DmPrefs = { pinned: [], muted: [], timers: {} };
+
+  it("a choice is remembered with when it was made", () => {
+    const marks = marksAfter(none, setPinned(none, A, true), {}, 1000);
+    expect(marks).toEqual({ [`pin:${A}`]: { v: 1, at: 1000 } });
+  });
+
+  it("only what changed is re-stamped", () => {
+    const one = setPinned(none, A, true);
+    const m1 = marksAfter(none, one, {}, 1000);
+    const two = setMutedChat(one, B, true);
+    const m2 = marksAfter(one, two, m1, 2000);
+    expect(m2[`pin:${A}`]).toEqual({ v: 1, at: 1000 });
+    expect(m2[`mute:${B}`]).toEqual({ v: 1, at: 2000 });
+  });
+
+  it("undoing a choice is remembered too, so another device can't bring it back", () => {
+    const pinned = setPinned(none, A, true);
+    const m1 = marksAfter(none, pinned, {}, 1000);
+    const m2 = marksAfter(pinned, setPinned(pinned, A, false), m1, 2000);
+    expect(m2[`pin:${A}`]).toEqual({ v: 0, at: 2000 });
+    expect(prefsFromMarks(m2).pinned).toEqual([]);
+  });
+
+  it("a timer carries its length, and Off is a choice like any other", () => {
+    const timed = setTimer(none, G, 3600);
+    const m1 = marksAfter(none, timed, {}, 1000);
+    expect(m1[`timer:${G}`]).toEqual({ v: 3600, at: 1000 });
+    const m2 = marksAfter(timed, setTimer(timed, G, 0), m1, 2000);
+    expect(prefsFromMarks(m2).timers).toEqual({});
+  });
+
+  it("two devices: for each choice, the later one wins — whichever side it is on", () => {
+    const phone: DmPrefMarks = { [`pin:${A}`]: { v: 1, at: 100 }, [`mute:${B}`]: { v: 1, at: 500 } };
+    const laptop: DmPrefMarks = { [`pin:${A}`]: { v: 0, at: 300 }, [`mute:${B}`]: { v: 0, at: 200 }, [`timer:${G}`]: { v: 86400, at: 50 } };
+    const merged = mergeMarks(phone, laptop);
+    expect(merged).toEqual(mergeMarks(laptop, phone));
+    expect(prefsFromMarks(merged)).toEqual({ pinned: [], muted: [B], timers: { [G]: 86400 } });
+  });
+
+  it("merging the same thing twice changes nothing", () => {
+    const m: DmPrefMarks = { [`pin:${A}`]: { v: 1, at: 100 } };
+    expect(mergeMarks(mergeMarks(m, m), m)).toEqual(m);
+  });
+
+  it("pins come back in the order they were made, newest first, and never more than the limit", () => {
+    const marks: DmPrefMarks = {};
+    for (let i = 0; i < 7; i++) marks[`pin:chat${i}`] = { v: 1, at: 100 + i };
+    expect(prefsFromMarks(marks).pinned).toEqual(["chat6", "chat5", "chat4", "chat3", "chat2"]);
+  });
+
+  it("choices made before this existed are kept, but give way to any dated choice", () => {
+    const old = setTimer(setMutedChat(setPinned(none, A, true), B, true), G, 3600);
+    const marks = backfilledMarks(old, {});
+    expect(prefsFromMarks(marks)).toEqual(old);
+    const remote: DmPrefMarks = { [`pin:${A}`]: { v: 0, at: 5000 } };
+    expect(prefsFromMarks(mergeMarks(marks, remote)).pinned).toEqual([]);
+  });
+
+  it("damaged entries from another device are ignored", () => {
+    const merged = mergeMarks({}, { "pin:x": { v: 1, at: "soon" }, "weird:y": { v: 1, at: 5 }, [`mute:${B}`]: null } as never);
+    expect(merged).toEqual({});
   });
 });

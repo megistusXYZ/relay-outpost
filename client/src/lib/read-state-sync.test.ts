@@ -18,6 +18,7 @@ import {
   type ReadState,
 } from "./read-state-sync";
 import { DM_READ_PREFIX } from "./dm-read";
+import { readDmPrefs, writeDmPrefs, setPinned, setMutedChat, setTimer, readDmPrefMarks } from "./dm-prefs";
 import { setCommunityMuted, setChannelMuted, isCommunityMuted, isChannelMuted, muteEntries } from "./concord/concord-mute";
 
 // Deterministic localStorage (node env has none).
@@ -308,5 +309,53 @@ describe("group chats — mutes", () => {
     __store.clear();
     setCommunityMuted(CID, true);
     expect(hasAnyReadMarkers(PK)).toBe(true);
+  });
+});
+
+describe("private chats — pins, mutes and timers follow you", () => {
+  const ALICE = "a1".repeat(32), BOB = "b2".repeat(32);
+  beforeEach(() => { __store.clear(); });
+
+  it("a chat pinned, muted or timed on this device is in what gets published", () => {
+    writeDmPrefs(PK, setTimer(setMutedChat(setPinned(readDmPrefs(PK), ALICE, true), BOB, true), ALICE, 3600));
+    const state = collectLocalState(PK);
+    expect(Object.keys(state.dmPrefs ?? {}).sort()).toEqual([`mute:${BOB}`, `pin:${ALICE}`, `timer:${ALICE}`]);
+    expect(hasAnyReadMarkers(PK)).toBe(true);
+  });
+
+  it("choices made on another device show up here", () => {
+    const remote = doc({ dmPrefs: { [`pin:${ALICE}`]: { v: 1, at: 5000 }, [`timer:${BOB}`]: { v: 86400, at: 5000 } } });
+    expect(applyRemoteToLocal(remote, PK)).toBe(true);
+    expect(readDmPrefs(PK)).toEqual({ pinned: [ALICE], muted: [], timers: { [BOB]: 86400 } });
+    expect(applyRemoteToLocal(remote, PK)).toBe(false);
+  });
+
+  it("an unpin made later on another device unpins here; an older one does not", () => {
+    writeDmPrefs(PK, setPinned(readDmPrefs(PK), ALICE, true));
+    const pinnedAt = readDmPrefMarks(PK)[`pin:${ALICE}`].at;
+    expect(applyRemoteToLocal(doc({ dmPrefs: { [`pin:${ALICE}`]: { v: 0, at: pinnedAt - 1000 } } }), PK)).toBe(false);
+    expect(readDmPrefs(PK).pinned).toEqual([ALICE]);
+    expect(applyRemoteToLocal(doc({ dmPrefs: { [`pin:${ALICE}`]: { v: 0, at: pinnedAt + 1000 } } }), PK)).toBe(true);
+    expect(readDmPrefs(PK).pinned).toEqual([]);
+  });
+
+  it("a document from before this existed changes nothing", () => {
+    writeDmPrefs(PK, setPinned(readDmPrefs(PK), ALICE, true));
+    expect(applyRemoteToLocal(doc({}), PK)).toBe(false);
+    expect(readDmPrefs(PK).pinned).toEqual([ALICE]);
+  });
+
+  it("merging two documents keeps the later choice for each chat", () => {
+    const out = mergeReadState(
+      doc({ dmPrefs: { [`pin:${ALICE}`]: { v: 1, at: 10 }, [`mute:${BOB}`]: { v: 0, at: 50 } } }),
+      doc({ dmPrefs: { [`pin:${ALICE}`]: { v: 0, at: 20 }, [`mute:${BOB}`]: { v: 1, at: 40 } } }));
+    expect(out.dmPrefs).toEqual({ [`pin:${ALICE}`]: { v: 0, at: 20 }, [`mute:${BOB}`]: { v: 0, at: 50 } });
+  });
+
+  it("choices made before this existed are published too, and survive a round trip", () => {
+    __store.set(`ro_dm_prefs_v1_${PK}`, JSON.stringify({ pinned: [ALICE, BOB], muted: [], timers: {} }));
+    const state = collectLocalState(PK);
+    expect(applyRemoteToLocal(state, PK)).toBe(false);
+    expect(readDmPrefs(PK).pinned).toEqual([ALICE, BOB]);
   });
 });
