@@ -69,6 +69,19 @@ describe("mediaForChapter — 'From this time'", () => {
     expect(r.items.map((x) => x.eventId)).toEqual(["a", "b", "c"]);
   });
 
+  it("each picture once: a post linking the same picture twice doesn't fill the panel with it", () => {
+    const twice = [m("a", "Today"), m("a", "Today"), m("b", "Today"), m("c", "Today")];
+    const r = mediaForChapter(twice, "Today", 3);
+    expect(r.items.map((x) => x.eventId)).toEqual(["a", "b", "c"]);
+    // What the panel keys its tiles by is unique.
+    expect(new Set(r.items.map((x) => x.eventId + x.url)).size).toBe(3);
+  });
+
+  it("…and the same picture in a second post is still one tile, in the fallback too", () => {
+    const shared = { ...m("z", "July 2026"), url: media[0].url };
+    expect(mediaForChapter([media[0], shared, media[1]], "This month", 3).items.map((x) => x.eventId)).toEqual(["a", "b"]);
+  });
+
   it("someone who posts no pictures gets no panel", () => {
     expect(mediaForChapter([], "Today").items).toEqual([]);
   });

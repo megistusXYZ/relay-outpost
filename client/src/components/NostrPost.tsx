@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback, memo, isValidElement, cloneElement, type ReactNode } from "react";
+import { quotedImageUrls } from "@/components/nostr-post/quoted-images";
 import { ClampedText, LINES, textForLines } from "@/components/ClampedText";
 import { createPortal } from "react-dom";
 import type { Event } from "nostr-tools";
@@ -1109,10 +1110,10 @@ export function EmbeddedNote({ eventId, encoded, relays, parentEventId }: { even
     try { return formatDistanceToNow(new Date(fetchedEvent.created_at * 1000), { addSuffix: true }); } catch { return ""; }
   })();
 
-  const imageUrlRegex = /https?:\/\/\S+\.(jpeg|jpg|gif|png|webp)(\?[^\s]*)?/gi;
   const videoUrlRegex = /https?:\/\/\S+\.(mp4|webm|mov)(\?[^\s]*)?/gi;
   const audioUrlRegex = /https?:\/\/\S+\.(mp3|m4a|wav|ogg|opus|aac|flac)(\?[^\s]*)?/gi;
-  const imageUrls = (fetchedEvent.content.match(imageUrlRegex) || []).slice(0, 4);
+  // Each picture once (nostr-post/quoted-images.ts).
+  const imageUrls = quotedImageUrls(fetchedEvent.content);
   const videoUrls = (fetchedEvent.content.match(videoUrlRegex) || []).slice(0, 1);
   // A quoted music/podcast post must arrive with its PLAYER, not as bare text
   // (live report: quoted Wavlake-style tracks rendered playerless). The imeta
