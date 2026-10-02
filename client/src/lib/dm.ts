@@ -151,7 +151,7 @@ export async function createGiftWrapForSelf(
     const wrapEvent = finalizeEvent({
       kind: KIND_GIFT_WRAP,
       created_at: Math.floor(Date.now() / 1000) + randomTimeOffset(),
-      tags: [pTag(senderPubkey, selfHint)],
+      tags: [pTag(senderPubkey, selfHint), ...(opts.outerTags || [])],
       content: wrapContent,
     }, wrapPrivkey);
 
@@ -177,7 +177,7 @@ export async function createRoomGiftWraps(
   senderPubkey: string,
   members: string[],
   content: string,
-  opts: Pick<GiftWrapOptions, "rumorKind" | "rumorCreatedAt" | "extraTags"> = {},
+  opts: Pick<GiftWrapOptions, "rumorKind" | "rumorCreatedAt" | "extraTags" | "outerTags"> = {},
 ): Promise<{ rumorId: string; wraps: { to: string; wrap: Event }[]; selfWrap: Event | null } | null> {
   if (members.length === 0) return null;
   const rumorCreatedAt = opts.rumorCreatedAt ?? Math.floor(Date.now() / 1000);
@@ -317,4 +317,14 @@ export async function sendDM({ signer, senderPubkey, recipientPubkey, content, r
       : err instanceof Error ? err.message : "Could not encrypt or publish message.";
     return { success: false, method: "nip17", error: errorMessage };
   }
+}
+
+/**
+ * The tags that make a message disappear (NIP-40), for the message itself and
+ * for each wrap around it. On the message, so every app that opens it knows
+ * when to stop showing it; on the wrap, so a relay can drop the ciphertext too.
+ * Nothing when the message is kept.
+ */
+export function expirationTags(expiresAt: number | undefined): string[][] {
+  return typeof expiresAt === "number" && expiresAt > 0 ? [["expiration", String(Math.floor(expiresAt))]] : [];
 }

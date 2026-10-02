@@ -14,7 +14,9 @@ import { searchUsers } from "@/lib/primal-cache";
 import { readDmLastRead, writeDmLastRead } from "@/lib/dm-read";
 import { displayNameWith, usePetnamesVersion } from "@/lib/petnames";
 import { fetchRelayLists, getWriteRelays, getReadRelays, getDMRelayListCached, fetchDMRelayList, getLocalDMRelays, hasDMRelayList, getDMRelaysForContact, getMyDMReceiveRelays, wasDMRelayListConfirmedEmpty, publishDMRelayList, DM_FALLBACK_RELAYS, ensureOwnDMRelayList, wasOwnDMInboxAutopublished } from "@/lib/outbox";
-import { createGiftWrap, createGiftWrapForSelf, createRoomGiftWraps } from "@/lib/dm";
+import { createGiftWrap, createGiftWrapForSelf, createRoomGiftWraps, expirationTags } from "@/lib/dm";
+import { DM_PREFS_EVENT, expirationFor, readDmPrefs, setTimer, timerLabel, timerOf, writeDmPrefs, type DmPrefs } from "@/lib/dm-prefs";
+import { AddPeopleDialog, NameChatDialog, TimerDialog } from "./messages/ThreadDialogs";
 import * as dmCache from "@/lib/dm-cache";
 import { useToast } from "@/hooks/use-toast";
 import { signWithTimeout, withSignerTimeout, SIGNER_CRYPTO_TIMEOUT } from "@/lib/signer-timeout";
@@ -37,7 +39,7 @@ import {
   AlertCircle,
   Lock,
   Loader2,
-  ChevronDown, MessageCircle, X, MoreVertical, VolumeX, Flag, Users } from "lucide-react";
+  ChevronDown, MessageCircle, X, MoreVertical, VolumeX, Flag, Users, Pencil, Timer, UserPlus } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ReportDialog } from "@/components/ReportDialog";
 import { isMutedPubkey, mutePubkey, unmutePubkey } from "@/lib/spam-filter";
@@ -71,7 +73,7 @@ import type { Event } from "nostr-tools";
 import { nip19, generateSecretKey, getPublicKey, finalizeEvent, getEventHash, verifyEvent } from "nostr-tools";
 import { v2 as nip44v2 } from "nostr-tools/nip44";
 import { unwrapGiftWrap, seedProcessedWraps, isWrapProcessed, roomKeyOfUnwrapped } from "@/lib/gift-wrap";
-import { groupTitle, isExpired, isGroupRoom, newerSubject, roomKeyFromSlug, roomMembers, roomSlug } from "@/lib/dm-room";
+import { groupTitle, isExpired, isGroupRoom, newerSubject, roomKeyFromSlug, roomKeyOfMembers, roomMembers, roomSlug } from "@/lib/dm-room";
 import { clearCursors, completeBackTo, historyComplete, loadOlder, readCursors, writeCursors } from "@/lib/dm-history";
 import { routeGroupRumor } from "@/lib/concord/concord-dm-pipe";
 import { detectGroupInvite } from "@/lib/concord/invite-detect";
@@ -124,6 +126,9 @@ interface DecodedMessage {
   quotedNoteId?: string;
   /** A disappearing message: when it stops being shown (unix seconds). */
   expiresAt?: number;
+  /** A message that names the chat (NIP-17 `subject`): kept so a retry of a
+   *  failed send is the same message, name and all. */
+  subject?: string;
 }
 
 const nowSec = () => Math.floor(Date.now() / 1000);
@@ -1081,6 +1086,19 @@ export default function Messages() {
   const [loadingTooLong, setLoadingTooLong] = useState(false);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
+  // The person's own choices for their chats — timers here; pins and mute in
+  // the list (lib/dm-prefs.ts). Kept on this device, per account.
+  const [dmPrefs, setDmPrefs] = useState<DmPrefs>(() => readDmPrefs(pubkey));
+  useEffect(() => {
+    const sync = () => setDmPrefs(readDmPrefs(pubkey));
+    sync();
+    window.addEventListener(DM_PREFS_EVENT, sync);
+    return () => window.removeEventListener(DM_PREFS_EVENT, sync);
+  }, [pubkey]);
+  const [showNameChat, setShowNameChat] = useState(false);
+  const [showTimer, setShowTimer] = useState(false);
+  const [showAddPeople, setShowAddPeople] = useState(false);
+
   // Older messages (lib/dm-history.ts): state for loadOlderMessages, further down.
   type HistoryStatus = "idle" | "loading" | "unreached" | "done";
   const [historyStatus, setHistoryStatus] = useState<HistoryStatus>("idle");
@@ -2013,7 +2031,7 @@ export default function Messages() {
   const sendToGroup = useCallback(async (
     roomKey: string,
     content: string,
-    opts: { rumorCreatedAt: number; rumorKind?: number; extraTags?: string[][] },
+    opts: { rumorCreatedAt: number; rumorKind?: number; extraTags?: string[][]; outerTags?: string[][] },
   ): Promise<string> => {
     if (!pubkey || !signer) throw new Error("Not signed in.");
     const members = roomMembers(roomKey);
@@ -2034,25 +2052,34 @@ export default function Messages() {
   // message's status (sending → sent, or failed). Shared by send and retry.
   const { emojis: dmEmojiList } = useCustomEmojis();
   const dmEmojiMap = useMemo(() => new Map(dmEmojiList.map((e) => [e.shortcode, e.url])), [dmEmojiList]);
-  const deliverMessage = useCallback(async (clientId: string, messageText: string, now: number, peer: string) => {
+  const deliverMessage = useCallback(async (
+    clientId: string, messageText: string, now: number, peer: string,
+    // expiresAt: a disappearing message (the chat's timer, lib/dm-prefs.ts).
+    // subject: this message names the chat. Both are part of the message, so
+    // a retry must pass the same ones or it becomes a different message.
+    extra: { expiresAt?: number; subject?: string } = {},
+  ) => {
     if (!pubkey || !signer) return;
+    const expiry = expirationTags(extra.expiresAt);
+    const messageTags = [...buildEmojiTags(messageText, dmEmojiMap), ...(extra.subject ? [["subject", extra.subject]] : []), ...expiry];
+    const named = extra.subject ? { subject: extra.subject, subjectAt: now } : {};
     setMsgStatus(s => ({ ...s, [clientId]: "sending" }));
     try {
       if (isGroupRoom(peer)) {
         // A several-person chat: one message for everyone (sendToGroup below).
-        const realId = await sendToGroup(peer, messageText, { rumorCreatedAt: now, extraTags: buildEmojiTags(messageText, dmEmojiMap) });
+        const realId = await sendToGroup(peer, messageText, { rumorCreatedAt: now, extraTags: messageTags, outerTags: expiry });
         seenMessageIdsRef.current.add(realId);
         seenContentKeysRef.current.add(msgContentKey(pubkey, now, messageText));
         deliveredMsgIds.current.add(realId);
         setMessages(prev => prev.map(m => (m.id === clientId ? { ...m, id: realId } : m)));
         setMsgStatus(s => { const n = { ...s }; delete n[clientId]; return n; });
-        appendCachedMessage(pubkey, peer, { id: realId, content: messageText, from: pubkey, timestamp: now, encryption: "nip17" });
+        appendCachedMessage(pubkey, peer, { id: realId, content: messageText, from: pubkey, timestamp: now, encryption: "nip17", expiresAt: extra.expiresAt, subject: extra.subject });
         dmCache.putMessage(pubkey, peer, {
           id: realId, ownerPubkey: pubkey, peerPubkey: peer,
-          content: messageText, from: pubkey, timestamp: now, encryption: "nip17" }).catch((e) => console.warn("[DM] Cache putMessage failed:", e?.message));
+          content: messageText, from: pubkey, timestamp: now, encryption: "nip17", expiresAt: extra.expiresAt }).catch((e) => console.warn("[DM] Cache putMessage failed:", e?.message));
         dmCache.putConversation(pubkey, {
           ownerPubkey: pubkey, peerPubkey: peer,
-          lastMessage: messageText, lastTimestamp: now }).catch((e) => console.warn("[DM] Cache putConversation failed:", e?.message));
+          lastMessage: messageText, lastTimestamp: now, ...named }).catch((e) => console.warn("[DM] Cache putConversation failed:", e?.message));
         return;
       }
       await fetchDMRelayList(peer, { force: true }).catch((e) => console.warn("[DM] fetchDMRelayList failed for contact:", e?.message));
@@ -2071,9 +2098,8 @@ export default function Messages() {
         });
       }
 
-      const emojiTags = buildEmojiTags(messageText, dmEmojiMap);
-      const giftWrapResult = await createGiftWrap(signer, pubkey, peer, messageText, { rumorCreatedAt: now, extraTags: emojiTags });
-      const wrapForSelf = await createGiftWrapForSelf(signer, pubkey, peer, messageText, { rumorCreatedAt: now, extraTags: emojiTags });
+      const giftWrapResult = await createGiftWrap(signer, pubkey, peer, messageText, { rumorCreatedAt: now, extraTags: messageTags, outerTags: expiry });
+      const wrapForSelf = await createGiftWrapForSelf(signer, pubkey, peer, messageText, { rumorCreatedAt: now, extraTags: messageTags, outerTags: expiry });
       if (!giftWrapResult) throw new Error("Failed to create encrypted message.");
 
       await publishWithFallback(recipientRelays, giftWrapResult.wrap, "gift-wrap-to-recipient", recipientHas10050);
@@ -2089,14 +2115,14 @@ export default function Messages() {
       setMessages(prev => prev.map(m => (m.id === clientId ? { ...m, id: realId } : m)));
       setMsgStatus(s => { const n = { ...s }; delete n[clientId]; return n; });
 
-      const stored: DecodedMessage = { id: realId, content: messageText, from: pubkey, timestamp: now, encryption: "nip17" };
+      const stored: DecodedMessage = { id: realId, content: messageText, from: pubkey, timestamp: now, encryption: "nip17", expiresAt: extra.expiresAt, subject: extra.subject };
       appendCachedMessage(pubkey, peer, stored);
       dmCache.putMessage(pubkey, peer, {
         id: realId, ownerPubkey: pubkey, peerPubkey: peer,
-        content: messageText, from: pubkey, timestamp: now, encryption: "nip17" }).catch((e) => console.warn("[DM] Cache putMessage failed:", e?.message));
+        content: messageText, from: pubkey, timestamp: now, encryption: "nip17", expiresAt: extra.expiresAt }).catch((e) => console.warn("[DM] Cache putMessage failed:", e?.message));
       dmCache.putConversation(pubkey, {
         ownerPubkey: pubkey, peerPubkey: peer,
-        lastMessage: messageText, lastTimestamp: now }).catch((e) => console.warn("[DM] Cache putConversation failed:", e?.message));
+        lastMessage: messageText, lastTimestamp: now, ...named }).catch((e) => console.warn("[DM] Cache putConversation failed:", e?.message));
     } catch (err) {
       console.error("Send DM failed:", err);
       setMsgStatus(s => ({ ...s, [clientId]: "failed" }));
@@ -2126,8 +2152,10 @@ export default function Messages() {
     const now = Math.floor(Date.now() / 1000);
     const clientId = `pending-${now}-${Math.random().toString(36).slice(2, 9)}`;
     const peer = selectedPubkey;
+    // This chat's timer (lib/dm-prefs.ts): when set, the message says when it goes.
+    const expiresAt = expirationFor(dmPrefs, peer, now);
 
-    const optimistic: DecodedMessage = { id: clientId, content: messageText, from: pubkey, timestamp: now, encryption: "nip17" };
+    const optimistic: DecodedMessage = { id: clientId, content: messageText, from: pubkey, timestamp: now, encryption: "nip17", expiresAt };
     seenContentKeysRef.current.add(msgContentKey(pubkey, now, messageText));
     setMessages(prev => [...prev, optimistic]);
     setNewMessage("");
@@ -2140,13 +2168,45 @@ export default function Messages() {
     // Sending marks the thread read so your own message never shows as an unread DM.
     writeDmLastRead(peer, now);
 
-    void deliverMessage(clientId, messageText, now, peer);
-  }, [pubkey, signer, selectedPubkey, newMessage, pendingMedia, toast, deliverMessage]);
+    void deliverMessage(clientId, messageText, now, peer, { expiresAt });
+  }, [pubkey, signer, selectedPubkey, newMessage, pendingMedia, toast, deliverMessage, dmPrefs]);
 
   const retryMessage = useCallback((msg: DecodedMessage) => {
     if (!selectedPubkey) return;
-    void deliverMessage(msg.id, msg.content, msg.timestamp, selectedPubkey);
+    // The same message again — its expiry and its chat name with it.
+    void deliverMessage(msg.id, msg.content, msg.timestamp, selectedPubkey, { expiresAt: msg.expiresAt, subject: msg.subject });
   }, [deliverMessage, selectedPubkey]);
+
+  /**
+   * Name the chat: a message with a `subject`, to everyone in it (NIP-17's own
+   * way, and Amethyst's). Its text says what happened, for apps that don't
+   * show chat names. Never given a timer — a name that vanished would leave
+   * the chat renamed by a message nobody can see.
+   */
+  const renameChat = useCallback((name: string) => {
+    if (!pubkey || !signer?.nip44 || !selectedPubkey) return;
+    const peer = selectedPubkey;
+    const now = Math.floor(Date.now() / 1000);
+    const text = `Renamed the chat to “${name}”`;
+    const clientId = `pending-${now}-${Math.random().toString(36).slice(2, 9)}`;
+    seenContentKeysRef.current.add(msgContentKey(pubkey, now, text));
+    setMessages(prev => [...prev, { id: clientId, content: text, from: pubkey, timestamp: now, encryption: "nip17", subject: name }]);
+    setConversations(prev => {
+      const was = prev.find(c => c.pubkey === peer);
+      const updated = prev.filter(c => c.pubkey !== peer);
+      updated.unshift({ ...(was ?? { pubkey: peer, unread: false }), pubkey: peer, lastMessage: text, lastTimestamp: now, unread: false, subject: name, subjectAt: now });
+      return updated;
+    });
+    writeDmLastRead(peer, now);
+    void deliverMessage(clientId, text, now, peer, { subject: name });
+  }, [pubkey, signer, selectedPubkey, deliverMessage]);
+
+  /** Add people: in NIP-17 that is a NEW chat — everyone here, plus them. */
+  const startChatWith = useCallback((added: string[]) => {
+    if (!selectedPubkey) return;
+    const key = roomKeyOfMembers([...roomMembers(selectedPubkey), ...added]);
+    if (key) navigateToConversation(key);
+  }, [selectedPubkey, navigateToConversation]);
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -2171,11 +2231,14 @@ export default function Messages() {
       const mimeType = fileRef.mime;
 
       const now = Math.floor(Date.now() / 1000);
-      const fileTags = buildFileMessageTags(fileRef);
+      // A file sent in a chat with a timer disappears like any other message.
+      const fileExpiresAt = expirationFor(dmPrefs, selectedPubkey, now);
+      const expiry = expirationTags(fileExpiresAt);
+      const fileTags = [...buildFileMessageTags(fileRef), ...expiry];
       let sentId: string;
       if (isGroupRoom(selectedPubkey)) {
         // The file's key rides on the one message everyone in the chat gets.
-        sentId = await sendToGroup(selectedPubkey, fileRef.url, { rumorCreatedAt: now, rumorKind: KIND_FILE_MESSAGE, extraTags: fileTags });
+        sentId = await sendToGroup(selectedPubkey, fileRef.url, { rumorCreatedAt: now, rumorKind: KIND_FILE_MESSAGE, extraTags: fileTags, outerTags: expiry });
       } else {
         await fetchDMRelayList(selectedPubkey, { force: true }).catch((e) => console.warn("[DM] fetchDMRelayList failed for contact:", e?.message));
         // NIP-17: recipient's wrap → THEIR relays only; self-copy → MY relays.
@@ -2183,8 +2246,8 @@ export default function Messages() {
         const selfRelays = getMyDMReceiveRelays(pubkey);
         const recipientHas10050 = hasDMRelayList(selectedPubkey);
 
-        const giftWrapResult = await createGiftWrap(signer, pubkey, selectedPubkey, fileRef.url, { rumorCreatedAt: now, rumorKind: KIND_FILE_MESSAGE, extraTags: fileTags });
-        const wrapForSelf = await createGiftWrapForSelf(signer, pubkey, selectedPubkey, fileRef.url, { rumorCreatedAt: now, rumorKind: KIND_FILE_MESSAGE, extraTags: fileTags });
+        const giftWrapResult = await createGiftWrap(signer, pubkey, selectedPubkey, fileRef.url, { rumorCreatedAt: now, rumorKind: KIND_FILE_MESSAGE, extraTags: fileTags, outerTags: expiry });
+        const wrapForSelf = await createGiftWrapForSelf(signer, pubkey, selectedPubkey, fileRef.url, { rumorCreatedAt: now, rumorKind: KIND_FILE_MESSAGE, extraTags: fileTags, outerTags: expiry });
 
         if (!giftWrapResult) {
           throw new Error("Failed to create encrypted file message.");
@@ -2208,7 +2271,8 @@ export default function Messages() {
         from: pubkey,
         timestamp: now,
         encryption: "nip17",
-        fileMetadata: fileMeta };
+        fileMetadata: fileMeta,
+        expiresAt: fileExpiresAt };
 
       seenMessageIdsRef.current.add(newMsg.id);
       seenContentKeysRef.current.add(msgContentKey(newMsg.from, newMsg.timestamp, newMsg.content));
@@ -2221,7 +2285,7 @@ export default function Messages() {
         id: newMsg.id, ownerPubkey: pubkey, peerPubkey: selectedPubkey,
         content: newMsg.content, from: newMsg.from,
         timestamp: newMsg.timestamp, encryption: newMsg.encryption,
-        fileMetadata: newMsg.fileMetadata }).catch((e) => console.warn("[DM] Cache putMessage failed:", e?.message));
+        fileMetadata: newMsg.fileMetadata, expiresAt: newMsg.expiresAt }).catch((e) => console.warn("[DM] Cache putMessage failed:", e?.message));
       dmCache.putConversation(pubkey, {
         ownerPubkey: pubkey, peerPubkey: selectedPubkey,
         lastMessage: previewText, lastTimestamp: now }).catch((e) => console.warn("[DM] Cache putConversation failed:", e?.message));
@@ -2241,7 +2305,7 @@ export default function Messages() {
       setUploading(false);
       setUploadStatus("");
     }
-  }, [pubkey, signer, selectedPubkey, toast, sendToGroup]);
+  }, [pubkey, signer, selectedPubkey, toast, sendToGroup, dmPrefs]);
 
   const handleNewChat = useCallback(() => {
     const input = newChatInput.trim();
@@ -2888,6 +2952,7 @@ export default function Messages() {
   const selectedSubject = selectedPubkey ? conversations.find(c => c.pubkey === selectedPubkey)?.subject : undefined;
   const nameOf = (pk: string) => displayNameWith("person", pk, getDMDisplayName(profiles.get(pk) || null, pk));
   const threadMemberNames = selectedPubkey && selectedIsGroup ? roomMembers(selectedPubkey).map(nameOf) : [];
+  const threadTimer = selectedPubkey ? timerOf(dmPrefs, selectedPubkey) : 0;
   // Petname wins in the thread header too — one surface showing your name and
   // another the real one would read as two different people. The real name
   // stays one tap away on the profile.
@@ -3041,13 +3106,27 @@ export default function Messages() {
             {isDeletedPreview && (
               <span className="text-[10px] bg-muted text-muted-foreground rounded-full px-2 py-0.5 shrink-0">Deleted</span>
             )}
+            {threadTimer > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowTimer(true)}
+                className="flex items-center gap-1 min-h-[32px] px-2 rounded-full border border-brand/25 bg-brand/10 text-[11px] text-brand shrink-0"
+                title="Your messages here disappear. Tap to change."
+                data-testid="chip-thread-timer"
+              >
+                <Timer className="w-3 h-3" /> {timerLabel(threadTimer)}
+              </button>
+            )}
             <div className="flex items-center gap-1 text-[10px] text-muted-foreground/60 shrink-0" data-testid="text-encryption-status">
               <ShieldCheck className="w-3 h-3 text-green-500/70" />
               <span>NIP-17</span>
             </div>
-            {/* Mute and Report act on a person; a several-person chat's people
-                are muted or reported from their own profiles. */}
-            {!selectedIsGroup && <DropdownMenu>
+            {/* The chat's own menu. Naming it, a timer for your messages and
+                adding people work for any chat; Mute and Report act on a
+                PERSON, so they are offered in a one-to-one chat only (a
+                several-person chat's people are muted or reported from their
+                own profiles). */}
+            {!isDeletedPreview && <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
@@ -3060,26 +3139,61 @@ export default function Messages() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => {
-                    if (!selectedPubkey) return;
-                    if (threadMuted) { unmutePubkey(selectedPubkey); setThreadMuted(false); }
-                    else { mutePubkey(selectedPubkey); setThreadMuted(true); }
-                  }}
-                  className={`gap-2.5 cursor-pointer min-h-11 sm:min-h-0 ${threadMuted ? "" : "text-red-500 focus:text-red-500"}`}
-                  data-testid="menu-item-thread-mute"
-                >
-                  <VolumeX className="w-4 h-4" /> {threadMuted ? "Unmute" : "Mute"}
+                {/* Deferred past the menu's own close: a dialog opened from a
+                    dismissing dropdown leaves the page unclickable (the rule
+                    ChatListRow documents). */}
+                <DropdownMenuItem onClick={() => setTimeout(() => setShowNameChat(true), 0)} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-thread-name">
+                  <Pencil className="w-4 h-4" /> {selectedSubject ? "Rename chat" : "Name this chat"}
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setShowThreadReport(true)}
-                  className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0 text-red-500 focus:text-red-500"
-                  data-testid="menu-item-thread-report"
-                >
-                  <Flag className="w-4 h-4" /> Report
+                <DropdownMenuItem onClick={() => setTimeout(() => setShowTimer(true), 0)} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-thread-timer">
+                  <Timer className="w-4 h-4" /> Disappearing messages{threadTimer > 0 ? ` · ${timerLabel(threadTimer)}` : ""}
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTimeout(() => setShowAddPeople(true), 0)} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-thread-add-people">
+                  <UserPlus className="w-4 h-4" /> Add people
+                </DropdownMenuItem>
+                {!selectedIsGroup && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (!selectedPubkey) return;
+                      if (threadMuted) { unmutePubkey(selectedPubkey); setThreadMuted(false); }
+                      else { mutePubkey(selectedPubkey); setThreadMuted(true); }
+                    }}
+                    className={`gap-2.5 cursor-pointer min-h-11 sm:min-h-0 ${threadMuted ? "" : "text-red-500 focus:text-red-500"}`}
+                    data-testid="menu-item-thread-mute"
+                  >
+                    <VolumeX className="w-4 h-4" /> {threadMuted ? "Unmute" : "Mute"}
+                  </DropdownMenuItem>
+                )}
+                {!selectedIsGroup && (
+                  <DropdownMenuItem
+                    onClick={() => setShowThreadReport(true)}
+                    className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0 text-red-500 focus:text-red-500"
+                    data-testid="menu-item-thread-report"
+                  >
+                    <Flag className="w-4 h-4" /> Report
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>}
+            {selectedPubkey && (
+              <>
+                <NameChatDialog open={showNameChat} onOpenChange={setShowNameChat} current={selectedSubject ?? ""} onSave={renameChat} />
+                <TimerDialog
+                  open={showTimer}
+                  onOpenChange={setShowTimer}
+                  seconds={threadTimer}
+                  onPick={(seconds) => { if (pubkey) writeDmPrefs(pubkey, setTimer(readDmPrefs(pubkey), selectedPubkey, seconds)); }}
+                />
+                <AddPeopleDialog
+                  open={showAddPeople}
+                  onOpenChange={setShowAddPeople}
+                  me={pubkey}
+                  follows={follows ?? []}
+                  already={roomMembers(selectedPubkey).map((pk) => ({ pubkey: pk, name: nameOf(pk) }))}
+                  onStart={startChatWith}
+                />
+              </>
+            )}
             {/* Same person-report shape Profile uses: a kind-0 stub carrying
                 the contact's pubkey — ReportDialog emits the p-tag report.
                 DM content itself is E2EE and never leaves the thread. */}
