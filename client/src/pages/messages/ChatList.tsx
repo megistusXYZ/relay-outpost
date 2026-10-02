@@ -182,6 +182,13 @@ interface ChatListProps {
   onRestoreAllHiddenMessages: () => void;
   handleClearAllHidden: () => void;
   navigateToConversation: (pubkey: string) => void;
+  /**
+   * Older messages (lib/dm-history.ts). The first load brings only the newest;
+   * this is the way back to the rest. Absent when messages can't be opened
+   * here (no signer). `backTo` is the time everything is known to be loaded
+   * back to, when that can be said.
+   */
+  olderMessages?: { status: "idle" | "loading" | "unreached" | "done"; backTo: number | null; opening: number; onLoad: () => void };
   onOpenProfile: (pubkey: string) => void;
   handlePromoteToPrimary: (pubkey: string) => void;
   handleDemoteToRequests: (pubkey: string) => void;
@@ -242,6 +249,7 @@ export function ChatList({
   onRestoreAllHiddenMessages,
   handleClearAllHidden,
   navigateToConversation,
+  olderMessages,
   onOpenProfile,
   handlePromoteToPrimary,
   handleDemoteToRequests,
@@ -1608,6 +1616,38 @@ export function ChatList({
             )
             )}
           </>
+        )}
+        {/* The way back to older messages: the list above is the newest only.
+            Never while masked or in the deleted view. Three honest endings:
+            more to load, relays that didn't answer, and the real beginning. */}
+        {olderMessages && !privateMasked && !showDeleted && (
+          <div className="px-3 py-4 flex flex-col items-center gap-1 text-center" data-testid="chats-older">
+            {olderMessages.status === "done" ? (
+              <p className="text-[11px] text-muted-foreground/60" data-testid="chats-older-done">That's all your messages.</p>
+            ) : olderMessages.status === "loading" ? (
+              <p className="text-xs text-muted-foreground" data-testid="chats-older-loading">
+                {olderMessages.opening > 0 ? `Opening ${olderMessages.opening} message${olderMessages.opening === 1 ? "" : "s"}…` : "Looking further back…"}
+              </p>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={olderMessages.onLoad}
+                  className="min-h-[44px] px-4 rounded-full border border-border/60 text-sm text-muted-foreground hover:text-foreground hover:border-border transition-colors"
+                  data-testid="button-chats-older"
+                >
+                  {olderMessages.status === "unreached" ? "Try again" : "Load older messages"}
+                </button>
+                <p className="text-[11px] text-muted-foreground/60" data-testid="chats-older-note">
+                  {olderMessages.status === "unreached"
+                    ? "Your relays didn't answer, so nothing older could be checked."
+                    : olderMessages.backTo
+                      ? `Everything since ${new Date(olderMessages.backTo * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })} is here.`
+                      : "Only your newest messages are loaded."}
+                </p>
+              </>
+            )}
+          </div>
         )}
       </div>
 

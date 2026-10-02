@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { useLocation, useRoute } from "wouter";
 import { useGoBack } from "@/hooks/use-go-back";
 import { Button } from "@/components/ui/button";
@@ -72,6 +72,7 @@ import { nip19, generateSecretKey, getPublicKey, finalizeEvent, getEventHash, ve
 import { v2 as nip44v2 } from "nostr-tools/nip44";
 import { unwrapGiftWrap, seedProcessedWraps, isWrapProcessed, roomKeyOfUnwrapped } from "@/lib/gift-wrap";
 import { groupTitle, isExpired, isGroupRoom, newerSubject, roomKeyFromSlug, roomMembers, roomSlug } from "@/lib/dm-room";
+import { clearCursors, completeBackTo, historyComplete, loadOlder, readCursors, writeCursors } from "@/lib/dm-history";
 import { routeGroupRumor } from "@/lib/concord/concord-dm-pipe";
 import { detectGroupInvite } from "@/lib/concord/invite-detect";
 import { GroupInviteCard } from "@/components/GroupInviteCard";
@@ -87,7 +88,7 @@ import { buildCreateActions } from "./messages/create-actions";
 import { useGroupChats, useGroupIdentities } from "./messages/useGroupChats";
 import { useGroupTeasers } from "./messages/useGroupTeasers";
 import { useHideMessagePreviews } from "@/lib/message-previews";
-import { getDMDisplayName, mergeChatEntries, URL_REGEX, type ConversationPreview, type DmTab, type GroupPreview, type ProfileInfo } from "./messages/helpers";
+import { getDMDisplayName, keepNewerPreviews, mergeChatEntries, URL_REGEX, type ConversationPreview, type DmTab, type GroupPreview, type ProfileInfo } from "./messages/helpers";
 import { lazyRetry } from "@/lib/lazy-retry";
 import messagesEmptyBg from "../assets/images/messages-empty-bg.webp";
 import { ClampedText, LINES, textForLines } from "@/components/ClampedText";
@@ -188,6 +189,36 @@ function queryWithTimeout(relays: string[], filter: any, timeoutMs = 8000): Prom
     } as any),
     new Promise<Event[]>((resolve) => setTimeout(() => resolve([]), timeoutMs)),
   ]);
+}
+
+/**
+ * One page of gift wraps from ONE relay, and whether the relay really answered
+ * (lib/dm-history.ts needs both: an empty answer is that relay's beginning, no
+ * answer is nothing at all). `onrelayeose` is the real answer — it never fires
+ * for a relay that failed to connect, was rate-limited or refused to be read —
+ * and it arrives a microtask AFTER `oneose`, hence the deferred finish.
+ */
+function fetchWrapPage(relay: string, filter: Record<string, unknown>, timeoutMs = 12000): Promise<{ events: Event[]; answered: boolean }> {
+  return new Promise((resolve) => {
+    const events: Event[] = [];
+    let answered = false;
+    let settled = false;
+    let sub: { close(): void } | undefined;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try { sub?.close(); } catch { /* already closed */ }
+      resolve({ events, answered });
+    };
+    const timer = setTimeout(finish, timeoutMs);
+    sub = throttledPoolSubscribe([relay], filter as never, {
+      onevent: (e: Event) => { if (!settled && e.kind === KIND_GIFT_WRAP) events.push(e); },
+      onrelayeose: () => { answered = true; },
+      oneose: () => { setTimeout(finish, 0); },
+    });
+    if (settled) { try { sub.close(); } catch { /* already closed */ } }
+  });
 }
 
 const conversationCache = new Map<string, DecodedMessage[]>();
@@ -1050,6 +1081,27 @@ export default function Messages() {
   const [loadingTooLong, setLoadingTooLong] = useState(false);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
+  // Older messages (lib/dm-history.ts): state for loadOlderMessages, further down.
+  type HistoryStatus = "idle" | "loading" | "unreached" | "done";
+  const [historyStatus, setHistoryStatus] = useState<HistoryStatus>("idle");
+  const [historyBackTo, setHistoryBackTo] = useState<number | null>(null);
+  const [historyOpening, setHistoryOpening] = useState(0);
+  // What the last look brought for the chat on screen (null: not looked yet).
+  const [threadOlderFound, setThreadOlderFound] = useState<number | null>(null);
+  const historyBusyRef = useRef(false);
+  // Keeps the reader's place when older messages are added above it.
+  const keepPlaceRef = useRef<{ height: number; top: number } | null>(null);
+
+  // Whose chats the list on screen is. A load's list replaces the screen's,
+  // keeping any newer preview already there (helpers.keepNewerPreviews) — but
+  // only for the SAME account: another account's previews are never carried.
+  const listOwnerRef = useRef<string | null>(null);
+  const showLoadedList = useCallback((list: ConversationPreview[]) => {
+    const sameAccount = listOwnerRef.current === pubkey;
+    listOwnerRef.current = pubkey ?? null;
+    setConversations((shown) => (sameAccount ? keepNewerPreviews(shown, list) : list));
+  }, [pubkey]);
+
   const loadConversations = useCallback(async (forceDecrypt = false) => {
     if (!pubkey) {
       setLoading(false);
@@ -1071,6 +1123,15 @@ export default function Messages() {
     // "No conversations yet" — no spinner, no error, and Refresh did nothing
     // because it hit the same early return.
     const cachedConvs = await dmCache.getConversationList(pubkey);
+    if (cachedConvs.length === 0 && Object.keys(readCursors(pubkey)).length > 0) {
+      // Nothing is stored here, yet paging remembers having gone back (the
+      // message store was cleared, or lost): what it "already loaded" is gone,
+      // so forget how far it got — or "That's all your messages" would stand
+      // over an empty list with no way to load them again.
+      clearCursors(pubkey);
+      setHistoryStatus("idle");
+      setHistoryBackTo(null);
+    }
     if (cachedConvs.length > 0) {
       const cachedList: ConversationPreview[] = cachedConvs
         .filter(c => !hiddenConvoSet.has(c.peerPubkey))
@@ -1084,7 +1145,7 @@ export default function Messages() {
           // false: a message that arrived while the app was closed (e.g. a chat
           // sitting in Requests) must still light the unread badge on load.
           unread: c.lastTimestamp > readDmLastRead(c.peerPubkey) }));
-      setConversations(cachedList);
+      showLoadedList(cachedList);
       setLoading(false);
 
       // Show cached profiles instantly, then only relay-fetch the ones we don't
@@ -1241,7 +1302,7 @@ export default function Messages() {
           subjectAt: data.subjectAt,
           unread: data.timestamp > readDmLastRead(pk) }));
         earlyList.sort((a, b) => b.lastTimestamp - a.lastTimestamp);
-        setConversations(earlyList);
+        showLoadedList(earlyList);
         setLoading(false);
       }
 
@@ -1265,11 +1326,17 @@ export default function Messages() {
           lastMessage: data.lastMessage,
           lastTimestamp: data.timestamp,
           subject: data.subject,
-          subjectAt: data.subjectAt }).catch((e) => console.warn("[DM] Cache putConversation failed:", e?.message));
+          // keepNewer: this list was built from a cache read at the START of the
+          // load. The notification path may have stored a newer message for the
+          // same chat since (it opens wraps first, so this loop never sees
+          // them) — writing ours over it put an older message in the preview
+          // (seen in the history rig: "recent 1" under a chat whose newest was
+          // "recent 0").
+          subjectAt: data.subjectAt }, { keepNewer: true }).catch((e) => console.warn("[DM] Cache putConversation failed:", e?.message));
       }
 
       convList.sort((a, b) => b.lastTimestamp - a.lastTimestamp);
-      setConversations(convList);
+      showLoadedList(convList);
 
       Array.from(hiddenConvoSet).forEach(hpk => {
         for (const member of roomMembers(hpk)) if (!profilesRef.current.has(member)) profileFetches.push(member);
@@ -1300,7 +1367,7 @@ export default function Messages() {
       if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
       setLoading(false);
     }
-  }, [pubkey, signer]);
+  }, [pubkey, signer, showLoadedList]);
 
   // Batched mode: run one deliberate decrypt pass over the pending history.
   const decryptPending = useCallback(async () => {
@@ -1311,6 +1378,146 @@ export default function Messages() {
       setDecrypting(false);
     }
   }, [loadConversations]);
+
+  /**
+   * Older messages (lib/dm-history.ts). The first load brings the newest wraps
+   * only; this pages each inbox relay further back, opens what is new and
+   * files it. Asked for by the person — a button under the chat list and at
+   * the top of an open chat — never on its own: every wrap is two signer
+   * decrypts, and a remote signer would be prompted for each.
+   */
+  useEffect(() => {
+    if (!pubkey) { setHistoryStatus("idle"); setHistoryBackTo(null); return; }
+    const relays = getMyDMReceiveRelays(pubkey);
+    const cursors = readCursors(pubkey);
+    setHistoryStatus(historyComplete(relays, cursors) ? "done" : "idle");
+    setHistoryBackTo(completeBackTo(relays, cursors));
+  }, [pubkey]);
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!pubkey || !signer?.nip44 || historyBusyRef.current) return;
+    historyBusyRef.current = true;
+    setHistoryStatus("loading");
+    setHistoryOpening(0);
+    const openRoom = selectedPubkeyRef.current;
+    let foundForOpenRoom = 0;
+    try {
+      await seedProcessedWraps(pubkey);
+      const relays = getMyDMReceiveRelays(pubkey);
+      const res = await loadOlder(relays, pubkey, readCursors(pubkey), fetchWrapPage, isWrapProcessed);
+      if (!mountedRef.current) return;
+      setHistoryOpening(res.wraps.length);
+
+      const hiddenConvoSet = getHiddenConvoPubkeys();
+      const byRoom = new Map<string, { msgs: dmCache.CachedMessage[]; subject?: string; subjectAt?: number }>();
+      const BATCH = 5;
+      for (let i = 0; i < res.wraps.length; i += BATCH) {
+        if (!mountedRef.current) return;
+        const batch = res.wraps.slice(i, i + BATCH);
+        const opened = await Promise.allSettled(batch.map((w) => unwrapGiftWrap(signer, pubkey, w)));
+        for (const r of opened) {
+          if (r.status !== "fulfilled" || !r.value) continue;
+          const u = r.value;
+          if (routeGroupRumor(pubkey, u)) continue;
+          const room = roomKeyOfUnwrapped(u, pubkey);
+          if (!room || hiddenConvoSet.has(room)) continue;
+          if (isExpired(u.expiresAt, nowSec())) continue;
+          const entry = byRoom.get(room) ?? { msgs: [] };
+          entry.msgs.push({
+            id: u.rumorId, ownerPubkey: pubkey, peerPubkey: room,
+            content: u.content, from: u.senderPubkey, timestamp: u.timestamp, encryption: "nip17",
+            fileMetadata: u.fileMetadata, quotedNoteId: u.quotedNoteId, expiresAt: u.expiresAt });
+          Object.assign(entry, newerSubject(entry, { subject: u.subject, at: u.timestamp }));
+          byRoom.set(room, entry);
+        }
+        setHistoryOpening(Math.max(0, res.wraps.length - (i + BATCH)));
+      }
+
+      // Stored first, cursors last: a crash in between repeats a page (cheap —
+      // opened wraps are never opened twice) rather than skipping one.
+      for (const [room, entry] of byRoom) {
+        const newest = entry.msgs.reduce((a, b) => (b.timestamp > a.timestamp ? b : a));
+        await dmCache.putMessages(pubkey, room, entry.msgs).catch((e) => console.warn("[DM] Cache putMessages failed:", e?.message));
+        await dmCache.putConversation(pubkey, {
+          ownerPubkey: pubkey, peerPubkey: room,
+          lastMessage: newest.content, lastTimestamp: newest.timestamp,
+          subject: entry.subject, subjectAt: entry.subjectAt }, { keepNewer: true }).catch((e) => console.warn("[DM] Cache putConversation failed:", e?.message));
+        markCacheStale(pubkey, room);
+        for (const member of roomMembers(room)) fetchProfile(member);
+      }
+      writeCursors(pubkey, res.cursors);
+      if (!mountedRef.current) return;
+
+      if (byRoom.size > 0) {
+        setConversations((prev) => {
+          const next = [...prev];
+          for (const [room, entry] of byRoom) {
+            const newest = entry.msgs.reduce((a, b) => (b.timestamp > a.timestamp ? b : a));
+            const at = next.findIndex((c) => c.pubkey === room);
+            if (at === -1) {
+              next.push({ pubkey: room, lastMessage: newest.content, lastTimestamp: newest.timestamp,
+                subject: entry.subject, subjectAt: entry.subjectAt, unread: newest.timestamp > readDmLastRead(room) });
+            } else {
+              const was = next[at];
+              const name = newerSubject(was, { subject: entry.subject, at: entry.subjectAt ?? 0 });
+              next[at] = newest.timestamp > was.lastTimestamp
+                ? { ...was, lastMessage: newest.content, lastTimestamp: newest.timestamp, ...name }
+                : { ...was, ...name };
+            }
+          }
+          return next.sort((a, b) => b.lastTimestamp - a.lastTimestamp);
+        });
+      }
+
+      const forOpen = openRoom ? byRoom.get(openRoom) : undefined;
+      if (forOpen && openRoom && openRoom === selectedPubkeyRef.current) {
+        const roomOnScreen: string = openRoom;
+        foundForOpenRoom = forOpen.msgs.length;
+        const box = messagesContainerRef.current;
+        if (box) keepPlaceRef.current = { height: box.scrollHeight, top: box.scrollTop };
+        setMessages((prev) => {
+          const ids = new Set(prev.map((m) => m.id));
+          const added: DecodedMessage[] = forOpen.msgs.filter((m) => !ids.has(m.id)).map((m) => ({
+            id: m.id, content: m.content, from: m.from, timestamp: m.timestamp, encryption: m.encryption,
+            fileMetadata: m.fileMetadata, quotedNoteId: m.quotedNoteId, expiresAt: m.expiresAt }));
+          if (added.length === 0) return prev;
+          for (const m of added) {
+            seenMessageIdsRef.current.add(m.id);
+            seenContentKeysRef.current.add(msgContentKey(m.from, m.timestamp, m.content));
+            if (m.from === pubkey) deliveredMsgIds.current.add(m.id);
+          }
+          const merged = [...prev, ...added].sort((a, b) => a.timestamp - b.timestamp);
+          setCachedMessages(pubkey, roomOnScreen, merged);
+          return merged;
+        });
+      }
+      if (openRoom && openRoom === selectedPubkeyRef.current) setThreadOlderFound(foundForOpenRoom);
+
+      setHistoryBackTo(completeBackTo(relays, res.cursors));
+      // Three honest endings: every relay reached its beginning; some didn't
+      // answer (nothing is concluded about them — try again); or there is more.
+      setHistoryStatus(res.complete ? "done" : res.unreached.length > 0 && res.wraps.length === 0 ? "unreached" : "idle");
+    } catch (err) {
+      console.error("Failed to load older messages:", err);
+      if (mountedRef.current) setHistoryStatus("unreached");
+    } finally {
+      historyBusyRef.current = false;
+      if (mountedRef.current) setHistoryOpening(0);
+    }
+  }, [pubkey, signer, fetchProfile]);
+
+  // A different chat has not been looked into yet.
+  useEffect(() => { setThreadOlderFound(null); }, [selectedPubkey]);
+
+  // Older messages were added above the reader: hold their place. Done by
+  // hand because Safari has no scroll anchoring.
+  useLayoutEffect(() => {
+    const keep = keepPlaceRef.current;
+    const box = messagesContainerRef.current;
+    if (!keep || !box) return;
+    keepPlaceRef.current = null;
+    box.scrollTop = keep.top + (box.scrollHeight - keep.height);
+  }, [messages]);
 
   const hasNip44 = !!signer?.nip44;
 
@@ -1373,13 +1580,21 @@ export default function Messages() {
 
         setConversations(prev => {
           const was = prev.find(c => c.pubkey === otherPubkey);
+          const name = newerSubject(was, { subject: unwrapped.subject, at: unwrapped.timestamp });
+          // The live subscription also replays the last two days, in no
+          // useful order. A message OLDER than the one already previewed must
+          // not become the preview (it did: the chat showed its second-newest
+          // message) nor jump the chat to the top.
+          if (was && was.lastTimestamp > unwrapped.timestamp) {
+            return name.subject === was.subject ? prev : prev.map(c => (c.pubkey === otherPubkey ? { ...c, ...name } : c));
+          }
           const filtered = prev.filter(c => c.pubkey !== otherPubkey);
           filtered.unshift({
             pubkey: otherPubkey,
             lastMessage: unwrapped.content,
             lastTimestamp: unwrapped.timestamp,
-            ...newerSubject(was, { subject: unwrapped.subject, at: unwrapped.timestamp }),
-            unread: true });
+            ...name,
+            unread: unwrapped.timestamp > readDmLastRead(otherPubkey) });
           return filtered;
         });
 
@@ -1402,7 +1617,7 @@ export default function Messages() {
         dmCache.putConversation(pubkey, {
           ownerPubkey: pubkey, peerPubkey: otherPubkey,
           lastMessage: unwrapped.content, lastTimestamp: unwrapped.timestamp,
-          subject: unwrapped.subject, subjectAt: unwrapped.subject ? unwrapped.timestamp : undefined }).catch((e) => console.warn("[DM] Cache putConversation failed:", e?.message));
+          subject: unwrapped.subject, subjectAt: unwrapped.subject ? unwrapped.timestamp : undefined }, { keepNewer: true }).catch((e) => console.warn("[DM] Cache putConversation failed:", e?.message));
 
         if (selectedPubkeyRef.current === otherPubkey) {
           setMessages(prev => {
@@ -2747,6 +2962,7 @@ export default function Messages() {
           }}
           handleClearAllHidden={handleClearAllHidden}
           navigateToConversation={navigateToConversation}
+          olderMessages={signer?.nip44 ? { status: historyStatus, backTo: historyBackTo, opening: historyOpening, onLoad: loadOlderMessages } : undefined}
           onOpenProfile={(pk) => { if (isGroupRoom(pk)) navigateToConversation(pk); else setLocation(`/profile/${nip19.npubEncode(pk)}`); }}
           handlePromoteToPrimary={handlePromoteToPrimary}
           handleDemoteToRequests={handleDemoteToRequests}
@@ -2928,9 +3144,50 @@ export default function Messages() {
                 <MessagesIcon className="w-8 h-8 mx-auto text-muted-foreground/50 mb-2" />
                 <p className="text-sm text-muted-foreground">No messages yet</p>
                 <p className="text-xs text-muted-foreground/80">Send the first message to start the conversation</p>
+                {/* An old chat may simply not be loaded yet: offer to look. */}
+                {historyStatus !== "done" && !isDeletedPreview && (
+                  <button
+                    type="button"
+                    onClick={() => { void loadOlderMessages(); }}
+                    disabled={historyStatus === "loading"}
+                    className="mt-3 min-h-[36px] px-3 rounded-full border border-border/60 text-[12px] text-muted-foreground hover:text-foreground hover:border-border transition-colors disabled:opacity-60"
+                    data-testid="button-thread-older-empty"
+                  >
+                    {historyStatus === "loading" ? "Looking further back…" : historyStatus === "unreached" ? "Your relays didn't answer. Try again" : threadOlderFound === 0 ? "Nothing older here yet. Keep looking" : "Look for older messages"}
+                  </button>
+                )}
               </div>
             ) : (
-              messageRenderItems.map((item, idx) => {
+              <>
+              {/* Older messages for THIS chat. A page is account-wide, so it may
+                  bring nothing for the chat on screen: then it says so and
+                  offers to keep looking, until every relay is at its beginning. */}
+              {!isDeletedPreview && (
+                <div className="flex justify-center pb-3" data-testid="thread-older">
+                  {historyStatus === "done" ? (
+                    <span className="text-[11px] text-muted-foreground/60">This is the beginning of the chat.</span>
+                  ) : historyStatus === "loading" ? (
+                    <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                      <RelayOutpostInlineLoader className="w-3 h-3" />
+                      {historyOpening > 0 ? `Opening ${historyOpening} message${historyOpening === 1 ? "" : "s"}…` : "Looking further back…"}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => { void loadOlderMessages(); }}
+                      className="min-h-[36px] px-3 rounded-full border border-border/60 text-[12px] text-muted-foreground hover:text-foreground hover:border-border transition-colors"
+                      data-testid="button-thread-older"
+                    >
+                      {historyStatus === "unreached"
+                        ? "Your relays didn't answer. Try again"
+                        : threadOlderFound === 0
+                          ? "Nothing older here yet. Keep looking"
+                          : "Look for older messages"}
+                    </button>
+                  )}
+                </div>
+              )}
+              {messageRenderItems.map((item, idx) => {
                 if (item.type === "date-separator") {
                   return (
                     <div key={item.key} className="dm-date-separator my-2">
@@ -3041,7 +3298,8 @@ export default function Messages() {
                     )}
                   </div>
                 );
-              })
+              })}
+              </>
             )}
             <div ref={messagesEndRef} />
             </div>{/* /desktop reading-width cap */}

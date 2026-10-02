@@ -15,6 +15,7 @@ import { clearBrainstormAuth } from "@/lib/graperank";
 import { isReconnectInFlight, setReconnectInFlight, setSignerTimeoutBypass, canShowReconnectToast } from "@/lib/signer-timeout";
 import { clearProcessedWraps } from "@/lib/gift-wrap";
 import { clearAll as clearDmCache } from "@/lib/dm-cache";
+import { clearCursors as clearDmHistoryCursors } from "@/lib/dm-history";
 import { cacheFollowEvent } from "@/lib/follow-list";
 import { warmInterestsCache } from "@/lib/interests";
 import { loadLocalSecret, saveLocalSecret, clearLocalSecret, markNewAccount } from "@/lib/local-account";
@@ -758,6 +759,9 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
     // (relay-outpost-dms) or its spend-capable wallet credential on the device.
     // clearDmCache is per-owner; the NWC URI embeds a spend secret.
     if (localPubkey) { try { void clearDmCache(localPubkey); } catch {} }
+    // …and how far back its messages had been paged: with the store gone,
+    // "already loaded" would be a claim about messages that are no longer here.
+    if (localPubkey) clearDmHistoryCursors(localPubkey);
     try { localStorage.removeItem("relay-outpost-nwc-uri"); } catch {}
     // Another account remains on this device: restore its credentials into
     // the singleton slots and reload into it. The reload guarantees zero
