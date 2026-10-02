@@ -23,31 +23,46 @@ export function isReplyEvent(tags: string[][]): boolean {
 /**
  * The feed a user lands on when they have no explicit default-feed-mode preference.
  *
- * An explicit saved choice — "open_comms"/Following, a "custom_…" feed, anything —
- * is ALWAYS honored, whatever else is true. Only the blank is filled here.
+ * An explicit saved choice — "open_comms"/Following, "deep_scan"/Trending, a
+ * "custom_…" feed, anything — is ALWAYS honored, whatever else is true. Only
+ * the blank is filled here.
  *
- * With public Nostr on (every account that predates the flag, and anyone who turns
- * it back on) the answer is discovery-first: "For You" (deep_scan) is always
- * populated from trending, where "Following" for a one-follow account is nearly
- * empty.
+ * With public Nostr on (every account that predates the flag, and anyone who
+ * turns it back on) the answer is discovery-first: "For you" (raw_signal). It
+ * is populated for an account that follows nobody (checked 2026-10-02: posts
+ * within 8 s), where "Following" for a one-follow account is nearly empty.
+ *
+ * Until 2026-10-02 the blank was "deep_scan" — the Trending chart, which was
+ * then shown under the "For you" tab. Trending has its own tab now (#252), so
+ * that default opened the app with the THIRD tab lit; the owner chose For you.
  *
  * With public Nostr OFF — the default for accounts created after decision 4 —
  * the answer inverts. Landing someone in "popular posts from across the network"
  * is precisely the thing that flag exists to not do: the collapsed IA promises
  * your people and your communities, and the front door should agree with it. The
- * "For You" lane is NOT removed, only un-defaulted; it stays one tap away, which
+ * "For you" lane is NOT removed, only un-defaulted; it stays one tap away, which
  * is what keeps this from stranding an account that follows one person.
  */
+export const DEFAULT_FEED_MODE: FeedMode = "raw_signal";
+
 export function resolveDefaultFeedMode(
   saved: string | null | undefined,
   opts?: { publicNostr?: boolean },
 ): FeedMode {
   if (saved && ["deep_scan", "raw_signal", "open_comms"].includes(saved)) return saved;
   if (saved && saved.startsWith("custom_")) return saved;
-  // Default (opts absent) is the pre-flag behaviour, so every existing caller and
-  // every existing account keeps exactly what it had.
   if (opts?.publicNostr === false) return "open_comms";
-  return "deep_scan";
+  return DEFAULT_FEED_MODE;
+}
+
+/**
+ * The feed the page STARTS on, before sign-in and follows have loaded. Same
+ * rule, except Following waits behind the default: it needs the follow list,
+ * and the effect that applies the saved choice switches to it once it's in.
+ */
+export function initialFeedMode(saved: string | null | undefined): FeedMode {
+  const mode = resolveDefaultFeedMode(saved);
+  return mode === "open_comms" ? DEFAULT_FEED_MODE : mode;
 }
 
 export type TrendingSelectorSource = "primal" | "archives" | "relay";

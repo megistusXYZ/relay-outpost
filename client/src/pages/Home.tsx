@@ -114,7 +114,7 @@ import { FeedIcon as FeedIconSvg, FEED_ICON_LIST, isValidFeedIconKey, type FeedI
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { publicNostrEnabled, publicNostrStorageKey } from "@/lib/public-nostr";
-import { FeedMode, type ContentFilter, isReplyEvent, FeedSortMode, TopTimeWindow, TRENDING_SELECTORS, type ArchivesRange, POLL_SORTS, type PollSort, SAVED_POLL_SORTS, type SavedPollSort, SAVED_POLL_SHOW_OPTIONS, type SavedPollShow, FEED_SORT_OPTIONS, TIME_WINDOW_SORT_MODES, TOP_TIME_WINDOWS, PAGE_SIZE, TRENDING_CACHE_TTL, BUILT_IN_TABS, getFeedSortKey, getTopWindowKey, isArchivesSelector, getArchivesMetric, decodePubkey, resolveDefaultFeedMode } from "./home/helpers";
+import { FeedMode, type ContentFilter, isReplyEvent, FeedSortMode, TopTimeWindow, TRENDING_SELECTORS, type ArchivesRange, POLL_SORTS, type PollSort, SAVED_POLL_SORTS, type SavedPollSort, SAVED_POLL_SHOW_OPTIONS, type SavedPollShow, FEED_SORT_OPTIONS, TIME_WINDOW_SORT_MODES, TOP_TIME_WINDOWS, PAGE_SIZE, TRENDING_CACHE_TTL, BUILT_IN_TABS, getFeedSortKey, getTopWindowKey, isArchivesSelector, getArchivesMetric, decodePubkey, resolveDefaultFeedMode, initialFeedMode, DEFAULT_FEED_MODE } from "./home/helpers";
 
 /**
  * How long the network gets before the cached feed is allowed to paint.
@@ -183,12 +183,9 @@ export default function Home() {
       }
     } catch {}
     try {
-      const defaultMode = localStorage.getItem("relay-outpost-default-feed-mode");
-      if (defaultMode && ["deep_scan", "raw_signal"].includes(defaultMode)) return defaultMode as FeedMode;
-      if (defaultMode && defaultMode.startsWith("custom_")) return defaultMode as FeedMode;
-      if (defaultMode === "open_comms") return "deep_scan";
+      return initialFeedMode(localStorage.getItem("relay-outpost-default-feed-mode"));
     } catch {}
-    return "deep_scan";
+    return DEFAULT_FEED_MODE;
   });
   const defaultApplied = useRef(false);
   const getDefaultFeedMode = useCallback((): FeedMode => {
@@ -208,7 +205,7 @@ export default function Home() {
         { publicNostr },
       );
     } catch {}
-    return "deep_scan";
+    return DEFAULT_FEED_MODE;
   }, [pubkey]);
   useEffect(() => {
     if (defaultApplied.current || hasSessionPref.current) return;
@@ -401,15 +398,23 @@ export default function Home() {
   // "For you" is the trust-ranked discovery feed. Rather than a scary unfiltered
   // gate, first-time signed-in visitors default to Network (their web of trust);
   // the Everyone end of the reach dial is where the raw firehose lives.
+  const startForYouOnNetwork = useCallback(() => {
+    if (!pubkey || !wotEnabled || rawAcknowledged.current()) return;
+    try { localStorage.setItem("relay-outpost-raw-acknowledged", "true"); } catch {}
+    rawAcknowledged.current = () => true;
+    setReachDepth("global");
+  }, [pubkey, wotEnabled, setReachDepth]);
   const handleForYouClick = useCallback(() => {
-    if (pubkey && wotEnabled && !rawAcknowledged.current()) {
-      try { localStorage.setItem("relay-outpost-raw-acknowledged", "true"); } catch {}
-      rawAcknowledged.current = () => true;
-      setReachDepth("global");
-    }
+    startForYouOnNetwork();
     setFeedMode("raw_signal");
-  }, [pubkey, wotEnabled, setReachDepth, setFeedMode]);
+  }, [startForYouOnNetwork, setFeedMode]);
   const [feedStyle, setFeedStyle] = useState<"all" | "photos" | "video" | "polls">("all");
+  // For you is where the app OPENS now (helpers.DEFAULT_FEED_MODE), so the
+  // first-time step above can't hang on the tab being tapped: someone who never
+  // taps it would read For you without it. Same step, wherever For you starts.
+  useEffect(() => {
+    if (feedMode === "raw_signal") startForYouOnNetwork();
+  }, [feedMode, startForYouOnNetwork]);
   const [feedSortMode, setFeedSortModeState] = useState<FeedSortMode>("latest");
   const { rankingEnabled } = useFeedPrefs();
   // Discover v2 (flag-gated): curated-relay-sampled feed + algorithmic mix +
