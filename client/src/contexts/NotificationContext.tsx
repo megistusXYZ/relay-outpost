@@ -4,7 +4,8 @@ import type { Event } from "nostr-tools";
 import { eventStore, FAST_RELAYS, fetchProfiles, throttledPoolSubscribe, persistentPoolSubscribe } from "@/lib/nostr";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
-import { unwrapGiftWrap, seedProcessedWraps } from "@/lib/gift-wrap";
+import { unwrapGiftWrap, seedProcessedWraps, roomKeyOfUnwrapped } from "@/lib/gift-wrap";
+import { isExpired } from "@/lib/dm-room";
 import { routeGroupRumor } from "@/lib/concord/concord-dm-pipe";
 import { getCommunity } from "@/lib/concord/concord-keys";
 import { toast } from "@/hooks/use-toast";
@@ -377,7 +378,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   // stormed Messages.loadConversations on mobile/PWA cold load).
   const dmBufferRef = useRef<{
     msgs: Map<string, any[]>;
-    convo: Map<string, { lastMessage: string; lastTimestamp: number }>;
+    convo: Map<string, { lastMessage: string; lastTimestamp: number; subject?: string; subjectAt?: number }>;
     timer: ReturnType<typeof setTimeout> | null;
   }>({ msgs: new Map(), convo: new Map(), timer: null });
 
@@ -399,7 +400,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       // One preview write per peer. Messages.loadConversations is the source of
       // truth for the list, so a transient/out-of-order preview self-corrects.
       for (const [peer, c] of convo) {
-        await dmCache.putConversation(owner, { ownerPubkey: owner, peerPubkey: peer, lastMessage: c.lastMessage, lastTimestamp: c.lastTimestamp });
+        await dmCache.putConversation(owner, { ownerPubkey: owner, peerPubkey: peer, lastMessage: c.lastMessage, lastTimestamp: c.lastTimestamp, subject: c.subject, subjectAt: c.subjectAt });
       }
     } catch (err) {
       console.warn("[DM] Failed to flush notification DM cache:", (err as Error)?.message);
@@ -449,10 +450,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     // so the Messages page will SKIP re-decrypting it — we must persist it here or
     // the message never appears. Buffer it; flushDmBuffer batches the writes and
     // fires a single coalesced "dm-cache-updated" (avoids the per-wrap storm).
-    const peerPubkey = unwrapped.senderPubkey === currentPubkey
-      ? unwrapped.recipientPubkey
-      : unwrapped.senderPubkey;
-    if (peerPubkey) {
+    // The chat is everyone the message names (lib/dm-room.ts), the same rule
+    // the Chats page files by: a message to several people is its own chat,
+    // never a one-to-one chat with whoever sent it. A disappearing message
+    // whose time has passed is not kept.
+    const peerPubkey = roomKeyOfUnwrapped(unwrapped, currentPubkey);
+    if (peerPubkey && !isExpired(unwrapped.expiresAt, Math.floor(Date.now() / 1000))) {
       const buf = dmBufferRef.current;
       const list = buf.msgs.get(peerPubkey) ?? [];
       list.push({
@@ -464,11 +467,19 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         timestamp: unwrapped.timestamp,
         encryption: "nip17",
         ...(unwrapped.fileMetadata ? { fileMetadata: unwrapped.fileMetadata } : {}),
+        ...(unwrapped.expiresAt ? { expiresAt: unwrapped.expiresAt } : {}),
       });
       buf.msgs.set(peerPubkey, list);
       const prev = buf.convo.get(peerPubkey);
+      // A name set by an older message in the same burst is kept (the store
+      // itself keeps the newest name across writes: dm-cache putConversation).
+      const named = unwrapped.subject && (!prev?.subjectAt || unwrapped.timestamp >= prev.subjectAt)
+        ? { subject: unwrapped.subject, subjectAt: unwrapped.timestamp }
+        : { subject: prev?.subject, subjectAt: prev?.subjectAt };
       if (!prev || unwrapped.timestamp >= prev.lastTimestamp) {
-        buf.convo.set(peerPubkey, { lastMessage: unwrapped.content, lastTimestamp: unwrapped.timestamp });
+        buf.convo.set(peerPubkey, { lastMessage: unwrapped.content, lastTimestamp: unwrapped.timestamp, ...named });
+      } else {
+        buf.convo.set(peerPubkey, { ...prev, ...named });
       }
       if (buf.timer) clearTimeout(buf.timer);
       buf.timer = setTimeout(() => { void flushDmBuffer(); }, 400);

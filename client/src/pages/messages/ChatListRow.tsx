@@ -8,7 +8,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { BellOff, Lock, MoreVertical, Pencil, Trash2, UserCheck, UserX } from "lucide-react";
+import { BellOff, Lock, MoreVertical, Pencil, Trash2, UserCheck, UserX, Users } from "lucide-react";
+import { isGroupRoom } from "@/lib/dm-room";
 import { formatConversationPreview, formatMessageTime } from "./helpers";
 
 /**
@@ -260,7 +261,7 @@ function DmChatRow({
         <Avatar className="w-10 h-10 border border-border hover:ring-2 hover:ring-brand/40 transition-shadow">
           <AvatarImage src={picture} alt={name} />
           <AvatarFallback className="text-xs bg-muted text-muted-foreground">
-            {name.slice(0, 2).toUpperCase()}
+            {isGroupRoom(item.pubkey) ? <Users className="w-4 h-4" aria-label="Several people" /> : name.slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
         )}
@@ -278,7 +279,8 @@ function DmChatRow({
           <div className="flex items-baseline justify-between gap-2">
             <div className="flex items-center gap-1 min-w-0">
               <span className={`text-sm truncate ${item.unread ? "font-semibold" : "font-medium"}`}>{name}</span>
-              <Nip05Badge nip05={nip05} pubkey={item.pubkey} showText={false} iconClassName="w-3 h-3" />
+              {/* Badges vouch for a person; a several-person chat is not one. */}
+              {!isGroupRoom(item.pubkey) && <Nip05Badge nip05={nip05} pubkey={item.pubkey} showText={false} iconClassName="w-3 h-3" />}
             </div>
             <span className={ROW_TIME_CLASS}>
               {formatMessageTime(item.lastTimestamp)}
@@ -286,7 +288,7 @@ function DmChatRow({
           </div>
           {/* Impersonation guard: only strangers land in Requests, so the
               lookalike check runs here and never on Primary rows. */}
-          {isRequest && profileName && (
+          {isRequest && profileName && !isGroupRoom(item.pubkey) && (
             <ImpersonationChip pubkey={item.pubkey} displayName={profileName} nip05={nip05} className="mt-0.5" />
           )}
           <p className={`text-xs truncate mt-0.5 ${item.unread ? "text-foreground/80 font-medium" : "text-muted-foreground"}`}>
@@ -337,7 +339,7 @@ function DmChatRow({
               Move to Requests
             </DropdownMenuItem>
           )}
-          {onNickname && (
+          {onNickname && !isGroupRoom(item.pubkey) && (
             <DropdownMenuItem
               className="gap-2 cursor-pointer"
               // Deferred past the menu's own close — the same rule

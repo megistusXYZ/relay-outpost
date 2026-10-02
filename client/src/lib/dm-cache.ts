@@ -1,3 +1,5 @@
+import { isExpired, newerSubject } from "@/lib/dm-room";
+
 const DB_NAME = "relay-outpost-dms";
 const DB_VERSION = 2;
 const MESSAGES_STORE = "messages";
@@ -33,6 +35,10 @@ export interface CachedFileMetadata {
 export interface CachedMessage {
   id: string;
   ownerPubkey: string;
+  /** The chat this message is filed in (lib/dm-room.ts): the other person's
+   *  public key for a one-to-one chat — what it has always been — or a group
+   *  key for a chat with several people. The field keeps its old name because
+   *  it is the IndexedDB index. */
   peerPubkey: string;
   content: string;
   from: string;
@@ -41,13 +47,21 @@ export interface CachedMessage {
   fileMetadata?: CachedFileMetadata;
   /** Private reply: the public note id this DM quotes (from the rumor's `q` tag). */
   quotedNoteId?: string;
+  /** A disappearing message: when it stops being shown (unix seconds). It is
+   *  not stored once that has passed, and is deleted when next read after. */
+  expiresAt?: number;
 }
 
 export interface CachedConversation {
   ownerPubkey: string;
+  /** The chat's key — see CachedMessage.peerPubkey. */
   peerPubkey: string;
   lastMessage: string;
   lastTimestamp: number;
+  /** The chat's name, when a message has set one (NIP-17 `subject`), and the
+   *  time of the message that set it: the newest wins. */
+  subject?: string;
+  subjectAt?: number;
 }
 
 let dbPromise: Promise<IDBDatabase> | null = null;
@@ -182,9 +196,13 @@ export async function getMessages(ownerPubkey: string, peerPubkey: string): Prom
         const results = (req.result || []) as CachedMessage[];
         // One-time sweep: drop leaked invite bundles (secret key material a
         // previous build cached as DM text) and delete them from IDB.
-        const leaked = results.filter((m) => isLeakedInviteBundleJson(m.content));
+        // Same sweep for disappearing messages whose time has passed: gone from
+        // the screen and from this device.
+        const nowSec = Math.floor(Date.now() / 1000);
+        const gone = (m: CachedMessage) => isLeakedInviteBundleJson(m.content) || isExpired(m.expiresAt, nowSec);
+        const leaked = results.filter(gone);
         for (const m of leaked) void deleteMessage(ownerPubkey, m.id);
-        const clean = leaked.length ? results.filter((m) => !isLeakedInviteBundleJson(m.content)) : results;
+        const clean = leaked.length ? results.filter((m) => !gone(m)) : results;
         clean.sort((a, b) => a.timestamp - b.timestamp);
         resolve(clean);
       };
@@ -201,8 +219,10 @@ export async function putMessages(ownerPubkey: string, peerPubkey: string, messa
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(MESSAGES_STORE, "readwrite");
       const store = tx.objectStore(MESSAGES_STORE);
+      const nowSec = Math.floor(Date.now() / 1000);
       for (const msg of messages) {
         if (isLeakedInviteBundleJson(msg.content)) continue; // never cache invite bundles as DMs
+        if (isExpired(msg.expiresAt, nowSec)) continue; // a disappearing message already gone
         store.put({ ...msg, ownerPubkey, peerPubkey });
       }
       tx.oncomplete = () => resolve();
@@ -213,16 +233,39 @@ export async function putMessages(ownerPubkey: string, peerPubkey: string, messa
 
 export async function putMessage(ownerPubkey: string, peerPubkey: string, msg: CachedMessage): Promise<void> {
   if (isLeakedInviteBundleJson(msg.content)) return; // never cache invite bundles as DMs
+  if (isExpired(msg.expiresAt, Math.floor(Date.now() / 1000))) return; // already gone
   return safeTx("readwrite", MESSAGES_STORE, (store) =>
     store.put({ ...msg, ownerPubkey, peerPubkey })
   ).then(() => {});
 }
 
+/**
+ * Record a chat's newest message. The chat's NAME is kept across writes: most
+ * callers know only the latest message, and a plain put would wipe a name an
+ * earlier message set. A write that carries a name replaces it only when its
+ * message is the newer one (lib/dm-room.ts newerSubject).
+ */
 export async function putConversation(ownerPubkey: string, conv: CachedConversation): Promise<void> {
   const lastMessage = isLeakedInviteBundleJson(conv.lastMessage) ? INVITE_REDACTED_PREVIEW : conv.lastMessage;
-  return safeTx("readwrite", CONVERSATIONS_STORE, (store) =>
-    store.put({ ...conv, lastMessage, ownerPubkey })
-  ).then(() => {});
+  try {
+    const db = await openDB();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(CONVERSATIONS_STORE, "readwrite");
+      const store = tx.objectStore(CONVERSATIONS_STORE);
+      const get = store.get([ownerPubkey, conv.peerPubkey]);
+      get.onsuccess = () => {
+        const existing = get.result as CachedConversation | undefined;
+        const name = newerSubject(existing, { subject: conv.subject, at: conv.subjectAt ?? conv.lastTimestamp });
+        const next: CachedConversation = { ...conv, lastMessage, ownerPubkey };
+        if (name.subject) { next.subject = name.subject; next.subjectAt = name.subjectAt; }
+        else { delete next.subject; delete next.subjectAt; }
+        store.put(next);
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error("Transaction aborted"));
+    });
+  } catch {}
 }
 
 /**

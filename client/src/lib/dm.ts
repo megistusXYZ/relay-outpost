@@ -55,6 +55,14 @@ export interface GiftWrapOptions {
   /** Extra tags on the OUTER 1059 wrap (e.g. Concord's ["k","3313"] so
    *  recipients can filter invites without decrypting every gift wrap). */
   outerTags?: string[][];
+  /**
+   * A message to SEVERAL people: the `p` tags of the message itself, one per
+   * person in the chat. Every copy (one wrap per person, and the sender's own)
+   * must carry exactly these, in this order, or the copies get different ids
+   * and stop being one message. Unset = a one-to-one message (one `p` tag,
+   * the recipient — unchanged).
+   */
+  rumorPTags?: string[][];
 }
 
 export async function createGiftWrap(
@@ -68,7 +76,7 @@ export async function createGiftWrap(
 
   try {
     const relayHint = getDMRelayListCached(recipientPubkey)[0];
-    const tags: string[][] = [pTag(recipientPubkey, relayHint), ...(opts.extraTags || [])];
+    const tags: string[][] = [...(opts.rumorPTags ?? [pTag(recipientPubkey, relayHint)]), ...(opts.extraTags || [])];
     const rumorTemplate = {
       kind: opts.rumorKind ?? KIND_RUMOR,
       created_at: opts.rumorCreatedAt ?? Math.floor(Date.now() / 1000),
@@ -116,7 +124,7 @@ export async function createGiftWrapForSelf(
 
   try {
     const recipientHint = getDMRelayListCached(recipientPubkey)[0];
-    const tags: string[][] = [pTag(recipientPubkey, recipientHint), ...(opts.extraTags || [])];
+    const tags: string[][] = [...(opts.rumorPTags ?? [pTag(recipientPubkey, recipientHint)]), ...(opts.extraTags || [])];
     const rumorTemplate = {
       kind: opts.rumorKind ?? KIND_RUMOR,
       created_at: opts.rumorCreatedAt ?? Math.floor(Date.now() / 1000),
@@ -152,6 +160,42 @@ export async function createGiftWrapForSelf(
     console.error("Failed to create self gift wrap:", err);
     return null;
   }
+}
+
+/**
+ * One message to everyone in a several-person chat (NIP-17): the same message
+ * — naming every member — sealed and wrapped once per member, plus the copy
+ * the sender keeps. Builds; does not publish.
+ *
+ * `members` are the OTHER people in the chat. Returns null when any copy could
+ * not be built: a message that reached only some of the chat is worse than one
+ * that visibly failed and can be retried (a retry with the same `rumorCreatedAt`
+ * rebuilds the same message id, so nobody sees it twice).
+ */
+export async function createRoomGiftWraps(
+  signer: any,
+  senderPubkey: string,
+  members: string[],
+  content: string,
+  opts: Pick<GiftWrapOptions, "rumorKind" | "rumorCreatedAt" | "extraTags"> = {},
+): Promise<{ rumorId: string; wraps: { to: string; wrap: Event }[]; selfWrap: Event | null } | null> {
+  if (members.length === 0) return null;
+  const rumorCreatedAt = opts.rumorCreatedAt ?? Math.floor(Date.now() / 1000);
+  // Decided ONCE: a relay hint that arrives between two copies would change
+  // the tags, and with them the id.
+  const rumorPTags = members.map((pk) => pTag(pk, getDMRelayListCached(pk)[0]));
+  const shared = { ...opts, rumorCreatedAt, rumorPTags };
+  const wraps: { to: string; wrap: Event }[] = [];
+  let rumorId = "";
+  for (const to of members) {
+    const built = await createGiftWrap(signer, senderPubkey, to, content, shared);
+    if (!built) return null;
+    if (rumorId && built.rumorId !== rumorId) return null; // never send two different messages as one
+    rumorId = built.rumorId;
+    wraps.push({ to, wrap: built.wrap });
+  }
+  const selfWrap = await createGiftWrapForSelf(signer, senderPubkey, members[0], content, shared);
+  return { rumorId, wraps, selfWrap };
 }
 
 export interface UnwrappedRumor {
