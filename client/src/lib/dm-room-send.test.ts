@@ -18,7 +18,8 @@ vi.mock("@/lib/outbox", () => ({
 import { generateSecretKey, getPublicKey, finalizeEvent } from "nostr-tools";
 import { v2 as nip44 } from "nostr-tools/nip44";
 import * as nip59 from "nostr-tools/nip59";
-import { createRoomGiftWraps, createGiftWrap } from "./dm";
+import { createRoomGiftWraps, createGiftWrap, createGiftWrapForSelf, expirationTags } from "./dm";
+import { expirationOf, subjectOf } from "./dm-room";
 import { roomKeyFor, roomMembers } from "./dm-room";
 
 const person = () => { const sk = generateSecretKey(); return { sk, pk: getPublicKey(sk) }; };
@@ -87,5 +88,41 @@ describe("createRoomGiftWraps — one message for everyone in the chat", () => {
     const built = await createGiftWrap(signerOf(me.sk), me.pk, alice.pk, "just us");
     const opened = nip59.unwrapEvent(built!.wrap as any, alice.sk);
     expect(opened.tags.filter((t) => t[0] === "p").map((t) => t[1])).toEqual([alice.pk]);
+  });
+});
+
+describe("disappearing messages and chat names, as other apps will read them", () => {
+  const me = person(), alice = person(), bob = person();
+  const AT = 1_790_000_000;
+
+  it("a message with a timer says when it goes — on the message, and on every wrap", async () => {
+    const exp = expirationTags(AT + 3600);
+    const built = await createRoomGiftWraps(signerOf(me.sk), me.pk, [alice.pk, bob.pk], "burn after reading", { rumorCreatedAt: AT, extraTags: exp, outerTags: exp });
+    for (const { wrap } of built!.wraps) expect(expirationOf(wrap.tags)).toBe(AT + 3600);
+    expect(expirationOf(built!.selfWrap!.tags)).toBe(AT + 3600);
+    expect(expirationOf(nip59.unwrapEvent(built!.wraps[0].wrap as any, alice.sk).tags)).toBe(AT + 3600);
+  });
+
+  it("the same for a one-to-one message and the copy the sender keeps", async () => {
+    const exp = expirationTags(AT + 86400);
+    const out = await createGiftWrap(signerOf(me.sk), me.pk, alice.pk, "gone tomorrow", { rumorCreatedAt: AT, extraTags: exp, outerTags: exp });
+    const mine = await createGiftWrapForSelf(signerOf(me.sk), me.pk, alice.pk, "gone tomorrow", { rumorCreatedAt: AT, extraTags: exp, outerTags: exp });
+    expect(expirationOf(out!.wrap.tags)).toBe(AT + 86400);
+    expect(expirationOf(mine!.tags)).toBe(AT + 86400);
+    expect(nip59.unwrapEvent(mine as any, me.sk).id).toBe(out!.rumorId);
+  });
+
+  it("a kept message carries no expiry anywhere", async () => {
+    expect(expirationTags(undefined)).toEqual([]);
+    const out = await createGiftWrap(signerOf(me.sk), me.pk, alice.pk, "stays", { extraTags: expirationTags(undefined) });
+    expect(expirationOf(out!.wrap.tags)).toBeUndefined();
+    expect(expirationOf(nip59.unwrapEvent(out!.wrap as any, alice.sk).tags)).toBeUndefined();
+  });
+
+  it("naming a chat is a message with a subject, to everyone in it", async () => {
+    const built = await createRoomGiftWraps(signerOf(me.sk), me.pk, [alice.pk, bob.pk], "Renamed the chat to “Lisbon trip”", { extraTags: [["subject", "Lisbon trip"]] });
+    for (const [i, who] of [alice, bob].entries()) {
+      expect(subjectOf(nip59.unwrapEvent(built!.wraps[i].wrap as any, who.sk).tags)).toBe("Lisbon trip");
+    }
   });
 });
