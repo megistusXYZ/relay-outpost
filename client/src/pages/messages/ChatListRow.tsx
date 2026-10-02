@@ -11,6 +11,8 @@ import {
 import { Bell, BellOff, Lock, MoreVertical, Pencil, Pin, PinOff, Trash2, UserCheck, UserX, Users } from "lucide-react";
 import { isGroupRoom } from "@/lib/dm-room";
 import { formatConversationPreview, formatMessageTime } from "./helpers";
+import { readableLine } from "@/lib/dm-text";
+import { useMentionNames } from "@/hooks/use-mention-names";
 
 /**
  * One conversation in the chat list. Discriminated union: a 1:1 DM or a Concord
@@ -307,7 +309,7 @@ function DmChatRow({
             <ImpersonationChip pubkey={item.pubkey} displayName={profileName} nip05={nip05} className="mt-0.5" />
           )}
           <p className={`text-xs truncate mt-0.5 ${unread ? "text-foreground/80 font-medium" : "text-muted-foreground"}`}>
-            {hidePreviews ? "Message" : formatConversationPreview(item.lastMessage)}
+            {hidePreviews ? "Message" : <ChatPreviewLine text={item.lastMessage} />}
           </p>
         </div>
       </button>
@@ -396,4 +398,11 @@ function DmChatRow({
       </DropdownMenu>
     </div>
   );
+}
+
+/** A chat's last message on one line: a mention reads as a name, a shared
+ *  post as "a post" — never as the address it travelled as (lib/dm-text.ts). */
+function ChatPreviewLine({ text }: { text: string }) {
+  const nameOf = useMentionNames(text);
+  return <>{formatConversationPreview(readableLine(text, nameOf))}</>;
 }

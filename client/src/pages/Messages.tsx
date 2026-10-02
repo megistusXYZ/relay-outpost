@@ -82,7 +82,11 @@ import { clearCursors, completeBackTo, historyComplete, loadOlder, readCursors, 
 import { routeGroupRumor } from "@/lib/concord/concord-dm-pipe";
 import { detectGroupInvite } from "@/lib/concord/invite-detect";
 import { GroupInviteCard } from "@/components/GroupInviteCard";
-import { EmbeddedNote } from "@/components/NostrPost";
+import { EmbeddedNote, NostrRefEmbed, TextWithUnresolvedNostr } from "@/components/NostrPost";
+import { readableLine, splitMessage } from "@/lib/dm-text";
+import { knownNameOf, useMentionNames } from "@/hooks/use-mention-names";
+import { useMention } from "@/hooks/use-mention";
+import { MentionSearch, type MentionResult } from "@/components/MentionSearch";
 import { getChannelWrapTimes, getConcordLastActivity, useConcordActivity, useConcordUnread } from "@/lib/concord/concord-unread";
 import { computeUnreadChannels, readChannelLastRead } from "@/lib/concord/concord-channel-unread";
 import { isCommunityMuted, isMuted } from "@/lib/concord/concord-mute";
@@ -539,7 +543,7 @@ function renderWithCustomEmoji(text: string, emojiMap: Map<string, string>, jumb
   while ((m = re.exec(text)) !== null) {
     const url = emojiMap.get(m[1]);
     if (!url) continue; // leave unknown shortcode as literal text
-    if (m.index > last) out.push(<span key={`${keyBase}-t${k++}`}>{text.slice(last, m.index)}</span>);
+    if (m.index > last) out.push(<TextWithUnresolvedNostr key={`${keyBase}-t${k++}`} text={text.slice(last, m.index)} inlineOnly />);
     out.push(
       <img
         key={`${keyBase}-e${k++}`}
@@ -551,8 +555,10 @@ function renderWithCustomEmoji(text: string, emojiMap: Map<string, string>, jumb
     );
     last = m.index + m[0].length;
   }
-  if (last < text.length) out.push(<span key={`${keyBase}-t${k++}`}>{text.slice(last)}</span>);
-  return out.length ? out : <span key={`${keyBase}-t0`}>{text}</span>;
+  // Text runs go through the shared resolver: a mention (nostr:npub…) is drawn
+  // as the person's name, linked to their profile — not as its address.
+  if (last < text.length) out.push(<TextWithUnresolvedNostr key={`${keyBase}-t${k++}`} text={text.slice(last)} inlineOnly />);
+  return out.length ? out : <TextWithUnresolvedNostr key={`${keyBase}-t0`} text={text} inlineOnly />;
 }
 
 /** A message's text split into plain text and links (each link classified as media or not). */
@@ -579,7 +585,10 @@ function DMMessageContent({ content, userPubkey, fileMetadata, isMine }: { conte
   const { emojis } = useCustomEmojis();
   const emojiMap = useMemo(() => new Map(emojis.map((e) => [e.shortcode, e.url])), [emojis]);
   const [lightboxOpen, setLightboxOpen] = useState<{ images: LightboxImage[]; index: number } | null>(null);
-  const { displayText, invite } = useMemo(() => parseCalendarInvite(content), [content]);
+  const { displayText: wholeText, invite } = useMemo(() => parseCalendarInvite(content), [content]);
+  // Mentions stay in the text (drawn as names); a shared post or article
+  // comes out of it and is drawn as a card underneath (lib/dm-text.ts).
+  const { text: displayText, shared } = useMemo(() => splitMessage(wholeText), [wholeText]);
 
   // NIP-17 encrypted attachments (kind-15 with a decryption-key) can't be shown
   // by their ciphertext URL — fetch + AES-GCM decrypt to a blob URL first.
@@ -755,6 +764,11 @@ function DMMessageContent({ content, userPubkey, fileMetadata, isMine }: { conte
           })}
         </ClampedText>
       ) : null}
+      {!fileMetadata && shared.map((uri) => (
+        <div key={uri} className="w-[min(320px,70vw)] max-w-full text-foreground" data-testid="dm-shared-ref">
+          <NostrRefEmbed uri={uri} />
+        </div>
+      ))}
       {invites.map((inv) => (
         // Definite width (like chat media above) so the fixed-height card
         // doesn't collapse to the bubble's text width.
@@ -2155,6 +2169,18 @@ export default function Messages() {
   // message text at send time so they render as media/emoji like any other content.
   const [pendingMedia, setPendingMedia] = useState<{ id: string; kind: "gif" | "sticker"; url: string; shortcode?: string }[]>([]);
 
+  // ---- @ mentions in the composer ----
+  // The same typeahead and tokenizer the group-chat and post composers use
+  // (useMention): a pick shows as "@Name" while writing and travels as a
+  // content-level nostr:npub… (NIP-27), which every app draws as a name.
+  // No `p` tag is added: in NIP-17 the `p` tags ARE the chat's people, and
+  // tagging someone would move the message into a different chat.
+  const { mentionActive, mentionQuery, detectMention, insertMention, closeMention, resolveContent, clearMentionTags } = useMention();
+  const composerElRef = useRef<HTMLTextAreaElement | null>(null);
+  const handleMentionSelect = useCallback((result: MentionResult) => {
+    setNewMessage((cur) => insertMention(result, cur, composerElRef));
+  }, [insertMention]);
+
   // ---- Replies and reactions (lib/dm-thread.ts) ----
   // The message being answered, shown above the composer until sent or dropped.
   const [replyingTo, setReplyingTo] = useState<DecodedMessage | null>(null);
@@ -2226,7 +2252,9 @@ export default function Messages() {
       return;
     }
     const mediaText = pendingMedia.map((p) => (p.kind === "gif" ? p.url : `:${p.shortcode}:`)).join("\n");
-    const messageText = [newMessage.trim(), mediaText].filter(Boolean).join("\n");
+    const messageText = [resolveContent(newMessage).trim(), mediaText].filter(Boolean).join("\n");
+    clearMentionTags();
+    closeMention();
     const now = Math.floor(Date.now() / 1000);
     const clientId = `pending-${now}-${Math.random().toString(36).slice(2, 9)}`;
     const peer = selectedPubkey;
@@ -2252,7 +2280,7 @@ export default function Messages() {
     writeDmLastRead(peer, now);
 
     void deliverMessage(clientId, messageText, now, peer, { expiresAt, replyTo });
-  }, [pubkey, signer, selectedPubkey, newMessage, pendingMedia, toast, deliverMessage, dmPrefs, replyingTo]);
+  }, [pubkey, signer, selectedPubkey, newMessage, pendingMedia, toast, deliverMessage, dmPrefs, replyingTo, resolveContent, clearMentionTags, closeMention]);
 
   const retryMessage = useCallback((msg: DecodedMessage) => {
     if (!selectedPubkey) return;
@@ -2825,7 +2853,10 @@ export default function Messages() {
     let stale = false;
     const timer = setTimeout(async () => {
       if (searchCorpusRef.current?.owner !== pubkey) searchCorpusRef.current = { owner: pubkey, messages: await dmCache.getAllMessages(pubkey) };
-      if (!stale) setSearchHits(searchMessages(searchCorpusRef.current.messages, q, { rooms: searchableRooms }));
+      // Searched as it reads: a mention is the person's name here, so their
+      // name finds it and no result shows an address.
+      const readable = searchCorpusRef.current.messages.map((m) => ({ ...m, content: readableLine(m.content, knownNameOf) }));
+      if (!stale) setSearchHits(searchMessages(readable, q, { rooms: searchableRooms }));
     }, 200);
     return () => { stale = true; clearTimeout(timer); };
   }, [pubkey, searchFilter, searchableRooms]);
@@ -3108,6 +3139,10 @@ export default function Messages() {
   }, []);
 
   const messageById = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages]);
+  // Names for the people the open chat's messages mention (for the one-line
+  // quote above a reply; the bubbles themselves resolve their own).
+  const repliedText = useMemo(() => messages.filter((m) => m.replyTo).map((m) => messageById.get(m.replyTo!)?.content ?? "").concat(replyingTo?.content ?? "").join(" "), [messages, messageById, replyingTo]);
+  const mentionNames = useMentionNames(repliedText);
   const startReply = useCallback((msg: DecodedMessage) => {
     setReplyingTo(msg);
     document.querySelector<HTMLTextAreaElement>('[data-testid="input-message-compose"]')?.focus();
@@ -3607,7 +3642,7 @@ export default function Messages() {
                         return (
                           <ReplyQuote
                             author={parent ? (parent.from === pubkey ? "You" : nameOf(parent.from)) : ""}
-                            text={parent ? replySnippet(parent) : "An earlier message"}
+                            text={parent ? replySnippet({ ...parent, content: readableLine(parent.content, mentionNames) }) : "An earlier message"}
                             mine={isMine}
                             onOpen={parent ? () => document.querySelector(`[data-testid="message-${parent.id}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" }) : undefined}
                             testId={`message-reply-${msg.id}`}
@@ -3772,10 +3807,15 @@ export default function Messages() {
                   <span>{uploadStatus || "Uploading..."}</span>
                 </div>
               )}
+              {mentionActive && (
+                <div className="mb-2" data-testid="dm-mention-list">
+                  <MentionSearch query={mentionQuery} visible={mentionActive} onSelect={handleMentionSelect} onClose={closeMention} position="static" />
+                </div>
+              )}
               {replyingTo && (
                 <ReplyingBar
                   name={replyingTo.from === pubkey ? "yourself" : nameOf(replyingTo.from)}
-                  text={replySnippet(replyingTo)}
+                  text={replySnippet({ ...replyingTo, content: readableLine(replyingTo.content, mentionNames) })}
                   onCancel={() => setReplyingTo(null)}
                 />
               )}
@@ -3838,8 +3878,15 @@ export default function Messages() {
                   className="min-h-11 md:min-h-9 rounded-none border-0 bg-transparent px-1.5 py-2.5 md:py-2 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                   placeholder="Type a message..."
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={(e) => {
+                    composerElRef.current = e.target;
+                    setNewMessage(e.target.value);
+                    detectMention(e.target.value, e.target.selectionStart ?? e.target.value.length);
+                  }}
+                  onFocus={(e) => { composerElRef.current = e.target; }}
                   onKeyDown={(e) => {
+                    // The people list owns Enter and the arrows while it is open.
+                    if (mentionActive && (e.key === "Enter" || e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "Tab" || e.key === "Escape")) return;
                     // Enter sends; Shift+Enter (and the mobile return key) makes a
                     // newline — the X / iMessage convention.
                     if (e.key === "Enter" && !e.shiftKey && !isMobile) {
