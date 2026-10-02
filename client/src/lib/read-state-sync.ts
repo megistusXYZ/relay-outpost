@@ -40,6 +40,7 @@ import type { NostrEvent } from "nostr-tools";
 import { DM_READ_PREFIX, DM_READ_EVENT, READSTATE_HYDRATED_EVENT } from "@/lib/dm-read";
 import { CONCORD_READ_PREFIX } from "@/lib/concord/concord-channel-unread";
 import { muteEntries, applyMuteEntries, type MuteEntries } from "@/lib/concord/concord-mute";
+import { applyRemoteDmPrefMarks, mergeMarks, readDmPrefMarks, type DmPrefMarks } from "@/lib/dm-prefs";
 
 // NOTE: the heavy relay graph (`@/lib/nostr` pulls IndexedDB + SimplePool at
 // module load) is imported LAZILY inside the async I/O helpers below. Keeping
@@ -76,6 +77,9 @@ export interface ReadState {
   concordRead?: Record<string, number>;
   /** Group chats: each mute flag's latest state and when it changed; the later change wins. */
   concordMutes?: MuteEntries;
+  /** Private chats: pins, mutes and message timers, each with when it was
+   *  chosen; the later choice wins (lib/dm-prefs.ts). Optional, as above. */
+  dmPrefs?: DmPrefMarks;
 }
 
 /** At most this many room marks ride in the doc (the newest), keeping it well under NIP-44's size cap. */
@@ -150,6 +154,7 @@ export function mergeReadState(local: ReadState, remote: ReadState | null | unde
     dmRead,
     concordRead,
     concordMutes,
+    dmPrefs: mergeMarks(local.dmPrefs, remote?.dmPrefs),
   };
 }
 
@@ -182,6 +187,8 @@ export function collectLocalState(pubkey: string): ReadState {
 
   let concordMutes: MuteEntries = {};
   try { concordMutes = muteEntries(); } catch { /* no storage */ }
+  let dmPrefs: DmPrefMarks = {};
+  try { dmPrefs = readDmPrefMarks(pubkey); } catch { /* no storage */ }
 
   return {
     version: READSTATE_VERSION,
@@ -190,6 +197,7 @@ export function collectLocalState(pubkey: string): ReadState {
     dmRead,
     concordRead: Object.fromEntries(concordMarks.sort((a, b) => b[1] - a[1]).slice(0, CONCORD_READ_CAP)),
     concordMutes,
+    dmPrefs,
   };
 }
 
@@ -199,7 +207,8 @@ export function hasAnyReadMarkers(pubkey: string): boolean {
   if (state.notifLastSeen > 0) return true;
   return Object.keys(state.dmRead).length > 0 ||
     Object.keys(state.concordRead ?? {}).length > 0 ||
-    Object.keys(state.concordMutes ?? {}).length > 0;
+    Object.keys(state.concordMutes ?? {}).length > 0 ||
+    Object.keys(state.dmPrefs ?? {}).length > 0;
 }
 
 /**
@@ -261,6 +270,9 @@ export function applyRemoteToLocal(remote: ReadState | null | undefined, pubkey:
 
   // Group chats: mutes, the later change winning.
   if (remote.concordMutes && applyMuteEntries(remote.concordMutes)) changed = true;
+
+  // Private chats: pins, mutes and timers, the later choice winning.
+  if (remote.dmPrefs && applyRemoteDmPrefMarks(pubkey, remote.dmPrefs)) changed = true;
 
   return changed;
 }
