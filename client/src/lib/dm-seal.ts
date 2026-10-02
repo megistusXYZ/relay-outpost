@@ -28,7 +28,7 @@ export interface SealedPart {
 export type SealedRow = Record<string, unknown> & { sealed: SealedPart };
 
 /** The parts of a message that are sealed. Everything else is a lookup field. */
-export const MESSAGE_SECRETS = ["content", "from", "encryption", "fileMetadata", "quotedNoteId", "replyTo", "reactions"] as const;
+export const MESSAGE_SECRETS = ["content", "from", "encryption", "fileMetadata", "quotedNoteId", "replyTo", "reactsTo"] as const;
 /** The lookup fields a sealed message is bound to. */
 export const MESSAGE_BOUND = ["ownerPubkey", "peerPubkey", "id"] as const;
 

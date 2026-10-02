@@ -7,6 +7,9 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 vi.mock("@/lib/dm-cache", () => ({
   getProcessedWrapIds: vi.fn(async () => ["wrap-a", "wrap-b"]),
   markProcessed: vi.fn(async () => {}),
+  putMessage: vi.fn(async () => {}),
+  roomOfMessage: vi.fn(async () => null),
+  HELD_REACTIONS: "reactions:held",
   onStoreReset: vi.fn(),
 }));
 

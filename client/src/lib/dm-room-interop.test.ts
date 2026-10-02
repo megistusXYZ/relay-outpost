@@ -8,6 +8,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@/lib/dm-cache", () => ({
   getProcessedWrapIds: vi.fn(async () => []),
   markProcessed: vi.fn(async () => {}),
+  putMessage: vi.fn(async () => {}),
+  roomOfMessage: vi.fn(async () => null),
+  HELD_REACTIONS: "reactions:held",
   onStoreReset: vi.fn(),
 }));
 
@@ -16,6 +19,7 @@ import { v2 as nip44 } from "nostr-tools/nip44";
 import * as nip17 from "nostr-tools/nip17";
 import * as nip59 from "nostr-tools/nip59";
 import { unwrapGiftWrap, roomKeyOfUnwrapped, clearProcessedWraps } from "./gift-wrap";
+import * as dmCache from "./dm-cache";
 import { isGroupRoom, roomMembers } from "./dm-room";
 
 const person = () => { const sk = generateSecretKey(); return { sk, pk: getPublicKey(sk) }; };
@@ -104,5 +108,54 @@ describe("messages other apps send, opened here", () => {
     const opened = await unwrapGiftWrap(signerOf(me.sk), me.pk, wrap as any);
     expect(opened).not.toBeNull();
     expect(roomKeyOfUnwrapped(opened!, me.pk)).toBeNull();
+  });
+});
+
+describe("replies and reactions other apps send, opened here", () => {
+  const me = person(), alice = person(), bob = person();
+  const TARGET = "ab".repeat(32);
+  const put = vi.mocked(dmCache.putMessage);
+  const roomOf = vi.mocked(dmCache.roomOfMessage);
+  beforeEach(() => { clearProcessedWraps(); put.mockClear(); roomOf.mockReset(); roomOf.mockResolvedValue(null); });
+  const wrapOne = (from: { sk: Uint8Array }, to: string, event: { kind: number; content: string; tags: string[][] }) =>
+    nip59.wrapEvent({ ...event, created_at: 1_790_000_100 }, from.sk, to) as any;
+
+  it("a reply says which message it answers", async () => {
+    const opened = await unwrapGiftWrap(signerOf(me.sk), me.pk, wrapOne(alice, me.pk, { kind: 14, content: "yes, that one", tags: [["p", me.pk], ["e", TARGET, "", "reply"]] }));
+    expect(opened?.content).toBe("yes, that one");
+    expect(opened?.replyTo).toBe(TARGET);
+  });
+
+  it("a reaction is stored against its message and is never handed on as a chat message", async () => {
+    roomOf.mockResolvedValue(alice.pk);
+    const opened = await unwrapGiftWrap(signerOf(me.sk), me.pk, wrapOne(alice, me.pk, { kind: 7, content: "❤️", tags: [["p", me.pk], ["e", TARGET], ["k", "14"]] }));
+    expect(opened).toBeNull();
+    expect(put).toHaveBeenCalledTimes(1);
+    const [owner, room, row] = put.mock.calls[0];
+    expect(owner).toBe(me.pk);
+    expect(room).toBe(alice.pk);
+    expect(row).toMatchObject({ content: "❤️", from: alice.pk, reactsTo: TARGET, peerPubkey: alice.pk });
+  });
+
+  it("a reaction goes in the chat its message is in, even when its own tags name only the message's author", async () => {
+    // Bob reacts, in a three-person chat, to a message Alice wrote: some apps
+    // tag only Alice. Filed by those tags it would land in a chat that does not
+    // exist; the message it reacts to says where it belongs.
+    const group = "group:" + [alice.pk, bob.pk].sort().join(",");
+    roomOf.mockResolvedValue(group);
+    await unwrapGiftWrap(signerOf(me.sk), me.pk, wrapOne(bob, me.pk, { kind: 7, content: "+", tags: [["p", alice.pk], ["e", TARGET]] }));
+    expect(put.mock.calls[0][1]).toBe(group);
+  });
+
+  it("a reaction whose message has not arrived is held, never filed by its own tags", async () => {
+    await unwrapGiftWrap(signerOf(me.sk), me.pk, wrapOne(alice, me.pk, { kind: 7, content: "👍", tags: [["p", me.pk], ["e", TARGET]] }));
+    expect(put.mock.calls[0][1]).toBe("reactions:held");
+    expect(put.mock.calls[0][2]).toMatchObject({ reactsTo: TARGET, from: alice.pk });
+  });
+
+  it("a kind-7 whose content is not a reaction, or that names no message, is dropped", async () => {
+    await unwrapGiftWrap(signerOf(me.sk), me.pk, wrapOne(alice, me.pk, { kind: 7, content: "a whole sentence pretending to be a reaction", tags: [["p", me.pk], ["e", TARGET]] }));
+    await unwrapGiftWrap(signerOf(me.sk), me.pk, wrapOne(alice, me.pk, { kind: 7, content: "👍", tags: [["p", me.pk]] }));
+    expect(put).not.toHaveBeenCalled();
   });
 });

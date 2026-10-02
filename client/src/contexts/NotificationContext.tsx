@@ -469,6 +469,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         encryption: "nip17",
         ...(unwrapped.fileMetadata ? { fileMetadata: unwrapped.fileMetadata } : {}),
         ...(unwrapped.expiresAt ? { expiresAt: unwrapped.expiresAt } : {}),
+        // Both were dropped here: a private reply opened by this path lost the
+        // post it quoted until the chat was read from the relays again.
+        ...(unwrapped.quotedNoteId ? { quotedNoteId: unwrapped.quotedNoteId } : {}),
+        ...(unwrapped.replyTo ? { replyTo: unwrapped.replyTo } : {}),
       });
       buf.msgs.set(peerPubkey, list);
       const prev = buf.convo.get(peerPubkey);
