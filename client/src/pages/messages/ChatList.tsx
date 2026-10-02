@@ -154,6 +154,8 @@ interface ChatListProps {
   /** Concord enabled + signed-in — gates the "New group chat" menu item. */
   canCreateGroup: boolean;
   onNewGroupChat: () => void;
+  /** Start a private chat with several people, picked by name. */
+  onNewSeveral: () => void;
   /** Channel id rides along while the group is unread (first-unread deep-link). */
   onOpenGroup: (communityId: string, channelId?: string) => void;
   profiles: Map<string, ProfileInfo>;
@@ -236,6 +238,7 @@ export function ChatList({
   onReloadGroups,
   canCreateGroup,
   onNewGroupChat,
+  onNewSeveral,
   onOpenGroup,
   profiles,
   hidePreviews,
@@ -1004,6 +1007,7 @@ export function ChatList({
   const createActions = buildCreateActions({
     canCreateGroup,
     onNewChat: () => setShowNewChat(true),
+    onNewSeveral,
     onNewGroup: onNewGroupChat,
     onJoinLink: () => setShowJoinLink(true),
     onScanQr: () => setShowQrScan(true),

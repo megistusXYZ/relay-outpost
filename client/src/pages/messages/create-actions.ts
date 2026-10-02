@@ -1,4 +1,4 @@
-import { Compass, Link2, MessageSquarePlus, ScanLine, Users, type LucideIcon } from "lucide-react";
+import { Compass, Link2, MessageSquarePlus, ScanLine, UserPlus, Users, type LucideIcon } from "lucide-react";
 
 /**
  * The "start something new" actions, in one place.
@@ -28,6 +28,8 @@ export interface CreateActionHandlers {
   /** Group chat is the ONLY conditional action — everything else always shows. */
   canCreateGroup: boolean;
   onNewChat: () => void;
+  /** A private chat with several people, picked by name (NIP-17). */
+  onNewSeveral: () => void;
   onNewGroup: () => void;
   onJoinLink: () => void;
   onScanQr: () => void;
@@ -44,6 +46,17 @@ export function buildCreateActions(h: CreateActionHandlers): CreateAction[] {
       desc: "Message someone directly",
       run: h.onNewChat,
     },
+    // A private chat with a few people you pick: no link, no rooms, nobody in
+    // charge. It was reachable only from inside a chat ("Add people"). It is
+    // not gated: it needs nothing but private messages.
+    {
+      key: "new-several",
+      testId: "new-several",
+      Icon: UserPlus,
+      label: "Message several people",
+      desc: "Pick people for one shared chat",
+      run: h.onNewSeveral,
+    },
     // Only THIS one depends on group chats being available. Join-via-link and
     // Scan-QR must survive the gate: they were once nested inside it, which
     // silently removed the only doors to either in the whole app.
@@ -53,7 +66,7 @@ export function buildCreateActions(h: CreateActionHandlers): CreateAction[] {
           testId: "new-group-chat",
           Icon: Users,
           label: "New group chat",
-          desc: "Start a private group and invite by link",
+          desc: "A private group with rooms, invited by link",
           run: h.onNewGroup,
         }]
       : []),
