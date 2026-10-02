@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mergeChatEntries, sectionChatEntries, orderCommunitiesByActivity, needsSynthesizedPeopleSection, communitiesForTab, formatGroupTeaser, looksLikeOpaquePayload, chatFilterOptions, applyChatFilter, resolveChatFilter, firstUnreadChat, chatHomeMenu, type ChatEntry, type GroupPreview, keepNewerPreviews, type ConversationPreview } from "./helpers";
+import { mergeChatEntries, orderRequests, sectionChatEntries, orderCommunitiesByActivity, needsSynthesizedPeopleSection, communitiesForTab, formatGroupTeaser, looksLikeOpaquePayload, chatFilterOptions, applyChatFilter, resolveChatFilter, firstUnreadChat, chatHomeMenu, type ChatEntry, type GroupPreview, keepNewerPreviews, type ConversationPreview } from "./helpers";
 import type { ConversationPreview } from "./helpers";
 
 const dm = (pubkey: string, lastTimestamp: number, unread = false): ConversationPreview =>
@@ -592,5 +592,55 @@ describe("mergeChatEntries — pinned chats lead the list", () => {
 
   it("while searching, results are not reordered by pins", () => {
     expect(keys(mergeChatEntries(dms, [], { tab: "primary", pinned: ["oldest"], searchFilter: "x" }))).toEqual(["newest", "middle", "oldest"]);
+  });
+});
+
+describe("orderRequests — requests from strangers, most trusted first", () => {
+  const c = (pubkey: string, lastTimestamp: number): ConversationPreview => ({ pubkey, lastTimestamp, lastMessage: pubkey, unread: false });
+  const standing: Record<string, { rank: number; flagged: boolean }> = {
+    known: { rank: 2, flagged: false },
+    faint: { rank: 1, flagged: false },
+    nobody: { rank: 0, flagged: false },
+    nobody2: { rank: 0, flagged: false },
+    bad: { rank: 2, flagged: true },
+  };
+  const of = (key: string) => standing[key];
+
+  it("puts the people your network knows something about above the ones it knows nothing about", () => {
+    const out = orderRequests([c("nobody", 900), c("faint", 100), c("known", 50)], of);
+    expect(out.open.map((x) => x.pubkey)).toEqual(["known", "faint", "nobody"]);
+  });
+
+  it("orders people of the same standing by their newest message", () => {
+    const out = orderRequests([c("nobody", 100), c("nobody2", 500)], of);
+    expect(out.open.map((x) => x.pubkey)).toEqual(["nobody2", "nobody"]);
+  });
+
+  it("sets apart the senders your network has flagged, however they score", () => {
+    const out = orderRequests([c("bad", 999), c("known", 1)], of);
+    expect(out.open.map((x) => x.pubkey)).toEqual(["known"]);
+    expect(out.flagged.map((x) => x.pubkey)).toEqual(["bad"]);
+  });
+
+  it("does not show what a flagged sender wrote in the list", () => {
+    const out = orderRequests([c("bad", 999)], of);
+    expect(out.flagged[0].lastMessage).not.toContain("bad");
+    expect(out.flagged[0].lastMessage).toBe("Message hidden");
+  });
+
+  it("with no requests there is nothing in either part", () => {
+    expect(orderRequests([], of)).toEqual({ open: [], flagged: [] });
+  });
+});
+
+describe("mergeChatEntries — the Requests view keeps the order it is given", () => {
+  const c = (pubkey: string, lastTimestamp: number): ConversationPreview => ({ pubkey, lastTimestamp, lastMessage: "", unread: false });
+  it("does not re-sort requests by recency: they arrive ordered by trust", () => {
+    const out = mergeChatEntries([c("trusted-old", 10), c("stranger-new", 999)], [], { tab: "requests" });
+    expect(out.map((e) => (e.kind === "dm" ? e.conv.pubkey : ""))).toEqual(["trusted-old", "stranger-new"]);
+  });
+  it("still sorts the chat list itself by recency", () => {
+    const out = mergeChatEntries([c("old", 10), c("new", 999)], [], { tab: "primary" });
+    expect(out.map((e) => (e.kind === "dm" ? e.conv.pubkey : ""))).toEqual(["new", "old"]);
   });
 });

@@ -48,6 +48,31 @@ export function keepNewerPreviews(shown: readonly ConversationPreview[], next: r
     .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
 }
 
+/**
+ * Requests are messages from people outside your network. They are shown the
+ * most trusted first — `rank` is how much your network knows about the sender
+ * (higher is better; 0 is "nothing") — and by newest message within a rank.
+ *
+ * Senders your network has FLAGGED are set apart whatever they score, with
+ * what they wrote kept out of the list: a request row is the one place a
+ * stranger chooses the words on your screen.
+ */
+export function orderRequests(
+  requests: readonly ConversationPreview[],
+  standingOf: (roomKey: string) => { rank: number; flagged: boolean },
+): { open: ConversationPreview[]; flagged: ConversationPreview[] } {
+  const open: Array<{ conv: ConversationPreview; rank: number }> = [];
+  const flagged: ConversationPreview[] = [];
+  for (const conv of requests) {
+    const standing = standingOf(conv.pubkey);
+    if (standing.flagged) flagged.push({ ...conv, lastMessage: "Message hidden" });
+    else open.push({ conv, rank: standing.rank });
+  }
+  open.sort((a, b) => b.rank - a.rank || b.conv.lastTimestamp - a.conv.lastTimestamp);
+  flagged.sort((a, b) => b.lastTimestamp - a.lastTimestamp);
+  return { open: open.map((o) => o.conv), flagged };
+}
+
 export type DmTab = "primary" | "requests";
 
 /** A Concord group chat as the conversation list sees it. */
@@ -147,6 +172,8 @@ export function mergeChatEntries(
     ? groups.filter(matches).map((g) => ({ kind: "group", group: g }))
     : [];
   const dmEntries: ChatEntry[] = dms.map((conv) => ({ kind: "dm", conv }));
+  // Requests arrive ordered by trust (orderRequests): that order is the point.
+  if (opts.tab === "requests") return dmEntries;
   const byRecency = [...dmEntries, ...groupEntries].sort((a, b) => entryTime(b) - entryTime(a));
   // Pinned chats lead (lib/dm-prefs.ts), in the order they were pinned; the
   // rest stay purely by recency. While searching the list is a result list,
