@@ -33,6 +33,9 @@ export interface PageTabDef {
   ariaLabel?: string;
   /** data-testid for the segment; defaults to `tab-${key}`. */
   testId?: string;
+  /** With `sizing="content"`: the one segment that gives way (truncates) when
+   *  the row is too narrow, so the others keep their whole label. */
+  flexible?: boolean;
 }
 
 export interface PageTabsProps {
@@ -41,6 +44,13 @@ export interface PageTabsProps {
   onChange: (key: string) => void;
   /** flex-1 equal segments (default). Forced off when tabs.length > 4. */
   equalWidth?: boolean;
+  /**
+   * "content": segments are as wide as their label and share the spare room,
+   * instead of four equal slices. Equal slices of a phone row cut the longer
+   * labels ("Following", "Trending" at 375px, measured) while "For you" had
+   * room to spare.
+   */
+  sizing?: "equal" | "content";
   className?: string;
   testId?: string;
   ariaLabel?: string;
@@ -56,6 +66,7 @@ export function PageTabs({
   active,
   onChange,
   equalWidth = true,
+  sizing = "equal",
   className,
   testId,
   ariaLabel,
@@ -87,8 +98,10 @@ export function PageTabs({
             title={tab.title}
             aria-label={tab.ariaLabel}
             className={cn(
-              fill ? "flex-1 min-w-0" : "shrink-0",
-              "gap-1 text-xs sm:text-sm px-2 sm:px-3",
+              sizing === "content"
+                ? (tab.flexible ? "flex-auto min-w-[3.75rem]" : "flex-auto shrink-0")
+                : fill ? "flex-1 min-w-0" : "shrink-0",
+              sizing === "content" ? "gap-1 text-xs sm:text-sm px-1.5 sm:px-3" : "gap-1 text-xs sm:text-sm px-2 sm:px-3",
               isActive
                 ? "feed-tab-active feed-tab-glow text-white no-default-hover-elevate"
                 : tab.dimmed

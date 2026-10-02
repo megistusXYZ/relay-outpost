@@ -1,4 +1,4 @@
-// Locks the Saved Polls sheet contract (SavedOptionsSheet → PollsFeed):
+// Locks the Saved Polls sheet contract (the Polls feed filter → PollsFeed):
 //  - Sort: Trending (hot score — votes weighted by recency), Latest (newest),
 //    Ending soon ("expiring": soonest close first; no-end-time polls after;
 //    already-closed polls last).

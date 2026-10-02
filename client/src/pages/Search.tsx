@@ -34,7 +34,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { Segment } from "./home/FeedOptionsSheet";
+import { Segment } from "@/components/Segment";
 import {
   Search as SearchIcon, Users, FileText, Hash, X,
   Radio, Globe, Rss, Zap, TrendingUp,

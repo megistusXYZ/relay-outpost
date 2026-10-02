@@ -2,7 +2,7 @@
 // should land on "For You" (deep_scan, always populated from trending) — NOT be dropped
 // into a sparse "Following" feed. An explicit saved choice is always honored.
 import { describe, it, expect } from "vitest";
-import { resolveDefaultFeedMode, isReplyEvent, getSavedTabLabel } from "./helpers";
+import { resolveDefaultFeedMode, isReplyEvent } from "./helpers";
 
 describe("resolveDefaultFeedMode", () => {
   it("defaults to 'For You' (deep_scan) when there is no saved preference", () => {
@@ -79,45 +79,5 @@ describe("isReplyEvent", () => {
   it("does NOT misclassify q-tag quotes or p-tag mentions as replies", () => {
     expect(isReplyEvent([["q", "quotedid"]])).toBe(false);
     expect(isReplyEvent([["p", "mentioned"], ["q", "quoted"]])).toBe(false);
-  });
-});
-
-// The Saved pill is a value-displaying selector: while the saved lane is active
-// it shows WHICH saved feed is on screen; on the other lanes it stays "Saved".
-describe("getSavedTabLabel", () => {
-  const feeds = [
-    { id: "abc123", name: "#naturestr" },
-    { id: "def456", name: "Bitcoin Builders & Friends" },
-  ];
-
-  it("stays 'Saved' while another lane (For you / Following / Trending) is active", () => {
-    expect(getSavedTabLabel("raw_signal", "all", feeds)).toBe("Saved");
-    expect(getSavedTabLabel("open_comms", "all", feeds)).toBe("Saved");
-    expect(getSavedTabLabel("deep_scan", "all", feeds)).toBe("Saved");
-  });
-
-  it("names the built-in macro feed from feedStyle on custom_all", () => {
-    expect(getSavedTabLabel("custom_all", "photos", feeds)).toBe("Images");
-    expect(getSavedTabLabel("custom_all", "video", feeds)).toBe("Videos");
-    expect(getSavedTabLabel("custom_all", "polls", feeds)).toBe("Polls");
-  });
-
-  it("falls back to 'Saved' on custom_all with an unexpected style", () => {
-    expect(getSavedTabLabel("custom_all", "all", feeds)).toBe("Saved");
-  });
-
-  it("shows a custom feed's stored name while it is active", () => {
-    expect(getSavedTabLabel("custom_abc123", "all", feeds)).toBe("#naturestr");
-    expect(getSavedTabLabel("custom_def456", "all", feeds)).toBe("Bitcoin Builders & Friends");
-  });
-
-  it("falls back to 'Saved' when the active custom feed was deleted", () => {
-    expect(getSavedTabLabel("custom_abc123", "all", [])).toBe("Saved");
-    expect(getSavedTabLabel("custom_abc123", "all", [{ id: "def456", name: "Other" }])).toBe("Saved");
-  });
-
-  it("falls back to 'Saved' on the empty state and on blank feed names", () => {
-    expect(getSavedTabLabel("custom_empty", "all", [])).toBe("Saved");
-    expect(getSavedTabLabel("custom_ws", "all", [{ id: "ws", name: "   " }])).toBe("Saved");
   });
 });
