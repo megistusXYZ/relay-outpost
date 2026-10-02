@@ -19,7 +19,6 @@ export interface FeedViewChoices {
   contentFilter: string;
   feedStyle: string;
   trendingSelector: string;
-  pollSort: string;
   discoverSort: string;
   reachDepth: string;
   wotEnabled: boolean;
@@ -38,7 +37,6 @@ export function feedPinKey(v: FeedViewChoices): string {
     v.contentFilter,
     v.feedStyle,
     v.trendingSelector,
-    v.pollSort,
     v.discoverSort,
     v.reachDepth,
     v.rankingEnabled ? "1" : "0",

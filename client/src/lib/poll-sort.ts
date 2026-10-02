@@ -4,10 +4,10 @@ import type { Event } from "nostr-tools";
  * Pure sort/filter helpers for poll feeds (kind 1068, NIP-88), kept free of
  * relay/pool imports so they unit-test in the node vitest environment.
  *
- * Value vocabulary is shared with the For You trending-polls surface (Home's
- * pollSort, POLL_SORTS in pages/home/helpers.ts): "trending" uses the same
- * hot-score formula and "expiring" is that surface's "Expiring" — the Saved
- * Polls sheet labels it "Ending soon". "latest" is Saved-only.
+ * "trending" is a hot score (votes weighted by recency), "expiring" is the
+ * polls closing soonest (the feed filter labels it "Ending soon"), "latest" is
+ * newest first. The Polls feed under Feeds is the only poll list; Trending had
+ * its own until 2026-10-02.
  */
 
 export type PollSortMode = "trending" | "latest" | "expiring";

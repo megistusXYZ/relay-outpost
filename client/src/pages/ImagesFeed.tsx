@@ -563,11 +563,13 @@ const COLUMN_CLASSES: Record<ColumnCount, string> = {
 
 // `sort` (optional) makes the sort externally controlled — the feed-macro
 // dropdown in Home owns it and the internal sort chip is hidden entirely.
-export default function ImagesFeed({ embedded = false, sort }: { embedded?: boolean; sort?: SortMode } = {}) {
+// `title`: the browser-tab title. Search's media hub calls this feed "Images";
+// the Home feed lists it under Feeds as "Photos" and passes that.
+export default function ImagesFeed({ embedded = false, sort, title = "Images" }: { embedded?: boolean; sort?: SortMode; title?: string } = {}) {
   const isMobile = useIsMobile();
   const { filter: spamFilter } = useSpamFilter();
   const tierFilter = useTierContentFilter();
-  useDocumentTitle("Images");
+  useDocumentTitle(title);
   const [cutoffTimestamp, setCutoffTimestamp] = useState(() => Math.floor(Date.now() / 1000));
   const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE);
   const [isLoadingMore, setIsLoadingMore] = useState(false);

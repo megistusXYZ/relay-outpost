@@ -21,7 +21,6 @@ const view: FeedViewChoices = {
   contentFilter: "all",
   feedStyle: "all",
   trendingSelector: "rising",
-  pollSort: "new",
   discoverSort: "hot",
   reachDepth: "2hops",
   wotEnabled: true,
