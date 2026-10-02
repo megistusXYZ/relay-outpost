@@ -39,6 +39,30 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.14.0",
+    date: "2026-10-02",
+    title: "Private chats for more than two, a feed you can steer",
+    changes: [
+      { type: "new", text: "Private messages work for a small group. A message sent to you and a few other people is now its own chat, with everyone's name on what they said, and your reply goes to all of them. Start one from any chat's menu with Add people. It works with other apps that follow the same standard." },
+      { type: "new", text: "Name a chat, and set a timer. Give a private chat a name everyone in it sees. Or pick an hour, a day or a week, and the messages you send there are removed when the time is up. The timer covers your own messages; an app that ignores it can still keep them, and we say so where you set it." },
+      { type: "new", text: "Pin and mute. Keep up to five chats at the top of the list, and mute the ones you'd rather check on your own time. A muted chat stops adding to the badge." },
+      { type: "new", text: "Your whole message history, when you want it. Chats open with the recent messages, and \"Load older messages\" brings back the rest a step at a time instead of making you wait for everything up front." },
+      { type: "improved", text: "The feed's controls are four plain tabs: For you, Following, Trending and Feeds. A tap switches; tap the one you're on to jump to the top and see what's new. One Filter button holds the options for the feed on screen and nothing else. Photos, videos, polls, hashtags and your own feeds all live under Feeds. New accounts open on For you." },
+      { type: "fixed", text: "The Feed no longer opens to a blank screen on phones. If the app on your phone falls out of step with a new version, it now fixes itself, with no trip to Settings to repair it. Updates also stopped waiting on a muted video nobody could hear." },
+      { type: "fixed", text: "A message meant for a group no longer shows up inside your one-to-one chat with the sender, and a chat's preview always shows its newest message." },
+    ],
+    feedback: [
+      {
+        quote: "It loads users to a blank screen and there is no way for them to see that page unless they go into app settings and repair the app.",
+        attribution: "Beta tester, on the Feed. Nobody should have to do that, and now nobody does.",
+      },
+      {
+        quote: "Lay them out so even a grandma could know and relate to it.",
+        attribution: "The brief for the new feed tabs",
+      },
+    ],
+  },
+  {
     version: "1.13.0",
     date: "2026-10-01",
     title: "Notes in the margin, a shop on the profile",
