@@ -245,7 +245,7 @@ export async function putMessage(ownerPubkey: string, peerPubkey: string, msg: C
  * earlier message set. A write that carries a name replaces it only when its
  * message is the newer one (lib/dm-room.ts newerSubject).
  */
-export async function putConversation(ownerPubkey: string, conv: CachedConversation): Promise<void> {
+export async function putConversation(ownerPubkey: string, conv: CachedConversation, opts: { keepNewer?: boolean } = {}): Promise<void> {
   const lastMessage = isLeakedInviteBundleJson(conv.lastMessage) ? INVITE_REDACTED_PREVIEW : conv.lastMessage;
   try {
     const db = await openDB();
@@ -256,7 +256,12 @@ export async function putConversation(ownerPubkey: string, conv: CachedConversat
       get.onsuccess = () => {
         const existing = get.result as CachedConversation | undefined;
         const name = newerSubject(existing, { subject: conv.subject, at: conv.subjectAt ?? conv.lastTimestamp });
-        const next: CachedConversation = { ...conv, lastMessage, ownerPubkey };
+        // History paging hands over OLDER messages: they may create a chat or
+        // name it, but must not replace a newer preview already stored.
+        const older = opts.keepNewer && existing && existing.lastTimestamp >= conv.lastTimestamp;
+        const next: CachedConversation = older
+          ? { ...existing, ownerPubkey }
+          : { ...conv, lastMessage, ownerPubkey };
         if (name.subject) { next.subject = name.subject; next.subjectAt = name.subjectAt; }
         else { delete next.subject; delete next.subjectAt; }
         store.put(next);

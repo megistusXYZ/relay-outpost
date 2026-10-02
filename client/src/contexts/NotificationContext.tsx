@@ -400,7 +400,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       // One preview write per peer. Messages.loadConversations is the source of
       // truth for the list, so a transient/out-of-order preview self-corrects.
       for (const [peer, c] of convo) {
-        await dmCache.putConversation(owner, { ownerPubkey: owner, peerPubkey: peer, lastMessage: c.lastMessage, lastTimestamp: c.lastTimestamp, subject: c.subject, subjectAt: c.subjectAt });
+        await dmCache.putConversation(owner, { ownerPubkey: owner, peerPubkey: peer, lastMessage: c.lastMessage, lastTimestamp: c.lastTimestamp, subject: c.subject, subjectAt: c.subjectAt }, { keepNewer: true });
       }
     } catch (err) {
       console.warn("[DM] Failed to flush notification DM cache:", (err as Error)?.message);

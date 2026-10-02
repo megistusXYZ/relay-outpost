@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mergeChatEntries, sectionChatEntries, orderCommunitiesByActivity, needsSynthesizedPeopleSection, communitiesForTab, formatGroupTeaser, looksLikeOpaquePayload, chatFilterOptions, applyChatFilter, resolveChatFilter, firstUnreadChat, chatHomeMenu, type ChatEntry, type GroupPreview } from "./helpers";
+import { mergeChatEntries, sectionChatEntries, orderCommunitiesByActivity, needsSynthesizedPeopleSection, communitiesForTab, formatGroupTeaser, looksLikeOpaquePayload, chatFilterOptions, applyChatFilter, resolveChatFilter, firstUnreadChat, chatHomeMenu, type ChatEntry, type GroupPreview, keepNewerPreviews, type ConversationPreview } from "./helpers";
 import type { ConversationPreview } from "./helpers";
 
 const dm = (pubkey: string, lastTimestamp: number, unread = false): ConversationPreview =>
@@ -521,5 +521,37 @@ describe("the chat home's ⋯ menu", () => {
 
   it("while chats are hidden the first item is the way back", () => {
     expect(chatHomeMenu({ ...base, privateMasked: true })[0].label).toBe("Show chats");
+  });
+});
+
+// Measured in the history rig (2026-10-02): a long first load finished with a
+// list built before the newest message arrived by the notification path, and
+// the chat's preview showed its second-newest message.
+describe("keepNewerPreviews — a finished load doesn't roll a chat's preview back", () => {
+  const c = (pubkey: string, lastTimestamp: number, lastMessage: string, extra: Partial<ConversationPreview> = {}): ConversationPreview =>
+    ({ pubkey, lastTimestamp, lastMessage, unread: false, ...extra });
+
+  it("the newer message already on screen is kept over the load's older one", () => {
+    const out = keepNewerPreviews([c("alice", 200, "recent 0", { unread: true })], [c("alice", 140, "recent 1")]);
+    expect(out).toEqual([c("alice", 200, "recent 0", { unread: true })]);
+  });
+
+  it("the load's message wins when it is the newer (or the same) one", () => {
+    expect(keepNewerPreviews([c("alice", 100, "old")], [c("alice", 300, "new")])[0].lastMessage).toBe("new");
+    expect(keepNewerPreviews([c("alice", 100, "same")], [c("alice", 100, "reloaded")])[0].lastMessage).toBe("reloaded");
+  });
+
+  it("the list is exactly the load's chats: a chat no longer in it is not brought back", () => {
+    expect(keepNewerPreviews([c("alice", 100, "a"), c("deleted", 999, "gone")], [c("alice", 100, "a")]).map((x) => x.pubkey)).toEqual(["alice"]);
+  });
+
+  it("a chat the screen didn't have is simply added, newest chat first", () => {
+    expect(keepNewerPreviews([c("alice", 100, "a")], [c("alice", 100, "a"), c("carol", 500, "c")]).map((x) => x.pubkey)).toEqual(["carol", "alice"]);
+  });
+
+  it("the newer chat NAME is kept whichever side has it", () => {
+    const shown = [c("g", 200, "hi", { subject: "Old name", subjectAt: 50 })];
+    const next = [c("g", 100, "earlier", { subject: "New name", subjectAt: 90 })];
+    expect(keepNewerPreviews(shown, next)[0]).toMatchObject({ lastMessage: "hi", subject: "New name", subjectAt: 90 });
   });
 });

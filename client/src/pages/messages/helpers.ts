@@ -18,6 +18,33 @@ export interface ConversationPreview {
   subjectAt?: number;
 }
 
+/**
+ * A freshly built chat list, without losing newer previews already on screen.
+ *
+ * A load builds its list from what it read and opened — but messages arrive by
+ * another path while it runs (the notification path opens wraps first, so the
+ * load never sees them), and the load that finishes LAST sets the list. A long
+ * first load therefore finished with a list that was already out of date: the
+ * chat showed its second-newest message as the preview (measured in the
+ * history rig: "recent 1" under a chat whose newest was "recent 0").
+ *
+ * The list stays exactly `next`'s chats — nothing from `shown` is added back,
+ * so a deleted chat stays deleted — but where the screen already has a NEWER
+ * message for the same chat, that preview is kept.
+ */
+export function keepNewerPreviews(shown: readonly ConversationPreview[], next: readonly ConversationPreview[]): ConversationPreview[] {
+  const onScreen = new Map(shown.map((c) => [c.pubkey, c]));
+  return next
+    .map((c) => {
+      const was = onScreen.get(c.pubkey);
+      if (!was || was.lastTimestamp <= c.lastTimestamp) return c;
+      // The newer preview, with whichever chat name is the newer one.
+      const named = (c.subjectAt ?? 0) > (was.subjectAt ?? 0) ? { subject: c.subject, subjectAt: c.subjectAt } : { subject: was.subject, subjectAt: was.subjectAt };
+      return { ...was, ...named };
+    })
+    .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
+}
+
 export type DmTab = "primary" | "requests";
 
 /** A Concord group chat as the conversation list sees it. */
