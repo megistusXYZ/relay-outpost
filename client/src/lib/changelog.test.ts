@@ -18,6 +18,18 @@ describe("changelog is the single source of truth for the app version", () => {
     expect(APP_VERSION).toMatch(SEMVER);
   });
 
+  // Two releases on one day (1.10.0 and 1.11.0, 2026-08-27) shared a list key
+  // on the What's New page while it was keyed by date.
+  it("no two releases share a version, and the page keys its list by version", async () => {
+    const versions = CHANGELOG.map((e) => e.version);
+    expect(new Set(versions).size).toBe(versions.length);
+    const { readFileSync } = await import("fs");
+    const path = await import("path");
+    const page = readFileSync(path.resolve(import.meta.dirname, "../pages/WhatsNew.tsx"), "utf8");
+    expect(page).toMatch(/key=\{entry\.version\}/);
+    expect(page).not.toMatch(/key=\{entry\.date\}/);
+  });
+
   it("every release carries a valid semver version", () => {
     for (const e of CHANGELOG) {
       expect(e.version, `entry ${e.date} has a valid semver`).toMatch(SEMVER);

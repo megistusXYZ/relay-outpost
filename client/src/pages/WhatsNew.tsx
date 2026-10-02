@@ -49,9 +49,12 @@ export default function WhatsNew() {
         <div className="space-y-5">
           {CHANGELOG.map((entry) => (
             <section
-              key={entry.date}
+              // The version, not the date: two releases can go out on one day
+              // (1.10.0 and 1.11.0 did), and a shared key lets React drop or
+              // double a row.
+              key={entry.version}
               className="overflow-hidden rounded-md border border-border/40 dark:border-brand/15 bg-card/30 dark:bg-white/[0.015]"
-              data-testid={`changelog-entry-${entry.date}`}
+              data-testid={`changelog-entry-${entry.version}`}
             >
               {/* Log group header */}
               <div className="flex items-center justify-between gap-3 border-b border-border/40 dark:border-brand/12 bg-foreground/[0.025] dark:bg-white/[0.02] px-3.5 py-2">

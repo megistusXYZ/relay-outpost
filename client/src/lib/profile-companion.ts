@@ -76,6 +76,14 @@ export function mediaForChapter(
   limit = 5,
 ): { label: string; items: CompanionMedia[]; fallback: boolean } {
   const mine = chapter ? media.filter((m) => m.chapter === chapter) : [];
-  if (mine.length > 0) return { label: chapter as string, items: mine.slice(0, limit), fallback: false };
-  return { label: "Recent", items: media.slice(0, limit), fallback: true };
+  if (mine.length > 0) return { label: chapter as string, items: eachPictureOnce(mine).slice(0, limit), fallback: false };
+  return { label: "Recent", items: eachPictureOnce(media).slice(0, limit), fallback: true };
+}
+
+/** Each picture once, first appearance kept. A post that links the same
+ *  picture twice (or a second post carrying it) filled the panel's few tiles
+ *  with repeats — and two tiles from one post shared a React key. */
+function eachPictureOnce(media: readonly CompanionMedia[]): CompanionMedia[] {
+  const seen = new Set<string>();
+  return media.filter((m) => (seen.has(m.url) ? false : (seen.add(m.url), true)));
 }
