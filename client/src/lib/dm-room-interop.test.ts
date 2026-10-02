@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@/lib/dm-cache", () => ({
   getProcessedWrapIds: vi.fn(async () => []),
   markProcessed: vi.fn(async () => {}),
+  onStoreReset: vi.fn(),
 }));
 
 import { generateSecretKey, getPublicKey, finalizeEvent } from "nostr-tools";

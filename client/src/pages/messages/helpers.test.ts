@@ -554,6 +554,18 @@ describe("keepNewerPreviews — a finished load doesn't roll a chat's preview ba
     const next = [c("g", 100, "earlier", { subject: "New name", subjectAt: 90 })];
     expect(keepNewerPreviews(shown, next)[0]).toMatchObject({ lastMessage: "hi", subject: "New name", subjectAt: 90 });
   });
+
+  it("a name already on screen survives a load that brings the chat without one", () => {
+    // The naming message arrived live; the load's list was read from the store
+    // before that message was written to it, so its copy of the chat is unnamed.
+    const shown = [c("g", 100, "trip planning", { subject: "Lisbon trip", subjectAt: 100 })];
+    expect(keepNewerPreviews(shown, [c("g", 300, "count me in")])[0]).toMatchObject({ lastMessage: "count me in", subject: "Lisbon trip", subjectAt: 100 });
+    expect(keepNewerPreviews(shown, [c("g", 100, "trip planning")])[0]).toMatchObject({ subject: "Lisbon trip" });
+  });
+
+  it("a chat with no name on either side gains none", () => {
+    expect("subject" in keepNewerPreviews([c("alice", 100, "a")], [c("alice", 300, "b")])[0]).toBe(false);
+  });
 });
 
 describe("mergeChatEntries — pinned chats lead the list", () => {

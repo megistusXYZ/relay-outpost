@@ -7,6 +7,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 vi.mock("@/lib/dm-cache", () => ({
   getProcessedWrapIds: vi.fn(async () => ["wrap-a", "wrap-b"]),
   markProcessed: vi.fn(async () => {}),
+  onStoreReset: vi.fn(),
 }));
 
 import {
@@ -14,6 +15,7 @@ import {
   isWrapProcessed,
   seedProcessedWraps,
   clearProcessedWraps,
+  unwrapGiftWrap,
   KIND_FILE_MESSAGE,
   KIND_RUMOR,
 } from "./gift-wrap";
@@ -78,6 +80,17 @@ describe("decrypt-once ledger", () => {
     expect(isWrapProcessed("wrap-a")).toBe(true);
     expect(isWrapProcessed("wrap-b")).toBe(true);
     expect(isWrapProcessed("wrap-unknown")).toBe(false);
+  });
+
+  it("a message opened in an earlier session is not sent to the signer, even when nobody waited for the record to load", async () => {
+    // The live subscription used to start unwrapping while the record of opened
+    // messages was still being read: the first messages a relay delivered went
+    // to the signer again on every load.
+    const decrypt = vi.fn(async () => "{}");
+    const signer = { nip44: { decrypt } };
+    const wrap = { id: "wrap-a", kind: 1059, pubkey: "f".repeat(64), content: "x", tags: [["p", "me"]], created_at: 1, sig: "" };
+    expect(await unwrapGiftWrap(signer, "me", wrap as never)).toBeNull();
+    expect(decrypt).not.toHaveBeenCalled();
   });
 
   it("clearProcessedWraps drops the in-memory set (account switch)", async () => {

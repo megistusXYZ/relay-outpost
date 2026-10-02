@@ -1596,7 +1596,13 @@ export default function Messages() {
 
         markCacheStale(pubkey, otherPubkey);
 
-        setConversations(prev => {
+        // A message arriving before the first load has finished puts its chat
+        // on screen for THIS account, so the load's list is merged with it and
+        // not laid over it (which dropped a chat name the message had set).
+        const mine = listOwnerRef.current === pubkey;
+        listOwnerRef.current = pubkey;
+        setConversations(shown => {
+          const prev = mine ? shown : [];
           const was = prev.find(c => c.pubkey === otherPubkey);
           const name = newerSubject(was, { subject: unwrapped.subject, at: unwrapped.timestamp });
           // The live subscription also replays the last two days, in no
@@ -2615,6 +2621,20 @@ export default function Messages() {
   }, [pubkey]);
 
   const checkedInitiatedRef = useRef<Set<string>>(new Set());
+  const pubkeyRef = useRef(pubkey);
+  pubkeyRef.current = pubkey;
+  // A chat that looked like someone else's opening can turn out to be one you
+  // started, once an older message of yours is stored (messages arrive in no
+  // particular order). That chat is asked about again.
+  const [initiatedRecheck, setInitiatedRecheck] = useState(0);
+  useEffect(() => {
+    const onOwn = (e: globalThis.Event) => {
+      const peer = (e as CustomEvent<{ peer?: string }>).detail?.peer;
+      if (peer && checkedInitiatedRef.current.delete(peer)) setInitiatedRecheck((n) => n + 1);
+    };
+    window.addEventListener(dmCache.OWN_MESSAGE_STORED, onOwn);
+    return () => window.removeEventListener(dmCache.OWN_MESSAGE_STORED, onOwn);
+  }, []);
 
   useEffect(() => {
     checkedInitiatedRef.current.clear();
@@ -2627,29 +2647,24 @@ export default function Messages() {
       .map(c => c.pubkey);
     if (toCheck.length === 0) return;
 
-    let cancelled = false;
+    // An answer is kept even when the list changes while it is being read: the
+    // read is marked "in hand" up front, so throwing its answer away (as this
+    // did) left a chat you started sitting in Requests for the whole visit.
+    // Only a change of account makes an answer stale. A chat with nothing
+    // stored yet has no answer, and is asked about again later.
+    const account = pubkey;
+    for (const peer of toCheck) checkedInitiatedRef.current.add(peer);
     (async () => {
-      const found: string[] = [];
       for (const peer of toCheck) {
-        if (cancelled) break;
-        checkedInitiatedRef.current.add(peer);
-        try {
-          const msgs = await dmCache.getMessages(pubkey, peer);
-          if (msgs.length > 0 && msgs[0].from === pubkey) {
-            found.push(peer);
-          }
-        } catch {}
-      }
-      if (!cancelled && found.length > 0) {
-        setInitiatedByMe(prev => {
-          const next = new Set(prev);
-          for (const pk of found) next.add(pk);
-          return next;
-        });
+        let first: dmCache.CachedMessage | undefined;
+        try { first = (await dmCache.getMessages(account, peer))[0]; } catch {}
+        if (pubkeyRef.current !== account) return;
+        if (!first) { checkedInitiatedRef.current.delete(peer); continue; }
+        if (first.from !== account) continue;
+        setInitiatedByMe(prev => (prev.has(peer) ? prev : new Set(prev).add(peer)));
       }
     })();
-    return () => { cancelled = true; };
-  }, [pubkey, conversations, followsSet, promotedPrimary]);
+  }, [pubkey, conversations, followsSet, promotedPrimary, initiatedRecheck]);
 
   const isPrimaryConversation = useCallback((peerPubkey: string): boolean => {
     if (demotedToRequests.has(peerPubkey)) return false;

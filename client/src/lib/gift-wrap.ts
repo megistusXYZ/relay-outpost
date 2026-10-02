@@ -12,6 +12,7 @@ import { decryptionQueue } from "@/lib/decryption-queue";
 import {
   getProcessedWrapIds,
   markProcessed,
+  onStoreReset,
   type WrapStatus,
   type CachedFileMetadata,
 } from "@/lib/dm-cache";
@@ -78,11 +79,24 @@ const processedWrapIds = new Set<string>();
 
 /** Hydrate the in-memory processed set from IndexedDB for an owner. Idempotent;
  *  safe to call from multiple mount points. */
-export async function seedProcessedWraps(ownerPubkey: string): Promise<void> {
-  if (!ownerPubkey) return;
-  const ids = await getProcessedWrapIds(ownerPubkey);
-  ids.forEach((id) => processedWrapIds.add(id));
+export function seedProcessedWraps(ownerPubkey: string): Promise<void> {
+  if (!ownerPubkey) return Promise.resolve();
+  let seeded = seeds.get(ownerPubkey);
+  if (!seeded) {
+    seeded = getProcessedWrapIds(ownerPubkey).then((ids) => { ids.forEach((id) => processedWrapIds.add(id)); });
+    seeds.set(ownerPubkey, seeded);
+  }
+  return seeded;
 }
+
+// One read of the ledger per account per session. unwrapGiftWrap waits for it:
+// callers that seeded without waiting let the first messages a relay delivered
+// race the read, and every one of them went to the signer again on each load.
+const seeds = new Map<string, Promise<void>>();
+
+// The store started over (lib/dm-cache.ts): what it had opened is gone, so
+// those messages must be opened again.
+onStoreReset(() => { processedWrapIds.clear(); seeds.clear(); });
 
 /** True if this wrap has already been attempted this session / per the ledger. */
 export function isWrapProcessed(wrapId: string): boolean {
@@ -94,6 +108,7 @@ export function isWrapProcessed(wrapId: string): boolean {
  *  persistent ledger is per-owner and re-seeded via seedProcessedWraps(). */
 export function clearProcessedWraps(): void {
   processedWrapIds.clear();
+  seeds.clear();
 }
 
 /**
@@ -112,6 +127,7 @@ export async function unwrapGiftWrap(
   opts?: { force?: boolean },
 ): Promise<UnwrappedGiftWrap | null> {
   if (!signer?.nip44) return null;
+  await seedProcessedWraps(myPubkey);
   // Already attempted (this session or a previous one) — don't prompt again.
   // `force` overrides this so a thread whose decrypted body was never persisted
   // (e.g. a wrap decrypted before we cached messages) can self-heal by
