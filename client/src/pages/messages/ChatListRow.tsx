@@ -8,7 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { BellOff, Lock, MoreVertical, Pencil, Trash2, UserCheck, UserX, Users } from "lucide-react";
+import { Bell, BellOff, Lock, MoreVertical, Pencil, Pin, PinOff, Trash2, UserCheck, UserX, Users } from "lucide-react";
 import { isGroupRoom } from "@/lib/dm-room";
 import { formatConversationPreview, formatMessageTime } from "./helpers";
 
@@ -78,6 +78,13 @@ interface DmRowProps {
   onRemove: (pubkey: string) => void;
   /** Opens the "Rename for you" dialog (petnames). */
   onNickname?: (pubkey: string) => void;
+  /** Pinned to the top of the list (lib/dm-prefs.ts), and the way to change it. */
+  pinned?: boolean;
+  onTogglePin?: (key: string) => void;
+  /** This CHAT is muted on this device: no unread mark, no badge. (Muting a
+   *  PERSON everywhere is the thread menu's "Mute".) */
+  mutedChat?: boolean;
+  onToggleMuteChat?: (key: string) => void;
 }
 
 interface GroupRowProps {
@@ -209,7 +216,13 @@ function DmChatRow({
   onDemote,
   onRemove,
   onNickname,
+  pinned,
+  onTogglePin,
+  mutedChat,
+  onToggleMuteChat,
 }: DmRowProps) {
+  // A muted chat still shows its newest message; it just doesn't ask for attention.
+  const unread = item.unread && !mutedChat;
   return (
     // Unread gets a left accent bar and a faint wash, not just a 10px dot.
     //
@@ -222,11 +235,11 @@ function DmChatRow({
     // 40px avatar does not.
     <div
       className={`group relative flex items-center border-b border-border/10 ${
-        isSelected ? "bg-brand/10 md:bg-brand/10" : item.unread ? "bg-brand/[0.04]" : ""
+        isSelected ? "bg-brand/10 md:bg-brand/10" : unread ? "bg-brand/[0.04]" : ""
       }`}
       data-testid={`conversation-${item.pubkey.slice(0, 8)}`}
     >
-      {item.unread && (
+      {unread && (
         <span
           className="absolute left-0 top-0 bottom-0 w-[3px] bg-brand"
           aria-hidden="true"
@@ -265,7 +278,7 @@ function DmChatRow({
           </AvatarFallback>
         </Avatar>
         )}
-        {item.unread && (
+        {unread && (
           <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-brand border-2 border-background" />
         )}
       </button>
@@ -278,7 +291,9 @@ function DmChatRow({
               against the whole row) — identical anchoring to group rows. */}
           <div className="flex items-baseline justify-between gap-2">
             <div className="flex items-center gap-1 min-w-0">
-              <span className={`text-sm truncate ${item.unread ? "font-semibold" : "font-medium"}`}>{name}</span>
+              <span className={`text-sm truncate ${unread ? "font-semibold" : "font-medium"}`}>{name}</span>
+              {pinned && <Pin className="w-3 h-3 shrink-0 text-muted-foreground/60" aria-label="Pinned" data-testid={`conversation-pinned-${item.pubkey.slice(0, 8)}`} />}
+              {mutedChat && <BellOff className="w-3 h-3 shrink-0 text-muted-foreground/60" aria-label="Muted" data-testid={`conversation-muted-${item.pubkey.slice(0, 8)}`} />}
               {/* Badges vouch for a person; a several-person chat is not one. */}
               {!isGroupRoom(item.pubkey) && <Nip05Badge nip05={nip05} pubkey={item.pubkey} showText={false} iconClassName="w-3 h-3" />}
             </div>
@@ -291,7 +306,7 @@ function DmChatRow({
           {isRequest && profileName && !isGroupRoom(item.pubkey) && (
             <ImpersonationChip pubkey={item.pubkey} displayName={profileName} nip05={nip05} className="mt-0.5" />
           )}
-          <p className={`text-xs truncate mt-0.5 ${item.unread ? "text-foreground/80 font-medium" : "text-muted-foreground"}`}>
+          <p className={`text-xs truncate mt-0.5 ${unread ? "text-foreground/80 font-medium" : "text-muted-foreground"}`}>
             {hidePreviews ? "Message" : formatConversationPreview(item.lastMessage)}
           </p>
         </div>
@@ -319,6 +334,19 @@ function DmChatRow({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="glass-dropdown min-w-[160px]">
+          {/* Pinning is for chats you keep; a request is not one yet. */}
+          {onTogglePin && !isRequest && (
+            <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => onTogglePin(item.pubkey)} data-testid={`button-pin-conv-${item.pubkey.slice(0, 8)}`}>
+              {pinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+              {pinned ? "Unpin" : "Pin to top"}
+            </DropdownMenuItem>
+          )}
+          {onToggleMuteChat && (
+            <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => onToggleMuteChat(item.pubkey)} data-testid={`button-mute-conv-${item.pubkey.slice(0, 8)}`}>
+              {mutedChat ? <Bell className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
+              {mutedChat ? "Unmute chat" : "Mute chat"}
+            </DropdownMenuItem>
+          )}
           {isRequest && (
             <DropdownMenuItem
               className="gap-2 cursor-pointer"

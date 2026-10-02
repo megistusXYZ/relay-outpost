@@ -6,6 +6,7 @@ import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { unwrapGiftWrap, seedProcessedWraps, roomKeyOfUnwrapped } from "@/lib/gift-wrap";
 import { isExpired } from "@/lib/dm-room";
+import { DM_PREFS_EVENT, isMutedChat, readDmPrefs } from "@/lib/dm-prefs";
 import { routeGroupRumor } from "@/lib/concord/concord-dm-pipe";
 import { getCommunity } from "@/lib/concord/concord-keys";
 import { toast } from "@/hooks/use-toast";
@@ -936,16 +937,21 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       try {
         const convos = await dmCache.getConversationList(pubkey);
         if (cancelled) return;
-        setUnreadDmCount(convos.filter(c => c.lastTimestamp > readDmLastRead(c.peerPubkey)).length);
+        // A muted chat (lib/dm-prefs.ts) doesn't count: muting it and still
+        // seeing its number on the Chats badge would be no mute at all.
+        const prefs = readDmPrefs(pubkey);
+        setUnreadDmCount(convos.filter(c => c.lastTimestamp > readDmLastRead(c.peerPubkey) && !isMutedChat(prefs, c.peerPubkey)).length);
       } catch { /* ignore */ }
     };
     recompute();
     window.addEventListener("dm-cache-updated", recompute);
     window.addEventListener("dm-read-updated", recompute);
+    window.addEventListener(DM_PREFS_EVENT, recompute);
     return () => {
       cancelled = true;
       window.removeEventListener("dm-cache-updated", recompute);
       window.removeEventListener("dm-read-updated", recompute);
+      window.removeEventListener(DM_PREFS_EVENT, recompute);
     };
   }, [pubkey]);
 

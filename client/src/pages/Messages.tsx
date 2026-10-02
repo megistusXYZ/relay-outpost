@@ -15,7 +15,7 @@ import { readDmLastRead, writeDmLastRead } from "@/lib/dm-read";
 import { displayNameWith, usePetnamesVersion } from "@/lib/petnames";
 import { fetchRelayLists, getWriteRelays, getReadRelays, getDMRelayListCached, fetchDMRelayList, getLocalDMRelays, hasDMRelayList, getDMRelaysForContact, getMyDMReceiveRelays, wasDMRelayListConfirmedEmpty, publishDMRelayList, DM_FALLBACK_RELAYS, ensureOwnDMRelayList, wasOwnDMInboxAutopublished } from "@/lib/outbox";
 import { createGiftWrap, createGiftWrapForSelf, createRoomGiftWraps, expirationTags } from "@/lib/dm";
-import { DM_PREFS_EVENT, expirationFor, readDmPrefs, setTimer, timerLabel, timerOf, writeDmPrefs, type DmPrefs } from "@/lib/dm-prefs";
+import { DM_PREFS_EVENT, expirationFor, isMutedChat, isPinned, readDmPrefs, setMutedChat, setPinned, setTimer, timerLabel, timerOf, writeDmPrefs, type DmPrefs } from "@/lib/dm-prefs";
 import { AddPeopleDialog, NameChatDialog, TimerDialog } from "./messages/ThreadDialogs";
 import * as dmCache from "@/lib/dm-cache";
 import { useToast } from "@/hooks/use-toast";
@@ -2727,6 +2727,7 @@ export default function Messages() {
     if (!selectedPubkey) return;
     const newest = conversations
       .filter((c) => c.pubkey !== selectedPubkey
+        && !isMutedChat(dmPrefs, c.pubkey)
         && c.lastTimestamp > threadOpenedAt.current
         && !dismissedAlerts.current.has(c.pubkey))
       .sort((a, b) => b.lastTimestamp - a.lastTimestamp)[0];
@@ -2771,8 +2772,8 @@ export default function Messages() {
     };
   }), [groupChats, concordActivity, concordUnread, concordMentions, groupIdentities, groupTeasers, hidePreviews]);
   const chatEntries = useMemo(
-    () => mergeChatEntries(activeConversations, groupPreviews, { tab: dmTab, searchFilter }),
-    [activeConversations, groupPreviews, dmTab, searchFilter],
+    () => mergeChatEntries(activeConversations, groupPreviews, { tab: dmTab, searchFilter, pinned: dmPrefs.pinned }),
+    [activeConversations, groupPreviews, dmTab, searchFilter, dmPrefs.pinned],
   );
 
   const { requestUnreadCount, totalRequestCount } = useMemo(() => {
@@ -2782,11 +2783,12 @@ export default function Messages() {
     for (const c of allVisible) {
       if (!isPrimaryConversation(c.pubkey)) {
         total++;
-        if (c.unread) unread++;
+        // A muted chat is still there; it just isn't counted as waiting.
+        if (c.unread && !isMutedChat(dmPrefs, c.pubkey)) unread++;
       }
     }
     return { requestUnreadCount: unread, totalRequestCount: total };
-  }, [conversations, hiddenConvos, isPrimaryConversation]);
+  }, [conversations, hiddenConvos, isPrimaryConversation, dmPrefs]);
 
   useEffect(() => {
     if (!pubkey || conversations.length === 0) return;
@@ -3027,6 +3029,12 @@ export default function Messages() {
           }}
           handleClearAllHidden={handleClearAllHidden}
           navigateToConversation={navigateToConversation}
+          chatPrefs={{
+            pinned: dmPrefs.pinned,
+            muted: dmPrefs.muted,
+            onTogglePin: (key) => { if (pubkey) { const p = readDmPrefs(pubkey); writeDmPrefs(pubkey, setPinned(p, key, !isPinned(p, key))); } },
+            onToggleMute: (key) => { if (pubkey) { const p = readDmPrefs(pubkey); writeDmPrefs(pubkey, setMutedChat(p, key, !isMutedChat(p, key))); } },
+          }}
           olderMessages={signer?.nip44 ? { status: historyStatus, backTo: historyBackTo, opening: historyOpening, onLoad: loadOlderMessages } : undefined}
           onOpenProfile={(pk) => { if (isGroupRoom(pk)) navigateToConversation(pk); else setLocation(`/profile/${nip19.npubEncode(pk)}`); }}
           handlePromoteToPrimary={handlePromoteToPrimary}

@@ -189,6 +189,8 @@ interface ChatListProps {
    * back to, when that can be said.
    */
   olderMessages?: { status: "idle" | "loading" | "unreached" | "done"; backTo: number | null; opening: number; onLoad: () => void };
+  /** The person's pins and muted chats (lib/dm-prefs.ts), and how a row changes them. */
+  chatPrefs?: { pinned: readonly string[]; muted: readonly string[]; onTogglePin: (key: string) => void; onToggleMute: (key: string) => void };
   onOpenProfile: (pubkey: string) => void;
   handlePromoteToPrimary: (pubkey: string) => void;
   handleDemoteToRequests: (pubkey: string) => void;
@@ -250,6 +252,7 @@ export function ChatList({
   handleClearAllHidden,
   navigateToConversation,
   olderMessages,
+  chatPrefs,
   onOpenProfile,
   handlePromoteToPrimary,
   handleDemoteToRequests,
@@ -957,6 +960,10 @@ export function ChatList({
                     onDemote={handleDemoteToRequests}
                     onRemove={onRemoveConversation}
                     onNickname={(pk) => setPetnameTarget({ kind: "person", id: pk, realName: name })}
+                    pinned={chatPrefs?.pinned.includes(conv.pubkey)}
+                    onTogglePin={chatPrefs?.onTogglePin}
+                    mutedChat={chatPrefs?.muted.includes(conv.pubkey)}
+                    onToggleMuteChat={chatPrefs?.onToggleMute}
                   />
                 );
                 return dmRow;
