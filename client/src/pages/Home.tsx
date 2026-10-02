@@ -3115,7 +3115,7 @@ export default function Home() {
         <FeedErrorBoundary label="home">
         {feedMode === "custom_all" ? (
           <Suspense fallback={<FeedSkeletonList count={5} />}>
-            {feedStyle === "video" ? <VideoFeedLazy embedded sort={mediaSort} /> : feedStyle === "polls" ? <PollsFeedLazy embedded sort={savedPollSort} show={savedPollShow} /> : <ImagesFeedLazy embedded sort={mediaSort} title="Photos" />}
+            {feedStyle === "video" ? <VideoFeedLazy embedded sort={mediaSort} /> : feedStyle === "polls" ? <PollsFeedLazy embedded sort={savedPollSort} show={savedPollShow} /> : <ImagesFeedLazy embedded sort={mediaSort} />}
           </Suspense>
         ) : showRawGate && feedMode === "raw_signal" ? (
           <div className="relative min-h-[420px] sm:min-h-[480px] rounded-xl overflow-hidden" data-testid="container-raw-gate">

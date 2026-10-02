@@ -563,13 +563,13 @@ const COLUMN_CLASSES: Record<ColumnCount, string> = {
 
 // `sort` (optional) makes the sort externally controlled — the feed-macro
 // dropdown in Home owns it and the internal sort chip is hidden entirely.
-// `title`: the browser-tab title. Search's media hub calls this feed "Images";
-// the Home feed lists it under Feeds as "Photos" and passes that.
-export default function ImagesFeed({ embedded = false, sort, title = "Images" }: { embedded?: boolean; sort?: SortMode; title?: string } = {}) {
+// The app calls this feed "Photos" everywhere it appears (Feeds, Search's media
+// hub, Discover, Bookmarks). The component and its keys keep the older name.
+export default function ImagesFeed({ embedded = false, sort }: { embedded?: boolean; sort?: SortMode } = {}) {
   const isMobile = useIsMobile();
   const { filter: spamFilter } = useSpamFilter();
   const tierFilter = useTierContentFilter();
-  useDocumentTitle(title);
+  useDocumentTitle("Photos");
   const [cutoffTimestamp, setCutoffTimestamp] = useState(() => Math.floor(Date.now() / 1000));
   const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -826,11 +826,11 @@ export default function ImagesFeed({ embedded = false, sort, title = "Images" }:
 
         {isInitialLoading && displayedEntries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20" data-testid="container-loading">
-            <RelayOutpostLoader size="lg" label="Scanning relays for images..." />
+            <RelayOutpostLoader size="lg" label="Scanning relays for photos..." />
           </div>
         ) : displayedEntries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20" data-testid="container-empty">
-            <p className="text-sm text-muted-foreground">No images found</p>
+            <p className="text-sm text-muted-foreground">No photos found</p>
           </div>
         ) : (
           <>
@@ -885,11 +885,11 @@ export default function ImagesFeed({ embedded = false, sort, title = "Images" }:
         </div>
         {isInitialLoading && displayedEntries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20" data-testid="container-loading">
-            <RelayOutpostLoader size="lg" label="Scanning relays for images..." />
+            <RelayOutpostLoader size="lg" label="Scanning relays for photos..." />
           </div>
         ) : displayedEntries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20" data-testid="container-empty">
-            <p className="text-sm text-muted-foreground">No images found in recent posts</p>
+            <p className="text-sm text-muted-foreground">No photos found in recent posts</p>
           </div>
         ) : viewMode === "list" ? (
           <>
