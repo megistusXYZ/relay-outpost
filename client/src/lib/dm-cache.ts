@@ -1,7 +1,18 @@
 import { isExpired, newerSubject } from "@/lib/dm-room";
+import {
+  canSeal, newDeviceKey, sealRow, openRow, isSealedRow,
+  MESSAGE_SECRETS, MESSAGE_BOUND, CONVERSATION_SECRETS, CONVERSATION_BOUND,
+} from "@/lib/dm-seal";
+import { clearCursors } from "@/lib/dm-history";
 
 const DB_NAME = "relay-outpost-dms";
 const DB_VERSION = 2;
+// The device keys have a database of their own. Adding a store to the one
+// above would mean a version upgrade, and an upgrade waits for every other tab
+// still running the previous build to close — private messages would hang in
+// the updated tab until then.
+const KEYS_DB_NAME = "relay-outpost-dm-keys";
+const DEVICE_KEYS_STORE = "device_keys";
 const MESSAGES_STORE = "messages";
 const CONVERSATIONS_STORE = "conversations";
 const PROCESSED_WRAPS_STORE = "processed_wraps";
@@ -133,6 +144,180 @@ function safeTx(mode: IDBTransactionMode, storeName: string, fn: (store: IDBObje
   }).catch(() => undefined);
 }
 
+// ---- Sealing (lib/dm-seal.ts) -------------------------------------------------
+//
+// Every message and chat row is sealed with a key that belongs to this device
+// and this account. The key is kept beside the rows as a CryptoKey the browser
+// will use but never hand over. Rows written before sealing existed are read as
+// they are and sealed the first time the store is opened after the update.
+
+const deviceKeys = new Map<string, Promise<CryptoKey | null>>();
+
+function openKeysDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(KEYS_DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(DEVICE_KEYS_STORE)) {
+        request.result.createObjectStore(DEVICE_KEYS_STORE, { keyPath: "ownerPubkey" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+/** This account's key on this device, made on first use. Null where the
+ *  browser cannot seal (an insecure origin): rows are then kept as before. */
+function deviceKey(ownerPubkey: string): Promise<CryptoKey | null> {
+  const known = deviceKeys.get(ownerPubkey);
+  if (known) return known;
+  const made = (async () => {
+    if (!canSeal()) return null;
+    try {
+      const fresh = await newDeviceKey();
+      const db = await openKeysDB();
+      // One transaction decides: a second tab that got here first wins, and
+      // both end up holding the same key.
+      return await new Promise<CryptoKey | null>((resolve, reject) => {
+        const tx = db.transaction(DEVICE_KEYS_STORE, "readwrite");
+        const store = tx.objectStore(DEVICE_KEYS_STORE);
+        let key: CryptoKey = fresh;
+        let created = false;
+        const get = store.get(ownerPubkey);
+        get.onsuccess = () => {
+          const row = get.result as { key?: CryptoKey } | undefined;
+          if (row?.key) key = row.key;
+          else { created = true; store.put({ ownerPubkey, key: fresh }); }
+        };
+        tx.oncomplete = () => {
+          db.close();
+          // A key had to be made, yet sealed rows are already here: they were
+          // sealed with a key this device no longer has. Start over BEFORE
+          // anyone reads the store, so nothing is built on rows that cannot open.
+          if (!created) { resolve(key); return; }
+          void hasSealedRows(ownerPubkey)
+            .then((lost) => (lost ? startOver(ownerPubkey) : undefined))
+            .catch(() => {})
+            .then(() => resolve(key));
+        };
+        tx.onerror = () => { db.close(); reject(tx.error); };
+        tx.onabort = () => { db.close(); reject(tx.error || new Error("Transaction aborted")); };
+      });
+    } catch {
+      return null;
+    }
+  })();
+  deviceKeys.set(ownerPubkey, made);
+  // A failure is not remembered: the next call tries again.
+  void made.then((k) => { if (!k && deviceKeys.get(ownerPubkey) === made) deviceKeys.delete(ownerPubkey); });
+  return made;
+}
+
+async function forgetDeviceKey(ownerPubkey: string): Promise<void> {
+  deviceKeys.delete(ownerPubkey);
+  try {
+    const db = await openKeysDB();
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(DEVICE_KEYS_STORE, "readwrite");
+      tx.objectStore(DEVICE_KEYS_STORE).delete(ownerPubkey);
+      tx.oncomplete = tx.onerror = tx.onabort = () => { db.close(); resolve(); };
+    });
+  } catch {}
+}
+
+async function sealMessage(key: CryptoKey | null, row: CachedMessage): Promise<unknown> {
+  return key ? sealRow(key, row, MESSAGE_SECRETS, MESSAGE_BOUND) : row;
+}
+
+async function sealConversation(key: CryptoKey | null, row: CachedConversation): Promise<unknown> {
+  return key ? sealRow(key, row, CONVERSATION_SECRETS, CONVERSATION_BOUND) : row;
+}
+
+/** Rows as they were written, and how many would not open. */
+async function openRows<T extends object>(key: CryptoKey | null, stored: unknown[], boundTo: readonly string[]): Promise<{ rows: T[]; unreadable: number; legacy: T[] }> {
+  const rows: T[] = [];
+  const legacy: T[] = [];
+  let unreadable = 0;
+  const opened = await Promise.all(stored.map(async (row) => {
+    if (!isSealedRow(row)) return { row: row as T, legacy: true, locked: false };
+    // No key to hand right now (its database would not open): the row is left
+    // alone. Only a key that is present and does not fit means the row is lost.
+    if (!key) return { row: null, legacy: false, locked: true };
+    return { row: await openRow<T>(key, row, boundTo), legacy: false, locked: false };
+  }));
+  for (const o of opened) {
+    if (o.locked) continue;
+    if (!o.row) { unreadable++; continue; }
+    rows.push(o.row);
+    if (o.legacy) legacy.push(o.row);
+  }
+  return { rows, unreadable, legacy };
+}
+
+async function hasSealedRows(ownerPubkey: string): Promise<boolean> {
+  const db = await openDB();
+  const chats = await new Promise<unknown[]>((resolve, reject) => {
+    const tx = db.transaction(CONVERSATIONS_STORE, "readonly");
+    const req = tx.objectStore(CONVERSATIONS_STORE).index("by-owner").getAll(ownerPubkey);
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+  return chats.some(isSealedRow);
+}
+
+const resetListeners = new Set<(ownerPubkey: string) => void>();
+
+/** Told when an account's store has been emptied to start over, so anything
+ *  remembered from it in memory (which messages were already opened) goes too. */
+export function onStoreReset(fn: (ownerPubkey: string) => void): void {
+  resetListeners.add(fn);
+}
+
+/**
+ * Rows this device can no longer open (its key is gone while the rows stayed).
+ * They cannot be shown, and the record of which messages were already opened
+ * would stop them ever being fetched again — so the account's store starts
+ * over and the messages are read from the relays afresh.
+ */
+async function startOver(ownerPubkey: string): Promise<void> {
+  await clearAll(ownerPubkey, { keepKey: true });
+  clearCursors(ownerPubkey);
+  resetListeners.forEach((fn) => { try { fn(ownerPubkey); } catch {} });
+}
+
+const sweptLegacy = new Set<string>();
+
+/** Seal everything this account stored before sealing existed. Once a session. */
+async function sealLegacyRows(ownerPubkey: string): Promise<void> {
+  if (sweptLegacy.has(ownerPubkey)) return;
+  sweptLegacy.add(ownerPubkey);
+  try {
+    const key = await deviceKey(ownerPubkey);
+    if (!key) return;
+    const db = await openDB();
+    const all = await new Promise<unknown[]>((resolve, reject) => {
+      const tx = db.transaction(MESSAGES_STORE, "readonly");
+      const req = tx.objectStore(MESSAGES_STORE).index("by-peer").getAll(IDBKeyRange.bound([ownerPubkey, ""], [ownerPubkey, "\uffff"]));
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+    const legacy = all.filter((r) => !isSealedRow(r)) as CachedMessage[];
+    for (let i = 0; i < legacy.length; i += 200) {
+      const sealed = await Promise.all(legacy.slice(i, i + 200).map((m) => sealMessage(key, m)));
+      await new Promise<void>((resolve) => {
+        const tx = db.transaction(MESSAGES_STORE, "readwrite");
+        const store = tx.objectStore(MESSAGES_STORE);
+        for (const row of sealed) store.put(row);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+        tx.onabort = () => resolve();
+      });
+    }
+  } catch {
+    sweptLegacy.delete(ownerPubkey);
+  }
+}
+
 /**
  * Heuristic for a leaked Concord direct-invite bundle (kind-3313 rumor JSON)
  * that an older build cached as DM text. `community_root` is SECRET key
@@ -159,26 +344,28 @@ const INVITE_REDACTED_PREVIEW = "Community invite";
 export async function getConversationList(ownerPubkey: string): Promise<CachedConversation[]> {
   try {
     const db = await openDB();
-    return await new Promise((resolve, reject) => {
+    const key = await deviceKey(ownerPubkey);
+    const stored = await new Promise<unknown[]>((resolve, reject) => {
       const tx = db.transaction(CONVERSATIONS_STORE, "readonly");
-      const store = tx.objectStore(CONVERSATIONS_STORE);
-      const index = store.index("by-owner");
-      const req = index.getAll(ownerPubkey);
-      req.onsuccess = () => {
-        const results = (req.result || []) as CachedConversation[];
-        // One-time sweep: a leaked invite bundle cached as the conversation
-        // preview gets redacted in place (and persisted redacted).
-        for (const c of results) {
-          if (isLeakedInviteBundleJson(c.lastMessage)) {
-            c.lastMessage = INVITE_REDACTED_PREVIEW;
-            void putConversation(ownerPubkey, c);
-          }
-        }
-        results.sort((a, b) => b.lastTimestamp - a.lastTimestamp);
-        resolve(results);
-      };
+      const req = tx.objectStore(CONVERSATIONS_STORE).index("by-owner").getAll(ownerPubkey);
+      req.onsuccess = () => resolve(req.result || []);
       req.onerror = () => reject(req.error);
     });
+    const { rows: results, unreadable, legacy } = await openRows<CachedConversation>(key, stored, CONVERSATION_BOUND);
+    if (unreadable > 0) { await startOver(ownerPubkey); return []; }
+    for (const c of results) {
+      // One-time sweep: a leaked invite bundle cached as the conversation
+      // preview gets redacted in place (and persisted redacted).
+      if (isLeakedInviteBundleJson(c.lastMessage)) {
+        c.lastMessage = INVITE_REDACTED_PREVIEW;
+        void putConversation(ownerPubkey, c);
+      } else if (key && legacy.includes(c)) {
+        void putConversation(ownerPubkey, c); // stored before sealing: seal it now
+      }
+    }
+    void sealLegacyRows(ownerPubkey);
+    results.sort((a, b) => b.lastTimestamp - a.lastTimestamp);
+    return results;
   } catch {
     return [];
   }
@@ -187,27 +374,28 @@ export async function getConversationList(ownerPubkey: string): Promise<CachedCo
 export async function getMessages(ownerPubkey: string, peerPubkey: string): Promise<CachedMessage[]> {
   try {
     const db = await openDB();
-    return await new Promise((resolve, reject) => {
+    const key = await deviceKey(ownerPubkey);
+    const stored = await new Promise<unknown[]>((resolve, reject) => {
       const tx = db.transaction(MESSAGES_STORE, "readonly");
-      const store = tx.objectStore(MESSAGES_STORE);
-      const index = store.index("by-peer");
-      const req = index.getAll([ownerPubkey, peerPubkey]);
-      req.onsuccess = () => {
-        const results = (req.result || []) as CachedMessage[];
-        // One-time sweep: drop leaked invite bundles (secret key material a
-        // previous build cached as DM text) and delete them from IDB.
-        // Same sweep for disappearing messages whose time has passed: gone from
-        // the screen and from this device.
-        const nowSec = Math.floor(Date.now() / 1000);
-        const gone = (m: CachedMessage) => isLeakedInviteBundleJson(m.content) || isExpired(m.expiresAt, nowSec);
-        const leaked = results.filter(gone);
-        for (const m of leaked) void deleteMessage(ownerPubkey, m.id);
-        const clean = leaked.length ? results.filter((m) => !gone(m)) : results;
-        clean.sort((a, b) => a.timestamp - b.timestamp);
-        resolve(clean);
-      };
+      const req = tx.objectStore(MESSAGES_STORE).index("by-peer").getAll([ownerPubkey, peerPubkey]);
+      req.onsuccess = () => resolve(req.result || []);
       req.onerror = () => reject(req.error);
     });
+    const { rows: results, unreadable, legacy } = await openRows<CachedMessage>(key, stored, MESSAGE_BOUND);
+    if (unreadable > 0) { await startOver(ownerPubkey); return []; }
+    // One-time sweep: drop leaked invite bundles (secret key material a
+    // previous build cached as DM text) and delete them from IDB.
+    // Same sweep for disappearing messages whose time has passed: gone from
+    // the screen and from this device.
+    const nowSec = Math.floor(Date.now() / 1000);
+    const gone = (m: CachedMessage) => isLeakedInviteBundleJson(m.content) || isExpired(m.expiresAt, nowSec);
+    const leaked = results.filter(gone);
+    for (const m of leaked) void deleteMessage(ownerPubkey, m.id);
+    const clean = leaked.length ? results.filter((m) => !gone(m)) : results;
+    const unsealed = key ? legacy.filter((m) => !gone(m)) : [];
+    if (unsealed.length) void putMessages(ownerPubkey, peerPubkey, unsealed);
+    clean.sort((a, b) => a.timestamp - b.timestamp);
+    return clean;
   } catch {
     return [];
   }
@@ -216,27 +404,35 @@ export async function getMessages(ownerPubkey: string, peerPubkey: string): Prom
 export async function putMessages(ownerPubkey: string, peerPubkey: string, messages: CachedMessage[]): Promise<void> {
   try {
     const db = await openDB();
+    const key = await deviceKey(ownerPubkey);
+    const nowSec = Math.floor(Date.now() / 1000);
+    const rows = await Promise.all(messages
+      .filter((msg) => !isLeakedInviteBundleJson(msg.content)) // never cache invite bundles as DMs
+      .filter((msg) => !isExpired(msg.expiresAt, nowSec)) // a disappearing message already gone
+      .map((msg) => sealMessage(key, { ...msg, ownerPubkey, peerPubkey })));
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(MESSAGES_STORE, "readwrite");
       const store = tx.objectStore(MESSAGES_STORE);
-      const nowSec = Math.floor(Date.now() / 1000);
-      for (const msg of messages) {
-        if (isLeakedInviteBundleJson(msg.content)) continue; // never cache invite bundles as DMs
-        if (isExpired(msg.expiresAt, nowSec)) continue; // a disappearing message already gone
-        store.put({ ...msg, ownerPubkey, peerPubkey });
-      }
-      tx.oncomplete = () => resolve();
+      for (const row of rows) store.put(row);
+      tx.oncomplete = () => { ownMessageStored(ownerPubkey, peerPubkey, messages); resolve(); };
       tx.onerror = () => reject(tx.error);
     });
   } catch {}
 }
 
+/** Fired when a message the reader wrote lands in a chat's store. */
+export const OWN_MESSAGE_STORED = "dm-own-message-stored";
+
+function ownMessageStored(ownerPubkey: string, peerPubkey: string, messages: CachedMessage[]): void {
+  if (!messages.some((m) => m.from === ownerPubkey)) return;
+  try { window.dispatchEvent(new CustomEvent(OWN_MESSAGE_STORED, { detail: { peer: peerPubkey } })); } catch {}
+}
+
 export async function putMessage(ownerPubkey: string, peerPubkey: string, msg: CachedMessage): Promise<void> {
   if (isLeakedInviteBundleJson(msg.content)) return; // never cache invite bundles as DMs
   if (isExpired(msg.expiresAt, Math.floor(Date.now() / 1000))) return; // already gone
-  return safeTx("readwrite", MESSAGES_STORE, (store) =>
-    store.put({ ...msg, ownerPubkey, peerPubkey })
-  ).then(() => {});
+  const row = await sealMessage(await deviceKey(ownerPubkey), { ...msg, ownerPubkey, peerPubkey });
+  return safeTx("readwrite", MESSAGES_STORE, (store) => store.put(row)).then(() => ownMessageStored(ownerPubkey, peerPubkey, [msg]));
 }
 
 /**
@@ -245,27 +441,42 @@ export async function putMessage(ownerPubkey: string, peerPubkey: string, msg: C
  * earlier message set. A write that carries a name replaces it only when its
  * message is the newer one (lib/dm-room.ts newerSubject).
  */
-export async function putConversation(ownerPubkey: string, conv: CachedConversation, opts: { keepNewer?: boolean } = {}): Promise<void> {
+export function putConversation(ownerPubkey: string, conv: CachedConversation, opts: { keepNewer?: boolean } = {}): Promise<void> {
+  // One write at a time: a write reads the stored chat (to keep its name and
+  // its newer preview), and sealing happens between that read and the write.
+  const run = conversationWrites.then(() => writeConversation(ownerPubkey, conv, opts)).catch(() => {});
+  conversationWrites = run;
+  return run;
+}
+
+let conversationWrites: Promise<void> = Promise.resolve();
+
+async function writeConversation(ownerPubkey: string, conv: CachedConversation, opts: { keepNewer?: boolean }): Promise<void> {
   const lastMessage = isLeakedInviteBundleJson(conv.lastMessage) ? INVITE_REDACTED_PREVIEW : conv.lastMessage;
   try {
     const db = await openDB();
+    const key = await deviceKey(ownerPubkey);
+    const stored = await new Promise<unknown>((resolve, reject) => {
+      const tx = db.transaction(CONVERSATIONS_STORE, "readonly");
+      const get = tx.objectStore(CONVERSATIONS_STORE).get([ownerPubkey, conv.peerPubkey]);
+      get.onsuccess = () => resolve(get.result);
+      get.onerror = () => reject(get.error);
+    });
+    const existing = (stored && key ? await openRow<CachedConversation>(key, stored, CONVERSATION_BOUND)
+      : stored && !isSealedRow(stored) ? stored as CachedConversation : null) ?? undefined;
+    const name = newerSubject(existing, { subject: conv.subject, at: conv.subjectAt ?? conv.lastTimestamp });
+    // History paging hands over OLDER messages: they may create a chat or
+    // name it, but must not replace a newer preview already stored.
+    const older = opts.keepNewer && existing && existing.lastTimestamp >= conv.lastTimestamp;
+    const next: CachedConversation = older
+      ? { ...existing, ownerPubkey }
+      : { ...conv, lastMessage, ownerPubkey };
+    if (name.subject) { next.subject = name.subject; next.subjectAt = name.subjectAt; }
+    else { delete next.subject; delete next.subjectAt; }
+    const row = await sealConversation(key, next);
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(CONVERSATIONS_STORE, "readwrite");
-      const store = tx.objectStore(CONVERSATIONS_STORE);
-      const get = store.get([ownerPubkey, conv.peerPubkey]);
-      get.onsuccess = () => {
-        const existing = get.result as CachedConversation | undefined;
-        const name = newerSubject(existing, { subject: conv.subject, at: conv.subjectAt ?? conv.lastTimestamp });
-        // History paging hands over OLDER messages: they may create a chat or
-        // name it, but must not replace a newer preview already stored.
-        const older = opts.keepNewer && existing && existing.lastTimestamp >= conv.lastTimestamp;
-        const next: CachedConversation = older
-          ? { ...existing, ownerPubkey }
-          : { ...conv, lastMessage, ownerPubkey };
-        if (name.subject) { next.subject = name.subject; next.subjectAt = name.subjectAt; }
-        else { delete next.subject; delete next.subjectAt; }
-        store.put(next);
-      };
+      tx.objectStore(CONVERSATIONS_STORE).put(row);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
       tx.onabort = () => reject(tx.error || new Error("Transaction aborted"));
@@ -283,7 +494,8 @@ export async function putConversation(ownerPubkey: string, conv: CachedConversat
 export async function getLatestMessage(ownerPubkey: string, peerPubkey: string): Promise<CachedMessage | null> {
   try {
     const db = await openDB();
-    return await new Promise((resolve, reject) => {
+    const key = await deviceKey(ownerPubkey);
+    const stored = await new Promise<unknown>((resolve, reject) => {
       const tx = db.transaction(MESSAGES_STORE, "readonly");
       const index = tx.objectStore(MESSAGES_STORE).index("by-peer-time");
       const range = IDBKeyRange.bound(
@@ -291,12 +503,12 @@ export async function getLatestMessage(ownerPubkey: string, peerPubkey: string):
         [ownerPubkey, peerPubkey, Infinity]
       );
       const req = index.openCursor(range, "prev");
-      req.onsuccess = () => {
-        const cursor = req.result;
-        resolve(cursor ? (cursor.value as CachedMessage) : null);
-      };
+      req.onsuccess = () => resolve(req.result ? req.result.value : null);
       req.onerror = () => reject(req.error);
     });
+    if (!stored) return null;
+    if (!isSealedRow(stored)) return stored as CachedMessage;
+    return key ? await openRow<CachedMessage>(key, stored, MESSAGE_BOUND) : null;
   } catch {
     return null;
   }
@@ -371,11 +583,14 @@ export async function deleteConversation(ownerPubkey: string, peerPubkey: string
   } catch {}
 }
 
-export async function clearAll(ownerPubkey: string): Promise<void> {
+export async function clearAll(ownerPubkey: string, opts: { keepKey?: boolean } = {}): Promise<void> {
   try {
     const db = await openDB();
     return await new Promise((resolve, reject) => {
       const tx = db.transaction([MESSAGES_STORE, CONVERSATIONS_STORE, PROCESSED_WRAPS_STORE], "readwrite");
+
+      // Signing out removes the key with the rows it sealed.
+      if (!opts.keepKey) void forgetDeviceKey(ownerPubkey);
 
       const msgStore = tx.objectStore(MESSAGES_STORE);
       const msgIndex = msgStore.index("by-peer");
@@ -425,6 +640,9 @@ export async function clearAll(ownerPubkey: string): Promise<void> {
  *  (regardless of outcome), so they are never sent to the signer twice. */
 export async function getProcessedWrapIds(ownerPubkey: string): Promise<Set<string>> {
   try {
+    // First, so a store that has to start over does so before this list of
+    // "already opened" messages is read from it.
+    await deviceKey(ownerPubkey);
     const db = await openDB();
     return await new Promise((resolve) => {
       const tx = db.transaction(PROCESSED_WRAPS_STORE, "readonly");

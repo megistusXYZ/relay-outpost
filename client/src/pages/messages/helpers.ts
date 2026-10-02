@@ -37,10 +37,13 @@ export function keepNewerPreviews(shown: readonly ConversationPreview[], next: r
   return next
     .map((c) => {
       const was = onScreen.get(c.pubkey);
-      if (!was || was.lastTimestamp <= c.lastTimestamp) return c;
-      // The newer preview, with whichever chat name is the newer one.
-      const named = (c.subjectAt ?? 0) > (was.subjectAt ?? 0) ? { subject: c.subject, subjectAt: c.subjectAt } : { subject: was.subject, subjectAt: was.subjectAt };
-      return { ...was, ...named };
+      if (!was) return c;
+      // Whichever preview is newer, with whichever chat name is the newer one —
+      // judged apart: the name and the preview come from different messages.
+      const kept = was.lastTimestamp <= c.lastTimestamp ? c : was;
+      const named = c.subject && (c.subjectAt ?? 0) >= (was.subject ? was.subjectAt ?? 0 : -1) ? c : was;
+      if (!named.subject) return kept;
+      return { ...kept, subject: named.subject, subjectAt: named.subjectAt };
     })
     .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
 }
