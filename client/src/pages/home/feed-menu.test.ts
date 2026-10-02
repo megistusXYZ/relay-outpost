@@ -219,13 +219,21 @@ describe("the page draws these rules — and nothing opens on a tab tap but the 
     expect(helpers).not.toMatch(/group: "polls"|TRENDING_TIME_OPTIONS|export const POLL_SORTS/);
   });
 
-  it("the photos feed is called Photos in the browser tab too, not Images", async () => {
+  // One name for one thing (owner, 2026-10-02): the feed listed under Feeds as
+  // "Photos" was "Images" in the browser tab, in Search's media hub, on
+  // Discover's shelf, in Bookmarks and in the profile media section.
+  it("the photos feed is called Photos wherever it appears, never Images", async () => {
     const { readFileSync } = await import("fs");
     const path = await import("path");
-    const home = readFileSync(path.resolve(import.meta.dirname, "../Home.tsx"), "utf8");
-    expect(home).toMatch(/<ImagesFeedLazy embedded sort=\{mediaSort\} title="Photos" \/>/);
-    const feed = readFileSync(path.resolve(import.meta.dirname, "../ImagesFeed.tsx"), "utf8");
-    expect(feed).toMatch(/useDocumentTitle\(title\);/);
+    const read = (rel: string) => readFileSync(path.resolve(import.meta.dirname, rel), "utf8");
+    expect(read("../ImagesFeed.tsx")).toMatch(/useDocumentTitle\("Photos"\);/);
+    for (const rel of ["../ImagesFeed.tsx", "../Search.tsx", "../Discover.tsx", "../Bookmarks.tsx", "../../components/MediaSection.tsx", "./feed-controls.tsx"]) {
+      // A label, a title or a line of copy that says Images (code names like
+      // ImagesFeed, keys like "images" and comments don't count).
+      const shown = read(rel).split("\n").filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*|import )/.test(l))
+        .filter((l) => /label[=:] ?"Images"|: "Images"\}|>[^<>{}]*\bImages\b[^<>{}]*<|(title|description|label): [`"][^`"]*\bImages?\b/.test(l));
+      expect(shown, rel).toEqual([]);
+    }
   });
 
   it("the old menus are gone", async () => {

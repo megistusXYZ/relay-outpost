@@ -174,7 +174,7 @@ export function MediaSection({
   const audioCount = audioTracks.length + liveStreamCount;
 
   const subTabs: { id: MediaSubTab; label: string; icon: typeof ImageIcon; count: number }[] = [
-    { id: "images", label: "Images", icon: ImageIcon, count: imageUrls.length },
+    { id: "images", label: "Photos", icon: ImageIcon, count: imageUrls.length },
     { id: "videos", label: "Videos", icon: Film, count: videoUrls.length },
     { id: "audio", label: "Audio", icon: Music, count: audioCount },
     ...(articlesSlot !== undefined ? [{ id: "articles" as const, label: "Articles", icon: BookOpen, count: articleCount ?? 0 }] : []),
@@ -262,7 +262,7 @@ function ImagesSubTab({ urls, loaded, isOwnProfile, mediaMeta, mediaAuthor }: { 
     if (!file) return;
     e.target.value = "";
     if (file.size > 25 * 1024 * 1024) {
-      toast({ title: "File too large", description: `Images must be under 25 MB.`, variant: "destructive" });
+      toast({ title: "File too large", description: `Photos must be under 25 MB.`, variant: "destructive" });
       return;
     }
     setIsUploading(true);
@@ -273,9 +273,9 @@ function ImagesSubTab({ urls, loaded, isOwnProfile, mediaMeta, mediaAuthor }: { 
       const signedEvent = await signWithTimeout(signer, { kind: 1, created_at: Math.floor(Date.now() / 1000), tags: [...clientTags()], content: result.url });
       const { relays: userRelays, userSelected: isUserSelected } = getPublishTarget();
       await publishEvent(signedEvent, userRelays, undefined, isUserSelected);
-      toast({ title: "Published", description: result.metadataStripped ? "Image published! Metadata scrubbed." : "Image published." });
+      toast({ title: "Published", description: result.metadataStripped ? "Photo published. Metadata scrubbed." : "Photo published." });
     } catch (err) {
-      toast({ title: "Upload failed", description: err instanceof UploadError ? err.message : "Could not upload image.", variant: "destructive" });
+      toast({ title: "Upload failed", description: err instanceof UploadError ? err.message : "Could not upload the photo.", variant: "destructive" });
     } finally {
       setIsUploading(false);
       setUploadStatus("");
@@ -283,22 +283,22 @@ function ImagesSubTab({ urls, loaded, isOwnProfile, mediaMeta, mediaAuthor }: { 
   }, [signer, toast]);
 
   if (!loaded && urls.length === 0) {
-    return <div className="flex flex-col items-center justify-center py-12"><RelayOutpostLoader size="md" label="Loading images..." /></div>;
+    return <div className="flex flex-col items-center justify-center py-12"><RelayOutpostLoader size="md" label="Loading photos..." /></div>;
   }
 
   if (urls.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center" data-testid="container-no-images">
         <ImageIcon className="w-8 h-8 text-muted-foreground/50 mb-2" />
-        <p className="text-sm text-muted-foreground">No images yet</p>
+        <p className="text-sm text-muted-foreground">No photos yet</p>
         {isOwnProfile && (
           <>
-            <p className="text-xs text-muted-foreground/60 mt-1">Upload images to share</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">Upload photos to share</p>
             <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={() => mediaInputRef.current?.click()} disabled={isUploading} data-testid="button-upload-first-image">
               {isUploading ? <RelayOutpostInlineLoader className="w-3.5 h-3.5" /> : <Upload className="w-3.5 h-3.5" />}
-              {isUploading ? "Uploading..." : "Upload Image"}
+              {isUploading ? "Uploading..." : "Upload a photo"}
             </Button>
-            <p className="text-[10px] text-muted-foreground/40 mt-2">Images up to 25 MB · Metadata auto-stripped</p>
+            <p className="text-[10px] text-muted-foreground/40 mt-2">Photos up to 25 MB · Metadata auto-stripped</p>
             <input ref={mediaInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} data-testid="input-image-upload" />
           </>
         )}

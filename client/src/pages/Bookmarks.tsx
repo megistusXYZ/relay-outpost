@@ -91,7 +91,7 @@ function formatDateGroup(timestamp: number): string {
 const FILTERS: { key: ContentFilter; label: string; icon: typeof Type }[] = [
   { key: "all", label: "All", icon: SlidersHorizontal },
   { key: "text", label: "Text", icon: Type },
-  { key: "images", label: "Images", icon: Image },
+  { key: "images", label: "Photos", icon: Image },
   { key: "videos", label: "Videos", icon: Video },
   { key: "links", label: "Links", icon: LinkIcon },
   { key: "articles", label: "Articles", icon: BookOpen },

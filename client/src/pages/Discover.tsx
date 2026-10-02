@@ -1387,7 +1387,7 @@ function ImagesShelfTile() {
 
   return (
     <TileShell
-      label="Images"
+      label="Photos"
       chip={freshN > 0 ? <FreshChip count={freshN} /> : undefined}
       fresh={freshN > 0}
       onOpen={() => { stampReported("images"); setLocation("/search?tab=media&type=images"); }}
@@ -1422,7 +1422,7 @@ function ImagesShelfTile() {
       {(state.status === "empty" || (state.status === "ready" && images && images.length === 0)) && (
         <span className="block text-xs text-muted-foreground" data-testid="images-tile-empty">Quiet right now — tap to browse.</span>
       )}
-      {state.status === "unreachable" && unreachableBody("the image relays")}
+      {state.status === "unreachable" && unreachableBody("the photo relays")}
     </TileShell>
   );
 }

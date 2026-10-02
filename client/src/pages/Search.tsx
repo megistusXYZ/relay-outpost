@@ -106,7 +106,7 @@ type SearchTab = "people" | "posts" | "hashtags" | "media" | "live" | "events" |
 type MediaType = "articles" | "images" | "videos" | "audio" | "news";
 const MEDIA_TYPES: { key: MediaType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   // Images leads — it's the default view and the most visual entry point.
-  { key: "images", label: "Images", icon: ImageIcon },
+  { key: "images", label: "Photos", icon: ImageIcon },
   { key: "articles", label: "Articles", icon: BookOpen },
   { key: "audio", label: "Audio", icon: Music },
   { key: "videos", label: "Videos", icon: Video },
@@ -419,7 +419,7 @@ function MediaTab({ mediaType, urlQuery, updateUrl }: TabProps & { mediaType: Me
         <Sheet open={sortSheetOpen} onOpenChange={setSortSheetOpen}>
           <SheetContent side="bottom" className="rounded-t-2xl pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]" data-testid="media-sort-sheet">
             <SheetTitle className="text-sm font-brand uppercase tracking-widest mb-4">
-              {mediaType === "videos" ? "Videos" : "Images"} options
+              {mediaType === "videos" ? "Videos" : "Photos"} options
             </SheetTitle>
             {sortOptionsBody}
           </SheetContent>
@@ -430,7 +430,7 @@ function MediaTab({ mediaType, urlQuery, updateUrl }: TabProps & { mediaType: Me
           onOpenChange={setSortSheetOpen}
           anchorRef={mediaTabAnchorRef}
           align="start"
-          title={`${mediaType === "videos" ? "Videos" : "Images"} options`}
+          title={`${mediaType === "videos" ? "Videos" : "Photos"} options`}
           testId="media-sort-sheet"
           width="w-[300px]"
         >

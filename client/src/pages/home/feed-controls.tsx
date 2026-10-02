@@ -440,7 +440,7 @@ export function TuneFrequencyFormContent({
           <SelectContent className="z-[300]">
             <SelectItem value="all">All Notes</SelectItem>
             <SelectItem value="text_only">Text Only</SelectItem>
-            <SelectItem value="media">Media (Images/Video)</SelectItem>
+            <SelectItem value="media">Media (Photos/Videos)</SelectItem>
             <SelectItem value="links">Links Only</SelectItem>
           </SelectContent>
         </Select>
