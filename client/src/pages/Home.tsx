@@ -10,7 +10,7 @@ import { fetchTrendingFeed, fetchGlobalFeed, fetchFollowsFeed, requestFollowerCo
 import { MIN_FOLLOWERS_GLOBAL, isMachineReadableContent, type ReachDepth } from "@/lib/spam-filter";
 import { NostrPost, VerifiedBadgeIcon, ParentUnresolvedContext } from "@/components/NostrPost";
 import { PollPost } from "@/components/PollPost";
-import { isPollEvent, fetchPollsFeed, KIND_POLL } from "@/lib/polls";
+import { isPollEvent, KIND_POLL } from "@/lib/polls";
 import { feedKinds, mediaPageLimit } from "@/lib/feed-kinds";
 import { mergeSupplementIntoFeed, interleaveSupplement, splitSupplement, spreadAuthors } from "@/lib/feed-merge";
 import { capForGuest } from "@/lib/guest-limits";
@@ -114,7 +114,7 @@ import { FeedIcon as FeedIconSvg, FEED_ICON_LIST, isValidFeedIconKey, type FeedI
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { publicNostrEnabled, publicNostrStorageKey } from "@/lib/public-nostr";
-import { FeedMode, type ContentFilter, isReplyEvent, FeedSortMode, TopTimeWindow, TRENDING_SELECTORS, type ArchivesRange, POLL_SORTS, type PollSort, SAVED_POLL_SORTS, type SavedPollSort, SAVED_POLL_SHOW_OPTIONS, type SavedPollShow, FEED_SORT_OPTIONS, TIME_WINDOW_SORT_MODES, TOP_TIME_WINDOWS, PAGE_SIZE, TRENDING_CACHE_TTL, BUILT_IN_TABS, getFeedSortKey, getTopWindowKey, isArchivesSelector, getArchivesMetric, decodePubkey, resolveDefaultFeedMode, initialFeedMode, DEFAULT_FEED_MODE } from "./home/helpers";
+import { FeedMode, type ContentFilter, isReplyEvent, FeedSortMode, TopTimeWindow, TRENDING_SELECTORS, type ArchivesRange, SAVED_POLL_SORTS, type SavedPollSort, SAVED_POLL_SHOW_OPTIONS, type SavedPollShow, FEED_SORT_OPTIONS, TIME_WINDOW_SORT_MODES, TOP_TIME_WINDOWS, PAGE_SIZE, TRENDING_CACHE_TTL, BUILT_IN_TABS, getFeedSortKey, getTopWindowKey, isArchivesSelector, getArchivesMetric, decodePubkey, resolveDefaultFeedMode, initialFeedMode, DEFAULT_FEED_MODE } from "./home/helpers";
 
 /**
  * How long the network gets before the cached feed is allowed to paint.
@@ -499,9 +499,8 @@ export default function Home() {
   // Sort for the macro Images/Videos feeds — owned HERE so it lives inside the
   // macro dropdown (one chip: "Images · Trending") instead of a second chip row.
   const [mediaSort, setMediaSort] = useState<"trending" | "latest">("trending");
-  // Saved Polls macro feed controls (the feed filter -> PollsFeed). Same
-  // sessionStorage pattern as the For You pollSort, but distinct keys: the
-  // Saved sort has an extra "latest" mode the For You selector doesn't.
+  // The Polls feed's order and open/all lens (the feed filter -> PollsFeed),
+  // remembered for the session.
   const [savedPollSort, setSavedPollSortState] = useState<SavedPollSort>(() => {
     try {
       const saved = sessionStorage.getItem("relay-outpost-saved-poll-sort") as SavedPollSort | null;
@@ -603,18 +602,6 @@ export default function Home() {
     setUnresolvedParents((prev) => (prev.has(eventId) ? prev : new Set(prev).add(eventId)));
   }, []);
   const [trendingLoading, setTrendingLoading] = useState(false);
-  const [pollResponseCounts, setPollResponseCounts] = useState<Map<string, number>>(new Map());
-  const [pollSort, setPollSortState] = useState<PollSort>(() => {
-    try {
-      const saved = sessionStorage.getItem("relay-outpost-poll-sort") as PollSort | null;
-      if (saved && POLL_SORTS.some(s => s.value === saved)) return saved;
-    } catch {}
-    return "trending";
-  });
-  const setPollSort = useCallback((sort: PollSort) => {
-    setPollSortState(sort);
-    try { sessionStorage.setItem("relay-outpost-poll-sort", sort); } catch {}
-  }, []);
 
   // ---- Trending's filter: "Top by" and "From" (home/feed-menu.ts) ----
   const handleTopBy = useCallback((v: TopBy) => {
@@ -625,7 +612,7 @@ export default function Home() {
     if (next.selector) setTrendingSelector(next.selector);
     if (next.range) setArchivesRange(next.range);
   }, [setTrendingSelector, setArchivesRange]);
-  const trendingCacheRef = useRef<Map<string, { posts: Event[]; fetchedAt: number; pollCounts?: Map<string, number> }>>(new Map());
+  const trendingCacheRef = useRef<Map<string, { posts: Event[]; fetchedAt: number }>>(new Map());
   const trendingPrefetchedRef = useRef(false);
   const followingSubRef = useRef<{ close: () => void } | null>(null);
   const liveSubRef = useRef<{ close: () => void } | null>(null);
@@ -1450,7 +1437,6 @@ export default function Home() {
 
     if (cached && !options?.force) {
       setTrendingPosts(cached.posts);
-      if (cached.pollCounts) setPollResponseCounts(cached.pollCounts);
       if (!isStale) return;
     }
 
@@ -1460,7 +1446,6 @@ export default function Home() {
 
     try {
       let posts: Event[];
-      let pollCounts: Map<string, number> | undefined;
 
       const metric = getArchivesMetric(selector);
       if (metric) {
@@ -1480,17 +1465,12 @@ export default function Home() {
         if (posts.length > 0) {
           await prefetchStatsImmediate(posts.map(p => p.id));
         }
-      } else if (selector === "polls") {
-        const result = await fetchPollsFeed();
-        posts = result.polls;
-        pollCounts = result.responseCounts;
       } else {
         posts = await fetchTrendingFeed(selector, pubkey || undefined, 40);
       }
 
-      trendingCacheRef.current.set(cacheKey, { posts, fetchedAt: Date.now(), pollCounts });
+      trendingCacheRef.current.set(cacheKey, { posts, fetchedAt: Date.now() });
       setTrendingPosts(posts);
-      if (pollCounts) setPollResponseCounts(pollCounts);
     } catch (err) {
       console.error("Failed to fetch trending:", err);
     } finally {
@@ -1511,7 +1491,6 @@ export default function Home() {
       const cached = trendingCacheRef.current.get(cacheKey);
       if (cached) {
         setTrendingPosts(cached.posts);
-        if (cached.pollCounts) setPollResponseCounts(cached.pollCounts);
         const isStale = Date.now() - cached.fetchedAt > TRENDING_CACHE_TTL;
         if (isStale) {
           loadTrending(trendingSelector, { background: true });
@@ -2130,44 +2109,6 @@ export default function Home() {
     return spreadAuthors(withoutFragments);
   }, [tierFilteredTrending, unresolvedParents]);
 
-  const orderedTrending = useMemo(() => {
-    if (trendingSelector !== "polls") return contentFilteredTrending;
-
-    const getExp = (e: Event): number | null => {
-      const tag = e.tags.find(t => t[0] === "expiration" && t[1]);
-      if (!tag) return null;
-      const ts = parseInt(tag[1], 10);
-      return isNaN(ts) ? null : ts;
-    };
-
-    const arr = contentFilteredTrending.slice();
-    if (pollSort === "trending") {
-      // Hot-score: engagement weighted by recency.
-      const nowSec = Math.floor(Date.now() / 1000);
-      const score = (e: Event) => {
-        const votes = pollResponseCounts.get(e.id) || 0;
-        const hours = Math.max((nowSec - e.created_at) / 3600, 0.5);
-        return (votes + 1) / Math.pow(hours + 2, 1.5);
-      };
-      arr.sort((a, b) => {
-        const sa = score(a);
-        const sb = score(b);
-        if (sa !== sb) return sb - sa;
-        return b.created_at - a.created_at;
-      });
-    } else if (pollSort === "expiring") {
-      arr.sort((a, b) => {
-        const expA = getExp(a);
-        const expB = getExp(b);
-        if (expA === null && expB === null) return b.created_at - a.created_at;
-        if (expA === null) return 1;
-        if (expB === null) return -1;
-        return expA - expB;
-      });
-    }
-    return arr;
-  }, [contentFilteredTrending, trendingSelector, pollSort, pollResponseCounts]);
-
   const tierHiddenCount = useMemo(() => {
     if (excludedTiers.size === 0 || !wotEnabled) return 0;
     if (feedMode === "deep_scan") return trendingPosts.length - tierFilteredTrending.length;
@@ -2195,7 +2136,7 @@ export default function Home() {
   revealOrderingRef.current = !(isCustomMode && feedSortMode === "oldest");
 
   const freshDisplayedEvents = useMemo(() => {
-    if (feedMode === "deep_scan") return orderedTrending;
+    if (feedMode === "deep_scan") return contentFilteredTrending;
     // Same fragment rule as Trending: a reply whose parent no relay will serve
     // is unreadable wherever it appears, so it comes out of the chronological
     // feeds too. Author spacing does NOT apply here — these feeds are ordered by
@@ -2204,7 +2145,7 @@ export default function Home() {
       (e) => e.created_at <= cutoffTimestamp && !unresolvedParents.has(e.id),
     );
     return orderRevealedFirst(visible, revealedIds).slice(0, displayLimit);
-  }, [feedMode, tierFilteredFeed, orderedTrending, cutoffTimestamp, displayLimit, revealedIds, unresolvedParents]);
+  }, [feedMode, tierFilteredFeed, contentFilteredTrending, cutoffTimestamp, displayLimit, revealedIds, unresolvedParents]);
 
   // ---- Feed stability: pin the rendered order while the reader is in it ----
   // freshDisplayedEvents recomputes continuously (live inserts, engagement
@@ -2229,7 +2170,6 @@ export default function Home() {
     contentFilter,
     feedStyle,
     trendingSelector,
-    pollSort,
     discoverSort,
     reachDepth,
     wotEnabled,
@@ -3175,7 +3115,7 @@ export default function Home() {
         <FeedErrorBoundary label="home">
         {feedMode === "custom_all" ? (
           <Suspense fallback={<FeedSkeletonList count={5} />}>
-            {feedStyle === "video" ? <VideoFeedLazy embedded sort={mediaSort} /> : feedStyle === "polls" ? <PollsFeedLazy embedded sort={savedPollSort} show={savedPollShow} /> : <ImagesFeedLazy embedded sort={mediaSort} />}
+            {feedStyle === "video" ? <VideoFeedLazy embedded sort={mediaSort} /> : feedStyle === "polls" ? <PollsFeedLazy embedded sort={savedPollSort} show={savedPollShow} /> : <ImagesFeedLazy embedded sort={mediaSort} title="Photos" />}
           </Suspense>
         ) : showRawGate && feedMode === "raw_signal" ? (
           <div className="relative min-h-[420px] sm:min-h-[480px] rounded-xl overflow-hidden" data-testid="container-raw-gate">

@@ -71,7 +71,6 @@ export type ArchivesMetric = "reactions" | "zaps" | "replies" | "reposts";
 export const TRENDING_SELECTORS = [
   { value: "trending_1h", label: "1 hour", group: "time", source: "primal" as TrendingSelectorSource },
   { value: "trending_4h", label: "4 hours", group: "time", source: "primal" as TrendingSelectorSource },
-  { value: "polls", label: "Polls", group: "polls", source: "relay" as TrendingSelectorSource, desc: "Active polls from the network" },
   { value: "arc_reactions", label: "Most Reacted", group: "archives", source: "archives" as TrendingSelectorSource, desc: "Top liked & emoji reacted", metric: "reactions" as ArchivesMetric },
   { value: "arc_zaps", label: "Most Zapped", group: "archives", source: "archives" as TrendingSelectorSource, desc: "Highest zap volume", metric: "zaps" as ArchivesMetric },
   { value: "arc_replies", label: "Most Replied", group: "archives", source: "archives" as TrendingSelectorSource, desc: "Most discussion", metric: "replies" as ArchivesMetric },
@@ -89,33 +88,8 @@ export const ARCHIVES_RANGES = [
 export type ArchivesRange = typeof ARCHIVES_RANGES[number]["value"];
 
 /**
- * The options sheet's single "Time range" row for Trending. The first two are
- * NOT archives ranges — "1 hour"/"4 hours" are the Primal quick-window
- * SELECTORS (trending_1h/trending_4h, a different data source with its own
- * blended ranking), folded in front of the Archives ranges so "how far back?"
- * reads as one control. Home maps them back onto the right piece of state
- * (selector vs archivesRange) in handleTrendingTime.
- */
-export const TRENDING_TIME_OPTIONS = [
-  { value: "1h", label: "1 hour" },
-  { value: "4h", label: "4 hours" },
-  ...ARCHIVES_RANGES,
-] as const;
-
-export type TrendingTimeValue = typeof TRENDING_TIME_OPTIONS[number]["value"];
-
-export const POLL_SORTS = [
-  { value: "trending", label: "Trending" },
-  { value: "expiring", label: "Expiring" },
-] as const;
-
-export type PollSort = typeof POLL_SORTS[number]["value"];
-
-/**
- * Saved "Polls" macro feed sort (the feed filter → PollsFeed) — superset of
- * the For You surface's POLL_SORTS: "expiring" is the same mode (labelled
- * "Ending soon" here) and "trending" the same hot-score; "latest" is
- * Saved-only. Values feed lib/poll-sort's sortPolls directly.
+ * The Polls feed's orders (the feed filter → PollsFeed). Values feed
+ * lib/poll-sort's sortPolls directly; "expiring" is shown as "Ending soon".
  */
 export const SAVED_POLL_SORTS = [
   { value: "trending", label: "Trending" },

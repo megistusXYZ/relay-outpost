@@ -210,6 +210,24 @@ describe("the page draws these rules — and nothing opens on a tab tap but the 
     expect(filter.match(/onOpenChange\(false\)/g)).toHaveLength(2);
   });
 
+  it("Trending's own polls list is gone from the page too: no fetch, no sort, no state for it", async () => {
+    const { readFileSync } = await import("fs");
+    const path = await import("path");
+    const home = readFileSync(path.resolve(import.meta.dirname, "../Home.tsx"), "utf8");
+    expect(home).not.toMatch(/fetchPollsFeed|pollResponseCounts|relay-outpost-poll-sort|selector === "polls"/);
+    const helpers = readFileSync(path.resolve(import.meta.dirname, "helpers.ts"), "utf8");
+    expect(helpers).not.toMatch(/group: "polls"|TRENDING_TIME_OPTIONS|export const POLL_SORTS/);
+  });
+
+  it("the photos feed is called Photos in the browser tab too, not Images", async () => {
+    const { readFileSync } = await import("fs");
+    const path = await import("path");
+    const home = readFileSync(path.resolve(import.meta.dirname, "../Home.tsx"), "utf8");
+    expect(home).toMatch(/<ImagesFeedLazy embedded sort=\{mediaSort\} title="Photos" \/>/);
+    const feed = readFileSync(path.resolve(import.meta.dirname, "../ImagesFeed.tsx"), "utf8");
+    expect(feed).toMatch(/useDocumentTitle\(title\);/);
+  });
+
   it("the old menus are gone", async () => {
     const { existsSync } = await import("fs");
     const path = await import("path");
