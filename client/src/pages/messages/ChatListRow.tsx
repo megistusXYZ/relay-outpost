@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Bell, BellOff, Lock, MoreVertical, Pencil, Pin, PinOff, Trash2, UserCheck, UserX, Users } from "lucide-react";
-import { isGroupRoom } from "@/lib/dm-room";
+import { isGroupRoom, roomMembers } from "@/lib/dm-room";
 import { formatConversationPreview, formatMessageTime } from "./helpers";
 import { readableLine } from "@/lib/dm-text";
 import { useMentionNames } from "@/hooks/use-mention-names";
@@ -62,6 +62,8 @@ const ROW_TIME_CLASS = "text-[11px] text-muted-foreground/80 shrink-0 tabular-nu
 interface DmRowProps {
   item: Extract<ChatListItem, { kind: "dm" }>;
   name: string;
+  /** Signed-in pubkey, so a several-person chat's facepile favours the others. */
+  myPubkey?: string | null;
   /** The PROFILE-claimed name only (no npub fallback) — feeds the impersonation guard on request rows. */
   profileName?: string;
   picture?: string;
@@ -203,6 +205,7 @@ function GroupChatRow({
 
 /** A single DM row — avatar + unread dot, name + NIP-05 badge, time, preview line, and the ⋮ menu. */
 function DmChatRow({
+  myPubkey,
   item,
   name,
   profileName,
@@ -273,12 +276,20 @@ function DmChatRow({
             {avatarOverride.emoji ?? name.slice(0, 1).toUpperCase()}
           </span>
         ) : (
+        isGroupRoom(item.pubkey) ? (
+          // A chat with several people shows their faces, like a group does:
+          // what makes it read as a group at a glance.
+          <span className="block hover:ring-2 hover:ring-brand/40 rounded-full transition-shadow" data-testid={`conversation-facepile-${item.pubkey.slice(0, 8)}`}>
+            <GroupAvatar members={roomMembers(item.pubkey)} name={name} myPubkey={myPubkey} size={40} />
+          </span>
+        ) : (
         <Avatar className="w-10 h-10 border border-border hover:ring-2 hover:ring-brand/40 transition-shadow">
           <AvatarImage src={picture} alt={name} />
           <AvatarFallback className="text-xs bg-muted text-muted-foreground">
-            {isGroupRoom(item.pubkey) ? <Users className="w-4 h-4" aria-label="Several people" /> : name.slice(0, 2).toUpperCase()}
+            {name.slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
+        )
         )}
         {unread && (
           <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-brand border-2 border-background" />

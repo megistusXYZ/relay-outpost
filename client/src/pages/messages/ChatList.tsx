@@ -41,7 +41,7 @@ import { indicatorHeight, pullArmed } from "@/lib/pull-to-refresh";
 import { ChatListRow } from "./ChatListRow";
 import { IaMovedNotice } from "@/components/IaMovedNotice";
 import { buildCreateActions } from "./create-actions";
-import { getDMDisplayName, formatMessageTime, needsSynthesizedPeopleSection, sectionChatEntries, communitiesForTab, chatFilterOptions, applyChatFilter, resolveChatFilter, firstUnreadChat, chatHomeMenu, type ChatFilter, type ChatEntry, type ConversationPreview, type DmTab, type OutpostPreview, type ProfileInfo } from "./helpers";
+import { getDMDisplayName, formatMessageTime, sectionChatEntries, communitiesForTab, chatFilterOptions, applyChatFilter, resolveChatFilter, firstUnreadChat, chatHomeMenu, type ChatFilter, type ChatEntry, type ConversationPreview, type DmTab, type OutpostPreview, type ProfileInfo } from "./helpers";
 import { refreshOutcome, type RefreshOutcome } from "./refresh-outcome";
 import { canReachAny } from "@/lib/relay-reach";
 import { getMyDMReceiveRelays } from "@/lib/outbox";
@@ -623,6 +623,10 @@ export function ChatList({
     () => (iaCollapsed ? sectionChatEntries(entries, communitiesForTab(dmTab, visibleCommunities), communityActivity) : []),
     [iaCollapsed, entries, dmTab, visibleCommunities, communityActivity],
   );
+  // The communities, in the order sectionChatEntries settles (by activity
+  // where known, saved order underneath); the chats themselves come from
+  // `entries`, already merged and ordered (helpers.mergeChatEntries).
+  const communityEntries = useMemo(() => sections.find((s) => s.title === "Communities")?.entries ?? [], [sections]);
   // Under the collapsed IA a joined community IS content, so "nothing here" has
   // to count it. Gating on `entries` alone showed the "No conversations yet"
   // empty state to someone in a dozen communities who simply had no DMs yet.
@@ -638,7 +642,7 @@ export function ChatList({
    *
    * Requests are people. If there are any, PEOPLE exists.
    */
-  const needsPeopleForRequests = needsSynthesizedPeopleSection(sections, dmTab, totalRequestCount);
+  const needsPeopleForRequests = dmTab === "primary" && totalRequestCount > 0;
 
   /** Requests is a view WITHIN the list, and owns the back control while it is
    *  open. Named once because three things now key off it. */
@@ -652,14 +656,19 @@ export function ChatList({
   // page whose escape chip has vanished too.
   const [chatFilter, setChatFilter] = useState<ChatFilter>("all");
   const filterOptions = useMemo(
-    () => chatFilterOptions(sections, dmTab === "primary" ? totalRequestCount : 0),
-    [sections, dmTab, totalRequestCount],
+    () => chatFilterOptions([...entries, ...communityEntries], dmTab === "primary" ? totalRequestCount : 0),
+    [entries, communityEntries, dmTab, totalRequestCount],
   );
   const activeFilter = resolveChatFilter(chatFilter, filterOptions);
-  const visibleSections = useMemo(() => applyChatFilter(sections, activeFilter), [sections, activeFilter]);
-  // People is where the requests row lives, so the synthesized heading has to
-  // survive the People filter and disappear under any other.
-  const showRequestsOnlyPeople = needsPeopleForRequests && (activeFilter === "all" || activeFilter === "people");
+  // ONE list (owner, 2026-10-02): your chats — people and groups alike — in
+  // the order you last spoke, pinned ones first, the way every messenger
+  // lists them; no PEOPLE / GROUPS headings to scroll past. The chips above
+  // filter that list. Communities are places rather than conversations, so
+  // they follow the chats under one quiet label.
+  const chatsShown = useMemo(() => applyChatFilter(entries, activeFilter), [entries, activeFilter]);
+  const communitiesShown = useMemo(() => applyChatFilter(communityEntries, activeFilter), [communityEntries, activeFilter]);
+  // Requests are people: their row leads the list under All and People.
+  const showRequestsRow = needsPeopleForRequests && (activeFilter === "all" || activeFilter === "people");
 
   // ── Refresh ────────────────────────────────────────────────────────────────
   // `loading` is the WRONG signal for this button and always was. It flips false
@@ -738,7 +747,7 @@ export function ChatList({
   // opened exactly as a tap on the row would. With none in the list but
   // unread requests waiting, it opens Requests. Never while private mode
   // hides the rows.
-  const shownEntries = iaCollapsed ? visibleSections.flatMap((section) => section.entries) : entries;
+  const shownEntries = iaCollapsed ? [...chatsShown, ...communitiesShown] : entries;
   const openFirstUnread = () => {
     if (privateMasked) return;
     const chat = firstUnreadChat(shownEntries);
@@ -982,7 +991,8 @@ export function ChatList({
                     picture={profile?.picture}
                     nip05={profile?.nip05}
                     isSelected={selectedPubkey === conv.pubkey}
-                    isRequest={isRequest}
+                    myPubkey={pubkey}
+                isRequest={isRequest}
                     hidePreviews={hidePreviews}
                     avatarOverride={isShowingRealNames() ? undefined : { ...getPetname("person", conv.pubkey), imageUrl: petnameImageUrlSync("person", conv.pubkey) }}
                     onOpen={navigateToConversation}
@@ -1347,7 +1357,7 @@ export function ChatList({
           view, both already a filtered slice. */}
       {filterOptions.length > 0 && dmTab === "primary" && !showDeleted && (
         <div
-          className="flex items-center gap-1.5 px-3 py-2 border-b border-border/20 shrink-0 overflow-x-auto no-scrollbar"
+          className="flex items-center gap-1 px-3 py-2 border-b border-border/20 shrink-0 overflow-x-auto no-scrollbar"
           role="tablist"
           aria-label="Filter chats"
           data-testid="chat-filter-row"
@@ -1361,7 +1371,7 @@ export function ChatList({
                 role="tab"
                 aria-selected={active}
                 onClick={() => setChatFilter(opt.key)}
-                className={`shrink-0 flex items-center gap-1.5 rounded-full border px-3 min-h-[36px] text-xs font-medium transition-colors ${
+                className={`shrink-0 flex items-center gap-1.5 rounded-full border px-2.5 min-h-[36px] text-xs font-medium transition-colors ${
                   active
                     ? "border-primary/40 bg-primary/15 text-foreground"
                     : "border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted/40"
@@ -1369,7 +1379,7 @@ export function ChatList({
                 data-testid={`chat-filter-${opt.key}`}
               >
                 {opt.label}
-                {opt.unread > 0 && (
+                {opt.unread > 0 && opt.key !== "all" && (
                   <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold tabular-nums">
                     {opt.unread}
                   </span>
@@ -1635,50 +1645,34 @@ export function ChatList({
               </div>
             ) : (
             iaCollapsed ? (
-              // Sectioned: membership is information a flat recency list throws
-              // away. A DM and a 500-person community are different things to
-              // scan for, even though they were never different OBJECTS.
               <>
-              {showRequestsOnlyPeople && (
-                <div key="people-requests-only">
-                  <div className="px-3 pt-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50" data-testid="chat-section-people">
-                    People
-                  </div>
-                  <RequestsRow
-                    total={totalRequestCount}
-                    unread={requestUnreadCount}
-                    onOpen={() => setDmTab("requests")}
-                  />
+              {/* Requests lead the list, because that is what they are: people
+                  trying to reach you who are not yet in your web of trust.
+                  Deliberately ONE row that opens a filtered view rather than
+                  an inline section — a stranger's name and message preview
+                  rendered among your friends is the thing the split exists
+                  to prevent, and it is a spam-and-abuse surface. */}
+              {showRequestsRow && (
+                <RequestsRow
+                  total={totalRequestCount}
+                  unread={requestUnreadCount}
+                  onOpen={() => setDmTab("requests")}
+                />
+              )}
+              {chatsShown.map(renderEntry)}
+              {communitiesShown.length > 0 && (
+                <div key="communities">
+                  {/* The label is dropped when the chip has already named the
+                      category — the same word twice. Under All it is what
+                      separates places from conversations, so it stays. */}
+                  {activeFilter === "all" && (
+                    <div className="px-3 pt-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50" data-testid="chat-section-communities">
+                      Communities
+                    </div>
+                  )}
+                  {communitiesShown.map(renderEntry)}
                 </div>
               )}
-              {visibleSections.map((section) => (
-                <div key={section.title}>
-                  {/* The heading is dropped when a filter has already named the
-                      category — the chip above says "Groups" in the active
-                      state; repeating it as a heading over the only section on
-                      screen is the same word twice. Under All it is the only
-                      thing separating the three kinds, so it stays. */}
-                  {activeFilter === "all" && (
-                  <div className="px-3 pt-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50" data-testid={`chat-section-${section.title.toLowerCase()}`}>
-                    {section.title}
-                  </div>
-                  )}
-                  {/* Requests lead PEOPLE, because that is what they are: people
-                      trying to reach you who are not yet in your web of trust.
-                      Deliberately ONE row that opens a filtered view rather than
-                      an inline section — a stranger's name and message preview
-                      rendered among your friends is the thing the split exists
-                      to prevent, and it is a spam-and-abuse surface. */}
-                  {section.title === "People" && dmTab === "primary" && totalRequestCount > 0 && (
-                    <RequestsRow
-                      total={totalRequestCount}
-                      unread={requestUnreadCount}
-                      onOpen={() => setDmTab("requests")}
-                    />
-                  )}
-                  {section.entries.map(renderEntry)}
-                </div>
-              ))}
               </>
             ) : (
               entries.map(renderEntry)

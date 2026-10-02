@@ -30,7 +30,7 @@ describe("chat home chrome", () => {
     expect(row).toContain("overflow-x-auto");
     expect(row).not.toContain("flex-wrap");
     expect(row).not.toMatch(/\{opt\.count\}/);
-    expect(row).toMatch(/\{opt\.unread > 0 && \(/);
+    expect(row).toMatch(/\{opt\.unread > 0 && opt\.key !== "all" && \(/);
   });
 
   it("Deleted is a view with a single way back, not a permanent tab bar", () => {
