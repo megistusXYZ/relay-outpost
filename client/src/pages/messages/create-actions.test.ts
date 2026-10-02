@@ -4,6 +4,7 @@ import { buildCreateActions } from "./create-actions";
 const handlers = () => ({
   canCreateGroup: true,
   onNewChat: vi.fn(),
+  onNewSeveral: vi.fn(),
   onNewGroup: vi.fn(),
   onJoinLink: vi.fn(),
   onScanQr: vi.fn(),
@@ -17,6 +18,7 @@ describe("buildCreateActions", () => {
   it("offers every way in, with group chat available", () => {
     expect(buildCreateActions(handlers()).map((a) => a.key)).toEqual([
       "new-chat",
+      "new-several",
       "new-group-chat",
       "join-via-link",
       "scan-qr",
@@ -26,7 +28,28 @@ describe("buildCreateActions", () => {
 
   it("drops ONLY group chat when groups are unavailable", () => {
     const keys = buildCreateActions({ ...handlers(), canCreateGroup: false }).map((a) => a.key);
-    expect(keys).toEqual(["new-chat", "join-via-link", "scan-qr", "find-community"]);
+    expect(keys).toEqual(["new-chat", "new-several", "join-via-link", "scan-qr", "find-community"]);
+  });
+
+  it("offers a chat with several people straight from the list, group chats or not", () => {
+    // It used to be reachable only from inside an existing chat ("Add people").
+    for (const canCreateGroup of [true, false]) {
+      const h = { ...handlers(), canCreateGroup };
+      const action = buildCreateActions(h).find((a) => a.key === "new-several");
+      expect(action?.label).toBe("Message several people");
+      action?.run();
+      expect(h.onNewSeveral).toHaveBeenCalledTimes(1);
+      expect(h.onNewGroup).not.toHaveBeenCalled();
+    }
+  });
+
+  it("names the two kinds of group so they can be told apart", () => {
+    const actions = buildCreateActions(handlers());
+    const several = actions.find((a) => a.key === "new-several")!;
+    const group = actions.find((a) => a.key === "new-group-chat")!;
+    expect(several.label).not.toBe(group.label);
+    expect(several.desc).not.toBe(group.desc);
+    expect(several.testId).not.toBe(group.testId);
   });
 
   it("keeps the arrive-somewhere-new doors open without group chat", () => {

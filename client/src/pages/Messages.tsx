@@ -2284,6 +2284,14 @@ export default function Messages() {
     void deliverMessage(clientId, text, now, peer, { subject: name });
   }, [pubkey, signer, selectedPubkey, deliverMessage]);
 
+  // "Message several people", from the Chats list: the same picker as Add
+  // people, starting from nobody.
+  const [showNewSeveral, setShowNewSeveral] = useState(false);
+  const startNewSeveral = useCallback((picked: string[]) => {
+    const key = roomKeyOfMembers(picked);
+    if (key) navigateToConversation(key);
+  }, [navigateToConversation]);
+
   /** Add people: in NIP-17 that is a NEW chat — everyone here, plus them. */
   const startChatWith = useCallback((added: string[]) => {
     if (!selectedPubkey) return;
@@ -3190,6 +3198,7 @@ export default function Messages() {
           onReloadGroups={reloadGroupChats}
           canCreateGroup={concordEnabled}
           onNewGroupChat={() => setCreateGroupOpen(true)}
+          onNewSeveral={() => setShowNewSeveral(true)}
           onOpenGroup={(communityId, channelId) => setLocation(channelId
             ? `/outposts/c/${communityId}?channel=${encodeURIComponent(channelId)}`
             : `/outposts/c/${communityId}`)}
@@ -3888,6 +3897,7 @@ export default function Messages() {
               {buildCreateActions({
                 canCreateGroup: concordEnabled,
                 onNewChat: () => setShowNewChat(true),
+                onNewSeveral: () => setShowNewSeveral(true),
                 onNewGroup: () => setCreateGroupOpen(true),
                 onJoinLink: () => setShowJoinLink(true),
                 onScanQr: () => setShowQrScan(true),
@@ -3950,6 +3960,17 @@ export default function Messages() {
     {/* "New group chat" (from the + menu). Keeps CreateOutpostDialog's own
         post-create flow: navigate to /outposts/c/{id}?invite=1. */}
     <CreateOutpostDialog open={createGroupOpen} onOpenChange={setCreateGroupOpen} />
+    {pubkey && (
+      <AddPeopleDialog
+        fresh
+        open={showNewSeveral}
+        onOpenChange={setShowNewSeveral}
+        me={pubkey}
+        follows={follows ?? []}
+        already={[]}
+        onStart={startNewSeveral}
+      />
+    )}
 
     {/* QR-scan + join-via-link sheets: state lifted from ChatList so the empty
         state and ChatList's "+" menu both drive this single render. */}

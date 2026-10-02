@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Segment } from "@/components/Segment";
 import { Check, X } from "lucide-react";
-import { getCachedProfile, searchCachedProfiles } from "@/lib/nostr";
+import { fetchProfilesCached, getCachedProfile, searchCachedProfiles } from "@/lib/nostr";
 import { getProfileContent } from "@/lib/nostr-helpers";
 import { searchUsers } from "@/lib/primal-cache";
 import { TIMER_OPTIONS } from "@/lib/dm-prefs";
@@ -104,8 +104,10 @@ function personFrom(pubkey: string, ev: unknown): Person | null {
 }
 
 export function AddPeopleDialog({
-  open, onOpenChange, already, me, follows, onStart,
+  open, onOpenChange, already, me, follows, onStart, fresh,
 }: {
+  /** Starting a chat from the Chats list (nobody is in it yet), not adding to one. */
+  fresh?: boolean;
   open: boolean;
   onOpenChange: (o: boolean) => void;
   /** The people already in the chat (they come along). */
@@ -186,6 +188,27 @@ export function AddPeopleDialog({
     return () => { cancelled = true; if (timer.current) clearTimeout(timer.current); };
   }, [query, follows]);
 
+  // Someone added by their address may not be known to this device yet: their
+  // name is looked up, so the chat isn't started with a row of bare keys.
+  const nameless = [...results, ...picked].filter((p) => !p.name).map((p) => p.pubkey).join(",");
+  useEffect(() => {
+    if (!open || !nameless) return;
+    const keys = nameless.split(",");
+    fetchProfilesCached(keys);
+    let tries = 0;
+    const poll = setInterval(() => {
+      const found = new Map<string, Person>();
+      for (const pk of keys) { const person = personFrom(pk, getCachedProfile(pk)); if (person?.name) found.set(pk, person); }
+      if (found.size > 0) {
+        const named = (list: Person[]) => list.map((p) => found.get(p.pubkey) ?? p);
+        setResults(named);
+        setPicked(named);
+      }
+      if (found.size === keys.length || ++tries >= 10) clearInterval(poll);
+    }, 500);
+    return () => clearInterval(poll);
+  }, [open, nameless]);
+
   const shortKey = (pk: string) => { try { const n = nip19.npubEncode(pk); return `${n.slice(0, 10)}…${n.slice(-4)}`; } catch { return pk.slice(0, 10); } };
   const add = (p: Person) => { if (room > 0 && !taken.has(p.pubkey)) { setPicked([...picked, p]); setQuery(""); } };
 
@@ -193,9 +216,11 @@ export function AddPeopleDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md" data-testid="dialog-add-people">
         <DialogHeader>
-          <DialogTitle>Add people</DialogTitle>
+          <DialogTitle>{fresh ? "Message several people" : "Add people"}</DialogTitle>
           <DialogDescription>
-            This starts a new chat with everyone in it. The chat you're in stays as it is, and earlier messages are not shared with the people you add.
+            {fresh
+              ? "Pick who is in the chat. Everyone in it sees who else is there, and every message. People can't be added to it later; adding someone starts a new chat."
+              : "This starts a new chat with everyone in it. The chat you're in stays as it is, and earlier messages are not shared with the people you add."}
           </DialogDescription>
         </DialogHeader>
 
