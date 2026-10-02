@@ -133,7 +133,7 @@ function entryTime(e: ChatEntry): number {
 export function mergeChatEntries(
   dms: ConversationPreview[],
   groups: GroupPreview[],
-  opts: { tab: DmTab; searchFilter?: string },
+  opts: { tab: DmTab; searchFilter?: string; pinned?: readonly string[] },
 ): ChatEntry[] {
   const q = (opts.searchFilter ?? "").trim().toLowerCase();
   const matches = (g: GroupPreview) =>
@@ -144,7 +144,16 @@ export function mergeChatEntries(
     ? groups.filter(matches).map((g) => ({ kind: "group", group: g }))
     : [];
   const dmEntries: ChatEntry[] = dms.map((conv) => ({ kind: "dm", conv }));
-  return [...dmEntries, ...groupEntries].sort((a, b) => entryTime(b) - entryTime(a));
+  const byRecency = [...dmEntries, ...groupEntries].sort((a, b) => entryTime(b) - entryTime(a));
+  // Pinned chats lead (lib/dm-prefs.ts), in the order they were pinned; the
+  // rest stay purely by recency. While searching the list is a result list,
+  // and a pin has no business reordering results.
+  const pins = q ? [] : (opts.pinned ?? []);
+  if (pins.length === 0) return byRecency;
+  const isPin = (e: ChatEntry) => e.kind === "dm" && pins.includes(e.conv.pubkey);
+  const pinned = byRecency.filter(isPin).sort((a, b) =>
+    pins.indexOf((a as { conv: ConversationPreview }).conv.pubkey) - pins.indexOf((b as { conv: ConversationPreview }).conv.pubkey));
+  return [...pinned, ...byRecency.filter((e) => !isPin(e))];
 }
 
 export interface ProfileInfo {

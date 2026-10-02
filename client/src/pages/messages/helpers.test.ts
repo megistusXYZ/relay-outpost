@@ -555,3 +555,30 @@ describe("keepNewerPreviews — a finished load doesn't roll a chat's preview ba
     expect(keepNewerPreviews(shown, next)[0]).toMatchObject({ lastMessage: "hi", subject: "New name", subjectAt: 90 });
   });
 });
+
+describe("mergeChatEntries — pinned chats lead the list", () => {
+  const dm = (pubkey: string, lastTimestamp: number): ConversationPreview => ({ pubkey, lastTimestamp, lastMessage: "x", unread: false });
+  const keys = (entries: ReturnType<typeof mergeChatEntries>) => entries.map((e) => (e.kind === "dm" ? e.conv.pubkey : "group"));
+  const dms = [dm("newest", 300), dm("middle", 200), dm("oldest", 100)];
+
+  it("a pinned chat comes first however old its last message", () => {
+    expect(keys(mergeChatEntries(dms, [], { tab: "primary", pinned: ["oldest"] }))).toEqual(["oldest", "newest", "middle"]);
+  });
+
+  it("several pins keep the order they were pinned in (newest pin first), not recency", () => {
+    expect(keys(mergeChatEntries(dms, [], { tab: "primary", pinned: ["oldest", "newest"] }))).toEqual(["oldest", "newest", "middle"]);
+  });
+
+  it("without pins the list is purely by recency, as before", () => {
+    expect(keys(mergeChatEntries(dms, [], { tab: "primary" }))).toEqual(["newest", "middle", "oldest"]);
+    expect(keys(mergeChatEntries(dms, [], { tab: "primary", pinned: [] }))).toEqual(["newest", "middle", "oldest"]);
+  });
+
+  it("a pin for a chat that isn't in the list changes nothing", () => {
+    expect(keys(mergeChatEntries(dms, [], { tab: "primary", pinned: ["gone"] }))).toEqual(["newest", "middle", "oldest"]);
+  });
+
+  it("while searching, results are not reordered by pins", () => {
+    expect(keys(mergeChatEntries(dms, [], { tab: "primary", pinned: ["oldest"], searchFilter: "x" }))).toEqual(["newest", "middle", "oldest"]);
+  });
+});
