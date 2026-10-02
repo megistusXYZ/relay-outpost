@@ -12,6 +12,7 @@ import { isUnactionableError } from "./lib/error-noise";
 import { reportCrash, normalizeErrorEvent, normalizeRejection } from "./lib/crash-report";
 import { attachServiceWorkerUpdateSignals } from "./lib/app-update";
 import { reloadOntoFreshShell } from "./lib/sw-shell";
+import { tryRecoverFromStaleChunk } from "./lib/stale-chunk-recovery";
 import { registerCommunityListSync } from "./lib/concord/concord-keys";
 import { syncCommunityListNow } from "./lib/concord/community-list-live";
 
@@ -289,19 +290,14 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   navigator.serviceWorker.addEventListener('controllerchange', scheduleSafeReload);
 
   // If a deploy removed a lazy-loaded chunk that the currently-running (old)
-  // page still tries to import, the dynamic import 404s. The page is already
-  // broken, so reload immediately (overriding any pending deferred reload) to
-  // recover into the freshly-served version. A short sessionStorage window
-  // prevents a persistently-failing deploy from triggering a reload loop.
+  // page still tries to import, the dynamic import fails. The page is already
+  // broken, so recover at once — through the one ladder every chunk failure
+  // climbs (lib/stale-chunk-recovery.ts): fresh page, then repair, then stop.
+  // This used to reload on its own 10 s timer, beside the ladder, and the two
+  // together reloaded a page whose chunk kept failing without end.
   window.addEventListener('vite:preloadError', (event) => {
     event.preventDefault?.();
-    try {
-      const KEY = 'sw-preload-reload-at';
-      const last = Number(sessionStorage.getItem(KEY) || '0');
-      if (Date.now() - last < 10 * 1000) return;
-      sessionStorage.setItem(KEY, String(Date.now()));
-    } catch {}
-    startReload();
+    tryRecoverFromStaleChunk();
   });
 
   window.addEventListener('load', () => {

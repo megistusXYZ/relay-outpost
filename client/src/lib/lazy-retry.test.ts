@@ -67,10 +67,10 @@ describe("lazyRetry module validation", () => {
   // reload (which never resolves — the page is going away). Pre-arm the
   // sentinel so recovery is declined and the error surfaces synchronously,
   // letting us assert on it instead of hanging.
-  const SENTINEL_KEY = "relay-outpost-stale-chunk-reload";
+  const SENTINEL_KEY = "relay-outpost-chunk-recovery";
 
   beforeEach(() => {
-    sessionStorage.setItem(SENTINEL_KEY, String(Date.now()));
+    sessionStorage.setItem(SENTINEL_KEY, `2:${Date.now()}`); // both rungs spent
     // Prove the pre-arm actually took. stale-chunk-recovery swallows storage
     // errors by design, so an unarmed sentinel doesn't fail — it flips the two
     // tests below from "assert on the error" to "hang until the 5s timeout".

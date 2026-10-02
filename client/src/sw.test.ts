@@ -20,13 +20,19 @@ type Handler = (e: any) => void;
 
 function makeWorld() {
   const stores = new Map<string, Map<string, Response>>();
+  /** Storage is full: the next attempt to keep the page fails once. */
+  const full = { on: false };
   const key = (r: any) => (typeof r === "string" ? new URL(r, ORIGIN).href : r.url);
   const open = async (name: string) => {
     if (!stores.has(name)) stores.set(name, new Map());
     const m = stores.get(name)!;
     return {
       match: async (r: any) => m.get(key(r))?.clone(),
-      put: async (r: any, res: Response) => { m.set(key(r), res); },
+      put: async (r: any, res: Response) => {
+        if (full.on && name.includes("shell") && key(r).endsWith("/__ro_shell")) { full.on = false; throw new DOMException("full", "QuotaExceededError"); }
+        m.set(key(r), res);
+      },
+      delete: async (r: any) => m.delete(key(r)),
       addAll: async (urls: string[]) => { for (const u of urls) m.set(key(u), new Response(`static ${u}`)); },
     };
   };
@@ -81,7 +87,7 @@ function makeWorld() {
     fire("fetch", { request: { url: ORIGIN + p, method: "GET", mode: "cors", destination } });
 
   return {
-    stores, fetch, posted, fire, navigate, get, preloadEnable,
+    stores, fetch, posted, fire, navigate, get, preloadEnable, full,
     advance: (ms: number) => { now += ms; },
     async install() { await (await fire("install")).settle(); await (await fire("activate")).settle(); },
   };
@@ -242,13 +248,142 @@ describe("content-hashed files", () => {
   it("come from cache without asking the network: their name changes when they do", async () => {
     const w = makeWorld();
     await w.install();
-    w.fetch.mockResolvedValue(new Response("js v1"));
-    await (await w.get("/assets/index-AbC123.js", "script")).settle();
+    w.fetch.mockImplementation(async () => new Response("js v1", { headers: { "Content-Type": "text/javascript" } }));
     await (await w.get("/assets/index-AbC123.js", "script")).responded;
+    // The copy is stored behind the answer, never in front of it.
+    await new Promise((ok) => setTimeout(ok, 0));
     w.fetch.mockClear();
     w.fetch.mockImplementation(never);
     const r = await w.get("/assets/index-AbC123.js", "script");
     expect(await (await r.responded!).text()).toBe("js v1");
     expect(w.fetch).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Reported 2026-10-01: Discover → Feed opened a blank page, and only Settings ›
+ * "Repair app" (delete the caches) brought it back. A deploy that changes the app renames
+ * nearly every build file; a page on the previous build asks for a name that
+ * is gone; the server answered with the app's page (status 200); and this
+ * worker kept that under the script's name, for good.
+ */
+describe("build files — only the real thing is kept", () => {
+  const js = (body: string) => new Response(body, { headers: { "Content-Type": "text/javascript" } });
+  /** The app's page for a build: one start script, one stylesheet. */
+  const page = (b: string) => new Response(
+    `<html><link rel="stylesheet" href="/assets/index-${b}.css"><script type="module" crossorigin src="/assets/index-${b}.js"></script></html>`,
+    { headers: { "Content-Type": "text/html" } },
+  );
+  /** A server on build `b`. A file it doesn't have: 404 (today), or the page with 200 (before). */
+  const serve = (w: ReturnType<typeof makeWorld>, b: string, missing: "404" | "page" = "404") => {
+    w.fetch.mockImplementation(async (req: any) => {
+      const p = new URL(typeof req === "string" ? req : req.url, ORIGIN).pathname;
+      if (!p.startsWith("/assets/")) return page(b);
+      if (p.includes(`-${b}.`)) return js(`${p} from the network`);
+      return missing === "page" ? page(b) : new Response("Not found", { status: 404 });
+    });
+  };
+  const assetCaches = (w: ReturnType<typeof makeWorld>) => [...w.stores.keys()].filter((k) => k.includes("assets")).sort();
+
+  it("the app's page answered in place of a script is not kept, and not passed on as OK", async () => {
+    const w = makeWorld();
+    serve(w, "B", "page");
+    await w.install();
+    const r = await w.get("/assets/Home-A.js", "script");
+    expect((await r.responded!).status).toBe(404);
+    await r.settle();
+    // The server has the file again (a rollback, or the same name coming back).
+    w.fetch.mockResolvedValue(js("the real Home"));
+    expect(await (await (await w.get("/assets/Home-A.js", "script")).responded!).text()).toBe("the real Home");
+  });
+
+  it("a wrong answer an earlier worker kept is thrown out, and the network is asked", async () => {
+    const w = makeWorld();
+    serve(w, "A");
+    await w.install();
+    w.stores.get([...w.stores.keys()].find((k) => k.includes("assets"))!)!
+      .set(ORIGIN + "/assets/Home-A.js", page("B"));
+    const r = await w.get("/assets/Home-A.js", "script");
+    expect(await (await r.responded!).text()).toBe("/assets/Home-A.js from the network");
+  });
+
+  it("keeping a new page fetches the files it starts with, so its first launch needs no network", async () => {
+    const w = makeWorld();
+    serve(w, "A");
+    await w.install();
+    await (await w.navigate("/")).settle();
+    serve(w, "B");
+    await (await w.navigate("/")).settle(); // answered with A; B kept behind it
+    w.fetch.mockClear();
+    w.fetch.mockImplementation(never);
+    const launch = await w.navigate("/");
+    expect(await (await launch.responded!).text()).toContain("index-B.js");
+    expect(await (await (await w.get("/assets/index-B.js", "script")).responded!).text()).toContain("from the network");
+    expect(await (await (await w.get("/assets/index-B.css", "style")).responded!).text()).toContain("from the network");
+  });
+
+  it("a kept page whose start script isn't kept is not opened from cache: the network answers", async () => {
+    // Kept in the background, never launched; two deploys later the script is
+    // gone from the server too. Opened from cache, that was a blank screen
+    // with nothing running that could recover.
+    const w = makeWorld();
+    serve(w, "A");
+    await w.install();
+    for (const k of [...w.stores.keys()]) if (k.includes("assets")) w.stores.delete(k);
+    serve(w, "C");
+    const r = await w.navigate("/");
+    expect(await (await r.responded!).text()).toContain("index-C.js");
+  });
+
+  it("…and with no network either, the kept page is still what opens", async () => {
+    const w = makeWorld();
+    serve(w, "A");
+    await w.install();
+    for (const k of [...w.stores.keys()]) if (k.includes("assets")) w.stores.delete(k);
+    w.fetch.mockRejectedValue(new TypeError("offline"));
+    const r = await w.navigate("/");
+    expect(await (await r.responded!).text()).toContain("index-A.js");
+  });
+
+  it("only the last two builds' files are kept: a phone no longer collects every build it opened", async () => {
+    const w = makeWorld();
+    serve(w, "A");
+    await w.install();
+    for (const b of ["B", "C", "D"]) {
+      serve(w, b);
+      await (await w.navigate("/")).settle();
+    }
+    expect(assetCaches(w)).toEqual(["relay-outpost-assets-index-C", "relay-outpost-assets-index-D"]);
+  });
+
+  it("a page still running the previous build keeps its files", async () => {
+    const w = makeWorld();
+    serve(w, "A");
+    await w.install();
+    await (await w.get("/assets/Messages-A.js", "script")).settle();
+    await new Promise((ok) => setTimeout(ok, 0));
+    serve(w, "B");
+    await (await w.navigate("/")).settle();
+    w.fetch.mockImplementation(never);
+    expect(await (await (await w.get("/assets/Messages-A.js", "script")).responded!).text()).toContain("Messages-A.js");
+  });
+
+  it("storage full: the build files make room, and the new page is still kept", async () => {
+    const w = makeWorld();
+    serve(w, "A");
+    await w.install();
+    serve(w, "B");
+    w.full.on = true;
+    await (await w.navigate("/")).settle();
+    w.fetch.mockImplementation(never);
+    expect(await (await (await w.navigate("/")).responded!).text()).toContain("index-B.js");
+  });
+
+  it("the old single cache, which was never emptied, is deleted when this worker takes over", async () => {
+    const w = makeWorld();
+    w.stores.set("relay-outpost-v7-static", new Map([[ORIGIN + "/assets/Home-old.js", page("old")]]));
+    serve(w, "A");
+    await w.install();
+    expect([...w.stores.keys()]).not.toContain("relay-outpost-v7-static");
   });
 });

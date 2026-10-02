@@ -26,7 +26,7 @@
 //    the very first install fires updatefound + controllerchange (via
 //    clients.claim()) even though the user just loaded the latest version.
 
-import { onShellUpdated, reloadOntoFreshShell } from "./sw-shell";
+import { dropWorkerAndCaches, onShellUpdated, reloadOntoFreshShell } from "./sw-shell";
 import { installUpdateOnReturn, pageLooksBusy } from "./update-on-return";
 import { shouldApplyUpdate, type UpdateContext } from "./update-policy";
 import { onAppNavigation } from "./app-history";
@@ -345,15 +345,6 @@ export async function checkForUpdatesNow(): Promise<UpdateCheckResult> {
  * is best-effort; the reload happens no matter what.
  */
 export async function repairApp(): Promise<void> {
-  try {
-    const regs = (await navigator.serviceWorker?.getRegistrations?.()) || [];
-    await Promise.allSettled(regs.map((r) => r.unregister()));
-  } catch {}
-  try {
-    if (typeof caches !== "undefined") {
-      const keys = await caches.keys();
-      await Promise.allSettled(keys.map((k) => caches.delete(k)));
-    }
-  } catch {}
+  await dropWorkerAndCaches();
   try { window.location.reload(); } catch {}
 }

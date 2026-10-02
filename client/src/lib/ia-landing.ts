@@ -53,6 +53,26 @@ export function shouldLandOnChats(env: {
 }
 
 /**
+ * What an arrival does to the tab. Pure.
+ *
+ *  - "chats"   the bare root, first time: go to Chats, and the tab has landed.
+ *  - "here"    arrived somewhere on purpose (a link to Discover, a thread, an
+ *              invite): that is this tab's arrival, where it is.
+ *  - "nothing" already landed, signed out, or the collapsed IA is off.
+ *
+ * "here" was missing until 2026-10-01: a tab that opened on Discover never
+ * counted as landed, so its first load of "/" was taken for an arrival and
+ * sent to Chats. That load is the one the app makes itself when a tap on
+ * Discover's Feed tile moves it onto a new build — the person tapped Feed and
+ * got Chats (measured on iOS Safari).
+ */
+export function arrivalOutcome(env: Parameters<typeof shouldLandOnChats>[0]): "chats" | "here" | "nothing" {
+  if (shouldLandOnChats(env)) return "chats";
+  if (env.pubkey && env.collapsed && !env.landed) return "here";
+  return "nothing";
+}
+
+/**
  * Per TAB, deliberately — sessionStorage, not localStorage.
  *
  * Reloading while on Discover must not throw you back to Chats: the tab has
