@@ -13,12 +13,16 @@ import {
   getProcessedWrapIds,
   markProcessed,
   onStoreReset,
+  putMessage,
+  roomOfMessage,
+  HELD_REACTIONS,
   type WrapStatus,
   type CachedFileMetadata,
 } from "@/lib/dm-cache";
 import { extractPrivateReplyRef } from "@/lib/private-reply";
 import { parseFileMessage } from "@/lib/dm-file";
-import { expirationOf, participantsOf, roomKeyFor, subjectOf } from "@/lib/dm-room";
+import { expirationOf, isExpired, participantsOf, roomKeyFor, subjectOf } from "@/lib/dm-room";
+import { KIND_REACTION, reactionEmoji, reactionTargetOf, replyToOf } from "@/lib/dm-thread";
 
 export const KIND_SEAL = 13;
 export const KIND_RUMOR = 14;
@@ -52,6 +56,37 @@ export interface UnwrappedGiftWrap {
    *  quote tag referencing a public note. Holds that note's event id so the
    *  Chats view can render the quoted post above the reply text. */
   quotedNoteId?: string;
+  /** The chat message this one answers (its `e` tag — lib/dm-thread.ts). */
+  replyTo?: string;
+}
+
+/** Fired when a reaction has been stored: `detail.peer` is its chat, or null
+ *  while it is held for a message that has not arrived. */
+export const REACTION_STORED = "dm-reaction-stored";
+
+/**
+ * A reaction (kind 7) is filed here, by the one function every path opens
+ * wraps through, and never handed on as a message: it is not a line in the
+ * chat, it does not become the chat's preview and it does not mark it unread.
+ *
+ * It goes in the chat its message is in. When that message is not stored here
+ * yet, it is held (lib/dm-cache.ts HELD_REACTIONS) until the message turns up:
+ * the reaction's own tags are not trusted to say which chat it belongs to.
+ */
+async function fileReaction(myPubkey: string, sender: string, rumor: any, fallbackId: string, wrapTags: string[][]): Promise<void> {
+  const tags: string[][] = Array.isArray(rumor.tags) ? rumor.tags : [];
+  const reactsTo = reactionTargetOf(tags);
+  if (!reactsTo || !reactionEmoji(rumor.content)) return;
+  const expiresAt = expirationOf(tags) ?? expirationOf(wrapTags);
+  if (isExpired(expiresAt, Math.floor(Date.now() / 1000))) return;
+  const known = await roomOfMessage(myPubkey, reactsTo);
+  const room = known ?? HELD_REACTIONS;
+  await putMessage(myPubkey, room, {
+    id: rumor.id || fallbackId, ownerPubkey: myPubkey, peerPubkey: room,
+    content: String(rumor.content ?? ""), from: sender, timestamp: rumor.created_at,
+    encryption: "nip17", reactsTo, ...(expiresAt ? { expiresAt } : {}),
+  });
+  try { window.dispatchEvent(new CustomEvent(REACTION_STORED, { detail: { peer: known } })); } catch {}
 }
 
 export function extractFileMetadata(rumor: any): CachedFileMetadata | undefined {
@@ -164,8 +199,14 @@ export async function unwrapGiftWrap(
         SIGNER_CRYPTO_TIMEOUT,
       );
       const rumor = JSON.parse(rumorJson);
-      if (rumor.kind !== KIND_RUMOR && rumor.kind !== KIND_FILE_MESSAGE && rumor.kind !== KIND_DIRECT_INVITE_RUMOR && rumor.kind !== KIND_GROUP_REPORT_RUMOR && rumor.kind !== KIND_JOIN_REQUEST_RUMOR) return null;
+      if (rumor.kind !== KIND_RUMOR && rumor.kind !== KIND_FILE_MESSAGE && rumor.kind !== KIND_REACTION && rumor.kind !== KIND_DIRECT_INVITE_RUMOR && rumor.kind !== KIND_GROUP_REPORT_RUMOR && rumor.kind !== KIND_JOIN_REQUEST_RUMOR) return null;
       if (rumor.pubkey && rumor.pubkey !== seal.pubkey) return null;
+
+      if (rumor.kind === KIND_REACTION) {
+        await fileReaction(myPubkey, seal.pubkey, rumor, wrapEvent.id, wrapEvent.tags ?? []);
+        status = "decrypted";
+        return null;
+      }
 
       const recipientTag = rumor.tags?.find((t: string[]) => t[0] === "p");
       const recipientPubkey = recipientTag?.[1] || "";
@@ -184,6 +225,7 @@ export async function unwrapGiftWrap(
         expiresAt: expirationOf(rumor.tags) ?? expirationOf(wrapEvent.tags),
         fileMetadata: extractFileMetadata(rumor),
         quotedNoteId: extractPrivateReplyRef(rumor.tags)?.noteId,
+        replyTo: replyToOf(rumor.kind, rumor.tags),
       } as UnwrappedGiftWrap;
     } catch (err) {
       status = "failed";

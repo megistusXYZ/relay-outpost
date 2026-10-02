@@ -61,6 +61,12 @@ export interface CachedMessage {
   /** A disappearing message: when it stops being shown (unix seconds). It is
    *  not stored once that has passed, and is deleted when next read after. */
   expiresAt?: number;
+  /** The chat message this one answers (lib/dm-thread.ts). */
+  replyTo?: string;
+  /** Set on a REACTION: the message it reacts to. `content` is then the emoji.
+   *  Reactions are kept beside the chat's messages and never returned as one
+   *  (getMessages leaves them out; getReactions returns them). */
+  reactsTo?: string;
 }
 
 export interface CachedConversation {
@@ -372,6 +378,36 @@ export async function getConversationList(ownerPubkey: string): Promise<CachedCo
 }
 
 export async function getMessages(ownerPubkey: string, peerPubkey: string): Promise<CachedMessage[]> {
+  return (await readChat(ownerPubkey, peerPubkey)).filter((m) => !m.reactsTo);
+}
+
+/**
+ * Where a reaction waits when the message it reacts to is not stored here yet
+ * (messages arrive in no particular order). A reaction's own tags cannot be
+ * trusted to say which chat it belongs to — some apps tag only the message's
+ * author — so it is held until its message turns up, then filed with it.
+ */
+export const HELD_REACTIONS = "reactions:held";
+
+/** The reactions stored for a chat (lib/dm-thread.ts tallies them). */
+export async function getReactions(ownerPubkey: string, peerPubkey: string): Promise<Array<CachedMessage & { reactsTo: string }>> {
+  const isReaction = (m: CachedMessage): m is CachedMessage & { reactsTo: string } => !!m.reactsTo;
+  const chat = await readChat(ownerPubkey, peerPubkey);
+  const mine = chat.filter(isReaction);
+  // Held reactions whose message is in this chat now belong to it.
+  const here = new Set(chat.filter((m) => !m.reactsTo).map((m) => m.id));
+  const adopted = (await readChat(ownerPubkey, HELD_REACTIONS)).filter(isReaction).filter((r) => here.has(r.reactsTo));
+  if (adopted.length) void putMessages(ownerPubkey, peerPubkey, adopted);
+  return [...mine, ...adopted.map((r) => ({ ...r, peerPubkey }))];
+}
+
+/** The chat a stored message is filed in, or null when it is not stored here. */
+export async function roomOfMessage(ownerPubkey: string, messageId: string): Promise<string | null> {
+  const row = await safeTx("readonly", MESSAGES_STORE, (store) => store.get([ownerPubkey, messageId]));
+  return (row as { peerPubkey?: string } | undefined)?.peerPubkey ?? null;
+}
+
+async function readChat(ownerPubkey: string, peerPubkey: string): Promise<CachedMessage[]> {
   try {
     const db = await openDB();
     const key = await deviceKey(ownerPubkey);
@@ -495,20 +531,30 @@ export async function getLatestMessage(ownerPubkey: string, peerPubkey: string):
   try {
     const db = await openDB();
     const key = await deviceKey(ownerPubkey);
-    const stored = await new Promise<unknown>((resolve, reject) => {
+    // The newest few rows: a reaction is stored beside the messages and is
+    // not one, so the newest MESSAGE may sit a row or two back.
+    const newest = await new Promise<unknown[]>((resolve, reject) => {
       const tx = db.transaction(MESSAGES_STORE, "readonly");
       const index = tx.objectStore(MESSAGES_STORE).index("by-peer-time");
       const range = IDBKeyRange.bound(
         [ownerPubkey, peerPubkey, -Infinity],
         [ownerPubkey, peerPubkey, Infinity]
       );
+      const rows: unknown[] = [];
       const req = index.openCursor(range, "prev");
-      req.onsuccess = () => resolve(req.result ? req.result.value : null);
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (!cursor || rows.length >= 30) { resolve(rows); return; }
+        rows.push(cursor.value);
+        cursor.continue();
+      };
       req.onerror = () => reject(req.error);
     });
-    if (!stored) return null;
-    if (!isSealedRow(stored)) return stored as CachedMessage;
-    return key ? await openRow<CachedMessage>(key, stored, MESSAGE_BOUND) : null;
+    for (const stored of newest) {
+      const row = !isSealedRow(stored) ? stored as CachedMessage : key ? await openRow<CachedMessage>(key, stored, MESSAGE_BOUND) : null;
+      if (row && !row.reactsTo) return row;
+    }
+    return null;
   } catch {
     return null;
   }

@@ -39,7 +39,7 @@ import {
   AlertCircle,
   Lock,
   Loader2,
-  ChevronDown, MessageCircle, X, MoreVertical, VolumeX, Flag, Users, Pencil, Timer, UserPlus } from "lucide-react";
+  ChevronDown, MessageCircle, X, MoreVertical, VolumeX, Flag, Users, Pencil, Timer, UserPlus, CornerUpLeft, SmilePlus } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ReportDialog } from "@/components/ReportDialog";
 import { isMutedPubkey, mutePubkey, unmutePubkey } from "@/lib/spam-filter";
@@ -72,7 +72,10 @@ import {
 import type { Event } from "nostr-tools";
 import { nip19, generateSecretKey, getPublicKey, finalizeEvent, getEventHash, verifyEvent } from "nostr-tools";
 import { v2 as nip44v2 } from "nostr-tools/nip44";
-import { unwrapGiftWrap, seedProcessedWraps, isWrapProcessed, roomKeyOfUnwrapped } from "@/lib/gift-wrap";
+import { unwrapGiftWrap, seedProcessedWraps, isWrapProcessed, roomKeyOfUnwrapped, REACTION_STORED } from "@/lib/gift-wrap";
+import { KIND_REACTION, reactionTags, replySnippet, replyTag, tallyReactions, type ReactionRow } from "@/lib/dm-thread";
+import { QuickReactions, ReactionChips, ReplyQuote, ReplyingBar } from "./messages/ThreadExtras";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { groupTitle, isExpired, isGroupRoom, newerSubject, roomKeyFromSlug, roomKeyOfMembers, roomMembers, roomSlug } from "@/lib/dm-room";
 import { clearCursors, completeBackTo, historyComplete, loadOlder, readCursors, writeCursors } from "@/lib/dm-history";
 import { routeGroupRumor } from "@/lib/concord/concord-dm-pipe";
@@ -129,6 +132,8 @@ interface DecodedMessage {
   /** A message that names the chat (NIP-17 `subject`): kept so a retry of a
    *  failed send is the same message, name and all. */
   subject?: string;
+  /** The chat message this one answers (lib/dm-thread.ts). */
+  replyTo?: string;
 }
 
 const nowSec = () => Math.floor(Date.now() / 1000);
@@ -1298,7 +1303,7 @@ export default function Messages() {
             id: unwrapped.rumorId, ownerPubkey: pubkey, peerPubkey: otherPubkey,
             content: unwrapped.content, from: unwrapped.senderPubkey,
             timestamp: unwrapped.timestamp, encryption: "nip17",
-            fileMetadata: unwrapped.fileMetadata, quotedNoteId: unwrapped.quotedNoteId,
+            fileMetadata: unwrapped.fileMetadata, quotedNoteId: unwrapped.quotedNoteId, replyTo: unwrapped.replyTo,
             expiresAt: unwrapped.expiresAt });
           decodedByPeer.set(otherPubkey, peerMsgs);
         }
@@ -1444,7 +1449,7 @@ export default function Messages() {
           entry.msgs.push({
             id: u.rumorId, ownerPubkey: pubkey, peerPubkey: room,
             content: u.content, from: u.senderPubkey, timestamp: u.timestamp, encryption: "nip17",
-            fileMetadata: u.fileMetadata, quotedNoteId: u.quotedNoteId, expiresAt: u.expiresAt });
+            fileMetadata: u.fileMetadata, quotedNoteId: u.quotedNoteId, replyTo: u.replyTo, expiresAt: u.expiresAt });
           Object.assign(entry, newerSubject(entry, { subject: u.subject, at: u.timestamp }));
           byRoom.set(room, entry);
         }
@@ -1497,7 +1502,7 @@ export default function Messages() {
           const ids = new Set(prev.map((m) => m.id));
           const added: DecodedMessage[] = forOpen.msgs.filter((m) => !ids.has(m.id)).map((m) => ({
             id: m.id, content: m.content, from: m.from, timestamp: m.timestamp, encryption: m.encryption,
-            fileMetadata: m.fileMetadata, quotedNoteId: m.quotedNoteId, expiresAt: m.expiresAt }));
+            fileMetadata: m.fileMetadata, quotedNoteId: m.quotedNoteId, replyTo: m.replyTo, expiresAt: m.expiresAt }));
           if (added.length === 0) return prev;
           for (const m of added) {
             seenMessageIdsRef.current.add(m.id);
@@ -1629,14 +1634,14 @@ export default function Messages() {
           timestamp: unwrapped.timestamp,
           encryption: "nip17" as const,
           fileMetadata: unwrapped.fileMetadata,
-          quotedNoteId: unwrapped.quotedNoteId,
+          quotedNoteId: unwrapped.quotedNoteId, replyTo: unwrapped.replyTo,
           expiresAt: unwrapped.expiresAt };
         appendCachedMessage(pubkey, otherPubkey, newMsg);
         dmCache.putMessage(pubkey, otherPubkey, {
           id: newMsg.id, ownerPubkey: pubkey, peerPubkey: otherPubkey,
           content: newMsg.content, from: newMsg.from,
           timestamp: newMsg.timestamp, encryption: newMsg.encryption,
-          fileMetadata: newMsg.fileMetadata, quotedNoteId: newMsg.quotedNoteId,
+          fileMetadata: newMsg.fileMetadata, quotedNoteId: newMsg.quotedNoteId, replyTo: newMsg.replyTo,
           expiresAt: newMsg.expiresAt }).catch((e) => console.warn("[DM] Cache putMessage failed:", e?.message));
         dmCache.putConversation(pubkey, {
           ownerPubkey: pubkey, peerPubkey: otherPubkey,
@@ -1706,7 +1711,7 @@ export default function Messages() {
               timestamp: unwrapped.timestamp,
               encryption: "nip17",
               fileMetadata: unwrapped.fileMetadata,
-              quotedNoteId: unwrapped.quotedNoteId,
+              quotedNoteId: unwrapped.quotedNoteId, replyTo: unwrapped.replyTo,
               expiresAt: unwrapped.expiresAt };
 
             appendCachedMessage(pubkey, contactPubkey, newMsg);
@@ -1714,7 +1719,7 @@ export default function Messages() {
               id: newMsg.id, ownerPubkey: pubkey, peerPubkey: contactPubkey,
               content: newMsg.content, from: newMsg.from,
               timestamp: newMsg.timestamp, encryption: newMsg.encryption,
-              fileMetadata: newMsg.fileMetadata, quotedNoteId: newMsg.quotedNoteId,
+              fileMetadata: newMsg.fileMetadata, quotedNoteId: newMsg.quotedNoteId, replyTo: newMsg.replyTo,
               expiresAt: newMsg.expiresAt }).catch((e) => console.warn("[DM] Cache putMessage failed:", e?.message));
 
             setMessages(prev => {
@@ -1839,7 +1844,7 @@ export default function Messages() {
               encKey: m.fileMetadata.encKey,
               encNonce: m.fileMetadata.encNonce,
             } : undefined,
-            quotedNoteId: m.quotedNoteId,
+            quotedNoteId: m.quotedNoteId, replyTo: m.replyTo,
             expiresAt: m.expiresAt }));
         if (idbMessages.length > 0) {
           seenMessageIdsRef.current = new Set(idbMessages.map(m => m.id));
@@ -1943,7 +1948,7 @@ export default function Messages() {
             timestamp: unwrapped.timestamp,
             encryption: "nip17",
             fileMetadata: unwrapped.fileMetadata,
-            quotedNoteId: unwrapped.quotedNoteId,
+            quotedNoteId: unwrapped.quotedNoteId, replyTo: unwrapped.replyTo,
             expiresAt: unwrapped.expiresAt });
         }
       }
@@ -2005,7 +2010,7 @@ export default function Messages() {
           timestamp: m.timestamp,
           encryption: m.encryption,
           fileMetadata: m.fileMetadata,
-          quotedNoteId: m.quotedNoteId,
+          quotedNoteId: m.quotedNoteId, replyTo: m.replyTo,
           expiresAt: m.expiresAt,
         }));
         dmCache.putMessages(pubkey, contactPubkey, idbEntries).catch((e) => console.warn("[DM] Cache putMessages failed:", e?.message));
@@ -2063,11 +2068,12 @@ export default function Messages() {
     // expiresAt: a disappearing message (the chat's timer, lib/dm-prefs.ts).
     // subject: this message names the chat. Both are part of the message, so
     // a retry must pass the same ones or it becomes a different message.
-    extra: { expiresAt?: number; subject?: string } = {},
+    // replyTo: the message this one answers.
+    extra: { expiresAt?: number; subject?: string; replyTo?: string } = {},
   ) => {
     if (!pubkey || !signer) return;
     const expiry = expirationTags(extra.expiresAt);
-    const messageTags = [...buildEmojiTags(messageText, dmEmojiMap), ...(extra.subject ? [["subject", extra.subject]] : []), ...expiry];
+    const messageTags = [...buildEmojiTags(messageText, dmEmojiMap), ...(extra.subject ? [["subject", extra.subject]] : []), ...(extra.replyTo ? [replyTag(extra.replyTo)] : []), ...expiry];
     const named = extra.subject ? { subject: extra.subject, subjectAt: now } : {};
     setMsgStatus(s => ({ ...s, [clientId]: "sending" }));
     try {
@@ -2079,10 +2085,10 @@ export default function Messages() {
         deliveredMsgIds.current.add(realId);
         setMessages(prev => prev.map(m => (m.id === clientId ? { ...m, id: realId } : m)));
         setMsgStatus(s => { const n = { ...s }; delete n[clientId]; return n; });
-        appendCachedMessage(pubkey, peer, { id: realId, content: messageText, from: pubkey, timestamp: now, encryption: "nip17", expiresAt: extra.expiresAt, subject: extra.subject });
+        appendCachedMessage(pubkey, peer, { id: realId, content: messageText, from: pubkey, timestamp: now, encryption: "nip17", expiresAt: extra.expiresAt, subject: extra.subject, replyTo: extra.replyTo });
         dmCache.putMessage(pubkey, peer, {
           id: realId, ownerPubkey: pubkey, peerPubkey: peer,
-          content: messageText, from: pubkey, timestamp: now, encryption: "nip17", expiresAt: extra.expiresAt }).catch((e) => console.warn("[DM] Cache putMessage failed:", e?.message));
+          content: messageText, from: pubkey, timestamp: now, encryption: "nip17", expiresAt: extra.expiresAt, replyTo: extra.replyTo }).catch((e) => console.warn("[DM] Cache putMessage failed:", e?.message));
         dmCache.putConversation(pubkey, {
           ownerPubkey: pubkey, peerPubkey: peer,
           lastMessage: messageText, lastTimestamp: now, ...named }).catch((e) => console.warn("[DM] Cache putConversation failed:", e?.message));
@@ -2121,11 +2127,11 @@ export default function Messages() {
       setMessages(prev => prev.map(m => (m.id === clientId ? { ...m, id: realId } : m)));
       setMsgStatus(s => { const n = { ...s }; delete n[clientId]; return n; });
 
-      const stored: DecodedMessage = { id: realId, content: messageText, from: pubkey, timestamp: now, encryption: "nip17", expiresAt: extra.expiresAt, subject: extra.subject };
+      const stored: DecodedMessage = { id: realId, content: messageText, from: pubkey, timestamp: now, encryption: "nip17", expiresAt: extra.expiresAt, subject: extra.subject, replyTo: extra.replyTo };
       appendCachedMessage(pubkey, peer, stored);
       dmCache.putMessage(pubkey, peer, {
         id: realId, ownerPubkey: pubkey, peerPubkey: peer,
-        content: messageText, from: pubkey, timestamp: now, encryption: "nip17", expiresAt: extra.expiresAt }).catch((e) => console.warn("[DM] Cache putMessage failed:", e?.message));
+        content: messageText, from: pubkey, timestamp: now, encryption: "nip17", expiresAt: extra.expiresAt, replyTo: extra.replyTo }).catch((e) => console.warn("[DM] Cache putMessage failed:", e?.message));
       dmCache.putConversation(pubkey, {
         ownerPubkey: pubkey, peerPubkey: peer,
         lastMessage: messageText, lastTimestamp: now, ...named }).catch((e) => console.warn("[DM] Cache putConversation failed:", e?.message));
@@ -2145,6 +2151,68 @@ export default function Messages() {
   // message text at send time so they render as media/emoji like any other content.
   const [pendingMedia, setPendingMedia] = useState<{ id: string; kind: "gif" | "sticker"; url: string; shortcode?: string }[]>([]);
 
+  // ---- Replies and reactions (lib/dm-thread.ts) ----
+  // The message being answered, shown above the composer until sent or dropped.
+  const [replyingTo, setReplyingTo] = useState<DecodedMessage | null>(null);
+  useEffect(() => { setReplyingTo(null); }, [selectedPubkey]);
+  // The open chat's reactions. They are stored beside its messages by the one
+  // function that opens wraps (lib/gift-wrap.ts), which says so with an event.
+  const [reactionRows, setReactionRows] = useState<ReactionRow[]>([]);
+  useEffect(() => { setReactionRows([]); }, [pubkey, selectedPubkey]);
+  // Read again when a message joins the chat: a reaction that arrived before
+  // its message was held, and is filed with it now.
+  const loadedMessageCount = messages.length;
+  useEffect(() => {
+    if (!pubkey || !selectedPubkey) return;
+    let stale = false;
+    const read = () => { void dmCache.getReactions(pubkey, selectedPubkey).then((rows) => {
+      // Reactions still on their way are kept: the store does not have them yet.
+      if (!stale) setReactionRows((prev) => [...rows, ...prev.filter((r) => r.id.startsWith("pending-"))]);
+    }); };
+    read();
+    // A held reaction (no chat yet) may be for a message on screen: read too.
+    const onStored = (e: globalThis.Event) => { const peer = (e as CustomEvent<{ peer?: string | null }>).detail?.peer; if (!peer || peer === selectedPubkey) read(); };
+    window.addEventListener(REACTION_STORED, onStored);
+    return () => { stale = true; window.removeEventListener(REACTION_STORED, onStored); };
+  }, [pubkey, selectedPubkey, loadedMessageCount]);
+  const reactionsByMessage = useMemo(() => tallyReactions(reactionRows, pubkey ?? ""), [reactionRows, pubkey]);
+
+  /** React to a message: a kind-7 message to everyone in the chat. */
+  const sendReaction = useCallback(async (msg: DecodedMessage, emoji: string) => {
+    if (!pubkey || !signer?.nip44 || !selectedPubkey || msg.id.startsWith("pending-")) return;
+    // Your newest reaction is your reaction: picking the same one again changes nothing.
+    if (reactionsByMessage.get(msg.id)?.some((t) => t.mine && t.emoji === emoji)) return;
+    const peer = selectedPubkey;
+    const now = nowSec();
+    const expiresAt = expirationFor(dmPrefs, peer, now);
+    const expiry = expirationTags(expiresAt);
+    const opts = { rumorKind: KIND_REACTION, rumorCreatedAt: now, extraTags: [...reactionTags(msg.id), ...expiry], outerTags: expiry };
+    const tempId = `pending-reaction-${now}-${Math.random().toString(36).slice(2, 9)}`;
+    setReactionRows((prev) => [...prev, { id: tempId, from: pubkey, content: emoji, timestamp: now, reactsTo: msg.id }]);
+    try {
+      let realId: string;
+      if (isGroupRoom(peer)) {
+        realId = await sendToGroup(peer, emoji, opts);
+      } else {
+        await fetchDMRelayList(peer, { force: true }).catch(() => {});
+        const built = await createGiftWrap(signer, pubkey, peer, emoji, opts);
+        const forSelf = await createGiftWrapForSelf(signer, pubkey, peer, emoji, opts);
+        if (!built) throw new Error("Failed to create encrypted reaction.");
+        await publishWithFallback(getDMRelaysForContact(peer), built.wrap, "gift-wrap-to-recipient", hasDMRelayList(peer));
+        if (forSelf) publishWithFallback(getMyDMReceiveRelays(pubkey), forSelf, "gift-wrap-for-self", true).catch((e) => console.warn("[DM] Self-wrap publish failed:", e));
+        realId = built.rumorId;
+      }
+      setReactionRows((prev) => prev.map((r) => (r.id === tempId ? { ...r, id: realId } : r)));
+      await dmCache.putMessage(pubkey, peer, {
+        id: realId, ownerPubkey: pubkey, peerPubkey: peer, content: emoji, from: pubkey,
+        timestamp: now, encryption: "nip17", reactsTo: msg.id, expiresAt });
+    } catch (err) {
+      console.error("Send reaction failed:", err);
+      setReactionRows((prev) => prev.filter((r) => r.id !== tempId));
+      toast({ title: "Reaction didn't send", description: "Couldn't reach a relay. Try again.", variant: "destructive" });
+    }
+  }, [pubkey, signer, selectedPubkey, reactionsByMessage, dmPrefs, sendToGroup, toast]);
+
   // Optimistic send: show the message immediately, clear the box so the user can
   // carry on, then deliver in the background and update its sent/failed state.
   const sendMessage = useCallback(() => {
@@ -2161,7 +2229,12 @@ export default function Messages() {
     // This chat's timer (lib/dm-prefs.ts): when set, the message says when it goes.
     const expiresAt = expirationFor(dmPrefs, peer, now);
 
-    const optimistic: DecodedMessage = { id: clientId, content: messageText, from: pubkey, timestamp: now, encryption: "nip17", expiresAt };
+    // Answering a message: it must have been sent (a message still on its way
+    // has no id for the reply to name).
+    const replyTo = replyingTo && !replyingTo.id.startsWith("pending-") ? replyingTo.id : undefined;
+    setReplyingTo(null);
+
+    const optimistic: DecodedMessage = { id: clientId, content: messageText, from: pubkey, timestamp: now, encryption: "nip17", expiresAt, replyTo };
     seenContentKeysRef.current.add(msgContentKey(pubkey, now, messageText));
     setMessages(prev => [...prev, optimistic]);
     setNewMessage("");
@@ -2174,13 +2247,13 @@ export default function Messages() {
     // Sending marks the thread read so your own message never shows as an unread DM.
     writeDmLastRead(peer, now);
 
-    void deliverMessage(clientId, messageText, now, peer, { expiresAt });
-  }, [pubkey, signer, selectedPubkey, newMessage, pendingMedia, toast, deliverMessage, dmPrefs]);
+    void deliverMessage(clientId, messageText, now, peer, { expiresAt, replyTo });
+  }, [pubkey, signer, selectedPubkey, newMessage, pendingMedia, toast, deliverMessage, dmPrefs, replyingTo]);
 
   const retryMessage = useCallback((msg: DecodedMessage) => {
     if (!selectedPubkey) return;
     // The same message again — its expiry and its chat name with it.
-    void deliverMessage(msg.id, msg.content, msg.timestamp, selectedPubkey, { expiresAt: msg.expiresAt, subject: msg.subject });
+    void deliverMessage(msg.id, msg.content, msg.timestamp, selectedPubkey, { expiresAt: msg.expiresAt, subject: msg.subject, replyTo: msg.replyTo });
   }, [deliverMessage, selectedPubkey]);
 
   /**
@@ -2936,9 +3009,50 @@ export default function Messages() {
     }, 300);
   }, []);
 
+  // When the finger that opened the menu came off the screen. The browser can
+  // follow that with a click at the same spot — on the menu's backdrop (which
+  // closed the menu as it opened) or on one of its buttons (which would send a
+  // reaction nobody chose). Clicks that close behind the lift are dropped.
+  const pressLiftedAtRef = useRef(0);
   const handleLongPressEnd = useCallback(() => {
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    pressLiftedAtRef.current = Date.now();
   }, []);
+
+  const messageById = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages]);
+  const startReply = useCallback((msg: DecodedMessage) => {
+    setReplyingTo(msg);
+    document.querySelector<HTMLTextAreaElement>('[data-testid="input-message-compose"]')?.focus();
+  }, []);
+  // Which message's reaction picker is open (desktop).
+  const [reactPickerFor, setReactPickerFor] = useState<string | null>(null);
+  /** Beside a bubble on a pointer device: Reply and React. Phones long-press. */
+  const messageActions = (msg: DecodedMessage, beside: string) => msg.id.startsWith("pending-") ? null : (
+    <div className={`hidden md:flex items-center shrink-0 ${beside} ${reactPickerFor === msg.id ? "" : "reveal-on-hover"}`}>
+      <button
+        className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer transition-colors"
+        onClick={() => startReply(msg)}
+        aria-label="Reply" title="Reply"
+        data-testid={`button-reply-msg-${msg.id}`}
+      >
+        <CornerUpLeft className="w-3.5 h-3.5" />
+      </button>
+      <Popover open={reactPickerFor === msg.id} onOpenChange={(o) => setReactPickerFor(o ? msg.id : null)}>
+        <PopoverTrigger asChild>
+          <button
+            className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer transition-colors"
+            aria-label="React" title="React"
+            data-testid={`button-react-msg-${msg.id}`}
+          >
+            <SmilePlus className="w-3.5 h-3.5" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent side="top" align="center" className="w-auto p-1.5 rounded-full">
+          <QuickReactions size="popover" testId="popover-react" onPick={(emoji) => { setReactPickerFor(null); void sendReaction(msg, emoji); }} />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
 
   useEffect(() => {
     return () => {
@@ -3342,6 +3456,9 @@ export default function Messages() {
                 }
                 const { msg, showTimestamp, isClusterStart, isMine } = item;
                 const isLastItem = idx === messageRenderItems.length - 1;
+                // Reactions sit under the bubble: what stands beside the bubble
+                // (the avatar, the hover buttons) stays level with the bubble.
+                const beside = reactionsByMessage.has(msg.id) ? "mb-8" : "mb-0.5";
                 const animateThis = isLastItem && shouldAnimateLast;
                 return (
                   <div
@@ -3353,14 +3470,17 @@ export default function Messages() {
                     onTouchMove={handleLongPressEnd}
                   >
                     {isMine && !isDeletedPreview && (
+                      <>
                       <button
-                        className="reveal-on-hover p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer shrink-0 mb-1 hidden md:block transition-colors"
+                        className={`reveal-on-hover p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer shrink-0 ${beside} hidden md:block transition-colors`}
                         onClick={() => setDeleteConfirm({ type: "message", id: msg.id, isMine: true })}
                         aria-label="Delete message" title="Delete message"
                         data-testid={`button-delete-msg-${msg.id}`}
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
+                      {messageActions(msg, beside)}
+                      </>
                     )}
                     {!isMine && (
                       isClusterStart ? (
@@ -3368,7 +3488,7 @@ export default function Messages() {
                           // Whoever WROTE it: in a several-person chat that is
                           // not always the same person.
                           onClick={() => setLocation(`/profile/${nip19.npubEncode(msg.from)}`)}
-                          className="shrink-0 mb-0.5 cursor-pointer hover:ring-2 hover:ring-brand/50 rounded-full transition-all"
+                          className={`shrink-0 ${beside} cursor-pointer hover:ring-2 hover:ring-brand/50 rounded-full transition-all`}
                           aria-label={`Open ${nameOf(msg.from)}'s profile`}
                         >
                           <Avatar className="w-6 h-6 md:w-7 md:h-7 border border-border/60">
@@ -3382,11 +3502,24 @@ export default function Messages() {
                         <div className="w-6 md:w-7 shrink-0" />
                       )
                     )}
+                    <div className={`flex flex-col min-w-0 max-w-[85%] sm:max-w-[560px] ${isMine ? "items-end" : "items-start"}`}>
                     <div
-                      className={`max-w-[85%] sm:max-w-[560px] rounded-xl px-3.5 py-2.5 border ${
+                      className={`max-w-full rounded-xl px-3.5 py-2.5 border ${
                         isMine ? "glass-bubble-own" : "glass-bubble-other"
                       }`}
                     >
+                      {msg.replyTo && (() => {
+                        const parent = messageById.get(msg.replyTo);
+                        return (
+                          <ReplyQuote
+                            author={parent ? (parent.from === pubkey ? "You" : nameOf(parent.from)) : ""}
+                            text={parent ? replySnippet(parent) : "An earlier message"}
+                            mine={isMine}
+                            onOpen={parent ? () => document.querySelector(`[data-testid="message-${parent.id}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" }) : undefined}
+                            testId={`message-reply-${msg.id}`}
+                          />
+                        );
+                      })()}
                       {selectedIsGroup && !isMine && isClusterStart && (
                         <p className="text-[11px] font-medium text-brand mb-0.5 truncate" data-testid={`message-sender-${msg.id}`}>{nameOf(msg.from)}</p>
                       )}
@@ -3423,9 +3556,17 @@ export default function Messages() {
                         </p>
                       )}
                     </div>
+                    <ReactionChips
+                      tallies={reactionsByMessage.get(msg.id) ?? []}
+                      onPick={(emoji) => { void sendReaction(msg, emoji); }}
+                      namesOf={(people) => people.map((p) => (p === pubkey ? "You" : nameOf(p))).join(", ")}
+                      testId={`message-reactions-${msg.id}`}
+                    />
+                    </div>
+                    {!isMine && !isDeletedPreview && messageActions(msg, beside)}
                     {!isMine && !isDeletedPreview && (
                       <button
-                        className="reveal-on-hover p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer shrink-0 mb-1 hidden md:block transition-colors"
+                        className={`reveal-on-hover p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer shrink-0 ${beside} hidden md:block transition-colors`}
                         onClick={() => setDeleteConfirm({ type: "message", id: msg.id, isMine: false })}
                         aria-label="Hide message" title="Hide message"
                         data-testid={`button-hide-msg-${msg.id}`}
@@ -3445,13 +3586,36 @@ export default function Messages() {
           {longPressTarget && (
             <div
               className="fixed inset-0 z-50 flex items-center justify-center md:hidden"
+              onClickCapture={(e) => { if (Date.now() - pressLiftedAtRef.current < 250) { e.stopPropagation(); e.preventDefault(); } }}
               onClick={() => setLongPressTarget(null)}
+              data-testid="message-press-menu"
             >
               <div className="absolute inset-0 bg-black/10" />
               <div
-                className="relative rounded-xl border border-border/40 bg-background/95 backdrop-blur-md shadow-xl overflow-hidden min-w-[190px]"
+                className="relative rounded-xl border border-border/60 bg-popover shadow-xl overflow-hidden min-w-[190px]"
                 onClick={(e) => e.stopPropagation()}
               >
+                {(() => {
+                  const target = messageById.get(longPressTarget.id);
+                  if (!target || target.id.startsWith("pending-")) return null;
+                  return (
+                    <>
+                      <div className="px-2 py-1.5">
+                        <QuickReactions size="sheet" testId="sheet-react" onPick={(emoji) => { setLongPressTarget(null); void sendReaction(target, emoji); }} />
+                      </div>
+                      <div className="border-t border-border/20" />
+                      <button
+                        className="w-full flex items-center gap-2.5 px-4 min-h-[44px] text-left hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() => { setLongPressTarget(null); startReply(target); }}
+                        data-testid="sheet-reply"
+                      >
+                        <CornerUpLeft className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Reply</span>
+                      </button>
+                      <div className="border-t border-border/20" />
+                    </>
+                  );
+                })()}
                 <button
                   className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left hover:bg-muted/50 transition-colors cursor-pointer"
                   onClick={() => {
@@ -3513,6 +3677,13 @@ export default function Messages() {
                   <RelayOutpostInlineLoader className="w-3 h-3" />
                   <span>{uploadStatus || "Uploading..."}</span>
                 </div>
+              )}
+              {replyingTo && (
+                <ReplyingBar
+                  name={replyingTo.from === pubkey ? "yourself" : nameOf(replyingTo.from)}
+                  text={replySnippet(replyingTo)}
+                  onCancel={() => setReplyingTo(null)}
+                />
               )}
               {pendingMedia.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2" data-testid="dm-pending-media">
