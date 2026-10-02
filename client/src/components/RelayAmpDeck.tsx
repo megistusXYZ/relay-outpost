@@ -57,17 +57,19 @@ export function RelayAmpDeck({ tracks }: { tracks: MusicTrack[] }) {
           )}
         </div>
 
-        {/* LCD screen — always dark, so it reads as a device screen in both themes */}
-        <div className="flex-1 min-w-0 rounded-lg bg-zinc-950 ring-1 ring-inset ring-brand/20 px-3 py-2 flex flex-col justify-between">
+        {/* The readout. Dark mode: a dark screen. Light mode: a pale violet
+            panel with the deeper brand ink (owner, 2026-10-02: the dark panel
+            sat on the light page like a hole in it). */}
+        <div className="flex-1 min-w-0 rounded-lg bg-brand/[0.07] ring-1 ring-inset ring-brand/25 dark:bg-zinc-950 dark:ring-brand/20 px-3 py-2 flex flex-col justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-brand/50">RelayAmp</span>
+              <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-brand-strong/60 dark:text-brand/50">RelayAmp</span>
               <span className={`w-1 h-1 rounded-full ${isPlaying ? "bg-brand animate-pulse" : "bg-brand/30"}`} />
             </div>
-            <p className="text-[13px] font-mono text-brand truncate leading-tight mt-0.5" data-testid="amp-title">
+            <p className="text-[13px] font-mono text-brand-strong dark:text-brand truncate leading-tight mt-0.5" data-testid="amp-title">
               {track ? track.title : "— no signal —"}
             </p>
-            <p className="text-[10px] font-mono text-brand/60 truncate leading-tight">
+            <p className="text-[10px] font-mono text-brand-strong/70 dark:text-brand/60 truncate leading-tight">
               {track ? track.artist : "select a track below"}
             </p>
           </div>
@@ -77,7 +79,7 @@ export function RelayAmpDeck({ tracks }: { tracks: MusicTrack[] }) {
               {BARS.map((b, i) => (
                 <span
                   key={i}
-                  className="w-[2px] rounded-full bg-gradient-to-t from-brand to-brand"
+                  className="w-[2px] rounded-full bg-brand-strong dark:bg-brand"
                   style={
                     isPlaying
                       ? { height: `${b.h}%`, animation: `equalizer 0.8s ease-in-out infinite`, animationDelay: b.d }
@@ -86,8 +88,8 @@ export function RelayAmpDeck({ tracks }: { tracks: MusicTrack[] }) {
                 />
               ))}
             </div>
-            <span className="text-[10px] font-mono text-brand/80 tabular-nums shrink-0" data-testid="amp-time">
-              {fmt(currentTime)} <span className="text-brand/40">/</span> {fmt(duration || track?.duration || 0)}
+            <span className="text-[10px] font-mono text-brand-strong/80 dark:text-brand/80 tabular-nums shrink-0" data-testid="amp-time">
+              {fmt(currentTime)} <span className="text-brand-strong/40 dark:text-brand/40">/</span> {fmt(duration || track?.duration || 0)}
             </span>
           </div>
         </div>

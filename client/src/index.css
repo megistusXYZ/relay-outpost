@@ -3688,6 +3688,36 @@ html[data-perf="lite"] .space-bg-nebula {
   background: radial-gradient(ellipse at top, rgba(139, 92, 246, 0.15), transparent 60%);
 }
 
+/* Pop-up surfaces: dialogs, sheets, drawers, menus, pickers.
+   Two things made them look wrong on dark screens:
+   - iOS Safari draws a focus ring around whatever script moves focus to, and
+     every pop-up moves focus to itself as it opens: a bright white outline
+     around the whole window. The container needs no ring (its contents do).
+   - The hairline was the plain grey border. It is now the brand hue, faint,
+     the way the glass cards already draw theirs. */
+[role="dialog"],
+[role="alertdialog"],
+[role="menu"],
+[role="listbox"],
+[data-radix-popper-content-wrapper] > * {
+  outline: none !important;
+}
+[role="dialog"],
+[role="alertdialog"],
+[role="menu"],
+[role="listbox"],
+[data-radix-popper-content-wrapper] > [role="dialog"],
+[data-radix-popper-content-wrapper] > [role="menu"] {
+  border-color: hsl(var(--brand) / 0.18);
+}
+.dark [role="dialog"],
+.dark [role="alertdialog"],
+.dark [role="menu"],
+.dark [role="listbox"] {
+  border-color: hsl(var(--brand) / 0.22);
+  box-shadow: 0 0 0 1px hsl(var(--brand) / 0.06) inset, 0 12px 40px -12px rgb(0 0 0 / 0.7);
+}
+
 video:focus,
 iframe:focus,
 video:focus-visible,
