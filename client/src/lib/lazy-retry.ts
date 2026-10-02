@@ -6,19 +6,15 @@
 //      sequence cheaply recovers it.
 //   2. Stale deploy — the running tab references old chunk URLs that no longer
 //      exist on the server. No amount of retrying helps; the only fix is a
-//      full reload to pick up the new index.html (one-shot, sentinel-guarded
-//      in stale-chunk-recovery so it can never loop).
+//      full reload to pick up the new index.html, then a repair if the chunk
+//      still fails (the ladder in stale-chunk-recovery; it can never loop).
 //
 // Without this wrapper a single failed chunk rejects the lazy component's
 // promise and the error propagates up React's tree, unmounting whatever
 // boundary-less surface it lands in (historically: the whole app shell).
 // ALWAYS wrap lazy imports: `lazy(() => lazyRetry(() => import("./X")))`.
 
-import {
-  clearStaleChunkSentinel,
-  isChunkLoadError,
-  tryRecoverFromStaleChunk,
-} from "@/lib/stale-chunk-recovery";
+import { isChunkLoadError, tryRecoverFromStaleChunk } from "@/lib/stale-chunk-recovery";
 
 /**
  * Resilient lazy loader for a NAMED export (`lazy(() => lazyNamed(() =>
@@ -94,13 +90,10 @@ export function lazyRetry<T extends { default: any }>(
       return mod;
     })
     .then(
-    (mod) => {
-      // A lazy chunk actually loaded — proof that the current bundle's chunk
-      // URLs still exist on the server. Safe to clear any prior reload
-      // sentinel so future deploys can recover via reload again.
-      clearStaleChunkSentinel();
-      return mod;
-    },
+    // Nothing is "cleared" on success. One chunk loading says nothing about
+    // another: every boot loads several, and clearing the recovery's mark
+    // here is what let a chunk that kept failing reload the app forever.
+    (mod) => mod,
     (err) => {
       if (retries > 0) {
         // Always retry first — the same signatures fire for transient network
@@ -112,8 +105,8 @@ export function lazyRetry<T extends { default: any }>(
       }
       // Retries exhausted. If this looks like a stale-chunk error (the file we
       // want truly no longer exists at the URL the bundle is asking for), do a
-      // one-shot full reload to pick up the new index.html. The sentinel in
-      // tryRecoverFromStaleChunk prevents this from looping.
+      // full reload to pick up the new index.html — and, if that was already
+      // tried, a repair (lib/stale-chunk-recovery.ts: a ladder that ends).
       if (isChunkLoadError(err)) {
         const reloading = tryRecoverFromStaleChunk();
         if (reloading) {

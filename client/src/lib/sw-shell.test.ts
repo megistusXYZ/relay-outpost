@@ -3,7 +3,7 @@
  * hearing that a newer page arrived, and making a restart land on it.
  */
 import { describe, it, expect, vi } from "vitest";
-import { onShellUpdated, refreshShell, reloadOntoFreshShell } from "./sw-shell";
+import { dropWorkerAndCaches, onShellUpdated, refreshShell, reloadOntoFreshShell } from "./sw-shell";
 
 /** A stand-in for navigator.serviceWorker whose worker answers a refresh with `answer`. */
 function container(answer: { ok: boolean } | "silent" | "no-worker") {
@@ -82,5 +82,54 @@ describe("reloadOntoFreshShell", () => {
     const reload = vi.fn();
     await reloadOntoFreshShell(reload, container({ ok: false }) as any);
     expect(reload).toHaveBeenCalledOnce();
+  });
+});
+
+/** What Settings › "Repair app" does, and what the app now does for itself
+ *  when a page's code still won't load after a reload onto the fresh page. */
+describe("dropWorkerAndCaches", () => {
+  const world = () => {
+    const names = new Set(["relay-outpost-shell", "relay-outpost-assets-index-A"]);
+    const regs = [{ unregister: vi.fn(async () => true) }, { unregister: vi.fn(async () => true) }];
+    return {
+      names, regs,
+      env: {
+        sw: { getRegistrations: async () => regs as any },
+        caches: { keys: async () => [...names], delete: async (k: string) => names.delete(k) },
+      },
+    };
+  };
+
+  it("unregisters every worker and deletes every cache", async () => {
+    const w = world();
+    await dropWorkerAndCaches(w.env);
+    expect(w.regs.every((r) => r.unregister.mock.calls.length === 1)).toBe(true);
+    expect([...w.names]).toEqual([]);
+  });
+
+  it("a worker that won't unregister doesn't stop the caches being deleted", async () => {
+    const w = world();
+    w.regs[0].unregister.mockRejectedValue(new Error("no"));
+    await dropWorkerAndCaches(w.env);
+    expect([...w.names]).toEqual([]);
+  });
+
+  it("never holds the reload up: it gives way after its time limit", async () => {
+    vi.useFakeTimers();
+    try {
+      let done = false;
+      const p = dropWorkerAndCaches({ sw: { getRegistrations: () => new Promise(() => {}) }, caches: undefined }, 4000).then(() => { done = true; });
+      await vi.advanceTimersByTimeAsync(3999);
+      expect(done).toBe(false);
+      await vi.advanceTimersByTimeAsync(2);
+      await p;
+      expect(done).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("with no worker and no cache storage there is nothing to do", async () => {
+    await expect(dropWorkerAndCaches({ sw: undefined, caches: undefined })).resolves.toBeUndefined();
   });
 });

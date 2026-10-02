@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { shouldLandOnChats, postAuthLandingPath, holdHomeForLanding, CHATS_PATH, WELCOME_PATH } from "./ia-landing";
+import { arrivalOutcome, shouldLandOnChats, postAuthLandingPath, holdHomeForLanding, CHATS_PATH, WELCOME_PATH } from "./ia-landing";
 
 const A = "a".repeat(64);
 const base = {
@@ -137,5 +137,40 @@ describe("holdHomeForLanding: don't start the feed on the way to Chats", () => {
   it("signed out, or the expanded layout: no landing, no hold", () => {
     expect(holdHomeForLanding({ ...base, pubkey: null, arrival: arrivedAt("/") })).toBe(false);
     expect(holdHomeForLanding({ ...base, collapsed: false, arrival: arrivedAt("/") })).toBe(false);
+  });
+});
+
+/**
+ * Measured on iOS Safari, 2026-10-01: a tab opened on Discover; a new build
+ * was out; tapping the Feed tile made the app reload onto it at "/" — and that
+ * load was taken for the tab's first arrival and sent to Chats.
+ */
+describe("arrivalOutcome — arriving somewhere on purpose is an arrival too", () => {
+  it("the bare root, first time: Chats", () => {
+    expect(arrivalOutcome(base)).toBe("chats");
+  });
+
+  it("a tab that opens on Discover, a thread or an invite has landed where it is", () => {
+    expect(arrivalOutcome({ ...base, pathname: "/discover" })).toBe("here");
+    expect(arrivalOutcome({ ...base, pathname: "/thread/abc" })).toBe("here");
+    expect(arrivalOutcome({ ...base, search: "?inviter=npub1abc" })).toBe("here");
+  });
+
+  it("…so the app's own reload at the feed, after a tap on Feed, stays on the feed", () => {
+    // What the effect does with "here" is mark the tab landed; this is the reload.
+    expect(arrivalOutcome({ ...base, pathname: "/", landed: true })).toBe("nothing");
+  });
+
+  it("nothing is decided for a signed-out visitor or with the collapsed IA off", () => {
+    expect(arrivalOutcome({ ...base, pathname: "/discover", pubkey: null })).toBe("nothing");
+    expect(arrivalOutcome({ ...base, pathname: "/discover", collapsed: false })).toBe("nothing");
+  });
+
+  it("the app marks the tab for both outcomes, and only navigates for Chats", async () => {
+    const { readFileSync } = await import("fs");
+    const path = await import("path");
+    const app = readFileSync(path.resolve(import.meta.dirname, "../App.tsx"), "utf8");
+    const effect = app.slice(app.indexOf("const outcome = arrivalOutcome("), app.indexOf("}, [pubkey, iaCollapsedForLanding, navigate]);"));
+    expect(effect).toMatch(/if \(outcome === "nothing"\) return;\s*(\/\/.*\s*)*markLanded\(\);\s*if \(outcome === "chats"\) navigate\(CHATS_PATH, \{ replace: true \}\);/);
   });
 });

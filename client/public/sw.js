@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'relay-outpost-v7';
+const CACHE_VERSION = 'relay-outpost-v8';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const FONT_CACHE = `${CACHE_VERSION}-fonts`;
 // The app's page (index.html is the same for every route). Kept across cache
@@ -7,6 +7,13 @@ const FONT_CACHE = `${CACHE_VERSION}-fonts`;
 const SHELL_CACHE = 'relay-outpost-shell';
 const SHELL_KEY = '/__ro_shell';
 const SHELL_AT = 'x-ro-cached-at';
+// The build's own files (/assets/*), one cache per build, and only the last
+// two builds are kept: the one the kept page belongs to, and the one before it
+// (a page still running it may ask for more of its files). Before v8 they all
+// went into one cache that was never emptied — a deploy renames nearly every
+// file (165 of 242, measured), so a phone collected every build it had opened.
+const ASSET_PREFIX = 'relay-outpost-assets-';
+const GENS_KEY = '/__ro_gens';
 
 const STATIC_ASSETS = [
   '/manifest.json',
@@ -39,6 +46,7 @@ self.addEventListener('install', (event) => {
     // the install: without it, the first launch simply asks the network.
     fetchShell(undefined)
       .then((next) => keepShell(next, Promise.resolve(null)))
+      .then((kept) => kept.settled)
       .catch(() => {}),
   ]));
 });
@@ -51,7 +59,7 @@ self.addEventListener('activate', (event) => {
       .then(() => caches.keys())
       .then((keys) => Promise.all(
         keys
-          .filter((key) => key !== STATIC_CACHE && key !== FONT_CACHE && key !== SHELL_CACHE)
+          .filter((key) => key !== STATIC_CACHE && key !== FONT_CACHE && key !== SHELL_CACHE && !key.startsWith(ASSET_PREFIX))
           .map((key) => caches.delete(key))
       ))
       .then(() => self.clients.claim())
@@ -79,7 +87,7 @@ self.addEventListener('fetch', (event) => {
   // Vite's build output: the file name carries a hash of its content, so a
   // cached copy is always right and never needs the network.
   if (url.origin === self.location.origin && url.pathname.startsWith('/assets/')) {
-    event.respondWith(cacheFirst(request, STATIC_CACHE));
+    event.respondWith(buildFile(request));
     return;
   }
 
@@ -130,24 +138,35 @@ function isAppPage(url) {
  * are gone from the server) is handled on the page side now: a missing chunk
  * reloads onto the fresh page (lib/sw-shell.ts), and a newer page is moved
  * onto quietly at the next natural boundary (lib/update-policy.ts).
+ *
+ * One condition: the kept page is only answered when the script that starts
+ * it is kept too. A page whose script is neither here nor on the server any
+ * more (kept in the background, never opened, and two deploys later) opened
+ * to a blank screen with nothing running that could recover. Then the network
+ * answers, as on a first open.
  */
 async function openShell(event) {
   const cache = await caches.open(SHELL_CACHE);
   const cached = await cache.match(SHELL_KEY);
   // Read the old page's text now: the response itself goes to the browser.
-  const before = cached ? cached.clone().text() : Promise.resolve(null);
+  const beforeText = cached ? await cached.clone().text() : null;
+  const before = Promise.resolve(beforeText);
   const fresh = fetchShell(event.preloadResponse);
 
-  if (cached) {
-    return { response: cached, background: fresh.then((next) => keepShell(next, before)) };
+  if (cached && await canStart(beforeText)) {
+    return { response: cached, background: fresh.then((next) => keepShell(next, before)).then((kept) => kept.settled) };
   }
 
-  // First open: the network, kept for the next launch.
+  // First open (or a kept page that can't start): the network, kept for the
+  // next launch. With no network, the kept page is still the best there is.
   const kept = fresh.then(async (next) => {
-    await keepShell(next.clone(), before);
-    return next;
+    const k = await keepShell(next.clone(), before);
+    return { next, settled: k.settled };
   });
-  return { response: kept.catch(() => new Response('Offline', { status: 503, statusText: 'Service Unavailable' })), background: kept.catch(() => {}) };
+  return {
+    response: kept.then((k) => k.next).catch(() => cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' })),
+    background: kept.then((k) => k.settled).catch(() => {}),
+  };
 }
 
 async function fetchShell(preloadResponse) {
@@ -158,20 +177,141 @@ async function fetchShell(preloadResponse) {
   return res;
 }
 
+/** The files a page needs before anything runs: its scripts, preloads, styles. */
+function bootFiles(html) {
+  const out = [];
+  const re = /(?:src|href)="(\/assets\/[^"]+)"/g;
+  let m;
+  while ((m = re.exec(html))) if (!out.includes(m[1])) out.push(m[1]);
+  return out;
+}
+
+/** The build a page belongs to: the name of the script that starts it. */
+function buildOf(html) {
+  const m = /src="\/assets\/(index-[A-Za-z0-9_-]+)\.js"/.exec(html);
+  return m ? m[1] : 'unknown';
+}
+
+/** Is the script that starts this page kept? (No such script: nothing to check.) */
+async function canStart(html) {
+  const m = /src="(\/assets\/index-[A-Za-z0-9_-]+\.js)"/.exec(html);
+  if (!m) return true;
+  return !!(await keptBuildFile(m[1]));
+}
+
 /** Keep a fresh page as the shell. Tells open pages when it differs from the
- *  one they were given (`previousText`: a promise of its text, or of null). */
+ *  one they were given (`previousText`: a promise of its text, or of null).
+ *  Resolves once the page is kept; `settled` is the rest of the work — the
+ *  page's own files, fetched now so its first launch opens from cache. */
 async function keepShell(next, previousText) {
   const body = await next.text();
   const before = await previousText;
   const headers = new Headers(next.headers);
   headers.set(SHELL_AT, String(Date.now()));
   const cache = await caches.open(SHELL_CACHE);
-  await cache.put(SHELL_KEY, new Response(body, { status: 200, headers }));
+  const put = () => cache.put(SHELL_KEY, new Response(body, { status: 200, headers }));
+  try {
+    await put();
+  } catch {
+    // Storage is full: a page that can't be replaced is a build nobody can
+    // leave. Make room (the build files are all re-fetchable) and try again.
+    await dropBuildFiles([]);
+    await put();
+  }
+  const build = buildOf(body);
+  await noteBuild(build);
   if (before !== null && before !== body) {
     const all = await self.clients.matchAll({ type: 'window' });
     all.forEach((c) => c.postMessage({ type: 'ro-shell-updated' }));
   }
-  return body;
+  return { body, settled: keepBootFiles(body, build).catch(() => {}) };
+}
+
+/** The builds whose files are kept: [the kept page's, the one before]. */
+async function keptBuilds() {
+  try {
+    const cache = await caches.open(SHELL_CACHE);
+    const res = await cache.match(GENS_KEY);
+    const list = res ? JSON.parse(await res.text()) : [];
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+async function noteBuild(build) {
+  const builds = await keptBuilds();
+  if (builds[0] === build) return;
+  const next = [build, builds[0]].filter(Boolean);
+  const cache = await caches.open(SHELL_CACHE);
+  await cache.put(GENS_KEY, new Response(JSON.stringify(next)));
+  await dropBuildFiles(next);
+}
+
+/** Delete every build's files except the builds named. */
+async function dropBuildFiles(keep) {
+  const names = (await caches.keys()).filter((k) => k.startsWith(ASSET_PREFIX) && !keep.includes(k.slice(ASSET_PREFIX.length)));
+  await Promise.all(names.map((k) => caches.delete(k)));
+}
+
+async function keepBootFiles(html, build) {
+  const cache = await caches.open(ASSET_PREFIX + build);
+  await Promise.all(bootFiles(html).map(async (path) => {
+    try {
+      if (await keptBuildFile(path)) return;
+      const res = await fetch(path);
+      if (isBuildFile(res)) await cache.put(path, res);
+    } catch { /* the launch fetches it instead */ }
+  }));
+}
+
+/** A real build file: answered OK, and not a web page. A server that has no
+ *  such file has answered with the app's page (status 200) — kept under the
+ *  file's name, that answer broke the page that asked for as long as the cache
+ *  lived, however often it reloaded. */
+function isBuildFile(res) {
+  return !!res && res.ok && !/text\/html/i.test(res.headers.get('content-type') || '');
+}
+
+/** A kept copy of a build file, from any kept build. A wrong answer kept by an
+ *  earlier version of this worker is removed, not served. */
+async function keptBuildFile(request) {
+  const names = (await caches.keys()).filter((k) => k.startsWith(ASSET_PREFIX));
+  for (const name of names) {
+    const cache = await caches.open(name);
+    // The same file whoever asks: the name is a hash of the content.
+    const hit = await cache.match(request, { ignoreVary: true });
+    if (!hit) continue;
+    if (isBuildFile(hit)) return hit;
+    await cache.delete(request, { ignoreVary: true });
+  }
+  return undefined;
+}
+
+/** Vite's build output: the name carries a hash of the content, so a kept copy
+ *  is always right and never needs the network. */
+async function buildFile(request) {
+  const kept = await keptBuildFile(request);
+  if (kept) return kept;
+  let response;
+  try {
+    response = await fetch(request);
+  } catch {
+    return new Response('', { status: 503 });
+  }
+  if (response.ok && !isBuildFile(response)) {
+    // "Here is the app's page" is not this file. Say what it means.
+    return new Response('', { status: 404, statusText: 'Not Found' });
+  }
+  if (response.ok) {
+    // Not awaited: the answer must not wait for its own copy to be stored.
+    const copy = response.clone();
+    keptBuilds()
+      .then((builds) => caches.open(ASSET_PREFIX + (builds[0] || 'unknown')))
+      .then((cache) => cache.put(request, copy))
+      .catch(() => { /* storage full: the network answer is still good */ });
+  }
+  return response;
 }
 
 async function networkFirst(request) {
@@ -230,7 +370,8 @@ self.addEventListener('message', (event) => {
     event.waitUntil(
       fetchShell(undefined)
         .then((next) => keepShell(next, Promise.resolve(null)))
-        .then(() => { if (port) port.postMessage({ ok: true }); })
+        // Answer as soon as the page is kept; its files follow behind.
+        .then((kept) => { if (port) port.postMessage({ ok: true }); return kept.settled; })
         .catch(() => { if (port) port.postMessage({ ok: false }); })
     );
   }

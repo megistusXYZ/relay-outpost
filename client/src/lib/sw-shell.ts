@@ -53,3 +53,32 @@ export async function reloadOntoFreshShell(
   try { await refreshShell(sw); } catch {}
   reload();
 }
+
+/**
+ * What "Repair app" does, without the reload: unregister every service worker
+ * and delete every Cache Storage cache. Logins are untouched (localStorage and
+ * IndexedDB are not Cache Storage). Every step is best-effort and the whole
+ * thing is capped, so whoever reloads next is never left waiting on it.
+ */
+export async function dropWorkerAndCaches(
+  env: {
+    sw?: Pick<ServiceWorkerContainer, "getRegistrations"> | undefined;
+    caches?: Pick<CacheStorage, "keys" | "delete"> | undefined;
+  } = {
+    sw: typeof navigator !== "undefined" ? navigator.serviceWorker : undefined,
+    caches: typeof caches !== "undefined" ? caches : undefined,
+  },
+  timeoutMs = 4000,
+): Promise<void> {
+  const work = (async () => {
+    try {
+      const regs = (await env.sw?.getRegistrations?.()) || [];
+      await Promise.allSettled(regs.map((r) => r.unregister()));
+    } catch {}
+    try {
+      const keys = (await env.caches?.keys()) || [];
+      await Promise.allSettled(keys.map((k) => env.caches!.delete(k)));
+    } catch {}
+  })();
+  await Promise.race([work, new Promise<void>((done) => setTimeout(done, timeoutMs))]);
+}

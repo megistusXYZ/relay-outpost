@@ -35,7 +35,7 @@ import { ScrollRestoreDebugOverlay } from "@/components/ScrollRestoreDebugOverla
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { MobileFooter } from "@/components/MobileFooter";
-import { startAppUpdatePolling } from "@/lib/app-update";
+import { startAppUpdatePolling, repairApp } from "@/lib/app-update";
 import { MiniPlayer } from "@/components/MiniPlayer";
 import { SignerDisconnectedBanner } from "@/components/SignerDisconnectedBanner";
 import { UnifiedBtcBadge } from "@/components/BtcPriceTracker";
@@ -69,7 +69,7 @@ import { isEdgeBackSwipe, shouldAttachCustomBackSwipe, detectBackGestureEnv } fr
 import { useIaCollapsed, isIaCollapsed } from "@/lib/ia-prefs";
 import { parentRouteOf } from "@/lib/back-affordance";
 import { useNewsTrendingOn } from "@/lib/news-trending";
-import { shouldLandOnChats, holdHomeForLanding, hasLanded, markLanded, postAuthLandingPath, CHATS_PATH } from "@/lib/ia-landing";
+import { arrivalOutcome, holdHomeForLanding, hasLanded, markLanded, postAuthLandingPath, CHATS_PATH } from "@/lib/ia-landing";
 
 // Where this tab opened, captured once at boot: the Chats landing is about
 // arriving, so only the arrival may hold the feed back (lib/ia-landing.ts).
@@ -81,6 +81,7 @@ import { isWelcomed } from "@/lib/welcome";
 // React.lazy site app-wide — extracted to lib/lazy-retry.ts so pages that
 // code-split locally (Home, Search, MyOutpost, ChatList) share it too.
 import { lazyRetry, lazyNamed } from "@/lib/lazy-retry";
+import { resetChunkRecovery } from "@/lib/stale-chunk-recovery";
 
 const lazyChunks = {
   Home: () => lazyRetry(() => import("@/pages/Home")),
@@ -324,18 +325,27 @@ function LazyFallback() {
   );
 }
 
+/**
+ * A page that would not load, after the app has already reloaded and repaired
+ * itself (lib/stale-chunk-recovery.ts). The button repairs again — it drops
+ * the worker and what it kept, then loads from the network — because a plain
+ * reload is exactly what did not help. Nobody is sent to Settings for this.
+ */
 function RouteErrorFallback() {
+  const [busy, setBusy] = useState(false);
   return (
-    <div className="flex flex-col items-center justify-center min-h-[50vh] p-6 gap-3 text-center">
-      <p className="text-neutral-500 text-sm">Something went wrong loading this page.</p>
-      <p className="text-neutral-600 text-xs max-w-sm">
-        If the app was recently updated, reloading usually fixes it.
+    <div className="flex flex-col items-center justify-center min-h-[50vh] p-6 gap-3 text-center" data-testid="route-error">
+      <p className="text-foreground text-base font-medium">This page didn't load.</p>
+      <p className="text-muted-foreground text-sm max-w-sm">
+        Refreshing the app usually fixes it. You stay signed in.
       </p>
       <button
-        onClick={() => window.location.reload()}
-        className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition-colors"
+        onClick={() => { setBusy(true); resetChunkRecovery(); void repairApp(); }}
+        disabled={busy}
+        className="min-h-[44px] px-5 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-60"
+        data-testid="button-refresh-app"
       >
-        Reload
+        {busy ? "Refreshing…" : "Refresh the app"}
       </button>
     </div>
   );
@@ -1353,16 +1363,19 @@ function AppLayout() {
   // would send a returning user to Discover on the one load that was supposed
   // to introduce the new front door.
   useEffect(() => {
-    if (!shouldLandOnChats({
+    const outcome = arrivalOutcome({
       pubkey,
       collapsed: iaCollapsedForLanding,
       pathname: window.location.pathname,
       search: window.location.search,
       hash: window.location.hash,
       landed: hasLanded(),
-    })) return;
+    });
+    if (outcome === "nothing") return;
+    // "here": arrived somewhere on purpose, so a later load of "/" (a reload
+    // onto a new build after tapping Feed) is the feed, not a second arrival.
     markLanded();
-    navigate(CHATS_PATH, { replace: true });
+    if (outcome === "chats") navigate(CHATS_PATH, { replace: true });
   }, [pubkey, iaCollapsedForLanding, navigate]);
 
   // Guest chat preview: a LOGGED-OUT visitor opening a shared channel deep link
