@@ -381,6 +381,25 @@ export async function getMessages(ownerPubkey: string, peerPubkey: string): Prom
   return (await readChat(ownerPubkey, peerPubkey)).filter((m) => !m.reactsTo);
 }
 
+/** Every message stored for an account, across its chats (lib/dm-search.ts). */
+export async function getAllMessages(ownerPubkey: string): Promise<CachedMessage[]> {
+  try {
+    const db = await openDB();
+    const key = await deviceKey(ownerPubkey);
+    const stored = await new Promise<unknown[]>((resolve, reject) => {
+      const tx = db.transaction(MESSAGES_STORE, "readonly");
+      const req = tx.objectStore(MESSAGES_STORE).index("by-peer").getAll(IDBKeyRange.bound([ownerPubkey, ""], [ownerPubkey, "\uffff"]));
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+    const nowSec = Math.floor(Date.now() / 1000);
+    return (await openRows<CachedMessage>(key, stored, MESSAGE_BOUND)).rows
+      .filter((m) => !m.reactsTo && !isLeakedInviteBundleJson(m.content) && !isExpired(m.expiresAt, nowSec));
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Where a reaction waits when the message it reacts to is not stored here yet
  * (messages arrive in no particular order). A reaction's own tags cannot be

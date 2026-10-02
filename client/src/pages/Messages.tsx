@@ -73,6 +73,7 @@ import type { Event } from "nostr-tools";
 import { nip19, generateSecretKey, getPublicKey, finalizeEvent, getEventHash, verifyEvent } from "nostr-tools";
 import { v2 as nip44v2 } from "nostr-tools/nip44";
 import { unwrapGiftWrap, seedProcessedWraps, isWrapProcessed, roomKeyOfUnwrapped, REACTION_STORED } from "@/lib/gift-wrap";
+import { MIN_QUERY, searchMessages, type MessageSearch } from "@/lib/dm-search";
 import { KIND_REACTION, reactionTags, replySnippet, replyTag, tallyReactions, type ReactionRow } from "@/lib/dm-thread";
 import { QuickReactions, ReactionChips, ReplyQuote, ReplyingBar } from "./messages/ThreadExtras";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -93,7 +94,7 @@ import { buildCreateActions } from "./messages/create-actions";
 import { useGroupChats, useGroupIdentities } from "./messages/useGroupChats";
 import { useGroupTeasers } from "./messages/useGroupTeasers";
 import { useHideMessagePreviews } from "@/lib/message-previews";
-import { getDMDisplayName, keepNewerPreviews, mergeChatEntries, URL_REGEX, type ConversationPreview, type DmTab, type GroupPreview, type ProfileInfo } from "./messages/helpers";
+import { getDMDisplayName, keepNewerPreviews, mergeChatEntries, orderRequests, URL_REGEX, type ConversationPreview, type DmTab, type GroupPreview, type ProfileInfo } from "./messages/helpers";
 import { lazyRetry } from "@/lib/lazy-retry";
 import messagesEmptyBg from "../assets/images/messages-empty-bg.webp";
 import { ClampedText, LINES, textForLines } from "@/components/ClampedText";
@@ -137,6 +138,9 @@ interface DecodedMessage {
 }
 
 const nowSec = () => Math.floor(Date.now() / 1000);
+
+/** The message a search result is taking the reader to (see openMessageHit). */
+const pendingJump: { id: string | null } = { id: null };
 
 const NIP44_REQUIRED_MSG = "Your Nostr extension does not support NIP-44 encryption, which is required for private messages. Please use a compatible extension (Alby, nos2x, Nostore).";
 
@@ -862,7 +866,7 @@ function msgContentKey(from: string, timestamp: number, content: string): string
 
 export default function Messages() {
   const { pubkey, signer, follows } = useNostrAuth();
-  const { getAuthorTier, followedByPubkeys, requestScoresBulk } = useGrapeRankScores();
+  const { getAuthorTier, isAuthorFlagged, followedByPubkeys, requestScoresBulk } = useGrapeRankScores();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const goBack = useGoBack();
@@ -2754,7 +2758,20 @@ export default function Messages() {
     return false;
   }, [demotedToRequests, promotedPrimary, followsSet, followedByPubkeys, getAuthorTier, initiatedByMe]);
 
-  const { primaryConversations, requestConversations } = useMemo(() => {
+  // How a request's sender stands with your network. A several-person chat is
+  // judged by its best-known member, and is flagged if anyone in it is.
+  const [showFlaggedRequests, setShowFlaggedRequests] = useState(false);
+  const requestStanding = useCallback((roomKey: string) => {
+    const RANK: Record<string, number> = { strong: 4, moderate: 3, low: 2, weak: 1, none: 0, flagged: 0 };
+    const members = roomMembers(roomKey);
+    const tiers = members.map((m) => getAuthorTier(m));
+    return {
+      rank: Math.max(0, ...tiers.map((t) => RANK[t] ?? 0)),
+      flagged: tiers.includes("flagged") || members.some((m) => isAuthorFlagged(m)),
+    };
+  }, [getAuthorTier, isAuthorFlagged]);
+
+  const { primaryConversations, requestConversations, flaggedRequestCount } = useMemo(() => {
     let list = conversations.filter(c => !hiddenConvos.has(c.pubkey));
     if (searchFilter) {
       const q = searchFilter.toLowerCase();
@@ -2773,10 +2790,72 @@ export default function Messages() {
         requests.push(conv);
       }
     }
-    return { primaryConversations: primary, requestConversations: requests };
-  }, [conversations, hiddenConvos, searchFilter, roomProfiles, isPrimaryConversation]);
+    // Requests: most trusted first, flagged senders set apart (helpers.orderRequests).
+    const ordered = orderRequests(requests, requestStanding);
+    return {
+      primaryConversations: primary,
+      requestConversations: showFlaggedRequests ? [...ordered.open, ...ordered.flagged] : ordered.open,
+      flaggedRequestCount: ordered.flagged.length,
+    };
+  }, [conversations, hiddenConvos, searchFilter, roomProfiles, isPrimaryConversation, requestStanding, showFlaggedRequests]);
 
   const activeConversations = dmTab === "primary" ? primaryConversations : requestConversations;
+
+  // ---- Searching messages (lib/dm-search.ts) ----
+  // Everything this device has opened is read once per search (not per
+  // keystroke) and let go when the box is cleared. Only chats that are in the
+  // list are searched: not requests from strangers, not removed chats.
+  const searchCorpusRef = useRef<{ owner: string; messages: dmCache.CachedMessage[] } | null>(null);
+  const [searchHits, setSearchHits] = useState<MessageSearch | null>(null);
+  const searchableRooms = useMemo(
+    () => new Set(conversations.filter((c) => !hiddenConvos.has(c.pubkey) && isPrimaryConversation(c.pubkey)).map((c) => c.pubkey)),
+    [conversations, hiddenConvos, isPrimaryConversation],
+  );
+  useEffect(() => {
+    const q = searchFilter.trim();
+    if (!pubkey || q.length < MIN_QUERY) { searchCorpusRef.current = null; setSearchHits(null); return; }
+    let stale = false;
+    const timer = setTimeout(async () => {
+      if (searchCorpusRef.current?.owner !== pubkey) searchCorpusRef.current = { owner: pubkey, messages: await dmCache.getAllMessages(pubkey) };
+      if (!stale) setSearchHits(searchMessages(searchCorpusRef.current.messages, q, { rooms: searchableRooms }));
+    }, 200);
+    return () => { stale = true; clearTimeout(timer); };
+  }, [pubkey, searchFilter, searchableRooms]);
+  const messageSearch = useMemo(() => searchHits && ({
+    searched: searchHits.searched,
+    more: searchHits.more,
+    hits: searchHits.hits.map((h) => ({
+      ...h,
+      chat: getDMDisplayName(roomProfiles.get(h.room) || null, h.room),
+      author: h.from === pubkey ? "You" : displayNameWith("person", h.from, getDMDisplayName(profiles.get(h.from) || null, h.from)),
+    })),
+  }), [searchHits, roomProfiles, profiles, pubkey]);
+  // Open the chat a found message is in, and bring that message into view.
+  // The target outlives this component: opening a chat is a route change.
+  const openMessageHit = useCallback((room: string, messageId: string) => {
+    pendingJump.id = messageId;
+    navigateToConversation(room);
+  }, [navigateToConversation]);
+  useEffect(() => {
+    const id = pendingJump.id;
+    if (!id || !selectedPubkey) return;
+    // The chat scrolls itself to its end as it opens; this runs after that,
+    // and keeps trying briefly while the messages are still being read.
+    let tries = 0;
+    const timer = setInterval(() => {
+      const el = document.querySelector<HTMLElement>(`[data-testid="message-${id}"]`);
+      if (el) {
+        pendingJump.id = null;
+        const show = () => el.scrollIntoView({ block: "center" });
+        show();
+        setTimeout(show, 600);
+        el.classList.add("dm-msg-found");
+        setTimeout(() => el.classList.remove("dm-msg-found"), 2400);
+      }
+      if (el || ++tries > 14) { clearInterval(timer); if (!el) pendingJump.id = null; }
+    }, 350);
+    return () => clearInterval(timer);
+  }, [selectedPubkey]);
 
   // Concord group chats join the Primary list (Signal/WhatsApp model): one
   // recency-sorted list of DMs + groups. Requests stays DM-only — group
@@ -2871,12 +2950,13 @@ export default function Messages() {
     for (const c of allVisible) {
       if (!isPrimaryConversation(c.pubkey)) {
         total++;
-        // A muted chat is still there; it just isn't counted as waiting.
-        if (c.unread && !isMutedChat(dmPrefs, c.pubkey)) unread++;
+        // A muted chat is still there; it just isn't counted as waiting. Nor
+        // is a request from a sender your network has flagged.
+        if (c.unread && !isMutedChat(dmPrefs, c.pubkey) && !requestStanding(c.pubkey).flagged) unread++;
       }
     }
     return { requestUnreadCount: unread, totalRequestCount: total };
-  }, [conversations, hiddenConvos, isPrimaryConversation, dmPrefs]);
+  }, [conversations, hiddenConvos, isPrimaryConversation, dmPrefs, requestStanding]);
 
   useEffect(() => {
     if (!pubkey || conversations.length === 0) return;
@@ -3120,6 +3200,9 @@ export default function Messages() {
           setDmTab={setDmTab}
           requestUnreadCount={requestUnreadCount}
           totalRequestCount={totalRequestCount}
+          flaggedRequestCount={flaggedRequestCount}
+          showFlaggedRequests={showFlaggedRequests}
+          setShowFlaggedRequests={setShowFlaggedRequests}
           loading={loading}
           loadingTooLong={loadingTooLong}
           loadConversations={loadConversations}
@@ -3138,6 +3221,8 @@ export default function Messages() {
           setUserSearchResults={setUserSearchResults}
           userSearching={userSearching}
           handleSelectSearchResult={handleSelectSearchResult}
+          messageSearch={messageSearch}
+          onOpenMessageHit={openMessageHit}
           pendingDecryptCount={pendingDecryptCount}
           decrypting={decrypting}
           decryptPending={decryptPending}

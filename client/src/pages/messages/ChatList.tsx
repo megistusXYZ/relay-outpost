@@ -116,6 +116,20 @@ function RequestsRow({ total, unread, onOpen }: { total: number; unread: number;
   );
 }
 
+/** A message found by the search box, with its chat and writer already named. */
+export interface DmMessageHit {
+  id: string;
+  room: string;
+  /** The chat's name. */
+  chat: string;
+  /** Who wrote it: "You", or their name. */
+  author: string;
+  timestamp: number;
+  before: string;
+  match: string;
+  after: string;
+}
+
 export interface DmUserSearchResult {
   pubkey: string;
   name: string;
@@ -150,6 +164,11 @@ interface ChatListProps {
   setDmTab: (tab: DmTab) => void;
   requestUnreadCount: number;
   totalRequestCount: number;
+  /** Requests from senders your network has flagged: kept out of the Requests
+   *  view until asked for. */
+  flaggedRequestCount: number;
+  showFlaggedRequests: boolean;
+  setShowFlaggedRequests: (value: boolean) => void;
   loading: boolean;
   loadingTooLong: boolean;
   loadConversations: (forceDecrypt?: boolean) => Promise<void>;
@@ -170,6 +189,10 @@ interface ChatListProps {
   setUserSearchResults: (results: DmUserSearchResult[]) => void;
   userSearching: boolean;
   handleSelectSearchResult: (pubkey: string) => void;
+  /** Messages matching the search box (lib/dm-search.ts), ready to draw. Null
+   *  while there is nothing to search for. */
+  messageSearch: { hits: DmMessageHit[]; searched: number; more: number } | null;
+  onOpenMessageHit: (room: string, messageId: string) => void;
   pendingDecryptCount: number;
   decrypting: boolean;
   decryptPending: () => void;
@@ -221,6 +244,9 @@ export function ChatList({
   setDmTab,
   requestUnreadCount,
   totalRequestCount,
+  flaggedRequestCount,
+  showFlaggedRequests,
+  setShowFlaggedRequests,
   loading,
   loadingTooLong,
   loadConversations,
@@ -239,6 +265,8 @@ export function ChatList({
   setUserSearchResults,
   userSearching,
   handleSelectSearchResult,
+  messageSearch,
+  onOpenMessageHit,
   pendingDecryptCount,
   decrypting,
   decryptPending,
@@ -1274,6 +1302,36 @@ export function ChatList({
         </div>
       )}
 
+      {/* Messages that match, under the people who do. The search runs over
+          what this device has opened, and says how many messages that was. */}
+      {!privateMasked && messageSearch && (messageSearch.hits.length > 0 || searchQuery.length >= 2) && (
+        <div className="border-b border-border/20 shrink-0 max-h-[360px] overflow-y-auto" data-testid="container-message-search-results">
+          <div className="px-3 pt-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50" data-testid="chat-section-message-results">Messages</div>
+          {messageSearch.hits.map((hit) => (
+            <button
+              key={hit.id}
+              type="button"
+              className="w-full px-3 py-2 min-h-[44px] hover:bg-muted/50 transition-colors text-left cursor-pointer"
+              onClick={() => onOpenMessageHit(hit.room, hit.id)}
+              data-testid={`button-message-hit-${hit.id.slice(0, 8)}`}
+            >
+              <span className="flex items-baseline gap-2">
+                <span className="text-sm font-medium truncate flex-1">{hit.chat}</span>
+                <span className="text-[11px] text-muted-foreground/60 shrink-0">{formatMessageTime(hit.timestamp)}</span>
+              </span>
+              <span className="block text-[12px] text-muted-foreground line-clamp-2 break-words">
+                <span className="text-muted-foreground/70">{hit.author}: </span>
+                {hit.before}<mark className="rounded-sm bg-brand/25 text-foreground px-0.5">{hit.match}</mark>{hit.after}
+              </span>
+            </button>
+          ))}
+          <p className="px-3 py-2 text-[11px] text-muted-foreground/60" data-testid="message-search-reach">
+            {messageSearch.hits.length === 0 ? "No messages match. " : messageSearch.more > 0 ? `${messageSearch.more} more match. Type more to narrow it down. ` : ""}
+            Searched {messageSearch.searched.toLocaleString()} message{messageSearch.searched === 1 ? "" : "s"} loaded on this device.
+          </p>
+        </div>
+      )}
+
       {/* THE CHAT-HOME FILTER. One line, identical on desktop and mobile — the
           same chips, the same order; the line scrolls sideways rather than
           wrapping, so it can never grow into a second or third row of chrome
@@ -1623,6 +1681,24 @@ export function ChatList({
             )
             )}
           </>
+        )}
+        {/* Requests from senders your network has flagged are not listed until
+            asked for, and then without what they wrote. */}
+        {inRequestsView && !privateMasked && flaggedRequestCount > 0 && (
+          <div className="px-3 py-3 flex flex-col items-center gap-1 text-center border-t border-border/20" data-testid="requests-flagged">
+            <button
+              type="button"
+              onClick={() => setShowFlaggedRequests(!showFlaggedRequests)}
+              className="min-h-[44px] md:min-h-[36px] px-3 rounded-full border border-border/60 text-[12px] text-muted-foreground hover:text-foreground hover:border-border transition-colors"
+              aria-expanded={showFlaggedRequests}
+              data-testid="button-requests-flagged"
+            >
+              {showFlaggedRequests ? "Hide" : "Show"} {flaggedRequestCount} from {flaggedRequestCount === 1 ? "a sender" : "senders"} your network flagged
+            </button>
+            {!showFlaggedRequests && (
+              <p className="text-[11px] text-muted-foreground/60">People you trust have reported {flaggedRequestCount === 1 ? "this account" : "these accounts"}.</p>
+            )}
+          </div>
         )}
         {/* The way back to older messages: the list above is the newest only.
             Never while masked or in the deleted view. Three honest endings:

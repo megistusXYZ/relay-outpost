@@ -1515,6 +1515,13 @@ html[data-perf="lite"] .space-bg-nebula {
     background: hsl(0 0% 100% / 0.07);
   }
 
+  /* A message reached from the search: its row is lit for a moment. */
+  .dm-msg-found {
+    background: hsl(var(--brand) / 0.14);
+    border-radius: 0.75rem;
+    transition: background-color 600ms ease-out;
+  }
+
   .glass-bubble-own {
     background: linear-gradient(135deg, #2d1b6b, #1f1b4b);
     border: 1px solid rgba(100, 70, 180, 0.30);
