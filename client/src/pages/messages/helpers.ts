@@ -7,10 +7,15 @@ import type { CommunityImage } from "@/lib/concord/concord-image";
 // Messages.tsx — no behavior changes.
 
 export interface ConversationPreview {
+  /** The chat's key (lib/dm-room.ts): the other person's public key for a
+   *  one-to-one chat, a group key for a chat with several people. */
   pubkey: string;
   lastMessage: string;
   lastTimestamp: number;
   unread: boolean;
+  /** The chat's name when a message has set one, and when it was set. */
+  subject?: string;
+  subjectAt?: number;
 }
 
 export type DmTab = "primary" | "requests";

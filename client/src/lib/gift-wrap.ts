@@ -17,6 +17,7 @@ import {
 } from "@/lib/dm-cache";
 import { extractPrivateReplyRef } from "@/lib/private-reply";
 import { parseFileMessage } from "@/lib/dm-file";
+import { expirationOf, participantsOf, roomKeyFor, subjectOf } from "@/lib/dm-room";
 
 export const KIND_SEAL = 13;
 export const KIND_RUMOR = 14;
@@ -39,6 +40,13 @@ export interface UnwrappedGiftWrap {
   /** The decrypted rumor's tags: a report says what it's about in them. */
   tags?: string[][];
   fileMetadata?: CachedFileMetadata;
+  /** Everyone in the conversation: the sender and every `p` tag (lib/dm-room.ts). */
+  participants?: string[];
+  /** The chat's name, when this message sets one (NIP-17 `subject`). */
+  subject?: string;
+  /** When this message stops being shown (NIP-40 `expiration`, unix seconds):
+   *  the message's own, or the wrap's when the message carries none. */
+  expiresAt?: number;
   /** Set when this DM is a "private reply": the kind-14 rumor carries a `q`
    *  quote tag referencing a public note. Holds that note's event id so the
    *  Chats view can render the quoted post above the reply text. */
@@ -155,6 +163,9 @@ export async function unwrapGiftWrap(
         rumorId: rumor.id || wrapEvent.id,
         rumorKind: rumor.kind,
         tags: Array.isArray(rumor.tags) ? rumor.tags : [],
+        participants: participantsOf(seal.pubkey, rumor.tags),
+        subject: subjectOf(rumor.tags),
+        expiresAt: expirationOf(rumor.tags) ?? expirationOf(wrapEvent.tags),
         fileMetadata: extractFileMetadata(rumor),
         quotedNoteId: extractPrivateReplyRef(rumor.tags)?.noteId,
       } as UnwrappedGiftWrap;
@@ -174,4 +185,17 @@ export async function unwrapGiftWrap(
       }
     }
   });
+}
+
+/**
+ * The chat an opened message belongs to, for the reader: the other person's
+ * key for a one-to-one chat, a group key for several people, null when it is
+ * not a chat message of ours at all (lib/dm-room.ts has the rules).
+ *
+ * Every place that files a message uses this. They used to each work it out —
+ * "the sender, or the first p tag when I am the sender" — which put a message
+ * sent to several people into a one-to-one chat with whoever sent it.
+ */
+export function roomKeyOfUnwrapped(u: Pick<UnwrappedGiftWrap, "senderPubkey" | "tags">, myPubkey: string): string | null {
+  return roomKeyFor({ sender: u.senderPubkey, tags: u.tags }, myPubkey);
 }

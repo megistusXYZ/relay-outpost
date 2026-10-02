@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { isGroupRoom } from "@/lib/dm-room";
 import { createPortal } from "react-dom";
 import { useLocation, useSearch } from "wouter";
 import { useReducedMotion } from "framer-motion";
@@ -741,7 +742,9 @@ export function OrbitMenu() {
         );
         let dms: UpNextDmCandidate[] = [];
         try {
-          const convos = (await getConversationList(pubkey)).slice(0, 8);
+          // One-to-one chats only: the nudge names a person and links to them.
+          // A several-person chat's key is not a public key (lib/dm-room.ts).
+          const convos = (await getConversationList(pubkey)).filter((c) => !isGroupRoom(c.peerPubkey)).slice(0, 8);
           dms = (
             await Promise.all(
               convos.map(async (c) => {

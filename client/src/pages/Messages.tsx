@@ -14,7 +14,7 @@ import { searchUsers } from "@/lib/primal-cache";
 import { readDmLastRead, writeDmLastRead } from "@/lib/dm-read";
 import { displayNameWith, usePetnamesVersion } from "@/lib/petnames";
 import { fetchRelayLists, getWriteRelays, getReadRelays, getDMRelayListCached, fetchDMRelayList, getLocalDMRelays, hasDMRelayList, getDMRelaysForContact, getMyDMReceiveRelays, wasDMRelayListConfirmedEmpty, publishDMRelayList, DM_FALLBACK_RELAYS, ensureOwnDMRelayList, wasOwnDMInboxAutopublished } from "@/lib/outbox";
-import { createGiftWrap, createGiftWrapForSelf } from "@/lib/dm";
+import { createGiftWrap, createGiftWrapForSelf, createRoomGiftWraps } from "@/lib/dm";
 import * as dmCache from "@/lib/dm-cache";
 import { useToast } from "@/hooks/use-toast";
 import { signWithTimeout, withSignerTimeout, SIGNER_CRYPTO_TIMEOUT } from "@/lib/signer-timeout";
@@ -37,7 +37,7 @@ import {
   AlertCircle,
   Lock,
   Loader2,
-  ChevronDown, MessageCircle, X, MoreVertical, VolumeX, Flag } from "lucide-react";
+  ChevronDown, MessageCircle, X, MoreVertical, VolumeX, Flag, Users } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ReportDialog } from "@/components/ReportDialog";
 import { isMutedPubkey, mutePubkey, unmutePubkey } from "@/lib/spam-filter";
@@ -70,7 +70,8 @@ import {
 import type { Event } from "nostr-tools";
 import { nip19, generateSecretKey, getPublicKey, finalizeEvent, getEventHash, verifyEvent } from "nostr-tools";
 import { v2 as nip44v2 } from "nostr-tools/nip44";
-import { unwrapGiftWrap, seedProcessedWraps, isWrapProcessed } from "@/lib/gift-wrap";
+import { unwrapGiftWrap, seedProcessedWraps, isWrapProcessed, roomKeyOfUnwrapped } from "@/lib/gift-wrap";
+import { groupTitle, isExpired, isGroupRoom, newerSubject, roomKeyFromSlug, roomMembers, roomSlug } from "@/lib/dm-room";
 import { routeGroupRumor } from "@/lib/concord/concord-dm-pipe";
 import { detectGroupInvite } from "@/lib/concord/invite-detect";
 import { GroupInviteCard } from "@/components/GroupInviteCard";
@@ -120,7 +121,11 @@ interface DecodedMessage {
   /** Private reply: the public note id this DM quotes (rumor `q` tag). When set,
    *  the bubble renders the quoted post + a "replied privately" label. */
   quotedNoteId?: string;
+  /** A disappearing message: when it stops being shown (unix seconds). */
+  expiresAt?: number;
 }
+
+const nowSec = () => Math.floor(Date.now() / 1000);
 
 const NIP44_REQUIRED_MSG = "Your Nostr extension does not support NIP-44 encryption, which is required for private messages. Please use a compatible extension (Alby, nos2x, Nostore).";
 
@@ -822,7 +827,8 @@ export default function Messages() {
   const goBack = useGoBack();
   const [, threadMatch] = useRoute("/messages/:id");
   const navigateToConversation = useCallback((pk: string) => {
-    try { setLocation(`/messages/${nip19.npubEncode(pk)}`); } catch { setLocation(`/messages/${pk}`); }
+    // A chat's address is its people (lib/dm-room.ts): one npub, or several joined by "+".
+    try { setLocation(`/messages/${roomSlug(pk) || pk}`); } catch { setLocation(`/messages/${pk}`); }
   }, [setLocation]);
   useDocumentTitle("Chats");
 
@@ -895,7 +901,7 @@ export default function Messages() {
   const [showThreadReport, setShowThreadReport] = useState(false);
   const [threadMuted, setThreadMuted] = useState(false);
   useEffect(() => {
-    setThreadMuted(selectedPubkey ? isMutedPubkey(selectedPubkey) : false);
+    setThreadMuted(selectedPubkey && !isGroupRoom(selectedPubkey) ? isMutedPubkey(selectedPubkey) : false);
   }, [selectedPubkey]);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -1072,6 +1078,8 @@ export default function Messages() {
           pubkey: c.peerPubkey,
           lastMessage: c.lastMessage,
           lastTimestamp: c.lastTimestamp,
+          subject: c.subject,
+          subjectAt: c.subjectAt,
           // Derive unread from the shared read ledger instead of hardcoding
           // false: a message that arrived while the app was closed (e.g. a chat
           // sitting in Requests) must still light the unread badge on load.
@@ -1082,7 +1090,8 @@ export default function Messages() {
       // Show cached profiles instantly, then only relay-fetch the ones we don't
       // have yet — from the fast dedicated profile relays (purplepag.es), not the
       // general feed relays which are slow/spotty for kind-0 lookups.
-      const cachedProfilePks = seedProfilesFromStore(cachedList.map(c => c.pubkey)).slice(0, 50);
+      // The PEOPLE in each chat: a group's key is not a public key.
+      const cachedProfilePks = seedProfilesFromStore(Array.from(new Set(cachedList.flatMap(c => roomMembers(c.pubkey))))).slice(0, 50);
       if (cachedProfilePks.length > 0) {
         fetchProfilesCached(cachedProfilePks);
         queryWithTimeout(PROFILE_RELAYS, { kinds: [KIND_METADATA], authors: cachedProfilePks }, 5000)
@@ -1141,14 +1150,16 @@ export default function Messages() {
 
       const seenIds = new Set<string>();
 
-      const convMap = new Map<string, { lastEvent: Event; lastMessage: string; timestamp: number }>();
+      const convMap = new Map<string, { lastEvent: Event; lastMessage: string; timestamp: number; subject?: string; subjectAt?: number }>();
 
       for (const c of cachedConvs) {
         if (!hiddenConvoSet.has(c.peerPubkey)) {
           convMap.set(c.peerPubkey, {
             lastEvent: null as any,
             lastMessage: c.lastMessage,
-            timestamp: c.lastTimestamp });
+            timestamp: c.lastTimestamp,
+            subject: c.subject,
+            subjectAt: c.subjectAt });
         }
       }
 
@@ -1180,17 +1191,23 @@ export default function Messages() {
           // Group-chat invites and reports ride the DM pipe but are never DM
           // text (concord-dm-pipe): an invite's payload is secret key material.
           if (routeGroupRumor(pubkey, unwrapped)) continue;
-          const otherPubkey: string = unwrapped.senderPubkey === pubkey
-            ? unwrapped.recipientPubkey
-            : unwrapped.senderPubkey;
-          if (!otherPubkey || otherPubkey === pubkey) continue;
+          // The chat is everyone the message names (lib/dm-room.ts) — not "its
+          // sender": a message to several people is its own chat.
+          const otherPubkey = roomKeyOfUnwrapped(unwrapped, pubkey);
+          if (!otherPubkey) continue;
+          // A disappearing message whose time has passed is not shown or kept.
+          if (isExpired(unwrapped.expiresAt, nowSec())) continue;
           if (hiddenConvoSet.has(otherPubkey)) continue;
           const existing = convMap.get(otherPubkey);
+          const name = newerSubject(existing, { subject: unwrapped.subject, at: unwrapped.timestamp });
           if (!existing || unwrapped.timestamp > existing.timestamp) {
             convMap.set(otherPubkey, {
               lastEvent: batch[j],
               lastMessage: unwrapped.content,
-              timestamp: unwrapped.timestamp });
+              timestamp: unwrapped.timestamp,
+              ...name });
+          } else if (name.subject !== existing.subject) {
+            convMap.set(otherPubkey, { ...existing, ...name });
           }
           // Persist the decoded message to the THREAD store — not just the
           // preview. The old loop wrote putConversation (preview) only, while
@@ -1202,7 +1219,8 @@ export default function Messages() {
             id: unwrapped.rumorId, ownerPubkey: pubkey, peerPubkey: otherPubkey,
             content: unwrapped.content, from: unwrapped.senderPubkey,
             timestamp: unwrapped.timestamp, encryption: "nip17",
-            fileMetadata: unwrapped.fileMetadata, quotedNoteId: unwrapped.quotedNoteId });
+            fileMetadata: unwrapped.fileMetadata, quotedNoteId: unwrapped.quotedNoteId,
+            expiresAt: unwrapped.expiresAt });
           decodedByPeer.set(otherPubkey, peerMsgs);
         }
       }
@@ -1219,6 +1237,8 @@ export default function Messages() {
           pubkey: pk,
           lastMessage: data.lastMessage,
           lastTimestamp: data.timestamp,
+          subject: data.subject,
+          subjectAt: data.subjectAt,
           unread: data.timestamp > readDmLastRead(pk) }));
         earlyList.sort((a, b) => b.lastTimestamp - a.lastTimestamp);
         setConversations(earlyList);
@@ -1234,21 +1254,25 @@ export default function Messages() {
           pubkey: pk,
           lastMessage: data.lastMessage,
           lastTimestamp: data.timestamp,
+          subject: data.subject,
+          subjectAt: data.subjectAt,
           unread: data.timestamp > readDmLastRead(pk) });
-        if (!profilesRef.current.has(pk)) profileFetches.push(pk);
+        for (const member of roomMembers(pk)) if (!profilesRef.current.has(member)) profileFetches.push(member);
 
         dmCache.putConversation(pubkey, {
           ownerPubkey: pubkey,
           peerPubkey: pk,
           lastMessage: data.lastMessage,
-          lastTimestamp: data.timestamp }).catch((e) => console.warn("[DM] Cache putConversation failed:", e?.message));
+          lastTimestamp: data.timestamp,
+          subject: data.subject,
+          subjectAt: data.subjectAt }).catch((e) => console.warn("[DM] Cache putConversation failed:", e?.message));
       }
 
       convList.sort((a, b) => b.lastTimestamp - a.lastTimestamp);
       setConversations(convList);
 
       Array.from(hiddenConvoSet).forEach(hpk => {
-        if (!profilesRef.current.has(hpk)) profileFetches.push(hpk);
+        for (const member of roomMembers(hpk)) if (!profilesRef.current.has(member)) profileFetches.push(member);
       });
 
       const missingProfilePks = seedProfilesFromStore(profileFetches);
@@ -1341,19 +1365,20 @@ export default function Messages() {
         // Group-chat invites and reports: never a DM (concord-dm-pipe).
         if (routeGroupRumor(pubkey, unwrapped)) return;
 
-        const otherPubkey = unwrapped.senderPubkey === pubkey
-          ? unwrapped.recipientPubkey
-          : unwrapped.senderPubkey;
-        if (!otherPubkey || otherPubkey === pubkey) return;
+        const otherPubkey = roomKeyOfUnwrapped(unwrapped, pubkey);
+        if (!otherPubkey) return;
+        if (isExpired(unwrapped.expiresAt, nowSec())) return;
 
         markCacheStale(pubkey, otherPubkey);
 
         setConversations(prev => {
+          const was = prev.find(c => c.pubkey === otherPubkey);
           const filtered = prev.filter(c => c.pubkey !== otherPubkey);
           filtered.unshift({
             pubkey: otherPubkey,
             lastMessage: unwrapped.content,
             lastTimestamp: unwrapped.timestamp,
+            ...newerSubject(was, { subject: unwrapped.subject, at: unwrapped.timestamp }),
             unread: true });
           return filtered;
         });
@@ -1365,16 +1390,19 @@ export default function Messages() {
           timestamp: unwrapped.timestamp,
           encryption: "nip17" as const,
           fileMetadata: unwrapped.fileMetadata,
-          quotedNoteId: unwrapped.quotedNoteId };
+          quotedNoteId: unwrapped.quotedNoteId,
+          expiresAt: unwrapped.expiresAt };
         appendCachedMessage(pubkey, otherPubkey, newMsg);
         dmCache.putMessage(pubkey, otherPubkey, {
           id: newMsg.id, ownerPubkey: pubkey, peerPubkey: otherPubkey,
           content: newMsg.content, from: newMsg.from,
           timestamp: newMsg.timestamp, encryption: newMsg.encryption,
-          fileMetadata: newMsg.fileMetadata, quotedNoteId: newMsg.quotedNoteId }).catch((e) => console.warn("[DM] Cache putMessage failed:", e?.message));
+          fileMetadata: newMsg.fileMetadata, quotedNoteId: newMsg.quotedNoteId,
+          expiresAt: newMsg.expiresAt }).catch((e) => console.warn("[DM] Cache putMessage failed:", e?.message));
         dmCache.putConversation(pubkey, {
           ownerPubkey: pubkey, peerPubkey: otherPubkey,
-          lastMessage: unwrapped.content, lastTimestamp: unwrapped.timestamp }).catch((e) => console.warn("[DM] Cache putConversation failed:", e?.message));
+          lastMessage: unwrapped.content, lastTimestamp: unwrapped.timestamp,
+          subject: unwrapped.subject, subjectAt: unwrapped.subject ? unwrapped.timestamp : undefined }).catch((e) => console.warn("[DM] Cache putConversation failed:", e?.message));
 
         if (selectedPubkeyRef.current === otherPubkey) {
           setMessages(prev => {
@@ -1387,7 +1415,7 @@ export default function Messages() {
           });
         }
 
-        fetchProfile(otherPubkey);
+        for (const member of roomMembers(otherPubkey)) fetchProfile(member);
       });
     };
 
@@ -1428,10 +1456,9 @@ export default function Messages() {
             // Group-chat invites and reports: never a DM (concord-dm-pipe).
             if (routeGroupRumor(pubkey, unwrapped)) return;
 
-            const isRelevant =
-              (unwrapped.senderPubkey === contactPubkey && unwrapped.recipientPubkey === pubkey) ||
-              (unwrapped.senderPubkey === pubkey && unwrapped.recipientPubkey === contactPubkey);
-            if (!isRelevant) return;
+            // This chat's messages only: the same people, no more and no fewer.
+            if (roomKeyOfUnwrapped(unwrapped, pubkey) !== contactPubkey) return;
+            if (isExpired(unwrapped.expiresAt, nowSec())) return;
 
             const newMsg: DecodedMessage = {
               id: unwrapped.rumorId,
@@ -1440,14 +1467,16 @@ export default function Messages() {
               timestamp: unwrapped.timestamp,
               encryption: "nip17",
               fileMetadata: unwrapped.fileMetadata,
-              quotedNoteId: unwrapped.quotedNoteId };
+              quotedNoteId: unwrapped.quotedNoteId,
+              expiresAt: unwrapped.expiresAt };
 
             appendCachedMessage(pubkey, contactPubkey, newMsg);
             dmCache.putMessage(pubkey, contactPubkey, {
               id: newMsg.id, ownerPubkey: pubkey, peerPubkey: contactPubkey,
               content: newMsg.content, from: newMsg.from,
               timestamp: newMsg.timestamp, encryption: newMsg.encryption,
-              fileMetadata: newMsg.fileMetadata, quotedNoteId: newMsg.quotedNoteId }).catch((e) => console.warn("[DM] Cache putMessage failed:", e?.message));
+              fileMetadata: newMsg.fileMetadata, quotedNoteId: newMsg.quotedNoteId,
+              expiresAt: newMsg.expiresAt }).catch((e) => console.warn("[DM] Cache putMessage failed:", e?.message));
 
             setMessages(prev => {
               if (seenMessageIdsRef.current.has(unwrapped.rumorId)) return prev;
@@ -1484,14 +1513,16 @@ export default function Messages() {
     // "Jump back in" MRU (Stories menu): label/avatar from the local profile
     // cache only — recording must never trigger a fetch. getCachedProfile
     // returns the kind-0 EVENT, so read fields through getProfileContent.
+    const members = roomMembers(contactPubkey);
+    const isGroup = isGroupRoom(contactPubkey);
     try {
-      const cachedEv = getCachedProfile(contactPubkey);
+      const cachedEv = isGroup ? undefined : getCachedProfile(contactPubkey);
       const prof = cachedEv ? getProfileContent(cachedEv) : undefined;
       recordRecentDestination(pubkey, {
         type: "dm",
         id: contactPubkey,
-        path: `/messages/${nip19.npubEncode(contactPubkey)}`,
-        label: prof?.display_name || prof?.name || undefined,
+        path: `/messages/${roomSlug(contactPubkey)}`,
+        label: isGroup ? "Group chat" : (prof?.display_name || prof?.name || undefined),
         avatar: prof?.picture || undefined,
       });
     } catch {}
@@ -1505,7 +1536,7 @@ export default function Messages() {
     // then showed a raw npub + initials forever. Re-recording the ACTIVE
     // thread with real identity is idempotent (it is the most recent
     // destination by definition). One-shot, cancelled if the user switches.
-    void (async () => {
+    if (!isGroup) void (async () => {
       for (const delay of [800, 2000, 4000]) {
         await new Promise((r) => setTimeout(r, delay));
         if (openConvoTokenRef.current !== requestToken) return;
@@ -1528,9 +1559,10 @@ export default function Messages() {
       }
     })();
 
-    fetchRelayLists([contactPubkey]);
+    fetchRelayLists(members);
 
-    const cached = getCachedMessages(pubkey, contactPubkey);
+    const cachedAll = getCachedMessages(pubkey, contactPubkey);
+    const cached = cachedAll ? cachedAll.filter(m => !isExpired(m.expiresAt, nowSec())) : null;
     if (cached && cached.length > 0) {
       seenMessageIdsRef.current = new Set(cached.map(m => m.id));
       seenContentKeysRef.current = new Set(cached.map(m => msgContentKey(m.from, m.timestamp, m.content)));
@@ -1538,7 +1570,7 @@ export default function Messages() {
       setMessages(cached);
       setThreadLoading(false);
       if (!previewOnly) startLiveThread(contactPubkey);
-      fetchProfile(contactPubkey);
+      members.forEach(m => { fetchProfile(m); });
       return;
     }
 
@@ -1568,7 +1600,8 @@ export default function Messages() {
               encKey: m.fileMetadata.encKey,
               encNonce: m.fileMetadata.encNonce,
             } : undefined,
-            quotedNoteId: m.quotedNoteId }));
+            quotedNoteId: m.quotedNoteId,
+            expiresAt: m.expiresAt }));
         if (idbMessages.length > 0) {
           seenMessageIdsRef.current = new Set(idbMessages.map(m => m.id));
           seenContentKeysRef.current = new Set(idbMessages.map(m => msgContentKey(m.from, m.timestamp, m.content)));
@@ -1588,10 +1621,10 @@ export default function Messages() {
     }
 
     try {
-      fetchProfile(contactPubkey);
-      // Warm the contact's relay cache for when we reply; history below queries
+      members.forEach(m => { fetchProfile(m); });
+      // Warm each member's relay cache for when we reply; history below queries
       // MY inbox relays since the filter is #p = me.
-      fetchDMRelayList(contactPubkey).catch((e) => console.warn("[DM] fetchDMRelayList failed for contact:", e?.message));
+      for (const m of members) fetchDMRelayList(m).catch((e) => console.warn("[DM] fetchDMRelayList failed for contact:", e?.message));
 
       // For a single opened conversation, check broadly (Wisp-style): wraps are
       // #p = me, so they live on MY inbox relays — but a sender that mis-routes
@@ -1599,7 +1632,7 @@ export default function Messages() {
       const dmRelays = filterBlockedRelays(
         Array.from(new Set([
           ...getMyDMReceiveRelays(pubkey),
-          ...getDMRelaysForContact(contactPubkey, pubkey),
+          ...members.flatMap(m => getDMRelaysForContact(m, pubkey)),
         ]))
       ).slice(0, 16);
 
@@ -1658,10 +1691,9 @@ export default function Messages() {
           // (The self-heal force pass can re-decrypt an already-processed
           // wrap — without this an invite would leak its bundle into the thread.)
           if (routeGroupRumor(pubkey, unwrapped)) continue;
-          const isRelevant =
-            (unwrapped.senderPubkey === contactPubkey && unwrapped.recipientPubkey === pubkey) ||
-            (unwrapped.senderPubkey === pubkey && unwrapped.recipientPubkey === contactPubkey);
-          if (!isRelevant) continue;
+          // This chat's messages only: the same people, no more and no fewer.
+          if (roomKeyOfUnwrapped(unwrapped, pubkey) !== contactPubkey) continue;
+          if (isExpired(unwrapped.expiresAt, nowSec())) continue;
           if (hiddenSet.has(unwrapped.rumorId)) continue;
           if (seenRumorIds.has(unwrapped.rumorId)) continue;
           seenRumorIds.add(unwrapped.rumorId);
@@ -1672,7 +1704,8 @@ export default function Messages() {
             timestamp: unwrapped.timestamp,
             encryption: "nip17",
             fileMetadata: unwrapped.fileMetadata,
-            quotedNoteId: unwrapped.quotedNoteId });
+            quotedNoteId: unwrapped.quotedNoteId,
+            expiresAt: unwrapped.expiresAt });
         }
       }
 
@@ -1734,6 +1767,7 @@ export default function Messages() {
           encryption: m.encryption,
           fileMetadata: m.fileMetadata,
           quotedNoteId: m.quotedNoteId,
+          expiresAt: m.expiresAt,
         }));
         dmCache.putMessages(pubkey, contactPubkey, idbEntries).catch((e) => console.warn("[DM] Cache putMessages failed:", e?.message));
       } else if (idbMessages.length === 0) {
@@ -1753,6 +1787,34 @@ export default function Messages() {
     }
   }, [pubkey, signer, fetchProfile, toast, startLiveThread]);
 
+  /**
+   * Send one message to everyone in a several-person chat (NIP-17): the same
+   * message, wrapped once per member, each copy to THAT member's inbox relays,
+   * plus the copy we keep. Resolves with the message id once every member has
+   * a relay that took their copy; throws when anyone was missed, so the bubble
+   * shows "tap to retry" — and a retry rebuilds the same id (same timestamp),
+   * so those who already have it don't see it twice.
+   */
+  const sendToGroup = useCallback(async (
+    roomKey: string,
+    content: string,
+    opts: { rumorCreatedAt: number; rumorKind?: number; extraTags?: string[][] },
+  ): Promise<string> => {
+    if (!pubkey || !signer) throw new Error("Not signed in.");
+    const members = roomMembers(roomKey);
+    await Promise.all(members.map(m => fetchDMRelayList(m, { force: true }).catch(() => {})));
+    const built = await createRoomGiftWraps(signer, pubkey, members, content, opts);
+    if (!built) throw new Error("Failed to create encrypted message.");
+    const results = await Promise.allSettled(built.wraps.map(({ to, wrap }) =>
+      publishWithFallback(getDMRelaysForContact(to), wrap, "gift-wrap-to-recipient", hasDMRelayList(to))));
+    if (built.selfWrap) {
+      publishWithFallback(getMyDMReceiveRelays(pubkey), built.selfWrap, "gift-wrap-for-self", true).catch((e) => console.warn("[DM] Self-wrap publish failed:", e));
+    }
+    const missed = results.filter(r => r.status === "rejected").length;
+    if (missed > 0) throw new Error(missed === members.length ? "Couldn't reach anyone in this chat — tap the message to retry." : `Didn't reach ${missed} of ${members.length} people — tap the message to retry.`);
+    return built.rumorId;
+  }, [pubkey, signer]);
+
   // Encrypt + publish a DM in the background, reconciling the optimistic
   // message's status (sending → sent, or failed). Shared by send and retry.
   const { emojis: dmEmojiList } = useCustomEmojis();
@@ -1761,6 +1823,23 @@ export default function Messages() {
     if (!pubkey || !signer) return;
     setMsgStatus(s => ({ ...s, [clientId]: "sending" }));
     try {
+      if (isGroupRoom(peer)) {
+        // A several-person chat: one message for everyone (sendToGroup below).
+        const realId = await sendToGroup(peer, messageText, { rumorCreatedAt: now, extraTags: buildEmojiTags(messageText, dmEmojiMap) });
+        seenMessageIdsRef.current.add(realId);
+        seenContentKeysRef.current.add(msgContentKey(pubkey, now, messageText));
+        deliveredMsgIds.current.add(realId);
+        setMessages(prev => prev.map(m => (m.id === clientId ? { ...m, id: realId } : m)));
+        setMsgStatus(s => { const n = { ...s }; delete n[clientId]; return n; });
+        appendCachedMessage(pubkey, peer, { id: realId, content: messageText, from: pubkey, timestamp: now, encryption: "nip17" });
+        dmCache.putMessage(pubkey, peer, {
+          id: realId, ownerPubkey: pubkey, peerPubkey: peer,
+          content: messageText, from: pubkey, timestamp: now, encryption: "nip17" }).catch((e) => console.warn("[DM] Cache putMessage failed:", e?.message));
+        dmCache.putConversation(pubkey, {
+          ownerPubkey: pubkey, peerPubkey: peer,
+          lastMessage: messageText, lastTimestamp: now }).catch((e) => console.warn("[DM] Cache putConversation failed:", e?.message));
+        return;
+      }
       await fetchDMRelayList(peer, { force: true }).catch((e) => console.warn("[DM] fetchDMRelayList failed for contact:", e?.message));
       // NIP-17: recipient's wrap → THEIR relays only; self-copy → MY relays.
       const recipientRelays = getDMRelaysForContact(peer);
@@ -1812,7 +1891,7 @@ export default function Messages() {
         description: isRelayError ? "Couldn't reach any relay — tap the message to retry." : (err instanceof Error ? err.message : "Couldn't encrypt or publish — tap to retry."),
         variant: "destructive" });
     }
-  }, [pubkey, signer, toast, dmEmojiMap]);
+  }, [pubkey, signer, toast, dmEmojiMap, sendToGroup]);
 
   // Stickers/GIFs picked but not yet sent — shown as preview chips above the input
   // (instead of pasting a raw URL / :shortcode: into the text box). Appended to the
@@ -1876,34 +1955,40 @@ export default function Messages() {
       const fileRef = await encryptAndUploadDmFile(file, signer, setUploadStatus);
       const mimeType = fileRef.mime;
 
-      await fetchDMRelayList(selectedPubkey, { force: true }).catch((e) => console.warn("[DM] fetchDMRelayList failed for contact:", e?.message));
-      // NIP-17: recipient's wrap → THEIR relays only; self-copy → MY relays.
-      const recipientRelays = getDMRelaysForContact(selectedPubkey);
-      const selfRelays = getMyDMReceiveRelays(pubkey);
-      const recipientHas10050 = hasDMRelayList(selectedPubkey);
       const now = Math.floor(Date.now() / 1000);
-
       const fileTags = buildFileMessageTags(fileRef);
+      let sentId: string;
+      if (isGroupRoom(selectedPubkey)) {
+        // The file's key rides on the one message everyone in the chat gets.
+        sentId = await sendToGroup(selectedPubkey, fileRef.url, { rumorCreatedAt: now, rumorKind: KIND_FILE_MESSAGE, extraTags: fileTags });
+      } else {
+        await fetchDMRelayList(selectedPubkey, { force: true }).catch((e) => console.warn("[DM] fetchDMRelayList failed for contact:", e?.message));
+        // NIP-17: recipient's wrap → THEIR relays only; self-copy → MY relays.
+        const recipientRelays = getDMRelaysForContact(selectedPubkey);
+        const selfRelays = getMyDMReceiveRelays(pubkey);
+        const recipientHas10050 = hasDMRelayList(selectedPubkey);
 
-      const giftWrapResult = await createGiftWrap(signer, pubkey, selectedPubkey, fileRef.url, { rumorCreatedAt: now, rumorKind: KIND_FILE_MESSAGE, extraTags: fileTags });
-      const wrapForSelf = await createGiftWrapForSelf(signer, pubkey, selectedPubkey, fileRef.url, { rumorCreatedAt: now, rumorKind: KIND_FILE_MESSAGE, extraTags: fileTags });
+        const giftWrapResult = await createGiftWrap(signer, pubkey, selectedPubkey, fileRef.url, { rumorCreatedAt: now, rumorKind: KIND_FILE_MESSAGE, extraTags: fileTags });
+        const wrapForSelf = await createGiftWrapForSelf(signer, pubkey, selectedPubkey, fileRef.url, { rumorCreatedAt: now, rumorKind: KIND_FILE_MESSAGE, extraTags: fileTags });
 
-      if (!giftWrapResult) {
-        throw new Error("Failed to create encrypted file message.");
-      }
+        if (!giftWrapResult) {
+          throw new Error("Failed to create encrypted file message.");
+        }
 
-      await publishWithFallback(recipientRelays, giftWrapResult.wrap, "file-wrap-to-recipient", recipientHas10050);
-      if (wrapForSelf) {
-        publishWithFallback(selfRelays, wrapForSelf, "file-wrap-for-self", true).catch((e) => {
-          console.warn("[DM] Self-wrap publish failed:", e);
-        });
+        await publishWithFallback(recipientRelays, giftWrapResult.wrap, "file-wrap-to-recipient", recipientHas10050);
+        if (wrapForSelf) {
+          publishWithFallback(selfRelays, wrapForSelf, "file-wrap-for-self", true).catch((e) => {
+            console.warn("[DM] Self-wrap publish failed:", e);
+          });
+        }
+        sentId = giftWrapResult.rumorId;
       }
 
       const fileMeta: FileMetadata = {
         url: fileRef.url, mimeType, dim: fileRef.dim, size: fileRef.size, originalHash: fileRef.sha256,
         encAlgo: fileRef.algo, encKey: fileRef.key, encNonce: fileRef.nonce };
       const newMsg: DecodedMessage = {
-        id: giftWrapResult.rumorId,
+        id: sentId,
         content: fileRef.url,
         from: pubkey,
         timestamp: now,
@@ -1941,7 +2026,7 @@ export default function Messages() {
       setUploading(false);
       setUploadStatus("");
     }
-  }, [pubkey, signer, selectedPubkey, toast]);
+  }, [pubkey, signer, selectedPubkey, toast, sendToGroup]);
 
   const handleNewChat = useCallback(() => {
     const input = newChatInput.trim();
@@ -2208,16 +2293,36 @@ export default function Messages() {
     }
     const id = threadMatch?.id;
     if (id) {
-      let hex: string | null = null;
-      try { const d = nip19.decode(id); if (d.type === "npub") hex = d.data as string; } catch {}
-      if (!hex && /^[0-9a-f]{64}$/i.test(id)) hex = id;
-      if (hex && hex !== selectedPubkeyRef.current) openConversation(hex);
+      // The address names the chat's people: one npub, or several joined by "+"
+      // (lib/dm-room.ts). A hex key still works, for old links.
+      const key = roomKeyFromSlug(id, pubkey);
+      if (key && key !== selectedPubkeyRef.current) openConversation(key);
     } else if (selectedPubkeyRef.current) {
       closeThread();
     }
   }, [pubkey, threadMatch?.id, openConversation, closeThread, setLocation]);
 
   const followsSet = useMemo(() => new Set(follows), [follows]);
+
+  /**
+   * Names and pictures by CHAT key. For a one-to-one chat that is the person's
+   * profile, as before. A several-person chat has no profile of its own: it is
+   * called by its name when a message has set one (NIP-17 `subject`), and by
+   * its people otherwise ("Alice, Bob +2"). Everything that shows a chat reads
+   * this, so a group needs no second code path in the list or the header.
+   */
+  const roomProfiles = useMemo(() => {
+    const keys = new Set<string>(conversations.filter(c => isGroupRoom(c.pubkey)).map(c => c.pubkey));
+    if (selectedPubkey && isGroupRoom(selectedPubkey)) keys.add(selectedPubkey);
+    if (keys.size === 0) return profiles;
+    const merged = new Map(profiles);
+    for (const key of keys) {
+      const subject = conversations.find(c => c.pubkey === key)?.subject;
+      const names = roomMembers(key).map(m => displayNameWith("person", m, getDMDisplayName(profiles.get(m) || null, m)));
+      merged.set(key, { display_name: subject || groupTitle(names) });
+    }
+    return merged;
+  }, [profiles, conversations, selectedPubkey]);
 
   useEffect(() => {
     if (pubkey) {
@@ -2239,7 +2344,7 @@ export default function Messages() {
   useEffect(() => {
     if (!pubkey || conversations.length === 0) return;
     const toCheck = conversations
-      .filter(c => !initiatedByMe.has(c.pubkey) && !checkedInitiatedRef.current.has(c.pubkey) && !followsSet.has(c.pubkey) && !promotedPrimary.has(c.pubkey))
+      .filter(c => !initiatedByMe.has(c.pubkey) && !checkedInitiatedRef.current.has(c.pubkey) && !roomMembers(c.pubkey).some(m => followsSet.has(m)) && !promotedPrimary.has(c.pubkey))
       .map(c => c.pubkey);
     if (toCheck.length === 0) return;
 
@@ -2270,11 +2375,15 @@ export default function Messages() {
   const isPrimaryConversation = useCallback((peerPubkey: string): boolean => {
     if (demotedToRequests.has(peerPubkey)) return false;
     if (promotedPrimary.has(peerPubkey)) return true;
-    if (followsSet.has(peerPubkey)) return true;
-    if (followedByPubkeys?.has(peerPubkey)) return true;
-    const tier = getAuthorTier(peerPubkey);
-    if (tier === "strong" || tier === "moderate") return true;
     if (initiatedByMe.has(peerPubkey)) return true;
+    // A several-person chat is a chat (not a request) when someone in it is
+    // someone you'd take a message from; a group of strangers is a request.
+    for (const member of roomMembers(peerPubkey)) {
+      if (followsSet.has(member)) return true;
+      if (followedByPubkeys?.has(member)) return true;
+      const tier = getAuthorTier(member);
+      if (tier === "strong" || tier === "moderate") return true;
+    }
     return false;
   }, [demotedToRequests, promotedPrimary, followsSet, followedByPubkeys, getAuthorTier, initiatedByMe]);
 
@@ -2283,7 +2392,7 @@ export default function Messages() {
     if (searchFilter) {
       const q = searchFilter.toLowerCase();
       list = list.filter(c => {
-        const p = profiles.get(c.pubkey) || null;
+        const p = roomProfiles.get(c.pubkey) || null;
         const name = getDMDisplayName(p, c.pubkey).toLowerCase();
         return name.includes(q) || c.lastMessage.toLowerCase().includes(q);
       });
@@ -2298,7 +2407,7 @@ export default function Messages() {
       }
     }
     return { primaryConversations: primary, requestConversations: requests };
-  }, [conversations, hiddenConvos, searchFilter, profiles, isPrimaryConversation]);
+  }, [conversations, hiddenConvos, searchFilter, roomProfiles, isPrimaryConversation]);
 
   const activeConversations = dmTab === "primary" ? primaryConversations : requestConversations;
 
@@ -2344,7 +2453,7 @@ export default function Messages() {
       .sort((a, b) => b.lastTimestamp - a.lastTimestamp)[0];
     if (newest) setOtherChatAlert(newest.pubkey);
   }, [conversations, selectedPubkey]);
-  const alertProfile = otherChatAlert ? profiles.get(otherChatAlert) : undefined;
+  const alertProfile = otherChatAlert ? roomProfiles.get(otherChatAlert) : undefined;
   const alertName = otherChatAlert
     ? getDMDisplayName(alertProfile ?? null, otherChatAlert)
     : "";
@@ -2402,7 +2511,7 @@ export default function Messages() {
 
   useEffect(() => {
     if (!pubkey || conversations.length === 0) return;
-    const pks = conversations.map(c => c.pubkey);
+    const pks = Array.from(new Set(conversations.flatMap(c => roomMembers(c.pubkey))));
     // Shared pipeline: global batch prewarm (provisional) + per-observer
     // refinement. Injecting the raw global batch here used to mark those
     // values authoritative and wrote sticky -1 "No data" markers for misses.
@@ -2447,15 +2556,28 @@ export default function Messages() {
     toast({ title: "Moved to Requests" });
   }, [pubkey, toast]);
 
+  // Disappearing messages leave the screen when their time comes, not at the
+  // next reload: while any message on screen has an expiry, look again every
+  // few seconds. (The store drops them for good the next time it is read.)
+  const [expiryTick, setExpiryTick] = useState(0);
+  const hasExpiring = useMemo(() => messages.some(m => typeof m.expiresAt === "number"), [messages]);
+  useEffect(() => {
+    if (!hasExpiring) return;
+    const id = setInterval(() => setExpiryTick(t => t + 1), 5000);
+    return () => clearInterval(id);
+  }, [hasExpiring]);
+
   const visibleMessages = useMemo(() => {
     const seen = new Set<string>();
+    const now = nowSec();
     return messages.filter(m => {
       if (hiddenMsgIds.has(m.id)) return false;
+      if (isExpired(m.expiresAt, now)) return false;
       if (seen.has(m.id)) return false;
       seen.add(m.id);
       return true;
     });
-  }, [messages, hiddenMsgIds]);
+  }, [messages, hiddenMsgIds, expiryTick]);
 
   const prevMsgCountRef = useRef(0);
   const shouldAnimateLast = visibleMessages.length > prevMsgCountRef.current && prevMsgCountRef.current > 0;
@@ -2546,12 +2668,16 @@ export default function Messages() {
     );
   }
 
-  const contactProfile = selectedPubkey ? (profiles.get(selectedPubkey) || null) : null;
+  const contactProfile = selectedPubkey ? (roomProfiles.get(selectedPubkey) || null) : null;
+  const selectedIsGroup = isGroupRoom(selectedPubkey);
+  const selectedSubject = selectedPubkey ? conversations.find(c => c.pubkey === selectedPubkey)?.subject : undefined;
+  const nameOf = (pk: string) => displayNameWith("person", pk, getDMDisplayName(profiles.get(pk) || null, pk));
+  const threadMemberNames = selectedPubkey && selectedIsGroup ? roomMembers(selectedPubkey).map(nameOf) : [];
   // Petname wins in the thread header too — one surface showing your name and
   // another the real one would read as two different people. The real name
   // stays one tap away on the profile.
   const contactName = selectedPubkey
-    ? displayNameWith("person", selectedPubkey, getDMDisplayName(contactProfile, selectedPubkey))
+    ? (selectedIsGroup ? getDMDisplayName(contactProfile, selectedPubkey) : displayNameWith("person", selectedPubkey, getDMDisplayName(contactProfile, selectedPubkey)))
     : "";
 
   return (
@@ -2576,7 +2702,7 @@ export default function Messages() {
           onOpenGroup={(communityId, channelId) => setLocation(channelId
             ? `/outposts/c/${communityId}?channel=${encodeURIComponent(channelId)}`
             : `/outposts/c/${communityId}`)}
-          profiles={profiles}
+          profiles={roomProfiles}
           hidePreviews={hidePreviews}
           selectedPubkey={selectedPubkey}
           dmTab={dmTab}
@@ -2621,7 +2747,7 @@ export default function Messages() {
           }}
           handleClearAllHidden={handleClearAllHidden}
           navigateToConversation={navigateToConversation}
-          onOpenProfile={(pk) => setLocation(`/profile/${nip19.npubEncode(pk)}`)}
+          onOpenProfile={(pk) => { if (isGroupRoom(pk)) navigateToConversation(pk); else setLocation(`/profile/${nip19.npubEncode(pk)}`); }}
           handlePromoteToPrimary={handlePromoteToPrimary}
           handleDemoteToRequests={handleDemoteToRequests}
           onRemoveConversation={(pk) => setDeleteConfirm({ type: "conversation", id: pk })}
@@ -2660,14 +2786,16 @@ export default function Messages() {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <button
-              onClick={() => setLocation(`/profile/${nip19.npubEncode(selectedPubkey)}`)}
-              className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
+              // A person's header opens their profile. A several-person chat
+              // has no profile to open; its people are named under its title.
+              onClick={() => { if (!selectedIsGroup) setLocation(`/profile/${nip19.npubEncode(selectedPubkey)}`); }}
+              className={`flex items-center gap-3 flex-1 min-w-0 text-left ${selectedIsGroup ? "cursor-default" : "cursor-pointer hover:opacity-80 transition-opacity"}`}
               data-testid="button-thread-profile"
             >
               <Avatar className="w-8 h-8 border border-border shrink-0">
                 <AvatarImage src={contactProfile?.picture} alt={contactName} />
                 <AvatarFallback className="text-xs bg-muted text-muted-foreground">
-                  {contactName.slice(0, 2).toUpperCase()}
+                  {selectedIsGroup ? <Users className="w-4 h-4" /> : contactName.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
@@ -2675,12 +2803,23 @@ export default function Messages() {
                   <span className="truncate">{contactName}</span>
                   {/* Claimed name only — contactName can be an npub fallback, and
                       comparing an npub against trusted names is noise. */}
-                  <PersonBadges
-                    pubkey={selectedPubkey}
-                    nip05={contactProfile?.nip05}
-                    claimedName={contactProfile?.display_name || contactProfile?.name}
-                  />
+                  {!selectedIsGroup && (
+                    <PersonBadges
+                      pubkey={selectedPubkey}
+                      nip05={contactProfile?.nip05}
+                      claimedName={contactProfile?.display_name || contactProfile?.name}
+                    />
+                  )}
                 </p>
+                {/* Who is in a several-person chat, and a one-to-one chat's
+                    name when the other app gave it one (NIP-17 `subject`). */}
+                {selectedIsGroup ? (
+                  <p className="text-[11px] text-muted-foreground truncate" data-testid="text-thread-members">
+                    {threadMemberNames.length + 1} people · {selectedSubject ? threadMemberNames.join(", ") : "you and them"}
+                  </p>
+                ) : selectedSubject ? (
+                  <p className="text-[11px] text-muted-foreground truncate" data-testid="text-thread-subject">{selectedSubject}</p>
+                ) : null}
               </div>
             </button>
             {isDeletedPreview && (
@@ -2690,7 +2829,9 @@ export default function Messages() {
               <ShieldCheck className="w-3 h-3 text-green-500/70" />
               <span>NIP-17</span>
             </div>
-            <DropdownMenu>
+            {/* Mute and Report act on a person; a several-person chat's people
+                are muted or reported from their own profiles. */}
+            {!selectedIsGroup && <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
@@ -2722,11 +2863,11 @@ export default function Messages() {
                   <Flag className="w-4 h-4" /> Report
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu>
+            </DropdownMenu>}
             {/* Same person-report shape Profile uses: a kind-0 stub carrying
                 the contact's pubkey — ReportDialog emits the p-tag report.
                 DM content itself is E2EE and never leaves the thread. */}
-            {selectedPubkey && (
+            {selectedPubkey && !selectedIsGroup && (
               <ReportDialog
                 open={showThreadReport}
                 onOpenChange={setShowThreadReport}
@@ -2762,7 +2903,7 @@ export default function Messages() {
           {/* Problem-only delivery-health banner: renders nothing for healthy
               threads; warns when the recipient has no published kind-10050 DM
               inbox (or, rarely, when our own auto-publish failed). */}
-          {pubkey && (
+          {pubkey && !selectedIsGroup && (
             <DmDeliveryHealth
               myPubkey={pubkey}
               contactPubkey={selectedPubkey}
@@ -2830,13 +2971,16 @@ export default function Messages() {
                     {!isMine && (
                       isClusterStart ? (
                         <button
-                          onClick={() => selectedPubkey && setLocation(`/profile/${nip19.npubEncode(selectedPubkey)}`)}
+                          // Whoever WROTE it: in a several-person chat that is
+                          // not always the same person.
+                          onClick={() => setLocation(`/profile/${nip19.npubEncode(msg.from)}`)}
                           className="shrink-0 mb-0.5 cursor-pointer hover:ring-2 hover:ring-brand/50 rounded-full transition-all"
+                          aria-label={`Open ${nameOf(msg.from)}'s profile`}
                         >
                           <Avatar className="w-6 h-6 md:w-7 md:h-7 border border-border/60">
-                            <AvatarImage src={contactProfile?.picture} alt={contactName} />
+                            <AvatarImage src={profiles.get(msg.from)?.picture} alt={nameOf(msg.from)} />
                             <AvatarFallback className="text-[9px] bg-muted text-muted-foreground">
-                              {contactName.slice(0, 2).toUpperCase()}
+                              {nameOf(msg.from).slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                         </button>
@@ -2849,6 +2993,9 @@ export default function Messages() {
                         isMine ? "glass-bubble-own" : "glass-bubble-other"
                       }`}
                     >
+                      {selectedIsGroup && !isMine && isClusterStart && (
+                        <p className="text-[11px] font-medium text-brand mb-0.5 truncate" data-testid={`message-sender-${msg.id}`}>{nameOf(msg.from)}</p>
+                      )}
                       {msg.quotedNoteId && (
                         <div className="mb-1.5">
                           <p className={`text-[11px] mb-1 flex items-center gap-1 ${isMine ? "text-[#c9b8ff]" : "text-muted-foreground/70"}`}>
