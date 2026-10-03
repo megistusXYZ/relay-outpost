@@ -193,9 +193,11 @@ export function IdentityPresence({
               {i < totals.length - 1 && <span className="text-muted-foreground/30">·</span>}
             </span>
           ))}
+          {/* Plain words in the line, not a pill (owner, 2026-10-03). */}
           {isNew && (
-            <span className="ml-0.5 inline-flex items-center gap-1 rounded-full bg-brand/10 text-brand text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5">
-              <Sprout className="w-3 h-3" aria-hidden="true" /> New here
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-brand" data-testid="identity-new-here">
+              {totals.length > 0 && <span className="text-muted-foreground/30" aria-hidden="true">·</span>}
+              <Sprout className="w-3.5 h-3.5" aria-hidden="true" /> New here
             </span>
           )}
         </div>

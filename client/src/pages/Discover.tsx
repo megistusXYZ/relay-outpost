@@ -238,8 +238,9 @@ function useCountUp(target: number, ms = 400): number {
 function FreshChip({ count }: { count: number }) {
   const shown = useCountUp(count);
   return (
-    <span className="fresh-chip inline-flex items-center rounded-full bg-brand/15 text-brand text-[10px] font-semibold px-1.5 py-0.5 tabular-nums" data-testid="fresh-chip">
-      +{shown} new
+    // Plain words beside the tile's label, not a pill (owner, 2026-10-03).
+    <span className="fresh-chip inline-flex items-center text-brand text-[11px] font-medium tabular-nums" data-testid="fresh-chip">
+      {shown} new
     </span>
   );
 }
