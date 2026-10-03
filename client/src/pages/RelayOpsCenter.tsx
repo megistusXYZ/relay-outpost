@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AlertTriangle, ShieldCheck, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Megaphone, Plus, Users, Sparkles } from "lucide-react";
+import { AlertTriangle, ShieldCheck, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Megaphone, Plus, Users, UsersRound, ScrollText, Sparkles } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ErrorScreen } from "@/components/ErrorScreen";
@@ -31,11 +31,15 @@ import { KindGateCard } from "./relay-ops/KindGateCard";
 import { AnnounceTab } from "./relay-ops/AnnounceTab";
 import { CommunityTab } from "./relay-ops/CommunityTab";
 import { InboxTab } from "./relay-ops/InboxTab";
+import { TeamScreen, LogScreen } from "./relay-ops/TeamScreens";
+import { useRelayTeam } from "@/hooks/use-relay-team";
 import { useRelaysNeedYou } from "@/contexts/NeedsYouContext";
 
 const SETTINGS_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   community: Users,
   access: ShieldCheck,
+  team: UsersRound,
+  log: ScrollText,
   announce: Megaphone,
   featured: Sparkles,
 };
@@ -123,6 +127,8 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
   const feedbackEnabled = authStatus === "authorized" || (authStatus === "no-pubkey" && isOwnedRelay);
   const inbox = useFeedbackInbox(selectedRelay, signer, pubkey, feedbackEnabled);
   const feedbackUnread = inbox.unreadCount;
+  // The relay's team: shared notes and log, encrypted to the team, on the relay.
+  const team = useRelayTeam(selectedRelay, nip11, feedbackEnabled);
   // Everything waiting on this relay: feedback plus reports and join requests.
   const relaysNeedYou = useRelaysNeedYou();
   const inboxCount = feedbackUnread + relaysNeedYou.forRelay(selectedRelay);
@@ -373,7 +379,9 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
               <ErrorBoundary key={activeTab} fallbackRender={(error) => <TabErrorFallback error={error} />}>
                 {activeTab === "overview" && <OverviewTab relayUrl={selectedRelay} inbox={inbox} onOpenFeedback={() => setActiveTab("feedback")} />}
                 {(activeTab === "events" || activeTab === "live") && <ContentTab relayUrl={selectedRelay} nip11={nip11} initialLive={activeTab === "live"} initialQuery={contentSeed} />}
-                {activeTab === "people" && <PeopleTab relayUrl={selectedRelay} nip11={nip11} onSeePosts={(npub) => { setContentSeed(npub); setActiveTab("events"); }} />}
+                {activeTab === "people" && <PeopleTab relayUrl={selectedRelay} nip11={nip11} team={team} onSeePosts={(npub) => { setContentSeed(npub); setActiveTab("events"); }} />}
+                {activeTab === "team" && <TeamScreen relayUrl={selectedRelay} nip11={nip11} team={team} />}
+                {activeTab === "log" && <LogScreen relayUrl={selectedRelay} nip11={nip11} team={team} />}
                 {activeTab === "access" && <><AccessControlTab relayUrl={selectedRelay} nip11={nip11} /><KindGateCard relayUrl={selectedRelay} nip11={nip11} /></>}
                 {activeTab === "feedback" && <InboxTab relayUrl={selectedRelay} nip11={nip11} inbox={inbox} onSeePost={(id) => { setContentSeed(id); setActiveTab("events"); }} />}
                 {activeTab === "settings" && (
