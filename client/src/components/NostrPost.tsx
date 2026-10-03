@@ -299,7 +299,7 @@ function SignalCheckBadge({ eventId, statsTotal = 0, size = "default" }: { event
             )}
           </div>
           <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Who liked, reposted, or zapped this post — and how they rank in your trust graph.
+            Who liked, reposted, or sent thanks for this post — and how they rank in your trust graph.
           </p>
 
           {loading && (
@@ -3388,11 +3388,13 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
           className={`w-8 h-8 sm:w-9 sm:h-9 shrink-0 ml-2 ${zapCount > 0 || zapAmount > 0 ? "text-amber-500 dark:text-amber-400" : "text-muted-foreground"}`}
           onClick={() => {
             if (!signer) {
-              toast({ title: "Sign in required", description: "Sign in to zap.", variant: "destructive" });
+              toast({ title: "Sign in required", description: "Sign in to send thanks.", variant: "destructive" });
               return;
             }
             setShowZapDialog(true);
           }}
+          aria-label="Send thanks"
+          title="Send thanks"
           data-testid={`button-zap-${event.id}`}
         >
           <BtcZapIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />

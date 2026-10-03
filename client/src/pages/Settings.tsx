@@ -440,7 +440,7 @@ const SCAN_FILTER_OPTIONS = [
   { value: "trending_4h", label: "Trending 4h", icon: Clock, group: "Time" },
   { value: "trending_12h", label: "Trending 12h", icon: Clock, group: "Time" },
   { value: "trending_24h", label: "Trending 24h", icon: Clock, group: "Time" },
-  { value: "mostzapped_4h", label: "Most Zapped Today", icon: Zap, group: "Zaps" },
+  { value: "mostzapped_4h", label: "Most thanked today", icon: Zap, group: "Thanks" },
 ] as const;
 
 type LaunchOption =
@@ -1487,7 +1487,7 @@ const WEIGHT_FIELDS: { key: keyof EngagementWeights; label: string; icon: string
   { key: "replies", label: "Replies", icon: "💬" },
   { key: "reposts", label: "Reposts", icon: "🔁" },
   { key: "likes", label: "Likes", icon: "❤️" },
-  { key: "zaps", label: "Zaps", icon: "⚡" },
+  { key: "zaps", label: "Thanks", icon: "⚡" },
   { key: "satsBonus", label: "Sats Bonus", icon: "₿" },
 ];
 

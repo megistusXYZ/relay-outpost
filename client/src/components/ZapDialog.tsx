@@ -619,7 +619,7 @@ export function ZapDialog({ open, onOpenChange, event, pubkey: directPubkey, rec
                   <BtcZapIcon className="w-10 h-10 text-amber-800 dark:text-amber-400" />
                   <div className="absolute inset-0 blur-xl bg-amber-400/20 rounded-full scale-150" />
                 </div>
-                <p className="text-lg font-semibold text-foreground tracking-tight">Zapped!</p>
+                <p className="text-lg font-semibold text-foreground tracking-tight">Thanks sent!</p>
                 <p className="text-sm text-amber-600/70 dark:text-amber-400/60 font-mono">{formatSats(amount)} sats sent</p>
               </div>
             )}
