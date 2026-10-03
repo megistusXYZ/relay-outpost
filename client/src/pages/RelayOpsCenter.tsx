@@ -268,9 +268,9 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                 );
               })}
               {adminRelays.length > 0 && <DropdownMenuSeparator />}
-              <DropdownMenuItem onSelect={() => navigate("/my-relays/connect")} className="min-h-[44px] gap-2.5" data-testid="ops-relay-switcher-connect">
+              <DropdownMenuItem onSelect={() => navigate("/my-relays/add")} className="min-h-[44px] gap-2.5" data-testid="ops-relay-switcher-connect">
                 <Plus className="w-4 h-4 text-brand" aria-hidden="true" />
-                <span className="text-sm">Connect another relay</span>
+                <span className="text-sm">Add a relay</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

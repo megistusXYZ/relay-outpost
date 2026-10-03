@@ -490,6 +490,7 @@ function Router() {
         <Route path="/relay-ops-center/:relayEncoded">{(params) => <RelayOpsCenter relayUrl={decodeURIComponent(params.relayEncoded)} />}</Route>
         <Route path="/relays/admin">{() => <RouteRedirect to="/my-relays" />}</Route>
         <Route path="/my-relays/connect" component={ConnectRelay} />
+        <Route path="/my-relays/add" component={ConnectRelay} />
         <Route path="/my-relays" component={MyRelays} />
         <Route path="/relays" component={RelayDashboard} />
         <Route path="/tools" component={Tools} />

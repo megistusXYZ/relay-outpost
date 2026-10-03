@@ -22,7 +22,8 @@ import {
   ArrowDown, ArrowUp, Ban, Copy, Download, Keyboard, MessageSquare,
   Pause, Play, Search, SlidersHorizontal, Trash2, Undo2, X,
 } from "lucide-react";
-import { pool } from "@/lib/nostr";
+import { pool, DEFAULT_RELAYS } from "@/lib/nostr";
+import { CommentContent } from "@/components/CommentContent";
 import { getAuthStatus, onAuthChange } from "@/lib/nip42-auth";
 import { supportsNip, type Nip11Document } from "@/lib/nip11";
 import {
@@ -45,14 +46,20 @@ import { AddToFeaturedDialog } from "@/components/AddToFeaturedDialog";
 import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 import { ManagedAtNote } from "./ops-ui";
 import { ConfirmAction, type PendingAction } from "./ConfirmAction";
+import { RefusedNotice } from "./RefusedNotice";
+import { FilterPanel, ViewsMenu } from "./ContentFilterPanel";
+import { EMPTY_FILTERS, deleteView, filterChips, isEmpty, readSavedViews, removeChip, saveView, withFilters, type ContentFilters, type SavedView } from "./content-filters";
+import { countLine, type CountState } from "./count-line";
+import { setAuthEnabled } from "@/lib/nip42-auth";
+import { scrollRootFor } from "@/lib/scroll-root";
 import {
-  ADMIN_BLOCKLIST_KEY, addModLogEntry, getStoredList, pubkeyToNpub, resolveProfileBatch, saveStoredList,
+  ADMIN_BLOCKLIST_KEY, addModLogEntry, countWithNip45, getStoredList, pubkeyToNpub, resolveProfileBatch, saveStoredList,
   subscribeWithReach, type NostrFilter, type ProfileInfo,
 } from "./shared";
 import { parseEventQuery, TIME_RANGES, type RangeId, type TimeWindow } from "./event-query";
 import {
   contentFilter, countByType, exportable, isPrivateKind, mergePage, rowPreview, scopeLine, sortEvents, toCsv,
-  typeOf, TYPE_VIEWS, typeWord, type SortDir, type SortKey, type TypeViewId,
+  looksEncrypted, typeOf, TYPE_VIEWS, typeWord, type PreviewContext, type SortDir, type SortKey, type TypeViewId,
 } from "./content-model";
 
 const PAGE = 200;
@@ -137,22 +144,32 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
   );
   const typeView: TypeViewId = view === "removed" ? "all" : view;
   const askRelayToSearch = relaySearches && !!parsed.text;
+  // The Filter panel: kinds, people, hashtags — applied by the relay itself.
+  const [filters, setFiltersRaw] = useState<ContentFilters>(EMPTY_FILTERS);
+  const setFilters = useCallback((f: ContentFilters) => {
+    setFiltersRaw(f);
+    // Chosen kinds replace the type views, so the views step aside.
+    if (f.kinds.length) setView("all");
+  }, []);
   const matches = useCallback((e: NostrEvent) => {
     if (typeView === "other" && typeOf(e.kind) !== "other") return false;
-    if (parsed.kind === undefined && typeView !== "all" && typeOf(e.kind) !== typeView) return false;
+    if (parsed.kind === undefined && !filters.kinds.length && typeView !== "all" && typeOf(e.kind) !== typeView) return false;
     if (parsed.text && !askRelayToSearch) {
       if (isPrivateKind(e.kind)) return false;
       if (!e.content.toLowerCase().includes(parsed.text.toLowerCase())) return false;
     }
     return true;
-  }, [typeView, parsed.kind, parsed.text, askRelayToSearch]);
-  const filterFor = useCallback((until?: number) => contentFilter(parsed, window_, typeView, Math.floor(Date.now() / 1000), {
+  }, [typeView, parsed.kind, parsed.text, askRelayToSearch, filters.kinds.length]);
+  const filterFor = useCallback((until?: number) => withFilters(contentFilter(parsed, window_, typeView, Math.floor(Date.now() / 1000), {
     search: askRelayToSearch, limit: PAGE, until,
-  }), [parsed, window_, typeView, askRelayToSearch]);
+  }), filters), [parsed, window_, typeView, askRelayToSearch, filters]);
 
   // ---- the answer ----
   const [results, setResults] = useState<NostrEvent[]>([]);
   const [reached, setReached] = useState(true);
+  /** The relay answered "sign in first" instead of results — not the same as empty. */
+  const [refused, setRefused] = useState<string | null>(null);
+  const [count, setCount] = useState<CountState | null>(null);
   const [searching, setSearching] = useState(false);
   const [exhausted, setExhausted] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -162,15 +179,40 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
   const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
   const nameOf = useCallback((pk: string) => profiles.get(pk)?.name, [profiles]);
 
+  // The posts reactions and reposts are about, so a row can say what was liked.
+  const [targets, setTargets] = useState<Map<string, NostrEvent>>(new Map());
+  const askedTargets = useRef<Set<string>>(new Set());
+  const byId = useMemo(() => new Map(results.map((e) => [e.id, e])), [results]);
+  useEffect(() => {
+    const want: string[] = [];
+    for (const e of results) {
+      if (![6, 7, 16].includes(e.kind)) continue;
+      const id = [...e.tags].reverse().find((t) => t[0] === "e" && /^[0-9a-f]{64}$/i.test(t[1] ?? ""))?.[1];
+      if (id && !byId.has(id) && !askedTargets.current.has(id)) { askedTargets.current.add(id); want.push(id); }
+    }
+    if (!want.length) return;
+    pool.querySync([relayUrl, ...DEFAULT_RELAYS.slice(0, 3)], { ids: want.slice(0, 150) }, { maxWait: 5000 } as never)
+      .then((evs) => { if (evs.length) setTargets((prev) => { const n = new Map(prev); evs.forEach((ev) => n.set(ev.id, ev)); return n; }); })
+      .catch(() => {});
+  }, [results, byId, relayUrl]);
+  const previewCtx = useMemo(() => ({ nameOf, targetOf: (id: string) => byId.get(id) ?? targets.get(id) }), [nameOf, byId, targets]);
+
   const knownProfiles = useRef<Set<string>>(new Set());
   useEffect(() => {
-    const fresh = [...new Set(results.map((e) => e.pubkey))].filter((pk) => !knownProfiles.current.has(pk));
+    // Authors, and anyone their posts mention by nostr: link.
+    const mentioned: string[] = [];
+    for (const e of [...results, ...targets.values()]) {
+      for (const m of e.content.matchAll(/nostr:((?:npub|nprofile)1[02-9ac-hj-np-z]+)/gi)) {
+        try { const d = nip19.decode(m[1]); mentioned.push(d.type === "npub" ? (d.data as string) : (d.data as { pubkey: string }).pubkey); } catch {}
+      }
+    }
+    const fresh = [...new Set([...results.map((e) => e.pubkey), ...mentioned])].filter((pk) => !knownProfiles.current.has(pk));
     if (!fresh.length) return;
     fresh.forEach((pk) => knownProfiles.current.add(pk));
     resolveProfileBatch(fresh).then((m) => {
       if (m.size) setProfiles((prev) => { const next = new Map(prev); m.forEach((v, k) => next.set(k, v)); return next; });
     }).catch(() => {});
-  }, [results]);
+  }, [results, targets]);
 
   const runSearch = useCallback(async () => {
     if (window_.range === "custom" && window_.since && window_.until && window_.since > window_.until) {
@@ -181,8 +223,9 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
     setExhausted(false);
     const res = await subscribeWithReach([relayUrl], [filterFor() as NostrFilter], 6000);
     setReached(res.reached);
+    setRefused(res.events.length === 0 && res.refused ? res.refused : null);
     setResults(res.events.filter(matches).sort((a, b) => b.created_at - a.created_at));
-    setExhausted(res.reached && res.events.length === 0);
+    setExhausted(res.reached && !res.refused && res.events.length === 0);
     setSearching(false);
   }, [relayUrl, filterFor, matches, window_, toast]);
   const runSearchRef = useRef(runSearch);
@@ -190,7 +233,29 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
   useEffect(() => {
     if (live || view === "removed") return;
     void runSearchRef.current();
-  }, [live, relayUrl, submitted, window_, view]);
+  }, [live, relayUrl, submitted, window_, view, filters]);
+
+  // How many match on the whole relay (NIP-45), where it can count. Not for
+  // a word search the relay can't do itself — that count would be of
+  // something else.
+  const relayCounts = !!nip11 && supportsNip(nip11, 45);
+  useEffect(() => {
+    if (live || view === "removed" || parsed.id || (parsed.text && !askRelayToSearch)) { setCount(null); return; }
+    if (!relayCounts) { setCount({ status: "unsupported" }); return; }
+    let off = false;
+    setCount({ status: "counting" });
+    const { limit: _l, ...f } = filterFor();
+    countWithNip45(relayUrl, f as NostrFilter).then((r) => {
+      if (off) return;
+      setCount(r.supported && r.count !== null ? { status: "counted", count: r.count, approximate: r.approximate } : { status: "refused" });
+    });
+    return () => { off = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live, relayUrl, submitted, window_, view, filters, relayCounts]);
+
+  // Saved views (this device).
+  const [savedViews, setSavedViews] = useState<SavedView[]>(() => { try { return readSavedViews(relayUrl, localStorage); } catch { return []; } });
+  useEffect(() => { try { setSavedViews(readSavedViews(relayUrl, localStorage)); } catch {} }, [relayUrl]);
 
   /** One more page, older than what's loaded. Returns how many new came back. */
   const loadOlder = useCallback(async (from: NostrEvent[]): Promise<{ events: NostrEvent[]; added: number }> => {
@@ -200,12 +265,30 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
     return mergePage(from, res.events.filter(matches));
   }, [relayUrl, filterFor, matches]);
   const searchFurther = useCallback(async () => {
+    if (loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     const r = await loadOlder(results);
     setResults(r.events);
     if (r.added === 0) setExhausted(true);
     setLoadingMore(false);
+    loadingMoreRef.current = false;
   }, [loadOlder, results]);
+
+  // Reaching the end of the list loads the next page — no button hunting on
+  // a relay that takes hundreds of posts a minute.
+  const loadingMoreRef = useRef(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const canLoadMore = !live && !searching && reached && !exhausted && !askRelayToSearch && results.length >= PAGE;
+  const searchFurtherRef = useRef(searchFurther);
+  searchFurtherRef.current = searchFurther;
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !canLoadMore || typeof IntersectionObserver !== "function") return;
+    const io = new IntersectionObserver((entries) => { if (entries.some((e) => e.isIntersecting)) void searchFurtherRef.current(); }, { root: scrollRootFor(el), rootMargin: "0px 0px 600px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [canLoadMore, results.length]);
 
   // Live: the same question, left open — new posts arrive at the top.
   const pausedRef = useRef(false);
@@ -269,7 +352,9 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = useMemo(() => rows.find((e) => e.id === selectedId) ?? null, [rows, selectedId]);
   useEffect(() => {
-    if (wide && !selectedId && rows.length) setSelectedId(rows[0].id);
+    // On a wide screen something is always open beside the list — including
+    // after a filter takes the open post away.
+    if (wide && rows.length && !rows.some((r) => r.id === selectedId)) setSelectedId(rows[0].id);
   }, [wide, rows, selectedId]);
 
   // ---- choosing many ----
@@ -414,6 +499,10 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
   }, [wide, rows, selectedId, checked, rule, selectMode, pending, featureEvent, toggleCheck, askRemove, askBan, endSelect]);
 
   const windowActive = range !== "any";
+  const chips = useMemo(() => [
+    ...filterChips(filters, nameOf),
+    ...(range !== "any" ? [{ key: "time", label: range === "custom" ? "Custom time" : TIME_RANGES.find((r) => r.id === range)?.label ?? "" }] : []),
+  ], [filters, nameOf, range]);
   const rangeLabel = range === "custom" ? "Custom" : TIME_RANGES.find((r) => r.id === range)?.label ?? "Any time";
   const nowSec = Math.floor(Date.now() / 1000);
   const oldest = results.length ? results[results.length - 1].created_at : undefined;
@@ -434,6 +523,7 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
       onBan={() => askBan([selected.pubkey])}
       onFeature={() => setFeatureEvent(selected)}
       onEverythingFrom={() => { const n = pubkeyToNpub(selected.pubkey); setQuery(n); setSubmitted(n); setView("all"); }}
+      preview={previewCtx}
     />
   ) : null;
 
@@ -464,50 +554,34 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
           <Switch checked={live} onCheckedChange={(v) => { setLive(v); setPaused(false); }} aria-label="Live" data-testid="ops-events-live" />
           <span className={live ? "text-foreground" : "text-muted-foreground"}>Live</span>
         </label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button type="button" variant="outline" className="relative h-11 w-11 p-0 sm:h-10 sm:w-auto sm:px-3.5 rounded-full shrink-0 text-[13px]" aria-label={windowActive ? `Filter — ${rangeLabel}` : "Filter"} data-active={windowActive} data-testid="ops-events-filter">
-              <SlidersHorizontal className="w-4 h-4 sm:mr-1.5" aria-hidden="true" />
-              <span className="hidden sm:inline">{windowActive ? rangeLabel : "Filter"}</span>
-              {windowActive && <span className="absolute top-1.5 right-1.5 sm:hidden w-2 h-2 rounded-full bg-brand" aria-hidden="true" />}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="end" sideOffset={6} className="w-[min(22rem,calc(100vw-1.5rem))] p-3 space-y-3">
-            <div>
-              <p className="text-[12px] font-medium text-muted-foreground mb-1.5">Time</p>
-              <div className="flex flex-wrap gap-1.5">
-                {[...TIME_RANGES, { id: "custom" as const, label: "Custom" }].map((r) => (
-                  <button key={r.id} type="button" onClick={() => setRange(r.id)} aria-pressed={range === r.id} data-testid={`ops-events-range-${r.id}`}
-                    className={`h-10 px-3.5 rounded-full text-[13px] font-medium transition-colors ${range === r.id ? "bg-brand text-white" : "bg-black/[0.05] dark:bg-white/[0.06] text-foreground/80 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]"}`}>
-                    {r.label}
-                  </button>
-                ))}
-              </div>
-              {range === "custom" && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-                  <label className="block space-y-1"><span className="text-[12px] text-muted-foreground">From</span>
-                    <input type="datetime-local" value={customSince} onChange={(e) => setCustomSince(e.target.value)} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm dark:[color-scheme:dark]" />
-                  </label>
-                  <label className="block space-y-1"><span className="text-[12px] text-muted-foreground">To</span>
-                    <input type="datetime-local" value={customUntil} onChange={(e) => setCustomUntil(e.target.value)} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm dark:[color-scheme:dark]" />
-                  </label>
-                </div>
-              )}
-            </div>
-            <div>
-              <p className="text-[12px] font-medium text-muted-foreground mb-1.5">Sort</p>
-              <div className="flex flex-wrap gap-1.5">
-                {([["time", "desc", "Newest"], ["time", "asc", "Oldest"], ["who", "asc", "Who"], ["type", "asc", "Type"]] as const).map(([key, dir, label]) => (
-                  <button key={label} type="button" onClick={() => setSort({ key, dir })} aria-pressed={sort.key === key && sort.dir === dir} data-testid={`ops-content-sort-${label.toLowerCase()}`}
-                    className={`h-10 px-3.5 rounded-full text-[13px] font-medium transition-colors ${sort.key === key && sort.dir === dir ? "bg-brand text-white" : "bg-black/[0.05] dark:bg-white/[0.06] text-foreground/80 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]"}`}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
+        <FilterPanel
+          wide={wide}
+          filters={filters}
+          setFilters={setFilters}
+          range={range}
+          setRange={setRange}
+          customSince={customSince}
+          customUntil={customUntil}
+          setCustomSince={setCustomSince}
+          setCustomUntil={setCustomUntil}
+          sort={sort}
+          setSort={setSort}
+          profiles={profiles}
+          activeCount={chips.length}
+        />
       </form>
+
+      {/* What you're looking at, as chips you can take off */}
+      {chips.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap" data-testid="ops-content-chips">
+          {chips.map((c) => (
+            <button key={c.key} type="button" onClick={() => { if (c.key === "time") setRange("any"); else setFilters(removeChip(filters, c.key)); }} className="inline-flex items-center gap-1 min-h-[36px] pl-3 pr-2 rounded-full bg-brand/10 text-brand text-[13px] font-medium" aria-label={`Remove ${c.label}`} data-testid="ops-content-chip">
+              {c.label}<X className="w-3.5 h-3.5" aria-hidden="true" />
+            </button>
+          ))}
+          <button type="button" onClick={() => { setFilters(EMPTY_FILTERS); setRange("any"); }} className="min-h-[36px] px-2 text-[13px] font-medium text-muted-foreground hover:text-foreground" data-testid="ops-content-chips-clear">Clear all</button>
+        </div>
+      )}
 
       {/* What things are */}
       <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0" role="tablist" aria-label="What to show" data-testid="ops-content-views">
@@ -536,7 +610,10 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
               {searching ? "Looking…" : `${rows.length} ${rows.length === 1 ? "post" : "posts"}`}
               {live && paused && heldCount > 0 && <span className="text-brand">· {heldCount} new</span>}
             </span>
-            {scope && !searching && (
+            {count && !live && (
+              <span className={`text-[13px] ${count.status === "counted" ? "text-foreground" : "text-muted-foreground"}`} data-testid="ops-content-count">· {countLine(count)}</span>
+            )}
+            {scope && !searching && !refused && count?.status !== "counted" && (
               <span className={`text-[13px] ${reached ? "text-muted-foreground" : "text-amber-700 dark:text-amber-300"}`} data-testid="ops-content-scope">· {scope}</span>
             )}
             {!live && !searching && reached && !exhausted && !askRelayToSearch && results.length >= PAGE && (
@@ -550,6 +627,13 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
                   {paused ? <><Play className="w-3.5 h-3.5 mr-1" />Resume</> : <><Pause className="w-3.5 h-3.5 mr-1" />Pause</>}
                 </Button>
               )}
+              <ViewsMenu
+                views={savedViews}
+                canSave={chips.length > 0 || !!submitted || view !== "all"}
+                onOpen={(v) => { setQuery(v.query); setSubmitted(v.query); setFiltersRaw(v.filters); setView(v.view); }}
+                onSave={(name) => { try { setSavedViews(saveView(relayUrl, name, { query: submitted, view, filters }, localStorage)); toast({ title: `Saved “${name.trim()}”` }); } catch {} }}
+                onDelete={(id) => { try { setSavedViews(deleteView(relayUrl, id, localStorage)); } catch {} }}
+              />
               {wide && (
                 <Button variant="ghost" size="sm" onClick={() => setShortcutsOpen(true)} className="h-9 w-9 p-0" aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)">
                   <Keyboard className="w-4 h-4" />
@@ -563,9 +647,12 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
 
           <div className={wide ? "grid grid-cols-[minmax(0,1fr)_minmax(320px,400px)] gap-4 items-start" : selectMode ? "pb-28" : ""}>
             <div className="min-w-0">
-              {rows.length === 0 && !searching ? (
+              {rows.length === 0 && !searching && refused ? (
+                <RefusedNotice relayName={relayName} reason={refused}
+                  onSignIn={() => { setAuthEnabled(relayUrl, true); try { pool.close([relayUrl]); } catch {} setTimeout(() => void runSearchRef.current(), 300); }} />
+              ) : rows.length === 0 && !searching ? (
                 <p className="px-1 py-10 text-center text-sm text-muted-foreground" data-testid="ops-content-empty">
-                  {!reached ? "We couldn't reach this relay to look." : submitted || windowActive || view !== "all" ? "Nothing on this relay matches." : "Nothing on this relay yet."}
+                  {!reached ? "We couldn't reach this relay to look." : submitted || windowActive || view !== "all" || chips.length ? "Nothing on this relay matches." : "Nothing on this relay yet."}
                 </p>
               ) : (
                 <div className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] overflow-hidden">
@@ -591,9 +678,15 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
                         checked={checked.has(e.id)}
                         onOpen={() => (selectMode ? toggleCheck(e.id) : setSelectedId(e.id))}
                         onCheck={() => toggleCheck(e.id)}
+                        preview={previewCtx}
                       />
                     ))}
                   </ul>
+                </div>
+              )}
+              {rows.length > 0 && (
+                <div ref={sentinelRef} className="flex justify-center py-3 min-h-[44px]" data-testid="ops-content-sentinel">
+                  {loadingMore && <span className="text-[13px] text-muted-foreground" role="status">Loading more…</span>}
                 </div>
               )}
             </div>
@@ -690,12 +783,13 @@ function SortHeader({ label, active, dir, onClick }: { label: string; active: bo
   );
 }
 
-function ContentRow({ event, profile, wide, nowSec, current, selectMode, checked, onOpen, onCheck }: {
+function ContentRow({ event, profile, wide, nowSec, current, selectMode, checked, onOpen, onCheck, preview: previewCtx }: {
   event: NostrEvent; profile?: ProfileInfo; wide: boolean; nowSec: number; current: boolean;
   selectMode: boolean; checked: boolean; onOpen: () => void; onCheck: () => void;
+  preview: PreviewContext;
 }) {
   const who = profile?.name || `${pubkeyToNpub(event.pubkey).slice(0, 12)}…`;
-  const preview = rowPreview(event);
+  const preview = rowPreview(event, previewCtx);
   const sealed = isPrivateKind(event.kind);
   const box = selectMode ? (
     <span className="flex items-center justify-center w-9 h-11 -my-2 -ml-1" onClick={(e) => { e.stopPropagation(); onCheck(); }}>
@@ -738,10 +832,11 @@ function ContentRow({ event, profile, wide, nowSec, current, selectMode, checked
   );
 }
 
-function ContentDetail({ event, profile, relayName, canRemove, canBan, where, onRemove, onBan, onFeature, onEverythingFrom }: {
+function ContentDetail({ event, profile, relayName, canRemove, canBan, where, onRemove, onBan, onFeature, onEverythingFrom, preview }: {
   event: NostrEvent; profile?: ProfileInfo; relayName: string; canRemove: boolean; canBan: boolean;
   where: { name: string; url?: string };
   onRemove: () => void; onBan: () => void; onFeature: () => void; onEverythingFrom: () => void;
+  preview: PreviewContext;
 }) {
   const [raw, setRaw] = useState(false);
   const [all, setAll] = useState(false);
@@ -774,10 +869,7 @@ function ContentDetail({ event, profile, relayName, canRemove, canBan, where, on
           A private message. Its contents are sealed between the people in it; Relay Outpost never opens them.
         </p>
       ) : (
-        <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words" data-testid="ops-content-text">
-          {event.kind === 0 ? <ProfileFields content={event.content} /> : text || <span className="text-muted-foreground">{rowPreview(event)}</span>}
-          {event.content.length > 4000 && !all && <button type="button" onClick={() => setAll(true)} className="block mt-1 text-brand text-[13px]">Show all</button>}
-        </div>
+        <PostBody event={event} preview={preview} text={text} showAll={() => setAll(true)} clipped={event.content.length > 4000 && !all} />
       )}
 
       <div className="grid gap-2">
@@ -815,6 +907,53 @@ function ContentDetail({ event, profile, relayName, canRemove, canBan, where, on
         </button>
         {raw && <pre className="mt-1 max-h-72 overflow-auto rounded-lg border border-border bg-muted p-3 text-[11px] leading-relaxed font-mono whitespace-pre-wrap break-all">{rawJson}</pre>}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The post itself, as people see it everywhere else in the app: the feed's own
+ * renderer draws pictures, GIFs, video, link previews, @names, quoted posts and
+ * hashtags. A reaction or repost shows what it's about.
+ */
+function PostBody({ event, preview, text, clipped, showAll }: { event: NostrEvent; preview: PreviewContext; text: string; clipped: boolean; showAll: () => void }) {
+  if (event.kind === 0) return <div data-testid="ops-content-text"><ProfileFields content={event.content} /></div>;
+  const view = typeOf(event.kind);
+  if (view === "reactions" || view === "reposts") {
+    const id = [...event.tags].reverse().find((t) => t[0] === "e" && /^[0-9a-f]{64}$/i.test(t[1] ?? ""))?.[1];
+    const target = id ? preview.targetOf?.(id) : undefined;
+    return (
+      <div className="space-y-2" data-testid="ops-content-text">
+        <p className="text-[15px]">{rowPreview(event, { nameOf: preview.nameOf }).replace(/:.*$/, "")}{target ? ":" : ""}</p>
+        {target && (
+          <div className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] p-3 text-[14px]" data-testid="ops-content-target">
+            <CommentContent event={target as NostrEvent} />
+          </div>
+        )}
+      </div>
+    );
+  }
+  if (view === "notes" || view === "media" || (view === "other" && event.content && !looksEncrypted(event.content))) {
+    return (
+      <div className="text-[15px] leading-relaxed break-words [&_img]:rounded-xl [&_video]:rounded-xl" data-testid="ops-content-text" data-rendered="true">
+        <CommentContent event={event} />
+      </div>
+    );
+  }
+  if (view === "articles") {
+    const title = event.tags.find((t) => t[0] === "title")?.[1];
+    const summary = event.tags.find((t) => t[0] === "summary")?.[1];
+    return (
+      <div className="space-y-1.5" data-testid="ops-content-text">
+        {title && <p className="text-[17px] font-semibold leading-snug">{title}</p>}
+        <p className="text-[14px] leading-relaxed text-muted-foreground line-clamp-6">{summary || text.slice(0, 600)}</p>
+      </div>
+    );
+  }
+  return (
+    <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words" data-testid="ops-content-text">
+      {text || <span className="text-muted-foreground">{rowPreview(event, preview)}</span>}
+      {clipped && <button type="button" onClick={showAll} className="block mt-1 text-brand text-[13px]">Show all</button>}
     </div>
   );
 }

@@ -34,6 +34,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { ManagedAtNote } from "./ops-ui";
 import { ConfirmAction, type PendingAction } from "./ConfirmAction";
+import { RefusedNotice } from "./RefusedNotice";
+import { setAuthEnabled } from "@/lib/nip42-auth";
+import { pool } from "@/lib/nostr";
 import { addModLogEntry, pubkeyToNpub, resolveProfileBatch, subscribeWithReach, type NostrFilter, type ProfileInfo } from "./shared";
 import { mergePage, scopeLine } from "./content-model";
 import {
@@ -90,6 +93,8 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts }: {
   // ---- who posts here ----
   const [events, setEvents] = useState<NostrEvent[]>([]);
   const [reached, setReached] = useState(true);
+  const [refused, setRefused] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
   const [loading, setLoading] = useState(true);
   const [exhausted, setExhausted] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -100,12 +105,13 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts }: {
     subscribeWithReach([relayUrl], [{ limit: PAGE } as NostrFilter], 7000).then((res) => {
       if (off) return;
       setReached(res.reached);
+      setRefused(res.events.length === 0 && res.refused ? res.refused : null);
       setEvents(res.events.sort((a, b) => b.created_at - a.created_at));
-      setExhausted(res.reached && res.events.length === 0);
+      setExhausted(res.reached && !res.refused && res.events.length === 0);
       setLoading(false);
     });
     return () => { off = true; };
-  }, [relayUrl]);
+  }, [relayUrl, reload]);
   const lookFurther = useCallback(async () => {
     setLoadingMore(true);
     const oldest = events.length ? events[events.length - 1].created_at : undefined;
@@ -285,7 +291,10 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts }: {
 
       <div className={wide ? "grid grid-cols-[minmax(0,1fr)_minmax(320px,400px)] gap-4 items-start" : selectMode ? "pb-28" : ""}>
         <div className="min-w-0">
-          {shown.length === 0 && !loading ? (
+          {shown.length === 0 && !loading && refused ? (
+            <RefusedNotice relayName={relayName} reason={refused} what="who posts there" testId="ops-people-refused"
+              onSignIn={() => { setAuthEnabled(relayUrl, true); try { pool.close([relayUrl]); } catch {} setTimeout(() => setReload((n) => n + 1), 300); }} />
+          ) : shown.length === 0 && !loading ? (
             <p className="py-10 text-center text-sm text-muted-foreground" data-testid="ops-people-empty">
               {!reached ? "We couldn't reach this relay to look." : query || filter !== "all" ? "Nobody matches." : "Nobody has posted here yet."}
             </p>

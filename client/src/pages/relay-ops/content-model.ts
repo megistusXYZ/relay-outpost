@@ -9,6 +9,7 @@
  *   - a rule, or more than 25 at once, needs the count typed back;
  *   - the list says honestly how much of the relay it searched.
  */
+import { nip19 } from "nostr-tools";
 import type { EventQuery, TimeWindow } from "./event-query";
 import { sinceFor } from "./event-query";
 
@@ -81,18 +82,84 @@ export function looksEncrypted(content: string): boolean {
 const tag = (e: ContentEvent, name: string) => e.tags.find((t) => t[0] === name)?.[1];
 const firstLine = (s: string) => s.trim().split(/\r?\n/).find((l) => l.trim())?.trim() ?? "";
 
+export interface PreviewContext {
+  /** A person's display name, when we know it. */
+  nameOf?: (pubkey: string) => string | undefined;
+  /** The post a reaction or repost is about, when it's loaded. */
+  targetOf?: (id: string) => ContentEvent | undefined;
+}
+
+const MEDIA: Array<[RegExp, string]> = [
+  [/\.gif(\?|#|$)/i, "GIF"],
+  [/\.(jpe?g|png|webp|avif|heic|bmp|svg)(\?|#|$)/i, "Photo"],
+  [/\.(mp4|mov|webm|m4v|m3u8)(\?|#|$)/i, "Video"],
+];
+
+/**
+ * Words a person reads: mentions become @names, quoted posts and media are
+ * named instead of shown as codes and addresses.
+ */
+function readable(text: string, ctx: PreviewContext): string {
+  let quoted = false;
+  const media: string[] = [];
+  let out = text.replace(/nostr:((?:npub|nprofile)1[02-9ac-hj-np-z]+)/gi, (_m, code: string) => {
+    try {
+      const d = nip19.decode(code);
+      const pk = d.type === "npub" ? (d.data as string) : (d.data as { pubkey: string }).pubkey;
+      const name = ctx.nameOf?.(pk);
+      if (name) return `@${name}`;
+    } catch {}
+    return `@${code.slice(0, 11)}…`;
+  });
+  out = out.replace(/nostr:(?:note|nevent|naddr)1[02-9ac-hj-np-z]+/gi, () => { quoted = true; return " "; });
+  out = out.replace(/https?:\/\/[^\s]+/gi, (url) => {
+    const kind = MEDIA.find(([re]) => re.test(url))?.[1];
+    if (kind) { media.push(kind); return " "; }
+    try { return `\u0000${new URL(url).hostname.replace(/^www\./, "")}\u0000`; } catch { return url; }
+  });
+  let line = firstLine(out.replace(/[ \t]+/g, " "));
+  // A post that is only a link: say where it goes.
+  const onlyLink = /^\u0000([^\u0000]+)\u0000$/.exec(line.trim());
+  if (onlyLink) line = `Link · ${onlyLink[1]}`;
+  line = line.replace(/\u0000/g, "").trim();
+  const extra = [...(quoted ? ["quoted a post"] : []), ...media.slice(0, 1)];
+  if (!line) {
+    if (extra.length === 0) return "";
+    const first = extra[0];
+    return first === "quoted a post" ? "Quoted a post" : first;
+  }
+  return [line, ...extra].join(" · ");
+}
+
+function targetLine(e: ContentEvent, ctx: PreviewContext): string | undefined {
+  const id = [...e.tags].reverse().find((t) => t[0] === "e" && /^[0-9a-f]{64}$/i.test(t[1] ?? ""))?.[1];
+  let target = id ? ctx.targetOf?.(id) : undefined;
+  if (!target && (e.kind === 6 || e.kind === 16) && e.content.trim().startsWith("{")) {
+    try { target = JSON.parse(e.content) as ContentEvent; } catch {}
+  }
+  if (!target || typeof target.content !== "string") return undefined;
+  const line = readable(target.content, ctx);
+  return line ? line.slice(0, 120) : undefined;
+}
+
 /** The one line a row shows. */
-export function rowPreview(e: ContentEvent): string {
+export function rowPreview(e: ContentEvent, ctx: PreviewContext = {}): string {
   const view = typeOf(e.kind);
   if (view === "private") return "Private message — its contents stay sealed";
   if (e.kind === 0) return "Profile update";
   if (view === "reactions") {
     const c = e.content.trim();
+    const about = targetLine(e, ctx);
+    const verb = c === "" || c === "+" ? "Liked" : c === "-" ? "Disliked" : `Reacted ${c.startsWith(":") ? c : c.slice(0, 8)}`;
+    if (about) return `${verb}: ${about}`;
     if (c === "" || c === "+") return "Liked a post";
     if (c === "-") return "Disliked a post";
     return `Reacted ${c.startsWith(":") ? c : c.slice(0, 8)} to a post`;
   }
-  if (view === "reposts") return "Reposted a post";
+  if (view === "reposts") {
+    const about = targetLine(e, ctx);
+    return about ? `Reposted: ${about}` : "Reposted a post";
+  }
   if (view === "thanks") return "Sent thanks";
   if (view === "articles") return tag(e, "title") || firstLine(e.content).slice(0, 140) || "Article";
   if (view === "media") return tag(e, "title") || tag(e, "alt") || firstLine(e.content).slice(0, 140) || (e.kind === 20 ? "Picture" : "Video");
@@ -102,7 +169,7 @@ export function rowPreview(e: ContentEvent): string {
     return `${name ? `List “${name}”` : "List"} · ${n} ${n === 1 ? "entry" : "entries"}`;
   }
   if (looksEncrypted(e.content)) return "Encrypted content";
-  return firstLine(e.content).slice(0, 140) || `Kind ${e.kind}`;
+  return readable(e.content, ctx).slice(0, 140) || `Kind ${e.kind}`;
 }
 
 export type SortKey = "time" | "who" | "type";
@@ -129,6 +196,7 @@ export interface ContentFilter {
   until?: number;
   limit?: number;
   search?: string;
+  "#t"?: string[];
 }
 
 /**

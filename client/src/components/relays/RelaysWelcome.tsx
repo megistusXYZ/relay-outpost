@@ -28,7 +28,7 @@ const BENEFITS = [
  * button on the right on a wide screen; stacked on a phone. Sized by its own
  * content, never stretched to match something beside it.
  */
-function HostedCard({ option }: { option: StartOption }) {
+export function HostedCard({ option }: { option: StartOption }) {
   return (
     <section
       className="relative rounded-2xl border border-brand/40 p-6 sm:p-7 bg-[radial-gradient(120%_120%_at_0%_0%,hsl(var(--brand)/0.10),transparent_55%)] shadow-[0_0_0_1px_hsl(var(--brand)/0.06),0_12px_40px_-16px_hsl(var(--brand)/0.45)]"
@@ -76,7 +76,7 @@ function HostedCard({ option }: { option: StartOption }) {
  * software as hairline tiles (two by two on a wide screen, one column on a
  * phone), each linking to its own project.
  */
-function SelfHostSection({ option }: { option: StartOption }) {
+export function SelfHostSection({ option }: { option: StartOption }) {
   return (
     <section className="mt-10" data-testid={`relays-start-${option.id}`}>
       <div className="flex items-start gap-3">
@@ -146,9 +146,7 @@ export function RelaysWelcome() {
       </ul>
 
       <h2 className="mt-12 mb-4 text-[13px] font-medium tracking-wide text-muted-foreground">Choose how to start</h2>
-      <div data-testid="relays-start">
-        {START_OPTIONS.map((o) => (o.software ? <SelfHostSection key={o.id} option={o} /> : <HostedCard key={o.id} option={o} />))}
-      </div>
+      <StartOptions />
 
       <Link
         href="/my-relays/connect"
@@ -166,6 +164,15 @@ export function RelaysWelcome() {
       <p className="mt-8 text-center text-[13px] leading-relaxed text-muted-foreground [text-wrap:balance]">
         You own it. Relay Outpost never hosts your community or takes a cut — you pay your provider directly.
       </p>
+    </div>
+  );
+}
+
+/** Both ways to start, for anywhere that offers them (the welcome, Add a relay). */
+export function StartOptions() {
+  return (
+    <div data-testid="relays-start">
+      {START_OPTIONS.map((o) => (o.software ? <SelfHostSection key={o.id} option={o} /> : <HostedCard key={o.id} option={o} />))}
     </div>
   );
 }
