@@ -83,11 +83,11 @@ jobs:
       # are being burned down — the count may only ever go DOWN. A PR that
       # pushes it above the baseline fails CI. Ratchet the number here whenever
       # the burn-down lowers it. (125 → 123 on 2026-07-18, PR #318's cleanup;
-      # 123 → 90 on 2026-08-03, 90 → 89 on 2026-08-27, 89 → 88 on 2026-09-29 with the dead NIP-85 reader, 88 → 84 on 2026-10-02 (private-message rooms) — the real count had been 90 for a while, so the
+      # 123 → 90 on 2026-08-03, 90 → 89 on 2026-08-27, 89 → 88 on 2026-09-29 with the dead NIP-85 reader, 88 → 84 on 2026-10-02 (private-message rooms), 84 → 78 on 2026-10-03 (the count had drifted down unratcheted) — the real count had been 90 for a while, so the
       # gate was leaving room for 33 new errors to land unnoticed.)
-      - name: Type-check (baseline ≤ 84)
+      - name: Type-check (baseline ≤ 78)
         if: always()
         run: |
           count=$(npm run check 2>&1 | grep -c 'error TS' || true)
-          echo "tsc errors: $count (baseline 84)"
-          test "$count" -le 84
+          echo "tsc errors: $count (baseline 78)"
+          test "$count" -le 78

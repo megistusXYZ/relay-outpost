@@ -134,3 +134,43 @@ export function OpsSectionHeader({
     </div>
   );
 }
+
+/**
+ * "This relay doesn't let us change this — change it at relay.tools." For a
+ * control the relay didn't list (lib/relay-capabilities.ts): the operator
+ * learns where the setting lives instead of meeting a button that fails.
+ */
+export function ManagedAtNote({
+  where,
+  lead = "This relay doesn't let us change this here.",
+  verb = "Change it",
+  testId = "ops-managed-at",
+}: {
+  where: { name: string; url?: string };
+  lead?: React.ReactNode;
+  /** What to do there, e.g. "add them" — reads on from `lead`. */
+  verb?: string;
+  testId?: string;
+}) {
+  return (
+    <p className="text-[12px] leading-snug text-muted-foreground" data-testid={testId}>
+      {lead}{" "}
+      {where.url ? (
+        <>
+          {verb} at{" "}
+          <a
+            href={where.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-brand underline-offset-4 hover:underline"
+          >
+            {where.name}
+          </a>
+          .
+        </>
+      ) : (
+        <>{verb} in {where.name}.</>
+      )}
+    </p>
+  );
+}

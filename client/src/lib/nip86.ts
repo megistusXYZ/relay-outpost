@@ -3,6 +3,11 @@ import { getGlobalSigner } from "./nip42-auth";
 import { signWithTimeout } from "@/lib/signer-timeout";
 import { fetchNip11, supportsNip } from "./nip11";
 import { pool } from "./nostr";
+import {
+  readSupportedMethods, methodsToTry, callFirstSupported, isUnknownMethod,
+  UNKNOWN_CAPABILITIES, type RelayCapabilities, type RelayAction,
+} from "./relay-capabilities";
+import { isNip86Method } from "@shared/nip86-methods";
 
 export interface Nip86Response<T = unknown> {
   result?: T;
@@ -171,16 +176,60 @@ export async function banPubkey(relayUrl: string, pubkey: string, reason?: strin
   return nip86Call<boolean>(relayUrl, "banpubkey", params);
 }
 
+/**
+ * Do an action by whichever name this relay knows it under. relay.tools'
+ * legacy relays (*.nostr1.com) lift bans with `deletebannedpubkey`, not the
+ * spec's `unbanpubkey`; a relay that lists neither gets no call at all.
+ */
+async function callAction<T>(relayUrl: string, action: RelayAction, params: (string | number)[]): Promise<Nip86Response<T>> {
+  const caps = await fetchRelayCapabilities(relayUrl);
+  const res = await callFirstSupported(
+    (method, p) => isNip86Method(method)
+      ? nip86Call<T>(relayUrl, method, p as (string | number)[])
+      : Promise.resolve({ error: `Unknown method ${method}` }),
+    methodsToTry(caps, action),
+    params,
+  );
+  return res as Nip86Response<T>;
+}
+
 export async function unallowPubkey(relayUrl: string, pubkey: string, reason?: string): Promise<Nip86Response<boolean>> {
   const params = [pubkey];
   if (reason) params.push(reason);
-  return nip86Call<boolean>(relayUrl, "unallowpubkey", params);
+  return callAction<boolean>(relayUrl, "unallow", params);
 }
 
 export async function unbanPubkey(relayUrl: string, pubkey: string, reason?: string): Promise<Nip86Response<boolean>> {
   const params = [pubkey];
   if (reason) params.push(reason);
-  return nip86Call<boolean>(relayUrl, "unbanpubkey", params);
+  return callAction<boolean>(relayUrl, "unban", params);
+}
+
+const CAPS_TTL_MS = 5 * 60_000;
+const capsCache = new Map<string, { caps: RelayCapabilities; at: number }>();
+const capsInFlight = new Map<string, Promise<RelayCapabilities>>();
+
+/**
+ * Ask the relay, signed, which management methods it offers this key. A
+ * relay that doesn't answer the question gets UNKNOWN_CAPABILITIES: the
+ * controls nearly every NIP-86 relay has, never banner or moderators.
+ * Failures to reach the relay aren't cached, so the next look asks again.
+ */
+export async function fetchRelayCapabilities(relayUrl: string, opts: { fresh?: boolean } = {}): Promise<RelayCapabilities> {
+  const key = normalizeHttpUrl(relayUrl);
+  const hit = capsCache.get(key);
+  if (!opts.fresh && hit && Date.now() - hit.at < CAPS_TTL_MS) return hit.caps;
+  const pending = capsInFlight.get(key);
+  if (pending) return pending;
+  const p = (async () => {
+    if (!getGlobalSigner()) return UNKNOWN_CAPABILITIES;
+    const res = await nip86Call<string[]>(relayUrl, "supportedmethods");
+    const caps = readSupportedMethods(res);
+    if (caps.listed || isUnknownMethod(res.error)) capsCache.set(key, { caps, at: Date.now() });
+    return caps;
+  })().finally(() => capsInFlight.delete(key));
+  capsInFlight.set(key, p);
+  return p;
 }
 
 export async function listAllowedPubkeys(relayUrl: string): Promise<Nip86Response<PubkeyEntry[]>> {
@@ -286,6 +335,10 @@ export async function checkNip86Support(relayUrl: string): Promise<Nip86SupportS
   console.log(`[NIP-86] Signer available: ${!!signer}`);
 
   if (signer) {
+    // Asking what it supports is the cleanest answer there is: a list means the
+    // relay speaks NIP-86, whatever this key may do on it.
+    const caps = await fetchRelayCapabilities(relayUrl);
+    if (caps.listed) return "supported";
     console.log(`[NIP-86] Sending authenticated probe to ${relayUrl}...`);
     const probeResult = await nip86Call<PubkeyEntry[]>(relayUrl, "listallowedpubkeys");
     console.log(`[NIP-86] Probe result:`, JSON.stringify(probeResult).slice(0, 500));
