@@ -77,6 +77,9 @@ export function IdentityBanner({ src, fallbackSrc, blurBackdropSrc, topRight, li
         />
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+      {/* The hero runs under the top bar: a soft dark scrim across its top
+          keeps the bar's controls readable over a bright picture. */}
+      {variant === "hero" && <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/45 via-black/15 to-transparent" aria-hidden="true" />}
       {live}
       {topRight && <div className="absolute top-2 right-2 z-20">{topRight}</div>}
     </div>
