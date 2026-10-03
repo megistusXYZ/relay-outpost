@@ -484,7 +484,7 @@ export function AnnounceTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
                 ? "Will be posted only to your relay. Not visible on public relays."
                 : "Will be posted to your relay + public relays (damus, nos.lol)."}
             </p>
-            <Button size="sm" onClick={publishAnnouncement} disabled={publishing || !announcementText.trim()} className="text-xs h-9 sm:h-8 shrink-0" data-testid="button-publish-announcement">
+            <Button size="sm" onClick={publishAnnouncement} disabled={publishing || !announcementText.trim()} className="text-xs min-h-[44px] shrink-0" data-testid="button-publish-announcement">
               <Megaphone className={`w-3 h-3 mr-1 ${publishing ? "animate-pulse" : ""}`} />
               {publishing ? (editingId ? "Updating..." : "Publishing...") : (editingId ? "Republish" : "Publish")}
             </Button>
@@ -617,8 +617,9 @@ export function AnnounceTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
                       <button
                         onClick={() => (isPinned ? unpinAnnouncement() : pinAnnouncement(event))}
                         disabled={pinBusy || !signer}
-                        className={`shrink-0 p-1.5 rounded transition-all disabled:opacity-40 ${isPinned ? "text-amber-500 hover:bg-amber-500/10" : "text-muted-foreground/40 hover:text-amber-500 hover:bg-amber-500/10"}`}
+                        className={`shrink-0 inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded transition-all disabled:opacity-40 ${isPinned ? "text-amber-500 hover:bg-amber-500/10" : "text-muted-foreground/40 hover:text-amber-500 hover:bg-amber-500/10"}`}
                         title={isPinned ? "Unpin from community page" : "Pin to community page"}
+                        aria-label={isPinned ? "Unpin from community page" : "Pin to community page"}
                         data-testid={isPinned ? `button-unpin-announcement-${event.id.slice(0, 8)}` : `button-pin-announcement-${event.id.slice(0, 8)}`}
                       >
                         {pinBusy ? <RefreshCw className="w-3 h-3 animate-spin" /> : isPinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3 rotate-45" />}

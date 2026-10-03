@@ -144,10 +144,10 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost }: {
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5 pl-12">
-          {r.targetEventId && <Button size="sm" variant="ghost" className="h-9 px-3 text-[13px]" onClick={() => onSeePost(r.targetEventId!)} data-testid="ops-inbox-see"><Eye className="w-4 h-4 mr-1.5" />See it</Button>}
-          {r.targetEventId && canRemove && <Button size="sm" variant="ghost" className="h-9 px-3 text-[13px] text-red-600 dark:text-red-400" onClick={() => setPending({ kind: "remove", ids: [r.targetEventId!], rule: false, report: r })} data-testid="ops-inbox-remove"><Trash2 className="w-4 h-4 mr-1.5" />Remove post</Button>}
-          {canBan && <Button size="sm" variant="ghost" className="h-9 px-3 text-[13px]" onClick={() => setPending({ kind: "ban", pubkeys: [r.targetPubkey], rule: false, report: r })} data-testid="ops-inbox-ban"><Ban className="w-4 h-4 mr-1.5" />Ban {who?.name ?? "them"}</Button>}
-          <Button size="sm" variant="ghost" className="h-9 px-3 text-[13px] text-muted-foreground" onClick={() => dismiss(r)} data-testid="ops-inbox-dismiss"><Check className="w-4 h-4 mr-1.5" />Nothing to do</Button>
+          {r.targetEventId && <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px]" onClick={() => onSeePost(r.targetEventId!)} data-testid="ops-inbox-see"><Eye className="w-4 h-4 mr-1.5" />See it</Button>}
+          {r.targetEventId && canRemove && <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px] text-red-600 dark:text-red-400" onClick={() => setPending({ kind: "remove", ids: [r.targetEventId!], rule: false, report: r })} data-testid="ops-inbox-remove"><Trash2 className="w-4 h-4 mr-1.5" />Remove post</Button>}
+          {canBan && <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px]" onClick={() => setPending({ kind: "ban", pubkeys: [r.targetPubkey], rule: false, report: r })} data-testid="ops-inbox-ban"><Ban className="w-4 h-4 mr-1.5" />Ban {who?.name ?? "them"}</Button>}
+          <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px] text-muted-foreground" onClick={() => dismiss(r)} data-testid="ops-inbox-dismiss"><Check className="w-4 h-4 mr-1.5" />Nothing to do</Button>
         </div>
       </li>
     );
@@ -155,7 +155,7 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost }: {
 
   const chip = (id: InboxView, label: string, n?: number) => (
     <button key={id} type="button" role="tab" aria-selected={view === id} onClick={() => setView(id)} data-testid={`ops-inbox-view-${id}`}
-      className={`shrink-0 h-9 px-3.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors ${view === id ? "bg-foreground text-background" : "bg-black/[0.05] dark:bg-white/[0.06] text-foreground/80 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]"}`}>
+      className={`shrink-0 h-11 sm:h-9 px-3.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors ${view === id ? "bg-foreground text-background" : "bg-black/[0.05] dark:bg-white/[0.06] text-foreground/80 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]"}`}>
       {label}{n ? <span className="ml-1.5 tabular-nums opacity-60">{n}</span> : null}
     </button>
   );

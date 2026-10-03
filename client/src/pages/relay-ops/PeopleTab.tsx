@@ -259,7 +259,7 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts }: {
       <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0" role="tablist" aria-label="Who to show">
         {filters.map((f) => (
           <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} onClick={() => setFilter(f.id)} data-testid={`ops-people-filter-${f.id}`}
-            className={`shrink-0 h-9 px-3.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors ${filter === f.id ? "bg-foreground text-background" : "bg-black/[0.05] dark:bg-white/[0.06] text-foreground/80 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]"}`}>
+            className={`shrink-0 h-11 sm:h-9 px-3.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors ${filter === f.id ? "bg-foreground text-background" : "bg-black/[0.05] dark:bg-white/[0.06] text-foreground/80 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]"}`}>
             {f.label}
           </button>
         ))}

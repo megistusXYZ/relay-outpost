@@ -190,11 +190,13 @@ export function AddToFeaturedDialog({
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder={lookup.feeds.length === 0 ? "Name your first feed — e.g. Weekly Picks" : "New feed name"}
+                className="min-h-[44px]"
                 data-testid="input-featured-new-name"
               />
               <Button
                 onClick={() => add({ newTitle })}
                 disabled={!newTitle.trim() || busyTarget !== null}
+                className="min-h-[44px]"
                 data-testid="button-featured-create-add"
               >
                 {busyTarget === "new" ? <RelayOutpostInlineLoader className="w-4 h-4" /> : "Create"}
