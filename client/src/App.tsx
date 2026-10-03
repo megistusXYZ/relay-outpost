@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, memo, startTransition } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, memo, startTransition } from "react";
 import { Switch, Route, useLocation, useSearch, Link } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -82,6 +82,7 @@ import { isWelcomed } from "@/lib/welcome";
 // code-split locally (Home, Search, MyOutpost, ChatList) share it too.
 import { lazyRetry, lazyNamed, preloadChunk } from "@/lib/lazy-retry";
 import { resetChunkRecovery } from "@/lib/stale-chunk-recovery";
+import { routeLoaderShown } from "@/lib/launch-handoff";
 
 const lazyChunks = {
   Home: () => lazyRetry(() => import("@/pages/Home")),
@@ -318,8 +319,12 @@ if (typeof window !== "undefined") {
 }
 
 function LazyFallback() {
+  // While a page shows only this, the launch screen stays up instead of
+  // lifting onto an empty page (lib/launch-handoff.ts). Layout effect: it
+  // must be counted before main.tsx's two-frame "ready" fires.
+  useLayoutEffect(() => routeLoaderShown(), []);
   return (
-    <div className="flex items-center justify-center h-full min-h-[200px] animate-in fade-in duration-300">
+    <div className="flex items-center justify-center h-full min-h-[200px] animate-in fade-in duration-300" data-testid="route-loader">
       <div className="flex flex-col items-center gap-2">
         <RelayOutpostInlineLoader className="w-5 h-5 text-brand" />
       </div>

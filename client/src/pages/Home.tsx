@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, type RefObject } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, useSyncExternalStore, type RefObject } from "react";
 import { reachAdmits } from "@/lib/trust-reach";
 import { cn } from "@/lib/utils";
 import { flushSync } from "react-dom";
-import { eventStore, pool, subscribeToFeed, subscribeToFeedPersistent, fetchProfilesCached, fetchInteractionsCached, isProfileFetchSettled, FAST_RELAYS, getRelaysForPurpose, markFeedDataLoaded, hasFeedData, throttledPoolSubscribe } from "@/lib/nostr";
+import { eventStore, pool, subscribeToFeed, subscribeToFeedPersistent, fetchProfilesCached, fetchInteractionsCached, isProfileFetchSettled, FAST_RELAYS, getRelaysForPurpose, markFeedDataLoaded, hasFeedData, throttledPoolSubscribe, registerProfileInAllCaches } from "@/lib/nostr";
+import { takeFirstScreen } from "@/lib/first-screen";
+import { firstScreenRanks, firstScreenTaken, subscribeFirstScreenRanks } from "@/lib/first-screen-ingest";
+import { chooseDiscoverLens } from "@/lib/discover-trust";
 import { getCachedFeedEvents, cacheFeedEvents } from "@/lib/indexeddb-cache";
 import { fetchRelayLists, getOptimalRelaysForFeed } from "@/lib/outbox";
 import { KIND_TEXT_NOTE, KIND_REPOST } from "@/lib/nostr-helpers";
@@ -420,10 +423,24 @@ export default function Home() {
   // language/kind safe-floor. Off by default → behaves exactly as before.
   const { v2: discoverV2, sort: discoverSort } = useDiscoverPrefs();
   const [preferredLangs, setPreferredLangs] = useState<string[]>(() => getPreferredLanguages());
+  // The relay pool's broadening (a 600-record NIP-66 monitor read, then more
+  // relays dialled) waits until posts are on screen: on a phone it competed
+  // with the first screen for the connection (measured 2026-10-03: it fired
+  // at ~4 s and posts landed at 6.2 s). A feed that never fills still widens,
+  // after a fallback wait.
+  const [postsShown, setPostsShown] = useState(false);
+  useEffect(() => {
+    if (postsShown) return;
+    const t = setTimeout(() => setPostsShown(true), 8000);
+    return () => clearTimeout(t);
+  }, [postsShown]);
+  useEffect(() => {
+    if (!discoverV2 || !postsShown) return;
+    warmDiscoverRelays(getPreferredLanguages()); // background: broaden the relay pool
+  }, [discoverV2, postsShown]);
   useEffect(() => {
     if (!discoverV2) return;
     ensureLanguageDetector(); // warm the code-split language model
-    warmDiscoverRelays(getPreferredLanguages()); // background: broaden the relay pool
     const onLangs = () => {
       setPreferredLangs(getPreferredLanguages());
       // New languages → re-warm the NIP-66 pool so the next fetch matches them.
@@ -1597,6 +1614,34 @@ export default function Home() {
   //     profile fetch attached — prefetch the candidate window explicitly
   //     (fetchProfilesCached dedupes already-requested pubkeys).
   const isGlobalForYou = feedMode === "raw_signal" && !activeCustomFeed;
+
+  // ---- A stranger's first screen, from our server (lib/first-screen.ts) ----
+  // Recent notes by people the default lens trusts, with their profiles and
+  // trust scores, shown the moment the page mounts. The scores feed the spam
+  // floor's score lookup below for a viewer with no trust map of their own:
+  // a positive score is what admits a stranger without waiting on profile and
+  // follower lookups (gateStrangerProfile, the new-account combo gate). A
+  // viewer with their own lens never takes it — their trust decides.
+  // A signed-out visitor's first screen was usually taken in while this page's
+  // code downloaded (lib/first-screen-ingest.ts): its notes are already in the
+  // store and its scores are read here at mount. Otherwise Home asks itself.
+  const earlyRanks = useSyncExternalStore(subscribeFirstScreenRanks, firstScreenRanks, firstScreenRanks);
+  const [fetchedRanks, setServerRanks] = useState<ReadonlyMap<string, number>>(() => new Map());
+  const serverRanks = earlyRanks.size > 0 ? earlyRanks : fetchedRanks;
+  const usesDefaultLens = chooseDiscoverLens({ wotEnabled, ownScores: grapeRankScores ?? null }) === "default";
+  const firstScreenTakenRef = useRef(firstScreenTaken());
+  useEffect(() => {
+    if (!isGlobalForYou || !usesDefaultLens || firstScreenTakenRef.current) return;
+    firstScreenTakenRef.current = true;
+    let cancelled = false;
+    void takeFirstScreen().then((fs) => {
+      if (cancelled || !fs) return;
+      for (const p of fs.profiles) registerProfileInAllCaches(p);
+      setServerRanks(fs.ranks);
+      for (const n of fs.notes) eventStore.add(n);
+    });
+    return () => { cancelled = true; };
+  }, [isGlobalForYou, usesDefaultLens]);
   // Trending gates its SUPPLEMENT through the same profile floor (see
   // tierFilteredTrending), so its held-in-grace authors need the same kind-0
   // re-run — without it a legit supplement author whose profile lands after
@@ -1737,7 +1782,9 @@ export default function Home() {
       // Global feed only; followed authors are exempt inside the filter.
       crossAuthorDedupe: isGlobalFeed,
       newAccountComboGate: isGlobalFeed,
-      scoreGetter: isGlobalFeed ? (pk: string) => grapeRankScores?.get(pk) : undefined,
+      // The viewer's own score first; for a viewer on the default lens, the
+      // server's score for the first screen's authors (see serverRanks).
+      scoreGetter: isGlobalFeed ? (pk: string) => grapeRankScores?.get(pk) ?? (usesDefaultLens ? serverRanks.get(pk) : undefined) : undefined,
       firstSeenGetter: isGlobalFeed ? getFirstSeen : undefined,
       // Real engagement is an earned signal AND (per the combo seam) lets the
       // gate safely drop undatable zero-signal strangers in the broadened pool.
@@ -1795,7 +1842,10 @@ export default function Home() {
     // don't force a full recompute on every follower-count update.
     // profileVersion IS included: the profile floor hides unknown authors, so
     // kind-0 arrivals must re-run the filter to surface them (see above).
-  }, [feedMode, follows, allTextNotes, mediaNotes, supplementNotes, spamFilter, followSet, activeCustomFeed, profileGetter, pubkey, contentFilter, hasMediaUrl, grapeRankScores, wotEnabled, isCustomMode, feedStyle, discoverV2, preferredLangs, flaggedPubkeys, fofSet, profileVersion, activePreset]);
+  }, [feedMode, follows, allTextNotes, mediaNotes, supplementNotes, spamFilter, followSet, activeCustomFeed, profileGetter, pubkey, contentFilter, hasMediaUrl, grapeRankScores, wotEnabled, isCustomMode, feedStyle, discoverV2, preferredLangs, flaggedPubkeys, fofSet, profileVersion, activePreset, serverRanks, usesDefaultLens]);
+  useEffect(() => {
+    if (!postsShown && baseFilteredEvents.length > 0) setPostsShown(true);
+  }, [postsShown, baseFilteredEvents]);
 
   // ---- Custom-feed engagement sorts: make primalStatsCache reactive ----
   // The engagement sorts below (Hot / Top Signal / Most Discussed / Most

@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import { nonBlockingAppCss } from "./shared/non-blocking-css";
+import { routePreloadMap, injectRoutePreload, PRELOAD_ROUTES } from "./shared/route-preload";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { readFileSync } from "fs";
@@ -44,6 +45,17 @@ export default defineConfig(async ({ mode }) => {
         name: "ro-non-blocking-app-css",
         apply: "build",
         transformIndexHtml: { order: "post", handler: (html: string) => nonBlockingAppCss(html) },
+      },
+      // The landing pages' own code starts downloading with the HTML instead
+      // of after the app has run (shared/route-preload.ts).
+      {
+        name: "ro-route-preload",
+        apply: "build",
+        transformIndexHtml: {
+          order: "post",
+          handler: (html: string, ctx: { bundle?: Record<string, any> }) =>
+            ctx.bundle ? injectRoutePreload(html, routePreloadMap(ctx.bundle as any, PRELOAD_ROUTES)) : html,
+        },
       },
       runtimeErrorOverlay({
         filter: (error: Error) => {
