@@ -128,11 +128,21 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
   const [brandDesc, setBrandDesc] = useState(nip11?.description || "");
   const [brandIcon, setBrandIcon] = useState(nip11?.icon || "");
   const [brandBanner, setBrandBanner] = useState(nip11?.banner || "");
+  const [savedName, setSavedName] = useState(nip11?.name || "");
+  const [savedDesc, setSavedDesc] = useState(nip11?.description || "");
   const [savedIcon, setSavedIcon] = useState(nip11?.icon || "");
   const [savedBanner, setSavedBanner] = useState(nip11?.banner || "");
-  const [savingBrand, setSavingBrand] = useState<string | null>(null);
+  const [savingBrand, setSavingBrand] = useState(false);
   const iconDirty = brandIcon !== savedIcon;
   const bannerDirty = brandBanner !== savedBanner;
+  // One Save for the whole form: every field that differs from what the relay
+  // last confirmed goes in one tap, and only those.
+  const dirtyFields = [
+    brandName !== savedName ? "name" : null,
+    brandDesc !== savedDesc ? "description" : null,
+    iconDirty ? "icon" : null,
+    bannerDirty ? "banner" : null,
+  ].filter((f): f is "name" | "description" | "icon" | "banner" => f !== null);
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [iconUploadStatus, setIconUploadStatus] = useState<string | null>(null);
@@ -150,7 +160,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
       const result = await uploadMedia(file, (status) => setStatus(status), signer);
       setValue(result.url);
       setStatus(null);
-      toast({ title: `${target === "icon" ? "Icon" : "Banner"} uploaded`, description: "Click Save to apply." });
+      toast({ title: `${target === "icon" ? "Icon" : "Banner"} uploaded`, description: "Save changes to put it on the relay." });
     } catch (err) {
       setStatus(null);
       toast({ title: "Upload failed", description: err instanceof Error ? err.message : "Could not upload image.", variant: "destructive" });
@@ -443,23 +453,32 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
     return () => { sub.close(); clearTimeout(timer); };
   }, [relayUrl]);
 
-  const handleSaveBrand = async (field: "name" | "description" | "icon" | "banner") => {
-    setSavingBrand(field);
-    let res;
-    switch (field) {
-      case "name": res = await changeRelayName(relayUrl, brandName); break;
-      case "description": res = await changeRelayDescription(relayUrl, brandDesc); break;
-      case "icon": res = await changeRelayIcon(relayUrl, brandIcon); break;
-      case "banner": res = await changeRelayBanner(relayUrl, brandBanner); break;
-    }
-    if (res.error) {
-      toast({ title: `Failed to update ${field}`, description: res.error, variant: "destructive" });
-    } else {
+  const handleSaveBrand = async () => {
+    if (dirtyFields.length === 0 || savingBrand) return;
+    setSavingBrand(true);
+    const failed: string[] = [];
+    for (const field of dirtyFields) {
+      let res;
+      switch (field) {
+        case "name": res = await changeRelayName(relayUrl, brandName); break;
+        case "description": res = await changeRelayDescription(relayUrl, brandDesc); break;
+        case "icon": res = await changeRelayIcon(relayUrl, brandIcon); break;
+        case "banner": res = await changeRelayBanner(relayUrl, brandBanner); break;
+      }
+      if (res.error) { failed.push(`${field}: ${res.error}`); continue; }
+      if (field === "name") setSavedName(brandName);
+      if (field === "description") setSavedDesc(brandDesc);
       if (field === "icon") setSavedIcon(brandIcon);
       if (field === "banner") setSavedBanner(brandBanner);
-      toast({ title: `${field.charAt(0).toUpperCase() + field.slice(1)} updated` });
     }
-    setSavingBrand(null);
+    setSavingBrand(false);
+    if (failed.length === 0) {
+      toast({ title: "Saved", description: dirtyFields.length === 1 ? `The relay's ${dirtyFields[0]} is updated.` : `${dirtyFields.length} changes are on the relay.` });
+    } else if (failed.length < dirtyFields.length) {
+      toast({ title: "Some changes didn't save", description: failed.join(" · "), variant: "destructive" });
+    } else {
+      toast({ title: "Couldn't save", description: failed.join(" · "), variant: "destructive" });
+    }
   };
 
   const handleSaveRules = async () => {
@@ -617,38 +636,53 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
 
   return (
     <div className="space-y-6">
-      <OpsCard className="space-y-4">
-        <OpsSectionHeader icon={Image} label="Community Branding" className="mb-0" />
+      <OpsCard className="space-y-4" data-testid="ops-brand-form">
+        <OpsSectionHeader
+          icon={Image}
+          label="Community Branding"
+          className="mb-0"
+          action={
+            <Button
+              size="sm"
+              onClick={handleSaveBrand}
+              disabled={savingBrand || dirtyFields.length === 0}
+              className="h-11 sm:h-9 text-sm sm:text-xs px-4 rounded-full"
+              data-testid="ops-brand-save"
+            >
+              {savingBrand ? <RelayOutpostInlineLoader className="w-3.5 h-3.5 mr-1.5" /> : <Check className="w-3.5 h-3.5 mr-1.5" />}
+              Save changes
+            </Button>
+          }
+        />
+        {dirtyFields.length > 0 && !savingBrand && (
+          <p className="text-[12px] text-amber-700 dark:text-amber-300/80 -mt-2" data-testid="ops-brand-dirty">
+            {dirtyFields.length === 1 ? "1 unsaved change" : `${dirtyFields.length} unsaved changes`} · {dirtyFields.join(", ")}
+          </p>
+        )}
 
         <div className="space-y-3">
           <div className="space-y-1">
-            <label className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">Name</label>
-            <div className="flex gap-2">
-              <Input
-                value={brandName}
-                onChange={e => setBrandName(e.target.value)}
-                placeholder="Relay name"
-                className="h-8 text-xs flex-1"
-              />
-              <Button size="sm" onClick={() => handleSaveBrand("name")} disabled={savingBrand === "name"} className="h-8 text-xs px-3">
-                {savingBrand === "name" ? <RelayOutpostInlineLoader className="w-3 h-3" /> : "Save"}
-              </Button>
-            </div>
+            <label className="text-[10px] text-muted-foreground/50 uppercase tracking-wider" htmlFor="ops-brand-name">Name</label>
+            <Input
+              id="ops-brand-name"
+              value={brandName}
+              onChange={e => setBrandName(e.target.value)}
+              placeholder="Relay name"
+              className="h-10 sm:h-9 text-sm sm:text-xs"
+              data-testid="ops-brand-name"
+            />
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">Description</label>
-            <div className="flex gap-2">
-              <Textarea
-                value={brandDesc}
-                onChange={e => setBrandDesc(e.target.value)}
-                placeholder="Community description"
-                className="text-xs min-h-[60px] flex-1"
-              />
-              <Button size="sm" onClick={() => handleSaveBrand("description")} disabled={savingBrand === "description"} className="h-8 text-xs px-3 self-end">
-                {savingBrand === "description" ? <RelayOutpostInlineLoader className="w-3 h-3" /> : "Save"}
-              </Button>
-            </div>
+            <label className="text-[10px] text-muted-foreground/50 uppercase tracking-wider" htmlFor="ops-brand-description">Description</label>
+            <Textarea
+              id="ops-brand-description"
+              value={brandDesc}
+              onChange={e => setBrandDesc(e.target.value)}
+              placeholder="Community description"
+              className="text-sm sm:text-xs min-h-[72px]"
+              data-testid="ops-brand-description"
+            />
           </div>
 
           <div className="space-y-2">
@@ -716,25 +750,15 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
                   {uploadingIcon ? <RelayOutpostInlineLoader className="w-3 h-3 mr-1" /> : <Upload className="w-3 h-3 mr-1" />}
                   {brandIcon ? "Replace" : "Upload"}
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={() => handleSaveBrand("icon")}
-                  disabled={savingBrand === "icon" || !iconDirty || uploadingIcon}
-                  className="h-8 text-xs justify-center bg-primary hover:bg-primary/90 text-primary-foreground"
-                  data-testid="button-save-icon"
-                >
-                  {savingBrand === "icon" ? <RelayOutpostInlineLoader className="w-3 h-3 mr-1" /> : <Check className="w-3 h-3 mr-1" />}
-                  Save
-                </Button>
                 {brandIcon && (
                   <Button
                     size="sm"
                     variant="ghost"
                     onClick={() => setBrandIcon("")}
-                    disabled={uploadingIcon || savingBrand === "icon"}
+                    disabled={uploadingIcon || savingBrand}
                     className="h-8 text-xs justify-center text-red-700/80 dark:text-red-400/80 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-500/10"
                     data-testid="button-remove-icon"
-                    title="Clear icon (then click Save to apply)"
+                    title="Clear icon (then Save changes)"
                   >
                     <Trash2 className="w-3 h-3 mr-1" />
                     Remove
@@ -816,25 +840,15 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
                 {uploadingBanner ? <RelayOutpostInlineLoader className="w-3 h-3 mr-1" /> : <Upload className="w-3 h-3 mr-1" />}
                 {brandBanner ? "Replace" : "Upload"}
               </Button>
-              <Button
-                size="sm"
-                onClick={() => handleSaveBrand("banner")}
-                disabled={savingBrand === "banner" || !bannerDirty || uploadingBanner}
-                className="h-8 text-xs justify-center sm:flex-initial bg-primary hover:bg-primary/90 text-primary-foreground"
-                data-testid="button-save-banner"
-              >
-                {savingBrand === "banner" ? <RelayOutpostInlineLoader className="w-3 h-3 mr-1" /> : <Check className="w-3 h-3 mr-1" />}
-                Save
-              </Button>
               {brandBanner && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => setBrandBanner("")}
-                  disabled={uploadingBanner || savingBrand === "banner"}
+                  disabled={uploadingBanner || savingBrand}
                   className="h-8 text-xs justify-center sm:flex-initial text-red-700/80 dark:text-red-400/80 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-500/10"
                   data-testid="button-remove-banner"
-                  title="Clear banner (then click Save to apply)"
+                  title="Clear banner (then Save changes)"
                 >
                   <Trash2 className="w-3 h-3 mr-1" />
                   Remove
