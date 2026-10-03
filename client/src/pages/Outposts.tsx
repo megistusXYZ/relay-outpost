@@ -5197,10 +5197,10 @@ function StarterCommunityIcon({ url, name }: { url: string; name: string }) {
     return () => { cancelled = true; };
   }, [url]);
   if (icon) {
-    return <img src={icon} alt="" loading="lazy" className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-border/30" onError={() => setIcon(null)} />;
+    return <img src={icon} alt="" loading="lazy" className="h-10 w-10 shrink-0 rounded-lg object-cover" onError={() => setIcon(null)} />;
   }
   return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-sm font-semibold text-brand">
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-sm font-semibold text-brand">
       {name.slice(0, 1).toUpperCase()}
     </span>
   );
@@ -5606,49 +5606,49 @@ export default function Outposts() {
           (lib/starter-communities). Self-hides once everything is joined. */}
       {pubkey && starterCards.length > 0 && (
         <div className="mt-5" data-testid="starter-communities">
-          <p className="px-0.5 mb-2.5 text-[11px] font-brand uppercase tracking-wider text-muted-foreground/60">
+          <p className="px-3 mb-1.5 text-[11px] font-brand uppercase tracking-wider text-muted-foreground/60">
             Good places to start
           </p>
-          <div className="grid gap-2 sm:grid-cols-2">
+          {/* Flat rows, one list look across the app (the Chats list draws its
+              rows the same way): icon, name, one caption, a chevron. The old
+              tiles mixed a translucent card, a muted caption and an arrow —
+              three weights on one tile (owner, 2026-10-02). */}
+          <div className="divide-y divide-border/30 rounded-xl overflow-hidden">
             {starterCards.map((c) => (
               <button
                 key={c.url}
                 type="button"
                 onClick={() => setLocation(`/outposts/${encodeURIComponent(c.url)}`)}
-                className="group/starter flex items-start gap-3 rounded-xl border border-border/30 bg-card/40 px-3.5 py-3 text-left transition-all hover:border-brand/30 hover:bg-brand/[0.05] min-h-[44px]"
+                className="group/starter flex w-full items-center gap-3 px-3 min-h-[56px] py-2.5 text-left transition-colors hover:bg-primary/[0.04] active:bg-primary/[0.06]"
                 data-testid={`starter-community-${c.url.replace(/\W+/g, "-")}`}
               >
                 <StarterCommunityIcon url={c.url} name={c.name} />
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium truncate">{c.name}</span>
-                  {/* Two lines, not a one-line ellipsis: on a phone the old
-                      truncate cut every tagline mid-sentence (owner QA).
-                      NO `block` here — it would override line-clamp's
-                      -webkit-box display and unclamp the text. */}
-                  <span className="text-[11px] leading-snug text-muted-foreground/70 line-clamp-2">{c.tagline}</span>
+                  {/* Two lines, not a one-line ellipsis: on a phone a one-line
+                      cut took every tagline mid-sentence (owner QA). */}
+                  <span className="text-xs leading-snug text-muted-foreground line-clamp-2">{c.tagline}</span>
                 </span>
-                <ArrowUpRight className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-colors group-hover/starter:text-brand" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-colors group-hover/starter:text-foreground" aria-hidden="true" />
               </button>
             ))}
+            {/* Community operators are the growth loop — invite them in. Opens
+                the feedback composer (idea type) rather than a mailto: replies
+                land in the operator inbox with the reporter's npub attached. */}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent("relay-outpost:open-feedback", { detail: { initialType: "idea" } }))}
+              className="group/starter flex w-full items-center gap-3 px-3 min-h-[56px] py-2.5 text-left transition-colors hover:bg-primary/[0.04] active:bg-primary/[0.06]"
+              data-testid="button-feature-your-community"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand"><MagicStarIcon className="h-4 w-4" /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium">Run a community? Get it featured here.</span>
+                <span className="block text-xs text-muted-foreground">Tell us about your relay and we'll take a look.</span>
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-colors group-hover/starter:text-foreground" aria-hidden="true" />
+            </button>
           </div>
-          {/* Community operators are the growth loop — invite them in. Opens
-              the feedback composer (idea type) rather than a mailto: replies
-              land in the operator inbox with the reporter's npub attached. */}
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent("relay-outpost:open-feedback", { detail: { initialType: "idea" } }))}
-            className="mt-3 flex w-full items-center gap-2 rounded-xl border border-dashed border-brand/25 bg-brand/[0.03] px-3.5 py-3 text-left transition-colors hover:border-brand/40 hover:bg-brand/[0.06] min-h-[44px]"
-            data-testid="button-feature-your-community"
-          >
-            <MagicStarIcon className="h-4 w-4 shrink-0 text-brand/70" />
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-medium">Run a community? Get it featured here.</span>
-              <span className="block text-[11px] text-muted-foreground/70">Tell us about your relay and we'll take a look.</span>
-            </span>
-            <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
-          </button>
-
-          <BuzzDirectorySection joinedUrls={joinedRelays.map((r) => r.url)} onOpen={(url, inviteCode) => setLocation(`/outposts/${encodeURIComponent(url)}?tab=chat${inviteCode ? `&join=${encodeURIComponent(inviteCode)}` : ""}`)} />
         </div>
       )}
 
