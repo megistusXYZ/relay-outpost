@@ -4,7 +4,7 @@ import { SECTIONS, SETTINGS_SCREENS, sectionOf, consoleTitle } from "./console-n
 describe("the operator console's sections", () => {
   it("are five, in the order an operator reaches for them", () => {
     expect(SECTIONS.map((s) => s.id)).toEqual(["overview", "events", "access", "feedback", "settings"]);
-    expect(SECTIONS.map((s) => s.label)).toEqual(["Overview", "Events", "Access", "Feedback", "Settings"]);
+    expect(SECTIONS.map((s) => s.label)).toEqual(["Overview", "Content", "Access", "Feedback", "Settings"]);
   });
 
   it("the relay's public face lives under Settings, as three screens", () => {
@@ -23,7 +23,7 @@ describe("the operator console's sections", () => {
 
   it("names the screen for the page title and the back row", () => {
     expect(consoleTitle("overview")).toBe("Overview");
-    expect(consoleTitle("live")).toBe("Events");
+    expect(consoleTitle("live")).toBe("Content");
     expect(consoleTitle("featured")).toBe("Featured feeds");
     expect(consoleTitle("settings")).toBe("Settings");
   });

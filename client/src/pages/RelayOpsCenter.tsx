@@ -23,7 +23,7 @@ import { TabId, getTabFromHash } from "./relay-ops/shared";
 import { SECTIONS, SETTINGS_SCREENS, sectionOf } from "./relay-ops/console-nav";
 import { useFeedbackInbox } from "@/hooks/use-feedback-inbox";
 import { OverviewTab } from "./relay-ops/OverviewTab";
-import { EventsTab } from "./relay-ops/EventsTab";
+import { ContentTab } from "./relay-ops/ContentTab";
 import { AccessControlTab } from "./relay-ops/AccessControlTab";
 import { FeaturedTab } from "./relay-ops/FeaturedTab";
 import { KindGateCard } from "./relay-ops/KindGateCard";
@@ -213,7 +213,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
   const settingsScreen = SETTINGS_SCREENS.find(s => s.tab === activeTab);
 
   return (
-    <div className="max-w-5xl mx-auto px-3 sm:px-4 pt-3 pb-6 sm:pt-5 space-y-4">
+    <div className="max-w-5xl lg:max-w-[1400px] mx-auto px-3 sm:px-4 pt-3 pb-6 sm:pt-5 space-y-4">
       {/* The head: which relay this is, that you run it, and one way back to
           its community. No card — the page is the surface. */}
       <div className="flex items-center gap-3" data-testid="ops-head">
@@ -298,14 +298,15 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
       )}
 
       {authGate || (
-        <>
-          {/* One row of sections. It never wraps and never truncates: on a
-              phone it scrolls sideways; on a desktop the six fit with room. */}
+        <div className="lg:grid lg:grid-cols-[176px_minmax(0,1fr)] lg:gap-6 lg:items-start space-y-4 lg:space-y-0">
+          {/* The sections. A phone: one row that scrolls sideways, never
+              wraps. A desktop: a column on the left, so the section's own
+              list and detail get the width (three panes, like Mail). */}
           <div
             ref={navRef}
             role="tablist"
             aria-label="Relay Control sections"
-            className="flex items-stretch gap-1 overflow-x-auto scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0 border-b border-black/[0.08] dark:border-white/[0.08]"
+            className="flex items-stretch gap-1 overflow-x-auto scrollbar-hide scroll-px-3 -mx-3 px-3 sm:mx-0 sm:px-0 border-b border-black/[0.08] dark:border-white/[0.08] lg:flex-col lg:overflow-visible lg:border-b-0 lg:sticky lg:top-4"
             data-testid="ops-nav"
           >
             {SECTIONS.map(s => {
@@ -317,8 +318,8 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => setActiveTab(s.id)}
-                  className={`relative shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-3 text-sm font-medium whitespace-nowrap transition-colors ${
-                    isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                  className={`relative shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-3 text-sm font-medium whitespace-nowrap transition-colors lg:justify-between lg:rounded-lg lg:w-full ${
+                    isActive ? "text-foreground lg:bg-brand/[0.09]" : "text-muted-foreground hover:text-foreground lg:hover:bg-black/[0.03] dark:lg:hover:bg-white/[0.04]"
                   }`}
                   data-testid={`ops-section-${s.id}`}
                 >
@@ -331,7 +332,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                       {feedbackUnread > 9 ? "9+" : feedbackUnread}
                     </span>
                   )}
-                  {isActive && <span className="absolute left-3 right-3 -bottom-px h-0.5 rounded-full bg-brand" aria-hidden="true" />}
+                  {isActive && <span className="absolute left-3 right-3 -bottom-px h-0.5 rounded-full bg-brand lg:hidden" aria-hidden="true" />}
                 </button>
               );
             })}
@@ -358,7 +359,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                   don't auto-reset), letting the operator recover by tab-switching. */}
               <ErrorBoundary key={activeTab} fallbackRender={(error) => <TabErrorFallback error={error} />}>
                 {activeTab === "overview" && <OverviewTab relayUrl={selectedRelay} inbox={inbox} onOpenFeedback={() => setActiveTab("feedback")} />}
-                {(activeTab === "events" || activeTab === "live") && <EventsTab relayUrl={selectedRelay} initialLive={activeTab === "live"} />}
+                {(activeTab === "events" || activeTab === "live") && <ContentTab relayUrl={selectedRelay} nip11={nip11} initialLive={activeTab === "live"} />}
                 {activeTab === "access" && <><AccessControlTab relayUrl={selectedRelay} nip11={nip11} /><KindGateCard relayUrl={selectedRelay} nip11={nip11} /></>}
                 {activeTab === "feedback" && <FeedbackTab relayUrl={selectedRelay} inbox={inbox} />}
                 {activeTab === "settings" && (
@@ -389,7 +390,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
               </ErrorBoundary>
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );

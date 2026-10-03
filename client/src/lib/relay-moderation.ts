@@ -61,3 +61,39 @@ export function removeEventOnRelay(relayUrl: string, eventId: string, deps: Mode
   const remove = deps.banEvent ?? banEvent;
   return viaApi(relayUrl, () => remove(relayUrl, eventId, "Removed from Relay Control"), deps.support ?? cachedSupport);
 }
+
+export interface BatchOutcome {
+  done: string[];
+  failed: Array<{ id: string; error: string }>;
+  /** Stopped early: the relay refused the first ones, so the rest would be too. */
+  stopped?: string;
+}
+
+/**
+ * Run one relay action over many items, a few at a time, reporting progress.
+ * NIP-86 has no batch call, so this is the batch. If the whole first round is
+ * refused, it stops there and says why instead of sending hundreds of calls
+ * the relay will refuse the same way.
+ */
+export async function runBatch(
+  ids: readonly string[],
+  call: (id: string) => Promise<{ result?: unknown; error?: string }>,
+  onProgress?: (done: number, total: number) => void,
+  concurrency = 3,
+): Promise<BatchOutcome> {
+  const out: BatchOutcome = { done: [], failed: [] };
+  for (let i = 0; i < ids.length; i += concurrency) {
+    const round = ids.slice(i, i + concurrency);
+    const answers = await Promise.all(round.map((id) => call(id).catch((e) => ({ error: e instanceof Error ? e.message : "The relay didn't answer" }))));
+    answers.forEach((a, j) => {
+      if (a.error) out.failed.push({ id: round[j], error: a.error });
+      else out.done.push(round[j]);
+    });
+    onProgress?.(out.done.length + out.failed.length, ids.length);
+    if (i === 0 && out.done.length === 0 && out.failed.length === round.length && ids.length > round.length) {
+      out.stopped = out.failed[0].error;
+      return out;
+    }
+  }
+  return out;
+}

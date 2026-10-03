@@ -4,7 +4,7 @@ import { signWithTimeout } from "@/lib/signer-timeout";
 import { fetchNip11, supportsNip } from "./nip11";
 import { pool } from "./nostr";
 import {
-  readSupportedMethods, methodsToTry, callFirstSupported, isUnknownMethod,
+  readSupportedMethods, methodsToTry, callFirstSupported,
   UNKNOWN_CAPABILITIES, type RelayCapabilities, type RelayAction,
 } from "./relay-capabilities";
 import { isNip86Method } from "@shared/nip86-methods";
@@ -205,6 +205,30 @@ export async function unbanPubkey(relayUrl: string, pubkey: string, reason?: str
   return callAction<boolean>(relayUrl, "unban", params);
 }
 
+/** Remove one post from the relay (NIP-86 banevent). */
+export function removeEventByAction(relayUrl: string, eventId: string, reason?: string): Promise<Nip86Response<boolean>> {
+  return callAction<boolean>(relayUrl, "removeEvent", reason ? [eventId, reason] : [eventId]);
+}
+
+/** Bring a removed post back, by whichever name the relay knows. */
+export function restoreEvent(relayUrl: string, eventId: string): Promise<Nip86Response<boolean>> {
+  return callAction<boolean>(relayUrl, "restoreEvent", [eventId]);
+}
+
+export interface RemovedEntry { id: string; reason?: string }
+
+/** What the relay has removed, with the reasons it kept. */
+export async function listRemovedEvents(relayUrl: string): Promise<Nip86Response<RemovedEntry[]>> {
+  const res = await callAction<unknown[]>(relayUrl, "listRemoved", []);
+  if (!Array.isArray(res.result)) return res as Nip86Response<RemovedEntry[]>;
+  const entries = res.result
+    .map((r): RemovedEntry | null => typeof r === "string" ? { id: r }
+      : r && typeof r === "object" && typeof (r as { id?: unknown }).id === "string"
+        ? { id: (r as { id: string }).id, reason: (r as { reason?: string }).reason || undefined } : null)
+    .filter((r): r is RemovedEntry => !!r && /^[0-9a-f]{64}$/i.test(r.id));
+  return { result: entries };
+}
+
 const CAPS_TTL_MS = 5 * 60_000;
 const capsCache = new Map<string, { caps: RelayCapabilities; reached: boolean; at: number }>();
 const capsInFlight = new Map<string, Promise<{ caps: RelayCapabilities; reached: boolean }>>();
@@ -234,10 +258,10 @@ export async function probeRelayManagement(relayUrl: string, opts: { fresh?: boo
   const p = (async () => {
     if (!getGlobalSigner()) return { caps: UNKNOWN_CAPABILITIES, reached: false };
     const res = await nip86Call<string[]>(relayUrl, "supportedmethods");
-    const caps = readSupportedMethods(res);
+    const caps = readSupportedMethods(res as Nip86Response<unknown> & { isHtml?: boolean });
     const reached = !isTransportFailure(res);
-    // Only a real answer is remembered; "couldn't reach it" asks again next time.
-    if (caps.listed || isUnknownMethod(res.error)) capsCache.set(key, { caps, reached, at: Date.now() });
+    // Any answer is remembered for a few minutes; "couldn't reach it" asks again next time.
+    if (reached) capsCache.set(key, { caps, reached, at: Date.now() });
     return { caps, reached };
   })().finally(() => capsInFlight.delete(key));
   capsInFlight.set(key, p);
