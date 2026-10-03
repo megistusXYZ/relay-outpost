@@ -17,8 +17,14 @@ const PRIMAL_CACHE_URLS = [
   "wss://cache2.primal.net/v1",
   "wss://cache1.primal.net/v1",
 ];
-/** Index of the host that last worked — start there next time. */
-let primalHostIndex = 0;
+/** Index of the host that last worked — start there next time, reloads included. */
+const PRIMAL_HOST_KEY = "primal_host_index";
+let primalHostIndex = (() => {
+  try {
+    const n = Number(sessionStorage.getItem(PRIMAL_HOST_KEY));
+    return Number.isInteger(n) && n >= 0 && n < PRIMAL_CACHE_URLS.length ? n : 0;
+  } catch { return 0; }
+})();
 const PRIMAL_CACHE_URL = PRIMAL_CACHE_URLS[0];
 
 let ws: WebSocket | null = null;
@@ -135,7 +141,8 @@ function createConnection(): Promise<void> {
         wsReady = true;
         reconnectDelay = 1000;
         failedHostsInARow = 0;
-        // This host answered — stay on it until it stops.
+        // This host answered — stay on it until it stops, and start here next load.
+        try { sessionStorage.setItem(PRIMAL_HOST_KEY, String(primalHostIndex)); } catch {}
         resolve();
       };
 

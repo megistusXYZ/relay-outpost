@@ -48,6 +48,7 @@ import { NEWS_SOURCES, NEWS_TOPICS } from "@shared/news-sources";
 import { isPrivateIp, validateHostSafety } from "./net-safety";
 import { fetchPlaylistText, probeHlsLiveness } from "./hls-liveness";
 import { discoverRadioStation, fetchStationInfo, type RadioStationInfo } from "./radio-station";
+import { createBtcPriceReader } from "./btc-price";
 import { ogReadsBody } from "./og-read";
 import { pickItemImage } from "./rss-image";
 import { radioStationFromUrl } from "@shared/radio-station";
@@ -3155,6 +3156,26 @@ export async function registerRoutes(
       console.error("[relay-directory] error:", err?.message || err);
       res.status(503).json({ relays: [], error: "Couldn't read the relay directory right now" });
     }
+  });
+
+  // The Bitcoin badge's numbers, read here once a minute for everyone. The
+  // browser used to ask CoinGecko and Binance itself and both refuse browser
+  // origins, so every visitor paid two failed requests (btc-price.ts).
+  const btcPrice = createBtcPriceReader({
+    fetchJson: async (url) => {
+      const r = await safeFetch(url, { timeoutMs: 8000 });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    },
+  });
+  app.get("/api/btc/price", async (_req, res) => {
+    const data = await btcPrice.readPrice().catch(() => null);
+    if (!data) return res.status(503).json({ error: "No price source answered" });
+    res.set("Cache-Control", "public, max-age=60").json(data);
+  });
+  app.get("/api/btc/sparkline", async (_req, res) => {
+    const prices = await btcPrice.readSparkline().catch(() => []);
+    res.set("Cache-Control", "public, max-age=600").json({ prices });
   });
 
   // The Feed tile's recent sample, taken once for everyone and cut down to
