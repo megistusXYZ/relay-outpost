@@ -58,6 +58,7 @@ import { FailureMemory } from "@shared/failure-memory";
 import { createScoreCardReader } from "./score-cards";
 import { createRelayDirectoryReader } from "./relay-directory";
 import { createFeedSampleReader, ranksForNotes } from "./feed-sample";
+import { createFirstScreenReader, createProfileReader } from "./first-screen";
 import { createDiscoverSampleReader, ROUTE_WAIT_MS } from "./trusted-sample";
 import { isDiscoverSampleName } from "@shared/discover-samples";
 import { WOT_BATCH_MAX } from "@shared/wot-batch";
@@ -3197,6 +3198,30 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error("[discover-feed-sample] error:", err?.message || err);
       res.status(503).json({ notes: [], error: "Couldn't take the feed sample right now" });
+    }
+  });
+
+  // A stranger's first screen (first-screen.ts): the newest notes from the
+  // sample above, with their authors' trust scores and profiles, so the guest
+  // For-you feed shows posts the moment the page mounts instead of waiting on
+  // relays and the spam floor's lookups. 503 when the sample couldn't be
+  // taken; the app then fills from the relays as before.
+  const firstScreen = createFirstScreenReader({
+    sample: () => feedSample.read(),
+    ranks: (notes) => ranksForNotes(notes, scoreCards),
+    profiles: createProfileReader(),
+  });
+  app.get("/api/first-screen", async (_req, res) => {
+    try {
+      const result = await Promise.race([
+        firstScreen.read(),
+        new Promise<null>((r) => setTimeout(() => r(null), ROUTE_WAIT_MS)),
+      ]);
+      if (!result || !result.reached) return res.status(503).json({ notes: [], error: "Couldn't take the first screen right now" });
+      res.set("Cache-Control", "public, max-age=60").json({ notes: result.notes, ranks: result.ranks, profiles: result.profiles });
+    } catch (err: any) {
+      console.error("[first-screen] error:", err?.message || err);
+      res.status(503).json({ notes: [], error: "Couldn't take the first screen right now" });
     }
   });
 

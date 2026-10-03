@@ -3,6 +3,8 @@ import { installAppHistory } from "@/lib/app-history";
 import { ensureModalBackListener } from "@/lib/modal-history";
 import { ensureNewsLibraryMigrated } from "@/lib/news-library";
 import App from "./App";
+import { createLaunchHandoff, installLaunchHandoff } from "./lib/launch-handoff";
+import { ingestEarlyFirstScreen } from "./lib/first-screen-ingest";
 import "./index.css";
 import { installScrollClickGuard } from "./lib/scroll-click-guard";
 import { installNativeLinks } from "./lib/native-links";
@@ -196,6 +198,18 @@ window.addEventListener("error", (e) => {
   });
 })();
 
+// The launch screen lifts when the page has something to show, not merely when
+// the shell has painted (lib/launch-handoff.ts). Installed before the first
+// render so the route loader can hold it from its first frame.
+const launchHandoff = createLaunchHandoff({
+  hide: () => { try { window.__roHideSplash?.(); } catch {} },
+  capMs: 6000,
+});
+installLaunchHandoff(launchHandoff);
+// A signed-out visitor's first screen is checked and stored while the page's
+// code downloads (lib/first-screen-ingest.ts).
+ingestEarlyFirstScreen();
+
 createRoot(document.getElementById("root")!).render(<App />);
 
 // Hand off from the inline cold-start splash (client/index.html) to the app.
@@ -215,7 +229,9 @@ declare global {
   // CSS through JS, so there is nothing to wait for.
   let cssIn = !import.meta.env.PROD || !window.__roCss;
   let wanted = false;
-  const reallyHide = () => { try { window.__roHideSplash?.(); } catch {} };
+  // "Ready" hands over to the launch handoff, which still waits while the
+  // page shows only its route loader (capped).
+  const reallyHide = () => launchHandoff.appReady();
   const hide = () => { wanted = true; if (cssIn) reallyHide(); };
   if (!cssIn) {
     const release = () => { cssIn = true; if (wanted) reallyHide(); };

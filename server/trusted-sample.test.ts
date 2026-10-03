@@ -104,7 +104,7 @@ describe("discover sample reader", () => {
     for (const ms of allowances) expect(ms).toBeLessThanOrEqual(RELAY_ANSWER_MS);
     expect(RELAY_ANSWER_MS).toBeLessThan(ROUTE_WAIT_MS);
     const routes = readFileSync(path.resolve(import.meta.dirname, "routes.ts"), "utf8");
-    expect(routes.match(/setTimeout\(\(\) => r\(null\), ROUTE_WAIT_MS\)/g) ?? []).toHaveLength(2); // feed sample + samples
+    expect(routes.match(/setTimeout\(\(\) => r\(null\), ROUTE_WAIT_MS\)/g) ?? []).toHaveLength(3); // feed sample + samples + first screen (its own budget: first-screen.test.ts)
   });
 
   it("a relay that never answers doesn't keep the others' events back", async () => {

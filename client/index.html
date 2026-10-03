@@ -6,6 +6,10 @@
     <script>try{var pm=localStorage.getItem('relay-outpost-perf');var lite;if(pm==='lite'){lite=true}else if(pm==='full'){lite=false}else{var n=navigator;var conn=n.connection||{};lite=(n.maxTouchPoints>0&&matchMedia('(pointer: coarse)').matches)||(n.deviceMemory&&n.deviceMemory<=4)||(n.hardwareConcurrency&&n.hardwareConcurrency<=4)||conn.saveData===true||matchMedia('(prefers-reduced-transparency: reduce)').matches}if(lite){document.documentElement.setAttribute('data-perf','lite')}}catch(e){}</script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5, user-scalable=yes, viewport-fit=cover, interactive-widget=resizes-content" />
+    <!-- A signed-out visitor's first screen (lib/first-screen.ts): asked for
+         while the HTML is still parsing, so the trusted notes are on their way
+         alongside the page's code. Signed-in visitors see their own feed. -->
+    <script>(function(){try{if(location.pathname!=='/'||localStorage.getItem('relay-outpost-pubkey'))return;window.__roFirstScreen=fetch('/api/first-screen').then(function(r){return r.ok?r.json():null}).catch(function(){return null})}catch(e){}})()</script>
     <script>(function(){try{var s=window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches;var i=window.navigator&&window.navigator.standalone===true;if(s||i){var m=document.querySelector('meta[name=viewport]');if(m){m.setAttribute('content','width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content');document.documentElement.classList.add('pwa-standalone');}}}catch(e){}})();</script>
     <title>Relay Outpost — One outpost for everything you say.</title>
     <meta name="description" content="All your communications in one account — post, chat, and connect without another username and password. Everything you make is yours." />
