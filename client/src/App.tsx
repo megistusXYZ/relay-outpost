@@ -55,7 +55,9 @@ import { getOutpostRelays } from "@/lib/outpost-relays";
 import { RelayOutpostIcon, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { RelayHubHeaderControl } from "@/components/RelayHubPopover";
 import { Button } from "@/components/ui/button";
-import NotFound from "@/pages/not-found";
+import NotFound, { LinkNotOpenable } from "@/pages/not-found";
+import { ErrorScreen } from "@/components/ErrorScreen";
+import { bareNostrRoute } from "@/lib/nostr-routes";
 import { NotificationProvider, useNotifications } from "@/contexts/NotificationContext";
 import { NeedsYouProvider } from "@/contexts/NeedsYouContext";
 import { NotificationIcon } from "@/components/icons/NotificationIcon";
@@ -341,21 +343,33 @@ function LazyFallback() {
 function RouteErrorFallback() {
   const [busy, setBusy] = useState(false);
   return (
-    <div className="flex flex-col items-center justify-center min-h-[50vh] p-6 gap-3 text-center" data-testid="route-error">
-      <p className="text-foreground text-base font-medium">This page didn't load.</p>
-      <p className="text-muted-foreground text-sm max-w-sm">
-        Refreshing the app usually fixes it. You stay signed in.
-      </p>
-      <button
-        onClick={() => { setBusy(true); resetChunkRecovery(); void repairApp(); }}
-        disabled={busy}
-        className="min-h-[44px] px-5 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-60"
-        data-testid="button-refresh-app"
-      >
-        {busy ? "Refreshing…" : "Refresh the app"}
-      </button>
-    </div>
+    <ErrorScreen
+      kind="broken"
+      title="This page didn't load"
+      body="Refreshing the app usually fixes it. You stay signed in."
+      primary={{
+        label: busy ? "Refreshing…" : "Refresh the app",
+        onClick: () => { setBusy(true); resetChunkRecovery(); void repairApp(); },
+        disabled: busy,
+        testId: "button-refresh-app",
+      }}
+      testId="route-error"
+    />
   );
+}
+
+/**
+ * A bare Nostr link on our domain (/npub1…, /nevent1…, /naddr1…, /nostr:…)
+ * opens the page it names, replacing the address it came in as. Any other
+ * single-segment path no route claimed is the plain 404.
+ */
+function BareNostrLink() {
+  const [location] = useLocation();
+  const search = useSearch();
+  const target = useMemo(() => bareNostrRoute(location), [location]);
+  if (!target) return <NotFound />;
+  if (target.to) return <RouteRedirect to={`${target.to}${search ? `?${search}` : ""}${window.location.hash}`} />;
+  return <LinkNotOpenable unsupported={target.decodes} />;
 }
 
 function LandingRedirect() {
@@ -496,6 +510,9 @@ function Router() {
             and the stream detail's cold-entry back both land here now; the
             Search Live tab remains for search-context arrivals. */}
         <Route path="/live" component={LiveStreams} />
+        {/* Bare nostr ids (/npub1…, /nevent1…) go on to their page; any
+            other single-segment path falls through to the 404 inside. */}
+        <Route path="/:ref" component={BareNostrLink} />
         <Route component={NotFound} />
         </Switch>
       </Suspense>
@@ -1403,9 +1420,13 @@ function AppLayout() {
   // Only real identifier prefixes trigger a guest preview (like guestNaddr's naddr1
   // guard) — so a future authed sub-route like /profile/settings falls through to
   // the normal login bounce instead of rendering an empty guest view.
-  const guestNoteId = useMemo(() => { const m = location.match(/^\/thread\/((?:note1|nevent1)[a-z0-9]+|[0-9a-f]{64})/i); return m ? m[1] : null; }, [location]);
-  const guestNpub = useMemo(() => { const m = location.match(/^\/profile\/((?:npub1|nprofile1)[a-z0-9]+|[0-9a-f]{64})/i); return m ? m[1] : null; }, [location]);
-  const guestNaddr = useMemo(() => { const m = location.match(/^\/articles\/(naddr1[a-z0-9]+)/i); return m ? m[1] : null; }, [location]);
+  // A bare Nostr link (/nevent1…, /npub1…, /naddr1…) is matched as the page it
+  // names, so it reaches the same guest preview its /thread, /profile or
+  // /articles twin does (the signed-in Router sends it on to that page).
+  const guestPath = useMemo(() => bareNostrRoute(location)?.to ?? location, [location]);
+  const guestNoteId = useMemo(() => { const m = guestPath.match(/^\/thread\/((?:note1|nevent1)[a-z0-9]+|[0-9a-f]{64})/i); return m ? m[1] : null; }, [guestPath]);
+  const guestNpub = useMemo(() => { const m = guestPath.match(/^\/profile\/((?:npub1|nprofile1)[a-z0-9]+|[0-9a-f]{64})/i); return m ? m[1] : null; }, [guestPath]);
+  const guestNaddr = useMemo(() => { const m = guestPath.match(/^\/articles\/(naddr1[a-z0-9]+)/i); return m ? m[1] : null; }, [guestPath]);
   // Shared external-discussion link (`/news?discuss=<anchor>`, which redirects to
   // `/search?tab=media&type=news&discuss=<anchor>`) — a guest opens the read-only
   // discussion preview instead of bouncing to marketing. Read the anchor off the

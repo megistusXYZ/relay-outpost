@@ -210,6 +210,27 @@ describe("opening the app", () => {
     expect((await r.responded!).status).toBe(503);
   });
 
+  it("…as a small branded page, not the bare word, that works under the app's CSP", async () => {
+    w.fetch.mockRejectedValue(new TypeError("offline"));
+    const res = await (await w.navigate("/messages")).responded!;
+    expect(res.status).toBe(503);
+    expect(res.headers.get("Content-Type")).toMatch(/^text\/html/);
+    const page = await res.text();
+    expect(page).toContain("<title>You’re offline");
+    expect(page).toContain("<h1>You’re offline</h1>");
+    expect(page).toContain("Relay Outpost needs a connection the first time it opens.");
+    expect(page).toContain(">Try again</button>");
+    // Production CSP has script-src-attr 'none': an onclick= would be dead.
+    expect(page).not.toMatch(/\son[a-z]+\s*=/i);
+    expect(page).toMatch(/addEventListener\('click'/);
+    // Nothing it could fetch: no network when this shows.
+    expect(page).not.toMatch(/(?:src|href)=["']?(?:https?:)?\/\//i);
+    expect(page).not.toMatch(/@import|url\(/);
+    // Both appearances, and the reader's own.
+    expect(page).toContain("prefers-color-scheme:light");
+    expect(new TextEncoder().encode(page).length).toBeLessThan(3 * 1024);
+  });
+
   it("leaves pages that aren't the app to the network", async () => {
     for (const p of ["/api/version", "/.well-known/concord/av", "/sitemap.xml", "/maintenance.html"]) {
       const r = await w.navigate(p);

@@ -3,6 +3,7 @@ import { installAppHistory } from "@/lib/app-history";
 import { ensureModalBackListener } from "@/lib/modal-history";
 import { ensureNewsLibraryMigrated } from "@/lib/news-library";
 import App from "./App";
+import { RootErrorBoundary } from "./components/RootErrorBoundary";
 import { createLaunchHandoff, installLaunchHandoff } from "./lib/launch-handoff";
 import { ingestEarlyFirstScreen } from "./lib/first-screen-ingest";
 import "./index.css";
@@ -210,7 +211,9 @@ installLaunchHandoff(launchHandoff);
 // code downloads (lib/first-screen-ingest.ts).
 ingestEarlyFirstScreen();
 
-createRoot(document.getElementById("root")!).render(<App />);
+// The root boundary is the last line: a crash above the route boundary shows a
+// calm screen with Reload (and lifts the launch screen) instead of a blank page.
+createRoot(document.getElementById("root")!).render(<RootErrorBoundary><App /></RootErrorBoundary>);
 
 // Hand off from the inline cold-start splash (client/index.html) to the app.
 // Wait two RAFs so React has committed and the browser has painted the first

@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { isValidElement, type ReactElement } from "react";
+import { renderToString } from "react-dom/server";
 import { FeedErrorBoundary, FEED_BOUNDARY_LOG_PREFIX } from "./FeedErrorBoundary";
+import { ErrorScreen, type ErrorScreenProps } from "./ErrorScreen";
 
 // The vitest environment is node (no DOM), so these tests exercise the
 // boundary's logic surface directly — derived state, logging contract, and the
@@ -64,26 +66,32 @@ describe("FeedErrorBoundary", () => {
     expect(out.key).toBe("3");
   });
 
-  it("renders the compact fallback card — not the children — when an error is held", () => {
+  it("renders the shared error screen — not the children — when an error is held", () => {
     const b = makeBoundary({ error: new Error("stale translateY") });
     const out = b.render();
-    const card = findElement(out, (el) => (el.props as Record<string, unknown>)["data-testid"] === "feed-error-boundary");
+    const card = findElement(out, (el) => el.type === ErrorScreen);
     expect(card).not.toBeNull();
+    const props = card!.props as ErrorScreenProps;
+    expect(props.testId).toBe("feed-error-boundary");
+    expect(props.title).toBe("The feed stopped loading");
     // the crashed children must NOT be in the tree (containment)
     expect(findElement(out, (el) => (el.props as { children?: unknown }).children === "feed-children")).toBeNull();
     // the error detail is surfaced for screenshots
-    expect(findElement(out, (el) => (el.props as { children?: unknown }).children === "stale translateY")).not.toBeNull();
+    expect(props.detail).toBe("stale translateY");
+    const html = renderToString(out as ReactElement);
+    expect(html).toContain('data-testid="feed-error-boundary"');
+    expect(html).toContain("stale translateY");
   });
 
   it("the fallback's reset button is wired to the boundary's reset handler", () => {
     const b = makeBoundary({ error: new Error("boom") });
     const out = b.render();
-    const button = findElement(
-      out,
-      (el) => (el.props as Record<string, unknown>)["data-testid"] === "button-feed-boundary-reset"
-    );
-    expect(button).not.toBeNull();
-    expect((button!.props as { onClick?: unknown }).onClick).toBe(b.handleReset);
+    const card = findElement(out, (el) => el.type === ErrorScreen);
+    const primary = (card!.props as ErrorScreenProps).primary!;
+    expect(primary.testId).toBe("button-feed-boundary-reset");
+    expect(primary.label).toBe("Reload feed");
+    expect(primary.onClick).toBe(b.handleReset);
+    expect(renderToString(out as ReactElement)).toMatch(/<button[^>]*data-testid="button-feed-boundary-reset"/);
   });
 
   it("handleReset clears the error and increments resetCount", () => {

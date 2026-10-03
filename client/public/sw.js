@@ -126,6 +126,36 @@ function isAppPage(url) {
 }
 
 /**
+ * What a first open with no connection sees: a small branded page instead of
+ * the word "Offline". Self-contained (no requests, it couldn't make them) and
+ * no inline handler attributes (production CSP has script-src-attr 'none'), so
+ * the button is wired from a script. Reloads by itself when the connection is
+ * back. Pinned by sw.test.ts: under 3 KB, no on*= attributes.
+ */
+const OFFLINE_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex"><title>You’re offline · Relay Outpost</title><style>
+:root{--bg:#0a090c;--fg:#f5f5f5;--mute:#b8b8b8;--brand:#b38bf9;--ink:#16101d;--dot:rgba(255,255,255,.16)}
+@media (prefers-color-scheme:light){:root{--bg:#f9f8fc;--fg:#1d1726;--mute:#5a5669;--brand:#5e2db4;--ink:#fff;--dot:rgba(94,45,180,.2)}}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:32px 16px calc(32px + env(safe-area-inset-bottom));box-sizing:border-box;background:radial-gradient(70% 50% at 50% 0,#7c3aed2e,transparent 72%),var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,sans-serif;text-align:center}
+main{max-width:440px}
+.s{position:relative;width:112px;height:112px;margin:0 auto 24px;display:grid;place-items:center}
+.s i{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:var(--dot);transform:rotate(var(--a)) translateY(-50px)}
+.s i:nth-child(2){--a:45deg}.s i:nth-child(3){--a:90deg}.s i:nth-child(4){--a:135deg}.s i:nth-child(5){--a:180deg}.s i:nth-child(6){--a:225deg}.s i:nth-child(7){--a:270deg}.s i:nth-child(8){--a:315deg}.s i:first-child{--a:0deg}
+svg{width:44px;height:44px;color:var(--brand)}
+h1{font-size:clamp(22px,6vw,28px);line-height:1.2;font-weight:600;margin:0 0 10px}
+p{color:var(--mute);font-size:15px;margin:0 auto 28px;max-width:36ch}
+button{min-height:44px;padding:0 24px;border:0;border-radius:99px;background:var(--brand);color:var(--ink);font:600 15px system-ui,sans-serif;cursor:pointer}
+button:focus-visible{outline:2px solid var(--fg);outline-offset:3px}
+</style></head><body><main><div class="s" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5.5 7.8L2 4H7l6 6H8.5a3.5 3.5 0 0 0 0 7H10l3 3H8.5a6.5 6.5 0 0 1-3-12.2z"/><path d="M18.5 16.2L22 20H17l-6-6h4.5a3.5 3.5 0 0 0 0-7H14l-3-3h4.5a6.5 6.5 0 0 1 3 12.2z"/></svg></div><h1>You’re offline</h1><p>Relay Outpost needs a connection the first time it opens. Once you’re back online it will load and work offline after that.</p><button id="retry" type="button">Try again</button></main><script>document.getElementById('retry').addEventListener('click',function(){location.reload()});addEventListener('online',function(){location.reload()})</script></body></html>`;
+
+function offlinePage() {
+  return new Response(OFFLINE_PAGE, {
+    status: 503,
+    statusText: 'Service Unavailable',
+    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+  });
+}
+
+/**
  * Open the app from its cached page: answer at once, fetch the fresh page
  * behind it (the browser's navigation preload when it has one), keep it, and
  * tell open pages when it changed so they can move onto it quietly.
@@ -164,7 +194,7 @@ async function openShell(event) {
     return { next, settled: k.settled };
   });
   return {
-    response: kept.then((k) => k.next).catch(() => cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' })),
+    response: kept.then((k) => k.next).catch(() => cached || offlinePage()),
     background: kept.then((k) => k.settled).catch(() => {}),
   };
 }

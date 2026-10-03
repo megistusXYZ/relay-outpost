@@ -19,6 +19,7 @@ import { ImpersonationChip } from "@/components/ImpersonationChip";
 import nostrOstrich from "@assets/219719339-5eff628c-3470-4cc3-81eb-404f8902de9f_1771392554698.gif";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { ErrorScreen } from "@/components/ErrorScreen";
 import { PageTabs, TabCountLine } from "@/components/PageTabs";
 import { InviteFriend } from "@/components/InviteFriend";
 import { InviteToGroupDialog } from "@/components/concord/InviteToGroupDialog";
@@ -1733,12 +1734,14 @@ export default function Profile() {
 
   if (!pubkey) {
     return (
-      <div className="px-4 py-16 text-center" data-testid="page-profile-invalid">
-        <p className="text-muted-foreground">Invalid profile key</p>
-        <Button variant="outline" size="sm" className="mt-4" asChild data-testid="button-go-back">
-          <Link href="/">Go back</Link>
-        </Button>
-      </div>
+      <ErrorScreen
+        layout="section"
+        kind="link"
+        title="We can't open this profile"
+        body="The link doesn't hold a profile key we recognise. Check it was copied in full."
+        primary={{ label: "Go to your feed", href: "/", testId: "button-go-back" }}
+        testId="page-profile-invalid"
+      />
     );
   }
 
