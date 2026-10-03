@@ -56,11 +56,13 @@ function ago(sec: number): string {
   return `${Math.floor(d / 86400)} d ago`;
 }
 
-export function EventInspector({ event, relayUrl, relayName, onClose }: {
+export function EventInspector({ event, relayUrl, relayName, ownRelay = true, onClose }: {
   /** null = closed. */
   event: InspectedEvent | null;
   relayUrl: string;
   relayName: string;
+  /** Is relayUrl one you run? Then "Seen on" calls it yours and offers to copy to it. */
+  ownRelay?: boolean;
   onClose: () => void;
 }) {
   const wide = useWide();
@@ -73,6 +75,7 @@ export function EventInspector({ event, relayUrl, relayName, onClose }: {
       event={current}
       relayUrl={relayUrl}
       relayName={relayName}
+      ownRelay={ownRelay}
       canGoBack={stack.length > 1}
       onBack={() => setStack((s) => s.slice(0, -1))}
       onInspect={(e) => setStack((s) => [...s, e])}
@@ -100,8 +103,8 @@ export function EventInspector({ event, relayUrl, relayName, onClose }: {
   );
 }
 
-function InspectorBody({ event, relayUrl, relayName, canGoBack, onBack, onInspect }: {
-  event: InspectedEvent; relayUrl: string; relayName: string;
+function InspectorBody({ event, relayUrl, relayName, ownRelay, canGoBack, onBack, onInspect }: {
+  event: InspectedEvent; relayUrl: string; relayName: string; ownRelay: boolean;
   canGoBack: boolean; onBack: () => void; onInspect: (e: InspectedEvent) => void;
 }) {
   const [tab, setTab] = useState<TabId>("about");
@@ -177,7 +180,7 @@ function InspectorBody({ event, relayUrl, relayName, canGoBack, onBack, onInspec
           <PointsPanel links={links} profiles={profiles} finding={finding} notFound={notFound} onInspect={inspectPointer} />
         )}
         {tab === "responses" && <ResponsesPanel event={event} relayUrl={relayUrl} relayName={relayName} onInspect={onInspect} />}
-        {tab === "seen" && <SeenOnPanel event={event} relayUrl={relayUrl} relayName={relayName} genuine={verdict.verdict === "valid"} />}
+        {tab === "seen" && <SeenOnPanel event={event} relayUrl={relayUrl} relayName={relayName} ownRelay={ownRelay} genuine={verdict.verdict === "valid"} />}
         {tab === "raw" && <RawPanel event={event} />}
       </div>
     </>
@@ -312,7 +315,7 @@ const STATUS_WORD: Record<SeenStatus, { word: string; cls: string }> = {
   unreached: { word: "Couldn't reach", cls: "text-amber-600 dark:text-amber-400" },
 };
 
-function SeenOnPanel({ event, relayUrl, relayName, genuine }: { event: InspectedEvent; relayUrl: string; relayName: string; genuine: boolean }) {
+function SeenOnPanel({ event, relayUrl, relayName, ownRelay, genuine }: { event: InspectedEvent; relayUrl: string; relayName: string; ownRelay: boolean; genuine: boolean }) {
   const relays = useMemo(() => unique([relayUrl, ...DEFAULT_RELAYS]), [relayUrl]);
   const [rows, setRows] = useState<Record<string, SeenStatus | undefined>>({});
   const [copy, setCopy] = useState<{ busy: boolean; done?: boolean; refused?: string }>({ busy: false });
@@ -356,13 +359,13 @@ function SeenOnPanel({ event, relayUrl, relayName, genuine }: { event: Inspected
           const s = rows[r];
           return (
             <li key={r} className="flex items-center gap-3 py-2.5 min-h-[44px]" data-testid="inspector-seen-row" data-relay={r} data-status={s ?? "asking"}>
-              <span className="min-w-0 flex-1 truncate text-[14px]">{i === 0 ? <><span className="font-medium">{relayName}</span> <span className="text-muted-foreground">(yours)</span></> : r.replace(/^wss:\/\//, "")}</span>
+              <span className="min-w-0 flex-1 truncate text-[14px]">{i === 0 ? <><span className="font-medium">{relayName}</span>{ownRelay && <span className="text-muted-foreground"> (yours)</span>}</> : r.replace(/^wss:\/\//, "")}</span>
               <span className={`shrink-0 text-[13px] ${s ? STATUS_WORD[s].cls : "text-muted-foreground"}`}>{s ? STATUS_WORD[s].word : "Asking…"}</span>
             </li>
           );
         })}
       </ul>
-      {mine === "missing" && (
+      {ownRelay && mine === "missing" && (
         genuine ? (
           <Button onClick={copyToMine} disabled={copy.busy} className="w-full h-11 rounded-full" data-testid="inspector-copy-to-mine">
             {copy.busy ? "Copying…" : `Copy to ${relayName}`}

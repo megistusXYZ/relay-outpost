@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AlertTriangle, ShieldCheck, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Megaphone, Plus, Users, Sparkles } from "lucide-react";
+import { AlertTriangle, ShieldCheck, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Megaphone, Plus, Terminal, Users, Sparkles } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ErrorScreen } from "@/components/ErrorScreen";
@@ -272,6 +272,10 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                 <Plus className="w-4 h-4 text-brand" aria-hidden="true" />
                 <span className="text-sm">Add a relay</span>
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => navigate(`/my-relays/console?relay=${encodeURIComponent(selectedRelay)}`)} className="min-h-[44px] gap-2.5" data-testid="ops-relay-switcher-console">
+                <Terminal className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                <span className="text-sm">Console for this relay</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-muted-foreground min-w-0">
@@ -349,6 +353,16 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                 </button>
               );
             })}
+            {/* For developers: the same relay, on the wire. Desktop only —
+                phones reach it from the relay switcher. */}
+            <button
+              type="button"
+              onClick={() => navigate(`/my-relays/console?relay=${encodeURIComponent(selectedRelay)}`)}
+              className="hidden lg:inline-flex items-center gap-2 mt-3 pt-3 border-t border-black/[0.06] dark:border-white/[0.08] min-h-[44px] px-3 text-sm text-muted-foreground hover:text-foreground"
+              data-testid="ops-open-console"
+            >
+              <Terminal className="w-4 h-4" aria-hidden="true" />Console
+            </button>
           </div>
 
           {selectedRelay && (

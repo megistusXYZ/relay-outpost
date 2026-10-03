@@ -398,8 +398,8 @@ export function FeedbackTab({ relayUrl, inbox }: { relayUrl: string; inbox: Feed
   };
 
   const consoleUrl = coordValue
-    ? `/console?filter=${encodeURIComponent(JSON.stringify({ kinds: [1621, 1111, 1622, 1630, 1631, 1632, 1633], "#a": [coordValue] }))}&relay=${encodeURIComponent(relayUrl)}`
-    : "/console";
+    ? `/my-relays/console?filter=${encodeURIComponent(JSON.stringify({ kinds: [1621, 1111, 1622, 1630, 1631, 1632, 1633], "#a": [coordValue] }))}&relay=${encodeURIComponent(relayUrl)}`
+    : "/my-relays/console";
 
   if (discovering) {
     return (

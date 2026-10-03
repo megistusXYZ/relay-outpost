@@ -119,7 +119,7 @@ const lazyChunks = {
   RSSFeed: () => lazyRetry(() => import("@/pages/RSSFeed")),
   WalletPage: () => lazyRetry(() => import("@/pages/Wallet")),
   Messages: () => lazyRetry(() => import("@/pages/Messages")),
-  EventConsole: () => lazyRetry(() => import("@/pages/EventConsole")),
+  RelayConsole: () => lazyRetry(() => import("@/pages/RelayConsole")),
   AnalyticsDashboard: () => lazyRetry(() => import("@/pages/AnalyticsDashboard")),
   RelayDashboard: () => lazyRetry(() => import("@/pages/RelayDashboard")),
   Tools: () => lazyRetry(() => import("@/pages/Tools")),
@@ -194,7 +194,7 @@ const ArticleEditor = lazy(lazyChunks.ArticleEditor);
 const RSSFeed = lazy(lazyChunks.RSSFeed);
 const WalletPage = lazy(lazyChunks.WalletPage);
 const Messages = lazy(lazyChunks.Messages);
-const EventConsole = lazy(lazyChunks.EventConsole);
+const RelayConsole = lazy(lazyChunks.RelayConsole);
 const AnalyticsDashboard = lazy(lazyChunks.AnalyticsDashboard);
 const RelayDashboard = lazy(lazyChunks.RelayDashboard);
 const Tools = lazy(lazyChunks.Tools);
@@ -476,14 +476,10 @@ function Router() {
         <Route path="/messages/:id" component={Messages} />
         <Route path="/console/dashboard">{() => <RouteRedirect to="/account?tab=analytics" />}</Route>
         <Route path="/console">{() => {
-          // Preserve the deep-link query (?filter=…&relay=…) built by the Feedback
-          // hand-offs (FeedbackDrawer, relay-ops FeedbackTab) and the post / relay /
-          // profile entry points — the embedded console reads it on mount. A
-          // hardcoded target dropped these params, so hand-offs landed on an
-          // empty console.
-          const sp = new URLSearchParams(window.location.search);
-          sp.set("tab", "console");
-          return <RouteRedirect to={`/account?${sp.toString()}`} />;
+          // The console moved into Relays (2026-10-03). Keep the deep-link
+          // query (?filter=…&relay=…) that old links and hand-offs carry —
+          // dropping it once landed hand-offs on an empty console.
+          return <RouteRedirect to={`/my-relays/console${window.location.search}`} />;
         }}</Route>
         <Route path="/thread/:noteId" component={Thread} />
         <Route path="/notifications" component={Notifications} />
@@ -491,6 +487,7 @@ function Router() {
         <Route path="/relays/admin">{() => <RouteRedirect to="/my-relays" />}</Route>
         <Route path="/my-relays/connect" component={ConnectRelay} />
         <Route path="/my-relays/add" component={ConnectRelay} />
+        <Route path="/my-relays/console" component={RelayConsole} />
         <Route path="/my-relays" component={MyRelays} />
         <Route path="/relays" component={RelayDashboard} />
         <Route path="/tools" component={Tools} />

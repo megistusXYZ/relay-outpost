@@ -36,7 +36,7 @@ const PARENT_ROUTES: Array<[RegExp, string]> = [
   // You tab. Their own "‹ Back" went there; the chrome back now does.
   [/^\/account$/, "/account/menu"],
   // Connecting a relay climbs to the Relays home.
-  [/^\/my-relays\/(connect|add)$/, "/my-relays"],
+  [/^\/my-relays\/(connect|add|console)$/, "/my-relays"],
 ];
 
 export function parentRouteOf(path: string): string | null {

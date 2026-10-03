@@ -116,7 +116,17 @@ const ShieldMatrixLazy = lazy(() => lazyRetry(() => import("./ShieldMatrix")));
 const WalletLazy = lazy(() => lazyRetry(() => import("./Wallet")));
 const BookmarksLazy = lazy(() => lazyRetry(() => import("./Bookmarks")));
 const AnalyticsDashboardLazy = lazy(() => lazyRetry(() => import("./AnalyticsDashboard")));
-const EventConsoleLazy = lazy(() => lazyRetry(() => import("./EventConsole")));
+/** The console moved into Relays; old ?tab=console links follow it there, query and all. */
+function ConsoleMoved() {
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    sp.delete("tab");
+    const q = sp.toString();
+    navigate(`/my-relays/console${q ? `?${q}` : ""}`, { replace: true });
+  }, [navigate]);
+  return null;
+}
 
 function formatGrapeRankTime(isoDate: string | null): string {
   if (!isoDate) return "Unknown";
@@ -1969,7 +1979,7 @@ export default function MyOutpost() {
                   {activeTab === "wallet" && <WalletLazy embedded />}
                   {activeTab === "bookmarks" && <BookmarksLazy embedded />}
                   {activeTab === "analytics" && <AnalyticsDashboardLazy embedded />}
-                  {activeTab === "console" && <EventConsoleLazy embedded />}
+                  {activeTab === "console" && <ConsoleMoved />}
                 </Suspense>
               )}
             </div>

@@ -164,6 +164,10 @@ export function RelaysWelcome() {
       <p className="mt-8 text-center text-[13px] leading-relaxed text-muted-foreground [text-wrap:balance]">
         You own it. Relay Outpost never hosts your community or takes a cut — you pay your provider directly.
       </p>
+      <p className="mt-3 text-center text-[13px] text-muted-foreground">
+        Building something?{" "}
+        <Link href="/my-relays/console" className="font-medium text-foreground/80 underline-offset-4 hover:underline" data-testid="relays-console-link">Open the console</Link>
+      </p>
     </div>
   );
 }
