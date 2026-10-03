@@ -2,7 +2,8 @@
  * How the operator console is laid out (owner, 2026-10-02: "iOS Settings for
  * the relay you run").
  *
- * Eight tabs became six sections in one row that never wraps. The relay's
+ * Eight tabs became five sections in one row that never wraps. Live Feed
+ * folded into Events as a switch on the same list. The relay's
  * public face — its settings, its published card, its featured feeds — is one
  * section, Settings, with three screens inside it. Every old tab id keeps its
  * hash, so a link made before this still lands on the same content.
@@ -11,11 +12,10 @@
  */
 import type { TabId } from "./shared";
 
-export type SectionId = "overview" | "live" | "events" | "access" | "feedback" | "settings";
+export type SectionId = "overview" | "events" | "access" | "feedback" | "settings";
 
 export const SECTIONS: ReadonlyArray<{ id: SectionId; label: string }> = [
   { id: "overview", label: "Overview" },
-  { id: "live", label: "Live" },
   { id: "events", label: "Events" },
   { id: "access", label: "Access" },
   { id: "feedback", label: "Feedback" },
@@ -32,6 +32,8 @@ export const SETTINGS_SCREENS: ReadonlyArray<{ tab: TabId; label: string; hint: 
 export function sectionOf(tab: TabId | "settings"): SectionId {
   if (tab === "settings") return "settings";
   if (tab === "community" || tab === "announce" || tab === "featured") return "settings";
+  // Live Feed became the Live switch on the Events list; its hash still lands.
+  if (tab === "live") return "events";
   return tab;
 }
 
