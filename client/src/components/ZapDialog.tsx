@@ -316,7 +316,7 @@ export function ZapDialog({ open, onOpenChange, event, pubkey: directPubkey, rec
                   <BtcZapIcon className="w-5 h-5 text-amber-800 dark:text-amber-400" />
                   <div className="absolute inset-0 blur-sm bg-amber-400/30 rounded-full" />
                 </div>
-                <span className="font-semibold tracking-tight">Zap {resolvedName}</span>
+                <span className="font-semibold tracking-tight">Send thanks to {resolvedName}</span>
               </DialogTitle>
             </DialogHeader>
 
