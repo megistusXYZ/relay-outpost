@@ -1357,7 +1357,7 @@ export function ChatList({
           view, both already a filtered slice. */}
       {filterOptions.length > 0 && dmTab === "primary" && !showDeleted && (
         <div
-          className="flex items-center gap-1 px-3 py-2 border-b border-border/20 shrink-0 overflow-x-auto no-scrollbar"
+          className="flex items-center gap-1 px-3 py-2 border-b border-border/20 shrink-0 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible"
           role="tablist"
           aria-label="Filter chats"
           data-testid="chat-filter-row"
@@ -1371,7 +1371,7 @@ export function ChatList({
                 role="tab"
                 aria-selected={active}
                 onClick={() => setChatFilter(opt.key)}
-                className={`shrink-0 flex items-center gap-1.5 rounded-full border px-2.5 min-h-[36px] text-xs font-medium transition-colors ${
+                className={`shrink-0 flex items-center gap-1 rounded-full border px-2 min-h-[36px] text-xs font-medium transition-colors ${
                   active
                     ? "border-primary/40 bg-primary/15 text-foreground"
                     : "border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted/40"
@@ -1379,7 +1379,7 @@ export function ChatList({
                 data-testid={`chat-filter-${opt.key}`}
               >
                 {opt.label}
-                {opt.unread > 0 && opt.key !== "all" && (
+                {opt.unread > 0 && opt.key === "unread" && (
                   <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold tabular-nums">
                     {opt.unread}
                   </span>
