@@ -369,68 +369,86 @@ describe("needsSynthesizedPeopleSection", () => {
 });
 
 describe("the chat-home filter", () => {
-  const peopleSection = { title: "People", entries: [{ kind: "dm", conv: dm("a", 5) }] as ChatEntry[] };
-  const groupsSection = { title: "Groups", entries: [{ kind: "group", group: group("g1", 9) }] as ChatEntry[] };
-  const commsSection = { title: "Communities", entries: [{ kind: "group", group: group("c1", 9) }] as ChatEntry[] };
+  const person = (id: string, unread = false): ChatEntry => ({ kind: "dm", conv: { ...dm(id, 5), unread } });
+  const severalPeople = (unread = false): ChatEntry => ({ kind: "dm", conv: { ...dm("group:" + "b".repeat(64) + "," + "c".repeat(64), 6), unread } });
+  const encryptedGroup = (unread = false): ChatEntry => ({ kind: "group", group: { ...group("g1", 9), unread } });
+  const community = (): ChatEntry => ({ kind: "group", group: { ...group("c1", 9), relayUrl: "wss://relay.example" } });
   const keys = (opts: ReturnType<typeof chatFilterOptions>) => opts.map((o) => o.key);
 
   it("offers nothing when there is only one kind of chat", () => {
     // A filter row over a single category is a control that cannot change
     // anything — the exact "dead control" shape, and pure clutter on a phone.
-    expect(chatFilterOptions([peopleSection], 0)).toEqual([]);
+    expect(chatFilterOptions([person("a"), person("b")], 0)).toEqual([]);
   });
 
   it("leads with All once there are two kinds to choose between", () => {
-    expect(keys(chatFilterOptions([peopleSection, groupsSection], 0))).toEqual(["all", "people", "groups"]);
+    expect(keys(chatFilterOptions([person("a"), encryptedGroup()], 0))).toEqual(["all", "people", "groups"]);
+  });
+
+  it("a private chat with several people is a group, not a person", () => {
+    // Before, it sat under People with a generic icon; to anyone but a
+    // developer a chat with Bob and Carol is a group.
+    const opts = chatFilterOptions([person("a"), severalPeople()], 0);
+    expect(keys(opts)).toEqual(["all", "people", "groups"]);
+    expect(opts.find((o) => o.key === "groups")!.count).toBe(1);
+    expect(applyChatFilter([person("a"), severalPeople()], "groups")).toEqual([severalPeople()]);
+    expect(applyChatFilter([person("a"), severalPeople()], "people")).toEqual([person("a")]);
+  });
+
+  it("offers Unread when something is unread, right after All", () => {
+    const opts = chatFilterOptions([person("a", true), encryptedGroup()], 0);
+    expect(keys(opts)).toEqual(["all", "unread", "people", "groups"]);
+    expect(opts.find((o) => o.key === "unread")!.count).toBe(1);
+    expect(keys(chatFilterOptions([person("a"), encryptedGroup()], 0))).not.toContain("unread");
+  });
+
+  it("Unread shows only what is unread, of any kind", () => {
+    const list = [person("a"), person("b", true), severalPeople(true), encryptedGroup(), community()];
+    expect(applyChatFilter(list, "unread")).toEqual([person("b", true), severalPeople(true)]);
   });
 
   it("never offers a chip for a category you have none of", () => {
-    // Offering "Communities" to someone in none of them filters to a blank
-    // screen and reads as a bug.
-    expect(keys(chatFilterOptions([peopleSection, groupsSection], 0))).not.toContain("communities");
+    expect(keys(chatFilterOptions([person("a"), encryptedGroup()], 0))).not.toContain("communities");
   });
 
   it("counts the rows behind each chip, and All counts everything", () => {
-    const opts = chatFilterOptions([peopleSection, groupsSection, commsSection], 0);
+    const opts = chatFilterOptions([person("a"), encryptedGroup(), community()], 0);
     expect(opts.find((o) => o.key === "all")!.count).toBe(3);
     expect(opts.find((o) => o.key === "people")!.count).toBe(1);
+    expect(opts.find((o) => o.key === "communities")!.count).toBe(1);
   });
 
   it("keeps People reachable when its only content is requests", () => {
-    // THE REGRESSION THIS FILE ALREADY RECORDS ONCE (see
-    // needsSynthesizedPeopleSection): requests live inside PEOPLE, and PEOPLE is
-    // omitted when you have no primary DMs. A filter that derived its chips
-    // purely from the rendered sections would hide the only door to a pending
-    // request all over again — with the conversation still sitting in it.
-    const opts = chatFilterOptions([groupsSection], 2);
+    // Requests are people: with nothing else from people, the chip must still
+    // exist, or a pending request has no door.
+    const opts = chatFilterOptions([encryptedGroup()], 2);
     expect(keys(opts)).toContain("people");
     expect(opts.find((o) => o.key === "people")!.count).toBe(2);
   });
 
   it("does not invent a People chip when there are no requests and no DMs", () => {
-    expect(keys(chatFilterOptions([groupsSection, commsSection], 0))).not.toContain("people");
+    expect(keys(chatFilterOptions([encryptedGroup(), community()], 0))).not.toContain("people");
   });
 
-  it("shows only the chosen category", () => {
-    const shown = applyChatFilter([peopleSection, groupsSection, commsSection], "groups");
-    expect(shown.map((s) => s.title)).toEqual(["Groups"]);
+  it("shows only the chosen category, in the order given", () => {
+    const list = [person("a"), encryptedGroup(), community(), severalPeople()];
+    expect(applyChatFilter(list, "groups")).toEqual([encryptedGroup(), severalPeople()]);
+    expect(applyChatFilter(list, "communities")).toEqual([community()]);
   });
 
   it("shows everything under All", () => {
-    const all = [peopleSection, groupsSection, commsSection];
+    const all = [person("a"), encryptedGroup(), community()];
     expect(applyChatFilter(all, "all")).toEqual(all);
   });
 
   it("falls back to All when the chosen category disappears underneath you", () => {
-    // You filter to Communities, then leave your last community. Holding the
-    // dead filter strands you on an empty page with no visible way out, because
-    // the chip you would click to escape is gone too.
-    const opts = chatFilterOptions([peopleSection, groupsSection], 0);
+    const opts = chatFilterOptions([person("a"), encryptedGroup()], 0);
     expect(resolveChatFilter("communities", opts)).toBe("all");
+    expect(resolveChatFilter("unread", opts)).toBe("all");
   });
 
   it("keeps a still-valid choice", () => {
-    const opts = chatFilterOptions([peopleSection, groupsSection], 0);
+    const opts = chatFilterOptions([person("a"), encryptedGroup()], 0);
     expect(resolveChatFilter("groups", opts)).toBe("groups");
   });
 

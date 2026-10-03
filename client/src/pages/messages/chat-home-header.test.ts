@@ -25,12 +25,12 @@ describe("chat home chrome", () => {
     expect(src).toMatch(/else if \(key === "deleted"\) setShowDeleted\(true\);/);
   });
 
-  it("the filter chips are one line that scrolls, never a wrapping block, and carry only an unread badge", () => {
+  it("the filter chips are one line that scrolls on a phone (wrapping only on a wide screen), and only Unread carries a number", () => {
     const row = src.slice(src.indexOf('data-testid="chat-filter-row"') - 400, src.indexOf('data-testid="chat-filter-row"') + 1600);
     expect(row).toContain("overflow-x-auto");
-    expect(row).not.toContain("flex-wrap");
+    expect(row).not.toMatch(/[\s"]flex-wrap/);
     expect(row).not.toMatch(/\{opt\.count\}/);
-    expect(row).toMatch(/\{opt\.unread > 0 && \(/);
+    expect(row).toMatch(/\{opt\.unread > 0 && opt\.key === "unread" && \(/);
   });
 
   it("Deleted is a view with a single way back, not a permanent tab bar", () => {

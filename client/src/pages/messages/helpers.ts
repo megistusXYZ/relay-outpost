@@ -1,3 +1,4 @@
+import { isGroupRoom } from "@/lib/dm-room";
 import { nip19 } from "nostr-tools";
 import { classifyUrl } from "@/lib/media-utils";
 import type { CommunityImage } from "@/lib/concord/concord-image";
@@ -456,7 +457,22 @@ export function needsSynthesizedPeopleSection(
  * actually sectioned into. These chips are the sections — one control, one
  * meaning, and requests stay where they belong: a row inside People.
  */
-export type ChatFilter = "all" | "people" | "groups" | "communities";
+export type ChatFilter = "all" | "unread" | "people" | "groups" | "communities";
+
+/**
+ * What kind of thing a row is, to the person reading the list: a person, a
+ * group (a private chat with several people, or an encrypted group with
+ * rooms — the same thing to anyone but a developer), or a community.
+ */
+export function chatKindOf(e: ChatEntry): "people" | "groups" | "communities" {
+  if (e.kind === "dm") return isGroupRoom(e.conv.pubkey) ? "groups" : "people";
+  if (e.kind === "outpost") return "communities";
+  return isCommunityEntry(e) ? "communities" : "groups";
+}
+
+function isUnreadEntry(e: ChatEntry): boolean {
+  return e.kind === "dm" ? e.conv.unread : e.kind === "group" ? e.group.unread && !e.group.muted : false;
+}
 
 export interface ChatFilterOption {
   key: ChatFilter;
@@ -468,14 +484,9 @@ export interface ChatFilterOption {
   unread: number;
 }
 
-const FILTER_BY_TITLE: Record<string, ChatFilter> = {
-  People: "people",
-  Groups: "groups",
-  Communities: "communities",
-};
-
 const LABELS: Record<ChatFilter, string> = {
   all: "All",
+  unread: "Unread",
   people: "People",
   groups: "Groups",
   communities: "Communities",
@@ -504,12 +515,12 @@ function unreadCount(entries: ChatEntry[]): number {
  * the rendered sections alone would hide the only door to a pending request —
  * the same regression, one layer up.
  */
-export function chatFilterOptions(sections: ChatSection[], requestCount: number): ChatFilterOption[] {
+export function chatFilterOptions(entries: readonly ChatEntry[], requestCount: number): ChatFilterOption[] {
   const present: ChatFilterOption[] = [];
-  for (const s of sections) {
-    const key = FILTER_BY_TITLE[s.title];
-    if (!key) continue;
-    present.push({ key, label: LABELS[key], count: s.entries.length, unread: unreadCount(s.entries) });
+  for (const key of ["people", "groups", "communities"] as const) {
+    const rows = entries.filter((e) => chatKindOf(e) === key);
+    if (rows.length === 0) continue;
+    present.push({ key, label: LABELS[key], count: rows.length, unread: rows.filter(isUnreadEntry).length });
   }
   if (requestCount > 0 && !present.some((o) => o.key === "people")) {
     // People exists as a destination even with no primary DM rows, because the
@@ -519,7 +530,9 @@ export function chatFilterOptions(sections: ChatSection[], requestCount: number)
   if (present.length < 2) return [];
   const total = present.reduce((n, o) => n + o.count, 0);
   const totalUnread = present.reduce((n, o) => n + o.unread, 0);
-  return [{ key: "all", label: LABELS.all, count: total, unread: totalUnread }, ...present];
+  // Unread, when there is any: the chip people reach for on a busy day.
+  const unread: ChatFilterOption[] = totalUnread > 0 ? [{ key: "unread", label: LABELS.unread, count: totalUnread, unread: totalUnread }] : [];
+  return [{ key: "all", label: LABELS.all, count: total, unread: totalUnread }, ...unread, ...present];
 }
 
 /**
@@ -556,9 +569,10 @@ export function firstUnreadChat(entries: readonly ChatEntry[]): ChatToOpen | nul
   return null;
 }
 
-export function applyChatFilter(sections: ChatSection[], filter: ChatFilter): ChatSection[] {
-  if (filter === "all") return sections;
-  return sections.filter((s) => FILTER_BY_TITLE[s.title] === filter);
+export function applyChatFilter(entries: readonly ChatEntry[], filter: ChatFilter): ChatEntry[] {
+  if (filter === "all") return [...entries];
+  if (filter === "unread") return entries.filter(isUnreadEntry);
+  return entries.filter((e) => chatKindOf(e) === filter);
 }
 
 /**
