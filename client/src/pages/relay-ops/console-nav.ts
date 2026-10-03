@@ -12,20 +12,23 @@
  */
 import type { TabId } from "./shared";
 
-export type SectionId = "overview" | "events" | "access" | "feedback" | "settings";
+export type SectionId = "overview" | "events" | "people" | "feedback" | "settings";
 
 export const SECTIONS: ReadonlyArray<{ id: SectionId; label: string }> = [
   { id: "overview", label: "Overview" },
   // "Content", not "Events" (2026-10-03): what a community manager looks for.
   // The id and its #events hash stay, so old links still land.
   { id: "events", label: "Content" },
-  { id: "access", label: "Access" },
+  // People (2026-10-03): everyone on the relay, person by person. The allow
+  // and ban lists it replaced as a section live on as Settings › Who can post.
+  { id: "people", label: "People" },
   { id: "feedback", label: "Feedback" },
   { id: "settings", label: "Settings" },
 ];
 
 export const SETTINGS_SCREENS: ReadonlyArray<{ tab: TabId; label: string; hint: string }> = [
   { tab: "community", label: "Relay settings", hint: "Name, description, icon and banner" },
+  { tab: "access", label: "Who can post", hint: "Allow lists, bans, trust rules and kinds" },
   { tab: "announce", label: "Public card", hint: "What other apps show about this relay" },
   { tab: "featured", label: "Featured feeds", hint: "What greets people on the Featured tab" },
 ];
@@ -33,7 +36,7 @@ export const SETTINGS_SCREENS: ReadonlyArray<{ tab: TabId; label: string; hint: 
 /** The section a tab belongs to. */
 export function sectionOf(tab: TabId | "settings"): SectionId {
   if (tab === "settings") return "settings";
-  if (tab === "community" || tab === "announce" || tab === "featured") return "settings";
+  if (tab === "community" || tab === "access" || tab === "announce" || tab === "featured") return "settings";
   // Live Feed became the Live switch on the Events list; its hash still lands.
   if (tab === "live") return "events";
   return tab;

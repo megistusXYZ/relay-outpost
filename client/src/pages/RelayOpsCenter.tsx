@@ -24,6 +24,7 @@ import { SECTIONS, SETTINGS_SCREENS, sectionOf } from "./relay-ops/console-nav";
 import { useFeedbackInbox } from "@/hooks/use-feedback-inbox";
 import { OverviewTab } from "./relay-ops/OverviewTab";
 import { ContentTab } from "./relay-ops/ContentTab";
+import { PeopleTab } from "./relay-ops/PeopleTab";
 import { AccessControlTab } from "./relay-ops/AccessControlTab";
 import { FeaturedTab } from "./relay-ops/FeaturedTab";
 import { KindGateCard } from "./relay-ops/KindGateCard";
@@ -33,6 +34,7 @@ import { FeedbackTab } from "./relay-ops/FeedbackTab";
 
 const SETTINGS_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   community: Users,
+  access: ShieldCheck,
   announce: Megaphone,
   featured: Sparkles,
 };
@@ -86,6 +88,8 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
     }
   }, [adminRelays, selectedRelay]);
 
+  // People's "See their posts" opens Content already searching for them.
+  const [contentSeed, setContentSeed] = useState("");
   const setActiveTab = useCallback((tab: TabId) => {
     setActiveTabRaw(tab);
     try { window.history.replaceState(window.history.state, "", `#${tab}`); } catch {}
@@ -317,7 +321,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                   key={s.id}
                   role="tab"
                   aria-selected={isActive}
-                  onClick={() => setActiveTab(s.id)}
+                  onClick={() => { setContentSeed(""); setActiveTab(s.id); }}
                   className={`relative shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-3 text-sm font-medium whitespace-nowrap transition-colors lg:justify-between lg:rounded-lg lg:w-full ${
                     isActive ? "text-foreground lg:bg-brand/[0.09]" : "text-muted-foreground hover:text-foreground lg:hover:bg-black/[0.03] dark:lg:hover:bg-white/[0.04]"
                   }`}
@@ -359,7 +363,8 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                   don't auto-reset), letting the operator recover by tab-switching. */}
               <ErrorBoundary key={activeTab} fallbackRender={(error) => <TabErrorFallback error={error} />}>
                 {activeTab === "overview" && <OverviewTab relayUrl={selectedRelay} inbox={inbox} onOpenFeedback={() => setActiveTab("feedback")} />}
-                {(activeTab === "events" || activeTab === "live") && <ContentTab relayUrl={selectedRelay} nip11={nip11} initialLive={activeTab === "live"} />}
+                {(activeTab === "events" || activeTab === "live") && <ContentTab relayUrl={selectedRelay} nip11={nip11} initialLive={activeTab === "live"} initialQuery={contentSeed} />}
+                {activeTab === "people" && <PeopleTab relayUrl={selectedRelay} nip11={nip11} onSeePosts={(npub) => { setContentSeed(npub); setActiveTab("events"); }} />}
                 {activeTab === "access" && <><AccessControlTab relayUrl={selectedRelay} nip11={nip11} /><KindGateCard relayUrl={selectedRelay} nip11={nip11} /></>}
                 {activeTab === "feedback" && <FeedbackTab relayUrl={selectedRelay} inbox={inbox} />}
                 {activeTab === "settings" && (
