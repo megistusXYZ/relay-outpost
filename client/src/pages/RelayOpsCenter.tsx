@@ -4,7 +4,7 @@ import { fetchNip11, type Nip11Document } from "@/lib/nip11";
 import { probeRelayManagement } from "@/lib/nip86";
 import { decideOwnership } from "@/lib/relay-ownership";
 import { useOperatedRelays, setLastUsedRelay } from "@/lib/operated-relays";
-import { RelaysWelcome } from "./MyRelays";
+import { RelaysWelcome } from "@/components/relays/RelaysWelcome";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { Button } from "@/components/ui/button";
