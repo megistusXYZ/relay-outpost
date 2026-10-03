@@ -59,6 +59,7 @@ import { createScoreCardReader } from "./score-cards";
 import { createRelayDirectoryReader } from "./relay-directory";
 import { createFeedSampleReader, ranksForNotes } from "./feed-sample";
 import { createFirstScreenReader, createProfileReader } from "./first-screen";
+import { NIP86_METHODS } from "@shared/nip86-methods";
 import { createDiscoverSampleReader, ROUTE_WAIT_MS } from "./trusted-sample";
 import { isDiscoverSampleName } from "@shared/discover-samples";
 import { WOT_BATCH_MAX } from "@shared/wot-batch";
@@ -2813,14 +2814,8 @@ export async function registerRoutes(
     return res.json({ results });
   });
 
-  const NIP86_ALLOWED_METHODS = new Set([
-    "allowpubkey", "banpubkey", "unallowpubkey", "unbanpubkey",
-    "listallowedpubkeys", "listbannedpubkeys",
-    "allowevent", "banevent", "listbannedevents",
-    "changerelayname", "changerelaydescription", "changerelayicon",
-    "allowkind", "disallowkind", "listallowedkinds", "listdisallowedkinds",
-    "blockip", "unblockip", "listblockedips",
-  ]);
+  // One list with the client's (shared/nip86-methods.ts).
+  const NIP86_ALLOWED_METHODS = new Set<string>(NIP86_METHODS);
 
   app.post("/api/nip86", async (req, res) => {
     try {
