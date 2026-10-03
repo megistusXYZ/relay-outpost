@@ -59,7 +59,6 @@ import { getDiscoverFeedRelays, warmDiscoverRelays } from "@/lib/discover-relays
 import { getDiscoverPresetConfig, admitStranger } from "@/lib/discover-quality";
 import { effectivePow } from "@/lib/nip13-pow";
 import { getOutpostRelays } from "@/lib/outpost-relays";
-import { CHANNEL_FRIENDLY_RELAYS } from "@/lib/channel-relays";
 
 const KIND_LONG_FORM = 30023;
 // Discover safe floor: kinds the feed renders cleanly. The media kinds are
@@ -466,11 +465,13 @@ export default function Home() {
       const outbox = cfg.foldOutbox
         ? getOptimalRelaysForFeed(followsRef.current.slice(0, 100), 8)
         : undefined;
+      // Only communities this account joined. The curated groups relays used
+      // to be folded in too, but a NIP-29 relay stores group kinds only, so
+      // asking it for notes never returned one — and all three were dead on
+      // the wire when measured (2026-10-03), costing every guest two failed
+      // sockets on the landing page.
       const community = cfg.foldCommunity
-        ? [
-            ...getOutpostRelays().map((r) => r.url),
-            ...CHANNEL_FRIENDLY_RELAYS.map((r) => r.url),
-          ]
+        ? getOutpostRelays().map((r) => r.url)
         : undefined;
       return getDiscoverFeedRelays(base, true, preferredLangsRef.current, cap, {
         outbox,

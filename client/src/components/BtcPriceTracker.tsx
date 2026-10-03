@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { FailureMemory } from "@shared/failure-memory";
 import { createPortal } from "react-dom";
 import { TrendingUp, TrendingDown, Copy, Check, ArrowRightLeft, Box, Fuel, ChevronDown, ArrowUpRight, ArrowDownLeft, Info, RefreshCw, Wallet, Eye, EyeOff } from "lucide-react";
 import { useLocation } from "wouter";
@@ -196,7 +195,6 @@ let sharedPriceCache: { price: number; ts: number } | null = null;
 // CoinGecko rate-limits (429) quickly; after a refusal go straight to the
 // fallbacks for five minutes instead of asking again on every tick. And one
 // request in flight at a time: every mounted tracker used to fetch its own.
-const priceSources = new FailureMemory(5 * 60 * 1000);
 let priceInFlight: Promise<PriceData | null> | null = null;
 
 function fetchPrice(): Promise<PriceData | null> {
@@ -204,74 +202,35 @@ function fetchPrice(): Promise<PriceData | null> {
   return priceInFlight;
 }
 
+// One request to our own server, which reads the sources once a minute for
+// everyone (server/btc-price.ts). The browser used to ask CoinGecko and
+// Binance itself; both refuse browser origins, so every visitor paid two
+// failed requests before Coinbase answered with a bare spot price.
 async function fetchPriceFresh(): Promise<PriceData | null> {
   try {
-    const d = await priceSources.run("coingecko", async () => {
-      const res = await fetch(
-        "https://api.coingecko.com/api/v3/coins/bitcoin?localization=false&tickers=false&community_data=false&developer_data=false&sparkline=false",
-        { signal: AbortSignal.timeout(8000) }
-      );
-      if (!res.ok) throw new Error("CoinGecko failed");
-      return res.json();
-    });
-    const md = d.market_data;
+    const res = await fetch("/api/btc/price", { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    const d = await res.json();
+    if (typeof d?.price !== "number" || !(d.price > 0)) return null;
     return {
-      price: md.current_price.usd,
-      changePercent24h: md.price_change_percentage_24h ?? 0,
-      high24h: md.high_24h?.usd ?? 0,
-      low24h: md.low_24h?.usd ?? 0,
-      volume24h: md.total_volume?.usd ?? 0,
-      marketCap: md.market_cap?.usd ?? 0,
+      price: d.price,
+      changePercent24h: d.changePercent24h ?? 0,
+      high24h: d.high24h ?? 0,
+      low24h: d.low24h ?? 0,
+      volume24h: d.volume24h ?? 0,
+      marketCap: d.marketCap ?? 0,
     };
   } catch {
-    try {
-      const res = await fetch(
-        "https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT",
-        { signal: AbortSignal.timeout(8000) }
-      );
-      if (!res.ok) throw new Error("Binance failed");
-      const d = await res.json();
-      return {
-        price: parseFloat(d.lastPrice),
-        changePercent24h: parseFloat(d.priceChangePercent),
-        high24h: parseFloat(d.highPrice),
-        low24h: parseFloat(d.lowPrice),
-        volume24h: parseFloat(d.quoteVolume),
-        marketCap: 0,
-      };
-    } catch {
-      try {
-        const res = await fetch(
-          "https://api.coinbase.com/v2/prices/BTC-USD/spot",
-          { signal: AbortSignal.timeout(8000) }
-        );
-        if (!res.ok) throw new Error("Coinbase failed");
-        const d = await res.json();
-        return {
-          price: parseFloat(d.data.amount),
-          changePercent24h: 0,
-          high24h: 0,
-          low24h: 0,
-          volume24h: 0,
-          marketCap: 0,
-        };
-      } catch {
-        return null;
-      }
-    }
+    return null;
   }
 }
 
 async function fetchSparkline(): Promise<number[]> {
-  if (priceSources.isDown("coingecko")) return [];
   try {
-    const res = await fetch(
-      "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=7&interval=daily",
-      { signal: AbortSignal.timeout(8000) }
-    );
+    const res = await fetch("/api/btc/sparkline", { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return [];
     const d = await res.json();
-    return (d.prices as [number, number][]).map(([, p]) => p);
+    return Array.isArray(d?.prices) ? d.prices.filter((p: unknown) => typeof p === "number") : [];
   } catch {
     return [];
   }

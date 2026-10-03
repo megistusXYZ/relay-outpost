@@ -120,7 +120,7 @@ function OpenSourcePanel() {
           data-testid="link-landing-github"
         >
           <GitHubMark className="h-5 w-5" />
-          Star on GitHub
+          Read the code
           {/* The count appears once it's a signal (≥10) — a real number that
               helps; "★ 0" on launch week would only argue against the button. */}
           {stars !== null && stars >= 10 && (

@@ -100,48 +100,6 @@ export function isRelayCoolingDown(url: string): boolean {
   return true;
 }
 
-const LIVENESS_SESSION_KEY = "relay_liveness_data";
-const LIVENESS_TTL_MS = 15 * 60 * 1000;
-let onlineRelaySet: Set<string> | null = null;
-let livenessFetchedAt = 0;
-
-function loadLivenessFromSession() {
-  try {
-    const raw = sessionStorage.getItem(LIVENESS_SESSION_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw) as { ts: number; relays: string[] };
-    if (Date.now() - parsed.ts < LIVENESS_TTL_MS) {
-      onlineRelaySet = new Set(parsed.relays.map(normalizeUrl));
-      livenessFetchedAt = parsed.ts;
-    }
-  } catch {}
-}
-
-loadLivenessFromSession();
-
-export async function fetchRelayLiveness(): Promise<void> {
-  if (onlineRelaySet && Date.now() - livenessFetchedAt < LIVENESS_TTL_MS) return;
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
-    const res = await fetch("https://api.nostr.watch/v1/online", {
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    if (!res.ok) return;
-    const data = await res.json() as string[];
-    if (!Array.isArray(data) || data.length < 10) return;
-    onlineRelaySet = new Set(data.map(normalizeUrl));
-    livenessFetchedAt = Date.now();
-    try {
-      sessionStorage.setItem(LIVENESS_SESSION_KEY, JSON.stringify({
-        ts: livenessFetchedAt,
-        relays: data,
-      }));
-    } catch {}
-  } catch {}
-}
-
 const coreRelaySet = new Set<string>();
 
 export function registerCoreRelays(relays: string[]) {
@@ -150,11 +108,6 @@ export function registerCoreRelays(relays: string[]) {
   }
 }
 
-export function isRelayLikelyDead(url: string): boolean {
-  if (!onlineRelaySet) return false;
-  if (coreRelaySet.has(normalizeUrl(url))) return false;
-  return !onlineRelaySet.has(normalizeUrl(url));
-}
 
 /**
  * True if `url` is a well-formed relay URL the pool can dial. A ws/ws(s) scheme
@@ -190,7 +143,7 @@ export function getHealthyRelays(relays: string[]): string[] {
   // (e.g. a bad nevent/naddr relay hint) back to the pool, which throws
   // "Invalid URL: wss://" as an unhandled rejection.
   const valid = sanitizeRelayUrls(relays);
-  const healthy = valid.filter(url => !isRelayCoolingDown(url) && !isRelayLikelyDead(url));
+  const healthy = valid.filter(url => !isRelayCoolingDown(url));
   if (healthy.length < 3) return valid.slice(0, Math.max(3, valid.length));
   return healthy;
 }

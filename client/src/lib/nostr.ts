@@ -2,7 +2,7 @@ import { EventStore } from "applesauce-core";
 import { SimplePool } from "nostr-tools";
 import type { Filter } from "nostr-tools";
 import { throttledSubscribe } from "./relay-throttler";
-import { markRelaySuccess, markRelayFailure, getHealthyRelays, sortRelaysByScore, fetchRelayLiveness, registerCoreRelays, sanitizeRelayUrls } from "./relay-health";
+import { markRelaySuccess, markRelayFailure, getHealthyRelays, sortRelaysByScore, registerCoreRelays, sanitizeRelayUrls } from "./relay-health";
 import { SubscriptionRegistry } from "./subscription-registry";
 import { openResilientSub } from "./resilient-subscription";
 import { putProfile, getAllProfiles, pruneOldProfiles } from "./indexeddb-cache";
@@ -419,7 +419,6 @@ export function warmRelayConnections() {
   }
 }
 
-fetchRelayLiveness();
 warmRelayConnections();
 
 const HEX_RE = /^[0-9a-f]{64}$/i;
