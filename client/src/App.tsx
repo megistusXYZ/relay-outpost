@@ -127,6 +127,8 @@ const lazyChunks = {
   Community: () => lazyRetry(() => import("@/pages/Community")),
   LiveStreams: () => lazyRetry(() => import("@/pages/LiveStreams")),
   RelayOpsCenter: () => lazyRetry(() => import("@/pages/RelayOpsCenter")),
+  MyRelays: () => lazyRetry(() => import("@/pages/MyRelays")),
+  ConnectRelay: () => lazyRetry(() => import("@/pages/ConnectRelay")),
   Outposts: () => lazyRetry(() => import("@/pages/Outposts")),
   ContentCalendar: () => lazyRetry(() => import("@/pages/ContentCalendar")),
   Privacy: () => lazyRetry(() => import("@/pages/Privacy")),
@@ -200,6 +202,8 @@ const MyOutpost = lazy(lazyChunks.MyOutpost);
 const Community = lazy(lazyChunks.Community);
 const LiveStreams = lazy(lazyChunks.LiveStreams);
 const RelayOpsCenter = lazy(lazyChunks.RelayOpsCenter);
+const MyRelays = lazy(lazyChunks.MyRelays);
+const ConnectRelay = lazy(lazyChunks.ConnectRelay);
 const Outposts = lazy(lazyChunks.Outposts);
 const ContentCalendar = lazy(lazyChunks.ContentCalendar);
 const Privacy = lazy(lazyChunks.Privacy);
@@ -484,7 +488,9 @@ function Router() {
         <Route path="/thread/:noteId" component={Thread} />
         <Route path="/notifications" component={Notifications} />
         <Route path="/relay-ops-center/:relayEncoded">{(params) => <RelayOpsCenter relayUrl={decodeURIComponent(params.relayEncoded)} />}</Route>
-        <Route path="/relays/admin" component={RelayOpsCenter} />
+        <Route path="/relays/admin">{() => <RouteRedirect to="/my-relays" />}</Route>
+        <Route path="/my-relays/connect" component={ConnectRelay} />
+        <Route path="/my-relays" component={MyRelays} />
         <Route path="/relays" component={RelayDashboard} />
         <Route path="/tools" component={Tools} />
         <Route path="/outposts" component={Outposts} />
@@ -618,10 +624,14 @@ const TOP_LEVEL_ROUTES = new Set([
   // carries no chrome back — the tab bar IS the way back (ChatList precedent,
   // 2026-08-18).
   "/account/menu",
+  // The Relays tab's home.
+  "/my-relays",
 ]);
 
 function isTopLevelRoute(path: string) {
-  return TOP_LEVEL_ROUTES.has(path);
+  // A relay's console is where the Relays tab lands, so it is a tab root too:
+  // the tab bar is the way back, not a chrome arrow.
+  return TOP_LEVEL_ROUTES.has(path) || path.startsWith("/relay-ops-center/");
 }
 
 /**

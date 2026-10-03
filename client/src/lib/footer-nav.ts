@@ -117,6 +117,9 @@ export function isNavDestinationActive(
       return location.startsWith("/discover") || location.startsWith("/search")
         || location === "/news"
         || (location.startsWith("/articles") && location !== "/articles/write");
+    case "relays":
+      // Its home and connect flow, and the console for each relay.
+      return location.startsWith("/my-relays") || location.startsWith("/relay-ops-center");
     case "you":
       return location.startsWith("/account");
     // "create" and any future action entry open something; they aren't places,

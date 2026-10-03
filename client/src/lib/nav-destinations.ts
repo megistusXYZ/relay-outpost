@@ -14,6 +14,7 @@ import type { ComponentType } from "react";
 import { Rss, GalleryVerticalEnd, Plus } from "lucide-react";
 import { ChatIcon } from "@/components/icons/ChatIcon";
 import { CloudIcon } from "@/components/icons/CloudIcon";
+import { ServerStackIcon } from "@/components/icons/ServerStackIcon";
 import { AlarmIcon } from "@/components/icons/AlarmIcon";
 import { FingerprintIcon } from "@/components/icons/FingerprintIcon";
 import { NewsIcon } from "@/components/icons/NewsIcon";
@@ -34,6 +35,8 @@ export type NavDestinationId =
   // conversation list was always the centre, it just stops being one of eight.
   | "activity"
   | "discover"
+  // The relays you run (2026-10-03): its own home under Discover's cloud.
+  | "relays"
   | "you";
 
 /** Live unread counts the node list reads to decide count badges + glow. */
@@ -77,6 +80,7 @@ export const NAV_ICONS: Record<NavDestinationId, ComponentType<{ className?: str
   create: Plus,
   activity: AlarmIcon,
   discover: CloudIcon,
+  relays: ServerStackIcon,
   you: FingerprintIcon,
 };
 
@@ -91,6 +95,7 @@ export const NAV_TITLES: Record<NavDestinationId, string> = {
   create: "Create",
   activity: "Activity",
   discover: "Discover",
+  relays: "Relays",
   // "Account", not "You". The rail and footer are icons-only, so this label is
   // what a screen reader announces and what the tooltip says — and "You" names
   // the person while every one of its neighbours (Chats, Activity, Discover)
@@ -115,7 +120,7 @@ export function buildNavDestinations(opts: {
   collapsed?: boolean;
 }): NavDestination[] {
   const { loggedIn, counts, collapsed } = opts;
-  if (collapsed) return buildCollapsedDestinations(loggedIn, counts);
+  if (collapsed) return buildCollapsedDestinations(loggedIn, counts, true);
   const news: NavDestination = {
     id: "news",
     title: NAV_TITLES.news,
@@ -174,7 +179,20 @@ export function buildNavDestinations(opts: {
  *  - **Signed-out sees only Discover.** Chats, Activity and You all require an
  *    account; offering them to a visitor is offering four doors, three locked.
  */
-function buildCollapsedDestinations(loggedIn: boolean, counts: NavCounts): NavDestination[] {
+/**
+ * Where the Relays destination opens: its own home, not `/relays` (that page
+ * is the list of relays you READ from — a different thing that happens to
+ * share the word).
+ */
+export const RELAYS_HOME = "/my-relays";
+
+/**
+ * Relays comes right after Discover. The rail and the launcher show it to
+ * everyone signed in — it is the front door for running your own relay. The
+ * phone footer has room for it only when you already run one (`withRelays`);
+ * everyone else reaches it from the launcher and from Account.
+ */
+function buildCollapsedDestinations(loggedIn: boolean, counts: NavCounts, withRelays: boolean): NavDestination[] {
   /**
    * STILL no news badge, and now for a sharper reason. The first version
    * routed Discover to `/` (the feed) while counting news that lived at
@@ -224,6 +242,7 @@ function buildCollapsedDestinations(loggedIn: boolean, counts: NavCounts): NavDe
       live: counts.alertsUnread + (counts.needsYou ?? 0) > 0,
     },
     discover,
+    ...(withRelays ? [{ id: "relays" as const, title: NAV_TITLES.relays, path: RELAYS_HOME }] : []),
     { id: "you", title: NAV_TITLES.you, path: "/account/menu" },
   ];
 }
@@ -237,9 +256,9 @@ function buildCollapsedDestinations(loggedIn: boolean, counts: NavCounts): NavDe
  * finally want the same thing. Only the legacy footer needs its own order, and
  * it is preserved EXACTLY as it shipped so nothing moves while the flag is off.
  */
-export function buildFooterTabs(opts: { loggedIn: boolean; counts: NavCounts; collapsed?: boolean }): NavDestination[] {
-  const { loggedIn, counts, collapsed } = opts;
-  if (collapsed) return buildCollapsedDestinations(loggedIn, counts);
+export function buildFooterTabs(opts: { loggedIn: boolean; counts: NavCounts; collapsed?: boolean; runsRelay?: boolean }): NavDestination[] {
+  const { loggedIn, counts, collapsed, runsRelay } = opts;
+  if (collapsed) return buildCollapsedDestinations(loggedIn, counts, !!runsRelay);
   return [
     { id: "feed", title: NAV_TITLES.feed, path: "/" },
     {

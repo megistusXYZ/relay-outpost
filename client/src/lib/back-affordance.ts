@@ -35,6 +35,8 @@ const PARENT_ROUTES: Array<[RegExp, string]> = [
   // Your account and its Manage pages (?tab=wallet, bookmarks…) sit under the
   // You tab. Their own "‹ Back" went there; the chrome back now does.
   [/^\/account$/, "/account/menu"],
+  // Connecting a relay climbs to the Relays home.
+  [/^\/my-relays\/connect$/, "/my-relays"],
 ];
 
 export function parentRouteOf(path: string): string | null {

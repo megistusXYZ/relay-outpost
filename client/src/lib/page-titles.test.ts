@@ -32,8 +32,9 @@ const CONTENT_HEADING_PAGES = new Set([
   "MyOutpost.tsx", "LiveStreams.tsx", "RSSFeed.tsx",
   // Relay Control's head names the relay you run, not the console.
   "RelayOpsCenter.tsx",
-  // Standalone moments, not app screens.
-  "Welcome.tsx", "not-found.tsx", "Generator.tsx",
+  // Standalone moments, not app screens. MyRelays' heading is the welcome for
+  // someone who doesn't run a relay yet ("Run your own corner of Nostr").
+  "Welcome.tsx", "not-found.tsx", "Generator.tsx", "MyRelays.tsx",
 ]);
 
 // In the mixed pages every <h1> must be a content heading, tagged as such.

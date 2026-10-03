@@ -18,6 +18,8 @@ import { useTheme } from "@/hooks/use-theme";
 import { formatNpub, shortenNpub } from "@/lib/nostr-helpers";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useIaCollapsed } from "@/lib/ia-prefs";
+import { ServerStackIcon } from "@/components/icons/ServerStackIcon";
+import { useOperatedRelays } from "@/lib/operated-relays";
 
 /**
  * Account menu (/account/menu) — the grouped-rows replacement for the sidebar's
@@ -60,6 +62,7 @@ function Section({ label, children }: { label?: string; children: ReactNode }) {
 export default function Account() {
   const [, navigate] = useLocation();
   const { pubkey, profile, loginMethod, logout } = useNostrAuth();
+  const runsRelay = useOperatedRelays().length > 0;
   const { toggleTheme, theme } = useTheme();
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   // Secondary account-switcher surface (the Stories-menu identity chip is the
@@ -164,6 +167,7 @@ export default function Account() {
             <Row icon={<CalendarDays className="w-5 h-5" />} label="Calendar" onClick={go("/calendar")} testId="account-calendar" />
           )}
           <Row icon={<ShieldCheck className="w-5 h-5" />} label="Trust & safety" onClick={go("/account?tab=shield")} testId="account-trust-safety" />
+          <Row icon={<ServerStackIcon className="w-5 h-5" />} label={runsRelay ? "Your relays" : "Run a relay"} onClick={go("/my-relays")} testId="account-relays" />
           <Row icon={<Wrench className="w-5 h-5" />} label="Tools" onClick={go("/tools")} testId="account-tools" />
         </Section>
 
