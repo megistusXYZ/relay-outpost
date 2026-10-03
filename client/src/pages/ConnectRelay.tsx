@@ -108,7 +108,7 @@ export default function ConnectRelay() {
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
-          className="h-11 text-[15px] flex-1"
+          className="h-11 min-h-[44px] text-[15px] sm:flex-1"
           aria-invalid={invalid}
           aria-describedby={invalid ? "connect-relay-invalid" : undefined}
           data-testid="connect-relay-input"

@@ -513,13 +513,13 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
       <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0" role="tablist" aria-label="What to show" data-testid="ops-content-views">
         {TYPE_VIEWS.filter((v) => v.id === "all" || chipCount(v.id) > 0 || view === v.id).map((v) => (
           <button key={v.id} type="button" role="tab" aria-selected={view === v.id} onClick={() => setView(v.id)} data-testid={`ops-content-view-${v.id}`}
-            className={`shrink-0 h-9 px-3.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors ${view === v.id ? "bg-foreground text-background" : "bg-black/[0.05] dark:bg-white/[0.06] text-foreground/80 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]"}`}>
+            className={`shrink-0 h-11 sm:h-9 px-3.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors ${view === v.id ? "bg-foreground text-background" : "bg-black/[0.05] dark:bg-white/[0.06] text-foreground/80 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]"}`}>
             {v.label}<span className="ml-1.5 tabular-nums opacity-60">{chipCount(v.id)}</span>
           </button>
         ))}
         {canSeeRemoved && (
           <button type="button" role="tab" aria-selected={view === "removed"} onClick={() => { setView("removed"); endSelect(); }} data-testid="ops-content-view-removed"
-            className={`shrink-0 h-9 px-3.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors ${view === "removed" ? "bg-foreground text-background" : "bg-black/[0.05] dark:bg-white/[0.06] text-foreground/80 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]"}`}>
+            className={`shrink-0 h-11 sm:h-9 px-3.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors ${view === "removed" ? "bg-foreground text-background" : "bg-black/[0.05] dark:bg-white/[0.06] text-foreground/80 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]"}`}>
             Removed
           </button>
         )}
@@ -775,7 +775,7 @@ function ContentDetail({ event, profile, relayName, canRemove, canBan, where, on
         </p>
       ) : (
         <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words" data-testid="ops-content-text">
-          {text || <span className="text-muted-foreground">{rowPreview(event)}</span>}
+          {event.kind === 0 ? <ProfileFields content={event.content} /> : text || <span className="text-muted-foreground">{rowPreview(event)}</span>}
           {event.content.length > 4000 && !all && <button type="button" onClick={() => setAll(true)} className="block mt-1 text-brand text-[13px]">Show all</button>}
         </div>
       )}
@@ -819,11 +819,27 @@ function ContentDetail({ event, profile, relayName, canRemove, canBan, where, on
   );
 }
 
+/** A profile update, as the fields people read — not its JSON. */
+function ProfileFields({ content }: { content: string }) {
+  let p: Record<string, unknown> = {};
+  try { p = JSON.parse(content); } catch { return <>{content}</>; }
+  const rows = ([["Name", p.display_name || p.name], ["About", p.about], ["Address", p.nip05], ["Website", p.website], ["Lightning", p.lud16]] as const)
+    .filter(([, v]) => typeof v === "string" && v.trim());
+  if (!rows.length) return <span className="text-muted-foreground">An empty profile</span>;
+  return (
+    <dl className="space-y-1.5" data-testid="ops-content-profile">
+      {rows.map(([k, v]) => (
+        <div key={k}><dt className="text-[12px] text-muted-foreground">{k}</dt><dd className="text-[15px]">{String(v)}</dd></div>
+      ))}
+    </dl>
+  );
+}
+
 function ExportButton({ onExport, disabled, label = "Export" }: { onExport: (f: "csv" | "json") => void; disabled?: boolean; label?: string }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button size="sm" variant="ghost" disabled={disabled} className="h-10 px-3 text-[13px]" data-testid="ops-content-export">
+        <Button size="sm" variant="ghost" disabled={disabled} className="min-h-[44px] px-3 text-[13px]" data-testid="ops-content-export">
           <Download className="w-4 h-4 mr-1.5" />{label}
         </Button>
       </PopoverTrigger>
