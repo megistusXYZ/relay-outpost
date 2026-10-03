@@ -19,7 +19,7 @@ import { Link } from "wouter";
 import { nip19 } from "nostr-tools";
 import type { Event as NostrEvent, Filter as RelayFilter } from "nostr-tools";
 import {
-  ArrowDown, ArrowUp, Ban, ChevronLeft, Copy, Download, Keyboard, MessageSquare,
+  ArrowDown, ArrowUp, Ban, Copy, Download, Keyboard, MessageSquare,
   Pause, Play, Search, SlidersHorizontal, Trash2, Undo2, X,
 } from "lucide-react";
 import { pool } from "@/lib/nostr";
@@ -38,21 +38,21 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { AddToFeaturedDialog } from "@/components/AddToFeaturedDialog";
 import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 import { ManagedAtNote } from "./ops-ui";
+import { ConfirmAction, type PendingAction } from "./ConfirmAction";
 import {
   ADMIN_BLOCKLIST_KEY, addModLogEntry, getStoredList, pubkeyToNpub, resolveProfileBatch, saveStoredList,
   subscribeWithReach, type NostrFilter, type ProfileInfo,
 } from "./shared";
 import { parseEventQuery, TIME_RANGES, type RangeId, type TimeWindow } from "./event-query";
 import {
-  confirmPhrase, contentFilter, countByType, exportable, isPrivateKind, mergePage, reasonRequired, removalReason,
-  REMOVAL_REASONS, rowPreview, scopeLine, sortEvents, toCsv, typeOf, TYPE_VIEWS, typeWord, typedConfirmRequired,
-  type SortDir, type SortKey, type TypeViewId,
+  contentFilter, countByType, exportable, isPrivateKind, mergePage, rowPreview, scopeLine, sortEvents, toCsv,
+  typeOf, TYPE_VIEWS, typeWord, type SortDir, type SortKey, type TypeViewId,
 } from "./content-model";
 
 const PAGE = 200;
@@ -97,11 +97,11 @@ function isTyping(t: EventTarget | null): boolean {
   return !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
 }
 
-type PendingAction =
-  | { kind: "remove"; ids: string[]; rule: boolean }
-  | { kind: "ban"; pubkeys: string[]; rule: boolean };
-
-export function ContentTab({ relayUrl, nip11, initialLive = false }: { relayUrl: string; nip11: Nip11Document | null; initialLive?: boolean }) {
+export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery = "" }: {
+  relayUrl: string; nip11: Nip11Document | null; initialLive?: boolean;
+  /** Opened from People's "See their posts": the search starts with their npub. */
+  initialQuery?: string;
+}) {
   const { toast } = useToast();
   const wide = useWide();
   const relayName = nip11?.name?.trim() || relayUrl.replace(/^wss?:\/\//, "");
@@ -123,8 +123,8 @@ export function ContentTab({ relayUrl, nip11, initialLive = false }: { relayUrl:
   const where = managedAt(relayUrl);
 
   // ---- the question ----
-  const [query, setQuery] = useState("");
-  const [submitted, setSubmitted] = useState("");
+  const [query, setQuery] = useState(initialQuery);
+  const [submitted, setSubmitted] = useState(initialQuery);
   const [view, setView] = useState<TypeViewId | "removed">("all");
   const [range, setRange] = useState<RangeId | "custom">("any");
   const [customSince, setCustomSince] = useState("");
@@ -434,7 +434,6 @@ export function ContentTab({ relayUrl, nip11, initialLive = false }: { relayUrl:
       onBan={() => askBan([selected.pubkey])}
       onFeature={() => setFeatureEvent(selected)}
       onEverythingFrom={() => { const n = pubkeyToNpub(selected.pubkey); setQuery(n); setSubmitted(n); setView("all"); }}
-      onClose={wide ? undefined : () => setSelectedId(null)}
     />
   ) : null;
 
@@ -739,10 +738,10 @@ function ContentRow({ event, profile, wide, nowSec, current, selectMode, checked
   );
 }
 
-function ContentDetail({ event, profile, relayName, canRemove, canBan, where, onRemove, onBan, onFeature, onEverythingFrom, onClose }: {
+function ContentDetail({ event, profile, relayName, canRemove, canBan, where, onRemove, onBan, onFeature, onEverythingFrom }: {
   event: NostrEvent; profile?: ProfileInfo; relayName: string; canRemove: boolean; canBan: boolean;
   where: { name: string; url?: string };
-  onRemove: () => void; onBan: () => void; onFeature: () => void; onEverythingFrom: () => void; onClose?: () => void;
+  onRemove: () => void; onBan: () => void; onFeature: () => void; onEverythingFrom: () => void;
 }) {
   const [raw, setRaw] = useState(false);
   const [all, setAll] = useState(false);
@@ -757,11 +756,6 @@ function ContentDetail({ event, profile, relayName, canRemove, canBan, where, on
   const rawJson = JSON.stringify(sealed ? { ...event, content: "(sealed)" } : event, null, 2);
   return (
     <div className="p-4 space-y-4" data-testid="ops-content-detail" data-event-id={event.id}>
-      {onClose && (
-        <button type="button" onClick={onClose} className="inline-flex items-center gap-0.5 min-h-[44px] -ml-2 pl-1 pr-2.5 rounded-full text-sm text-brand" data-testid="ops-content-detail-back">
-          <ChevronLeft className="w-5 h-5" aria-hidden="true" />All posts
-        </button>
-      )}
       <div className="flex items-center gap-3">
         <Avatar className="w-11 h-11 shrink-0">{profile?.picture && <AvatarImage src={profile.picture} alt="" />}<AvatarFallback className="bg-brand/10 text-brand">{who.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
         <div className="min-w-0 flex-1">
@@ -877,70 +871,6 @@ function RemovedList({ entries, error, canRestore, where, onRestore, onRetry }: 
       </ul>
       <p className="px-1 text-[12px] text-muted-foreground">The relay no longer serves these, so only their IDs and reasons are shown.</p>
     </div>
-  );
-}
-
-function ConfirmAction({ pending, relayName, canRestore, progress, onCancel, onConfirm, nameOf }: {
-  pending: PendingAction; relayName: string; canRestore: boolean; progress: { done: number; total: number } | null;
-  onCancel: () => void; onConfirm: (reason: string | undefined) => void; nameOf: (pk: string) => string | undefined;
-}) {
-  const [pick, setPick] = useState<string | undefined>(undefined);
-  const [note, setNote] = useState("");
-  const [typed, setTyped] = useState("");
-  const removing = pending.kind === "remove";
-  const count = removing ? pending.ids.length : pending.pubkeys.length;
-  const needReason = reasonRequired(count, pending.rule);
-  const needTyping = typedConfirmRequired(count, pending.rule);
-  const phrase = removing ? confirmPhrase(count) : `ban ${count}`;
-  const reason = removalReason(pick, note);
-  const ready = (!needReason || !!reason) && (!needTyping || typed.trim().toLowerCase() === phrase);
-  const one = removing ? "this post" : (nameOf(pending.pubkeys[0]) ?? "this person");
-  const title = removing
-    ? count === 1 ? `Remove ${one} from ${relayName}?` : `Remove ${count} posts from ${relayName}?`
-    : count === 1 ? `Ban ${one} from ${relayName}?` : `Ban ${count} people from ${relayName}?`;
-  const body = removing
-    ? `People using ${relayName} won't see ${count === 1 ? "it" : "them"}. ${canRestore ? "You can bring them back from Removed." : "This relay can't bring removed posts back from here."}`
-    : `They won't be able to post on ${relayName}. What they've already posted stays unless you remove it.`;
-  return (
-    <Dialog open onOpenChange={(o) => { if (!o) onCancel(); }}>
-      <DialogContent className="max-w-md" data-testid="ops-content-confirm">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{body}</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-2">
-          <p className="text-[13px] font-medium">Reason {needReason ? "" : <span className="font-normal text-muted-foreground">(optional)</span>}</p>
-          <div className="flex flex-wrap gap-1.5">
-            {REMOVAL_REASONS.map((r) => (
-              <button key={r} type="button" onClick={() => setPick(pick === r ? undefined : r)} aria-pressed={pick === r} data-testid={`ops-content-reason-${r.toLowerCase().replace(/\s+/g, "-")}`}
-                className={`h-9 px-3 rounded-full text-[13px] font-medium ${pick === r ? "bg-brand text-white" : "bg-black/[0.05] dark:bg-white/[0.06]"}`}>
-                {r}
-              </button>
-            ))}
-          </div>
-          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Add a note (optional)" className="h-10" data-testid="ops-content-reason-note" />
-          {pending.rule && <p className="text-[12px] text-muted-foreground">This covers everything your search found, not just what you picked.</p>}
-        </div>
-        {needTyping && (
-          <label className="block space-y-1.5">
-            <span className="text-[13px]">Type <strong className="font-mono">{phrase}</strong> to confirm</span>
-            <Input value={typed} onChange={(e) => setTyped(e.target.value)} autoCapitalize="none" autoCorrect="off" spellCheck={false} className="h-10" data-testid="ops-content-confirm-typed" />
-          </label>
-        )}
-        {progress && (
-          <p className="text-[13px] text-muted-foreground" role="status" data-testid="ops-content-progress">
-            {removing ? "Removing" : "Banning"} {progress.done} of {progress.total}…
-          </p>
-        )}
-        <DialogFooter className="gap-2">
-          <Button variant="ghost" onClick={onCancel} disabled={!!progress} className="h-11 rounded-full">Cancel</Button>
-          <Button onClick={() => onConfirm(reason)} disabled={!ready || !!progress} className={`h-11 rounded-full ${removing ? "bg-red-600 hover:bg-red-700 text-white" : ""}`} data-testid="ops-content-confirm-go">
-            {progress ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : removing ? <Trash2 className="w-4 h-4 mr-2" /> : <Ban className="w-4 h-4 mr-2" />}
-            {removing ? (count === 1 ? "Remove" : `Remove ${count}`) : (count === 1 ? "Ban" : `Ban ${count}`)}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
 
