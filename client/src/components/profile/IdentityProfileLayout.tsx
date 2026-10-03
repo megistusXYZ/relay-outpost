@@ -107,7 +107,7 @@ function CirclesAndCommunities({ circleSlot, communitiesSlot }: { circleSlot?: R
   );
 }
 
-export function IdentityProfileLayout({ data, actions, miniActions, networkSlot, overflowSlot, circleSlot, communitiesSlot, vouchSlot, onZapLud16, onSeeNetwork, children }: { data: IdentityProfileData; actions: ReactNode; /** Follow + Message for the pinned rail's compact identity (desktop). */ miniActions?: ReactNode; networkSlot?: ReactNode; overflowSlot?: ReactNode; circleSlot?: ReactNode; communitiesSlot?: ReactNode; vouchSlot?: ReactNode; onZapLud16?: () => void; /** Opens the following/followers list from the counts under the name. */ onSeeNetwork?: () => void; children: ReactNode }) {
+export function IdentityProfileLayout({ data, actions, headActions, onCoverState, onRename, miniActions, networkSlot, overflowSlot, circleSlot, communitiesSlot, vouchSlot, onZapLud16, onSeeNetwork, children }: { data: IdentityProfileData; actions: ReactNode; /** The phone's one row of actions under the name (Follow · Message · ⚡ · ⋯); the desktop keeps `actions` in its Connect box. */ headActions?: ReactNode; /** Phones: where the cover is against the top bar — under it (the bar can go transparent) and gone past it (the bar takes the identity). */ onCoverState?: (state: { underBar: boolean; gone: boolean }) => void; /** Lets the page open the rename dialog from elsewhere (the phone's ⋯ menu). Set once; the page may call it any time. */ onRename?: (open: () => void) => void; /** Follow + Message for the pinned rail's compact identity (desktop). */ miniActions?: ReactNode; networkSlot?: ReactNode; overflowSlot?: ReactNode; circleSlot?: ReactNode; communitiesSlot?: ReactNode; vouchSlot?: ReactNode; onZapLud16?: () => void; /** Opens the following/followers list from the counts under the name. */ onSeeNetwork?: () => void; children: ReactNode }) {
   const joined = data.joinedAt ? new Date(data.joinedAt * 1000).toLocaleDateString(undefined, { month: "short", year: "numeric" }) : null;
   const showTrust = data.wotEnabled && !!data.grapeRankTier && data.grapeRankTier !== "none";
   const liveStream = useProfileLiveStream(data.pubkey);
@@ -117,6 +117,40 @@ export function IdentityProfileLayout({ data, actions, miniActions, networkSlot,
   usePetnamesVersion();
   const [petnameOpen, setPetnameOpen] = useState(false);
   const petname = getPetname("person", data.pubkey)?.name;
+  const isMobile = useIsMobile();
+  useEffect(() => { onRename?.(() => setPetnameOpen(true)); }, [onRename]);
+
+  // The phone's cover against the top bar. Measured on scroll rather than
+  // observed: the page scrolls in two boxes (the app's <main> and the
+  // profile's own), and something may sit above the page (a notice, a
+  // banner), in which case the cover is NOT under the bar and the bar must
+  // stay solid. The bar is 4.25rem tall under the safe area.
+  const coverRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const cover = coverRef.current;
+    if (!isMobile || !cover || !onCoverState) return;
+    let last = "";
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      const r = cover.getBoundingClientRect();
+      const safeTop = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sat")) || 0;
+      const barBottom = 68 + safeTop;
+      const next = { underBar: r.top <= safeTop + 1, gone: r.bottom <= barBottom };
+      const key = `${next.underBar}:${next.gone}`;
+      if (key !== last) { last = key; onCoverState(next); }
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(measure); };
+    measure();
+    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      document.removeEventListener("scroll", onScroll, { capture: true } as EventListenerOptions);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+      onCoverState({ underBar: false, gone: false });
+    };
+  }, [isMobile, onCoverState]);
 
   // The pinned rail (desktop): once the identity card has scrolled away, a
   // compact identity takes its place at the top of the rail, so the person
@@ -143,7 +177,7 @@ export function IdentityProfileLayout({ data, actions, miniActions, networkSlot,
     // Circle/montage strips' unshrinkable rows set the min-content. With
     // min-w-0 the container honors the viewport and those strips scroll
     // inside themselves, which is what they were built to do.
-    <div className="max-w-6xl min-[1440px]:max-w-[1340px] 2xl:max-w-[1440px] w-full min-w-0 mx-auto px-4 py-5" data-testid="identity-profile-layout">
+    <div className="max-w-6xl min-[1440px]:max-w-[1340px] 2xl:max-w-[1440px] w-full min-w-0 mx-auto px-0 pt-0 pb-5 lg:px-4 lg:py-5" data-testid="identity-profile-layout">
       {/* Banner — FILLS the band, edge to edge, on every width. A contained
           image with a blurred fill behind it was tried and reverted: it showed
           more of the picture but left the band looking framed rather than
@@ -152,12 +186,18 @@ export function IdentityProfileLayout({ data, actions, miniActions, networkSlot,
       {/* While they are live the cover carries the broadcast (ring, overlay,
           whole cover = Watch) — it outranks everything else on the page, and
           it no longer costs a row of its own. */}
-      <IdentityBanner
-        src={data.bannerSrc}
-        fallbackSrc={data.bannerFallbackSrc}
-        live={liveStream ? <LiveBannerOverlay stream={liveStream} /> : undefined}
-        className={liveStream ? LIVE_BANNER_RING : undefined}
-      />
+      {/* On a phone the cover is the hero: edge to edge from the top of the
+          screen, under the transparent top bar (the page's scroll box starts
+          at the top — `profile-under-bar` in index.css). */}
+      <div ref={coverRef}>
+        <IdentityBanner
+          variant={isMobile ? "hero" : "card"}
+          src={data.bannerSrc}
+          fallbackSrc={data.bannerFallbackSrc}
+          live={liveStream ? <LiveBannerOverlay stream={liveStream} /> : undefined}
+          className={liveStream ? LIVE_BANNER_RING : undefined}
+        />
+      </div>
 
       {/* Desktop: a wider rail and a reading-width stream (posts ran to 845px
           a line). The rail's column is as tall as the stream, which is what
@@ -165,25 +205,34 @@ export function IdentityProfileLayout({ data, actions, miniActions, networkSlot,
       {/* From 1440px a third, empty column holds room for margin notes: each
           reply's context sits there, level with the reply (the stream's rows
           place them; see IdentityProfileMain's StreamRow). */}
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,680px)] min-[1440px]:grid-cols-[320px_minmax(0,680px)_280px] 2xl:grid-cols-[380px_minmax(0,680px)_300px] xl:justify-center gap-5 mt-4">
+      <div className="px-4 lg:px-0 grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,680px)] min-[1440px]:grid-cols-[320px_minmax(0,680px)_280px] 2xl:grid-cols-[380px_minmax(0,680px)_300px] xl:justify-center gap-5 mt-4">
         {/* ── Left rail ─────────────────────────────────────────── */}
         <aside className="space-y-4">
           {/* Identity — NOT clipped (overflow-visible) so the avatar can lift
               over the banner without its top being cropped. */}
-          <div ref={identityCardRef} className="rounded-xl border border-border/60 dark:border-white/[0.07] bg-card p-3 shadow-sm shadow-black/[0.04] dark:shadow-none">
+          {/* Phones: no card — the cover is the frame; the name and one line
+              of counts sit right under the lifted avatar, then the actions. */}
+          <div ref={identityCardRef} className="lg:rounded-xl lg:border lg:border-border/60 lg:dark:border-white/[0.07] lg:bg-card lg:p-3 lg:shadow-sm lg:shadow-black/[0.04] lg:dark:shadow-none">
             {/* The -mt-14 lifts the avatar over the COVER IMAGE — the classic
                 profile idiom. While live, the cover's bottom edge carries the
                 broadcast's title and Watch button, and the lift would land the
                 avatar on top of them, so the card keeps its natural position;
                 the cover overlap is a look, not a load-bearing layout. */}
-            <IdentityHead avatarUrl={data.avatarUrl} title={data.displayName} lift={!liveStream}>
-              {data.nip05 && (
+            <IdentityHead
+              avatarUrl={data.avatarUrl}
+              title={data.displayName}
+              lift={!liveStream}
+              // Phones: the verified glyph beside the name; the domain is a
+              // tap away in the overflow. Desktop keeps the domain under it.
+              inlineBadge={isMobile && data.nip05 ? <Nip05Badge nip05={data.nip05} pubkey={data.pubkey} showText={false} iconClassName="w-4 h-4" /> : undefined}
+            >
+              {!isMobile && data.nip05 && (
                 <Nip05Badge nip05={data.nip05} pubkey={data.pubkey} className="mt-0.5" textClassName="text-[11px] text-muted-foreground" iconClassName="w-3 h-3" />
               )}
               {/* Counts under the name, as on every social app: important, not
                   the loudest thing on the page, and on a phone's first screen. */}
-              <IdentityCounts followers={data.followers} following={data.following} lastActiveAt={data.lastActiveAt} onSeeNetwork={onSeeNetwork} />
-              {!data.isOwnProfile && (
+              <IdentityCounts compact={isMobile} followers={data.followers} following={data.following} lastActiveAt={data.lastActiveAt} onSeeNetwork={onSeeNetwork} />
+              {!isMobile && !data.isOwnProfile && (
                 <button
                   type="button"
                   onClick={() => setPetnameOpen(true)}
@@ -196,7 +245,7 @@ export function IdentityProfileLayout({ data, actions, miniActions, networkSlot,
                     : "Rename for you"}
                 </button>
               )}
-              {showTrust && (
+              {showTrust && !isMobile && (
                 <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1">
                   <TrustTierGlyph tier={data.grapeRankTier as never} size="w-3 h-3" />
                   <span className="text-[10px] font-medium uppercase tracking-wider text-brand/90 capitalize">{data.grapeRankTier} in your network</span>
@@ -210,13 +259,17 @@ export function IdentityProfileLayout({ data, actions, miniActions, networkSlot,
               are the same destination wearing two names otherwise, and the
               other-user title names what the card DOES ("Connect with …")
               rather than naming the person. */}
-          <Section title={data.isOwnProfile ? "Your account" : `Connect with ${data.displayName}`}>
-            <div className="flex flex-col gap-2">
-              {actions}
-              {networkSlot}
-              {overflowSlot}
-            </div>
-          </Section>
+          {isMobile && headActions ? (
+            <div className="-mt-1" data-testid="identity-actions-row">{headActions}</div>
+          ) : (
+            <Section title={data.isOwnProfile ? "Your account" : `Connect with ${data.displayName}`}>
+              <div className="flex flex-col gap-2">
+                {actions}
+                {networkSlot}
+                {overflowSlot}
+              </div>
+            </Section>
+          )}
 
           {/* People you follow who follow THIS profile — real social proof (not
               gameable shared-follows). Only shown when there's genuine overlap.

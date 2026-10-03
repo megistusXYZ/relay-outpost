@@ -31,8 +31,12 @@ export function IdentitySection({ title, children, className }: { title?: string
  * control, and an optional `live` overlay (the profile's broadcast) that the
  * top-right control stays above.
  */
-export function IdentityBanner({ src, fallbackSrc, blurBackdropSrc, topRight, live, className }: {
+export function IdentityBanner({ src, fallbackSrc, blurBackdropSrc, topRight, live, className, variant = "card" }: {
   src?: string;
+  /** `card`: a rounded band inside the page (desktop, outposts). `hero`: the
+   *  phone's cover — edge to edge from the very top of the screen, tall enough
+   *  to run under the transparent top bar (safe area included). */
+  variant?: "card" | "hero";
   fallbackSrc?: string;
   /** Real-images-only fallback: when there is no banner, a blurred blow-up of
    *  the subject's own avatar fills the band — always THEIR imagery, never a
@@ -43,7 +47,14 @@ export function IdentityBanner({ src, fallbackSrc, blurBackdropSrc, topRight, li
   className?: string;
 }) {
   return (
-    <div className={`relative h-36 md:h-44 rounded-2xl overflow-hidden border border-border/50 bg-gradient-to-br from-brand/25 via-primary/10 to-transparent ${className ?? ""}`}>
+    <div
+      className={`relative overflow-hidden bg-gradient-to-br from-brand/25 via-primary/10 to-transparent ${
+        variant === "hero"
+          ? "h-[calc(13.5rem+env(safe-area-inset-top,0px))] rounded-none border-0"
+          : "h-36 md:h-44 rounded-2xl border border-border/50"
+      } ${className ?? ""}`}
+      data-testid="identity-cover"
+    >
       {!src && blurBackdropSrc && (
         <img
           src={blurBackdropSrc}
@@ -77,19 +88,24 @@ export function IdentityBanner({ src, fallbackSrc, blurBackdropSrc, topRight, li
  * idiom), title, and caption rows below. `lift` off when the cover's bottom
  * edge is in use (the profile's live overlay) and the avatar would cover it.
  */
-export function IdentityHead({ avatarUrl, title, lift = true, children }: {
+export function IdentityHead({ avatarUrl, title, lift = true, inlineBadge, children }: {
   avatarUrl?: string;
   title: string;
   lift?: boolean;
+  /** Drawn beside the name on its line (a verified glyph), not under it. */
+  inlineBadge?: ReactNode;
   children?: ReactNode;
 }) {
   return (
-    <div className={`flex flex-col items-center text-center ${lift ? "-mt-14" : "pt-1"}`}>
+    <div className={`flex flex-col items-center text-center ${lift ? "-mt-14" : "pt-1"}`} data-testid="identity-head">
       <Avatar className="w-24 h-24 border-4 border-card shadow-lg">
         {avatarUrl && <AvatarImage src={avatarUrl} alt={title} />}
         <AvatarFallback className="text-2xl bg-brand/10 text-brand font-semibold">{title.slice(0, 2).toUpperCase()}</AvatarFallback>
       </Avatar>
-      <h1 className="mt-2 text-lg font-bold leading-tight break-words">{title}</h1>
+      <h1 className="mt-2 text-lg font-bold leading-tight break-words inline-flex items-center gap-1 max-w-full">
+        <span className="min-w-0">{title}</span>
+        {inlineBadge}
+      </h1>
       {children}
     </div>
   );

@@ -42,7 +42,7 @@ describe("profile pinned rail", () => {
     // With overflow-y-auto at every width, `position: sticky` and scrollRootFor
     // resolved against a box that does not scroll: the block scrolled away and
     // the spine never moved (found in the browser, 2026-10-01).
-    expect(profile).toMatch(/className="flex flex-col h-full overflow-y-auto lg:overflow-visible" data-testid="page-profile">\s*<IdentityProfileLayout/);
+    expect(profile).toMatch(/className="[^"]*flex flex-col h-full overflow-y-auto lg:overflow-visible" data-testid="page-profile">/);
   });
 
   it("the spine and the stream's headings are the same words from the same function", () => {

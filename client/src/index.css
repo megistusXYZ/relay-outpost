@@ -4593,14 +4593,31 @@ input[type="date"]::-webkit-datetime-edit-text {
    inside the fixed header. When present — and the audio player is NOT
    docked (data-audio on the slot) — the header goes transparent so the
    banner shows through, and its chrome flips to white-on-banner. */
-#app-header:has(.header-banner-bg):not(:has(#header-identity-slot[data-audio="true"])) {
+/* .header-over-cover: the same, with nothing painted — the page's own cover
+   runs under the bar (profile-under-bar below), so the bar only needs to get
+   out of the way. */
+#app-header:has(.header-banner-bg, .header-over-cover):not(:has(#header-identity-slot[data-audio="true"])) {
   background: transparent;
-  border-color: rgb(255 255 255 / 0.08);
+  border-color: transparent;
   backdrop-filter: none;
 }
-#app-header:has(.header-banner-bg):not(:has(#header-identity-slot[data-audio="true"])) > button,
-#app-header:has(.header-banner-bg):not(:has(#header-identity-slot[data-audio="true"])) > a {
+#app-header:has(.header-banner-bg, .header-over-cover):not(:has(#header-identity-slot[data-audio="true"])) > button,
+#app-header:has(.header-banner-bg, .header-over-cover):not(:has(#header-identity-slot[data-audio="true"])) > a {
   color: rgb(255 255 255 / 0.9);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+/* A phone profile's scroll box starts at the top of the screen, under the
+   fixed bar, so its first child — the cover — runs behind the bar without a
+   negative margin inside the scroller (which a scroll box would clip). */
+/* The safe-area top, readable from script (getComputedStyle on :root): the
+   profile head measures its cover against the bar, which sits under it. */
+:root { --sat: env(safe-area-inset-top, 0px); }
+@media (max-width: 1023px) {
+  .profile-under-bar {
+    margin-top: calc(-4.25rem - env(safe-area-inset-top, 0px));
+    height: calc(100% + 4.25rem + env(safe-area-inset-top, 0px));
+  }
 }
 
 /* On-banner mark chrome: the bar is transparent over the banner's dark gradient
@@ -4615,7 +4632,7 @@ input[type="date"]::-webkit-datetime-edit-text {
    unless audio was docked, and again for the solid identity bar. The trigger is
    the mark unconditionally now, so every one of those cases collapsed: nothing
    left to clash, nothing left to guess. Only the colour question survives. */
-#app-header:has(.header-banner-bg):not(:has(#header-identity-slot[data-audio="true"])) .header-trigger-mark {
+#app-header:has(.header-banner-bg, .header-over-cover):not(:has(#header-identity-slot[data-audio="true"])) .header-trigger-mark {
   color: rgb(255 255 255 / 0.9);
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
 }
