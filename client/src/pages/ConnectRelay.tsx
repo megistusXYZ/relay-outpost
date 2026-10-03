@@ -11,7 +11,8 @@
  * "We couldn't reach it" is never reported as "it isn't yours".
  */
 import { useCallback, useEffect, useState } from "react";
-import { useLocation, useSearch } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
+import { StartOptions } from "@/components/relays/RelaysWelcome";
 import { Check, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +38,9 @@ type Result = {
 export default function ConnectRelay() {
   useDocumentTitle("Connect a relay");
   const { pubkey } = useNostrAuth();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  // "Add a relay" (from the switcher) offers both paths; plain Connect keeps a quiet link to them.
+  const adding = location.startsWith("/my-relays/add");
   const search = useSearch();
   const [address, setAddress] = useState(() => new URLSearchParams(search).get("url") ?? "");
   const [invalid, setInvalid] = useState(false);
@@ -130,6 +133,18 @@ export default function ConnectRelay() {
       )}
 
       {result && !checking && <Verdict result={result} onOpen={open} onRetry={() => void check(result.url)} />}
+
+      {!result && !checking && (adding ? (
+        <div className="mt-12" data-testid="add-relay-start">
+          <h2 className="mb-4 text-[13px] font-medium tracking-wide text-muted-foreground">Or start a new one</h2>
+          <StartOptions />
+        </div>
+      ) : (
+        <p className="mt-6 text-[14px] text-muted-foreground" data-testid="connect-relay-ways">
+          Don't have one yet?{" "}
+          <Link href="/my-relays/add" className="font-medium text-brand underline-offset-4 hover:underline">See ways to start</Link>
+        </p>
+      ))}
     </div>
   );
 }

@@ -245,10 +245,16 @@ export function subscribeWithReach(
   relayUrls: string[],
   filters: NostrFilter[],
   timeoutMs: number,
-): Promise<{ events: NostrEvent[]; reached: boolean }> {
+): Promise<{ events: NostrEvent[]; reached: boolean; refused?: string }> {
   return new Promise((resolve) => {
     const collected: NostrEvent[] = [];
     let reached = true;
+    /**
+     * The relay answered with "auth-required:"/"restricted:" instead of
+     * results. A third outcome, not "empty": the relay is up and has posts,
+     * it just won't show them to a reader who hasn't signed in to it.
+     */
+    let refused: string | undefined;
 
     const doSubscribe = () => {
       const filter: NostrFilter = filters.length === 1 ? filters[0] : Object.assign({}, ...filters);
@@ -257,10 +263,19 @@ export function subscribeWithReach(
         filter,
         {
           onevent(e: NostrEvent) { collected.push(e); },
-          oneose() { clearTimeout(timer); sub.close(); resolve({ events: collected, reached }); },
+          // nostr-tools reports a refusal as "end of results" first and passes
+          // the CLOSED reason a moment later (abstract-pool handleClose), so
+          // wait a tick before answering — or a refusal reads as "empty".
+          oneose() { clearTimeout(timer); setTimeout(() => { sub.close(); resolve({ events: collected, reached, refused }); }, 0); },
+          onclose(reasons: string[]) {
+            // "auth-required: …" from the relay, or nostr-tools' own wording
+            // when its automatic sign-in was turned down.
+            const r = reasons.find((x) => /^(auth-required|restricted)|auth was required/i.test(x ?? ""));
+            if (r) { refused = r; clearTimeout(timer); resolve({ events: collected, reached, refused }); }
+          },
         },
       );
-      const timer = setTimeout(() => { sub.close(); resolve({ events: collected, reached }); }, timeoutMs);
+      const timer = setTimeout(() => { sub.close(); resolve({ events: collected, reached, refused }); }, timeoutMs);
     };
 
     const url = relayUrls[0];
@@ -314,7 +329,9 @@ export function countWithNip45(
   relayUrl: string,
   filter: NostrFilter,
   timeoutMs = 7000,
-): Promise<{ count: number | null; supported: boolean }> {
+): Promise<{ count: number | null; supported: boolean; approximate?: boolean }> {
+  // NIP-45: a relay may answer with an estimate; carried back so the screen can say "About".
+  let lastApproximate = false;
   // One-shot probe (single WS connection). Wraps the actual implementation
   // and retries it once on a transient/inconclusive failure before
   // declaring the relay as not supporting NIP-45.
@@ -406,7 +423,8 @@ export function countWithNip45(
       const verb = data[0];
 
       if (verb === "COUNT" && data[1] === subId) {
-        const result = data[2] as { count?: number } | undefined;
+        const result = data[2] as { count?: number; approximate?: boolean } | undefined;
+        lastApproximate = result?.approximate === true;
         finish({ count: result?.count ?? 0, supported: true, transient: false });
         return;
       }
@@ -459,11 +477,11 @@ export function countWithNip45(
 
   return (async () => {
     const first = await attempt();
-    if (!first.transient) return { count: first.count, supported: first.supported };
+    if (!first.transient) return { count: first.count, supported: first.supported, approximate: lastApproximate };
     // One retry on transient failures (timeout / connect error / auth wait
     // expired) before concluding the relay does not support NIP-45.
     const second = await attempt();
-    return { count: second.count, supported: second.supported };
+    return { count: second.count, supported: second.supported, approximate: lastApproximate };
   })();
 }
 

@@ -76,6 +76,44 @@ describe("the one line a row shows", () => {
   });
 });
 
+describe("a row reads like a feed preview", () => {
+  const BOB = "b".repeat(64);
+  const npub = "npub1hwh0ndsdlm32gkhpq0g6u0e9vfecd97cjrw3atvpmhk8t3lu6nuq3ue2mx"; // not Bob — any valid npub
+  it("mentions read as names, not codes", () => {
+    const { nip19 } = require("nostr-tools");
+    const bobNpub = nip19.npubEncode(BOB);
+    const e = ev(1, `hi nostr:${bobNpub} how are you`);
+    expect(rowPreview(e, { nameOf: (pk) => (pk === BOB ? "Bob" : undefined) })).toBe("hi @Bob how are you");
+    expect(rowPreview(ev(1, `see nostr:${npub}`), { nameOf: () => undefined })).toMatch(/^see @npub1hwh0nd…$/);
+  });
+
+  it("a quoted post reads as a quote", () => {
+    expect(rowPreview(ev(1, "nostr:note1qqqrcgw2t6p54afxssclv8xdkaqsqtnjyj58ces28mgtevyc3kwsffe668"))).toBe("Quoted a post");
+    expect(rowPreview(ev(1, "so true nostr:note1qqqrcgw2t6p54afxssclv8xdkaqsqtnjyj58ces28mgtevyc3kwsffe668"))).toBe("so true · quoted a post");
+  });
+
+  it("a post that's only a picture, GIF or video says so", () => {
+    expect(rowPreview(ev(1, "https://cdn.example.com/a/b/cat.jpg"))).toBe("Photo");
+    expect(rowPreview(ev(1, "https://media.tenor.com/x/dance.gif"))).toBe("GIF");
+    expect(rowPreview(ev(1, "https://v.example.com/clip.mp4"))).toBe("Video");
+    expect(rowPreview(ev(1, "look at this https://cdn.example.com/cat.png"))).toBe("look at this · Photo");
+  });
+
+  it("a bare link shows the site it goes to", () => {
+    expect(rowPreview(ev(1, "https://www.theverge.com/2026/10/3/some-story"))).toBe("Link · theverge.com");
+  });
+
+  it("a reaction or repost names the post it's about, when we have it", () => {
+    const target = ev(1, "Thanks, we've been looking for reliable iOS support", [], { id: "c".repeat(64) });
+    const like = ev(7, "+", [["e", "c".repeat(64)]]);
+    const boost = ev(6, "", [["e", "c".repeat(64)]]);
+    const ctx = { targetOf: (id: string) => (id === "c".repeat(64) ? target : undefined) };
+    expect(rowPreview(like, ctx)).toBe("Liked: Thanks, we've been looking for reliable iOS support");
+    expect(rowPreview(boost, ctx)).toBe("Reposted: Thanks, we've been looking for reliable iOS support");
+    expect(rowPreview(like, { targetOf: () => undefined })).toBe("Liked a post");
+  });
+});
+
 describe("sorting the list", () => {
   const a = ev(1, "a", [], { created_at: 3, pubkey: "a".repeat(64) });
   const b = ev(7, "+", [], { created_at: 1, pubkey: "b".repeat(64) });
