@@ -4635,6 +4635,13 @@ input[type="date"]::-webkit-datetime-edit-text {
 /* The safe-area top, readable from script (getComputedStyle on :root): the
    profile head measures its cover against the bar, which sits under it. */
 :root { --sat: env(safe-area-inset-top, 0px); }
+/* A page whose head is a cover (the community page): the page starts under
+   the fixed bar; it is not its own scroll box, so only the margin moves. */
+@media (max-width: 1023px) {
+  .page-under-bar {
+    margin-top: calc(-4.25rem - env(safe-area-inset-top, 0px));
+  }
+}
 @media (max-width: 1023px) {
   .profile-under-bar {
     margin-top: calc(-4.25rem - env(safe-area-inset-top, 0px));
