@@ -61,12 +61,8 @@ export function appVersionLabel(): string {
 export type FeedbackType = "bug" | "idea" | "ux" | "question";
 export type FeedbackStatus = "open" | "resolved" | "closed" | "draft";
 
-export interface FeedbackContext {
-  route: string;
-  viewport: string;
-  signerType: string;
-  appVersion: string;
-}
+import { formatContextBlock, type FeedbackContext } from "./feedback-context";
+export { formatContextBlock, type FeedbackContext };
 
 export interface FeedbackRecipient {
   label: string;
@@ -122,18 +118,6 @@ export function captureContext(signerType: string): FeedbackContext {
     signerType,
     appVersion: appVersionLabel(),
   };
-}
-
-export function formatContextBlock(ctx: FeedbackContext): string {
-  return [
-    "",
-    "---",
-    "Context (auto-attached):",
-    `- route: ${ctx.route}`,
-    `- viewport: ${ctx.viewport}`,
-    `- signer: ${ctx.signerType}`,
-    `- app: Relay Outpost ${ctx.appVersion}`,
-  ].join("\n");
 }
 
 const CONTEXT_RE = /\n---\nContext \(auto-attached\):\n- route: (.+?)\n- viewport: (.+?)\n- signer: (.+?)\n- app: Relay Outpost (.+?)$/m;

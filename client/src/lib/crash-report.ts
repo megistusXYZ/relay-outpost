@@ -21,14 +21,8 @@ import { PrivateKeySigner } from "applesauce-signers";
 import { bytesToHex } from "@noble/hashes/utils.js";
 import { isUnactionableError } from "./error-noise";
 import { isChunkLoadError } from "./stale-chunk-recovery";
-import {
-  captureContext,
-  formatContextBlock,
-  sendPrivateTicket,
-  type FeedbackContext,
-  type FeedbackIssue,
-  type CrashStatus,
-} from "./nip34-feedback";
+import { formatContextBlock, type FeedbackContext } from "./feedback-context";
+import type { FeedbackIssue, CrashStatus } from "./nip34-feedback";
 
 // The operator's admin inbox (same key the beta Feedback tab reads).
 // npub1m2lrszeztt0jvte79nukgcx5s7d3t7ha9apjtyukqr79cw6s5y3qqgeeph
@@ -488,6 +482,9 @@ export function __resetAnonReporterCache(): void {
 // ---------------------------------------------------------------------------
 async function deliverCrash(error: Error, componentStack: string | undefined, key: string, source: CrashSource): Promise<void> {
   const { signer, pubkey } = await getAnonReporter();
+  // The ticket pipeline (relays, gift wrap, the changelog's version) is loaded
+  // only now — a page that never crashes never downloads it.
+  const { captureContext, sendPrivateTicket } = await import("./nip34-feedback");
   const context = captureContext(CRASH_SIGNER_LABEL);
   const { title, body } = buildCrashReport({ error, componentStack, context, source });
   await sendPrivateTicket({

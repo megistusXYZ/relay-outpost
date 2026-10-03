@@ -9,7 +9,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const SITES = ["contexts/NotificationContext.tsx", "pages/RSSFeed.tsx"];
+const SITES = ["contexts/notification-engine.tsx", "pages/RSSFeed.tsx"];
 
 describe("discussion trust gets the stranger floor's real signals", () => {
   it("each call site passes discussionSignals()", () => {

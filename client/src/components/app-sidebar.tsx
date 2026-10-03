@@ -37,7 +37,6 @@ import { useNWC } from "@/contexts/NWCContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useChatsBadge } from "@/hooks/use-chats-badge";
 import { hasSeenList } from "@/lib/concord/community-list-memory";
-import { wipeConcordDevice } from "@/lib/concord/concord-keys";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { PublicBetaBadge } from "@/components/PublicBetaBadge";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
@@ -411,7 +410,7 @@ export function AppSidebar() {
                   )}
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={async () => { setShowLogoutConfirm(false); if (wipeChats && pubkey) await wipeConcordDevice(pubkey); logout(); }}
+                      onClick={async () => { setShowLogoutConfirm(false); if (wipeChats && pubkey) { const { wipeConcordDevice } = await import("@/lib/concord/concord-keys"); await wipeConcordDevice(pubkey); } logout(); }}
                       className="flex-1 inline-flex items-center justify-center gap-1.5 h-8 rounded-md bg-red-500/20 border border-red-500/40 text-red-500 dark:text-red-400 font-brand uppercase tracking-[0.15em] text-[10px] transition-all duration-200 hover:bg-red-500/30 hover:border-red-500/50 cursor-pointer"
                       data-testid="button-confirm-logout"
                     >

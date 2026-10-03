@@ -40,7 +40,8 @@ export const KIND_COMMUNITY_LIST = 33302;
 /** The retired single-event list. Read forever, since a device's groups may only be there; never written. */
 export const KIND_LEGACY_COMMUNITY_LIST = 13302;
 export const KIND_INVITE_LIST = 13303;
-export const KIND_INVITE_BUNDLE = 33301;
+import { KIND_INVITE_BUNDLE } from "./concord-kinds";
+export { KIND_INVITE_BUNDLE };
 export const KIND_AUDIT = 3314;
 
 /**

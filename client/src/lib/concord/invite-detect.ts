@@ -13,7 +13,7 @@
  * `window.location.hash` without shipping it to a server.
  */
 import { nip19 } from "nostr-tools";
-import { KIND_INVITE_BUNDLE } from "./concord-events";
+import { KIND_INVITE_BUNDLE } from "./concord-kinds";
 
 /**
  * Lenient shape parse: any host's `/invite/<naddr>` path (fragment optional),
