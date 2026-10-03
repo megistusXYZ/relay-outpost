@@ -29,7 +29,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   MessageCircle, Copy, Check, UsersRound, FileText,
   UserPlus, UserMinus, Globe, VolumeX, Volume2, ImageIcon, Pencil,
-  BookOpen, Users, CornerUpLeft, Orbit, Satellite, Radio, RadioTower, Signal, Plus, Search, ArrowUpDown, Lock, ChevronDown, ShieldCheck, ArrowLeft, MoreHorizontal, Share2, Flag, Terminal, Clock, ArrowRight, Zap,
+  BookOpen, Users, CornerUpLeft, Orbit, Satellite, Radio, RadioTower, Signal, Plus, Search, ArrowUpDown, Lock, ChevronDown, ShieldCheck, ArrowLeft, MoreHorizontal, Share2, Flag, Terminal, Clock, ArrowRight,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import {
@@ -45,7 +45,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { BitcoinIcon } from "@/components/FeedIcons";
 import { ReportDialog } from "@/components/ReportDialog";
 import { useScrollRestore } from "@/hooks/use-scroll-restore";
 import { RelayOutpostLoader, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
@@ -1801,7 +1800,7 @@ export default function Profile() {
         </>
       )}
       <DropdownMenuItem onClick={handleZap} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-zap">
-        <BitcoinIcon className="w-4 h-4 text-brand/70" /> Zap
+        <BtcZapIcon className="w-4 h-4 text-brand/70" /> Send thanks
       </DropdownMenuItem>
       {/* The identity layout gets a dedicated button, but mobile falls back to
           the classic header — whose action row is already full at 375px. The
@@ -2299,7 +2298,7 @@ export default function Profile() {
             {!!profileContent?.lud16 && (
               <Button variant="outline" size="sm" onClick={handleZap}
                 className="flex-1 h-9 gap-1.5 rounded-full" data-testid="button-zap-identity">
-                <Zap className="w-4 h-4" /> Zap
+                <BtcZapIcon className="w-4 h-4" /> Send thanks
               </Button>
             )}
           </div>
@@ -2328,8 +2327,8 @@ export default function Profile() {
       <div className="flex gap-2 [&>button]:flex-1 [&>button]:h-10 [&>button]:min-w-0" data-testid="identity-primaries-row">
         {renderOtherUserHeaderActions("-identity", { hideOverflow: true })}
         {!!profileContent?.lud16 && (
-          <Button variant="outline" size="sm" onClick={handleZap} className={`${iconButton} !flex-none`} title="Zap" aria-label="Zap" data-testid="button-zap-identity">
-            <Zap className="w-4 h-4" />
+          <Button variant="outline" size="sm" onClick={handleZap} className={`${iconButton} !flex-none`} title="Send thanks" aria-label="Send thanks" data-testid="button-zap-identity">
+            <BtcZapIcon className="w-4 h-4" />
           </Button>
         )}
         {renderOverflowMenu(
