@@ -4601,10 +4601,32 @@ input[type="date"]::-webkit-datetime-edit-text {
   border-color: transparent;
   backdrop-filter: none;
 }
+/* Over a picture, every control gets its own ground: a dark translucent
+   circle with a blur, white glyph, hairline rim — so the mark, back and search
+   read over a yellow sign as well as over a night sky, in either theme. A
+   drop shadow alone did not: white on a bright cover vanished. */
 #app-header:has(.header-banner-bg, .header-over-cover):not(:has(#header-identity-slot[data-audio="true"])) > button,
 #app-header:has(.header-banner-bg, .header-over-cover):not(:has(#header-identity-slot[data-audio="true"])) > a {
-  color: rgb(255 255 255 / 0.9);
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+  color: rgb(255 255 255 / 0.95);
+  background: rgb(0 0 0 / 0.38);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  border-radius: 9999px;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.16), 0 1px 2px rgb(0 0 0 / 0.25);
+  filter: none;
+}
+/* The mark's trigger is a wide hover box in the plain bar; over the cover it is
+   a circle like its neighbours, and keeps its position. */
+#app-header:has(.header-banner-bg, .header-over-cover):not(:has(#header-identity-slot[data-audio="true"])) > button[data-testid="button-mobile-sidebar-trigger"] {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  margin-left: 0;
+  justify-content: center;
+}
+#app-header:has(.header-banner-bg, .header-over-cover):not(:has(#header-identity-slot[data-audio="true"])) > button[data-testid="button-mobile-sidebar-trigger"] .header-trigger-mark {
+  width: 1.75rem;
+  height: 1.75rem;
 }
 
 /* A phone profile's scroll box starts at the top of the screen, under the
@@ -4633,8 +4655,8 @@ input[type="date"]::-webkit-datetime-edit-text {
    the mark unconditionally now, so every one of those cases collapsed: nothing
    left to clash, nothing left to guess. Only the colour question survives. */
 #app-header:has(.header-banner-bg, .header-over-cover):not(:has(#header-identity-slot[data-audio="true"])) .header-trigger-mark {
-  color: rgb(255 255 255 / 0.9);
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+  color: rgb(255 255 255 / 0.95);
+  filter: none;
 }
 
 /* ── Post-menu shield glyph: the SIGNAL breathes while the menu is open ──────
