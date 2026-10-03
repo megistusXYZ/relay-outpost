@@ -21,7 +21,8 @@ import { GuestWall } from "@/components/GuestWall";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import { fetchAlbumTracks, fetchWavlakeArtist, getArtistTracks, type MusicTrack } from "@/lib/music";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
-import { getSignalTier, getSignalTierLabel, getSignalTierColor, getSignalTierBg, getSignalTierRingColor, formatInfluence, type SignalTier } from "@/lib/graperank";
+import { getSignalTier, getSignalTierColor, getSignalTierRingColor, type SignalTier } from "@/lib/graperank";
+import { getTrustPhrase, getTrustMark } from "@/lib/trust-words";
 import { isMutedPubkey, isReportedPubkey, isReportedEvent } from "@/lib/spam-filter";
 import { useSpamFilter } from "@/hooks/use-spam-filter";
 import { useNostrMuteList } from "@/hooks/use-nostr-mute-list";
@@ -40,7 +41,7 @@ import {
   Radio, Globe, Rss, Zap, TrendingUp,
   Signal, Activity, Eye, Bookmark, Check,
   Play, Coffee, Palette, Code2, Compass,
-  Newspaper, Trophy, Shield, ShieldCheck, Brain, FlaskConical, BookOpen, Heart, Lock,
+  Newspaper, Trophy, Shield, ShieldCheck, AlertTriangle, Brain, FlaskConical, BookOpen, Heart, Lock,
   ChevronDown, ChevronUp, Clock, MessageCircle,
   Calendar as CalendarIcon, ChevronRight, User as UserIcon,
   Music, Disc, ExternalLink, Image as ImageIcon, Video, Film
@@ -502,18 +503,35 @@ function TabSearchBar({ query, setQuery, onSubmit, onClear, loading, placeholder
   );
 }
 
-function TrustTierBadge({ tier, influence, className }: { tier: SignalTier; influence: number | null; className?: string }) {
+/**
+ * Trust on a card, said once and without a number: a small mark beside the
+ * name and a phrase about the reader's network on the status line. Both hide
+ * until the reader's own calculation exists, and inside a tier section (the
+ * heading already says it).
+ */
+function TrustMark({ tier, className }: { tier: SignalTier; className?: string }) {
   const { wotEnabled, wotReady } = useGrapeRankScores();
-  // No trust signals until the observer's own calculation has completed —
-  // pre-ready scores are misleading (everyone reads as Unverified).
-  if (!wotEnabled || !wotReady || tier === "none") return null;
-  const label = getSignalTierLabel(tier);
-  const color = getSignalTierColor(tier);
-  const bg = getSignalTierBg(tier);
+  if (!wotEnabled || !wotReady) return null;
+  const mark = getTrustMark(tier);
+  if (!mark) return null;
+  const phrase = getTrustPhrase(tier);
+  if (mark === "warning") {
+    return <AlertTriangle className={`w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400 ${className ?? ""}`} aria-label={phrase} data-testid="trust-mark" data-mark={mark} />;
+  }
+  return mark === "filled"
+    ? <ShieldCheck className={`w-3.5 h-3.5 shrink-0 text-brand fill-brand/20 ${className ?? ""}`} aria-label={phrase} data-testid="trust-mark" data-mark={mark} />
+    : <Shield className={`w-3.5 h-3.5 shrink-0 text-brand/70 ${className ?? ""}`} aria-label={phrase} data-testid="trust-mark" data-mark={mark} />;
+}
+
+function TrustPhrase({ tier }: { tier: SignalTier }) {
+  const { wotEnabled, wotReady } = useGrapeRankScores();
+  if (!wotEnabled || !wotReady) return null;
+  const phrase = getTrustPhrase(tier);
+  if (!phrase) return null;
+  const warn = tier === "flagged";
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${bg} ${color} ${className ?? ""}`}>
-      {label}
-      {influence !== null && <span className="font-mono font-semibold opacity-90">{formatInfluence(influence)}</span>}
+    <span className={`text-[10px] truncate ${warn ? "text-amber-700 dark:text-amber-400/90" : "text-muted-foreground/60"}`} data-testid="trust-phrase">
+      <span className="text-muted-foreground/30 mx-1" aria-hidden="true">·</span>{phrase}
     </span>
   );
 }
@@ -1340,7 +1358,6 @@ function PeopleTab({ urlQuery, updateUrl }: TabProps) {
                     <ProfileCard
                       profile={directMatch.event}
                       tier={directMatch.tier}
-                      influence={directMatch.influence}
                       isFollowed={followSet.has(directMatch.event.pubkey)}
                       followsYou={followedByPubkeys?.has(directMatch.event.pubkey) ?? false}
                     />
@@ -1374,7 +1391,7 @@ function PeopleTab({ urlQuery, updateUrl }: TabProps) {
                 {topicProfiles.map(({ event: profile, tier, influence }) => (
                   <div key={profile.pubkey} className="relative">
                     <ProfileCardErrorBoundary>
-                      <ProfileCard profile={profile} tier={tier} influence={influence} isFollowed={followSet.has(profile.pubkey)} followsYou={followedByPubkeys?.has(profile.pubkey) ?? false} />
+                      <ProfileCard profile={profile} tier={tier} isFollowed={followSet.has(profile.pubkey)} followsYou={followedByPubkeys?.has(profile.pubkey) ?? false} />
                     </ProfileCardErrorBoundary>
                     <div className="absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 z-30">
                       <QuickFollowButton targetPubkey={profile.pubkey} isFollowed={followSet.has(profile.pubkey)} />
@@ -1391,7 +1408,7 @@ function PeopleTab({ urlQuery, updateUrl }: TabProps) {
               {(["strong", "moderate", "low", "weak", "flagged"] as const).map(tierKey => {
                 const items = groupedByTier[tierKey];
                 if (!items || items.length === 0) return null;
-                const tierLabel = getSignalTierLabel(tierKey);
+                const tierLabel = getTrustPhrase(tierKey);
                 const tierColor = getSignalTierColor(tierKey);
                 return (
                   <TierSection
@@ -1434,7 +1451,7 @@ function PeopleTab({ urlQuery, updateUrl }: TabProps) {
                     const tier = wotReady ? getSignalTier(influence) : "none";
                     return (
                       <ProfileCardErrorBoundary key={profile.pubkey}>
-                        <ProfileCard profile={profile} tier={tier} influence={influence} isFollowed={followSet.has(profile.pubkey)} followsYou={followedByPubkeys?.has(profile.pubkey) ?? false} />
+                        <ProfileCard profile={profile} tier={tier} isFollowed={followSet.has(profile.pubkey)} followsYou={followedByPubkeys?.has(profile.pubkey) ?? false} />
                       </ProfileCardErrorBoundary>
                     );
                   })}
@@ -1496,8 +1513,8 @@ function TierSection({ tierKey, tierLabel, tierColor, profiles, followSet, follo
         className="flex items-center gap-2 w-full text-left mb-2 group"
       >
         <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
-        <span className={`text-xs font-semibold uppercase tracking-wider ${tierColor}`}>{tierLabel}</span>
-        <span className="text-[10px] text-muted-foreground/40 font-mono">{profiles.length}</span>
+        <span className={`text-[13px] font-semibold ${tierColor}`} data-testid={`heading-tier-${tierKey}`}>{tierLabel}</span>
+        <span className="text-[12px] text-muted-foreground/50 tabular-nums">{profiles.length}</span>
         <span className="ml-auto text-[10px] text-muted-foreground/40 group-hover:text-muted-foreground/60 transition-colors">
           {expanded ? "▲" : "▼"}
         </span>
@@ -1508,7 +1525,7 @@ function TierSection({ tierKey, tierLabel, tierColor, profiles, followSet, follo
             const tier: SignalTier = tierKey === "flagged" ? "flagged" : getSignalTier(influence);
             return (
               <ProfileCardErrorBoundary key={profile.pubkey}>
-                <ProfileCard profile={profile} tier={tier} influence={influence} isFollowed={followSet.has(profile.pubkey)} followsYou={followedByPubkeys?.has(profile.pubkey) ?? false} />
+                <ProfileCard profile={profile} tier={tier} grouped isFollowed={followSet.has(profile.pubkey)} followsYou={followedByPubkeys?.has(profile.pubkey) ?? false} />
               </ProfileCardErrorBoundary>
             );
           })}
@@ -1547,7 +1564,7 @@ function PeopleSearchResults({ profiles, followSet, followedByPubkeys }: {
       <p className="text-[11px] text-muted-foreground/50 mb-2">{profiles.length} result{profiles.length !== 1 ? "s" : ""}</p>
       {visible.map(({ event: profile, tier, influence }) => (
         <ProfileCardErrorBoundary key={profile.pubkey}>
-          <ProfileCard profile={profile} tier={tier} influence={influence} isFollowed={followSet.has(profile.pubkey)} followsYou={followedByPubkeys?.has(profile.pubkey) ?? false} />
+          <ProfileCard profile={profile} tier={tier} isFollowed={followSet.has(profile.pubkey)} followsYou={followedByPubkeys?.has(profile.pubkey) ?? false} />
         </ProfileCardErrorBoundary>
       ))}
       {hasMore && (
@@ -1563,12 +1580,13 @@ function PeopleSearchResults({ profiles, followSet, followedByPubkeys }: {
   );
 }
 
-function ProfileCard({ profile, tier, influence, isFollowed, followsYou }: {
+function ProfileCard({ profile, tier, isFollowed, followsYou, grouped = false }: {
   profile: Event;
   tier: SignalTier;
-  influence: number | null;
   isFollowed: boolean;
   followsYou: boolean;
+  /** Inside a tier section the heading already says it — the card stays quiet. */
+  grouped?: boolean;
 }) {
   let content: ReturnType<typeof getProfileContent> = null;
   try {
@@ -1587,8 +1605,7 @@ function ProfileCard({ profile, tier, influence, isFollowed, followsYou }: {
     <Link key={profile.pubkey} href={`/profile/${npub}`}>
       <Card className="glass-card cursor-pointer group/card overflow-hidden relative" data-testid={`card-user-${profile.pubkey.slice(0, 8)}`}>
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-[1px] bg-gradient-to-r from-transparent via-brand/40 to-transparent pointer-events-none" />
-        <TrustTierBadge tier={tier} influence={influence} className="hidden sm:flex absolute top-2.5 right-3 z-20" />
-        <CardContent className="relative z-10 p-3 sm:p-4 sm:pr-[120px] flex items-start gap-3">
+        <CardContent className="relative z-10 p-3 sm:p-4 flex items-start gap-3">
           <div className="relative shrink-0">
             <Avatar className={`w-12 h-12 ring-2 ${ringColor} border-2 border-primary/20 dark:border-[#0d0d2b]`}>
               <AvatarImage src={content?.picture} alt={content?.display_name || content?.name || "User"} />
@@ -1605,6 +1622,7 @@ function ProfileCard({ profile, tier, influence, isFollowed, followsYou }: {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <p className="text-sm font-semibold truncate">{content?.display_name || content?.name || shortenNpub(npub)}</p>
+              {!grouped && <TrustMark tier={tier} />}
               <ActivityIndicator pubkey={profile.pubkey} />
               {relationship === "mutual" && (
                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-brand/15 text-brand border border-brand/20">Mutual</span>
@@ -1623,9 +1641,9 @@ function ProfileCard({ profile, tier, influence, isFollowed, followsYou }: {
               {!nip05Display && (
                 <span className="text-[10px] text-muted-foreground/50 truncate">{shortenNpub(npub)}</span>
               )}
+              {!grouped && <TrustPhrase tier={tier} />}
             </div>
             {content?.about && <p className="text-xs text-muted-foreground/70 mt-1 line-clamp-2">{content.about}</p>}
-            <TrustTierBadge tier={tier} influence={influence} className="sm:hidden mt-1" />
           </div>
         </CardContent>
       </Card>
