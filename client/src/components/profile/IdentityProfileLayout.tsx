@@ -142,9 +142,20 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
     };
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(measure); };
     measure();
+    // Layout moves the cover without any scroll — a notice mounting above
+    // the page pushes it down, out from under the bar. An intersection
+    // observer with a fine ladder of thresholds fires on any such shift
+    // (the bar's band is cut out of its root, so a cover under the bar is
+    // only partly visible and sliding out from under it changes the ratio);
+    // the callback just measures, so the rule stays in one place.
+    const io = typeof IntersectionObserver === "function"
+      ? new IntersectionObserver(onScroll, { root: null, rootMargin: "-68px 0px 0px 0px", threshold: Array.from({ length: 51 }, (_, i) => i / 50) })
+      : null;
+    io?.observe(cover);
     document.addEventListener("scroll", onScroll, { capture: true, passive: true });
     window.addEventListener("resize", onScroll);
     return () => {
+      io?.disconnect();
       document.removeEventListener("scroll", onScroll, { capture: true } as EventListenerOptions);
       window.removeEventListener("resize", onScroll);
       if (raf) cancelAnimationFrame(raf);
