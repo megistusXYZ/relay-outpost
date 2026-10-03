@@ -4,29 +4,52 @@
  * tiles or fills (owner, 2026-10-03: "we don't need all the square
  * containers around the icons"), theme colours only — light and dark alike.
  */
-import type { CSSProperties } from "react";
-import { BrandMark } from "@/components/BrandMark";
 
 type IconProps = { className?: string };
 const base = { width: 24, height: 24, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
 
-/** The hero: the R mark at the centre of a fine orbit and its eight lit dots — your corner of the network. */
-export function HomeRing({ size = 120 }: { size?: number }) {
-  const r = size * 0.42;
-  const dot = Math.max(4, Math.round(size / 24));
+const R_LEFT = "M5.64999 7.64999L2.85001 4.85001C2.54001 4.54001 2.76001 4 3.20001 4H6.79001C6.92001 4 7.05001 4.04999 7.14001 4.14999L12.14 9.14999C12.45 9.45999 12.23 10 11.79 10H8.5C6.57 10 5 11.57 5 13.5C5 15.43 6.57 17 8.5 17H10L12.15 19.15C12.46 19.46 12.24 20 11.8 20H8.51001C4.92001 20 2.01001 17.09 2.01001 13.5C2.01001 11.01 3.41001 8.84 5.48001 7.75L5.64999 7.64999Z";
+const R_RIGHT = "M18.35 16.35L21.15 19.15C21.46 19.46 21.24 20 20.8 20H17.21C17.08 20 16.95 19.95 16.86 19.85L11.86 14.85C11.55 14.54 11.77 14 12.21 14H15.5C17.43 14 19 12.43 19 10.5C19 8.57 17.43 7 15.5 7H14L11.85 4.85001C11.54 4.54001 11.76 4 12.2 4H15.49C19.08 4 21.99 6.91 21.99 10.5C21.99 12.99 20.59 15.16 18.52 16.25L18.35 16.35Z";
+
+/**
+ * The hero: the R mark, lit — a sheen across it from the top, a soft brand
+ * glow behind, a shadow beneath that lifts it off the page, and one fine ring
+ * a slow light travels around. Calm when the reader has asked for less motion.
+ */
+export function HomeRing({ size = 132 }: { size?: number }) {
+  const ring = Math.round(size * 0.86);
+  const mark = Math.round(size * 0.34);
   return (
     <div className="relative flex shrink-0 items-center justify-center" style={{ width: size, height: size }} aria-hidden="true" data-testid="relays-home-ring">
-      <div className="absolute inset-0 rounded-full bg-[radial-gradient(closest-side,hsl(var(--brand)/0.18),transparent)]" />
-      <div className="absolute rounded-full border border-brand/20" style={{ width: r * 2, height: r * 2 }} />
-      {Array.from({ length: 8 }, (_, i) => {
-        const style: CSSProperties = {
-          width: dot, height: dot, marginLeft: -dot / 2, marginTop: -dot / 2,
-          transform: `rotate(${i * 45}deg) translateY(-${r}px)`,
-          animationDelay: `${i * 70}ms`,
-        };
-        return <i key={i} className="absolute left-1/2 top-1/2 rounded-full bg-brand shadow-[0_0_8px_hsl(var(--brand)/0.6)] motion-safe:animate-in motion-safe:fade-in motion-safe:duration-700 motion-safe:fill-mode-both" style={style} />;
-      })}
-      <BrandMark className="relative text-brand drop-shadow-[0_0_14px_hsl(var(--brand)/0.45)]" style={{ width: size * 0.34, height: size * 0.34 }} />
+      {/* the glow, wide and soft */}
+      <div className="absolute -inset-8 rounded-full bg-[radial-gradient(closest-side,hsl(var(--brand)/0.30),hsl(var(--brand)/0.08)_55%,transparent)] blur-xl" />
+      {/* a faint full ring… */}
+      <div className="absolute rounded-full border border-brand/15 dark:border-white/[0.07]" style={{ width: ring, height: ring }} />
+      {/* …and the light travelling around it */}
+      <div
+        className="absolute rounded-full p-[1.5px] motion-safe:animate-[spin_14s_linear_infinite] [-webkit-mask:linear-gradient(#000_0_0)_content-box,linear-gradient(#000_0_0)] [-webkit-mask-composite:xor] [mask:linear-gradient(#000_0_0)_content-box_exclude,linear-gradient(#000_0_0)] bg-[conic-gradient(from_0deg,transparent_0deg,transparent_170deg,hsl(var(--brand)/0.25)_250deg,hsl(var(--brand))_320deg,hsl(0_0%_100%/0.9)_340deg,transparent_360deg)]"
+        style={{ width: ring, height: ring }}
+      />
+      {/* a glass disc the mark sits on: a lit top edge, a soft brand shadow below */}
+      <div
+        className="absolute rounded-full border border-white/70 dark:border-white/[0.08] bg-[radial-gradient(circle_at_50%_25%,hsl(0_0%_100%/0.9),hsl(0_0%_100%/0.55)_60%)] dark:bg-[radial-gradient(circle_at_50%_25%,hsl(var(--brand)/0.20),hsl(0_0%_100%/0.02)_70%)] shadow-[0_22px_44px_-20px_hsl(var(--brand)/0.65),inset_0_1px_0_hsl(0_0%_100%/0.9)] dark:shadow-[0_22px_44px_-18px_hsl(var(--brand)/0.55),0_8px_20px_-10px_rgba(0,0,0,0.6),inset_0_1px_0_hsl(0_0%_100%/0.12)]"
+        style={{ width: Math.round(size * 0.66), height: Math.round(size * 0.66) }}
+      />
+      <svg
+        viewBox="0 0 24 24"
+        className="relative [filter:drop-shadow(0_0_16px_hsl(var(--brand)/0.55))_drop-shadow(0_10px_16px_rgba(0,0,0,0.35))]"
+        style={{ width: mark, height: mark }}
+      >
+        <defs>
+          <linearGradient id="relays-hero-sheen" x1="12" y1="3" x2="12" y2="21" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stopColor="hsl(var(--brand))" stopOpacity="1" style={{ stopColor: "color-mix(in srgb, hsl(var(--brand)) 45%, white)" }} />
+            <stop offset="0.55" stopColor="hsl(var(--brand))" />
+            <stop offset="1" stopColor="hsl(var(--brand))" style={{ stopColor: "color-mix(in srgb, hsl(var(--brand)) 80%, black)" }} />
+          </linearGradient>
+        </defs>
+        <path d={R_LEFT} fill="url(#relays-hero-sheen)" />
+        <path d={R_RIGHT} fill="url(#relays-hero-sheen)" />
+      </svg>
     </div>
   );
 }

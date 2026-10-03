@@ -124,14 +124,14 @@ export function RelaysWelcome() {
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-96 bg-[radial-gradient(55%_100%_at_50%_0%,hsl(var(--brand)/0.16),transparent_70%)]" aria-hidden="true" />
 
       <header className="flex flex-col items-center text-center motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
-        <HomeRing size={120} />
+        <HomeRing size={132} />
         <h1 className="mt-6 text-[32px] sm:text-[44px] font-semibold leading-[1.05] tracking-[-0.02em] [font-family:var(--font-display)] [text-wrap:balance]">
           Give your community a home
         </h1>
         <p className="mt-4 max-w-[42ch] text-[16px] sm:text-[17px] leading-relaxed text-muted-foreground [text-wrap:pretty]">
           Your own space for posts and members, with your rules. A provider keeps it running; you run it from here.
         </p>
-        <p className="mt-2 text-[13px] text-muted-foreground/80" data-testid="relays-welcome-term">On Nostr, a space like this is called a relay.</p>
+        <p className="mt-2 text-[13px] text-muted-foreground/80" data-testid="relays-welcome-term">Your space is called a relay.</p>
       </header>
 
       <ul className="mt-12 grid sm:grid-cols-3 border-y border-black/[0.06] dark:border-white/[0.06] divide-y sm:divide-y-0 sm:divide-x divide-black/[0.06] dark:divide-white/[0.06]" aria-label="What you get" data-testid="relays-benefits">
