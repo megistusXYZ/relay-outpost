@@ -54,6 +54,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -112,6 +113,7 @@ import {
   ChevronsUpDown,
   Wrench,
   Link2,
+  MoreHorizontal,
   Copy,
   Check,
   Inbox } from "lucide-react";
@@ -185,6 +187,18 @@ function OperatorBadge({ pubkey }: { pubkey: string }) {
       <span className="text-[10px] text-muted-foreground/60 truncate max-w-[100px]">{displayName}</span>
       <TrustTierDot pubkey={pubkey} />
     </div>
+  );
+}
+
+/** Who runs it, by name, linked — for the head's quiet line ("run by …"). */
+function OperatorName({ pubkey }: { pubkey: string }) {
+  const profile = use$(() => eventStore.replaceable(KIND_METADATA, pubkey), [pubkey]);
+  const displayName = profile ? getDisplayName(profile) : shortenNpub(formatNpub(pubkey));
+  useEffect(() => { fetchProfilesCached([pubkey]); }, [pubkey]);
+  return (
+    <Link href={`/profile/${formatNpub(pubkey)}`} onClick={(e) => e.stopPropagation()} className="font-medium text-foreground/90 hover:underline underline-offset-2 truncate max-w-[12rem]" data-testid="hero-operator-name">
+      {displayName}
+    </Link>
   );
 }
 
@@ -3325,7 +3339,12 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
   // The slot is tracked live because the header bar unmounts entirely on
   // desktop while the sidebar is expanded; whenever it's gone the same
   // condensed strip renders inline above the tabs instead (pre-slot layout).
-  const [headerCollapsed, setHeaderCollapsed] = useState(true);
+  // Phones: where the hero's cover stands against the top bar (OutpostHero
+  // measures it): under the bar, the bar goes transparent; gone, the bar
+  // takes the identity — avatar · name · Join — exactly as a profile does.
+  const [coverState, setCoverState] = useState({ underBar: false, gone: false });
+  const onCoverState = useCallback((st: { underBar: boolean; gone: boolean }) => setCoverState(st), []);
+  const isPhone = useIsMobile();
   const headerSlotEl = useHeaderIdentitySlot();
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
   const { registerOutpostCompose, unregisterOutpostCompose, setHorizonDialogOpen } = useOutpostCompose();
@@ -3334,18 +3353,6 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
   const [horizonAdminOnly, setHorizonAdminOnly] = useState<boolean | null>(null);
   const [horizonConfigLoaded, setHorizonConfigLoaded] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    const handleScroll = () => {
-      // Collapse-only: scrolling reclaims the space, but never force-expands
-      // the header back open (expansion is the user's explicit choice).
-      if (el.scrollTop > 80) setHeaderCollapsed(true);
-    };
-    el.addEventListener("scroll", handleScroll, { passive: true });
-    return () => el.removeEventListener("scroll", handleScroll);
-  }, []);
 
   useEffect(() => {
     if ((PINNABLE_TABS as string[]).includes(activeTab)) {
@@ -3430,10 +3437,6 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
     } else {
       setActiveTab("feed");
     }
-    // Every outpost LOADS with the banner condensed — expansion never carries
-    // over from a previously-viewed outpost (the component stays mounted when
-    // hopping between relays, so the mount default alone isn't enough).
-    setHeaderCollapsed(true);
     setEvents([]);
     setAuthors([]);
     setAllowedPubkeys([]);
@@ -3454,9 +3457,6 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
     setNip11(null);
     setNip11Loading(true);
     setJoined(isJoinedOutpost(relayUrl));
-    // NOTE: no setHeaderCollapsed(false) here — the header must LOAD condensed
-    // (reset to true at the top of this effect). This line used to re-expand it
-    // and silently overrode the reset.
     setPinnedRules([]);
     setStoredModerators([]);
   }, [relayUrl]);
@@ -4128,221 +4128,21 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
   // Invite + Join/Leave + expand chevron — shared by the top-bar portal strip
   // and the inline fallback strip (rendered when the top bar is unmounted,
   // i.e. desktop with the sidebar expanded).
-  const stripActions = (
-    <div className="flex items-center gap-1.5 shrink-0 group-data-[audio=true]:hidden">
-      {pubkey && (
-        <button
-          type="button"
-          onClick={() => { setOutpostLinkCopied(false); setOutpostInviteRecipient(null); setShowOutpostInvite(true); }}
-          className="flex items-center justify-center w-8 h-8 rounded-full bg-black/40 border border-white/20 text-white/90 hover:text-white hover:bg-black/55 active:scale-95 transition-[background-color,color,transform]"
-          aria-label="Invite to this community"
-          title="Invite to this community"
-          data-testid="button-invite-outpost-strip"
-        >
-          <Link2 className="w-3.5 h-3.5" />
-        </button>
-      )}
-      {joined ? (
-        <button
-          type="button"
-          onClick={handleJoinLeave}
-          className="flex items-center justify-center w-8 h-8 rounded-full bg-black/40 border border-white/20 text-white/90 hover:text-red-300 hover:bg-black/55 active:scale-95 transition-[background-color,color,transform]"
-          aria-label="Leave this community"
-          title="Leave"
-          data-testid="button-leave-outpost-strip"
-        >
-          <LogOut className="w-3.5 h-3.5" />
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={handleJoinLeave}
-          className="flex items-center gap-1 h-8 px-3 rounded-full text-xs font-semibold border bg-black/40 hover:bg-black/55 text-white/90 border-white/20 active:scale-95 transition-[background-color,color,transform]"
-          data-testid="button-join-outpost-strip"
-        >
-          <LogIn className="w-3.5 h-3.5" />
-          Join
-        </button>
-      )}
-      <button
-        type="button"
-        onClick={() => setHeaderCollapsed((c) => !c)}
-        className="flex items-center justify-center w-8 h-8 rounded-full bg-black/40 border border-white/20 text-white/85 hover:text-white hover:bg-black/55 active:scale-95 transition-[background-color,color,transform]"
-        aria-expanded={!headerCollapsed}
-        aria-label={headerCollapsed ? "Show full banner" : "Condense banner"}
-        title={headerCollapsed ? "Show full banner" : "Condense banner"}
-        data-testid="button-toggle-outpost-header"
-      >
-        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${headerCollapsed ? "" : "rotate-180"}`} />
-      </button>
-    </div>
+  // The condensed bar's one pill (one, so the name keeps its room on a phone).
+  const barAction = joined ? (
+    <Button variant="outline" size="sm" onClick={handleJoinLeave} className="group-data-[audio=true]:hidden h-8 rounded-full px-3 text-xs shrink-0" data-testid="button-leave-outpost-bar" title="Leave this community">
+      Joined
+    </Button>
+  ) : (
+    <Button size="sm" onClick={handleJoinLeave} className="group-data-[audio=true]:hidden h-8 rounded-full px-3 text-xs font-semibold shrink-0" data-testid="button-join-outpost-bar">
+      Join
+    </Button>
   );
 
-  return (
-    <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 pb-24 space-y-4">
-      <div ref={scrollContainerRef} className="flex-1 min-w-0 space-y-4 overflow-y-auto overflow-x-hidden pb-8">
-        <Card className="glass-card overflow-hidden">
-          {nip11Loading ? (
-            <div className="flex items-center justify-center py-10">
-              <RelayOutpostInlineLoader className="w-6 h-6" />
-            </div>
-          ) : (
-            <>
-              {/* Identity lives in the global top bar (portal into
-                  #header-identity-slot), exactly like profiles: banner shows
-                  through the bar (.header-banner-bg makes it transparent and
-                  flips its chrome white), ⌄ expands the full banner card below.
-                  Operator credit + health live in the expanded view. */}
-              {headerSlotEl && createPortal(
-                <div className="flex w-full items-center gap-2 min-w-0 pr-1" data-testid="container-outpost-strip">
-                  <div className="header-banner-bg absolute inset-0 -z-10 overflow-hidden pointer-events-none group-data-[audio=true]:hidden" aria-hidden="true">
-                    {banner
-                    ? <img src={banner} alt="" loading="eager" decoding="async" className="w-full h-full object-cover" />
-                    : icon
-                      ? <img src={icon} alt="" aria-hidden loading="eager" decoding="async" className="w-full h-full object-cover scale-125 blur-2xl saturate-150 opacity-70" />
-                      : <div className="w-full h-full bg-gradient-to-br from-brand/30 via-[#14101f] to-black" />}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/55 to-black/35" />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setHeaderCollapsed((c) => !c)}
-                    className="flex items-center gap-2 min-w-0 flex-1 text-left overflow-hidden"
-                    aria-label={headerCollapsed ? "Show full banner" : "Condense banner"}
-                    data-testid="button-header-identity"
-                  >
-                    <Avatar className="w-7 h-7 border border-white/25 shadow-[0_2px_8px_rgba(0,0,0,0.5)] ring-1 ring-brand/20 shrink-0">
-                      <AvatarImage src={icon || undefined} alt={name} />
-                      <AvatarFallback className="bg-brand/20 text-brand text-[10px] font-bold">
-                        {name.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm font-bold text-white truncate group-data-[audio=true]:hidden" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.7)" }} data-testid="text-strip-name">
-                      {name}
-                    </span>
-                    {authRequired && (
-                      <Badge variant="outline" className="text-[9px] h-4 px-1.5 border-amber-400/50 text-amber-300 bg-amber-500/15 backdrop-blur-sm shadow-sm shrink-0 group-data-[audio=true]:hidden">
-                        <Lock className="w-2.5 h-2.5 mr-0.5" />
-                        AUTH
-                      </Badge>
-                    )}
-                  </button>
-                  {stripActions}
-                </div>,
-                headerSlotEl,
-              )}
-
-              {/* Inline fallback strip: on desktop with the sidebar expanded
-                  the top bar (and its identity slot) is unmounted, so the
-                  condensed identity renders here instead — the pre-slot ~56px
-                  banner strip above the tabs. The same ⌄ expands the full
-                  banner card below. */}
-              {!headerSlotEl && headerCollapsed && (
-                <div className="relative h-14 w-full overflow-hidden" style={{ backgroundColor: "hsl(260 20% 7%)" }} data-testid="container-outpost-strip">
-                  {banner
-                    ? <img src={banner} alt="" loading="eager" decoding="async" className="w-full h-full object-cover" />
-                    : icon
-                      ? <img src={icon} alt="" aria-hidden loading="eager" decoding="async" className="w-full h-full object-cover scale-125 blur-2xl saturate-150 opacity-70" />
-                      : <div className="w-full h-full bg-gradient-to-br from-brand/30 via-[#14101f] to-black" />}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent" />
-                  <div className="absolute inset-y-0 left-3 right-2 flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setHeaderCollapsed(false)}
-                      className="flex items-center gap-2 min-w-0 flex-1 text-left overflow-hidden"
-                      aria-label="Show full banner"
-                      data-testid="button-header-identity"
-                    >
-                      <Avatar className="w-8 h-8 border border-white/25 shadow-[0_2px_8px_rgba(0,0,0,0.5)] ring-1 ring-brand/20 shrink-0">
-                        <AvatarImage src={icon || undefined} alt={name} />
-                        <AvatarFallback className="bg-brand/20 text-brand text-[11px] font-bold">
-                          {name.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm font-bold text-white truncate" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.7)" }} data-testid="text-strip-name">
-                        {name}
-                      </span>
-                      {authRequired && (
-                        <Badge variant="outline" className="text-[9px] h-4 px-1.5 border-amber-400/50 text-amber-300 bg-amber-500/15 backdrop-blur-sm shadow-sm shrink-0">
-                          <Lock className="w-2.5 h-2.5 mr-0.5" />
-                          AUTH
-                        </Badge>
-                      )}
-                    </button>
-                    {stripActions}
-                  </div>
-                </div>
-              )}
-
-              {!headerCollapsed && (
-                <OutpostHero
-                  relayUrl={relayUrl}
-                  realName={name}
-                  bannerSrc={banner || undefined}
-                  avatarUrl={icon || undefined}
-                  authRequired={!!authRequired}
-                  description={description}
-                  presence={outpostPresenceProps({
-                    membersMeasured: members.length > 0,
-                    membersCount: members.length,
-                    postsCount: 0,
-                    lastActivityMs: lastActivity ? lastActivity * 1000 : undefined,
-                  })}
-                  memberPubkeys={members}
-                  healthBadge={members.length > 0 ? <OutpostHealthBadge relayUrl={relayUrl} members={members} lastActivityTs={lastActivity} compact /> : undefined}
-                  operatorCredit={operatorPubkey ? <OperatorMiniAvatar pubkey={operatorPubkey} /> : undefined}
-                  condenseControl={
-                    <button
-                      type="button"
-                      onClick={() => setHeaderCollapsed(true)}
-                      className="flex items-center justify-center w-9 h-9 rounded-full bg-black/40 border border-white/20 text-white/85 hover:text-white hover:bg-black/55 active:scale-95 transition-[background-color,color,transform]"
-                      aria-expanded
-                      aria-label="Condense banner"
-                      title="Condense banner"
-                      data-testid="button-toggle-outpost-banner"
-                    >
-                      <ChevronDown className="w-4 h-4 rotate-180 transition-transform duration-200" />
-                    </button>
-                  }
-                  actions={
-                    <div className="flex items-center justify-center gap-2">
-                      {pubkey && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => { setOutpostLinkCopied(false); setOutpostInviteRecipient(null); setShowOutpostInvite(true); }}
-                          className="h-9 text-xs px-3 border-brand/20 text-muted-foreground/70 hover:text-brand gap-1"
-                          title="Invite to this community"
-                          data-testid="button-invite-outpost"
-                        >
-                          <Link2 className="w-3 h-3" />
-                          Invite
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant={joined ? "outline" : "default"}
-                        onClick={handleJoinLeave}
-                        className={`h-9 text-xs px-4 ${
-                          joined
-                            ? "border-primary/20 text-muted-foreground/70 hover:text-red-600 dark:hover:text-red-400 hover:border-red-500/30"
-                            : "bg-primary hover:bg-primary/90 text-primary-foreground"
-                        }`}
-                      >
-                        {joined ? (
-                          <>
-                            <LogOut className="w-3 h-3 mr-1" />
-                            Leave
-                          </>
-                        ) : (
-                          <>
-                            <LogIn className="w-3 h-3 mr-1" />
-                            Join
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  }
-                  metaRow={(operatorPubkey || (nip11?.blossom_servers && nip11.blossom_servers.length > 0) || sw || (pubkey && isJoined && (isOperator || !operatorClaimBlocked)) || (tags && tags.length > 0)) ? (
+  // What the head used to carry as small print — operator, media host, relay
+  // software, the operator switch, tags — belongs with the rest of the
+  // relay's particulars, in About.
+  const communityMeta = (operatorPubkey || (nip11?.blossom_servers && nip11.blossom_servers.length > 0) || sw || (pubkey && isJoined && (isOperator || !operatorClaimBlocked)) || (tags && tags.length > 0)) ? (
                     <div className="space-y-2.5">
                       <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground/50">
                         {operatorPubkey && (
@@ -4417,12 +4217,127 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                         </div>
                       )}
                     </div>
-                  ) : undefined}
-                />
+                  ) : null;
+
+  return (
+    <div className="page-under-bar max-w-5xl mx-auto px-3 sm:px-4 py-4 pb-24 space-y-4">
+      <div ref={scrollContainerRef} className="flex-1 min-w-0 space-y-4 overflow-y-auto overflow-x-hidden pb-8">
+          {nip11Loading ? (
+            <Card className="glass-card overflow-hidden">
+              <div className="flex items-center justify-center py-10">
+                <RelayOutpostInlineLoader className="w-6 h-6" />
+              </div>
+            </Card>
+          ) : (
+            <>
+              {/* Identity lives in the global top bar (portal into
+                  #header-identity-slot), exactly like profiles: banner shows
+                  through the bar (.header-banner-bg makes it transparent and
+                  flips its chrome white), ⌄ expands the full banner card below.
+                  Operator credit + health live in the expanded view. */}
+              {/* The top bar: transparent while the phone's cover is under it,
+                  and holding avatar · name · Join once the cover has scrolled
+                  away — on every width. Nothing is said twice: the head below
+                  is the only place the banner and the full identity appear. */}
+              {headerSlotEl && createPortal(
+                coverState.gone ? (
+                  <div className="flex w-full items-center gap-2 min-w-0 pr-1" data-testid="container-outpost-strip">
+                    <button
+                      type="button"
+                      onClick={() => { const main = document.querySelector("main"); main?.scrollTo({ top: 0, behavior: "smooth" }); scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" }); }}
+                      className="flex items-center gap-2 min-w-0 flex-1 text-left overflow-hidden"
+                      aria-label="Back to the top of the community"
+                      data-testid="button-header-identity"
+                    >
+                      <Avatar className="w-7 h-7 border border-border shrink-0">
+                        <AvatarImage src={icon || undefined} alt={name} />
+                        <AvatarFallback className="bg-brand/20 text-brand text-[10px] font-bold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm font-bold text-foreground truncate group-data-[audio=true]:hidden" data-testid="header-identity-name">{name}</span>
+                    </button>
+                    {barAction}
+                  </div>
+                ) : isPhone && coverState.underBar ? (
+                  <span className="header-over-cover hidden" aria-hidden="true" />
+                ) : null,
+                headerSlotEl,
               )}
+
+              <div className="-mx-3 sm:-mx-4 -mt-4 lg:mx-0 lg:mt-0">
+                <OutpostHero
+                  relayUrl={relayUrl}
+                  realName={name}
+                  bannerSrc={banner || undefined}
+                  avatarUrl={icon || undefined}
+                  authRequired={!!authRequired}
+                  description={description}
+                  presence={outpostPresenceProps({
+                    membersMeasured: members.length > 0,
+                    membersCount: members.length,
+                    postsCount: 0,
+                    lastActivityMs: lastActivity ? lastActivity * 1000 : undefined,
+                  })}
+                  memberPubkeys={members}
+                  operator={operatorPubkey ? <OperatorName pubkey={operatorPubkey} /> : undefined}
+                  onCoverState={onCoverState}
+                  actions={
+                    <div className="flex gap-2 lg:gap-2">
+                      <Button
+                        size="sm"
+                        variant={joined ? "outline" : "default"}
+                        onClick={handleJoinLeave}
+                        className={`flex-1 lg:flex-none h-10 rounded-full px-5 text-sm ${joined ? "" : "font-semibold"}`}
+                        data-testid={joined ? "button-leave-outpost" : "button-join-outpost"}
+                        title={joined ? "Leave this community" : "Join this community"}
+                      >
+                        {joined ? "Joined" : "Join"}
+                      </Button>
+                      {pubkey && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => { setOutpostLinkCopied(false); setOutpostInviteRecipient(null); setShowOutpostInvite(true); }}
+                          className="flex-1 lg:flex-none h-10 rounded-full px-5 text-sm gap-1.5"
+                          data-testid="button-invite-outpost"
+                        >
+                          <Link2 className="w-4 h-4" />
+                          Invite
+                        </Button>
+                      )}
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline" className="h-10 w-11 shrink-0 p-0 rounded-full" title="More" aria-label="More" data-testid="button-outpost-more">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-[200px]">
+                          {(PINNABLE_TABS as string[]).includes(activeTab) && (
+                            <DropdownMenuItem onClick={handleTogglePin} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-outpost-pin">
+                              {feedPinned ? <Pin className="w-4 h-4 rotate-45 text-brand" /> : <PinOff className="w-4 h-4 text-brand/70" />}
+                              {feedPinned ? "Unpin this view" : "Pin this view to your hub"}
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem onClick={() => { try { navigator.clipboard?.writeText(`${window.location.origin}/outposts/${encodeURIComponent(relayUrl)}`); } catch {} }} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-outpost-copy-link">
+                            <Link2 className="w-4 h-4 text-brand/70" /> Copy link
+                          </DropdownMenuItem>
+                          {pubkey && isJoined && (isOperator || !operatorClaimBlocked) && (
+                            <DropdownMenuItem onClick={toggleOperatorMode} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-operator-mode">
+                              <Settings className="w-4 h-4 text-brand/70" /> {isOperator ? "Turn operator mode off" : "I operate this relay"}
+                            </DropdownMenuItem>
+                          )}
+                          {isOperator && (
+                            <DropdownMenuItem onClick={() => setLocation(`/relay-ops-center/${encodeURIComponent(relayUrl)}`)} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-relay-control">
+                              <Server className="w-4 h-4 text-brand/70" /> Relay Control
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  }
+                />
+              </div>
             </>
           )}
-        </Card>
 
         {(() => {
           const activeTabConfig = TAB_CONFIG.find((t) => t.key === activeTab);
@@ -5091,6 +5006,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
               allModerators={allModerators}
               lastActivity={lastActivity}
             />
+            {communityMeta && <div className="mt-4 px-1" data-testid="community-meta">{communityMeta}</div>}
           </div>
         )}
       </div>

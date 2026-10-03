@@ -63,10 +63,6 @@ const UNGUARDED = new RegExp(
  * and it is finished.
  */
 const DARK_SURFACES: Record<string, { count: number; why: string }> = {
-  "client/src/pages/Outposts.tsx": {
-    count: 3,
-    why: "DARK-SURFACE. One bg-black/40 control pill and two amber badges on a community's banner artwork beside text-white siblings. (Was 4: the expanded banner's on-artwork AUTH badge moved into the identity hero, where it sits on the card surface with theme-aware colors — OutpostHero.tsx.)",
-  },
   "client/src/components/rss/AddRssFeedDialog.tsx": {
     count: 3,
     why: "DARK-SURFACE. Three bg-black/55 circular badges over podcast artwork.",

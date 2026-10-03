@@ -1,20 +1,28 @@
 /**
- * The outpost's identity hero — the community page wearing the profile's
- * visual language (owner decision, 2026-08-15). Person→place translation:
- * Connect→Join/Invite, WoT chip→health badge, Presence→pulse (members +
- * bucketed activity — no post totals: the old "30 posts" was just the fetch
- * cap), Circle→member facepile. Relay-scoped controls (moderators, policy,
- * fees, NIPs) deliberately stay OUT of the hero — space-scope rule; they live
- * in the About tab. Composed from identity-shared so profiles and outposts
- * stay one skin.
+ * The community page's head — one flat surface, the profile head's twin
+ * (owner, 2026-10-02: "slick, clean, simple, Apple-like").
+ *
+ * Person→place: Follow/Message → Join/Invite; the counts line → members,
+ * activity and who runs it; the Circle → the members' faces. What used to be
+ * here as small print (operator credit, relay version, media host, tags, the
+ * health badge) belongs to the About tab, where someone looking for it looks.
+ *
+ * Phones: the cover runs edge to edge under the transparent top bar; the
+ * avatar overlaps its bottom edge; name, one quiet line, one row of actions.
+ * The head measures its cover against the bar and tells the page, which
+ * condenses the identity into the bar once the cover is gone (the same
+ * mechanics as IdentityProfileLayout). Desktop: the cover is a rounded band,
+ * and the head reads left to right — avatar, then name and line, actions on
+ * the right — no card, no boxes.
  */
-import type { ReactNode } from "react";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Lock } from "lucide-react";
-import { IdentitySection, IdentityBanner, IdentityHead } from "@/components/identity/identity-shared";
+import { IdentityBanner, IdentityHead } from "@/components/identity/identity-shared";
 import { IdentityCircleCard } from "@/components/profile/IdentityCircleCard";
 import { activityStatus } from "@/components/profile/IdentityPresence";
-import { displayNameWith, getPetname, usePetnamesVersion } from "@/lib/petnames";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { displayNameWith, usePetnamesVersion } from "@/lib/petnames";
 import type { OutpostPresenceProps } from "@/lib/outpost-presence";
 
 export function OutpostHero({
@@ -27,11 +35,9 @@ export function OutpostHero({
   description,
   presence,
   memberPubkeys,
-  healthBadge,
-  operatorCredit,
+  operator,
   actions,
-  metaRow,
-  condenseControl,
+  onCoverState,
 }: {
   relayUrl: string;
   /** The relay's own NIP-11 name — petnames overlay it, never replace it here. */
@@ -43,75 +49,111 @@ export function OutpostHero({
   description?: string;
   presence: OutpostPresenceProps;
   memberPubkeys: string[];
-  healthBadge?: ReactNode;
-  operatorCredit?: ReactNode;
-  /** Join/Leave + Invite — handlers stay with the page; the hero only frames them. */
+  /** Who runs it, as a name (linked) — drawn as "run by …" in the quiet line. */
+  operator?: ReactNode;
+  /** The one row: Join/Leave · Invite · ⋯ — handlers stay with the page. */
   actions: ReactNode;
-  /** Quiet admin/meta leftovers (operator toggle etc.) — function preserved, demoted visually. */
-  metaRow?: ReactNode;
-  /** The ⌄ condense toggle — the collapse mechanics belong to the page. */
-  condenseControl?: ReactNode;
+  /** Where the cover is against the top bar (phones) — see IdentityProfileLayout. */
+  onCoverState?: (state: { underBar: boolean; gone: boolean }) => void;
 }) {
   usePetnamesVersion();
+  const isMobile = useIsMobile();
   const title = displayNameWith("community", relayUrl, realName);
-  const petnamed = !!getPetname("community", relayUrl) && title !== realName;
-  const hostname = relayUrl.replace(/^wss?:\/\//, "").replace(/\/$/, "");
   const active = activityStatus(presence.lastActiveAt, Math.floor(Date.now() / 1000));
+
+  const coverRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const cover = coverRef.current;
+    if (!isMobile || !cover || !onCoverState) return;
+    let last = "";
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      const r = cover.getBoundingClientRect();
+      const safeTop = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sat")) || 0;
+      const next = { underBar: r.top <= safeTop + 1, gone: r.bottom <= 68 + safeTop };
+      const key = `${next.underBar}:${next.gone}`;
+      if (key !== last) { last = key; onCoverState(next); }
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(measure); };
+    measure();
+    // Layout moves the cover without any scroll — a notice mounting above
+    // the page pushes it down, out from under the bar. An intersection
+    // observer with a fine ladder of thresholds fires on any such shift
+    // (the bar's band is cut out of its root, so a cover under the bar is
+    // only partly visible and sliding out from under it changes the ratio);
+    // the callback just measures, so the rule stays in one place.
+    const io = typeof IntersectionObserver === "function"
+      ? new IntersectionObserver(onScroll, { root: null, rootMargin: "-68px 0px 0px 0px", threshold: Array.from({ length: 51 }, (_, i) => i / 50) })
+      : null;
+    io?.observe(cover);
+    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      io?.disconnect();
+      document.removeEventListener("scroll", onScroll, { capture: true } as EventListenerOptions);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+      onCoverState({ underBar: false, gone: false });
+    };
+  }, [isMobile, onCoverState]);
+
+  const quiet = (
+    <p className="mt-1 flex items-center justify-center lg:justify-start flex-wrap gap-x-1.5 text-[13px] leading-snug text-muted-foreground" data-testid="hero-outpost-pulse">
+      {presence.members !== undefined && (
+        <span><span className="font-semibold text-foreground tabular-nums">{presence.members.toLocaleString()}</span> members</span>
+      )}
+      {presence.members !== undefined && active && <span className="text-muted-foreground/50" aria-hidden="true">·</span>}
+      {active && <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true" />{active}</span>}
+      {(presence.members !== undefined || active) && operator && <span className="text-muted-foreground/50" aria-hidden="true">·</span>}
+      {operator && <span className="inline-flex items-center gap-1">run by {operator}</span>}
+    </p>
+  );
+  const authGlyph = authRequired ? (
+    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-300 shrink-0" title="Members only — the relay asks you to sign in" aria-label="Members only">
+      <Lock className="w-3 h-3" />
+    </span>
+  ) : undefined;
 
   return (
     <div data-testid="outpost-hero">
-      <div className="px-3 pt-3 sm:px-4 sm:pt-4">
-        <IdentityBanner src={bannerSrc} fallbackSrc={bannerFallbackSrc} blurBackdropSrc={avatarUrl} topRight={condenseControl} />
+      <div ref={coverRef}>
+        <IdentityBanner variant={isMobile ? "hero" : "card"} src={bannerSrc} fallbackSrc={bannerFallbackSrc} blurBackdropSrc={avatarUrl} />
       </div>
 
-      <div className="px-3 pb-3 sm:px-4 sm:pb-4">
-        <div className="rounded-xl bg-card px-3 pb-3">
-          <IdentityHead avatarUrl={avatarUrl} title={title}>
-            {petnamed && (
-              <span className="mt-0.5 text-[11px] text-muted-foreground/70">
-                Real name <span className="text-foreground/85 font-medium">“{realName}”</span>
-              </span>
-            )}
-            <span className="mt-0.5 text-[10px] font-mono text-muted-foreground/60 truncate max-w-full" data-testid="hero-outpost-hostname">{hostname}</span>
-            <span className="mt-2 flex items-center justify-center gap-1.5 flex-wrap">
-              {authRequired && (
-                <Badge variant="outline" className="text-[9px] h-4 px-1.5 border-amber-500/40 text-amber-600 dark:text-amber-300 bg-amber-500/10 shrink-0">
-                  <Lock className="w-2.5 h-2.5 mr-0.5" />
-                  AUTH
-                </Badge>
-              )}
-              {healthBadge}
-              {operatorCredit}
-            </span>
-            {description && (
-              <p className="mt-2 text-xs sm:text-sm text-muted-foreground/75 leading-relaxed line-clamp-3 max-w-xl">{description}</p>
-            )}
-            {/* Pulse: positive claims only — members appear once a set actually
-                loaded; the activity label is bucketed and calm; nothing here
-                ever prints a number nobody measured. */}
-            {(presence.members !== undefined || active) && (
-              <span className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground/70" data-testid="hero-outpost-pulse">
-                {presence.members !== undefined && (
-                  <span><span className="font-semibold text-foreground/85 tabular-nums">{presence.members.toLocaleString()}</span> members</span>
-                )}
-                {active && <span className="text-emerald-600/80 dark:text-emerald-400/80">{active}</span>}
-              </span>
-            )}
+      {isMobile ? (
+        <div className="px-4">
+          <IdentityHead avatarUrl={avatarUrl} title={title} inlineBadge={authGlyph}>
+            {quiet}
           </IdentityHead>
-
-          <IdentitySection title={`Join ${title}`} className="mt-3">
-            {actions}
-          </IdentitySection>
-
-          {memberPubkeys.length >= 4 && (
-            <div className="mt-3">
-              <IdentityCircleCard pubkeys={memberPubkeys} horizontal />
-            </div>
-          )}
-
-          {metaRow && <div className="mt-3">{metaRow}</div>}
+          <div className="mt-3" data-testid="outpost-actions-row">{actions}</div>
         </div>
-      </div>
+      ) : (
+        <div className="flex items-start gap-4 px-1 -mt-10">
+          <Avatar className="w-24 h-24 border-4 border-background shadow-lg shrink-0">
+            {avatarUrl && <AvatarImage src={avatarUrl} alt={title} />}
+            <AvatarFallback className="text-2xl bg-brand/10 text-brand font-semibold">{title.slice(0, 2).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1 pt-12">
+            <h1 className="text-xl font-bold leading-tight break-words inline-flex items-center gap-1.5 max-w-full" data-testid="hero-outpost-name">
+              <span className="min-w-0">{title}</span>
+              {authGlyph}
+            </h1>
+            {quiet}
+          </div>
+          <div className="pt-12 shrink-0" data-testid="outpost-actions-row">{actions}</div>
+        </div>
+      )}
+
+      {description && (
+        <p className="mt-3 px-4 lg:px-1 text-sm text-foreground/85 leading-relaxed line-clamp-3 max-w-2xl text-center lg:text-left mx-auto lg:mx-0" data-testid="hero-outpost-description">{description}</p>
+      )}
+
+      {memberPubkeys.length >= 4 && (
+        <div className="mt-4 px-4 lg:px-1">
+          <IdentityCircleCard pubkeys={memberPubkeys} horizontal />
+        </div>
+      )}
     </div>
   );
 }
