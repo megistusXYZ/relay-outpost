@@ -19,7 +19,6 @@ import { TabId, getTabFromHash } from "./relay-ops/shared";
 import { SECTIONS, SETTINGS_SCREENS, sectionOf } from "./relay-ops/console-nav";
 import { useFeedbackInbox } from "@/hooks/use-feedback-inbox";
 import { OverviewTab } from "./relay-ops/OverviewTab";
-import { LiveFeedTab } from "./relay-ops/LiveFeedTab";
 import { EventsTab } from "./relay-ops/EventsTab";
 import { AccessControlTab } from "./relay-ops/AccessControlTab";
 import { FeaturedTab } from "./relay-ops/FeaturedTab";
@@ -327,8 +326,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                   don't auto-reset), letting the operator recover by tab-switching. */}
               <ErrorBoundary key={activeTab} fallbackRender={(error) => <TabErrorFallback error={error} />}>
                 {activeTab === "overview" && <OverviewTab relayUrl={selectedRelay} inbox={inbox} onOpenFeedback={() => setActiveTab("feedback")} />}
-                {activeTab === "live" && <LiveFeedTab relayUrl={selectedRelay} />}
-                {activeTab === "events" && <EventsTab relayUrl={selectedRelay} />}
+                {(activeTab === "events" || activeTab === "live") && <EventsTab relayUrl={selectedRelay} initialLive={activeTab === "live"} />}
                 {activeTab === "access" && <><AccessControlTab relayUrl={selectedRelay} nip11={nip11} /><KindGateCard relayUrl={selectedRelay} nip11={nip11} /></>}
                 {activeTab === "feedback" && <FeedbackTab relayUrl={selectedRelay} inbox={inbox} />}
                 {activeTab === "settings" && (

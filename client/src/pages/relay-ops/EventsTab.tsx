@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect } fr
 import { useLocation } from "wouter";
 import { createPortal } from "react-dom";
 import { nip19 } from "nostr-tools";
-import type { Event as NostrEvent } from "nostr-tools";
+import type { Event as NostrEvent, Filter as RelayFilter } from "nostr-tools";
 import { pool, searchCachedProfiles } from "@/lib/nostr";
+import { getAuthStatus, onAuthChange } from "@/lib/nip42-auth";
 import { searchUsers } from "@/lib/primal-cache";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
@@ -13,11 +14,13 @@ import { computeEngagementScore } from "@/lib/engagement";
 import { copyNostrId } from "@/lib/clipboard-bridge";
 import { usePrimalStatsBatch } from "@/hooks/use-primal-stats";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
 import { Card } from "@/components/ui/card";
 import { OpsCard, OpsSectionHeader } from "./ops-ui";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import {
@@ -38,8 +41,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
+import { AddToFeaturedDialog } from "@/components/AddToFeaturedDialog";
+import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 import {
-  Globe,
   Copy,
   Check,
   Search,
@@ -49,15 +53,19 @@ import {
   Download,
   Upload,
   Clock,
-  FileText,
   Filter,
   X,
   User,
   ExternalLink,
   ArrowRight,
+  SlidersHorizontal,
+  Pause,
+  Play,
+  Radio,
 } from "lucide-react";
 import {
   NostrFilter,
+  SubCloser,
   ProfileInfo,
   ProfileName,
   resolveProfileBatch,
@@ -65,13 +73,10 @@ import {
   getKindLabel,
   getKindBadgeClasses,
   getEngagementTarget,
-  KindFilterSelect,
-  AuthorSearchFilter,
   ContentPreviewText,
   RenderedEventPreview,
   EngagementTarget,
   tryParseRepostInner,
-  npubToHex,
   pubkeyToNpub,
   subscribeWithTimeout,
   addModLogEntry,
@@ -110,25 +115,44 @@ import {
   getScoreEventId,
   SCORE_TIER_OPTIONS,
 } from "./shared";
+import { parseEventQuery, queryFilter, queryFromSavedToolbar, TIME_RANGES, type RangeId, type TimeWindow } from "./event-query";
 
-export function EventsTab({ relayUrl }: { relayUrl: string }) {
+const LIVE_CAP = 300;
+
+function localToSec(s: string): number | undefined {
+  if (!s) return undefined;
+  const t = new Date(s).getTime();
+  return isNaN(t) ? undefined : Math.floor(t / 1000);
+}
+
+/**
+ * The Events section: one list of what is on the relay.
+ *
+ * One field reads what you type for what it is (see event-query.ts); the
+ * time window and source sit behind Filter; the Live switch keeps the same
+ * list open on the relay so new events arrive at the top. Live Feed used to
+ * be a second tab with a second table and its own four boxes.
+ */
+export function EventsTab({ relayUrl, initialLive = false }: { relayUrl: string; initialLive?: boolean }) {
   const [, navigate] = useLocation();
   const { pubkey, signer, attemptReconnect } = useNostrAuth();
   const { toast } = useToast();
-  const [searchKind, setSearchKind] = useState("");
-  const [searchAuthor, setSearchAuthor] = useState("");
-  const [searchSince, setSearchSince] = useState("");
-  const [searchUntil, setSearchUntil] = useState("");
-  const [searchContent, setSearchContent] = useState("");
-  const [searchEventId, setSearchEventId] = useState("");
-  const [timePreset, setTimePreset] = useState<string>("none");
-  const [showCustomTime, setShowCustomTime] = useState(false);
+  const isMobile = useIsMobile();
+  const [query, setQuery] = useState("");
+  const [submitted, setSubmitted] = useState("");
+  const [range, setRange] = useState<RangeId | "custom">("any");
+  const [customSince, setCustomSince] = useState("");
+  const [customUntil, setCustomUntil] = useState("");
+  const [eventsSourceFilter, setEventsSourceFilter] = useState<string>("all");
+  const [live, setLive] = useState(initialLive);
+  const [paused, setPaused] = useState(false);
+  const [heldCount, setHeldCount] = useState(0);
   const [results, setResults] = useState<NostrEvent[]>([]);
   const [searching, setSearching] = useState(false);
+  const [featureEvent, setFeatureEvent] = useState<NostrEvent | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedView, setExpandedView] = useState<"rendered" | "raw">("rendered");
   const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
-  const [eventsSourceFilter, setEventsSourceFilter] = useState<string>("all");
   const [eventSources, setEventSources] = useState<Map<string, RelaySource>>(new Map());
   const [pendingBlock, setPendingBlock] = useState<string | null>(null);
   const [columnFilters, setColumnFilters] = useState<ColumnFilters>(EMPTY_COLUMN_FILTERS);
@@ -136,130 +160,134 @@ export function EventsTab({ relayUrl }: { relayUrl: string }) {
   const { getAuthorTier, isAuthorFlagged, wotEnabled } = useGrapeRankScores();
   const getEffectiveTier = useCallback((pk: string): SignalTier => isAuthorFlagged(pk) ? "flagged" : getAuthorTier(pk), [getAuthorTier, isAuthorFlagged]);
 
-  const applyTimePreset = useCallback((preset: string) => {
-    setTimePreset(preset);
-    if (preset === "none") {
-      setSearchSince("");
-      setSearchUntil("");
-      setShowCustomTime(false);
-      return;
-    }
-    if (preset === "custom") {
-      setShowCustomTime(true);
-      return;
-    }
-    setShowCustomTime(false);
-    const now = new Date();
-    const presetMs: Record<string, number> = {
-      "1h": 3600000,
-      "6h": 21600000,
-      "24h": 86400000,
-      "7d": 604800000,
-      "30d": 2592000000,
-    };
-    if (presetMs[preset]) {
-      const since = new Date(now.getTime() - presetMs[preset]);
-      const pad = (n: number) => String(n).padStart(2, "0");
-      const localStr = `${since.getFullYear()}-${pad(since.getMonth() + 1)}-${pad(since.getDate())}T${pad(since.getHours())}:${pad(since.getMinutes())}`;
-      setSearchSince(localStr);
-      setSearchUntil("");
+  const parsed = useMemo(() => parseEventQuery(submitted), [submitted]);
+  const window = useMemo<TimeWindow>(
+    () => range === "custom" ? { range, since: localToSec(customSince), until: localToSec(customUntil) } : { range },
+    [range, customSince, customUntil],
+  );
+  const windowActive = range !== "any";
+  const matchesText = useCallback((e: NostrEvent) => {
+    if (!parsed.text) return true;
+    return e.content.toLowerCase().includes(parsed.text.toLowerCase());
+  }, [parsed.text]);
+
+  // Names and sources for events as they arrive — a search result set at once,
+  // a live trickle a few at a time. Both go through one queue.
+  const profileQueueRef = useRef<Set<string>>(new Set());
+  const sourceQueueRef = useRef<Set<string>>(new Set());
+  const sourceCacheRef = useRef<Map<string, RelaySource>>(new Map());
+  const absorb = useCallback((events: NostrEvent[]) => {
+    for (const e of events) {
+      profileQueueRef.current.add(e.pubkey);
+      if ((e.kind === 6 || e.kind === 16) && e.content) {
+        const inner = tryParseRepostInner(e.content);
+        if (inner?.pubkey) profileQueueRef.current.add(inner.pubkey);
+      }
+      const target = getEngagementTarget(e);
+      if (target) profileQueueRef.current.add(target);
+      if (!sourceCacheRef.current.has(e.id)) sourceQueueRef.current.add(e.id);
     }
   }, []);
+  const flush = useCallback(async () => {
+    const pks = [...profileQueueRef.current];
+    profileQueueRef.current.clear();
+    if (pks.length) {
+      const resolved = await resolveProfileBatch(pks);
+      if (resolved.size) setProfiles((prev) => { const next = new Map(prev); resolved.forEach((v, k) => next.set(k, v)); return next; });
+    }
+    const ids = [...sourceQueueRef.current];
+    sourceQueueRef.current.clear();
+    if (ids.length) {
+      const { type: currentType, oppositeUrls } = getOppositeRelays(relayUrl);
+      const found = oppositeUrls.length ? await checkEventPresenceOnRelays(ids, oppositeUrls) : new Set<string>();
+      for (const id of ids) sourceCacheRef.current.set(id, oppositeUrls.length ? determineRelaySource(currentType, found.has(id)) : (currentType === "private" ? "private" : "public"));
+      setEventSources(new Map(sourceCacheRef.current));
+    }
+  }, [relayUrl]);
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+  useEffect(() => {
+    const t = setInterval(() => { flushRef.current(); }, 2500);
+    return () => clearInterval(t);
+  }, []);
 
-  const handleSearch = useCallback(async () => {
-    setSearching(true);
-    setResults([]);
-    const filter: NostrFilter = { limit: 100 };
+  const relayFilter = useCallback(() => queryFilter(parsed, window, Math.floor(Date.now() / 1000)), [parsed, window]);
 
-    const eventIdRaw = searchEventId.trim();
-    if (eventIdRaw) {
-      let hexId: string | null = null;
-      if (/^[0-9a-fA-F]{64}$/.test(eventIdRaw)) {
-        hexId = eventIdRaw.toLowerCase();
-      } else {
-        try {
-          const decoded = nip19.decode(eventIdRaw);
-          if (decoded.type === "note") hexId = decoded.data as string;
-          else if (decoded.type === "nevent") hexId = (decoded.data as { id: string }).id;
-        } catch {}
-      }
-      if (!hexId) {
-        toast({ title: "Invalid event ID", description: "Enter a 64-character hex id, note1…, or nevent1… reference.", variant: "destructive" });
-        setSearching(false);
-        return;
-      }
-      filter.ids = [hexId];
-      delete filter.limit;
-    } else {
-      if (searchKind) filter.kinds = [Number(searchKind)];
-      if (searchAuthor) {
-        const hex = npubToHex(searchAuthor);
-        if (hex) filter.authors = [hex];
-        else {
-          toast({ title: "Invalid author", description: "Enter a valid npub or hex pubkey.", variant: "destructive" });
-          setSearching(false);
-          return;
-        }
-      }
-    }
-    if (searchSince) {
-      const d = new Date(searchSince);
-      if (!isNaN(d.getTime())) filter.since = Math.floor(d.getTime() / 1000);
-    }
-    if (searchUntil) {
-      const d = new Date(searchUntil);
-      if (!isNaN(d.getTime())) filter.until = Math.floor(d.getTime() / 1000);
-    }
-    if (filter.since && filter.until && filter.since > filter.until) {
-      toast({ title: "Invalid range", description: "Start time must be before end time.", variant: "destructive" });
-      setSearching(false);
+  // One-shot: the list as it stands now.
+  const runSearch = useCallback(async () => {
+    if (window.range === "custom" && window.since && window.until && window.since > window.until) {
+      toast({ title: "Start is after end", description: "Pick a start time before the end time.", variant: "destructive" });
       return;
     }
-
-    const collected = await subscribeWithTimeout([relayUrl], [filter], 6000);
-    let filtered = collected;
-    if (searchContent) {
-      const lowerQuery = searchContent.toLowerCase();
-      filtered = collected.filter(e => e.content.toLowerCase().includes(lowerQuery));
-    }
-    const sorted = filtered.sort((a, b) => b.created_at - a.created_at);
+    setSearching(true);
+    const collected = await subscribeWithTimeout([relayUrl], [relayFilter()], 6000);
+    const sorted = collected.filter(matchesText).sort((a, b) => b.created_at - a.created_at);
     setResults(sorted);
     setSearching(false);
-    const pubkeys = new Set(sorted.map(e => e.pubkey));
-    for (const e of sorted) {
-      if ((e.kind === 6 || e.kind === 16) && e.content) {
-        const innerEvent = tryParseRepostInner(e.content);
-        if (innerEvent?.pubkey) pubkeys.add(innerEvent.pubkey);
-      }
-      const engTarget = getEngagementTarget(e);
-      if (engTarget) pubkeys.add(engTarget);
-    }
-    if (pubkeys.size > 0) {
-      resolveProfileBatch([...pubkeys]).then(setProfiles);
-    }
-    const ids = sorted.map((e) => e.id);
-    const { type: currentType, oppositeUrls } = getOppositeRelays(relayUrl);
-    if (oppositeUrls.length === 0) {
-      const src: RelaySource = currentType === "private" ? "private" : "public";
-      setEventSources(new Map(ids.map((id) => [id, src])));
-    } else {
-      const found = await checkEventPresenceOnRelays(ids, oppositeUrls);
-      const sources = new Map<string, RelaySource>();
-      for (const id of ids) {
-        sources.set(id, determineRelaySource(currentType, found.has(id)));
-      }
-      setEventSources(sources);
-    }
-  }, [relayUrl, searchKind, searchAuthor, searchSince, searchUntil, searchContent, searchEventId, toast]);
+    absorb(sorted);
+    flushRef.current();
+  }, [relayUrl, relayFilter, matchesText, window, toast, absorb]);
+  const runSearchRef = useRef(runSearch);
+  runSearchRef.current = runSearch;
 
-  const prevRelayUrl = useRef(relayUrl);
   useEffect(() => {
-    if (prevRelayUrl.current !== relayUrl) {
-      prevRelayUrl.current = relayUrl;
-      setResults([]);
-    }
-    handleSearch();
-  }, [relayUrl]);
+    if (live) return;
+    runSearchRef.current();
+  }, [live, relayUrl, submitted, window]);
+
+  // Live: the same question, left open. Stored events arrive first, then
+  // whatever the relay accepts from now on, at the top.
+  const pausedRef = useRef(false);
+  const heldRef = useRef<NostrEvent[]>([]);
+  useEffect(() => { pausedRef.current = paused; }, [paused]);
+  const merge = useCallback((incoming: NostrEvent[]) => {
+    if (!incoming.length) return;
+    setResults((prev) => {
+      const seen = new Set(prev.map((e) => e.id));
+      const fresh = incoming.filter((e) => !seen.has(e.id));
+      if (!fresh.length) return prev;
+      return [...fresh, ...prev].sort((a, b) => b.created_at - a.created_at).slice(0, LIVE_CAP);
+    });
+    absorb(incoming);
+  }, [absorb]);
+  useEffect(() => {
+    if (!live) return;
+    let cancelled = false;
+    let sub: SubCloser | null = null;
+    setResults([]);
+    heldRef.current = [];
+    setHeldCount(0);
+    const filter = relayFilter();
+    const start = () => {
+      if (cancelled) return;
+      sub = pool.subscribeMany([relayUrl], filter as RelayFilter, {
+        onevent(event: NostrEvent) {
+          if (cancelled || !matchesText(event)) return;
+          if (pausedRef.current) { heldRef.current.push(event); setHeldCount(heldRef.current.length); return; }
+          merge([event]);
+        },
+      });
+    };
+    const ready = (s: string) => s === "authenticated" || s === "failed" || s === "none";
+    const whenAuthSettled = () => {
+      if (ready(getAuthStatus(relayUrl).status)) { start(); return; }
+      const unsub = onAuthChange(() => {
+        if (ready(getAuthStatus(relayUrl).status)) { unsub(); start(); }
+      });
+    };
+    pool.ensureRelay(relayUrl)
+      .then(() => { if (!cancelled) setTimeout(whenAuthSettled, 300); })
+      .catch(() => { if (!cancelled) start(); });
+    return () => { cancelled = true; sub?.close(); };
+  }, [live, relayUrl, relayFilter, matchesText, merge]);
+  const resume = useCallback(() => {
+    setPaused(false);
+    const held = heldRef.current;
+    heldRef.current = [];
+    setHeldCount(0);
+    merge(held);
+  }, [merge]);
+  const clearList = useCallback(() => { setResults([]); heldRef.current = []; setHeldCount(0); }, []);
 
   const extractPublishError = useCallback((err: unknown): { reason: string; needsAuth: boolean } => {
     const messages: string[] = [];
@@ -278,7 +306,6 @@ export function EventsTab({ relayUrl }: { relayUrl: string }) {
     const needsAuth = lower.includes("auth-required") || lower.includes("restricted: not authenticated");
     return { reason: joined || "No reason returned by relay.", needsAuth };
   }, []);
-
   const requestDeletion = useCallback(async (eventId: string) => {
     if (!signer || !pubkey) {
       toast({ title: "Not signed in", description: "Sign in to delete events.", variant: "destructive" });
@@ -415,229 +442,217 @@ export function EventsTab({ relayUrl }: { relayUrl: string }) {
   const evtStats = useEventStats(evtFilteredResults, profiles, getEvtSource);
   const evtToolbar = useMemo<SavedToolbarState>(() => ({
     sourceFilter: eventsSourceFilter,
-    searchKind: searchKind,
-    searchAuthor: searchAuthor,
-    searchContent: searchContent,
-    searchSince: searchSince,
-    searchUntil: searchUntil,
-    timePreset: timePreset,
-    searchEventId: searchEventId,
-  }), [eventsSourceFilter, searchKind, searchAuthor, searchContent, searchSince, searchUntil, timePreset, searchEventId]);
-  const handleSearchRef = useRef(handleSearch);
-  handleSearchRef.current = handleSearch;
-  const pendingSearchRef = useRef(false);
+    searchContent: submitted,
+    searchSince: customSince,
+    searchUntil: customUntil,
+    timePreset: range === "any" ? "none" : range,
+  }), [eventsSourceFilter, submitted, customSince, customUntil, range]);
   const handleEvtLoadView = useCallback((f: ColumnFilters, t?: SavedToolbarState) => {
     setColumnFilters({ ...EMPTY_COLUMN_FILTERS, ...f, wotTiers: f?.wotTiers ?? [], scoreTiers: f?.scoreTiers ?? [] });
     if (t) {
       if (t.sourceFilter !== undefined) setEventsSourceFilter(t.sourceFilter);
-      if (t.searchKind !== undefined) setSearchKind(t.searchKind);
-      if (t.searchAuthor !== undefined) setSearchAuthor(t.searchAuthor);
-      if (t.searchContent !== undefined) setSearchContent(t.searchContent);
-      if (t.searchSince !== undefined) setSearchSince(t.searchSince);
-      if (t.searchUntil !== undefined) setSearchUntil(t.searchUntil);
-      if (t.timePreset !== undefined) { setTimePreset(t.timePreset); applyTimePreset(t.timePreset); }
-      if (t.searchEventId !== undefined) setSearchEventId(t.searchEventId);
+      const q = queryFromSavedToolbar(t);
+      setQuery(q);
+      setSubmitted(q);
+      const preset = t.timePreset;
+      if (!preset || preset === "none") setRange("any");
+      else if (preset === "custom") { setRange("custom"); setCustomSince(t.searchSince ?? ""); setCustomUntil(t.searchUntil ?? ""); }
+      else if (TIME_RANGES.some((r) => r.id === preset)) setRange(preset as RangeId);
     }
-    pendingSearchRef.current = true;
-  }, [applyTimePreset]);
+  }, []);
 
-  useEffect(() => {
-    if (pendingSearchRef.current) {
-      pendingSearchRef.current = false;
-      handleSearchRef.current();
-    }
-  });
+  const shown = evtFilteredResults.length;
+  const rangeLabel = range === "custom" ? "Custom" : TIME_RANGES.find((r) => r.id === range)?.label ?? "Any time";
 
   return (
-    <div className="space-y-4">
-      <OpsCard>
-        <OpsSectionHeader
-          icon={Search}
-          label="Search Events"
-          action={
-            <Button size="sm" onClick={handleSearch} disabled={searching} className="h-8 text-xs px-3">
-              <Search className={`w-3 h-3 mr-1 ${searching ? "animate-pulse" : ""}`} />
-              {searching ? "Searching..." : "Search"}
+    <div className="space-y-3">
+      {/* One field · Live · Filter */}
+      <form
+        className="flex items-center gap-2"
+        onSubmit={(e) => { e.preventDefault(); setSubmitted(query.trim()); }}
+        role="search"
+      >
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 pointer-events-none" aria-hidden="true" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={isMobile ? "Search events" : "Search — words, an npub, kind:1, or an event id"}
+            title="Words, an npub, kind:1, or an event id"
+            aria-label="Search events"
+            enterKeyHint="search"
+            className="h-11 sm:h-10 pl-10 pr-10 rounded-full text-sm"
+            data-testid="ops-events-search"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => { setQuery(""); setSubmitted(""); }}
+              className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 inline-flex items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <label className="inline-flex items-center gap-2 h-11 sm:h-10 px-1.5 shrink-0 cursor-pointer select-none text-sm font-medium">
+          <Switch checked={live} onCheckedChange={(v) => { setLive(v); setPaused(false); }} aria-label="Live" data-testid="ops-events-live" />
+          <span className={live ? "text-foreground" : "text-muted-foreground"}>Live</span>
+        </label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              className="relative h-11 w-11 p-0 sm:h-10 sm:w-auto sm:px-3.5 rounded-full shrink-0 text-[13px]"
+              aria-label={windowActive ? `Filter — ${rangeLabel}` : "Filter"}
+              data-active={windowActive}
+              data-testid="ops-events-filter"
+            >
+              <SlidersHorizontal className="w-4 h-4 sm:mr-1.5" aria-hidden="true" />
+              <span className="hidden sm:inline">{windowActive ? rangeLabel : "Filter"}</span>
+              {windowActive && <span className="absolute top-1.5 right-1.5 sm:hidden w-2 h-2 rounded-full bg-brand" aria-hidden="true" />}
             </Button>
-          }
-        />
-
-        <div className="mb-2">
-          <Input
-            placeholder="Event ID (hex, note1…, or nevent1…) — overrides other filters"
-            value={searchEventId}
-            onChange={(e) => setSearchEventId(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
-            className="h-9 sm:h-8 text-xs font-mono"
-          />
-          {searchEventId.trim() && (
-            <p className="text-[10px] text-muted-foreground/60 mt-1">
-              Looking up by event ID — kind, author, content and time filters are ignored.
-            </p>
-          )}
-        </div>
-        <div className={`grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3 transition-opacity ${searchEventId.trim() ? "opacity-40 pointer-events-none" : ""}`}>
-          <KindFilterSelect
-            value={searchKind || "all"}
-            onChange={(v) => setSearchKind(v === "all" ? "" : v)}
-            className="[&_input]:h-9 [&_input]:sm:h-8 [&_input]:text-xs"
-          />
-          <AuthorSearchFilter
-            value={searchAuthor}
-            onChange={setSearchAuthor}
-            className="[&_input]:h-9 [&_input]:sm:h-8 [&_input]:text-xs"
-            placeholder="Author (name, npub, or hex)"
-          />
-          <Input
-            placeholder="Content contains..."
-            value={searchContent}
-            onChange={(e) => setSearchContent(e.target.value)}
-            className="h-9 sm:h-8 text-xs"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center gap-1.5">
-            <Clock className="w-3 h-3 text-muted-foreground/70 shrink-0" />
-            <span className="text-[10px] text-muted-foreground/70 shrink-0">Time Range</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {[
-              { value: "none", label: "All Time" },
-              { value: "1h", label: "1 Hour" },
-              { value: "6h", label: "6 Hours" },
-              { value: "24h", label: "24 Hours" },
-              { value: "7d", label: "7 Days" },
-              { value: "30d", label: "30 Days" },
-              { value: "custom", label: "Custom" },
-            ].map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => applyTimePreset(opt.value)}
-                className={`h-8 sm:h-7 px-3 sm:px-2.5 rounded-md text-[11px] sm:text-[10px] font-medium transition-all ${
-                  timePreset === opt.value
-                    ? "bg-brand/20 text-brand border border-brand/30 shadow-[0_0_8px_rgba(168,85,247,0.15)]"
-                    : "bg-black/[0.04] dark:bg-white/[0.03] text-muted-foreground/60 border border-black/[0.08] dark:border-white/[0.06] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] hover:text-muted-foreground/80"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-          {showCustomTime && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <label className="block space-y-1.5">
-                <span className="text-[11px] font-medium text-muted-foreground/60 flex items-center gap-1.5">
-                  <Clock className="w-3 h-3" />Start
-                </span>
-                <input
-                  type="datetime-local"
-                  value={searchSince}
-                  onChange={(e) => setSearchSince(e.target.value)}
-                  className="w-full h-11 sm:h-9 px-3 rounded-md border border-black/[0.1] dark:border-white/[0.08] bg-black/[0.04] dark:bg-white/[0.03] text-sm sm:text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-brand/40 focus:border-brand/30 transition-colors dark:[color-scheme:dark]"
-                />
-              </label>
-              <label className="block space-y-1.5">
-                <span className="text-[11px] font-medium text-muted-foreground/60 flex items-center gap-1.5">
-                  <Clock className="w-3 h-3" />End
-                </span>
-                <input
-                  type="datetime-local"
-                  value={searchUntil}
-                  onChange={(e) => setSearchUntil(e.target.value)}
-                  className="w-full h-11 sm:h-9 px-3 rounded-md border border-black/[0.1] dark:border-white/[0.08] bg-black/[0.04] dark:bg-white/[0.03] text-sm sm:text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-brand/40 focus:border-brand/30 transition-colors dark:[color-scheme:dark]"
-                />
-              </label>
+          </PopoverTrigger>
+          <PopoverContent align="end" sideOffset={6} className="w-[min(22rem,calc(100vw-1.5rem))] p-3 space-y-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70 mb-1.5">Time</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[...TIME_RANGES, { id: "custom" as const, label: "Custom" }].map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setRange(r.id)}
+                    className={`h-10 px-3.5 rounded-full text-[13px] font-medium transition-colors ${
+                      range === r.id ? "bg-brand text-white" : "bg-black/[0.05] dark:bg-white/[0.06] text-foreground/80 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]"
+                    }`}
+                    aria-pressed={range === r.id}
+                    data-testid={`ops-events-range-${r.id}`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+              {range === "custom" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                  <label className="block space-y-1">
+                    <span className="text-[11px] font-medium text-muted-foreground/70 flex items-center gap-1"><Clock className="w-3 h-3" />From</span>
+                    <input type="datetime-local" value={customSince} onChange={(e) => setCustomSince(e.target.value)} className="w-full h-10 px-3 rounded-md border border-black/[0.1] dark:border-white/[0.08] bg-background text-sm focus:outline-none focus:ring-1 focus:ring-brand/40 dark:[color-scheme:dark]" />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-[11px] font-medium text-muted-foreground/70 flex items-center gap-1"><Clock className="w-3 h-3" />To</span>
+                    <input type="datetime-local" value={customUntil} onChange={(e) => setCustomUntil(e.target.value)} className="w-full h-10 px-3 rounded-md border border-black/[0.1] dark:border-white/[0.08] bg-background text-sm focus:outline-none focus:ring-1 focus:ring-brand/40 dark:[color-scheme:dark]" />
+                  </label>
+                </div>
+              )}
             </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70 mb-1.5">Source</p>
+              <Select value={eventsSourceFilter} onValueChange={setEventsSourceFilter}>
+                <SelectTrigger className="h-10 text-sm" aria-label="Source"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All sources</SelectItem>
+                  <SelectItem value="public">Public</SelectItem>
+                  <SelectItem value="private">Private</SelectItem>
+                  <SelectItem value="both">Both</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </PopoverContent>
+        </Popover>
+      </form>
+
+      {/* What the list is showing, and what you can do with it */}
+      <div className="flex items-center gap-1.5 px-1 min-h-[32px] flex-wrap">
+        <span className="text-xs text-muted-foreground/80 whitespace-nowrap shrink-0 inline-flex items-center gap-1.5" data-testid="ops-events-count">
+          {live && <Radio className={`w-3.5 h-3.5 ${paused ? "text-muted-foreground/60" : "text-emerald-500 animate-pulse"}`} aria-hidden="true" />}
+          {searching ? "Looking…" : shown === results.length ? `${results.length} ${results.length === 1 ? "event" : "events"}` : `${shown} of ${results.length}`}
+          {live && paused && heldCount > 0 && <span className="text-brand">· {heldCount} new</span>}
+        </span>
+        {live && (
+          <>
+            <Button variant="ghost" size="sm" onClick={paused ? resume : () => setPaused(true)} className="h-8 px-2 text-xs" data-testid="ops-events-pause">
+              {paused ? <><Play className="w-3.5 h-3.5 mr-1" />Resume</> : <><Pause className="w-3.5 h-3.5 mr-1" />Pause</>}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={clearList} className="h-8 px-2 text-xs" aria-label="Clear the list">
+              <Trash2 className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline">Clear</span>
+            </Button>
+          </>
+        )}
+        <div className="ml-auto flex items-center gap-1.5">
+          <SavedViewsManager
+            relayUrl={relayUrl}
+            tab="events"
+            filters={columnFilters}
+            toolbar={evtToolbar}
+            onLoad={handleEvtLoadView}
+            onClearFilters={() => setColumnFilters(EMPTY_COLUMN_FILTERS)}
+          />
+          <ExportDropdown
+            count={evtFilteredResults.length}
+            onCSV={() => exportEventsAsCSV(evtFilteredResults, profiles, getEvtSource)}
+            onJSON={() => exportEventsAsJSON(evtFilteredResults)}
+          />
+          {uniqueKinds.length > 0 && signer && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2.5 text-xs gap-1.5 text-red-600 dark:text-red-400/80 hover:text-red-500 dark:hover:text-red-300 hover:bg-red-500/10 dark:hover:bg-red-500/15 border border-transparent hover:border-red-500/20 dark:hover:border-red-400/20 shrink-0"
+                  data-testid="button-bulk-delete-trigger"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span className="hidden sm:inline">Bulk delete</span>
+                  <span className="sm:hidden">Delete</span>
+                  <span className="text-[10px] tabular-nums text-muted-foreground/60 dark:text-muted-foreground/50">
+                    {uniqueKinds.length}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                sideOffset={6}
+                className="w-[min(20rem,calc(100vw-1.5rem))] p-2"
+              >
+                <div className="px-2 pt-1 pb-2 mb-1 border-b border-border/40">
+                  <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground/70">
+                    Delete by kind
+                  </p>
+                  <p className="text-[10px] text-muted-foreground/55 mt-0.5 leading-snug">
+                    Removes every event of the chosen kind from this relay. This cannot be undone.
+                  </p>
+                </div>
+                <div className="space-y-0.5 max-h-[260px] overflow-y-auto">
+                  {uniqueKinds.map(k => {
+                    const stat = kindStats.get(k)!;
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => bulkDeleteByKind(k)}
+                        className="group w-full flex items-center gap-2 rounded-md px-2 py-2 text-left transition-colors hover:bg-red-500/[0.08] dark:hover:bg-red-500/[0.12] focus-visible:outline-none focus-visible:bg-red-500/[0.08] dark:focus-visible:bg-red-500/[0.12]"
+                        data-testid={`button-bulk-delete-kind-${k}`}
+                      >
+                        <Badge variant="outline" className={`text-[10px] shrink-0 max-w-[55%] truncate ${getKindBadgeClasses(k, stat.sampleTags)}`}>
+                          {getKindLabel(k, stat.sampleTags)}
+                        </Badge>
+                        <span className="flex-1 min-w-0 text-[11px] font-mono tabular-nums text-muted-foreground/70 text-right">
+                          {stat.count.toLocaleString()} {stat.count === 1 ? "event" : "events"}
+                        </span>
+                        <Trash2 className="w-3.5 h-3.5 shrink-0 text-red-500/40 group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
           )}
         </div>
-      </OpsCard>
+      </div>
 
       {results.length > 0 && (
         <div className="space-y-2">
-          <div className="flex items-center gap-1.5 px-1 min-h-[32px]">
-            <span className="text-xs text-muted-foreground/70 whitespace-nowrap shrink-0">{evtFilteredResults.length} of {results.length}</span>
-            <Select value={eventsSourceFilter} onValueChange={setEventsSourceFilter}>
-              <SelectTrigger className="w-24 h-7 text-[11px] min-w-0">
-                <Globe className="w-3 h-3 mr-1 shrink-0" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sources</SelectItem>
-                <SelectItem value="public">Public</SelectItem>
-                <SelectItem value="private">Private</SelectItem>
-                <SelectItem value="both">Both</SelectItem>
-              </SelectContent>
-            </Select>
-            <SavedViewsManager
-              relayUrl={relayUrl}
-              tab="events"
-              filters={columnFilters}
-              toolbar={evtToolbar}
-              onLoad={handleEvtLoadView}
-              onClearFilters={() => setColumnFilters(EMPTY_COLUMN_FILTERS)}
-            />
-            <ExportDropdown
-              count={evtFilteredResults.length}
-              onCSV={() => exportEventsAsCSV(evtFilteredResults, profiles, getEvtSource)}
-              onJSON={() => exportEventsAsJSON(evtFilteredResults)}
-            />
-            {uniqueKinds.length > 0 && signer && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="ml-auto h-7 px-2.5 text-[11px] gap-1.5 text-red-600 dark:text-red-400/80 hover:text-red-500 dark:hover:text-red-300 hover:bg-red-500/10 dark:hover:bg-red-500/15 border border-transparent hover:border-red-500/20 dark:hover:border-red-400/20 shrink-0"
-                    data-testid="button-bulk-delete-trigger"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    <span className="hidden sm:inline">Bulk delete</span>
-                    <span className="sm:hidden">Delete</span>
-                    <span className="text-[10px] font-mono text-muted-foreground/60 dark:text-muted-foreground/50">
-                      {uniqueKinds.length}
-                    </span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  align="end"
-                  sideOffset={6}
-                  className="w-[min(20rem,calc(100vw-1.5rem))] p-2"
-                >
-                  <div className="px-2 pt-1 pb-2 mb-1 border-b border-border/40">
-                    <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground/70">
-                      Delete by kind
-                    </p>
-                    <p className="text-[10px] text-muted-foreground/55 mt-0.5 leading-snug">
-                      Removes every event of the chosen kind from this relay. This cannot be undone.
-                    </p>
-                  </div>
-                  <div className="space-y-0.5 max-h-[260px] overflow-y-auto">
-                    {uniqueKinds.map(k => {
-                      const stat = kindStats.get(k)!;
-                      return (
-                        <button
-                          key={k}
-                          type="button"
-                          onClick={() => bulkDeleteByKind(k)}
-                          className="group w-full flex items-center gap-2 rounded-md px-2 py-2 text-left transition-colors hover:bg-red-500/[0.08] dark:hover:bg-red-500/[0.12] focus-visible:outline-none focus-visible:bg-red-500/[0.08] dark:focus-visible:bg-red-500/[0.12]"
-                          data-testid={`button-bulk-delete-kind-${k}`}
-                        >
-                          <Badge variant="outline" className={`text-[10px] shrink-0 max-w-[55%] truncate ${getKindBadgeClasses(k, stat.sampleTags)}`}>
-                            {getKindLabel(k, stat.sampleTags)}
-                          </Badge>
-                          <span className="flex-1 min-w-0 text-[11px] font-mono tabular-nums text-muted-foreground/70 text-right">
-                            {stat.count.toLocaleString()} {stat.count === 1 ? "event" : "events"}
-                          </span>
-                          <Trash2 className="w-3.5 h-3.5 shrink-0 text-red-500/40 group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors" />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            )}
-          </div>
           <AnalyticsSummary stats={evtStats} profiles={profiles} />
           <MobileFilterBar filters={columnFilters} onChange={setColumnFilters} profiles={profiles} stats={evtOptionStats} />
           <div className="max-h-[500px] overflow-y-auto pr-1">
@@ -743,6 +758,8 @@ export function EventsTab({ relayUrl }: { relayUrl: string }) {
                   key={event.id}
                   className="glass-card border-brand/20 dark:border-brand/10 cursor-pointer hover:border-brand/25 transition-colors overflow-hidden"
                   onClick={() => setExpandedId(expandedId === event.id ? null : event.id)}
+                  data-testid="ops-event-row"
+                  data-kind={event.kind}
                 >
                   <div className="hidden md:grid gap-x-0 items-center px-3 py-2 min-w-0" style={gridTemplateStyle(evtColWidths, true)}>
                     <span className="text-[10px] text-muted-foreground/70 font-mono truncate pr-2 border-r border-black/[0.06] dark:border-white/[0.04]">
@@ -868,8 +885,17 @@ export function EventsTab({ relayUrl }: { relayUrl: string }) {
                         </button>
                         <ScoreBadge eventId={getScoreEventId(event)} statsMap={evtStatsMap} />
                         <button
-                          onClick={(e) => { e.stopPropagation(); navigate(`/thread/${nip19.noteEncode(getScoreEventId(event))}`); }}
+                          onClick={(e) => { e.stopPropagation(); setFeatureEvent(event); }}
                           className="px-2 py-0.5 rounded text-[10px] font-medium transition-colors text-muted-foreground/70 hover:text-brand hover:bg-brand/10 ml-auto flex items-center gap-1"
+                          data-testid={`button-event-feature-${event.id.slice(0, 8)}`}
+                          title="Add to this relay's Featured feeds"
+                        >
+                          <MagicStarIcon className="w-2.5 h-2.5" />
+                          Feature
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); navigate(`/thread/${nip19.noteEncode(getScoreEventId(event))}`); }}
+                          className="px-2 py-0.5 rounded text-[10px] font-medium transition-colors text-muted-foreground/70 hover:text-brand hover:bg-brand/10 flex items-center gap-1"
                         >
                           View Post
                           <ExternalLink className="w-2.5 h-2.5" />
@@ -894,8 +920,10 @@ export function EventsTab({ relayUrl }: { relayUrl: string }) {
       {results.length === 0 && !searching && (
         <Card className="glass-card border-brand/25 dark:border-brand/15 p-6">
           <div className="flex flex-col items-center text-center gap-2">
-            <FileText className="w-6 h-6 text-muted-foreground/50" />
-            <p className="text-xs text-muted-foreground/70">Search for events by kind, author, content, or time range.</p>
+            {live ? <Radio className="w-6 h-6 text-emerald-500/70 animate-pulse" /> : <Search className="w-6 h-6 text-muted-foreground/50" />}
+            <p className="text-xs text-muted-foreground/70">
+              {live ? "Open on the relay — new events will appear here." : submitted || windowActive ? "Nothing matches. Try fewer words, or a wider time window." : "Nothing stored on this relay yet."}
+            </p>
           </div>
         </Card>
       )}
@@ -942,6 +970,14 @@ export function EventsTab({ relayUrl }: { relayUrl: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {featureEvent && (
+        <AddToFeaturedDialog
+          event={featureEvent}
+          open={!!featureEvent}
+          onOpenChange={(o) => { if (!o) setFeatureEvent(null); }}
+          presetRelayUrl={relayUrl}
+        />
+      )}
     </div>
   );
 }
