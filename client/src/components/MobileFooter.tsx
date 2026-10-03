@@ -13,6 +13,7 @@ import { useOutpostCompose } from "@/contexts/OutpostComposeContext";
 import { OutpostIcon } from "@/components/icons/OutpostIcon";
 import { isNavDestinationActive } from "@/lib/footer-nav";
 import { buildFooterTabs, NAV_ICONS, type NavDestination, type NavDestinationId } from "@/lib/nav-destinations";
+import { useOperatedRelays } from "@/lib/operated-relays";
 import { useIaCollapsed } from "@/lib/ia-prefs";
 import { appHistoryIndex } from "@/lib/app-history";
 import { useNeedsYouCount } from "@/contexts/NeedsYouContext";
@@ -239,10 +240,14 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
   // Communities·Chats) silently disagreed with the rail's for so long.
   // (`iaCollapsed` is read above, where goTab derives the history base.)
   const needsYou = useNeedsYouCount();
+  // Relays earns a footer slot once you run one; everyone else finds it in
+  // the launcher and under Account.
+  const runsRelay = useOperatedRelays().length > 0;
   const tabs = buildFooterTabs({
     loggedIn: !!pubkey,
     counts: { chatsUnread, newsUnread, alertsUnread: unreadCount, needsYou },
     collapsed: iaCollapsed,
+    runsRelay,
   });
   // The centre button glowed on Feed or Communities — the two places you
   // compose INTO. Derived from the live tab list so it survives the collapse

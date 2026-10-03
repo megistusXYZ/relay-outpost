@@ -123,8 +123,11 @@ describe("isNavDestinationActive — rail-only ids", () => {
 });
 
 describe("isNavDestinationActive — exactly one collapsed destination per route", () => {
-  const COLLAPSED = ["chats", "activity", "discover", "you"];
+  const COLLAPSED = ["chats", "activity", "discover", "relays", "you"];
   const ROUTES: Array<[string, string, string]> = [
+    ["/my-relays", "", "relays"],
+    ["/my-relays/connect", "", "relays"],
+    ["/relay-ops-center/wss%3A%2F%2Frelay.example.com", "", "relays"],
     ["/discover", "", "discover"],
     // The bento's standalone lanes belong to the tab that opened them.
     ["/news", "", "discover"],
@@ -198,8 +201,8 @@ describe("isNavDestinationActive — one predicate for both footer layouts", () 
   });
 
   it("never lights two tabs at once on a given route", () => {
-    const ids = ["chats", "activity", "discover", "you"] as const;
-    for (const loc of ["/", "/discover", "/news", "/messages", "/notifications", "/account", "/outposts", "/search"]) {
+    const ids = ["chats", "activity", "discover", "relays", "you"] as const;
+    for (const loc of ["/", "/discover", "/news", "/messages", "/notifications", "/account", "/outposts", "/search", "/my-relays", "/relays"]) {
       const lit = ids.filter((id) => isNavDestinationActive(id, loc, "", true));
       expect(lit.length, `${loc} lit ${lit.join(",")}`).toBeLessThanOrEqual(1);
     }

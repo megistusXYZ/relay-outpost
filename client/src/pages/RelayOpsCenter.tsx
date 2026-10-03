@@ -1,18 +1,21 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
-import { getOutpostRelays } from "@/lib/outpost-relays";
-import { fetchNip11, isNip11Operator, type Nip11Document } from "@/lib/nip11";
+import { fetchNip11, type Nip11Document } from "@/lib/nip11";
+import { probeRelayManagement } from "@/lib/nip86";
+import { decideOwnership } from "@/lib/relay-ownership";
+import { useOperatedRelays, setLastUsedRelay } from "@/lib/operated-relays";
+import { RelaysWelcome } from "./MyRelays";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Radio, Server, AlertTriangle, ShieldCheck, ArrowUpRight, ChevronLeft, ChevronRight, Megaphone, Users, Sparkles } from "lucide-react";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { AlertTriangle, ShieldCheck, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Megaphone, Plus, Users, Sparkles } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ErrorScreen } from "@/components/ErrorScreen";
@@ -60,9 +63,13 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
   const [nip11, setNip11] = useState<Nip11Document | null>(null);
   const [authStatus, setAuthStatus] = useState<"loading" | "authorized" | "denied" | "no-pubkey">("loading");
 
-  const adminRelays = useMemo(() => {
-    return getOutpostRelays().filter(r => r.isAdmin);
-  }, []);
+  // The relays you run, live — connecting another updates the switcher.
+  const adminRelays = useOperatedRelays();
+
+  // Arriving at another relay's console (the switcher, a link) moves the page there.
+  useEffect(() => {
+    if (propRelayUrl) setSelectedRelay(propRelayUrl);
+  }, [propRelayUrl]);
 
   // A relay the user actually operates (flagged admin in their own outpost list).
   // Used to gate the "relay publishes no operator pubkey" fallback: we only skip
@@ -116,38 +123,41 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
     if (!selectedRelay) return;
     const requestId = ++verifyRequestRef.current;
     setAuthStatus("loading");
-    fetchNip11(selectedRelay).then(doc => {
+    // The same rule as connecting a relay (lib/relay-ownership.ts): yours if
+    // its public info names you, or it accepts your signed management request.
+    // That request is only sent to relays already in your list — a crafted
+    // /relay-ops-center/<url> link gets the public-info check alone.
+    Promise.all([
+      fetchNip11(selectedRelay).catch(() => null),
+      isOwnedRelay && pubkey ? probeRelayManagement(selectedRelay) : Promise.resolve(null),
+    ]).then(([doc, probe]) => {
       if (requestId !== verifyRequestRef.current) return;
       setNip11(doc);
-      if (!doc) {
-        setAuthStatus("denied");
-        return;
-      }
-      if (doc.pubkey) {
-        // Operator OR listed moderator counts — matched via the shared,
-        // normalized predicate so an npub/uppercase-published key can't lock the
-        // real operator out, and this gate can't disagree with the sidebar's
-        // auto-promote (which uses the same predicate).
-        setAuthStatus(isNip11Operator(doc, pubkey) ? "authorized" : "denied");
-      } else {
-        setAuthStatus("no-pubkey");
-      }
+      if (!pubkey) { setAuthStatus("denied"); return; }
+      const ownership = decideOwnership({
+        pubkey,
+        nip11: doc,
+        caps: probe?.caps ?? { listed: null },
+        managementReached: probe ? probe.reached : !!doc,
+      });
+      setAuthStatus(
+        ownership.kind === "runs-it" ? "authorized"
+        : ownership.kind === "cannot-tell" ? "no-pubkey"
+        : "denied",
+      );
     });
-  }, [selectedRelay, pubkey]);
+  }, [selectedRelay, pubkey, isOwnedRelay]);
+
+  // Relays opens on the relay you managed last — but only one you may manage,
+  // so the Relays tab can never land you on a door that won't open.
+  useEffect(() => {
+    if (selectedRelay && (authStatus === "authorized" || (authStatus === "no-pubkey" && isOwnedRelay))) {
+      setLastUsedRelay(selectedRelay);
+    }
+  }, [selectedRelay, authStatus, isOwnedRelay]);
 
   if (adminRelays.length === 0 && !propRelayUrl) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4 px-4">
-        <Radio className="w-10 h-10 text-muted-foreground/50" />
-        <h2 className="text-lg font-brand tracking-wider uppercase text-muted-foreground/60">No Admin Relays</h2>
-        <p className="text-sm text-muted-foreground/60 text-center max-w-md leading-relaxed">
-          To use Relay Control, first join a community you operate from the Relays page. Once connected and active, toggle on the admin controls for that relay to enable management tools.
-        </p>
-        <Button variant="ghost" onClick={() => window.location.href = "/relays"} className="text-xs">
-          <Radio className="w-3.5 h-3.5 mr-1" /> Go to Relays
-        </Button>
-      </div>
-    );
+    return <RelaysWelcome />;
   }
 
   const renderAuthGate = () => {
@@ -180,12 +190,13 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
           }
           body={
             authStatus === "no-pubkey"
-              ? "This relay doesn't publish an operator pubkey, so operator access can't be verified. Open Relay Control from a relay you operate on the Relays page."
+              ? "It doesn't name an owner and doesn't accept management requests, so we can't confirm it's yours."
               : unreachable
-              ? "Unable to reach this relay for verification. Check that the relay is online."
-              : "Your key does not match this relay's operator pubkey. Only the relay operator can access Relay Control."
+              ? "We couldn't reach it to check. Make sure it's online, then try again."
+              : "It doesn't list your key as its owner or a moderator. Only the people who run it can manage it here."
           }
-          primary={{ label: "Back to Relays", onClick: () => { window.location.href = "/relays"; } }}
+          primary={{ label: "Your relays", onClick: () => navigate("/my-relays") }}
+          secondary={{ label: "Check this relay again", onClick: () => navigate(`/my-relays/connect?url=${encodeURIComponent(selectedRelay)}`) }}
           testId="relay-ops-access-denied"
         />
       );
@@ -203,20 +214,6 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
 
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-4 pt-3 pb-6 sm:pt-5 space-y-4">
-      {adminRelays.length > 1 && (
-        <Select value={selectedRelay} onValueChange={setSelectedRelay}>
-          <SelectTrigger className="h-9 w-full sm:w-72 text-xs" aria-label="Which relay to manage">
-            <Server className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
-            <SelectValue placeholder="Select relay" />
-          </SelectTrigger>
-          <SelectContent>
-            {adminRelays.map(r => (
-              <SelectItem key={r.url} value={r.url}>{r.label || r.url.replace(/^wss?:\/\//, "")}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-
       {/* The head: which relay this is, that you run it, and one way back to
           its community. No card — the page is the surface. */}
       <div className="flex items-center gap-3" data-testid="ops-head">
@@ -225,7 +222,45 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
           <AvatarFallback className="rounded-xl bg-brand/10 text-brand font-semibold text-base">{relayName.slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
-          <h1 className="text-lg sm:text-xl font-semibold leading-tight truncate" data-testid="ops-head-name">{relayName}</h1>
+          {/* The name is the switcher: your other relays, and connecting another. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="group inline-flex max-w-full items-center gap-1 rounded-md -mx-1 px-1 min-h-[32px] text-left hover:bg-black/[0.04] dark:hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={`${relayName} — switch relay`}
+                data-testid="ops-relay-switcher"
+              >
+                <h1 className="text-lg sm:text-xl font-semibold leading-tight truncate" data-testid="ops-head-name">{relayName}</h1>
+                <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-72 max-w-[calc(100vw-2rem)]" data-testid="ops-relay-switcher-menu">
+              {adminRelays.map(r => {
+                const current = r.url.replace(/\/+$/, "").toLowerCase() === selectedRelay.replace(/\/+$/, "").toLowerCase();
+                const label = r.label || r.url.replace(/^wss?:\/\//, "");
+                return (
+                  <DropdownMenuItem
+                    key={r.url}
+                    onSelect={() => navigate(`/relay-ops-center/${encodeURIComponent(r.url)}#overview`, { replace: true })}
+                    className="min-h-[44px] gap-2.5"
+                    data-testid="ops-relay-switcher-item"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{label}</span>
+                      <span className="block truncate text-[12px] text-muted-foreground">{r.url.replace(/^wss?:\/\//, "")}</span>
+                    </span>
+                    {current && <Check className="w-4 h-4 text-brand shrink-0" aria-label="Current relay" />}
+                  </DropdownMenuItem>
+                );
+              })}
+              {adminRelays.length > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuItem onSelect={() => navigate("/my-relays/connect")} className="min-h-[44px] gap-2.5" data-testid="ops-relay-switcher-connect">
+                <Plus className="w-4 h-4 text-brand" aria-hidden="true" />
+                <span className="text-sm">Connect another relay</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-muted-foreground min-w-0">
             <span className="truncate">{host}</span>
             {!authGate && (

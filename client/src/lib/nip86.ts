@@ -206,8 +206,8 @@ export async function unbanPubkey(relayUrl: string, pubkey: string, reason?: str
 }
 
 const CAPS_TTL_MS = 5 * 60_000;
-const capsCache = new Map<string, { caps: RelayCapabilities; at: number }>();
-const capsInFlight = new Map<string, Promise<RelayCapabilities>>();
+const capsCache = new Map<string, { caps: RelayCapabilities; reached: boolean; at: number }>();
+const capsInFlight = new Map<string, Promise<{ caps: RelayCapabilities; reached: boolean }>>();
 
 /**
  * Ask the relay, signed, which management methods it offers this key. A
@@ -216,17 +216,29 @@ const capsInFlight = new Map<string, Promise<RelayCapabilities>>();
  * Failures to reach the relay aren't cached, so the next look asks again.
  */
 export async function fetchRelayCapabilities(relayUrl: string, opts: { fresh?: boolean } = {}): Promise<RelayCapabilities> {
+  return (await probeRelayManagement(relayUrl, opts)).caps;
+}
+
+/**
+ * Ask once, fresh, and say whether the relay answered at all. `reached` is
+ * false only when the request never landed (dead socket, 5xx) — a relay that
+ * answers "no" or "what?" was reached. The connect flow needs the difference:
+ * "we couldn't reach it" is not "it isn't yours".
+ */
+export async function probeRelayManagement(relayUrl: string, opts: { fresh?: boolean } = {}): Promise<{ caps: RelayCapabilities; reached: boolean }> {
   const key = normalizeHttpUrl(relayUrl);
   const hit = capsCache.get(key);
-  if (!opts.fresh && hit && Date.now() - hit.at < CAPS_TTL_MS) return hit.caps;
+  if (!opts.fresh && hit && Date.now() - hit.at < CAPS_TTL_MS) return { caps: hit.caps, reached: hit.reached };
   const pending = capsInFlight.get(key);
-  if (pending) return pending;
+  if (pending && !opts.fresh) return pending;
   const p = (async () => {
-    if (!getGlobalSigner()) return UNKNOWN_CAPABILITIES;
+    if (!getGlobalSigner()) return { caps: UNKNOWN_CAPABILITIES, reached: false };
     const res = await nip86Call<string[]>(relayUrl, "supportedmethods");
     const caps = readSupportedMethods(res);
-    if (caps.listed || isUnknownMethod(res.error)) capsCache.set(key, { caps, at: Date.now() });
-    return caps;
+    const reached = !isTransportFailure(res);
+    // Only a real answer is remembered; "couldn't reach it" asks again next time.
+    if (caps.listed || isUnknownMethod(res.error)) capsCache.set(key, { caps, reached, at: Date.now() });
+    return { caps, reached };
   })().finally(() => capsInFlight.delete(key));
   capsInFlight.set(key, p);
   return p;

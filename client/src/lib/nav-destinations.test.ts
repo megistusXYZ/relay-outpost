@@ -81,8 +81,14 @@ describe("buildNavDestinations — the collapsed IA (Chats · Activity · Discov
     expect(ids(true)).toHaveLength(8);
   });
 
-  it("gives signed-in users exactly four destinations, in order", () => {
-    expect(collapsedIds(true)).toEqual(["chats", "activity", "discover", "you"]);
+  it("gives signed-in users five destinations, Relays under Discover's cloud", () => {
+    expect(collapsedIds(true)).toEqual(["chats", "activity", "discover", "relays", "you"]);
+  });
+
+  it("opens Relays at its own home, not the relay connections page", () => {
+    const relays = buildNavDestinations({ loggedIn: true, counts: ZERO, collapsed: true }).find((d) => d.id === "relays");
+    expect(relays?.path).toBe("/my-relays");
+    expect(relays?.title).toBe("Relays");
   });
 
   it("drops Create from the nav — creating happens inside wherever you are", () => {
@@ -133,9 +139,19 @@ describe("buildFooterTabs — the mobile footer's four slots", () => {
     expect(tabs.map((t) => t.path)).toEqual(["/", "/news", "/outposts", "/messages"]);
   });
 
-  it("becomes the collapsed list once the flag is on — same four as the rail", () => {
+  it("becomes the collapsed list once the flag is on — the rail's, without Relays", () => {
     expect(buildFooterTabs({ loggedIn: true, counts: ZERO, collapsed: true }).map((t) => t.id))
       .toEqual(["chats", "activity", "discover", "you"]);
+  });
+
+  it("gives someone who runs a relay a Relays tab, after Discover", () => {
+    expect(buildFooterTabs({ loggedIn: true, counts: ZERO, collapsed: true, runsRelay: true }).map((t) => t.id))
+      .toEqual(["chats", "activity", "discover", "relays", "you"]);
+  });
+
+  it("never gives a signed-out visitor a Relays tab", () => {
+    expect(buildFooterTabs({ loggedIn: false, counts: ZERO, collapsed: true, runsRelay: true }).map((t) => t.id))
+      .toEqual(["discover"]);
   });
 
   it("never includes the centre Create action — the footer owns that itself", () => {
