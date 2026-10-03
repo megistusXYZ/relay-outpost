@@ -164,11 +164,17 @@ function AdmissionRow({
  * Self-hiding: renders nothing at all when the queue is empty, because
  * "Needs you" over an empty box is worse than no heading.
  */
-export function AdmissionQueue({ className = "" }: { className?: string }) {
+export function AdmissionQueue({ className = "", relayUrl }: {
+  className?: string;
+  /** Only this relay's rows (Relays › Inbox); every space you run when absent. */
+  relayUrl?: string;
+}) {
   // From the shared provider, so the badge in the nav and the rows on this
   // page are the SAME sweep rather than two that can disagree.
   const needsYou = useNeedsYou();
-  const { queue, removeLocally } = needsYou?.admissions ?? EMPTY_QUEUE_STATE;
+  const { queue: everyQueue, removeLocally } = needsYou?.admissions ?? EMPTY_QUEUE_STATE;
+  const onRelay = (u: string) => !relayUrl || u.replace(/\/+$/, "").toLowerCase() === relayUrl.replace(/\/+$/, "").toLowerCase();
+  const queue = (everyQueue as typeof everyQueue).filter((item: { relayUrl: string }) => onRelay(item.relayUrl));
   // The reach admission for a partial sweep lives in the page-level
   // SweepNoticeCard now (one card for both queues, naming the relays and
   // offering actions) — this component only renders actual rows.

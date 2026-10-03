@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useAdmissionQueue } from "@/hooks/use-admission-queue";
 import { useReportsQueue } from "@/hooks/use-reports-queue";
+import { useRelayReportsQueue } from "@/hooks/use-relay-reports-queue";
+import { getOperatedRelays, useOperatedRelays } from "@/lib/operated-relays";
 import { NEEDS_YOU_CHANGED_EVENT, type NeedsYouValue } from "./NeedsYouContext";
 
 /** Don't re-sweep every relay you belong to on every alt-tab. */
@@ -29,14 +31,36 @@ export default function NeedsYouEngine({ onChange }: { onChange: (value: NeedsYo
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [reportsLive.queue, reportsLive.loading, reportsLive.sweep, reportsLive.refresh, reportsLive.removeLocally],
   );
+  const relayReportsLive = useRelayReportsQueue();
+  const relayReports = useMemo(
+    () => relayReportsLive,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [relayReportsLive.byRelay, relayReportsLive.unreached, relayReportsLive.loading, relayReportsLive.refresh, relayReportsLive.dismiss],
+  );
   const count = admissions.queue.length + reports.queue.length;
+
+  // The relays you run, and what's waiting on each.
+  const operated = useOperatedRelays();
+  const relaysCountFor = useCallback((relayUrl: string) => {
+    const k = relayUrl.replace(/\/+$/, "").toLowerCase();
+    const on = (u: string) => u.replace(/\/+$/, "").toLowerCase() === k;
+    return admissions.queue.filter((a) => on(a.relayUrl)).length
+      + reports.queue.filter((r) => on(r.relayUrl)).length
+      + (relayReports.byRelay[k]?.length ?? 0);
+  }, [admissions.queue, reports.queue, relayReports.byRelay]);
+  const relaysCount = useMemo(
+    () => operated.reduce((sum, r) => sum + relaysCountFor(r.url), 0),
+    [operated, relaysCountFor],
+  );
 
   const admissionsRefresh = admissions.refresh;
   const reportsRefresh = reports.refresh;
+  const relayReportsRefresh = relayReports.refresh;
   const refresh = useCallback(() => {
     admissionsRefresh();
     reportsRefresh();
-  }, [admissionsRefresh, reportsRefresh]);
+    if (getOperatedRelays().length) relayReportsRefresh();
+  }, [admissionsRefresh, reportsRefresh, relayReportsRefresh]);
 
   /**
    * WHY THIS EXISTS AT ALL — it is the correction of a regression this provider
@@ -99,8 +123,8 @@ export default function NeedsYouEngine({ onChange }: { onChange: (value: NeedsYo
   }, [refresh]);
 
   const value = useMemo<NeedsYouValue>(
-    () => ({ admissions, reports, count, refresh }),
-    [admissions, reports, count, refresh],
+    () => ({ admissions, reports, relayReports, count, relaysCount, relaysCountFor, refresh }),
+    [admissions, reports, relayReports, count, relaysCount, relaysCountFor, refresh],
   );
   useEffect(() => { onChange(value); }, [value, onChange]);
   return null;

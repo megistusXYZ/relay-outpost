@@ -16,7 +16,7 @@ import { buildFooterTabs, NAV_ICONS, type NavDestination, type NavDestinationId 
 import { useOperatedRelays } from "@/lib/operated-relays";
 import { useIaCollapsed } from "@/lib/ia-prefs";
 import { appHistoryIndex } from "@/lib/app-history";
-import { useNeedsYouCount } from "@/contexts/NeedsYouContext";
+import { useNeedsYouCount, useRelaysNeedYou } from "@/contexts/NeedsYouContext";
 import { useNewsUnread } from "@/hooks/use-news-unread";
 import { MessagesIcon } from "@/components/icons/MessagesIcon";
 import { YouAvatarIcon } from "@/components/YouAvatarIcon";
@@ -240,12 +240,13 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
   // Communities·Chats) silently disagreed with the rail's for so long.
   // (`iaCollapsed` is read above, where goTab derives the history base.)
   const needsYou = useNeedsYouCount();
+  const relaysNeedYou = useRelaysNeedYou().total;
   // Relays earns a footer slot once you run one; everyone else finds it in
   // the launcher and under Account.
   const runsRelay = useOperatedRelays().length > 0;
   const tabs = buildFooterTabs({
     loggedIn: !!pubkey,
-    counts: { chatsUnread, newsUnread, alertsUnread: unreadCount, needsYou },
+    counts: { chatsUnread, newsUnread, alertsUnread: unreadCount, needsYou, relaysNeedYou },
     collapsed: iaCollapsed,
     runsRelay,
   });

@@ -33,6 +33,7 @@
 import { createContext, useCallback, useContext, useState, lazy, Suspense, type ReactNode } from "react";
 import type { useAdmissionQueue } from "@/hooks/use-admission-queue";
 import type { useReportsQueue } from "@/hooks/use-reports-queue";
+import type { RelayReportsValue } from "@/hooks/use-relay-reports-queue";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 
 /**
@@ -56,8 +57,17 @@ export type ReportsQueueValue = ReturnType<typeof useReportsQueue>;
 export interface NeedsYouValue {
   admissions: AdmissionQueueValue;
   reports: ReportsQueueValue;
+  /** Reports about what's on the relays you run (not just their groups). */
+  relayReports: RelayReportsValue;
   /** Rows across both queues — what the nav badge adds to its unread count. */
   count: number;
+  /**
+   * Decisions waiting on the relays you run: join requests and reports in
+   * their groups, plus reports about their posts and people. The Relays
+   * badge; `relaysCountFor` is the same number for one relay (the switcher).
+   */
+  relaysCount: number;
+  relaysCountFor: (relayUrl: string) => number;
   /** Re-sweep both queues now. */
   refresh: () => void;
 }
@@ -99,4 +109,10 @@ export function useNeedsYou(): NeedsYouValue | null {
 /** Just the badge number, safe anywhere. */
 export function useNeedsYouCount(): number {
   return useContext(NeedsYouContext)?.count ?? 0;
+}
+
+/** The Relays badge: decisions waiting on relays you run. */
+export function useRelaysNeedYou(): { total: number; forRelay: (relayUrl: string) => number } {
+  const v = useContext(NeedsYouContext);
+  return { total: v?.relaysCount ?? 0, forRelay: v?.relaysCountFor ?? (() => 0) };
 }

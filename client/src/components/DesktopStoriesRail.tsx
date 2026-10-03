@@ -4,7 +4,7 @@ import { useReducedMotion } from "framer-motion";
 import { ArrowRight, ChevronRight, Lock, Rocket } from "lucide-react";
 import { openOrbitMenu, openCreateStudio } from "@/lib/shell-events";
 import { buildNavDestinations, NAV_ICONS, type NavDestination } from "@/lib/nav-destinations";
-import { useNeedsYouCount } from "@/contexts/NeedsYouContext";
+import { useNeedsYouCount, useRelaysNeedYou } from "@/contexts/NeedsYouContext";
 import { useIaCollapsed } from "@/lib/ia-prefs";
 import { useNewsUnread } from "@/hooks/use-news-unread";
 import { isNavDestinationActive } from "@/lib/footer-nav";
@@ -357,9 +357,10 @@ export function DesktopStoriesRail() {
 
   const iaCollapsed = useIaCollapsed();
   const needsYou = useNeedsYouCount();
+  const relaysNeedYou = useRelaysNeedYou().total;
   const destinations = useMemo(
-    () => buildNavDestinations({ loggedIn: !!pubkey, counts: { chatsUnread, newsUnread, alertsUnread: unreadCount, needsYou }, collapsed: iaCollapsed }),
-    [pubkey, chatsUnread, newsUnread, unreadCount, needsYou, iaCollapsed],
+    () => buildNavDestinations({ loggedIn: !!pubkey, counts: { chatsUnread, newsUnread, alertsUnread: unreadCount, needsYou, relaysNeedYou }, collapsed: iaCollapsed }),
+    [pubkey, chatsUnread, newsUnread, unreadCount, needsYou, relaysNeedYou, iaCollapsed],
   );
 
   // The rail used to carry its own matcher here: a title-string special case for

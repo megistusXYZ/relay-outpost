@@ -22,7 +22,9 @@ export const SECTIONS: ReadonlyArray<{ id: SectionId; label: string }> = [
   // People (2026-10-03): everyone on the relay, person by person. The allow
   // and ban lists it replaced as a section live on as Settings › Who can post.
   { id: "people", label: "People" },
-  { id: "feedback", label: "Feedback" },
+  // Inbox (2026-10-03): reports, join requests and feedback in one place.
+  // The id and its #feedback hash stay, so old links still land.
+  { id: "feedback", label: "Inbox" },
   { id: "settings", label: "Settings" },
 ];
 
