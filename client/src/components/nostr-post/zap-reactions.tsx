@@ -174,9 +174,9 @@ export function ZapReceiptsPopover({ eventId, zapAmount, zapCount, size = "defau
       >
         <div className="p-3 space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-display text-amber-700 dark:text-amber-400/90">Zap Receipts</p>
+            <p className="text-xs font-display text-amber-700 dark:text-amber-400/90">Thanks received</p>
             <span className="text-xs font-mono text-amber-700 dark:text-amber-400/70">
-              {zapAmount > 0 ? `${zapAmount.toLocaleString()} sats` : `${zapCount} zaps`}
+              {zapAmount > 0 ? `${zapAmount.toLocaleString()} sats` : `${zapCount} ${zapCount === 1 ? "person" : "people"}`}
             </span>
           </div>
 
@@ -188,7 +188,7 @@ export function ZapReceiptsPopover({ eventId, zapAmount, zapCount, size = "defau
 
           {!loading && fetched && zappers.length === 0 && (
             <p className="text-[11px] text-muted-foreground/50 text-center py-3">
-              No zap receipts found on relays
+              No thanks recorded on relays yet
             </p>
           )}
 
@@ -369,7 +369,7 @@ export function TopZapperAvatars({ eventId, hasZaps }: { eventId: string; hasZap
                 <button
                   className="flex items-center gap-1.5 min-w-0 cursor-pointer active:opacity-70 transition-opacity"
                   onClick={(e) => { e.stopPropagation(); setDetailOpen(true); }}
-                  aria-label="View top zap details"
+                  aria-label="See who sent thanks"
                 >
                   {zapInfoRow}
                 </button>
@@ -395,7 +395,7 @@ export function TopZapperAvatars({ eventId, hasZaps }: { eventId: string; hasZap
                   <button
                     className="flex items-center gap-1.5 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
                     onClick={(e) => e.stopPropagation()}
-                    aria-label="View top zap details"
+                    aria-label="See who sent thanks"
                   >
                     {zapInfoRow}
                   </button>
