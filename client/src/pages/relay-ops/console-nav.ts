@@ -16,7 +16,9 @@ export type SectionId = "overview" | "events" | "access" | "feedback" | "setting
 
 export const SECTIONS: ReadonlyArray<{ id: SectionId; label: string }> = [
   { id: "overview", label: "Overview" },
-  { id: "events", label: "Events" },
+  // "Content", not "Events" (2026-10-03): what a community manager looks for.
+  // The id and its #events hash stay, so old links still land.
+  { id: "events", label: "Content" },
   { id: "access", label: "Access" },
   { id: "feedback", label: "Feedback" },
   { id: "settings", label: "Settings" },

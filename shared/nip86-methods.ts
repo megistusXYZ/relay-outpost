@@ -15,7 +15,7 @@ export const NIP86_METHODS = [
   "allowpubkey", "banpubkey", "unallowpubkey", "unbanpubkey",
   "listallowedpubkeys", "listbannedpubkeys",
   "deletebannedpubkey", "deleteallowedpubkey",
-  "allowevent", "banevent", "listbannedevents",
+  "allowevent", "banevent", "listbannedevents", "unbanevent",
   "changerelayname", "changerelaydescription", "changerelayicon", "changerelaybanner", "changerelaymoderators",
   "allowkind", "disallowkind", "listallowedkinds", "listdisallowedkinds",
   "blockip", "unblockip", "listblockedips",

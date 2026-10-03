@@ -20,7 +20,7 @@
 
 export type RelayAction =
   | "ban" | "unban" | "allow" | "unallow" | "listBanned" | "listAllowed"
-  | "removeEvent"
+  | "removeEvent" | "listRemoved" | "restoreEvent"
   | "name" | "description" | "icon" | "banner" | "moderators"
   | "allowKind" | "disallowKind" | "listAllowedKinds" | "listDisallowedKinds";
 
@@ -33,6 +33,9 @@ const ACTION_METHODS: Record<RelayAction, readonly string[]> = {
   listBanned: ["listbannedpubkeys"],
   listAllowed: ["listallowedpubkeys"],
   removeEvent: ["banevent"],
+  listRemoved: ["listbannedevents"],
+  // The spec's undo is unbanevent; Newlay lifts a removal with allowevent.
+  restoreEvent: ["unbanevent", "allowevent"],
   name: ["changerelayname"],
   description: ["changerelaydescription"],
   icon: ["changerelayicon"],
@@ -56,18 +59,24 @@ const SELF_SERVICE = new Set(["supportedmethods", "deletedmsuntil", "deletedmsid
 export interface RelayCapabilities {
   /** The methods the relay listed for this key, or null when it didn't say. */
   listed: ReadonlySet<string> | null;
+  /** Its management address answered with a web page, not the API: none to offer. */
+  noApi?: boolean;
 }
 
 export const UNKNOWN_CAPABILITIES: RelayCapabilities = { listed: null };
 
-export function readSupportedMethods(res: { result?: unknown; error?: string }): RelayCapabilities {
-  if (!Array.isArray(res.result)) return UNKNOWN_CAPABILITIES;
+export function readSupportedMethods(res: { result?: unknown; error?: string; isHtml?: boolean }): RelayCapabilities {
+  if (!Array.isArray(res.result)) {
+    if (res.isHtml || /\bhtml\b|non-json|non-nip-86/i.test(res.error ?? "")) return { listed: null, noApi: true };
+    return UNKNOWN_CAPABILITIES;
+  }
   return { listed: new Set(res.result.filter((m): m is string => typeof m === "string").map((m) => m.toLowerCase())) };
 }
 
 /** The method names to try for an action, in order. Empty: the relay can't do it. */
 export function methodsToTry(caps: RelayCapabilities, action: RelayAction): string[] {
   const names = ACTION_METHODS[action];
+  if (caps.noApi) return [];
   if (caps.listed) return names.filter((m) => caps.listed!.has(m));
   return OFFERED_UNLISTED.has(action) ? [...names] : [];
 }

@@ -84,6 +84,15 @@ describe("a relay that didn't say what it supports", () => {
   });
 });
 
+describe("a relay whose management address is just a web page", () => {
+  it("offers nothing — the API isn't there", () => {
+    const caps = readSupportedMethods({ error: "Relay returned an HTML page instead of JSON-RPC", isHtml: true });
+    expect(caps.noApi).toBe(true);
+    expect(canDo(caps, "ban")).toBe(false);
+    expect(canDo(caps, "removeEvent")).toBe(false);
+  });
+});
+
 describe("calling the first method a relay understands", () => {
   it("moves on to the alternative when the relay doesn't know the standard name", async () => {
     const call = vi.fn(async (method: string) =>

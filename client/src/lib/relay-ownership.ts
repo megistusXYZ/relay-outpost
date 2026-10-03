@@ -62,7 +62,7 @@ export function describeManagement(caps: RelayCapabilities, opts: { speaks86: bo
     return {
       can: [],
       elsewhere: [],
-      note: opts.speaks86
+      note: opts.speaks86 && !caps.noApi
         ? "This relay didn't say which controls it supports, so we'll offer the usual ones and tell you if it turns one down."
         : "This relay can't be managed from apps. You can still see everything on it, handle reports and publish to it here; its settings are changed on its server.",
     };
