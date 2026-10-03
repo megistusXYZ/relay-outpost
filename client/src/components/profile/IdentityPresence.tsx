@@ -77,15 +77,45 @@ export function IdentityCounts({
   following,
   lastActiveAt,
   onSeeNetwork,
+  compact = false,
 }: {
   followers?: number;
   following?: number;
   lastActiveAt?: number;
   onSeeNetwork?: () => void;
+  /** One quiet line — "71.1K followers · 257 following · Active today" — for
+   *  the phone's head, where every row costs a strip of the first screen. */
+  compact?: boolean;
 }) {
   const counts = countsLine({ followers, following });
   const status = activityStatus(lastActiveAt, Math.floor(Date.now() / 1000));
   if (counts.length === 0 && !status) return null;
+  if (compact) {
+    const dot = <span className="text-muted-foreground/50" aria-hidden="true">·</span>;
+    return (
+      <div className="mt-1 flex items-center justify-center flex-wrap gap-x-1.5 text-[13px] leading-snug" data-testid="identity-counts">
+        {counts.map((c, i) => {
+          const id = `identity-stat-${c.label === "follower" ? "followers" : c.label}`;
+          const body = <><span className="font-semibold text-foreground tabular-nums">{c.value}</span> <span className="text-muted-foreground">{c.label}</span></>;
+          return (
+            <span key={c.label} className="inline-flex items-center gap-x-1.5">
+              {i > 0 && dot}
+              {onSeeNetwork
+                ? <button type="button" onClick={onSeeNetwork} className="inline-flex items-center min-h-11 -my-3 rounded-md hover:underline underline-offset-4 decoration-muted-foreground/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" data-testid={id}><span>{body}</span></button>
+                : <span data-testid={id}>{body}</span>}
+            </span>
+          );
+        })}
+        {status && (
+          <span className="inline-flex items-center gap-x-1.5 text-[12px] text-muted-foreground" data-testid="identity-activity">
+            {counts.length > 0 && dot}
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+            {status}
+          </span>
+        )}
+      </div>
+    );
+  }
   return (
     <div className="mt-2 flex flex-col items-center gap-1.5" data-testid="identity-counts">
       {counts.length > 0 && (

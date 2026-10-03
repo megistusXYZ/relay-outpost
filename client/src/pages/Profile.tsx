@@ -474,6 +474,14 @@ export default function Profile() {
   // desktop while the sidebar is expanded; whenever it's gone the same
   // condensed strip renders inline above the tabs instead (pre-slot layout).
   const [headerCollapsed, setHeaderCollapsed] = useState(true);
+  // Phones, identity layout: the cover has scrolled away under the top bar,
+  // so the bar takes the identity (avatar · name · one pill). The layout
+  // reports it (IdentityProfileLayout.onCoverVisibility).
+  const [coverState, setCoverState] = useState({ underBar: false, gone: false });
+  const onCoverState = useCallback((s: { underBar: boolean; gone: boolean }) => setCoverState(s), []);
+  // The layout owns the rename dialog; it hands over an opener for the ⋯ menu.
+  const openRenameRef = useRef<(() => void) | null>(null);
+  const onRename = useCallback((open: () => void) => { openRenameRef.current = open; }, []);
   const headerSlotEl = useHeaderIdentitySlot();
   const profileScrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -1777,6 +1785,21 @@ export default function Profile() {
   // Message beside it. Reuses the existing handlers — nothing new is wired.
   const overflowMenuItems = (
     <>
+      {/* Phones, identity layout: what the head no longer carries lives here —
+          your private name for them, and where they stand in your network. */}
+      {isMobileProfile && profileLayout === "identity" && !isOwnProfile && (
+        <>
+          <DropdownMenuItem onClick={() => openRenameRef.current?.()} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-rename">
+            <Pencil className="w-4 h-4 text-brand/70" /> Rename for you
+          </DropdownMenuItem>
+          {wotEnabled && !!grapeRankTier && grapeRankTier !== "none" && (
+            <div className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-brand/80 capitalize" data-testid="menu-item-trust-tier">
+              {grapeRankTier} in your network
+            </div>
+          )}
+          <DropdownMenuSeparator />
+        </>
+      )}
       <DropdownMenuItem onClick={handleZap} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-zap">
         <BitcoinIcon className="w-4 h-4 text-brand/70" /> Zap
       </DropdownMenuItem>
@@ -2283,6 +2306,39 @@ export default function Profile() {
         )}
       </>
     );
+    // The phone's head: one row under the name. Follow and Message share the
+    // width; Zap (only with a Lightning address) and ⋯ are icon-only. Your own
+    // profile: Edit profile · Share · ⋯.
+    const iconButton = "h-10 w-11 shrink-0 p-0 rounded-full";
+    const headActions = isOwnProfile ? (
+      <div className="flex gap-2">
+        <Link href="/account" className="flex-1 inline-flex items-center justify-center h-10 rounded-full px-4 text-sm font-semibold border bg-muted/70 hover:bg-muted text-foreground border-border" data-testid="button-edit-profile-identity">
+          Edit profile
+        </Link>
+        <Button variant="outline" size="sm" onClick={() => { setShareCopied(false); setShowShareDialog(true); }} className="flex-1 h-10 gap-1.5 rounded-full" data-testid="button-share-identity">
+          <Share2 className="w-4 h-4" /> Share
+        </Button>
+        {renderOverflowMenu(
+          <Button variant="outline" size="sm" className={iconButton} title="More" aria-label="More" data-testid="button-profile-overflow-head">
+            <MoreHorizontal className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
+    ) : (
+      <div className="flex gap-2 [&>button]:flex-1 [&>button]:h-10 [&>button]:min-w-0" data-testid="identity-primaries-row">
+        {renderOtherUserHeaderActions("-identity", { hideOverflow: true })}
+        {!!profileContent?.lud16 && (
+          <Button variant="outline" size="sm" onClick={handleZap} className={`${iconButton} !flex-none`} title="Zap" aria-label="Zap" data-testid="button-zap-identity">
+            <Zap className="w-4 h-4" />
+          </Button>
+        )}
+        {renderOverflowMenu(
+          <Button variant="outline" size="sm" className={`${iconButton} !flex-none`} title="More" aria-label="More" data-testid="button-profile-overflow-head">
+            <MoreHorizontal className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
+    );
     // The ⋯ overflow sits at the BOTTOM of the Connect box, under Network.
     const identityOverflow = !isOwnProfile ? renderOverflowMenu(
       <Button variant="outline" size="sm" className="w-full h-9 rounded-full gap-1.5 text-muted-foreground hover:text-foreground" title="More" aria-label="More options" data-testid="button-profile-overflow-identity">
@@ -2323,7 +2379,50 @@ export default function Profile() {
       // overflow-y-auto still made it the box `position: sticky` and
       // scrollRootFor resolve against, so the rail's pinned block scrolled
       // away and the spine never saw a scroll event.
-      <div ref={profileScrollRef} className="flex flex-col h-full overflow-y-auto lg:overflow-visible" data-testid="page-profile">
+      <div ref={profileScrollRef} className="profile-under-bar flex flex-col h-full overflow-y-auto lg:overflow-visible" data-testid="page-profile">
+        {/* Phones: the top bar is part of the cover while the cover is on
+            screen (a marker makes it transparent, white chrome — index.css
+            banner-through), and takes the identity once the cover has gone:
+            avatar · name · ONE pill, so the name keeps its room at 390px. */}
+        {isMobileProfile && headerSlotEl && createPortal(
+          coverState.gone ? (
+            <div className="flex w-full items-center gap-2 min-w-0 pr-1" data-testid="container-profile-strip">
+              <button
+                type="button"
+                onClick={() => profileScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
+                className="flex items-center gap-2 min-w-0 flex-1 text-left"
+                aria-label="Back to the top of the profile"
+                data-testid="button-header-identity"
+              >
+                <Avatar className="w-7 h-7 border border-border shrink-0">
+                  <AvatarImage src={avatarUrl} alt={displayName} />
+                  <AvatarFallback className="bg-brand/25 text-brand text-[10px] font-bold">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-bold text-foreground truncate group-data-[audio=true]:hidden" data-testid="header-identity-name">{displayName}</span>
+              </button>
+              {isOwnProfile ? (
+                <Link href="/account" className="group-data-[audio=true]:hidden inline-flex items-center justify-center h-8 rounded-full px-3 text-xs font-semibold border bg-muted/70 hover:bg-muted text-foreground border-border shrink-0" data-testid="button-edit-profile-bar">
+                  Edit
+                </Link>
+              ) : (
+                <Button
+                  variant={isFollowing ? "outline" : "default"}
+                  size="sm"
+                  onClick={isFollowing ? () => setShowUnfollowConfirm(true) : handleFollow}
+                  disabled={followProcessing}
+                  className={`group-data-[audio=true]:hidden h-8 rounded-full px-3 text-xs shrink-0 ${!isFollowing ? "font-semibold" : ""}`}
+                  data-testid="button-follow-toggle-bar"
+                  title={isFollowing ? "Unfollow" : "Follow"}
+                >
+                  {followProcessing ? <RelayOutpostInlineLoader className="w-4 h-4" /> : isFollowing ? "Following" : "Follow"}
+                </Button>
+              )}
+            </div>
+          ) : coverState.underBar ? (
+            <span className="header-over-cover hidden" aria-hidden="true" />
+          ) : null,
+          headerSlotEl,
+        )}
         <IdentityProfileLayout
           data={{
             pubkey,
@@ -2360,6 +2459,9 @@ export default function Profile() {
             wotEnabled,
           }}
           actions={identityActions}
+          headActions={headActions}
+          onCoverState={onCoverState}
+          onRename={onRename}
           // The pinned rail's compact identity: the same two primaries, small.
           // No Zap there — two buttons is what the width holds. They take
           // their OWN row at every rail width: beside the name they squeezed
