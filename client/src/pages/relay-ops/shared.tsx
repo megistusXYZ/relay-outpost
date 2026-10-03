@@ -74,6 +74,8 @@ export interface NostrFilter {
   until?: number;
   "#e"?: string[];
   "#p"?: string[];
+  "#a"?: string[];
+  "#d"?: string[];
 }
 
 export interface SubCloser {

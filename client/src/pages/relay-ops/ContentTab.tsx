@@ -20,7 +20,7 @@ import { nip19 } from "nostr-tools";
 import type { Event as NostrEvent, Filter as RelayFilter } from "nostr-tools";
 import {
   ArrowDown, ArrowUp, Ban, Copy, Download, Keyboard, MessageSquare,
-  Pause, Play, Search, SlidersHorizontal, Trash2, Undo2, X,
+  Pause, Play, ScanSearch, Search, SlidersHorizontal, Trash2, Undo2, X,
 } from "lucide-react";
 import { pool, DEFAULT_RELAYS } from "@/lib/nostr";
 import { CommentContent } from "@/components/CommentContent";
@@ -47,6 +47,8 @@ import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 import { ManagedAtNote } from "./ops-ui";
 import { ConfirmAction, type PendingAction } from "./ConfirmAction";
 import { RefusedNotice } from "./RefusedNotice";
+import { EventInspector, type InspectedEvent } from "./EventInspector";
+import { parsePastedEvent } from "./inspector-model";
 import { FilterPanel, ViewsMenu } from "./ContentFilterPanel";
 import { EMPTY_FILTERS, deleteView, filterChips, isEmpty, readSavedViews, removeChip, saveView, withFilters, type ContentFilters, type SavedView } from "./content-filters";
 import { countLine, type CountState } from "./count-line";
@@ -389,6 +391,7 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
   // ---- acting ----
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [featureEvent, setFeatureEvent] = useState<NostrEvent | null>(null);
+  const [inspecting, setInspecting] = useState<InspectedEvent | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   const askRemove = useCallback((ids: string[], asRule = false) => {
@@ -477,7 +480,7 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
   useEffect(() => {
     if (!wide) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target) || pending || featureEvent) return;
+      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target) || pending || featureEvent || inspecting) return;
       const i = rows.findIndex((r) => r.id === selectedId);
       const current = i >= 0 ? rows[i] : null;
       switch (e.key) {
@@ -487,6 +490,7 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
         case "r": if (checked.size) askRemove([...checked], rule); else if (current) askRemove([current.id]); break;
         case "b": if (checked.size) askBan(rows.filter((r) => checked.has(r.id)).map((r) => r.pubkey), rule); else if (current) askBan([current.pubkey]); break;
         case "f": if (current && !isPrivateKind(current.kind)) setFeatureEvent(current); break;
+        case "i": if (current) setInspecting(current); break;
         case "/": searchRef.current?.focus(); break;
         case "?": setShortcutsOpen(true); break;
         case "Escape": if (selectMode) endSelect(); break;
@@ -496,7 +500,7 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [wide, rows, selectedId, checked, rule, selectMode, pending, featureEvent, toggleCheck, askRemove, askBan, endSelect]);
+  }, [wide, rows, selectedId, checked, rule, selectMode, pending, featureEvent, inspecting, toggleCheck, askRemove, askBan, endSelect]);
 
   const windowActive = range !== "any";
   const chips = useMemo(() => [
@@ -522,6 +526,7 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
       onRemove={() => askRemove([selected.id])}
       onBan={() => askBan([selected.pubkey])}
       onFeature={() => setFeatureEvent(selected)}
+      onInspect={() => setInspecting(selected)}
       onEverythingFrom={() => { const n = pubkeyToNpub(selected.pubkey); setQuery(n); setSubmitted(n); setView("all"); }}
       preview={previewCtx}
     />
@@ -530,15 +535,21 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
   return (
     <div className="space-y-3" data-testid="ops-content">
       {/* One field · Live · Filter */}
-      <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); setSubmitted(query.trim()); if (view === "removed") setView("all"); }} role="search">
+      <form className="flex items-center gap-2" onSubmit={(e) => {
+        e.preventDefault();
+        // A pasted event is something to inspect, not words to search for.
+        const pasted = parsePastedEvent(query);
+        if (pasted) { setInspecting(pasted); return; }
+        setSubmitted(query.trim()); if (view === "removed") setView("all");
+      }} role="search">
         <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 pointer-events-none" aria-hidden="true" />
           <Input
             ref={searchRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={wide ? "Search — words, an npub, kind:1, or an event id" : "Search"}
-            title="Words, an npub, kind:1, or an event id"
+            placeholder={wide ? "Search — words, an npub, kind:1, an event id, or paste an event" : "Search"}
+            title="Words, an npub, kind:1, an event id, or a pasted event to inspect"
             aria-label="Search this relay"
             enterKeyHint="search"
             className="h-11 sm:h-10 pl-10 pr-10 rounded-full text-sm"
@@ -759,11 +770,13 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
       {featureEvent && (
         <AddToFeaturedDialog event={featureEvent} open={!!featureEvent} onOpenChange={(o) => { if (!o) setFeatureEvent(null); }} presetRelayUrl={relayUrl} />
       )}
+      <EventInspector event={inspecting} relayUrl={relayUrl} relayName={relayName} onClose={() => setInspecting(null)} />
+
       <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
         <DialogContent className="max-w-sm" data-testid="ops-content-shortcuts">
           <DialogHeader><DialogTitle>Keyboard shortcuts</DialogTitle></DialogHeader>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-            {[["J / K", "Next / previous post"], ["X", "Select the post"], ["R", "Remove"], ["B", "Ban the author"], ["F", "Feature"], ["/", "Search"], ["Esc", "Stop selecting"]].map(([k, v]) => (
+            {[["J / K", "Next / previous post"], ["X", "Select the post"], ["R", "Remove"], ["B", "Ban the author"], ["F", "Feature"], ["I", "Inspect"], ["/", "Search"], ["Esc", "Stop selecting"]].map(([k, v]) => (
               <div key={k} className="contents"><dt><kbd className="px-1.5 py-0.5 rounded border border-border bg-muted font-mono text-[12px]">{k}</kbd></dt><dd className="text-muted-foreground">{v}</dd></div>
             ))}
           </dl>
@@ -832,13 +845,12 @@ function ContentRow({ event, profile, wide, nowSec, current, selectMode, checked
   );
 }
 
-function ContentDetail({ event, profile, relayName, canRemove, canBan, where, onRemove, onBan, onFeature, onEverythingFrom, preview }: {
+function ContentDetail({ event, profile, relayName, canRemove, canBan, where, onRemove, onBan, onFeature, onInspect, onEverythingFrom, preview }: {
   event: NostrEvent; profile?: ProfileInfo; relayName: string; canRemove: boolean; canBan: boolean;
   where: { name: string; url?: string };
-  onRemove: () => void; onBan: () => void; onFeature: () => void; onEverythingFrom: () => void;
+  onRemove: () => void; onBan: () => void; onFeature: () => void; onInspect: () => void; onEverythingFrom: () => void;
   preview: PreviewContext;
 }) {
-  const [raw, setRaw] = useState(false);
   const [all, setAll] = useState(false);
   const sealed = isPrivateKind(event.kind);
   const npub = pubkeyToNpub(event.pubkey);
@@ -848,7 +860,6 @@ function ContentDetail({ event, profile, relayName, canRemove, canBan, where, on
     ? (() => { const d = event.tags.find((t) => t[0] === "d")?.[1]; return d !== undefined ? nip19.naddrEncode({ kind: event.kind, pubkey: event.pubkey, identifier: d }) : nip19.neventEncode({ id: event.id, author: event.pubkey }); })()
     : nip19.neventEncode({ id: event.id, author: event.pubkey, kind: event.kind });
   const text = event.content.length > 4000 && !all ? event.content.slice(0, 4000) + "…" : event.content;
-  const rawJson = JSON.stringify(sealed ? { ...event, content: "(sealed)" } : event, null, 2);
   return (
     <div className="p-4 space-y-4" data-testid="ops-content-detail" data-event-id={event.id}>
       <div className="flex items-center gap-3">
@@ -899,13 +910,9 @@ function ContentDetail({ event, profile, relayName, canRemove, canBan, where, on
             <Copy className="w-4 h-4 mr-2" />Copy ID
           </Button>
         </div>
-      </div>
-
-      <div>
-        <button type="button" onClick={() => setRaw((r) => !r)} className="min-h-[44px] text-[13px] font-medium text-muted-foreground hover:text-foreground" aria-expanded={raw}>
-          {raw ? "Hide raw event" : "Show raw event"}
-        </button>
-        {raw && <pre className="mt-1 max-h-72 overflow-auto rounded-lg border border-border bg-muted p-3 text-[11px] leading-relaxed font-mono whitespace-pre-wrap break-all">{rawJson}</pre>}
+        <Button variant="ghost" className="h-11 rounded-full justify-center text-muted-foreground" onClick={onInspect} data-testid="ops-content-inspect">
+          <ScanSearch className="w-4 h-4 mr-2" />Inspect
+        </Button>
       </div>
     </div>
   );
