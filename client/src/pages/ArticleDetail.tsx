@@ -21,6 +21,8 @@ import { formatDistanceToNow, format } from "date-fns";
 // ArticleMarkdown component so GuestArticlePreview renders identically.
 import { ArticleMarkdown } from "@/components/ArticleMarkdown";
 import { CommentContent } from "@/components/CommentContent";
+import { ErrorScreen } from "@/components/ErrorScreen";
+import { LinkNotOpenable } from "@/pages/not-found";
 import {
   ArrowLeft,
   Clock,
@@ -29,7 +31,6 @@ import {
   Share2,
   Copy,
   ExternalLink,
-  BookOpen,
   AudioLines,
   Send,
   Bookmark,
@@ -549,14 +550,17 @@ export default function ArticleDetail() {
   }
 
   if (!article) {
+    // An address that doesn't decode names no article: no relay can have it.
+    if (params.naddr && !decodeNaddr(params.naddr)) return <LinkNotOpenable layout="section" />;
     return (
-      <div className="max-w-3xl mx-auto px-4 py-8 text-center">
-        <BookOpen className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-        <p className="text-muted-foreground mb-4" data-testid="text-article-not-found">Article not found</p>
-        <Button variant="outline" onClick={() => goBack("/articles")} data-testid="button-back-to-articles">
-          <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Articles
-        </Button>
-      </div>
+      <ErrorScreen
+        layout="section"
+        kind="not-found"
+        title="This article didn't turn up"
+        titleTestId="text-article-not-found"
+        body="It may have been deleted, or it's on a relay we couldn't reach."
+        primary={{ label: "Back to Articles", onClick: () => goBack("/articles"), testId: "button-back-to-articles" }}
+      />
     );
   }
 

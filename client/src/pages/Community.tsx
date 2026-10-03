@@ -18,6 +18,8 @@ import {
   FileText, ScrollText, ChevronDown, ChevronUp, Activity, Crown
 } from "lucide-react";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
+import { ErrorScreen } from "@/components/ErrorScreen";
+import { LinkNotOpenable } from "@/pages/not-found";
 import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
 import {
@@ -258,14 +260,17 @@ export default function CommunityPage() {
   }
 
   if (!community) {
+    // An address that doesn't decode names no community: say so plainly.
+    if (!decoded) return <LinkNotOpenable layout="section" />;
     return (
-      <div className="max-w-2xl mx-auto p-4">
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <Globe className="w-12 h-12 text-muted-foreground/30 mb-3" />
-          <p className="text-sm font-medium mb-1">Community not found</p>
-          <p className="text-xs text-muted-foreground/60">This community may no longer exist or the address may be invalid.</p>
-        </div>
-      </div>
+      <ErrorScreen
+        layout="section"
+        kind="not-found"
+        title="This community didn't turn up"
+        body="It may no longer exist, or it's on a relay we couldn't reach."
+        primary={{ label: "Browse communities", href: "/outposts", testId: "button-community-browse" }}
+        testId="community-not-found"
+      />
     );
   }
 

@@ -1,6 +1,7 @@
-import { Component } from "react";
+import { Component, Fragment } from "react";
 import type { ReactNode, ErrorInfo } from "react";
 import { reportCrash } from "@/lib/crash-report";
+import { ErrorScreen } from "@/components/ErrorScreen";
 
 interface Props {
   children: ReactNode;
@@ -12,15 +13,20 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  /**
+   * Bumped on every "Try again"; keys the children so the crashed subtree
+   * REMOUNTS with fresh state instead of re-rendering into the same failure.
+   */
+  resetCount: number;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, resetCount: 0 };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
   }
 
@@ -31,23 +37,28 @@ export class ErrorBoundary extends Component<Props, State> {
     try { reportCrash(error, info?.componentStack ?? undefined); } catch {}
   }
 
+  handleReset = () => {
+    this.setState((s) => ({ hasError: false, error: null, resetCount: s.resetCount + 1 }));
+  };
+
   render() {
     if (this.state.hasError) {
       if (this.props.fallbackRender) return this.props.fallbackRender(this.state.error);
       return (
         this.props.fallback ?? (
-          <div
-            className="flex items-center justify-center p-6"
-            data-testid="error-boundary-fallback"
-          >
-            <p className="text-neutral-500 text-sm">
-              Something went wrong loading this widget.
-            </p>
-          </div>
+          <ErrorScreen
+            layout="inline"
+            kind="broken"
+            title="This part didn't load"
+            secondary={{ label: "Try again", onClick: this.handleReset, testId: "button-error-boundary-retry" }}
+            testId="error-boundary-fallback"
+          />
         )
       );
     }
-    return this.props.children;
+    // Keyed Fragment: "Try again" bumps the key, so React remounts the subtree
+    // (no wrapper DOM node that could disturb the surrounding layout).
+    return <Fragment key={this.state.resetCount}>{this.props.children}</Fragment>;
   }
 }
 
@@ -59,22 +70,16 @@ export class ErrorBoundary extends Component<Props, State> {
 export function OnboardingErrorFallback({ error }: { error: Error | null }) {
   return (
     <div
-      className="fixed inset-0 z-[90] flex flex-col items-center justify-center gap-3 bg-background p-6 text-center"
+      className="fixed inset-0 z-[90] flex items-center justify-center overflow-y-auto bg-background"
       data-testid="onboarding-error-fallback"
     >
-      <p className="text-sm font-medium text-foreground">Sign-in hit a snag</p>
-      <p className="max-w-sm text-xs text-muted-foreground">
-        Reloading usually clears it. If it keeps happening, this detail helps us fix it:
-      </p>
-      <code className="max-w-sm break-words rounded bg-foreground/5 px-2 py-1 text-[10px] text-muted-foreground/80">
-        {error?.message || "Unknown error"}
-      </code>
-      <button
-        onClick={() => window.location.reload()}
-        className="mt-1 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground transition-colors hover:bg-primary/90"
-      >
-        Reload
-      </button>
+      <ErrorScreen
+        kind="broken"
+        title="Sign-in hit a snag"
+        body="Reloading usually clears it. If it keeps happening, the details below help us fix it."
+        primary={{ label: "Reload", onClick: () => window.location.reload() }}
+        detail={error?.message || "Unknown error"}
+      />
     </div>
   );
 }

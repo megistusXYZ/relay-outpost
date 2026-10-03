@@ -13,42 +13,20 @@ import { ThreadEndBlock } from "@/components/nostr-post/ThreadEndBlock";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { getWriteRelays, getReadRelays } from "@/lib/outbox";
 import { RelayOutpostLoader } from "@/components/RelayOutpostLoader";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { use$ } from "applesauce-react/hooks";
 import { Link } from "wouter";
 import { useDocumentTitle } from "@/hooks/use-document-title";
-import { Heart, Repeat, Zap, Radio, ArrowLeft, RefreshCw, MessageCircle } from "lucide-react";
+import { Heart, Repeat, Zap, RefreshCw, MessageCircle } from "lucide-react";
 import { getOutpostRelays } from "@/lib/outpost-relays";
 import { usePrimalStats } from "@/hooks/use-primal-stats";
 import { useInteractionCounts } from "@/contexts/InteractionIndexContext";
 import { formatEngagementSummary, formatRootMarkerLabel, shouldShowRootMarker } from "@/lib/thread-spine";
+import { decodeThreadRef } from "@/lib/nostr-routes";
+import { ErrorScreen, type ErrorAction } from "@/components/ErrorScreen";
+import { LinkNotOpenable } from "@/pages/not-found";
 
-interface DecodedNote {
-  id: string;
-  relays: string[];
-}
-
-function decodeNoteId(noteId: string): DecodedNote | null {
-  try {
-    if (noteId.startsWith("note1")) {
-      const decoded = nip19.decode(noteId);
-      if (decoded.type === "note") return { id: decoded.data as string, relays: [] };
-    } else if (noteId.startsWith("nevent")) {
-      const decoded = nip19.decode(noteId);
-      if (decoded.type === "nevent") {
-        const data = decoded.data as { id: string; relays?: string[] };
-        return { id: data.id, relays: data.relays || [] };
-      }
-    } else {
-      return { id: noteId, relays: [] };
-    }
-  } catch {
-    return { id: noteId, relays: [] };
-  }
-  return null;
-}
 
 function InlineReplyPanel({ replyTo }: { replyTo: Event }) {
   const { pubkey } = useNostrAuth();
@@ -520,68 +498,54 @@ function EventNotFound({
     ? hintRelays[0].replace("wss://", "").replace(/\/+$/, "")
     : null;
 
+  const searchAction: ErrorAction = {
+    label: retrying ? "Searching relays…" : "Search all relays",
+    onClick: () => { void handleRetry(); },
+    disabled: retrying,
+    icon: <RefreshCw className={`w-4 h-4 ${retrying ? "animate-spin" : ""}`} aria-hidden="true" />,
+    testId: "button-thread-search-relays",
+  };
+  const browseAction: ErrorAction = {
+    label: "Browse your communities",
+    onClick: () => navigate("/relays"),
+    testId: "button-thread-browse-communities",
+  };
+  const backAction: ErrorAction = {
+    label: "Go back",
+    onClick: () => goBack("/"),
+    testId: "button-thread-go-back",
+  };
+  // One filled action: the relay search until it has run, then the next best way on.
+  const actions: ErrorAction[] = [
+    ...(retryDone ? [] : [searchAction]),
+    ...(hasOutposts ? [browseAction] : []),
+    backAction,
+  ];
+
   return (
-    <div className="py-8 px-4" data-testid="text-thread-not-found">
-      <div className="max-w-sm mx-auto text-center space-y-5">
-        <div className="w-14 h-14 mx-auto rounded-2xl bg-brand/10 dark:bg-brand/8 border border-brand/20 flex items-center justify-center">
-          <Radio className="w-7 h-7 text-brand/70" />
-        </div>
-
-        <div className="space-y-2">
-          <h3 className="text-base font-semibold text-foreground/90">
-            {retryDone ? "Still unavailable" : "Event not found"}
-          </h3>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {retryDone
-              ? "This event couldn't be located on any available relay. It may have been deleted or is on a relay you haven't connected to yet."
-              : relaySource
-                ? `This event may live on ${relaySource} or another relay not in your current connections.`
-                : "This event isn't available from your connected relays. It may be on a community relay you haven't joined yet."}
-          </p>
-        </div>
-
-        {notifParams && (
-          <div className="text-xs text-muted-foreground/70 py-2 px-3 rounded-lg glass-card border">
-            From a {notifParams.ntype} notification
-            {notifParams.sats ? ` (${Number(notifParams.sats).toLocaleString()} sats)` : ""}
-          </div>
-        )}
-
-        <div className="space-y-2.5 pt-1">
-          {!retryDone && (
-            <Button
-              onClick={handleRetry}
-              disabled={retrying}
-              variant="outline"
-              className="w-full gap-2 border-brand/20 hover:border-brand/40 hover:bg-brand/5"
-            >
-              <RefreshCw className={`w-4 h-4 ${retrying ? "animate-spin" : ""}`} />
-              {retrying ? "Searching relays..." : "Search all relays"}
-            </Button>
-          )}
-
-          {hasOutposts && (
-            <Button
-              onClick={() => navigate("/relays")}
-              variant="outline"
-              className="w-full gap-2 border-brand/20 hover:border-brand/40 hover:bg-brand/5"
-            >
-              <Radio className="w-4 h-4" />
-              Browse your communities
-            </Button>
-          )}
-
-          <Button
-            onClick={() => goBack("/")}
-            variant="ghost"
-            className="w-full gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Go back
-          </Button>
-        </div>
-      </div>
-    </div>
+    <ErrorScreen
+      layout="section"
+      kind="not-found"
+      title={retryDone ? "Still not found" : "We couldn't find this post"}
+      titleTestId="text-thread-not-found-title"
+      body={
+        retryDone
+          ? "This post couldn't be located on any available relay. It may have been deleted, or it's on a relay you haven't connected to yet."
+          : relaySource
+            ? `This post may live on ${relaySource} or another relay not in your current connections.`
+            : "This post isn't available from your connected relays. It may be on a community relay you haven't joined yet."
+      }
+      primary={actions[0]}
+      secondary={actions.slice(1)}
+      testId="text-thread-not-found"
+    >
+      {notifParams && (
+        <p className="rounded-xl border border-border bg-card px-3 py-2 text-[13px] text-muted-foreground">
+          From a {notifParams.ntype} notification
+          {notifParams.sats ? ` (${Number(notifParams.sats).toLocaleString()} sats)` : ""}
+        </p>
+      )}
+    </ErrorScreen>
   );
 }
 
@@ -599,7 +563,7 @@ export default function Thread() {
   useDocumentTitle("Thread");
 
   const noteId = params?.noteId;
-  const decoded = useMemo(() => (noteId ? decodeNoteId(noteId) : null), [noteId]);
+  const decoded = useMemo(() => (noteId ? decodeThreadRef(noteId) : null), [noteId]);
   const hexId = decoded?.id ?? null;
   const searchString = useSearch();
   const notifParams = useMemo(() => {
@@ -840,7 +804,11 @@ export default function Thread() {
         </>
       )}
 
-      {!loading && !event && (
+      {/* An id that doesn't decode names nothing: no relay can have it, so
+          don't offer to search for it. */}
+      {!loading && !event && !decoded && <LinkNotOpenable layout="section" />}
+
+      {!loading && !event && decoded && (
         <EventNotFound
           hexId={hexId}
           hintRelays={hintRelays}

@@ -12,9 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Radio, Server, AlertTriangle, RefreshCw, ShieldCheck, ArrowUpRight, ChevronLeft, ChevronRight, Megaphone, Users, Sparkles } from "lucide-react";
+import { Radio, Server, AlertTriangle, ShieldCheck, ArrowUpRight, ChevronLeft, ChevronRight, Megaphone, Users, Sparkles } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorScreen } from "@/components/ErrorScreen";
 import { TabId, getTabFromHash } from "./relay-ops/shared";
 import { SECTIONS, SETTINGS_SCREENS, sectionOf } from "./relay-ops/console-nav";
 import { useFeedbackInbox } from "@/hooks/use-feedback-inbox";
@@ -36,29 +37,18 @@ const SETTINGS_ICONS: Record<string, React.ComponentType<{ className?: string }>
 // Inline fallback for a single tab that throws during render. Scoped so ONE bad
 // tab can't take down the whole console — the header + tab switcher stay usable,
 // so the operator can switch to a working tab instead of hitting the app-wide
-// "Something went wrong loading this page" screen.
+// "This page didn't load" screen.
 function TabErrorFallback({ error }: { error: Error | null }) {
   return (
-    <div
-      className="flex flex-col items-center justify-center gap-3 min-h-[240px] px-4 py-8 text-center rounded-lg border border-amber-400/30 dark:border-amber-400/20 bg-amber-500/[0.04]"
-      data-testid="relay-ops-tab-error"
-    >
-      <AlertTriangle className="w-8 h-8 text-amber-500/70" />
-      <div className="space-y-1">
-        <p className="text-sm font-medium text-foreground">This section hit an error</p>
-        <p className="text-xs text-muted-foreground/60 max-w-md leading-relaxed">
-          The rest of Relay Control is fine — switch to another tab above, or reload to try this one again.
-        </p>
-      </div>
-      {error?.message && (
-        <code className="max-w-md break-words rounded bg-foreground/5 px-2 py-1 text-[10px] text-muted-foreground/70">
-          {error.message}
-        </code>
-      )}
-      <Button variant="ghost" size="sm" onClick={() => window.location.reload()} className="text-xs">
-        <RefreshCw className="w-3.5 h-3.5 mr-1" /> Reload
-      </Button>
-    </div>
+    <ErrorScreen
+      layout="section"
+      kind="broken"
+      title="This section didn't load"
+      body="The rest of Relay Control is fine. Switch to another tab above, or reload to try this one again."
+      primary={{ label: "Reload", onClick: () => window.location.reload() }}
+      detail={error?.message}
+      testId="relay-ops-tab-error"
+    />
   );
 }
 
@@ -176,21 +166,28 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
     // is treated as denied, so the console never renders — and its auto-scan
     // never signs a NIP-42 challenge — for a relay the user doesn't operate.
     if (authStatus === "denied" || (authStatus === "no-pubkey" && !isOwnedRelay)) {
+      const unreachable = authStatus !== "no-pubkey" && nip11 === null;
       return (
-        <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 px-4">
-          <AlertTriangle className="w-10 h-10 text-red-600 dark:text-red-400/70" />
-          <h2 className="text-lg font-brand tracking-wider uppercase text-red-700 dark:text-red-300/80">Access Denied</h2>
-          <p className="text-sm text-muted-foreground/60 text-center max-w-md">
-            {authStatus === "no-pubkey"
+        <ErrorScreen
+          layout="section"
+          kind={unreachable ? "unreachable" : "denied"}
+          title={
+            authStatus === "no-pubkey"
+              ? "This relay doesn't say who runs it"
+              : unreachable
+              ? "We couldn't check who runs this relay"
+              : "You don't run this relay"
+          }
+          body={
+            authStatus === "no-pubkey"
               ? "This relay doesn't publish an operator pubkey, so operator access can't be verified. Open Relay Control from a relay you operate on the Relays page."
-              : nip11 === null
+              : unreachable
               ? "Unable to reach this relay for verification. Check that the relay is online."
-              : "Your key does not match this relay's operator pubkey. Only the relay operator can access Relay Control."}
-          </p>
-          <Button variant="ghost" onClick={() => window.location.href = "/relays"} className="text-xs">
-            <Radio className="w-3.5 h-3.5 mr-1" /> Back to Relays
-          </Button>
-        </div>
+              : "Your key does not match this relay's operator pubkey. Only the relay operator can access Relay Control."
+          }
+          primary={{ label: "Back to Relays", onClick: () => { window.location.href = "/relays"; } }}
+          testId="relay-ops-access-denied"
+        />
       );
     }
 
