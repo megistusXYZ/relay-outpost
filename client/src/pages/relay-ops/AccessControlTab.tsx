@@ -561,8 +561,10 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
     setNip86Syncing(false);
   }, [relayUrl, nip11]);
 
+  const [probeRun, setProbeRun] = useState(0);
   useEffect(() => {
     let cancelled = false;
+    setNip86Status(null);
     checkNip86Support(relayUrl).then(status => {
       if (cancelled) return;
       setNip86Status(status);
@@ -571,7 +573,7 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
       }
     });
     return () => { cancelled = true; };
-  }, [relayUrl, syncFromRelay]);
+  }, [relayUrl, syncFromRelay, probeRun]);
 
   useEffect(() => {
     const teamPubkeys: string[] = [];
@@ -874,110 +876,73 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
 
   return (
     <div className="space-y-4">
-      {nip86Status === "supported" && (
-        <Card className="glass-card border-emerald-400/30 dark:border-emerald-400/15 p-2.5 sm:p-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                NIP-86 Live Management
-              </span>
-              {nip86Syncing && (
-                <RefreshCw className="w-3 h-3 text-emerald-500/70 animate-spin" />
-              )}
-              {nip86Error && (
-                <span className="text-[10px] text-red-500 dark:text-red-400/80">{nip86Error}</span>
-              )}
-              {nip86LastSync && !nip86Syncing && !nip86Error && (
-                <span className="text-[10px] text-muted-foreground/60">
-                  synced {new Date(nip86LastSync).toLocaleTimeString()}
-                </span>
-              )}
-            </div>
+      {/* Where the lists live, as one quiet line. A relay that answers its
+          management API holds them; otherwise they stay in this browser, and
+          the line says which — "couldn't reach" and "doesn't have one" are
+          different facts with different next steps. */}
+      {nip86Status && (
+        <p
+          className="flex items-center gap-2 px-1 text-[13px] text-muted-foreground leading-snug"
+          data-testid="ops-access-status"
+          data-state={nip86Status}
+        >
+          <span
+            className={`w-2 h-2 rounded-full shrink-0 ${
+              nip86Status === "supported" ? (nip86Error ? "bg-amber-400" : "bg-emerald-500") : nip86Status === "unreachable" ? "bg-amber-400" : "bg-muted-foreground/40"
+            }`}
+            aria-hidden="true"
+          />
+          <span className="min-w-0 flex-1">
+            {nip86Status === "supported" && (
+              <>
+                Managed on the relay
+                {nip86Syncing ? " · syncing…" : nip86Error ? ` · ${nip86Error}` : nip86LastSync ? ` · synced ${new Date(nip86LastSync).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : ""}
+              </>
+            )}
+            {nip86Status === "advertised_but_nonfunctional" && "This relay advertises a management API but it doesn't answer, so these lists are kept in this browser."}
+            {nip86Status === "not_supported" && "This relay has no management API, so these lists are kept in this browser."}
+            {nip86Status === "unreachable" && "Couldn't reach this relay's management API. Changes stay in this browser until it answers."}
+          </span>
+          {nip86Status === "supported" && (
             <button
+              type="button"
               onClick={syncFromRelay}
               disabled={nip86Syncing}
-              className="text-[10px] px-2 py-0.5 rounded border border-emerald-400/30 dark:border-emerald-400/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50"
+              className="shrink-0 inline-flex items-center gap-1 min-h-[44px] sm:min-h-0 px-2 py-1 rounded-full text-[13px] text-brand hover:bg-brand/[0.06] disabled:opacity-50"
             >
-              {nip86Syncing ? "Syncing..." : "Refresh"}
+              <RefreshCw className={`w-3.5 h-3.5 ${nip86Syncing ? "animate-spin" : ""}`} aria-hidden="true" />Refresh
             </button>
-          </div>
-        </Card>
-      )}
-      {nip86Status === "advertised_but_nonfunctional" && (
-        <Card className="glass-card border-amber-400/30 dark:border-amber-400/15 p-2.5 sm:p-3">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            <div className="flex-1 min-w-0">
-              <span className="text-[10px] sm:text-xs font-medium text-amber-700 dark:text-amber-400 block">
-                NIP-86 advertised but not responding
-              </span>
-              <span className="text-[10px] sm:text-[10px] text-amber-700/60 dark:text-amber-400/50 block leading-tight mt-0.5">
-                Relay lists NIP-86 in its capabilities but returned HTML instead of JSON-RPC. The relay software may need a separate NIP-86 HTTP handler. Using local-only mode.
-              </span>
-            </div>
-          </div>
-        </Card>
-      )}
-      {nip86Status === "not_supported" && (
-        <Card className="glass-card border-amber-400/20 dark:border-amber-400/10 p-2.5 sm:p-3">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-amber-500/70" />
-            <span className="text-[10px] sm:text-xs text-amber-700 dark:text-amber-400/80">
-              Local-only mode — relay does not support NIP-86 management API
-            </span>
-          </div>
-        </Card>
-      )}
-      {nip86Status === "unreachable" && (
-        // Deliberately NOT the amber "local-only" card above. That one states a
-        // fact about the relay; this one admits we don't have one, and the
-        // difference matters because both silently route changes to
-        // localStorage.
-        <Card className="glass-card border-red-400/20 dark:border-red-400/10 p-2.5 sm:p-3">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-red-500/70" />
-            <span className="text-[10px] sm:text-xs text-red-700 dark:text-red-400/80">
-              Can't reach this relay's management API — we don't know whether it supports NIP-86. Changes stay local until it answers.
-            </span>
-          </div>
-        </Card>
+          )}
+          {nip86Status === "unreachable" && (
+            <button
+              type="button"
+              onClick={() => setProbeRun((n) => n + 1)}
+              className="shrink-0 inline-flex items-center gap-1 min-h-[44px] sm:min-h-0 px-2 py-1 rounded-full text-[13px] text-brand hover:bg-brand/[0.06]"
+            >
+              <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />Try again
+            </button>
+          )}
+        </p>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-        <Card className="glass-card border-green-400/20 dark:border-green-400/10 p-2.5 sm:p-3">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <UserCheck className="w-3 h-3 text-green-600 dark:text-green-400/70" />
-            <span className="text-[10px] sm:text-[10px] text-muted-foreground/70 uppercase tracking-wide">Allowed</span>
+      <div
+        className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-xl overflow-hidden border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.06] dark:bg-white/[0.06]"
+        data-testid="ops-access-strip"
+      >
+        {([
+          ["allowed", "Allowed", allowlist.length, "text-emerald-700 dark:text-emerald-400"],
+          ["readonly", "Read-only", readonlyList.length, "text-sky-700 dark:text-sky-400"],
+          ["blocked", "Blocked", blocklist.length, "text-red-700 dark:text-red-400"],
+          ["total", "Total", allowlist.length + readonlyList.length + blocklist.length, "text-foreground"],
+        ] as const).map(([id, label, n, tone]) => (
+          <div key={id} className="bg-background px-3 py-2 min-w-0" data-testid={`ops-access-stat-${id}`}>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70 leading-tight">{label}</p>
+            <p className={`mt-0.5 text-[15px] font-semibold leading-snug tabular-nums ${tone}`}>
+              {n.toLocaleString()}
+              {id === "total" && modActionCount.total > 0 && <span className="ml-2 text-[12px] font-normal text-muted-foreground">{modActionCount.total} actions</span>}
+            </p>
           </div>
-          <span className="text-base sm:text-lg font-mono font-semibold text-green-700 dark:text-green-400">{allowlist.length}</span>
-        </Card>
-        <Card className="glass-card border-blue-400/20 dark:border-blue-400/10 p-2.5 sm:p-3">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <Globe className="w-3 h-3 text-blue-600 dark:text-blue-400/70" />
-            <span className="text-[10px] sm:text-[10px] text-muted-foreground/70 uppercase tracking-wide">Read-Only</span>
-          </div>
-          <span className="text-base sm:text-lg font-mono font-semibold text-blue-700 dark:text-blue-400">{readonlyList.length}</span>
-        </Card>
-        <Card className="glass-card border-red-400/20 dark:border-red-400/10 p-2.5 sm:p-3">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <UserX className="w-3 h-3 text-red-600 dark:text-red-400/70" />
-            <span className="text-[10px] sm:text-[10px] text-muted-foreground/70 uppercase tracking-wide">Blocked</span>
-          </div>
-          <span className="text-base sm:text-lg font-mono font-semibold text-red-700 dark:text-red-400">{blocklist.length}</span>
-        </Card>
-        <Card className="glass-card border-brand/20 dark:border-brand/10 p-2.5 sm:p-3">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <Users className="w-3 h-3 text-brand dark:text-brand/70" />
-            <span className="text-[10px] sm:text-[10px] text-muted-foreground/70 uppercase tracking-wide">Total</span>
-          </div>
-          <span className="text-base sm:text-lg font-mono font-semibold text-brand">{allowlist.length + readonlyList.length + blocklist.length}</span>
-          {modActionCount.total > 0 && (
-            <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
-              <span className="text-[10px] text-amber-600/70 dark:text-amber-400/60">{modActionCount.total} actions</span>
-            </div>
-          )}
-        </Card>
+        ))}
       </div>
 
       {nip86Status === "supported" && operatorPubkey && (
