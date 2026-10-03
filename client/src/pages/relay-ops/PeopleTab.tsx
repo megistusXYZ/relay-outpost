@@ -11,7 +11,7 @@
  *
  * Rules live in people-model.ts.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Link } from "wouter";
 import type { Event as NostrEvent } from "nostr-tools";
 import { Ban, Copy, Download, MessageCircle, ScanSearch, Search, ShieldCheck, SlidersHorizontal, UserRound, X } from "lucide-react";
@@ -39,6 +39,8 @@ import { ConfirmAction, type PendingAction } from "./ConfirmAction";
 import { RefusedNotice } from "./RefusedNotice";
 import { getSignInPolicy, signInAsChosen } from "@/lib/nip42-auth";
 import { pool } from "@/lib/nostr";
+import { MemberNotes } from "./TeamScreens";
+import type { RelayTeam } from "@/hooks/use-relay-team";
 import { addModLogEntry, pubkeyToNpub, resolveProfileBatch, subscribeWithReach, type NostrFilter, type ProfileInfo } from "./shared";
 import { mergePage, scopeLine } from "./content-model";
 import {
@@ -63,9 +65,11 @@ function hexes(entries: PubkeyEntry[] | undefined): string[] {
     .map((p) => p.toLowerCase());
 }
 
-export function PeopleTab({ relayUrl, nip11, onSeePosts }: {
+export function PeopleTab({ relayUrl, nip11, onSeePosts, team }: {
   relayUrl: string;
   nip11: Nip11Document | null;
+  /** The relay's team, for notes about a member. */
+  team?: RelayTeam;
   /** Opens Content searching for this person. */
   onSeePosts: (npub: string) => void;
 }) {
@@ -250,6 +254,7 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts }: {
       onSeePosts={() => onSeePosts(pubkeyToNpub(person.pubkey))}
       onInspectProfile={() => void inspectProfile(person.pubkey)}
       finding={findingProfile}
+      notes={team ? <MemberNotes team={team} about={person.pubkey} /> : null}
     />
   ) : null;
 
@@ -385,12 +390,13 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts }: {
   );
 }
 
-function PersonDetail({ person, profile, trust, nowSec, relayName, can, where, onBan, onUnban, onAllow, onUnallow, onSeePosts, onInspectProfile, finding }: {
+function PersonDetail({ person, profile, trust, nowSec, relayName, can, where, onBan, onUnban, onAllow, onUnallow, onSeePosts, onInspectProfile, finding, notes }: {
   person: Person; profile?: ProfileInfo; trust: string; nowSec: number; relayName: string;
   can: { ban: boolean; unban: boolean; allow: boolean; unallow: boolean };
   where: { name: string; url?: string };
   onBan: () => void; onUnban: () => void; onAllow: () => void; onUnallow: () => void; onSeePosts: () => void;
   onInspectProfile: () => void; finding: boolean;
+  notes?: ReactNode;
 }) {
   const npub = pubkeyToNpub(person.pubkey);
   const name = profile?.name || `${npub.slice(0, 16)}…`;
@@ -434,6 +440,7 @@ function PersonDetail({ person, profile, trust, nowSec, relayName, can, where, o
           <Button variant="ghost" className="h-11 flex-1 rounded-full" onClick={onInspectProfile} disabled={finding} data-testid="ops-person-inspect"><ScanSearch className="w-4 h-4 mr-2" />{finding ? "Finding…" : "Inspect"}</Button>
         </div>
       </div>
+      {notes}
     </div>
   );
 }
