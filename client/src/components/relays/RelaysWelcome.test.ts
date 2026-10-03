@@ -10,7 +10,10 @@ import { Router } from "wouter";
 import { RelaysWelcome } from "./RelaysWelcome";
 
 const html = renderToStaticMarkup(createElement(Router, { ssrPath: "/my-relays" }, createElement(RelaysWelcome)));
-const words = html.replace(/<[^>]+>/g, " ").replace(/&#x27;|&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
+// The self-host card names real software on purpose (owner, 2026-10-03): that
+// list is where those names belong, so the jargon check reads everything else.
+const SOFTWARE = /<ul[^>]*data-testid="relays-software"[\s\S]*?<\/ul>/;
+const words = html.replace(SOFTWARE, " ").replace(/<[^>]+>/g, " ").replace(/&#x27;|&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 
 describe("the Relays welcome", () => {
   it("opens on the community, not the technology", () => {
@@ -33,6 +36,12 @@ describe("the Relays welcome", () => {
     expect(words.indexOf("Choose how to start")).toBeGreaterThan(-1);
     expect(words.indexOf("Choose how to start")).toBeLessThan(words.indexOf("Already have one?"));
     expect(html).toContain('href="/my-relays/connect"');
+  });
+
+  it("names real software to run yourself, each linking to its own project", () => {
+    const list = html.match(SOFTWARE)?.[0] ?? "";
+    for (const name of ["Pyramid", "Newlay", "strfry", "Haven"]) expect(list).toContain(name);
+    expect((list.match(/href="https:\/\//g) ?? []).length).toBeGreaterThanOrEqual(4);
   });
 
   it("says plainly that it's theirs and we take no cut", () => {

@@ -14,7 +14,7 @@
  */
 import { Link } from "wouter";
 import { ArrowUpRight, Check, ChevronRight } from "lucide-react";
-import { START_OPTIONS, type StartOption } from "@/lib/relay-start-options";
+import { BUILD_YOUR_OWN, START_OPTIONS, type StartOption } from "@/lib/relay-start-options";
 import { ConnectIcon, HomeRing, HostedIcon, KeepIcon, PhoneIcon, RulesIcon, SelfHostIcon } from "./relays-icons";
 
 const BENEFITS = [
@@ -49,20 +49,52 @@ function OptionCard({ option }: { option: StartOption }) {
           </li>
         ))}
       </ul>
-      <div className="mt-auto pt-6">
-        <a
-          href={option.href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={featured
-            ? "inline-flex w-full min-h-[48px] items-center justify-center gap-1.5 rounded-full bg-brand px-5 text-[15px] font-semibold text-background transition-colors hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            : "inline-flex w-full min-h-[48px] items-center justify-center gap-1.5 rounded-full border border-black/[0.12] dark:border-white/[0.14] px-5 text-[15px] font-medium transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"}
-          data-testid={`relays-start-${option.id}-go`}
-        >
-          {option.cta}
-          <ArrowUpRight className="w-4 h-4" aria-hidden="true" />
-        </a>
-      </div>
+      {option.software ? (
+        <>
+          <p className="mt-6 text-[13px] font-medium tracking-wide text-muted-foreground">Pick your software</p>
+          <ul className="mt-2 -mx-2 divide-y divide-black/[0.06] dark:divide-white/[0.06]" data-testid="relays-software">
+            {option.software.map((sw) => (
+              <li key={sw.name}>
+                <a
+                  href={sw.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-start gap-3 min-h-[56px] rounded-lg px-2 py-3 transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  data-testid="relays-software-link"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline gap-2">
+                      <span className="text-[15px] font-semibold tracking-tight">{sw.name}</span>
+                      <span className="text-[12px] font-medium text-brand">{sw.bestFor}</span>
+                    </span>
+                    <span className="mt-0.5 block text-[13px] leading-snug text-muted-foreground">{sw.line}</span>
+                  </span>
+                  <ArrowUpRight className="mt-1 w-4 h-4 shrink-0 text-muted-foreground/70 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-foreground" aria-hidden="true" />
+                </a>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-[12px] text-muted-foreground">
+            Developers can build their own with{" "}
+            <a href={BUILD_YOUR_OWN.href} target="_blank" rel="noopener noreferrer" className="font-medium text-foreground/80 underline-offset-4 hover:underline">{BUILD_YOUR_OWN.name}</a>.
+          </p>
+        </>
+      ) : (
+        <div className="mt-auto pt-6">
+          <a
+            href={option.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={featured
+              ? "inline-flex w-full min-h-[48px] items-center justify-center gap-1.5 rounded-full bg-brand px-5 text-[15px] font-semibold text-background transition-colors hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              : "inline-flex w-full min-h-[48px] items-center justify-center gap-1.5 rounded-full border border-black/[0.12] dark:border-white/[0.14] px-5 text-[15px] font-medium transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"}
+            data-testid={`relays-start-${option.id}-go`}
+          >
+            {option.cta}
+            <ArrowUpRight className="w-4 h-4" aria-hidden="true" />
+          </a>
+        </div>
+      )}
     </section>
   );
 }
