@@ -1,3 +1,4 @@
+import { startingTrendingSelector, TRENDING_CHART_CHOICES } from "@/pages/home/feed-menu";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,7 @@ import {
   CheckCircle2, ShieldAlert, X, Plus, Radio, Check,
   Radar, Clock, TrendingUp, Award, Sun, Moon, Eclipse, Search, Volume2, MessageCircle,
   HardDrive, Trash2, Satellite, Type, Sliders, Film, ImageIcon, Antenna, MessageSquare, CornerUpLeft,
-  ChevronDown, RotateCcw, BarChart3, ChevronRight, Flame, Share,
+  ChevronDown, RotateCcw, BarChart3, ChevronRight, Share,
   Wallet, Bell, Newspaper, Compass, BookOpen, MessageSquarePlus, KeyRound, QrCode, Puzzle,
   Smartphone, Globe, Eye, EyeOff, Lock, Inbox, Tag, Wrench, ShieldCheck, PanelLeft, Bug, Sparkles,
   Copy, RefreshCw, LifeBuoy, Info, LayoutGrid, Phone } from "lucide-react";
@@ -432,16 +433,6 @@ function SettingsNav({ items, active, onSelect }: { items: SettingsCategory[]; a
   );
 }
 
-const SCAN_FILTER_OPTIONS = [
-  { value: "rising", label: "Rising", icon: TrendingUp, group: "Engagement" },
-  { value: "hot", label: "Hot", icon: Flame, group: "Engagement" },
-  { value: "weekly_top", label: "Top Signal", icon: Award, group: "Engagement" },
-  { value: "trending_1h", label: "Trending 1h", icon: Clock, group: "Time" },
-  { value: "trending_4h", label: "Trending 4h", icon: Clock, group: "Time" },
-  { value: "trending_12h", label: "Trending 12h", icon: Clock, group: "Time" },
-  { value: "trending_24h", label: "Trending 24h", icon: Clock, group: "Time" },
-  { value: "mostzapped_4h", label: "Most thanked today", icon: Zap, group: "Thanks" },
-] as const;
 
 type LaunchOption =
   | { kind: "feed"; value: "open_comms" | "deep_scan" | "raw_signal"; label: string; icon: IconComponent }
@@ -492,15 +483,12 @@ function LaunchSection() {
     return "/";
   });
 
+  // The chart Trending opens on, read the way Home reads it (an old saved
+  // chart shows as the closest one that exists now; nothing saved is
+  // Overall · last hour).
   const [scanFilter, setScanFilter] = useState(() => {
-    try {
-      let val = localStorage.getItem("relay-outpost-default-filter") || "rising";
-      if (val === "mostzapped_24h" || val === "mostzapped_yesterday" || val === "mostzapped_week") {
-        val = "mostzapped_4h";
-        localStorage.setItem("relay-outpost-default-filter", val);
-      }
-      return val;
-    } catch { return "rising"; }
+    try { return startingTrendingSelector(null, localStorage.getItem("relay-outpost-default-filter")); }
+    catch { return startingTrendingSelector(null, null); }
   });
 
   const activeKey = landing === "/" ? feedMode : landing;
@@ -591,24 +579,17 @@ function LaunchSection() {
       <PrivateModeRow />
 
       {activeKey === "deep_scan" && (
-        <Row icon={Clock} label="Scan filter" sub="Default Trending chart">
+        <Row icon={Clock} label="Trending opens on" sub="The chart the Trending feed shows first">
           <Select value={scanFilter} onValueChange={handleScanFilterChange}>
             <SelectTrigger className={SELECT_TRIGGER_CLS} data-testid="select-default-filter">
-              <SelectValue placeholder="Choose default filter" />
+              <SelectValue placeholder="Overall · last hour" />
             </SelectTrigger>
             <SelectContent align="end">
-              {SCAN_FILTER_OPTIONS.map((opt) => {
-                const Icon = opt.icon;
-                return (
-                  <SelectItem key={opt.value} value={opt.value} data-testid={`option-preset-${opt.value}`}>
-                    <span className="flex items-center gap-2">
-                      <Icon className="w-3 h-3 text-muted-foreground/60" />
-                      {opt.label}
-                      <span className="text-[10px] text-muted-foreground/70">{opt.group}</span>
-                    </span>
-                  </SelectItem>
-                );
-              })}
+              {TRENDING_CHART_CHOICES.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value} data-testid={`option-preset-${opt.value}`}>
+                  {opt.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </Row>

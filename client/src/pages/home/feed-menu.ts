@@ -138,7 +138,7 @@ export type TrendingFrom = "1h" | "4h" | ArchivesRange;
 export const TOP_BY_OPTIONS: ReadonlyArray<{ value: TopBy; label: string }> = [
   { value: "overall", label: "Overall" },
   { value: "arc_reactions", label: "Likes" },
-  { value: "arc_zaps", label: "Zaps" },
+  { value: "arc_zaps", label: "Thanks" },
   { value: "arc_replies", label: "Replies" },
   { value: "arc_reposts", label: "Reposts" },
 ];
@@ -155,13 +155,48 @@ const CHART_FROM: ReadonlyArray<{ value: TrendingFrom; label: string }> = [
   { value: "all", label: "All time" },
 ];
 
+/** Where Trending opens when nobody chose (owner, 2026-10-03): Overall, last hour. */
+export const DEFAULT_TRENDING_SELECTOR = "trending_1h";
+
 /** A stored selector that no longer has a home on Trending (its own Polls
  *  list: polls live under Feeds now) falls back to the default chart. */
 export function trendingSelectorOrDefault(selector: string): string {
   if (selector === "trending_1h" || selector === "trending_4h") return selector;
-  if (TOP_BY_OPTIONS.some((o) => o.value === selector)) return selector;
-  return "arc_replies";
+  if (TOP_BY_OPTIONS.some((o) => o.value === selector && o.value !== "overall")) return selector;
+  return DEFAULT_TRENDING_SELECTOR;
 }
+
+/**
+ * Charts saved before Trending's menu changed, read as the closest chart that
+ * exists now. "Rising", "Hot" and "Top Signal" were engagement rankings;
+ * "Most zapped" is the Thanks chart; 12 and 24 hours are nearest to 4 hours.
+ */
+export function migrateTrendingChart(v: string | null | undefined): string | null {
+  if (!v) return null;
+  if (v === "mostzapped_24h" || v === "mostzapped_yesterday" || v === "mostzapped_week" || v === "mostzapped_4h") return "arc_zaps";
+  if (v === "hot" || v === "rising" || v === "weekly_top") return "arc_reactions";
+  if (v === "trending_12h" || v === "trending_24h") return "trending_4h";
+  return v;
+}
+
+/** The chart Trending opens on: this session's own pick, else the saved setting, else Overall · last hour. */
+export function startingTrendingSelector(session: string | null | undefined, saved: string | null | undefined): string {
+  const s = migrateTrendingChart(session);
+  if (s) return trendingSelectorOrDefault(s);
+  const p = migrateTrendingChart(saved);
+  if (p) return trendingSelectorOrDefault(p);
+  return DEFAULT_TRENDING_SELECTOR;
+}
+
+/** What Settings offers for "Trending opens on": exactly Trending's charts. */
+export const TRENDING_CHART_CHOICES: ReadonlyArray<{ value: string; label: string }> = [
+  { value: "trending_1h", label: "Overall · last hour" },
+  { value: "trending_4h", label: "Overall · last 4 hours" },
+  { value: "arc_reactions", label: "Most liked" },
+  { value: "arc_zaps", label: "Most thanked" },
+  { value: "arc_replies", label: "Most replied" },
+  { value: "arc_reposts", label: "Most reposted" },
+];
 
 export function trendingFilter(selector: string, range: ArchivesRange): {
   topBy: TopBy;
