@@ -26,7 +26,7 @@ describe("the Relays welcome", () => {
     }
   });
 
-  it("says 'relay' once, to name the thing — not in every line", () => {
+  it("doesn't lean on the word 'relay' — at most once, and today not at all", () => {
     // Not counting the brand ("Relay Outpost") or a provider's address ("relay.tools").
     const mentions = words.match(/\brelays?\b(?!\.tools| Outpost)/gi) ?? [];
     expect(mentions.length).toBeLessThanOrEqual(1);
@@ -42,6 +42,19 @@ describe("the Relays welcome", () => {
     const list = html.match(SOFTWARE)?.[0] ?? "";
     for (const name of ["Pyramid", "Newlay", "strfry", "Haven"]) expect(list).toContain(name);
     expect((list.match(/href="https:\/\//g) ?? []).length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("opens every link to somewhere else in a new tab, and keeps our own pages in the app", () => {
+    const links = [...html.matchAll(/<a\b[^>]*>/g)].map((m) => m[0]);
+    const external = links.filter((a) => /href="https?:\/\//.test(a));
+    const internal = links.filter((a) => /href="\//.test(a));
+    expect(external.length).toBeGreaterThanOrEqual(6);
+    for (const a of external) {
+      expect(a, a).toMatch(/target="_blank"/);
+      expect(a, a).toMatch(/rel="[^"]*noopener[^"]*"/);
+    }
+    expect(internal.length).toBeGreaterThan(0);
+    for (const a of internal) expect(a, a).not.toMatch(/target=/);
   });
 
   it("says plainly that it's theirs and we take no cut", () => {

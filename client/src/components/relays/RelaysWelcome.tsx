@@ -4,8 +4,8 @@
  * protocol").
  *
  * It talks about a community and its home: what you get, how to start, and —
- * quietly, below — connecting one you already have. The protocol's word,
- * "relay", appears once, to name the thing. The ways to start are plain links
+ * quietly, below — connecting one you already have. No protocol words on
+ * the page at all (owner, 2026-10-03). The ways to start are plain links
  * to the provider (lib/relay-start-options.ts): we never host it, never take a
  * cut, never stand in between.
  *
@@ -131,7 +131,6 @@ export function RelaysWelcome() {
         <p className="mt-4 max-w-[42ch] text-[16px] sm:text-[17px] leading-relaxed text-muted-foreground [text-wrap:pretty]">
           Your own space for posts and members, with your rules. A provider keeps it running; you run it from here.
         </p>
-        <p className="mt-2 text-[13px] text-muted-foreground/80" data-testid="relays-welcome-term">Your space is called a relay.</p>
       </header>
 
       <ul className="mt-12 grid sm:grid-cols-3 border-y border-black/[0.06] dark:border-white/[0.06] divide-y sm:divide-y-0 sm:divide-x divide-black/[0.06] dark:divide-white/[0.06]" aria-label="What you get" data-testid="relays-benefits">
