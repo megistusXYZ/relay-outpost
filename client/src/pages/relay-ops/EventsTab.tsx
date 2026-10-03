@@ -16,6 +16,7 @@ import { usePrimalStatsBatch } from "@/hooks/use-primal-stats";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
+import { blockAuthorOnRelay, removeEventOnRelay } from "@/lib/relay-moderation";
 import { Card } from "@/components/ui/card";
 import { OpsCard, OpsSectionHeader } from "./ops-ui";
 import { Button } from "@/components/ui/button";
@@ -311,6 +312,20 @@ export function EventsTab({ relayUrl, initialLive = false }: { relayUrl: string;
       toast({ title: "Not signed in", description: "Sign in to delete events.", variant: "destructive" });
       return;
     }
+    // Through the relay's management API when it has one (lib/relay-moderation.ts):
+    // a kind-5 deletion is honoured only from the post's own author.
+    const viaRelay = await removeEventOnRelay(relayUrl, eventId);
+    if (viaRelay.onRelay) {
+      const targetEvt = results.find(e => e.id === eventId);
+      addModLogEntry(relayUrl, { action: "delete_event", targetEventId: eventId, targetPubkey: targetEvt?.pubkey, targetKind: targetEvt?.kind });
+      setResults(prev => prev.filter(e => e.id !== eventId));
+      toast({ title: "Removed from the relay", description: `${eventId.slice(0, 8)}… is gone from this relay.` });
+      return;
+    }
+    if (viaRelay.reason === "error") {
+      toast({ title: "The relay refused", description: viaRelay.message, variant: "destructive" });
+      return;
+    }
     try {
       const deleteEvent = {
         kind: 5 as const,
@@ -327,7 +342,12 @@ export function EventsTab({ relayUrl, initialLive = false }: { relayUrl: string;
         targetPubkey: targetEvt?.pubkey,
         targetKind: targetEvt?.kind,
       });
-      toast({ title: "Deletion requested", description: `Kind 5 event published for ${eventId.slice(0, 8)}...` });
+      toast({
+        title: "Deletion requested",
+        description: viaRelay.reason === "unreachable"
+          ? "We couldn't reach this relay's management API, so a deletion request was sent instead. Relays usually honour those only from the post's author."
+          : "This relay has no management API, so a deletion request was sent instead. Relays usually honour those only from the post's author.",
+      });
     } catch (err) {
       if (isSignerError(err)) { await handleSignerError(err, toast, attemptReconnect); }
       else {
@@ -387,19 +407,31 @@ export function EventsTab({ relayUrl, initialLive = false }: { relayUrl: string;
     }
   }, [results, signer, pubkey, relayUrl, toast, extractPublishError]);
 
-  const confirmBlockAuthor = useCallback(() => {
+  const confirmBlockAuthor = useCallback(async () => {
     if (!pendingBlock) return;
-    const blocklist = getStoredList(ADMIN_BLOCKLIST_KEY, relayUrl);
-    if (blocklist.includes(pendingBlock)) {
-      toast({ title: "Already blocked", description: `${pendingBlock.slice(0, 8)}... is already on the blocklist.` });
-      setPendingBlock(null);
+    const who = pendingBlock;
+    setPendingBlock(null);
+    // On the relay when it has a management API (lib/relay-moderation.ts); this
+    // used to write only a list kept in this browser and call it blocked.
+    const viaRelay = await blockAuthorOnRelay(relayUrl, who);
+    if (!viaRelay.onRelay && viaRelay.reason === "error") {
+      toast({ title: "The relay refused", description: viaRelay.message, variant: "destructive" });
       return;
     }
-    const updated = [...blocklist, pendingBlock];
-    saveStoredList(ADMIN_BLOCKLIST_KEY, relayUrl, updated);
-    addModLogEntry(relayUrl, { action: "block_author", targetPubkey: pendingBlock });
-    toast({ title: "Author blocked", description: `${pendingBlock.slice(0, 8)}... added to blocklist.` });
-    setPendingBlock(null);
+    const blocklist = getStoredList(ADMIN_BLOCKLIST_KEY, relayUrl);
+    if (!blocklist.includes(who)) saveStoredList(ADMIN_BLOCKLIST_KEY, relayUrl, [...blocklist, who]);
+    addModLogEntry(relayUrl, { action: "block_author", targetPubkey: who });
+    if (viaRelay.onRelay) {
+      toast({ title: "Blocked on the relay", description: `${who.slice(0, 8)}… can no longer post here.` });
+    } else {
+      toast({
+        title: "Added locally — not synced",
+        description: viaRelay.reason === "unreachable"
+          ? `${who.slice(0, 8)}… couldn't be sent: we can't reach this relay's management API right now.`
+          : `${who.slice(0, 8)}… is on your local list only. This relay has no management API, so ask its host to block them.`,
+        variant: viaRelay.reason === "unreachable" ? "destructive" : undefined,
+      });
+    }
   }, [pendingBlock, relayUrl, toast]);
 
   const kindStats = useMemo(() => {

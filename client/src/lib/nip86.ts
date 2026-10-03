@@ -60,28 +60,9 @@ export function extractAddedAtMap(entries: unknown[]): Record<string, number> {
   return out;
 }
 
-export type Nip86Method =
-  | "allowpubkey"
-  | "banpubkey"
-  | "unallowpubkey"
-  | "unbanpubkey"
-  | "listallowedpubkeys"
-  | "listbannedpubkeys"
-  | "allowevent"
-  | "banevent"
-  | "listbannedevents"
-  | "changerelayname"
-  | "changerelaydescription"
-  | "changerelayicon"
-  | "changerelaybanner"
-  | "changerelaymoderators"
-  | "allowkind"
-  | "disallowkind"
-  | "listallowedkinds"
-  | "listdisallowedkinds"
-  | "blockip"
-  | "unblockip"
-  | "listblockedips";
+// One list with the server's proxy allowlist (shared/nip86-methods.ts).
+export type { Nip86Method } from "@shared/nip86-methods";
+import type { Nip86Method } from "@shared/nip86-methods";
 
 async function sha256Hex(data: string): Promise<string> {
   const encoder = new TextEncoder();
