@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { flushSync } from "react-dom";
 import { eventStore, pool, subscribeToFeed, subscribeToFeedPersistent, fetchProfilesCached, fetchInteractionsCached, isProfileFetchSettled, FAST_RELAYS, getRelaysForPurpose, markFeedDataLoaded, hasFeedData, throttledPoolSubscribe, registerProfileInAllCaches } from "@/lib/nostr";
 import { takeFirstScreen } from "@/lib/first-screen";
+import { overallOrOurs } from "@/lib/trending-source";
 import { firstScreenRanks, firstScreenTaken, subscribeFirstScreenRanks } from "@/lib/first-screen-ingest";
 import { chooseDiscoverLens } from "@/lib/discover-trust";
 import { getCachedFeedEvents, cacheFeedEvents } from "@/lib/indexeddb-cache";
@@ -52,7 +53,7 @@ import { useFeedPrefs } from "@/lib/feed-prefs";
 import { useDiscoverPrefs, setDiscoverSort } from "@/lib/discover-prefs";
 import { FeedFilter, type FeedOrderValue, type PresetValue, type ContentFilterValue } from "./home/FeedFilter";
 import { FeedsList } from "./home/FeedsList";
-import { FEED_TABS, tabForFeedMode, tabTap, feedsTabLabel, feedName, filterGroups, pickTopBy, pickFrom, trendingSelectorOrDefault, type TopBy, type TrendingFrom } from "./home/feed-menu";
+import { FEED_TABS, tabForFeedMode, tabTap, feedsTabLabel, feedName, filterGroups, pickTopBy, pickFrom, startingTrendingSelector, type TopBy, type TrendingFrom } from "./home/feed-menu";
 import { MediaGridGallery } from "./home/media-grid";
 
 import { rankDiscoverFeed } from "@/lib/discover-rank";
@@ -116,7 +117,7 @@ import { FeedIcon as FeedIconSvg, FEED_ICON_LIST, isValidFeedIconKey, type FeedI
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { publicNostrEnabled, publicNostrStorageKey } from "@/lib/public-nostr";
-import { FeedMode, type ContentFilter, isReplyEvent, FeedSortMode, TopTimeWindow, TRENDING_SELECTORS, type ArchivesRange, SAVED_POLL_SORTS, type SavedPollSort, SAVED_POLL_SHOW_OPTIONS, type SavedPollShow, FEED_SORT_OPTIONS, TIME_WINDOW_SORT_MODES, TOP_TIME_WINDOWS, PAGE_SIZE, TRENDING_CACHE_TTL, BUILT_IN_TABS, getFeedSortKey, getTopWindowKey, isArchivesSelector, getArchivesMetric, decodePubkey, resolveDefaultFeedMode, initialFeedMode, DEFAULT_FEED_MODE } from "./home/helpers";
+import { FeedMode, type ContentFilter, isReplyEvent, FeedSortMode, TopTimeWindow, TRENDING_SELECTORS, type ArchivesRange, type ArchivesMetric, SAVED_POLL_SORTS, type SavedPollSort, SAVED_POLL_SHOW_OPTIONS, type SavedPollShow, FEED_SORT_OPTIONS, TIME_WINDOW_SORT_MODES, TOP_TIME_WINDOWS, PAGE_SIZE, TRENDING_CACHE_TTL, BUILT_IN_TABS, getFeedSortKey, getTopWindowKey, isArchivesSelector, getArchivesMetric, decodePubkey, resolveDefaultFeedMode, initialFeedMode, DEFAULT_FEED_MODE } from "./home/helpers";
 
 /**
  * How long the network gets before the cached feed is allowed to paint.
@@ -575,24 +576,17 @@ export default function Home() {
     }
   }, []);
 
+  // Overall · last hour unless this session or Settings chose another chart
+  // (pages/home/feed-menu.ts: startingTrendingSelector, owner 2026-10-03).
   const [trendingSelector, setTrendingSelectorState] = useState(() => {
-    const migrate = (v: string | null): string | null => {
-      if (!v) return null;
-      if (v === "mostzapped_24h" || v === "mostzapped_yesterday" || v === "mostzapped_week" || v === "mostzapped_4h") return "arc_zaps";
-      if (v === "hot" || v === "rising" || v === "weekly_top") return "arc_reactions";
-      if (v === "trending_12h" || v === "trending_24h") return "trending_4h";
-      return v;
-    };
     try {
-      // Trending's own Polls list is gone (polls live under Feeds): a stored
-      // "polls" opens the default chart instead (feed-menu.ts).
-      const saved = migrate(sessionStorage.getItem("relay-outpost-trending-selector"));
-      if (saved) return trendingSelectorOrDefault(saved);
-      const preset = migrate(localStorage.getItem("relay-outpost-default-filter"));
-      if (preset) return trendingSelectorOrDefault(preset);
-    } catch {}
-    return "arc_replies";
+      return startingTrendingSelector(sessionStorage.getItem("relay-outpost-trending-selector"), localStorage.getItem("relay-outpost-default-filter"));
+    } catch {
+      return startingTrendingSelector(null, null);
+    }
   });
+  // Overall couldn't be reached and our own chart is showing instead.
+  const [trendingFellBack, setTrendingFellBack] = useState(false);
 
   const [archivesRange, setArchivesRangeState] = useState<ArchivesRange>(() => {
     try {
@@ -1465,11 +1459,12 @@ export default function Home() {
     try {
       let posts: Event[];
 
-      const metric = getArchivesMetric(selector);
-      if (metric) {
-        const result = await fetchTopNotes({ metric, range: archivesRange, limit: 60 });
+      // Our own server's chart (archives): the four counts, and the stand-in
+      // when Overall can't be reached.
+      const ourChart = async (m: ArchivesMetric, range: ArchivesRange): Promise<Event[]> => {
+        const result = await fetchTopNotes({ metric: m, range, limit: 60 });
         const nowTs = Math.floor(Date.now() / 1000);
-        posts = result.notes
+        const got = result.notes
           .filter(n => n.event && n.event.created_at <= nowTs)
           .map(n => ({
             id: n.event.id,
@@ -1480,14 +1475,25 @@ export default function Home() {
             created_at: n.event.created_at,
             sig: n.event.sig || "",
           } as Event));
-        if (posts.length > 0) {
-          await prefetchStatsImmediate(posts.map(p => p.id));
-        }
+        if (got.length > 0) await prefetchStatsImmediate(got.map(p => p.id));
+        return got;
+      };
+
+      const metric = getArchivesMetric(selector);
+      let fellBack = false;
+      if (metric) {
+        posts = await ourChart(metric, archivesRange);
       } else {
-        posts = await fetchTrendingFeed(selector, pubkey || undefined, 40);
+        // Overall is Primal's ranking alone; Primal supports, it never leads
+        // (lib/trending-source.ts): when it can't answer, most replied today.
+        const got = await overallOrOurs(() => fetchTrendingFeed(selector, pubkey || undefined, 40), () => ourChart("replies", "today"));
+        posts = got.posts;
+        fellBack = got.fellBack;
       }
 
-      trendingCacheRef.current.set(cacheKey, { posts, fetchedAt: Date.now() });
+      // A stand-in isn't kept as Overall's answer: the next visit asks again.
+      if (!fellBack) trendingCacheRef.current.set(cacheKey, { posts, fetchedAt: Date.now() });
+      if (!options?.background) setTrendingFellBack(fellBack);
       setTrendingPosts(posts);
     } catch (err) {
       console.error("Failed to fetch trending:", err);
@@ -3131,6 +3137,11 @@ export default function Home() {
             the tab refreshes) — Trending renders no control row under the tabs, matching
             every other feed mode. Only this transient loading feedback line
             survives (posts already on screen, a new chart on its way). */}
+        {feedMode === "deep_scan" && trendingFellBack && !isArchivesSelector(trendingSelector) && trendingPosts.length > 0 && (
+          <p className="mb-3 text-[12px] text-muted-foreground" data-testid="text-trending-fallback">
+            The overall ranking isn't answering right now, so this is what's most replied today.
+          </p>
+        )}
         {feedMode === "deep_scan" && trendingLoading && trendingPosts.length > 0 && (
           <div className="mb-3">
             <p className="text-[11px] text-brand/70 italic flex items-center gap-1.5" data-testid="text-trending-loading">
