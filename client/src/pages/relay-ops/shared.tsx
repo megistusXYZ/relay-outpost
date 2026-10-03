@@ -2091,7 +2091,11 @@ export function addUptimeEntry(relayUrl: string, entry: UptimeEntry) {
   localStorage.setItem(UPTIME_HISTORY_KEY + relayUrl, JSON.stringify(trimmed));
 }
 
-export type TabId = "overview" | "live" | "events" | "access" | "announce" | "featured" | "community" | "feedback";
+/**
+ * "settings" is the console's Settings section itself (three rows); the three
+ * screens inside it keep their old ids so links made before the redesign land.
+ */
+export type TabId = "overview" | "live" | "events" | "access" | "announce" | "featured" | "community" | "feedback" | "settings";
 
 export const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "overview", label: "Overview", icon: Activity },
@@ -3363,7 +3367,7 @@ export interface LiveEvent {
 }
 
 
-export const VALID_TABS: Set<string> = new Set(TABS.map(t => t.id));
+export const VALID_TABS: Set<string> = new Set([...TABS.map(t => t.id), "settings"]);
 
 export function getTabFromHash(): TabId {
   try {

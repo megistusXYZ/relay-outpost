@@ -12,9 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Radio, Server, AlertTriangle, ExternalLink, Settings, RefreshCw } from "lucide-react";
+import { Radio, Server, AlertTriangle, RefreshCw, ShieldCheck, ArrowUpRight, ChevronLeft, ChevronRight, Megaphone, Users, Sparkles } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { TabId, TABS, getTabFromHash } from "./relay-ops/shared";
+import { TabId, getTabFromHash } from "./relay-ops/shared";
+import { SECTIONS, SETTINGS_SCREENS, sectionOf } from "./relay-ops/console-nav";
 import { useFeedbackInbox } from "@/hooks/use-feedback-inbox";
 import { OverviewTab } from "./relay-ops/OverviewTab";
 import { LiveFeedTab } from "./relay-ops/LiveFeedTab";
@@ -25,6 +27,12 @@ import { KindGateCard } from "./relay-ops/KindGateCard";
 import { AnnounceTab } from "./relay-ops/AnnounceTab";
 import { CommunityTab } from "./relay-ops/CommunityTab";
 import { FeedbackTab } from "./relay-ops/FeedbackTab";
+
+const SETTINGS_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  community: Users,
+  announce: Megaphone,
+  featured: Sparkles,
+};
 
 // Inline fallback for a single tab that throws during render. Scoped so ONE bad
 // tab can't take down the whole console — the header + tab switcher stay usable,
@@ -86,6 +94,16 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
     setActiveTabRaw(tab);
     try { window.history.replaceState(window.history.state, "", `#${tab}`); } catch {}
   }, []);
+
+  // The row scrolls on a phone; the active section is always brought into view
+  // (a link straight to #feedback, say, must not land on a row showing Overview).
+  const navRef = useRef<HTMLDivElement | null>(null);
+  const section = sectionOf(activeTab);
+  useEffect(() => {
+    // The row only exists once access is verified — so this runs again then.
+    const el = navRef.current?.querySelector<HTMLElement>(`[data-testid="ops-section-${section}"]`);
+    el?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [section, authStatus]);
 
   useEffect(() => {
     const onHash = () => setActiveTabRaw(getTabFromHash());
@@ -182,54 +200,61 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
 
   const authGate = renderAuthGate();
 
+  const host = selectedRelay.replace(/^wss?:\/\//, "").replace(/\/+$/, "");
+  const relayLabel = adminRelays.find(r => r.url === selectedRelay)?.label;
+  const relayName = nip11?.name?.trim() || relayLabel || host;
+  const settingsScreen = SETTINGS_SCREENS.find(s => s.tab === activeTab);
+
   return (
-    <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-3 sm:space-y-4">
-      <div className="flex min-h-9 items-center justify-end gap-3 flex-wrap">
-        <div className="flex items-center gap-3 flex-wrap justify-end">
-          {adminRelays.length > 1 ? (
-            <Select value={selectedRelay} onValueChange={setSelectedRelay}>
-              <SelectTrigger className="w-48 sm:w-64 h-8 text-xs">
-                <Server className="w-3 h-3 mr-1" />
-                <SelectValue placeholder="Select relay" />
-              </SelectTrigger>
-              <SelectContent>
-                {adminRelays.map(r => (
-                  <SelectItem key={r.url} value={r.url}>
-                    <span className="font-mono text-xs">{r.label || r.url.replace("wss://", "")}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <button
-              onClick={() => navigate(`/outposts/${encodeURIComponent(selectedRelay)}`)}
-              className="flex items-center gap-1.5 sm:gap-2 hover:opacity-80 transition-opacity cursor-pointer group min-w-0 max-w-[55vw] sm:max-w-none"
-              title={`Open community · ${selectedRelay.replace("wss://", "")}`}
-            >
-              <Server className="w-3 h-3 text-muted-foreground/70 shrink-0" />
-              <span className="text-xs font-mono text-brand dark:text-brand/70 underline underline-offset-2 decoration-brand/30 truncate">{selectedRelay.replace("wss://", "")}</span>
-              <ExternalLink className="w-3 h-3 text-muted-foreground/40 group-hover:text-brand transition-colors shrink-0" />
-            </button>
-          )}
-          {selectedRelay && !authGate && (
-            <button
-              onClick={() => setActiveTab("community")}
-              className={`flex items-center gap-1.5 sm:gap-2 px-2 py-1 rounded-md transition-all cursor-pointer group border shrink-0 ${
-                activeTab === "community"
-                  ? "bg-brand/10 border-brand/40 text-brand"
-                  : "border-transparent hover:border-brand/20 hover:bg-brand/[0.06] text-muted-foreground/70 hover:text-brand"
-              }`}
-              title="Relay settings"
-              data-testid="button-outpost-settings"
-            >
-              <Settings className={`w-3 h-3 transition-colors ${activeTab === "community" ? "text-brand" : "text-muted-foreground/70 group-hover:text-brand-strong"}`} />
-              <span className="text-xs font-mono underline underline-offset-2 decoration-brand/30">
-                <span className="sm:hidden">Settings</span>
-                <span className="hidden sm:inline">Relay Settings</span>
-              </span>
-            </button>
-          )}
+    <div className="max-w-5xl mx-auto px-3 sm:px-4 pt-3 pb-6 sm:pt-5 space-y-4">
+      {adminRelays.length > 1 && (
+        <Select value={selectedRelay} onValueChange={setSelectedRelay}>
+          <SelectTrigger className="h-9 w-full sm:w-72 text-xs" aria-label="Which relay to manage">
+            <Server className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+            <SelectValue placeholder="Select relay" />
+          </SelectTrigger>
+          <SelectContent>
+            {adminRelays.map(r => (
+              <SelectItem key={r.url} value={r.url}>{r.label || r.url.replace(/^wss?:\/\//, "")}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+
+      {/* The head: which relay this is, that you run it, and one way back to
+          its community. No card — the page is the surface. */}
+      <div className="flex items-center gap-3" data-testid="ops-head">
+        <Avatar className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl shrink-0 border border-black/[0.06] dark:border-white/[0.08]">
+          {nip11?.icon && <AvatarImage src={nip11.icon} alt="" className="object-cover" />}
+          <AvatarFallback className="rounded-xl bg-brand/10 text-brand font-semibold text-base">{relayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-lg sm:text-xl font-semibold leading-tight truncate" data-testid="ops-head-name">{relayName}</h1>
+          <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-muted-foreground min-w-0">
+            <span className="truncate">{host}</span>
+            {!authGate && (
+              <>
+                <span className="text-muted-foreground/50 shrink-0" aria-hidden="true">·</span>
+                <span className="inline-flex items-center gap-1 shrink-0 text-brand font-medium" data-testid="ops-operator-mark">
+                  <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />Operator
+                </span>
+              </>
+            )}
+          </p>
         </div>
+        {/* A round arrow on phones (the name and host need the width), the
+            full pill where there is room. */}
+        <Button
+          variant="outline"
+          className="h-11 w-11 p-0 sm:h-9 sm:w-auto sm:px-3.5 rounded-full shrink-0 text-[13px]"
+          onClick={() => navigate(`/outposts/${encodeURIComponent(selectedRelay)}`)}
+          aria-label="Open community"
+          title="Open community"
+          data-testid="button-open-community"
+        >
+          <span className="sr-only sm:not-sr-only">Open community</span>
+          <ArrowUpRight className="w-4 h-4 sm:w-3.5 sm:h-3.5 sm:ml-1 sm:opacity-70" aria-hidden="true" />
+        </Button>
       </div>
 
       {authStatus === "no-pubkey" && isOwnedRelay && (
@@ -243,39 +268,59 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
 
       {authGate || (
         <>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 pb-1 border-b border-black/[0.08] dark:border-white/[0.06]">
-            {TABS.filter(tab => tab.id !== "community").map(tab => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              const showFeedbackBadge = tab.id === "feedback" && feedbackUnread > 0;
+          {/* One row of sections. It never wraps and never truncates: on a
+              phone it scrolls sideways; on a desktop the six fit with room. */}
+          <div
+            ref={navRef}
+            role="tablist"
+            aria-label="Relay Control sections"
+            className="flex items-stretch gap-1 overflow-x-auto scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0 border-b border-black/[0.08] dark:border-white/[0.08]"
+            data-testid="ops-nav"
+          >
+            {SECTIONS.map(s => {
+              const isActive = section === s.id;
+              const showFeedbackBadge = s.id === "feedback" && feedbackUnread > 0;
               return (
                 <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`relative flex items-center justify-center sm:justify-start gap-1.5 px-2 sm:px-3 py-2.5 sm:py-2 text-[11px] sm:text-xs font-medium rounded-lg sm:rounded-t-md sm:rounded-b-none transition-all whitespace-nowrap min-h-[44px] ${
-                    isActive
-                      ? "text-brand bg-brand/10 border border-brand/30 sm:border-b-2 sm:border-t-0 sm:border-l-0 sm:border-r-0 sm:border-brand"
-                      : "text-muted-foreground/70 hover:text-muted-foreground/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.03] border border-transparent sm:border-0"
+                  key={s.id}
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveTab(s.id)}
+                  className={`relative shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-3 text-sm font-medium whitespace-nowrap transition-colors ${
+                    isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
                   }`}
-                  data-testid={`tab-relay-ops-${tab.id}`}
+                  data-testid={`ops-section-${s.id}`}
                 >
-                  <Icon className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">{tab.label}</span>
+                  {s.label}
                   {showFeedbackBadge && (
                     <span
-                      className="ml-0.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-brand text-white text-[10px] leading-none font-semibold"
+                      className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-white text-[11px] leading-none font-semibold"
                       data-testid="badge-tab-feedback-unread"
                     >
                       {feedbackUnread > 9 ? "9+" : feedbackUnread}
                     </span>
                   )}
+                  {isActive && <span className="absolute left-3 right-3 -bottom-px h-0.5 rounded-full bg-brand" aria-hidden="true" />}
                 </button>
               );
             })}
           </div>
 
           {selectedRelay && (
-            <div className="mt-2">
+            <div>
+              {settingsScreen && (
+                <div className="flex items-center gap-1 mb-3 -ml-2">
+                  <button
+                    onClick={() => setActiveTab("settings")}
+                    className="inline-flex items-center gap-0.5 min-h-[44px] pl-1.5 pr-2.5 rounded-full text-sm text-brand hover:bg-brand/[0.06] transition-colors"
+                    data-testid="ops-settings-back"
+                  >
+                    <ChevronLeft className="w-5 h-5" aria-hidden="true" />Settings
+                  </button>
+                  <span className="text-muted-foreground/40" aria-hidden="true">/</span>
+                  <h2 className="text-sm font-semibold ml-1.5">{settingsScreen.label}</h2>
+                </div>
+              )}
               {/* Per-tab boundary: a crash in one tab shows an inline fallback
                   instead of replacing the whole console. Keyed by activeTab so
                   switching tabs remounts a fresh boundary (React error boundaries
@@ -285,10 +330,32 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                 {activeTab === "live" && <LiveFeedTab relayUrl={selectedRelay} />}
                 {activeTab === "events" && <EventsTab relayUrl={selectedRelay} />}
                 {activeTab === "access" && <><AccessControlTab relayUrl={selectedRelay} nip11={nip11} /><KindGateCard relayUrl={selectedRelay} nip11={nip11} /></>}
+                {activeTab === "feedback" && <FeedbackTab relayUrl={selectedRelay} inbox={inbox} />}
+                {activeTab === "settings" && (
+                  <div className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] divide-y divide-black/[0.06] dark:divide-white/[0.06] overflow-hidden" data-testid="ops-settings-rows">
+                    {SETTINGS_SCREENS.map(row => {
+                      const Icon = SETTINGS_ICONS[row.tab];
+                      return (
+                        <button
+                          key={row.tab}
+                          onClick={() => setActiveTab(row.tab)}
+                          className="w-full flex items-center gap-3 min-h-[60px] px-4 py-2.5 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
+                          data-testid={`ops-settings-row-${row.tab}`}
+                        >
+                          <span className="w-8 h-8 rounded-lg bg-brand/10 text-brand inline-flex items-center justify-center shrink-0"><Icon className="w-4 h-4" aria-hidden="true" /></span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-medium leading-snug">{row.label}</span>
+                            <span className="block text-[12px] text-muted-foreground leading-snug truncate">{row.hint}</span>
+                          </span>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground/50 shrink-0" aria-hidden="true" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 {activeTab === "announce" && <AnnounceTab relayUrl={selectedRelay} nip11={nip11} />}
                 {activeTab === "featured" && <FeaturedTab relayUrl={selectedRelay} nip11={nip11} />}
                 {activeTab === "community" && <CommunityTab relayUrl={selectedRelay} nip11={nip11} />}
-                {activeTab === "feedback" && <FeedbackTab relayUrl={selectedRelay} inbox={inbox} />}
               </ErrorBoundary>
             </div>
           )}

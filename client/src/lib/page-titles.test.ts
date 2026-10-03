@@ -30,6 +30,8 @@ const CONTENT_HEADING_PAGES = new Set([
   // The thing you opened.
   "ArticleDetail.tsx", "ArticleEditor.tsx", "Community.tsx", "Profile.tsx", "Thread.tsx",
   "MyOutpost.tsx", "LiveStreams.tsx", "RSSFeed.tsx",
+  // Relay Control's head names the relay you run, not the console.
+  "RelayOpsCenter.tsx",
   // Standalone moments, not app screens.
   "Welcome.tsx", "not-found.tsx", "Generator.tsx",
 ]);
