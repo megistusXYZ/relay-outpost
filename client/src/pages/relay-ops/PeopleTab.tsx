@@ -11,7 +11,7 @@
  *
  * Rules live in people-model.ts.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Link } from "wouter";
 import type { Event as NostrEvent } from "nostr-tools";
 import { Ban, Copy, Download, MessageCircle, Search, ShieldCheck, SlidersHorizontal, UserRound, X } from "lucide-react";
@@ -34,6 +34,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { ManagedAtNote } from "./ops-ui";
 import { ConfirmAction, type PendingAction } from "./ConfirmAction";
+import { MemberNotes } from "./TeamScreens";
+import type { RelayTeam } from "@/hooks/use-relay-team";
 import { addModLogEntry, pubkeyToNpub, resolveProfileBatch, subscribeWithReach, type NostrFilter, type ProfileInfo } from "./shared";
 import { mergePage, scopeLine } from "./content-model";
 import {
@@ -58,9 +60,11 @@ function hexes(entries: PubkeyEntry[] | undefined): string[] {
     .map((p) => p.toLowerCase());
 }
 
-export function PeopleTab({ relayUrl, nip11, onSeePosts }: {
+export function PeopleTab({ relayUrl, nip11, onSeePosts, team }: {
   relayUrl: string;
   nip11: Nip11Document | null;
+  /** The relay's team, for notes about a member. */
+  team?: RelayTeam;
   /** Opens Content searching for this person. */
   onSeePosts: (npub: string) => void;
 }) {
@@ -227,6 +231,7 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts }: {
       onAllow={() => quick("allow", [person.pubkey])}
       onUnallow={() => quick("unallow", [person.pubkey])}
       onSeePosts={() => onSeePosts(pubkeyToNpub(person.pubkey))}
+      notes={team ? <MemberNotes team={team} about={person.pubkey} /> : null}
     />
   ) : null;
 
@@ -357,11 +362,12 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts }: {
   );
 }
 
-function PersonDetail({ person, profile, trust, nowSec, relayName, can, where, onBan, onUnban, onAllow, onUnallow, onSeePosts }: {
+function PersonDetail({ person, profile, trust, nowSec, relayName, can, where, onBan, onUnban, onAllow, onUnallow, onSeePosts, notes }: {
   person: Person; profile?: ProfileInfo; trust: string; nowSec: number; relayName: string;
   can: { ban: boolean; unban: boolean; allow: boolean; unallow: boolean };
   where: { name: string; url?: string };
   onBan: () => void; onUnban: () => void; onAllow: () => void; onUnallow: () => void; onSeePosts: () => void;
+  notes?: ReactNode;
 }) {
   const npub = pubkeyToNpub(person.pubkey);
   const name = profile?.name || `${npub.slice(0, 16)}…`;
@@ -404,6 +410,7 @@ function PersonDetail({ person, profile, trust, nowSec, relayName, can, where, o
           <Button asChild variant="ghost" className="h-11 flex-1 rounded-full"><Link href={`/profile/${npub}`} data-testid="ops-person-profile"><UserRound className="w-4 h-4 mr-2" />Profile</Link></Button>
         </div>
       </div>
+      {notes}
     </div>
   );
 }

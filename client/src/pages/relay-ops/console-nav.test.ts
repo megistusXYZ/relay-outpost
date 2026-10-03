@@ -7,9 +7,9 @@ describe("the operator console's sections", () => {
     expect(SECTIONS.map((s) => s.label)).toEqual(["Overview", "Content", "People", "Inbox", "Settings"]);
   });
 
-  it("the relay's rules and public face live under Settings, as four screens", () => {
-    expect(SETTINGS_SCREENS.map((s) => s.tab)).toEqual(["community", "access", "announce", "featured"]);
-    expect(SETTINGS_SCREENS.map((s) => s.label)).toEqual(["Relay settings", "Who can post", "Public card", "Featured feeds"]);
+  it("the relay's rules, team and public face live under Settings", () => {
+    expect(SETTINGS_SCREENS.map((s) => s.tab)).toEqual(["community", "access", "team", "log", "announce", "featured"]);
+    expect(SETTINGS_SCREENS.map((s) => s.label)).toEqual(["Relay settings", "Who can post", "Team", "Moderation log", "Public card", "Featured feeds"]);
   });
 
   it("every old tab still has a section, so old links land", () => {
@@ -20,7 +20,7 @@ describe("the operator console's sections", () => {
     expect(sectionOf("access")).toBe("settings");
     expect(sectionOf("people")).toBe("people");
     expect(sectionOf("feedback")).toBe("feedback");
-    for (const tab of ["community", "access", "announce", "featured"] as const) expect(sectionOf(tab)).toBe("settings");
+    for (const tab of ["community", "access", "team", "log", "announce", "featured"] as const) expect(sectionOf(tab)).toBe("settings");
   });
 
   it("names the screen for the page title and the back row", () => {
