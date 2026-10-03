@@ -36,11 +36,13 @@ import {
   changeRelayBanner,
   changeRelayModerators,
   banEvent,
+  fetchRelayCapabilities,
 } from "@/lib/nip86";
+import { canDo, managedAt, UNKNOWN_CAPABILITIES, type RelayCapabilities } from "@/lib/relay-capabilities";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
-import { OpsCard, OpsSubCard, OpsSectionHeader } from "./ops-ui";
+import { OpsCard, OpsSubCard, OpsSectionHeader, ManagedAtNote } from "./ops-ui";
 import { AddMemberSheet } from "@/components/AddMemberSheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -133,6 +135,22 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
   const [savedIcon, setSavedIcon] = useState(nip11?.icon || "");
   const [savedBanner, setSavedBanner] = useState(nip11?.banner || "");
   const [savingBrand, setSavingBrand] = useState(false);
+  // What this relay lets us change — asked of the relay, never assumed.
+  // Banner and moderators exist in almost no relay; until the relay lists
+  // them they're shown read-only with where to change them instead.
+  const [caps, setCaps] = useState<RelayCapabilities>(UNKNOWN_CAPABILITIES);
+  useEffect(() => {
+    let off = false;
+    setCaps(UNKNOWN_CAPABILITIES);
+    fetchRelayCapabilities(relayUrl).then((c) => { if (!off) setCaps(c); });
+    return () => { off = true; };
+  }, [relayUrl]);
+  const where = managedAt(relayUrl);
+  const canName = canDo(caps, "name");
+  const canDescription = canDo(caps, "description");
+  const canIcon = canDo(caps, "icon");
+  const canBanner = canDo(caps, "banner");
+  const canModerators = canDo(caps, "moderators");
   const iconDirty = brandIcon !== savedIcon;
   const bannerDirty = brandBanner !== savedBanner;
   // One Save for the whole form: every field that differs from what the relay
@@ -142,7 +160,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
     brandDesc !== savedDesc ? "description" : null,
     iconDirty ? "icon" : null,
     bannerDirty ? "banner" : null,
-  ].filter((f): f is "name" | "description" | "icon" | "banner" => f !== null);
+  ].filter((f): f is "name" | "description" | "icon" | "banner" => f !== null && canDo(caps, f as "name" | "description" | "icon" | "banner"));
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [iconUploadStatus, setIconUploadStatus] = useState<string | null>(null);
@@ -580,9 +598,13 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
 
   const saveModerators = async (newList: string[]) => {
     if (!pubkey) return;
-    changeRelayModerators(relayUrl, newList).then(res => {
-      if (res.result) toast({ title: "Relay moderators updated" });
-    }).catch(() => {});
+    // Only a relay that lists the method can store moderators; anywhere else
+    // the call fails, so the list stays ours (below) and the card says so.
+    if (canModerators) {
+      changeRelayModerators(relayUrl, newList).then(res => {
+        if (res.result) toast({ title: "Relay moderators updated" });
+      }).catch(() => {});
+    }
     try {
       const eventTemplate = {
         kind: KIND_APP_DATA,
@@ -670,7 +692,9 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
               placeholder="Relay name"
               className="h-10 sm:h-9 text-sm sm:text-xs"
               data-testid="ops-brand-name"
+              readOnly={!canName}
             />
+            {!canName && <ManagedAtNote where={where} testId="ops-managed-name" />}
           </div>
 
           <div className="space-y-1">
@@ -682,7 +706,9 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
               placeholder="Community description"
               className="text-sm sm:text-xs min-h-[72px]"
               data-testid="ops-brand-description"
+              readOnly={!canDescription}
             />
+            {!canDescription && <ManagedAtNote where={where} testId="ops-managed-description" />}
           </div>
 
           <div className="space-y-2">
@@ -703,7 +729,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
                 <button
                   type="button"
                   onClick={() => iconFileRef.current?.click()}
-                  disabled={uploadingIcon}
+                  disabled={uploadingIcon || !canIcon}
                   className="relative w-16 h-16 rounded-full border border-border bg-muted dark:bg-white/[0.03] overflow-hidden hover:border-primary/50 transition-colors group disabled:opacity-50"
                   title={brandIcon ? "Click to replace icon" : "Click to upload icon"}
                   aria-label={brandIcon ? "Replace relay icon" : "Upload relay icon"}
@@ -738,7 +764,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
                   </span>
                 )}
               </div>
-              <div className="flex flex-col sm:flex-row gap-2 flex-1 min-w-0">
+              {canIcon ? <div className="flex flex-col sm:flex-row gap-2 flex-1 min-w-0">
                 <Button
                   size="sm"
                   variant="outline"
@@ -764,7 +790,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
                     Remove
                   </Button>
                 )}
-              </div>
+              </div> : <div className="flex-1 min-w-0"><ManagedAtNote where={where} testId="ops-managed-icon" /></div>}
             </div>
             {uploadingIcon && iconUploadStatus && (
               <p className="text-[10px] text-brand/70 animate-pulse">{iconUploadStatus}</p>
@@ -772,6 +798,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
             <p className="text-[10px] text-muted-foreground/40">Square image works best. PNG, JPG, or WebP.</p>
           </div>
 
+          {canBanner ? (
           <div className="space-y-2">
             <label className="text-[10px] text-muted-foreground/50 uppercase tracking-wider font-brand">Banner</label>
             <input
@@ -860,6 +887,17 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
             )}
             <p className="text-[10px] text-muted-foreground/40">Wide image (3:1 or wider) recommended.</p>
           </div>
+          ) : (
+            <div className="space-y-2" data-testid="ops-banner-readonly">
+              <label className="text-[10px] text-muted-foreground/50 uppercase tracking-wider font-brand">Banner</label>
+              {savedBanner && (
+                <div className="w-full aspect-[3/1] rounded-lg border border-border overflow-hidden bg-muted">
+                  <img src={savedBanner} alt="" className="w-full h-full object-cover" />
+                </div>
+              )}
+              <ManagedAtNote where={where} lead="Your relay sets its banner itself." testId="ops-managed-banner" />
+            </div>
+          )}
         </div>
       </OpsCard>
 
@@ -998,9 +1036,16 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
             </div>
           )}
         </div>
-        <p className="text-[10px] text-muted-foreground/40">
-          Moderator pubkeys should also be added to your relay's NIP-11 configuration for persistence.
-        </p>
+        {canModerators ? (
+          <p className="text-[12px] text-muted-foreground" data-testid="ops-moderators-note">Saved on the relay as well as in your community.</p>
+        ) : (
+          <ManagedAtNote
+            where={where}
+            lead="They're listed on your community page. This relay doesn't let us give them powers here; to let them remove posts or ban people,"
+            verb="add them"
+            testId="ops-moderators-note"
+          />
+        )}
       </OpsCard>
 
       <OpsCard className="space-y-4">

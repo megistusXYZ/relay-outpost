@@ -8,6 +8,7 @@ import { type Nip11Document } from "@/lib/nip11";
 import { copyNostrId } from "@/lib/clipboard-bridge";
 import {
   checkNip86Support,
+  fetchRelayCapabilities,
   allowPubkey,
   banPubkey,
   unallowPubkey,
@@ -19,6 +20,7 @@ import {
   type PubkeyEntry,
   type Nip86SupportStatus,
 } from "@/lib/nip86";
+import { canDo, managedAt } from "@/lib/relay-capabilities";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { OpsCard, OpsSectionHeader } from "./ops-ui";
@@ -151,7 +153,7 @@ function PubkeyRow({ hex, type, profile, onRemove, addedAt, lastActiveSec, activ
       <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-5 sm:w-5 shrink-0 text-muted-foreground/60 hover:text-muted-foreground" onClick={copyNpub} title="Copy npub">
         {copied ? <Check className="w-3 h-3 sm:w-2.5 sm:h-2.5 text-green-800 dark:text-green-400" /> : <Copy className="w-3 h-3 sm:w-2.5 sm:h-2.5" />}
       </Button>
-      <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-5 sm:w-5 shrink-0 text-red-600 dark:text-red-400/70 hover:text-red-700 dark:hover:text-red-400" onClick={() => onRemove(hex, type)}>
+      <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-5 sm:w-5 shrink-0 text-red-600 dark:text-red-400/70 hover:text-red-700 dark:hover:text-red-400" onClick={() => onRemove(hex, type)} aria-label={type === "block" ? "Lift ban" : "Remove from list"} data-testid={`ops-access-remove-${type}`}>
         <X className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
       </Button>
     </div>
@@ -696,6 +698,17 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
   const removeFromList = useCallback(async (hex: string, type: AccessLevel) => {
     let syncedToRelay = false;
     if (nip86Status === "supported" && (type === "allow" || type === "block")) {
+      // Some relays can't lift a ban or an allow at all (pyramid); say where
+      // it's done instead of sending a call that can only fail.
+      const caps = await fetchRelayCapabilities(relayUrl);
+      if (!canDo(caps, type === "allow" ? "unallow" : "unban")) {
+        const where = managedAt(relayUrl);
+        toast({
+          title: type === "allow" ? "This relay can't remove people from its allow list here" : "This relay can't lift bans here",
+          description: where.url ? `Do it at ${where.name}.` : `Do it in ${where.name}.`,
+        });
+        return;
+      }
       try {
         const apiFn = type === "allow" ? unallowPubkey : unbanPubkey;
         const res = await apiFn(relayUrl, hex);

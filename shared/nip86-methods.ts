@@ -4,10 +4,17 @@
  * the client gained `changerelaybanner` and `changerelaymoderators`, the
  * server never did, and saving a community's banner or moderators failed in
  * production with "Invalid or unsupported NIP-86 method" (found 2026-10-03).
+ *
+ * `supportedmethods` is how the console asks a relay what it may offer
+ * (lib/relay-capabilities.ts). `deletebannedpubkey` / `deleteallowedpubkey`
+ * are relay.tools' legacy names for lifting a ban or an allow — every
+ * *.nostr1.com relay answers to those and not to the spec's.
  */
 export const NIP86_METHODS = [
+  "supportedmethods",
   "allowpubkey", "banpubkey", "unallowpubkey", "unbanpubkey",
   "listallowedpubkeys", "listbannedpubkeys",
+  "deletebannedpubkey", "deleteallowedpubkey",
   "allowevent", "banevent", "listbannedevents",
   "changerelayname", "changerelaydescription", "changerelayicon", "changerelaybanner", "changerelaymoderators",
   "allowkind", "disallowkind", "listallowedkinds", "listdisallowedkinds",
