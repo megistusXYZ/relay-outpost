@@ -158,6 +158,11 @@ export function plainKindName(kind: number): string {
   return PLAIN[kind] ?? kindName(kind);
 }
 
+/** The catalogue entry, with its NIP, when we know the kind. */
+export function kindInfo(kind: number): KindInfo | undefined {
+  return BY_KIND.get(kind);
+}
+
 export function kindName(kind: number): string {
   return BY_KIND.get(kind)?.label ?? `Kind ${kind}`;
 }
