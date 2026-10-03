@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 import { ExtensionSigner, NostrConnectSigner, PrivateKeySigner, type ISigner } from "applesauce-signers";
 import { loadSettingsFromRelay, initSettingsSync, scheduleSyncToRelay, teardownSettingsSync, handleAccountSwitch } from "@/lib/nip78-settings";
 import { loadReadStateFromRelay, initReadStateSync, scheduleReadStateSync, teardownReadStateSync } from "@/lib/read-state-sync";
-import { startNewsBookmarkSync, teardownNewsBookmarkSync } from "@/lib/news-bookmark-sync";
 import { READSTATE_CHANGED_EVENT } from "@/lib/dm-read";
 import { Observable } from "rxjs";
 import { eventStore, pool, DEFAULT_RELAYS, fetchProfiles, fetchProfilesCached, throttledPoolSubscribe, startEventStorePruning, startIdleConnectionCleanup } from "@/lib/nostr";
@@ -13,8 +12,6 @@ import { getProfileContent, KIND_METADATA, KIND_FOLLOW_LIST, parseFollowList } f
 import { setGlobalSigner } from "@/lib/nip42-auth";
 import { clearBrainstormAuth } from "@/lib/graperank";
 import { isReconnectInFlight, setReconnectInFlight, setSignerTimeoutBypass, canShowReconnectToast } from "@/lib/signer-timeout";
-import { clearProcessedWraps } from "@/lib/gift-wrap";
-import { clearAll as clearDmCache } from "@/lib/dm-cache";
 import { clearCursors as clearDmHistoryCursors } from "@/lib/dm-history";
 import { cacheFollowEvent } from "@/lib/follow-list";
 import { warmInterestsCache } from "@/lib/interests";
@@ -393,7 +390,7 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
     const prev = prevAccountRef.current;
     prevAccountRef.current = pubkey;
     if (prev && pubkey && prev !== pubkey) {
-      try { clearProcessedWraps(); } catch {}
+      void import("@/lib/gift-wrap").then((m) => m.clearProcessedWraps()).catch(() => {});
     }
   }, [pubkey]);
 
@@ -724,7 +721,7 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
     // Drop the in-memory attempted-wrap set so the next account's DM decrypt
     // path isn't gated by this account's wrap ids (the persistent ledger is
     // per-owner and re-seeded on next login).
-    try { clearProcessedWraps(); } catch {}
+    void import("@/lib/gift-wrap").then((m) => m.clearProcessedWraps()).catch(() => {});
     // Drop the Brainstorm session token so the next sign-in re-authenticates
     // with whatever signer is active then (extension, nsec, bunker, etc.).
     try { clearBrainstormAuth(); } catch {}
@@ -758,7 +755,7 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
     // Privacy on sign-out: don't leave this account's decrypted DM plaintext
     // (relay-outpost-dms) or its spend-capable wallet credential on the device.
     // clearDmCache is per-owner; the NWC URI embeds a spend secret.
-    if (localPubkey) { try { void clearDmCache(localPubkey); } catch {} }
+    if (localPubkey) { void import("@/lib/dm-cache").then((m) => m.clearAll(localPubkey)).catch(() => {}); }
     // …and how far back its messages had been paged: with the store gone,
     // "already loaded" would be a claim about messages that are no longer here.
     if (localPubkey) clearDmHistoryCursors(localPubkey);
@@ -1206,22 +1203,44 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
   // lib wires its own change/storage/visibility listeners + delayed hydrate.
   const newsBookmarkSyncInitRef = useRef(false);
 
+  // The sync library is loaded on sign-in, not on page load: a visitor never
+  // needs it. Loading is async, so a sign-out that lands before the load
+  // finishes is honoured by the cancelled flag.
   useEffect(() => {
     if (!pubkey || !signer) {
-      teardownNewsBookmarkSync();
+      void import("@/lib/news-bookmark-sync").then((m) => m.teardownNewsBookmarkSync()).catch(() => {});
       newsBookmarkSyncInitRef.current = false;
       return;
     }
     if (newsBookmarkSyncInitRef.current) return;
     newsBookmarkSyncInitRef.current = true;
 
-    const stop = startNewsBookmarkSync(pubkey, signer);
+    let cancelled = false;
+    let stop: (() => void) | null = null;
+    void import("@/lib/news-bookmark-sync").then((m) => {
+      if (cancelled) return;
+      stop = m.startNewsBookmarkSync(pubkey, signer);
+    }).catch(() => {});
 
     return () => {
-      stop();
+      cancelled = true;
+      stop?.();
       newsBookmarkSyncInitRef.current = false;
     };
   }, [pubkey, signer]);
+
+  // Every join, key change and leave reaches your other devices through the
+  // Community List (lib/concord/community-list-live.ts). Registered once a
+  // key exists — it used to be registered at page load, which put the whole
+  // group-chat library in front of every visitor's first paint.
+  const communityListRegisteredRef = useRef(false);
+  useEffect(() => {
+    if (!pubkey || communityListRegisteredRef.current) return;
+    communityListRegisteredRef.current = true;
+    void Promise.all([import("@/lib/concord/concord-keys"), import("@/lib/concord/community-list-live")])
+      .then(([keys, live]) => keys.registerCommunityListSync(live.syncCommunityListNow))
+      .catch(() => { communityListRegisteredRef.current = false; });
+  }, [pubkey]);
 
   // People search ranks through the signed-in viewer's web of trust.
   useEffect(() => { setPeopleSearchViewer(pubkey ?? null); }, [pubkey]);

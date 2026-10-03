@@ -30,9 +30,10 @@
  * because its invite link is the door. So this count is structurally zero for a
  * Concord-only operator, and that is correct rather than broken.
  */
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
-import { useAdmissionQueue } from "@/hooks/use-admission-queue";
-import { useReportsQueue } from "@/hooks/use-reports-queue";
+import { createContext, useCallback, useContext, useState, lazy, Suspense, type ReactNode } from "react";
+import type { useAdmissionQueue } from "@/hooks/use-admission-queue";
+import type { useReportsQueue } from "@/hooks/use-reports-queue";
+import { useNostrAuth } from "@/contexts/NostrAuthContext";
 
 /**
  * "Something happened that the operator queues should re-read."
@@ -49,13 +50,10 @@ export function notifyNeedsYouChanged(): void {
   try { window.dispatchEvent(new CustomEvent(NEEDS_YOU_CHANGED_EVENT)); } catch {}
 }
 
-/** Don't re-sweep every relay you belong to on every alt-tab. */
-const FOCUS_REFRESH_THROTTLE_MS = 60_000;
+export type AdmissionQueueValue = ReturnType<typeof useAdmissionQueue>;
+export type ReportsQueueValue = ReturnType<typeof useReportsQueue>;
 
-type AdmissionQueueValue = ReturnType<typeof useAdmissionQueue>;
-type ReportsQueueValue = ReturnType<typeof useReportsQueue>;
-
-interface NeedsYouValue {
+export interface NeedsYouValue {
   admissions: AdmissionQueueValue;
   reports: ReportsQueueValue;
   /** Rows across both queues — what the nav badge adds to its unread count. */
@@ -66,83 +64,24 @@ interface NeedsYouValue {
 
 const NeedsYouContext = createContext<NeedsYouValue | null>(null);
 
+// The two queue sweeps (and the NIP-29 library behind them) load as their own
+// chunk once someone is signed in; a visitor has no queues and no badge.
+const NeedsYouEngine = lazy(() => import("./needs-you-engine"));
+
 export function NeedsYouProvider({ children }: { children: ReactNode }) {
-  const admissions = useAdmissionQueue();
-  const reports = useReportsQueue();
-  const count = admissions.queue.length + reports.queue.length;
-
-  const admissionsRefresh = admissions.refresh;
-  const reportsRefresh = reports.refresh;
-  const refresh = useCallback(() => {
-    admissionsRefresh();
-    reportsRefresh();
-  }, [admissionsRefresh, reportsRefresh]);
-
-  /**
-   * WHY THIS EXISTS AT ALL — it is the correction of a regression this provider
-   * introduced.
-   *
-   * Both hooks key their effect on `[pubkey, nonce]`, and this provider sits
-   * above the router, so it never remounts. Before it existed the queues were
-   * mounted BY the Activity page, and opening Activity re-mounted them — that
-   * was the refresh, and hoisting them silently deleted it. The badge shipped
-   * and then held its boot value for the rest of the session: a stranger who
-   * knocked ten minutes after the tab opened stayed invisible until a reload.
-   *
-   * THE STARTUP RACE IS THE WORSE HALF. Both sweeps read `getOutpostRelays()`,
-   * a bare localStorage read, the moment `pubkey` appears.
-   * `NostrAuthContext` defers `loadSettingsFromRelay` behind a 2000ms timer, and
-   * that is what populates the list on a fresh browser or a second device. So
-   * the first sweep ran against an empty list — zero iterations — and
-   * `sweepNotice` deliberately says nothing about a zero-relay sweep, because
-   * for a Concord-only operator that state is permanent and a standing banner
-   * would be noise. Correct in isolation; combined, it produced a silent,
-   * permanently empty Needs-you for exactly the operator this was built for.
-   *
-   * `outpost-relays-changed` is what nip78-settings dispatches when that late
-   * load lands, so listening for it closes the race at its source rather than
-   * papering over it with a timer.
-   */
-  useEffect(() => {
-    const onExternalChange = () => refresh();
-    window.addEventListener("outpost-relays-changed", onExternalChange);
-    window.addEventListener(NEEDS_YOU_CHANGED_EVENT, onExternalChange);
-    return () => {
-      window.removeEventListener("outpost-relays-changed", onExternalChange);
-      window.removeEventListener(NEEDS_YOU_CHANGED_EVENT, onExternalChange);
-    };
-  }, [refresh]);
-
-  /**
-   * Coming back to the tab re-asks, throttled.
-   *
-   * This does NOT break the hooks' documented "never on a timer" rule: nothing
-   * fires while you are away or idle. It fires when someone returns to look —
-   * which is the moment the answer is about to be read, and the cheapest
-   * possible time to have made it true.
-   */
-  const lastFocusRefresh = useRef(0);
-  useEffect(() => {
-    const onFocus = () => {
-      if (document.visibilityState === "hidden") return;
-      const now = Date.now();
-      if (now - lastFocusRefresh.current < FOCUS_REFRESH_THROTTLE_MS) return;
-      lastFocusRefresh.current = now;
-      refresh();
-    };
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onFocus);
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onFocus);
-    };
-  }, [refresh]);
-
-  const value = useMemo<NeedsYouValue>(
-    () => ({ admissions, reports, count, refresh }),
-    [admissions, reports, count, refresh],
+  const { pubkey } = useNostrAuth();
+  const [value, setValue] = useState<NeedsYouValue | null>(null);
+  const onChange = useCallback((next: NeedsYouValue) => setValue(next), []);
+  return (
+    <NeedsYouContext.Provider value={pubkey ? value : null}>
+      {pubkey && (
+        <Suspense fallback={null}>
+          <NeedsYouEngine onChange={onChange} />
+        </Suspense>
+      )}
+      {children}
+    </NeedsYouContext.Provider>
   );
-  return <NeedsYouContext.Provider value={value}>{children}</NeedsYouContext.Provider>;
 }
 
 /**
