@@ -3,8 +3,7 @@ import { isGroupRoom } from "@/lib/dm-room";
 import { createPortal } from "react-dom";
 import { useLocation, useSearch } from "wouter";
 import { useReducedMotion } from "framer-motion";
-import { Search, LogOut, ChevronRight, ChevronDown, Sun, Moon, Eclipse, Check, UserPlus, X, Settings, SquarePen, Bug, Wrench, HelpCircle, Wallet, RadioTower } from "lucide-react";
-import { getAdminOutposts } from "@/lib/featured-append";
+import { Search, LogOut, ChevronRight, ChevronDown, Sun, Moon, Eclipse, Check, UserPlus, X, Settings, SquarePen, Bug, Wrench, HelpCircle, Wallet } from "lucide-react";
 
 // Custom "What's New" glyph (user-provided edit.svg): a quill over an
 // underline. fill uses currentColor (source had hardcoded #ffffff) so it
@@ -20,7 +19,7 @@ function WhatsNewIcon({ className }: { className?: string }) {
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { buildNavDestinations, NAV_ICONS } from "@/lib/nav-destinations";
 import { useBackClosable } from "@/hooks/use-back-closable";
-import { useNeedsYouCount } from "@/contexts/NeedsYouContext";
+import { useNeedsYouCount, useRelaysNeedYou } from "@/contexts/NeedsYouContext";
 import { useIaCollapsed } from "@/lib/ia-prefs";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -922,15 +921,13 @@ export function OrbitMenu() {
   // theme / Report / Wallet land in the dock bar; Terms / Privacy in the
   // micro row.
   const needsYou = useNeedsYouCount();
-  // Operator gate for the Relay Control dock chip — one localStorage read per
-  // menu open, no network.
-  const isOperator = useMemo(() => getAdminOutposts().length > 0, []);
+  const relaysNeedYou = useRelaysNeedYou().total;
   const entries: StoryEntry[] = useMemo(() => {
     // Both the rings here and the desktop Stories rail read the SAME node list
     // (lib/nav-destinations.ts) so the two Stories surfaces can never drift.
     const destinations = buildNavDestinations({
       loggedIn: !!pubkey,
-      counts: { chatsUnread, newsUnread: rssUnread.count, alertsUnread: unreadCount, needsYou },
+      counts: { chatsUnread, newsUnread: rssUnread.count, alertsUnread: unreadCount, needsYou, relaysNeedYou },
       collapsed: iaCollapsed,
     });
     // The launcher trades "You" for "Create" once the IA collapses, and both
@@ -972,7 +969,7 @@ export function OrbitMenu() {
     // Settings updated the rail and the footer — both re-render on the store —
     // while the launcher kept serving its pre-toggle list until a full reload.
     // Looked exactly like "the menu ignores the setting."
-  }, [pubkey, chatsUnread, unreadCount, rssUnread.count, needsYou, close, iaCollapsed]);
+  }, [pubkey, chatsUnread, unreadCount, rssUnread.count, needsYou, relaysNeedYou, close, iaCollapsed]);
 
   const isEntryActive = useCallback(
     // Was a copy of the desktop rail's hand-rolled matcher, with the same defect:
@@ -1904,20 +1901,6 @@ export function OrbitMenu() {
                     >
                       <Wrench className="h-5 w-5" aria-hidden="true" />
                     </button>
-                    {/* Operators only: one quiet chip straight into Relay
-                        Control — same dock, appears only when they run one. */}
-                    {isOperator && (
-                      <button
-                        type="button"
-                        onClick={() => go("/relays/admin")}
-                        className={`${dockItemClass} ${dockItemFlexClass}`}
-                        aria-label="Relay Control"
-                        title="Relay Control"
-                        data-testid="orbit-chip-relay-control"
-                      >
-                        <RadioTower className="h-5 w-5" aria-hidden="true" />
-                      </button>
-                    )}
                     <button
                       type="button"
                       onClick={() => go("/account?invite=1")}

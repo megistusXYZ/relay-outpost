@@ -4,7 +4,7 @@ import { SECTIONS, SETTINGS_SCREENS, sectionOf, consoleTitle } from "./console-n
 describe("the operator console's sections", () => {
   it("are five, in the order an operator reaches for them", () => {
     expect(SECTIONS.map((s) => s.id)).toEqual(["overview", "events", "people", "feedback", "settings"]);
-    expect(SECTIONS.map((s) => s.label)).toEqual(["Overview", "Content", "People", "Feedback", "Settings"]);
+    expect(SECTIONS.map((s) => s.label)).toEqual(["Overview", "Content", "People", "Inbox", "Settings"]);
   });
 
   it("the relay's rules and public face live under Settings, as four screens", () => {

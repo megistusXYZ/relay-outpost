@@ -85,6 +85,19 @@ describe("buildNavDestinations — the collapsed IA (Chats · Activity · Discov
     expect(collapsedIds(true)).toEqual(["chats", "activity", "discover", "relays", "you"]);
   });
 
+  it("badges Relays with the decisions waiting on relays you run", () => {
+    const list = buildNavDestinations({ loggedIn: true, counts: { ...ZERO, relaysNeedYou: 3 }, collapsed: true });
+    const relays = list.find((d) => d.id === "relays");
+    expect(relays?.count).toBe(3);
+    expect(relays?.live).toBe(true);
+    expect(buildNavDestinations({ loggedIn: true, counts: ZERO, collapsed: true }).find((d) => d.id === "relays")?.count).toBeUndefined();
+  });
+
+  it("carries the same Relays count into the footer for someone who runs one", () => {
+    const tabs = buildFooterTabs({ loggedIn: true, counts: { ...ZERO, relaysNeedYou: 2 }, collapsed: true, runsRelay: true });
+    expect(tabs.find((t) => t.id === "relays")?.count).toBe(2);
+  });
+
   it("opens Relays at its own home, not the relay connections page", () => {
     const relays = buildNavDestinations({ loggedIn: true, counts: ZERO, collapsed: true }).find((d) => d.id === "relays");
     expect(relays?.path).toBe("/my-relays");

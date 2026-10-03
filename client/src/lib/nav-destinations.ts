@@ -53,6 +53,8 @@ export interface NavCounts {
    * of number: a like can wait, a stranger at the door cannot.
    */
   needsYou: number;
+  /** Decisions waiting on the relays you run — the Relays badge. */
+  relaysNeedYou?: number;
 }
 
 export interface NavDestination {
@@ -242,7 +244,13 @@ function buildCollapsedDestinations(loggedIn: boolean, counts: NavCounts, withRe
       live: counts.alertsUnread + (counts.needsYou ?? 0) > 0,
     },
     discover,
-    ...(withRelays ? [{ id: "relays" as const, title: NAV_TITLES.relays, path: RELAYS_HOME }] : []),
+    ...(withRelays ? [{
+      id: "relays" as const,
+      title: NAV_TITLES.relays,
+      path: RELAYS_HOME,
+      count: (counts.relaysNeedYou ?? 0) > 0 ? counts.relaysNeedYou : undefined,
+      live: (counts.relaysNeedYou ?? 0) > 0,
+    }] : []),
     { id: "you", title: NAV_TITLES.you, path: "/account/menu" },
   ];
 }

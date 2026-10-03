@@ -30,7 +30,8 @@ import { FeaturedTab } from "./relay-ops/FeaturedTab";
 import { KindGateCard } from "./relay-ops/KindGateCard";
 import { AnnounceTab } from "./relay-ops/AnnounceTab";
 import { CommunityTab } from "./relay-ops/CommunityTab";
-import { FeedbackTab } from "./relay-ops/FeedbackTab";
+import { InboxTab } from "./relay-ops/InboxTab";
+import { useRelaysNeedYou } from "@/contexts/NeedsYouContext";
 
 const SETTINGS_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   community: Users,
@@ -122,6 +123,9 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
   const feedbackEnabled = authStatus === "authorized" || (authStatus === "no-pubkey" && isOwnedRelay);
   const inbox = useFeedbackInbox(selectedRelay, signer, pubkey, feedbackEnabled);
   const feedbackUnread = inbox.unreadCount;
+  // Everything waiting on this relay: feedback plus reports and join requests.
+  const relaysNeedYou = useRelaysNeedYou();
+  const inboxCount = feedbackUnread + relaysNeedYou.forRelay(selectedRelay);
 
   useEffect(() => {
     if (!selectedRelay) return;
@@ -254,6 +258,11 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                       <span className="block truncate text-sm font-medium">{label}</span>
                       <span className="block truncate text-[12px] text-muted-foreground">{r.url.replace(/^wss?:\/\//, "")}</span>
                     </span>
+                    {relaysNeedYou.forRelay(r.url) > 0 && (
+                      <span className="shrink-0 text-[13px] font-medium tabular-nums text-brand" aria-label={`${relaysNeedYou.forRelay(r.url)} waiting`} data-testid="ops-relay-switcher-count">
+                        {relaysNeedYou.forRelay(r.url)}
+                      </span>
+                    )}
                     {current && <Check className="w-4 h-4 text-brand shrink-0" aria-label="Current relay" />}
                   </DropdownMenuItem>
                 );
@@ -315,7 +324,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
           >
             {SECTIONS.map(s => {
               const isActive = section === s.id;
-              const showFeedbackBadge = s.id === "feedback" && feedbackUnread > 0;
+              const showFeedbackBadge = s.id === "feedback" && inboxCount > 0;
               return (
                 <button
                   key={s.id}
@@ -333,7 +342,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                       className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-white text-[11px] leading-none font-semibold"
                       data-testid="badge-tab-feedback-unread"
                     >
-                      {feedbackUnread > 9 ? "9+" : feedbackUnread}
+                      {inboxCount > 9 ? "9+" : inboxCount}
                     </span>
                   )}
                   {isActive && <span className="absolute left-3 right-3 -bottom-px h-0.5 rounded-full bg-brand lg:hidden" aria-hidden="true" />}
@@ -366,7 +375,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                 {(activeTab === "events" || activeTab === "live") && <ContentTab relayUrl={selectedRelay} nip11={nip11} initialLive={activeTab === "live"} initialQuery={contentSeed} />}
                 {activeTab === "people" && <PeopleTab relayUrl={selectedRelay} nip11={nip11} onSeePosts={(npub) => { setContentSeed(npub); setActiveTab("events"); }} />}
                 {activeTab === "access" && <><AccessControlTab relayUrl={selectedRelay} nip11={nip11} /><KindGateCard relayUrl={selectedRelay} nip11={nip11} /></>}
-                {activeTab === "feedback" && <FeedbackTab relayUrl={selectedRelay} inbox={inbox} />}
+                {activeTab === "feedback" && <InboxTab relayUrl={selectedRelay} nip11={nip11} inbox={inbox} onSeePost={(id) => { setContentSeed(id); setActiveTab("events"); }} />}
                 {activeTab === "settings" && (
                   <div className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] divide-y divide-black/[0.06] dark:divide-white/[0.06] overflow-hidden" data-testid="ops-settings-rows">
                     {SETTINGS_SCREENS.map(row => {
