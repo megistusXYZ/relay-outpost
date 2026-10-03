@@ -6,6 +6,7 @@ import { clientTags, buildNip22CommentTags } from "./nostr-helpers";
 import { getOutpostRelays } from "./outpost-relays";
 import { getReadRelays, getWriteRelays, getDMRelayListCached, getLocalDMRelays, fetchDMRelayList } from "./outbox";
 import { sendDM, unwrapGiftWrapRumor, type UnwrappedRumor } from "./dm";
+import { feedbackReader, readFeedbackLedger, writeFeedbackLedger } from "./feedback-ledger";
 import { APP_VERSION } from "./changelog";
 
 export const KIND_NIP34_ISSUE = 1621;
@@ -905,24 +906,29 @@ export function subscribePrivateFeedback(
     ...getReadRelays(myPubkey),
     ...DEFAULT_RELAYS,
   ])).filter(Boolean).slice(0, 12);
-  const buffer = new Map<string, UnwrappedRumor>();
-  const seenWrap = new Set<string>();
+  // Each wrap is opened ONCE per device, ever (lib/feedback-ledger.ts): the
+  // inbox used to open every wrap addressed to the reader on every load —
+  // hundreds of signer prompts for a remote signer — to find the few that
+  // were feedback. What it found before is handed back before any relay
+  // answers; several screens subscribing at once share one opening per wrap.
+  const isFeedback = (rumor: UnwrappedRumor) =>
+    (rumor.kind === KIND_NIP34_ISSUE && rumor.tags.some((t) => t[0] === "t" && t[1] === FEEDBACK_TOPIC_TAG))
+    || (rumor.kind === KIND_NIP22_COMMENT && rumor.tags.some((t) => t[0] === "E"));
+  const reader = feedbackReader({
+    read: () => readFeedbackLedger(myPubkey),
+    write: (ledger) => writeFeedbackLedger(myPubkey, ledger),
+    // The opener answers null for a wrap it could not read and for a signer
+    // failure alike, and a null is remembered as "opened, nothing there".
+    // A signer that is simply away never gets here: the reader is not
+    // started without nip44 (above).
+    unwrap: (wrap) => unwrapGiftWrapRumor(signer, myPubkey, wrap as NostrEvent),
+    isFeedback,
+    onUpdate,
+  });
+  reader.prime();
   const subs = relays.map((relay) =>
     pool.subscribeMany([relay], { kinds: [1059], "#p": [myPubkey], limit: 300 } as Filter, {
-      onevent(e) {
-        if (seenWrap.has(e.id)) return;
-        seenWrap.add(e.id);
-        unwrapGiftWrapRumor(signer, myPubkey, e).then((rumor) => {
-          if (!rumor) return;
-          const isIssue = rumor.kind === KIND_NIP34_ISSUE && rumor.tags.some((t) => t[0] === "t" && t[1] === FEEDBACK_TOPIC_TAG);
-          const isComment = rumor.kind === KIND_NIP22_COMMENT && rumor.tags.some((t) => t[0] === "E");
-          if (!isIssue && !isComment) return;
-          if (!buffer.has(rumor.id)) {
-            buffer.set(rumor.id, rumor);
-            onUpdate(Array.from(buffer.values()));
-          }
-        }).catch(() => {});
-      },
+      onevent(e) { void reader.onWrap(e); },
       oneose() {},
     })
   );
