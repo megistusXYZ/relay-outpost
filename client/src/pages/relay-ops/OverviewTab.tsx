@@ -4,7 +4,6 @@ import { fetchNip11, supportsNip, getSoftwareDisplay, type Nip11Document } from 
 import { getAuthStatus, isAuthEnabled, setAuthEnabled, onAuthChange, type AuthStatus } from "@/lib/nip42-auth";
 import { copyNostrId } from "@/lib/clipboard-bridge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Card } from "@/components/ui/card";
 import { OpsCard, OpsSectionHeader } from "./ops-ui";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -72,7 +71,6 @@ import {
   pubkeyToNpub,
   resolveProfileBatch,
   getKindLabel,
-  AuthStatusBadge,
   CHART_COLORS,
   ChartTooltip,
   KindCountEntry,
@@ -166,6 +164,17 @@ function FeedbackSummaryCard({ inbox, onOpenFeedback }: { inbox: FeedbackInbox; 
 const DEEP_SCAN_MAX_EVENTS = 5000;
 const DEEP_SCAN_DEEPER_MAX_EVENTS = 25000;
 const DEEP_SCAN_PAGE_SIZE = 500;
+
+/** The auth state as one plain word for the stats strip. */
+function authStatusWord(status: AuthStatus): string {
+  switch (status) {
+    case "authenticated": return "Signed in";
+    case "authenticating": return "Signing in…";
+    case "challenged": return "Challenged";
+    case "failed": return "Failed";
+    default: return "No auth";
+  }
+}
 
 export function OverviewTab({ relayUrl, inbox, onOpenFeedback }: { relayUrl: string; inbox?: FeedbackInbox; onOpenFeedback?: () => void }) {
   const { toast } = useToast();
@@ -841,40 +850,31 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback }: { relayUrl: str
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <Card className="glass-card border-border dark:border-brand/15 p-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Zap className="w-3.5 h-3.5 text-brand dark:text-brand/80" />
-            <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">Status</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className={`w-2 h-2 rounded-full ${connectionStatus === "online" ? "bg-green-400 animate-pulse" : connectionStatus === "offline" ? "bg-red-400" : "bg-yellow-400 animate-pulse"}`} />
-            <span className={`text-sm font-mono ${connectionStatus === "online" ? "text-green-600 dark:text-green-400" : connectionStatus === "offline" ? "text-red-600 dark:text-red-400" : "text-yellow-600 dark:text-yellow-400"}`}>
-              {connectionStatus === "checking" ? "Checking..." : connectionStatus === "online" ? "Online" : "Offline"}
-            </span>
-          </div>
-        </Card>
-        <Card className="glass-card border-border dark:border-brand/15 p-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Clock className="w-3.5 h-3.5 text-brand dark:text-brand/80" />
-            <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">Latency</span>
-          </div>
-          <span className="text-sm font-mono text-brand">{latencyNow != null ? `${latencyNow}ms` : "—"}</span>
-        </Card>
-        <Card className="glass-card border-border dark:border-brand/15 p-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Lock className="w-3.5 h-3.5 text-brand dark:text-brand/80" />
-            <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">Auth</span>
-          </div>
-          <AuthStatusBadge status={authStatus} />
-        </Card>
-        <Card className="glass-card border-border dark:border-brand/15 p-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Server className="w-3.5 h-3.5 text-brand dark:text-brand/80" />
-            <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">Software</span>
-          </div>
-          <span className="text-sm font-mono text-brand truncate block">{softwareDisplay || "—"}</span>
-        </Card>
+      {/* One strip of the four facts an operator glances at — not four cards.
+          Set in the app's type; the dot carries the state, the word names it. */}
+      <div
+        className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-xl overflow-hidden border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.06] dark:bg-white/[0.06]"
+        data-testid="ops-stat-strip"
+      >
+        <div className="bg-background px-3 py-2 min-w-0" data-testid="ops-stat-status">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70 leading-tight">Status</p>
+          <p className="mt-0.5 flex items-center gap-1.5 text-[15px] font-semibold leading-snug truncate" data-value>
+            <span className={`w-2 h-2 rounded-full shrink-0 ${connectionStatus === "online" ? "bg-emerald-500" : connectionStatus === "offline" ? "bg-red-500" : "bg-amber-400 animate-pulse"}`} aria-hidden="true" />
+            {connectionStatus === "checking" ? "Checking…" : connectionStatus === "online" ? "Online" : "Offline"}
+          </p>
+        </div>
+        <div className="bg-background px-3 py-2 min-w-0" data-testid="ops-stat-latency">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70 leading-tight">Latency</p>
+          <p className="mt-0.5 text-[15px] font-semibold leading-snug tabular-nums truncate" data-value>{latencyNow != null ? `${latencyNow} ms` : "—"}</p>
+        </div>
+        <div className="bg-background px-3 py-2 min-w-0" data-testid="ops-stat-auth">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70 leading-tight">Auth</p>
+          <p className="mt-0.5 text-[15px] font-semibold leading-snug truncate" data-value>{authStatusWord(authStatus)}</p>
+        </div>
+        <div className="bg-background px-3 py-2 min-w-0" data-testid="ops-stat-software">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70 leading-tight">Software</p>
+          <p className="mt-0.5 text-[15px] font-semibold leading-snug truncate" data-value title={softwareDisplay || undefined}>{softwareDisplay || "—"}</p>
+        </div>
       </div>
 
       {inbox && <FeedbackSummaryCard inbox={inbox} onOpenFeedback={onOpenFeedback} />}
