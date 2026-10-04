@@ -113,6 +113,7 @@ import {
 import { MentionSearch } from "@/components/MentionSearch";
 import { MentionHighlightTextarea } from "@/components/MentionHighlightTextarea";
 import { ComposeEmojiPicker, useEmojiTags } from "@/components/ComposeEmojiPicker";
+import { readReplyDraft, saveReplyDraft, clearReplyDraft } from "@/lib/reply-drafts";
 import { prefetchProfileOnHover } from "@/hooks/use-prefetch-visible";
 import { AuthorHoverCard, TrustTierDot, ThreadTrustBar, BtcZapIcon } from "./author-hover";
 import { ZapReceiptsPopover, TopZapperAvatars, ReactionDetailsPopover, formatCount } from "./zap-reactions";
@@ -273,6 +274,9 @@ export function ReplyDock({ root, children }: { root: Event; children: ReactNode
     replyTo: (e: Event) => { setTarget(e.id === root.id ? null : e); setOpen(true); },
   }), [root.id]);
   const targetName = useReplyToName(target?.pubkey ?? root.pubkey);
+  // A half-typed reply shows in the bar, where you left it. Read on each render:
+  // closing the box re-renders this, after the box saved its last keystroke.
+  const draftText = pubkey ? (readReplyDraft(pubkey, (target ?? root).id)?.text ?? "").replace(/[\u200B\u200C]/g, "").trim() : "";
   // Floating buttons (scroll to top) stand clear of the bar: --ro-dock-h.
   const barRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -329,8 +333,8 @@ export function ReplyDock({ root, children }: { root: Event; children: ReactNode
               <AvatarImage src={profile?.picture} alt="" />
               <AvatarFallback className="text-[10px] bg-muted text-muted-foreground">{initials}</AvatarFallback>
             </Avatar>
-            <span className="flex-1 min-h-[40px] flex items-center rounded-full bg-black/[0.04] dark:bg-white/[0.06] px-4 text-[15px] text-muted-foreground">
-              Write a reply…
+            <span className={`flex-1 min-w-0 min-h-[40px] flex items-center rounded-full bg-black/[0.04] dark:bg-white/[0.06] px-4 text-[15px] ${draftText ? "text-foreground" : "text-muted-foreground"}`}>
+              <span className="truncate" data-testid="thread-reply-dock-draft">{draftText || "Write a reply…"}</span>
             </span>
           </button>
         </div>,
@@ -356,14 +360,25 @@ export function ReplyComposer({
   onClose: () => void;
   onPublished?: () => void;
 }) {
-  const [content, setContent] = useState("");
+  const { signer, profile, attemptReconnect, pubkey: myPubkey } = useNostrAuth();
+  // What you'd typed here before the box closed comes back (lib/reply-drafts.ts).
+  const [savedDraft] = useState(() => (myPubkey ? readReplyDraft(myPubkey, replyTo.id) : null));
+  const [content, setContent] = useState(savedDraft?.text ?? "");
   const [isPublishing, setIsPublishing] = useState(false);
-  const { signer, profile, attemptReconnect } = useNostrAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { mentionActive, mentionQuery, detectMention, insertMention, closeMention, resolveContent, getMentionTags, clearMentionTags } = useMention();
+  const { mentionActive, mentionQuery, detectMention, insertMention, closeMention, resolveContent, getMentionTags, clearMentionTags, getMentionEntries, restoreMentions } = useMention();
   const { trackEmoji, getEmojiTags, clearEmojiTags } = useEmojiTags();
+  // The draft's tagged people and custom emoji, back before anything reads them.
+  const draftRestored = useRef(false);
+  if (!draftRestored.current) {
+    draftRestored.current = true;
+    if (savedDraft) {
+      restoreMentions(savedDraft.mentions);
+      for (const [shortcode, url] of savedDraft.emojis) trackEmoji({ shortcode, url, packName: "" });
+    }
+  }
   const { emojis: replyCustomEmojis } = useCustomEmojis();
   const replyEmojiMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -371,7 +386,17 @@ export function ReplyComposer({
     return map;
   }, [replyCustomEmojis]);
   const [vpRect, setVpRect] = useState<{ height: number; top: number } | null>(null);
-  const [gifUrl, setGifUrl] = useState<string | null>(null);
+  const [gifUrl, setGifUrl] = useState<string | null>(savedDraft?.gifUrl ?? null);
+  // Keep the draft as you type; an emptied box (or a sent reply) leaves none.
+  useEffect(() => {
+    if (!myPubkey) return;
+    saveReplyDraft(myPubkey, replyTo.id, {
+      text: content,
+      mentions: getMentionEntries(content),
+      emojis: getEmojiTags(content).map((t) => [t[1], t[2]] as [string, string]),
+      gifUrl,
+    });
+  }, [myPubkey, replyTo.id, content, gifUrl, getMentionEntries, getEmojiTags]);
 
   const handleEmojiInsert = useCallback((text: string, emoji?: CustomEmoji) => {
     if (emoji) trackEmoji(emoji);
@@ -447,6 +472,7 @@ export function ReplyComposer({
       // composer; the relay round-trip happens in the background with a retry on
       // failure (the signed event is reused, no re-sign needed).
       eventStore.add(signedEvent);
+      if (myPubkey) clearReplyDraft(myPubkey, replyTo.id);
       window.dispatchEvent(new CustomEvent(REPLY_SENT_EVENT, { detail: { id: signedEvent.id } }));
       setContent("");
       setGifUrl(null);

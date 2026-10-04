@@ -8,7 +8,7 @@ interface MentionState {
   startPos: number;
 }
 
-interface MentionEntry {
+export interface MentionEntry {
   id: number;
   pubkey: string;
   displayName: string;
@@ -152,6 +152,22 @@ export function useMention() {
     mentionEntriesRef.current = [];
   }, []);
 
+  /** The people tagged in this text — kept with a saved draft (lib/reply-drafts.ts). */
+  const getMentionEntries = useCallback((currentContent: string): MentionEntry[] => {
+    return mentionEntriesRef.current.filter((e) => currentContent.includes(`@${e.displayName}${e.token}`));
+  }, []);
+
+  /** Bring a saved draft's tagged people back, so sending it still tags them. */
+  const restoreMentions = useCallback((entries: MentionEntry[]) => {
+    for (const e of entries) {
+      if (mentionEntriesRef.current.some((x) => x.token === e.token && x.pubkey === e.pubkey)) continue;
+      mentionEntriesRef.current.push(e);
+      mentionTagsRef.current = [...mentionTagsRef.current.filter((t) => t[1] !== e.pubkey), ["p", e.pubkey]];
+      // New mentions must not reuse a restored mention's token.
+      mentionIdCounter = Math.max(mentionIdCounter, e.id);
+    }
+  }, []);
+
   return {
     mentionActive: mentionState.active,
     mentionQuery: mentionState.query,
@@ -161,5 +177,7 @@ export function useMention() {
     resolveContent,
     getMentionTags,
     clearMentionTags,
+    getMentionEntries,
+    restoreMentions,
   };
 }
