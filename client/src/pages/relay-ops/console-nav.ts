@@ -32,6 +32,8 @@ export const COMMUNITY_SCREENS: ReadonlyArray<ConsoleScreen> = [
   { tab: "contact", label: "Member inbox", hint: "Let members contact the team" },
   { tab: "team", label: "Team", hint: "Who helps you run it" },
   { tab: "log", label: "Moderation log", hint: "Everything your team has done here" },
+  // Only where the relay runs group chats (the page leaves it out otherwise).
+  { tab: "groups", label: "Group chats", hint: "Create groups, invite people, set roles" },
 ];
 
 export const ADVANCED_SCREENS: ReadonlyArray<ConsoleScreen> = [

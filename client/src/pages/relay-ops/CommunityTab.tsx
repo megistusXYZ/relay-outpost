@@ -124,11 +124,12 @@ const MODERATORS_D_TAG = "relay-outpost/moderators";
 const HORIZON_CONFIG_D_TAG = "relay-outpost/horizon-config";
 
 /**
- * Two screens share this (owner, 2026-10-04): Community › Community details
- * (name, picture, rules, articles, pinned discussions, group chats) and the
- * pinned part of Community › Featured & announcements.
+ * Several screens share this (owner, 2026-10-04): Community › Community
+ * details (name, picture, rules), the pinned part of Featured &
+ * announcements, the posting part of Who can post (who can write articles,
+ * pinned discussions) and Community › Group chats.
  */
-export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: string; nip11: Nip11Document | null; part?: "details" | "featured" }) {
+export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: string; nip11: Nip11Document | null; part?: "details" | "featured" | "posting" | "groups" }) {
   const { pubkey, signer } = useNostrAuth();
   // Sign and publish this screen's records with however you signed in —
   // extension, bunker, QR or a key kept on this device. Reaching for
@@ -929,7 +930,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
         </div>
       </OpsCard>}
 
-      {recordsNote && (
+      {recordsNote && part !== "groups" && (
         <p className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-4 py-3 text-[13px]" data-testid="ops-records-readonly">{recordsNote}</p>
       )}
       {part === "details" && <OpsCard className="space-y-4">
@@ -1011,9 +1012,9 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
       </OpsCard>}
 
       {/* Moderators moved to Community › Team — one team list (owner, 2026-10-04). */}
-      {part === "details" && <>
+      {part === "posting" && <>
       <OpsCard className="space-y-4">
-        <OpsSectionHeader icon={Newspaper} label="Articles Settings" className="mb-0" />
+        <OpsSectionHeader icon={Newspaper} label="Who can write articles" className="mb-0" />
         {!horizonConfigLoaded ? (
           <div className="flex items-center gap-2 py-2">
             <RelayOutpostInlineLoader className="w-4 h-4" />
@@ -1057,7 +1058,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
       </OpsCard>
 
       <OpsCard className="space-y-4">
-        <OpsSectionHeader icon={Bookmark} label="Topic Pinning" className="mb-0" />
+        <OpsSectionHeader icon={Bookmark} label="Pinned discussions" className="mb-0" />
 
         {topicsLoading ? (
           <div className="flex items-center gap-2 py-4">
@@ -1112,8 +1113,8 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
         )}
       </OpsCard>
 
-      <CommsManagementSection relayUrl={relayUrl} nip11={nip11} />
       </>}
+      {part === "groups" && <CommsManagementSection relayUrl={relayUrl} nip11={nip11} />}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
-import { ChevronRight, Pencil, Wallet, ShieldCheck, Wrench, UserPlus, Users, Settings, Sun, Moon, Eclipse, LogOut, Unplug, Fingerprint, CalendarDays, KeyRound } from "lucide-react";
+import { ChevronRight, Pencil, Wallet, ShieldCheck, Wrench, UserPlus, Users, Settings, Sun, Moon, Eclipse, LogOut, Unplug, Fingerprint, CalendarDays, KeyRound, Award } from "lucide-react";
 import { useKeyBackupNudge } from "@/hooks/use-key-backup";
 import {
   listAccounts,
@@ -172,6 +172,7 @@ export default function Account() {
           {/* The phone footer has no Relays tab (owner, 2026-10-04): this row is the way in, and says what's waiting. */}
           <Row icon={<ServerStackIcon className="w-5 h-5" />} label={runsRelay ? "Your relays" : "Run a relay"} onClick={go("/my-relays")} testId="account-relays"
             trailing={runsRelay && relaysWaiting > 0 ? <span className="text-[13px] font-medium text-brand tabular-nums" data-testid="account-relays-waiting">{relaysWaiting} waiting</span> : undefined} />
+          <Row icon={<Award className="w-5 h-5" />} label="Your badges" onClick={go("/badges")} testId="account-badges" />
           <Row icon={<Wrench className="w-5 h-5" />} label="Tools" onClick={go("/tools")} testId="account-tools" />
         </Section>
 

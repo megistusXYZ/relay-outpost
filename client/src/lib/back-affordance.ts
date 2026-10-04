@@ -35,6 +35,8 @@ const PARENT_ROUTES: Array<[RegExp, string]> = [
   // Your account and its Manage pages (?tab=wallet, bookmarks…) sit under the
   // You tab. Their own "‹ Back" went there; the chrome back now does.
   [/^\/account$/, "/account/menu"],
+  // Your badges sits under the You tab too (moved from the relay console, 2026-10-04).
+  [/^\/badges$/, "/account/menu"],
   // Connecting a relay climbs to the Relays home.
   [/^\/my-relays\/(connect|add|console)$/, "/my-relays"],
 ];

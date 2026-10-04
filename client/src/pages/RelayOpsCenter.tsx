@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
-import { fetchNip11, type Nip11Document } from "@/lib/nip11";
+import { fetchNip11, supportsNip, type Nip11Document } from "@/lib/nip11";
 import { probeRelayManagement } from "@/lib/nip86";
 import { decideOwnership } from "@/lib/relay-ownership";
 import { useOperatedRelays, setLastUsedRelay } from "@/lib/operated-relays";
@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AlertTriangle, ShieldCheck, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Megaphone, Plus, Terminal, Users, UsersRound, ScrollText, Inbox, Cable, IdCard, BarChart3 } from "lucide-react";
+import { AlertTriangle, ShieldCheck, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Megaphone, Plus, Terminal, Users, UsersRound, ScrollText, Inbox, Cable, IdCard, BarChart3, MessagesSquare } from "lucide-react";
 import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -49,6 +49,7 @@ const SCREEN_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   connection: Cable,
   card: IdCard,
   scans: BarChart3,
+  groups: MessagesSquare,
 };
 
 /** A list of screens (Community, Advanced): one row each, hairlines between. */
@@ -129,6 +130,8 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
 
   // People's "See their posts" opens Content already searching for them.
   const [contentSeed, setContentSeed] = useState("");
+  // Who can post's counts open People on that list.
+  const [peopleFilter, setPeopleFilter] = useState<"allowed" | "banned" | undefined>(undefined);
   const setActiveTab = useCallback((tab: TabId) => {
     setActiveTabRaw(tab);
     try { window.history.replaceState(window.history.state, "", `#${tab}`); } catch {}
@@ -375,7 +378,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                   key={s.id}
                   role="tab"
                   aria-selected={isActive}
-                  onClick={() => { setContentSeed(""); setActiveTab(s.id); }}
+                  onClick={() => { setContentSeed(""); setPeopleFilter(undefined); setActiveTab(s.id); }}
                   className={`relative shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-3 text-sm font-medium whitespace-nowrap transition-colors lg:justify-between lg:rounded-lg lg:w-full ${
                     isActive ? "text-foreground lg:bg-brand/[0.09]" : "text-muted-foreground hover:text-foreground lg:hover:bg-black/[0.03] dark:lg:hover:bg-white/[0.04]"
                   }`}
@@ -418,12 +421,21 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
               <ErrorBoundary key={activeTab} fallbackRender={(error) => <TabErrorFallback error={error} />}>
                 {activeTab === "overview" && <OverviewTab relayUrl={selectedRelay} inbox={inbox} onOpenFeedback={() => setActiveTab("feedback")} onOpenConnection={() => setActiveTab("connection")} />}
                 {(activeTab === "events" || activeTab === "live") && <ContentTab relayUrl={selectedRelay} nip11={nip11} initialLive={activeTab === "live"} initialQuery={contentSeed} />}
-                {activeTab === "people" && <PeopleTab relayUrl={selectedRelay} nip11={nip11} team={team} onSeePosts={(npub) => { setContentSeed(npub); setActiveTab("events"); }} />}
+                {activeTab === "people" && <PeopleTab relayUrl={selectedRelay} nip11={nip11} team={team} initialFilter={peopleFilter} onSeePosts={(npub) => { setContentSeed(npub); setActiveTab("events"); }} />}
                 {activeTab === "team" && <TeamScreen relayUrl={selectedRelay} nip11={nip11} team={team} />}
                 {activeTab === "log" && <LogScreen relayUrl={selectedRelay} nip11={nip11} team={team} />}
-                {activeTab === "access" && <><AccessControlTab relayUrl={selectedRelay} nip11={nip11} /><KindGateCard relayUrl={selectedRelay} nip11={nip11} /></>}
+                {activeTab === "access" && (
+                  // Who can post: the rules (who may, who's approved or banned, trust),
+                  // what can be posted, who writes articles, pinned discussions (owner, 2026-10-04).
+                  <div className="space-y-6" data-testid="ops-who-can-post">
+                    <AccessControlTab relayUrl={selectedRelay} nip11={nip11} part="rules" onOpenPeople={(f) => { setPeopleFilter(f); setActiveTab("people"); }} />
+                    <KindGateCard relayUrl={selectedRelay} nip11={nip11} />
+                    <CommunityTab relayUrl={selectedRelay} nip11={nip11} part="posting" />
+                  </div>
+                )}
                 {activeTab === "feedback" && <InboxTab relayUrl={selectedRelay} nip11={nip11} inbox={inbox} onSeePost={(id) => { setContentSeed(id); setActiveTab("events"); }} onOpenMemberInbox={() => setActiveTab("contact")} />}
-                {activeTab === "settings" && <ScreenList screens={COMMUNITY_SCREENS} onOpen={setActiveTab} testId="ops-settings-rows" />}
+                {activeTab === "settings" && <ScreenList screens={COMMUNITY_SCREENS.filter((r) => r.tab !== "groups" || (!!nip11 && supportsNip(nip11, 29)))} onOpen={setActiveTab} testId="ops-settings-rows" />}
+                {activeTab === "groups" && <CommunityTab relayUrl={selectedRelay} nip11={nip11} part="groups" />}
                 {activeTab === "advanced" && (
                   <ScreenList
                     screens={ADVANCED_SCREENS}
