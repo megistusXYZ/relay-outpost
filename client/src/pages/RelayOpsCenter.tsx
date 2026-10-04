@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import { fetchNip11, supportsNip, type Nip11Document } from "@/lib/nip11";
 import { probeRelayManagement } from "@/lib/nip86";
+import { loadTeamRumors } from "@/lib/relay-team";
+import { foldTeam } from "@/lib/team-records";
 import { decideOwnership } from "@/lib/relay-ownership";
 import { useOperatedRelays, setLastUsedRelay } from "@/lib/operated-relays";
 import { RelaysWelcome } from "@/components/relays/RelaysWelcome";
@@ -125,7 +127,9 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
   const [activeTab, setActiveTabRaw] = useState<TabId>(getTabFromHash);
   const [selectedRelay, setSelectedRelay] = useState<string>(propRelayUrl || "");
   const [nip11, setNip11] = useState<Nip11Document | null>(null);
-  const [authStatus, setAuthStatus] = useState<"loading" | "authorized" | "denied" | "no-pubkey">("loading");
+  const [authStatus, setAuthStatus] = useState<"loading" | "authorized" | "team" | "denied" | "no-pubkey">("loading");
+  // Owner, moderator, or on the team (view and notes) — said in the header (owner, 2026-10-04).
+  const [role, setRole] = useState<"Owner" | "Moderator" | "Team" | null>(null);
 
   // The relays you run, live — connecting another updates the switcher.
   const adminRelays = useOperatedRelays();
@@ -183,7 +187,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
   // #a-only badge missed entirely. Enabled whenever the console is usable (the
   // same states that render the tab + badge: authorized, or a relay that
   // publishes no operator pubkey where we fall back to the signed-in admin).
-  const feedbackEnabled = authStatus === "authorized" || (authStatus === "no-pubkey" && isOwnedRelay);
+  const feedbackEnabled = authStatus === "authorized" || authStatus === "team" || (authStatus === "no-pubkey" && isOwnedRelay);
   const inbox = useFeedbackInbox(selectedRelay, signer, pubkey, feedbackEnabled);
   const feedbackUnread = inbox.unreadCount;
   // The relay's team: shared notes and log, encrypted to the team, on the relay.
@@ -214,13 +218,28 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
         caps: probe?.caps ?? { listed: null },
         managementReached: probe ? probe.reached : !!doc,
       });
-      setAuthStatus(
-        ownership.kind === "runs-it" ? "authorized"
-        : ownership.kind === "cannot-tell" ? "no-pubkey"
-        : "denied",
-      );
+      if (ownership.kind === "runs-it") {
+        setRole(doc?.pubkey && doc.pubkey.toLowerCase() === pubkey.toLowerCase() ? "Owner" : "Moderator");
+        setAuthStatus("authorized");
+        return;
+      }
+      // Not the owner or a moderator — but maybe on the team: the owner's own
+      // roster (encrypted to the team, kept on the relay) lists you. Then you
+      // may look and write notes; the relay still decides what you can change.
+      const owner = doc?.pubkey && /^[0-9a-f]{64}$/i.test(doc.pubkey) ? doc.pubkey.toLowerCase() : null;
+      if (owner && (ownership.kind === "not-yours") && (signer as { nip44?: unknown } | null)?.nip44) {
+        loadTeamRumors(selectedRelay, signer, pubkey.toLowerCase()).then((r) => {
+          if (requestId !== verifyRequestRef.current) return;
+          const onTeam = foldTeam(r.rumors, { owner, me: pubkey.toLowerCase(), relayUrl: selectedRelay }).members.includes(pubkey.toLowerCase());
+          setRole(onTeam ? "Team" : null);
+          setAuthStatus(onTeam ? "team" : "denied");
+        }).catch(() => { if (requestId === verifyRequestRef.current) setAuthStatus("denied"); });
+        return;
+      }
+      setRole(null);
+      setAuthStatus(ownership.kind === "cannot-tell" ? "no-pubkey" : "denied");
     });
-  }, [selectedRelay, pubkey, isOwnedRelay]);
+  }, [selectedRelay, pubkey, isOwnedRelay, signer]);
 
   // Relays opens on the relay you managed last — but only one you may manage,
   // so the Relays tab can never land you on a door that won't open.
@@ -239,7 +258,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
       return (
         <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 px-4">
           <RelayOutpostInlineLoader className="w-8 h-8" />
-          <p className="text-sm text-muted-foreground/60">Verifying operator access...</p>
+          <p className="text-sm text-muted-foreground/60">Checking who runs it…</p>
         </div>
       );
     }
@@ -351,7 +370,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
               <>
                 <span className="text-muted-foreground/50 shrink-0" aria-hidden="true">·</span>
                 <span className="inline-flex items-center gap-1 shrink-0 text-brand font-medium" data-testid="ops-operator-mark">
-                  <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />Operator
+                  <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />{role ?? "Owner"}
                 </span>
               </>
             )}
@@ -371,6 +390,12 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
           <ArrowUpRight className="w-4 h-4 sm:w-3.5 sm:h-3.5 sm:ml-1 sm:opacity-70" aria-hidden="true" />
         </Button>
       </div>
+
+      {authStatus === "team" && (
+        <p className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] px-4 py-3 text-[13px] text-muted-foreground" data-testid="ops-team-access-note">
+          You're on the team: you can see everything here and add notes about members. Removing posts and banning need a moderator — the owner can make you one at your host.
+        </p>
+      )}
 
       {authStatus === "no-pubkey" && isOwnedRelay && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-400/30 dark:border-amber-400/20">
