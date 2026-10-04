@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, memo, startTransition } from "react";
+import { analyticsRedirect } from "@/lib/console-query-params";
 import { Switch, Route, useLocation, useSearch, Link } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -474,7 +475,7 @@ function Router() {
         <Route path="/wallet">{() => <RouteRedirect to="/account?tab=wallet" />}</Route>
         <Route path="/messages" component={Messages} />
         <Route path="/messages/:id" component={Messages} />
-        <Route path="/console/dashboard">{() => <RouteRedirect to="/account?tab=analytics" />}</Route>
+        <Route path="/console/dashboard">{() => <RouteRedirect to={analyticsRedirect(window.location.search, window.location.hash)} />}</Route>
         <Route path="/console">{() => {
           // The console moved into Relays (2026-10-03). Keep the deep-link
           // query (?filter=…&relay=…) that old links and hand-offs carry —

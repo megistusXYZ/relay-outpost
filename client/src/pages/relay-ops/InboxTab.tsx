@@ -15,7 +15,8 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Event as NostrEvent } from "nostr-tools";
-import { ChevronDown, Eye, Ban, Trash2, Check } from "lucide-react";
+import { ChevronDown, Eye, Ban, Trash2, Check, ScanSearch } from "lucide-react";
+import { EventInspector, type InspectedEvent } from "./EventInspector";
 import { pool } from "@/lib/nostr";
 import { supportsNip, type Nip11Document } from "@/lib/nip11";
 import { banPubkey, fetchRelayCapabilities, removeEventByAction } from "@/lib/nip86";
@@ -97,6 +98,7 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost }: {
   }, [relayReports, relayUrl]);
 
   const [view, setView] = useState<InboxView>("all");
+  const [inspecting, setInspecting] = useState<InspectedEvent | null>(null);
 
   // ---- acting ----
   const [pending, setPending] = useState<(PendingAction & { report: RelayReport }) | null>(null);
@@ -145,6 +147,7 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost }: {
         </div>
         <div className="flex flex-wrap gap-1.5 pl-12">
           {r.targetEventId && <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px]" onClick={() => onSeePost(r.targetEventId!)} data-testid="ops-inbox-see"><Eye className="w-4 h-4 mr-1.5" />See it</Button>}
+          {post && <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px]" onClick={() => setInspecting(post)} data-testid="ops-inbox-inspect"><ScanSearch className="w-4 h-4 mr-1.5" />Inspect</Button>}
           {r.targetEventId && canRemove && <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px] text-red-600 dark:text-red-400" onClick={() => setPending({ kind: "remove", ids: [r.targetEventId!], rule: false, report: r })} data-testid="ops-inbox-remove"><Trash2 className="w-4 h-4 mr-1.5" />Remove post</Button>}
           {canBan && <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px]" onClick={() => setPending({ kind: "ban", pubkeys: [r.targetPubkey], rule: false, report: r })} data-testid="ops-inbox-ban"><Ban className="w-4 h-4 mr-1.5" />Ban {who?.name ?? "them"}</Button>}
           <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px] text-muted-foreground" onClick={() => dismiss(r)} data-testid="ops-inbox-dismiss"><Check className="w-4 h-4 mr-1.5" />Nothing to do</Button>
@@ -223,6 +226,7 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost }: {
         <ConfirmAction pending={pending} relayName={relayName} canRestore={canDo(caps, "restoreEvent")} progress={progress}
           onCancel={() => { if (!progress) setPending(null); }} onConfirm={carryOut} nameOf={nameOf} />
       )}
+      <EventInspector event={inspecting} relayUrl={relayUrl} relayName={relayName} onClose={() => setInspecting(null)} />
     </div>
   );
 }

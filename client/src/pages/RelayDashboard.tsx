@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { RelayOutpostInlineLoader, RelayOutpostIcon } from "@/components/RelayOutpostLoader";
-import { Radio, Plus, Trash2, RefreshCw, Wifi, WifiOff, Gauge, Globe, Power, PowerOff, Satellite, Lock, Unlock, Pencil, Check, X, ChevronDown, ChevronUp, Activity, ShieldBan, ShieldCheck, Upload, ExternalLink, AlertTriangle, Search, Server, Zap, Shield, Mail, Hash, FileDown, Info, Copy, Signal, Terminal } from "lucide-react";
+import { Radio, Plus, Trash2, RefreshCw, Wifi, WifiOff, Gauge, Globe, Power, PowerOff, Satellite, Lock, Unlock, Pencil, Check, X, ChevronDown, ChevronRight, ChevronUp, Activity, ShieldBan, ShieldCheck, Upload, ExternalLink, AlertTriangle, Search, Server, Zap, Shield, Mail, Hash, FileDown, Info, Copy, Signal, Terminal } from "lucide-react";
 import type { Event as NostrEvent } from "nostr-tools";
 import {
   AlertDialog,
@@ -1478,12 +1478,14 @@ export default function RelayDashboard() {
                           <RelayOutpostIcon className="w-3.5 h-3.5 text-brand dark:text-brand/70" />
                           <span className="text-[11px] text-brand dark:text-brand/80">Admin tools available</span>
                         </div>
+                        {/* This relay's own Relay Control — /relays/admin only bounced to the last one used. */}
                         <Link
-                          href="/relays/admin"
-                          className="text-[11px] text-brand hover:text-brand/80 dark:hover:text-brand flex items-center gap-1 font-medium"
+                          href={`/relay-ops-center/${encodeURIComponent(relay.url)}`}
+                          className="text-[11px] text-brand hover:text-brand/80 dark:hover:text-brand flex items-center gap-1 font-medium min-h-[44px]"
+                          data-testid={`link-relay-control-${idx}`}
                         >
                           Open Relay Control
-                          <ExternalLink className="w-3 h-3" />
+                          <ChevronRight className="w-3 h-3" />
                         </Link>
                       </div>
                     )}

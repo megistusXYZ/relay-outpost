@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { acceptedKindsLine, describeKindPolicy } from "@/lib/kind-gate";
+import { checkNip86Support, listAllowedKinds, listDisallowedKinds } from "@/lib/nip86";
 import { nip19 } from "nostr-tools";
 import { fetchNip11, supportsNip, getSoftwareDisplay, type Nip11Document } from "@/lib/nip11";
 import { getAuthStatus, isAuthEnabled, setAuthEnabled, onAuthChange, type AuthStatus } from "@/lib/nip42-auth";
@@ -1041,29 +1043,8 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback }: { relayUrl: str
               <div className="flex items-start gap-2">
                 <FileText className="w-3 h-3 text-muted-foreground/70 mt-0.5 shrink-0" />
                 <div>
-                  <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide block">Accepted Event Kinds</span>
-                  <p className="text-[10px] text-muted-foreground/60 mt-0.5 mb-1.5 leading-relaxed">Content types this relay stores when published from Relay Outpost</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 mt-1">
-                    {[
-                      { kind: 0, label: "Profiles", nip: "NIP-01" },
-                      { kind: 1, label: "Short Notes", nip: "NIP-01" },
-                      { kind: 3, label: "Contacts", nip: "NIP-02" },
-                      { kind: 6, label: "Reposts", nip: "NIP-18" },
-                      { kind: 7, label: "Reactions", nip: "NIP-25" },
-                      { kind: 10002, label: "Relay Lists", nip: "NIP-65" },
-                      { kind: 10003, label: "Bookmarks", nip: "NIP-51" },
-                      { kind: 30023, label: "Long-form Articles", nip: "NIP-23" },
-                      { kind: 30078, label: "App Data", nip: "NIP-78" },
-                      { kind: 30311, label: "Live Streams", nip: "NIP-53" },
-                      { kind: 31337, label: "Audio Tracks", nip: "NIP-31" },
-                    ].map(({ kind, label, nip }) => (
-                      <span key={kind} className="text-[10px] text-muted-foreground/60">
-                        <span className="text-brand dark:text-brand/70 font-mono">{kind}</span>{" "}
-                        {label}{" "}
-                        <span className="text-muted-foreground/50">{nip}</span>
-                      </span>
-                    ))}
-                  </div>
+                  <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide block">Accepts</span>
+                  <AcceptedKinds relayUrl={relayUrl} />
                 </div>
               </div>
               {nip11.limitation && (
@@ -1588,5 +1569,34 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback }: { relayUrl: str
         )}
       </OpsCard>
     </div>
+  );
+}
+
+/**
+ * What the relay says it accepts, asked of the relay (NIP-86 list(dis)allowedkinds,
+ * the same answer Settings › Who can post shows) — in place of a fixed list of
+ * eleven kinds that was the same for every relay.
+ */
+function AcceptedKinds({ relayUrl }: { relayUrl: string }) {
+  const [line, setLine] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    setLine(null);
+    (async () => {
+      const support = await checkNip86Support(relayUrl);
+      if (support !== "supported") return acceptedKindsLine({ mode: "unknown", kinds: [] });
+      const [allowed, disallowed] = await Promise.all([listAllowedKinds(relayUrl), listDisallowedKinds(relayUrl)]);
+      return acceptedKindsLine(describeKindPolicy(
+        allowed.error !== undefined ? null : (allowed.result ?? []),
+        disallowed.error !== undefined ? null : (disallowed.result ?? []),
+      ));
+    })().then((l) => { if (live) setLine(l); }).catch(() => { if (live) setLine(acceptedKindsLine({ mode: "unknown", kinds: [] })); });
+    return () => { live = false; };
+  }, [relayUrl]);
+  return (
+    <p className="text-xs text-foreground/80 mt-0.5" data-testid="ops-accepted-kinds">
+      {line ?? "Asking…"}
+      {line && <span className="block text-[10px] text-muted-foreground/60 mt-0.5">Set in Settings › Who can post</span>}
+    </p>
   );
 }
