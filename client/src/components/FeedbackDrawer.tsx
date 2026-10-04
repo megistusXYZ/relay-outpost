@@ -25,6 +25,7 @@ import {
   KIND_NIP34_ISSUE,
   mergeRecipients,
 } from "@/lib/nip34-feedback";
+import type { TicketTemplate } from "@/lib/inbox-settings";
 
 // defaultPrivate encodes intent: a bug/question is about *your* problem (private
 // support desk); an idea/UX nit is a suggestion others might share (public board).
@@ -138,6 +139,23 @@ export function FeedbackDrawer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recipient?.relay, canPrivate, canPublicIssue]);
 
+  // The community's request types (Settings › Member inbox), when it has set
+  // them and its inbox is on: members pick one of those instead of the generic
+  // Bug / Idea / Question; it sets the kind, the privacy and the hint.
+  const templates = useMemo(() => (recipient?.hasInbox ? (recipient.templates ?? []).filter((t) => t.enabled) : []), [recipient]);
+  const [templateId, setTemplateId] = useState<string | null>(null);
+  const template = templates.find((t) => t.id === templateId) ?? null;
+  const chooseTemplate = useCallback((t: TicketTemplate) => {
+    setTemplateId(t.id);
+    setType(t.kind);
+    if (canPrivate && canPublicIssue) setIsPrivate(t.visibility === "private");
+  }, [canPrivate, canPublicIssue]);
+  useEffect(() => {
+    if (templates.length) chooseTemplate(templates[0]);
+    else setTemplateId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipient?.relay, templates.length]);
+
   const handleTypeSelect = (t: FeedbackType) => {
     setType(t);
     const opt = TYPE_OPTIONS.find((x) => x.id === t);
@@ -175,7 +193,7 @@ export function FeedbackDrawer() {
           types: [type],
           context: ctx,
           // Which relay it's about, so the operator sees it in that relay's inbox.
-          extraTags: targetRelay ? [["relay", targetRelay]] : undefined,
+          extraTags: [...(targetRelay ? [["relay", targetRelay]] : []), ...(template ? [["template", template.id]] : [])],
         });
         if (!res.success) {
           toast({ title: "Could not send feedback", description: res.error || "Please try again.", variant: "destructive" });
@@ -194,6 +212,7 @@ export function FeedbackDrawer() {
         body: body.trim(),
         types: [type],
         context: ctx,
+        template: template?.id,
       });
 
       let nevent = "";
@@ -384,6 +403,24 @@ export function FeedbackDrawer() {
               )}
             </div>
 
+            {templates.length > 0 ? (
+              <div role="radiogroup" aria-label="What's this about?" data-testid="feedback-templates">
+                <label className="text-[12px] font-medium text-muted-foreground">What's this about?</label>
+                <div className="mt-1 divide-y divide-border/40 rounded-lg border border-border/50">
+                  {templates.map((t) => (
+                    <button key={t.id} type="button" role="radio" aria-checked={templateId === t.id} onClick={() => chooseTemplate(t)}
+                      className={`w-full text-left flex items-start gap-3 px-3 py-2.5 min-h-[52px] ${templateId === t.id ? "bg-brand/[0.06]" : "hover:bg-black/[0.02] dark:hover:bg-white/[0.03]"}`}
+                      data-testid={`button-feedback-template-${t.id}`}>
+                      <span className={`mt-1 w-4 h-4 rounded-full border shrink-0 ${templateId === t.id ? "border-brand border-[5px]" : "border-black/25 dark:border-white/30"}`} aria-hidden="true" />
+                      <span className="min-w-0">
+                        <span className="block text-[14px] font-medium">{t.label}</span>
+                        <span className="block text-[12px] text-muted-foreground">{t.visibility === "private" ? "Private — only the team reads it" : "Public — others in the community can see it"}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
             <div>
               <label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/70">Type</label>
               <div className="mt-1 grid grid-cols-4 gap-1.5">
@@ -409,6 +446,7 @@ export function FeedbackDrawer() {
                 })}
               </div>
             </div>
+            )}
 
             <div>
               <label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/70">Title</label>
@@ -427,7 +465,7 @@ export function FeedbackDrawer() {
               <Textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                placeholder="What happened, what you expected, anything you want them to know."
+                placeholder={template?.prompt || "What happened, what you expected, anything you want them to know."}
                 rows={5}
                 className="mt-1 text-sm"
                 data-testid="textarea-feedback-body"

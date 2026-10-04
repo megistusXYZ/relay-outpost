@@ -1,4 +1,5 @@
 import type { Event as NostrEvent, Filter } from "nostr-tools";
+import { readInboxSettings, type TicketTemplate } from "./inbox-settings";
 import { nip19 } from "nostr-tools";
 import { pool, DEFAULT_RELAYS } from "./nostr";
 import { fetchNip11 } from "./nip11";
@@ -71,6 +72,8 @@ export interface FeedbackRecipient {
   repoD: string | null;
   hasInbox: boolean;
   description?: string;
+  /** The request types members can open (Member inbox settings), when the community has set them. */
+  templates?: TicketTemplate[];
 }
 
 export interface FeedbackIssue {
@@ -401,6 +404,8 @@ export interface BuildIssueOpts {
   body: string;
   types: FeedbackType[];
   context: FeedbackContext | null;
+  /** The community's request type it was opened from (Member inbox templates). */
+  template?: string;
 }
 
 export function buildIssueTemplate(opts: BuildIssueOpts) {
@@ -411,6 +416,7 @@ export function buildIssueTemplate(opts: BuildIssueOpts) {
     ...types.map((t) => ["t", t]),
     // Which relay it's about — so an operator who runs several sees it in the right inbox.
     ...(recipient.relay ? [["relay", recipient.relay]] : []),
+    ...(opts.template ? [["template", opts.template]] : []),
     ...clientTags(),
   ];
   if (recipient.operatorPubkey && recipient.repoD) {
@@ -625,6 +631,29 @@ const recipientCache = new Map<string, FeedbackRecipient | null>();
 const cacheStamps = new Map<string, number>();
 const RECIPIENT_TTL = 5 * 60 * 1000;
 
+/**
+ * This community's feedback listing (kind 30617): the one for this relay
+ * (its relay-scoped d), else the newest — an operator who runs several relays
+ * has one per relay.
+ */
+export async function fetchFeedbackListing(relayUrl: string, operatorPubkey: string): Promise<NostrEvent | null> {
+  const found: NostrEvent[] = [];
+  await new Promise<void>((resolve) => {
+    const sub = pool.subscribeMany(
+      [relayUrl],
+      { kinds: [KIND_NIP34_REPO], authors: [operatorPubkey], "#t": [FEEDBACK_TOPIC_TAG], limit: 10 } as Filter,
+      {
+        onevent(e) { found.push(e); },
+        oneose() { try { sub.close(); } catch {} resolve(); },
+      },
+    );
+    setTimeout(() => { try { sub.close(); } catch {} resolve(); }, 4000);
+  });
+  const scoped = relayScopedRepoD(relayUrl);
+  const newest = (xs: NostrEvent[]) => xs.sort((a, b) => b.created_at - a.created_at)[0] ?? null;
+  return newest(found.filter((e) => e.tags.some((t) => t[0] === "d" && t[1] === scoped))) ?? newest(found);
+}
+
 export async function discoverRecipientForRelay(relayUrl: string, label?: string): Promise<FeedbackRecipient | null> {
   const stamp = cacheStamps.get(relayUrl) || 0;
   if (Date.now() - stamp < RECIPIENT_TTL && recipientCache.has(relayUrl)) {
@@ -636,26 +665,14 @@ export async function discoverRecipientForRelay(relayUrl: string, label?: string
 
   let repoD: string | null = null;
   let hasInbox = false;
+  let templates: TicketTemplate[] | undefined;
   if (operatorPubkey) {
-    repoD = await new Promise<string | null>((resolve) => {
-      let found: string | null = null;
-      const sub = pool.subscribeMany(
-        [relayUrl],
-        { kinds: [KIND_NIP34_REPO], authors: [operatorPubkey], "#t": [FEEDBACK_TOPIC_TAG], limit: 5 } as Filter,
-        {
-          onevent(e) {
-            const d = e.tags.find((t) => t[0] === "d")?.[1];
-            if (d && !found) found = d;
-          },
-          oneose() {
-            try { sub.close(); } catch {}
-            resolve(found);
-          },
-        }
-      );
-      setTimeout(() => { try { sub.close(); } catch {} resolve(found); }, 4000);
-    });
-    hasInbox = !!repoD;
+    const listing = await fetchFeedbackListing(relayUrl, operatorPubkey);
+    repoD = listing?.tags.find((t) => t[0] === "d")?.[1] ?? null;
+    // The listing says whether members can contact the team, and what they can ask.
+    const settings = readInboxSettings(listing);
+    hasInbox = !!repoD && settings.on;
+    templates = settings.templates;
   }
 
   const recipient: FeedbackRecipient = {
@@ -665,6 +682,7 @@ export async function discoverRecipientForRelay(relayUrl: string, label?: string
     repoD,
     hasInbox,
     description: nip11?.description,
+    templates,
   };
   recipientCache.set(relayUrl, recipient);
   cacheStamps.set(relayUrl, Date.now());
