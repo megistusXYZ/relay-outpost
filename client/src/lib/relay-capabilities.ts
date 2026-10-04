@@ -127,5 +127,5 @@ export function managedAt(relayUrl: string): { name: string; url?: string } {
   if (host.endsWith(".nostr1.com") || host.endsWith(".relay.tools") || host === "relay.tools") {
     return { name: "relay.tools", url: "https://relay.tools" };
   }
-  return { name: "your relay's own settings" };
+  return { name: "your host's settings" };
 }

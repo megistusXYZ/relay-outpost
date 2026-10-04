@@ -13,9 +13,9 @@ describe("how many match, said honestly", () => {
   });
 
   it("a relay that can't count says so — never a zero", () => {
-    expect(countLine({ status: "unsupported" })).toBe("This relay can't count totals");
-    expect(countLine({ status: "refused", reason: "auth-required: you must auth" })).toBe("The relay wouldn't count this: you must auth");
-    expect(countLine({ status: "unreached" })).toBe("Couldn't reach the relay to count");
+    expect(countLine({ status: "unsupported" })).toBe("Totals aren't available here");
+    expect(countLine({ status: "refused", reason: "auth-required: you must auth" })).toBe("Your host wouldn't count this: you must auth");
+    expect(countLine({ status: "unreached" })).toBe("Couldn't reach your community to count");
   });
 
   it("while it's asking", () => {

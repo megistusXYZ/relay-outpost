@@ -2124,7 +2124,7 @@ export function UserListToolbar({
           type="text"
           value={controls.query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search name, npub, hex, NIP-05"
+          placeholder="Search by name or address"
           className="w-full h-7 pl-7 pr-7 text-[11px] rounded-md bg-black/[0.04] dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] focus:outline-none focus:border-primary/40"
           autoCapitalize="off"
           autoCorrect="off"
@@ -2163,7 +2163,7 @@ export function UserListToolbar({
         <option value="active30">Active in 30d</option>
         <option value="inactive">No recent activity</option>
         <option value="noprofile">No profile metadata</option>
-        <option value="nip05">Has NIP-05</option>
+        <option value="nip05">Has a verified address</option>
       </select>
       {activityStatus === "gated" && (
         <button

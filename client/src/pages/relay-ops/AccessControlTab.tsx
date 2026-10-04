@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect } from "react";
+import { useTechnicalDetails } from "@/lib/technical-details";
 import { createPortal } from "react-dom";
 import type { Event as NostrEvent } from "nostr-tools";
 import { searchCachedProfiles } from "@/lib/nostr";
@@ -117,6 +118,7 @@ function PubkeyRow({ hex, type, profile, onRemove, addedAt, lastActiveSec, activ
   selected?: boolean;
   onToggle?: () => void;
 }) {
+  const technical = useTechnicalDetails();
   const npub = pubkeyToNpub(hex);
   const [copied, setCopied] = useState(false);
   const copyNpub = useCallback(() => {
@@ -135,7 +137,7 @@ function PubkeyRow({ hex, type, profile, onRemove, addedAt, lastActiveSec, activ
     : activityStatus === "gated"
       ? "Activity not loaded"
       : activityStatus === "unreachable"
-        ? "Relay unreachable"
+        ? "Couldn't reach your host"
         : formatRelativeSec(lastActiveSec);
   return (
     <div
@@ -171,7 +173,7 @@ function PubkeyRow({ hex, type, profile, onRemove, addedAt, lastActiveSec, activ
         </div>
       </div>
       {!selecting && <>
-      <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-5 sm:w-5 shrink-0 text-muted-foreground/60 hover:text-muted-foreground" onClick={copyNpub} title="Copy npub">
+      <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-5 sm:w-5 shrink-0 text-muted-foreground/60 hover:text-muted-foreground" onClick={copyNpub} title={technical ? "Copy npub" : "Copy their key"}>
         {copied ? <Check className="w-3 h-3 sm:w-2.5 sm:h-2.5 text-green-800 dark:text-green-400" /> : <Copy className="w-3 h-3 sm:w-2.5 sm:h-2.5" />}
       </Button>
       <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-5 sm:w-5 shrink-0 text-red-600 dark:text-red-400/70 hover:text-red-700 dark:hover:text-red-400" onClick={() => onRemove(hex, type)} aria-label={type === "block" ? "Lift ban" : "Remove from list"} data-testid={`ops-access-remove-${type}`}>
@@ -189,6 +191,7 @@ function PubkeySearchInput({ type, inputValue, setInput, buttonLabel, buttonClas
   onAdd: (type: AccessLevel) => void;
   onProfileFound?: (hex: string, profile: ProfileInfo) => void;
 }) {
+  const technical = useTechnicalDetails();
   const [searchResults, setSearchResults] = useState<NostrEvent[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -351,7 +354,7 @@ function PubkeySearchInput({ type, inputValue, setInput, buttonLabel, buttonClas
         <div className="relative flex-1">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/60 pointer-events-none" />
           <Input
-            placeholder="Search name, npub, or hex pubkey"
+            placeholder={technical ? "Search name, npub, or hex pubkey" : "Find someone, or paste their profile link"}
             value={inputValue}
             onChange={(e) => handleChange(e.target.value)}
             onFocus={() => searchResults.length > 0 && setShowResults(true)}
@@ -547,9 +550,9 @@ function PubkeyListSection({ type, icon, label, labelClass, description, borderC
  */
 function unsyncedReason(status: Nip86SupportStatus | null): string {
   if (status === "unreachable") {
-    return "couldn't be sent — we can't reach this relay's management API right now. The change is only in your local view; try again once the relay is back.";
+    return "couldn't be sent — we can't reach your host right now. The change is only in this browser; try again once it answers.";
   }
-  return "was saved to your local view only. This relay doesn't expose a NIP-86 management API, so ask its operator to make the change server-side.";
+  return "was saved in this browser only. Your host doesn't let apps change this list, so change it at your host.";
 }
 
 /**
@@ -721,7 +724,7 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
   const addToListDirect = useCallback(async (type: AccessLevel, rawInput: string) => {
     const hex = npubToHex(rawInput);
     if (!hex) {
-      toast({ title: "Invalid input", description: "Enter a valid npub address or hex pubkey.", variant: "destructive" });
+      toast({ title: "Invalid input", description: "That doesn't look like someone's profile link.", variant: "destructive" });
       return;
     }
     const keyMap: Record<AccessLevel, string> = { allow: ADMIN_ALLOWLIST_KEY, readonly: ADMIN_READONLY_KEY, block: ADMIN_BLOCKLIST_KEY };
@@ -729,7 +732,7 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
     const setterMap: Record<AccessLevel, React.Dispatch<React.SetStateAction<string[]>>> = { allow: setAllowlist, readonly: setReadonlyList, block: setBlocklist };
     const clearMap: Record<AccessLevel, React.Dispatch<React.SetStateAction<string>>> = { allow: setNewAllow, readonly: setNewReadonly, block: setNewBlock };
     if (listMap[type].includes(hex)) {
-      toast({ title: "Already listed", description: "This pubkey is already in the list." });
+      toast({ title: "Already listed", description: "They're already on the list." });
       return;
     }
 
@@ -739,12 +742,12 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
         const apiFn = type === "allow" ? allowPubkey : banPubkey;
         const res = await apiFn(relayUrl, hex);
         if (res.error) {
-          toast({ title: "Relay API error", description: res.error, variant: "destructive" });
+          toast({ title: "Your host didn't take that", description: res.error, variant: "destructive" });
           return;
         }
         syncedToRelay = true;
       } catch (err) {
-        toast({ title: "Relay API error", description: err instanceof Error ? err.message : "Failed to reach relay", variant: "destructive" });
+        toast({ title: "Your host didn't take that", description: err instanceof Error ? err.message : "We couldn't reach your host", variant: "destructive" });
         return;
       }
     }
@@ -768,7 +771,7 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
         variant: nip86Status === "unreachable" ? "destructive" : undefined,
       });
     } else {
-      toast({ title: `Added to ${labels[type]}`, description: `${hex.slice(0, 8)}...${syncedToRelay ? " (synced to relay)" : " added."}` });
+      toast({ title: `Added to ${labels[type]}`, description: `${hex.slice(0, 8)}...${syncedToRelay ? " (your host has it)" : " added."}` });
     }
     if (profileCacheGlobal.has(hex)) {
       setProfileCache(prev => ({ ...prev, [hex]: profileCacheGlobal.get(hex)! }));
@@ -795,7 +798,7 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
       const caps = await fetchRelayCapabilities(relayUrl);
       if (!canDo(caps, type === "allow" ? "unallow" : "unban")) {
         const where = managedAt(relayUrl);
-        toast({ title: type === "allow" ? "This relay can't remove people from its allow list here" : "This relay can't lift bans here", description: where.url ? `Do it at ${where.name}.` : `Do it in ${where.name}.` });
+        toast({ title: type === "allow" ? "Your host can't remove people from the allow list here" : "Your host can't lift bans here", description: where.url ? `Do it at ${where.name}.` : `Do it in ${where.name}.` });
         return;
       }
     }
@@ -809,7 +812,7 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
         let ok = true;
         if (remote) {
           try { const res = await (type === "allow" ? unallowPubkey : unbanPubkey)(relayUrl, hex); if (res.error) { ok = false; failed.push(res.error); } }
-          catch (err) { ok = false; failed.push(err instanceof Error ? err.message : "couldn't reach the relay"); }
+          catch (err) { ok = false; failed.push(err instanceof Error ? err.message : "couldn't reach your host"); }
         }
         if (ok) gone.push(hex);
         onProgress(++done);
@@ -830,8 +833,8 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
       return { ...c, [key]: { ...cur, pubkeys: cur.pubkeys.filter((p) => !goneSet.has(p)), copies, extraRows: Object.values(copies).reduce((n, k) => n + k - 1, 0) } };
     });
     const labels: Record<AccessLevel, string> = { allow: "the allow list", readonly: "the read-only list", block: "the ban list" };
-    if (failed.length) toast({ title: `Removed ${gone.length} of ${hexes.length}`, description: `The relay turned down ${failed.length}: ${failed[0]}`, variant: "destructive" });
-    else toast({ title: `Removed ${gone.length} from ${labels[type]}`, description: remote ? "The relay has the change." : undefined });
+    if (failed.length) toast({ title: `Removed ${gone.length} of ${hexes.length}`, description: `Your host turned down ${failed.length}: ${failed[0]}`, variant: "destructive" });
+    else toast({ title: `Removed ${gone.length} from ${labels[type]}`, description: remote ? "Your host has the change." : undefined });
   }, [relayUrl, nip86Status, toast]);
 
   /**
@@ -856,7 +859,7 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
     setTidying(null);
     await syncFromRelay();
     if (lost) toast({ title: `Tidied ${people.length - lost} of ${people.length}`, description: `${lost} couldn't be added back — they're off the list now. Add them again from the search above.`, variant: "destructive" });
-    else toast({ title: "Tidied up", description: `Each of ${people.length} ${people.length === 1 ? "person is" : "people are"} on the relay's list once now.` });
+    else toast({ title: "Tidied up", description: `Each of ${people.length} ${people.length === 1 ? "person is" : "people are"} on your host's list once now.` });
   }, [relayCopies, relayUrl, toast, syncFromRelay]);
 
   const removeFromList = useCallback(async (hex: string, type: AccessLevel) => {
@@ -868,7 +871,7 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
       if (!canDo(caps, type === "allow" ? "unallow" : "unban")) {
         const where = managedAt(relayUrl);
         toast({
-          title: type === "allow" ? "This relay can't remove people from its allow list here" : "This relay can't lift bans here",
+          title: type === "allow" ? "Your host can't remove people from the allow list here" : "Your host can't lift bans here",
           description: where.url ? `Do it at ${where.name}.` : `Do it in ${where.name}.`,
         });
         return;
@@ -877,12 +880,12 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
         const apiFn = type === "allow" ? unallowPubkey : unbanPubkey;
         const res = await apiFn(relayUrl, hex);
         if (res.error) {
-          toast({ title: "Relay API error", description: res.error, variant: "destructive" });
+          toast({ title: "Your host didn't take that", description: res.error, variant: "destructive" });
           return;
         }
         syncedToRelay = true;
       } catch (err) {
-        toast({ title: "Relay API error", description: err instanceof Error ? err.message : "Failed to reach relay", variant: "destructive" });
+        toast({ title: "Your host didn't take that", description: err instanceof Error ? err.message : "We couldn't reach your host", variant: "destructive" });
         return;
       }
     }
@@ -899,7 +902,7 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
     setModLog(getModLog(relayUrl));
     const labels: Record<AccessLevel, string> = { allow: "allowlist", readonly: "read-only list", block: "blocklist" };
     if (syncedToRelay) {
-      toast({ title: `Removed from ${labels[type]}`, description: `${hex.slice(0, 8)}... removed (synced to relay).` });
+      toast({ title: `Removed from ${labels[type]}`, description: `${hex.slice(0, 8)}... removed (your host has it).` });
     } else if ((type === "allow" || type === "block") && nip86Status !== "supported") {
       toast({
         title: "Removed locally — not synced",
@@ -955,7 +958,7 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
         const res = await apiFn(relayUrl, hex);
         if (res.error) { refused++; firstError ||= res.error; } else done.push(hex);
       } catch (err) {
-        refused++; firstError ||= err instanceof Error ? err.message : "The relay didn't answer";
+        refused++; firstError ||= err instanceof Error ? err.message : "Your host didn't answer";
       }
       setImporting({ done: done.length + refused, total: job.add.length });
     }
@@ -973,7 +976,7 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
     const what = job.type === "allow" ? "the allow list" : "the ban list";
     toast({
       title: refused === 0 ? `Added ${done.length} to ${what}` : `Added ${done.length} of ${job.add.length} to ${what}`,
-      description: refused ? `The relay turned down ${refused}: ${firstError}` : undefined,
+      description: refused ? `Your host turned down ${refused}: ${firstError}` : undefined,
       variant: refused && !done.length ? "destructive" : undefined,
     });
   }, [pendingImport, relayUrl, allowlist, blocklist, toast]);
@@ -1115,7 +1118,7 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
         // Who may post is the host's setting; apps can only read it (NIP-11 limitation).
         const lim = nip11?.limitation;
         const rule = !nip11
-          ? "We couldn't read this relay's rules right now."
+          ? "We couldn't read your community's rules right now."
           : lim?.restricted_writes ? `Only approved people can post here${lim.auth_required ? ", after signing in" : ""}.`
           : lim?.payment_required ? `People pay to post here${lim.auth_required ? ", after signing in" : ""}.`
           : lim?.auth_required ? "Anyone who signs in can post here."
@@ -1221,13 +1224,13 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
           <span className="min-w-0 flex-1">
             {nip86Status === "supported" && (
               <>
-                Managed on the relay
-                {nip86Syncing ? " · syncing…" : nip86Error ? ` · ${nip86Error}` : nip86LastSync ? ` · synced ${new Date(nip86LastSync).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : ""}
+                Kept by your host
+                {nip86Syncing ? " · checking…" : nip86Error ? ` · ${nip86Error}` : nip86LastSync ? ` · checked ${new Date(nip86LastSync).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : ""}
               </>
             )}
-            {nip86Status === "advertised_but_nonfunctional" && "This relay advertises a management API but it doesn't answer, so these lists are kept in this browser."}
-            {nip86Status === "not_supported" && "This relay has no management API, so these lists are kept in this browser."}
-            {nip86Status === "unreachable" && "Couldn't reach this relay's management API. Changes stay in this browser until it answers."}
+            {nip86Status === "advertised_but_nonfunctional" && "Your host says apps can manage these lists but didn't answer, so they're kept in this browser."}
+            {nip86Status === "not_supported" && "Your host doesn't let apps manage these lists, so they're kept in this browser."}
+            {nip86Status === "unreachable" && "Couldn't reach your host. Changes stay in this browser until it answers."}
           </span>
           {nip86Status === "supported" && (
             <button
@@ -1257,7 +1260,7 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
           icon={<UserCheck className="w-3.5 h-3.5 text-green-600 dark:text-green-400/70" />}
           label="Allowed to post"
           labelClass="text-green-700 dark:text-green-300/80"
-          description="On a relay where only approved people can post, these are the approved people."
+          description="Where only approved people can post, these are the approved people."
           borderClass="border-green-400/25 dark:border-green-400/15"
           badgeClass="border-green-400/30 dark:border-green-400/20 text-green-600 dark:text-green-400/70"
           list={allowlist}
@@ -1285,7 +1288,7 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
         icon={<UserX className="w-3.5 h-3.5 text-red-600/80 dark:text-red-400/70" />}
         label="Banned"
         labelClass="text-red-700 dark:text-red-300/80"
-        description="Can't post on this relay. What they posted before stays unless you remove it."
+        description="Can't post here. What they posted before stays unless you remove it."
         borderClass="border-red-400/25 dark:border-red-400/15"
         badgeClass="border-red-400/30 dark:border-red-400/20 text-red-600 dark:text-red-400/70"
         list={blocklist}
@@ -1321,7 +1324,7 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
             </AlertDialogTitle>
             <AlertDialogDescription data-testid="ops-import-summary">
               {pendingImport && [
-                pendingImport.add.length ? `Each is sent to the relay${pendingImport.type === "block" ? " — they won't be able to post" : ""}.` : "",
+                pendingImport.add.length ? `Each is sent to your host${pendingImport.type === "block" ? " — they won't be able to post" : ""}.` : "",
                 pendingImport.already ? `${pendingImport.already} already on the list.` : "",
                 pendingImport.unreadable ? `${pendingImport.unreadable} ${pendingImport.unreadable === 1 ? "line" : "lines"} couldn't be read.` : "",
               ].filter(Boolean).join(" ")}
@@ -1342,250 +1345,3 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
     </div>
   );
 }
-
-const MOD_ACTION_META: Record<ModAction, { label: string; color: string; icon: typeof Trash2 }> = {
-  delete_event: { label: "Deleted event", color: "text-red-600 dark:text-red-400/80", icon: Trash2 },
-  bulk_delete: { label: "Bulk deleted", color: "text-red-600 dark:text-red-400/80", icon: Trash2 },
-  block_author: { label: "Blocked author", color: "text-orange-600 dark:text-orange-400/80", icon: UserX },
-  add_allowlist: { label: "Added to allowlist", color: "text-green-600 dark:text-green-400/80", icon: UserCheck },
-  add_readonly: { label: "Added to read-only", color: "text-blue-600 dark:text-blue-400/80", icon: Globe },
-  add_blocklist: { label: "Added to blocklist", color: "text-red-600 dark:text-red-400/80", icon: UserX },
-  remove_allowlist: { label: "Removed from allowlist", color: "text-amber-600 dark:text-amber-400/80", icon: UserCheck },
-  remove_readonly: { label: "Removed from read-only", color: "text-amber-600 dark:text-amber-400/80", icon: Globe },
-  remove_blocklist: { label: "Unblocked", color: "text-green-600 dark:text-green-400/80", icon: UserX },
-  import_allowlist: { label: "Imported allowlist", color: "text-green-600 dark:text-green-400/80", icon: Upload },
-  import_readonly: { label: "Imported read-only", color: "text-blue-600 dark:text-blue-400/80", icon: Upload },
-  import_blocklist: { label: "Imported blocklist", color: "text-red-600 dark:text-red-400/80", icon: Upload },
-  relay_offline: { label: "Relay went offline", color: "text-red-600 dark:text-red-400/80", icon: AlertTriangle },
-  relay_online: { label: "Relay back online", color: "text-green-600 dark:text-green-400/80", icon: Zap },
-  relay_latency_spike: { label: "Latency spike", color: "text-amber-600 dark:text-amber-400/80", icon: Clock },
-};
-
-function ModerationLogSection({
-  relayUrl,
-  modLog,
-  setModLog,
-  modLogFilter,
-  setModLogFilter,
-  profileCache,
-}: {
-  relayUrl: string;
-  modLog: ModerationLogEntry[];
-  setModLog: React.Dispatch<React.SetStateAction<ModerationLogEntry[]>>;
-  modLogFilter: "all" | "deletes" | "access" | "health";
-  setModLogFilter: React.Dispatch<React.SetStateAction<"all" | "deletes" | "access" | "health">>;
-  profileCache: Record<string, ProfileInfo>;
-}) {
-  const { toast } = useToast();
-  const [open, setOpen] = useState(true);
-  const [confirmClear, setConfirmClear] = useState(false);
-
-  const modLogRef = useRef(modLog);
-  modLogRef.current = modLog;
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const fresh = getModLog(relayUrl);
-      const cur = modLogRef.current;
-      if (fresh.length !== cur.length || (fresh.length > 0 && cur.length > 0 && fresh[fresh.length - 1].id !== cur[cur.length - 1].id)) {
-        setModLog(fresh);
-      }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [relayUrl, setModLog]);
-
-  const filteredLog = useMemo(() => {
-    const deleteActions: ModAction[] = ["delete_event", "bulk_delete"];
-    const accessActions: ModAction[] = ["block_author", "add_allowlist", "add_readonly", "add_blocklist", "remove_allowlist", "remove_readonly", "remove_blocklist", "import_allowlist", "import_readonly", "import_blocklist"];
-    const healthActions: ModAction[] = ["relay_offline", "relay_online", "relay_latency_spike"];
-    let filtered = modLog;
-    if (modLogFilter === "deletes") filtered = modLog.filter(e => deleteActions.includes(e.action));
-    if (modLogFilter === "access") filtered = modLog.filter(e => accessActions.includes(e.action));
-    if (modLogFilter === "health") filtered = modLog.filter(e => healthActions.includes(e.action));
-    return [...filtered].reverse();
-  }, [modLog, modLogFilter]);
-
-  const handleExportLog = useCallback(() => {
-    const lines = [...modLog].reverse().map(entry => {
-      const meta = MOD_ACTION_META[entry.action];
-      const parts = [new Date(entry.ts).toISOString(), meta.label];
-      if (entry.targetPubkey) parts.push(`pubkey:${entry.targetPubkey}`);
-      if (entry.targetEventId) parts.push(`event:${entry.targetEventId}`);
-      if (entry.targetKind !== undefined) parts.push(`kind:${entry.targetKind}`);
-      if (entry.count !== undefined) parts.push(`count:${entry.count}`);
-      if (entry.note) parts.push(`note:${entry.note}`);
-      return parts.join(" | ");
-    });
-    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `moderation-log-${new Date().toISOString().slice(0, 10)}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast({ title: "Exported", description: `${modLog.length} log entries exported.` });
-  }, [modLog, toast]);
-
-  const handleClearLog = useCallback(() => {
-    clearModLog(relayUrl);
-    setModLog([]);
-    setConfirmClear(false);
-    toast({ title: "Log cleared", description: "Moderation log has been cleared." });
-  }, [relayUrl, setModLog, toast]);
-
-  const formatTimestamp = (ts: number) => {
-    const d = new Date(ts);
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    if (diffMs < 60_000) return "just now";
-    if (diffMs < 3600_000) return `${Math.floor(diffMs / 60_000)}m ago`;
-    if (diffMs < 86400_000) return `${Math.floor(diffMs / 3600_000)}h ago`;
-    if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    return d.toLocaleDateString([], { month: "short", day: "numeric" }) + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  };
-
-  return (
-    <Card className="glass-card border border-amber-400/20 dark:border-amber-400/10 p-3">
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={(e) => { if ((e.target as HTMLElement).closest("[data-mod-action]")) return; setOpen(!open); }}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(!open); } }}
-        className="flex items-center gap-2 w-full text-left cursor-pointer"
-      >
-        <ScrollText className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400/70" />
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300/80">Moderation Log</span>
-        <Badge variant="outline" className="text-[10px] border-amber-300/30 dark:border-amber-400/20 text-amber-600 dark:text-amber-400/70 ml-1">{modLog.length}</Badge>
-        <div className="ml-auto flex items-center gap-1">
-          {modLog.length > 0 && (
-            <>
-              <button
-                data-mod-action
-                onClick={handleExportLog}
-                className="p-1 rounded hover:bg-amber-500/10 text-muted-foreground/50 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
-                title="Export log"
-              >
-                <Download className="w-3.5 h-3.5" />
-              </button>
-              <button
-                data-mod-action
-                onClick={() => setConfirmClear(true)}
-                className="p-1 rounded hover:bg-red-500/10 text-muted-foreground/50 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                title="Clear log"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </>
-          )}
-          {open ? <ChevronUp className="w-3 h-3 text-muted-foreground/50 shrink-0" /> : <ChevronDown className="w-3 h-3 text-muted-foreground/50 shrink-0" />}
-        </div>
-      </div>
-
-      {open && (
-        <div className="mt-3 space-y-2">
-          <p className="text-[10px] text-muted-foreground/60">
-            Tracks all moderation actions — deletions, blocks, access list changes. Stored locally per relay (last 500 entries).
-          </p>
-
-          {modLog.length > 0 && (
-            <div className="flex gap-1 mb-2 flex-wrap">
-              {(["all", "deletes", "access", "health"] as const).map(f => (
-                <button
-                  key={f}
-                  onClick={() => setModLogFilter(f)}
-                  className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
-                    modLogFilter === f
-                      ? "bg-amber-500/15 border-amber-400/40 dark:border-amber-400/25 text-amber-700 dark:text-amber-300/90 font-medium"
-                      : "border-border/40 text-muted-foreground/60 hover:text-muted-foreground/80 hover:border-border/60"
-                  }`}
-                >
-                  {f === "all" ? "All" : f === "deletes" ? "Deletions" : f === "access" ? "Access" : "Health"}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {filteredLog.length === 0 ? (
-            <div className="text-center py-6">
-              <ScrollText className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
-              <p className="text-xs text-muted-foreground/50">
-                {modLog.length === 0 ? "No moderation actions recorded yet." : "No matching entries."}
-              </p>
-              <p className="text-[10px] text-muted-foreground/40 mt-1">
-                Actions like deleting events, blocking authors, and managing access lists will appear here.
-              </p>
-            </div>
-          ) : (
-            <div className="max-h-[320px] overflow-y-auto space-y-0 border border-border/30 rounded-lg">
-              {filteredLog.map(entry => {
-                const meta = MOD_ACTION_META[entry.action];
-                const Icon = meta.icon;
-                return (
-                  <div key={entry.id} className="flex items-start gap-2 px-3 py-2 border-b border-border/20 last:border-b-0 hover:bg-muted/30 transition-colors group">
-                    <div className={`mt-0.5 shrink-0 ${meta.color}`}>
-                      <Icon className="w-3 h-3" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2 flex-wrap">
-                        <span className={`text-[11px] font-medium ${meta.color}`}>{meta.label}</span>
-                        {entry.targetKind !== undefined && (
-                          <Badge variant="outline" className="text-[10px] px-1 py-0">{`kind ${entry.targetKind}`}</Badge>
-                        )}
-                        {entry.count !== undefined && (
-                          <span className="text-[10px] text-muted-foreground/60">{entry.count} {entry.count === 1 ? "entry" : "entries"}</span>
-                        )}
-                      </div>
-                      {entry.targetPubkey && (
-                        <div className="flex items-center gap-1 mt-0.5">
-                          {profileCache[entry.targetPubkey]?.picture ? (
-                            <Avatar className="w-3 h-3">
-                              <AvatarImage src={profileCache[entry.targetPubkey].picture!} />
-                              <AvatarFallback className="text-[10px]">?</AvatarFallback>
-                            </Avatar>
-                          ) : null}
-                          <span className="text-[10px] text-muted-foreground/70 font-mono truncate">
-                            {profileCache[entry.targetPubkey]?.name || pubkeyToNpub(entry.targetPubkey).slice(0, 20) + "..."}
-                          </span>
-                        </div>
-                      )}
-                      {entry.targetEventId && (
-                        <span className="text-[10px] text-muted-foreground/50 font-mono block truncate mt-0.5">
-                          event: {entry.targetEventId.slice(0, 16)}...
-                        </span>
-                      )}
-                      {entry.note && (
-                        <p className="text-[10px] text-muted-foreground/60 mt-0.5 italic">{entry.note}</p>
-                      )}
-                    </div>
-                    <span className="text-[10px] text-muted-foreground/40 shrink-0 whitespace-nowrap mt-0.5">{formatTimestamp(entry.ts)}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2"><Trash2 className="w-4 h-4 text-red-500" />Clear Moderation Log</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete all {modLog.length} log entries for this relay. This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleClearLog}
-              className="bg-red-500/20 text-red-700 dark:text-red-300 hover:bg-red-500/30 border border-red-400/40 dark:border-red-400/20"
-            >
-              Clear All
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </Card>
-  );
-}
-

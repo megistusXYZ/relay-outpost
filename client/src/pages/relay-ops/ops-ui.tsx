@@ -142,7 +142,7 @@ export function OpsSectionHeader({
  */
 export function ManagedAtNote({
   where,
-  lead = "This relay doesn't let us change this here.",
+  lead = "Your host doesn't let apps change this.",
   verb = "Change it",
   testId = "ops-managed-at",
 }: {

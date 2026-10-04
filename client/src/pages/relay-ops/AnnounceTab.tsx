@@ -461,7 +461,7 @@ export function AnnounceTab({ relayUrl, nip11, part = "card" }: { relayUrl: stri
             </div>
           )}
           <Textarea
-            placeholder="Write an announcement about your relay..."
+            placeholder="Write an announcement for your community…"
             value={announcementText}
             onChange={(e) => setAnnouncementText(e.target.value)}
             className="min-h-[80px] text-xs mb-3"
@@ -489,8 +489,8 @@ export function AnnounceTab({ relayUrl, nip11, part = "card" }: { relayUrl: stri
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-[10px] text-muted-foreground/60 min-w-0 flex-1">
               {privateOnly
-                ? "Will be posted only to your relay. Not visible on public relays."
-                : "Will be posted to your relay + public relays (damus, nos.lol)."}
+                ? "Posted only to your community — not shared more widely."
+                : "Posted to your community, and shared more widely (damus, nos.lol)."}
             </p>
             <Button size="sm" onClick={publishAnnouncement} disabled={publishing || !announcementText.trim()} className="text-xs min-h-[44px] shrink-0" data-testid="button-publish-announcement">
               <Megaphone className={`w-3 h-3 mr-1 ${publishing ? "animate-pulse" : ""}`} />
@@ -547,7 +547,7 @@ export function AnnounceTab({ relayUrl, nip11, part = "card" }: { relayUrl: stri
           <div className="text-center py-8" data-testid="empty-announcements">
             <Megaphone className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
             <p className="text-xs text-muted-foreground/50">No announcements found.</p>
-            <p className="text-[10px] text-muted-foreground/40 mt-1">Publish your first announcement above to let users know about your relay.</p>
+            <p className="text-[10px] text-muted-foreground/40 mt-1">Post your first announcement above to tell members what's new.</p>
           </div>
         ) : (
           <div className="space-y-2 max-h-[400px] overflow-y-auto">
@@ -580,7 +580,7 @@ export function AnnounceTab({ relayUrl, nip11, part = "card" }: { relayUrl: stri
                         <button
                           onClick={(e) => { e.stopPropagation(); copyNpub(event.pubkey, event.id); }}
                           className="shrink-0 p-0.5 rounded text-muted-foreground/40 hover:text-brand transition-colors"
-                          title="Copy npub"
+                          title="Copy their key"
                           data-testid={`button-copy-npub-${event.id.slice(0, 8)}`}
                         >
                           {copiedNpubId === event.id ? <Check className="w-2.5 h-2.5 text-green-800 dark:text-green-400" /> : <Copy className="w-2.5 h-2.5" />}

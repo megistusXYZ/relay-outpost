@@ -15,11 +15,11 @@ export type CountState =
 export function countLine(s: CountState): string {
   switch (s.status) {
     case "counting": return "Counting…";
-    case "unsupported": return "This relay can't count totals";
-    case "unreached": return "Couldn't reach the relay to count";
+    case "unsupported": return "Totals aren't available here";
+    case "unreached": return "Couldn't reach your community to count";
     case "refused": {
       const why = (s.reason ?? "").replace(/^[a-z-]+:\s*/i, "").trim();
-      return why ? `The relay wouldn't count this: ${why}` : "The relay wouldn't count this";
+      return why ? `Your host wouldn't count this: ${why}` : "Your host wouldn't count this";
     }
     case "counted": {
       if (s.count === 0) return "None match";

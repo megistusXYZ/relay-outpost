@@ -15,7 +15,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AlertTriangle, ShieldCheck, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Megaphone, Plus, Terminal, Users, UsersRound, ScrollText, Inbox, Cable, IdCard, BarChart3, MessagesSquare } from "lucide-react";
+import { AlertTriangle, ShieldCheck, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Megaphone, Plus, Terminal, Users, UsersRound, ScrollText, Inbox, Cable, IdCard, BarChart3, MessagesSquare, Code2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { useTechnicalDetails, setTechnicalDetails } from "@/lib/technical-details";
 import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -51,6 +53,25 @@ const SCREEN_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   scans: BarChart3,
   groups: MessagesSquare,
 };
+
+/**
+ * "Show technical details" (owner, 2026-10-04): off by default, remembered
+ * on this device. On, every screen also shows kind numbers, keys and method
+ * names next to the plain words.
+ */
+function TechnicalDetailsRow() {
+  const on = useTechnicalDetails();
+  return (
+    <label className="w-full flex items-center gap-3 min-h-[60px] px-4 py-2.5 cursor-pointer hover:bg-black/[0.03] dark:hover:bg-white/[0.03]" data-testid="ops-technical-details">
+      <span className="w-8 h-8 rounded-lg bg-brand/10 text-brand inline-flex items-center justify-center shrink-0"><Code2 className="w-4 h-4" aria-hidden="true" /></span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium leading-snug">Show technical details</span>
+        <span className="block text-[12px] text-muted-foreground leading-snug">Kind numbers, keys and method names, on every screen</span>
+      </span>
+      <Switch checked={on} onCheckedChange={setTechnicalDetails} aria-label="Show technical details" data-testid="ops-technical-details-switch" />
+    </label>
+  );
+}
 
 /** A list of screens (Community, Advanced): one row each, hairlines between. */
 function ScreenList({ screens, onOpen, extra, testId }: { screens: ReadonlyArray<ConsoleScreen>; onOpen: (tab: TabId) => void; extra?: React.ReactNode; testId: string }) {
@@ -366,7 +387,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
           <div
             ref={navRef}
             role="tablist"
-            aria-label="Relay Control sections"
+            aria-label="Sections"
             className="flex items-stretch gap-1 overflow-x-auto scrollbar-hide scroll-px-3 -mx-3 px-3 sm:mx-0 sm:px-0 border-b border-black/[0.08] dark:border-white/[0.08] lg:flex-col lg:overflow-visible lg:border-b-0 lg:sticky lg:top-4"
             data-testid="ops-nav"
           >
@@ -441,8 +462,8 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                     screens={ADVANCED_SCREENS}
                     onOpen={setActiveTab}
                     testId="ops-advanced-rows"
-                    extra={
-                      // For developers: the same relay, on the wire.
+                    extra={<>
+                      {/* For developers: the same relay, on the wire. */}
                       <button
                         onClick={() => navigate(`/my-relays/console?relay=${encodeURIComponent(selectedRelay)}`)}
                         className="w-full flex items-center gap-3 min-h-[60px] px-4 py-2.5 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
@@ -455,7 +476,8 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                         </span>
                         <ArrowUpRight className="w-4 h-4 text-muted-foreground/50 shrink-0" aria-hidden="true" />
                       </button>
-                    }
+                      <TechnicalDetailsRow />
+                    </>}
                   />
                 )}
                 {activeTab === "featured" && (

@@ -14,6 +14,7 @@
  * Rules live in content-model.ts; relay calls in lib/nip86.ts and
  * lib/relay-moderation.ts.
  */
+import { useTechnicalDetails } from "@/lib/technical-details";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link } from "wouter";
 import { nip19 } from "nostr-tools";
@@ -111,6 +112,7 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
   /** Opened from People's "See their posts": the search starts with their npub. */
   initialQuery?: string;
 }) {
+  const technical = useTechnicalDetails();
   const { toast } = useToast();
   const wide = useWide();
   const relayName = nip11?.name?.trim() || relayUrl.replace(/^wss?:\/\//, "");
@@ -432,7 +434,7 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
     }
     const noun = action.kind === "remove" ? (n: number) => (n === 1 ? "post" : "posts") : (n: number) => (n === 1 ? "person" : "people");
     if (out.stopped || out.done.length === 0) {
-      toast({ title: "The relay turned this down", description: out.stopped ?? out.failed[0]?.error, variant: "destructive" });
+      toast({ title: "Your host turned this down", description: out.stopped ?? out.failed[0]?.error, variant: "destructive" });
     } else if (out.failed.length === 0) {
       toast({
         title: action.kind === "remove" ? `Removed ${out.done.length} ${noun(out.done.length)} from ${relayName}` : `Banned ${out.done.length} ${noun(out.done.length)} from ${relayName}`,
@@ -461,9 +463,9 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
   useEffect(() => { if (view === "removed") void loadRemoved(); }, [view, loadRemoved]);
   const restore = useCallback(async (id: string) => {
     const res = await restoreEvent(relayUrl, id);
-    if (res.error) { toast({ title: "The relay didn't bring it back", description: res.error, variant: "destructive" }); return; }
+    if (res.error) { toast({ title: "Your host didn't bring it back", description: res.error, variant: "destructive" }); return; }
     setRemoved((prev) => prev?.filter((r) => r.id !== id) ?? prev);
-    toast({ title: "Restored", description: "People using this relay can see it again." });
+    toast({ title: "Restored", description: "Members can see it again." });
   }, [relayUrl, toast]);
 
   // ---- exporting ----
@@ -548,9 +550,9 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
             ref={searchRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={wide ? "Search — words, an npub, kind:1, an event id, or paste an event" : "Search"}
-            title="Words, an npub, kind:1, an event id, or a pasted event to inspect"
-            aria-label="Search this relay"
+            placeholder={wide ? (technical ? "Search — words, an npub, kind:1, an event id, or paste an event" : "Search posts — words, a person, or a link to a post") : "Search"}
+            title={technical ? "Words, an npub, kind:1, an event id, or a pasted event to inspect" : "Words, a person, or a link to a post"}
+            aria-label="Search this community"
             enterKeyHint="search"
             className="h-11 sm:h-10 pl-10 pr-10 rounded-full text-sm"
             data-testid="ops-events-search"
@@ -664,7 +666,7 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
               onSignIn={() => { if (!signInAsChosen(relayUrl)) return; try { pool.close([relayUrl]); } catch {} setTimeout(() => void runSearchRef.current(), 300); }} />
               ) : rows.length === 0 && !searching ? (
                 <p className="px-1 py-10 text-center text-sm text-muted-foreground" data-testid="ops-content-empty">
-                  {!reached ? "We couldn't reach this relay to look." : submitted || windowActive || view !== "all" || chips.length ? "Nothing on this relay matches." : "Nothing on this relay yet."}
+                  {!reached ? "We couldn't reach your community to look." : submitted || windowActive || view !== "all" || chips.length ? "Nothing here matches." : "Nothing here yet."}
                 </p>
               ) : (
                 <div className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] overflow-hidden">
@@ -750,7 +752,7 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
               <ExportButton onExport={exportNow} disabled={!checked.size} />
             </div>
           </div>
-          {!canRemove && !canBan && <ManagedAtNote where={where} lead="This relay doesn't let apps remove posts or ban people." verb="Do it" testId="ops-content-cant-act" />}
+          {!canRemove && !canBan && <ManagedAtNote where={where} lead="Your host doesn't let apps remove posts or ban people." verb="Do it" testId="ops-content-cant-act" />}
         </div>
       )}
       {!selectMode && view !== "removed" && rows.length > 0 && (
@@ -852,6 +854,7 @@ function ContentDetail({ event, profile, relayName, canRemove, canBan, where, on
   onRemove: () => void; onBan: () => void; onFeature: () => void; onInspect: () => void; onEverythingFrom: () => void;
   preview: PreviewContext;
 }) {
+  const technical = useTechnicalDetails();
   const [all, setAll] = useState(false);
   const sealed = isPrivateKind(event.kind);
   const npub = pubkeyToNpub(event.pubkey);
@@ -874,7 +877,7 @@ function ContentDetail({ event, profile, relayName, canRemove, canBan, where, on
         Everything from {profile?.name || "this person"}
       </button>
       <p className="text-[13px] text-muted-foreground">
-        {typeWord(event.kind)} · {new Date(event.created_at * 1000).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} · kind {event.kind}
+        {typeWord(event.kind)} · {new Date(event.created_at * 1000).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}{technical ? ` · kind ${event.kind}` : ""}
       </p>
       {sealed ? (
         <p className="text-[14px] leading-relaxed text-muted-foreground italic" data-testid="ops-content-sealed">
@@ -895,7 +898,7 @@ function ContentDetail({ event, profile, relayName, canRemove, canBan, where, on
             <Ban className="w-4 h-4 mr-2" />Ban {profile?.name || "this person"}
           </Button>
         ) : null}
-        {!canRemove && !canBan && <ManagedAtNote where={where} lead="This relay doesn't let apps remove posts or ban people." verb="Do it" testId="ops-content-cant-act" />}
+        {!canRemove && !canBan && <ManagedAtNote where={where} lead="Your host doesn't let apps remove posts or ban people." verb="Do it" testId="ops-content-cant-act" />}
         {!sealed && (
           <Button variant="outline" onClick={onFeature} className="h-11 rounded-full justify-center" data-testid="ops-content-feature">
             <MagicStarIcon className="w-4 h-4 mr-2" />Feature
@@ -1006,17 +1009,17 @@ function RemovedList({ entries, error, canRestore, where, onRestore, onRetry }: 
   if (error) {
     return (
       <div className="py-10 text-center space-y-2" data-testid="ops-content-removed-error">
-        <p className="text-sm">The relay didn't give us its removed list.</p>
+        <p className="text-sm">Your host didn't share what's been removed.</p>
         <p className="text-[13px] text-muted-foreground">{error}</p>
         <Button variant="outline" onClick={onRetry} className="h-10 rounded-full">Try again</Button>
       </div>
     );
   }
   if (!entries) return <div className="py-10 flex justify-center"><RelayOutpostInlineLoader className="w-5 h-5" /></div>;
-  if (!entries.length) return <p className="py-10 text-center text-sm text-muted-foreground" data-testid="ops-content-removed-empty">Nothing has been removed from this relay.</p>;
+  if (!entries.length) return <p className="py-10 text-center text-sm text-muted-foreground" data-testid="ops-content-removed-empty">Nothing has been removed here.</p>;
   return (
     <div className="space-y-2">
-      {!canRestore && <ManagedAtNote where={where} lead="This relay doesn't let apps bring removed posts back." verb="Do it" testId="ops-content-cant-restore" />}
+      {!canRestore && <ManagedAtNote where={where} lead="Your host doesn't let apps bring removed posts back." verb="Do it" testId="ops-content-cant-restore" />}
       <ul className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] divide-y divide-black/[0.06] dark:divide-white/[0.06]" data-testid="ops-content-removed">
         {entries.map((r) => (
           <li key={r.id} className="flex items-center gap-3 px-3 min-h-[56px]" data-testid="ops-content-removed-row">
@@ -1032,7 +1035,7 @@ function RemovedList({ entries, error, canRestore, where, onRestore, onRetry }: 
           </li>
         ))}
       </ul>
-      <p className="px-1 text-[12px] text-muted-foreground">The relay no longer serves these, so only their IDs and reasons are shown.</p>
+      <p className="px-1 text-[12px] text-muted-foreground">These aren't served any more, so only why they were removed is shown.</p>
     </div>
   );
 }

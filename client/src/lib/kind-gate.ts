@@ -47,15 +47,16 @@ export const GATE_KIND_OPTIONS: { label: string; kinds: number[] }[] = [
 ];
 
 /** Kinds grouped under their category labels: "Private messages (4, 1059)". */
-export function formatKindList(kinds: number[]): string {
+/** Kinds by name; numbers only when asked (Advanced, or "Show technical details"). */
+export function formatKindList(kinds: number[], withNumbers = true): string {
   const groups = new Map<string, number[]>();
   for (const k of kinds) {
     const opt = GATE_KIND_OPTIONS.find((o) => o.kinds.includes(k));
-    const label = opt ? opt.label : `Kind ${k}`;
+    const label = opt ? opt.label : withNumbers ? `Kind ${k}` : "other kinds of posts";
     groups.set(label, [...(groups.get(label) || []), k]);
   }
   return [...groups.entries()]
-    .map(([label, ks]) => (label.startsWith("Kind ") ? label : `${label} (${ks.join(", ")})`))
+    .map(([label, ks]) => (!withNumbers || label.startsWith("Kind ") || label === "other kinds of posts" ? label : `${label} (${ks.join(", ")})`))
     .join(", ");
 }
 

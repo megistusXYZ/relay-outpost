@@ -11,6 +11,7 @@
  *
  * Rules live in people-model.ts.
  */
+import { useTechnicalDetails } from "@/lib/technical-details";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Link } from "wouter";
 import type { Event as NostrEvent } from "nostr-tools";
@@ -76,6 +77,7 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts, team, initialFilter }: 
   /** Opens Content searching for this person. */
   onSeePosts: (npub: string) => void;
 }) {
+  const technical = useTechnicalDetails();
   const { toast } = useToast();
   const wide = useWide();
   const { getAuthorTier, isAuthorFlagged, wotEnabled } = useGrapeRankScores();
@@ -92,7 +94,7 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts, team, initialFilter }: 
     setFindingProfile(false);
     const latest = found.sort((a, b) => b.created_at - a.created_at)[0];
     if (latest) setInspecting(latest);
-    else toast({ title: "No profile found", description: "Neither this relay nor the public ones that answered have one for them." });
+    else toast({ title: "No profile found", description: "Neither your community nor the public servers that answered have one for them." });
   };
   const speaks86 = !!nip11 && supportsNip(nip11, 86);
 
@@ -155,7 +157,7 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts, team, initialFilter }: 
       canDo(caps, "listAllowed") ? listAllowedPubkeys(relayUrl) : Promise.resolve<Nip86Response<PubkeyEntry[]>>({ result: [] }),
       canDo(caps, "listBanned") ? listBannedPubkeys(relayUrl) : Promise.resolve<Nip86Response<PubkeyEntry[]>>({ result: [] }),
     ]);
-    if (a.error && b.error) { setListsNote(`The relay didn't share its allow and ban lists: ${b.error}`); return; }
+    if (a.error && b.error) { setListsNote(`Your host didn't share who's allowed or banned: ${b.error}`); return; }
     setListsNote(null);
     setAllowed(hexes(a.result));
     setBanned(hexes(b.result));
@@ -216,7 +218,7 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts, team, initialFilter }: 
     setPending(null);
     setBanned((prev) => [...new Set([...prev, ...out.done])]);
     for (const pk of out.done) addModLogEntry(relayUrl, { action: "block_author", targetPubkey: pk, note: reason });
-    if (out.stopped || out.done.length === 0) toast({ title: "The relay turned this down", description: out.stopped ?? out.failed[0]?.error, variant: "destructive" });
+    if (out.stopped || out.done.length === 0) toast({ title: "Your host turned this down", description: out.stopped ?? out.failed[0]?.error, variant: "destructive" });
     else if (out.failed.length) toast({ title: `${out.done.length} banned, ${out.failed.length} didn't go through`, description: out.failed[0].error, variant: "destructive" });
     else { toast({ title: `Banned ${out.done.length} ${out.done.length === 1 ? "person" : "people"} from ${relayName}` }); endSelect(); }
   }, [pending, relayUrl, relayName, toast]);
@@ -231,7 +233,7 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts, team, initialFilter }: 
     for (const pk of out.done) addModLogEntry(relayUrl, { action: kind === "unban" ? "remove_blocklist" : kind === "allow" ? "add_allowlist" : "remove_allowlist", targetPubkey: pk });
     const n = out.done.length;
     const who = n === 1 ? (nameOf(out.done[0]) ?? `${pubkeyToNpub(out.done[0]).slice(0, 12)}…`) : `${n} people`;
-    if (!n) toast({ title: "The relay turned this down", description: out.stopped ?? out.failed[0]?.error, variant: "destructive" });
+    if (!n) toast({ title: "Your host turned this down", description: out.stopped ?? out.failed[0]?.error, variant: "destructive" });
     else toast({ title: kind === "unban" ? `Lifted the ban on ${who}` : kind === "allow" ? `${who} can post on ${relayName}` : `Took ${who} off the allow list` });
     if (n) endSelect();
   }, [relayUrl, relayName, nameOf, toast]);
@@ -271,7 +273,7 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts, team, initialFilter }: 
       <div className="flex items-center gap-2">
         <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 pointer-events-none" aria-hidden="true" />
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={wide ? "Find someone — a name or an npub" : "Find someone"} aria-label="Find someone" className="h-11 sm:h-10 pl-10 pr-10 rounded-full text-sm" data-testid="ops-people-search" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={wide ? (technical ? "Find someone — a name or an npub" : "Find someone — a name, or paste their profile link") : "Find someone"} aria-label="Find someone" className="h-11 sm:h-10 pl-10 pr-10 rounded-full text-sm" data-testid="ops-people-search" />
           {query && (
             <button type="button" onClick={() => setQuery("")} className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 inline-flex items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground" aria-label="Clear">
               <X className="w-4 h-4" />
@@ -316,7 +318,7 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts, team, initialFilter }: 
       </div>
       {listsNote && <p className="px-1 text-[13px] text-amber-700 dark:text-amber-300" data-testid="ops-people-lists-note">{listsNote}</p>}
       {!can.lists && !loading && speaks86 === false && (
-        <ManagedAtNote where={where} lead="This relay doesn't share who it allows or bans with apps." verb="See them" testId="ops-people-no-lists" />
+        <ManagedAtNote where={where} lead="Your host doesn't share who's allowed or banned with apps." verb="See them" testId="ops-people-no-lists" />
       )}
 
       {listView ? (
@@ -332,7 +334,7 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts, team, initialFilter }: 
               onSignIn={() => { if (!signInAsChosen(relayUrl)) return; try { pool.close([relayUrl]); } catch {} setTimeout(() => setReload((n) => n + 1), 300); }} />
           ) : shown.length === 0 && !loading ? (
             <p className="py-10 text-center text-sm text-muted-foreground" data-testid="ops-people-empty">
-              {!reached ? "We couldn't reach this relay to look." : query || filter !== "all" ? "Nobody matches." : "Nobody has posted here yet."}
+              {!reached ? "We couldn't reach your community to look." : query || filter !== "all" ? "Nobody matches." : "Nobody has posted here yet."}
             </p>
           ) : (
             <ul className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] divide-y divide-black/[0.06] dark:divide-white/[0.06] overflow-hidden" data-testid="ops-people-list">
@@ -412,6 +414,7 @@ function PersonDetail({ person, profile, trust, nowSec, relayName, can, where, o
   onInspectProfile: () => void; finding: boolean;
   notes?: ReactNode;
 }) {
+  const technical = useTechnicalDetails();
   const npub = pubkeyToNpub(person.pubkey);
   const name = profile?.name || `${npub.slice(0, 16)}…`;
   const nothingToDo = !(person.status === "banned" ? can.unban : can.ban) && !can.allow;
@@ -423,7 +426,7 @@ function PersonDetail({ person, profile, trust, nowSec, relayName, can, where, o
           <p className="text-[17px] font-semibold leading-tight truncate">{name}</p>
           {profile?.nip05 && <p className="text-[13px] text-muted-foreground truncate">{profile.nip05}</p>}
           <button type="button" onClick={() => copyNostrId(npub)} className="mt-0.5 inline-flex items-center gap-1 text-[12px] font-mono text-muted-foreground hover:text-foreground min-h-[28px]">
-            {npub.slice(0, 18)}…<Copy className="w-3 h-3" aria-label="Copy npub" />
+            {npub.slice(0, 18)}…<Copy className="w-3 h-3" aria-label={technical ? "Copy npub" : "Copy their key"} />
           </button>
         </div>
       </div>
@@ -446,8 +449,8 @@ function PersonDetail({ person, profile, trust, nowSec, relayName, can, where, o
         {person.status !== "banned" && (person.status === "allowed"
           ? can.unallow && <Button variant="ghost" onClick={onUnallow} className="h-11 rounded-full" data-testid="ops-person-unallow">Take off the allow list</Button>
           : can.allow && <Button variant="ghost" onClick={onAllow} className="h-11 rounded-full" data-testid="ops-person-allow"><ShieldCheck className="w-4 h-4 mr-2" />Allow to post</Button>)}
-        {person.status === "banned" && !can.unban && <ManagedAtNote where={where} lead="This relay can't lift bans from here." verb="Do it" testId="ops-person-cant-unban" />}
-        {nothingToDo && person.status !== "banned" && <ManagedAtNote where={where} lead="This relay doesn't let apps ban or allow people." verb="Do it" testId="ops-person-cant-act" />}
+        {person.status === "banned" && !can.unban && <ManagedAtNote where={where} lead="Your host can't lift bans from here." verb="Do it" testId="ops-person-cant-unban" />}
+        {nothingToDo && person.status !== "banned" && <ManagedAtNote where={where} lead="Your host doesn't let apps ban or allow people." verb="Do it" testId="ops-person-cant-act" />}
         <div className="flex gap-2">
           <Button asChild variant="ghost" className="h-11 flex-1 rounded-full"><Link href={`/messages/${npub}`} data-testid="ops-person-message"><MessageCircle className="w-4 h-4 mr-2" />Message</Link></Button>
           <Button asChild variant="ghost" className="h-11 flex-1 rounded-full"><Link href={`/profile/${npub}`} data-testid="ops-person-profile"><UserRound className="w-4 h-4 mr-2" />Profile</Link></Button>

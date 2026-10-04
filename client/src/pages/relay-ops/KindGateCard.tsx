@@ -8,6 +8,7 @@
  * a relay that answers other management calls but not these refused every
  * tap (owner, 2026-10-04). Elsewhere it says where to change it.
  */
+import { useTechnicalDetails } from "@/lib/technical-details";
 import { useState, useEffect, useCallback } from "react";
 import { type Nip11Document } from "@/lib/nip11";
 import {
@@ -25,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { DoorOpen, RefreshCw, Check, Ban } from "lucide-react";
 
 export function KindGateCard({ relayUrl }: { relayUrl: string; nip11: Nip11Document | null }) {
+  const technical = useTechnicalDetails();
   const { toast } = useToast();
   const [caps, setCaps] = useState<RelayCapabilities | null>(null);
   const canChange = !!caps && canDo(caps, "allowKind") && canDo(caps, "disallowKind");
@@ -62,7 +64,7 @@ export function KindGateCard({ relayUrl }: { relayUrl: string; nip11: Nip11Docum
       const results = await Promise.all(kinds.map((k) => fn(relayUrl, k)));
       const failed = results.filter((r) => r.error !== undefined).length;
       if (failed > 0) {
-        toast({ title: "The relay declined", description: `${failed} of ${kinds.length} changes were refused.`, variant: "destructive" });
+        toast({ title: "Your host turned that down", description: `${failed} of ${kinds.length} changes were refused.`, variant: "destructive" });
       }
       // The relay's answer is the truth — re-list rather than mirroring locally.
       await loadPolicy();
@@ -72,16 +74,16 @@ export function KindGateCard({ relayUrl }: { relayUrl: string; nip11: Nip11Docum
   }, [relayUrl, loadPolicy, toast]);
 
   const policyLine = (() => {
-    if (!policy) return "Reading the relay's policy…";
+    if (!policy) return "Reading what can be posted…";
     switch (policy.mode) {
       case "allowlist":
-        return `Allowlist: this relay only accepts ${formatKindList(policy.kinds)}.`;
+        return `Only ${formatKindList(policy.kinds, technical)} can be posted here.`;
       case "blocklist":
-        return `This relay accepts everything except ${formatKindList(policy.kinds)}.`;
+        return `Everything can be posted here except ${formatKindList(policy.kinds, technical)}.`;
       case "unrestricted":
-        return "No kind restrictions — this relay accepts any event kind its other rules allow.";
+        return "Every kind of post is accepted here.";
       case "unknown":
-        return "The relay didn't answer the policy question — the readout below may be incomplete.";
+        return "We couldn't read what can be posted here — what's below may be incomplete.";
     }
   })();
 
@@ -103,16 +105,16 @@ export function KindGateCard({ relayUrl }: { relayUrl: string; nip11: Nip11Docum
           ) : undefined}
         >
           <p className="text-xs text-muted-foreground">
-            Shape what this relay accepts at the door — which content types can be published here at all.
+            Choose which kinds of posts your community accepts at all.
           </p>
         </OpsSectionHeader>
 
         {caps === null ? (
-          <p className="text-xs text-muted-foreground/70 py-2">Asking the relay what it lets you change…</p>
+          <p className="text-xs text-muted-foreground/70 py-2">Asking your host what you can change…</p>
         ) : !canChange ? (
           <div className="space-y-2" data-testid="kind-gate-unsupported">
             {canRead && <p className="text-xs text-muted-foreground" data-testid="kind-gate-policy">{policyLine}</p>}
-            <ManagedAtNote where={managedAt(relayUrl)} lead="This relay doesn't let apps change which kinds of posts it accepts." testId="kind-gate-managed-at" />
+            <ManagedAtNote where={managedAt(relayUrl)} lead="Your host doesn't let apps change which kinds of posts are accepted." testId="kind-gate-managed-at" />
           </div>
         ) : (
           <>
@@ -125,7 +127,7 @@ export function KindGateCard({ relayUrl }: { relayUrl: string; nip11: Nip11Docum
                   <div key={opt.label} className="flex items-center justify-between gap-2 rounded-lg border border-border/25 bg-muted/5 px-2.5 py-1.5">
                     <div className="min-w-0">
                       <p className="text-xs font-medium truncate">{opt.label}</p>
-                      <p className="text-[10px] text-muted-foreground/50">kind {opt.kinds.join(", ")}</p>
+                      {technical && <p className="text-[10px] text-muted-foreground/50">kind {opt.kinds.join(", ")}</p>}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       {st === "allowed" && <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 dark:text-emerald-500"><Check className="w-3 h-3" />in</span>}
@@ -142,7 +144,7 @@ export function KindGateCard({ relayUrl }: { relayUrl: string; nip11: Nip11Docum
               })}
             </div>
             <p className="text-[10px] text-muted-foreground/50">
-              How the relay applies allow vs. block depends on its software — the line above always shows what the relay itself reports.
+              How Allow and Block work depends on your host — the line above is always what it reports.
             </p>
           </>
         )}
