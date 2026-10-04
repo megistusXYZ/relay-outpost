@@ -23,6 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ErrorScreen } from "@/components/ErrorScreen";
 import { TabId, getTabFromHash } from "./relay-ops/shared";
+import { SetupChecklist, setSetupFlag, useSetupChecklist } from "./relay-ops/SetupChecklist";
 import { SECTIONS, COMMUNITY_SCREENS, ADVANCED_SCREENS, sectionOf, listOf, consoleTitle, type ConsoleScreen } from "./relay-ops/console-nav";
 import { useFeedbackInbox } from "@/hooks/use-feedback-inbox";
 import { OverviewTab } from "./relay-ops/OverviewTab";
@@ -187,6 +188,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
   const feedbackUnread = inbox.unreadCount;
   // The relay's team: shared notes and log, encrypted to the team, on the relay.
   const team = useRelayTeam(selectedRelay, nip11, feedbackEnabled);
+  const setup = useSetupChecklist(selectedRelay, nip11, team, pubkey ?? null);
   // Everything waiting on this relay: feedback plus reports and join requests.
   const relaysNeedYou = useRelaysNeedYou();
   const inboxCount = feedbackUnread + relaysNeedYou.forRelay(selectedRelay);
@@ -418,6 +420,17 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                 </button>
               );
             })}
+            {/* Hidden but not finished: one quiet way back (owner, 2026-10-04). */}
+            {setup.isOwner && setup.hidden && !setup.complete && (
+              <button
+                type="button"
+                onClick={() => { setSetupFlag("hidden", selectedRelay, false); setActiveTab("overview"); }}
+                className="shrink-0 inline-flex items-center min-h-[44px] px-3 text-[13px] text-brand whitespace-nowrap lg:mt-2"
+                data-testid="ops-setup-resume"
+              >
+                Finish setting up · {setup.done} of {setup.items.length}
+              </button>
+            )}
           </div>
 
           {selectedRelay && (
@@ -440,6 +453,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                   switching tabs remounts a fresh boundary (React error boundaries
                   don't auto-reset), letting the operator recover by tab-switching. */}
               <ErrorBoundary key={activeTab} fallbackRender={(error) => <TabErrorFallback error={error} />}>
+                {activeTab === "overview" && <div className="mb-4"><SetupChecklist relayUrl={selectedRelay} state={setup} onGo={setActiveTab} /></div>}
                 {activeTab === "overview" && <OverviewTab relayUrl={selectedRelay} inbox={inbox} onOpenFeedback={() => setActiveTab("feedback")} onOpenConnection={() => setActiveTab("connection")} />}
                 {(activeTab === "events" || activeTab === "live") && <ContentTab relayUrl={selectedRelay} nip11={nip11} initialLive={activeTab === "live"} initialQuery={contentSeed} />}
                 {activeTab === "people" && <PeopleTab relayUrl={selectedRelay} nip11={nip11} team={team} initialFilter={peopleFilter} onSeePosts={(npub) => { setContentSeed(npub); setActiveTab("events"); }} />}

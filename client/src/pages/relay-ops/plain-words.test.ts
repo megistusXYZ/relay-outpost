@@ -15,7 +15,7 @@ import { resolve } from "path";
 const PLAIN_SCREENS = [
   "ContentTab.tsx", "ContentFilterPanel.tsx", "PeopleTab.tsx", "InboxTab.tsx", "FeedbackTab.tsx",
   "AccessControlTab.tsx", "KindGateCard.tsx", "MemberInboxSettings.tsx", "TeamScreens.tsx",
-  "FeaturedTab.tsx", "CommunityTab.tsx", "ConfirmAction.tsx", "ops-ui.tsx", "count-line.ts",
+  "FeaturedTab.tsx", "CommunityTab.tsx", "ConfirmAction.tsx", "ops-ui.tsx", "count-line.ts", "SetupChecklist.tsx",
 ];
 const WORDS: Array<[string, RegExp]> = [
   ["NIP number", /\bNIP-?\d+\b/],
