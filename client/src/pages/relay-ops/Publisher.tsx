@@ -9,7 +9,7 @@
  * are, the event is sent to it again.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getGlobalSigner, shouldAutoAuth } from "@/lib/nip42-auth";
+import { getGlobalSigner, getSignInPolicy, shouldAutoAuth } from "@/lib/nip42-auth";
 import { plainKindName } from "@/lib/kind-catalog";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -17,9 +17,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { signatureVerdict } from "./inspector-model";
-import { publishResults, readDraft, riskOf, type PublishStatus } from "./publisher-model";
-import { openWire, type WireSession } from "./wire-client";
-import { transcript, type WireFrame } from "./wire-transcript";
+import { publishResults, readDraft, riskOf, type PublishStatus } from "@/lib/publisher-model";
+import { openWire, type WireSession } from "@/lib/wire-client";
+import { transcript, type WireFrame } from "@/lib/wire-transcript";
 import { host, TranscriptList } from "./WireConsole";
 
 const pretty = (o: unknown) => JSON.stringify(o, null, 2);
@@ -201,7 +201,7 @@ export function Publisher({ relays, initialText }: { relays: string[]; initialTe
                 <span className={`text-right sm:text-left ${STATUS[r.status].cls}`}>{STATUS[r.status].word}</span>
                 <span className="col-span-2 sm:col-span-1 text-[13px] text-muted-foreground" data-testid="publisher-reason">
                   {r.reason ? (r.status === "accepted" ? r.reason : `“${r.reason}”`) : ""}
-                  {r.status === "needs-sign-in" && challenges.current.has(r.relay) && !signingIn.has(r.relay) && (
+                  {r.status === "needs-sign-in" && challenges.current.has(r.relay) && !signingIn.has(r.relay) && getSignInPolicy(r.relay).policy !== "never" && (
                     <button type="button" onClick={() => signIn(r.relay)} className="ml-3 min-h-[36px] px-3 rounded-full border border-current/30 text-[13px] font-medium text-brand" data-testid="publisher-sign-in">Sign in</button>
                   )}
                 </span>
@@ -211,7 +211,7 @@ export function Publisher({ relays, initialText }: { relays: string[]; initialTe
           </ul>
           <details className="mt-2">
             <summary className="cursor-pointer min-h-[44px] flex items-center text-[13px] text-muted-foreground hover:text-foreground">Everything the relays said</summary>
-            <TranscriptList lines={lines} start={sent.start} multi={sent.relays.length > 1} canSignIn={(r) => challenges.current.has(r) && !signingIn.has(r) && sessions.current.has(r)} onSignIn={signIn} />
+            <TranscriptList lines={lines} start={sent.start} multi={sent.relays.length > 1} canSignIn={(r) => challenges.current.has(r) && !signingIn.has(r) && sessions.current.has(r) && getSignInPolicy(r).policy !== "never"} onSignIn={signIn} />
           </details>
         </section>
       )}

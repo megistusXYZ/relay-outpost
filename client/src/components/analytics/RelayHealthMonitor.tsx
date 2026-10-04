@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { timeConnection } from "@/lib/relay-probe";
 import { pool, DEFAULT_RELAYS } from "@/lib/nostr";
 import { getRelayScore, getRelayHealthData, isRelayCoolingDown, getAllRelayHealth } from "@/lib/relay-health";
 import { Card } from "@/components/ui/card";
@@ -62,37 +63,8 @@ function CustomTooltipContent({ active, payload, label }: any) {
   );
 }
 
-async function testLatency(url: string): Promise<{ connected: boolean; latency: number | null; error: string | null }> {
-  return new Promise((resolve) => {
-    const start = Date.now();
-    const timeout = setTimeout(() => {
-      resolve({ connected: false, latency: null, error: "Timeout (5s)" });
-    }, 5000);
-
-    try {
-      const ws = new WebSocket(url);
-      ws.onopen = () => {
-        const latency = Date.now() - start;
-        clearTimeout(timeout);
-        ws.close();
-        resolve({ connected: true, latency, error: null });
-      };
-      ws.onerror = () => {
-        clearTimeout(timeout);
-        resolve({ connected: false, latency: null, error: "Connection failed" });
-      };
-      ws.onclose = (event) => {
-        if (!event.wasClean && event.code !== 1000) {
-          clearTimeout(timeout);
-          resolve({ connected: false, latency: null, error: `Closed: ${event.code}` });
-        }
-      };
-    } catch {
-      clearTimeout(timeout);
-      resolve({ connected: false, latency: null, error: "Invalid URL" });
-    }
-  });
-}
+/** The shared probe (lib/relay-probe.ts): does it connect, and how fast. */
+const testLatency = (url: string) => timeConnection(url, 5000);
 
 async function fetchNip11(url: string): Promise<Nip11Info | null> {
   try {

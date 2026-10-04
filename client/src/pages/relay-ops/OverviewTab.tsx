@@ -4,6 +4,7 @@ import { checkNip86Support, listAllowedKinds, listDisallowedKinds } from "@/lib/
 import { nip19 } from "nostr-tools";
 import { fetchNip11, supportsNip, getSoftwareDisplay, type Nip11Document } from "@/lib/nip11";
 import { getAuthStatus, isAuthEnabled, setAuthEnabled, onAuthChange, type AuthStatus } from "@/lib/nip42-auth";
+import { probeRelay } from "@/lib/relay-probe";
 import { copyNostrId } from "@/lib/clipboard-bridge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { OpsCard, OpsSectionHeader } from "./ops-ui";
@@ -178,7 +179,7 @@ function authStatusWord(status: AuthStatus): string {
   }
 }
 
-export function OverviewTab({ relayUrl, inbox, onOpenFeedback }: { relayUrl: string; inbox?: FeedbackInbox; onOpenFeedback?: () => void }) {
+export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection }: { relayUrl: string; inbox?: FeedbackInbox; onOpenFeedback?: () => void; onOpenConnection?: () => void }) {
   const { toast } = useToast();
   const [nip11, setNip11] = useState<Nip11Document | null>(null);
   // Initialize true so the initial-scan effect waits for the first
@@ -443,15 +444,12 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback }: { relayUrl: str
 
   const checkConnection = useCallback(async () => {
     setConnectionStatus("checking");
-    const start = Date.now();
     try {
-      const ws = new WebSocket(relayUrl);
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => { ws.close(); reject(new Error("timeout")); }, 5000);
-        ws.onopen = () => { clearTimeout(timeout); ws.close(); resolve(); };
-        ws.onerror = () => { clearTimeout(timeout); reject(new Error("error")); };
-      });
-      const lat = Date.now() - start;
+      // The shared check (lib/relay-probe.ts): the same visit the Connection
+      // screen makes, kept in the same history.
+      const probe = await probeRelay(relayUrl, { record: true, timeoutMs: 5000 });
+      if (!probe.opened) throw new Error(probe.error ?? "couldn't connect");
+      const lat = probe.answerMs ?? probe.openMs ?? 0;
       setLatencyNow(lat);
       setConnectionStatus("online");
       const entry: UptimeEntry = { ts: Math.floor(Date.now() / 1000), latency: lat, online: true };
@@ -858,13 +856,14 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback }: { relayUrl: str
         className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-xl overflow-hidden border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.06] dark:bg-white/[0.06]"
         data-testid="ops-stat-strip"
       >
-        <div className="bg-background px-3 py-2 min-w-0" data-testid="ops-stat-status">
+        {/* Status opens Connection & sign-in: the whole story behind the word. */}
+        <button type="button" onClick={onOpenConnection} disabled={!onOpenConnection} className="bg-background px-3 py-2 min-w-0 text-left hover:bg-black/[0.02] dark:hover:bg-white/[0.03] disabled:hover:bg-background" data-testid="ops-stat-status">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70 leading-tight">Status</p>
           <p className="mt-0.5 flex items-center gap-1.5 text-[15px] font-semibold leading-snug truncate" data-value>
             <span className={`w-2 h-2 rounded-full shrink-0 ${connectionStatus === "online" ? "bg-emerald-500" : connectionStatus === "offline" ? "bg-red-500" : "bg-amber-400 animate-pulse"}`} aria-hidden="true" />
             {connectionStatus === "checking" ? "Checking…" : connectionStatus === "online" ? "Online" : "Offline"}
           </p>
-        </div>
+        </button>
         <div className="bg-background px-3 py-2 min-w-0" data-testid="ops-stat-latency">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70 leading-tight">Latency</p>
           <p className="mt-0.5 text-[15px] font-semibold leading-snug tabular-nums truncate" data-value>{latencyNow != null ? `${latencyNow} ms` : "—"}</p>

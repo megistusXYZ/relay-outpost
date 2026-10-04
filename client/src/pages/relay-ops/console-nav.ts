@@ -34,12 +34,13 @@ export const SETTINGS_SCREENS: ReadonlyArray<{ tab: TabId; label: string; hint: 
   { tab: "contact", label: "Member inbox", hint: "Let members contact the team, and what they can ask" },
   { tab: "announce", label: "Public card", hint: "What other apps show about this relay" },
   { tab: "featured", label: "Featured feeds", hint: "What greets people on the Featured tab" },
+  { tab: "connection", label: "Connection & sign-in", hint: "How this app reaches it, and when to sign in" },
 ];
 
 /** The section a tab belongs to. */
 export function sectionOf(tab: TabId | "settings"): SectionId {
   if (tab === "settings") return "settings";
-  if (tab === "community" || tab === "access" || tab === "announce" || tab === "featured" || tab === "contact") return "settings";
+  if (tab === "community" || tab === "access" || tab === "announce" || tab === "featured" || tab === "contact" || tab === "connection") return "settings";
   // Live Feed became the Live switch on the Events list; its hash still lands.
   if (tab === "live") return "events";
   return tab;
