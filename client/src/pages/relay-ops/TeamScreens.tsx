@@ -16,7 +16,7 @@ import { nip19 } from "nostr-tools";
 import { Plus, X } from "lucide-react";
 import type { Nip11Document } from "@/lib/nip11";
 import { managedAt } from "@/lib/relay-capabilities";
-import { describeLogEntry } from "@/lib/team-records";
+import { describeLogEntry, deviceOnlyEntries } from "@/lib/team-records";
 import type { RelayTeam } from "@/hooks/use-relay-team";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -144,8 +144,8 @@ export function LogScreen({ relayUrl, nip11, team }: { relayUrl: string; nip11: 
   const people = useMemo(() => [...new Set(team.log.flatMap((e) => [e.author, ...(e.targetPubkey ? [e.targetPubkey] : [])]))], [team.log]);
   const profiles = useProfiles(people);
   const nameOf = (pk?: string) => (pk ? profiles.get(pk)?.name || `${pubkeyToNpub(pk).slice(0, 12)}…` : "");
-  // What this device recorded before the team log existed (or while it couldn't be written).
-  const local = useMemo(() => getModLog(relayUrl).filter((e) => !/^relay_/.test(e.action)).reverse(), [relayUrl]);
+  // What only this device knows: from before the team log existed, or while it couldn't be written.
+  const local = useMemo(() => deviceOnlyEntries(getModLog(relayUrl), team.log).reverse(), [relayUrl, team.log]);
 
   return (
     <div className="space-y-4 max-w-3xl" data-testid="ops-log">

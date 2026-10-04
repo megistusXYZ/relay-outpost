@@ -131,3 +131,31 @@ export function describeLogEntry(e: { action: string; count?: number; note?: str
   const s = (SENTENCES[e.action] ?? (() => e.action.replace(/_/g, " ")))(e);
   return e.note ? `${s} · ${e.note}` : s;
 }
+
+/** A moderation action this device recorded (pages/relay-ops/shared.tsx), as far as matching needs. */
+export interface DeviceLogEntry {
+  id: string; ts: number; action: string;
+  targetPubkey?: string; targetEventId?: string; count?: number; note?: string;
+}
+
+/** How far apart (ms) the same action can be stamped on this device and in the team log. */
+const SAME_ACTION_WINDOW_MS = 2 * 60 * 1000;
+
+/**
+ * What only this device knows, for the log's "Earlier, on this device only".
+ * Every action used to be written to both places, so the same ban showed
+ * twice (owner, 2026-10-04): leave out anything the team log has (same
+ * action, same target, stamped within two minutes — the team log shows a new
+ * entry at once, before the relay confirms it) and the relay's own health
+ * checks, which aren't moderation. Matching, not a "sent" mark: the team
+ * write is fire-and-forget, so a mark could hide an entry it never stored.
+ */
+export function deviceOnlyEntries<E extends DeviceLogEntry>(local: readonly E[], team: readonly TeamLogEntry[]): E[] {
+  return local.filter((e) => {
+    if (/^relay_/.test(e.action)) return false;
+    return !team.some((t) => t.action === e.action
+      && (t.targetPubkey ?? null) === (e.targetPubkey ?? null)
+      && (t.targetEventId ?? null) === (e.targetEventId ?? null)
+      && Math.abs(t.at * 1000 - e.ts) <= SAME_ACTION_WINDOW_MS);
+  });
+}

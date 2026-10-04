@@ -3,7 +3,7 @@ import { acceptedKindsLine, describeKindPolicy } from "@/lib/kind-gate";
 import { checkNip86Support, listAllowedKinds, listDisallowedKinds } from "@/lib/nip86";
 import { nip19 } from "nostr-tools";
 import { fetchNip11, supportsNip, getSoftwareDisplay, type Nip11Document } from "@/lib/nip11";
-import { getAuthStatus, isAuthEnabled, setAuthEnabled, onAuthChange, type AuthStatus } from "@/lib/nip42-auth";
+import { getAuthStatus, getSignInPolicy, onAuthChange, type AuthStatus } from "@/lib/nip42-auth";
 import { probeRelay } from "@/lib/relay-probe";
 import { copyNostrId } from "@/lib/clipboard-bridge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -38,7 +38,6 @@ import {
   Info,
   Shield,
   Lock,
-  Unlock,
   RefreshCw,
   Hash,
   Globe,
@@ -188,7 +187,10 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection 
   // the COUNT probe races NIP-11 trust on first paint.
   const [loadingNip11, setLoadingNip11] = useState(true);
   const [authStatus, setAuthStatus] = useState<AuthStatus>(getAuthStatus(relayUrl).status);
-  const [authEnabled, setAuthEnabledState] = useState(isAuthEnabled(relayUrl));
+  // How this app signs in here — the same choice Connection & sign-in makes,
+  // read rather than re-implemented (the old on/off switch said "Disabled"
+  // while the app went on signing in; owner, 2026-10-04).
+  const [signIn, setSignIn] = useState(() => getSignInPolicy(relayUrl));
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [uptimeHistory, setUptimeHistory] = useState<UptimeEntry[]>(getUptimeHistory(relayUrl));
   const [latencyNow, setLatencyNow] = useState<number | null>(null);
@@ -431,7 +433,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection 
 
   useEffect(() => {
     setAuthStatus(getAuthStatus(relayUrl).status);
-    setAuthEnabledState(isAuthEnabled(relayUrl));
+    setSignIn(getSignInPolicy(relayUrl));
     setUptimeHistory(getUptimeHistory(relayUrl));
     setManualTeam(getStoredList(MANUAL_TEAM_KEY, relayUrl));
     setNewTeamMember("");
@@ -439,6 +441,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection 
     prevLatencyStateRef.current = "normal";
     return onAuthChange(() => {
       setAuthStatus(getAuthStatus(relayUrl).status);
+      setSignIn(getSignInPolicy(relayUrl));
     });
   }, [relayUrl]);
 
@@ -819,18 +822,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection 
     setTimeout(() => setCopiedField(null), 2000);
   }, []);
 
-  const toggleAuth = useCallback(() => {
-    const newState = !authEnabled;
-    setAuthEnabledState(newState);
-    setAuthEnabled(relayUrl, newState);
-    toast({
-      title: newState ? "NIP-42 Auth enabled" : "NIP-42 Auth disabled",
-      description: newState ? "Will auto-respond to AUTH challenges." : "AUTH challenges will be ignored.",
-    });
-  }, [authEnabled, relayUrl, toast]);
-
   const softwareDisplay = nip11 ? getSoftwareDisplay(nip11) : null;
-  const hasNip42 = nip11 ? supportsNip(nip11, 42) : false;
 
   const uptimeChartData = uptimeHistory.slice(-30).map((e) => ({
     time: new Date(e.ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -1192,26 +1184,20 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection 
 
         <div className="flex flex-col gap-4">
           <OpsCard className="flex-1 flex flex-col justify-center">
-            <OpsSectionHeader
-              icon={Lock}
-              label="NIP-42 Auth"
-              className="mb-2"
-              action={
-                <Button
-                  variant={authEnabled ? "default" : "ghost"}
-                  size="sm"
-                  onClick={toggleAuth}
-                  className={`text-[10px] sm:text-[11px] h-6 shrink-0 ${authEnabled ? "bg-accent text-accent-foreground dark:text-brand hover:bg-brand/30 border border-brand/20" : ""}`}
-                >
-                  {authEnabled ? <><Lock className="w-2.5 h-2.5 mr-1" />Enabled</> : <><Unlock className="w-2.5 h-2.5 mr-1" />Disabled</>}
-                </Button>
-              }
+            <OpsSectionHeader icon={Lock} label="Sign-in" className="mb-2" />
+            <button
+              type="button"
+              onClick={onOpenConnection}
+              disabled={!onOpenConnection}
+              className="w-full min-h-[44px] flex items-center gap-2 text-left text-[13px] rounded-lg -mx-1 px-1 hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
+              data-testid="ops-signin-line"
             >
-              {hasNip42 && <Badge variant="outline" className="text-[10px] border-green-400/25 dark:border-green-400/15 text-green-700 dark:text-green-400/70">Supported</Badge>}
-            </OpsSectionHeader>
-            <p className="text-[10px] text-muted-foreground/60">
-              {authEnabled ? "Auto-responds to AUTH challenges from this relay." : "Enable to auto-authenticate with this relay."}
-            </p>
+              <span className="min-w-0 flex-1">
+                <span className="font-medium">{signIn.policy === "always" ? "Always signs in here" : signIn.policy === "never" ? "Never signs in here" : "Asks before signing in here"}</span>
+                <span className="block text-muted-foreground">{signIn.chosen ? "Your choice" : signIn.because ?? "The usual setting"} · Change in Connection &amp; sign-in</span>
+              </span>
+              <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            </button>
           </OpsCard>
 
           <OpsCard className="flex-1 flex flex-col">

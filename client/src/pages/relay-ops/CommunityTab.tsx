@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { notifyNeedsYouChanged } from "@/contexts/NeedsYouContext";
 import type { Event as NostrEvent } from "nostr-tools";
 import { pool } from "@/lib/nostr";
-import { withSignerTimeout, SIGNER_SIGN_TIMEOUT } from "@/lib/signer-timeout";
+import { signWithTimeout } from "@/lib/signer-timeout";
 import { buildFeaturedEventTemplate, parseFeaturedDoc, setDocAnnouncement, featuredDTag, refToFeaturedItem, featuredItemKey, kindLabel, MAX_FEATURED_ITEMS, type FeaturedItem } from "@/lib/featured";
 import { type Nip11Document } from "@/lib/nip11";
 import {
@@ -35,9 +35,10 @@ import {
   changeRelayIcon,
   changeRelayBanner,
   changeRelayModerators,
-  banEvent,
+  removeEventByAction,
   fetchRelayCapabilities,
 } from "@/lib/nip86";
+import { ConfirmAction } from "./ConfirmAction";
 import { canDo, managedAt, UNKNOWN_CAPABILITIES, type RelayCapabilities } from "@/lib/relay-capabilities";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -111,6 +112,7 @@ import {
   removeDateAdded,
   formatRelativeMs,
   formatRelativeSec,
+  addModLogEntry,
 } from "./shared";
 
 const KIND_TOPIC = 11;
@@ -124,6 +126,18 @@ const APP_DATA_RELAYS = ["wss://purplepag.es", "wss://relay.damus.io", "wss://no
 
 export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip11Document | null }) {
   const { pubkey, signer } = useNostrAuth();
+  // Sign and publish this screen's records with however you signed in —
+  // extension, bunker, QR or a key kept on this device. Reaching for
+  // window.nostr only worked with an extension: everyone else's saves
+  // silently did nothing (owner, 2026-10-04).
+  const publishRecord = async (template: { kind: number; created_at: number; tags: string[][]; content: string }) => {
+    if (!signer) throw new Error("You're signed out. Sign in again to save.");
+    const signed = await signWithTimeout(signer, template);
+    const { publishEvent } = await import("@/lib/nostr");
+    await publishEvent(signed as unknown as NostrEvent, APP_DATA_RELAYS);
+    return signed;
+  };
+  const failed = (err: unknown) => (err instanceof Error && err.message ? err.message : "Try again.");
   const { toast } = useToast();
 
   const [brandName, setBrandName] = useState(nip11?.name || "");
@@ -151,6 +165,11 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
   const canIcon = canDo(caps, "icon");
   const canBanner = canDo(caps, "banner");
   const canModerators = canDo(caps, "moderators");
+  // Deleting a discussion is removing a post: only offered where the relay
+  // lets apps do it, asked first, and written in the moderation log — the
+  // same as removing any post from Posts.
+  const canRemoveTopic = canDo(caps, "removeEvent");
+  const [pendingTopic, setPendingTopic] = useState<NostrEvent | null>(null);
   const iconDirty = brandIcon !== savedIcon;
   const bannerDirty = brandBanner !== savedBanner;
   // One Save for the whole form: every field that differs from what the relay
@@ -355,15 +374,11 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
         tags: [["d", HORIZON_CONFIG_D_TAG + "/" + relayUrl]],
         content: JSON.stringify({ horizonAdminOnly: newValue, relay: relayUrl }),
       };
-      const signed = await withSignerTimeout((window as any).nostr?.signEvent(eventTemplate), SIGNER_SIGN_TIMEOUT, "signEvent");
-      if (signed) {
-        const { publishEvent } = await import("@/lib/nostr");
-        await publishEvent(signed, APP_DATA_RELAYS);
-        setHorizonAdminOnly(newValue);
-        toast({ title: newValue ? "Articles restricted to admins" : "Articles open to all members" });
-      }
-    } catch {
-      toast({ title: "Failed to update Articles setting", variant: "destructive" });
+      await publishRecord(eventTemplate);
+      setHorizonAdminOnly(newValue);
+      toast({ title: newValue ? "Articles restricted to admins" : "Articles open to all members" });
+    } catch (err) {
+      toast({ title: "Couldn't update the Articles setting", description: failed(err), variant: "destructive" });
     }
     setSavingHorizonConfig(false);
   };
@@ -509,14 +524,10 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
         tags: [["d", COMMUNITY_RULES_D_TAG + "/" + relayUrl]],
         content: JSON.stringify({ rules: rulesText, relay: relayUrl }),
       };
-      const signed = await withSignerTimeout((window as any).nostr?.signEvent(eventTemplate), SIGNER_SIGN_TIMEOUT, "signEvent");
-      if (signed) {
-        const { publishEvent } = await import("@/lib/nostr");
-        await publishEvent(signed, APP_DATA_RELAYS);
-        toast({ title: "Community rules saved" });
-      }
-    } catch {
-      toast({ title: "Failed to save rules", variant: "destructive" });
+      await publishRecord(eventTemplate);
+      toast({ title: "Community rules saved" });
+    } catch (err) {
+      toast({ title: "Couldn't save the rules", description: failed(err), variant: "destructive" });
     }
     setSavingRules(false);
   };
@@ -555,14 +566,10 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
         setDocAnnouncement({ items: featuredItems }, announcementText.trim() ? { text: announcementText } : null, relayUrl),
         relayUrl,
       );
-      const signed = await withSignerTimeout((window as any).nostr?.signEvent(template), SIGNER_SIGN_TIMEOUT, "signEvent");
-      if (signed) {
-        const { publishEvent } = await import("@/lib/nostr");
-        await publishEvent(signed, APP_DATA_RELAYS);
-        toast({ title: "Featured updated", description: "Members will see it atop the Timeline." });
-      }
-    } catch {
-      toast({ title: "Failed to save Featured", variant: "destructive" });
+      await publishRecord(template);
+      toast({ title: "Featured updated", description: "Members will see it atop the Timeline." });
+    } catch (err) {
+      toast({ title: "Couldn't save Featured", description: failed(err), variant: "destructive" });
     }
     setSavingFeatured(false);
   };
@@ -583,14 +590,10 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
         tags: [["d", PINNED_TOPICS_D_TAG + "/" + relayUrl]],
         content: JSON.stringify({ pinnedIds: newIds, relay: relayUrl }),
       };
-      const signed = await withSignerTimeout((window as any).nostr?.signEvent(eventTemplate), SIGNER_SIGN_TIMEOUT, "signEvent");
-      if (signed) {
-        const { publishEvent } = await import("@/lib/nostr");
-        await publishEvent(signed, APP_DATA_RELAYS);
-        toast({ title: isPinned ? "Topic unpinned" : "Topic pinned" });
-      }
-    } catch {
-      toast({ title: "Failed to update pin", variant: "destructive" });
+      await publishRecord(eventTemplate);
+      toast({ title: isPinned ? "Topic unpinned" : "Topic pinned" });
+    } catch (err) {
+      toast({ title: "Couldn't update the pin", description: failed(err), variant: "destructive" });
       setPinnedTopicIds(isPinned ? [...newIds, topicId] : newIds.filter(id => id !== topicId));
     }
     setPinningId(null);
@@ -612,12 +615,10 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
         tags: [["d", MODERATORS_D_TAG + "/" + relayUrl]],
         content: JSON.stringify({ moderators: newList, relay: relayUrl }),
       };
-      const signed = await withSignerTimeout((window as any).nostr?.signEvent(eventTemplate), SIGNER_SIGN_TIMEOUT, "signEvent");
-      if (signed) {
-        const { publishEvent } = await import("@/lib/nostr");
-        await publishEvent(signed, APP_DATA_RELAYS);
-      }
-    } catch {}
+      await publishRecord(eventTemplate);
+    } catch (err) {
+      toast({ title: "Couldn't save the moderator list", description: failed(err), variant: "destructive" });
+    }
   };
 
   const handleAddMod = () => {
@@ -646,18 +647,31 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
     toast({ title: "Moderator removed" });
   };
 
-  const handleRemoveTopic = async (eventId: string) => {
-    const res = await banEvent(relayUrl, eventId, "Removed by operator");
+  const handleRemoveTopic = async (topic: NostrEvent, reason: string | undefined) => {
+    setPendingTopic(null);
+    const res = await removeEventByAction(relayUrl, topic.id, reason);
     if (res.error) {
-      toast({ title: "Failed to remove", description: res.error, variant: "destructive" });
+      toast({ title: "Couldn't remove it", description: res.error, variant: "destructive" });
     } else {
-      setTopics(prev => prev.filter(t => t.id !== eventId));
-      toast({ title: "Topic removed from relay" });
+      setTopics(prev => prev.filter(t => t.id !== topic.id));
+      addModLogEntry(relayUrl, { action: "delete_event", targetEventId: topic.id, targetPubkey: topic.pubkey, targetKind: topic.kind, note: reason });
+      toast({ title: "Discussion removed" });
     }
   };
 
   return (
     <div className="space-y-6">
+      {pendingTopic && (
+        <ConfirmAction
+          pending={{ kind: "remove", ids: [pendingTopic.id], rule: false }}
+          relayName={nip11?.name?.trim() || relayUrl.replace(/^wss?:\/\//, "")}
+          canRestore={canDo(caps, "restoreEvent")}
+          progress={null}
+          onCancel={() => setPendingTopic(null)}
+          onConfirm={(reason) => void handleRemoveTopic(pendingTopic, reason)}
+          nameOf={() => undefined}
+        />
+      )}
       <OpsCard className="space-y-4" data-testid="ops-brand-form">
         <OpsSectionHeader
           icon={Image}
@@ -1128,14 +1142,18 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
                         <RelayOutpostInlineLoader className="w-3 h-3" />
                       ) : isPinned ? "Unpin" : "Pin"}
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveTopic(topic.id)}
-                      className="h-6 w-6 p-0 text-red-700/60 dark:text-red-400/60 hover:text-red-700 dark:hover:text-red-400"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
+                    {canRemoveTopic && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPendingTopic(topic)}
+                        aria-label={`Remove “${title}”`}
+                        className="h-6 w-6 p-0 text-red-700/60 dark:text-red-400/60 hover:text-red-700 dark:hover:text-red-400"
+                        data-testid="ops-topic-delete"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               );

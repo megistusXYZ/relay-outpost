@@ -78,3 +78,27 @@ describe("notes and the log", () => {
     expect(describeLogEntry({ action: "remove_blocklist" })).toBe("Lifted a ban");
   });
 });
+
+// ---- the log's "on this device only" part shows only what the team log doesn't have ----
+import { deviceOnlyEntries } from "./team-records";
+
+describe("deviceOnlyEntries", () => {
+  const T = 1_800_000_000; // seconds
+  const team = [{ id: "t1", author: "me", at: T, action: "block_author", targetPubkey: "carol" }];
+  it("leaves out what was also written to the team log (no ban shown twice)", () => {
+    const local = [{ id: "l1", ts: T * 1000 + 400, action: "block_author" as const, targetPubkey: "carol" }];
+    expect(deviceOnlyEntries(local, team)).toEqual([]);
+  });
+  it("keeps an entry the team log never got (its write failed)", () => {
+    const local = [{ id: "l1", ts: T * 1000, action: "delete_event" as const, targetEventId: "x" }];
+    expect(deviceOnlyEntries(local, team).map((e) => e.id)).toEqual(["l1"]);
+  });
+  it("keeps what only this device knows: before the team log existed, or a different action", () => {
+    const older = { id: "l0", ts: (T - 86_400) * 1000, action: "block_author" as const, targetPubkey: "carol" };
+    const other = { id: "l2", ts: T * 1000, action: "delete_event" as const, targetEventId: "post" };
+    expect(deviceOnlyEntries([older, other], team).map((e) => e.id)).toEqual(["l0", "l2"]);
+  });
+  it("never lists the relay's own health checks (offline/online) as moderation", () => {
+    expect(deviceOnlyEntries([{ id: "h", ts: 1, action: "relay_offline" as const }], [])).toEqual([]);
+  });
+});
