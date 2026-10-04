@@ -1458,7 +1458,20 @@ export function getModLog(relayUrl: string): ModerationLogEntry[] {
   }
 }
 
+/**
+ * Where a moderation entry is shared with the relay's team (lib/relay-team.ts).
+ * The console registers one while it's open for a relay; every action that
+ * writes the log here also lands in the team's shared log, from every screen,
+ * without each screen knowing about teams.
+ */
+const teamLogSinks = new Map<string, (entry: Omit<ModerationLogEntry, "id" | "ts">) => void>();
+export function setTeamLogSink(relayUrl: string, sink: ((entry: Omit<ModerationLogEntry, "id" | "ts">) => void) | null) {
+  if (sink) teamLogSinks.set(relayUrl, sink); else teamLogSinks.delete(relayUrl);
+}
+
 export function addModLogEntry(relayUrl: string, entry: Omit<ModerationLogEntry, "id" | "ts">) {
+  // Health events (offline/online/latency) are this device's own observations, not team decisions.
+  if (!/^relay_/.test(entry.action)) { try { teamLogSinks.get(relayUrl)?.(entry); } catch {} }
   try {
     const log = getModLog(relayUrl);
     log.push({ ...entry, id: crypto.randomUUID(), ts: Date.now() });
@@ -1534,7 +1547,7 @@ export function addUptimeEntry(relayUrl: string, entry: UptimeEntry) {
  * "settings" is the console's Settings section itself (three rows); the three
  * screens inside it keep their old ids so links made before the redesign land.
  */
-export type TabId = "overview" | "live" | "events" | "people" | "access" | "announce" | "featured" | "community" | "feedback" | "settings" | "contact" | "connection";
+export type TabId = "overview" | "live" | "events" | "people" | "access" | "announce" | "featured" | "community" | "feedback" | "settings" | "contact" | "team" | "log" | "connection";
 
 export const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "overview", label: "Overview", icon: Activity },
@@ -1588,7 +1601,7 @@ export interface SavedToolbarState {
   searchEventId?: string;
 }
 
-export const VALID_TABS: Set<string> = new Set([...TABS.map(t => t.id), "settings", "people", "contact", "connection"]);
+export const VALID_TABS: Set<string> = new Set([...TABS.map(t => t.id), "settings", "people", "contact", "team", "log", "connection"]);
 
 export function getTabFromHash(): TabId {
   try {

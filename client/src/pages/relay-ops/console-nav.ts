@@ -32,6 +32,8 @@ export const SETTINGS_SCREENS: ReadonlyArray<{ tab: TabId; label: string; hint: 
   { tab: "community", label: "Relay settings", hint: "Name, description, icon and banner" },
   { tab: "access", label: "Who can post", hint: "Allow lists, bans, trust rules and kinds" },
   { tab: "contact", label: "Member inbox", hint: "Let members contact the team, and what they can ask" },
+  { tab: "team", label: "Team", hint: "Who shares your notes and moderation log" },
+  { tab: "log", label: "Moderation log", hint: "Everything your team has done here" },
   { tab: "announce", label: "Public card", hint: "What other apps show about this relay" },
   { tab: "featured", label: "Featured feeds", hint: "What greets people on the Featured tab" },
   { tab: "connection", label: "Connection & sign-in", hint: "How this app reaches it, and when to sign in" },
@@ -40,7 +42,7 @@ export const SETTINGS_SCREENS: ReadonlyArray<{ tab: TabId; label: string; hint: 
 /** The section a tab belongs to. */
 export function sectionOf(tab: TabId | "settings"): SectionId {
   if (tab === "settings") return "settings";
-  if (tab === "community" || tab === "access" || tab === "announce" || tab === "featured" || tab === "contact" || tab === "connection") return "settings";
+  if (tab === "community" || tab === "access" || tab === "contact" || tab === "team" || tab === "log" || tab === "announce" || tab === "featured" || tab === "connection") return "settings";
   // Live Feed became the Live switch on the Events list; its hash still lands.
   if (tab === "live") return "events";
   return tab;
