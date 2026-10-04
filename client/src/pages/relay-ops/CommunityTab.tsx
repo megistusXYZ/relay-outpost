@@ -123,7 +123,12 @@ const COMMUNITY_RULES_D_TAG = "relay-outpost/community-rules";
 const MODERATORS_D_TAG = "relay-outpost/moderators";
 const HORIZON_CONFIG_D_TAG = "relay-outpost/horizon-config";
 
-export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip11Document | null }) {
+/**
+ * Two screens share this (owner, 2026-10-04): Community › Community details
+ * (name, picture, rules, articles, pinned discussions, group chats) and the
+ * pinned part of Community › Featured & announcements.
+ */
+export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: string; nip11: Nip11Document | null; part?: "details" | "featured" }) {
   const { pubkey, signer } = useNostrAuth();
   // Sign and publish this screen's records with however you signed in —
   // extension, bunker, QR or a key kept on this device. Reaching for
@@ -681,7 +686,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
           nameOf={() => undefined}
         />
       )}
-      <OpsCard className="space-y-4" data-testid="ops-brand-form">
+      {part === "details" && <OpsCard className="space-y-4" data-testid="ops-brand-form">
         <OpsSectionHeader
           icon={Image}
           label="Community Branding"
@@ -922,12 +927,12 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
             </div>
           )}
         </div>
-      </OpsCard>
+      </OpsCard>}
 
       {recordsNote && (
         <p className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-4 py-3 text-[13px]" data-testid="ops-records-readonly">{recordsNote}</p>
       )}
-      <OpsCard className="space-y-4">
+      {part === "details" && <OpsCard className="space-y-4">
         <OpsSectionHeader icon={ScrollText} label="Community Rules" className="mb-0" />
         {rulesLoading ? (
           <div className="flex items-center gap-2 py-4">
@@ -951,10 +956,10 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
             </Button>
           </div>
         )}
-      </OpsCard>
+      </OpsCard>}
 
-      <OpsCard className="space-y-4">
-        <OpsSectionHeader icon={Megaphone} label="Featured & Announcements" className="mb-0" />
+      {part === "featured" && <OpsCard className="space-y-4">
+        <OpsSectionHeader icon={Megaphone} label="Pinned on the community page" className="mb-0" />
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Textarea
@@ -1003,79 +1008,10 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
             Save Featured
           </Button>
         </div>
-      </OpsCard>
+      </OpsCard>}
 
-      <OpsCard className="space-y-4">
-        <OpsSectionHeader icon={Shield} label="Moderators" className="mb-0" />
-
-        <div className="flex gap-2">
-          <Input
-            value={modInput}
-            onChange={e => setModInput(e.target.value)}
-            placeholder="npub or hex pubkey"
-            className="h-8 text-xs flex-1"
-          />
-          <Button size="sm" onClick={handleAddMod} disabled={!recordsEditable} className="h-8 text-xs px-3">
-            <Plus className="w-3 h-3 mr-1" /> Add
-          </Button>
-        </div>
-
-        <div className="space-y-2">
-          <UserListToolbar
-            controls={modControls.controls}
-            setQuery={modControls.setQuery}
-            setSort={modControls.setSort}
-            setFilter={modControls.setFilter}
-            total={modFiltered.total}
-            matched={modFiltered.filtered.length}
-            activityStatus={modActivity.status}
-            onLoadActivity={modActivity.run}
-          />
-          {moderators.length === 0 ? (
-            <p className="text-xs text-muted-foreground/40">No moderators assigned.</p>
-          ) : modFiltered.filtered.length === 0 ? (
-            <p className="text-[10px] text-muted-foreground/60 text-center py-2">No matches for the current search/filter.</p>
-          ) : (
-            <div className="space-y-1">
-              {modFiltered.filtered.map(pk => (
-                <div key={pk} className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-md bg-muted dark:bg-white/[0.03]">
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <ProfileName pubkey={pk} profiles={modProfiles} showCopy />
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground/60 leading-tight">
-                      <span title={modAddedAt[pk] ? undefined : "We only started tracking add dates from now on."}>
-                        {modAddedAt[pk] ? `Added ${formatRelativeMs(modAddedAt[pk])}` : "Added —"}
-                      </span>
-                      <span className="text-muted-foreground/30">·</span>
-                      <span>{modActivity.status === "loading" ? "Loading…" : modActivity.status === "gated" ? "Activity not loaded" : formatRelativeSec(modActivity.lastActive[pk])}</span>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveMod(pk)}
-                    disabled={!recordsEditable}
-                    aria-label="Remove moderator"
-                    className="h-6 w-6 p-0 text-red-700/70 dark:text-red-400/70 hover:text-red-700 dark:hover:text-red-400"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        {canModerators ? (
-          <p className="text-[12px] text-muted-foreground" data-testid="ops-moderators-note">Saved on the relay as well as in your community.</p>
-        ) : (
-          <ManagedAtNote
-            where={where}
-            lead="They're listed on your community page. This relay doesn't let us give them powers here; to let them remove posts or ban people,"
-            verb="add them"
-            testId="ops-moderators-note"
-          />
-        )}
-      </OpsCard>
-
+      {/* Moderators moved to Community › Team — one team list (owner, 2026-10-04). */}
+      {part === "details" && <>
       <OpsCard className="space-y-4">
         <OpsSectionHeader icon={Newspaper} label="Articles Settings" className="mb-0" />
         {!horizonConfigLoaded ? (
@@ -1176,52 +1112,8 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
         )}
       </OpsCard>
 
-      <OpsCard className="space-y-4">
-        <OpsSectionHeader icon={BarChart3} label="Community Activity (7 days)" className="mb-0" />
-
-        {metricsLoading ? (
-          <div className="flex items-center gap-2 py-4">
-            <RelayOutpostInlineLoader className="w-4 h-4" />
-            <span className="text-xs text-muted-foreground/50">Gathering metrics...</span>
-          </div>
-        ) : metrics ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <OpsSubCard className="text-center">
-                <p className="text-lg font-bold text-brand">{metrics.activeMembers}</p>
-                <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">Active Members</p>
-              </OpsSubCard>
-              <OpsSubCard className="text-center">
-                <p className="text-lg font-bold text-brand">{metrics.totalTopics}</p>
-                <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">Topics</p>
-              </OpsSubCard>
-              <OpsSubCard className="text-center">
-                <p className="text-lg font-bold text-brand">{metrics.totalComments}</p>
-                <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">Comments</p>
-              </OpsSubCard>
-            </div>
-
-            {metrics.recentActivity.length > 0 && (
-              <div className="h-40">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={metrics.recentActivity}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(139,92,246,0.1)" />
-                    <XAxis dataKey="date" tick={{ fontSize: 9, fill: "rgba(139,92,246,0.5)" }} tickFormatter={v => v.slice(5)} />
-                    <YAxis tick={{ fontSize: 9, fill: "rgba(139,92,246,0.4)" }} allowDecimals={false} />
-                    <Tooltip content={<ChartTooltip />} />
-                    <Bar dataKey="topics" name="Topics" fill="#a855f7" radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="comments" name="Comments" fill="#6b21a8" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground/40">No activity data available.</p>
-        )}
-      </OpsCard>
-
       <CommsManagementSection relayUrl={relayUrl} nip11={nip11} />
+      </>}
     </div>
   );
 }

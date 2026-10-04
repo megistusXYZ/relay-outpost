@@ -102,3 +102,19 @@ describe("deviceOnlyEntries", () => {
     expect(deviceOnlyEntries([{ id: "h", ts: 1, action: "relay_offline" as const }], [])).toEqual([]);
   });
 });
+
+// ---- one team list: people from the old lists are offered once ----
+import { teamSuggestions } from "./team-records";
+
+describe("teamSuggestions", () => {
+  const A = "a".repeat(64), B = "b".repeat(64), C = "c".repeat(64), D = "d".repeat(64);
+  it("offers people from the old lists who aren't on the team, once each, in the order first listed", () => {
+    expect(teamSuggestions([[A, B], [B.toUpperCase(), C]], [A], [])).toEqual([B, C]);
+  });
+  it("leaves out anyone you said no to", () => {
+    expect(teamSuggestions([[B, C, D]], [], [C])).toEqual([B, D]);
+  });
+  it("ignores anything that isn't a key", () => {
+    expect(teamSuggestions([["npub1nope", "", B]], [], [])).toEqual([B]);
+  });
+});

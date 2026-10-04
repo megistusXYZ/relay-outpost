@@ -16,7 +16,9 @@ import { nip19 } from "nostr-tools";
 import { Plus, X } from "lucide-react";
 import type { Nip11Document } from "@/lib/nip11";
 import { managedAt } from "@/lib/relay-capabilities";
-import { describeLogEntry, deviceOnlyEntries } from "@/lib/team-records";
+import { describeLogEntry, deviceOnlyEntries, teamSuggestions } from "@/lib/team-records";
+import { pool } from "@/lib/nostr";
+import { communityRecordRelays } from "@/lib/featured";
 import type { RelayTeam } from "@/hooks/use-relay-team";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,7 +26,43 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ManagedAtNote } from "./ops-ui";
-import { getModLog, pubkeyToNpub, resolveProfileBatch, type ProfileInfo } from "./shared";
+import { getModLog, getStoredList, MANUAL_TEAM_KEY, pubkeyToNpub, resolveProfileBatch, type ProfileInfo } from "./shared";
+
+const OFFER_NO_KEY = "ro_team_offer_no_";
+
+/**
+ * People the console used to list as a team elsewhere — Overview's "Relay
+ * Team" (this browser), the old moderators record, the relay's own
+ * moderators — who aren't on the team. Offered once (owner, 2026-10-04: one
+ * team list); "Not now" is remembered on this device.
+ */
+function useTeamOffer(relayUrl: string, nip11: Nip11Document | null, team: RelayTeam) {
+  const [recordMods, setRecordMods] = useState<string[]>([]);
+  useEffect(() => {
+    let live = true;
+    setRecordMods([]);
+    if (!team.owner) return;
+    pool.querySync(communityRecordRelays(relayUrl), { kinds: [30078], authors: [team.owner], "#d": [`relay-outpost/moderators/${relayUrl}`], limit: 1 }, { maxWait: 4000 } as never)
+      .then((evs) => {
+        if (!live) return;
+        const newest = [...evs].sort((a, b) => b.created_at - a.created_at)[0];
+        try { const m = newest ? (JSON.parse(newest.content) as { moderators?: unknown }).moderators : []; setRecordMods(Array.isArray(m) ? m.filter((x): x is string => typeof x === "string") : []); } catch { /* not ours */ }
+      })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [relayUrl, team.owner]);
+  const [no, setNo] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(OFFER_NO_KEY + relayUrl) || "[]"); } catch { return []; } });
+  const people = useMemo(
+    () => (team.isOwner && !team.loading ? teamSuggestions([getStoredList(MANUAL_TEAM_KEY, relayUrl), recordMods, nip11?.moderators ?? []], team.members, no) : []),
+    [team.isOwner, team.loading, team.members, relayUrl, recordMods, nip11, no],
+  );
+  const notNow = (pk: string) => {
+    const next = [...no, pk];
+    setNo(next);
+    try { localStorage.setItem(OFFER_NO_KEY + relayUrl, JSON.stringify(next)); } catch { /* this visit only */ }
+  };
+  return { people, notNow };
+}
 
 function useProfiles(pubkeys: string[]) {
   const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
@@ -67,6 +105,8 @@ export function TeamScreen({ relayUrl, nip11, team }: { relayUrl: string; nip11:
   const [adding, setAdding] = useState("");
   const [busy, setBusy] = useState(false);
   const ownerName = profiles.get(team.owner)?.name ?? "the relay's owner";
+  const offer = useTeamOffer(relayUrl, nip11, team);
+  const offerProfiles = useProfiles(offer.people);
 
   const change = async (next: string[], said: string) => {
     setBusy(true);
@@ -110,6 +150,25 @@ export function TeamScreen({ relayUrl, nip11, team }: { relayUrl: string; nip11:
           );
         })}
       </ul>
+      {offer.people.length > 0 && (
+        <section className="space-y-2" data-testid="ops-team-offer">
+          <h3 className="text-[13px] font-medium text-muted-foreground">People you listed before — add them to your team?</h3>
+          <ul className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] divide-y divide-black/[0.06] dark:divide-white/[0.06]">
+            {offer.people.map((pk) => {
+              const p = offerProfiles.get(pk);
+              const name = p?.name || `${pubkeyToNpub(pk).slice(0, 14)}…`;
+              return (
+                <li key={pk} className="flex items-center gap-3 px-3.5 min-h-[60px]" data-testid="ops-team-offer-person" data-pubkey={pk}>
+                  <Avatar className="w-9 h-9 shrink-0">{p?.picture && <AvatarImage src={p.picture} alt="" />}<AvatarFallback className="bg-brand/10 text-brand">{name.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
+                  <span className="min-w-0 flex-1 font-medium truncate">{name}</span>
+                  <Button variant="ghost" size="sm" className="h-10 px-3 text-[13px]" onClick={() => offer.notNow(pk)} data-testid="ops-team-offer-no">Not now</Button>
+                  <Button size="sm" className="h-10 rounded-full px-4" disabled={busy || !team.canEncrypt} onClick={() => change([...team.members, pk], "Added to the team")} data-testid="ops-team-offer-add">Add</Button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
       {team.isOwner ? (
         <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void add(); }}>
           <Input value={adding} onChange={(e) => setAdding(e.target.value)} placeholder="Add someone by npub" className="h-11 flex-1" aria-label="Add someone by npub" data-testid="ops-team-add-input" />

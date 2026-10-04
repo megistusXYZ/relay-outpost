@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 
 import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 import { nip19 } from "nostr-tools";
+import { resolveTab } from "./console-nav";
 import type { Event as NostrEvent, Filter as NostrToolsFilter } from "nostr-tools";
 import { pool } from "@/lib/nostr";
 import { withReach, type Reached } from "@/lib/relay-reach";
@@ -1547,7 +1548,7 @@ export function addUptimeEntry(relayUrl: string, entry: UptimeEntry) {
  * "settings" is the console's Settings section itself (three rows); the three
  * screens inside it keep their old ids so links made before the redesign land.
  */
-export type TabId = "overview" | "live" | "events" | "people" | "access" | "announce" | "featured" | "community" | "feedback" | "settings" | "contact" | "team" | "log" | "connection";
+export type TabId = "overview" | "live" | "events" | "people" | "access" | "announce" | "featured" | "community" | "feedback" | "settings" | "contact" | "team" | "log" | "connection" | "advanced" | "card" | "scans";
 
 export const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "overview", label: "Overview", icon: Activity },
@@ -1604,12 +1605,8 @@ export interface SavedToolbarState {
 export const VALID_TABS: Set<string> = new Set([...TABS.map(t => t.id), "settings", "people", "contact", "team", "log", "connection"]);
 
 export function getTabFromHash(): TabId {
-  try {
-    const h = window.location.hash.replace("#", "");
-    if (h === "badges") return "access";
-    if (VALID_TABS.has(h)) return h as TabId;
-  } catch {}
-  return "overview";
+  // Every old address lands somewhere sensible (console-nav resolveTab).
+  try { return resolveTab(window.location.hash.replace("#", "")); } catch { return "overview"; }
 }
 
 export const ADDED_AT_KEY = "relay_ops_added_at_";
