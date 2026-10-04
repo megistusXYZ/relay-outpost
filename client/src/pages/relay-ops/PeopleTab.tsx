@@ -34,6 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { AccessControlTab } from "./AccessControlTab";
 import { ManagedAtNote } from "./ops-ui";
 import { ConfirmAction, type PendingAction } from "./ConfirmAction";
 import { RefusedNotice } from "./RefusedNotice";
@@ -65,9 +66,11 @@ function hexes(entries: PubkeyEntry[] | undefined): string[] {
     .map((p) => p.toLowerCase());
 }
 
-export function PeopleTab({ relayUrl, nip11, onSeePosts, team }: {
+export function PeopleTab({ relayUrl, nip11, onSeePosts, team, initialFilter }: {
   relayUrl: string;
   nip11: Nip11Document | null;
+  /** Open on Allowed or Banned (from Who can post's counts). */
+  initialFilter?: "allowed" | "banned";
   /** The relay's team, for notes about a member. */
   team?: RelayTeam;
   /** Opens Content searching for this person. */
@@ -177,7 +180,12 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts, team }: {
   const nowSec = Math.floor(Date.now() / 1000);
   const oldest = events.length ? events[events.length - 1].created_at : undefined;
   const newcomersKnown = knowsNewcomers(oldest, nowSec, exhausted);
-  const [filter, setFilter] = useState<PeopleFilter>("all");
+  const [filter, setFilter] = useState<PeopleFilter>(initialFilter ?? "all");
+  useEffect(() => { if (initialFilter) setFilter(initialFilter); }, [initialFilter]);
+  // Allowed and Banned show the relay's whole list, with its tools — Import,
+  // Tidy up, removing many at once — not only the people who've posted
+  // (owner, 2026-10-04: the lists live in People).
+  const listView = filter === "allowed" ? "allow" as const : filter === "banned" ? "block" as const : null;
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<PeopleSort>("active");
   const shown = useMemo(
@@ -311,6 +319,11 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts, team }: {
         <ManagedAtNote where={where} lead="This relay doesn't share who it allows or bans with apps." verb="See them" testId="ops-people-no-lists" />
       )}
 
+      {listView ? (
+        <div data-testid="ops-people-list-tools">
+          <AccessControlTab relayUrl={relayUrl} nip11={nip11} part="lists" only={listView} />
+        </div>
+      ) : (
       <div className={wide ? "grid grid-cols-[minmax(0,1fr)_minmax(320px,400px)] gap-4 items-start" : selectMode ? "pb-28" : ""}>
         <div className="min-w-0">
           {shown.length === 0 && !loading && refused ? (
@@ -358,6 +371,7 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts, team }: {
           </aside>
         )}
       </div>
+      )}
 
       {!wide && (
         <Sheet open={!!person && !selectMode} onOpenChange={(o) => { if (!o) setSelected(null); }}>

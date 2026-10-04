@@ -25,7 +25,7 @@ import { notYetOn, readAccessList, readImportFile, type AccessList } from "@/lib
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
-import { OpsCard, OpsSectionHeader } from "./ops-ui";
+import { OpsCard, OpsSectionHeader, ManagedAtNote } from "./ops-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -64,7 +64,6 @@ import {
 } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { fetchConnectionScores, getActiveThresholds } from "@/lib/graperank";
-import { BadgeManagementPanel } from "@/components/BadgeManagement";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import {
   addModLogEntry,
@@ -553,7 +552,22 @@ function unsyncedReason(status: Nip86SupportStatus | null): string {
   return "was saved to your local view only. This relay doesn't expose a NIP-86 management API, so ask its operator to make the change server-side.";
 }
 
-export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip11Document | null }) {
+/**
+ * Two places share this (owner, 2026-10-04):
+ * - "rules": Community › Who can post — who may post (read from the relay,
+ *   set at the host), how many are approved and banned (they open People),
+ *   and approving everyone your network trusts;
+ * - "lists": People › Allowed / Banned — the list itself, with Import, Tidy
+ *   up and removing many at once.
+ */
+export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpenPeople }: {
+  relayUrl: string; nip11: Nip11Document | null;
+  part?: "rules" | "lists";
+  /** The one list to show in "lists". */
+  only?: "allow" | "block";
+  /** Opens People on its Allowed or Banned filter. */
+  onOpenPeople?: (filter: "allowed" | "banned") => void;
+}) {
   const { toast } = useToast();
   const [allowlist, setAllowlist] = useState<string[]>(getStoredList(ADMIN_ALLOWLIST_KEY, relayUrl));
   const [readonlyList, setReadonlyList] = useState<string[]>(getStoredList(ADMIN_READONLY_KEY, relayUrl));
@@ -1096,68 +1110,31 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
           management API holds them; otherwise they stay in this browser, and
           the line says which — "couldn't reach" and "doesn't have one" are
           different facts with different next steps. */}
-      {nip86Status && (
-        <p
-          className="flex items-center gap-2 px-1 text-[13px] text-muted-foreground leading-snug"
-          data-testid="ops-access-status"
-          data-state={nip86Status}
-        >
-          <span
-            className={`w-2 h-2 rounded-full shrink-0 ${
-              nip86Status === "supported" ? (nip86Error ? "bg-amber-400" : "bg-emerald-500") : nip86Status === "unreachable" ? "bg-amber-400" : "bg-muted-foreground/40"
-            }`}
-            aria-hidden="true"
-          />
-          <span className="min-w-0 flex-1">
-            {nip86Status === "supported" && (
-              <>
-                Managed on the relay
-                {nip86Syncing ? " · syncing…" : nip86Error ? ` · ${nip86Error}` : nip86LastSync ? ` · synced ${new Date(nip86LastSync).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : ""}
-              </>
-            )}
-            {nip86Status === "advertised_but_nonfunctional" && "This relay advertises a management API but it doesn't answer, so these lists are kept in this browser."}
-            {nip86Status === "not_supported" && "This relay has no management API, so these lists are kept in this browser."}
-            {nip86Status === "unreachable" && "Couldn't reach this relay's management API. Changes stay in this browser until it answers."}
-          </span>
-          {nip86Status === "supported" && (
-            <button
-              type="button"
-              onClick={syncFromRelay}
-              disabled={nip86Syncing}
-              className="shrink-0 inline-flex items-center gap-1 min-h-[44px] sm:min-h-0 px-2 py-1 rounded-full text-[13px] text-brand hover:bg-brand/[0.06] disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${nip86Syncing ? "animate-spin" : ""}`} aria-hidden="true" />Refresh
-            </button>
-          )}
-          {nip86Status === "unreachable" && (
-            <button
-              type="button"
-              onClick={() => setProbeRun((n) => n + 1)}
-              className="shrink-0 inline-flex items-center gap-1 min-h-[44px] sm:min-h-0 px-2 py-1 rounded-full text-[13px] text-brand hover:bg-brand/[0.06]"
-            >
-              <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />Try again
-            </button>
-          )}
-        </p>
-      )}
-
-      <div
-        className="grid grid-cols-3 gap-px rounded-xl overflow-hidden border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.06] dark:bg-white/[0.06]"
-        data-testid="ops-access-strip"
-      >
-        {([
-          ["allowed", "Allowed", allowlist.length, "text-emerald-700 dark:text-emerald-400"],
-          ["blocked", "Blocked", blocklist.length, "text-red-700 dark:text-red-400"],
-          ["total", "Total", allowlist.length + blocklist.length, "text-foreground"],
-        ] as const).map(([id, label, n, tone]) => (
-          <div key={id} className="bg-background px-3 py-2 min-w-0" data-testid={`ops-access-stat-${id}`}>
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70 leading-tight">{label}</p>
-            <p className={`mt-0.5 text-[15px] font-semibold leading-snug tabular-nums ${tone}`}>
-              {n.toLocaleString()}
-              {id === "total" && modActionCount.total > 0 && <span className="ml-2 text-[12px] font-normal text-muted-foreground">{modActionCount.total} actions</span>}
-            </p>
+      {part === "rules" && <>
+      {(() => {
+        // Who may post is the host's setting; apps can only read it (NIP-11 limitation).
+        const lim = nip11?.limitation;
+        const rule = !nip11
+          ? "We couldn't read this relay's rules right now."
+          : lim?.restricted_writes ? `Only approved people can post here${lim.auth_required ? ", after signing in" : ""}.`
+          : lim?.payment_required ? `People pay to post here${lim.auth_required ? ", after signing in" : ""}.`
+          : lim?.auth_required ? "Anyone who signs in can post here."
+          : "Anyone can post here.";
+        return (
+          <div className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] px-4 py-3 space-y-1" data-testid="ops-who-can-post-status">
+            <p className="text-[15px] font-medium">{rule}</p>
+            <ManagedAtNote where={managedAt(relayUrl)} lead="Your host sets who may post." verb="Change it" testId="ops-who-can-post-host" />
           </div>
-        ))}
+        );
+      })()}
+
+      <div className="flex flex-wrap gap-2" data-testid="ops-access-strip">
+        <button type="button" onClick={() => onOpenPeople?.("allowed")} className="min-h-[44px] inline-flex items-center gap-2 rounded-full border border-black/[0.1] dark:border-white/[0.12] px-4 text-[14px] hover:border-brand/40" data-testid="ops-access-stat-allowed">
+          Approved <span className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">{allowlist.length.toLocaleString()}</span>
+        </button>
+        <button type="button" onClick={() => onOpenPeople?.("banned")} className="min-h-[44px] inline-flex items-center gap-2 rounded-full border border-black/[0.1] dark:border-white/[0.12] px-4 text-[14px] hover:border-brand/40" data-testid="ops-access-stat-blocked">
+          Banned <span className="font-semibold tabular-nums text-red-700 dark:text-red-400">{blocklist.length.toLocaleString()}</span>
+        </button>
       </div>
 
       {nip86Status === "supported" && operatorPubkey && (
@@ -1226,8 +1203,56 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
         </div>
       )}
 
+      </>}
+
+      {part === "lists" && <>
+      {nip86Status && (
+        <p
+          className="flex items-center gap-2 px-1 text-[13px] text-muted-foreground leading-snug"
+          data-testid="ops-access-status"
+          data-state={nip86Status}
+        >
+          <span
+            className={`w-2 h-2 rounded-full shrink-0 ${
+              nip86Status === "supported" ? (nip86Error ? "bg-amber-400" : "bg-emerald-500") : nip86Status === "unreachable" ? "bg-amber-400" : "bg-muted-foreground/40"
+            }`}
+            aria-hidden="true"
+          />
+          <span className="min-w-0 flex-1">
+            {nip86Status === "supported" && (
+              <>
+                Managed on the relay
+                {nip86Syncing ? " · syncing…" : nip86Error ? ` · ${nip86Error}` : nip86LastSync ? ` · synced ${new Date(nip86LastSync).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : ""}
+              </>
+            )}
+            {nip86Status === "advertised_but_nonfunctional" && "This relay advertises a management API but it doesn't answer, so these lists are kept in this browser."}
+            {nip86Status === "not_supported" && "This relay has no management API, so these lists are kept in this browser."}
+            {nip86Status === "unreachable" && "Couldn't reach this relay's management API. Changes stay in this browser until it answers."}
+          </span>
+          {nip86Status === "supported" && (
+            <button
+              type="button"
+              onClick={syncFromRelay}
+              disabled={nip86Syncing}
+              className="shrink-0 inline-flex items-center gap-1 min-h-[44px] sm:min-h-0 px-2 py-1 rounded-full text-[13px] text-brand hover:bg-brand/[0.06] disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${nip86Syncing ? "animate-spin" : ""}`} aria-hidden="true" />Refresh
+            </button>
+          )}
+          {nip86Status === "unreachable" && (
+            <button
+              type="button"
+              onClick={() => setProbeRun((n) => n + 1)}
+              className="shrink-0 inline-flex items-center gap-1 min-h-[44px] sm:min-h-0 px-2 py-1 rounded-full text-[13px] text-brand hover:bg-brand/[0.06]"
+            >
+              <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />Try again
+            </button>
+          )}
+        </p>
+      )}
+
       <div className="grid grid-cols-1 gap-4">
-        <PubkeyListSection
+        {only !== "block" && <PubkeyListSection
           type="allow"
           icon={<UserCheck className="w-3.5 h-3.5 text-green-600 dark:text-green-400/70" />}
           label="Allowed to post"
@@ -1253,9 +1278,9 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
           relayUrl={relayUrl}
           listKey="allow"
           controlsKey="access-allow"
-        />
+        />}
       </div>
-      <PubkeyListSection
+      {only !== "allow" && <PubkeyListSection
         type="block"
         icon={<UserX className="w-3.5 h-3.5 text-red-600/80 dark:text-red-400/70" />}
         label="Banned"
@@ -1282,7 +1307,7 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
         relayUrl={relayUrl}
         listKey="block"
         controlsKey="access-block"
-      />
+      />}
       {importing && (
         <p className="text-[13px] text-muted-foreground" role="status" data-testid="ops-import-progress">Adding {importing.done} of {importing.total}…</p>
       )}
@@ -1313,7 +1338,7 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
         </AlertDialogContent>
       </AlertDialog>
       {/* The moderation log is one screen: Community › Moderation log (owner, 2026-10-04). */}
-      <BadgeManagementPanel />
+      </>}
     </div>
   );
 }

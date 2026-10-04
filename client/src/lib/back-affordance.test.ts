@@ -92,3 +92,9 @@ describe("News has no header back at all", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe("Your badges", () => {
+  it("goes back to the You menu", () => {
+    expect(parentRouteOf("/badges")).toBe("/account/menu");
+  });
+});

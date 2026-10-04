@@ -124,6 +124,7 @@ const lazyChunks = {
   AnalyticsDashboard: () => lazyRetry(() => import("@/pages/AnalyticsDashboard")),
   RelayDashboard: () => lazyRetry(() => import("@/pages/RelayDashboard")),
   Tools: () => lazyRetry(() => import("@/pages/Tools")),
+  YourBadges: () => lazyRetry(() => import("@/pages/YourBadges")),
   MyOutpost: () => lazyRetry(() => import("@/pages/MyOutpost")),
   Community: () => lazyRetry(() => import("@/pages/Community")),
   LiveStreams: () => lazyRetry(() => import("@/pages/LiveStreams")),
@@ -199,6 +200,7 @@ const RelayConsole = lazy(lazyChunks.RelayConsole);
 const AnalyticsDashboard = lazy(lazyChunks.AnalyticsDashboard);
 const RelayDashboard = lazy(lazyChunks.RelayDashboard);
 const Tools = lazy(lazyChunks.Tools);
+const YourBadges = lazy(lazyChunks.YourBadges);
 const MyOutpost = lazy(lazyChunks.MyOutpost);
 const Community = lazy(lazyChunks.Community);
 const LiveStreams = lazy(lazyChunks.LiveStreams);
@@ -492,6 +494,7 @@ function Router() {
         <Route path="/my-relays" component={MyRelays} />
         <Route path="/relays" component={RelayDashboard} />
         <Route path="/tools" component={Tools} />
+        <Route path="/badges" component={YourBadges} />
         <Route path="/outposts" component={Outposts} />
         <Route path="/outposts/c/:communityId">{(params) => <LazyConcordOutpost communityId={params.communityId} />}</Route>
         <Route path="/invite/:naddr">{(params) => <LazyConcordInviteAccept naddr={params.naddr} />}</Route>
