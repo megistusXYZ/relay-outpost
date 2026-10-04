@@ -14,7 +14,7 @@
  *   The person who reported it: their tickets with a reply or status change
  *   from someone else they haven't seen — a close included.
  */
-import { getIssueLastRead, markIssuesRead, relayScopedRepoD, type FeedbackIssue } from "./nip34-feedback";
+import { getIssueLastRead, markIssuesRead, matchesAge, relayScopedRepoD, type AgeFilter, type FeedbackIssue, type FeedbackType } from "./nip34-feedback";
 import { isCrashIssue } from "./crash-report";
 
 /** The newest activity on a ticket by anyone but `me` (0 if none). */
@@ -142,4 +142,33 @@ export function operatorInbox(all: FeedbackIssue[], me: string | null, relayUrl:
   const { here, untied } = ticketsForRelay(mine, relayUrl);
   const keep = new Set([...here, ...untied]);
   return { issues: mine.filter((t) => keep.has(t)), untiedIds: new Set(untied.map((t) => t.event.id)) };
+}
+
+export type FeedbackViewId = "needs" | "all" | "done";
+export interface FeedbackFilter {
+  types?: FeedbackType[];
+  /** Only people you trust (a web-of-trust check the caller supplies). */
+  trusted?: (pubkey: string) => boolean;
+  when?: AgeFilter;
+}
+
+/**
+ * The inbox's three views: Needs you (open, or "looking into it" — new ones
+ * first), Done (resolved, closed) and All, newest activity first, through one
+ * filter. The counts follow the filter, so the numbers always match the list.
+ */
+export function feedbackView(issues: FeedbackIssue[], me: string | null, view: FeedbackViewId, filter: FeedbackFilter, now: number): { items: FeedbackIssue[]; counts: Record<FeedbackViewId, number> } {
+  const matched = issues.filter((t) => !isCrashIssue(t)
+    && (!filter.types?.length || t.type.some((x) => filter.types!.includes(x)))
+    && (!filter.trusted || filter.trusted(t.reporter))
+    && matchesAge(t.latestActivityAt, filter.when ?? "all", now));
+  const isDone = (t: FeedbackIssue) => t.status === "resolved" || t.status === "closed";
+  const byTime = (a: FeedbackIssue, b: FeedbackIssue) => b.latestActivityAt - a.latestActivityAt;
+  const needs = matched.filter((t) => !isDone(t));
+  const done = matched.filter(isDone);
+  const counts = { needs: needs.length, all: matched.length, done: done.length };
+  if (view === "done") return { items: done.sort(byTime), counts };
+  if (view === "all") return { items: [...matched].sort(byTime), counts };
+  const fresh = new Map(needs.map((t) => [t, hasNewFromOthers(t, me)]));
+  return { items: needs.sort((a, b) => Number(fresh.get(b)) - Number(fresh.get(a)) || byTime(a, b)), counts };
 }

@@ -10,7 +10,7 @@ vi.stubGlobal("localStorage", {
 });
 
 import { markIssueRead, relayScopedRepoD, type FeedbackIssue, type FeedbackStatus } from "./nip34-feedback";
-import { feedbackNeedsYou, newAppErrorGroups, markAppErrorGroupRead, ticketUpdates, ticketsForRelay, threadItems, inboxTickets, hasNewForReporter } from "./feedback-needs";
+import { feedbackNeedsYou, newAppErrorGroups, markAppErrorGroupRead, ticketUpdates, ticketsForRelay, threadItems, inboxTickets, hasNewForReporter, feedbackView } from "./feedback-needs";
 
 const ME = "a".repeat(64), BOB = "b".repeat(64), AMY = "c".repeat(64);
 let n = 0;
@@ -148,5 +148,38 @@ describe("no wave of old news when this version arrives", () => {
     expect(ticketUpdates([openOld, closedOld], ME, SINCE).map((t) => t.event.id)).toEqual([openOld.event.id]);
     expect(hasNewForReporter(closedOld, ME, SINCE)).toBe(false);
     expect(hasNewForReporter(openOld, ME, SINCE)).toBe(true);
+  });
+});
+
+describe("the inbox's three views and its one filter", () => {
+  const NOW = 100_000;
+  const withType = (t: FeedbackIssue, type: string) => { t.type = [type as never]; return t; };
+
+  it("Needs you: open and 'looking into it', new ones first; Done: resolved and closed; All: everything — app errors in none", () => {
+    const readOpen = ticket({ by: BOB, at: 5000 }); markIssueRead(readOpen.event.id, 9000);
+    const newOpen = ticket({ by: AMY, at: 3000 });
+    const triaged = ticket({ by: BOB, at: 4000, status: "draft" }); markIssueRead(triaged.event.id, 9000);
+    const done = ticket({ by: BOB, at: 6000, status: "resolved" });
+    const closed = ticket({ by: AMY, at: 2000, status: "closed" });
+    const crash = ticket({ by: BOB, crash: "s" });
+    const all = [readOpen, newOpen, triaged, done, closed, crash];
+    const ids = (v: FeedbackIssue[]) => v.map((t) => t.event.id);
+    const r = feedbackView(all, ME, "needs", {}, NOW);
+    expect(ids(r.items)).toEqual([newOpen.event.id, readOpen.event.id, triaged.event.id]);
+    expect(r.counts).toEqual({ needs: 3, all: 5, done: 2 });
+    expect(ids(feedbackView(all, ME, "done", {}, NOW).items)).toEqual([done.event.id, closed.event.id]);
+    expect(feedbackView(all, ME, "all", {}, NOW).items).toHaveLength(5);
+  });
+
+  it("the filter: kind of request, people you trust, and when — counts follow it", () => {
+    const bug = withType(ticket({ by: BOB, at: NOW - 100 }), "bug");
+    const idea = withType(ticket({ by: AMY, at: NOW - 100 }), "idea");
+    const oldBug = withType(ticket({ by: AMY, at: NOW - 40 * 86400 }), "bug");
+    const all = [bug, idea, oldBug];
+    expect(feedbackView(all, ME, "all", { types: ["bug"] }, NOW).items.map((t) => t.event.id)).toEqual([bug.event.id, oldBug.event.id]);
+    expect(feedbackView(all, ME, "all", { trusted: (pk) => pk === BOB }, NOW).items.map((t) => t.event.id)).toEqual([bug.event.id]);
+    const recent = feedbackView(all, ME, "all", { when: "7d" }, NOW);
+    expect(recent.items).toHaveLength(2);
+    expect(recent.counts.all).toBe(2);
   });
 });

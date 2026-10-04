@@ -13,6 +13,7 @@
  * is waiting, and an Inbox that says "all clear" because nobody checked is the
  * confident-empty this project keeps removing.
  */
+import { isCrashIssue } from "@/lib/crash-report";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Event as NostrEvent } from "nostr-tools";
 import { ChevronDown, Eye, Ban, Trash2, Check, ScanSearch } from "lucide-react";
@@ -39,7 +40,7 @@ import { ConfirmAction, type PendingAction } from "./ConfirmAction";
 import { addModLogEntry, pubkeyToNpub, resolveProfileBatch, type ProfileInfo } from "./shared";
 import { rowPreview } from "./content-model";
 
-type InboxView = "all" | "reports" | "requests" | "feedback";
+type InboxView = "all" | "reports" | "requests" | "feedback" | "errors";
 
 function ago(sec: number): string {
   const d = Math.max(0, Math.floor(Date.now() / 1000) - sec);
@@ -79,6 +80,7 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost }: {
   const groupReports = (needsYou?.reports.queue ?? []).filter((r) => norm(r.relayUrl) === norm(relayUrl)).length;
   const requests = (needsYou?.admissions.queue ?? []).filter((r) => norm(r.relayUrl) === norm(relayUrl)).length;
   const feedback = inbox.unreadCount;
+  const hasAppErrors = inbox.issues.some(isCrashIssue);
   const reportCount = relayReports.length + groupReports;
   const { known, strangers } = useMemo(() => splitByTrust(relayReports, tierOf, wotEnabled && wotReady), [relayReports, tierOf, wotEnabled, wotReady]);
 
@@ -175,6 +177,8 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost }: {
         {chip("reports", "Reports", reportCount)}
         {chip("requests", "Join requests", requests)}
         {chip("feedback", "Feedback", feedback)}
+        {/* App errors only ever reach the Relay Outpost team; the chip shows when there are any. */}
+        {hasAppErrors && chip("errors", "App errors", inbox.newAppErrors)}
       </div>
 
       {showReports && (
@@ -209,7 +213,7 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost }: {
 
       {showRequests && <AdmissionQueue relayUrl={relayUrl} />}
 
-      {nothing && view !== "feedback" && (
+      {nothing && view !== "feedback" && view !== "errors" && (
         <p className="py-6 text-center text-sm text-muted-foreground" data-testid="ops-inbox-clear">
           No reports or join requests are waiting on {relayName}.
         </p>
@@ -219,6 +223,12 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost }: {
         <section aria-label="Feedback" className="space-y-2">
           {view === "all" && <h3 className="px-1 text-[13px] font-medium text-muted-foreground">Feedback</h3>}
           <FeedbackTab relayUrl={relayUrl} inbox={inbox} />
+        </section>
+      )}
+
+      {view === "errors" && (
+        <section aria-label="App errors">
+          <FeedbackTab relayUrl={relayUrl} inbox={inbox} mode="errors" />
         </section>
       )}
 
