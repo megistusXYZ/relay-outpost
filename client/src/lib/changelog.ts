@@ -39,6 +39,26 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.16.0",
+    date: "2026-10-04",
+    title: "Run your community from here",
+    changes: [
+      { type: "new", text: "Relays has its own place in the menu. Connect a relay you already run, or pick a host and start one. Relay Control then shows your posts, your people and one Inbox for reports, join requests and messages, on a phone as well as a computer." },
+      { type: "new", text: "Find anything on your relay and act on many at once. Filter by kind of post, person, hashtag and time, see the real total, select everything a search finds, and undo a removal." },
+      { type: "new", text: "Let members contact the team. Turn it on in Settings, choose what they can ask (help, a problem, an idea, access), and answer with saved replies. They see your reply and every status change in Your tickets." },
+      { type: "new", text: "An Ideas board for your community. Members suggest things and vote; the most-wanted rise to the top, with your status beside each one." },
+      { type: "new", text: "For builders: a console that shows exactly what a relay says back, an inspector for any event (who wrote it, whether it is genuine, where it has been seen), and a publisher that tells you which relays accepted your event and why the others did not." },
+      { type: "improved", text: "Visitors see posts in about three and a half seconds instead of six, Chats is one list with people and groups together, and on a phone a profile opens with the cover under the top bar and one row of actions." },
+      { type: "fixed", text: "Feedback sent from a community now reaches that community's team, allow lists show each person once (with a Tidy up for copies your host stored), and one calm screen explains every error, from a missing page to being offline." },
+    ],
+    feedback: [
+      {
+        quote: "Why is it showing multiple users of the same users in my allow list, and how do I do a mass selection of users to remove?",
+        attribution: "A relay operator. Each person now shows once, and Select lets you remove many at a time.",
+      },
+    ],
+  },
+  {
     version: "1.15.0",
     date: "2026-10-02",
     title: "Private chats grew up, and a feed you can steer",
