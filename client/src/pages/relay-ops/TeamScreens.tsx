@@ -3,7 +3,7 @@
  *
  * Team: who shares the relay's private notes and moderation log. Their
  * records are encrypted to the people on this list and kept on the relay
- * itself (lib/relay-team.ts). Only the relay's owner changes the list; a
+ * itself (lib/relay-team.ts). Only the community's owner changes the list; a
  * teammate's powers on the relay itself (removing posts, banning) are granted
  * by the relay, so where it can't grant them here, the screen says where.
  *
@@ -104,7 +104,7 @@ export function TeamScreen({ relayUrl, nip11, team }: { relayUrl: string; nip11:
   const moderators = useMemo(() => new Set((nip11?.moderators ?? []).map((m) => m.toLowerCase())), [nip11]);
   const [adding, setAdding] = useState("");
   const [busy, setBusy] = useState(false);
-  const ownerName = profiles.get(team.owner)?.name ?? "the relay's owner";
+  const ownerName = profiles.get(team.owner)?.name ?? "the community's owner";
   const offer = useTeamOffer(relayUrl, nip11, team);
   const offerProfiles = useProfiles(offer.people);
 
@@ -113,11 +113,11 @@ export function TeamScreen({ relayUrl, nip11, team }: { relayUrl: string; nip11:
     const out = await team.setMembers(next);
     setBusy(false);
     if (!out.stored) toast({ title: "The team didn't change", description: out.reason, variant: "destructive" });
-    else toast({ title: said, description: out.missed ? `${out.missed} of the team's copies weren't kept by the relay.` : undefined });
+    else toast({ title: said, description: out.missed ? `${out.missed} of the team's copies weren't kept by your host.` : undefined });
   };
   const add = async () => {
     const hex = toHex(adding);
-    if (!hex) { toast({ title: "That isn't an npub", variant: "destructive" }); return; }
+    if (!hex) { toast({ title: "That doesn't look like a profile link", variant: "destructive" }); return; }
     if (team.members.includes(hex)) { toast({ title: "Already on the team" }); return; }
     await change([...team.members, hex], "Added to the team");
     setAdding("");
@@ -133,7 +133,7 @@ export function TeamScreen({ relayUrl, nip11, team }: { relayUrl: string; nip11:
         {team.members.map((pk) => {
           const p = profiles.get(pk);
           const name = p?.name || `${pubkeyToNpub(pk).slice(0, 14)}…`;
-          const role = pk === team.owner ? "Runs the relay" : moderators.has(pk) ? "Moderator on the relay" : "Can see and add notes";
+          const role = pk === team.owner ? "Owner" : moderators.has(pk) ? "Moderator" : "Can see and add notes";
           return (
             <li key={pk} className="flex items-center gap-3 px-3.5 min-h-[60px]" data-testid="ops-team-member" data-pubkey={pk}>
               <Avatar className="w-9 h-9 shrink-0">{p?.picture && <AvatarImage src={p.picture} alt="" />}<AvatarFallback className="bg-brand/10 text-brand">{name.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
@@ -171,7 +171,7 @@ export function TeamScreen({ relayUrl, nip11, team }: { relayUrl: string; nip11:
       )}
       {team.isOwner ? (
         <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void add(); }}>
-          <Input value={adding} onChange={(e) => setAdding(e.target.value)} placeholder="Add someone by npub" className="h-11 flex-1" aria-label="Add someone by npub" data-testid="ops-team-add-input" />
+          <Input value={adding} onChange={(e) => setAdding(e.target.value)} placeholder="Add someone — paste their profile link" className="h-11 flex-1" aria-label="Add someone by their profile link" data-testid="ops-team-add-input" />
           <Button type="submit" disabled={busy || !adding.trim() || !team.canEncrypt} className="h-11 rounded-full px-5" data-testid="ops-team-add"><Plus className="w-4 h-4 mr-1.5" />Add</Button>
         </form>
       ) : (
@@ -182,8 +182,8 @@ export function TeamScreen({ relayUrl, nip11, team }: { relayUrl: string; nip11:
       </p>
       <ManagedAtNote
         where={managedAt(relayUrl)}
-        lead="Being on the team lets someone read and add notes. To let them remove posts or ban people on the relay itself,"
-        verb="add them as moderators"
+        lead="Being on the team lets someone read and add notes. To let them remove posts or ban people too,"
+        verb="make them moderators"
         testId="ops-team-powers"
       />
     </div>
@@ -256,7 +256,7 @@ export function MemberNotes({ team, about }: { team: RelayTeam; about: string })
     setSaving(false);
     if (!out.stored) { toast({ title: "The note wasn't saved", description: out.reason, variant: "destructive" }); return; }
     setText("");
-    toast({ title: "Note saved for your team", description: out.missed ? `${out.missed} of the team's copies weren't kept by the relay.` : undefined });
+    toast({ title: "Note saved for your team", description: out.missed ? `${out.missed} of the team's copies weren't kept by your host.` : undefined });
   };
   return (
     <section className="space-y-2" data-testid="ops-member-notes">

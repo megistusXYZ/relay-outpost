@@ -866,7 +866,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
           <p className="mt-0.5 text-[15px] font-semibold leading-snug tabular-nums truncate" data-value>{latencyNow != null ? `${latencyNow} ms` : "—"}</p>
         </div>
         <div className="bg-background px-3 py-2 min-w-0" data-testid="ops-stat-auth">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70 leading-tight">Auth</p>
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70 leading-tight">Sign-in</p>
           <p className="mt-0.5 text-[15px] font-semibold leading-snug truncate" data-value>{authStatusWord(authStatus)}</p>
         </div>
         <div className="bg-background px-3 py-2 min-w-0" data-testid="ops-stat-software">
@@ -1200,7 +1200,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
             >
               <span className="min-w-0 flex-1">
                 <span className="font-medium">{signIn.policy === "always" ? "Always signs in here" : signIn.policy === "never" ? "Never signs in here" : "Asks before signing in here"}</span>
-                <span className="block text-muted-foreground">{signIn.chosen ? "Your choice" : signIn.because ?? "The usual setting"} · Change in Connection &amp; sign-in</span>
+                <span className="block text-muted-foreground">{signIn.chosen ? "Your choice" : "The usual setting"} · Change in Advanced › Connection &amp; sign-in</span>
               </span>
               <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             </button>

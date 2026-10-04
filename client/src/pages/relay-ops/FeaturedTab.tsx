@@ -88,9 +88,9 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
   const featuredBy = new Set([nip11?.pubkey, ...(nip11?.moderators ?? [])].filter((k): k is string => !!k && /^[0-9a-f]{64}$/i.test(k)).map((k) => k.toLowerCase()));
   const canFeature = !!pubkey && featuredBy.has(pubkey.toLowerCase());
   const featureNote = featuredBy.size === 0
-    ? "This relay doesn't name its owner or moderators, so the community's Featured tab can't show feeds yet. Ask your host to list you as the owner."
+    ? "Your host doesn't name this community's owner or moderators, so its Featured tab can't show feeds yet. Ask your host to list you as the owner."
     : !canFeature
-    ? "Feeds show on the Featured tab only when the relay names you as its owner or a moderator."
+    ? "Feeds show on the Featured tab only when your host names you as the owner or a moderator."
     : null;
   const { toast } = useToast();
 
@@ -154,7 +154,7 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
     if (!draft) return;
     const parsed = detectFeedPaste(pasteValue);
     if (!parsed) {
-      toast({ title: "Not recognized", description: "Paste a post link, note/nevent/naddr, or a web URL.", variant: "destructive" });
+      toast({ title: "Not recognized", description: "Paste a link to a post, an article or a web page.", variant: "destructive" });
       return;
     }
     if (parsed.type === "profile") {
@@ -251,13 +251,13 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
       let copyNote = "";
       if (copyToRelay) {
         const { copied, copyable } = await copyItemsToRelay(draft.items);
-        if (copyable > 0) copyNote = ` Copied ${copied} of ${copyable} items onto the relay.`;
+        if (copyable > 0) copyNote = ` Copied ${copied} of ${copyable} items onto your community.`;
       }
       setDraft(null);
-      toast({ title: "Feed published", description: `It's live on this relay's Featured tab.${copyNote}` });
+      toast({ title: "Feed published", description: `It's live on your community's Featured tab.${copyNote}` });
     } catch (err) {
       if (isSignerError(err)) handleSignerError(err, toast);
-      else toast({ title: "Couldn't publish", description: err instanceof Error ? err.message : "The relay didn't accept the feed.", variant: "destructive" });
+      else toast({ title: "Couldn't publish", description: err instanceof Error ? err.message : "Your host didn't accept the feed.", variant: "destructive" });
     } finally {
       setPublishing(false);
     }
@@ -282,7 +282,7 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
       toast({ title: "Feed deleted" });
     } catch (err) {
       if (isSignerError(err)) handleSignerError(err, toast);
-      else toast({ title: "Couldn't delete", description: "The relay didn't accept the deletion.", variant: "destructive" });
+      else toast({ title: "Couldn't delete", description: "Your host didn't accept the deletion.", variant: "destructive" });
     } finally {
       setDeleteTarget(null);
     }
@@ -299,7 +299,7 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
       )}
       <OpsSectionHeader icon={MagicStarIcon} label="Featured feeds">
         <p className="text-xs text-muted-foreground">
-          Curate what greets people on this relay's Featured tab — any post, article, listing, stream, or link, from anyone, old or new.
+          Curate what greets people on your community's Featured tab — any post, article, listing, stream, or link, from anyone, old or new.
         </p>
       </OpsSectionHeader>
 
@@ -347,7 +347,7 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
                 value={pasteValue}
                 onChange={(e) => setPasteValue(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Return") { e.preventDefault(); addPaste(); } }}
-                placeholder="Paste anything — a post link, naddr, web URL, or an npub to browse their content"
+                placeholder="Paste anything — a link to a post, an article, a web page, or someone's profile"
                 data-testid="input-featured-paste"
               />
               <Button onClick={addPaste} disabled={!pasteValue.trim()} data-testid="button-featured-add">
@@ -357,12 +357,12 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
 
             {draft.items.length === 0 ? (
               suggestions === null ? (
-                <p className="text-xs text-muted-foreground/70 text-center py-4">Looking at what's already on this relay…</p>
+                <p className="text-xs text-muted-foreground/70 text-center py-4">Looking at what's already here…</p>
               ) : suggestions.length === 0 ? (
                 <p className="text-xs text-muted-foreground/70 text-center py-4">Nothing here yet — paste the first thing worth featuring, or an npub to browse someone's content.</p>
               ) : (
                 <div className="space-y-1.5" data-testid="featured-suggestions">
-                  <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">From this relay</p>
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">From your community</p>
                   {suggestions.map((ev) => (
                     <button
                       key={ev.id}
@@ -431,7 +431,7 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
                 <MagicStarIcon className="w-6 h-6 text-brand/50 mx-auto" />
                 <p className="text-sm font-medium">No featured feeds yet</p>
                 <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                  Create one and it becomes the Featured tab on this relay's public page — a curated front door you control.
+                  Create one and it becomes the Featured tab on your community's page — a curated front door you control.
                 </p>
               </div>
             </OpsCard>

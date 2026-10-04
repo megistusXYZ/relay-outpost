@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 // This console renders OUTSIDE NeedsYouProvider, which is precisely why the
 // signal is a window event and not a context call.
+import { useTechnicalDetails } from "@/lib/technical-details";
 import { notifyNeedsYouChanged } from "@/contexts/NeedsYouContext";
 import type { Event as NostrEvent } from "nostr-tools";
 import { pool } from "@/lib/nostr";
@@ -137,7 +138,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
   // silently did nothing (owner, 2026-10-04).
   const publishRecord = async (template: { kind: number; created_at: number; tags: string[][]; content: string }) => {
     if (!signer) throw new Error("You're signed out. Sign in again to save.");
-    if (!recordsEditable) throw new Error(recordsNote ?? "Only the relay's owner can change this.");
+    if (!recordsEditable) throw new Error(recordsNote ?? "Only the community's owner can change this.");
     const signed = await signWithTimeout(signer, template);
     const { publishEvent } = await import("@/lib/nostr");
     await publishEvent(signed as unknown as NostrEvent, communityRecordRelays(relayUrl));
@@ -149,9 +150,9 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
   const recordsOwner = nip11?.pubkey && /^[0-9a-f]{64}$/i.test(nip11.pubkey) ? nip11.pubkey.toLowerCase() : null;
   const recordsEditable = !!recordsOwner && !!pubkey && recordsOwner === pubkey.toLowerCase();
   const recordsNote = !recordsOwner
-    ? "This relay doesn't name its owner, so the community page can't show rules, announcements or pinned discussions yet. Ask your host to list you as the owner."
+    ? "Your host doesn't name this community's owner, so its page can't show rules, announcements or pinned discussions yet. Ask your host to list you as the owner."
     : !recordsEditable
-    ? "Only the relay's owner can change these — they're what the community page shows. You can see them here."
+    ? "Only the community's owner can change these — they're what its page shows. You can see them here."
     : null;
   const { toast } = useToast();
 
@@ -212,7 +213,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
       const result = await uploadMedia(file, (status) => setStatus(status), signer);
       setValue(result.url);
       setStatus(null);
-      toast({ title: `${target === "icon" ? "Icon" : "Banner"} uploaded`, description: "Save changes to put it on the relay." });
+      toast({ title: `${target === "icon" ? "Icon" : "Banner"} uploaded`, description: "Save changes to put it live." });
     } catch (err) {
       setStatus(null);
       toast({ title: "Upload failed", description: err instanceof Error ? err.message : "Could not upload image.", variant: "destructive" });
@@ -521,7 +522,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
     }
     setSavingBrand(false);
     if (failed.length === 0) {
-      toast({ title: "Saved", description: dirtyFields.length === 1 ? `The relay's ${dirtyFields[0]} is updated.` : `${dirtyFields.length} changes are on the relay.` });
+      toast({ title: "Saved", description: dirtyFields.length === 1 ? `The community's ${dirtyFields[0]} is updated.` : `${dirtyFields.length} changes are live.` });
     } else if (failed.length < dirtyFields.length) {
       toast({ title: "Some changes didn't save", description: failed.join(" · "), variant: "destructive" });
     } else {
@@ -550,7 +551,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
   const handleAddFeaturedRef = () => {
     const item = refToFeaturedItem(featuredRefInput);
     if (!item) {
-      toast({ title: "Couldn't read that reference", description: "Paste a note, nevent, or naddr link.", variant: "destructive" });
+      toast({ title: "Couldn't read that reference", description: "Paste a link to a post or an article.", variant: "destructive" });
       return;
     }
     if (featuredItems.length >= MAX_FEATURED_ITEMS) {
@@ -620,7 +621,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
     // the call fails, so the list stays ours (below) and the card says so.
     if (canModerators) {
       changeRelayModerators(relayUrl, newList).then(res => {
-        if (res.result) toast({ title: "Relay moderators updated" });
+        if (res.result) toast({ title: "Moderators updated" });
       }).catch(() => {});
     }
     try {
@@ -639,7 +640,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
   const handleAddMod = () => {
     const hex = npubToHex(modInput);
     if (!hex) {
-      toast({ title: "Invalid pubkey or npub", variant: "destructive" });
+      toast({ title: "That doesn't look like a profile link", variant: "destructive" });
       return;
     }
     if (moderators.includes(hex)) {
@@ -718,7 +719,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
               id="ops-brand-name"
               value={brandName}
               onChange={e => setBrandName(e.target.value)}
-              placeholder="Relay name"
+              placeholder="Community name"
               className="h-10 sm:h-9 text-sm sm:text-xs"
               data-testid="ops-brand-name"
               readOnly={!canName}
@@ -761,7 +762,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
                   disabled={uploadingIcon || !canIcon}
                   className="relative w-16 h-16 rounded-full border border-border bg-muted dark:bg-white/[0.03] overflow-hidden hover:border-primary/50 transition-colors group disabled:opacity-50"
                   title={brandIcon ? "Click to replace icon" : "Click to upload icon"}
-                  aria-label={brandIcon ? "Replace relay icon" : "Upload relay icon"}
+                  aria-label={brandIcon ? "Replace the community\u2019s picture" : "Upload the community\u2019s picture"}
                   data-testid="button-upload-icon-tile"
                 >
                   {brandIcon ? (
@@ -848,7 +849,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
                 disabled={uploadingBanner}
                 className="relative w-full h-24 sm:h-28 rounded-md border border-border bg-muted dark:bg-white/[0.03] overflow-hidden hover:border-primary/50 transition-colors group disabled:opacity-50"
                 title={brandBanner ? "Click to replace banner" : "Click to upload banner"}
-                aria-label={brandBanner ? "Replace relay banner" : "Upload relay banner"}
+                aria-label={brandBanner ? "Replace the cover picture" : "Upload a cover picture"}
                 data-testid="button-upload-banner-tile"
               >
                 {brandBanner ? (
@@ -924,7 +925,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
                   <img src={savedBanner} alt="" className="w-full h-full object-cover" />
                 </div>
               )}
-              <ManagedAtNote where={where} lead="Your relay sets its banner itself." testId="ops-managed-banner" />
+              <ManagedAtNote where={where} lead="Your host sets the cover picture itself." testId="ops-managed-banner" />
             </div>
           )}
         </div>
@@ -966,7 +967,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
             <Textarea
               value={announcementText}
               onChange={e => setAnnouncementText(e.target.value)}
-              placeholder="Pin an announcement to the top of your Timeline (events, spaces, book launches…)"
+              placeholder="Pin an announcement to the top of your Timeline (meetups, spaces, book launches…)"
               className="text-xs min-h-[70px]"
             />
             <p className="text-[10px] text-muted-foreground/40">Shown as a banner at the top of the community Timeline for every member.</p>
@@ -978,7 +979,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
                 value={featuredRefInput}
                 onChange={e => setFeaturedRefInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAddFeaturedRef(); } }}
-                placeholder="Paste a note, nevent, or naddr link…"
+                placeholder="Paste a link to a post or an article…"
                 className="text-xs h-8"
               />
               <Button size="sm" variant="outline" onClick={handleAddFeaturedRef} disabled={!recordsEditable} className="text-xs h-8 shrink-0">
@@ -1002,7 +1003,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
                 })}
               </div>
             )}
-            <p className="text-[10px] text-muted-foreground/40">Up to {MAX_FEATURED_ITEMS}. Copy a link from any post, article, or event and paste it here.</p>
+            <p className="text-[10px] text-muted-foreground/40">Up to {MAX_FEATURED_ITEMS}. Copy a link to any post, article or listing and paste it here.</p>
           </div>
           <Button size="sm" onClick={handleSaveFeatured} disabled={savingFeatured || !recordsEditable} className="text-xs">
             {savingFeatured ? <RelayOutpostInlineLoader className="w-3 h-3 mr-1" /> : <Check className="w-3 h-3 mr-1" />}
@@ -1066,7 +1067,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
             <span className="text-xs text-muted-foreground/50">Loading topics...</span>
           </div>
         ) : topics.length === 0 ? (
-          <p className="text-xs text-muted-foreground/40">No topics found on this relay.</p>
+          <p className="text-xs text-muted-foreground/40">No discussions yet.</p>
         ) : (
           <div className="space-y-1 max-h-[300px] overflow-y-auto">
             {topics.map(topic => {
@@ -1120,6 +1121,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
 }
 
 function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip11Document | null }) {
+  const technical = useTechnicalDetails();
   const { toast } = useToast();
   // The operator's OWN relay — an unreadable NIP-11 must not tell them their
   // relay stopped hosting groups.
@@ -1471,7 +1473,7 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
     try {
       const { ok, error } = await sendDeleteGroup(relayUrl, selectedGroupId);
       if (ok) {
-        toast({ title: "Deletion sent", description: "If the relay accepted it, the room is gone." });
+        toast({ title: "Deletion sent", description: "If your host accepted it, the room is gone." });
         setConfirmDeleteGroup(false);
         setSelectedGroupId(null);
         // Re-read rather than assume: the relay is the arbiter here, and a
@@ -1480,7 +1482,7 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
           if (reached) setGroups(fetched.sort((a, b) => (a.id === "_" ? -1 : b.id === "_" ? 1 : (a.name || a.id).localeCompare(b.name || b.id))));
         });
       } else {
-        toast({ title: "The relay refused to delete it", description: error, variant: "destructive" });
+        toast({ title: "Your host refused to delete it", description: error, variant: "destructive" });
       }
     } catch {
       toast({ title: "Error", variant: "destructive" });
@@ -1515,7 +1517,11 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
   if (!hasNip29) {
     return (
       <OpsCard className="space-y-3">
-        <OpsSectionHeader label="NIP-29 Group Chat" className="mb-0" labelClassName="text-muted-foreground/50 dark:text-muted-foreground/50" />
+        <OpsSectionHeader label="Group chats" className="mb-0" labelClassName="text-muted-foreground/50 dark:text-muted-foreground/50" />
+        <p className="text-[13px] text-muted-foreground leading-relaxed" data-testid="ops-groups-unsupported">
+          Your host doesn't run group chats for this community. Some hosts do — ask yours, or move to one that does.
+        </p>
+        {technical && <>
         <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
           This relay does not <span className="italic">advertise</span> NIP-29 in its NIP-11 document, so group-chat features are hidden. Detection is based on the relay returning <code className="font-mono text-[10px] px-1 py-0.5 rounded bg-muted/40 text-muted-foreground/80">29</code> in <code className="font-mono text-[10px] px-1 py-0.5 rounded bg-muted/40 text-muted-foreground/80">supported_nips</code>.
         </p>
@@ -1535,6 +1541,7 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
         <p className="text-[10px] text-muted-foreground/45 leading-relaxed">
           Mainline <span className="font-mono">strfry</span> does not include NIP-29 — you'd need <span className="font-mono">strfry29</span> or a plugin. If your relay <span className="italic">does</span> support NIP-29 but you still see this notice, add <code className="font-mono text-[10px] px-1 py-0.5 rounded bg-muted/40 text-muted-foreground/80">29</code> to the <code className="font-mono text-[10px] px-1 py-0.5 rounded bg-muted/40 text-muted-foreground/80">supported_nips</code> array in your NIP-11 response and reload.
         </p>
+        </>}
       </OpsCard>
     );
   }
@@ -1544,7 +1551,7 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
   return (
     <OpsCard className="space-y-4">
       <OpsSectionHeader
-        label="NIP-29 Group Chat"
+        label="Group chats"
         className="mb-0"
         action={
           <Button
@@ -1625,8 +1632,8 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
       ) : groups.length === 0 ? (
         <p className="text-xs text-muted-foreground/40 text-center py-4">
           {groupsReached === false
-            ? "Couldn't reach this relay, so we can't list its groups."
-            : "No groups found on this relay."}
+            ? "Couldn't reach your community, so we can't list its groups."
+            : "No group chats yet."}
         </p>
       ) : (
         <div className="space-y-1">
@@ -1705,14 +1712,14 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[10px] text-muted-foreground/30 mb-2">No roles defined by relay</p>
+                  <p className="text-[10px] text-muted-foreground/30 mb-2">No roles set up yet</p>
                 )}
                 <h5 className="text-[10px] text-muted-foreground/40 mb-1">Assign Role to User</h5>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     value={editRolePubkey}
                     onChange={(e) => setEditRolePubkey(e.target.value)}
-                    placeholder="Pubkey (hex)"
+                    placeholder="Their profile link or key"
                     className="flex-1 h-7 text-base sm:text-[10px] font-mono bg-muted/20 border-border/30"
                   />
                   <Input
@@ -1749,7 +1756,7 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
                 />
                 {groupAdmins.length === 0 ? (
                   <p className="text-[10px] text-muted-foreground/30">
-                    {detailReached === false ? "Couldn't reach the relay to read this." : "No admins defined"}
+                    {detailReached === false ? "Couldn't reach your community to read this." : "No admins defined"}
                   </p>
                 ) : adminFiltered.filtered.length === 0 ? (
                   <p className="text-[10px] text-muted-foreground/60 text-center py-2">No matches.</p>
@@ -1795,7 +1802,7 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
                 />
                 {groupMembers.length === 0 ? (
                   <p className="text-[10px] text-muted-foreground/30">
-                    {detailReached === false ? "Couldn't reach the relay to read this." : "No members listed"}
+                    {detailReached === false ? "Couldn't reach your community to read this." : "No members listed"}
                   </p>
                 ) : memberFiltered.filtered.length === 0 ? (
                   <p className="text-[10px] text-muted-foreground/60 text-center py-2">No matches.</p>
@@ -1878,7 +1885,7 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
                   <Input
                     value={muteUserPubkey}
                     onChange={(e) => setMuteUserPubkey(e.target.value)}
-                    placeholder="Pubkey to mute (hex)"
+                    placeholder="Profile link or key of who to mute"
                     className="flex-1 h-7 text-base sm:text-[10px] font-mono bg-muted/20 border-border/30"
                   />
                   <Button
@@ -1936,7 +1943,7 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
                   <Input
                     value={deleteEventId}
                     onChange={(e) => setDeleteEventId(e.target.value)}
-                    placeholder="Event ID (hex)"
+                    placeholder="Link to the message"
                     className="flex-1 h-7 text-base sm:text-[10px] font-mono bg-muted/20 border-border/30"
                   />
                   <Button

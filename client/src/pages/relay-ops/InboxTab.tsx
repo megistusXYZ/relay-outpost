@@ -117,7 +117,7 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost, onOpenMemberInbox 
     setProgress(null);
     setPending(null);
     if (!out.done.length) {
-      toast({ title: "The relay turned this down", description: out.stopped ?? out.failed[0]?.error, variant: "destructive" });
+      toast({ title: "Your host turned this down", description: out.stopped ?? out.failed[0]?.error, variant: "destructive" });
       return;
     }
     if (pending.kind === "remove") addModLogEntry(relayUrl, { action: "delete_event", targetEventId: out.done[0], targetPubkey: report.targetPubkey, note: reason });

@@ -229,7 +229,7 @@ export function FeedbackTab({ relayUrl, inbox, mode = "feedback", onOpenMemberIn
   if (!operatorPubkey) {
     return (
       <p className="py-10 text-center text-sm text-muted-foreground" data-testid="feedback-no-operator">
-        {signer ? `${relayName} doesn't say who runs it, so feedback has nowhere to go.` : "Sign in as this relay's operator to see what members send."}
+        {signer ? `${relayName} doesn't say who runs it, so feedback has nowhere to go.` : "Sign in as this community's owner to see what members send."}
       </p>
     );
   }
@@ -372,7 +372,7 @@ export function FeedbackTab({ relayUrl, inbox, mode = "feedback", onOpenMemberIn
                     <span className="mt-0.5 block text-[15px] font-medium leading-snug truncate">{t.title}</span>
                     {stripContextBlock(t.event.content).trim() && <span className="mt-0.5 block text-[13px] text-muted-foreground truncate">{stripContextBlock(t.event.content).trim()}</span>}
                     <span className="mt-1 block text-[12px] text-muted-foreground">
-                      {ago(t.latestActivityAt)}{replies ? ` · ${replies} ${replies === 1 ? "reply" : "replies"}` : ""}{untiedIds.has(t.event.id) ? " · not tied to a relay" : ""}
+                      {ago(t.latestActivityAt)}{replies ? ` · ${replies} ${replies === 1 ? "reply" : "replies"}` : ""}{untiedIds.has(t.event.id) ? " · not tied to a community" : ""}
                     </span>
                   </span>
                 </button>
@@ -447,7 +447,7 @@ function TicketDetail({ issue, me, relayName, untied, trust, reply, setReply, po
           <h3 className="text-[18px] font-semibold tracking-tight leading-snug">{issue.title}</h3>
           <p className="mt-0.5 text-[13px] text-muted-foreground">
             <span className="text-foreground/90"><PersonName pubkey={issue.reporter} /></span>{trust ? ` · ${trust}` : ""} · {issue.type[0] ? `${KIND_WORD[issue.type[0]]} · ` : ""}{issue.private ? "Private" : "Public"} · {ago(issue.createdAt)}
-            {untied ? " · not tied to a relay" : ""}
+            {untied ? " · not tied to a community" : ""}
           </p>
         </div>
       </header>

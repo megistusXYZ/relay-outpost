@@ -123,7 +123,7 @@ describe("where a setting is managed when we can't change it", () => {
     expect(managedAt("wss://bunk-test.feeds.relay.tools")).toEqual({ name: "relay.tools", url: "https://feeds.relay.tools" });
   });
 
-  it("points anyone else at their relay's own settings", () => {
-    expect(managedAt("wss://relay.example.com")).toEqual({ name: "your relay's own settings" });
+  it("points anyone else at their host's settings", () => {
+    expect(managedAt("wss://relay.example.com")).toEqual({ name: "your host's settings" });
   });
 });
