@@ -37,7 +37,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { ManagedAtNote } from "./ops-ui";
 import { ConfirmAction, type PendingAction } from "./ConfirmAction";
 import { RefusedNotice } from "./RefusedNotice";
-import { setAuthEnabled } from "@/lib/nip42-auth";
+import { getSignInPolicy, signInAsChosen } from "@/lib/nip42-auth";
 import { pool } from "@/lib/nostr";
 import { addModLogEntry, pubkeyToNpub, resolveProfileBatch, subscribeWithReach, type NostrFilter, type ProfileInfo } from "./shared";
 import { mergePage, scopeLine } from "./content-model";
@@ -310,7 +310,8 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts }: {
         <div className="min-w-0">
           {shown.length === 0 && !loading && refused ? (
             <RefusedNotice relayName={relayName} reason={refused} what="who posts there" testId="ops-people-refused"
-              onSignIn={() => { setAuthEnabled(relayUrl, true); try { pool.close([relayUrl]); } catch {} setTimeout(() => setReload((n) => n + 1), 300); }} />
+              never={getSignInPolicy(relayUrl).policy === "never"}
+              onSignIn={() => { if (!signInAsChosen(relayUrl)) return; try { pool.close([relayUrl]); } catch {} setTimeout(() => setReload((n) => n + 1), 300); }} />
           ) : shown.length === 0 && !loading ? (
             <p className="py-10 text-center text-sm text-muted-foreground" data-testid="ops-people-empty">
               {!reached ? "We couldn't reach this relay to look." : query || filter !== "all" ? "Nobody matches." : "Nobody has posted here yet."}

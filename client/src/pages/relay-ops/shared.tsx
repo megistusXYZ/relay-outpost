@@ -1534,7 +1534,7 @@ export function addUptimeEntry(relayUrl: string, entry: UptimeEntry) {
  * "settings" is the console's Settings section itself (three rows); the three
  * screens inside it keep their old ids so links made before the redesign land.
  */
-export type TabId = "overview" | "live" | "events" | "people" | "access" | "announce" | "featured" | "community" | "feedback" | "settings" | "contact";
+export type TabId = "overview" | "live" | "events" | "people" | "access" | "announce" | "featured" | "community" | "feedback" | "settings" | "contact" | "connection";
 
 export const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "overview", label: "Overview", icon: Activity },
@@ -1588,7 +1588,7 @@ export interface SavedToolbarState {
   searchEventId?: string;
 }
 
-export const VALID_TABS: Set<string> = new Set([...TABS.map(t => t.id), "settings", "people", "contact"]);
+export const VALID_TABS: Set<string> = new Set([...TABS.map(t => t.id), "settings", "people", "contact", "connection"]);
 
 export function getTabFromHash(): TabId {
   try {
