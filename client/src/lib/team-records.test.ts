@@ -47,6 +47,12 @@ describe("the team, as everyone on it sees it", () => {
     expect(t.members).toEqual([OWNER, MATE]);
   });
 
+  it("a stranger's own roster naming themselves doesn't put them on the team (console team access, 2026-10-04)", () => {
+    const t = foldTeam([rumor(STRANGER, "roster", { members: [STRANGER] }, 30)], { owner: OWNER, me: STRANGER, relayUrl: RELAY });
+    expect(t.members).toEqual([OWNER]);
+    expect(t.members.includes(STRANGER)).toBe(false);
+  });
+
   it("always keeps the owner on it", () => {
     expect(foldTeam([rumor(OWNER, "roster", { members: [MATE] }, 10)], { owner: OWNER, me: OWNER }).members).toEqual([OWNER, MATE]);
   });
