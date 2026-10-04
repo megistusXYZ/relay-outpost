@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { hasNewForReporter, threadItems, ticketNewsSince } from "@/lib/feedback-needs";
 import { useSearch, useLocation } from "wouter";
 import { PageToolbar } from "@/components/PageToolbar";
 import { Card } from "@/components/ui/card";
@@ -20,6 +21,7 @@ import { ChevronLeft, Send, Inbox, RefreshCw, MessageSquare, Lock, Globe } from 
 import {
   type FeedbackType,
   type FeedbackStatus,
+  statusLabel,
   type FeedbackIssue,
   subscribeMyTickets,
   subscribePrivateFeedback,
@@ -30,17 +32,18 @@ import {
   sendPrivateReply,
   stripContextBlock,
   markIssueRead,
-  isIssueUnread,
+  renderableComments,
 } from "@/lib/nip34-feedback";
 import type { UnwrappedRumor } from "@/lib/dm";
 import type { Event as NostrEvent } from "nostr-tools";
 
-// Human, jargon-free labels (Part E). Mirrors the operator console wording.
-const STATUS_LABEL: Record<FeedbackStatus, { label: string; color: string }> = {
-  open: { label: "Open", color: "border-emerald-400/40 text-emerald-700 dark:text-emerald-300/80 bg-emerald-500/10" },
-  draft: { label: "Triaged", color: "border-amber-400/40 text-amber-700 dark:text-amber-300/80 bg-amber-500/10" },
-  resolved: { label: "In progress", color: "border-blue-400/40 text-blue-700 dark:text-blue-300/80 bg-blue-500/10" },
-  closed: { label: "Closed", color: "border-muted-foreground/30 text-muted-foreground/60 bg-muted/20" },
+// The words come from the shared statusLabel() — the operator's screen uses the
+// same ones, so the person who reported something sees what the operator set.
+const STATUS_COLOR: Record<FeedbackStatus, string> = {
+  open: "border-emerald-400/40 text-emerald-700 dark:text-emerald-300/80 bg-emerald-500/10",
+  draft: "border-amber-400/40 text-amber-700 dark:text-amber-300/80 bg-amber-500/10",
+  resolved: "border-blue-400/40 text-blue-700 dark:text-blue-300/80 bg-blue-500/10",
+  closed: "border-muted-foreground/30 text-muted-foreground/60 bg-muted/20",
 };
 const TYPE_LABEL: Record<FeedbackType, string> = { bug: "Bug", idea: "Idea", ux: "UX", question: "Question" };
 
@@ -97,7 +100,9 @@ export default function MyTickets() {
     const seen = new Set<string>();
     const rumors: UnwrappedRumor[] = [];
     for (const r of [...privateRumors, ...optimisticRumors]) {
-      const key = `${r.pubkey}|${r.kind}|${r.content}|${r.tags.find((t) => t[0] === "E")?.[1] || ""}`;
+      // The status is part of the key: two status changes on one ticket are
+      // both empty messages, and the second used to collapse into the first.
+      const key = `${r.pubkey}|${r.kind}|${r.content}|${r.tags.find((t) => t[0] === "E")?.[1] || ""}|${r.tags.find((t) => t[0] === "status")?.[1] || ""}`;
       if (seen.has(key)) continue;
       seen.add(key);
       rumors.push(r);
@@ -173,7 +178,7 @@ export default function MyTickets() {
 
         <Card className="glass-card p-4">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <Badge variant="outline" className={`text-[10px] ${STATUS_LABEL[selected.status].color}`}>{STATUS_LABEL[selected.status].label}</Badge>
+            <Badge variant="outline" className={`text-[10px] ${STATUS_COLOR[selected.status]}`}>{statusLabel(selected.status)}</Badge>
             {selected.type.map((t) => (
               <Badge key={t} variant="outline" className="text-[10px] border-brand/40 text-brand">{TYPE_LABEL[t]}</Badge>
             ))}
@@ -189,7 +194,17 @@ export default function MyTickets() {
 
         {/* Chat thread */}
         <div className="space-y-2">
-          {selected.comments.map((c) => {
+          {threadItems(selected).map((item) => {
+            if (item.kind === "status") {
+              // A status change is a line in the conversation, not an empty bubble.
+              const who = item.by === pubkey ? "You" : null;
+              return (
+                <p key={`s-${item.at}-${item.status}`} className="text-center text-[12px] text-muted-foreground py-1" data-testid="myticket-status-line">
+                  {who ?? <PersonChip pubkey={item.by} fallbackLabel={recipient.label} />} marked this <span className="font-medium text-foreground/80">{statusLabel(item.status)}</span> · {formatDistanceToNow(item.at * 1000, { addSuffix: true })}
+                </p>
+              );
+            }
+            const c = item.event;
             const mine = c.pubkey === pubkey;
             return (
               <div key={c.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
@@ -201,7 +216,7 @@ export default function MyTickets() {
               </div>
             );
           })}
-          {selected.comments.length === 0 && (
+          {threadItems(selected).length === 0 && (
             <p className="text-center text-xs text-muted-foreground/50 py-4">No replies yet. You'll be notified when the operator responds.</p>
           )}
         </div>
@@ -255,7 +270,7 @@ export default function MyTickets() {
       ) : (
         <div className="space-y-2">
           {tickets.map((t: FeedbackIssue) => {
-            const unread = isIssueUnread(t);
+            const unread = hasNewForReporter(t, pubkey ?? null, ticketNewsSince());
             const recipient = recipientFromIssue(t.event);
             return (
               <Card
@@ -268,7 +283,7 @@ export default function MyTickets() {
                   {t.private
                     ? <Lock className="w-3 h-3 text-brand/70" aria-label="Private" />
                     : <Globe className="w-3 h-3 text-muted-foreground/50" aria-label="Public" />}
-                  <Badge variant="outline" className={`text-[9px] ${STATUS_LABEL[t.status].color}`}>{STATUS_LABEL[t.status].label}</Badge>
+                  <Badge variant="outline" className={`text-[9px] ${STATUS_COLOR[t.status]}`}>{statusLabel(t.status)}</Badge>
                   {t.type.map((ty) => (
                     <Badge key={ty} variant="outline" className="text-[9px] border-brand/40 text-brand">{TYPE_LABEL[ty]}</Badge>
                   ))}
@@ -280,9 +295,9 @@ export default function MyTickets() {
                     ? <PersonChip pubkey={recipient.operatorPubkey} fallbackLabel={recipient.label} />
                     : <span className="text-[11px] text-muted-foreground/60">{recipient.label}</span>}
                   <span className="text-[10px] text-muted-foreground/50">{formatDistanceToNow(t.latestActivityAt * 1000, { addSuffix: true })}</span>
-                  {t.comments.length > 0 && (
+                  {renderableComments(t.comments).length > 0 && (
                     <span className="text-[10px] text-muted-foreground/50 inline-flex items-center gap-1">
-                      <MessageSquare className="w-2.5 h-2.5" />{t.comments.length}
+                      <MessageSquare className="w-2.5 h-2.5" />{renderableComments(t.comments).length}
                     </span>
                   )}
                 </div>

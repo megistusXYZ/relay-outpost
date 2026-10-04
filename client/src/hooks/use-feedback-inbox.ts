@@ -10,8 +10,8 @@ import {
   subscribeOperatorFeedback,
   subscribePrivateFeedback,
   combineFeedbackIssues,
-  countUnread,
 } from "@/lib/nip34-feedback";
+import { feedbackNeedsYou, newAppErrorGroups, operatorInbox } from "@/lib/feedback-needs";
 
 export interface FeedbackInbox {
   recipient: FeedbackRecipient | null;
@@ -22,9 +22,15 @@ export interface FeedbackInbox {
   coordValue: string | null;
   events: NostrEvent[];
   privateRumors: UnwrappedRumor[];
-  /** The combined, deduped, newest-first inbox — public + private tickets. */
+  /** This relay's inbox, newest first — public + private tickets about this
+   *  relay, plus older ones that name no relay; never tickets you sent elsewhere. */
   issues: FeedbackIssue[];
+  /** Ids of tickets that don't say which relay they're about. */
+  untiedIds: Set<string>;
+  /** Feedback waiting on you (lib/feedback-needs.ts) — the one count for badge, chip and list. */
   unreadCount: number;
+  /** App errors with an occurrence you haven't seen, one per error. */
+  newAppErrors: number;
   discovering: boolean;
   /** The operator's signer can't decrypt private (NIP-17) tickets. */
   nip44Missing: boolean;
@@ -99,17 +105,14 @@ export function useFeedbackInbox(
     return () => window.removeEventListener("relay-outpost:feedback-read", onRead);
   }, []);
 
-  const issues = useMemo(
-    () => combineFeedbackIssues(events, privateRumors),
-    [events, privateRumors],
+  const { issues, untiedIds } = useMemo(
+    () => operatorInbox(combineFeedbackIssues(events, privateRumors), pubkey, relayUrl),
+    [events, privateRumors, pubkey, relayUrl],
   );
 
-  const unreadCount = useMemo(
-    () => countUnread("", issues),
-    // readTick participates so the count refreshes after markIssueRead.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [issues, readTick],
-  );
+  // readTick participates so the counts refresh after markIssueRead.
+  const unreadCount = useMemo(() => feedbackNeedsYou(issues, pubkey).length, [issues, pubkey, readTick]);
+  const newAppErrors = useMemo(() => newAppErrorGroups(issues).length, [issues, readTick]);
 
   return {
     recipient,
@@ -118,7 +121,9 @@ export function useFeedbackInbox(
     events,
     privateRumors,
     issues,
+    untiedIds,
     unreadCount,
+    newAppErrors,
     discovering,
     nip44Missing,
     reload,

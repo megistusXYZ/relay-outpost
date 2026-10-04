@@ -21,8 +21,9 @@ import { detectPreset, readReachDepth } from "@/lib/trust-preset";
 import { readExcludedTiers } from "@/lib/trust-filter";
 import {
   subscribeMyTickets, subscribePrivateFeedback, hydrateIssues, hydratePrivateTickets,
-  isIssueUnread, markIssuesRead, markIssueRead, recipientFromIssue, type FeedbackIssue,
+  markIssuesRead, markIssueRead, recipientFromIssue, type FeedbackIssue,
 } from "@/lib/nip34-feedback";
+import { hasNewForReporter, newestFromOthers, ticketNewsSince } from "@/lib/feedback-needs";
 import type { UnwrappedRumor } from "@/lib/dm";
 import { getMyDMReceiveRelays, getMyNotificationRelays, getOwnDMInboxRelays } from "@/lib/outbox";
 import { setOwnDMInboxProvider } from "@/lib/nip42-auth";
@@ -782,13 +783,11 @@ export default function NotificationEngine({ onChange }: { onChange: (value: Not
   const shownTicketIssues = useMemo(() => {
     void feedbackReadVersion;
     if (!pubkey) return [] as FeedbackIssue[];
+    // Tickets you reported that someone else has answered or changed the
+    // status of — a close included. Read or not is hasNewForReporter below; the
+    // badge (useFeedbackUnread) counts the unseen ones by the same rule.
     const issues = [...hydrateIssues(ticketEvents), ...hydratePrivateTickets(ticketRumors)];
-    return issues.filter((issue) => {
-      if (issue.status === "closed") return false;
-      if (issue.comments.length === 0) return false;
-      const latest = issue.comments.reduce((a, b) => (b.created_at > a.created_at ? b : a));
-      return latest.pubkey !== pubkey;
-    });
+    return issues.filter((issue) => issue.reporter === pubkey && newestFromOthers(issue, pubkey) > 0);
   }, [pubkey, ticketEvents, ticketRumors, feedbackReadVersion]);
 
   useEffect(() => { shownTicketIssuesRef.current = shownTicketIssues; }, [shownTicketIssues]);
@@ -828,7 +827,7 @@ export default function NotificationEngine({ onChange }: { onChange: (value: Not
         type: "ticket",
         fromPubkey: recipient.operatorPubkey || issue.reporter,
         timestamp: issue.latestActivityAt,
-        read: !isIssueUnread(issue),
+        read: !hasNewForReporter(issue, pubkey, ticketNewsSince()),
       };
     }),
     [shownTicketIssues],
