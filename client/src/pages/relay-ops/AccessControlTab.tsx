@@ -27,6 +27,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { OpsCard, OpsSectionHeader, ManagedAtNote } from "./ops-ui";
+import { setSetupFlag } from "./SetupChecklist";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -928,6 +929,8 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
 
   // Import reaches the relay, after asking (owner, 2026-10-04): it used to
   // merge into this browser only, while the team log said it had happened.
+  // The setup checklist's "Who can post" item: you looked, and it's right.
+  const [wcpConfirmed, setWcpConfirmed] = useState(() => { try { return localStorage.getItem(`ro_setup_wcp_${relayUrl}`) === "1"; } catch { return false; } });
   const [pendingImport, setPendingImport] = useState<{ type: "allow" | "block"; add: string[]; already: number; unreadable: number } | null>(null);
   const [importing, setImporting] = useState<{ done: number; total: number } | null>(null);
   const importList = useCallback((type: AccessLevel) => {
@@ -1127,6 +1130,9 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
           <div className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] px-4 py-3 space-y-1" data-testid="ops-who-can-post-status">
             <p className="text-[15px] font-medium">{rule}</p>
             <ManagedAtNote where={managedAt(relayUrl)} lead="Your host sets who may post." verb="Change it" testId="ops-who-can-post-host" />
+            {nip11 && !wcpConfirmed && (
+              <Button variant="outline" size="sm" className="mt-2 h-10 rounded-full px-4" onClick={() => { setSetupFlag("wcp", relayUrl); setWcpConfirmed(true); }} data-testid="ops-who-can-post-confirm">This is how I want it</Button>
+            )}
           </div>
         );
       })()}
