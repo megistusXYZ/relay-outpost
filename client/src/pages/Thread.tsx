@@ -773,9 +773,6 @@ export default function Thread() {
               // then the full reply thread beneath the card.
               <>
                 <PollPost key={event.id} event={event} />
-                {inlineReplyBar && (
-                  <div className="ml-1 sm:ml-3">{inlineReplyBar}</div>
-                )}
                 <div className="ml-1 sm:ml-3">
                   <ReplyThread
                     rootId={event.id}
@@ -783,6 +780,7 @@ export default function Thread() {
                     onClose={() => {}}
                     showFloatingCollapse={false}
                     bare
+                    replyBox={inlineReplyBar}
                   />
                 </div>
               </>

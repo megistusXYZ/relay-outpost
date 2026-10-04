@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from "react";
 import { ClampedText, LINES, textForLines } from "@/components/ClampedText";
 import { createPortal } from "react-dom";
 import type { Event } from "nostr-tools";
@@ -108,6 +108,7 @@ import {
   shouldContinueThread,
   rendersIndentColumn,
   isBeyondIndentCap,
+  replyBoxPlacement,
 } from "@/lib/thread-tree";
 import { MentionSearch } from "@/components/MentionSearch";
 import { MentionHighlightTextarea } from "@/components/MentionHighlightTextarea";
@@ -150,53 +151,20 @@ export function getRootEventId(event: Event): string | null {
   return threadRootOf(event);
 }
 
-export interface ThreadNode {
-  event: Event;
-  children: ThreadNode[];
-}
+// The tree lives in lib/thread-tree.ts (pure, unit-tested); re-exported for callers here.
+export { buildThreadTree, type ThreadNode } from "@/lib/thread-tree";
+import { buildThreadTree, type ThreadNode } from "@/lib/thread-tree";
 
-export function buildThreadTree(replies: Event[], rootId: string): ThreadNode[] {
-  const dedupIds = new Set<string>();
-  const dedupedReplies = replies.filter((r) => {
-    if (dedupIds.has(r.id)) return false;
-    dedupIds.add(r.id);
-    return true;
-  });
-  const replyIds = new Set(dedupedReplies.map((r) => r.id));
-  replyIds.add(rootId);
-  const byParent = new Map<string, Event[]>();
+/**
+ * "I just sent this reply." The composer announces it; the thread showing it
+ * brings it into view and marks it for a moment, so a reply never lands
+ * somewhere off screen with nothing to say where it went (owner, 2026-10-04).
+ */
+export const REPLY_SENT_EVENT = "relay-outpost:reply-sent";
+const JUST_SENT_MS = 2400;
 
-  for (const reply of dedupedReplies) {
-    let parentId = getReplyTargetId(reply);
-    if (parentId && !replyIds.has(parentId)) {
-      parentId = rootId;
-    }
-    const target = parentId || rootId;
-    const existing = byParent.get(target) || [];
-    existing.push(reply);
-    byParent.set(target, existing);
-  }
-
-  function buildChildren(parentId: string, depth: number, ancestors: Set<string>): ThreadNode[] {
-    const children = byParent.get(parentId) || [];
-    return children
-      // Guard against reply cycles / self-replies so we never recurse forever.
-      .filter((e) => !ancestors.has(e.id))
-      .sort((a, b) => a.created_at - b.created_at)
-      .map((event) => {
-        const nextAncestors = new Set(ancestors);
-        nextAncestors.add(event.id);
-        return {
-          event,
-          // Recurse the FULL tree — deep replies keep their children (previously
-          // anything past depth 5 was discarded). A high hard cap is a backstop.
-          children: depth >= 60 ? [] : buildChildren(event.id, depth + 1, nextAncestors),
-        };
-      });
-  }
-
-  return buildChildren(rootId, 0, new Set([rootId]));
-}
+/** Replies sent from this screen (always shown, never folded) and the one marked right now. */
+const SentRepliesContext = createContext<{ sent: ReadonlySet<string>; flash: string | null }>({ sent: new Set(), flash: null });
 
 export const MAX_THREAD_TTS_CHARS = 50000;
 
@@ -381,6 +349,7 @@ export function ReplyComposer({
       // composer; the relay round-trip happens in the background with a retry on
       // failure (the signed event is reused, no re-sign needed).
       eventStore.add(signedEvent);
+      window.dispatchEvent(new CustomEvent(REPLY_SENT_EVENT, { detail: { id: signedEvent.id } }));
       setContent("");
       setGifUrl(null);
       clearMentionTags();
@@ -1791,7 +1760,11 @@ export function ThreadSiblingGroup({
   groupKey: string;
 }) {
   const [showAll, setShowAll] = useState(false);
-  const { visible, overflow } = useMemo(() => partitionSiblings(nodes), [nodes]);
+  const { sent } = useContext(SentRepliesContext);
+  const { visible, overflow } = useMemo(
+    () => partitionSiblings(nodes, undefined, sent.size ? (n) => sent.has(n.event.id) : undefined),
+    [nodes, sent],
+  );
   const shown = showAll ? nodes : visible;
 
   return (
@@ -1847,12 +1820,14 @@ export function ThreadReplyNode({ node, depth, opPubkey, indentCap = DESKTOP_THR
   // "Continue thread →" row instead of rendering inline.
   const continueBranch = shouldContinueThread(depth, indentCap, hasChildren);
   const railTint = `reddit-thread-line-t${depth % 3}`;
+  const justSent = useContext(SentRepliesContext).flash === node.event.id;
 
   return (
     <div
       ref={nodeRef}
       className="relative reddit-thread-node"
       data-event-id={node.event.id}
+      data-just-sent={justSent || undefined}
       data-testid={`thread-reply-${node.event.id}`}
     >
       <div className="flex">
@@ -1873,7 +1848,7 @@ export function ThreadReplyNode({ node, depth, opPubkey, indentCap = DESKTOP_THR
         )}
         <div className="flex-1 min-w-0">
           <div
-            className="relative rounded-lg transition-colors duration-200"
+            className={`relative rounded-lg transition-colors duration-700 ${justSent ? "bg-brand/[0.08] ring-1 ring-brand/25" : ""}`}
             data-testid={`button-select-reply-${node.event.id}`}
           >
             <ThreadReplyItem event={node.event} childCount={hasChildren ? node.children.length : 0} opPubkey={opPubkey} showParentCue={beyondCap} />
@@ -1977,7 +1952,11 @@ export function InlineThreadReplyBar({
   );
 }
 
-export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse = true, bare = false }: { rootId: string; rootEvent?: Event; onClose: () => void; showFloatingCollapse?: boolean; bare?: boolean }) {
+export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse = true, bare = false, replyBox }: {
+  rootId: string; rootEvent?: Event; onClose: () => void; showFloatingCollapse?: boolean; bare?: boolean;
+  /** The page's reply box (bare only): after the replies, or before them when newest is first. */
+  replyBox?: ReactNode;
+}) {
   const cached = useMemo(() => getCachedThread(rootId), [rootId]);
   const [allReplies, setAllReplies] = useState<Event[]>(cached ?? []);
   const [loading, setLoading] = useState(!cached);
@@ -2148,6 +2127,37 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
   }, [isReadingThread, rootEvent, threadTree, startReadingThread, stopTTS, threadTTSSourceUrl, toast]);
 
   const threadRef = useRef<HTMLDivElement>(null);
+
+  // A reply sent from this screen: shown even past "Show more", brought into
+  // view, and marked for a moment (REPLY_SENT_EVENT).
+  const [sent, setSent] = useState<{ ids: ReadonlySet<string>; flash: string | null }>({ ids: new Set(), flash: null });
+  useEffect(() => {
+    let timer: number | undefined;
+    const onSent = (e: globalThis.Event) => {
+      const id = (e as CustomEvent<{ id?: string }>).detail?.id;
+      if (!id) return;
+      setSent((prev) => ({ ids: new Set(prev.ids).add(id), flash: id }));
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setSent((prev) => ({ ...prev, flash: null })), JUST_SENT_MS);
+    };
+    window.addEventListener(REPLY_SENT_EVENT, onSent);
+    return () => { window.removeEventListener(REPLY_SENT_EVENT, onSent); window.clearTimeout(timer); };
+  }, []);
+  const scrolledTo = useRef<string | null>(null);
+  const flash = sent.flash;
+  const flashShown = !!flash && allReplies.some((r) => r.id === flash);
+  useEffect(() => {
+    if (!flash || !flashShown || scrolledTo.current === flash) return;
+    const raf = requestAnimationFrame(() => {
+      const el = threadRef.current?.querySelector(`[data-testid="button-select-reply-${flash}"]`);
+      if (!el) return;
+      scrolledTo.current = flash;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [flash, flashShown]);
+  const sentCtx = useMemo(() => ({ sent: sent.ids, flash }), [sent.ids, flash]);
+  const boxSpot = replyBoxPlacement(sortOrder);
   const [postOffScreen, setPostOffScreen] = useState(false);
   const [threadInView, setThreadInView] = useState(true);
 
@@ -2200,10 +2210,13 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
     // a slim loader with no close button or second composer.
     if (bare) {
       return (
-        <div className="mt-3 flex items-center gap-2.5 px-4 py-3 text-muted-foreground" data-testid={`replies-loading-${rootId}`}>
-          <RelayOutpostInlineLoader />
-          <span className="text-xs">Loading replies…</span>
-        </div>
+        <>
+          <div className="mt-3 flex items-center gap-2.5 px-4 py-3 text-muted-foreground" data-testid={`replies-loading-${rootId}`}>
+            <RelayOutpostInlineLoader />
+            <span className="text-xs">Loading replies…</span>
+          </div>
+          {replyBox}
+        </>
       );
     }
     return (
@@ -2232,7 +2245,10 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
     // Bare: one quiet empty state — the reply box is already above.
     if (bare) {
       return (
-        <p className="mt-4 text-center text-sm text-muted-foreground/50 py-6" data-testid={`replies-empty-${rootId}`}>No replies yet</p>
+        <>
+          {replyBox}
+          <p className="mt-4 text-center text-sm text-muted-foreground/50 py-6" data-testid={`replies-empty-${rootId}`}>No replies yet</p>
+        </>
       );
     }
     return (
@@ -2275,6 +2291,8 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
   }
 
   return (
+    <SentRepliesContext.Provider value={sentCtx}>
+    {bare && boxSpot === "before" && replyBox}
     <div ref={threadRef} className="mt-3 glass-thread rounded-xl overflow-visible" data-testid={`replies-${rootId}`}>
       <div
         className={`flex items-center justify-between px-4 py-2.5 glass-thread-header rounded-t-xl ${bare ? "" : "cursor-pointer"}`}
@@ -2398,6 +2416,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
         document.body,
       )}
     </div>
+    {bare && boxSpot === "after" && replyBox}
+    </SentRepliesContext.Provider>
   );
 }
-

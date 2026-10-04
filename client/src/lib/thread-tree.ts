@@ -15,6 +15,9 @@
 // expanded-by-default thread mounts, which is why this ships without
 // virtualization.
 
+import type { Event } from "nostr-tools";
+import { replyTargetOf } from "./reply-target";
+
 /** Visual indent cap on narrow (<640px) viewports. */
 export const MOBILE_THREAD_INDENT_CAP = 2;
 
@@ -50,11 +53,81 @@ export interface SiblingPartition<T> {
 export function partitionSiblings<T>(
   siblings: readonly T[],
   limit: number = SIBLING_OVERFLOW_LIMIT,
+  /** Always shown, even past the limit: the reply you just sent. */
+  keep?: (item: T) => boolean,
 ): SiblingPartition<T> {
   if (siblings.length <= limit) {
     return { visible: [...siblings], overflow: [] };
   }
-  return { visible: siblings.slice(0, limit), overflow: siblings.slice(limit) };
+  const rest = siblings.slice(limit);
+  if (!keep) return { visible: siblings.slice(0, limit), overflow: rest };
+  return {
+    visible: [...siblings.slice(0, limit), ...rest.filter(keep)],
+    overflow: rest.filter((x) => !keep(x)),
+  };
+}
+
+/**
+ * Where the reply box sits (owner, 2026-10-04: a reply to a comment landed "in
+ * a funky spot"). A conversation reads post → replies → box, so what you send
+ * appears right above where you wrote it; newest-first flips the replies, so
+ * the box goes on top, where the new one appears.
+ */
+export function replyBoxPlacement(sort: "oldest" | "newest"): "before" | "after" {
+  return sort === "newest" ? "before" : "after";
+}
+
+export interface ThreadNode {
+  event: Event;
+  children: ThreadNode[];
+}
+
+/**
+ * The reply tree under `rootId`: each reply under the one it answers, oldest
+ * first at every level. A reply to something not in the thread is shown as a
+ * reply to the post rather than dropped.
+ */
+export function buildThreadTree(replies: Event[], rootId: string): ThreadNode[] {
+  const dedupIds = new Set<string>();
+  const dedupedReplies = replies.filter((r) => {
+    if (dedupIds.has(r.id)) return false;
+    dedupIds.add(r.id);
+    return true;
+  });
+  const replyIds = new Set(dedupedReplies.map((r) => r.id));
+  replyIds.add(rootId);
+  const byParent = new Map<string, Event[]>();
+
+  for (const reply of dedupedReplies) {
+    let parentId = replyTargetOf(reply);
+    if (parentId && !replyIds.has(parentId)) {
+      parentId = rootId;
+    }
+    const target = parentId || rootId;
+    const existing = byParent.get(target) || [];
+    existing.push(reply);
+    byParent.set(target, existing);
+  }
+
+  function buildChildren(parentId: string, depth: number, ancestors: Set<string>): ThreadNode[] {
+    const children = byParent.get(parentId) || [];
+    return children
+      // Guard against reply cycles / self-replies so we never recurse forever.
+      .filter((e) => !ancestors.has(e.id))
+      .sort((a, b) => a.created_at - b.created_at)
+      .map((event) => {
+        const nextAncestors = new Set(ancestors);
+        nextAncestors.add(event.id);
+        return {
+          event,
+          // Recurse the FULL tree — deep replies keep their children (previously
+          // anything past depth 5 was discarded). A high hard cap is a backstop.
+          children: depth >= 60 ? [] : buildChildren(event.id, depth + 1, nextAncestors),
+        };
+      });
+  }
+
+  return buildChildren(rootId, 0, new Set([rootId]));
 }
 
 /**

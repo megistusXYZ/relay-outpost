@@ -93,3 +93,54 @@ describe("rendersIndentColumn / isBeyondIndentCap", () => {
     expect(isBeyondIndentCap(5, DESKTOP_THREAD_INDENT_CAP)).toBe(true);
   });
 });
+
+// ---- Replying (owner, 2026-10-04: "it puts it in a funky spot") ----
+// A conversation reads post → replies → the box, so what you send lands right
+// above where you wrote it.
+import { buildThreadTree, replyBoxPlacement } from "./thread-tree";
+
+describe("replyBoxPlacement", () => {
+  it("puts the box after the replies when they read oldest first — a new reply lands just above it", () => {
+    expect(replyBoxPlacement("oldest")).toBe("after");
+  });
+  it("puts it before them when newest is first, which is where a new reply lands", () => {
+    expect(replyBoxPlacement("newest")).toBe("before");
+  });
+});
+
+describe("buildThreadTree — where a new reply goes", () => {
+  const ROOT = "r".repeat(64);
+  const ev = (id: string, at: number, parent?: string) => ({
+    id, created_at: at, pubkey: "p", kind: 1, content: "", sig: "",
+    tags: parent ? [["e", ROOT, "", "root"], ["e", parent, "", "reply"]] : [["e", ROOT, "", "root"]],
+  });
+  const bob = ev("b", 10), carol = ev("c", 20), carolToBob = ev("cb", 30, "b");
+
+  it("a reply to a comment goes under that comment, after the replies it already had", () => {
+    const mine = ev("mine", 40, "b");
+    const tree = buildThreadTree([bob, carol, carolToBob, mine], ROOT);
+    expect(tree.map((n) => n.event.id)).toEqual(["b", "c"]);
+    expect(tree[0].children.map((n) => n.event.id)).toEqual(["cb", "mine"]);
+  });
+
+  it("a reply to the post goes last among the post's replies", () => {
+    const mine = ev("mine", 40);
+    expect(buildThreadTree([mine, bob, carol], ROOT).map((n) => n.event.id)).toEqual(["b", "c", "mine"]);
+  });
+
+  it("a reply to something not in the thread is shown as a reply to the post, not dropped", () => {
+    expect(buildThreadTree([ev("x", 5, "gone")], ROOT).map((n) => n.event.id)).toEqual(["x"]);
+  });
+});
+
+describe("partitionSiblings — the reply you just sent is never folded away", () => {
+  const items = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
+  it("keeps a kept item visible even past the limit, in its place", () => {
+    const { visible, overflow } = partitionSiblings(items(10), 8, (x) => x === 10);
+    expect(visible).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 10]);
+    expect(overflow).toEqual([9]);
+  });
+  it("changes nothing when the kept item is already showing", () => {
+    expect(partitionSiblings(items(10), 8, (x) => x === 2)).toEqual({ visible: items(8), overflow: [9, 10] });
+  });
+});
