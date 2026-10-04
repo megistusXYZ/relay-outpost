@@ -3507,10 +3507,12 @@ export const NostrPost = memo(function NostrPost({ event, showReplies = false, r
       ) : undefined}
       footerSlot={(inlineReplyBar || showRepliesThread) ? (
         <>
-          {inlineReplyBar && <div className="ml-1 sm:ml-3">{inlineReplyBar}</div>}
+          {/* With the replies showing, the box goes with them — after them, or
+              above when newest is first (ReplyThread). */}
+          {inlineReplyBar && !(showRepliesThread && focused) && <div className="ml-1 sm:ml-3">{inlineReplyBar}</div>}
           {showRepliesThread && (
             <div className="ml-1 sm:ml-3">
-              <ReplyThread rootId={event.id} rootEvent={event} onClose={() => setShowRepliesThread(false)} showFloatingCollapse={!focused} bare={focused} />
+              <ReplyThread rootId={event.id} rootEvent={event} onClose={() => setShowRepliesThread(false)} showFloatingCollapse={!focused} bare={focused} replyBox={focused ? inlineReplyBar : undefined} />
             </div>
           )}
         </>
