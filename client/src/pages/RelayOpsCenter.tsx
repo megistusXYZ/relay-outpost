@@ -15,12 +15,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AlertTriangle, ShieldCheck, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Megaphone, Plus, Terminal, Users, UsersRound, ScrollText, Sparkles, Inbox, Cable } from "lucide-react";
+import { AlertTriangle, ShieldCheck, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Megaphone, Plus, Terminal, Users, UsersRound, ScrollText, Inbox, Cable, IdCard, BarChart3 } from "lucide-react";
+import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ErrorScreen } from "@/components/ErrorScreen";
 import { TabId, getTabFromHash } from "./relay-ops/shared";
-import { SECTIONS, SETTINGS_SCREENS, sectionOf } from "./relay-ops/console-nav";
+import { SECTIONS, COMMUNITY_SCREENS, ADVANCED_SCREENS, sectionOf, listOf, consoleTitle, type ConsoleScreen } from "./relay-ops/console-nav";
 import { useFeedbackInbox } from "@/hooks/use-feedback-inbox";
 import { OverviewTab } from "./relay-ops/OverviewTab";
 import { ContentTab } from "./relay-ops/ContentTab";
@@ -37,16 +38,45 @@ import { TeamScreen, LogScreen } from "./relay-ops/TeamScreens";
 import { useRelayTeam } from "@/hooks/use-relay-team";
 import { useRelaysNeedYou } from "@/contexts/NeedsYouContext";
 
-const SETTINGS_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+const SCREEN_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   community: Users,
   access: ShieldCheck,
+  // The same star as the community page's Featured tab (owner, 2026-10-04: not a sparkle).
+  featured: MagicStarIcon,
+  contact: Inbox,
   team: UsersRound,
   log: ScrollText,
-  announce: Megaphone,
-  featured: Sparkles,
-  contact: Inbox,
   connection: Cable,
+  card: IdCard,
+  scans: BarChart3,
 };
+
+/** A list of screens (Community, Advanced): one row each, hairlines between. */
+function ScreenList({ screens, onOpen, extra, testId }: { screens: ReadonlyArray<ConsoleScreen>; onOpen: (tab: TabId) => void; extra?: React.ReactNode; testId: string }) {
+  return (
+    <div className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] divide-y divide-black/[0.06] dark:divide-white/[0.06] overflow-hidden" data-testid={testId}>
+      {screens.map(row => {
+        const Icon = SCREEN_ICONS[row.tab];
+        return (
+          <button
+            key={row.tab}
+            onClick={() => onOpen(row.tab)}
+            className="w-full flex items-center gap-3 min-h-[60px] px-4 py-2.5 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
+            data-testid={`ops-settings-row-${row.tab}`}
+          >
+            <span className="w-8 h-8 rounded-lg bg-brand/10 text-brand inline-flex items-center justify-center shrink-0">{Icon && <Icon className="w-4 h-4" aria-hidden="true" />}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium leading-snug">{row.label}</span>
+              <span className="block text-[12px] text-muted-foreground leading-snug truncate">{row.hint}</span>
+            </span>
+            <ChevronRight className="w-4 h-4 text-muted-foreground/50 shrink-0" aria-hidden="true" />
+          </button>
+        );
+      })}
+      {extra}
+    </div>
+  );
+}
 
 // Inline fallback for a single tab that throws during render. Scoped so ONE bad
 // tab can't take down the whole console — the header + tab switcher stay usable,
@@ -228,7 +258,8 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
   const host = selectedRelay.replace(/^wss?:\/\//, "").replace(/\/+$/, "");
   const relayLabel = adminRelays.find(r => r.url === selectedRelay)?.label;
   const relayName = nip11?.name?.trim() || relayLabel || host;
-  const settingsScreen = SETTINGS_SCREENS.find(s => s.tab === activeTab);
+  // A screen inside Community or Advanced: its back row names the list.
+  const backTo = listOf(activeTab);
 
   return (
     <div className="max-w-5xl lg:max-w-[1400px] mx-auto px-3 sm:px-4 pt-3 pb-6 sm:pt-5 space-y-4">
@@ -363,31 +394,21 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                 </button>
               );
             })}
-            {/* For developers: the same relay, on the wire. Desktop only —
-                phones reach it from the relay switcher. */}
-            <button
-              type="button"
-              onClick={() => navigate(`/my-relays/console?relay=${encodeURIComponent(selectedRelay)}`)}
-              className="hidden lg:inline-flex items-center gap-2 mt-3 pt-3 border-t border-black/[0.06] dark:border-white/[0.08] min-h-[44px] px-3 text-sm text-muted-foreground hover:text-foreground"
-              data-testid="ops-open-console"
-            >
-              <Terminal className="w-4 h-4" aria-hidden="true" />Console
-            </button>
           </div>
 
           {selectedRelay && (
             <div>
-              {settingsScreen && (
+              {backTo && (
                 <div className="flex items-center gap-1 mb-3 -ml-2">
                   <button
-                    onClick={() => setActiveTab("settings")}
+                    onClick={() => setActiveTab(backTo.tab)}
                     className="inline-flex items-center gap-0.5 min-h-[44px] pl-1.5 pr-2.5 rounded-full text-sm text-brand hover:bg-brand/[0.06] transition-colors"
                     data-testid="ops-settings-back"
                   >
-                    <ChevronLeft className="w-5 h-5" aria-hidden="true" />Settings
+                    <ChevronLeft className="w-5 h-5" aria-hidden="true" />{backTo.label}
                   </button>
                   <span className="text-muted-foreground/40" aria-hidden="true">/</span>
-                  <h2 className="text-sm font-semibold ml-1.5">{settingsScreen.label}</h2>
+                  <h2 className="text-sm font-semibold ml-1.5">{consoleTitle(activeTab)}</h2>
                 </div>
               )}
               {/* Per-tab boundary: a crash in one tab shows an inline fallback
@@ -402,31 +423,46 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                 {activeTab === "log" && <LogScreen relayUrl={selectedRelay} nip11={nip11} team={team} />}
                 {activeTab === "access" && <><AccessControlTab relayUrl={selectedRelay} nip11={nip11} /><KindGateCard relayUrl={selectedRelay} nip11={nip11} /></>}
                 {activeTab === "feedback" && <InboxTab relayUrl={selectedRelay} nip11={nip11} inbox={inbox} onSeePost={(id) => { setContentSeed(id); setActiveTab("events"); }} onOpenMemberInbox={() => setActiveTab("contact")} />}
-                {activeTab === "settings" && (
-                  <div className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] divide-y divide-black/[0.06] dark:divide-white/[0.06] overflow-hidden" data-testid="ops-settings-rows">
-                    {SETTINGS_SCREENS.map(row => {
-                      const Icon = SETTINGS_ICONS[row.tab];
-                      return (
-                        <button
-                          key={row.tab}
-                          onClick={() => setActiveTab(row.tab)}
-                          className="w-full flex items-center gap-3 min-h-[60px] px-4 py-2.5 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
-                          data-testid={`ops-settings-row-${row.tab}`}
-                        >
-                          <span className="w-8 h-8 rounded-lg bg-brand/10 text-brand inline-flex items-center justify-center shrink-0"><Icon className="w-4 h-4" aria-hidden="true" /></span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-medium leading-snug">{row.label}</span>
-                            <span className="block text-[12px] text-muted-foreground leading-snug truncate">{row.hint}</span>
-                          </span>
-                          <ChevronRight className="w-4 h-4 text-muted-foreground/50 shrink-0" aria-hidden="true" />
-                        </button>
-                      );
-                    })}
+                {activeTab === "settings" && <ScreenList screens={COMMUNITY_SCREENS} onOpen={setActiveTab} testId="ops-settings-rows" />}
+                {activeTab === "advanced" && (
+                  <ScreenList
+                    screens={ADVANCED_SCREENS}
+                    onOpen={setActiveTab}
+                    testId="ops-advanced-rows"
+                    extra={
+                      // For developers: the same relay, on the wire.
+                      <button
+                        onClick={() => navigate(`/my-relays/console?relay=${encodeURIComponent(selectedRelay)}`)}
+                        className="w-full flex items-center gap-3 min-h-[60px] px-4 py-2.5 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
+                        data-testid="ops-open-console"
+                      >
+                        <span className="w-8 h-8 rounded-lg bg-brand/10 text-brand inline-flex items-center justify-center shrink-0"><Terminal className="w-4 h-4" aria-hidden="true" /></span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-medium leading-snug">Console</span>
+                          <span className="block text-[12px] text-muted-foreground leading-snug truncate">Ask this relay anything, look inside posts, publish by hand</span>
+                        </span>
+                        <ArrowUpRight className="w-4 h-4 text-muted-foreground/50 shrink-0" aria-hidden="true" />
+                      </button>
+                    }
+                  />
+                )}
+                {activeTab === "featured" && (
+                  // One screen for what greets people: pinned on the community page,
+                  // announcements you post, and featured feeds (owner, 2026-10-04).
+                  <div className="space-y-8" data-testid="ops-featured-announcements">
+                    <CommunityTab relayUrl={selectedRelay} nip11={nip11} part="featured" />
+                    <AnnounceTab relayUrl={selectedRelay} nip11={nip11} part="announcements" />
+                    <FeaturedTab relayUrl={selectedRelay} nip11={nip11} />
                   </div>
                 )}
-                {activeTab === "announce" && <AnnounceTab relayUrl={selectedRelay} nip11={nip11} />}
-                {activeTab === "featured" && <FeaturedTab relayUrl={selectedRelay} nip11={nip11} />}
-                {activeTab === "community" && <CommunityTab relayUrl={selectedRelay} nip11={nip11} />}
+                {activeTab === "card" && (
+                  <div className="space-y-6" data-testid="ops-public-card">
+                    <AnnounceTab relayUrl={selectedRelay} nip11={nip11} part="card" />
+                    <OverviewTab relayUrl={selectedRelay} part="info" />
+                  </div>
+                )}
+                {activeTab === "scans" && <OverviewTab relayUrl={selectedRelay} part="scans" />}
+                {activeTab === "community" && <CommunityTab relayUrl={selectedRelay} nip11={nip11} part="details" />}
                 {activeTab === "contact" && <MemberInboxSettings relayUrl={selectedRelay} relayName={relayName} />}
                 {activeTab === "connection" && <ConnectionPanel relayUrl={selectedRelay} relayName={relayName} />}
               </ErrorBoundary>

@@ -1,56 +1,82 @@
 /**
- * How the operator console is laid out (owner, 2026-10-02: "iOS Settings for
- * the relay you run").
+ * How the operator console is laid out (owner, 2026-10-04): like a community
+ * tool people already know — Discord's server settings — in plain words.
  *
- * Eight tabs became five sections in one row that never wraps. Live Feed
- * folded into Events as a switch on the same list. The relay's
- * public face — its settings, its published card, its featured feeds — is one
- * section, Settings, with three screens inside it. Every old tab id keeps its
- * hash, so a link made before this still lands on the same content.
+ * Six sections in one row that never wraps on a phone (a column on a
+ * computer): Overview, Posts, People, Inbox, Community, Advanced. Community
+ * is what a community manager sets up and looks after; Advanced is what only
+ * some people need. Section ids are the hashes, kept from before so old links
+ * land: #events is Posts, #feedback is Inbox, #settings is Community.
  *
  * Pure: the page reads it; nothing here touches the DOM.
  */
 import type { TabId } from "./shared";
 
-export type SectionId = "overview" | "events" | "people" | "feedback" | "settings";
+export type SectionId = "overview" | "events" | "people" | "feedback" | "settings" | "advanced";
 
 export const SECTIONS: ReadonlyArray<{ id: SectionId; label: string }> = [
   { id: "overview", label: "Overview" },
-  // "Content", not "Events" (2026-10-03): what a community manager looks for.
-  // The id and its #events hash stay, so old links still land.
-  { id: "events", label: "Content" },
-  // People (2026-10-03): everyone on the relay, person by person. The allow
-  // and ban lists it replaced as a section live on as Settings › Who can post.
+  { id: "events", label: "Posts" },
   { id: "people", label: "People" },
-  // Inbox (2026-10-03): reports, join requests and feedback in one place.
-  // The id and its #feedback hash stay, so old links still land.
   { id: "feedback", label: "Inbox" },
-  { id: "settings", label: "Settings" },
+  { id: "settings", label: "Community" },
+  { id: "advanced", label: "Advanced" },
 ];
 
-export const SETTINGS_SCREENS: ReadonlyArray<{ tab: TabId; label: string; hint: string }> = [
-  { tab: "community", label: "Relay settings", hint: "Name, description, icon and banner" },
-  { tab: "access", label: "Who can post", hint: "Allow lists, bans, trust rules and kinds" },
-  { tab: "contact", label: "Member inbox", hint: "Let members contact the team, and what they can ask" },
-  { tab: "team", label: "Team", hint: "Who shares your notes and moderation log" },
+export interface ConsoleScreen { tab: TabId; label: string; hint: string }
+
+export const COMMUNITY_SCREENS: ReadonlyArray<ConsoleScreen> = [
+  { tab: "community", label: "Community details", hint: "Name, picture, cover, description and rules" },
+  { tab: "access", label: "Who can post", hint: "Who's allowed, and what can be posted" },
+  { tab: "featured", label: "Featured & announcements", hint: "What greets people, and news you post" },
+  { tab: "contact", label: "Member inbox", hint: "Let members contact the team" },
+  { tab: "team", label: "Team", hint: "Who helps you run it" },
   { tab: "log", label: "Moderation log", hint: "Everything your team has done here" },
-  { tab: "announce", label: "Public card", hint: "What other apps show about this relay" },
-  { tab: "featured", label: "Featured feeds", hint: "What greets people on the Featured tab" },
-  { tab: "connection", label: "Connection & sign-in", hint: "How this app reaches it, and when to sign in" },
 ];
+
+export const ADVANCED_SCREENS: ReadonlyArray<ConsoleScreen> = [
+  { tab: "connection", label: "Connection & sign-in", hint: "How this app reaches it, and when to sign in" },
+  { tab: "card", label: "Public card", hint: "What other apps read about this relay" },
+  { tab: "scans", label: "Activity & storage", hint: "Counts, top posters, storage and uptime" },
+];
+
+/** Old addresses that now live elsewhere. */
+const MOVED: Record<string, TabId> = {
+  // Public card's announcements moved to Featured & announcements (2026-10-04).
+  announce: "featured",
+  badges: "access",
+};
+
+const ALL_TABS = new Set<string>([
+  "overview", "live", "events", "people", "feedback", "settings", "advanced",
+  ...COMMUNITY_SCREENS.map((s) => s.tab), ...ADVANCED_SCREENS.map((s) => s.tab),
+]);
+
+/** The screen an address (a hash without #) opens. */
+export function resolveTab(hash: string): TabId {
+  if (hash in MOVED) return MOVED[hash];
+  if (ALL_TABS.has(hash)) return hash as TabId;
+  return "overview";
+}
 
 /** The section a tab belongs to. */
-export function sectionOf(tab: TabId | "settings"): SectionId {
-  if (tab === "settings") return "settings";
-  if (tab === "community" || tab === "access" || tab === "contact" || tab === "team" || tab === "log" || tab === "announce" || tab === "featured" || tab === "connection") return "settings";
-  // Live Feed became the Live switch on the Events list; its hash still lands.
+export function sectionOf(tab: TabId): SectionId {
   if (tab === "live") return "events";
-  return tab;
+  if (tab === "settings" || COMMUNITY_SCREENS.some((s) => s.tab === tab)) return "settings";
+  if (tab === "advanced" || ADVANCED_SCREENS.some((s) => s.tab === tab)) return "advanced";
+  return tab as SectionId;
+}
+
+/** The list a screen goes back to, or null for a section of its own. */
+export function listOf(tab: TabId): { tab: TabId; label: string } | null {
+  if (COMMUNITY_SCREENS.some((s) => s.tab === tab)) return { tab: "settings", label: "Community" };
+  if (ADVANCED_SCREENS.some((s) => s.tab === tab)) return { tab: "advanced", label: "Advanced" };
+  return null;
 }
 
 /** What a screen is called, for the page title and the back row. */
-export function consoleTitle(tab: TabId | "settings"): string {
-  const screen = SETTINGS_SCREENS.find((s) => s.tab === tab);
+export function consoleTitle(tab: TabId): string {
+  const screen = [...COMMUNITY_SCREENS, ...ADVANCED_SCREENS].find((s) => s.tab === tab);
   if (screen) return screen.label;
   return SECTIONS.find((s) => s.id === sectionOf(tab))?.label ?? "Relay Control";
 }

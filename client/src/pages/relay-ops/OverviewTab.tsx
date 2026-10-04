@@ -178,7 +178,14 @@ function authStatusWord(status: AuthStatus): string {
   }
 }
 
-export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection }: { relayUrl: string; inbox?: FeedbackInbox; onOpenFeedback?: () => void; onOpenConnection?: () => void }) {
+/**
+ * Which part of the relay's picture to show (owner, 2026-10-04): Overview is
+ * the summary; the scans live in Advanced › Activity & storage and the
+ * relay's own published details in Advanced › Public card.
+ */
+export type OverviewPart = "summary" | "scans" | "info";
+
+export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection, part = "summary" }: { relayUrl: string; inbox?: FeedbackInbox; onOpenFeedback?: () => void; onOpenConnection?: () => void; part?: OverviewPart }) {
   const { toast } = useToast();
   const [nip11, setNip11] = useState<Nip11Document | null>(null);
   // Initialize true so the initial-scan effect waits for the first
@@ -458,11 +465,9 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection 
       const entry: UptimeEntry = { ts: Math.floor(Date.now() / 1000), latency: lat, online: true };
       addUptimeEntry(relayUrl, entry);
       setUptimeHistory(getUptimeHistory(relayUrl));
-      if (prevStatusRef.current === "offline") {
-        addModLogEntry(relayUrl, { action: "relay_online", note: `Back online (${lat}ms)` });
-      }
+      // Health isn't moderation: it stays in the uptime history and
+      // Connection & sign-in, not the moderation log (owner, 2026-10-04).
       if (lat > LATENCY_SPIKE_THRESHOLD && prevLatencyStateRef.current === "normal") {
-        addModLogEntry(relayUrl, { action: "relay_latency_spike", note: `${lat}ms response time` });
         prevLatencyStateRef.current = "spike";
       } else if (lat <= LATENCY_SPIKE_THRESHOLD && prevLatencyStateRef.current === "spike") {
         prevLatencyStateRef.current = "normal";
@@ -474,9 +479,6 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection 
       const entry: UptimeEntry = { ts: Math.floor(Date.now() / 1000), latency: null, online: false };
       addUptimeEntry(relayUrl, entry);
       setUptimeHistory(getUptimeHistory(relayUrl));
-      if (prevStatusRef.current === "online") {
-        addModLogEntry(relayUrl, { action: "relay_offline", note: "Connection failed or timed out" });
-      }
       prevStatusRef.current = "offline";
     }
   }, [relayUrl]);
@@ -601,21 +603,23 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection 
       // a second redundant fetchKindCounts() against the same relay on the
       // same load.
       initialScanRanRef.current = true;
-      fetchKindCounts();
+      // Counting every post is a scan: only on Activity & storage.
+      if (part === "scans") fetchKindCounts();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nip11, loadingNip11, relayUrl, fetchKindCounts]);
+  }, [nip11, loadingNip11, relayUrl, fetchKindCounts, part]);
 
   // Gate the initial scan on NIP-11 finishing so the "trust NIP-11 first"
   // policy actually applies on first load. Without this, fetchKindCounts
   // races loadNip11 and would always run the live probe before sticky-true
   // could be set, causing first-paint flicker / incorrect fallback state.
   useEffect(() => {
+    if (part !== "scans") return;
     if (loadingNip11) return;
     if (initialScanRanRef.current) return;
     initialScanRanRef.current = true;
     fetchKindCounts();
-  }, [loadingNip11, fetchKindCounts]);
+  }, [loadingNip11, fetchKindCounts, part]);
 
   // Reset the initial-scan guard when the operator switches relays so the
   // new relay also waits for its NIP-11 doc before scanning.
@@ -841,7 +845,8 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection 
   }));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid={`ops-overview-${part}`}>
+      {part === "summary" && <>
       {/* One strip of the four facts an operator glances at — not four cards.
           Set in the app's type; the dot carries the state, the word names it. */}
       <div
@@ -871,8 +876,9 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection 
       </div>
 
       {inbox && <FeedbackSummaryCard inbox={inbox} onOpenFeedback={onOpenFeedback} />}
+      </>}
 
-      <OpsCard>
+      {part === "scans" && <OpsCard>
         <div className="flex flex-col gap-2 mb-3">
           <OpsSectionHeader
             icon={Activity}
@@ -925,10 +931,10 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection 
         ) : (
           <p className="text-[10px] text-muted-foreground/60">Health checks run automatically every {healthInterval}s. Data will appear after multiple checks.</p>
         )}
-      </OpsCard>
+      </OpsCard>}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-        <OpsCard className="flex flex-col">
+        {part === "info" && <OpsCard className="flex flex-col lg:col-span-2">
           <OpsSectionHeader
             icon={Info}
             label="Relay Information"
@@ -1180,10 +1186,10 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection 
               <Button variant="ghost" size="sm" className="text-[10px] h-5" onClick={loadNip11}>Retry</Button>
             </div>
           )}
-        </OpsCard>
+        </OpsCard>}
 
-        <div className="flex flex-col gap-4">
-          <OpsCard className="flex-1 flex flex-col justify-center">
+        <div className="flex flex-col gap-4 lg:col-span-2">
+          {part === "summary" && <OpsCard className="flex-1 flex flex-col justify-center">
             <OpsSectionHeader icon={Lock} label="Sign-in" className="mb-2" />
             <button
               type="button"
@@ -1198,9 +1204,9 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection 
               </span>
               <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             </button>
-          </OpsCard>
+          </OpsCard>}
 
-          <OpsCard className="flex-1 flex flex-col">
+          {part === "scans" && <OpsCard className="flex-1 flex flex-col">
             <OpsSectionHeader
               icon={Activity}
               label="Event Analytics"
@@ -1242,134 +1248,15 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection 
             ) : (
               <p className="text-[10px] text-muted-foreground/60">Click "Scan" to count events by kind. Uses NIP-45 COUNT when supported, falls back to sampling.</p>
             )}
-          </OpsCard>
+          </OpsCard>}
 
-          {(() => {
-            const nip11Pubkeys: string[] = [];
-            if (nip11?.pubkey && /^[0-9a-f]{64}$/i.test(nip11.pubkey)) nip11Pubkeys.push(nip11.pubkey);
-            if (nip11?.moderators) {
-              for (const m of nip11.moderators) {
-                if (!nip11Pubkeys.includes(m)) nip11Pubkeys.push(m);
-              }
-            }
-            const teamPubkeys = [...nip11Pubkeys];
-            for (const pk of manualTeam) {
-              if (!teamPubkeys.includes(pk)) teamPubkeys.push(pk);
-            }
+          {/* The old "Relay Team" card (kept in this browser only) is gone:
+              Community › Team is the one team list (owner, 2026-10-04). */}
 
-            const handleAddTeamMember = async () => {
-              const input = newTeamMember.trim();
-              if (!input) return;
-              let hex = input;
-              if (input.startsWith("npub1")) {
-                try {
-                  const decoded = nip19.decode(input);
-                  if (decoded.type === "npub") hex = decoded.data;
-                } catch {
-                  toast({ title: "Invalid npub", description: "Could not decode the npub.", variant: "destructive" });
-                  return;
-                }
-              }
-              if (!/^[0-9a-f]{64}$/i.test(hex)) {
-                toast({ title: "Invalid pubkey", description: "Enter a valid hex pubkey or npub.", variant: "destructive" });
-                return;
-              }
-              if (teamPubkeys.includes(hex)) {
-                toast({ title: "Already on team", description: "This pubkey is already in the team list." });
-                setNewTeamMember("");
-                return;
-              }
-              const updated = [...manualTeam, hex];
-              setManualTeam(updated);
-              saveStoredList(MANUAL_TEAM_KEY, relayUrl, updated);
-              setNewTeamMember("");
-              toast({ title: "Team member added", description: `${hex.slice(0, 8)}... added to relay team.` });
-              const resolved = await resolveProfileBatch([hex]);
-              if (resolved.size > 0) {
-                setTeamProfiles(prev => {
-                  const next = { ...prev };
-                  resolved.forEach((p, k) => { next[k] = p; });
-                  return next;
-                });
-              }
-            };
-
-            const handleRemoveTeamMember = (hex: string) => {
-              const updated = manualTeam.filter(pk => pk !== hex);
-              setManualTeam(updated);
-              saveStoredList(MANUAL_TEAM_KEY, relayUrl, updated);
-              toast({ title: "Team member removed", description: `${hex.slice(0, 8)}... removed from relay team.` });
-            };
-
-            return (
-              <OpsCard className="flex-1 flex flex-col">
-                <OpsSectionHeader icon={Users} label="Relay Team" className="mb-2">
-                  {teamPubkeys.length > 0 && (
-                    <Badge variant="outline" className="text-[10px] border-border dark:border-brand/15 text-brand dark:text-brand/70 px-1 py-0">{teamPubkeys.length}</Badge>
-                  )}
-                </OpsSectionHeader>
-                {teamPubkeys.length > 0 && (
-                  <div className="space-y-1.5 mb-2">
-                    {teamPubkeys.map((hex) => {
-                      const profile = teamProfiles[hex];
-                      const npub = pubkeyToNpub(hex);
-                      const isOperator = hex === nip11?.pubkey;
-                      const isMod = nip11Pubkeys.includes(hex) && !isOperator;
-                      const isManual = manualTeam.includes(hex);
-                      return (
-                        <div key={hex} className="flex items-center gap-2 sm:gap-2.5 rounded-md bg-muted dark:bg-white/[0.02] border border-border dark:border-white/[0.06] px-2 sm:px-2.5 py-1.5 sm:py-2">
-                          <Avatar className="w-7 h-7 sm:w-8 sm:h-8 shrink-0">
-                            {profile?.picture ? <AvatarImage src={profile.picture} alt={profile.name || ""} /> : null}
-                            <AvatarFallback className="bg-accent text-brand text-[10px]">
-                              <User className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <span className="text-xs sm:text-sm font-medium text-foreground truncate block">
-                              {profile?.name || `${npub.slice(0, 12)}...${npub.slice(-4)}`}
-                            </span>
-                            {profile?.nip05 && (
-                              <span className="text-[10px] sm:text-[10px] text-muted-foreground/60 block truncate">{profile.nip05}</span>
-                            )}
-                          </div>
-                          <Badge variant="outline" className={`text-[10px] sm:text-[10px] px-1 sm:px-1.5 py-0 shrink-0 ${isOperator ? "border-cyan-400/30 dark:border-cyan-400/20 text-cyan-700 dark:text-cyan-300/70" : isMod ? "border-border dark:border-brand/20 text-brand dark:text-brand/70" : "border-border dark:border-brand/20 text-brand dark:text-brand/70"}`}>
-                            {isOperator ? "Operator" : isMod ? "Mod" : "Manual"}
-                          </Badge>
-                          <div className="flex items-center gap-0.5 shrink-0">
-                            <Button variant="ghost" size="icon" className="h-6 w-6 sm:h-7 sm:w-7" onClick={() => { copyNostrId(npub); setCopiedField(hex); setTimeout(() => setCopiedField(null), 2000); toast({ title: "Copied", description: "npub copied to clipboard." }); }}>
-                              {copiedField === hex ? <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-500" /> : <Copy className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
-                            </Button>
-                            {isManual && !isOperator && !isMod && (
-                              <Button variant="ghost" size="icon" className="h-6 w-6 sm:h-7 sm:w-7 text-muted-foreground/50 hover:text-red-700 dark:hover:text-red-400" onClick={() => handleRemoveTeamMember(hex)}>
-                                <X className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="text"
-                    placeholder="Add member (npub or hex)..."
-                    value={newTeamMember}
-                    onChange={e => setNewTeamMember(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter") handleAddTeamMember(); }}
-                    className="flex-1 min-w-0 bg-muted dark:bg-white/[0.03] border border-border dark:border-white/[0.06] rounded px-2 py-1 text-[11px] sm:text-xs placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/40"
-                  />
-                  <Button variant="ghost" size="icon" className="h-6 w-6 sm:h-7 sm:w-7 shrink-0 text-brand hover:text-brand" onClick={handleAddTeamMember} disabled={!newTeamMember.trim()}>
-                    <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                  </Button>
-                </div>
-              </OpsCard>
-            );
-          })()}
         </div>
       </div>
 
-      {kindChartData.length > 0 && (
+      {part === "scans" && kindChartData.length > 0 && (
         <OpsCard>
           <OpsSectionHeader icon={Activity} label="Event Distribution" />
           <div className="w-full h-40">
@@ -1390,7 +1277,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection 
         </OpsCard>
       )}
 
-      {topPublishers.length > 0 && (
+      {part === "scans" && topPublishers.length > 0 && (
         <OpsCard>
           <div className="flex flex-col gap-2 mb-3">
             <OpsSectionHeader
@@ -1501,7 +1388,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection 
         </OpsCard>
       )}
 
-      <OpsCard>
+      {part === "scans" && <OpsCard>
         <OpsSectionHeader
           icon={Layers}
           label="Storage Growth"
@@ -1552,7 +1439,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection 
             <p className="text-[10px] text-muted-foreground/60 mt-1">Click Scan to take your first snapshot and start tracking relay growth.</p>
           </div>
         )}
-      </OpsCard>
+      </OpsCard>}
     </div>
   );
 }

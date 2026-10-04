@@ -60,7 +60,12 @@ import {
 // Sentinel for `pinningId` while the unpin write is in flight (no event owns it).
 const UNPIN_KEY = "__unpin__";
 
-export function AnnounceTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip11Document | null }) {
+/**
+ * Two screens share this (owner, 2026-10-04): Advanced › Public card (what
+ * other apps read about the relay) and the announcements part of
+ * Community › Featured & announcements (post one, pin it, edit or take it back).
+ */
+export function AnnounceTab({ relayUrl, nip11, part = "card" }: { relayUrl: string; nip11: Nip11Document | null; part?: "card" | "announcements" }) {
   const { pubkey, signer, attemptReconnect } = useNostrAuth();
   // Pinning writes the community's featured record, which the community page
   // reads only from the relay's named owner (same rule as Relay settings).
@@ -378,8 +383,8 @@ export function AnnounceTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <OpsCard>
+      <div className="grid grid-cols-1 gap-4">
+        {part === "card" && <OpsCard>
           <OpsSectionHeader
             icon={Globe}
             label="Relay Card"
@@ -435,9 +440,9 @@ export function AnnounceTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
               </div>
             </div>
           )}
-        </OpsCard>
+        </OpsCard>}
 
-        <OpsCard ref={composerRef}>
+        {part === "announcements" && <OpsCard ref={composerRef}>
           <OpsSectionHeader
             icon={editingId ? Pencil : Megaphone}
             label={editingId ? "Edit Announcement" : "Publish Announcement"}
@@ -492,10 +497,10 @@ export function AnnounceTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
               {publishing ? (editingId ? "Updating..." : "Publishing...") : (editingId ? "Republish" : "Publish")}
             </Button>
           </div>
-        </OpsCard>
+        </OpsCard>}
       </div>
 
-      <OpsCard>
+      {part === "announcements" && <OpsCard>
         <OpsSectionHeader
           icon={Clock}
           label="Announcement Outbox"
@@ -703,7 +708,7 @@ export function AnnounceTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
             })}
           </div>
         )}
-      </OpsCard>
+      </OpsCard>}
 
       <AlertDialog open={!!pendingDeleteId} onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}>
         <AlertDialogContent className="glass-dialog-card border-border">

@@ -676,35 +676,9 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
     return () => { cancelled = true; };
   }, [relayUrl, syncFromRelay, probeRun]);
 
-  useEffect(() => {
-    const teamPubkeys: string[] = [];
-    if (nip11?.pubkey && /^[0-9a-f]{64}$/i.test(nip11.pubkey)) teamPubkeys.push(nip11.pubkey);
-    if (nip11?.moderators) {
-      for (const m of nip11.moderators) {
-        if (/^[0-9a-f]{64}$/i.test(m) && !teamPubkeys.includes(m)) teamPubkeys.push(m);
-      }
-    }
-    const manualMembers = getStoredList(MANUAL_TEAM_KEY, relayUrl);
-    for (const pk of manualMembers) {
-      if (/^[0-9a-f]{64}$/i.test(pk) && !teamPubkeys.includes(pk)) teamPubkeys.push(pk);
-    }
-    if (teamPubkeys.length === 0) return;
-
-    setAllowlist(prev => {
-      const merged = [...prev];
-      let changed = false;
-      for (const pk of teamPubkeys) {
-        if (!merged.includes(pk)) {
-          merged.push(pk);
-          changed = true;
-        }
-      }
-      if (changed) {
-        saveStoredList(ADMIN_ALLOWLIST_KEY, relayUrl, merged);
-      }
-      return changed ? merged : prev;
-    });
-  }, [nip11, relayUrl]);
+  // (The team used to be merged into this list in this browser, inflating
+  // "Allowed" with people the relay never allowed. Community › Team is the
+  // team now; the allow list is only what the relay says — owner, 2026-10-04.)
 
   const handleProfileFound = useCallback((hex: string, profile: ProfileInfo) => {
     profileCacheGlobal.set(hex, profile);
@@ -1338,14 +1312,7 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <ModerationLogSection
-        relayUrl={relayUrl}
-        modLog={modLog}
-        setModLog={setModLog}
-        modLogFilter={modLogFilter}
-        setModLogFilter={setModLogFilter}
-        profileCache={profileCache}
-      />
+      {/* The moderation log is one screen: Community › Moderation log (owner, 2026-10-04). */}
       <BadgeManagementPanel />
     </div>
   );

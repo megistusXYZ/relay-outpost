@@ -159,3 +159,21 @@ export function deviceOnlyEntries<E extends DeviceLogEntry>(local: readonly E[],
       && Math.abs(t.at * 1000 - e.ts) <= SAME_ACTION_WINDOW_MS);
   });
 }
+
+/**
+ * Who to offer for the team (owner, 2026-10-04: one team list). The console
+ * used to keep three — Overview's "Relay Team" (this browser), the moderators
+ * record, and the relay's own moderators; people on them who aren't on the
+ * team yet are offered once, unless you said no.
+ */
+export function teamSuggestions(oldLists: ReadonlyArray<readonly string[]>, members: readonly string[], dismissed: readonly string[]): string[] {
+  const skip = new Set([...members, ...dismissed].map((k) => k.toLowerCase()));
+  const out: string[] = [];
+  for (const list of oldLists) for (const raw of list) {
+    const k = (raw || "").toLowerCase();
+    if (!HEX.test(k) || skip.has(k)) continue;
+    skip.add(k);
+    out.push(k);
+  }
+  return out;
+}
