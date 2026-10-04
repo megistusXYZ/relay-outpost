@@ -52,7 +52,7 @@ import { parsePastedEvent } from "./inspector-model";
 import { FilterPanel, ViewsMenu } from "./ContentFilterPanel";
 import { EMPTY_FILTERS, deleteView, filterChips, isEmpty, readSavedViews, removeChip, saveView, withFilters, type ContentFilters, type SavedView } from "./content-filters";
 import { countLine, type CountState } from "./count-line";
-import { setAuthEnabled } from "@/lib/nip42-auth";
+import { getSignInPolicy, signInAsChosen } from "@/lib/nip42-auth";
 import { scrollRootFor } from "@/lib/scroll-root";
 import {
   ADMIN_BLOCKLIST_KEY, addModLogEntry, countWithNip45, getStoredList, pubkeyToNpub, resolveProfileBatch, saveStoredList,
@@ -660,7 +660,8 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
             <div className="min-w-0">
               {rows.length === 0 && !searching && refused ? (
                 <RefusedNotice relayName={relayName} reason={refused}
-                  onSignIn={() => { setAuthEnabled(relayUrl, true); try { pool.close([relayUrl]); } catch {} setTimeout(() => void runSearchRef.current(), 300); }} />
+                  never={getSignInPolicy(relayUrl).policy === "never"}
+              onSignIn={() => { if (!signInAsChosen(relayUrl)) return; try { pool.close([relayUrl]); } catch {} setTimeout(() => void runSearchRef.current(), 300); }} />
               ) : rows.length === 0 && !searching ? (
                 <p className="px-1 py-10 text-center text-sm text-muted-foreground" data-testid="ops-content-empty">
                   {!reached ? "We couldn't reach this relay to look." : submitted || windowActive || view !== "all" || chips.length ? "Nothing on this relay matches." : "Nothing on this relay yet."}

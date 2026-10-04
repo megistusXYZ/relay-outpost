@@ -8,8 +8,8 @@ describe("the operator console's sections", () => {
   });
 
   it("the relay's rules and public face live under Settings, as four screens", () => {
-    expect(SETTINGS_SCREENS.map((s) => s.tab)).toEqual(["community", "access", "announce", "featured"]);
-    expect(SETTINGS_SCREENS.map((s) => s.label)).toEqual(["Relay settings", "Who can post", "Public card", "Featured feeds"]);
+    expect(SETTINGS_SCREENS.map((s) => s.tab)).toEqual(["community", "access", "announce", "featured", "connection"]);
+    expect(SETTINGS_SCREENS.map((s) => s.label)).toEqual(["Relay settings", "Who can post", "Public card", "Featured feeds", "Connection & sign-in"]);
   });
 
   it("every old tab still has a section, so old links land", () => {
@@ -28,6 +28,8 @@ describe("the operator console's sections", () => {
     expect(consoleTitle("live")).toBe("Content");
     expect(consoleTitle("featured")).toBe("Featured feeds");
     expect(consoleTitle("access")).toBe("Who can post");
+    expect(consoleTitle("connection")).toBe("Connection & sign-in");
+    expect(sectionOf("connection")).toBe("settings");
     expect(consoleTitle("people")).toBe("People");
     expect(consoleTitle("settings")).toBe("Settings");
   });

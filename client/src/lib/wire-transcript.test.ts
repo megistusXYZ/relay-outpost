@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { transcript, relayOutcomes, compareRelays, type WireFrame } from "./wire-transcript";
+import { transcript, relayOutcomes, compareRelays, type WireFrame } from "@/lib/wire-transcript";
 
 const R = "wss://harbour.example";
 const ev = (id: string) => ({ id, kind: 1, pubkey: "a".repeat(64), created_at: 1, tags: [], content: "", sig: "" });
