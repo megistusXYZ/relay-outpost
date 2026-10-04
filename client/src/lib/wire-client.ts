@@ -7,7 +7,7 @@
  * Every frame in and out is reported with the wall-clock time; what they mean
  * is wire-transcript.ts's job.
  */
-import type { WireFrame } from "./wire-transcript";
+import type { WireFrame } from "@/lib/wire-transcript";
 
 export interface WireSession {
   relay: string;

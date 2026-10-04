@@ -7,6 +7,7 @@ import { SubscriptionRegistry } from "./subscription-registry";
 import { openResilientSub } from "./resilient-subscription";
 import { putProfile, getAllProfiles, pruneOldProfiles } from "./indexeddb-cache";
 import { setPoolRef, createPoolAuthHandler, createTemplateScopedAuthHandler, setOutpostUrlsProvider } from "./nip42-auth";
+import { recordNotice } from "./relay-probe";
 import { resolveSessionSigner } from "./session-signer";
 import { armPlaneAuth, planeAuthForSubscription } from "./concord/concord-plane-auth";
 import { getOutpostRelays } from "./outpost-relays";
@@ -95,6 +96,17 @@ export const DEFAULT_READ_MAX_WAIT_MS = 10_000;
   pooled.ensureRelay = boundEnsureRelay(pooled.ensureRelay.bind(pool), (url) => {
     try { pool.close([url]); } catch {}
   });
+  const bounded = pooled.ensureRelay;
+  // Keep what relays tell us. A NOTICE went to console.debug and was lost;
+  // the connection panel (Relay Control › Connection & sign-in) lists them.
+  pooled.ensureRelay = async (url, params) => {
+    const relay = (await bounded(url, params)) as { onnotice?: (msg: string) => void; __roNotices?: boolean };
+    if (relay && !relay.__roNotices) {
+      relay.__roNotices = true;
+      relay.onnotice = (msg: string) => recordNotice(url, msg);
+    }
+    return relay;
+  };
 }
 
 setPoolRef(pool);

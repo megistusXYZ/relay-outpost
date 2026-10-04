@@ -6,7 +6,7 @@
  * Pure.
  */
 import { plainKindName } from "@/lib/kind-catalog";
-import { relayWords, type WireFrame } from "./wire-transcript";
+import { relayWords, type WireFrame } from "@/lib/wire-transcript";
 
 export interface Draft {
   kind: number;

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { timeConnection } from "@/lib/relay-probe";
 import { Link, useLocation } from "wouter";
 import { DEFAULT_RELAYS, pool, getBlockedRelays, isRelayBlocked, blockRelay, unblockRelay, fetchBlockedRelayList, publishBlockedRelayList, eventStore, throttledPoolSubscribe, publishEvent, verifySignedEventKind } from "@/lib/nostr";
 import { PageToolbar } from "@/components/PageToolbar";
@@ -69,37 +70,8 @@ interface RelayStatus {
   enabled: boolean;
 }
 
-async function testRelay(url: string): Promise<{ connected: boolean; latency: number | null; error: string | null }> {
-  return new Promise((resolve) => {
-    const start = Date.now();
-    const timeout = setTimeout(() => {
-      resolve({ connected: false, latency: null, error: "Timeout (5s)" });
-    }, 5000);
-
-    try {
-      const ws = new WebSocket(url);
-      ws.onopen = () => {
-        const latency = Date.now() - start;
-        clearTimeout(timeout);
-        ws.close();
-        resolve({ connected: true, latency, error: null });
-      };
-      ws.onerror = () => {
-        clearTimeout(timeout);
-        resolve({ connected: false, latency: null, error: "Connection failed" });
-      };
-      ws.onclose = (event) => {
-        if (!event.wasClean && event.code !== 1000) {
-          clearTimeout(timeout);
-          resolve({ connected: false, latency: null, error: `Closed: ${event.code}` });
-        }
-      };
-    } catch (err) {
-      clearTimeout(timeout);
-      resolve({ connected: false, latency: null, error: "Invalid URL" });
-    }
-  });
-}
+/** The shared probe (lib/relay-probe.ts): does it connect, and how fast. */
+const testRelay = (url: string) => timeConnection(url, 5000);
 
 function disconnectRelay(url: string) {
   try {

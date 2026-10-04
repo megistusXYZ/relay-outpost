@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { timeConnection } from "@/lib/relay-probe";
 import { DEFAULT_RELAYS } from "@/lib/nostr";
 import { Circle, RefreshCw } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
@@ -16,26 +17,7 @@ interface Nip65Entry extends RelayStatus {
 type DiscoveryState = "idle" | "loading" | "found" | "empty" | "failed";
 
 async function probeRelay(url: string, timeoutMs = 4000): Promise<boolean> {
-  return new Promise<boolean>((resolve) => {
-    try {
-      const ws = new WebSocket(url);
-      const timer = setTimeout(() => {
-        try { ws.close(); } catch {}
-        resolve(false);
-      }, timeoutMs);
-      ws.onopen = () => {
-        clearTimeout(timer);
-        try { ws.close(); } catch {}
-        resolve(true);
-      };
-      ws.onerror = () => {
-        clearTimeout(timer);
-        resolve(false);
-      };
-    } catch {
-      resolve(false);
-    }
-  });
+  return (await timeConnection(url, timeoutMs)).connected;
 }
 
 async function probeRelays(urls: string[]): Promise<Map<string, boolean>> {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { generateSecretKey, finalizeEvent } from "nostr-tools";
-import { readDraft, riskOf, publishResults } from "./publisher-model";
-import type { WireFrame } from "./wire-transcript";
+import { readDraft, riskOf, publishResults } from "@/lib/publisher-model";
+import type { WireFrame } from "@/lib/wire-transcript";
 
 const signed = JSON.parse(JSON.stringify(finalizeEvent({ kind: 1, created_at: 1_700_000_000, tags: [["t", "harbour"]], content: "Ferry is late" }, generateSecretKey())));
 

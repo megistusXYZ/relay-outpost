@@ -5,7 +5,7 @@
 // aren't the user's own. allowAuthForPublish() opens that gate, scoped to deliberate
 // publishes.
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { createPoolAuthHandler, createTemplateScopedAuthHandler, allowAuthForPublish, setGlobalSigner, setOwnDMInboxProvider, shouldAutoAuth } from "./nip42-auth";
+import { createPoolAuthHandler, createTemplateScopedAuthHandler, allowAuthForPublish, setGlobalSigner, setOwnDMInboxProvider, shouldAutoAuth, getSignInPolicy, setSignInPolicy, signInOnce, setAuthEnabled, signInAsChosen } from "./nip42-auth";
 
 const mockSigner = {
   async getPublicKey() {
@@ -149,5 +149,69 @@ describe("template-scoped auto-AUTH across a multi-relay read", () => {
     setGlobalSigner(null);
     const onauth = createTemplateScopedAuthHandler();
     await expect(onauth(authTemplate(OWN_INBOX))).rejects.toThrow(/auth not enabled/);
+  });
+});
+
+describe("sign-in, set per relay: always, ask or never", () => {
+  beforeEach(() => { setGlobalSigner(mockSigner); setOwnDMInboxProvider(() => []); });
+
+  it("unset, a stranger relay asks; your own inbox signs in by default — and says why", () => {
+    expect(getSignInPolicy("wss://stranger.example")).toEqual({ policy: "ask", chosen: false });
+    setOwnDMInboxProvider(() => ["wss://my-inbox.example"]);
+    expect(getSignInPolicy("wss://my-inbox.example/")).toEqual({ policy: "always", chosen: false, because: "It's where your private messages arrive" });
+  });
+
+  it("always: signs in whenever asked", () => {
+    setSignInPolicy("wss://always.example", "always");
+    expect(getSignInPolicy("wss://always.example/")).toEqual({ policy: "always", chosen: true });
+    expect(shouldAutoAuth("wss://always.example")).toBe(true);
+    expect(createPoolAuthHandler()("wss://always.example")).not.toBeNull();
+  });
+
+  it("never beats every default and every grant — even your own inbox, even a publish", () => {
+    setOwnDMInboxProvider(() => ["wss://never.example"]);
+    setSignInPolicy("wss://never.example", "never");
+    expect(shouldAutoAuth("wss://never.example")).toBe(false);
+    allowAuthForPublish(["wss://never.example"]);
+    expect(shouldAutoAuth("wss://never.example")).toBe(false);
+    signInOnce("wss://never.example");
+    expect(shouldAutoAuth("wss://never.example")).toBe(false);
+  });
+
+  it("ask: not on its own, but yes when you say so — for a minute", () => {
+    vi.useFakeTimers();
+    try {
+      setSignInPolicy("wss://ask.example", "ask");
+      expect(shouldAutoAuth("wss://ask.example")).toBe(false);
+      signInOnce("wss://ask.example");
+      expect(shouldAutoAuth("wss://ask.example")).toBe(true);
+      vi.advanceTimersByTime(61_000);
+      expect(shouldAutoAuth("wss://ask.example")).toBe(false);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("clearing the choice goes back to the default; the old on/off switch is 'always'", () => {
+    setSignInPolicy("wss://cleared.example", "never");
+    setSignInPolicy("wss://cleared.example", null);
+    expect(getSignInPolicy("wss://cleared.example")).toEqual({ policy: "ask", chosen: false });
+    setAuthEnabled("wss://legacy.example", true);
+    expect(getSignInPolicy("wss://legacy.example")).toEqual({ policy: "always", chosen: true });
+    setAuthEnabled("wss://legacy.example", false);
+    expect(getSignInPolicy("wss://legacy.example").chosen).toBe(false);
+  });
+});
+
+describe("a Sign in button, pressed", () => {
+  beforeEach(() => { setGlobalSigner(mockSigner); setOwnDMInboxProvider(() => []); });
+  it("never: does nothing; ask: this once; unset: from now on", () => {
+    setSignInPolicy("wss://btn-never.example", "never");
+    expect(signInAsChosen("wss://btn-never.example")).toBe(false);
+    expect(shouldAutoAuth("wss://btn-never.example")).toBe(false);
+    setSignInPolicy("wss://btn-ask.example", "ask");
+    expect(signInAsChosen("wss://btn-ask.example")).toBe(true);
+    expect(getSignInPolicy("wss://btn-ask.example")).toEqual({ policy: "ask", chosen: true });
+    expect(shouldAutoAuth("wss://btn-ask.example")).toBe(true);
+    expect(signInAsChosen("wss://btn-unset.example")).toBe(true);
+    expect(getSignInPolicy("wss://btn-unset.example")).toEqual({ policy: "always", chosen: true });
   });
 });

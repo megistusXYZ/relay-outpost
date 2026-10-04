@@ -189,12 +189,18 @@ const publishAuthAllowed = new Map<string, number>();
 
 export function shouldAutoAuth(relayURL: string): boolean {
   const key = normalizeUrl(relayURL);
-  if (isAuthEnabled(key)) return true;
+  // Your choice for this relay comes first: "never" beats every default and
+  // every grant below; "always" needs nothing else.
+  const chosen = chosenPolicy(key);
+  if (chosen === "never") return false;
+  if (chosen === "always") return true;
   const grantExpiry = publishAuthAllowed.get(key);
   if (grantExpiry !== undefined) {
     if (Date.now() < grantExpiry) return true;
     publishAuthAllowed.delete(key); // expired — stop leaking into passive reads
   }
+  // "ask": only the grants above (a publish, or "sign in once") — no defaults.
+  if (chosen === "ask") return false;
   // Own DM inbox: auto-AUTH so we can READ our own mailbox from an auth-gated
   // relay (auth.nostr1.com, inbox.nostr.wine, …). Scoped to the relays we chose
   // as our inbox — never arbitrary relays. Small set, so the linear scan is fine.
@@ -379,6 +385,7 @@ export function allowAuthForPublish(relayUrls: string[]) {
   for (const [rUrl, relay] of relays) {
     if (!relay || relay.onauth) continue;
     if (!publishAuthAllowed.has(normalizeUrl(rUrl))) continue;
+    if (chosenPolicy(normalizeUrl(rUrl)) === "never") continue;
     const fn = buildAuthSigner(rUrl);
     if (!fn) continue;
     relay.onauth = fn;
@@ -390,27 +397,95 @@ export function allowAuthForPublish(relayUrls: string[]) {
   }
 }
 
-const AUTH_RELAYS_KEY = "nostr_auth_relays";
+/**
+ * Sign-in, set per relay (2026-10-03): always, ask, or never.
+ *
+ *   always — sign in whenever it asks.
+ *   ask    — not on its own; when you say so (signInOnce, a publish), for a minute.
+ *   never  — never, whatever else would have: your inbox, your communities,
+ *            a publish. The relay may then show you less; that's your call.
+ *
+ * Unset, a relay you'd sign in to anyway (your DM inbox, your communities and
+ * the relays you run) reads as "always", with the reason; any other reads as
+ * "ask". The old on/off switch (nostr_auth_relays) is "always", and is kept in
+ * step so older code paths still read it.
+ */
+export type SignInPolicy = "always" | "ask" | "never";
 
-export function getAuthEnabledRelays(): Set<string> {
+const AUTH_RELAYS_KEY = "nostr_auth_relays";
+const POLICY_KEY = "nostr_auth_policy";
+let policyCache: Map<string, SignInPolicy> | null = null;
+
+function policies(): Map<string, SignInPolicy> {
+  if (policyCache) return policyCache;
+  policyCache = new Map();
   try {
-    const stored = localStorage.getItem(AUTH_RELAYS_KEY);
-    return stored ? new Set(JSON.parse(stored)) : new Set();
-  } catch {
-    return new Set();
-  }
+    const stored = JSON.parse(localStorage.getItem(POLICY_KEY) || "{}") as Record<string, SignInPolicy>;
+    for (const [k, v] of Object.entries(stored)) if (v === "always" || v === "ask" || v === "never") policyCache.set(normalizeUrl(k), v);
+    const legacy = JSON.parse(localStorage.getItem(AUTH_RELAYS_KEY) || "[]") as string[];
+    for (const u of legacy) if (!policyCache.has(normalizeUrl(u))) policyCache.set(normalizeUrl(u), "always");
+  } catch { /* no storage: choices last for this session */ }
+  return policyCache;
 }
 
+function persistPolicies() {
+  const map = policies();
+  try {
+    localStorage.setItem(POLICY_KEY, JSON.stringify(Object.fromEntries(map)));
+    localStorage.setItem(AUTH_RELAYS_KEY, JSON.stringify([...map].filter(([, v]) => v === "always").map(([k]) => k)));
+  } catch { /* private mode */ }
+}
+
+function chosenPolicy(key: string): SignInPolicy | undefined {
+  return policies().get(key);
+}
+
+export function getSignInPolicy(relayUrl: string): { policy: SignInPolicy; chosen: boolean; because?: string } {
+  const key = normalizeUrl(relayUrl);
+  const chosen = chosenPolicy(key);
+  if (chosen) return { policy: chosen, chosen: true };
+  if (ownDMInboxProvider?.().some((u) => normalizeUrl(u) === key)) return { policy: "always", chosen: false, because: "It's where your private messages arrive" };
+  if (outpostUrlsProvider?.().has(key)) return { policy: "always", chosen: false, because: "It's one of your communities, or a relay you run" };
+  return { policy: "ask", chosen: false };
+}
+
+/** Choose for this relay; null goes back to the default. */
+export function setSignInPolicy(relayUrl: string, policy: SignInPolicy | null) {
+  const key = normalizeUrl(relayUrl);
+  if (policy) policies().set(key, policy);
+  else policies().delete(key);
+  persistPolicies();
+  notifyListeners();
+}
+
+/** "Sign in" pressed once: sign in to this relay now (unless it's set to never). */
+export function signInOnce(relayUrl: string) {
+  if (chosenPolicy(normalizeUrl(relayUrl)) === "never") return;
+  allowAuthForPublish([relayUrl]);
+}
+
+export function getAuthEnabledRelays(): Set<string> {
+  return new Set([...policies()].filter(([, v]) => v === "always").map(([k]) => k));
+}
+
+/** The old on/off switch: on is "always", off clears the choice. */
 export function setAuthEnabled(relayUrl: string, enabled: boolean) {
-  const current = getAuthEnabledRelays();
-  if (enabled) {
-    current.add(normalizeUrl(relayUrl));
-  } else {
-    current.delete(normalizeUrl(relayUrl));
-  }
-  localStorage.setItem(AUTH_RELAYS_KEY, JSON.stringify(Array.from(current)));
+  setSignInPolicy(relayUrl, enabled ? "always" : null);
 }
 
 export function isAuthEnabled(relayUrl: string): boolean {
-  return getAuthEnabledRelays().has(normalizeUrl(relayUrl));
+  return chosenPolicy(normalizeUrl(relayUrl)) === "always";
+}
+
+/**
+ * A "Sign in" button was pressed for this relay. Honour the choice: "never"
+ * does nothing (returns false — the button shouldn't have been offered),
+ * "ask" signs in this once, and otherwise sign in from now on.
+ */
+export function signInAsChosen(relayUrl: string): boolean {
+  const { policy, chosen } = getSignInPolicy(relayUrl);
+  if (policy === "never") return false;
+  if (chosen && policy === "ask") signInOnce(relayUrl);
+  else setSignInPolicy(relayUrl, "always");
+  return true;
 }

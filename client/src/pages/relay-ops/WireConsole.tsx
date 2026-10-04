@@ -13,7 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Event as NostrEvent } from "nostr-tools";
 import { Download, Link2, Plus, Square, X } from "lucide-react";
 import { DEFAULT_RELAYS } from "@/lib/nostr";
-import { getGlobalSigner, shouldAutoAuth } from "@/lib/nip42-auth";
+import { getGlobalSigner, getSignInPolicy, shouldAutoAuth } from "@/lib/nip42-auth";
 import { normalizeRelayAddress } from "@/lib/relay-address";
 import { useOperatedRelays } from "@/lib/operated-relays";
 import { findKinds, plainKindName } from "@/lib/kind-catalog";
@@ -27,8 +27,8 @@ import { Publisher } from "./Publisher";
 import { signatureVerdict } from "./inspector-model";
 import { resolveProfileBatch, type ProfileInfo } from "./shared";
 import { consoleLink, resolveFilters } from "./console-query";
-import { openWire, type WireSession } from "./wire-client";
-import { compareRelays, describeFilter, relayOutcomes, relayWords, transcript, type TranscriptLine, type WireFrame } from "./wire-transcript";
+import { openWire, type WireSession } from "@/lib/wire-client";
+import { compareRelays, describeFilter, relayOutcomes, relayWords, transcript, type TranscriptLine, type WireFrame } from "@/lib/wire-transcript";
 
 const HISTORY_KEY = "ro_console_history";
 interface HistoryEntry { relays: string[]; text: string; at: number }
@@ -406,7 +406,7 @@ export function WireConsole({ initialRelays, initialText, initialTool = "ask", i
           )}
 
           {view === "said" && (
-            <TranscriptList lines={lines} start={runStart} multi={multi} canSignIn={(r) => !signedIn.has(r) && sessions.current.has(r)} onSignIn={signIn} />
+            <TranscriptList lines={lines} start={runStart} multi={multi} canSignIn={(r) => !signedIn.has(r) && sessions.current.has(r) && getSignInPolicy(r).policy !== "never"} onSignIn={signIn} />
           )}
 
           {view === "compare" && (

@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AlertTriangle, ShieldCheck, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Megaphone, Plus, Terminal, Users, Sparkles } from "lucide-react";
+import { AlertTriangle, ShieldCheck, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Megaphone, Plus, Terminal, Users, Sparkles, Cable } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ErrorScreen } from "@/components/ErrorScreen";
@@ -28,6 +28,7 @@ import { PeopleTab } from "./relay-ops/PeopleTab";
 import { AccessControlTab } from "./relay-ops/AccessControlTab";
 import { FeaturedTab } from "./relay-ops/FeaturedTab";
 import { KindGateCard } from "./relay-ops/KindGateCard";
+import { ConnectionPanel } from "./relay-ops/ConnectionPanel";
 import { AnnounceTab } from "./relay-ops/AnnounceTab";
 import { CommunityTab } from "./relay-ops/CommunityTab";
 import { InboxTab } from "./relay-ops/InboxTab";
@@ -38,6 +39,7 @@ const SETTINGS_ICONS: Record<string, React.ComponentType<{ className?: string }>
   access: ShieldCheck,
   announce: Megaphone,
   featured: Sparkles,
+  connection: Cable,
 };
 
 // Inline fallback for a single tab that throws during render. Scoped so ONE bad
@@ -385,7 +387,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                   switching tabs remounts a fresh boundary (React error boundaries
                   don't auto-reset), letting the operator recover by tab-switching. */}
               <ErrorBoundary key={activeTab} fallbackRender={(error) => <TabErrorFallback error={error} />}>
-                {activeTab === "overview" && <OverviewTab relayUrl={selectedRelay} inbox={inbox} onOpenFeedback={() => setActiveTab("feedback")} />}
+                {activeTab === "overview" && <OverviewTab relayUrl={selectedRelay} inbox={inbox} onOpenFeedback={() => setActiveTab("feedback")} onOpenConnection={() => setActiveTab("connection")} />}
                 {(activeTab === "events" || activeTab === "live") && <ContentTab relayUrl={selectedRelay} nip11={nip11} initialLive={activeTab === "live"} initialQuery={contentSeed} />}
                 {activeTab === "people" && <PeopleTab relayUrl={selectedRelay} nip11={nip11} onSeePosts={(npub) => { setContentSeed(npub); setActiveTab("events"); }} />}
                 {activeTab === "access" && <><AccessControlTab relayUrl={selectedRelay} nip11={nip11} /><KindGateCard relayUrl={selectedRelay} nip11={nip11} /></>}
@@ -415,6 +417,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                 {activeTab === "announce" && <AnnounceTab relayUrl={selectedRelay} nip11={nip11} />}
                 {activeTab === "featured" && <FeaturedTab relayUrl={selectedRelay} nip11={nip11} />}
                 {activeTab === "community" && <CommunityTab relayUrl={selectedRelay} nip11={nip11} />}
+                {activeTab === "connection" && <ConnectionPanel relayUrl={selectedRelay} relayName={relayName} />}
               </ErrorBoundary>
             </div>
           )}
