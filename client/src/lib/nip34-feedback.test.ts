@@ -16,6 +16,7 @@ import {
   buildStatusTemplate,
   buildIssueTemplate,
   mergeRecipients,
+  pickFeedbackListing,
   statusFromKind,
   statusLabel,
   isFeedbackStatus,
@@ -537,5 +538,15 @@ describe("a ticket opened from a request type carries it", () => {
   it("a template tag on the public ticket", () => {
     const t = buildIssueTemplate({ recipient: noRepo, title: "Need a role", body: "", types: ["question"], context: null, template: "access" });
     expect(t.tags).toContainEqual(["template", "access"]);
+  });
+});
+
+describe("which feedback listing belongs to this relay", () => {
+  const listing = (d: string, at: number) => ({ id: d + at, kind: 30617, pubkey: OPERATOR, created_at: at, content: "", sig: "", tags: [["d", d], ["t", "feedback"]] }) as NostrEvent;
+  it("this relay's own; else an older un-scoped one; never another relay's", () => {
+    const mine = listing("feedback-relay.example", 100), other = listing("feedback-pier.example", 900), legacy = listing("my-feedback", 50);
+    expect(pickFeedbackListing([other, mine, legacy], RELAY)?.id).toBe(mine.id);
+    expect(pickFeedbackListing([other, legacy], RELAY)?.id).toBe(legacy.id);
+    expect(pickFeedbackListing([other], RELAY)).toBeNull();
   });
 });

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { SuggestionsBoard } from "@/components/SuggestionsBoard";
 import { feedbackNeedsYou } from "@/lib/feedback-needs";
 import { createPortal } from "react-dom";
 import { Segment } from "@/components/Segment";
@@ -117,7 +118,7 @@ import {
   MoreHorizontal,
   Copy,
   Check,
-  Inbox } from "lucide-react";
+  Inbox, Lightbulb } from "lucide-react";
 import { ResponsiveFormPanel } from "@/components/ui/responsive-form-panel";
 import { ProfileSearchInput, type SelectedRecipient } from "@/components/ProfileSearchInput";
 import { sendDM } from "@/lib/dm";
@@ -606,7 +607,7 @@ function ActiveMembersSection({ authors }: { authors: string[] }) {
   );
 }
 
-type OutpostTab = "feed" | "featured" | "topics" | "channels" | "horizon" | "about";
+type OutpostTab = "feed" | "featured" | "topics" | "channels" | "horizon" | "ideas" | "about";
 
 function WaveAuthorLine({ pubkey, createdAt, isOP, size = "sm" }: { pubkey: string; createdAt: number; isOP?: boolean; size?: "sm" | "md" }) {
   const profile = use$(() => eventStore.replaceable(KIND_METADATA, pubkey), [pubkey]);
@@ -3289,6 +3290,8 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
     discoverRecipientForRelay(relayUrl).then((r) => { if (live) setContactRecipient(r); }).catch(() => {});
     return () => { live = false; };
   }, [relayUrl]);
+  const ideasOn = !!contactRecipient?.hasInbox && !!contactRecipient.operatorPubkey
+    && (contactRecipient.templates ?? []).some((t) => t.enabled && t.visibility === "public");
   // Operator-curated Featured feeds (kind 30004) — the tab self-hides when empty.
   const { sets: featuredSets } = useRelayFeaturedSets(relayUrl, nip11);
   // Which featured feed is showing — lifted so the tab's options sheet and the
@@ -3312,7 +3315,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
   const loadMoreRelayRef = useRef<string>("");
   const [allowedPubkeys, setAllowedPubkeys] = useState<string[]>([]);
   const PINNABLE_TABS: PinnableTab[] = ["feed", "topics", "channels", "horizon"];
-  const validTabKeys: OutpostTab[] = ["feed", "featured", "topics", "channels", "horizon", "about"];
+  const validTabKeys: OutpostTab[] = ["feed", "featured", "topics", "channels", "horizon", "ideas", "about"];
   const urlParams = new URLSearchParams(window.location.search);
   const rawUrlTab = urlParams.get("tab");
   const urlTab = (rawUrlTab ? slugToTabKey(rawUrlTab) : null) as OutpostTab | null;
@@ -4134,6 +4137,8 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
     { key: "topics", label: "Discussions", icon: WavesIcon, hint: "Threaded discussions people can reply to and vote on" },
     { key: "channels", label: "Chat", icon: ChannelsIcon, hint: "Real-time chat rooms" },
     { key: "horizon", label: "Articles", icon: HorizonIcon, hint: "Long-form articles" },
+    // Self-hiding: only when members can contact the team and suggest things in public.
+    ...(ideasOn ? [{ key: "ideas" as OutpostTab, label: "Ideas", icon: Lightbulb, hint: "Members' suggestions — vote for the ones you want" }] : []),
     { key: "about", label: "About", icon: AboutIcon, hint: "About this community" },
   ];
 
@@ -4358,7 +4363,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
 
         {(() => {
           const activeTabConfig = TAB_CONFIG.find((t) => t.key === activeTab);
-          const composeAction = pubkey && activeTab !== "about" ? (
+          const composeAction = pubkey && activeTab !== "about" && activeTab !== "ideas" ? (
             activeTab === "horizon" ? (
               canPostHorizon ? (
                 <Button
@@ -4486,7 +4491,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
             </div>
           );
 
-          const trustActionDesktop = trustWotEnabled && activeTab !== "about" ? (
+          const trustActionDesktop = trustWotEnabled && activeTab !== "about" && activeTab !== "ideas" ? (
             <Popover open={trustPopoverOpen} onOpenChange={setTrustPopoverOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -4509,7 +4514,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
             </Popover>
           ) : null;
 
-          const trustActionMobile = trustWotEnabled && activeTab !== "about" ? (
+          const trustActionMobile = trustWotEnabled && activeTab !== "about" && activeTab !== "ideas" ? (
             <>
               <Button
                 size="sm"
@@ -4546,7 +4551,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                   ariaLabel="Community sections"
                   active={activeTab}
                   onChange={(key) => {
-                    const hasSheet = key !== "about";
+                    const hasSheet = key !== "about" && key !== "ideas";
                     if (key === activeTab && hasSheet) { setTabDropdownOpen(true); return; }
                     setActiveTab(key as OutpostTab);
                     if (key !== "topics") setWaveThreadOpen(false);
@@ -4558,7 +4563,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                     title: tab.hint,
                     ariaLabel: tab.label,
                     testId: `tab-outpost-${tab.key}`,
-                    badge: activeTab === tab.key && tab.key !== "about" ? (
+                    badge: activeTab === tab.key && tab.key !== "about" && tab.key !== "ideas" ? (
                       <ChevronDown className="w-3 h-3 shrink-0 opacity-70" aria-hidden="true" />
                     ) : undefined,
                   }))}
@@ -5010,6 +5015,12 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
         {activeTab === "featured" && (
           <div className="py-2">
             <RelayFeaturedFeed sets={featuredSets} relayUrl={relayUrl} activeCoord={featuredCoord} onSelectFeed={setFeaturedCoord} />
+          </div>
+        )}
+
+        {activeTab === "ideas" && ideasOn && contactRecipient && (
+          <div className="py-2">
+            <SuggestionsBoard relayUrl={relayUrl} recipient={contactRecipient} />
           </div>
         )}
 
