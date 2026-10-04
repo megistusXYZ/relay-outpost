@@ -164,6 +164,7 @@ import {
 import type { SignalTier } from "@/lib/graperank";
 import { OutpostHealthBadge } from "@/components/OutpostHealthBadge";
 import { OutpostHero } from "@/components/outpost/OutpostHero";
+import { communityRecordRelays } from "@/lib/featured";
 import { outpostPresenceProps } from "@/lib/outpost-presence";
 import { discoverRecipientForRelay, openFeedbackDrawer, repoCoord, subscribeFeedbackThread, hydrateIssues, type FeedbackRecipient } from "@/lib/nip34-feedback";
 
@@ -2067,7 +2068,6 @@ function TopicThreadView({
 
 const KIND_APP_DATA = 30078;
 const PINNED_TOPICS_D_TAG = "relay-outpost/pinned-topics";
-const APP_DATA_RELAYS = ["wss://purplepag.es", "wss://relay.damus.io", "wss://nos.lol"];
 
 function TopicsTab({
   relayUrl,
@@ -2105,7 +2105,7 @@ function TopicsTab({
   useEffect(() => {
     if (!operatorPubkey) return;
     const sub = pool.subscribeMany(
-      APP_DATA_RELAYS,
+      communityRecordRelays(relayUrl),
       { kinds: [KIND_APP_DATA], authors: [operatorPubkey], "#d": [PINNED_TOPICS_D_TAG + "/" + relayUrl], limit: 1 },
       {
         onevent(e: NostrEvent) {
@@ -3628,7 +3628,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
     setHorizonConfigLoaded(false);
     const MODERATORS_D_TAG = "relay-outpost/moderators";
     const modSub = pool.subscribeMany(
-      APP_DATA_RELAYS,
+      communityRecordRelays(relayUrl),
       { kinds: [KIND_APP_DATA], authors: [opPk], "#d": [MODERATORS_D_TAG + "/" + relayUrl], limit: 1 },
       {
         onevent(e: NostrEvent) {
@@ -3643,7 +3643,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
 
     const COMMUNITY_RULES_D_TAG = "relay-outpost/community-rules";
     const sub = pool.subscribeMany(
-      APP_DATA_RELAYS,
+      communityRecordRelays(relayUrl),
       { kinds: [KIND_APP_DATA], authors: [opPk], "#d": [COMMUNITY_RULES_D_TAG + "/" + relayUrl], limit: 1 },
       {
         onevent(e: NostrEvent) {
@@ -3666,7 +3666,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
 
     const HORIZON_CONFIG_D_TAG = "relay-outpost/horizon-config";
     const hSub = pool.subscribeMany(
-      APP_DATA_RELAYS,
+      communityRecordRelays(relayUrl),
       { kinds: [KIND_APP_DATA], authors: [opPk], "#d": [HORIZON_CONFIG_D_TAG + "/" + relayUrl], limit: 1 },
       {
         onevent(e: NostrEvent) {

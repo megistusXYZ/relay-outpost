@@ -3,28 +3,32 @@
  * allowkind/disallowkind. Self-contained card mounted beside Access Control.
  *
  * The readout is the relay's OWN answer (describeKindPolicy), refreshed after
- * every action — never a local mirror of what we asked for. When management
- * isn't supported the card says so and renders no dead controls.
+ * every action — never a local mirror of what we asked for. The Allow/Block
+ * buttons show only where the relay lists allowkind and disallowkind for you:
+ * a relay that answers other management calls but not these refused every
+ * tap (owner, 2026-10-04). Elsewhere it says where to change it.
  */
 import { useState, useEffect, useCallback } from "react";
 import { type Nip11Document } from "@/lib/nip11";
 import {
-  checkNip86Support,
   allowKind,
   disallowKind,
   listAllowedKinds,
   listDisallowedKinds,
-  type Nip86SupportStatus,
+  fetchRelayCapabilities,
 } from "@/lib/nip86";
+import { canDo, managedAt, type RelayCapabilities } from "@/lib/relay-capabilities";
 import { describeKindPolicy, GATE_KIND_OPTIONS, formatKindList, type KindPolicy } from "@/lib/kind-gate";
-import { OpsCard, OpsSectionHeader } from "./ops-ui";
+import { OpsCard, OpsSectionHeader, ManagedAtNote } from "./ops-ui";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { DoorOpen, RefreshCw, Check, Ban } from "lucide-react";
 
 export function KindGateCard({ relayUrl }: { relayUrl: string; nip11: Nip11Document | null }) {
   const { toast } = useToast();
-  const [status, setStatus] = useState<Nip86SupportStatus | null>(null);
+  const [caps, setCaps] = useState<RelayCapabilities | null>(null);
+  const canChange = !!caps && canDo(caps, "allowKind") && canDo(caps, "disallowKind");
+  const canRead = !!caps && (canDo(caps, "listAllowedKinds") || canDo(caps, "listDisallowedKinds"));
   const [policy, setPolicy] = useState<KindPolicy | null>(null);
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
 
@@ -41,12 +45,12 @@ export function KindGateCard({ relayUrl }: { relayUrl: string; nip11: Nip11Docum
 
   useEffect(() => {
     let cancelled = false;
-    setStatus(null);
+    setCaps(null);
     setPolicy(null);
-    checkNip86Support(relayUrl).then((s) => {
+    fetchRelayCapabilities(relayUrl).then((c) => {
       if (cancelled) return;
-      setStatus(s);
-      if (s === "supported") loadPolicy();
+      setCaps(c);
+      if (canDo(c, "listAllowedKinds") || canDo(c, "listDisallowedKinds")) void loadPolicy();
     });
     return () => { cancelled = true; };
   }, [relayUrl, loadPolicy]);
@@ -94,7 +98,7 @@ export function KindGateCard({ relayUrl }: { relayUrl: string; nip11: Nip11Docum
         <OpsSectionHeader
           icon={DoorOpen}
           label="Accepted content"
-          action={status === "supported" ? (
+          action={canRead ? (
             <Button size="sm" variant="ghost" onClick={loadPolicy} aria-label="Refresh policy"><RefreshCw className="w-3.5 h-3.5" /></Button>
           ) : undefined}
         >
@@ -103,12 +107,13 @@ export function KindGateCard({ relayUrl }: { relayUrl: string; nip11: Nip11Docum
           </p>
         </OpsSectionHeader>
 
-        {status === null ? (
-          <p className="text-xs text-muted-foreground/70 py-2">Checking whether this relay supports kind management…</p>
-        ) : status !== "supported" ? (
-          <p className="text-xs text-muted-foreground/70 py-2" data-testid="kind-gate-unsupported">
-            This relay doesn't expose content-kind management (NIP-86), so accepted kinds can't be changed from here.
-          </p>
+        {caps === null ? (
+          <p className="text-xs text-muted-foreground/70 py-2">Asking the relay what it lets you change…</p>
+        ) : !canChange ? (
+          <div className="space-y-2" data-testid="kind-gate-unsupported">
+            {canRead && <p className="text-xs text-muted-foreground" data-testid="kind-gate-policy">{policyLine}</p>}
+            <ManagedAtNote where={managedAt(relayUrl)} lead="This relay doesn't let apps change which kinds of posts it accepts." testId="kind-gate-managed-at" />
+          </div>
         ) : (
           <>
             <p className="text-xs text-muted-foreground" data-testid="kind-gate-policy">{policyLine}</p>

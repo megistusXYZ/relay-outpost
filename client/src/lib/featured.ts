@@ -10,6 +10,17 @@ export const KIND_APP_DATA = 30078;
 export const FEATURED_D_TAG = "relay-outpost/featured";
 export const APP_DATA_RELAYS = ["wss://purplepag.es", "wss://relay.damus.io", "wss://nos.lol"];
 
+/**
+ * Where a community's own records live (rules, the featured doc, pinned
+ * discussions, moderators, the articles setting): the community's relay
+ * first, then the public relays these were always kept on. Readers and
+ * writers both use this, so a record is on the relay it describes and still
+ * readable if a public relay drops it (owner, 2026-10-04).
+ */
+export function communityRecordRelays(relayUrl: string): string[] {
+  return Array.from(new Set([relayUrl, ...APP_DATA_RELAYS]));
+}
+
 export const MAX_FEATURED_ITEMS = 12;
 
 export interface FeaturedItem {

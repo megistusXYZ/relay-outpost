@@ -7,7 +7,7 @@ import { pool, getCachedProfile, fetchProfilesCached } from "@/lib/nostr";
 import { Linkify } from "@/components/Linkify";
 import {
   KIND_APP_DATA,
-  APP_DATA_RELAYS,
+  communityRecordRelays,
   featuredDTag,
   parseFeaturedDoc,
   isFeaturedDocEmpty,
@@ -46,7 +46,7 @@ export function FeaturedStrip({ relayUrl, operatorPubkey }: { relayUrl: string; 
     if (!operatorPubkey) { setDoc(null); return; }
     let done = false;
     const sub = pool.subscribeMany(
-      APP_DATA_RELAYS,
+      communityRecordRelays(relayUrl),
       { kinds: [KIND_APP_DATA], authors: [operatorPubkey], "#d": [featuredDTag(relayUrl)], limit: 1 },
       {
         onevent(e: NostrEvent) {
@@ -68,7 +68,7 @@ export function FeaturedStrip({ relayUrl, operatorPubkey }: { relayUrl: string; 
   useEffect(() => {
     if (items.length === 0) { setResolved(new Map()); return; }
     let cancelled = false;
-    const relays = Array.from(new Set([relayUrl, ...APP_DATA_RELAYS]));
+    const relays = communityRecordRelays(relayUrl);
     const ids = items.filter((it) => it.id).map((it) => it.id!) as string[];
     const coordItems = items.filter((it) => !it.id && it.coord);
     (async () => {

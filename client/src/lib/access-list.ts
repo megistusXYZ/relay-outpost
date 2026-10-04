@@ -9,6 +9,8 @@
  *
  * Pure.
  */
+import { nip19 } from "nostr-tools";
+
 export interface AccessList {
   /** Each person once, in the order the relay first listed them (lowercase hex). */
   pubkeys: string[];
@@ -53,4 +55,47 @@ export function notYetOn(candidates: readonly string[], alreadyOn: readonly stri
     out.push(k);
   }
   return out;
+}
+
+const KEY_TOKEN = /\b(npub1[02-9ac-hj-np-z]{58}|nprofile1[02-9ac-hj-np-z]+|[0-9a-f]{64})\b/i;
+
+function keyFrom(token: string): string | null {
+  if (HEX.test(token)) return token.toLowerCase();
+  try {
+    const d = nip19.decode(token);
+    if (d.type === "npub") return (d.data as string).toLowerCase();
+    if (d.type === "nprofile") return (d.data as { pubkey: string }).pubkey.toLowerCase();
+  } catch { /* not a key */ }
+  return null;
+}
+
+/**
+ * What an imported file would add, before anything is sent: one person per
+ * line (npub, nprofile or hex, anywhere on the line — so a CSV export works),
+ * minus anyone already on the list or repeated in the file. Blank lines and a
+ * header row aren't counted as unreadable; other lines without a key are.
+ */
+export function readImportFile(text: string, alreadyOn: readonly string[]): { add: string[]; already: number; unreadable: number } {
+  const on = new Set(alreadyOn.map((p) => p.toLowerCase()));
+  const seen = new Set<string>();
+  const add: string[] = [];
+  let already = 0;
+  let unreadable = 0;
+  const lines = text.split(/\r?\n/);
+  lines.forEach((raw, i) => {
+    const line = raw.trim();
+    if (!line) return;
+    const m = line.match(KEY_TOKEN);
+    const key = m ? keyFrom(m[1]) : null;
+    if (!key) {
+      if (i === 0 && /npub|pubkey|name/i.test(line)) return; // a CSV header
+      unreadable++;
+      return;
+    }
+    if (seen.has(key)) return;
+    seen.add(key);
+    if (on.has(key)) already++;
+    else add.push(key);
+  });
+  return { add, already, unreadable };
 }

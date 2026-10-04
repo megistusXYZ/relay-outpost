@@ -5,7 +5,7 @@ import { notifyNeedsYouChanged } from "@/contexts/NeedsYouContext";
 import type { Event as NostrEvent } from "nostr-tools";
 import { pool } from "@/lib/nostr";
 import { signWithTimeout } from "@/lib/signer-timeout";
-import { buildFeaturedEventTemplate, parseFeaturedDoc, setDocAnnouncement, featuredDTag, refToFeaturedItem, featuredItemKey, kindLabel, MAX_FEATURED_ITEMS, type FeaturedItem } from "@/lib/featured";
+import { buildFeaturedEventTemplate, parseFeaturedDoc, setDocAnnouncement, featuredDTag, refToFeaturedItem, featuredItemKey, kindLabel, MAX_FEATURED_ITEMS, communityRecordRelays, type FeaturedItem } from "@/lib/featured";
 import { type Nip11Document } from "@/lib/nip11";
 import {
   mayHostNip29,
@@ -122,7 +122,6 @@ const PINNED_TOPICS_D_TAG = "relay-outpost/pinned-topics";
 const COMMUNITY_RULES_D_TAG = "relay-outpost/community-rules";
 const MODERATORS_D_TAG = "relay-outpost/moderators";
 const HORIZON_CONFIG_D_TAG = "relay-outpost/horizon-config";
-const APP_DATA_RELAYS = ["wss://purplepag.es", "wss://relay.damus.io", "wss://nos.lol"];
 
 export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip11Document | null }) {
   const { pubkey, signer } = useNostrAuth();
@@ -132,12 +131,22 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
   // silently did nothing (owner, 2026-10-04).
   const publishRecord = async (template: { kind: number; created_at: number; tags: string[][]; content: string }) => {
     if (!signer) throw new Error("You're signed out. Sign in again to save.");
+    if (!recordsEditable) throw new Error(recordsNote ?? "Only the relay's owner can change this.");
     const signed = await signWithTimeout(signer, template);
     const { publishEvent } = await import("@/lib/nostr");
-    await publishEvent(signed as unknown as NostrEvent, APP_DATA_RELAYS);
+    await publishEvent(signed as unknown as NostrEvent, communityRecordRelays(relayUrl));
     return signed;
   };
   const failed = (err: unknown) => (err instanceof Error && err.message ? err.message : "Try again.");
+  // The community page shows these records only from the relay's named owner,
+  // so only the owner can change them; anyone else's save would never show.
+  const recordsOwner = nip11?.pubkey && /^[0-9a-f]{64}$/i.test(nip11.pubkey) ? nip11.pubkey.toLowerCase() : null;
+  const recordsEditable = !!recordsOwner && !!pubkey && recordsOwner === pubkey.toLowerCase();
+  const recordsNote = !recordsOwner
+    ? "This relay doesn't name its owner, so the community page can't show rules, announcements or pinned discussions yet. Ask your host to list you as the owner."
+    : !recordsEditable
+    ? "Only the relay's owner can change these — they're what the community page shows. You can see them here."
+    : null;
   const { toast } = useToast();
 
   const [brandName, setBrandName] = useState(nip11?.name || "");
@@ -275,7 +284,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
     if (!pubkey) return;
     setRulesLoading(true);
     const sub = pool.subscribeMany(
-      APP_DATA_RELAYS,
+      communityRecordRelays(relayUrl),
       { kinds: [KIND_APP_DATA], authors: [pubkey], "#d": [COMMUNITY_RULES_D_TAG + "/" + relayUrl], limit: 1 },
       {
         onevent(e: NostrEvent) {
@@ -301,7 +310,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
   useEffect(() => {
     if (!pubkey) return;
     const sub = pool.subscribeMany(
-      APP_DATA_RELAYS,
+      communityRecordRelays(relayUrl),
       { kinds: [KIND_APP_DATA], authors: [pubkey], "#d": [featuredDTag(relayUrl)], limit: 1 },
       {
         onevent(e: NostrEvent) {
@@ -319,7 +328,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
   useEffect(() => {
     if (!pubkey) return;
     const sub = pool.subscribeMany(
-      APP_DATA_RELAYS,
+      communityRecordRelays(relayUrl),
       { kinds: [KIND_APP_DATA], authors: [pubkey], "#d": [MODERATORS_D_TAG + "/" + relayUrl], limit: 1 },
       {
         onevent(e: NostrEvent) {
@@ -345,7 +354,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
     setHorizonAdminOnly(null);
     setHorizonConfigLoaded(false);
     const hSub = pool.subscribeMany(
-      APP_DATA_RELAYS,
+      communityRecordRelays(relayUrl),
       { kinds: [KIND_APP_DATA], authors: [pubkey], "#d": [HORIZON_CONFIG_D_TAG + "/" + relayUrl], limit: 1 },
       {
         onevent(e: NostrEvent) {
@@ -386,7 +395,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
   useEffect(() => {
     if (!pubkey) return;
     const sub = pool.subscribeMany(
-      APP_DATA_RELAYS,
+      communityRecordRelays(relayUrl),
       { kinds: [KIND_APP_DATA], authors: [pubkey], "#d": [PINNED_TOPICS_D_TAG + "/" + relayUrl], limit: 1 },
       {
         onevent(e: NostrEvent) {
@@ -915,6 +924,9 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
         </div>
       </OpsCard>
 
+      {recordsNote && (
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-4 py-3 text-[13px]" data-testid="ops-records-readonly">{recordsNote}</p>
+      )}
       <OpsCard className="space-y-4">
         <OpsSectionHeader icon={ScrollText} label="Community Rules" className="mb-0" />
         {rulesLoading ? (
@@ -933,7 +945,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
             <p className="text-[10px] text-muted-foreground/40">
               These rules appear in the Community sidebar for members to see.
             </p>
-            <Button size="sm" onClick={handleSaveRules} disabled={savingRules} className="text-xs">
+            <Button size="sm" onClick={handleSaveRules} disabled={savingRules || !recordsEditable} className="text-xs">
               {savingRules ? <RelayOutpostInlineLoader className="w-3 h-3 mr-1" /> : <Check className="w-3 h-3 mr-1" />}
               Save Rules
             </Button>
@@ -963,7 +975,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
                 placeholder="Paste a note, nevent, or naddr link…"
                 className="text-xs h-8"
               />
-              <Button size="sm" variant="outline" onClick={handleAddFeaturedRef} className="text-xs h-8 shrink-0">
+              <Button size="sm" variant="outline" onClick={handleAddFeaturedRef} disabled={!recordsEditable} className="text-xs h-8 shrink-0">
                 <Plus className="w-3 h-3 mr-1" /> Pin
               </Button>
             </div>
@@ -986,7 +998,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
             )}
             <p className="text-[10px] text-muted-foreground/40">Up to {MAX_FEATURED_ITEMS}. Copy a link from any post, article, or event and paste it here.</p>
           </div>
-          <Button size="sm" onClick={handleSaveFeatured} disabled={savingFeatured} className="text-xs">
+          <Button size="sm" onClick={handleSaveFeatured} disabled={savingFeatured || !recordsEditable} className="text-xs">
             {savingFeatured ? <RelayOutpostInlineLoader className="w-3 h-3 mr-1" /> : <Check className="w-3 h-3 mr-1" />}
             Save Featured
           </Button>
@@ -1003,7 +1015,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
             placeholder="npub or hex pubkey"
             className="h-8 text-xs flex-1"
           />
-          <Button size="sm" onClick={handleAddMod} className="h-8 text-xs px-3">
+          <Button size="sm" onClick={handleAddMod} disabled={!recordsEditable} className="h-8 text-xs px-3">
             <Plus className="w-3 h-3 mr-1" /> Add
           </Button>
         </div>
@@ -1041,6 +1053,8 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
                     variant="ghost"
                     size="sm"
                     onClick={() => handleRemoveMod(pk)}
+                    disabled={!recordsEditable}
+                    aria-label="Remove moderator"
                     className="h-6 w-6 p-0 text-red-700/70 dark:text-red-400/70 hover:text-red-700 dark:hover:text-red-400"
                   >
                     <Trash2 className="w-3 h-3" />
@@ -1089,7 +1103,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
                 size="sm"
                 variant={effectiveHorizonAdminOnly ? "default" : "outline"}
                 onClick={handleToggleHorizonAdmin}
-                disabled={savingHorizonConfig}
+                disabled={savingHorizonConfig || !recordsEditable}
                 className={`h-7 text-[10px] px-3 shrink-0 ${effectiveHorizonAdminOnly ? "bg-primary hover:bg-primary/90 text-primary-foreground" : ""}`}
               >
                 {savingHorizonConfig ? (
@@ -1135,7 +1149,7 @@ export function CommunityTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip
                       variant="ghost"
                       size="sm"
                       onClick={() => handleTogglePin(topic.id)}
-                      disabled={pinningId === topic.id}
+                      disabled={pinningId === topic.id || !recordsEditable}
                       className={`h-6 text-[10px] px-2 ${isPinned ? "text-amber-800 dark:text-amber-400" : "text-muted-foreground/50"}`}
                     >
                       {pinningId === topic.id ? (
