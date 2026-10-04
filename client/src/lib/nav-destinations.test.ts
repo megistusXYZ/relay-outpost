@@ -93,9 +93,16 @@ describe("buildNavDestinations — the collapsed IA (Chats · Activity · Discov
     expect(buildNavDestinations({ loggedIn: true, counts: ZERO, collapsed: true }).find((d) => d.id === "relays")?.count).toBeUndefined();
   });
 
-  it("carries the same Relays count into the footer for someone who runs one", () => {
-    const tabs = buildFooterTabs({ loggedIn: true, counts: { ...ZERO, relaysNeedYou: 2 }, collapsed: true, runsRelay: true });
-    expect(tabs.find((t) => t.id === "relays")?.count).toBe(2);
+  it("the phone footer stays the same for someone who runs a relay — Relays lives in the You menu", () => {
+    const tabs = buildFooterTabs({ loggedIn: true, counts: ZERO, collapsed: true, runsRelay: true });
+    expect(tabs.map((t) => t.id)).toEqual(["chats", "activity", "discover", "you"]);
+  });
+
+  it("…and what's waiting on your relays shows on You instead", () => {
+    const you = (n: number) => buildFooterTabs({ loggedIn: true, counts: { ...ZERO, relaysNeedYou: n }, collapsed: true, runsRelay: true }).find((t) => t.id === "you");
+    expect(you(2)?.count).toBe(2);
+    expect(you(2)?.live).toBe(true);
+    expect(you(0)?.count).toBeUndefined();
   });
 
   it("opens Relays at its own home, not the relay connections page", () => {
@@ -157,9 +164,9 @@ describe("buildFooterTabs — the mobile footer's four slots", () => {
       .toEqual(["chats", "activity", "discover", "you"]);
   });
 
-  it("gives someone who runs a relay a Relays tab, after Discover", () => {
+  it("no Relays tab on the phone, even for someone who runs a relay (owner, 2026-10-04: it's in the You menu)", () => {
     expect(buildFooterTabs({ loggedIn: true, counts: ZERO, collapsed: true, runsRelay: true }).map((t) => t.id))
-      .toEqual(["chats", "activity", "discover", "relays", "you"]);
+      .toEqual(["chats", "activity", "discover", "you"]);
   });
 
   it("never gives a signed-out visitor a Relays tab", () => {
