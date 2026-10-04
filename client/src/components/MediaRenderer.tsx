@@ -1681,6 +1681,32 @@ function LiveStreamEventCard({ stream }: { stream: LiveEventData }) {
   );
 }
 
+/**
+ * A video inside a quoted post plays like one in a normal post (owner,
+ * 2026-10-04): the same player, so muted autoplay when the setting allows and
+ * it's on screen, and the app's own controls, never the browser's. Taps on it
+ * stay here instead of opening the quoted post.
+ */
+export function QuotedVideo({ event, url }: { event: Event; url: string }) {
+  const imeta = useMemo(() => parseImetaTags(event.tags).find((d) => d.url === url), [event.tags, url]);
+  const contentWarning = useMemo(() => getContentWarning(event), [event]);
+  return (
+    <div onClick={(e) => e.stopPropagation()} data-testid="embedded-note-video">
+      <InlineVideo
+        src={url}
+        poster={imeta?.thumbnail}
+        dimensions={imeta?.dimensions}
+        sha256={imeta?.sha256}
+        fallbacks={imeta?.fallbacks}
+        compact
+        contentWarning={contentWarning}
+        cwKey={event.id}
+        authorPubkey={event.pubkey}
+      />
+    </div>
+  );
+}
+
 export interface MediaRendererProps {
   event: Event;
   compact?: boolean;

@@ -132,10 +132,10 @@ import { FOCUS_RING } from "@/lib/a11y";
 import { getClientDisplay } from "@/lib/client-display";
 import { ClientTagBadge } from "@/components/ClientTagBadge";
 import { useShowClientTag } from "@/hooks/use-show-client-tag";
-import { MediaRenderer } from "@/components/MediaRenderer";
+import { MediaRenderer, QuotedVideo } from "@/components/MediaRenderer";
 import { useTranslation, TranslateLine } from "@/components/TranslateControl";
 import { getContentWarning, getSensitiveContentSetting, isCwRevealed, markCwRevealed } from "@/lib/sensitive-content";
-import { extractMediaFromContent, getEventMediaInfo } from "@/lib/media-utils";
+import { extractMediaFromContent, getEventMediaInfo, getMediaTypeFromMime, parseImetaTags } from "@/lib/media-utils";
 import { normalizeNostrClientLinks } from "@/lib/nostr-client-links";
 import { useNostrBookmarks } from "@/hooks/use-nostr-bookmarks";
 import { useFeedStyle } from "@/hooks/use-feed-style";
@@ -1114,7 +1114,12 @@ export function EmbeddedNote({ eventId, encoded, relays, parentEventId }: { even
   const audioUrlRegex = /https?:\/\/\S+\.(mp3|m4a|wav|ogg|opus|aac|flac)(\?[^\s]*)?/gi;
   // Each picture once (nostr-post/quoted-images.ts).
   const imageUrls = quotedImageUrls(fetchedEvent.content);
-  const videoUrls = (fetchedEvent.content.match(videoUrlRegex) || []).slice(0, 1);
+  // Like a normal post, a video is also known by its imeta type — media hosts'
+  // links often have no file ending.
+  const taggedVideos = parseImetaTags(fetchedEvent.tags)
+    .filter((d) => fetchedEvent.content.includes(d.url) && (d.mimeType ? getMediaTypeFromMime(d.mimeType) === "video" : false))
+    .map((d) => d.url);
+  const videoUrls = Array.from(new Set([...(fetchedEvent.content.match(videoUrlRegex) || []), ...taggedVideos])).slice(0, 1);
   // A quoted music/podcast post must arrive with its PLAYER, not as bare text
   // (live report: quoted Wavlake-style tracks rendered playerless). The imeta
   // tag's cover image (if any) rides along as the player's thumbnail.
@@ -1179,14 +1184,7 @@ export function EmbeddedNote({ eventId, encoded, relays, parentEventId }: { even
         </div>
       )}
       {videoUrls.length > 0 && imageUrls.length === 0 && (
-        <video
-          src={videoUrls[0]}
-          controls
-          preload="metadata"
-          className="w-full rounded-md aspect-video max-h-[200px] object-contain bg-black"
-          onClick={(e) => e.stopPropagation()}
-          data-testid="embedded-note-video"
-        />
+        <QuotedVideo event={fetchedEvent} url={videoUrls[0]} />
       )}
       {audioUrls.length > 0 && (
         <div className="flex items-center gap-2.5" onClick={(e) => e.stopPropagation()}>
