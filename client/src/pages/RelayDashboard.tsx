@@ -599,7 +599,7 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
                                     variant="ghost"
                                     size="sm"
                                     className="h-6 px-2 text-[10px]"
-                                    onClick={() => navigate(`/console?relay=${encodeURIComponent(relay.url)}`)}
+                                    onClick={() => navigate(`/my-relays/console?relay=${encodeURIComponent(relay.url)}`)}
                                     data-testid={`button-query-console-${relay.url}`}
                                   >
                                     <Terminal className="w-2.5 h-2.5 mr-1" /> Query on console

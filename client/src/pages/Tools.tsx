@@ -21,7 +21,7 @@ const TOOLS: ToolRow[] = [
   { href: "/account?tab=bookmarks", icon: Bookmark, title: "Bookmarks", desc: "Saved posts & articles" },
   { href: "/console/dashboard", icon: BarChart3, title: "Analytics", desc: "Engagement & reach" },
   { href: "/tickets", icon: Inbox, title: "Tickets & Feedback", desc: "Send feedback, and see replies to your tickets" },
-  { href: "/console", icon: Terminal, title: "Console", desc: "Raw relay queries" },
+  { href: "/my-relays/console", icon: Terminal, title: "Console", desc: "Ask any relay anything" },
   { href: "/account?tab=flight_log", icon: ScrollText, title: "Flight Log", desc: "Your activity log" },
   { href: "/recover-follows", icon: Users, title: "Follow list", desc: "Health: recover, review flagged & inactive" },
   { href: "/trust-reviews", icon: ShieldCheck, title: "Trust reviews", desc: "Vouches from your network" },

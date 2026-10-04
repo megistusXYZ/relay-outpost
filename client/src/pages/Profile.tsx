@@ -1825,7 +1825,7 @@ export default function Profile() {
         <Share2 className="w-4 h-4 text-brand/70" /> Share profile
       </DropdownMenuItem>
       <DropdownMenuItem
-        onClick={() => { if (pubkey) setLocation(`/console?filter=${encodeURIComponent(JSON.stringify({ authors: [pubkey] }))}`); }}
+        onClick={() => { if (pubkey) setLocation(`/my-relays/console?filter=${encodeURIComponent(JSON.stringify({ authors: [pubkey] }))}`); }}
         className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0"
         data-testid="menu-item-query-console"
       >

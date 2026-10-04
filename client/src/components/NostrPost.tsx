@@ -2956,7 +2956,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
                 // seeded with a relay it was seen on when we know one.
                 const seen = getEventRelays(event.id);
                 const relayParam = seen.length > 0 ? `&relay=${encodeURIComponent(seen[0])}` : "";
-                navigate(`/console?filter=${encodeURIComponent(JSON.stringify({ ids: [event.id] }))}${relayParam}`);
+                navigate(`/my-relays/console?filter=${encodeURIComponent(JSON.stringify({ ids: [event.id] }))}${relayParam}`);
               }, 0)}
               data-testid={`menu-inspect-console-${event.id}`}
             >

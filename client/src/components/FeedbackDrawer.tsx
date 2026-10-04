@@ -218,7 +218,7 @@ export function FeedbackDrawer() {
         if (recipient.hasInbox && recipient.repoD) {
           const coord = `30617:${recipient.operatorPubkey}:${recipient.repoD}`;
           const filterParam = encodeURIComponent(JSON.stringify({ kinds: [1621, 1111, 1622, 1630, 1631, 1632, 1633], "#a": [coord] }));
-          openIssuesUrl = `/console?filter=${filterParam}&relay=${encodeURIComponent(targetRelay)}`;
+          openIssuesUrl = `/my-relays/console?filter=${filterParam}&relay=${encodeURIComponent(targetRelay)}`;
         }
       } else {
         // No operator key discoverable — a public note is the only way to reach them.

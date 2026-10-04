@@ -9,8 +9,8 @@ import { parseConsoleQueryParams } from "./console-query-params";
 
 describe("parseConsoleQueryParams", () => {
   it("returns nulls for an empty / bare search", () => {
-    expect(parseConsoleQueryParams("")).toEqual({ filter: null, relay: null });
-    expect(parseConsoleQueryParams("?")).toEqual({ filter: null, relay: null });
+    expect(parseConsoleQueryParams("")).toEqual({ filter: null, relay: null, relays: [], filterText: null });
+    expect(parseConsoleQueryParams("?")).toEqual({ filter: null, relay: null, relays: [], filterText: null });
   });
 
   it("decodes a url-encoded filter JSON object", () => {
