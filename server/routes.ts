@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { pipeUpstream } from "./stream-proxy";
 import type { Server } from "http";
 import { z } from "zod";
 import dns from "dns/promises";
@@ -2234,17 +2235,12 @@ export async function registerRoutes(
       res.set('Access-Control-Allow-Origin', '*');
 
       const { Readable } = await import("stream");
-      const nodeStream = Readable.fromWeb(response.body as any);
-      let bytesRead = 0;
-      const MAX_BYTES = 5 * 1024 * 1024;
-      nodeStream.on('data', (chunk: Buffer) => {
-        bytesRead += chunk.length;
-        if (bytesRead > MAX_BYTES) {
-          nodeStream.destroy();
-          if (!res.headersSent) res.status(413).json({ error: "Image too large" });
-        }
+      // Safe pipe: an image host dropping mid-download must end this
+      // response, never the server (server/stream-proxy.ts).
+      pipeUpstream(Readable.fromWeb(response.body as any), res, 5 * 1024 * 1024, () => {
+        if (!res.headersSent) res.status(413).json({ error: "Image too large" });
+        else res.end();
       });
-      nodeStream.pipe(res);
     } catch (err: any) {
       if (!res.headersSent) {
         res.status(502).json({ error: "Failed to fetch image" });
@@ -2682,17 +2678,7 @@ export async function registerRoutes(
       }
 
       const { Readable } = await import("stream");
-      const nodeStream = Readable.fromWeb(upstream.body as any);
-      let streamedBytes = 0;
-      nodeStream.on("data", (chunk: Buffer) => {
-        streamedBytes += chunk.length;
-        if (streamedBytes > MAX_PROXY_BYTES) {
-          nodeStream.destroy();
-          res.end();
-        }
-      });
-      nodeStream.pipe(res);
-      nodeStream.on("error", () => { if (!res.headersSent) res.status(502).end(); });
+      pipeUpstream(Readable.fromWeb(upstream.body as any), res, MAX_PROXY_BYTES);
     } catch (err: any) {
       if (err.name === "TimeoutError" || err.name === "AbortError") {
         return res.status(504).json({ error: "Upstream timeout" });
