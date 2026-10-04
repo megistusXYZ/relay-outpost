@@ -39,6 +39,24 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.16.1",
+    date: "2026-10-04",
+    title: "Replies where you can see them",
+    changes: [
+      { type: "improved", text: "Replies read like a conversation: the post, the replies, then the box to write yours. What you send appears right where you wrote it, comes into view and is marked for a moment, even in a long thread." },
+      { type: "improved", text: "Videos in quoted posts play the way they do in any post: quietly on their own when autoplay is on, with the app's own sound button, and they wait for a tap when it's off." },
+      { type: "new", text: "Your team can share one moderation log and private notes about members, readable only by your team and kept on your own relay." },
+      { type: "new", text: "See plainly whether you're connected to each relay, choose whether to sign in to it always, when asked or never, and test that it lets you read and post." },
+      { type: "improved", text: "If you run a relay, the bar at the bottom of your phone stays the same. Your relays are under You, and anything waiting on them is counted there." },
+    ],
+    feedback: [
+      {
+        quote: "When I replied to a comment it put it in a funky spot.",
+        attribution: "Someone replying in a thread. Your reply now shows up under the comment, in view, with the box ready for the next one.",
+      },
+    ],
+  },
+  {
     version: "1.16.0",
     date: "2026-10-04",
     title: "Run your community from here",
