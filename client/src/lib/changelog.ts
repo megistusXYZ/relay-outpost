@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.16.3",
+    date: "2026-10-04",
+    title: "Your reply waits for you",
+    changes: [
+      { type: "improved", text: "Close the reply box halfway through and nothing is lost. Open it again on the same post or comment and your words are back, with the people you tagged, any custom emoji and the GIF you picked. On a phone you can see it waiting in the reply bar." },
+      { type: "improved", text: "Drafts stay on this device for a week and only for your account. Sending the reply clears it." },
+    ],
+  },
+  {
     version: "1.16.2",
     date: "2026-10-04",
     title: "Reply from anywhere in a thread",
