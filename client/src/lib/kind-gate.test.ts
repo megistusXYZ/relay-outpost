@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { describeKindPolicy, GATE_KIND_OPTIONS, formatKindList } from "./kind-gate";
+import { describeKindPolicy, GATE_KIND_OPTIONS, formatKindList, acceptedKindsLine } from "./kind-gate";
 
 describe("describeKindPolicy (three outcomes: answered-with-list, answered-empty, never-answered)", () => {
   it("an allowlist means only those kinds get in", () => {
@@ -42,5 +42,14 @@ describe("formatKindList (one label per category, kinds grouped)", () => {
   });
   it("falls back to the bare kind for unknown numbers", () => {
     expect(formatKindList([31337])).toBe("Kind 31337");
+  });
+});
+
+describe("what it accepts, in one line (Overview)", () => {
+  it("the relay's own answer, never a made-up list", () => {
+    expect(acceptedKindsLine({ mode: "allowlist", kinds: [1, 30023] })).toBe("Only Short posts (1), Articles (30023)");
+    expect(acceptedKindsLine({ mode: "blocklist", kinds: [4, 1059] })).toBe("Everything except Private messages (4, 1059)");
+    expect(acceptedKindsLine({ mode: "unrestricted", kinds: [] })).toBe("Any kind");
+    expect(acceptedKindsLine({ mode: "unknown", kinds: [] })).toBe("This relay doesn't say which kinds it accepts");
   });
 });

@@ -14,7 +14,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link } from "wouter";
 import type { Event as NostrEvent } from "nostr-tools";
-import { Ban, Copy, Download, MessageCircle, Search, ShieldCheck, SlidersHorizontal, UserRound, X } from "lucide-react";
+import { Ban, Copy, Download, MessageCircle, ScanSearch, Search, ShieldCheck, SlidersHorizontal, UserRound, X } from "lucide-react";
+import { EventInspector, type InspectedEvent } from "./EventInspector";
+import { DEFAULT_RELAYS } from "@/lib/nostr";
 import { supportsNip, type Nip11Document } from "@/lib/nip11";
 import {
   allowPubkey, banPubkey, fetchRelayCapabilities, listAllowedPubkeys, listBannedPubkeys, unallowPubkey, unbanPubkey,
@@ -72,6 +74,19 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts }: {
   const { getAuthorTier, isAuthorFlagged, wotEnabled } = useGrapeRankScores();
   const tierOf = useCallback((pk: string) => (isAuthorFlagged(pk) ? "flagged" as const : getAuthorTier(pk)), [getAuthorTier, isAuthorFlagged]);
   const relayName = nip11?.name?.trim() || relayUrl.replace(/^wss?:\/\//, "");
+
+  // Inspect a person: their profile event, from this relay or the public ones.
+  const [inspecting, setInspecting] = useState<InspectedEvent | null>(null);
+  const [findingProfile, setFindingProfile] = useState(false);
+  const inspectProfile = async (pubkey: string) => {
+    setFindingProfile(true);
+    const relays = [relayUrl, ...DEFAULT_RELAYS.filter((r) => r.replace(/\/+$/, "") !== relayUrl.replace(/\/+$/, ""))];
+    const { events: found } = await subscribeWithReach(relays, [{ kinds: [0], authors: [pubkey] }], 6000);
+    setFindingProfile(false);
+    const latest = found.sort((a, b) => b.created_at - a.created_at)[0];
+    if (latest) setInspecting(latest);
+    else toast({ title: "No profile found", description: "Neither this relay nor the public ones that answered have one for them." });
+  };
   const speaks86 = !!nip11 && supportsNip(nip11, 86);
 
   const [caps, setCaps] = useState<RelayCapabilities>(UNKNOWN_CAPABILITIES);
@@ -233,6 +248,8 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts }: {
       onAllow={() => quick("allow", [person.pubkey])}
       onUnallow={() => quick("unallow", [person.pubkey])}
       onSeePosts={() => onSeePosts(pubkeyToNpub(person.pubkey))}
+      onInspectProfile={() => void inspectProfile(person.pubkey)}
+      finding={findingProfile}
     />
   ) : null;
 
@@ -362,15 +379,17 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts }: {
         <ConfirmAction pending={pending} relayName={relayName} canRestore={false} progress={progress}
           onCancel={() => { if (!progress) setPending(null); }} onConfirm={carryOutBan} nameOf={nameOf} />
       )}
+      <EventInspector event={inspecting} relayUrl={relayUrl} relayName={relayName} onClose={() => setInspecting(null)} />
     </div>
   );
 }
 
-function PersonDetail({ person, profile, trust, nowSec, relayName, can, where, onBan, onUnban, onAllow, onUnallow, onSeePosts }: {
+function PersonDetail({ person, profile, trust, nowSec, relayName, can, where, onBan, onUnban, onAllow, onUnallow, onSeePosts, onInspectProfile, finding }: {
   person: Person; profile?: ProfileInfo; trust: string; nowSec: number; relayName: string;
   can: { ban: boolean; unban: boolean; allow: boolean; unallow: boolean };
   where: { name: string; url?: string };
   onBan: () => void; onUnban: () => void; onAllow: () => void; onUnallow: () => void; onSeePosts: () => void;
+  onInspectProfile: () => void; finding: boolean;
 }) {
   const npub = pubkeyToNpub(person.pubkey);
   const name = profile?.name || `${npub.slice(0, 16)}…`;
@@ -411,6 +430,7 @@ function PersonDetail({ person, profile, trust, nowSec, relayName, can, where, o
         <div className="flex gap-2">
           <Button asChild variant="ghost" className="h-11 flex-1 rounded-full"><Link href={`/messages/${npub}`} data-testid="ops-person-message"><MessageCircle className="w-4 h-4 mr-2" />Message</Link></Button>
           <Button asChild variant="ghost" className="h-11 flex-1 rounded-full"><Link href={`/profile/${npub}`} data-testid="ops-person-profile"><UserRound className="w-4 h-4 mr-2" />Profile</Link></Button>
+          <Button variant="ghost" className="h-11 flex-1 rounded-full" onClick={onInspectProfile} disabled={finding} data-testid="ops-person-inspect"><ScanSearch className="w-4 h-4 mr-2" />{finding ? "Finding…" : "Inspect"}</Button>
         </div>
       </div>
     </div>

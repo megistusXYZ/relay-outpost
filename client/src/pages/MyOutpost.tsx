@@ -234,7 +234,6 @@ export default function MyOutpost() {
   const search = useSearch();
   const { pubkey, signer, profile, follows, attemptReconnect } = useNostrAuth();
   const { livePubkeys } = useLiveStatus();
-  useDocumentTitle("Account");
   const connectionScoresData = useConnectionScores(pubkey);
   const { recalculating, notifyRecalculating, wotEnabled, wotReady, setWotEnabled } = useGrapeRankScores();
   const [triggeringWot, setTriggeringWot] = useState(false);
@@ -1345,6 +1344,8 @@ export default function MyOutpost() {
     ] },
   ];
   const activeManageItem = manageGroups.flatMap(g => g.items).find(i => i.id === activeTab) || null;
+  // The tab names the tool that's open (Analytics, Wallet…), else Account.
+  useDocumentTitle(activeManageItem?.label ?? "Account");
 
   if (!pubkey) {
     return (

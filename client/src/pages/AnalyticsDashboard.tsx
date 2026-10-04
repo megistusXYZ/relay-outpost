@@ -94,7 +94,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend } from "recharts";
-import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { getSignalTier, getSignalTierLabel, formatInfluence, getActiveThresholds, type SignalTier } from "@/lib/graperank";
@@ -1904,7 +1903,8 @@ function NetworkPulse({ pubkey }: { pubkey?: string }) {
 }
 
 export default function AnalyticsDashboard({ embedded = false }: { embedded?: boolean } = {}) {
-  useDocumentTitle("Console");
+  // No title of its own: it only shows inside Account, which names the tab
+  // after the open tool. (It set "Console" here, racing Account's.)
 
   const urlPubkey = useMemo(() => {
     const params = new URLSearchParams(window.location.search);

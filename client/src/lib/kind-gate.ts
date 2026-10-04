@@ -58,3 +58,11 @@ export function formatKindList(kinds: number[]): string {
     .map(([label, ks]) => (label.startsWith("Kind ") ? label : `${label} (${ks.join(", ")})`))
     .join(", ");
 }
+
+/** What the relay accepts, in one line — its own answer, or that it gave none. */
+export function acceptedKindsLine(policy: KindPolicy): string {
+  if (policy.mode === "allowlist") return `Only ${formatKindList(policy.kinds)}`;
+  if (policy.mode === "blocklist") return `Everything except ${formatKindList(policy.kinds)}`;
+  if (policy.mode === "unrestricted") return "Any kind";
+  return "This relay doesn't say which kinds it accepts";
+}

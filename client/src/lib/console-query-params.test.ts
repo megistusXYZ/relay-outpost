@@ -64,3 +64,12 @@ describe("parseConsoleQueryParams", () => {
     expect(parseConsoleQueryParams("?relay=wss://relay.nostr.band").relay).toBe("wss://relay.nostr.band");
   });
 });
+
+describe("the old analytics link", () => {
+  it("keeps who it was opened for, and where on the page", async () => {
+    const { analyticsRedirect } = await import("./console-query-params");
+    expect(analyticsRedirect("?pubkey=npub1abc", "")).toBe("/account?pubkey=npub1abc&tab=analytics");
+    expect(analyticsRedirect("", "#adoption-funnel")).toBe("/account?tab=analytics#adoption-funnel");
+    expect(analyticsRedirect("?tab=wallet&npub=npub1x", "")).toBe("/account?tab=analytics&npub=npub1x");
+  });
+});

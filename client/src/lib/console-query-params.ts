@@ -50,3 +50,14 @@ export function parseConsoleQueryParams(search: string): ParsedConsoleParams {
 
   return { filter, relay, relays, filterText: rawFilter };
 }
+
+/**
+ * `/console/dashboard` moved to Account › Analytics. Keep its query (the
+ * `?pubkey=` a "Full report" link carries) and its hash, or the report
+ * opens on nobody.
+ */
+export function analyticsRedirect(search: string, hash: string): string {
+  const sp = new URLSearchParams(search || "");
+  sp.set("tab", "analytics");
+  return `/account?${sp.toString()}${hash || ""}`;
+}
