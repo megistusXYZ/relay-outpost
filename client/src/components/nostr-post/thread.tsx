@@ -234,6 +234,119 @@ export function flattenThreadForTTS(
   return segments;
 }
 
+/** The name a reply box shows for who you're answering. */
+function useReplyToName(pubkey: string): string {
+  const profile = use$(() => eventStore.replaceable(KIND_METADATA, pubkey), [pubkey]);
+  return useMemo(() => {
+    if (profile) {
+      const name = getDisplayName(profile, "");
+      if (name) return name;
+    }
+    try {
+      const npub = nip19.npubEncode(pubkey);
+      return `${npub.slice(0, 9)}...${npub.slice(-4)}`;
+    } catch {
+      return "user";
+    }
+  }, [pubkey, profile]);
+}
+
+/**
+ * The phone's docked reply bar (owner, 2026-10-04). On a phone the thread page
+ * has ONE reply box, docked above the footer: it answers the post, and Reply
+ * on any comment points it at that comment — "Replying to Bob ×", where ×
+ * points it back at the post. After sending it goes back to the post.
+ * Desktop keeps the box after the replies and a box under each comment.
+ */
+const ReplyDockContext = createContext<{ replyTo: (e: Event) => void } | null>(null);
+
+/** Inside a docked thread page: Reply buttons hand their post to the bar. */
+export function useReplyDock() {
+  return useContext(ReplyDockContext);
+}
+
+export function ReplyDock({ root, children }: { root: Event; children: ReactNode }) {
+  const { pubkey, profile } = useNostrAuth();
+  const [target, setTarget] = useState<Event | null>(null); // null = the post
+  const [open, setOpen] = useState(false);
+  const ctx = useMemo(() => ({
+    replyTo: (e: Event) => { setTarget(e.id === root.id ? null : e); setOpen(true); },
+  }), [root.id]);
+  const targetName = useReplyToName(target?.pubkey ?? root.pubkey);
+  // Floating buttons (scroll to top) stand clear of the bar: --ro-dock-h.
+  const barRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = barRef.current;
+    const docEl = document.documentElement;
+    if (!el) return;
+    // The bar plus the footer it rides on, so the lift follows the footer as it slides.
+    const write = () => docEl.style.setProperty("--ro-dock-h", `calc(${el.offsetHeight}px + var(--ro-footer-h, 0px))`);
+    write();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(write) : null;
+    ro?.observe(el);
+    return () => { ro?.disconnect(); docEl.style.removeProperty("--ro-dock-h"); };
+  }, [pubkey]);
+  if (!pubkey) return <>{children}</>;
+  const initials = (profile?.display_name || profile?.name || "?").slice(0, 2).toUpperCase();
+  return (
+    <ReplyDockContext.Provider value={ctx}>
+      {children}
+      {createPortal(
+        <div
+          ref={barRef}
+          // While the reply box is open it stands in for the bar (no doubled "Replying to" behind it).
+          aria-hidden={open || undefined}
+          className={`${open ? "invisible" : ""} fixed left-0 right-0 z-40 md:hidden border-t border-black/[0.08] dark:border-white/[0.08] bg-background transition-[bottom] duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] motion-reduce:transition-none`}
+          style={{
+            // Rides on the footer, and drops to the bottom edge when it slides away (MobileFooter sets --ro-footer-h).
+            bottom: "var(--ro-footer-h, 0px)",
+            paddingBottom: "max(0px, calc(env(safe-area-inset-bottom, 0px) - var(--ro-footer-h, 0px)))",
+          }}
+          data-testid="thread-reply-dock"
+        >
+          {target && (
+            <div className="flex items-center gap-2 pl-4 text-[13px] text-muted-foreground" data-testid="thread-reply-dock-target">
+              <CornerUpLeft className="w-3.5 h-3.5 shrink-0 text-brand/70" aria-hidden="true" />
+              <span className="truncate">Replying to <span className="text-brand font-medium">{targetName}</span></span>
+              <button
+                type="button"
+                onClick={() => setTarget(null)}
+                aria-label="Reply to the post instead"
+                className="ml-auto shrink-0 w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                data-testid="thread-reply-dock-clear"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className={`w-full flex items-center gap-3 px-3 ${target ? "pb-2" : "py-2"} min-h-[52px] text-left`}
+            data-testid="thread-reply-dock-open"
+          >
+            <Avatar className="w-8 h-8 border border-border/40 shrink-0">
+              <AvatarImage src={profile?.picture} alt="" />
+              <AvatarFallback className="text-[10px] bg-muted text-muted-foreground">{initials}</AvatarFallback>
+            </Avatar>
+            <span className="flex-1 min-h-[40px] flex items-center rounded-full bg-black/[0.04] dark:bg-white/[0.06] px-4 text-[15px] text-muted-foreground">
+              Write a reply…
+            </span>
+          </button>
+        </div>,
+        document.body,
+      )}
+      {open && (
+        <ReplyComposer
+          replyTo={target ?? root}
+          onClose={() => setOpen(false)}
+          onPublished={() => setTarget(null)}
+        />
+      )}
+    </ReplyDockContext.Provider>
+  );
+}
+
 export function ReplyComposer({
   replyTo,
   onClose,
@@ -306,22 +419,7 @@ export function ReplyComposer({
     };
   }, [isMobile]);
 
-  const replyToProfile = use$(
-    () => eventStore.replaceable(KIND_METADATA, replyTo.pubkey),
-    [replyTo.pubkey]
-  );
-  const replyToName = useMemo(() => {
-    if (replyToProfile) {
-      const name = getDisplayName(replyToProfile, "");
-      if (name) return name;
-    }
-    try {
-      const npub = nip19.npubEncode(replyTo.pubkey);
-      return `${npub.slice(0, 9)}...${npub.slice(-4)}`;
-    } catch {
-      return "user";
-    }
-  }, [replyTo.pubkey, replyToProfile]);
+  const replyToName = useReplyToName(replyTo.pubkey);
 
   const handlePublish = async () => {
     if ((!content.trim() && !gifUrl) || !signer) return;
@@ -1162,11 +1260,13 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
     window.setTimeout(() => item.classList.remove("thread-parent-flash"), 1500);
   }, [event]);
 
+  const dock = useReplyDock();
   const handleReplyClick = () => {
     if (!signer) {
       toast({ title: "Sign in required", description: "Sign in to reply.", variant: "destructive" });
       return;
     }
+    if (dock) { dock.replyTo(event); return; }
     setShowInlineReply(prev => !prev);
   };
 

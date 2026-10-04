@@ -2680,7 +2680,8 @@ html[data-perf="lite"] .space-bg-nebula {
 
 @media (max-width: 767px) {
   .scroll-to-top-btn {
-    bottom: 1.25rem !important;
+    /* Above the thread page's docked reply bar when there is one (--ro-dock-h). */
+    bottom: calc(1.25rem + var(--ro-dock-h, 0px)) !important;
     right: 1rem !important;
   }
 }
