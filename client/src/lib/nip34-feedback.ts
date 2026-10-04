@@ -649,9 +649,19 @@ export async function fetchFeedbackListing(relayUrl: string, operatorPubkey: str
     );
     setTimeout(() => { try { sub.close(); } catch {} resolve(); }, 4000);
   });
+  return pickFeedbackListing(found, relayUrl);
+}
+
+/**
+ * This relay's listing (its relay-scoped d), else an un-scoped one (made
+ * before listings were per relay) — never a listing scoped to another relay,
+ * which would switch this relay's inbox on with that relay's settings.
+ */
+export function pickFeedbackListing(found: NostrEvent[], relayUrl: string): NostrEvent | null {
   const scoped = relayScopedRepoD(relayUrl);
-  const newest = (xs: NostrEvent[]) => xs.sort((a, b) => b.created_at - a.created_at)[0] ?? null;
-  return newest(found.filter((e) => e.tags.some((t) => t[0] === "d" && t[1] === scoped))) ?? newest(found);
+  const dOf = (e: NostrEvent) => e.tags.find((t) => t[0] === "d")?.[1] ?? "";
+  const newest = (xs: NostrEvent[]) => [...xs].sort((a, b) => b.created_at - a.created_at)[0] ?? null;
+  return newest(found.filter((e) => dOf(e) === scoped)) ?? newest(found.filter((e) => !dOf(e).startsWith("feedback-")));
 }
 
 export async function discoverRecipientForRelay(relayUrl: string, label?: string): Promise<FeedbackRecipient | null> {
@@ -1170,6 +1180,8 @@ export function tryEncodeNevent(eventId: string, relay: string, kind: number): s
 
 export type OpenFeedbackDrawerDetail = {
   initialRecipient?: FeedbackRecipient;
+  /** Start on this request type (e.g. the Ideas board's "Suggest an idea"). */
+  initialTemplate?: string;
   initialType?: FeedbackType;
   initialTitle?: string;
 };

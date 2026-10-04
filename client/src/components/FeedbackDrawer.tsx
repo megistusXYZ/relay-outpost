@@ -46,6 +46,7 @@ export function FeedbackDrawer() {
   // The relay chosen — by opening the drawer for it, or picking it. Kept by
   // relay, not position, so a list that arrives later can't change it.
   const chosenRelayRef = useRef<string | null>(null);
+  const initialTemplateRef = useRef<string | null>(null);
   const [type, setType] = useState<FeedbackType>("bug");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -80,6 +81,7 @@ export function FeedbackDrawer() {
       }
       if (detail.initialTitle) setTitle(detail.initialTitle);
       chosenRelayRef.current = detail.initialRecipient?.relay ?? null;
+      initialTemplateRef.current = detail.initialTemplate ?? null;
       if (detail.initialRecipient) {
         setRecipients((prev) => {
           const exists = prev.findIndex((r) => r.relay === detail.initialRecipient!.relay);
@@ -151,7 +153,7 @@ export function FeedbackDrawer() {
     if (canPrivate && canPublicIssue) setIsPrivate(t.visibility === "private");
   }, [canPrivate, canPublicIssue]);
   useEffect(() => {
-    if (templates.length) chooseTemplate(templates[0]);
+    if (templates.length) chooseTemplate(templates.find((t) => t.id === initialTemplateRef.current) ?? templates[0]);
     else setTemplateId(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recipient?.relay, templates.length]);
