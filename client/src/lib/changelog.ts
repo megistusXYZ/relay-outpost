@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.16.4",
+    date: "2026-10-04",
+    title: "Type straight away",
+    changes: [
+      { type: "fixed", text: "On a phone, you can start typing the moment the reply box opens. Your first letters no longer go missing or end up in the wrong place." },
+      { type: "improved", text: "Screens on a phone open in their phone layout straight away, without a brief flash of the computer version first." },
+    ],
+  },
+  {
     version: "1.16.3",
     date: "2026-10-04",
     title: "Your reply waits for you",
