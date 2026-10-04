@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { hasNewFromOthers, threadItems } from "@/lib/feedback-needs";
+import { hasNewForReporter, threadItems, ticketNewsSince } from "@/lib/feedback-needs";
 import { useSearch, useLocation } from "wouter";
 import { PageToolbar } from "@/components/PageToolbar";
 import { Card } from "@/components/ui/card";
@@ -270,7 +270,7 @@ export default function MyTickets() {
       ) : (
         <div className="space-y-2">
           {tickets.map((t: FeedbackIssue) => {
-            const unread = hasNewFromOthers(t, pubkey ?? null);
+            const unread = hasNewForReporter(t, pubkey ?? null, ticketNewsSince());
             const recipient = recipientFromIssue(t.event);
             return (
               <Card

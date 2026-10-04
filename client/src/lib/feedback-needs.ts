@@ -51,10 +51,41 @@ export function markAppErrorGroupRead(issues: FeedbackIssue[], sig: string): voi
   markIssuesRead(issues.filter((t) => isCrashIssue(t) && sigOf(t) === sig));
 }
 
+/**
+ * The reporter's side: is there news for them on this ticket? A reply counts
+ * as it always did (unread, on a ticket that isn't closed). A status change —
+ * and anything on a closed ticket — counts only if it came after `since`:
+ * when they first ran a version that tells them about status changes. Without
+ * that, a ticket closed months ago would arrive as news the day this ships.
+ */
+export function hasNewForReporter(t: FeedbackIssue, me: string | null, since = 0): boolean {
+  const last = getIssueLastRead(t.event.id);
+  for (const c of t.comments) {
+    if (c.pubkey === me || !c.content.trim() || c.created_at <= last) continue;
+    if (t.status !== "closed" || c.created_at > since) return true;
+  }
+  for (const s of t.statusChanges ?? []) if (s.by !== me && s.at > last && s.at > since) return true;
+  return false;
+}
+
 /** The reporter's side: tickets they sent with news from someone else. */
-export function ticketUpdates(issues: FeedbackIssue[], me: string | null): FeedbackIssue[] {
+export function ticketUpdates(issues: FeedbackIssue[], me: string | null, since = 0): FeedbackIssue[] {
   if (!me) return [];
-  return issues.filter((t) => t.reporter === me && hasNewFromOthers(t, me));
+  return issues.filter((t) => t.reporter === me && hasNewForReporter(t, me, since));
+}
+
+const NEWS_SINCE_KEY = "ro_ticket_news_since";
+/** When this device first ran a version that reports status changes (set on first ask). */
+export function ticketNewsSince(): number {
+  try {
+    const v = Number(localStorage.getItem(NEWS_SINCE_KEY));
+    if (v > 0) return v;
+    const now = Math.floor(Date.now() / 1000);
+    localStorage.setItem(NEWS_SINCE_KEY, String(now));
+    return now;
+  } catch {
+    return Math.floor(Date.now() / 1000);
+  }
 }
 
 const host = (u: string) => u.replace(/^wss?:\/\//, "").replace(/\/+$/, "").toLowerCase();

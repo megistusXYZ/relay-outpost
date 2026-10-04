@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { subscribeMyTickets, subscribePrivateFeedback, hydrateIssues, hydratePrivateTickets } from "@/lib/nip34-feedback";
-import { ticketUpdates } from "@/lib/feedback-needs";
+import { ticketNewsSince, ticketUpdates } from "@/lib/feedback-needs";
 import type { UnwrappedRumor } from "@/lib/dm";
 import type { Event as NostrEvent } from "nostr-tools";
 
@@ -40,7 +40,7 @@ export function useFeedbackUnread(): number {
     if (!pubkey) return 0;
     // A reply or status change from someone else you haven't seen — a close
     // included (lib/feedback-needs.ts; the bell uses the same rule).
-    return ticketUpdates([...hydrateIssues(events), ...hydratePrivateTickets(rumors)], pubkey).length;
+    return ticketUpdates([...hydrateIssues(events), ...hydratePrivateTickets(rumors)], pubkey, ticketNewsSince()).length;
     // readTick participates so the count refreshes after markIssueRead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [events, rumors, readTick, pubkey]);

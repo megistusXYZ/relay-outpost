@@ -23,7 +23,7 @@ import {
   subscribeMyTickets, subscribePrivateFeedback, hydrateIssues, hydratePrivateTickets,
   markIssuesRead, markIssueRead, recipientFromIssue, type FeedbackIssue,
 } from "@/lib/nip34-feedback";
-import { hasNewFromOthers, newestFromOthers } from "@/lib/feedback-needs";
+import { hasNewForReporter, newestFromOthers, ticketNewsSince } from "@/lib/feedback-needs";
 import type { UnwrappedRumor } from "@/lib/dm";
 import { getMyDMReceiveRelays, getMyNotificationRelays, getOwnDMInboxRelays } from "@/lib/outbox";
 import { setOwnDMInboxProvider } from "@/lib/nip42-auth";
@@ -784,7 +784,7 @@ export default function NotificationEngine({ onChange }: { onChange: (value: Not
     void feedbackReadVersion;
     if (!pubkey) return [] as FeedbackIssue[];
     // Tickets you reported that someone else has answered or changed the
-    // status of — a close included. Read or not is hasNewFromOthers below; the
+    // status of — a close included. Read or not is hasNewForReporter below; the
     // badge (useFeedbackUnread) counts the unseen ones by the same rule.
     const issues = [...hydrateIssues(ticketEvents), ...hydratePrivateTickets(ticketRumors)];
     return issues.filter((issue) => issue.reporter === pubkey && newestFromOthers(issue, pubkey) > 0);
@@ -827,7 +827,7 @@ export default function NotificationEngine({ onChange }: { onChange: (value: Not
         type: "ticket",
         fromPubkey: recipient.operatorPubkey || issue.reporter,
         timestamp: issue.latestActivityAt,
-        read: !hasNewFromOthers(issue, pubkey),
+        read: !hasNewForReporter(issue, pubkey, ticketNewsSince()),
       };
     }),
     [shownTicketIssues],

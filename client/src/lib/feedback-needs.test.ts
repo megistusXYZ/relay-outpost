@@ -10,7 +10,7 @@ vi.stubGlobal("localStorage", {
 });
 
 import { markIssueRead, relayScopedRepoD, type FeedbackIssue, type FeedbackStatus } from "./nip34-feedback";
-import { feedbackNeedsYou, newAppErrorGroups, markAppErrorGroupRead, ticketUpdates, ticketsForRelay, threadItems, inboxTickets } from "./feedback-needs";
+import { feedbackNeedsYou, newAppErrorGroups, markAppErrorGroupRead, ticketUpdates, ticketsForRelay, threadItems, inboxTickets, hasNewForReporter } from "./feedback-needs";
 
 const ME = "a".repeat(64), BOB = "b".repeat(64), AMY = "c".repeat(64);
 let n = 0;
@@ -130,5 +130,23 @@ describe("your own tickets in your inbox", () => {
     const toOther = ticket({ by: ME }); toOther.event.tags.push(["p", BOB]);
     const fromBob = ticket({ by: BOB }); fromBob.event.tags.push(["p", ME]);
     expect(inboxTickets([toSelf, toOther, fromBob], ME).map((t) => t.event.id)).toEqual([toSelf.event.id, fromBob.event.id]);
+  });
+});
+
+describe("no wave of old news when this version arrives", () => {
+  // `since`: when this person first ran a version that tells them about status changes.
+  const SINCE = 5000;
+  it("a ticket closed long ago isn't news — one closed after, is", () => {
+    const old = ticket({ by: ME, at: 1000, status: "closed", changes: [{ status: "closed", by: BOB, at: 2000 }] });
+    const fresh = ticket({ by: ME, at: 1000, status: "resolved", changes: [{ status: "resolved", by: BOB, at: 6000 }] });
+    expect(ticketUpdates([old, fresh], ME, SINCE).map((t) => t.event.id)).toEqual([fresh.event.id]);
+  });
+
+  it("replies count as before: an unread reply on an open ticket is news, however old; on a closed one, only if it came after", () => {
+    const openOld = ticket({ by: ME, at: 1000, comments: [{ by: BOB, at: 2000 }] });
+    const closedOld = ticket({ by: ME, at: 1000, status: "closed", comments: [{ by: BOB, at: 2000 }], changes: [{ status: "closed", by: BOB, at: 2100 }] });
+    expect(ticketUpdates([openOld, closedOld], ME, SINCE).map((t) => t.event.id)).toEqual([openOld.event.id]);
+    expect(hasNewForReporter(closedOld, ME, SINCE)).toBe(false);
+    expect(hasNewForReporter(openOld, ME, SINCE)).toBe(true);
   });
 });
