@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.16.2",
+    date: "2026-10-04",
+    title: "Reply from anywhere in a thread",
+    changes: [
+      { type: "improved", text: "On a phone, the reply box waits at the bottom of every thread, just above the menu bar, so you never scroll to find it. Tap Reply on a comment and it says \u201cReplying to\u201d that person; tap \u00d7 to answer the post instead." },
+      { type: "improved", text: "After you send, the box goes back to the post, and your reply shows up under the comment you answered, right where you can see it." },
+    ],
+  },
+  {
     version: "1.16.1",
     date: "2026-10-04",
     title: "Replies where you can see them",
