@@ -83,6 +83,15 @@ function slugify(title: string): string {
 
 export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip11Document | null }) {
   const { pubkey, signer } = useNostrAuth();
+  // The community's Featured tab shows feeds only from the relay's named owner
+  // and moderators (relayFeaturedSets); anyone else's feed would never show.
+  const featuredBy = new Set([nip11?.pubkey, ...(nip11?.moderators ?? [])].filter((k): k is string => !!k && /^[0-9a-f]{64}$/i.test(k)).map((k) => k.toLowerCase()));
+  const canFeature = !!pubkey && featuredBy.has(pubkey.toLowerCase());
+  const featureNote = featuredBy.size === 0
+    ? "This relay doesn't name its owner or moderators, so the community's Featured tab can't show feeds yet. Ask your host to list you as the owner."
+    : !canFeature
+    ? "Feeds show on the Featured tab only when the relay names you as its owner or a moderator."
+    : null;
   const { toast } = useToast();
 
   const [sets, setSets] = useState<CurationSet[]>([]);
@@ -285,6 +294,9 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
 
   return (
     <div className="space-y-4" data-testid="featured-tab">
+      {featureNote && (
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-4 py-3 text-[13px]" data-testid="featured-not-shown">{featureNote}</p>
+      )}
       <OpsSectionHeader icon={MagicStarIcon} label="Featured feeds">
         <p className="text-xs text-muted-foreground">
           Curate what greets people on this relay's Featured tab — any post, article, listing, stream, or link, from anyone, old or new.
@@ -399,7 +411,7 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
 
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDraft(null)}>Cancel</Button>
-              <Button onClick={publish} disabled={publishing} data-testid="button-featured-publish">
+              <Button onClick={publish} disabled={publishing || !canFeature} data-testid="button-featured-publish">
                 {publishing ? "Publishing…" : "Publish feed"}
               </Button>
             </div>

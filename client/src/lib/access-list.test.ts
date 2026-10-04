@@ -35,3 +35,25 @@ describe("tidying up keeps why they were added", () => {
     expect(readAccessList([{ pubkey: A, reason: "" }, { pubkey: A, reason: "Web of Trust · moderate+" }, { pubkey: A, reason: "later" }, B]).reasons).toEqual({ [A]: "Web of Trust · moderate+" });
   });
 });
+
+// ---- Import: what a file adds, before anything is sent ----
+import { readImportFile } from "./access-list";
+import { nip19 } from "nostr-tools";
+
+describe("readImportFile", () => {
+  const A = "a".repeat(64), B = "b".repeat(64), C = "c".repeat(64);
+  it("reads one person per line — npub, hex or nprofile — and says how many are new", () => {
+    const text = [nip19.npubEncode(A), B, nip19.nprofileEncode({ pubkey: C })].join("\n");
+    expect(readImportFile(text, [])).toEqual({ add: [A, B, C], already: 0, unreadable: 0 });
+  });
+  it("leaves out people already on the list, and anyone listed twice in the file", () => {
+    expect(readImportFile(`${A}\n${B}\n${B}`, [A])).toEqual({ add: [B], already: 1, unreadable: 0 });
+  });
+  it("counts lines it can't read, but not blank lines or a CSV header", () => {
+    const text = `name,npub\nAlice,${nip19.npubEncode(A)}\n\nnot a key\n${B},extra`;
+    expect(readImportFile(text, [])).toEqual({ add: [A, B], already: 0, unreadable: 1 });
+  });
+  it("an empty file adds nobody", () => {
+    expect(readImportFile("", ["x"])).toEqual({ add: [], already: 0, unreadable: 0 });
+  });
+});

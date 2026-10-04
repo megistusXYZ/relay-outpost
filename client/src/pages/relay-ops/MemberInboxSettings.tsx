@@ -27,6 +27,9 @@ export function MemberInboxSettings({ relayUrl, relayName }: { relayUrl: string;
   const { toast } = useToast();
   const [listing, setListing] = useState<NostrEvent | null | undefined>(undefined); // undefined = still reading
   const [operator, setOperator] = useState<string | null>(null);
+  // Members find the inbox through the relay's named owner; with none named,
+  // a saved inbox would have nowhere for them to reach.
+  const [ownerless, setOwnerless] = useState(false);
   const [on, setOn] = useState(false);
   const [templates, setTemplates] = useState<TicketTemplate[]>(STARTER_TEMPLATES);
   const [saving, setSaving] = useState(false);
@@ -40,6 +43,7 @@ export function MemberInboxSettings({ relayUrl, relayName }: { relayUrl: string;
       const op = nip11?.pubkey || pubkey || null;
       if (!live) return;
       setOperator(op);
+      setOwnerless(!nip11?.pubkey);
       const found = op ? await fetchFeedbackListing(relayUrl, op).catch(() => null) : null;
       if (!live) return;
       const s = readInboxSettings(found);
@@ -139,9 +143,10 @@ export function MemberInboxSettings({ relayUrl, relayName }: { relayUrl: string;
       </section>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={save} disabled={!dirty || saving || blank || !signer || notYours} className="h-11 rounded-full px-6" data-testid="member-inbox-save">{saving ? "Saving…" : "Save"}</Button>
+        <Button onClick={save} disabled={!dirty || saving || blank || !signer || notYours || ownerless} className="h-11 rounded-full px-6" data-testid="member-inbox-save">{saving ? "Saving…" : "Save"}</Button>
         {blank && <span className="text-[13px] text-amber-700 dark:text-amber-400">Give each request a name.</span>}
         {notYours && <span className="text-[13px] text-muted-foreground">Only {relayName}'s operator can change this.</span>}
+        {ownerless && <span className="text-[13px] text-amber-700 dark:text-amber-400" data-testid="member-inbox-ownerless">{relayName} doesn't name its owner, so members can't reach an inbox here yet. Ask your host to list you as the owner.</span>}
         {!dirty && !saving && savedAt && <span className="text-[13px] text-muted-foreground" data-testid="member-inbox-saved">Saved</span>}
       </div>
     </div>

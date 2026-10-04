@@ -46,7 +46,7 @@ import {
 import { isProtectedEvent } from "@/lib/nostr-helpers";
 import {
   KIND_APP_DATA,
-  APP_DATA_RELAYS,
+  communityRecordRelays,
   featuredDTag,
   parseFeaturedDoc,
   buildFeaturedEventTemplate,
@@ -62,6 +62,9 @@ const UNPIN_KEY = "__unpin__";
 
 export function AnnounceTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip11Document | null }) {
   const { pubkey, signer, attemptReconnect } = useNostrAuth();
+  // Pinning writes the community's featured record, which the community page
+  // reads only from the relay's named owner (same rule as Relay settings).
+  const canPin = !!pubkey && !!nip11?.pubkey && nip11.pubkey.toLowerCase() === pubkey.toLowerCase();
   const { toast } = useToast();
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [announcementText, setAnnouncementText] = useState("");
@@ -159,7 +162,7 @@ export function AnnounceTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
         resolve(doc);
       };
       const sub = pool.subscribeMany(
-        APP_DATA_RELAYS,
+        communityRecordRelays(relayUrl),
         { kinds: [KIND_APP_DATA], authors: [pubkey], "#d": [featuredDTag(relayUrl)], limit: 1 },
         { onevent(e: NostrEvent) { doc = parseFeaturedDoc(e.content, relayUrl); }, oneose() { finish(); } },
       );
@@ -186,7 +189,7 @@ export function AnnounceTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
     if (!signer) throw new Error("no signer");
     const template = buildFeaturedEventTemplate(doc, relayUrl);
     const signed = await signWithTimeout(signer, template);
-    await publishEvent(signed, APP_DATA_RELAYS);
+    await publishEvent(signed, communityRecordRelays(relayUrl));
     setFeaturedDoc(doc);
   }, [signer, relayUrl]);
 
@@ -616,9 +619,9 @@ export function AnnounceTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
                     <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => (isPinned ? unpinAnnouncement() : pinAnnouncement(event))}
-                        disabled={pinBusy || !signer}
+                        disabled={pinBusy || !signer || !canPin}
                         className={`shrink-0 inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded transition-all disabled:opacity-40 ${isPinned ? "text-amber-500 hover:bg-amber-500/10" : "text-muted-foreground/40 hover:text-amber-500 hover:bg-amber-500/10"}`}
-                        title={isPinned ? "Unpin from community page" : "Pin to community page"}
+                        title={!canPin ? "Only the relay's owner can pin to the community page" : isPinned ? "Unpin from community page" : "Pin to community page"}
                         aria-label={isPinned ? "Unpin from community page" : "Pin to community page"}
                         data-testid={isPinned ? `button-unpin-announcement-${event.id.slice(0, 8)}` : `button-pin-announcement-${event.id.slice(0, 8)}`}
                       >
@@ -651,7 +654,7 @@ export function AnnounceTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
                           size="sm"
                           variant={isPinned ? "default" : "outline"}
                           onClick={(e) => { e.stopPropagation(); isPinned ? unpinAnnouncement() : pinAnnouncement(event); }}
-                          disabled={pinBusy || !signer}
+                          disabled={pinBusy || !signer || !canPin}
                           className={`h-7 text-[10px] px-2.5 ${isPinned ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}`}
                           data-testid={isPinned ? `button-unpin-announcement-detail-${event.id.slice(0, 8)}` : `button-pin-announcement-detail-${event.id.slice(0, 8)}`}
                         >

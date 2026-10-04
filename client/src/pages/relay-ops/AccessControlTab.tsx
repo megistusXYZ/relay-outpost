@@ -21,7 +21,7 @@ import {
   type Nip86SupportStatus,
 } from "@/lib/nip86";
 import { canDo, managedAt } from "@/lib/relay-capabilities";
-import { notYetOn, readAccessList, type AccessList } from "@/lib/access-list";
+import { notYetOn, readAccessList, readImportFile, type AccessList } from "@/lib/access-list";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
@@ -387,7 +387,8 @@ function PubkeyListSection({ type, icon, label, labelClass, description, borderC
   onAddDirect: (type: AccessLevel, rawInput: string) => void;
   onAdd: (type: AccessLevel) => void;
   onExport: (type: AccessLevel) => void;
-  onImport: (type: AccessLevel) => void;
+  /** Only where the relay keeps the list — an import must reach it. */
+  onImport?: (type: AccessLevel) => void;
   onProfileFound?: (hex: string, profile: ProfileInfo) => void;
   relayUrl: string;
   listKey: string;
@@ -434,9 +435,11 @@ function PubkeyListSection({ type, icon, label, labelClass, description, borderC
             <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-8 sm:w-8" onClick={() => onExport(type)} title="Export" aria-label={`Export ${label}`}>
               <Download className="w-3.5 h-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-8 sm:w-8" onClick={() => onImport(type)} title="Import" aria-label={`Import ${label}`}>
-              <Upload className="w-3.5 h-3.5" />
-            </Button>
+            {onImport && (
+              <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-8 sm:w-8" onClick={() => onImport(type)} title="Import" aria-label={`Import ${label}`} data-testid={`ops-access-import-${type}`}>
+                <Upload className="w-3.5 h-3.5" />
+              </Button>
+            )}
           </>
         }
       >
@@ -932,30 +935,75 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
     URL.revokeObjectURL(url);
   }, [allowlist, readonlyList, blocklist]);
 
+  // Import reaches the relay, after asking (owner, 2026-10-04): it used to
+  // merge into this browser only, while the team log said it had happened.
+  const [pendingImport, setPendingImport] = useState<{ type: "allow" | "block"; add: string[]; already: number; unreadable: number } | null>(null);
+  const [importing, setImporting] = useState<{ done: number; total: number } | null>(null);
   const importList = useCallback((type: AccessLevel) => {
+    if (type === "readonly") return;
     const input = document.createElement("input");
     input.type = "file";
     input.accept = ".txt,.csv";
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
-      const text = await file.text();
-      const lines = text.split(/[\n,]/).map(l => l.trim()).filter(Boolean);
-      const hexKeys = lines.map(l => npubToHex(l)).filter((h): h is string => h !== null);
-      const keyMap: Record<AccessLevel, string> = { allow: ADMIN_ALLOWLIST_KEY, readonly: ADMIN_READONLY_KEY, block: ADMIN_BLOCKLIST_KEY };
-      const listMap: Record<AccessLevel, string[]> = { allow: allowlist, readonly: readonlyList, block: blocklist };
-      const setterMap: Record<AccessLevel, React.Dispatch<React.SetStateAction<string[]>>> = { allow: setAllowlist, readonly: setReadonlyList, block: setBlocklist };
-      const merged = [...new Set([...listMap[type], ...hexKeys])];
-      setterMap[type](merged);
-      saveStoredList(keyMap[type], relayUrl, merged);
-      recordDateAddedMany(relayUrl, type, hexKeys);
-      const actionMap: Record<AccessLevel, ModAction> = { allow: "import_allowlist", readonly: "import_readonly", block: "import_blocklist" };
-      addModLogEntry(relayUrl, { action: actionMap[type], count: hexKeys.length });
-      setModLog(getModLog(relayUrl));
-      toast({ title: "Imported", description: `${hexKeys.length} entries imported.` });
+      const read = readImportFile(await file.text(), type === "allow" ? allowlist : blocklist);
+      setPendingImport({ type, ...read });
     };
     input.click();
-  }, [allowlist, readonlyList, blocklist, relayUrl, toast]);
+  }, [allowlist, blocklist]);
+
+  const runImport = useCallback(async () => {
+    const job = pendingImport;
+    if (!job || job.add.length === 0) { setPendingImport(null); return; }
+    setPendingImport(null);
+    const apiFn = job.type === "allow" ? allowPubkey : banPubkey;
+    const done: string[] = [];
+    let refused = 0;
+    let firstError = "";
+    setImporting({ done: 0, total: job.add.length });
+    for (const hex of job.add) {
+      try {
+        const res = await apiFn(relayUrl, hex);
+        if (res.error) { refused++; firstError ||= res.error; } else done.push(hex);
+      } catch (err) {
+        refused++; firstError ||= err instanceof Error ? err.message : "The relay didn't answer";
+      }
+      setImporting({ done: done.length + refused, total: job.add.length });
+    }
+    setImporting(null);
+    const keyMap = { allow: ADMIN_ALLOWLIST_KEY, block: ADMIN_BLOCKLIST_KEY } as const;
+    const current = job.type === "allow" ? allowlist : blocklist;
+    const merged = [...new Set([...current, ...done])];
+    (job.type === "allow" ? setAllowlist : setBlocklist)(merged);
+    saveStoredList(keyMap[job.type], relayUrl, merged);
+    recordDateAddedMany(relayUrl, job.type, done);
+    if (done.length) {
+      addModLogEntry(relayUrl, { action: job.type === "allow" ? "import_allowlist" : "import_blocklist", count: done.length });
+      setModLog(getModLog(relayUrl));
+    }
+    const what = job.type === "allow" ? "the allow list" : "the ban list";
+    toast({
+      title: refused === 0 ? `Added ${done.length} to ${what}` : `Added ${done.length} of ${job.add.length} to ${what}`,
+      description: refused ? `The relay turned down ${refused}: ${firstError}` : undefined,
+      variant: refused && !done.length ? "destructive" : undefined,
+    });
+  }, [pendingImport, relayUrl, allowlist, blocklist, toast]);
+
+  // The read-only list was only ever kept in this browser — no relay used it.
+  // It's gone; what was on it can be saved once, then it's cleared.
+  const exportReadonly = useCallback(() => {
+    const npubs = readonlyList.map((hex) => pubkeyToNpub(hex));
+    const blob = new Blob([npubs.join("\n")], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "read-only-list.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+    saveStoredList(ADMIN_READONLY_KEY, relayUrl, []);
+    setReadonlyList([]);
+  }, [readonlyList, relayUrl]);
 
   // ── Web of Trust access control ──────────────────────────────────────
   // Build the relay's allowlist from the operator's web of trust (Brainstorm):
@@ -1120,14 +1168,13 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
       )}
 
       <div
-        className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-xl overflow-hidden border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.06] dark:bg-white/[0.06]"
+        className="grid grid-cols-3 gap-px rounded-xl overflow-hidden border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.06] dark:bg-white/[0.06]"
         data-testid="ops-access-strip"
       >
         {([
           ["allowed", "Allowed", allowlist.length, "text-emerald-700 dark:text-emerald-400"],
-          ["readonly", "Read-only", readonlyList.length, "text-sky-700 dark:text-sky-400"],
           ["blocked", "Blocked", blocklist.length, "text-red-700 dark:text-red-400"],
-          ["total", "Total", allowlist.length + readonlyList.length + blocklist.length, "text-foreground"],
+          ["total", "Total", allowlist.length + blocklist.length, "text-foreground"],
         ] as const).map(([id, label, n, tone]) => (
           <div key={id} className="bg-background px-3 py-2 min-w-0" data-testid={`ops-access-stat-${id}`}>
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70 leading-tight">{label}</p>
@@ -1198,13 +1245,20 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {readonlyList.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-black/[0.08] dark:border-white/[0.08] px-4 py-3" data-testid="ops-readonly-retired">
+          <p className="text-[13px] flex-1 min-w-[200px]">Your read-only list ({readonlyList.length}) was only kept in this browser — no relay used it, so it's gone. Save it if you want it.</p>
+          <Button variant="outline" className="h-11 rounded-full" onClick={exportReadonly} data-testid="ops-readonly-export">Save the list</Button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-4">
         <PubkeyListSection
           type="allow"
           icon={<UserCheck className="w-3.5 h-3.5 text-green-600 dark:text-green-400/70" />}
-          label="Allowlist (Read + Write)"
+          label="Allowed to post"
           labelClass="text-green-700 dark:text-green-300/80"
-          description="Full access — these users can read events from and publish events to the relay."
+          description="On a relay where only approved people can post, these are the approved people."
           borderClass="border-green-400/25 dark:border-green-400/15"
           badgeClass="border-green-400/30 dark:border-green-400/20 text-green-600 dark:text-green-400/70"
           list={allowlist}
@@ -1220,44 +1274,19 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
           onAddDirect={addToListDirect}
           onAdd={addToList}
           onExport={exportList}
-          onImport={importList}
+          onImport={nip86Status === "supported" ? importList : undefined}
           onProfileFound={handleProfileFound}
           relayUrl={relayUrl}
           listKey="allow"
           controlsKey="access-allow"
         />
-        <PubkeyListSection
-          type="readonly"
-          icon={<Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400/70" />}
-          label="Read-Only"
-          labelClass="text-blue-700 dark:text-blue-300/80"
-          description="Read access only — these users can read events but cannot publish to the relay."
-          borderClass="border-blue-400/25 dark:border-blue-400/15"
-          badgeClass="border-blue-400/30 dark:border-blue-400/20 text-blue-600 dark:text-blue-400/60"
-          list={readonlyList}
-          inputValue={newReadonly}
-          setInput={setNewReadonly}
-          buttonLabel="Add"
-          buttonClass="bg-blue-500/20 text-blue-700 dark:text-blue-300 hover:bg-blue-500/30 border border-blue-400/30 dark:border-blue-400/20"
-          profileCache={profileCache}
-          onRemove={removeFromList}
-          onRemoveMany={removeMany}
-          onAddDirect={addToListDirect}
-          onAdd={addToList}
-          onExport={exportList}
-          onImport={importList}
-          onProfileFound={handleProfileFound}
-          relayUrl={relayUrl}
-          listKey="readonly"
-          controlsKey="access-readonly"
-        />
       </div>
       <PubkeyListSection
         type="block"
         icon={<UserX className="w-3.5 h-3.5 text-red-600/80 dark:text-red-400/70" />}
-        label="Blocklist (No Access)"
+        label="Banned"
         labelClass="text-red-700 dark:text-red-300/80"
-        description="Denied all access — these users cannot read from or publish to the relay."
+        description="Can't post on this relay. What they posted before stays unless you remove it."
         borderClass="border-red-400/25 dark:border-red-400/15"
         badgeClass="border-red-400/30 dark:border-red-400/20 text-red-600 dark:text-red-400/70"
         list={blocklist}
@@ -1274,12 +1303,41 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
         onAddDirect={addToListDirect}
         onAdd={addToList}
         onExport={exportList}
-        onImport={importList}
+        onImport={nip86Status === "supported" ? importList : undefined}
         onProfileFound={handleProfileFound}
         relayUrl={relayUrl}
         listKey="block"
         controlsKey="access-block"
       />
+      {importing && (
+        <p className="text-[13px] text-muted-foreground" role="status" data-testid="ops-import-progress">Adding {importing.done} of {importing.total}…</p>
+      )}
+      <AlertDialog open={!!pendingImport} onOpenChange={(o) => { if (!o) setPendingImport(null); }}>
+        <AlertDialogContent data-testid="ops-import-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingImport && (pendingImport.add.length === 0
+                ? "Nobody new in this file"
+                : `${pendingImport.type === "allow" ? "Allow" : "Ban"} ${pendingImport.add.length} ${pendingImport.add.length === 1 ? "person" : "people"} on ${nip11?.name?.trim() || relayUrl.replace(/^wss?:\/\//, "")}?`)}
+            </AlertDialogTitle>
+            <AlertDialogDescription data-testid="ops-import-summary">
+              {pendingImport && [
+                pendingImport.add.length ? `Each is sent to the relay${pendingImport.type === "block" ? " — they won't be able to post" : ""}.` : "",
+                pendingImport.already ? `${pendingImport.already} already on the list.` : "",
+                pendingImport.unreadable ? `${pendingImport.unreadable} ${pendingImport.unreadable === 1 ? "line" : "lines"} couldn't be read.` : "",
+              ].filter(Boolean).join(" ")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-[44px]">{pendingImport?.add.length ? "Cancel" : "Close"}</AlertDialogCancel>
+            {!!pendingImport?.add.length && (
+              <AlertDialogAction className="min-h-[44px]" onClick={() => void runImport()} data-testid="ops-import-go">
+                {pendingImport.type === "allow" ? "Allow" : "Ban"} {pendingImport.add.length}
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <ModerationLogSection
         relayUrl={relayUrl}
         modLog={modLog}
