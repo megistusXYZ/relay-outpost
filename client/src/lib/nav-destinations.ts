@@ -191,8 +191,8 @@ export const RELAYS_HOME = "/my-relays";
 /**
  * Relays comes right after Discover. The rail and the launcher show it to
  * everyone signed in — it is the front door for running your own relay. The
- * phone footer has room for it only when you already run one (`withRelays`);
- * everyone else reaches it from the launcher and from Account.
+ * phone footer never has it (`withRelays` false, owner 2026-10-04): it lives
+ * in the You menu, and what's waiting on your relays is counted on You.
  */
 function buildCollapsedDestinations(loggedIn: boolean, counts: NavCounts, withRelays: boolean): NavDestination[] {
   /**
@@ -266,7 +266,14 @@ function buildCollapsedDestinations(loggedIn: boolean, counts: NavCounts, withRe
  */
 export function buildFooterTabs(opts: { loggedIn: boolean; counts: NavCounts; collapsed?: boolean; runsRelay?: boolean }): NavDestination[] {
   const { loggedIn, counts, collapsed, runsRelay } = opts;
-  if (collapsed) return buildCollapsedDestinations(loggedIn, counts, !!runsRelay);
+  if (collapsed) {
+    // The phone footer keeps its four tabs for everyone (owner, 2026-10-04):
+    // Relays is in the You menu ("Your relays"), and what's waiting on the
+    // relays you run is counted on You so it isn't missed.
+    const tabs = buildCollapsedDestinations(loggedIn, counts, false);
+    const waiting = runsRelay ? counts.relaysNeedYou ?? 0 : 0;
+    return waiting > 0 ? tabs.map((t) => (t.id === "you" ? { ...t, count: waiting, live: true } : t)) : tabs;
+  }
   return [
     { id: "feed", title: NAV_TITLES.feed, path: "/" },
     {

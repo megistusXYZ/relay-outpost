@@ -20,6 +20,7 @@ import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useIaCollapsed } from "@/lib/ia-prefs";
 import { ServerStackIcon } from "@/components/icons/ServerStackIcon";
 import { useOperatedRelays } from "@/lib/operated-relays";
+import { useRelaysNeedYou } from "@/contexts/NeedsYouContext";
 
 /**
  * Account menu (/account/menu) — the grouped-rows replacement for the sidebar's
@@ -63,6 +64,7 @@ export default function Account() {
   const [, navigate] = useLocation();
   const { pubkey, profile, loginMethod, logout } = useNostrAuth();
   const runsRelay = useOperatedRelays().length > 0;
+  const relaysWaiting = useRelaysNeedYou().total;
   const { toggleTheme, theme } = useTheme();
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   // Secondary account-switcher surface (the Stories-menu identity chip is the
@@ -167,7 +169,9 @@ export default function Account() {
             <Row icon={<CalendarDays className="w-5 h-5" />} label="Calendar" onClick={go("/calendar")} testId="account-calendar" />
           )}
           <Row icon={<ShieldCheck className="w-5 h-5" />} label="Trust & safety" onClick={go("/account?tab=shield")} testId="account-trust-safety" />
-          <Row icon={<ServerStackIcon className="w-5 h-5" />} label={runsRelay ? "Your relays" : "Run a relay"} onClick={go("/my-relays")} testId="account-relays" />
+          {/* The phone footer has no Relays tab (owner, 2026-10-04): this row is the way in, and says what's waiting. */}
+          <Row icon={<ServerStackIcon className="w-5 h-5" />} label={runsRelay ? "Your relays" : "Run a relay"} onClick={go("/my-relays")} testId="account-relays"
+            trailing={runsRelay && relaysWaiting > 0 ? <span className="text-[13px] font-medium text-brand tabular-nums" data-testid="account-relays-waiting">{relaysWaiting} waiting</span> : undefined} />
           <Row icon={<Wrench className="w-5 h-5" />} label="Tools" onClick={go("/tools")} testId="account-tools" />
         </Section>
 

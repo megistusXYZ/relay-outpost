@@ -241,8 +241,8 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
   // (`iaCollapsed` is read above, where goTab derives the history base.)
   const needsYou = useNeedsYouCount();
   const relaysNeedYou = useRelaysNeedYou().total;
-  // Relays earns a footer slot once you run one; everyone else finds it in
-  // the launcher and under Account.
+  // No Relays tab on a phone: it's "Your relays" under You, and what's waiting
+  // on the relays you run is counted on You (lib/nav-destinations.ts).
   const runsRelay = useOperatedRelays().length > 0;
   const tabs = buildFooterTabs({
     loggedIn: !!pubkey,
