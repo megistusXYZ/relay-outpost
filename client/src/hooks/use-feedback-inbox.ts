@@ -76,6 +76,14 @@ export function useFeedbackInbox(
     reload();
   }, [enabled, relayUrl, reload]);
 
+  // Settings › Member inbox saved: the switch and request types changed.
+  useEffect(() => {
+    if (!enabled) return;
+    const onSaved = (e: Event) => { if ((e as CustomEvent<{ relayUrl?: string }>).detail?.relayUrl === relayUrl) reload(); };
+    window.addEventListener("relay-outpost:inbox-settings-saved", onSaved);
+    return () => window.removeEventListener("relay-outpost:inbox-settings-saved", onSaved);
+  }, [enabled, relayUrl, reload]);
+
   const operatorPubkey = recipient?.operatorPubkey || pubkey || null;
   const coordValue = recipient?.operatorPubkey && recipient.repoD
     ? repoCoord(recipient.operatorPubkey, recipient.repoD)

@@ -11,6 +11,7 @@
  * change a status and which relay a ticket is about live in
  * lib/feedback-needs.ts, shared with the badge.
  */
+import { templateLabelFor } from "@/lib/inbox-settings";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Event as NostrEvent } from "nostr-tools";
 import { use$ } from "applesauce-react/hooks";
@@ -37,15 +38,12 @@ import {
   type FeedbackRecipient,
   type FeedbackStatus,
   type FeedbackType,
-  FEEDBACK_TOPIC_TAG,
   buildCommentTemplate,
-  buildRepoAnnouncementTemplate,
   buildStatusTemplate,
   combineFeedbackIssues,
   getIssueLastRead,
   markIssueRead,
   markIssuesRead,
-  relayScopedRepoD,
   sendPrivateReply,
   statusLabel,
   stripContextBlock,
@@ -125,7 +123,7 @@ function useSavedReplies() {
   return { replies, loaded, save };
 }
 
-export function FeedbackTab({ relayUrl, inbox, mode = "feedback" }: { relayUrl: string; inbox: FeedbackInbox; mode?: "feedback" | "errors" }) {
+export function FeedbackTab({ relayUrl, inbox, mode = "feedback", onOpenMemberInbox }: { relayUrl: string; inbox: FeedbackInbox; mode?: "feedback" | "errors"; onOpenMemberInbox?: () => void }) {
   const { signer, pubkey } = useNostrAuth();
   const { toast } = useToast();
   const { recipient, operatorPubkey, events, privateRumors, discovering, nip44Missing, reload, untiedIds } = inbox;
@@ -225,27 +223,6 @@ export function FeedbackTab({ relayUrl, inbox, mode = "feedback" }: { relayUrl: 
     }
   };
 
-  // Until Settings has its own switch: one plain line to let members find the inbox.
-  const nudgeKey = `ro_feedback_inbox_marker_done:${relayUrl}`;
-  const [nudgeDone, setNudgeDone] = useState(() => { try { return localStorage.getItem(nudgeKey) === "1"; } catch { return false; } });
-  const [enabling, setEnabling] = useState(false);
-  const enableInbox = async () => {
-    if (!signer || !recipient) return;
-    setEnabling(true);
-    try {
-      const template = buildRepoAnnouncementTemplate({ d: relayScopedRepoD(relayUrl), name: `${relayName} feedback`, description: `Feedback inbox for ${relayName}`, relay: relayUrl, topics: [FEEDBACK_TOPIC_TAG] });
-      await publishEvent(await signWithTimeout(signer, template), [relayUrl], undefined, true);
-      try { localStorage.setItem(nudgeKey, "1"); } catch { /* private mode */ }
-      setNudgeDone(true);
-      toast({ title: "Members can now send you feedback", description: `A Feedback button shows on ${relayName}'s page.` });
-      setTimeout(reload, 800);
-    } catch (err) {
-      toast({ title: "Couldn't turn it on", description: err instanceof Error ? err.message : "Try again.", variant: "destructive" });
-    } finally {
-      setEnabling(false);
-    }
-  };
-
   if (discovering) {
     return <p className="py-10 text-center text-sm text-muted-foreground" role="status">Loading the inbox…</p>;
   }
@@ -306,12 +283,12 @@ export function FeedbackTab({ relayUrl, inbox, mode = "feedback" }: { relayUrl: 
   const newHere = items.filter((t) => hasNewFromOthers(t, pubkey ?? null));
   return (
     <div className="space-y-3" data-testid="feedback-inbox">
-      {recipient && !recipient.hasInbox && !nudgeDone && (
+      {recipient && !recipient.hasInbox && onOpenMemberInbox && (
         <p className="text-[13px] text-muted-foreground" data-testid="feedback-enable-line">
-          Members can write to you privately already. To show a Feedback button on {relayName}'s page,{" "}
-          <button type="button" onClick={enableInbox} disabled={enabling || !signer} className="min-h-[36px] font-medium text-brand underline-offset-4 hover:underline" data-testid="button-enable-feedback-inbox">
-            {enabling ? "turning it on…" : "turn it on"}
-          </button>.
+          Members have no way to contact you from {relayName}'s page yet.{" "}
+          <button type="button" onClick={onOpenMemberInbox} className="min-h-[44px] font-medium text-brand underline-offset-4 hover:underline" data-testid="button-open-member-inbox">
+            Turn on Contact the team
+          </button>
         </p>
       )}
       {nip44Missing && (
@@ -388,7 +365,7 @@ export function FeedbackTab({ relayUrl, inbox, mode = "feedback" }: { relayUrl: 
                     <span className="flex items-baseline gap-x-2 flex-wrap text-[13px]">
                       <span className="font-medium text-foreground truncate max-w-[12rem]"><PersonName pubkey={t.reporter} /></span>
                       <span className={STATUS_TONE[t.status]}>{statusLabel(t.status)}</span>
-                      {t.type[0] && <span className="text-muted-foreground">{KIND_WORD[t.type[0]] ?? ""}</span>}
+                      {(templateLabelFor(t.event, recipient?.templates) || t.type[0]) && <span className="text-muted-foreground">{templateLabelFor(t.event, recipient?.templates) ?? KIND_WORD[t.type[0]] ?? ""}</span>}
                       {t.private && <span className="inline-flex items-center gap-1 text-muted-foreground"><Lock className="w-3 h-3" aria-hidden="true" />Private</span>}
                       {fresh && <span className="font-medium text-brand" data-testid={`dot-feedback-unread-${t.event.id.slice(0, 8)}`}>New</span>}
                     </span>

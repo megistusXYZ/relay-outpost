@@ -49,12 +49,14 @@ function ago(sec: number): string {
   return `${Math.floor(d / 86400)}d ago`;
 }
 
-export function InboxTab({ relayUrl, nip11, inbox, onSeePost }: {
+export function InboxTab({ relayUrl, nip11, inbox, onSeePost, onOpenMemberInbox }: {
   relayUrl: string;
   nip11: Nip11Document | null;
   inbox: FeedbackInbox;
   /** Opens Content on this post. */
   onSeePost: (eventId: string) => void;
+  /** Settings › Member inbox — where the inbox is turned on and request types are set. */
+  onOpenMemberInbox?: () => void;
 }) {
   const { toast } = useToast();
   const needsYou = useNeedsYou();
@@ -222,7 +224,7 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost }: {
       {showFeedback && (
         <section aria-label="Feedback" className="space-y-2">
           {view === "all" && <h3 className="px-1 text-[13px] font-medium text-muted-foreground">Feedback</h3>}
-          <FeedbackTab relayUrl={relayUrl} inbox={inbox} />
+          <FeedbackTab relayUrl={relayUrl} inbox={inbox} onOpenMemberInbox={onOpenMemberInbox} />
         </section>
       )}
 

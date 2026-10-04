@@ -307,10 +307,10 @@ function SendFeedbackLink({ recipient, relayUrl }: { recipient: FeedbackRecipien
       onClick={(e) => { e.stopPropagation(); openFeedbackDrawer({ initialRecipient: recipient }); }}
       className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium border border-border/40 text-muted-foreground/70 hover:text-brand hover:border-brand/40 hover:bg-brand/5 transition-colors"
       data-testid={`button-card-feedback-${relayUrl}`}
-      title="Send feedback to this operator"
+      title="Contact this community's team"
     >
       <Inbox className="w-3 h-3" />
-      Feedback
+      Contact the team
     </button>
   );
 }
@@ -3280,6 +3280,15 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
   const isMobile = useIsMobile();
   const concordEnabled = useConcordEnabled();
   const [nip11, setNip11] = useState<Nip11Document | null>(null);
+  // Contact the team (⋯ menu): offered when the community's inbox is on —
+  // its feedback listing says so, with the kinds of request members can open.
+  const [contactRecipient, setContactRecipient] = useState<FeedbackRecipient | null>(null);
+  useEffect(() => {
+    let live = true;
+    setContactRecipient(null);
+    discoverRecipientForRelay(relayUrl).then((r) => { if (live) setContactRecipient(r); }).catch(() => {});
+    return () => { live = false; };
+  }, [relayUrl]);
   // Operator-curated Featured feeds (kind 30004) — the tab self-hides when empty.
   const { sets: featuredSets } = useRelayFeaturedSets(relayUrl, nip11);
   // Which featured feed is showing — lifted so the tab's options sheet and the
@@ -4318,6 +4327,11 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                             <DropdownMenuItem onClick={handleTogglePin} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-outpost-pin">
                               {feedPinned ? <Pin className="w-4 h-4 rotate-45 text-brand" /> : <PinOff className="w-4 h-4 text-brand/70" />}
                               {feedPinned ? "Unpin this view" : "Pin this view to your hub"}
+                            </DropdownMenuItem>
+                          )}
+                          {contactRecipient?.hasInbox && (
+                            <DropdownMenuItem onClick={() => openFeedbackDrawer({ initialRecipient: contactRecipient })} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-contact-team">
+                              <Inbox className="w-4 h-4 text-brand/70" /> Contact the team
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuItem onClick={() => { try { navigator.clipboard?.writeText(`${window.location.origin}/outposts/${encodeURIComponent(relayUrl)}`); } catch {} }} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-outpost-copy-link">

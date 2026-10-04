@@ -532,3 +532,10 @@ describe("the drawer keeps the relay you opened it for", () => {
     expect(mergeRecipients([noRepo], [], null).index).toBe(0);
   });
 });
+
+describe("a ticket opened from a request type carries it", () => {
+  it("a template tag on the public ticket", () => {
+    const t = buildIssueTemplate({ recipient: noRepo, title: "Need a role", body: "", types: ["question"], context: null, template: "access" });
+    expect(t.tags).toContainEqual(["template", "access"]);
+  });
+});
