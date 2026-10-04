@@ -64,7 +64,7 @@ function TechnicalDetailsRow() {
   const on = useTechnicalDetails();
   return (
     <label className="w-full flex items-center gap-3 min-h-[60px] px-4 py-2.5 cursor-pointer hover:bg-black/[0.03] dark:hover:bg-white/[0.03]" data-testid="ops-technical-details">
-      <span className="w-8 h-8 rounded-lg bg-brand/10 text-brand inline-flex items-center justify-center shrink-0"><Code2 className="w-4 h-4" aria-hidden="true" /></span>
+      <span className="w-6 inline-flex items-center justify-center shrink-0 text-muted-foreground"><Code2 className="w-5 h-5" aria-hidden="true" /></span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium leading-snug">Show technical details</span>
         <span className="block text-[12px] text-muted-foreground leading-snug">Kind numbers, keys and method names, on every screen</span>
@@ -87,10 +87,10 @@ function ScreenList({ screens, onOpen, extra, testId }: { screens: ReadonlyArray
             className="w-full flex items-center gap-3 min-h-[60px] px-4 py-2.5 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
             data-testid={`ops-settings-row-${row.tab}`}
           >
-            <span className="w-8 h-8 rounded-lg bg-brand/10 text-brand inline-flex items-center justify-center shrink-0">{Icon && <Icon className="w-4 h-4" aria-hidden="true" />}</span>
+            <span className="w-6 inline-flex items-center justify-center shrink-0 text-muted-foreground">{Icon && <Icon className="w-5 h-5" aria-hidden="true" />}</span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-medium leading-snug">{row.label}</span>
-              <span className="block text-[12px] text-muted-foreground leading-snug truncate">{row.hint}</span>
+              <span className="block text-[12px] text-muted-foreground leading-snug">{row.hint}</span>
             </span>
             <ChevronRight className="w-4 h-4 text-muted-foreground/50 shrink-0" aria-hidden="true" />
           </button>
@@ -382,7 +382,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
       )}
 
       {authGate || (
-        <div className="lg:grid lg:grid-cols-[176px_minmax(0,1fr)] lg:gap-6 lg:items-start space-y-4 lg:space-y-0">
+        <div className="md:grid md:grid-cols-[176px_minmax(0,1fr)] md:gap-6 md:items-start space-y-4 md:space-y-0">
           {/* The sections. A phone: one row that scrolls sideways, never
               wraps. A desktop: a column on the left, so the section's own
               list and detail get the width (three panes, like Mail). */}
@@ -390,7 +390,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
             ref={navRef}
             role="tablist"
             aria-label="Sections"
-            className="flex items-stretch gap-1 overflow-x-auto scrollbar-hide scroll-px-3 -mx-3 px-3 sm:mx-0 sm:px-0 border-b border-black/[0.08] dark:border-white/[0.08] lg:flex-col lg:overflow-visible lg:border-b-0 lg:sticky lg:top-4"
+            className="flex items-stretch gap-1 overflow-x-auto scrollbar-hide scroll-px-3 -mx-3 px-3 sm:mx-0 sm:px-0 border-b border-black/[0.08] dark:border-white/[0.08] md:flex-col md:overflow-visible md:border-b-0 md:sticky md:top-4"
             data-testid="ops-nav"
           >
             {SECTIONS.map(s => {
@@ -402,8 +402,8 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => { setContentSeed(""); setPeopleFilter(undefined); setActiveTab(s.id); }}
-                  className={`relative shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-3 text-sm font-medium whitespace-nowrap transition-colors lg:justify-between lg:rounded-lg lg:w-full ${
-                    isActive ? "text-foreground lg:bg-brand/[0.09]" : "text-muted-foreground hover:text-foreground lg:hover:bg-black/[0.03] dark:lg:hover:bg-white/[0.04]"
+                  className={`relative shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-3 text-sm font-medium whitespace-nowrap transition-colors md:justify-between md:rounded-lg md:w-full ${
+                    isActive ? "text-foreground md:bg-brand/[0.09]" : "text-muted-foreground hover:text-foreground md:hover:bg-black/[0.03] dark:md:hover:bg-white/[0.04]"
                   }`}
                   data-testid={`ops-section-${s.id}`}
                 >
@@ -416,7 +416,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                       {inboxCount > 9 ? "9+" : inboxCount}
                     </span>
                   )}
-                  {isActive && <span className="absolute left-3 right-3 -bottom-px h-0.5 rounded-full bg-brand lg:hidden" aria-hidden="true" />}
+                  {isActive && <span className="absolute left-3 right-3 -bottom-px h-0.5 rounded-full bg-brand md:hidden" aria-hidden="true" />}
                 </button>
               );
             })}
@@ -425,7 +425,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
               <button
                 type="button"
                 onClick={() => { setSetupFlag("hidden", selectedRelay, false); setActiveTab("overview"); }}
-                className="shrink-0 inline-flex items-center min-h-[44px] px-3 text-[13px] text-brand whitespace-nowrap lg:mt-2"
+                className="shrink-0 inline-flex items-center min-h-[44px] px-3 text-[13px] text-brand whitespace-nowrap md:mt-2"
                 data-testid="ops-setup-resume"
               >
                 Finish setting up · {setup.done} of {setup.items.length}
@@ -483,10 +483,10 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                         className="w-full flex items-center gap-3 min-h-[60px] px-4 py-2.5 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
                         data-testid="ops-open-console"
                       >
-                        <span className="w-8 h-8 rounded-lg bg-brand/10 text-brand inline-flex items-center justify-center shrink-0"><Terminal className="w-4 h-4" aria-hidden="true" /></span>
+                        <span className="w-6 inline-flex items-center justify-center shrink-0 text-muted-foreground"><Terminal className="w-5 h-5" aria-hidden="true" /></span>
                         <span className="min-w-0 flex-1">
                           <span className="block text-sm font-medium leading-snug">Console</span>
-                          <span className="block text-[12px] text-muted-foreground leading-snug truncate">Ask this relay anything, look inside posts, publish by hand</span>
+                          <span className="block text-[12px] text-muted-foreground leading-snug">Ask this relay anything, look inside posts, publish by hand</span>
                         </span>
                         <ArrowUpRight className="w-4 h-4 text-muted-foreground/50 shrink-0" aria-hidden="true" />
                       </button>
