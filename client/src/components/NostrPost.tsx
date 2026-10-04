@@ -172,7 +172,7 @@ import { SmilePlus, Lock, Globe } from "lucide-react";
 import { ComposeEmojiPicker, useEmojiTags } from "@/components/ComposeEmojiPicker";
 import { useLazyScoreRequest, VerifiedBadgeIcon, useHoverPopover, TrustTierDot, ThreadTrustBar, AuthorHoverCard, BtcZapIcon, HoverCardTrustBadge, VouchedBySection, TrustedBySection } from "./nostr-post/author-hover";
 import { ZapReceiptsPopover, TopZapperAvatars, ReactionDetailsPopover, formatCount } from "./nostr-post/zap-reactions";
-import { ReplyThread, ReplyComposer, QuoteComposer, ParentPostPreview, getReplyTargetId } from "./nostr-post/thread";
+import { ReplyThread, ReplyComposer, QuoteComposer, ParentPostPreview, getReplyTargetId, useReplyDock } from "./nostr-post/thread";
 import { PrivateReplyDialog } from "@/components/PrivateReplyDialog";
 import { AddToFeaturedDialog } from "@/components/AddToFeaturedDialog";
 import { getAdminOutposts } from "@/lib/featured-append";
@@ -2532,11 +2532,14 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
     navigate(`/thread/${noteId}`);
   }, [navigate, noteId]);
 
+  const replyDock = useReplyDock();
   const handleReply = () => {
     if (!signer) {
       toast({ title: "Sign in required", description: "Sign in to reply.", variant: "destructive" });
       return;
     }
+    // On a phone's thread page the docked bar is the one reply box.
+    if (replyDock) { replyDock.replyTo(event); return; }
     setShowReplyComposer(!showReplyComposer);
   };
 

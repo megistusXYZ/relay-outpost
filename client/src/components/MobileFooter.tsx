@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import { tabTap } from "@/lib/footer-nav";
 import { scrollPageToTop, isPageAtTop } from "@/lib/scroll-root";
 import { emitTabRetap } from "@/lib/tab-retap";
@@ -190,6 +190,20 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
 
   const effectiveHidden = dmThreadOpen || hidden;
 
+  // What the footer covers right now, for bars that ride on it (the thread
+  // page's docked reply bar): its height while shown, 0 once it slides away.
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = navRef.current;
+    const root = document.documentElement;
+    const write = () => root.style.setProperty("--ro-footer-h", `${effectiveHidden || !el ? 0 : el.offsetHeight}px`);
+    write();
+    const ro = el && typeof ResizeObserver !== "undefined" ? new ResizeObserver(write) : null;
+    if (el) ro?.observe(el);
+    return () => { ro?.disconnect(); };
+  }, [effectiveHidden]);
+  useEffect(() => () => { document.documentElement.style.removeProperty("--ro-footer-h"); }, []);
+
   // Native tab-bar navigation: the app's landing tab is the history base.
   // Tapping a tab from the base PUSHES (so Back returns there); tapping a tab
   // from anywhere else REPLACES — switching tabs never stacks, and Back from a
@@ -267,6 +281,7 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
           ? "translate-y-full opacity-0 pointer-events-none"
           : "translate-y-0 opacity-100"
       }`}
+      ref={navRef}
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       data-testid="mobile-footer-nav"
     >

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useRoute, useLocation, useSearch } from "wouter";
 import { useGoBack } from "@/hooks/use-go-back";
 import { nip19 } from "nostr-tools";
@@ -8,7 +9,7 @@ import { KIND_METADATA, KIND_TEXT_NOTE, getAvatarUrl, getDisplayName, getProfile
 import { NostrPost } from "@/components/NostrPost";
 import { PollPost } from "@/components/PollPost";
 import { isPollEvent } from "@/lib/polls";
-import { InlineThreadReplyBar, ReplyThread } from "@/components/nostr-post/thread";
+import { InlineThreadReplyBar, ReplyDock, ReplyThread } from "@/components/nostr-post/thread";
 import { ThreadEndBlock } from "@/components/nostr-post/ThreadEndBlock";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { getWriteRelays, getReadRelays } from "@/lib/outbox";
@@ -27,6 +28,10 @@ import { decodeThreadRef } from "@/lib/nostr-routes";
 import { ErrorScreen, type ErrorAction } from "@/components/ErrorScreen";
 import { LinkNotOpenable } from "@/pages/not-found";
 
+
+function MaybeReplyDock({ root, docked, children }: { root: Event; docked: boolean; children: ReactNode }) {
+  return docked ? <ReplyDock root={root}>{children}</ReplyDock> : <>{children}</>;
+}
 
 function InlineReplyPanel({ replyTo }: { replyTo: Event }) {
   const { pubkey } = useNostrAuth();
@@ -703,14 +708,18 @@ export default function Thread() {
   // post sits inside a larger conversation (i.e. it's a reply with ancestors).
   const showRootMarker = shouldShowRootMarker(filteredAncestors.length);
 
+  // A phone has one reply box, docked at the bottom (ReplyDock); desktop has
+  // this one after the replies.
+  const isMobile = useIsMobile();
   const inlineReplyBar = useMemo(
-    () => (event ? <InlineReplyPanel replyTo={event} /> : null),
-    [event],
+    () => (event && !isMobile ? <InlineReplyPanel replyTo={event} /> : null),
+    [event, isMobile],
   );
 
   return (
     <div
-      className="max-w-2xl mx-auto p-4 pb-24 md:pb-20"
+      // On a phone the docked reply bar sits over the bottom too: room to read the end above it.
+      className={`max-w-2xl mx-auto p-4 ${isMobile ? "pb-40" : "pb-24"} md:pb-20`}
       ref={containerRef}
       data-testid="thread-page"
     >
@@ -759,6 +768,7 @@ export default function Thread() {
             />
           )}
 
+          <MaybeReplyDock root={event} docked={isMobile}>
           <div
             ref={targetRef}
             className={`rounded-xl transition-all duration-200 ${
@@ -794,6 +804,7 @@ export default function Thread() {
               />
             )}
           </div>
+          </MaybeReplyDock>
 
           {/* Engagement block filling the space below the conversation: the
               people who spoke here (one-tap follow), more from the author, and
