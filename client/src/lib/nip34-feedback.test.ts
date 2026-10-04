@@ -14,6 +14,8 @@ vi.stubGlobal("localStorage", {
 
 import {
   buildStatusTemplate,
+  buildIssueTemplate,
+  mergeRecipients,
   statusFromKind,
   statusLabel,
   isFeedbackStatus,
@@ -148,7 +150,7 @@ describe("status labels honour the NIP-34 wire kinds (bug #6)", () => {
     expect(statusLabel(statusFromKind(KIND_NIP34_STATUS_CLOSED)!)).toBe("Closed");
     // draft (1633) is shown "Triaged" — a product label for the draft kind, not a
     // claim of a different kind, so it stays interoperable.
-    expect(statusLabel(statusFromKind(KIND_NIP34_STATUS_DRAFT)!)).toBe("Triaged");
+    expect(statusLabel(statusFromKind(KIND_NIP34_STATUS_DRAFT)!)).toBe("Looking into it");
   });
 });
 
@@ -460,5 +462,73 @@ describe("status-change observation — the 'updated' dot state machine", () => 
 
   it("isInactiveFeedbackStatus dims exactly resolved + closed", () => {
     expect(FEEDBACK_STATUSES.filter(isInactiveFeedbackStatus)).toEqual(["resolved", "closed"]);
+  });
+});
+
+describe("who may change a ticket's status: the reporter or whoever it was sent to", () => {
+  const STRANGER = "d".repeat(64);
+  const ISSUE = "i".repeat(64);
+  const statusEv = (pubkey: string, kind: number, at: number, id: string) =>
+    ({ id, pubkey, kind, created_at: at, content: "", sig: "", tags: [["e", ISSUE], ["p", REPORTER]] }) as NostrEvent;
+
+  it("public: a stranger's 'closed' is ignored; the operator's and the reporter's count, in order", () => {
+    const issue = issueEvent({ id: ISSUE, pubkey: REPORTER, tags: [["subject", "Login broken"], ["t", "feedback"], ["p", OPERATOR]] });
+    const [t] = hydrateIssues([
+      issue,
+      statusEv(STRANGER, KIND_NIP34_STATUS_CLOSED, 3000, "1".repeat(64)),
+      statusEv(OPERATOR, KIND_NIP34_STATUS_RESOLVED, 2000, "2".repeat(64)),
+    ]);
+    expect(t.status).toBe("resolved");
+    expect(t.statusChanges).toEqual([{ status: "resolved", by: OPERATOR, at: 2000 }]);
+    const [t2] = hydrateIssues([issue, statusEv(OPERATOR, KIND_NIP34_STATUS_RESOLVED, 2000, "2".repeat(64)), statusEv(REPORTER, KIND_NIP34_STATUS_CLOSED, 2500, "3".repeat(64))]);
+    expect(t2.status).toBe("closed");
+    expect(t2.statusChanges.map((c) => c.by)).toEqual([OPERATOR, REPORTER]);
+  });
+
+  it("private: the same rule, read from the rumor's recipients", () => {
+    const issue = rumor({ id: ISSUE, pubkey: REPORTER, kind: KIND_NIP34_ISSUE, tags: [["subject", "S"], ["t", "feedback"], ["p", OPERATOR]] });
+    const fromStranger = rumor({ id: "s".repeat(64), pubkey: STRANGER, kind: KIND_NIP22_COMMENT, created_at: 3000, tags: [["E", ISSUE], ["status", "closed"]] });
+    const fromOperator = rumor({ id: "o".repeat(64), pubkey: OPERATOR, kind: KIND_NIP22_COMMENT, created_at: 2000, tags: [["E", ISSUE], ["status", "resolved"]] });
+    const [t] = hydratePrivateTickets([issue, fromStranger, fromOperator]);
+    expect(t.status).toBe("resolved");
+    expect(t.statusChanges).toEqual([{ status: "resolved", by: OPERATOR, at: 2000 }]);
+  });
+});
+
+describe("one set of status words, for the operator and for the person who reported it", () => {
+  it("Your tickets uses the shared words — no copy of its own to drift ('In progress' for Resolved did)", async () => {
+    const { readFileSync } = await import("fs");
+    const path = await import("path");
+    const src = readFileSync(path.resolve(import.meta.dirname, "../pages/MyTickets.tsx"), "utf8");
+    expect(src).toMatch(/statusLabel\(/);
+    expect(src).not.toMatch(/In progress|Triaged/);
+  });
+});
+
+describe("new tickets say which relay they're about", () => {
+  it("a public ticket carries a relay tag, with or without a repo", () => {
+    for (const recipient of [noRepo, withRepo]) {
+      const t = buildIssueTemplate({ recipient, title: "Slow uploads", body: "", types: ["bug"], context: null });
+      expect(t.tags).toContainEqual(["relay", RELAY]);
+    }
+  });
+});
+
+describe("the drawer keeps the relay you opened it for", () => {
+  it("when the full recipient list arrives, the chosen relay stays chosen — not the team in first place", () => {
+    const team: FeedbackRecipient = { label: "Relay Outpost team", relay: "wss://team.example", operatorPubkey: REPORTER2, repoD: null, hasInbox: false };
+    const harbour: FeedbackRecipient = { ...noRepo, label: "Harbour Club" };
+    const { recipients, index } = mergeRecipients([team, harbour], [harbour], RELAY);
+    expect(recipients[index].label).toBe("Harbour Club");
+    expect(recipients[index].operatorPubkey).toBe(OPERATOR);
+  });
+  it("a relay that isn't in the list yet is kept, and stays chosen", () => {
+    const team: FeedbackRecipient = { label: "Relay Outpost team", relay: "wss://team.example", operatorPubkey: REPORTER2, repoD: null, hasInbox: false };
+    const { recipients, index } = mergeRecipients([team], [noRepo], RELAY);
+    expect(recipients).toHaveLength(2);
+    expect(recipients[index].relay).toBe(RELAY);
+  });
+  it("nothing chosen: the first", () => {
+    expect(mergeRecipients([noRepo], [], null).index).toBe(0);
   });
 });

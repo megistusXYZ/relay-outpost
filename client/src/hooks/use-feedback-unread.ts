@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
-import { subscribeMyTickets, subscribePrivateFeedback, hydrateIssues, hydratePrivateTickets, isIssueUnread } from "@/lib/nip34-feedback";
+import { subscribeMyTickets, subscribePrivateFeedback, hydrateIssues, hydratePrivateTickets } from "@/lib/nip34-feedback";
+import { ticketUpdates } from "@/lib/feedback-needs";
 import type { UnwrappedRumor } from "@/lib/dm";
 import type { Event as NostrEvent } from "nostr-tools";
 
@@ -37,15 +38,9 @@ export function useFeedbackUnread(): number {
 
   return useMemo(() => {
     if (!pubkey) return 0;
-    const issues = [...hydrateIssues(events), ...hydratePrivateTickets(rumors)];
-    return issues.filter((t) => {
-      if (t.status === "closed") return false;
-      if (t.comments.length === 0) return false;
-      if (!isIssueUnread(t)) return false;
-      // Don't count a ticket whose newest message is the user's own reply.
-      const latest = t.comments.reduce((a, b) => (b.created_at > a.created_at ? b : a));
-      return latest.pubkey !== pubkey;
-    }).length;
+    // A reply or status change from someone else you haven't seen — a close
+    // included (lib/feedback-needs.ts; the bell uses the same rule).
+    return ticketUpdates([...hydrateIssues(events), ...hydratePrivateTickets(rumors)], pubkey).length;
     // readTick participates so the count refreshes after markIssueRead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [events, rumors, readTick, pubkey]);

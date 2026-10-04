@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { feedbackNeedsYou, hasNewFromOthers, markAppErrorGroupRead, operatorInbox } from "@/lib/feedback-needs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -181,8 +182,9 @@ export function FeedbackTab({ relayUrl, inbox }: { relayUrl: string; inbox: Feed
   // optimistic layer so a reply / status change shows instantly and reconciles
   // when it round-trips (privateRumorKey dedupes the optimistic vs real copy).
   const issues = useMemo(
-    () => combineFeedbackIssues([...events, ...optimisticEvents], [...privateRumors, ...optimisticRumors]),
-    [events, optimisticEvents, privateRumors, optimisticRumors],
+    // Scoped like the badge: addressed to you, about this relay (lib/feedback-needs.ts).
+    () => operatorInbox(combineFeedbackIssues([...events, ...optimisticEvents], [...privateRumors, ...optimisticRumors]), pubkey ?? null, relayUrl).issues,
+    [events, optimisticEvents, privateRumors, optimisticRumors, pubkey, relayUrl],
   );
 
   // Auto-filed anonymous crash reports (t:crash) are kept OUT of the human
@@ -563,7 +565,8 @@ export function FeedbackTab({ relayUrl, inbox }: { relayUrl: string; inbox: Feed
     );
   }
 
-  const unreadCount = countUnread(coordValue || "", feedbackIssues);
+  // The same "waiting on you" as the badge and the Inbox chip (lib/feedback-needs.ts).
+  const unreadCount = feedbackNeedsYou(feedbackIssues, pubkey ?? null).length;
 
   return (
     <div className="space-y-4">
@@ -800,7 +803,7 @@ export function FeedbackTab({ relayUrl, inbox }: { relayUrl: string; inbox: Feed
                 <Card
                   key={g.sig}
                   className={`glass-card p-3 cursor-pointer hover:border-primary/40 transition-colors ${dimmed ? "opacity-60" : ""}`}
-                  onClick={() => { markIssueRead(i.event.id, i.latestActivityAt); setSelectedId(i.event.id); }}
+                  onClick={() => { markAppErrorGroupRead(crashIssues, g.sig); setSelectedId(i.event.id); }}
                   data-testid={`card-crash-group-${g.sig}`}
                 >
                   <div className="flex items-start gap-3">
@@ -836,7 +839,7 @@ export function FeedbackTab({ relayUrl, inbox }: { relayUrl: string; inbox: Feed
       ) : (
         <div className="space-y-2">
           {filtered.map((i) => {
-            const unread = isIssueUnread(i);
+            const unread = hasNewFromOthers(i, pubkey ?? null);
             const replyCount = renderableComments(i.comments).length;
             const dimmed = isInactiveFeedbackStatus(i.status);
             return (

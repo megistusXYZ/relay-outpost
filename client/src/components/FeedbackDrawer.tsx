@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useLocation } from "wouter";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
   tryEncodeNevent,
   sendPrivateTicket,
   KIND_NIP34_ISSUE,
+  mergeRecipients,
 } from "@/lib/nip34-feedback";
 
 // defaultPrivate encodes intent: a bug/question is about *your* problem (private
@@ -41,6 +42,9 @@ export function FeedbackDrawer() {
   const [open, setOpen] = useState(false);
   const [recipients, setRecipients] = useState<FeedbackRecipient[]>([]);
   const [recipientIdx, setRecipientIdx] = useState(0);
+  // The relay chosen — by opening the drawer for it, or picking it. Kept by
+  // relay, not position, so a list that arrives later can't change it.
+  const chosenRelayRef = useRef<string | null>(null);
   const [type, setType] = useState<FeedbackType>("bug");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -74,6 +78,7 @@ export function FeedbackDrawer() {
         setAttachContext(TYPE_OPTIONS.find((t) => t.id === detail.initialType)?.defaultContext ?? true);
       }
       if (detail.initialTitle) setTitle(detail.initialTitle);
+      chosenRelayRef.current = detail.initialRecipient?.relay ?? null;
       if (detail.initialRecipient) {
         setRecipients((prev) => {
           const exists = prev.findIndex((r) => r.relay === detail.initialRecipient!.relay);
@@ -98,12 +103,11 @@ export function FeedbackDrawer() {
     discoverAllRecipients()
       .then((list) => {
         if (cancelled) return;
+        // Keep the relay that was chosen (or that the drawer was opened for)
+        // chosen — not the position, which is the team's once the list arrives.
         setRecipients((prev) => {
-          if (prev.length === 0) return list;
-          const merged = [...list];
-          for (const r of prev) {
-            if (!merged.find((m) => m.relay === r.relay)) merged.push(r);
-          }
+          const { recipients: merged, index } = mergeRecipients(list, prev, chosenRelayRef.current);
+          setRecipientIdx(index);
           return merged;
         });
       })
@@ -170,6 +174,8 @@ export function FeedbackDrawer() {
           body: body.trim(),
           types: [type],
           context: ctx,
+          // Which relay it's about, so the operator sees it in that relay's inbox.
+          extraTags: targetRelay ? [["relay", targetRelay]] : undefined,
         });
         if (!res.success) {
           toast({ title: "Could not send feedback", description: res.error || "Please try again.", variant: "destructive" });
@@ -343,7 +349,7 @@ export function FeedbackDrawer() {
               ) : (
                 <select
                   value={recipientIdx}
-                  onChange={(e) => setRecipientIdx(Number(e.target.value))}
+                  onChange={(e) => { const i = Number(e.target.value); setRecipientIdx(i); chosenRelayRef.current = recipients[i]?.relay ?? null; }}
                   className="mt-1 w-full bg-background border border-border/60 rounded-md px-2 py-2 text-sm"
                   data-testid="select-feedback-recipient"
                 >

@@ -84,6 +84,24 @@ export interface FeedbackIssue {
   contextBlock: FeedbackContext | null;
   comments: NostrEvent[];
   private?: boolean;
+  /** Every status change that counts, oldest first: who made it and when. */
+  statusChanges: { status: FeedbackStatus; by: string; at: number }[];
+}
+
+/**
+ * Only the reporter, or whoever the ticket was sent to (its `p` tags, or the
+ * owner of the repo in its `a` tag), may change its status. Anyone can
+ * publish a "closed" event pointing at any ticket; a stranger's must not
+ * close it. A ticket that names no recipient (older ones) can't tell, so it
+ * accepts any — as before.
+ */
+export function mayChangeStatus(issue: { pubkey: string; tags: string[][] }, by: string): boolean {
+  if (by === issue.pubkey) return true;
+  const named = [
+    ...issue.tags.filter((t) => t[0] === "p").map((t) => t[1]),
+    ...issue.tags.filter((t) => t[0] === "a").map((t) => t[1]?.split(":")[1]),
+  ].filter(Boolean);
+  return named.length === 0 || named.includes(by);
 }
 
 export function relayScopedRepoD(relayUrl: string): string {
@@ -391,6 +409,8 @@ export function buildIssueTemplate(opts: BuildIssueOpts) {
     ["subject", title.slice(0, 200)],
     ["t", FEEDBACK_TOPIC_TAG],
     ...types.map((t) => ["t", t]),
+    // Which relay it's about — so an operator who runs several sees it in the right inbox.
+    ...(recipient.relay ? [["relay", recipient.relay]] : []),
     ...clientTags(),
   ];
   if (recipient.operatorPubkey && recipient.repoD) {
@@ -555,17 +575,17 @@ export function statusFromKind(kind: number): FeedbackStatus | null {
 
 /** Honest, wire-faithful status labels. Each maps 1:1 onto its NIP-34 status
  *  kind so other Nostr clients agree on what a status event means:
- *    open (1630) · resolved (1631) · closed (1632) · draft (1633 → "Triaged").
+ *    open (1630) · resolved (1631) · closed (1632) · draft (1633 → "Looking into it").
  *  The old UI displayed resolved as "In progress" and open-vs-resolved were out
  *  of step with the wire kinds, so a status set here read as a DIFFERENT status
- *  in gitworkshop/other NIP-34 clients. "Triaged" is this product's label for
+ *  in gitworkshop/other NIP-34 clients. "Looking into it" is this product's label for
  *  the draft kind (an acknowledged-but-not-started ticket) — it does not claim a
  *  different kind, so it stays interoperable. */
 export const FEEDBACK_STATUS_LABEL: Record<FeedbackStatus, string> = {
   open: "Open",
   resolved: "Resolved",
   closed: "Closed",
-  draft: "Triaged",
+  draft: "Looking into it",
 };
 
 export function statusLabel(status: FeedbackStatus): string {
@@ -937,6 +957,7 @@ export function hydratePrivateTickets(rumors: UnwrappedRumor[]): FeedbackIssue[]
         contextBlock: parseContextBlock(r.content),
         comments: [],
         private: true,
+        statusChanges: [],
       });
     } else if (r.kind === KIND_NIP22_COMMENT) {
       const root = r.tags.find((t) => t[0] === "E")?.[1];
@@ -955,7 +976,11 @@ export function hydratePrivateTickets(rumors: UnwrappedRumor[]): FeedbackIssue[]
     // change posted an empty comment). status is read from every rumor's tag.
     let latest = issue.createdAt;
     let status: FeedbackStatus = "open";
+    const changes: FeedbackIssue["statusChanges"] = [];
     for (const c of cs) {
+      const st0 = c.tags.find((t) => t[0] === "status")?.[1];
+      // A status-only rumor from someone who may not change status is ignored entirely.
+      if (st0 !== undefined && !c.content.trim() && !mayChangeStatus(issue.event, c.pubkey)) continue;
       latest = Math.max(latest, c.created_at);
       // Only trust a status tag whose value is one of the four canonical
       // statuses. An arbitrary wire string (from another NIP-34 client, a future
@@ -963,10 +988,14 @@ export function hydratePrivateTickets(rumors: UnwrappedRumor[]): FeedbackIssue[]
       // renders STATUS_META[status], which is `undefined` for an unknown value
       // and would crash the whole Feedback tab.
       const st = c.tags.find((t) => t[0] === "status")?.[1];
-      if (isFeedbackStatus(st)) status = st;
+      if (isFeedbackStatus(st) && mayChangeStatus(issue.event, c.pubkey)) {
+        status = st;
+        changes.push({ status: st, by: c.pubkey, at: c.created_at });
+      }
     }
-    issue.comments = cs as unknown as NostrEvent[];
+    issue.comments = cs.filter((c) => !(c.tags.some((t) => t[0] === "status") && !c.content.trim() && !mayChangeStatus(issue.event, c.pubkey))) as unknown as NostrEvent[];
     issue.status = status;
+    issue.statusChanges = changes;
     issue.latestActivityAt = latest;
   }
   return Array.from(issues.values()).sort((a, b) => b.latestActivityAt - a.latestActivityAt);
@@ -989,6 +1018,7 @@ export function hydrateIssues(events: NostrEvent[]): FeedbackIssue[] {
         latestActivityAt: e.created_at,
         contextBlock: parseContextBlock(e.content),
         comments: [],
+        statusChanges: [],
       });
     } else if (e.kind === KIND_NIP22_COMMENT || e.kind === KIND_NIP34_COMMENT) {
       const root = commentRootId(e);
@@ -1009,13 +1039,15 @@ export function hydrateIssues(events: NostrEvent[]): FeedbackIssue[] {
     const cs = commentsByRoot.get(root) || [];
     cs.sort((a, b) => a.created_at - b.created_at);
     issue.comments = cs;
-    const ss = statusesByRoot.get(root) || [];
+    const ss = (statusesByRoot.get(root) || []).filter((x) => mayChangeStatus(issue.event, x.pubkey));
     let latest = issue.createdAt;
     if (cs.length > 0) latest = Math.max(latest, cs[cs.length - 1].created_at);
     if (ss.length > 0) {
-      ss.sort((a, b) => b.created_at - a.created_at);
-      issue.status = statusFromKind(ss[0].kind) || "open";
-      latest = Math.max(latest, ss[0].created_at);
+      ss.sort((a, b) => a.created_at - b.created_at);
+      issue.statusChanges = ss.map((x) => ({ status: statusFromKind(x.kind) || "open", by: x.pubkey, at: x.created_at }));
+      const newest = ss[ss.length - 1];
+      issue.status = statusFromKind(newest.kind) || "open";
+      latest = Math.max(latest, newest.created_at);
     }
     issue.latestActivityAt = latest;
   }
@@ -1128,4 +1160,23 @@ export function openFeedbackDrawer(detail: OpenFeedbackDrawerDetail = {}) {
   try {
     window.dispatchEvent(new CustomEvent("relay-outpost:open-feedback", { detail }));
   } catch {}
+}
+
+/**
+ * The drawer's recipients once the full list arrives: the discovered list
+ * (fresher details win), plus any relay the drawer was opened for that isn't
+ * in it — and the relay that was chosen stays chosen. It used to keep the
+ * position instead, and position 0 is the Relay Outpost team: feedback meant
+ * for a relay's operator went to the team.
+ */
+export function mergeRecipients(
+  discovered: FeedbackRecipient[],
+  current: FeedbackRecipient[],
+  chosenRelay: string | null,
+): { recipients: FeedbackRecipient[]; index: number } {
+  const same = (a: string, b: string) => a.replace(/\/+$/, "").toLowerCase() === b.replace(/\/+$/, "").toLowerCase();
+  const recipients = [...discovered];
+  for (const r of current) if (!recipients.some((m) => same(m.relay, r.relay))) recipients.push(r);
+  const index = chosenRelay ? recipients.findIndex((r) => same(r.relay, chosenRelay)) : 0;
+  return { recipients, index: Math.max(0, index) };
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { feedbackNeedsYou } from "@/lib/feedback-needs";
 import { createPortal } from "react-dom";
 import { Segment } from "@/components/Segment";
 import { MissionBriefing, OUTPOSTS_BRIEFING } from "@/components/MissionBriefing";
@@ -163,7 +164,7 @@ import type { SignalTier } from "@/lib/graperank";
 import { OutpostHealthBadge } from "@/components/OutpostHealthBadge";
 import { OutpostHero } from "@/components/outpost/OutpostHero";
 import { outpostPresenceProps } from "@/lib/outpost-presence";
-import { discoverRecipientForRelay, openFeedbackDrawer, repoCoord, subscribeFeedbackThread, hydrateIssues, countUnread, type FeedbackRecipient } from "@/lib/nip34-feedback";
+import { discoverRecipientForRelay, openFeedbackDrawer, repoCoord, subscribeFeedbackThread, hydrateIssues, type FeedbackRecipient } from "@/lib/nip34-feedback";
 
 
 
@@ -232,6 +233,7 @@ function OperatorMiniAvatar({ pubkey }: { pubkey: string }) {
 }
 
 function useFeedbackAffordance(relayUrl: string, label: string, isOperator: boolean) {
+  const { pubkey: myPubkey } = useNostrAuth();
   const [recipient, setRecipient] = useState<FeedbackRecipient | null>(null);
   const [unread, setUnread] = useState(0);
 
@@ -250,18 +252,19 @@ function useFeedbackAffordance(relayUrl: string, label: string, isOperator: bool
     setUnread(0);
     if (!isOperator || !recipient?.hasInbox || !recipient.operatorPubkey || !recipient.repoD) return;
     const coord = repoCoord(recipient.operatorPubkey, recipient.repoD);
+    // The same rule as Relay Control's Inbox (lib/feedback-needs.ts).
     const sub = subscribeFeedbackThread(relayUrl, coord, (events) => {
       const issues = hydrateIssues(events);
       cacheRef.current = { coord, issues };
-      setUnread(countUnread(coord, issues));
+      setUnread(feedbackNeedsYou(issues, myPubkey).length);
     });
     const onRead = () => {
       const cache = cacheRef.current;
-      if (cache) setUnread(countUnread(cache.coord, cache.issues));
+      if (cache) setUnread(feedbackNeedsYou(cache.issues, myPubkey).length);
     };
     window.addEventListener("relay-outpost:feedback-read", onRead);
     return () => { sub.close(); window.removeEventListener("relay-outpost:feedback-read", onRead); };
-  }, [isOperator, recipient, relayUrl]);
+  }, [isOperator, recipient, relayUrl, myPubkey]);
 
   return { recipient, unread };
 }
