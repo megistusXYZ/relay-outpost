@@ -8,6 +8,7 @@
  * The facts are worked out in inspector-model.ts; this fetches and shows.
  */
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useLocation } from "wouter";
 import type { Event as NostrEvent, Filter } from "nostr-tools";
 import { ArrowLeft, Copy } from "lucide-react";
 import { DEFAULT_RELAYS, publishEventDetailed } from "@/lib/nostr";
@@ -181,7 +182,7 @@ function InspectorBody({ event, relayUrl, relayName, ownRelay, canGoBack, onBack
         )}
         {tab === "responses" && <ResponsesPanel event={event} relayUrl={relayUrl} relayName={relayName} onInspect={onInspect} />}
         {tab === "seen" && <SeenOnPanel event={event} relayUrl={relayUrl} relayName={relayName} ownRelay={ownRelay} genuine={verdict.verdict === "valid"} />}
-        {tab === "raw" && <RawPanel event={event} />}
+        {tab === "raw" && <RawPanel event={event} relayUrl={relayUrl} />}
       </div>
     </>
   );
@@ -380,12 +381,15 @@ function SeenOnPanel({ event, relayUrl, relayName, ownRelay, genuine }: { event:
   );
 }
 
-function RawPanel({ event }: { event: InspectedEvent }) {
+function RawPanel({ event, relayUrl }: { event: InspectedEvent; relayUrl: string }) {
   const json = JSON.stringify(event, null, 2);
   const [copied, setCopied] = useState(false);
+  const [, navigate] = useLocation();
+  const publisher = `/my-relays/console?tool=publish${relayUrl ? `&relay=${encodeURIComponent(relayUrl)}` : ""}&event=${encodeURIComponent(JSON.stringify(event))}`;
   return (
     <div className="space-y-2" data-testid="inspector-raw">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-1">
+        <button type="button" onClick={() => navigate(publisher)} className="inline-flex items-center min-h-[44px] px-3 text-[13px] font-medium text-muted-foreground hover:text-foreground" data-testid="inspector-edit-publish">Edit in publisher</button>
         <button type="button" className="min-h-[44px] px-3 text-[13px] font-medium text-muted-foreground hover:text-foreground" onClick={() => { navigator.clipboard?.writeText(json).then(() => setCopied(true), () => {}); }}>
           {copied ? "Copied" : "Copy JSON"}
         </button>

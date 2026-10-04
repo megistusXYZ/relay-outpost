@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { EventInspector, type InspectedEvent } from "./EventInspector";
+import { Publisher } from "./Publisher";
 import { signatureVerdict } from "./inspector-model";
 import { resolveProfileBatch, type ProfileInfo } from "./shared";
 import { consoleLink, resolveFilters } from "./console-query";
@@ -34,7 +35,7 @@ interface HistoryEntry { relays: string[]; text: string; at: number }
 const readHistory = (): HistoryEntry[] => { try { const v = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
 const writeHistory = (h: HistoryEntry[]) => { try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, 20))); } catch { /* private mode */ } };
 
-const host = (u: string) => u.replace(/^wss?:\/\//, "").replace(/\/+$/, "");
+export const host = (u: string) => u.replace(/^wss?:\/\//, "").replace(/\/+$/, "");
 const sameRelay = (a: string, b: string) => host(a).toLowerCase() === host(b).toLowerCase();
 const pretty = (o: unknown) => JSON.stringify(o, null, 2);
 const DEFAULT_TEXT = pretty({ kinds: [1], since: "now-24h", limit: 50 });
@@ -66,7 +67,12 @@ const csvCell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` 
 
 type View = "results" | "said" | "compare";
 
-export function WireConsole({ initialRelays, initialText }: { initialRelays: string[]; initialText: string | null }) {
+export function WireConsole({ initialRelays, initialText, initialTool = "ask", initialEvent = null }: {
+  initialRelays: string[]; initialText: string | null;
+  /** Open on Publish, e.g. from the inspector's "Edit in publisher". */
+  initialTool?: "ask" | "publish"; initialEvent?: string | null;
+}) {
+  const [tool, setTool] = useState<"ask" | "publish">(initialTool);
   const { toast } = useToast();
   const operated = useOperatedRelays();
   const [relays, setRelays] = useState<string[]>(() => {
@@ -268,9 +274,20 @@ export function WireConsole({ initialRelays, initialText }: { initialRelays: str
 
   return (
     <div className="space-y-5" data-testid="wire-console">
-      {/* Where to ask */}
-      <section aria-label="Relays to ask">
-        <h2 className="text-[13px] font-medium text-muted-foreground mb-2">Ask</h2>
+      {/* Ask relays, or publish to them */}
+      <div role="tablist" aria-label="Console tool" className="flex gap-1 border-b border-black/[0.06] dark:border-white/[0.08]">
+        {(["ask", "publish"] as const).map((t) => (
+          <button key={t} type="button" role="tab" aria-selected={tool === t} onClick={() => setTool(t)}
+            className={`min-h-[44px] px-3 text-[15px] border-b-2 -mb-px ${tool === t ? "border-brand text-foreground font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            data-testid={`console-tool-${t}`}>
+            {t === "ask" ? "Ask" : "Publish"}
+          </button>
+        ))}
+      </div>
+
+      {/* Which relays */}
+      <section aria-label="Relays">
+        <h2 className="text-[13px] font-medium text-muted-foreground mb-2">{tool === "ask" ? "Ask" : "Publish to"}</h2>
         <div className="flex flex-wrap items-center gap-2">
           {relays.map((r) => (
             <span key={r} className="inline-flex items-center gap-1 rounded-full border border-black/[0.1] dark:border-white/[0.12] pl-3 text-[13px] min-h-[36px]" data-testid="console-relay" data-relay={r}>
@@ -295,6 +312,9 @@ export function WireConsole({ initialRelays, initialText }: { initialRelays: str
         )}
       </section>
 
+      {tool === "publish" ? (
+        <Publisher relays={relays} initialText={initialEvent} />
+      ) : (<>
       {/* What to ask */}
       <section aria-label="Query" className="rounded-xl border border-black/[0.08] dark:border-white/[0.08]">
         <div role="tablist" aria-label="Query editor" className="flex gap-1 px-3 border-b border-black/[0.06] dark:border-white/[0.08]">
@@ -386,21 +406,7 @@ export function WireConsole({ initialRelays, initialText }: { initialRelays: str
           )}
 
           {view === "said" && (
-            <ol className="py-2 font-[inherit]" data-testid="console-transcript">
-              {lines.map((l, i) => (
-                <li key={i} className="grid grid-cols-[4.5rem_1fr] sm:grid-cols-[4.5rem_11rem_1fr] gap-x-3 items-baseline py-1.5 min-h-[32px] text-[13.5px]" data-testid="console-line" data-what={l.what} data-relay={l.relay}>
-                  <span className="font-mono text-[12px] text-muted-foreground tabular-nums">{offset(l.at - runStart)}</span>
-                  <span className="hidden sm:block truncate text-[12.5px] text-muted-foreground">{host(l.relay)}</span>
-                  <span className={TONE[l.tone]}>
-                    <span className="sm:hidden text-muted-foreground">{multi ? `${host(l.relay)} · ` : ""}</span>
-                    {l.text}
-                    {l.what === "auth-asked" && !signedIn.has(l.relay) && sessions.current.has(l.relay) && (
-                      <button type="button" onClick={() => signIn(l.relay)} className="ml-3 min-h-[36px] px-3 rounded-full border border-current/30 text-[13px] font-medium text-brand" data-testid="console-sign-in">Sign in</button>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ol>
+            <TranscriptList lines={lines} start={runStart} multi={multi} canSignIn={(r) => !signedIn.has(r) && sessions.current.has(r)} onSignIn={signIn} />
           )}
 
           {view === "compare" && (
@@ -460,6 +466,7 @@ export function WireConsole({ initialRelays, initialText }: { initialRelays: str
           <button type="button" onClick={() => { setHistory([]); writeHistory([]); }} className="min-h-[44px] text-[13px] text-muted-foreground hover:text-foreground">Clear recent</button>
         </details>
       )}
+      </>)}
 
       <EventInspector
         event={inspecting?.event ?? null}
@@ -469,6 +476,30 @@ export function WireConsole({ initialRelays, initialText }: { initialRelays: str
         onClose={() => setInspecting(null)}
       />
     </div>
+  );
+}
+
+/** What relays said, line by line, timed from the start. Shared by Ask and Publish. */
+export function TranscriptList({ lines, start, multi, canSignIn, onSignIn }: {
+  lines: TranscriptLine[]; start: number; multi: boolean;
+  canSignIn: (relay: string) => boolean; onSignIn: (relay: string) => void;
+}) {
+  return (
+    <ol className="py-2" data-testid="console-transcript">
+      {lines.map((l, i) => (
+        <li key={i} className="grid grid-cols-[4.5rem_1fr] sm:grid-cols-[4.5rem_11rem_1fr] gap-x-3 items-baseline py-1.5 min-h-[32px] text-[13.5px]" data-testid="console-line" data-what={l.what} data-relay={l.relay}>
+          <span className="font-mono text-[12px] text-muted-foreground tabular-nums">{offset(l.at - start)}</span>
+          <span className="hidden sm:block truncate text-[12.5px] text-muted-foreground">{host(l.relay)}</span>
+          <span className={TONE[l.tone]}>
+            <span className="sm:hidden text-muted-foreground">{multi ? `${host(l.relay)} · ` : ""}</span>
+            {l.text}
+            {l.what === "auth-asked" && canSignIn(l.relay) && (
+              <button type="button" onClick={() => onSignIn(l.relay)} className="ml-3 min-h-[36px] px-3 rounded-full border border-current/30 text-[13px] font-medium text-brand" data-testid="console-sign-in">Sign in</button>
+            )}
+          </span>
+        </li>
+      ))}
+    </ol>
   );
 }
 
