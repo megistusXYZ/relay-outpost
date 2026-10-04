@@ -638,7 +638,7 @@ export function AudioPreviewCard({ url }: { url: string }) {
   if (isDirectFile) {
     return (
       <div className="flex items-center gap-3 p-3 rounded-md bg-accent dark:bg-brand/10 border border-brand/20 dark:border-brand/15">
-        <div className="w-10 h-10 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0">
+        <div data-art className="w-10 h-10 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0">
           <Music className="w-5 h-5 text-brand/70" />
         </div>
         <div className="flex-1 min-w-0 space-y-1">
@@ -652,7 +652,7 @@ export function AudioPreviewCard({ url }: { url: string }) {
   if (loading) {
     return (
       <div className="flex items-center gap-3 p-3 rounded-md bg-accent dark:bg-brand/10 border border-brand/20 dark:border-brand/15 animate-pulse">
-        <div className="w-10 h-10 rounded-lg bg-primary/15 shrink-0" />
+        <div data-art className="w-10 h-10 rounded-lg bg-primary/15 shrink-0" />
         <div className="flex-1 min-w-0 space-y-1.5">
           <div className="h-3 bg-primary/10 rounded w-3/4" />
           <div className="h-2.5 bg-primary/5 rounded w-1/2" />
@@ -667,7 +667,7 @@ export function AudioPreviewCard({ url }: { url: string }) {
         {meta.image ? (
           <img src={meta.image} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0 ring-1 ring-primary/20" />
         ) : (
-          <div className="w-12 h-12 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0">
+          <div data-art className="w-12 h-12 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0">
             <Music className="w-5 h-5 text-brand/70" />
           </div>
         )}
@@ -688,7 +688,7 @@ export function AudioPreviewCard({ url }: { url: string }) {
 
   return (
     <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-md bg-accent dark:bg-brand/10 border border-brand/20 dark:border-brand/15 hover:bg-brand/10 dark:hover:bg-brand/15 transition-colors group" onClick={e => e.stopPropagation()}>
-      <div className="w-10 h-10 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0">
+      <div data-art className="w-10 h-10 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0">
         <Music className="w-5 h-5 text-brand/70" />
       </div>
       <div className="flex-1 min-w-0">

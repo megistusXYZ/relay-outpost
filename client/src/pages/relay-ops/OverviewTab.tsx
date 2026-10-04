@@ -1424,16 +1424,16 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
           </>
         ) : storageTrendData.length === 1 ? (
           <div className="text-center py-6">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-border flex items-center justify-center mx-auto mb-2">
-              <Activity className="w-4 h-4 text-brand" />
+            <div className="flex items-center justify-center mx-auto mb-2 text-muted-foreground">
+              <Activity className="w-5 h-5" aria-hidden="true" />
             </div>
             <p className="text-xs text-muted-foreground/60 font-medium">{storageTrendData[0].events.toLocaleString()} events recorded</p>
             <p className="text-[10px] text-muted-foreground/60 mt-1">Run another scan later to start tracking growth over time.</p>
           </div>
         ) : (
           <div className="text-center py-6">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-border flex items-center justify-center mx-auto mb-2">
-              <Layers className="w-4 h-4 text-brand" />
+            <div className="flex items-center justify-center mx-auto mb-2 text-muted-foreground">
+              <Layers className="w-5 h-5" aria-hidden="true" />
             </div>
             <p className="text-xs text-muted-foreground/60 font-medium">No data yet</p>
             <p className="text-[10px] text-muted-foreground/60 mt-1">Click Scan to take your first snapshot and start tracking relay growth.</p>
