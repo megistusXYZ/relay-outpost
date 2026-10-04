@@ -21,6 +21,8 @@ import {
   type Nip86SupportStatus,
 } from "@/lib/nip86";
 import { canDo, managedAt } from "@/lib/relay-capabilities";
+import { notYetOn, readAccessList, type AccessList } from "@/lib/access-list";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { OpsCard, OpsSectionHeader } from "./ops-ui";
@@ -102,7 +104,7 @@ import {
 
 type AccessLevel = "allow" | "readonly" | "block";
 
-function PubkeyRow({ hex, type, profile, onRemove, addedAt, lastActiveSec, activityStatus }: {
+function PubkeyRow({ hex, type, profile, onRemove, addedAt, lastActiveSec, activityStatus, copies, selecting, selected, onToggle }: {
   hex: string;
   type: AccessLevel;
   profile?: ProfileInfo;
@@ -110,6 +112,11 @@ function PubkeyRow({ hex, type, profile, onRemove, addedAt, lastActiveSec, activ
   addedAt?: number;
   lastActiveSec?: number;
   activityStatus: ActivityStatus;
+  /** How many rows the relay holds for this person, when more than one. */
+  copies?: number;
+  selecting?: boolean;
+  selected?: boolean;
+  onToggle?: () => void;
 }) {
   const npub = pubkeyToNpub(hex);
   const [copied, setCopied] = useState(false);
@@ -132,7 +139,17 @@ function PubkeyRow({ hex, type, profile, onRemove, addedAt, lastActiveSec, activ
         ? "Relay unreachable"
         : formatRelativeSec(lastActiveSec);
   return (
-    <div className="flex items-center gap-2 sm:gap-2 rounded-md bg-black/[0.03] dark:bg-white/[0.02] border border-black/[0.08] dark:border-white/[0.06] px-2.5 sm:px-2 py-2.5 sm:py-1.5">
+    <div
+      className={`flex items-center gap-2 sm:gap-2 rounded-md border px-2.5 sm:px-2 py-2.5 sm:py-1.5 ${selected ? "bg-brand/[0.06] border-brand/30" : "bg-black/[0.03] dark:bg-white/[0.02] border-black/[0.08] dark:border-white/[0.06]"} ${selecting ? "cursor-pointer" : ""}`}
+      onClick={selecting ? onToggle : undefined}
+      data-testid={`ops-access-row-${type}`}
+      data-pubkey={hex}
+    >
+      {selecting && (
+        <span className="inline-flex items-center justify-center w-8 h-8 -ml-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <Checkbox checked={!!selected} onCheckedChange={() => onToggle?.()} aria-label={`Select ${profile?.name || "this person"}`} data-testid={`ops-access-check-${type}`} />
+        </span>
+      )}
       <Avatar className="w-8 h-8 sm:w-6 sm:h-6 shrink-0">
         {profile?.picture ? <AvatarImage src={profile.picture} alt={profile.name || ""} /> : null}
         <AvatarFallback className="bg-brand/20 text-brand text-[10px]">
@@ -148,14 +165,20 @@ function PubkeyRow({ hex, type, profile, onRemove, addedAt, lastActiveSec, activ
           <span title={addedAt ? undefined : "We only started tracking add dates from now on."}>{addedLabel}</span>
           <span className="text-muted-foreground/30">·</span>
           <span>{activityLabel}</span>
+          {copies && copies > 1 && (<>
+            <span className="text-muted-foreground/30">·</span>
+            <span className="text-amber-700 dark:text-amber-400" data-testid="ops-access-copies">listed {copies} times</span>
+          </>)}
         </div>
       </div>
+      {!selecting && <>
       <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-5 sm:w-5 shrink-0 text-muted-foreground/60 hover:text-muted-foreground" onClick={copyNpub} title="Copy npub">
         {copied ? <Check className="w-3 h-3 sm:w-2.5 sm:h-2.5 text-green-800 dark:text-green-400" /> : <Copy className="w-3 h-3 sm:w-2.5 sm:h-2.5" />}
       </Button>
       <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-5 sm:w-5 shrink-0 text-red-600 dark:text-red-400/70 hover:text-red-700 dark:hover:text-red-400" onClick={() => onRemove(hex, type)} aria-label={type === "block" ? "Lift ban" : "Remove from list"} data-testid={`ops-access-remove-${type}`}>
         <X className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
       </Button>
+      </>}
     </div>
   );
 }
@@ -354,7 +377,7 @@ function PubkeySearchInput({ type, inputValue, setInput, buttonLabel, buttonClas
   );
 }
 
-function PubkeyListSection({ type, icon, label, labelClass, description, borderClass, badgeClass, list, inputValue, setInput, buttonLabel, buttonClass, profileCache, onRemove, onAddDirect, onAdd, onExport, onImport, onProfileFound, relayUrl, listKey, controlsKey }: {
+function PubkeyListSection({ type, icon, label, labelClass, description, borderClass, badgeClass, list, inputValue, setInput, buttonLabel, buttonClass, profileCache, onRemove, onAddDirect, onAdd, onExport, onImport, onProfileFound, relayUrl, listKey, controlsKey, onRemoveMany, relayList, onTidy, tidying }: {
   type: AccessLevel; icon: React.ReactNode; label: string; labelClass: string; description: string;
   borderClass: string; badgeClass: string;
   list: string[]; inputValue: string; setInput: (v: string) => void;
@@ -369,8 +392,31 @@ function PubkeyListSection({ type, icon, label, labelClass, description, borderC
   relayUrl: string;
   listKey: string;
   controlsKey: string;
+  onRemoveMany: (hexes: string[], type: AccessLevel, onProgress: (done: number) => void) => Promise<void>;
+  /** What the relay holds for this list — its copies of the same person. */
+  relayList?: AccessList;
+  onTidy?: () => void;
+  tidying?: { done: number; total: number } | null;
 }) {
   const { controls, setQuery, setSort, setFilter } = useUrlListControls(controlsKey);
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirming, setConfirming] = useState(false);
+  const [removing, setRemoving] = useState<{ done: number; total: number } | null>(null);
+  const toggle = (hex: string) => setSelected((prev) => { const n = new Set(prev); if (n.has(hex)) n.delete(hex); else n.add(hex); return n; });
+  const stopSelecting = () => { setSelecting(false); setSelected(new Set()); };
+  // Forget picks that left the list (removed elsewhere, or by this).
+  useEffect(() => { setSelected((prev) => { const on = new Set(list); const n = new Set([...prev].filter((h) => on.has(h))); return n.size === prev.size ? prev : n; }); }, [list]);
+  const removeSelected = async () => {
+    const hexes = [...selected];
+    setConfirming(false);
+    setRemoving({ done: 0, total: hexes.length });
+    await onRemoveMany(hexes, type, (done) => setRemoving({ done, total: hexes.length }));
+    setRemoving(null);
+    stopSelecting();
+  };
+  const what = type === "block" ? "ban list" : type === "readonly" ? "read-only list" : "allow list";
+  const copiedPeople = relayList ? Object.keys(relayList.copies).length : 0;
   const addedAt = useDateAdded(relayUrl, listKey, list);
   const { lastActive, status: activityStatus, run: runActivity } = useActivityProbe(relayUrl, listKey, list);
   const { filtered, total } = useMemo(
@@ -417,6 +463,50 @@ function PubkeyListSection({ type, icon, label, labelClass, description, borderC
         activityStatus={activityStatus}
         onLoadActivity={runActivity}
       />
+      {copiedPeople > 0 && (
+        <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-amber-700 dark:text-amber-400" data-testid={`ops-access-copies-note-${type}`}>
+          <span>
+            The relay lists {copiedPeople} {copiedPeople === 1 ? "person" : "people"} more than once ({relayList!.extraRows} extra {relayList!.extraRows === 1 ? "copy" : "copies"}) — it adds a copy each time someone is added again.
+          </span>
+          {onTidy && (tidying
+            ? <span className="text-muted-foreground" role="status">Tidying {tidying.done} of {tidying.total}…</span>
+            : <button type="button" onClick={onTidy} className="min-h-[36px] font-medium underline underline-offset-4" data-testid={`ops-access-tidy-${type}`}>Tidy up</button>)}
+        </div>
+      )}
+      {list.length > 0 && (
+        <div className="mb-1.5 flex flex-wrap items-center gap-2 min-h-[44px]" data-testid={`ops-access-select-bar-${type}`}>
+          {!selecting ? (
+            <Button variant="ghost" size="sm" className="h-11 sm:h-8 px-3 text-[12px]" onClick={() => setSelecting(true)} data-testid={`ops-access-select-${type}`}>Select</Button>
+          ) : (<>
+            <span className="text-[12px] font-medium tabular-nums" data-testid={`ops-access-selected-${type}`}>{selected.size} selected</span>
+            {selected.size < filtered.length
+              ? <Button variant="ghost" size="sm" className="h-11 sm:h-8 px-2 text-[12px] text-brand" onClick={() => setSelected(new Set(filtered))} data-testid={`ops-access-select-all-${type}`}>Select all {filtered.length}{filtered.length < list.length ? " shown" : ""}</Button>
+              : <Button variant="ghost" size="sm" className="h-11 sm:h-8 px-2 text-[12px]" onClick={() => setSelected(new Set())}>Clear</Button>}
+            <span className="ml-auto flex items-center gap-1">
+              {removing
+                ? <span className="text-[12px] text-muted-foreground" role="status">Removing {removing.done} of {removing.total}…</span>
+                : <Button size="sm" variant="ghost" disabled={!selected.size} className="h-11 sm:h-8 px-3 text-[12px] text-red-600 dark:text-red-400" onClick={() => setConfirming(true)} data-testid={`ops-access-remove-selected-${type}`}><Trash2 className="w-3.5 h-3.5 mr-1" />{type === "block" ? "Lift" : "Remove"} {selected.size || ""}</Button>}
+              <Button size="sm" variant="ghost" disabled={!!removing} className="h-11 sm:h-8 px-3 text-[12px]" onClick={stopSelecting}>Done</Button>
+            </span>
+          </>)}
+        </div>
+      )}
+      <AlertDialog open={confirming} onOpenChange={setConfirming}>
+        <AlertDialogContent data-testid={`ops-access-confirm-${type}`}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{type === "block" ? `Lift ${selected.size} ${selected.size === 1 ? "ban" : "bans"}?` : `Remove ${selected.size} ${selected.size === 1 ? "person" : "people"} from the ${what}?`}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {type === "allow" ? "They won't be able to post here until they're added again." : type === "block" ? "They'll be able to post here again." : "They'll lose read-only access."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-[44px]">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="min-h-[44px] bg-red-600 hover:bg-red-700 text-white" onClick={(e) => { e.preventDefault(); void removeSelected(); }} data-testid={`ops-access-confirm-go-${type}`}>
+              {type === "block" ? "Lift" : "Remove"} {selected.size}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="space-y-1 max-h-60 overflow-y-auto">
         {list.length === 0 ? (
           <p className="text-[10px] text-muted-foreground/60 text-center py-3">No entries.</p>
@@ -432,6 +522,10 @@ function PubkeyListSection({ type, icon, label, labelClass, description, borderC
             addedAt={addedAt[hex]}
             lastActiveSec={lastActive[hex]}
             activityStatus={activityStatus}
+            copies={relayList?.copies[hex]}
+            selecting={selecting}
+            selected={selected.has(hex)}
+            onToggle={() => toggle(hex)}
           />
         ))}
       </div>
@@ -484,6 +578,8 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
   }, [relayUrl]);
 
   const syncRequestRef = useRef(0);
+  // What the relay itself holds, per list: copies of the same person, and why each was added.
+  const [relayCopies, setRelayCopies] = useState<{ allow?: AccessList; block?: AccessList }>({});
 
   const syncFromRelay = useCallback(async () => {
     const requestId = ++syncRequestRef.current;
@@ -506,10 +602,11 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
 
       if (allowRes.result) {
         const rawEntries = allowRes.result as unknown[];
-        allowedPubkeys = rawEntries
-          .map(e => typeof e === "string" ? e : (e as PubkeyEntry).pubkey)
-          .filter((p): p is string => typeof p === "string" && /^[0-9a-f]{64}$/i.test(p))
-          .map(p => p.toLowerCase());
+        // One entry per person: relay.tools stores a row each time someone is
+        // allowed and lists them all (lib/access-list.ts).
+        const read = readAccessList(rawEntries);
+        allowedPubkeys = read.pubkeys;
+        setRelayCopies((c) => ({ ...c, allow: read }));
         setAllowlist(allowedPubkeys);
         saveStoredList(ADMIN_ALLOWLIST_KEY, relayUrl, allowedPubkeys);
         const addedAtMap = extractAddedAtMap(rawEntries);
@@ -519,10 +616,9 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
       }
       if (banRes.result) {
         const rawEntries = banRes.result as unknown[];
-        bannedPubkeys = rawEntries
-          .map(e => typeof e === "string" ? e : (e as PubkeyEntry).pubkey)
-          .filter((p): p is string => typeof p === "string" && /^[0-9a-f]{64}$/i.test(p))
-          .map(p => p.toLowerCase());
+        const read = readAccessList(rawEntries);
+        bannedPubkeys = read.pubkeys;
+        setRelayCopies((c) => ({ ...c, block: read }));
         setBlocklist(bannedPubkeys);
         saveStoredList(ADMIN_BLOCKLIST_KEY, relayUrl, bannedPubkeys);
         const addedAtMap = extractAddedAtMap(rawEntries);
@@ -695,6 +791,83 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
     addToListDirect(type, inputMap[type]);
   }, [newAllow, newReadonly, newBlock, addToListDirect]);
 
+  /**
+   * Remove many at once (select mode). One capability check, then one call
+   * per person (relay.tools deletes all of a person's copies in one call),
+   * a few at a time; the list updates once at the end with who actually went.
+   */
+  const removeMany = useCallback(async (hexes: string[], type: AccessLevel, onProgress: (done: number) => void): Promise<void> => {
+    const keyMap: Record<AccessLevel, string> = { allow: ADMIN_ALLOWLIST_KEY, readonly: ADMIN_READONLY_KEY, block: ADMIN_BLOCKLIST_KEY };
+    const setterMap: Record<AccessLevel, React.Dispatch<React.SetStateAction<string[]>>> = { allow: setAllowlist, readonly: setReadonlyList, block: setBlocklist };
+    const remote = nip86Status === "supported" && (type === "allow" || type === "block");
+    if (remote) {
+      const caps = await fetchRelayCapabilities(relayUrl);
+      if (!canDo(caps, type === "allow" ? "unallow" : "unban")) {
+        const where = managedAt(relayUrl);
+        toast({ title: type === "allow" ? "This relay can't remove people from its allow list here" : "This relay can't lift bans here", description: where.url ? `Do it at ${where.name}.` : `Do it in ${where.name}.` });
+        return;
+      }
+    }
+    const gone: string[] = [];
+    const failed: string[] = [];
+    let done = 0;
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(4, hexes.length) }, async () => {
+      while (next < hexes.length) {
+        const hex = hexes[next++];
+        let ok = true;
+        if (remote) {
+          try { const res = await (type === "allow" ? unallowPubkey : unbanPubkey)(relayUrl, hex); if (res.error) { ok = false; failed.push(res.error); } }
+          catch (err) { ok = false; failed.push(err instanceof Error ? err.message : "couldn't reach the relay"); }
+        }
+        if (ok) gone.push(hex);
+        onProgress(++done);
+      }
+    }));
+    const goneSet = new Set(gone);
+    setterMap[type]((prev) => { const updated = prev.filter((p) => !goneSet.has(p)); saveStoredList(keyMap[type], relayUrl, updated); return updated; });
+    for (const hex of gone) removeDateAdded(relayUrl, type, hex);
+    const actionMap: Record<AccessLevel, ModAction> = { allow: "remove_allowlist", readonly: "remove_readonly", block: "remove_blocklist" };
+    for (const hex of gone) addModLogEntry(relayUrl, { action: actionMap[type], targetPubkey: hex });
+    setModLog(getModLog(relayUrl));
+    if (remote) setRelayCopies((c) => {
+      const key = type === "allow" ? "allow" : "block";
+      const cur = c[key];
+      if (!cur) return c;
+      const copies = { ...cur.copies };
+      for (const hex of gone) delete copies[hex];
+      return { ...c, [key]: { ...cur, pubkeys: cur.pubkeys.filter((p) => !goneSet.has(p)), copies, extraRows: Object.values(copies).reduce((n, k) => n + k - 1, 0) } };
+    });
+    const labels: Record<AccessLevel, string> = { allow: "the allow list", readonly: "the read-only list", block: "the ban list" };
+    if (failed.length) toast({ title: `Removed ${gone.length} of ${hexes.length}`, description: `The relay turned down ${failed.length}: ${failed[0]}`, variant: "destructive" });
+    else toast({ title: `Removed ${gone.length} from ${labels[type]}`, description: remote ? "The relay has the change." : undefined });
+  }, [relayUrl, nip86Status, toast]);
+
+  /**
+   * Leave one copy of each person the relay holds more than once: remove them
+   * (which deletes every copy) and allow them again once, with their reason.
+   */
+  const [tidying, setTidying] = useState<{ done: number; total: number } | null>(null);
+  const tidyCopies = useCallback(async (type: "allow" | "block") => {
+    const read = relayCopies[type];
+    if (!read) return;
+    const people = Object.keys(read.copies);
+    setTidying({ done: 0, total: people.length });
+    let done = 0, lost = 0;
+    for (const hex of people) {
+      const out = await (type === "allow" ? unallowPubkey : unbanPubkey)(relayUrl, hex);
+      if (!out.error) {
+        const back = await (type === "allow" ? allowPubkey : banPubkey)(relayUrl, hex, read.reasons[hex] ?? "");
+        if (back.error) lost++;
+      }
+      setTidying({ done: ++done, total: people.length });
+    }
+    setTidying(null);
+    await syncFromRelay();
+    if (lost) toast({ title: `Tidied ${people.length - lost} of ${people.length}`, description: `${lost} couldn't be added back — they're off the list now. Add them again from the search above.`, variant: "destructive" });
+    else toast({ title: "Tidied up", description: `Each of ${people.length} ${people.length === 1 ? "person is" : "people are"} on the relay's list once now.` });
+  }, [relayCopies, relayUrl, toast, syncFromRelay]);
+
   const removeFromList = useCallback(async (hex: string, type: AccessLevel) => {
     let syncedToRelay = false;
     if (nip86Status === "supported" && (type === "allow" || type === "block")) {
@@ -791,7 +964,7 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
   const { pubkey: operatorPubkey } = useNostrAuth();
   const [wotTier, setWotTier] = useState<"strong" | "moderate" | "low" | "weak">("moderate");
   const [wotBanFlagged, setWotBanFlagged] = useState(false);
-  const [wotPreview, setWotPreview] = useState<{ trusted: string[]; flagged: string[] } | null>(null);
+  const [wotPreview, setWotPreview] = useState<{ trusted: string[]; flagged: string[]; alreadyAllowed: number; alreadyBanned: number } | null>(null);
   const [wotBusy, setWotBusy] = useState<null | "building" | "applying">(null);
   const [wotProgress, setWotProgress] = useState<{ done: number; total: number } | null>(null);
   const WOT_TIERS: { tier: "strong" | "moderate" | "low" | "weak"; label: string }[] = [
@@ -817,12 +990,20 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
         .filter(([pk, inf]) => inf >= cutoff && pk !== operatorPubkey)
         .map(([pk]) => pk);
       const flagged = wotBanFlagged ? Array.from(res.flaggedPubkeys || []).filter((pk) => pk !== operatorPubkey) : [];
-      setWotPreview({ trusted, flagged });
+      // Only people not on the list yet. Allowing someone twice makes some
+      // relays (relay.tools) store them twice — and a second build used to
+      // resend the same first 500 every time.
+      const [onAllow, onBan] = await Promise.all([listAllowedPubkeys(relayUrl), listBannedPubkeys(relayUrl)]);
+      const allowedNow = onAllow.result ? readAccessList(onAllow.result as unknown[]).pubkeys : allowlist;
+      const bannedNow = onBan.result ? readAccessList(onBan.result as unknown[]).pubkeys : blocklist;
+      const newTrusted = notYetOn(trusted, allowedNow);
+      const newFlagged = notYetOn(flagged, bannedNow);
+      setWotPreview({ trusted: newTrusted, flagged: newFlagged, alreadyAllowed: trusted.length - newTrusted.length, alreadyBanned: flagged.length - newFlagged.length });
       if (trusted.length === 0) toast({ title: "No accounts at that tier", description: "Try a lower minimum tier." });
     } finally {
       setWotBusy(null);
     }
-  }, [operatorPubkey, wotTier, wotBanFlagged, toast]);
+  }, [operatorPubkey, wotTier, wotBanFlagged, toast, relayUrl, allowlist, blocklist]);
 
   const applyWot = useCallback(async () => {
     if (!wotPreview) return;
@@ -1001,10 +1182,15 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
                 )}
               </div>
               {wotPreview && wotBusy === null && (
-                <p className="mt-2 text-[11px] text-muted-foreground/55">
-                  {wotPreview.trusted.length} trusted account{wotPreview.trusted.length === 1 ? "" : "s"} at this tier
-                  {wotPreview.flagged.length ? ` · ${wotPreview.flagged.length} flagged` : ""}
-                  {(wotPreview.trusted.length > WOT_CAP || wotPreview.flagged.length > WOT_CAP) ? ` · applying first ${WOT_CAP}` : ""}.
+                <p className="mt-2 text-[11px] text-muted-foreground/55" data-testid="wot-preview">
+                  {wotPreview.trusted.length + wotPreview.flagged.length === 0
+                    ? "Everyone at this tier is already on your list."
+                    : <>
+                        {wotPreview.trusted.length} new trusted account{wotPreview.trusted.length === 1 ? "" : "s"} to allow
+                        {wotPreview.alreadyAllowed ? ` · ${wotPreview.alreadyAllowed} already on your list` : ""}
+                        {wotPreview.flagged.length ? ` · ${wotPreview.flagged.length} flagged to ban` : ""}
+                        {(wotPreview.trusted.length > WOT_CAP || wotPreview.flagged.length > WOT_CAP) ? ` · applying the first ${WOT_CAP}; build again for the rest` : ""}.
+                      </>}
                 </p>
               )}
             </div>
@@ -1027,6 +1213,10 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
           buttonLabel="Add"
           profileCache={profileCache}
           onRemove={removeFromList}
+          onRemoveMany={removeMany}
+          relayList={relayCopies.allow}
+          onTidy={nip86Status === "supported" ? () => void tidyCopies("allow") : undefined}
+          tidying={tidying}
           onAddDirect={addToListDirect}
           onAdd={addToList}
           onExport={exportList}
@@ -1051,6 +1241,7 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
           buttonClass="bg-blue-500/20 text-blue-700 dark:text-blue-300 hover:bg-blue-500/30 border border-blue-400/30 dark:border-blue-400/20"
           profileCache={profileCache}
           onRemove={removeFromList}
+          onRemoveMany={removeMany}
           onAddDirect={addToListDirect}
           onAdd={addToList}
           onExport={exportList}
@@ -1076,6 +1267,10 @@ export function AccessControlTab({ relayUrl, nip11 }: { relayUrl: string; nip11:
         buttonClass="bg-red-500/20 text-red-700 dark:text-red-300 hover:bg-red-500/30 border border-red-400/40 dark:border-red-400/20"
         profileCache={profileCache}
         onRemove={removeFromList}
+        onRemoveMany={removeMany}
+        relayList={relayCopies.block}
+        onTidy={nip86Status === "supported" ? () => void tidyCopies("block") : undefined}
+        tidying={tidying}
         onAddDirect={addToListDirect}
         onAdd={addToList}
         onExport={exportList}
