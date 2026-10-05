@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Music2 } from "lucide-react";
-import { ZapDialog } from "@/components/ZapDialog";
+import { ZapDialog } from "@/components/lazy-dialogs";
 import { BtcZapIcon } from "@/components/icons/BtcZapIcon";
 import {
   resolveArtistLink,

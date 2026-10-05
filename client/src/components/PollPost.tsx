@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, memo, lazy, Suspense } from "react";
 import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
 import { Link, useLocation } from "wouter";
@@ -20,7 +20,9 @@ import { PostBadgeIcons } from "@/components/BadgeDisplay";
 import { Nip05VerifiedCheck } from "@/components/Nip05Badge";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
-import { InlineThreadReplyBar } from "./nostr-post/thread";
+import { lazyNamed } from "@/lib/lazy-retry";
+// The comment box loads with the thread module when comments are opened, not with every feed.
+const InlineThreadReplyBarLazy = lazy(() => lazyNamed(() => import("./nostr-post/thread"), "InlineThreadReplyBar"));
 import { TextWithUnresolvedNostr } from "@/components/NostrPost";
 import { KIND_POLL, KIND_POLL_RESPONSE } from "@/lib/polls";
 import { extractMediaFromContent } from "@/lib/media-utils";
@@ -682,7 +684,7 @@ export const PollPost = memo(function PollPost({ event }: PollPostProps) {
                     No comments yet
                   </div>
                 )}
-                <InlineThreadReplyBar replyTo={event} />
+                <Suspense fallback={null}><InlineThreadReplyBarLazy replyTo={event} /></Suspense>
               </div>
             )}
           </div>

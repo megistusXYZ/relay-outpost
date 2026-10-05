@@ -150,7 +150,7 @@ describe("every surface uses the standard", () => {
   const read = (rel: string) => require("fs").readFileSync(require("path").resolve(__dirname, rel), "utf8") as string;
 
   it.each([
-    ["the 'replying to' preview", "./nostr-post/thread.tsx", /<ClampedText[^>]*lines=\{LINES\.context\}[^>]*expandable=\{false\}[^>]*testId=\{`text-parent-content-/],
+    ["the 'replying to' preview", "./nostr-post/thread-lite.tsx", /<ClampedText[^>]*lines=\{LINES\.context\}[^>]*expandable=\{false\}[^>]*testId=\{`text-parent-content-/],
     ["a quoted post", "./NostrPost.tsx", /<ClampedText[^>]*lines=\{LINES\.context\}[^>]*expandable=\{false\}[^>]*testId=\{`embedded-note-text-/],
     ["post text", "./NostrPost.tsx", /<ClampedText[^>]*lines=\{focused \? undefined : LINES\.post\}[^>]*testId=\{`text-content-/],
     ["a reply in a thread", "./nostr-post/thread.tsx", /<ClampedText[^>]*lines=\{LINES\.post\}[^>]*testId=\{`text-thread-content-/],
@@ -172,7 +172,7 @@ describe("every surface renders only what its lines can show while cut", () => {
   it.each([
     ["post text", "./NostrPost.tsx", /textForLines\(proseText, LINES\.post, isExpanded\)/],
     ["a reply in a thread", "./nostr-post/thread.tsx", /textForLines\(replyProse, LINES\.post, replyExpanded\)/],
-    ["the 'replying to' preview", "./nostr-post/thread.tsx", /textForLines\(event\.content[\s\S]{0,80}?LINES\.context, false\)/],
+    ["the 'replying to' preview", "./nostr-post/thread-lite.tsx", /textForLines\(event\.content[\s\S]{0,80}?LINES\.context, false\)/],
     ["a comment", "./CommentContent.tsx", /textForLines\([^)]*LINES\.comment, expanded\)/],
     ["a direct message", "../pages/Messages.tsx", /textForLines\(displayText, LINES\.chat, expanded\)/],
     ["a group chat message", "./concord/ConcordChat.tsx", /textForLines\(shownText, LINES\.chat, textExpanded\)/],

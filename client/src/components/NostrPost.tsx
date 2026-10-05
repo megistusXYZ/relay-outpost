@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useCallback, memo, isValidElement, cloneElement, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, memo, isValidElement, cloneElement, lazy, Suspense, type ReactNode, type ComponentProps } from "react";
 import { quotedImageUrls } from "@/components/nostr-post/quoted-images";
 import { ClampedText, LINES, textForLines } from "@/components/ClampedText";
 import { createPortal } from "react-dom";
@@ -91,8 +91,6 @@ import { useReactionDetails } from "@/hooks/use-reaction-details";
 import { useSignalCheck } from "@/hooks/use-signal-check";
 import { useAttestations, isActiveAttestation, getAttestationStatusLabel, type Attestation } from "@/hooks/use-attestations";
 import { useMention } from "@/hooks/use-mention";
-import { MentionSearch } from "@/components/MentionSearch";
-import { MentionHighlightTextarea } from "@/components/MentionHighlightTextarea";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -151,8 +149,6 @@ import { useToast } from "@/hooks/use-toast";
 import { mutePubkey, isMutedPubkey } from "@/lib/spam-filter";
 import { ConfirmAction } from "@/components/ConfirmAction";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
-import { ZapDialog } from "@/components/ZapDialog";
-import { ReportDialog } from "@/components/ReportDialog";
 import { useTTS, type ThreadTTSSegment } from "@/contexts/TextToSpeechContext";
 import { createContext, useContext } from "react";
 import { ReplyMarginContext, contextGoesToMargin } from "@/components/nostr-post/reply-margin";
@@ -169,18 +165,29 @@ import { formatInfluence } from "@/lib/graperank";
 import type { SignalTier } from "@/lib/graperank";
 import type { CustomEmoji } from "@/hooks/use-custom-emojis";
 import { SmilePlus, Lock, Globe } from "lucide-react";
-import { ComposeEmojiPicker, useEmojiTags } from "@/components/ComposeEmojiPicker";
 import { useLazyScoreRequest, VerifiedBadgeIcon, useHoverPopover, TrustTierDot, ThreadTrustBar, AuthorHoverCard, BtcZapIcon, HoverCardTrustBadge, VouchedBySection, TrustedBySection } from "./nostr-post/author-hover";
 import { ZapReceiptsPopover, TopZapperAvatars, ReactionDetailsPopover, formatCount } from "./nostr-post/zap-reactions";
-import { ReplyThread, ReplyComposer, QuoteComposer, ParentPostPreview, getReplyTargetId, useReplyDock } from "./nostr-post/thread";
-import { PrivateReplyDialog } from "@/components/PrivateReplyDialog";
-import { AddToFeaturedDialog } from "@/components/AddToFeaturedDialog";
+import { ParentPostPreview, getReplyTargetId, useReplyDock } from "./nostr-post/thread-lite";
+import { lazyNamed } from "@/lib/lazy-retry";
+import { ZapDialog, ReportDialog, PrivateReplyDialog, AddToFeaturedDialog } from "@/components/lazy-dialogs";
+
+// Loaded when first used, not with every feed (guest-first-load.test.ts): a
+// first-time visitor's feed shouldn't download the thread view, the
+// composers and their emoji picker / mention search, or dialogs nobody has
+// opened. Measured 2026-10-04: ~1 MB of script before a guest's first post.
+const loadThread = () => import("./nostr-post/thread");
+const ReplyThreadLazy = lazy(() => lazyNamed(loadThread, "ReplyThread"));
+const ReplyComposerLazy = lazy(() => lazyNamed(loadThread, "ReplyComposer"));
+const QuoteComposerLazy = lazy(() => lazyNamed(loadThread, "QuoteComposer"));
+function ReplyThread(p: ComponentProps<typeof ReplyThreadLazy>) { return <Suspense fallback={null}><ReplyThreadLazy {...p} /></Suspense>; }
+function ReplyComposer(p: ComponentProps<typeof ReplyComposerLazy>) { return <Suspense fallback={null}><ReplyComposerLazy {...p} /></Suspense>; }
+function QuoteComposer(p: ComponentProps<typeof QuoteComposerLazy>) { return <Suspense fallback={null}><QuoteComposerLazy {...p} /></Suspense>; }
 import { getAdminOutposts } from "@/lib/featured-append";
 import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
 
 export { VerifiedBadgeIcon, TrustTierDot, AuthorHoverCard, BtcZapIcon } from "./nostr-post/author-hover";
 export { ZapReceiptsPopover, TopZapperAvatars, ReactionDetailsPopover, formatCount } from "./nostr-post/zap-reactions";
-export { ReplyThread, ReplyComposer, QuoteComposer, getReplyTargetId } from "./nostr-post/thread";
+export { getReplyTargetId } from "./nostr-post/thread-lite";
 
 
 const badgeModeListeners = new Set<(m: "score" | "signal") => void>();
