@@ -50,13 +50,10 @@ function scheduleBatch() {
         for (let attempt = 0; attempt < 2 && !primalSucceeded; attempt++) {
           try {
             if (attempt > 0) await new Promise((r) => setTimeout(r, 500));
-            const batchSize = 20;
-            for (let i = 0; i < unfetched.length; i += batchSize) {
-              const batch = unfetched.slice(i, i + batchSize);
-              const stats = await fetchEventCounts(batch);
-              primalStatsCache.update(stats);
-              primalSucceeded = true;
-            }
+            // fetchEventCounts splits into 50-post asks and sends them together.
+            const stats = await fetchEventCounts(unfetched);
+            primalStatsCache.update(stats);
+            primalSucceeded = true;
           } catch (err) {
             if (attempt === 1) console.warn("Primal stats failed, using relay fallback:", err);
           }

@@ -415,22 +415,16 @@ export async function fetchEventCounts(eventIds: string[]): Promise<Record<strin
   if (eventIds.length === 0) return {};
   await ensureConnection();
 
-  const subId = nextSubId();
-  const allEvents: Event[] = [];
-  const chunkSize = 5;
-  for (let c = 0; c < eventIds.length; c += chunkSize) {
-    const chunk = eventIds.slice(c, c + chunkSize);
-    const cSubId = c === 0 ? subId : nextSubId();
-    const filter = {
-      cache: ["events", {
-        event_ids: chunk,
-        extended_response: true,
-      }],
-    };
-    const chunkEvents = await request(cSubId, filter);
-    allEvents.push(...chunkEvents);
-  }
-  const events = allEvents;
+  // 50 posts per ask, all asks at once. It was 5 per ask, one after another:
+  // measured against the live cache 2026-10-04, 5 ids answer in ~0.84 s and
+  // 50 in ~1.1 s, so a screenful took ~8 s of asks in a row (106 asks on one
+  // guest visit) where one ask does.
+  const chunkSize = 50;
+  const chunks: string[][] = [];
+  for (let c = 0; c < eventIds.length; c += chunkSize) chunks.push(eventIds.slice(c, c + chunkSize));
+  const events = (await Promise.all(chunks.map((chunk) => request(nextSubId(), {
+    cache: ["events", { event_ids: chunk, extended_response: true }],
+  })))).flat();
 
   const result: Record<string, EventStats> = {};
   let hasStatsEvent = false;
