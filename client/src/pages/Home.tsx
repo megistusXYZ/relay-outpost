@@ -2490,11 +2490,13 @@ export default function Home() {
   // Broadcast the pending count so the global rocket FAB can yield to the
   // pill (one adaptive control — see ScrollToTopButton). `source` keys the
   // count so this page's 0s can't clobber another dispatcher's live count.
+  // A hidden Home (kept alive under a drill-in) shows no pill, so it must not
+  // hold the rocket back on the page in front of it either.
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("new-posts-update", {
-      detail: { source: "home", count: totalNewCount }
+      detail: { source: "home", count: surfaceActive ? totalNewCount : 0 }
     }));
-  }, [totalNewCount]);
+  }, [totalNewCount, surfaceActive]);
 
   useEffect(() => {
     return () => {

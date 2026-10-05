@@ -11,6 +11,7 @@ import { InlineEmbedPlayer } from "@/components/InlineEmbedPlayer";
 import { getVideoMuted, setVideoMuted, isAutoplayMediaEnabled } from "@/lib/video-prefs";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { NewPostsPill } from "@/components/NewPostsPill";
+import { useSurfaceActive } from "@/contexts/SurfaceActiveContext";
 import { useSpamFilter } from "@/hooks/use-spam-filter";
 import { useTierContentFilter } from "@/hooks/use-tier-content-filter";
 import { useProfileFloor } from "@/hooks/use-profile-floor";
@@ -1060,6 +1061,7 @@ function VideoListItem({ event, videoUrl }: { event: Event; videoUrl: string }) 
 // dropdown in Home owns it and the internal sort chip is hidden entirely.
 export default function VideoFeed({ embedded = false, sort }: { embedded?: boolean; sort?: SortMode } = {}) {
   const isMobile = useIsMobile();
+  const surfaceActive = useSurfaceActive();
   const { filter: spamFilter } = useSpamFilter();
   const tierFilter = useTierContentFilter();
   useDocumentTitle("Videos");
@@ -1330,9 +1332,9 @@ export default function VideoFeed({ embedded = false, sort }: { embedded?: boole
   // so this feed's 0s can't clobber another dispatcher's live count.
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("new-posts-update", {
-      detail: { source: "videos", count: bufferedCount }
+      detail: { source: "videos", count: surfaceActive ? bufferedCount : 0 }
     }));
-  }, [bufferedCount]);
+  }, [bufferedCount, surfaceActive]);
 
   useEffect(() => {
     return () => {
