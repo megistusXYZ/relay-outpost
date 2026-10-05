@@ -441,9 +441,15 @@ textarea:focus {
   touch-action: pan-y;
 }
 
+/* A post always draws itself. It used to carry `content-visibility: auto`,
+ * and on iPhone WebKit leaves such a post SKIPPED while it scrolls into view
+ * during a fling — blank cards on profiles and threads (owner, 2026-10-04),
+ * with the page jumping as each one finally measured (220px placeholder vs
+ * its real height). A thread is a single post holding every reply, so the
+ * whole conversation could blank at once. Lazy drawing belongs to a LIST that
+ * opts in (`.cv-list`, Home's phone path), not to every post everywhere.
+ * Witness: the scroll-restore debug overlay's "undrawn on screen". */
 .feed-post-item {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 220px;
   contain: layout style;
   border-radius: 0.75rem;
   position: relative;
@@ -451,31 +457,14 @@ textarea:focus {
 }
 
 /* Inside the virtualized feed (VirtualFeed.tsx), rows are transform-positioned
- * from ResizeObserver measurements, so two things must not run there:
- *
- * 1. The browser's OWN lazy renderer. `.feed-post-item` ships
- *    `content-visibility: auto`, so a row whose contents are skipped reports
- *    its contain-intrinsic-size placeholder (220px) instead of its real height.
- *    The virtualizer caches that phantom height, then corrects by hundreds of
- *    px mid-scroll when the row actually paints — the feed "glitches out"
- *    (worst on iOS Safari, which re-skips content during momentum scroll).
- *    The `data-restoring` override below already patches this for the
- *    back-navigation window; live scrolling needs it always: virtualized rows
- *    are only mounted near the viewport anyway, so content-visibility adds no
- *    savings here — only measurement lies.
- *
- * 2. Native scroll anchoring. The virtualizer applies its own scroll
- *    adjustment when an above-viewport row re-measures; Chrome's anchoring
- *    then compensates the SAME transform shift a second time → jumps.
- *    `overflow-anchor: none` excludes the feed subtree from anchor selection
- *    (scoped here, not on `.feed-scroll-container`, so non-virtualized pages
- *    in the same scroller keep native anchoring, which helps them). */
+ * from ResizeObserver measurements, and the virtualizer applies its own scroll
+ * adjustment when an above-viewport row re-measures; Chrome's native scroll
+ * anchoring would then compensate the SAME shift a second time → jumps.
+ * `overflow-anchor: none` excludes the feed subtree from anchor selection
+ * (scoped here, not on `.feed-scroll-container`, so non-virtualized pages in
+ * the same scroller keep native anchoring, which helps them). */
 .virtual-feed {
   overflow-anchor: none;
-}
-.virtual-feed .feed-post-item {
-  content-visibility: visible;
-  contain-intrinsic-size: auto none;
 }
 
 /* A kept-alive surface that is not showing (the Home layer —
@@ -493,16 +482,6 @@ textarea:focus {
   visibility: hidden;
 }
 
-/* While a back/forward scroll restore is in flight, the container carries
- * `data-restoring` (set by use-scroll-restore.ts for the restore window only).
- * Force posts to render their REAL height instead of the 220px
- * content-visibility placeholder, so the virtualizer's measurements and the
- * anchor restorer see true offsets immediately — no shifting-height churn while
- * the position is being landed. Removed the instant the window settles. */
-.feed-scroll-container[data-restoring] .feed-post-item {
-  content-visibility: visible;
-  contain-intrinsic-size: auto;
-}
 
 .feed-post-item:focus-within {
   z-index: 10;

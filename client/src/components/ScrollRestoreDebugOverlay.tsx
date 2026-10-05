@@ -23,6 +23,12 @@ export function ScrollRestoreDebugOverlay() {
   // frame paints. Scrolling does not change it; content growing above the row
   // does. Counts per history entry, resets when the entry changes.
   const motionRef = useRef({ token: null as string | null, last: null as number | null, moves: 0, max: 0 });
+  // The witness for "a post on screen that isn't drawn": WebKit can leave a
+  // `content-visibility: auto` post skipped while it scrolls into view (the
+  // blank cards on profiles and threads, 2026-10-04). checkVisibility with
+  // contentVisibilityAuto says whether its contents are being skipped.
+  // Counts frames with one on screen, since the page loaded.
+  const skipRef = useRef({ frames: 0, most: 0, supported: null as boolean | null });
 
   useEffect(() => {
     if (!enabled) return;
@@ -31,6 +37,17 @@ export function ScrollRestoreDebugOverlay() {
     if (ch) {
       ch.port1.onmessage = () => {
         if (!alive) return;
+        const sk = skipRef.current;
+        let onScreenSkipped = 0;
+        for (const post of document.querySelectorAll<HTMLElement>(".feed-post-item")) {
+          const r = post.getBoundingClientRect();
+          if (r.bottom <= 0 || r.top >= innerHeight || r.height < 40 || post.closest("[inert]")) continue;
+          const inner = post.firstElementChild as (HTMLElement & { checkVisibility?: (o: object) => boolean }) | null;
+          if (!inner?.checkVisibility) { sk.supported = false; break; }
+          sk.supported = true;
+          if (!inner.checkVisibility({ contentVisibilityAuto: true })) onScreenSkipped++;
+        }
+        if (onScreenSkipped) { sk.frames++; sk.most = Math.max(sk.most, onScreenSkipped); }
         const st = getRestoreDebugState();
         const m = motionRef.current;
         if (m.token !== st.token) { m.token = st.token; m.last = null; m.moves = 0; m.max = 0; }
@@ -111,6 +128,7 @@ export function ScrollRestoreDebugOverlay() {
         s.saved && scrollTop != null ? String(Math.round(scrollTop - s.saved.scrollTop)) : "—",
       )}
       {row("held px", container?.style.paddingTop ? container.style.paddingTop : "—")}
+      {row("undrawn on screen", skipRef.current.supported === false ? "n/a" : `${skipRef.current.frames} frames (max ${skipRef.current.most})`, skipRef.current.frames ? "#f87171" : "#4ade80")}
       {row("moved under reader", `${motionRef.current.moves}× (max ${motionRef.current.max}px)`, motionRef.current.moves ? "#f87171" : "#4ade80")}
     </div>
   );
