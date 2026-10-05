@@ -1,4 +1,5 @@
 import { EventStore } from "applesauce-core";
+import { createDialMemory } from "./relay-dial-memory";
 import { SimplePool } from "nostr-tools";
 import type { Filter } from "nostr-tools";
 import { throttledSubscribe } from "./relay-throttler";
@@ -28,6 +29,29 @@ export const eventStore = new EventStore();
 // dropped socket silently killed all "persistent" subscriptions — live Concord
 // chat / DMs went deaf until a remount. See also openResilientPersistentSub.
 export const pool = new SimplePool({ enablePing: true, enableReconnect: true });
+
+// A relay that just refused to connect isn't dialed again moments later
+// (lib/relay-dial-memory.ts): every querySync, subscribeMany, publish and
+// probe reaches a relay through ensureRelay, so this is the one place that
+// covers them all. The skip rejects like a failed connect, which every caller
+// already handles as "couldn't reach it".
+const dialMemory = createDialMemory();
+const dialRelay = pool.ensureRelay.bind(pool);
+pool.ensureRelay = async (url, params) => {
+  const wait = dialMemory.waitFor(url, Date.now());
+  if (wait > 0) throw new Error(`connection skipped: ${url} refused moments ago (retrying in ${Math.ceil(wait / 1000)}s)`);
+  try {
+    const relay = await dialRelay(url, params);
+    dialMemory.succeeded(url);
+    return relay;
+  } catch (err) {
+    dialMemory.failed(url, Date.now());
+    throw err;
+  }
+};
+/** The network came back: relays that refused while it was down get a fresh try. */
+export function forgetRefusedRelays() { dialMemory.forgetAll(); }
+if (typeof window !== "undefined") window.addEventListener("online", forgetRefusedRelays);
 
 /**
  * How long a read waits before nostr-tools is allowed to INVENT an end-of-stream.
