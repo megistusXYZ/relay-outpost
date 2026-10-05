@@ -205,11 +205,9 @@ export function useScrollRestore(
     if (saved && saved.scrollTop > 0) {
       isRestoringRef.current = true;
       if (driveGlobalWindow) beginRestoreWindow();
-      // Force real row heights during the restore window: `.feed-post-item`
-      // ships `content-visibility:auto` (a 220px placeholder until painted),
-      // which makes rows report the wrong height exactly while the restorer is
-      // trying to land on an anchor — a source of the "sloppy load" churn. The
-      // CSS rule keyed on this attr flips it to `visible` for the window only.
+      // Marks the restore window on the container. (It once switched posts'
+      // `content-visibility:auto` off for the window; posts no longer carry
+      // it at all — index.css `.feed-post-item`.)
       el.setAttribute("data-restoring", "");
 
       let cancelled = false;
