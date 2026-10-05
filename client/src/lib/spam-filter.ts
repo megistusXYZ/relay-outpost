@@ -11,6 +11,12 @@ let spamPubkeys = new Set<string>();
 let spamEventIds = new Set<string>();
 let lastFetched = 0;
 let fetching = false;
+// A failed ask is remembered: spam.nostr.band stopped answering (2026-10-04),
+// each ask held a connection for its whole timeout, and every screen that
+// mounted the spam filter asked again. Retry after half an hour.
+const RETRY_AFTER_FAILURE_MS = 30 * 60 * 1000;
+const ASK_TIMEOUT_MS = 4000;
+let failedAt = 0;
 
 const spamListListeners: Array<() => void> = [];
 
@@ -29,11 +35,12 @@ function notifySpamListListeners() {
 export async function fetchSpamList(): Promise<void> {
   if (fetching) return;
   if (Date.now() - lastFetched < CACHE_DURATION) return;
+  if (failedAt && Date.now() - failedAt < RETRY_AFTER_FAILURE_MS) return;
 
   fetching = true;
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeout = setTimeout(() => controller.abort(), ASK_TIMEOUT_MS);
 
     const res = await fetch(`${SPAM_API_URL}?method=get_current_spam`, {
       signal: controller.signal,
@@ -41,7 +48,7 @@ export async function fetchSpamList(): Promise<void> {
     clearTimeout(timeout);
 
     if (!res.ok) {
-      fetching = false;
+      failedAt = Date.now();
       return;
     }
 
@@ -88,7 +95,9 @@ export async function fetchSpamList(): Promise<void> {
     }
 
     lastFetched = Date.now();
+    failedAt = 0;
   } catch {
+    failedAt = Date.now();
   } finally {
     fetching = false;
   }
