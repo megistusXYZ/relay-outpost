@@ -30,6 +30,7 @@ import { FeedErrorBoundary } from "@/components/FeedErrorBoundary";
 import { feedVirtualizationEnabled } from "@/lib/is-ios";
 import { lazyRetry } from "@/lib/lazy-retry";
 import { markFirstPostsShown } from "@/lib/first-posts";
+import { inFollowing, type FollowingGate } from "@/lib/following-gate";
 import { NewPostsPill } from "@/components/NewPostsPill";
 import { hasPendingScrollRestore, isRestoreActive } from "@/lib/scroll-restore";
 import { isLiveFeedMode, orderRevealedFirst } from "@/lib/new-posts";
@@ -753,6 +754,10 @@ export default function Home() {
   const [isImporting, setIsImporting] = useState(false);
 
   const followSet = useMemo(() => new Set(follows), [follows]);
+  const followingGate = useMemo<FollowingGate>(() => ({
+    follows: followSet, me: pubkey,
+    reposterOf: (id) => repostMapRef.current.get(id)?.pubkey,
+  }), [followSet, pubkey]);
   const { fofSet } = useFollowsOfFollows(follows);
 
   // Accounts-in-reach count shown next to the strictness preset (mirrors the
@@ -1700,13 +1705,8 @@ export default function Home() {
       splitSupplement(allTextNotes ?? [], mediaNotes, supplementNotes),
     );
 
-    if (feedMode === "open_comms" && follows.length > 0) {
-      filtered = filtered.filter((e) => {
-        if (followSet.has(e.pubkey) || e.pubkey === pubkey) return true;
-        const repostInfo = repostMapRef.current.get(e.id);
-        if (repostInfo && (followSet.has(repostInfo.pubkey) || repostInfo.pubkey === pubkey)) return true;
-        return false;
-      });
+    if (feedMode === "open_comms") {
+      filtered = filtered.filter((e) => inFollowing(e, followingGate));
     }
 
     // Posts / Replies / All content lens — applies to For You, Following (and,
@@ -1849,7 +1849,7 @@ export default function Home() {
     // don't force a full recompute on every follower-count update.
     // profileVersion IS included: the profile floor hides unknown authors, so
     // kind-0 arrivals must re-run the filter to surface them (see above).
-  }, [feedMode, follows, allTextNotes, mediaNotes, supplementNotes, spamFilter, followSet, activeCustomFeed, profileGetter, pubkey, contentFilter, hasMediaUrl, grapeRankScores, wotEnabled, isCustomMode, feedStyle, discoverV2, preferredLangs, flaggedPubkeys, fofSet, profileVersion, activePreset, serverRanks, usesDefaultLens]);
+  }, [feedMode, follows, allTextNotes, mediaNotes, supplementNotes, spamFilter, followSet, followingGate, activeCustomFeed, profileGetter, pubkey, contentFilter, hasMediaUrl, grapeRankScores, wotEnabled, isCustomMode, feedStyle, discoverV2, preferredLangs, flaggedPubkeys, fofSet, profileVersion, activePreset, serverRanks, usesDefaultLens]);
   useEffect(() => {
     if (!postsShown && baseFilteredEvents.length > 0) { setPostsShown(true); markFirstPostsShown(); }
   }, [postsShown, baseFilteredEvents]);
@@ -2258,6 +2258,12 @@ export default function Home() {
       }
     }
     const fresh = freshDisplayedEvents;
+    // The held list gets Following's rule too: it may have been taken before
+    // your follows were known (a cold start restoring your place), or before
+    // you unfollowed someone or switched accounts.
+    if (feedMode === "open_comms" && pinnedRef.current?.some((e) => !inFollowing(e, followingGate))) {
+      pinnedRef.current = pinnedRef.current.filter((e) => inFollowing(e, followingGate));
+    }
     const pinned = pinnedRef.current;
     if (isAtTop || pinnedKeyRef.current !== feedKey || !pinned || pinned.length === 0) {
       pinnedRef.current = fresh;
@@ -2291,7 +2297,7 @@ export default function Home() {
     // mergeEpoch: bumped by mergeAllNew after clearing the pin, forcing a
     // re-adopt of the fresh list in the same commit as the cutoff bump.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [freshDisplayedEvents, isAtTop, feedKey, mergeEpoch]);
+  }, [freshDisplayedEvents, isAtTop, feedKey, mergeEpoch, feedMode, followingGate]);
 
   // Keep the back-navigation snapshot current with what's actually rendered.
   useEffect(() => {
