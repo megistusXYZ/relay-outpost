@@ -56,6 +56,16 @@ async function mount(el: ReturnType<typeof createElement>) {
 const overlayText = () => document.querySelector('[data-testid="overlay"]')?.textContent ?? null;
 
 describe("DeferredShell", () => {
+  it("on a page with no feed to wait for, loads them after a few seconds anyway", async () => {
+    vi.useFakeTimers();
+    vi.resetModules();
+    ({ DeferredShell } = await import("./DeferredShell"));
+    const { Lazy, load } = lazyOverlay();
+    await mount(createElement(DeferredShell, { events: ["open-thing"], idleMs: 1500 }, createElement(Lazy)));
+    await act(async () => { await vi.advanceTimersByTimeAsync(6000); });
+    expect(load).toHaveBeenCalledOnce();
+  });
+
   it("doesn't load its overlays for the first screen", async () => {
     const { Lazy, load } = lazyOverlay();
     await mount(createElement(DeferredShell, { events: ["open-thing"], idleMs: 10_000 }, createElement(Lazy)));
@@ -63,11 +73,23 @@ describe("DeferredShell", () => {
     expect(overlayText()).toBeNull();
   });
 
-  it("loads them once the app is idle", async () => {
+  // Measured on production 2026-10-04: "idle" came at ~0.6 s, while the feed
+  // was still downloading its posts — ~150 KB of overlays competed with the
+  // first screen on a slow phone. They now wait for the first posts.
+  it("while the first posts are still loading, the app going idle doesn't load them", async () => {
     vi.useFakeTimers();
+    const { Lazy, load } = lazyOverlay();
+    await mount(createElement(DeferredShell, { events: ["open-thing"], idleMs: 1500 }, createElement(Lazy)));
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it("loads them once the first posts are on screen and the app is idle", async () => {
+    vi.useFakeTimers();
+    const { markFirstPostsShown } = await import("@/lib/first-posts");
     const { Lazy, load, release } = lazyOverlay();
     await mount(createElement(DeferredShell, { events: ["open-thing"], idleMs: 1500 }, createElement(Lazy)));
-    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+    await act(async () => { markFirstPostsShown(); await vi.advanceTimersByTimeAsync(1500); });
     expect(load).toHaveBeenCalledOnce();
     release();
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });

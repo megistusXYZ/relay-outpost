@@ -29,6 +29,7 @@ import { VirtualFeed } from "@/components/VirtualFeed";
 import { FeedErrorBoundary } from "@/components/FeedErrorBoundary";
 import { feedVirtualizationEnabled } from "@/lib/is-ios";
 import { lazyRetry } from "@/lib/lazy-retry";
+import { markFirstPostsShown } from "@/lib/first-posts";
 import { NewPostsPill } from "@/components/NewPostsPill";
 import { hasPendingScrollRestore, isRestoreActive } from "@/lib/scroll-restore";
 import { isLiveFeedMode, orderRevealedFirst } from "@/lib/new-posts";
@@ -1850,7 +1851,7 @@ export default function Home() {
     // kind-0 arrivals must re-run the filter to surface them (see above).
   }, [feedMode, follows, allTextNotes, mediaNotes, supplementNotes, spamFilter, followSet, activeCustomFeed, profileGetter, pubkey, contentFilter, hasMediaUrl, grapeRankScores, wotEnabled, isCustomMode, feedStyle, discoverV2, preferredLangs, flaggedPubkeys, fofSet, profileVersion, activePreset, serverRanks, usesDefaultLens]);
   useEffect(() => {
-    if (!postsShown && baseFilteredEvents.length > 0) setPostsShown(true);
+    if (!postsShown && baseFilteredEvents.length > 0) { setPostsShown(true); markFirstPostsShown(); }
   }, [postsShown, baseFilteredEvents]);
 
   // ---- Custom-feed engagement sorts: make primalStatsCache reactive ----
