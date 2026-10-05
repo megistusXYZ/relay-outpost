@@ -97,3 +97,55 @@ describe("the first screen", () => {
     expect((await fs.read()).reached).toBe(false);
   });
 });
+
+describe("the first screen, kept warm", () => {
+  const notes = [note("1", "a", 100)];
+  const reader = (sample: () => Promise<{ reached: boolean; notes: typeof notes }>, now: () => number) => createFirstScreenReader({
+    sample, now,
+    ranks: async () => ({}),
+    profiles: { get: async (authors: readonly string[]) => new Map(authors.map((a) => [a, profile("a", 1)])) },
+  });
+
+  // Measured on production 2026-10-04: 0.8–1.7 s per visit, the whole wait
+  // before a stranger saw a post — every visit rebuilt it from the relays.
+  it("a second visitor within half a minute gets the same screen without it being built again", async () => {
+    let builds = 0, t = 0;
+    const fs = reader(async () => { builds++; return { reached: true, notes }; }, () => t);
+    await fs.read();
+    t = 20_000;
+    expect((await fs.read()).notes).toHaveLength(1);
+    expect(builds).toBe(1);
+  });
+
+  it("after that, a visitor gets the last screen at once while a fresh one is built", async () => {
+    let builds = 0, t = 0;
+    let release!: () => void;
+    const fs = reader(async () => {
+      builds++;
+      if (builds === 2) await new Promise<void>((r) => { release = r; });
+      return { reached: true, notes: builds === 1 ? notes : [note("2", "b", 200)] };
+    }, () => t);
+    await fs.read();
+    t = 45_000;
+    const stale = await Promise.race([fs.read(), new Promise<null>((r) => setTimeout(() => r(null), 50))]);
+    expect(stale?.notes.map((n) => n.id[0])).toEqual(["1"]);
+    expect(builds).toBe(2);
+    release();
+    await new Promise((r) => setTimeout(r, 10));
+    expect((await fs.read()).notes.map((n) => n.id[0])).toEqual(["2"]);
+  });
+
+  it("visitors arriving together share one build", async () => {
+    let builds = 0;
+    const fs = reader(async () => { builds++; await new Promise((r) => setTimeout(r, 20)); return { reached: true, notes }; }, () => 0);
+    await Promise.all([fs.read(), fs.read(), fs.read()]);
+    expect(builds).toBe(1);
+  });
+
+  it("a screen it couldn't build isn't kept: the next visitor tries again", async () => {
+    let builds = 0;
+    const fs = reader(async () => { builds++; return builds === 1 ? { reached: false, notes: [] } : { reached: true, notes }; }, () => 0);
+    expect((await fs.read()).reached).toBe(false);
+    expect((await fs.read()).reached).toBe(true);
+  });
+});

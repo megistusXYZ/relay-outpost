@@ -97,29 +97,56 @@ export interface FirstScreen {
   profiles: Record<string, SignedEvent>;
 }
 
+/** How long a built first screen is handed out as is. */
+export const FIRST_SCREEN_FRESH_MS = 30_000;
+
 export function createFirstScreenReader(opts: {
   sample: () => Promise<{ reached: boolean; notes: SampleNote[] }>;
   ranks: (notes: readonly SampleNote[]) => Promise<Record<string, number>>;
   profiles: ProfileReader;
+  now?: () => number;
 }) {
+  const now = opts.now ?? Date.now;
+  // Kept warm (measured on production 2026-10-04: every visit rebuilt it from
+  // the relays, 0.8–1.7 s — the whole wait before a stranger saw a post). A
+  // screen under half a minute old is handed out as is; an older one is handed
+  // out AT ONCE while a fresh one is built behind it; visitors arriving
+  // together share one build. A screen that couldn't be built isn't kept.
+  let last: { screen: FirstScreen; at: number } | null = null;
+  let building: Promise<FirstScreen> | null = null;
+  const rebuild = () => {
+    building ??= build().then((screen) => {
+      if (screen.reached) last = { screen, at: now() };
+      return screen;
+    }).finally(() => { building = null; });
+    return building;
+  };
   return {
     async read(): Promise<FirstScreen> {
-      const sample = await opts.sample();
-      if (!sample.reached) return { reached: false, notes: [], ranks: {}, profiles: {} };
-      // Profiles are asked for a wider set than the screen holds, and only
-      // notes whose author's profile is in hand go out: a card must never open
-      // on a raw npub (the flash the spam floor's profile gate exists to stop).
-      const candidates = pickFirstScreen(sample.notes, CANDIDATES);
-      const profiles = await opts.profiles.get([...new Set(candidates.map((n) => n.pubkey))]).catch(() => new Map<string, SignedEvent>());
-      const notes = pickFirstScreen(candidates.filter((n) => profiles.has(n.pubkey)));
-      const authors = new Set(notes.map((n) => n.pubkey));
-      const ranks = await opts.ranks(notes).catch(() => ({} as Record<string, number>));
-      return {
-        reached: true,
-        notes,
-        ranks,
-        profiles: Object.fromEntries([...profiles].filter(([pk]) => authors.has(pk))),
-      };
+      if (last) {
+        if (now() - last.at >= FIRST_SCREEN_FRESH_MS) void rebuild().catch(() => {});
+        return last.screen;
+      }
+      return rebuild();
     },
   };
+
+  async function build(): Promise<FirstScreen> {
+    const sample = await opts.sample();
+    if (!sample.reached) return { reached: false, notes: [], ranks: {}, profiles: {} };
+    // Profiles are asked for a wider set than the screen holds, and only
+    // notes whose author's profile is in hand go out: a card must never open
+    // on a raw npub (the flash the spam floor's profile gate exists to stop).
+    const candidates = pickFirstScreen(sample.notes, CANDIDATES);
+    const profiles = await opts.profiles.get([...new Set(candidates.map((n) => n.pubkey))]).catch(() => new Map<string, SignedEvent>());
+    const notes = pickFirstScreen(candidates.filter((n) => profiles.has(n.pubkey)));
+    const authors = new Set(notes.map((n) => n.pubkey));
+    const ranks = await opts.ranks(notes).catch(() => ({} as Record<string, number>));
+    return {
+      reached: true,
+      notes,
+      ranks,
+      profiles: Object.fromEntries([...profiles].filter(([pk]) => authors.has(pk))),
+    };
+  }
 }
