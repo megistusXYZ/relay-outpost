@@ -1,9 +1,14 @@
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { onFirstPostsShown } from "@/lib/first-posts";
 
 /**
  * Loads app-shell overlays nobody sees at launch (create studio, orbit menu,
  * composer, feedback drawer) after the first screen instead of before it:
- * once the app is idle, or at once when something asks to open one.
+ * once the first posts are on screen and the app is idle (or after
+ * `maxWaitMs` on a page with no feed to wait for), or at once when something
+ * asks to open one. Plain "idle" came at ~0.6 s on production (2026-10-04),
+ * while the feed was still downloading its posts — ~150 KB of overlays
+ * competed with the first screen on a slow phone.
  *
  * They open through window events fired from anywhere. While they aren't
  * mounted yet, this listens for those events itself, and replays each one
@@ -13,12 +18,15 @@ import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 export function DeferredShell({
   events,
   idleMs = 2500,
+  maxWaitMs = 6000,
   children,
 }: {
   /** The window events that open these overlays. */
   events: readonly string[];
-  /** Upper bound on waiting for the browser to go idle. */
+  /** Upper bound on waiting for the browser to go idle, once posts are shown. */
   idleMs?: number;
+  /** Load anyway after this long — a page with no feed never says it's shown. */
+  maxWaitMs?: number;
   children: ReactNode;
 }) {
   const [mounted, setMounted] = useState(false);
@@ -33,16 +41,23 @@ export function DeferredShell({
     for (const t of events) window.addEventListener(t, capture);
     const ric = (window as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
     const cic = (window as { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback;
-    const idle = ric ? ric(() => setMounted(true), { timeout: idleMs }) : undefined;
-    const timer = setTimeout(() => setMounted(true), idleMs);
+    let idle: number | undefined;
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
+    const stopWaiting = onFirstPostsShown(() => {
+      idle = ric ? ric(() => setMounted(true), { timeout: idleMs }) : undefined;
+      idleTimer = setTimeout(() => setMounted(true), idleMs);
+    });
+    const fallback = setTimeout(() => setMounted(true), maxWaitMs);
     return () => {
       for (const t of events) window.removeEventListener(t, capture);
+      stopWaiting();
       if (idle !== undefined) cic?.(idle);
-      clearTimeout(timer);
+      clearTimeout(idleTimer);
+      clearTimeout(fallback);
     };
     // `events` is a constant list per call site.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mounted, idleMs]);
+  }, [mounted, idleMs, maxWaitMs]);
 
   if (!mounted) return null;
   return (
