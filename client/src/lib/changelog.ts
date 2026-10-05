@@ -45,6 +45,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     changes: [
       { type: "improved", text: "On a slow phone connection your first posts arrive about half a second sooner. The app downloads less before showing them: the reply box, the zap and report windows and the sign-in options now load the first time you use them." },
       { type: "improved", text: "Likes, replies and zaps on the posts you're looking at fill in faster, asked for all at once instead of a few at a time." },
+      { type: "fixed", text: "Following shows only people you follow. Opening the app before your follow list had loaded could let other people's posts in, and they stayed while you scrolled." },
     ],
   },
   {
