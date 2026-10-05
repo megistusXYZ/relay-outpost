@@ -3192,6 +3192,9 @@ export async function registerRoutes(
     ranks: (notes) => ranksForNotes(notes, scoreCards),
     profiles: createProfileReader(),
   });
+  // Kept warm between visitors too, so the first one after a quiet spell
+  // doesn't pay for the build (read() rebuilds only once it's gone stale).
+  setInterval(() => { void firstScreen.read().catch(() => {}); }, 60_000).unref?.();
   app.get("/api/first-screen", async (_req, res) => {
     try {
       const result = await Promise.race([
