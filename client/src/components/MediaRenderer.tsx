@@ -36,7 +36,9 @@ import {
 } from "@/lib/media-utils";
 import { normalizeNostrClientLinks, nostrRefFromUrl } from "@/lib/nostr-client-links";
 import { InlineEmbedPlayer } from "@/components/InlineEmbedPlayer";
-import { GroupInviteCard } from "@/components/GroupInviteCard";
+import { lazyNamed } from "@/lib/lazy-retry";
+// An invite card brings the group-chat code with it; load it only when a post links to an invite.
+const GroupInviteCard = lazy(() => lazyNamed(() => import("@/components/GroupInviteCard"), "GroupInviteCard"));
 import { detectGroupInvite } from "@/lib/concord/invite-detect";
 import { setActiveVideo, clearActiveVideo, isAutoplayMediaEnabled } from "@/lib/video-prefs";
 import { autoplayDecision, readAutoplayEnvironment, AUTOPLAY_VISIBILITY_THRESHOLD } from "@/lib/autoplay-policy";
@@ -1230,7 +1232,7 @@ export function LinkPreviewCard(props: LinkPreviewCardProps) {
     );
   }
   const invite = detectGroupInvite(props.url);
-  if (invite) return <GroupInviteCard invite={invite} compact={props.compact} />;
+  if (invite) return <Suspense fallback={null}><GroupInviteCard invite={invite} compact={props.compact} /></Suspense>;
   // Audio-space room links (Corny Chat & co) upgrade the same way: detected
   // from URL shape before any OG fetch, same fixed card height, Join in-app.
   const space = audioSpaceFromUrl(props.url);

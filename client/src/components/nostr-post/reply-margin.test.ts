@@ -53,13 +53,14 @@ describe("margin notes wiring", () => {
 
   it("in the margin the note is a real card with readable secondary text (light mode measured 2.5–3:1 before)", async () => {
     const post = await read("../NostrPost.tsx");
-    const thread = await read("./thread.tsx");
     const start = post.indexOf("{inMargin && marginSlot?.el && ");
     const block = post.slice(start, post.indexOf("marginSlot.el,", start));
     expect(block).toContain('<ParentPostPreview event={parentEvent} variant="note" />');
     expect(block).not.toMatch(/text-muted-foreground\/\d/); // no faded secondary text on the page background
-    expect(thread).toMatch(/variant === "note"\s*\? "rounded-lg bg-card border border-border\/60/);
-    expect(thread).toMatch(/variant === "note" \? "text-muted-foreground" : "text-muted-foreground\/60"/);
+    // ParentPostPreview lives in thread-lite.tsx (a feed's first load).
+    const lite = await read("./thread-lite.tsx");
+    expect(lite).toMatch(/variant === "note"\s*\? "rounded-lg bg-card border border-border\/60/);
+    expect(lite).toMatch(/variant === "note" \? "text-muted-foreground" : "text-muted-foreground\/60"/);
   });
 
   it("the profile stream gives each row a slot level with its post, clipped to the row, only when there is a margin", async () => {

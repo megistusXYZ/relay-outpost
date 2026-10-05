@@ -1,6 +1,10 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, lazy, Suspense } from "react";
 import { Rocket, Radio, ShieldCheck, Lock, ArrowLeft, Eye, EyeOff, UserPlus, ChevronDown, HelpCircle } from "lucide-react";
-import { LoginOptions } from "@/components/LoginOptions";
+import { lazyNamed } from "@/lib/lazy-retry";
+// The sign-in options (every signer, key import, account creation) load when
+// the sign-in screen is shown — not for every visitor who is only browsing
+// (guest-first-load.test.ts).
+const LoginOptions = lazy(() => lazyNamed(() => import("@/components/LoginOptions"), "LoginOptions"));
 import { LandingMarketing } from "@/components/landing/LandingMarketing";
 import { RotatingTagline } from "@/components/landing/RotatingTagline";
 import { InviteGreeting } from "@/components/landing/InviteGreeting";
@@ -935,10 +939,12 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
               </div>
             </div>
 
-            <LoginOptions
-              variant="overlay"
-              onBack={onCockpitBack}
-            />
+            <Suspense fallback={<div className="min-h-[280px]" aria-busy="true" />}>
+              <LoginOptions
+                variant="overlay"
+                onBack={onCockpitBack}
+              />
+            </Suspense>
           </div>
         </div>
       )}

@@ -30,7 +30,7 @@ import { copyNostrId } from "@/lib/clipboard-bridge";
 import { TrustTierGlyph } from "@/components/nostr-post/trust-tier-glyph";
 import { RelayOutpostIcon } from "@/components/RelayOutpostLoader";
 import nostrOstrichGif from "@assets/219719339-5eff628c-3470-4cc3-81eb-404f8902de9f_1771392554698.gif";
-import { ZapDialog } from "@/components/ZapDialog";
+import { ZapDialog } from "@/components/lazy-dialogs";
 
 export function useLazyScoreRequest(pubkey: string, tier: SignalTier) {
   const { requestScore } = useGrapeRankScores();

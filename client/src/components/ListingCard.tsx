@@ -20,7 +20,7 @@ import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
 import { use$ } from "applesauce-react/hooks";
 import { Tag, MessageCircle, MapPin, ExternalLink, Flag, ShieldAlert, BadgeCheck, ChevronDown } from "lucide-react";
-import { ReportDialog } from "@/components/ReportDialog";
+import { ReportDialog } from "@/components/lazy-dialogs";
 import { ListingDescription } from "@/components/ListingDescription";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { getSignalTier, getSignalTierLabel } from "@/lib/graperank";
