@@ -32,6 +32,8 @@ export interface ZapSplitRecipient {
   type?: string;
 }
 
+import { matchWavlakeArtist, type WavlakeArtistRow } from "./profile-audio";
+
 export interface MusicTrack {
   id: string;
   event?: Event;
@@ -432,6 +434,9 @@ const wavlakeNpubCache = new Map<string, MusicTrack[]>();
 let wavlakeNpubToArtistId: Map<string, string> | null = null;
 let wavlakeArtistIdToPubkey: Map<string, string> | null = null;
 let wavlakeArtistListPromise: Promise<Map<string, string>> | null = null;
+/** Artists who DON'T name a Nostr account, for the name-and-website match. */
+let wavlakeUnlinkedArtists: WavlakeArtistRow[] = [];
+const WAVLAKE_UNLINKED_SESSION_KEY = "wavlake_unlinked_artists";
 
 const WAVLAKE_MAP_SESSION_KEY = "wavlake_npub_map";
 const WAVLAKE_MAP_TS_KEY = "wavlake_npub_map_ts";
@@ -464,6 +469,7 @@ async function getWavlakeNpubMap(): Promise<Map<string, string>> {
         }
         wavlakeNpubToArtistId = map;
         wavlakeArtistIdToPubkey = reverseMap;
+        try { wavlakeUnlinkedArtists = JSON.parse(sessionStorage.getItem(WAVLAKE_UNLINKED_SESSION_KEY) || "[]"); } catch {}
         return map;
       }
     } catch {}
@@ -473,13 +479,18 @@ async function getWavlakeNpubMap(): Promise<Map<string, string>> {
       if (res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {
+          const unlinked: WavlakeArtistRow[] = [];
           for (const a of json.data) {
             if (a.npub && a.npub.startsWith("npub1") && a.id) {
               map.set(a.npub, a.id);
               const hex = decodeNpubSafe(a.npub);
               if (hex) reverseMap.set(a.id, hex);
+            } else if (a.id && a.name && a.website && !a.deleted) {
+              unlinked.push({ id: a.id, name: a.name, website: a.website });
             }
           }
+          wavlakeUnlinkedArtists = unlinked;
+          try { sessionStorage.setItem(WAVLAKE_UNLINKED_SESSION_KEY, JSON.stringify(unlinked)); } catch {}
           if (map.size > 0) {
             wavlakeNpubToArtistId = map;
             wavlakeArtistIdToPubkey = reverseMap;
@@ -521,36 +532,59 @@ export async function fetchWavlakeTracksByNpub(npub: string, pubkey?: string): P
       return [];
     }
 
-    const artist = await fetchWavlakeArtist(artistId);
-    if (!artist) {
-      return [];
-    }
-
-    const topTracks = getArtistTracks(artist);
-    const albums = getArtistAlbums(artist);
-
-    const albumTrackArrays = await Promise.all(
-      albums.map((album) => fetchAlbumTracks(album.id))
-    );
-    const allAlbumTracks = albumTrackArrays.flat();
-
-    const seen = new Set<string>();
-    const merged: MusicTrack[] = [];
-    const artistPk = pubkey || "";
-    for (const t of [...topTracks, ...allAlbumTracks]) {
-      if (!seen.has(t.id)) {
-        seen.add(t.id);
-        merged.push({ ...t, source: "catalog", artistPubkey: artistPk });
-      }
-    }
-
-    merged.sort((a, b) => b.createdAt - a.createdAt);
+    const merged = await tracksOfWavlakeArtist(artistId, pubkey);
     wavlakeNpubCache.set(npub, merged);
     return merged;
   } catch (err) {
     console.error("Failed to fetch Wavlake tracks by npub:", err);
     return [];
   }
+}
+
+/**
+ * Someone's Wavlake music when Wavlake doesn't name their Nostr account: the
+ * artist with the same name AND the same website as their profile
+ * (lib/profile-audio.ts matchWavlakeArtist). Abel James, 2026-10-04.
+ */
+export async function fetchWavlakeTracksForProfile(
+  profile: { name?: string; display_name?: string; website?: string },
+  pubkey: string,
+): Promise<MusicTrack[]> {
+  try {
+    await getWavlakeNpubMap();
+    const artistId = matchWavlakeArtist(profile, wavlakeUnlinkedArtists);
+    return artistId ? await tracksOfWavlakeArtist(artistId, pubkey) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function tracksOfWavlakeArtist(artistId: string, pubkey?: string): Promise<MusicTrack[]> {
+  const artist = await fetchWavlakeArtist(artistId);
+  if (!artist) {
+    return [];
+  }
+
+  const topTracks = getArtistTracks(artist);
+  const albums = getArtistAlbums(artist);
+
+  const albumTrackArrays = await Promise.all(
+    albums.map((album) => fetchAlbumTracks(album.id))
+  );
+  const allAlbumTracks = albumTrackArrays.flat();
+
+  const seen = new Set<string>();
+  const merged: MusicTrack[] = [];
+  const artistPk = pubkey || "";
+  for (const t of [...topTracks, ...allAlbumTracks]) {
+    if (!seen.has(t.id)) {
+      seen.add(t.id);
+      merged.push({ ...t, source: "catalog", artistPubkey: artistPk });
+    }
+  }
+
+  merged.sort((a, b) => b.createdAt - a.createdAt);
+  return merged;
 }
 
 export interface UniqueArtistInfo {

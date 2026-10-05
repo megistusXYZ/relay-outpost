@@ -1,3 +1,4 @@
+import { profileShows } from "@/lib/profile-audio";
 import { useState, useRef, useCallback, useEffect, useMemo, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,7 @@ import { UploadTrackDialog } from "@/components/UploadTrackDialog";
 import { UploadVideoDialog } from "@/components/UploadVideoDialog";
 import { RelayOutpostLoader, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import type { MusicTrack } from "@/lib/music";
-import { hasReplay, pickStreamSource, isDirectMedia, type LiveEventData } from "@/lib/live-events";
+import { pickStreamSource, isDirectMedia, type LiveEventData } from "@/lib/live-events";
 import { nip19 } from "nostr-tools";
 import { Link } from "wouter";
 import { format } from "date-fns";
@@ -170,8 +171,8 @@ export function MediaSection({
     }
   }, [onLoadAudio]);
 
-  const liveStreamCount = liveStreams?.length || 0;
-  const audioCount = audioTracks.length + liveStreamCount;
+  // The chip counts exactly what the Audio tab lists (lib/profile-audio.ts).
+  const audioCount = audioTracks.length + profileShows(liveStreams).count;
 
   const subTabs: { id: MediaSubTab; label: string; icon: typeof ImageIcon; count: number }[] = [
     { id: "images", label: "Photos", icon: ImageIcon, count: imageUrls.length },
@@ -606,6 +607,10 @@ function LiveStreamCard({ stream }: { stream: LiveEventData }) {
               <Badge variant="secondary" className="text-[9px] px-1.5 py-0">
                 Recording
               </Badge>
+            ) : stream.status === "planned" ? (
+              <Badge variant="secondary" className="text-[9px] px-1.5 py-0">
+                Coming up
+              </Badge>
             ) : (
               <Badge variant="secondary" className="text-[9px] px-1.5 py-0 opacity-60">
                 Ended
@@ -719,10 +724,10 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
     setTimeout(() => onRefresh?.(), 1500);
   }, [onRefresh]);
 
-  const liveNow = useMemo(() => liveStreams?.filter((s) => s.status === "live") || [], [liveStreams]);
-  // Replays only (the Past-broadcasts rule from /live): an ended stream
-  // without a recording is a dead row, not a show someone can watch.
-  const previousShows = useMemo(() => liveStreams?.filter((s) => s.status === "ended" && hasReplay(s)) || [], [liveStreams]);
+  // Live, coming up, and every past show — with a recording or not: on a
+  // profile a show someone played is part of their story, and the card says
+  // when there's nothing to replay. Counted and listed by the same rule.
+  const { liveNow, comingUp, past: previousShows } = useMemo(() => profileShows(liveStreams), [liveStreams]);
   const podcastTracks = useMemo(() => tracks.filter(t => t.source === "podcast"), [tracks]);
   const musicTracks = useMemo(() => tracks.filter(t => t.source !== "podcast"), [tracks]);
   // Group into albums (Winamp-style), preserving track order. Album headers only
@@ -737,7 +742,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
   }, [musicTracks]);
   const showAlbumHeaders = musicAlbums.filter(([k]) => k).length > 1;
 
-  const showsCount = liveNow.length + previousShows.length;
+  const showsCount = liveNow.length + comingUp.length + previousShows.length;
   const musicCount = musicTracks.length;
   const podcastCount = podcastTracks.length;
 
@@ -770,7 +775,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
     return <div className="flex flex-col items-center justify-center py-12"><RelayOutpostLoader size="md" label="Scanning frequencies..." /></div>;
   }
 
-  const hasAnyContent = tracks.length > 0 || liveNow.length > 0 || previousShows.length > 0;
+  const hasAnyContent = tracks.length > 0 || showsCount > 0;
 
   if (!hasAnyContent && !connectedPodcastFeed) {
     return (
@@ -1018,6 +1023,19 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
               </div>
               <div className="space-y-2">
                 {liveNow.map((stream) => (
+                  <LiveStreamCard key={`${stream.pubkey}:${stream.dTag}`} stream={stream} />
+                ))}
+              </div>
+            </div>
+          )}
+          {comingUp.length > 0 && (
+            <div className="mb-3" data-testid="container-coming-up-shows">
+              <div className="flex items-center gap-2 mb-2">
+                <Radio className="w-3.5 h-3.5 text-muted-foreground/50" />
+                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">Coming up</span>
+              </div>
+              <div className="space-y-2">
+                {comingUp.map((stream) => (
                   <LiveStreamCard key={`${stream.pubkey}:${stream.dTag}`} stream={stream} />
                 ))}
               </div>

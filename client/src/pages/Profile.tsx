@@ -73,7 +73,8 @@ import { uniqueById } from "@/lib/profile-stream";
 import { IdentityCircleCard } from "@/components/profile/IdentityCircleCard";
 import { isMutedPubkey, mutePubkey, unmutePubkey } from "@/lib/spam-filter";
 import { recordProfileVisit } from "@/lib/recent-profiles";
-import { MUSIC_KINDS, MUSIC_RELAYS, parseMusicEvents, fetchWavlakeTracksByNpub, fetchPodcastFromRSS, discoverPodcastFeed, isKnownPodcaster, getSavedPodcastFeed, isPodcastDisabled, fetchNostrPodcastFeed, isPodcastFeedUrl, type MusicTrack } from "@/lib/music";
+import { audioFromNotes, isAudioUrl } from "@/lib/profile-audio";
+import { MUSIC_KINDS, MUSIC_RELAYS, parseMusicEvents, fetchWavlakeTracksByNpub, fetchWavlakeTracksForProfile, fetchPodcastFromRSS, discoverPodcastFeed, isKnownPodcaster, getSavedPodcastFeed, isPodcastDisabled, fetchNostrPodcastFeed, isPodcastFeedUrl, type MusicTrack } from "@/lib/music";
 import { MediaSection } from "@/components/MediaSection";
 import { ProfileListingsStrip } from "@/components/ListingCard";
 import { fetchRelayLists, getRelayList, getRelayListMeta, parseRelayList, getUserNotesFetchRelays, type RelayPreference } from "@/lib/outbox";
@@ -364,6 +365,8 @@ function extractMediaFromEvents(events: Event[]): { urls: string[]; orientationM
       const kv = parseImeta(tag);
       const u = kv.url;
       if (!u) continue;
+      // Audio belongs in Audio (lib/profile-audio.ts), not counted as a photo.
+      if ((kv.m || "").startsWith("audio/") || (!kv.m && isAudioUrl(u))) continue;
       const declaredVideo = (kv.m || "").startsWith("video/");
       if (!seen.has(u)) {
         seen.add(u);
@@ -390,6 +393,7 @@ function extractMediaFromEvents(events: Event[]): { urls: string[]; orientationM
     for (const tag of ev.tags) {
       if (tag[0] === "image" || tag[0] === "thumb" || tag[0] === "url") {
         const u = tag[1];
+        if (u && isAudioUrl(u)) continue;
         if (u && !seen.has(u)) {
           seen.add(u);
           urls.push(u);
@@ -1282,6 +1286,35 @@ export default function Profile() {
     }
   }, [pubkey, audioLoaded, loadAudio]);
 
+  // Their music on Wavlake when Wavlake doesn't name their Nostr account: the
+  // artist with their name AND their website (lib/profile-audio.ts). Waits for
+  // the profile, which loadAudio can't.
+  const wavlakeTriedForRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!pubkey || !audioLoaded || !profileContent?.website) return;
+    const key = `${pubkey}::${profileContent.website}::${profileContent.display_name || profileContent.name || ""}`;
+    if (wavlakeTriedForRef.current === key) return;
+    if (audioTracks.some((t) => t.source !== "podcast")) return;
+    wavlakeTriedForRef.current = key;
+    let live = true;
+    fetchWavlakeTracksForProfile(profileContent, pubkey).then((found) => {
+      if (!live || found.length === 0) return;
+      setAudioTracks((prev) => {
+        const have = new Set(prev.map((t) => t.id));
+        return [...found.filter((t) => !have.has(t.id)), ...prev];
+      });
+    });
+    return () => { live = false; };
+  }, [pubkey, audioLoaded, profileContent, audioTracks]);
+
+  // Songs and recordings they posted in their own notes.
+  const shownAudio = useMemo(() => {
+    const fromNotes = audioFromNotes(allNotes ?? [], profileContent?.display_name || profileContent?.name || "");
+    if (fromNotes.length === 0) return audioTracks;
+    const have = new Set(audioTracks.map((t) => t.audioUrl));
+    return [...audioTracks, ...fromNotes.filter((t) => !have.has(t.audioUrl))];
+  }, [audioTracks, allNotes, profileContent?.display_name, profileContent?.name]);
+
   useEffect(() => {
     if (!pubkey) return;
     const website = profileContent?.website;
@@ -1634,7 +1667,7 @@ export default function Profile() {
   const tabCounts: { notes?: number; replies?: number; media?: number } = {
     notes: profileStats?.noteCount,
     replies: profileStats?.replyCount,
-    media: (mediaUrls.length + audioTracks.length + (profileStats?.longFormCount || 0)) || undefined,
+    media: (mediaUrls.length + shownAudio.length + (profileStats?.longFormCount || 0)) || undefined,
   };
 
   const relayListEvent = use$(() => pubkey ? eventStore.replaceable(10002, pubkey) : undefined, [pubkey]);
@@ -2076,7 +2109,7 @@ export default function Profile() {
             mediaMeta={mediaMeta}
             mediaAuthor={{ displayName, avatarUrl }}
             mediaLoaded={notesLoaded}
-            audioTracks={audioTracks}
+            audioTracks={shownAudio}
             audioLoaded={audioLoaded}
             isOwnProfile={false}
             onLoadAudio={loadAudio}
@@ -2529,7 +2562,7 @@ export default function Profile() {
             mediaMeta={mediaMeta}
                 mediaAuthor={{ displayName, avatarUrl }}
                 mediaLoaded={notesLoaded}
-                audioTracks={audioTracks}
+                audioTracks={shownAudio}
                 audioLoaded={audioLoaded}
                 isOwnProfile={false}
                 onLoadAudio={loadAudio}
