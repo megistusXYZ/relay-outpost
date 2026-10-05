@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.17.2",
+    date: "2026-10-05",
+    title: "Search that answers",
+    changes: [
+      { type: "fixed", text: "Search finds posts, people, hashtags and articles again without a long wait. A search service we relied on stopped answering, so search now asks ones that do." },
+      { type: "improved", text: "The app no longer waits on that service at all, for profiles, relay lists or anything else. Your mutes, reports and trust settings keep doing the work of keeping spam out of your feed." },
+    ],
+  },
+  {
     version: "1.17.1",
     date: "2026-10-04",
     title: "Lighter on a slow connection",
