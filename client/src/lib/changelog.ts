@@ -39,6 +39,30 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.17.0",
+    date: "2026-10-04",
+    title: "Quicker to open, calmer to run",
+    changes: [
+      { type: "improved", text: "The first posts show up sooner, especially on a phone. We ask other services far fewer questions on the way in, stop knocking on relays that are down, and keep the welcome screen ready instead of building it for every visitor." },
+      { type: "new", text: "Running a community? Relay Control has a new layout you'll recognise from chat apps: Overview, Posts, People, Inbox, Community and Advanced. A checklist on Overview walks you through setting up, and everyday screens use plain words, with “Show technical details” in Advanced for anyone who wants them." },
+      { type: "new", text: "Who can post now says in words who's allowed in. Approved and banned people live in People, with import and bulk remove. Your team can open Relay Control to look and keep notes." },
+      { type: "fixed", text: "Posts no longer go blank while you scroll a profile or a thread on iPhone." },
+      { type: "fixed", text: "The “new posts” bubble stays on your home feed and no longer follows you into a thread or a profile." },
+      { type: "improved", text: "In Relay Control, every kind of post reads as what it is: a like shows what was liked, thanks show how many sats, and a request to delete says so. Feature only appears on things a community would feature." },
+      { type: "improved", text: "Musicians' profiles show more of their music: songs on Wavlake, audio they posted themselves, and past shows, with the count matching what you see." },
+    ],
+    feedback: [
+      {
+        quote: "Posts are disappearing when loading on profiles and threads.",
+        attribution: "A tester on iPhone. Every post now draws as soon as it scrolls into view.",
+      },
+      {
+        quote: "These users won't be the most techy. Make it feel like something they already know.",
+        attribution: "The team, on Relay Control.",
+      },
+    ],
+  },
+  {
     version: "1.16.4",
     date: "2026-10-04",
     title: "Type straight away",
