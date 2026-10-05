@@ -61,7 +61,7 @@ import {
 } from "./shared";
 import { parseEventQuery, TIME_RANGES, type RangeId, type TimeWindow } from "./event-query";
 import {
-  contentFilter, countByType, exportable, isPrivateKind, mergePage, rowPreview, scopeLine, sortEvents, toCsv,
+  aboutEvent, aboutId, contentFilter, countByType, exportable, featureWhat, isPrivateKind, mergePage, rowPreview, scopeLine, sortEvents, toCsv,
   looksEncrypted, typeOf, TYPE_VIEWS, typeWord, type PreviewContext, type SortDir, type SortKey, type TypeViewId,
 } from "./content-model";
 
@@ -183,15 +183,16 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
   const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
   const nameOf = useCallback((pk: string) => profiles.get(pk)?.name, [profiles]);
 
-  // The posts reactions and reposts are about, so a row can say what was liked.
+  // The posts likes, reposts, thanks and delete requests are about, so a row
+  // can say what was liked, thanked or asked to go.
   const [targets, setTargets] = useState<Map<string, NostrEvent>>(new Map());
   const askedTargets = useRef<Set<string>>(new Set());
   const byId = useMemo(() => new Map(results.map((e) => [e.id, e])), [results]);
   useEffect(() => {
     const want: string[] = [];
     for (const e of results) {
-      if (![6, 7, 16].includes(e.kind)) continue;
-      const id = [...e.tags].reverse().find((t) => t[0] === "e" && /^[0-9a-f]{64}$/i.test(t[1] ?? ""))?.[1];
+      if (![5, 6, 7, 16, 9735].includes(e.kind)) continue;
+      const id = aboutId(e);
       if (id && !byId.has(id) && !askedTargets.current.has(id)) { askedTargets.current.add(id); want.push(id); }
     }
     if (!want.length) return;
@@ -359,6 +360,10 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
     // On a wide screen something is always open beside the list — including
     // after a filter takes the open post away.
     if (wide && rows.length && !rows.some((r) => r.id === selectedId)) setSelectedId(rows[0].id);
+    // On a phone the pop-up closes when its post leaves the list — and is
+    // forgotten, so it can't spring open again when the post comes back (a
+    // filter switched back, Live, a fresh search).
+    else if (!wide && selectedId && !rows.some((r) => r.id === selectedId)) setSelectedId(null);
   }, [wide, rows, selectedId]);
 
   // ---- choosing many ----
@@ -491,7 +496,7 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
         case "x": if (current) { setSelectMode(true); toggleCheck(current.id); } break;
         case "r": if (checked.size) askRemove([...checked], rule); else if (current) askRemove([current.id]); break;
         case "b": if (checked.size) askBan(rows.filter((r) => checked.has(r.id)).map((r) => r.pubkey), rule); else if (current) askBan([current.pubkey]); break;
-        case "f": if (current && !isPrivateKind(current.kind)) setFeatureEvent(current); break;
+        case "f": { const f = current && featurable(current); if (f) setFeatureEvent(f); break; }
         case "i": if (current) setInspecting(current); break;
         case "/": searchRef.current?.focus(); break;
         case "?": setShortcutsOpen(true); break;
@@ -517,6 +522,15 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
   const checkedAuthors = useMemo(() => [...new Set(checkedRows.map((e) => e.pubkey))], [checkedRows]);
   const sortBy = (key: SortKey) => setSort((s) => s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: key === "time" ? "desc" : "asc" });
 
+  // What Feature puts in a featured feed: the post itself, or — for a like or
+  // repost — the post it's about, when we have it (content-model featureWhat).
+  const featurable = (e: NostrEvent): NostrEvent | null => {
+    const what = featureWhat(e);
+    if (!what) return null;
+    return what.own ? e : (aboutEvent(e, previewCtx) as NostrEvent | undefined) ?? null;
+  };
+  const featureOf = selected ? featurable(selected) : null;
+
   const detail = selected ? (
     <ContentDetail
       event={selected}
@@ -527,9 +541,11 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
       where={where}
       onRemove={() => askRemove([selected.id])}
       onBan={() => askBan([selected.pubkey])}
-      onFeature={() => setFeatureEvent(selected)}
+      feature={featureOf ? (featureOf.id === selected.id ? "Feature" : "Feature the post") : null}
+      onFeature={() => { if (featureOf) setFeatureEvent(featureOf); }}
       onInspect={() => setInspecting(selected)}
-      onEverythingFrom={() => { const n = pubkeyToNpub(selected.pubkey); setQuery(n); setSubmitted(n); setView("all"); }}
+      // The list becomes theirs; on a phone the pop-up gets out of its way.
+      onEverythingFrom={() => { const n = pubkeyToNpub(selected.pubkey); setQuery(n); setSubmitted(n); setView("all"); if (!wide) setSelectedId(null); }}
       preview={previewCtx}
     />
   ) : null;
@@ -848,8 +864,10 @@ function ContentRow({ event, profile, wide, nowSec, current, selectMode, checked
   );
 }
 
-function ContentDetail({ event, profile, relayName, canRemove, canBan, where, onRemove, onBan, onFeature, onInspect, onEverythingFrom, preview }: {
+function ContentDetail({ event, profile, relayName, canRemove, canBan, where, feature, onRemove, onBan, onFeature, onInspect, onEverythingFrom, preview }: {
   event: NostrEvent; profile?: ProfileInfo; relayName: string; canRemove: boolean; canBan: boolean;
+  /** The Feature button's words, or null where there's nothing to feature. */
+  feature: string | null;
   where: { name: string; url?: string };
   onRemove: () => void; onBan: () => void; onFeature: () => void; onInspect: () => void; onEverythingFrom: () => void;
   preview: PreviewContext;
@@ -899,9 +917,9 @@ function ContentDetail({ event, profile, relayName, canRemove, canBan, where, on
           </Button>
         ) : null}
         {!canRemove && !canBan && <ManagedAtNote where={where} lead="Your host doesn't let apps remove posts or ban people." verb="Do it" testId="ops-content-cant-act" />}
-        {!sealed && (
+        {feature && (
           <Button variant="outline" onClick={onFeature} className="h-11 rounded-full justify-center" data-testid="ops-content-feature">
-            <MagicStarIcon className="w-4 h-4 mr-2" />Feature
+            <MagicStarIcon className="w-4 h-4 mr-2" />{feature}
           </Button>
         )}
         <div className="flex gap-2">
@@ -930,12 +948,13 @@ function ContentDetail({ event, profile, relayName, canRemove, canBan, where, on
 function PostBody({ event, preview, text, clipped, showAll }: { event: NostrEvent; preview: PreviewContext; text: string; clipped: boolean; showAll: () => void }) {
   if (event.kind === 0) return <div data-testid="ops-content-text"><ProfileFields content={event.content} /></div>;
   const view = typeOf(event.kind);
-  if (view === "reactions" || view === "reposts") {
-    const id = [...event.tags].reverse().find((t) => t[0] === "e" && /^[0-9a-f]{64}$/i.test(t[1] ?? ""))?.[1];
-    const target = id ? preview.targetOf?.(id) : undefined;
+  // About another post: say what was done, then show that post.
+  if (view === "reactions" || view === "reposts" || view === "thanks" || event.kind === 5) {
+    const target = aboutEvent(event, preview);
     return (
       <div className="space-y-2" data-testid="ops-content-text">
         <p className="text-[15px]">{rowPreview(event, { nameOf: preview.nameOf }).replace(/:.*$/, "")}{target ? ":" : ""}</p>
+        {event.kind === 5 && target && event.content.trim() && <p className="text-[14px] text-muted-foreground">“{event.content.trim().slice(0, 300)}”</p>}
         {target && (
           <div className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] p-3 text-[14px]" data-testid="ops-content-target">
             <CommentContent event={target as NostrEvent} />

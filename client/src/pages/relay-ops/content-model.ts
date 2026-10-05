@@ -12,6 +12,7 @@
 import { nip19 } from "nostr-tools";
 import type { EventQuery, TimeWindow } from "./event-query";
 import { sinceFor } from "./event-query";
+import { zapReceiptSats } from "@/lib/npubcash";
 
 export interface ContentEvent {
   id: string;
@@ -131,8 +132,43 @@ function readable(text: string, ctx: PreviewContext): string {
   return [line, ...extra].join(" · ");
 }
 
+/** The post a like, repost, thanks or delete request is about. */
+export function aboutId(e: ContentEvent): string | undefined {
+  return [...e.tags].reverse().find((t) => t[0] === "e" && /^[0-9a-f]{64}$/i.test(t[1] ?? ""))?.[1];
+}
+
+/** Kinds that read as something to put in a featured feed. */
+const FEATURABLE = new Set([1, 1111, 20, 21, 22, 1063, 34235, 34236, 30023, 30311, 30402]);
+
+/**
+ * What Feature puts in a featured feed, or null where it makes no sense: a
+ * note, picture, video, article, live show or listing is featured itself; a
+ * like or repost features the post it's about (a featured feed of likes would
+ * show likes); thanks, delete requests, lists, profiles and private messages
+ * aren't things a community features.
+ */
+export function featureWhat(e: ContentEvent): { id: string; own: boolean } | null {
+  if (FEATURABLE.has(e.kind)) return { id: e.id, own: true };
+  const view = typeOf(e.kind);
+  if (view === "reactions" || view === "reposts") {
+    const id = aboutId(e);
+    return id ? { id, own: false } : null;
+  }
+  return null;
+}
+
+/** The post itself, when we have it: loaded, or carried inside a repost. */
+export function aboutEvent(e: ContentEvent, ctx: PreviewContext): ContentEvent | undefined {
+  const id = aboutId(e);
+  let target = id ? ctx.targetOf?.(id) : undefined;
+  if (!target && (e.kind === 6 || e.kind === 16) && e.content.trim().startsWith("{")) {
+    try { target = JSON.parse(e.content) as ContentEvent; } catch {}
+  }
+  return target && typeof target.content === "string" ? target : undefined;
+}
+
 function targetLine(e: ContentEvent, ctx: PreviewContext): string | undefined {
-  const id = [...e.tags].reverse().find((t) => t[0] === "e" && /^[0-9a-f]{64}$/i.test(t[1] ?? ""))?.[1];
+  const id = aboutId(e);
   let target = id ? ctx.targetOf?.(id) : undefined;
   if (!target && (e.kind === 6 || e.kind === 16) && e.content.trim().startsWith("{")) {
     try { target = JSON.parse(e.content) as ContentEvent; } catch {}
@@ -160,7 +196,18 @@ export function rowPreview(e: ContentEvent, ctx: PreviewContext = {}): string {
     const about = targetLine(e, ctx);
     return about ? `Reposted: ${about}` : "Reposted a post";
   }
-  if (view === "thanks") return "Sent thanks";
+  if (view === "thanks") {
+    const sats = zapReceiptSats(e.tags);
+    const about = targetLine(e, ctx);
+    const what = sats > 0 ? `Sent ${sats.toLocaleString("en-US")} ${sats === 1 ? "sat" : "sats"}` : "Sent thanks";
+    return about ? `${what}: ${about}` : what;
+  }
+  if (e.kind === 5) {
+    const about = targetLine(e, ctx);
+    if (about) return `Asked to delete: ${about}`;
+    const why = firstLine(e.content).slice(0, 100);
+    return why ? `Asked to delete a post · ${why}` : "Asked to delete a post";
+  }
   if (view === "articles") return tag(e, "title") || firstLine(e.content).slice(0, 140) || "Article";
   if (view === "media") return tag(e, "title") || tag(e, "alt") || firstLine(e.content).slice(0, 140) || (e.kind === 20 ? "Picture" : "Video");
   if (view === "lists") {

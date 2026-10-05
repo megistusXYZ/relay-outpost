@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   typeOf, viewKinds, rowPreview, typeWord, countByType, sortEvents, contentFilter, mergePage,
   removalReason, reasonRequired, typedConfirmRequired, confirmPhrase, exportable, toCsv, scopeLine,
+  featureWhat,
 } from "./content-model";
 
 const ev = (kind: number, content = "", tags: string[][] = [], over: Partial<{ id: string; pubkey: string; created_at: number }> = {}) => ({
@@ -219,5 +220,43 @@ describe("saying how much was searched", () => {
 
   it("says when that's everything", () => {
     expect(scopeLine({ reached: true, loaded: 40, exhausted: true })).toBe("That's everything on this relay for this search");
+  });
+});
+
+describe("what Feature puts in a featured feed", () => {
+  const post = ev(1, "Harbour news", [], { id: "b".repeat(64) });
+  it("a note, picture, video, article, live show or listing is featured itself", () => {
+    for (const k of [1, 20, 21, 34235, 30023, 30311, 30402]) {
+      const e = ev(k, "x", [], { id: "c".repeat(64) });
+      expect(featureWhat(e)).toEqual({ id: e.id, own: true });
+    }
+  });
+  it("a like or repost features the post it's about", () => {
+    expect(featureWhat(ev(7, "+", [["e", post.id], ["p", "aa".repeat(32)]]))).toEqual({ id: post.id, own: false });
+    expect(featureWhat(ev(6, JSON.stringify(post), [["e", post.id]]))).toEqual({ id: post.id, own: false });
+  });
+  it("a like of nothing we can name features nothing", () => {
+    expect(featureWhat(ev(7, "+", []))).toBeNull();
+  });
+  it("thanks, delete requests, lists, profiles and private messages can't be featured", () => {
+    for (const e of [ev(9735, "", [["e", post.id]]), ev(5, "", [["e", post.id]]), ev(30000, "", [["d", "crew"]]), ev(0, "{}"), ev(4, "x?iv=y"), ev(1059, "x")]) {
+      expect(featureWhat(e)).toBeNull();
+    }
+  });
+});
+
+describe("thanks and delete requests say what they are", () => {
+  const post = ev(1, "Harbour news: the ferry runs late", [], { id: "d".repeat(64) });
+  const ctx = { targetOf: (id: string) => (id === post.id ? post : undefined) };
+  it("thanks say how much, and for what", () => {
+    const zap = ev(9735, "", [["e", post.id], ["bolt11", "lnbc210n1qa"]]);
+    expect(rowPreview(zap, ctx)).toBe("Sent 21 sats: Harbour news: the ferry runs late");
+    expect(rowPreview(ev(9735, "", [["bolt11", "lnbc210n1qa"]]))).toBe("Sent 21 sats");
+    expect(rowPreview(ev(9735, "", []))).toBe("Sent thanks");
+  });
+  it("a delete request says it asks to delete, with the reason and the post", () => {
+    expect(rowPreview(ev(5, "", [["e", post.id]]), ctx)).toBe("Asked to delete: Harbour news: the ferry runs late");
+    expect(rowPreview(ev(5, "posted by mistake", [["e", post.id]]))).toBe("Asked to delete a post · posted by mistake");
+    expect(rowPreview(ev(5, "", []))).toBe("Asked to delete a post");
   });
 });
