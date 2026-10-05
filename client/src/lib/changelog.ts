@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.17.1",
+    date: "2026-10-04",
+    title: "Lighter on a slow connection",
+    changes: [
+      { type: "improved", text: "On a slow phone connection your first posts arrive about half a second sooner. The app downloads less before showing them: the reply box, the zap and report windows and the sign-in options now load the first time you use them." },
+      { type: "improved", text: "Likes, replies and zaps on the posts you're looking at fill in faster, asked for all at once instead of a few at a time." },
+    ],
+  },
+  {
     version: "1.17.0",
     date: "2026-10-04",
     title: "Quicker to open, calmer to run",
