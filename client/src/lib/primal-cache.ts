@@ -1895,6 +1895,8 @@ export async function fetchTrendingHashtags(limit: number = 40): Promise<Trendin
 const followerCountCache = new Map<string, { count: number; ts: number }>();
 const FOLLOWER_CACHE_TTL = 10 * 60 * 1000;
 let pendingFollowerFetches = new Set<string>();
+/** When each pubkey was last asked for — so one Primal has no count for isn't asked again on every render. */
+const followerAskedAt = new Map<string, number>();
 let followerFetchTimer: ReturnType<typeof setTimeout> | null = null;
 const followerFetchListeners: Array<() => void> = [];
 
@@ -2070,6 +2072,8 @@ export function requestFollowerCounts(pubkeys: string[]) {
   for (const pk of pubkeys) {
     const cached = followerCountCache.get(pk);
     if (cached && now - cached.ts < FOLLOWER_CACHE_TTL) continue;
+    const asked = followerAskedAt.get(pk);
+    if (asked && now - asked < FOLLOWER_CACHE_TTL) continue;
     pendingFollowerFetches.add(pk);
   }
 
@@ -2091,22 +2095,24 @@ async function flushFollowerFetches() {
 
   try {
     await ensureConnection();
-    const results = await Promise.allSettled(
-      batch.map(async (pubkey) => {
-        const subId = nextSubId();
-        const events = await request(subId, {
-          cache: ["user_profile", { pubkey }],
-        }, 6000);
-        const stats = parseUserProfileStats(events);
-        followerCountCache.set(pubkey, {
-          count: stats.followersCount,
-          ts: Date.now(),
-        });
-        for (const event of events) {
-          if (event.kind === 0) registerProfileInAllCaches(event);
-        }
-      })
-    );
+    // One ask for the whole batch: `user_infos` answers with a kind-10000133
+    // event mapping each pubkey to its follower count. (It used to be one
+    // `user_profile` ask per person — 262 on one guest visit, queued 8 at a
+    // time in front of every other Primal read.) Someone missing from the map
+    // gets no count, rather than a made-up zero.
+    const events = await request(nextSubId(), { cache: ["user_infos", { pubkeys: batch }] }, 6000);
+    const now = Date.now();
+    if (events.length) for (const pubkey of batch) followerAskedAt.set(pubkey, now);
+    for (const event of events) {
+      if (event.kind === 0) registerProfileInAllCaches(event);
+      if (event.kind !== 10000133) continue;
+      let counts: Record<string, unknown> = {};
+      try { counts = JSON.parse(event.content); } catch {}
+      for (const pubkey of batch) {
+        const n = counts[pubkey];
+        if (typeof n === "number" && Number.isFinite(n)) followerCountCache.set(pubkey, { count: n, ts: now });
+      }
+    }
     followerFetchListeners.forEach((cb) => cb());
   } catch (err) {
     console.warn("[Primal] Batch follower fetch error:", err);
