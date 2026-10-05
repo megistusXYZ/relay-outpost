@@ -1,4 +1,5 @@
 import { eventStore, trackEventRelay, DEFAULT_RELAYS, throttledPoolSubscribe, registerProfileInAllCaches } from "./nostr";
+import { SEARCH_RELAYS } from "./relay-constants";
 import { replyTargetOf, THREAD_REPLY_KINDS, KIND_NIP22_COMMENT } from "./reply-target";
 import type { Event } from "nostr-tools";
 import { searchPeopleRanked } from "./people-search";
@@ -1209,7 +1210,7 @@ export async function searchArticles(query: string, limit: number = 8): Promise<
 
   try {
     const { pool } = await import("./nostr");
-    const searchRelays = ["wss://relay.nostr.band", "wss://search.nos.today"];
+    const searchRelays = SEARCH_RELAYS;
     const events = await pool.querySync(searchRelays, { kinds: [30023], search: query, limit });
     for (const event of events) {
       if (seen.has(event.id)) continue;
@@ -1252,9 +1253,9 @@ export async function searchNostr(query: string, limit: number = 20, userPubkey?
     try {
       const { pool } = await import("./nostr");
       // maxWait: querySync otherwise waits for EOSE from EVERY relay, so one that
-      // connects but never EOSEs (observed on relay.nostr.band) hangs forever.
+      // connects but never EOSEs (observed on relay.nostr.band, since gone) hangs forever.
       const events = await pool.querySync(
-        ["wss://relay.nostr.band", "wss://relay.damus.io", "wss://search.nos.today"],
+        ["wss://relay.ditto.pub", "wss://relay.damus.io", "wss://search.nos.today"],
         { kinds: [1], search: query, limit },
         { maxWait: 5000 },
       );
@@ -1330,7 +1331,7 @@ export async function searchNostrPaginated(query: string, limit: number = 20, un
       if (until) filter.until = until;
       // maxWait — see searchNostr: a non-EOSEing search relay must not hang the call.
       const events = await pool.querySync(
-        ["wss://relay.nostr.band", "wss://relay.damus.io", "wss://search.nos.today"],
+        ["wss://relay.ditto.pub", "wss://relay.damus.io", "wss://search.nos.today"],
         filter,
         { maxWait: 5000 },
       );
@@ -1399,9 +1400,9 @@ export async function searchUsersWithStatus(query: string, limit: number = 10): 
   attempted++;
   try {
     const { pool } = await import("./nostr");
-    const searchRelays = ["wss://relay.nostr.band", "wss://search.nos.today"];
-    // maxWait: querySync otherwise waits for EOSE from every relay; relay.nostr.band
-    // is known to connect but never EOSE, which would hang People search forever.
+    const searchRelays = SEARCH_RELAYS;
+    // maxWait: querySync otherwise waits for EOSE from every relay; a relay
+    // can connect but never EOSE (relay.nostr.band did, before it went), which would hang People search forever.
     // querySync never throws, so "it returned" is not "someone answered":
     // count these relays only when one of them actually connected.
     const { canReachAny } = await import("./relay-reach");

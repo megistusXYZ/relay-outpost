@@ -51,7 +51,7 @@ const FLAG_THRESHOLD = 2;
 // ─── Recover follows (original page, now the first card) ──────────────────────
 
 const SCAN_RELAYS = [
-  "wss://nostr21.com", "wss://relay.nostr.band", "wss://purplepag.es",
+  "wss://nostr21.com", "wss://purplepag.es",
   "wss://relay.primal.net", "wss://relay.damus.io", "wss://nos.lol",
   "wss://nostr.wine", "wss://relay.snort.social",
 ];

@@ -24,3 +24,10 @@ export const DEFAULT_RELAYS = [
   "wss://relay.primal.net",
   "wss://nostr-01.yakihonne.com",
 ];
+
+/**
+ * Relays that answer full-text search (NIP-50). Both answered a live note
+ * and profile search on 2026-10-05; relay.nostr.band, the one the app used
+ * before, no longer answers at all.
+ */
+export const SEARCH_RELAYS = ["wss://search.nos.today", "wss://relay.ditto.pub"];

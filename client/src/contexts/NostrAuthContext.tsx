@@ -309,16 +309,16 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
     let latestFollowList: any = null;
 
     // Profile (kind-0) must be fetched from a BROAD set — same footgun as the follow
-    // list: a narrow 4-relay set meant metadata living on purplepag.es / nostr.band /
+    // list: a narrow 4-relay set meant metadata living on purplepag.es /
     // primal never hydrated, leaving profile (and the user's avatar) blank everywhere.
     const authRelays = Array.from(new Set([
-      ...DEFAULT_RELAYS.slice(0, 4), "wss://purplepag.es", "wss://relay.nostr.band", "wss://relay.primal.net",
+      ...DEFAULT_RELAYS.slice(0, 4), "wss://purplepag.es", "wss://user.kindpag.es", "wss://relay.primal.net",
     ]));
     // Broad set for the follow list specifically — a narrow set was a root cause
     // of the wipe bug: if the kind-3 wasn't on these relays it never hydrated,
     // leaving in-memory follows empty so a follow click clobbered the real list.
     const followRelays = Array.from(new Set([
-      ...DEFAULT_RELAYS, "wss://purplepag.es", "wss://relay.nostr.band", "wss://relay.primal.net",
+      ...DEFAULT_RELAYS, "wss://purplepag.es", "wss://user.kindpag.es", "wss://relay.primal.net",
     ]));
     const profileSub = throttledPoolSubscribe(authRelays, { kinds: [KIND_METADATA], authors: [pubkey] }, {
       onevent(event) {

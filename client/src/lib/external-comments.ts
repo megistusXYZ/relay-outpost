@@ -18,6 +18,7 @@
  *    NIP-13 PoW). In-network authors are always admitted; strangers are gated
  *    but only DEMOTED (surfaced behind a "show filtered" expander), never lost.
  */
+import { SEARCH_RELAYS } from "./relay-constants";
 import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
 import { pool, DEFAULT_RELAYS, persistentPoolSubscribe } from "./nostr";
@@ -50,8 +51,8 @@ export const DISCUSSION_PUBLIC_FLOOR = [
   "wss://relay.primal.net",
 ] as const;
 
-/** Wide public NIP-50 index folded into the READ union for discovery breadth. */
-const DISCUSSION_READ_INDEX = "wss://relay.nostr.band";
+/** Wide public index folded into the READ union for discovery breadth. */
+const DISCUSSION_READ_INDEX = SEARCH_RELAYS[0];
 
 /** How many relays a single read subscription is capped to (latency guard). */
 const READ_RELAY_CAP = 14;

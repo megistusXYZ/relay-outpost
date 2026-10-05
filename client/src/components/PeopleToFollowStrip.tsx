@@ -38,7 +38,7 @@ import { useFollowAction } from "@/hooks/use-follow-action";
 import { rankPeopleToFollow, type PersonCandidate } from "@/lib/discover-people";
 import { fetchTrendingAuthors } from "@/lib/discover-people-data";
 import { CURATED_SEED_PUBKEYS } from "@/lib/curated-seed-follows";
-import { isSpamPubkey, isMutedPubkey, fetchSpamList, onSpamListChange, onMuteChange } from "@/lib/spam-filter";
+import { isMutedPubkey, onMuteChange } from "@/lib/spam-filter";
 import { eventStore, fetchProfilesCached } from "@/lib/nostr";
 import { KIND_METADATA, getAvatarUrl } from "@/lib/nostr-helpers";
 import { FOCUS_RING } from "@/lib/a11y";
@@ -90,29 +90,22 @@ export function PeopleToFollowStrip({ className = "", strictTrust = false }: {
     return () => { cancelled = true; };
   }, []);
 
-  // The spam/mute floor is MODULE state that nothing on /discover used to
-  // load: fetchSpamList() was only ever fired by useSpamFilter, which mounts
-  // on Home/Search/feeds — so on a cold landing here isSpamPubkey checked a
-  // permanently empty set and the "floor" was inert exactly for the arrival
-  // path a shared link produces. Load it ourselves, and bump a version when
-  // either list changes so the rank memo re-runs — a floor that cannot fire
-  // after the fact is filter-after-render with extra steps.
+  // Your mutes are the floor here (there is no shared spam list any more —
+  // lib/spam-filter.ts). Bump a version when they change so the rank memo
+  // re-runs: a floor that cannot fire after the fact is filter-after-render.
   const [floorVersion, setFloorVersion] = useState(0);
   useEffect(() => {
-    fetchSpamList().catch(() => {});
     const bump = () => setFloorVersion((v) => v + 1);
-    const offSpam = onSpamListChange(bump);
-    const offMute = onMuteChange(bump);
-    return () => { offSpam?.(); offMute?.(); };
+    return onMuteChange(bump);
   }, []);
 
   const followSet = useMemo(() => new Set(follows ?? []), [follows]);
 
   const ranked: PersonCandidate[] = useMemo(() => {
-    // Spam/muted are function-checks, not sets — fold them into the exclusion
+    // Muted is a function-check, not a set — fold it into the exclusion
     // by pre-filtering both pools so the ranker's flagged-set contract stays
     // one set. Cheap: the pools are already bounded.
-    const clean = (pk: string) => !isSpamPubkey(pk) && !isMutedPubkey(pk);
+    const clean = (pk: string) => !isMutedPubkey(pk);
     const counts = new Map<string, number>();
     fofCounts.forEach((n, pk) => { if (clean(pk)) counts.set(pk, n); });
     return rankPeopleToFollow({
@@ -137,7 +130,7 @@ export function PeopleToFollowStrip({ className = "", strictTrust = false }: {
     followSet,
     networkCounts: new Map(),
     trending: [],
-    curated: CURATED_SEED_PUBKEYS.filter((pk) => !isSpamPubkey(pk) && !isMutedPubkey(pk)),
+    curated: CURATED_SEED_PUBKEYS.filter((pk) => !isMutedPubkey(pk)),
     flagged: new Set(),
     limit: SHOW_LIMIT,
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -251,7 +244,7 @@ export function PeopleToFollowStrip({ className = "", strictTrust = false }: {
   if (readyToLatch && !frozenRef.current && trustedFresh.length >= MIN_TO_SHOW) frozenRef.current = trustedFresh;
 
   const stillSafe = (pk: string) =>
-    !(flaggedPubkeys?.has(pk)) && !isSpamPubkey(pk) && !isMutedPubkey(pk);
+    !(flaggedPubkeys?.has(pk)) && !isMutedPubkey(pk);
   const trustedHold = strictTrust ? (trust.checked ? holdCards.filter((c) => trust.admit(c.pubkey)) : []) : holdCards;
   const cards = (holdForFloor
     ? (trustedHold.length >= MIN_TO_SHOW ? trustedHold : [])

@@ -1,7 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { usePageVisibility } from "@/hooks/use-page-visibility";
 import {
-  fetchSpamList,
   filterSpamEvents,
   mutePubkey,
   unmutePubkey,
@@ -11,7 +9,6 @@ import {
   removeMutedKeyword,
   getMutedKeywords,
   onMuteChange,
-  onSpamListChange,
   getSpamStats,
   addReportedItem,
   removeReportedItem,
@@ -26,31 +23,9 @@ import type { Event } from "nostr-tools";
 export function useSpamFilter() {
   const [version, setVersion] = useState(0);
 
-  const pageVisible = usePageVisibility();
-  const spamIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    if (pageVisible) {
-      fetchSpamList();
-      spamIntervalRef.current = setInterval(() => fetchSpamList(), 5 * 60 * 1000);
-    } else {
-      if (spamIntervalRef.current) {
-        clearInterval(spamIntervalRef.current);
-        spamIntervalRef.current = null;
-      }
-    }
-    return () => {
-      if (spamIntervalRef.current) {
-        clearInterval(spamIntervalRef.current);
-        spamIntervalRef.current = null;
-      }
-    };
-  }, [pageVisible]);
-
   useEffect(() => {
     const unsubMute = onMuteChange(() => setVersion((v) => v + 1));
-    const unsubSpam = onSpamListChange(() => setVersion((v) => v + 1));
-    return () => { unsubMute(); unsubSpam(); };
+    return () => { unsubMute(); };
   }, []);
 
   const mute = useCallback((pubkey: string) => mutePubkey(pubkey), []);

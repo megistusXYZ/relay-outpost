@@ -25,14 +25,15 @@ const BATCH_DELAY = 100;
  * Only the two specialized indexers that actively mirror these replaceable
  * metadata events:
  *  - `purplepag.es`     — dedicated profile/relay-list indexer.
- *  - `relay.nostr.band` — broad indexer that stores Kind 10002/10050 reliably.
+ *  - `user.kindpag.es` — a second relay-list indexer (relay.nostr.band, the
+ *    one used before, stopped answering 2026-10-05).
  *
  * Do not add general-purpose relays here — they enforce REQ caps that produce
  * "too many concurrent REQs" notices under batch lookups, and they don't add
  * coverage these two indexers don't already provide. `relay.damus.io` was
  * removed in this audit for that reason.
  */
-const RELAY_LIST_RELAYS = ["wss://purplepag.es", "wss://relay.nostr.band"];
+const RELAY_LIST_RELAYS = ["wss://purplepag.es", "wss://user.kindpag.es"];
 
 /**
  * Broader discovery set for kind-10002 lookups. The two specialized indexers in
@@ -564,7 +565,6 @@ export const NOTIF_FALLBACK_RELAYS = [
   "wss://relay.damus.io",
   "wss://nos.lol",
   "wss://relay.primal.net",
-  "wss://relay.nostr.band",
   "wss://relay.snort.social",
 ];
 

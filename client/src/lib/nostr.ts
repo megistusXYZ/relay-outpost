@@ -1,4 +1,5 @@
 import { EventStore } from "applesauce-core";
+import { SEARCH_RELAYS as SHARED_SEARCH_RELAYS } from "./relay-constants";
 import { createDialMemory } from "./relay-dial-memory";
 import { SimplePool } from "nostr-tools";
 import type { Filter } from "nostr-tools";
@@ -336,7 +337,9 @@ export async function publishBlockedRelayList(blockedUrls: string[]): Promise<bo
  *
  * Membership is intentionally specialized:
  *  - `purplepag.es`        — dedicated profile/relay-list indexer.
- *  - `relay.nostr.band`    — NIP-50 indexer that mirrors profile metadata.
+ *  - `user.kindpag.es`     — a second profile/relay-list indexer
+ *                            (relay.nostr.band, used before, stopped
+ *                            answering 2026-10-05).
  *  - `relay.damus.io`      — large general-purpose relay used as a fallback
  *                            so we still hit a generic relay even if the two
  *                            indexers are slow.
@@ -347,24 +350,21 @@ export async function publishBlockedRelayList(blockedUrls: string[]): Promise<bo
  */
 export const PROFILE_RELAYS = [
   "wss://purplepag.es",
-  "wss://relay.nostr.band",
+  "wss://user.kindpag.es",
   "wss://relay.damus.io",
 ];
 
 /**
  * SEARCH_RELAYS — NIP-50 text search queries.
  *
- * Only relays that actually advertise/serve NIP-50 should live here.
- *  - `relay.nostr.band` — the strongest NIP-50 search relay.
- *  - `relay.damus.io`   — NIP-50 capable, kept as a fallback.
+ * Only relays that actually advertise/serve NIP-50 should live here: the
+ * shared search relays (relay-constants.ts), with relay.damus.io as a
+ * fallback.
  *
  * `nos.lol` was removed: search wasn't a primary feature there and it
  * contributed to rate-limit notices.
  */
-const SEARCH_RELAYS = [
-  "wss://relay.nostr.band",
-  "wss://relay.damus.io",
-];
+const SEARCH_RELAYS = [...SHARED_SEARCH_RELAYS, "wss://relay.damus.io"];
 
 /**
  * FAST_RELAYS — low-latency feed/notes/interactions reads.

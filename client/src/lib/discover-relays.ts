@@ -27,7 +27,6 @@ const SEED: RelayCandidate[] = [
   { url: "wss://relay.damus.io", activity: 100, free: true },
   { url: "wss://nos.lol", activity: 95, free: true },
   { url: "wss://relay.primal.net", activity: 92, free: true },
-  { url: "wss://relay.nostr.band", activity: 88, free: true },
   { url: "wss://relay.snort.social", activity: 80, free: true },
   { url: "wss://nostr.land", activity: 70, free: true },
   { url: "wss://offchain.pub", activity: 66, free: true },

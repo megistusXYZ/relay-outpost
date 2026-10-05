@@ -12,7 +12,7 @@ import {
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { useNostrMuteList } from "@/hooks/use-nostr-mute-list";
-import { isMutedPubkey, isReportedEvent, onMuteChange, onSpamListChange } from "@/lib/spam-filter";
+import { isMutedPubkey, isReportedEvent, onMuteChange } from "@/lib/spam-filter";
 import { use$ } from "applesauce-react/hooks";
 import { eventStore, getCachedProfile, fetchProfilesCached } from "@/lib/nostr";
 import { KIND_METADATA, getDisplayName, getAvatarUrl } from "@/lib/nostr-helpers";
@@ -556,14 +556,12 @@ export function TrustReviewsPanel({ pubkey, embedded = false }: { pubkey: string
     fetchAttestations();
   }, [fetchAttestations]);
 
-  // React live to mute / report / spam-list changes (a fresh mute or report must
-  // immediately drop the offending vouch from the list). spam-filter exposes
-  // onMuteChange (also fired by addReportedItem) and onSpamListChange.
+  // React live to mute / report changes (a fresh mute or report must
+  // immediately drop the offending vouch from the list). onMuteChange is also
+  // fired by addReportedItem.
   useEffect(() => {
     const bump = () => setModVersion((v) => v + 1);
-    const offMute = onMuteChange(bump);
-    const offSpam = onSpamListChange(bump);
-    return () => { offMute(); offSpam(); };
+    return onMuteChange(bump);
   }, []);
 
   // Once attestations resolve, prefetch the kind-0 profiles for every reviewer so

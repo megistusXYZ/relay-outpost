@@ -16,7 +16,6 @@ export const MUSIC_RELAYS = [
   WAVLAKE_RELAY,
   STEMSTR_RELAY,
   "wss://relay.damus.io",
-  "wss://relay.nostr.band",
   "wss://nos.lol",
   "wss://relay.primal.net",
   "wss://nostr.wine",
