@@ -19,7 +19,7 @@ import { KIND_FOLLOW_LIST, parseFollowList } from "@/lib/nostr-helpers";
 // Broad, history-keeping relays so an existing kind-3 is reliably found even if
 // it isn't on the user's primary set (mirrors RecoverFollows' scan set).
 const FOLLOW_SCAN_RELAYS = [
-  "wss://relay.nostr.band", "wss://purplepag.es", "wss://relay.primal.net",
+  "wss://purplepag.es", "wss://relay.primal.net",
   "wss://relay.damus.io", "wss://nos.lol", "wss://nostr21.com",
 ];
 

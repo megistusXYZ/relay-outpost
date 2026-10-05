@@ -79,7 +79,7 @@ describe("discussionReadUnion", () => {
     const read = discussionReadUnion(["wss://my-outbox.example"], []);
     expect(has(read, "wss://my-outbox.example")).toBe(true);
     for (const r of DISCUSSION_PUBLIC_FLOOR) expect(has(read, r)).toBe(true);
-    expect(has(read, "wss://relay.nostr.band")).toBe(true);
+    expect(has(read, "wss://search.nos.today")).toBe(true); // the wide index (relay.nostr.band until it went, 2026-10-05)
   });
 
   it("folds in the discover pool", () => {

@@ -1496,7 +1496,7 @@ export default function ShieldMatrix({ embedded = false }: { embedded?: boolean 
     }
   }, [mutedPubkeys]);
 
-  const threatCount = stats.spamPubkeys + (flaggedPubkeys?.size ?? 0);
+  const threatCount = flaggedPubkeys?.size ?? 0;
 
   return (
     <div className={embedded ? "" : "min-h-screen"}>

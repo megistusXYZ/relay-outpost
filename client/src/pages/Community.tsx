@@ -29,7 +29,6 @@ import {
 
 const COMMUNITY_RELAYS = [
   "wss://relay.damus.io",
-  "wss://relay.nostr.band",
   "wss://nos.lol",
   "wss://relay.primal.net",
   "wss://nostr.mom",

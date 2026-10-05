@@ -12,7 +12,6 @@ import type { Event, Filter } from "nostr-tools";
 
 const MUSIC_PRIORITY_RELAYS = [
   WAVLAKE_RELAY,
-  "wss://relay.nostr.band",
   "wss://nostr.wine",
 ];
 
@@ -24,7 +23,6 @@ const STATUS_RELAYS = [
   WAVLAKE_RELAY,
   "wss://relay.damus.io",
   "wss://nos.lol",
-  "wss://relay.nostr.band",
   "wss://relay.primal.net",
 ];
 

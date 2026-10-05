@@ -863,7 +863,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
         if (!verifySignedEventKind(signedRelayList, 10002)) {
           console.warn("[CreateAccount] signer mutated relay-list kind; skipping publish");
         } else {
-          void publishEvent(signedRelayList, [...DEFAULT_RELAYS, "wss://purplepag.es", "wss://relay.nostr.band"]);
+          void publishEvent(signedRelayList, [...DEFAULT_RELAYS, "wss://purplepag.es", "wss://user.kindpag.es"]);
         }
       } catch (e) {
         console.warn("[CreateAccount] relay list (kind 10002) publish failed:", e);

@@ -51,7 +51,6 @@ const inflightPromises = new Map<string, Promise<unknown>>();
 const BADGE_RELAYS = [
   "wss://relay.damus.io",
   "wss://nos.lol",
-  "wss://relay.nostr.band",
   "wss://purplepag.es",
 ];
 

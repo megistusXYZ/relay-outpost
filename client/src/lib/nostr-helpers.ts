@@ -165,7 +165,6 @@ export const LIVE_STREAM_RELAYS = [
   "wss://nostr.land",
   "wss://relay.primal.net",
   "wss://nostr-01.yakihonne.com",
-  "wss://relay.nostr.band",
   "wss://relay.zap.stream",
 ];
 

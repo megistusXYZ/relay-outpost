@@ -10,7 +10,7 @@ import { fetchNip11 } from "@/lib/nip11";
 
 const KIND_RELAY_LIST = 10002;
 const KIND_COMMUNITY_SUBS = 10073;
-const RELAY_LIST_RELAYS = ["wss://purplepag.es", "wss://relay.damus.io", "wss://relay.nostr.band", "wss://nos.lol"];
+const RELAY_LIST_RELAYS = ["wss://purplepag.es", "wss://relay.damus.io", "wss://user.kindpag.es", "wss://nos.lol"];
 
 const OUTPOST_RELAYS_KEY = "nostr_outpost_relays";
 const PUBLISH_RELAY_PREF_KEY = "nostr_publish_relay_preference";

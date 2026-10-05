@@ -58,7 +58,7 @@ export {
 // Broad, history-keeping relays so an existing kind-10015 is reliably found even
 // if it isn't on the user's primary set (mirrors follow-list's scan set).
 const INTERESTS_SCAN_RELAYS = [
-  "wss://relay.nostr.band", "wss://purplepag.es", "wss://relay.primal.net",
+  "wss://purplepag.es", "wss://relay.primal.net",
   "wss://relay.damus.io", "wss://nos.lol", "wss://nostr21.com",
 ];
 

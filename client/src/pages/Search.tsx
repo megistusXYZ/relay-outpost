@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef, lazy, Suspense } from "react";
+import { SEARCH_RELAYS } from "@/lib/relay-constants";
 import { useLocation, useSearch, Link } from "wouter";
 import { use$ } from "applesauce-react/hooks";
 import { NostrPost } from "@/components/NostrPost";
@@ -2426,7 +2427,7 @@ function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
       // chips count tags from follows' posts on these relays — a search that
       // skipped them answered "0 posts" for tags the strip had just counted.
       const tagRelays = Array.from(new Set([...getRelaysForPurpose("notes"), ...DEFAULT_RELAYS])).slice(0, 8);
-      const nip50Relays = ["wss://relay.nostr.band"];
+      const nip50Relays = SEARCH_RELAYS;
       console.log(`[HashtagSearch] Searching "#${cleaned}" — tag filter to ${tagRelays.length} relays, NIP-50 to ${nip50Relays.length} relays`);
       const relayResults = await Promise.allSettled([
         queryWithTimeout(pool.querySync(tagRelays, tagFilter), 10000, []),
@@ -2474,7 +2475,7 @@ function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
       const searchFilter: any = { kinds: [1], search: `#${activeTag}`, limit: SEARCH_PAGE_SIZE, until: oldest.created_at - 1 };
       const relayResults = await Promise.allSettled([
         queryWithTimeout(pool.querySync(DEFAULT_RELAYS.slice(0, 5), tagFilter), 10000, []),
-        queryWithTimeout(pool.querySync(["wss://relay.nostr.band"], searchFilter), 10000, []),
+        queryWithTimeout(pool.querySync(SEARCH_RELAYS, searchFilter), 10000, []),
       ]);
       const events: Event[] = [];
       for (const r of relayResults) {
@@ -3941,7 +3942,6 @@ const VOUCH_RELAYS = [
   "wss://relay.damus.io",
   "wss://relay.primal.net",
   "wss://nos.lol",
-  "wss://relay.nostr.band",
   "wss://purplepag.es",
 ];
 

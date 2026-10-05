@@ -5,7 +5,6 @@ export const KIND_FOLLOW_PACK = 39089;
 
 export const DISCOVERY_RELAYS = [
   "wss://relay.damus.io",
-  "wss://relay.nostr.band",
   "wss://relay.primal.net",
   "wss://nos.lol",
   "wss://relay.snort.social",

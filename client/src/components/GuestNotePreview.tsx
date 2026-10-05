@@ -18,7 +18,7 @@ import { ThreadEndBlock } from "@/components/nostr-post/ThreadEndBlock";
 import { canReachAny } from "@/lib/relay-reach";
 import { guestFetchOutcome, type GuestFetchOutcome } from "@/lib/guest-fetch-outcome";
 
-export const GUEST_READ_RELAYS = ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.primal.net", "wss://relay.nostr.band", "wss://purplepag.es"];
+export const GUEST_READ_RELAYS = ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.primal.net", "wss://purplepag.es"];
 
 export function guestSignIn(navigate: (to: string) => void) {
   // Stash the deep link so signing in returns the visitor to this exact content.

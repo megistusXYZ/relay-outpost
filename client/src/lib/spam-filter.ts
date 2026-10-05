@@ -2,114 +2,14 @@ import type { Event } from "nostr-tools";
 import { gateStrangerProfile, type ProfileResolution } from "./discover-quality";
 import { threadRootOf } from "./reply-target";
 
-const SPAM_API_URL = "https://spam.nostr.band/spam_api";
-const CACHE_DURATION = 5 * 60 * 1000;
 const DUPLICATE_WINDOW = 60 * 60;
 const DUPLICATE_THRESHOLD = 3;
 
-let spamPubkeys = new Set<string>();
-let spamEventIds = new Set<string>();
-let lastFetched = 0;
-let fetching = false;
-// A failed ask is remembered: spam.nostr.band stopped answering (2026-10-04),
-// each ask held a connection for its whole timeout, and every screen that
-// mounted the spam filter asked again. Retry after half an hour.
-const RETRY_AFTER_FAILURE_MS = 30 * 60 * 1000;
-const ASK_TIMEOUT_MS = 4000;
-let failedAt = 0;
-
-const spamListListeners: Array<() => void> = [];
-
-export function onSpamListChange(cb: () => void) {
-  spamListListeners.push(cb);
-  return () => {
-    const idx = spamListListeners.indexOf(cb);
-    if (idx >= 0) spamListListeners.splice(idx, 1);
-  };
-}
-
-function notifySpamListListeners() {
-  spamListListeners.forEach((cb) => cb());
-}
-
-export async function fetchSpamList(): Promise<void> {
-  if (fetching) return;
-  if (Date.now() - lastFetched < CACHE_DURATION) return;
-  if (failedAt && Date.now() - failedAt < RETRY_AFTER_FAILURE_MS) return;
-
-  fetching = true;
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), ASK_TIMEOUT_MS);
-
-    const res = await fetch(`${SPAM_API_URL}?method=get_current_spam`, {
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-
-    if (!res.ok) {
-      failedAt = Date.now();
-      return;
-    }
-
-    const data = await res.json();
-
-    if (data && typeof data === "object") {
-      const newPubkeys = new Set<string>();
-      const newEventIds = new Set<string>();
-
-      if (Array.isArray(data.blocked_pubkeys)) {
-        data.blocked_pubkeys.forEach((pk: string) => newPubkeys.add(pk));
-      }
-
-      if (Array.isArray(data.pubkeys)) {
-        data.pubkeys.forEach((pk: string) => newPubkeys.add(pk));
-      }
-
-      if (Array.isArray(data.blocked_events)) {
-        data.blocked_events.forEach((ev: any) => {
-          if (typeof ev === "string") newEventIds.add(ev);
-          else if (ev?.event_id) newEventIds.add(ev.event_id);
-          else if (ev?.id) newEventIds.add(ev.id);
-        });
-      }
-
-      if (Array.isArray(data.events)) {
-        data.events.forEach((ev: any) => {
-          if (typeof ev === "string") newEventIds.add(ev);
-          else if (ev?.id) newEventIds.add(ev.id);
-        });
-      }
-
-      if (Array.isArray(data.spam_patterns)) {
-        data.spam_patterns.forEach((p: any) => {
-          if (p?.pubkey) newPubkeys.add(p.pubkey);
-          if (p?.event_id) newEventIds.add(p.event_id);
-        });
-      }
-
-      let changed = false;
-      if (newPubkeys.size > 0) { spamPubkeys = newPubkeys; changed = true; }
-      if (newEventIds.size > 0) { spamEventIds = newEventIds; changed = true; }
-      if (changed) notifySpamListListeners();
-    }
-
-    lastFetched = Date.now();
-    failedAt = 0;
-  } catch {
-    failedAt = Date.now();
-  } finally {
-    fetching = false;
-  }
-}
-
-export function isSpamPubkey(pubkey: string): boolean {
-  return spamPubkeys.has(pubkey);
-}
-
-export function isSpamEvent(eventId: string): boolean {
-  return spamEventIds.has(eventId);
-}
+// There is no shared spam list any more. The app used nostr.band's, and
+// nostr.band stopped answering (2026-10-04/05): every ask waited out its
+// timeout for a list that came back empty. What keeps spam out is local —
+// your mutes and reports, the trust floor, the profile gate and the
+// duplicate check below.
 
 const MUTE_STORAGE_KEY = "relay-outpost-muted-pubkeys";
 const MUTE_KEYWORDS_KEY = "relay-outpost-muted-keywords";
@@ -529,9 +429,6 @@ export function filterSpamEvents(
     // Discover safe floor: unreadable kinds are noise regardless of author.
     if (readableKinds && !readableKinds.has(event.kind)) return false;
 
-    if (isSpamPubkey(event.pubkey)) return false;
-    if (isSpamEvent(event.id)) return false;
-
     if (isMutedPubkey(event.pubkey)) return false;
 
     if (isReportedEvent(event.id) || isReportedPubkey(event.pubkey)) return false;
@@ -669,11 +566,8 @@ export { MIN_FOLLOWERS_GLOBAL };
 
 export function getSpamStats() {
   return {
-    spamPubkeys: spamPubkeys.size,
-    spamEventIds: spamEventIds.size,
     mutedPubkeys: mutedPubkeys.size,
     mutedKeywords: mutedKeywords.size,
-    lastFetched,
   };
 }
 
