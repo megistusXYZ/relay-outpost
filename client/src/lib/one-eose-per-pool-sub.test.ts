@@ -20,11 +20,7 @@ import path from "node:path";
 
 const SRC = path.resolve(__dirname, "..");
 
-// Known, fixed separately: the persistent subscription behind group chats and
-// notifications. Finishing there sooner changes when group-chat history stops
-// loading, so it ships with a browser check of that, not blind. Remove this
-// entry with that fix.
-const KNOWN = ["function openPersistentSub("];
+const KNOWN: string[] = [];
 
 function sources(dir: string, out: string[] = []): string[] {
   for (const d of fs.readdirSync(dir, { withFileTypes: true })) {
