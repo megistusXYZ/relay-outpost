@@ -3,7 +3,7 @@ import type { NostrEvent } from "nostr-tools";
 import { pool, publishEvent, filterBlockedRelays } from "@/lib/nostr";
 import { signWithTimeout } from "@/lib/signer-timeout";
 import { getOutpostRelays, getActiveDefaultRelays, type OutpostRelay } from "@/lib/outpost-relays";
-import { armPrivateModeIfSet } from "@/lib/private-mode";
+import { armPrivateModeIfSet, privateModeSettingsSettled } from "@/lib/private-mode";
 import { nativeSetItem, setStorageWriteListener } from "@/lib/storage-write-hook";
 
 const KIND_APP_DATA = 30078;
@@ -189,6 +189,7 @@ export function clearUserSpecificStorage(oldPubkey?: string): void {
       `${CUSTOM_HOLIDAYS_PREFIX}:${oldPubkey}`,
       `${HIDDEN_HOLIDAYS_PREFIX}:${oldPubkey}`,
       `relay-outpost-settings-ts:${oldPubkey}`,
+      `relay-outpost-settings-seen:${oldPubkey}`,
       `flight_log_list_changes_${oldPubkey.slice(0, 16)}`,
       `graperank_scores_cache:${oldPubkey.slice(0, 8)}`,
     ];
@@ -260,6 +261,30 @@ let initialLoadDone = false;
 
 function settingsTsKey(pubkey: string): string {
   return `relay-outpost-settings-ts:${pubkey}`;
+}
+
+// "This device has heard this account's settings answer at least once" —
+// either their settings arrived, or relays we really reached said there are
+// none. Separate from the timestamp on purpose: stamping the timestamp on an
+// empty answer would make these local defaults "newer" than settings a missed
+// relay still holds, and the next sync would publish over them.
+function settingsSeenKey(pubkey: string): string {
+  return `relay-outpost-settings-seen:${pubkey}`;
+}
+
+/**
+ * Does this device already know this account's settings? Decides whether a
+ * sign-in can trust what is stored here (private mode, lib/private-mode.ts)
+ * or must wait for the answer.
+ */
+export function hasKnownSettings(pubkey: string): boolean {
+  if (getLocalTimestamp(pubkey) > 0) return true;
+  try { return localStorage.getItem(settingsSeenKey(pubkey)) === "1"; } catch { return false; }
+}
+
+function markSettingsKnown(pubkey: string): void {
+  try { nativeSetItem(localStorage, settingsSeenKey(pubkey), "1"); } catch {}
+  privateModeSettingsSettled();
 }
 
 function getLocalTimestamp(pubkey: string): number {
@@ -523,12 +548,32 @@ function applySettingsToLocal(settings: PortableSettings, pubkey: string): void 
   }
 }
 
-async function fetchSettingsFromRelay(pubkey: string, signer: ISigner): Promise<PortableSettings | null> {
+/**
+ * `reached`: at least one of the relays asked was connected when the fetch
+ * ended. A null without it is not "no settings" — nobody was asked
+ * (RELAY_REACHABILITY.md: nostr-tools reports EOSE for relays it never
+ * reached).
+ */
+async function fetchSettingsFromRelay(pubkey: string, signer: ISigner): Promise<{ settings: PortableSettings | null; reached: boolean }> {
+  const relays = getUserWriteRelays();
+  const reachedAny = () => {
+    try {
+      const status = pool.listConnectionStatus();
+      const norm = (u: string) => u.replace(/\/+$/, "").toLowerCase();
+      return relays.some((r) => [...status].some(([url, open]) => open && norm(url) === norm(r)));
+    } catch { return false; }
+  };
+  const sawEvent = { value: false };
+  const settings = await fetchSettingsEvent(pubkey, signer, relays, sawEvent);
+  // Settings that exist but couldn't be read (no NIP-44 signer, a bad
+  // decrypt) are not an answer either: they may well say private mode is on.
+  return { settings, reached: settings !== null || (!sawEvent.value && reachedAny()) };
+}
+
+async function fetchSettingsEvent(pubkey: string, signer: ISigner, relays: string[], sawEvent: { value: boolean }): Promise<PortableSettings | null> {
   return new Promise((resolve) => {
     let bestEvent: NostrEvent | null = null;
-    let eoseCount = 0;
     let resolved = false;
-    const relays = getUserWriteRelays();
     const closers: Array<{ close(): void }> = [];
 
     const timer = setTimeout(() => {
@@ -544,6 +589,7 @@ async function fetchSettingsFromRelay(pubkey: string, signer: ISigner): Promise<
         resolve(null);
         return;
       }
+      sawEvent.value = true;
 
       try {
         if (!signer.nip44) {
@@ -579,12 +625,13 @@ async function fetchSettingsFromRelay(pubkey: string, signer: ISigner): Promise<
             bestEvent = event;
           }
         },
+        // nostr-tools calls this ONCE, after every relay has finished (or
+        // failed) — not once per relay. Counting calls up to relays.length
+        // never got there, so every load sat out FETCH_TIMEOUT: synced
+        // settings (private mode among them) landed 12 s after sign-in.
         oneose() {
-          eoseCount++;
-          if (eoseCount >= relays.length) {
-            sub.close();
-            finalize();
-          }
+          sub.close();
+          finalize();
         },
       },
     );
@@ -634,12 +681,15 @@ export async function loadSettingsFromRelay(pubkey: string, signer: ISigner): Pr
     currentSigner = signer;
     currentPubkey = pubkey;
 
-    const remoteSettings = await fetchSettingsFromRelay(pubkey, signer);
+    const { settings: remoteSettings, reached } = await fetchSettingsFromRelay(pubkey, signer);
     const localTs = getLocalTimestamp(pubkey);
 
     if (!remoteSettings) {
       console.log("[NIP-78] No remote settings found");
       initialLoadDone = true;
+      // Only an answer settles a waiting private-mode shield: relays we
+      // reached said there are none. Reaching nobody leaves it up.
+      if (reached) markSettingsKnown(pubkey);
       if (hasAnyPortableKeys(pubkey)) {
         console.log("[NIP-78] Local settings exist, publishing to relay");
         scheduleInitialPublish();
@@ -651,11 +701,13 @@ export async function loadSettingsFromRelay(pubkey: string, signer: ISigner): Pr
       console.log("[NIP-78] Remote settings are newer, applying");
       applySettingsToLocal(remoteSettings, pubkey);
       initialLoadDone = true;
+      markSettingsKnown(pubkey);
       return true;
     }
 
     console.log("[NIP-78] Local settings are newer, publishing to relay");
     initialLoadDone = true;
+    markSettingsKnown(pubkey);
     scheduleInitialPublish();
     return false;
   } catch (err) {

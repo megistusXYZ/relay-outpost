@@ -10,10 +10,16 @@
 import { Eye, ShieldCheck } from "lucide-react";
 import { RelayOutpostIcon } from "@/components/RelayOutpostLoader";
 
-export function PrivateModeShield({ onShow, rearms }: {
+export function PrivateModeShield({ onShow, rearms, pending = false }: {
   onShow: () => void;
   /** The standing setting is on: the chats hide again when the app goes to the background. */
   rearms: boolean;
+  /**
+   * Just signed in on a device that hasn't received this account's settings
+   * yet: whether private mode is on isn't known, so the chats wait here
+   * (lib/private-mode.ts privateModeOnSignIn) — saying "is on" would be a guess.
+   */
+  pending?: boolean;
 }) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center" data-testid="private-mode-shield">
@@ -27,9 +33,11 @@ export function PrivateModeShield({ onShow, rearms }: {
           </span>
         </div>
       </div>
-      <h2 className="text-base font-semibold tracking-tight">Private mode is on</h2>
+      <h2 className="text-base font-semibold tracking-tight">{pending ? "Checking your privacy settings" : "Private mode is on"}</h2>
       <p className="mt-1.5 max-w-[17rem] text-sm leading-relaxed text-muted-foreground">
-        Your chats are hidden: no names, no messages, no counts.
+        {pending
+          ? "Your chats stay hidden until your settings arrive, in case private mode is on."
+          : "Your chats are hidden: no names, no messages, no counts."}
       </p>
       <button
         type="button"
@@ -40,7 +48,9 @@ export function PrivateModeShield({ onShow, rearms }: {
         <Eye className="h-4 w-4" /> Show chats
       </button>
       <p className="mt-3 text-[11px] text-muted-foreground/70">
-        {rearms ? "They hide again when you leave the app." : "Tap the eye above to hide them again."}
+        {pending
+          ? "If private mode is off, they appear by themselves."
+          : rearms ? "They hide again when you leave the app." : "Tap the eye above to hide them again."}
       </p>
     </div>
   );
