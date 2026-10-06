@@ -27,6 +27,7 @@ import { SweepNoticeCard } from "@/components/SweepNoticeCard";
 import { useNeedsYou } from "@/contexts/NeedsYouContext";
 import { ReportsQueue } from "@/components/ReportsQueue";
 import { ConcordPendingInvites } from "@/components/concord/ConcordPendingInvites";
+import { BadgesWaitingCard } from "@/components/BadgesWaitingCard";
 import { useIaCollapsed } from "@/lib/ia-prefs";
 import { NAV_TITLES } from "@/lib/nav-destinations";
 import { NotificationIcon } from "@/components/icons/NotificationIcon";
@@ -1038,6 +1039,8 @@ export default function Notifications() {
       {iaCollapsed && (
         <div data-testid="activity-needs-you">
           <ConcordPendingInvites />
+          {/* Badges given to you, waiting for "Show on my profile". */}
+          <BadgesWaitingCard />
           {/* ONE notice for both queue sweeps — names the relays that never
               answered and offers retry / turn off / remove. The per-queue
               lines are gone; this card is the only reach admission here. */}

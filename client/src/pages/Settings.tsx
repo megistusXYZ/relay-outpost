@@ -1694,7 +1694,7 @@ function ContentSection() {
           </div>
         </DialogContent>
       </Dialog>
-      <Row icon={Award} label="Show badges" sub="NIP-58 badge icons on posts and profiles">
+      <Row icon={Award} label="Show badges" sub="Small icons next to names and on profiles">
         <Switch checked={showBadges} onCheckedChange={handleShowBadgesChange} data-testid="switch-show-badges" />
       </Row>
       <Row icon={Smartphone} label="Show posting app" sub="“via [App]” on opened posts (self-reported)">

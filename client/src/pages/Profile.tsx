@@ -2509,6 +2509,11 @@ export default function Profile() {
             </div>
           )}
           onZapLud16={handleZap}
+          badgesSlot={nip58Badges.length > 0 && pubkey ? (
+            <ErrorBoundary fallback={null}>
+              <ProfileBadgesSection badges={nip58Badges} pubkey={pubkey} onRefresh={refreshNip58Badges} />
+            </ErrorBoundary>
+          ) : undefined}
           // The counts under the name are the way into the network list, on
           // every width. The rail's "Connections" button showed the same two
           // numbers a second time, so it is gone.

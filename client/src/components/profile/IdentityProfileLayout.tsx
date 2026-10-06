@@ -107,7 +107,7 @@ function CirclesAndCommunities({ circleSlot, communitiesSlot }: { circleSlot?: R
   );
 }
 
-export function IdentityProfileLayout({ data, actions, headActions, onCoverState, onRename, miniActions, networkSlot, overflowSlot, circleSlot, communitiesSlot, vouchSlot, onZapLud16, onSeeNetwork, children }: { data: IdentityProfileData; actions: ReactNode; /** The phone's one row of actions under the name (Follow · Message · ⚡ · ⋯); the desktop keeps `actions` in its Connect box. */ headActions?: ReactNode; /** Phones: where the cover is against the top bar — under it (the bar can go transparent) and gone past it (the bar takes the identity). */ onCoverState?: (state: { underBar: boolean; gone: boolean }) => void; /** Lets the page open the rename dialog from elsewhere (the phone's ⋯ menu). Set once; the page may call it any time. */ onRename?: (open: () => void) => void; /** Follow + Message for the pinned rail's compact identity (desktop). */ miniActions?: ReactNode; networkSlot?: ReactNode; overflowSlot?: ReactNode; circleSlot?: ReactNode; communitiesSlot?: ReactNode; vouchSlot?: ReactNode; onZapLud16?: () => void; /** Opens the following/followers list from the counts under the name. */ onSeeNetwork?: () => void; children: ReactNode }) {
+export function IdentityProfileLayout({ data, actions, headActions, onCoverState, onRename, miniActions, networkSlot, overflowSlot, circleSlot, communitiesSlot, vouchSlot, badgesSlot, onZapLud16, onSeeNetwork, children }: { data: IdentityProfileData; actions: ReactNode; /** The phone's one row of actions under the name (Follow · Message · ⚡ · ⋯); the desktop keeps `actions` in its Connect box. */ headActions?: ReactNode; /** Phones: where the cover is against the top bar — under it (the bar can go transparent) and gone past it (the bar takes the identity). */ onCoverState?: (state: { underBar: boolean; gone: boolean }) => void; /** Lets the page open the rename dialog from elsewhere (the phone's ⋯ menu). Set once; the page may call it any time. */ onRename?: (open: () => void) => void; /** Follow + Message for the pinned rail's compact identity (desktop). */ miniActions?: ReactNode; networkSlot?: ReactNode; overflowSlot?: ReactNode; circleSlot?: ReactNode; communitiesSlot?: ReactNode; vouchSlot?: ReactNode; /** The badges this person shows (BadgeDisplay ProfileBadgesSection, which carries its own heading). */ badgesSlot?: ReactNode; onZapLud16?: () => void; /** Opens the following/followers list from the counts under the name. */ onSeeNetwork?: () => void; children: ReactNode }) {
   const joined = data.joinedAt ? new Date(data.joinedAt * 1000).toLocaleDateString(undefined, { month: "short", year: "numeric" }) : null;
   const showTrust = data.wotEnabled && !!data.grapeRankTier && data.grapeRankTier !== "none";
   const liveStream = useProfileLiveStream(data.pubkey);
@@ -291,6 +291,11 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
               room, so both render there and nothing hides. Either alone
               renders plain — a toggle with one option is a dead control. */}
           <CirclesAndCommunities circleSlot={circleSlot} communitiesSlot={communitiesSlot} />
+
+          {/* Badges — only ones the person chose to show (their own profile
+              also lists ones waiting for them). This layout never drew them,
+              so on a phone a badge you showed appeared nowhere on your page. */}
+          {badgesSlot}
 
           {/* Vouched by — signed endorsements (only shown when they exist). */}
           {vouchSlot && (
