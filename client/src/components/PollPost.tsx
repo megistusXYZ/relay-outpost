@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, memo, lazy, Suspense
 import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
 import { Link, useLocation } from "wouter";
+import { useFarRow } from "@/lib/far-rows";
 import { use$ } from "applesauce-react/hooks";
 import { eventStore, pool, publishEvent, fetchProfilesCached, FAST_RELAYS, throttledPoolSubscribe } from "@/lib/nostr";
 import { getPublishTarget } from "@/lib/outpost-relays";
@@ -459,6 +460,9 @@ export const PollPost = memo(function PollPost({ event }: PollPostProps) {
     }
   }, [showComments, event.id]);
 
+  const rowRef = useRef<HTMLDivElement>(null);
+  useFarRow(rowRef);
+
   const accentClass = hasVoted
     ? "bg-green-500/70"
     : expired
@@ -466,7 +470,7 @@ export const PollPost = memo(function PollPost({ event }: PollPostProps) {
     : "bg-gradient-to-b from-brand via-brand/80 to-brand/80";
 
   return (
-    <div className="overflow-visible feed-post-item" data-event-id={event.id}>
+    <div ref={rowRef} className="overflow-visible feed-post-item" data-event-id={event.id}>
       <Card className="relative overflow-visible glass-card">
         <span
           aria-hidden="true"
