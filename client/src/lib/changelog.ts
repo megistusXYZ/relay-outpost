@@ -39,6 +39,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.17.5",
+    date: "2026-10-06",
+    title: "Smooth on long pages",
+    changes: [
+      { type: "fixed", text: "On a phone, long profiles and threads no longer hold every post's pictures at once. Posts near what you're reading are always ready; ones far above or below rest until you get close, without the page moving. That's what left images and videos blank as you scrolled." },
+      { type: "fixed", text: "The welcome screen no longer turns see-through on iPhone. The feed behind it now waits until you choose to look around, so it isn't drawn where nobody can see it." },
+    ],
+    feedback: [
+      {
+        quote: "It's even bugging when I go to the home screen now.",
+        attribution: "A tester on iPhone, in DuckDuckGo, with a screenshot of the welcome screen showing the feed through it.",
+      },
+    ],
+  },
+  {
     version: "1.17.4",
     date: "2026-10-06",
     title: "Lighter on your phone",
