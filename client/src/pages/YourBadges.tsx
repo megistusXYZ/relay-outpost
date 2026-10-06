@@ -5,7 +5,7 @@
  */
 import { useState } from "react";
 import { useDocumentTitle } from "@/hooks/use-document-title";
-import { BadgeManagementPanel } from "@/components/BadgeManagement";
+import { GiveBadge } from "@/components/badges/GiveBadge";
 import { BadgeStudio } from "@/components/badges/BadgeStudio";
 import { YourBadgesList } from "@/components/badges/YourBadgesList";
 import type { BadgeDefinition } from "@/lib/nip58-badges";
@@ -39,7 +39,7 @@ export default function YourBadges() {
           />
           <section className="space-y-3">
             <h2 className="text-base font-semibold">Give a badge</h2>
-            <BadgeManagementPanel refreshKey={refreshKey} />
+            <GiveBadge refreshKey={refreshKey} onCreate={() => setStudio({ mode: "new" })} />
           </section>
         </>
       )}

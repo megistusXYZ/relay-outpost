@@ -6,9 +6,10 @@ import { use$ } from "applesauce-react/hooks";
 import { eventStore } from "@/lib/nostr";
 import { KIND_METADATA, getDisplayName, getAvatarUrl } from "@/lib/nostr-helpers";
 import { Button } from "@/components/ui/button";
-import { Award, ChevronDown, ChevronUp, User, Plus } from "lucide-react";
+import { Award, ChevronDown, ChevronUp, User, Plus, ArrowUp, ArrowDown, EyeOff } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
-import { showBadgeOnProfile } from "@/lib/nip58-badges";
+import { showBadgeOnProfile, acceptBadges } from "@/lib/nip58-badges";
+import { besideName, moveShownBadge, hideShownBadge } from "@/lib/badge-events";
 import { useToast } from "@/hooks/use-toast";
 import { useAcceptedBadgesCached } from "@/hooks/use-badges";
 import type { ResolvedBadge } from "@/hooks/use-badges";
@@ -123,6 +124,57 @@ function BadgeCard({ badge, showAccept, onAccept, accepting }: {
   );
 }
 
+/**
+ * Your own profile: put your badges in the order you want and hide any you'd
+ * rather not show (owner, 2026-10-06 — badges-plan). The first one is what
+ * shows beside your name. Saved to both profile lists.
+ */
+function ArrangeBadges({ accepted, onSaved, onCancel }: { accepted: ResolvedBadge[]; onSaved: () => void; onCancel: () => void }) {
+  const { signer } = useNostrAuth();
+  const { toast } = useToast();
+  const [order, setOrder] = useState(() => accepted.map((b) => ({ badgeRef: b.badgeRef, awardEventId: b.awardEventId })));
+  const [saving, setSaving] = useState(false);
+  const byKey = useMemo(() => new Map(accepted.map((b) => [`${b.badgeRef}:${b.awardEventId}`, b])), [accepted]);
+
+  const save = async () => {
+    if (!signer) return;
+    setSaving(true);
+    try {
+      if (await acceptBadges(signer, order)) {
+        toast({ title: "Your badges are updated", description: order.length ? "The first one shows beside your name." : "No badges show on your profile now." });
+        onSaved();
+      } else {
+        toast({ title: "Couldn't save your badges", description: "Nothing was changed. Try again in a moment.", variant: "destructive" });
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2" data-testid="arrange-badges">
+      {order.length === 0 && <p className="text-sm text-muted-foreground">No badges will show on your profile.</p>}
+      {order.map((o, i) => {
+        const b = byKey.get(`${o.badgeRef}:${o.awardEventId}`);
+        const src = b?.definition.thumb || b?.definition.image;
+        return (
+          <div key={`${o.badgeRef}:${o.awardEventId}`} className="flex items-center gap-2 rounded-lg border border-border p-2" data-testid={`arrange-badge-${i}`}>
+            {src ? <img src={src} alt="" className="h-8 w-8 object-contain" /> : <Award className="h-6 w-6 text-brand" aria-hidden />}
+            <span className="min-w-0 flex-1 truncate text-sm">{b?.definition.name ?? "Badge"}{i === 0 && <span className="ml-2 text-xs text-muted-foreground">Beside your name</span>}</span>
+            <Button size="icon" variant="ghost" className="h-11 w-11" aria-label="Move up" disabled={i === 0} onClick={() => setOrder((x) => moveShownBadge(x, i, -1))} data-testid={`arrange-up-${i}`}><ArrowUp className="h-4 w-4" /></Button>
+            <Button size="icon" variant="ghost" className="h-11 w-11" aria-label="Move down" disabled={i === order.length - 1} onClick={() => setOrder((x) => moveShownBadge(x, i, 1))} data-testid={`arrange-down-${i}`}><ArrowDown className="h-4 w-4" /></Button>
+            <Button size="icon" variant="ghost" className="h-11 w-11" aria-label="Hide from my profile" onClick={() => setOrder((x) => hideShownBadge(x, i))} data-testid={`arrange-hide-${i}`}><EyeOff className="h-4 w-4" /></Button>
+          </div>
+        );
+      })}
+      <div className="flex gap-2 pt-1">
+        <Button className="min-h-[44px]" disabled={saving || !signer} onClick={() => void save()} data-testid="button-save-badge-order">{saving ? "Saving…" : "Save"}</Button>
+        <Button variant="ghost" className="min-h-[44px]" onClick={onCancel}>Cancel</Button>
+      </div>
+    </div>
+  );
+}
+
 export function ProfileBadgesSection({ badges, pubkey, onRefresh }: {
   badges: ResolvedBadge[];
   pubkey: string;
@@ -133,6 +185,7 @@ export function ProfileBadgesSection({ badges, pubkey, onRefresh }: {
   const { pubkey: myPubkey, signer } = useNostrAuth();
   const { toast } = useToast();
   const [accepting, setAccepting] = useState(false);
+  const [arranging, setArranging] = useState(false);
   const isOwnProfile = myPubkey === pubkey;
 
   const accepted = useMemo(() => badges.filter(b => b.isAccepted), [badges]);
@@ -174,16 +227,26 @@ export function ProfileBadgesSection({ badges, pubkey, onRefresh }: {
             Badges ({visibleBadges.length})
           </span>
         </div>
-        {visibleBadges.length > 3 && (
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="text-[10px] text-brand/70 hover:text-brand-strong flex items-center gap-0.5 transition-colors"
-          >
-            {expanded ? "Show less" : `Show all`}
-            {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {isOwnProfile && accepted.length > 0 && !arranging && (
+            <Button size="sm" variant="ghost" className="min-h-[44px] text-xs" onClick={() => setArranging(true)} data-testid="button-arrange-badges">
+              Edit
+            </Button>
+          )}
+          {!arranging && visibleBadges.length > 3 && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="min-h-[44px] px-2 text-xs text-brand/80 hover:text-brand-strong flex items-center gap-0.5 transition-colors"
+            >
+              {expanded ? "Show less" : `Show all`}
+              {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+          )}
+        </div>
       </div>
+      {arranging ? (
+        <ArrangeBadges accepted={accepted} onCancel={() => setArranging(false)} onSaved={() => { setArranging(false); onRefresh?.(); }} />
+      ) : (
       <div className="space-y-2">
         {displayBadges.map((badge) => (
           <BadgeCard
@@ -195,7 +258,8 @@ export function ProfileBadgesSection({ badges, pubkey, onRefresh }: {
           />
         ))}
       </div>
-      {isOwnProfile && unaccepted.length > 0 && !expanded && (
+      )}
+      {isOwnProfile && unaccepted.length > 0 && !expanded && !arranging && (
         <p className="text-[10px] text-amber-500/70 pl-1">
           {unaccepted.length} badge{unaccepted.length > 1 ? "s" : ""} waiting for you to show
         </p>
@@ -204,52 +268,42 @@ export function ProfileBadgesSection({ badges, pubkey, onRefresh }: {
   );
 }
 
-export function BadgeIcons({ badges, maxVisible = 3, pubkey }: {
+/**
+ * Beside a name: the person's first badge only, and "+N" for the rest
+ * (owner, 2026-10-06 — badges-plan). Three icons crowded the name.
+ */
+export function BadgeIcons({ badges, pubkey }: {
   badges: ResolvedBadge[];
-  maxVisible?: number;
   pubkey?: string;
 }) {
   const accepted = useMemo(() => badges.filter(b => b.isAccepted), [badges]);
-  if (accepted.length === 0) return null;
-
-  const visible = accepted.slice(0, maxVisible);
-  const overflow = accepted.length - maxVisible;
+  const { first, more } = besideName(accepted);
+  if (!first) return null;
   const npub = pubkey ? (() => { try { return nip19.npubEncode(pubkey); } catch { return null; } })() : null;
+  const imgSrc = first.definition.thumb || first.definition.image;
 
   return (
     <span className="inline-flex items-center gap-0.5 shrink-0" data-testid="badge-icons">
-      {visible.map((badge) => {
-        const imgSrc = badge.definition.thumb || badge.definition.image;
-        return imgSrc ? (
-          <img
-            key={`${badge.badgeRef}:${badge.awardEventId}`}
-            src={imgSrc}
-            alt={badge.definition.name}
-            title={badge.definition.name}
-            className="w-4 h-4 rounded-sm object-cover border border-border/20"
-            loading="lazy"
-          />
-        ) : (
-          <span
-            key={`${badge.badgeRef}:${badge.awardEventId}`}
-            title={badge.definition.name}
-            className="w-4 h-4 rounded-sm bg-brand/10 border border-brand/20 flex items-center justify-center"
-          >
-            <Award className="w-2.5 h-2.5 text-brand/60" />
-          </span>
-        );
-      })}
-      {overflow > 0 && npub && (
-        <Link
-          href={`/profile/${npub}#badges`}
-          className="text-[9px] text-muted-foreground/50 hover:text-brand transition-colors ml-0.5"
-        >
-          +{overflow}
+      {imgSrc ? (
+        <img
+          src={imgSrc}
+          alt={first.definition.name}
+          title={first.definition.name}
+          className="w-4 h-4 rounded-sm object-contain"
+          loading="lazy"
+        />
+      ) : (
+        <span title={first.definition.name} className="w-4 h-4 rounded-sm bg-brand/10 border border-brand/20 flex items-center justify-center">
+          <Award className="w-2.5 h-2.5 text-brand/60" />
+        </span>
+      )}
+      {more > 0 && (npub ? (
+        <Link href={`/profile/${npub}#badges`} className="text-[10px] text-muted-foreground hover:text-brand transition-colors ml-0.5" data-testid="badge-icons-more">
+          +{more}
         </Link>
-      )}
-      {overflow > 0 && !npub && (
-        <span className="text-[9px] text-muted-foreground/50 ml-0.5">+{overflow}</span>
-      )}
+      ) : (
+        <span className="text-[10px] text-muted-foreground ml-0.5" data-testid="badge-icons-more">+{more}</span>
+      ))}
     </span>
   );
 }
@@ -258,5 +312,5 @@ export function PostBadgeIcons({ pubkey }: { pubkey: string }) {
   const enabled = useBadgesEnabled();
   const badges = useAcceptedBadgesCached(pubkey);
   if (!enabled || badges.length === 0) return null;
-  return <BadgeIcons badges={badges} maxVisible={3} pubkey={pubkey} />;
+  return <BadgeIcons badges={badges} pubkey={pubkey} />;
 }
