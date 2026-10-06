@@ -450,7 +450,6 @@ async function fetchDocFromRelay(pubkey: string, signer: ISigner): Promise<NewsB
   const relays = await getUserWriteRelays();
   return new Promise((resolve) => {
     let bestEvent: NostrEvent | null = null;
-    let eoseCount = 0;
     let resolved = false;
     const closers: Array<{ close(): void }> = [];
 
@@ -482,10 +481,10 @@ async function fetchDocFromRelay(pubkey: string, signer: ISigner): Promise<NewsB
         onevent(event: NostrEvent) {
           if (!bestEvent || event.created_at > bestEvent.created_at) bestEvent = event;
         },
-        oneose() {
-          eoseCount++;
-          if (eoseCount >= relays.length) { sub.close(); finalize(); }
-        },
+        // Called ONCE, after every relay has answered or failed — not per
+        // relay (one-eose-per-pool-sub.test.ts). Counting to relays.length
+        // waited out FETCH_TIMEOUT on every load.
+        oneose() { sub.close(); finalize(); },
       },
     );
     closers.push(sub);
