@@ -1,15 +1,16 @@
 // In-app changelog ("What's New"). Newest first — add a new entry object to the
 // TOP of CHANGELOG each release.
 //
-// CURATION — this is user-facing communication, NOT a git log. Per line, ask:
-// "would a user notice or care?"
-//   ✅ Include: new features, meaningful improvements (faster / easier / now
-//      works on mobile), and bugs users actually hit.
-//   ❌ Leave out: refactors, dependency bumps, CI/build, type/test fixes, repo
-//      hygiene, dev tooling, and internal perf with no visible effect.
-// Write benefit-first ("Your DMs send instantly" — not "optimistic sendMessage"),
-// merge many small commits into one clear bullet, keep it to ~5–8 lines per
-// release, lead with the most impactful, and stay plain-spoken and honest.
+// OWNER, 2026-10-06: "we are giving too much away … condense in larger
+// rollouts … only add what's of value, they don't need to know all the extra
+// jazz." So:
+//   - One entry per ROLLOUT (about a week), not per deploy. Fixes deploy
+//     under the current version; the next rollout's entry sums them up.
+//   - Up to 5 lines, each one short sentence of what people can now do or
+//     will notice. Lead with the most valuable.
+//   - Say what works now, never what was broken, how, or why. No vendor,
+//     protocol or internal names, no tester quotes.
+// changelog.test.ts holds every entry to this.
 
 export type ChangeType = "new" | "improved" | "fixed";
 
@@ -39,174 +40,26 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: "1.17.5",
+    version: "1.18.0",
     date: "2026-10-06",
-    title: "Smooth on long pages",
+    title: "Smoother, quicker, more private",
     changes: [
-      { type: "fixed", text: "On a phone, long profiles and threads no longer hold every post's pictures at once. Posts near what you're reading are always ready; ones far above or below rest until you get close, without the page moving. That's what left images and videos blank as you scrolled." },
-      { type: "fixed", text: "The welcome screen no longer turns see-through on iPhone. The feed behind it now waits until you choose to look around, so it isn't drawn where nobody can see it." },
-    ],
-    feedback: [
-      {
-        quote: "It's even bugging when I go to the home screen now.",
-        attribution: "A tester on iPhone, in DuckDuckGo, with a screenshot of the welcome screen showing the feed through it.",
-      },
-    ],
-  },
-  {
-    version: "1.17.4",
-    date: "2026-10-06",
-    title: "Lighter on your phone",
-    changes: [
-      { type: "fixed", text: "On a phone, the home feed no longer stays fully loaded in memory while you're on another page. The app added to your home screen has less memory to work with than Safari, and that hidden feed was what left Live, Discover and other pages blank as you scrolled. Coming back to the feed still lands where you left it." },
-    ],
-    feedback: [
-      {
-        quote: "It's happening across every page.",
-        attribution: "A tester on iPhone, with a screen recording and a quick A/B that pointed at memory.",
-      },
-    ],
-  },
-  {
-    version: "1.17.3",
-    date: "2026-10-05",
-    title: "Every post draws",
-    changes: [
-      { type: "fixed", text: "On iPhone, the home feed no longer leaves blank cards or empty stretches as you scroll quickly. Every post draws as it comes into view, as posts on profiles and in threads already did." },
-    ],
-    feedback: [
-      {
-        quote: "Posts are disappearing when scrolling threads and pages on mobile.",
-        attribution: "A tester on iPhone, with a screen recording. The last place posts could skip drawing is gone.",
-      },
-    ],
-  },
-  {
-    version: "1.17.2",
-    date: "2026-10-05",
-    title: "Search that answers",
-    changes: [
-      { type: "fixed", text: "Search finds posts, people, hashtags and articles again without a long wait. A search service we relied on stopped answering, so search now asks ones that do." },
-      { type: "improved", text: "The app no longer waits on that service at all, for profiles, relay lists or anything else. Your mutes, reports and trust settings keep doing the work of keeping spam out of your feed." },
-    ],
-  },
-  {
-    version: "1.17.1",
-    date: "2026-10-04",
-    title: "Lighter on a slow connection",
-    changes: [
-      { type: "improved", text: "On a slow phone connection your first posts arrive about half a second sooner. The app downloads less before showing them: the reply box, the zap and report windows and the sign-in options now load the first time you use them." },
-      { type: "improved", text: "Likes, replies and zaps on the posts you're looking at fill in faster, asked for all at once instead of a few at a time." },
-      { type: "fixed", text: "Following shows only people you follow. Opening the app before your follow list had loaded could let other people's posts in, and they stayed while you scrolled." },
-    ],
-  },
-  {
-    version: "1.17.0",
-    date: "2026-10-04",
-    title: "Quicker to open, calmer to run",
-    changes: [
-      { type: "improved", text: "The first posts show up sooner, especially on a phone. We ask other services far fewer questions on the way in, stop knocking on relays that are down, and keep the welcome screen ready instead of building it for every visitor." },
-      { type: "new", text: "Running a community? Relay Control has a new layout you'll recognise from chat apps: Overview, Posts, People, Inbox, Community and Advanced. A checklist on Overview walks you through setting up, and everyday screens use plain words, with “Show technical details” in Advanced for anyone who wants them." },
-      { type: "new", text: "Who can post now says in words who's allowed in. Approved and banned people live in People, with import and bulk remove. Your team can open Relay Control to look and keep notes." },
-      { type: "fixed", text: "Posts no longer go blank while you scroll a profile or a thread on iPhone." },
-      { type: "fixed", text: "The “new posts” bubble stays on your home feed and no longer follows you into a thread or a profile." },
-      { type: "improved", text: "In Relay Control, every kind of post reads as what it is: a like shows what was liked, thanks show how many sats, and a request to delete says so. Feature only appears on things a community would feature." },
-      { type: "improved", text: "Musicians' profiles show more of their music: songs on Wavlake, audio they posted themselves, and past shows, with the count matching what you see." },
-    ],
-    feedback: [
-      {
-        quote: "Posts are disappearing when loading on profiles and threads.",
-        attribution: "A tester on iPhone. Every post now draws as soon as it scrolls into view.",
-      },
-      {
-        quote: "These users won't be the most techy. Make it feel like something they already know.",
-        attribution: "The team, on Relay Control.",
-      },
-    ],
-  },
-  {
-    version: "1.16.4",
-    date: "2026-10-04",
-    title: "Type straight away",
-    changes: [
-      { type: "fixed", text: "On a phone, you can start typing the moment the reply box opens. Your first letters no longer go missing or end up in the wrong place." },
-      { type: "improved", text: "Screens on a phone open in their phone layout straight away, without a brief flash of the computer version first." },
-    ],
-  },
-  {
-    version: "1.16.3",
-    date: "2026-10-04",
-    title: "Your reply waits for you",
-    changes: [
-      { type: "improved", text: "Close the reply box halfway through and nothing is lost. Open it again on the same post or comment and your words are back, with the people you tagged, any custom emoji and the GIF you picked. On a phone you can see it waiting in the reply bar." },
-      { type: "improved", text: "Drafts stay on this device for a week and only for your account. Sending the reply clears it." },
-    ],
-  },
-  {
-    version: "1.16.2",
-    date: "2026-10-04",
-    title: "Reply from anywhere in a thread",
-    changes: [
-      { type: "improved", text: "On a phone, the reply box waits at the bottom of every thread, just above the menu bar, so you never scroll to find it. Tap Reply on a comment and it says \u201cReplying to\u201d that person; tap \u00d7 to answer the post instead." },
-      { type: "improved", text: "After you send, the box goes back to the post, and your reply shows up under the comment you answered, right where you can see it." },
-    ],
-  },
-  {
-    version: "1.16.1",
-    date: "2026-10-04",
-    title: "Replies where you can see them",
-    changes: [
-      { type: "improved", text: "Replies read like a conversation: the post, the replies, then the box to write yours. What you send appears right where you wrote it, comes into view and is marked for a moment, even in a long thread." },
-      { type: "improved", text: "Videos in quoted posts play the way they do in any post: quietly on their own when autoplay is on, with the app's own sound button, and they wait for a tap when it's off." },
-      { type: "new", text: "Your team can share one moderation log and private notes about members, readable only by your team and kept on your own relay." },
-      { type: "new", text: "See plainly whether you're connected to each relay, choose whether to sign in to it always, when asked or never, and test that it lets you read and post." },
-      { type: "improved", text: "If you run a relay, the bar at the bottom of your phone stays the same. Your relays are under You, and anything waiting on them is counted there." },
-    ],
-    feedback: [
-      {
-        quote: "When I replied to a comment it put it in a funky spot.",
-        attribution: "Someone replying in a thread. Your reply now shows up under the comment, in view, with the box ready for the next one.",
-      },
-    ],
-  },
-  {
-    version: "1.16.0",
-    date: "2026-10-04",
-    title: "Run your community from here",
-    changes: [
-      { type: "new", text: "Relays has its own place in the menu. Connect a relay you already run, or pick a host and start one. Relay Control then shows your posts, your people and one Inbox for reports, join requests and messages, on a phone as well as a computer." },
-      { type: "new", text: "Find anything on your relay and act on many at once. Filter by kind of post, person, hashtag and time, see the real total, select everything a search finds, and undo a removal." },
-      { type: "new", text: "Let members contact the team. Turn it on in Settings, choose what they can ask (help, a problem, an idea, access), and answer with saved replies. They see your reply and every status change in Your tickets." },
-      { type: "new", text: "An Ideas board for your community. Members suggest things and vote; the most-wanted rise to the top, with your status beside each one." },
-      { type: "new", text: "For builders: a console that shows exactly what a relay says back, an inspector for any event (who wrote it, whether it is genuine, where it has been seen), and a publisher that tells you which relays accepted your event and why the others did not." },
-      { type: "improved", text: "Visitors see posts in about three and a half seconds instead of six, Chats is one list with people and groups together, and on a phone a profile opens with the cover under the top bar and one row of actions." },
-      { type: "fixed", text: "Feedback sent from a community now reaches that community's team, allow lists show each person once (with a Tidy up for copies your host stored), and one calm screen explains every error, from a missing page to being offline." },
-    ],
-    feedback: [
-      {
-        quote: "Why is it showing multiple users of the same users in my allow list, and how do I do a mass selection of users to remove?",
-        attribution: "A relay operator. Each person now shows once, and Select lets you remove many at a time.",
-      },
+      { type: "improved", text: "Scrolling on iPhone is smooth again: photos and videos stay put on long profiles, threads and feeds." },
+      { type: "improved", text: "Private mode protects your chats from the moment you sign in, on any device." },
+      { type: "improved", text: "Faster to open, quicker search, and your read chats and saved stories catch up across devices in a moment." },
+      { type: "new", text: "Run your community from here: Relay Control with a setup checklist, one Inbox for your team, and an Ideas board for members." },
+      { type: "improved", text: "Replies read like a conversation, the reply box is always at hand on a phone, and a half-written reply waits for you." },
     ],
   },
   {
     version: "1.15.0",
     date: "2026-10-02",
-    title: "Private chats grew up, and a feed you can steer",
+    title: "Private chats grew up",
     changes: [
-      { type: "new", text: "Private chats for more than two. Message a few people at once from New, then Message several people. Everyone sees who is in the chat, and it works with other apps that follow the same standard." },
-      { type: "new", text: "Reply and react. Answer a specific message, or tap a quick reaction under it. On a phone, press and hold a message." },
-      { type: "new", text: "Make a chat yours. Name it, pin it to the top, mute it, or set a timer so the messages you send there disappear. These choices now follow you to your other devices." },
-      { type: "new", text: "Search your messages. The Chats search box finds words inside your conversations and takes you to the message. It searches what this device has loaded, and tells you how many messages that was." },
-      { type: "improved", text: "The feed has four plain tabs: For you, Following, Trending and Feeds. A tap switches, and one Filter button holds the options for the feed on screen." },
-      { type: "improved", text: "Safer by default. Messages kept on your device are stored encrypted, older messages load when you ask for them, and requests from strangers are listed most trusted first." },
-      { type: "fixed", text: "The Feed no longer opens to a blank screen on phones, group messages stay out of your one-to-one chats, and a chat you started no longer turns up under Requests." },
-    ],
-    feedback: [
-      {
-        quote: "It loads users to a blank screen and there is no way for them to see that page unless they go into app settings and repair the app.",
-        attribution: "Beta tester, on the Feed. Nobody should have to do that, and now nobody does.",
-      },
+      { type: "new", text: "Private chats for more than two people, with replies, reactions and search." },
+      { type: "new", text: "Name, pin or mute any chat, or make its messages disappear. Your choices follow you to your other devices." },
+      { type: "improved", text: "The feed has four plain tabs: For you, Following, Trending and Feeds, with one Filter button." },
+      { type: "improved", text: "Messages kept on your device are stored encrypted, and requests from strangers list the most trusted first." },
     ],
   },
   {
@@ -214,22 +67,9 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-10-01",
     title: "Notes in the margin, a shop on the profile",
     changes: [
-      { type: "new", text: "Replies explain themselves. On a wide screen, the post someone is answering now sits in the margin right beside their reply — like a note in the margin of a book — so you can read down a profile and see both sides of every exchange without opening anything. Narrower screens keep it inside the card, as before, and if you've turned reply context off we respect that here too." },
-      { type: "new", text: "Sellers get a Shop. If someone has things for sale, their profile grows a Shop tab next to Posts and Media: the whole catalog as a clean grid, full product names, one tile per product even when it's been listed twice. It used to be a strip squeezed in above everything else." },
-      { type: "improved", text: "That context shows up fast. The post being answered now appears the moment any relay has it instead of waiting on the slowest one, and a whole screen of replies is asked for in one go. On a busy profile most of it is there within three seconds where it used to take seven — with far fewer \"didn't load\" notes." },
-      { type: "improved", text: "The side of a profile holds together at every window size. The name stays whole with Follow and Message tucked underneath, the timeline never runs off the bottom of the screen, and there's no scrollbar cutting through it." },
-      { type: "fixed", text: "Reposts are back on profiles. One relay that never finished connecting could hold the whole list hostage; now no single relay can, anywhere in the app. And a shop that only appeared on some visits appears on all of them." },
-      { type: "fixed", text: "Margin notes are readable in light mode — proper cards, proper contrast — and updates to the app now interrupt you for seconds, not minutes." },
-    ],
-    feedback: [
-      {
-        quote: "I think showing the for sale first and on top of the media is too much. Maybe condense the market within the tabs.",
-        attribution: "Beta tester — so it's a tab now",
-      },
-      {
-        quote: "This area seems cut off or broken.",
-        attribution: "It was. Sent with a screenshot, fixed the same day — the Send feedback button below works just as well.",
-      },
+      { type: "new", text: "On a wide screen, the post someone is answering sits in the margin beside their reply." },
+      { type: "new", text: "Sellers get a Shop tab on their profile with their whole catalog." },
+      { type: "improved", text: "Replies and their context load much faster on busy profiles." },
     ],
   },
   {
@@ -237,31 +77,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-09-30",
     title: "Opens faster, stays put, talks to more apps",
     changes: [
-      { type: "new", text: "Group chats grew up. Private, encrypted groups now do what you'd expect from a chat app — polls, pinned messages, disappearing messages, photos, search, roles, invite links, asking to join — and they work with other apps that speak the same standard, so a group started somewhere else opens here with its rooms, its people and its history. What you've read and what you've muted follows you to every device." },
-      { type: "new", text: "A first day that makes sense. New here? You're welcomed once, shown how to keep your key safe before anything else, and offered real people to follow instead of an empty page. Not ready to sign up? Look around first — Discover and News are open to visitors." },
-      { type: "new", text: "News is calm now: only the sources you chose, one quiet column, your stories by day. Beside it there's a Listen lane for the shows you follow — and a suggested podcast can be opened and played before you decide to follow it. Internet radio stations shared in a post play right there." },
-      { type: "improved", text: "It opens. The app starts from what's already on your phone instead of waiting for the network, the white flash before the logo is gone, and new versions arrive by themselves at a quiet moment — no button to press, nothing to repair. If you're mid-post or on a call, it waits." },
-      { type: "improved", text: "You keep your place. Go into a post, come back, and you land on the exact line you left — nothing slides, nothing reloads under you. Pictures that load late above you no longer shove the page down on iPhone." },
-      { type: "improved", text: "Discover's front door only shows people who've earned it: every tile draws from highly trusted accounts, loads in about a second instead of nine, and paints your last visit instantly while it refreshes. And when we can't read someone's score, we say so — \"no score\" means unknown, not untrusted." },
-      { type: "improved", text: "Chats lost its clutter: one search box that finds both your conversations and new people, one New button, and everything else behind a single menu. Hide your chats in a tap before you share your screen." },
-      { type: "improved", text: "On a big screen, a profile keeps you company. Scroll someone's posts and the side of the page stays with you — who they are, a Follow button that never leaves, a timeline to jump through their history, and the pictures from the stretch you're reading." },
-      { type: "improved", text: "Your mute list is one private list that other apps respect, and the Articles page only surfaces writers with a reputation — the airdrop essays are gone." },
-      { type: "fixed", text: "Small things you'll feel: a like is one tap and counts once, a note reposted twice shows once, links to other Nostr apps open in the right place, long posts fold at the same length everywhere, and the calendar tells you plainly when it couldn't reach your relays instead of pretending your week is empty." },
-      { type: "fixed", text: "Under the hood, a security pass: location data is stripped from videos you upload, an invite link asks before connecting you to its relay, and several doors that should have been locked now are. The code is public — read it." },
-    ],
-    feedback: [
-      {
-        quote: "It shows a white screen or dark screen for way too long before the logo.",
-        attribution: "Beta tester — the report behind the new launch",
-      },
-      {
-        quote: "I don't want people going into settings to repair the app or update. So easy a grandma would understand.",
-        attribution: "The brief for updates. We removed the button.",
-      },
-      {
-        quote: "I don't like how this opens up an extra search section.",
-        attribution: "Chats has one search box now. Keep them coming — the Send feedback button is right below.",
-      },
+      { type: "new", text: "Group chats with polls, pins, disappearing messages, photos, roles and invite links, working with other apps too." },
+      { type: "new", text: "A first day that makes sense: a welcome, a safe home for your key, and real people to follow. Visitors can look around first." },
+      { type: "improved", text: "The app opens instantly, updates itself at a quiet moment, and keeps your place when you come back." },
+      { type: "improved", text: "A calmer News with a Listen lane for your shows, and a Discover front page drawn from trusted accounts." },
     ],
   },
   {
@@ -269,25 +88,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-08-27",
     title: "Curated by the people who run the place",
     changes: [
-      { type: "new", text: "Communities have a front page now. The people who run a relay can curate named feeds — posts, articles, videos, streams, things for sale, links — from anyone on the network, old or new, and visitors see them as a Featured tab on the community's page. Build one from a paste box, from the relay's own recent activity, or by browsing everything a person has ever published." },
-      { type: "new", text: "Curating takes two taps. See something worth featuring while you're just scrolling? Every post's menu has \"Add to Featured\" if you run a relay — pick a feed, done. The relay even starts serving a copy of what it features, so your front page doesn't depend on someone else's server staying up." },
-      { type: "new", text: "Feature a person, not just a post. One tap on a profile puts everything they publish — past and future — into a feed as a living \"Featured creator\" block. Your community's front page can follow the voices that make it worth visiting." },
-      { type: "new", text: "Operators decide what their relay accepts at the door: plain-language switches for posts, articles, videos, live streams, private messages and more — no kind numbers, no guesswork, and the readout always shows what the relay itself reports." },
-      { type: "new", text: "Marketplace sellers wear their reputation. A seller's page shows who in your trust circle vouches for them — in their own words — and the marketplace sorts trusted sellers first. Real social proof, from people you actually trust, on the people asking for your sats." },
-      { type: "improved", text: "Discover's front door got choosier: the feed and article teasers lead with people you follow, and airdrop bait doesn't make the cut. Your actual feeds are untouched — this is just the welcome mat." },
-      { type: "improved", text: "Streamers' profiles finally show their past broadcasts. Most streams are published by the platform, not the person — we look for the human now, so a profile with thirty shows stops claiming it has none. Recordings play in place, and ones that live on YouTube open there instead of a button that does nothing." },
-      { type: "improved", text: "Podcasts work like they should: the Podcasts tab in Audio loads again, and sharing a podcast episode link in a post gives everyone an inline player — press play in the conversation, not on some other website." },
-      { type: "improved", text: "When a community relay can't be reached, the Activity page now names it and hands you the fix: try again, turn it off, or remove it — one clear card instead of two vague sentences. And a holiday weeks away is a mark on the calendar date now, not a banner squatting in your schedule." },
-    ],
-    feedback: [
-      {
-        quote: "Is there a way relay operators could publish custom feeds — add whatever content they want, from whatever profile, old or new?",
-        attribution: "The ask that became Featured feeds",
-      },
-      {
-        quote: "The Podcasts button is broken.",
-        attribution: "It was a crash. It's not anymore.",
-      },
+      { type: "new", text: "Communities can curate Featured feeds of posts, articles, videos and streams from anyone on the network." },
+      { type: "new", text: "Feature any post or person in two taps from its menu." },
+      { type: "new", text: "Marketplace sellers show who in your circle vouches for them." },
+      { type: "improved", text: "Streamers' profiles show past broadcasts, and podcast links play right in the conversation." },
     ],
   },
   {
@@ -296,25 +100,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     title: "Open source, open market, open mic",
     link: { label: "Read the code on GitHub", url: "https://github.com/megistusXYZ/relay-outpost" },
     changes: [
-      { type: "new", text: "Relay Outpost is open source. The entire app — everything in this list and everything before it — is now public code under the MIT license, for anyone to read, audit, fork, or build on. A client that touches your keys and your sats should be one you can check for yourself. Now you can." },
-      { type: "new", text: "There's a marketplace. Real things for sale across the open network — coffee, art, electronics, thousands of listings — with search, categories in the sellers' own words, and every listing opening into photos, a price, and the actual person behind it. Your trust circle marks the sellers it vouches for right on the price tag, and buying happens with the seller or their marketplace — never through us." },
-      { type: "new", text: "Live audio rooms open inside the app. When someone shares a Corny Chat space, it's a Join button now, not a link to somewhere else — tap it and you're listening; allow the mic and you're on stage." },
-      { type: "new", text: "Videos became endless. The feed draws from the whole network's catalog — including the resurrected Vine archive — and always leads with what you haven't seen. Tap a creator's face to fall into their reel; when their videos run out it flows on into everyone else's. A small toggle above the actions swaps trending for newest." },
-      { type: "improved", text: "Threads stopped losing replies. Some apps recently changed how replies are written under the hood; we read both dialects now, so a conversation shows everyone who actually spoke — and the post a reply answers loads reliably, because we ask the relay the reply came from instead of only the usual suspects." },
-      { type: "improved", text: "The zap wallet speaks human: one number, one \"Send to my wallet\" button, plain words at every step — and you can send straight to a Lightning address like you@primal.net instead of hunting your wallet for an invoice. Sats you already collected are never counted as waiting again." },
-      { type: "improved", text: "Three looks instead of two: light, dark, and a deeper black that suits OLED screens and late nights. Switching also settles contrast and performance to sensible defaults, so a theme is one decision, not three." },
-      { type: "improved", text: "Your posts no longer advertise which app you used. The tiny \"posted with Relay Outpost\" tag is opt-in now — flip it on in Settings if you'd like to rep us; say nothing otherwise. A choice you already made, either way, still stands." },
-      { type: "fixed", text: "Small things you'll feel: the video player's buttons stay out of the picture and fade while you watch, a creator's photos use your whole screen on desktop, and the Activity page's confusing \"couldn't reach relays\" line now says what it actually means — and nothing more." },
-    ],
-    feedback: [
-      {
-        quote: "Stoked to see NIP-99 listings — is there a way to add this to profile views? Can't find a way to display people's listings unless I find it in feed.",
-        attribution: "Community member — the ask that became seller shelves on profiles",
-      },
-      {
-        quote: "Message to all other nostr devs: Amethyst now replies to all kind 1s with NIP-22 comments instead of NIP-10.",
-        attribution: "The migration we made sure wouldn't break your threads",
-      },
+      { type: "new", text: "Relay Outpost is open source under the MIT license: read it, check it, build on it." },
+      { type: "new", text: "A marketplace of real things for sale. Buying happens with the seller, never through us." },
+      { type: "new", text: "Live audio rooms open inside the app, and an endless video feed leads with what you haven't seen." },
+      { type: "improved", text: "A simpler zap wallet, a deep black theme, and your posts no longer name the app you used unless you want them to." },
     ],
   },
   {
@@ -322,26 +111,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-08-15",
     title: "Your names for people, a home for Live",
     changes: [
-      { type: "new", text: "Rename anyone. Give a person your own name and photo — tap the pencil on their profile or long-press them in Chats — and that becomes who you see everywhere: their posts, your chats, their page. Their real name sits one tap away, and your names never leave your account. Nobody knows what you call them." },
-      { type: "new", text: "A community page finally looks like somewhere you'd want to be: a banner, the community's face lifted over it, who runs it, \"Active today\", and Join front and center — the same treatment a person's profile gets, because a place deserves one too. The plumbing (moderation, policies, fees) stays tucked in About where it belongs." },
-      { type: "new", text: "Live has a home again. The Live tile in Discover opens a real streams page — what's on now, what's coming, what you missed — and every stream has its own link you can send to anyone. Streams that already ended play their recording instead of spinning forever." },
-      { type: "new", text: "Discover grew new doors — Podcasts, Events, Videos, Live, and what your network is talking about — and it greets you with what actually happened while you were away: tiles with something new wear a small \"+N new\" and a glow that fades once you've looked. The counts are real or they don't appear; nothing here ever pretends." },
-      { type: "new", text: "An eye button in Chats blurs every name and message in one tap — for screen shares, coffee shops, and shoulder surfers. Tap again to come back. It hides things from a glance, not from the wire." },
-      { type: "improved", text: "Browsing is for members now. Signed-out visitors get a welcome instead of your feeds, communities, and searches — while anything shared by link (a post, an article, an invite, a stream) still opens for the person it was sent to." },
-      { type: "improved", text: "One back arrow per screen, everywhere. Twenty-odd pages had grown a second one; they're gone, and a shared link's back button now climbs somewhere sensible instead of dumping you in your messages." },
-      { type: "fixed", text: "Reactions in community chats land on the first tap again, even when the app has been sitting in your pocket — the same nudge that kept messages reliable now covers the emoji." },
-      { type: "fixed", text: "The \"Resembles …\" lookalike warning no longer accuses short names: someone called mar is not impersonating mark. Actual disguised clones — swapped alphabets, copied names — still get caught." },
-      { type: "fixed", text: "Feeds with strict trust filters scroll on and on like they should, instead of stalling at a loader every few posts." },
-    ],
-    feedback: [
-      {
-        quote: "My ended stream won't play. Can you add support for ended streams with the recording tag from Rumble and YouTube so it can play the replay?",
-        attribution: "Community member, in a thread",
-      },
-      {
-        quote: "Should users be able to change profile pics and names of chats, groups and people — only showing for them, with a simple way to reveal the real name?",
-        attribution: "The request that became renames",
-      },
+      { type: "new", text: "Give anyone your own name and photo. Only you see it." },
+      { type: "new", text: "Community pages with a banner, who runs it, and Join front and center." },
+      { type: "new", text: "Live has its own page, and Discover shows what's new since your last visit." },
+      { type: "new", text: "Hide your chats in one tap before you share your screen." },
     ],
   },
   {
@@ -349,204 +122,117 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-07-31",
     title: "Four places instead of eight",
     changes: [
-      { type: "new", text: "The app opens on your conversations now, and there are four places to go instead of eight: Chats, Activity, Discover, You. Your feed did not go anywhere — it lives in Discover, alongside your news — and a one-time note points at where everything moved. If you liked the old menu, one switch in Settings brings it back." },
-      { type: "new", text: "The communities you have joined finally sit in your Chats list, under their own heading, wearing their real names and icons instead of a placeholder. They keep the order you set by dragging them on the Communities page, and \"Find a community\" is now one tap from the same list rather than something you had to go looking for." },
-      { type: "improved", text: "Profiles on a phone now open the way they do on a desktop: who someone is, how to reach them, and the people who actually know them — mutual connections, which are far harder to fake than a follower count." },
-      { type: "fixed", text: "Tapping someone's follower or following count does something. It had been plain text on every profile, so the obvious thing to press was the one thing that did nothing." },
-      { type: "fixed", text: "A relay turning you away no longer takes the whole app down with it. Some communities only admit members, and being told \"no\" is an answer — it should not have been a crash." },
+      { type: "new", text: "Four places to go: Chats, Activity, Discover and You. Your feed lives in Discover." },
+      { type: "new", text: "Communities you've joined sit in your Chats list with their real names and icons." },
+      { type: "improved", text: "Profiles on a phone show who someone is, how to reach them, and the people who actually know them." },
     ],
-    feedback: {
-      quote: "I am in a lot of communities and none of them showed up where I chat. I had to dig through a menu to reach a place I had already joined.",
-      attribution: "Beta tester",
-    },
   },
   {
     version: "1.7.0",
     date: "2026-07-23",
     title: "Profiles that feel like someone's place",
     changes: [
-      { type: "new", text: "A profile feels like a place now, not a wall of text. A visit opens with what someone actually makes — their photos and videos in a row you can flip through like channels, a small player for their music — and a quiet line up top that tells you, at a glance, how long they've been here and what they tend to post about." },
-      { type: "improved", text: "Their circle finally means something. It now shows the people you follow who follow them back — a real connection you share, not just names you both happen to follow. A day-old account can't borrow a crowd it hasn't earned." },
-      { type: "improved", text: "Small things that add up: tap someone's Lightning address to zap them right there, and the links and details on a profile read clean and clickable instead of a tangle of raw text." },
-      { type: "improved", text: "A link to a post now opens into the post itself — the words and the picture, right where you're reading — instead of a flat address to chase." },
-      { type: "fixed", text: "Smoothed a couple of rough edges: a profile packed with videos no longer strains the browser into quitting, and the app opens cleanly again on iPhone right after an update." },
+      { type: "new", text: "Profiles open with what someone makes: their photos, videos and music." },
+      { type: "improved", text: "Their circle shows the people you follow who follow them back." },
+      { type: "improved", text: "Zap straight from a profile, and links to posts open into the post itself." },
     ],
-    feedback: {
-      quote: "A brand-new account followed a stack of well-known people and suddenly looked established — that sat wrong with me.",
-      attribution: "Beta tester",
-    },
   },
   {
     version: "1.6.0",
     date: "2026-07-20",
-    title: "Steadier media, a cleaner canvas, and a way to tell us when something breaks",
+    title: "Steadier media, a cleaner canvas",
     changes: [
-      { type: "new", text: "See something broken? Tell us in a tap. A “Report a problem” button now lives in the feedback menu, and — if you leave it on — the app can quietly send an anonymous note when it hits an error, so we can fix things before they pile up. It's never tied to you or your account, and you can switch it off in Settings anytime." },
-      { type: "improved", text: "Your media just shows up. Photos and videos now carry a backup copy and heal themselves when a host goes down, so a post that used to load a broken box now loads the picture. There's also a one-tap “Sync my media” to mirror everything you've shared across servers." },
-      { type: "improved", text: "The posts got a cleaner canvas. Share and Bookmark tuck into the ⋯ menu so the action row isn't crowded, the zap ₿ sits calmly in the corner, and the little menu on each comment stays out of the way until you reach for it — a thread reads as faces and words now, not a wall of icons." },
-      { type: "improved", text: "Messages are honest about delivery. If the person you're writing to hasn't set up a private inbox — so your DM might not reach them — you'll get a gentle heads-up instead of wondering why it went quiet." },
-      { type: "improved", text: "Share a link and it arrives as a proper card — headline, image, and source — instead of a bare URL." },
-      { type: "improved", text: "A fresh launch moment: the app now opens on just the mark, focusing into view with a soft sweep of light. Small thing, but it sets the tone." },
-      { type: "fixed", text: "Updates land more reliably on the installed app — when a new version ships you'll get a clear nudge to refresh, instead of being quietly stuck on yesterday's build." },
-    ],
-    feedback: [
-      { quote: "I sent a photo to our group and my friend just saw a broken image icon.", attribution: "Beta tester" },
-      { quote: "I kept hitting the same glitch but had no easy way to flag it.", attribution: "Beta tester" },
+      { type: "new", text: "Report a problem in a tap from the feedback menu." },
+      { type: "improved", text: "Photos and videos keep a backup copy and recover by themselves." },
+      { type: "improved", text: "A cleaner post layout, and shared links arrive as cards with a headline and image." },
     ],
   },
   {
     version: "1.5.0",
     date: "2026-07-18",
-    title: "Our biggest release yet — a new menu, all your accounts & news that knows what matters",
+    title: "A new menu, all your accounts, smarter news",
     changes: [
-      { type: "new", text: "The menu is all-new. Open it and the whole app is laid out in front of you — glowing rings light up wherever something's waiting, live cards preview your latest chat and the top headline, and search is built right in. “Jump back in” keeps your recent places one tap away." },
-      { type: "new", text: "You can be more than one you. Add several accounts and hop between them straight from the menu, instantly — no signing out. Each account's keys stay separate and protected." },
-      { type: "improved", text: "Alerts finally respect your attention. The unread counter scores what actually matters instead of counting everything, related updates arrive grouped (“Huberman Lab • New episode”), and you can switch to a digest or mute whole sources and keywords. News moved into the bottom bar, and a bell now lives up top — it glows when something's waiting for you." },
-      { type: "improved", text: "News you can actually read here. We measured every source and swapped the tease-then-click-out wires for outlets that publish the whole story in the feed — ProPublica investigations, NASA's image-packed releases, Defector, 404 Media, The Intercept, Fortune and more. Full articles, real photos, no bouncing out to a website — and tapping the menu's top-headline tease now opens that exact story, not just the News page. The big wires are still one tap away if you want them." },
-      { type: "new", text: "Finding your next podcast no longer means leaving the app. Browse official categories, see what's trending in each one, or start from picks led by creators you know — Rogan, Huberman, Lex, Acquired. Rich previews show episode lengths, and a ⚡ badge marks shows that take Lightning." },
-      { type: "improved", text: "Encrypted group chats grew up. Sending images in encrypted rooms works now — including with friends on Amethyst and other apps, so cross-app encrypted communities are officially live. The chat list shows message previews (with a privacy toggle if you'd rather it didn't), timestamps are tidier, and everyone in a group gets their own name color." },
-      { type: "improved", text: "And polish you'll feel everywhere: vertical videos now fill the whole display, Shorts-style; read something once and it's read on every device; any news story can carry its own portable discussion on Nostr, visible from other apps; videos mentioned in articles play right in the text; and you can save an event to your calendar without RSVPing." },
-    ],
-    feedback: [
-      { quote: "I'd send a photo to our encrypted group and my friend on Amethyst just got a broken box.", attribution: "Beta tester" },
-      { quote: "Forty unread and no clue which one was worth opening.", attribution: "Beta tester" },
+      { type: "new", text: "An all-new menu with the whole app laid out, live previews and search built in." },
+      { type: "new", text: "Add several accounts and switch between them instantly." },
+      { type: "new", text: "Find podcasts by category, trend and creator without leaving the app." },
+      { type: "improved", text: "Alerts count what matters and group related updates together." },
     ],
   },
   {
     version: "1.4.0",
     date: "2026-07-16",
-    title: "Right where you left off — events, richer tools, and cross-app invites",
+    title: "Right where you left off",
     changes: [
-      { type: "fixed", text: "The back button lands you exactly where you left off — the same spot in the feed, with no shake and no reload — whether you swipe back or tap it." },
-      { type: "improved", text: "Open a reply and you can now see the whole conversation it belongs to: the full chain up to the original post, each step showing its own replies and likes, so you never miss the bigger discussion." },
-      { type: "new", text: "Event posts can go straight onto your calendar — Apple, Google, or a download — and you can RSVP with Going or Maybe and see how many are in. The cards are tidier too: one clean row of actions instead of buttons everywhere." },
-      { type: "new", text: "A richer Tools page: recover your follow list from relays if it's ever wiped, see the vouches you've written next to the ones about you, manage your media servers and muted list, recalculate your trust network, and download an encrypted backup of your key. Anything that changes something now asks first." },
-      { type: "improved", text: "Editing your profile is its own focused screen — a live preview of how you look to others as you type, a quick check that your verified name and Lightning address actually work, and a Save bar that only appears once you've changed something. Group chats now share one name and a stack of member faces for everyone in them, and trust levels are told apart by shape, not just color — a calm amber dot, a hollow ring, a clear red flag — so they read for everyone." },
-      { type: "fixed", text: "Your DMs stay in Chats and out of Alerts, searching events no longer blanks the page when you're signed in, and group-chat invites you send now open correctly in other Nostr apps like Amethyst." },
-    ],
-    feedback: [
-      { quote: "When I hit back it put me in the right place, but the feed shook and kept loading.", attribution: "Beta tester" },
-      { quote: "Your group invites wouldn't load in our app — you were sending the wrong invite type.", attribution: "A fellow Nostr client" },
+      { type: "improved", text: "Back lands you exactly where you left off." },
+      { type: "improved", text: "Open a reply to see the whole conversation it belongs to." },
+      { type: "new", text: "Add events to your calendar and RSVP Going or Maybe." },
     ],
   },
   {
     version: "1.3.0",
     date: "2026-07-13",
-    title: "Chats in one place, and a steadier feed",
+    title: "Chats in one place, a steadier feed",
     changes: [
-      { type: "new", text: "Direct messages and group chats now live together in one Chats tab — one list, one unread count. Starting a group chat is right there under the + button." },
-      { type: "improved", text: "The feed holds still while you read. New posts wait behind a “new posts” button instead of pushing everything down, and the back button returns you to exactly where you left off." },
-      { type: "improved", text: "Community spaces got a cleaner name, simpler pages, and a fresh icon." },
-      { type: "improved", text: "Trust scores now show up for everyone in feeds and threads automatically — no more blank “no data” until you'd visited someone's profile." },
-      { type: "new", text: "You can share a calendar event into your feed as a proper card, and pinned events now show more detail and load instantly." },
-      { type: "improved", text: "Polls are easier to explore — tap one to open its full conversation, and sort by trending, latest, or ending soon." },
-      { type: "improved", text: "In the media viewer, swipe up and down to move between photos and videos, and the sound toggle now works properly on phones." },
-      { type: "improved", text: "Your font and text-size choices now apply everywhere and stay put, with a hand-picked set of fonts to choose from." },
+      { type: "new", text: "Messages and group chats together in one Chats tab." },
+      { type: "improved", text: "The feed holds still while you read: new posts wait behind a button." },
+      { type: "improved", text: "Trust scores show everywhere automatically, and polls open into their full conversation." },
     ],
   },
   {
     version: "1.2.1",
     date: "2026-07-02",
-    title: "Smoother scrolling, a lighter app",
+    title: "Smoother scrolling",
     changes: [
-      { type: "improved", text: "Long feeds stay smooth no matter how far you scroll. We now only keep what's on screen loaded, so scrolling doesn't get heavier the further you go — a real difference on phones and older devices." },
-      { type: "improved", text: "The whole app feels lighter — posts, reactions, and fast-moving channels do a lot less work behind the scenes, so things stay responsive when there's a lot going on." },
-    ],
-    feedback: [
-      { quote: "After scrolling for a while the feed got choppy and my phone started to chug.", attribution: "Beta tester" },
-      { quote: "Busy channels felt laggy when messages were flying in.", attribution: "Beta tester" },
+      { type: "improved", text: "Long feeds stay smooth however far you scroll, and busy channels keep up." },
     ],
   },
   {
     version: "1.2.0",
     date: "2026-06-28",
-    title: "Vouching, a real news reader & a lot of mobile love",
+    title: "Vouching and a real news reader",
     changes: [
-      { type: "new", text: "Vouch for the people you trust. Profiles now have Trust Reviews — write a short, public vouch for someone (a general endorsement, or “I personally know this is really them”). You'll see who's vouched, ranked by your own Web of Trust, and the person can publicly reply. Bad-faith ones can be reported or muted. It lives in a new Trust tab under Network. Think Google reviews, but for people — and weighted by who you actually trust." },
-      { type: "new", text: "News is a real reader now. One search box finds podcasts (millions of them), blogs, or any feed you paste; articles track read/unread with a “Mark all read”; every source shows its icon and you can filter to just one; and new accounts start with a tighter, hand-picked set of feeds instead of a firehose." },
-      { type: "new", text: "Podcasts play like a proper podcast app — speed (0.8×–2×), 15 / 30-second skip, and an Up Next queue you can add to, play next, and reorder, right from the player." },
-      { type: "improved", text: "A clearer feed. Pick Posts, Replies, or All (we default to Posts, so it isn't wall-to-wall replies), and set how strict your feed is with one simple choice — Open, Balanced, or Strict — with the fine-grained trust controls tucked under Customize." },
-      { type: "improved", text: "Invites finally work both ways. If you invite someone who's already here, they get a one-tap “Follow back?” prompt and a quick way to say hi — so you actually find out they joined. New folks land already following a small, friendly starter set." },
-      { type: "improved", text: "Videos go full-screen, Shorts/X-style — edge-to-edge, no more buttons stacked on buttons, with an instant preview frame and the next clip pre-loaded so it doesn't make you wait." },
-      { type: "improved", text: "On your phone, Articles open in a clean list by default (with a comfortable/compact toggle), and there's a dedicated Tools page — Wallet, Relays, Bookmarks, Analytics, Console, Flight Log — one tap from the menu." },
-      { type: "fixed", text: "Light mode, fixed where it counted: your own chat and DM bubbles were dark-on-purple and nearly unreadable — now they're crisp. And when you @mention someone while writing a post, you can see what you're typing again." },
-      { type: "fixed", text: "Profiles now actually show a person's relays (it used to always say “none”), the video player no longer double-stacks its controls, and Community headers are tidier — we dropped some confusing counts and hid an operator-only toggle from everyone else." },
-    ],
-    feedback: [
-      { quote: "When someone vouched for a user it just showed a blob of raw code — I couldn't tell who said it or what they meant.", attribution: "Beta tester" },
-      { quote: "The videos had buttons stacked on buttons — can it just be full-screen like Shorts?", attribution: "Beta tester" },
-      { quote: "In light mode I literally couldn't read my own messages.", attribution: "Beta tester" },
-      { quote: "We've been living in the app on our own phones — most of this came straight from that.", attribution: "The team" },
+      { type: "new", text: "Vouch for the people you trust, right on their profile." },
+      { type: "new", text: "News is a real reader, and podcasts play like a podcast app: speed, skip and Up Next." },
+      { type: "improved", text: "Choose Posts, Replies or All, and set your feed to Open, Balanced or Strict." },
     ],
   },
   {
     version: "1.1.0",
     date: "2026-06-27",
-    title: "Calmer light mode, trust filters & mobile polish",
+    title: "Calmer light mode, trust filters",
     changes: [
-      { type: "improved", text: "Light mode got a full refresh. Everything now draws from one consistent color system, so text, buttons, filters, and toggles look calm and on-brand instead of a mix of washed-out blues and purples." },
-      { type: "new", text: "You can now apply your Web-of-Trust filter to a whole Community — Posts, Discussions, Chat, and Articles at once — so you mostly see people your network vouches for. In Chat, filtered messages collapse into a “tap to show” note instead of quietly disappearing." },
-      { type: "improved", text: "The Trust & Safety page is far easier to understand: one plain “How strict is your feed?” choice — Open, Balanced, or Strict — up front, with all the advanced trust controls tucked under Advanced." },
-      { type: "improved", text: "On phones, Messages now has its own spot in the bottom bar with an unread count, so your DMs are always one tap away. Search moved to the top of the screen." },
-      { type: "improved", text: "We renamed a few things in plain English so they're easier to follow — nothing moved, just clearer labels. A Community's tabs are now Posts, Discussions, Chat, and Articles; the home feed views are For You, Following, and Trending; your saved feeds live under “Saved”; and your dashboard is now “Account.”" },
-      { type: "fixed", text: "Your profile picture now shows when you write a post, and the relay picker (“Manage”) opens where your post will go instead of dropping you on a page that made no sense." },
-      { type: "fixed", text: "On mobile, tapping a link in the side menu now closes the menu and takes you straight to the page." },
-      { type: "fixed", text: "Opening a members-only Community you're not part of now tells you so clearly, instead of spinning on “Authenticating…” forever." },
-    ],
-    feedback: [
-      { quote: "In light mode the colors looked washed out and off-brand.", attribution: "Beta tester" },
-      { quote: "My profile picture didn't show up when I went to write a post.", attribution: "Beta tester" },
-      { quote: "On my phone, tapping a link in the menu left the menu covering the page.", attribution: "Beta tester" },
+      { type: "improved", text: "Light mode got a full refresh with one consistent look." },
+      { type: "new", text: "Apply your trust filter to a whole community." },
+      { type: "improved", text: "A simpler Trust & Safety page, and Messages in the bottom bar on phones." },
     ],
   },
   {
     version: "1.0.2",
     date: "2026-06-20",
-    title: "Steadier DMs + mobile fixes",
+    title: "Steadier messages",
     changes: [
-      { type: "improved", text: "Direct messages now come through much more reliably when you — or the person writing to you — use a privacy-focused relay (the kind that only releases messages to their owner), which used to drop them silently. We're still hardening this, so tell us if one goes missing." },
-      { type: "improved", text: "Your message history is sturdier — we ask your device not to clear it when storage runs low, so conversations are far less likely to disappear." },
-      { type: "improved", text: "Command Post and Messages open noticeably faster when you launch the app on your phone." },
-      { type: "fixed", text: "The mobile menu opens much more smoothly — no more flicker." },
-      { type: "improved", text: "The mobile music & voice player is much steadier when you open it." },
+      { type: "improved", text: "Private messages arrive more reliably, and your history is kept safe on your device." },
+      { type: "improved", text: "Quicker to open on a phone." },
     ],
-    feedback: {
-      quote: "Messages I sent from another app weren't reaching my friends here — but the other direction worked fine.",
-      attribution: "Beta tester",
-    },
   },
   {
     version: "1.0.1",
     date: "2026-06-18",
-    title: "Reliability & polish",
-    feedback: {
-      quote: "I signed in with my private key and couldn't reply or vote — it only worked with the extension.",
-      attribution: "Beta tester",
-    },
+    title: "Reliability and polish",
     changes: [
-      { type: "fixed", text: "Posting, replying, voting, and channel messages now work across more sign-in methods, not just browser extensions." },
-      { type: "improved", text: "Channel invites and private invite DMs now send much more reliably." },
-      { type: "improved", text: "Direct messages are better at reconnecting after the app has been idle, and the composer grows as you type so you can see everything you write." },
-      { type: "improved", text: "Live people suggestions appear as you type in search." },
-      { type: "improved", text: "Command Post is tidier — Articles now live under Media (Images · Videos · Articles · Audio)." },
-      { type: "new", text: "Turn off feed ranking, engagement scores, or trust checks anytime in Settings → Feed & content." },
-      { type: "improved", text: "Wallet, Edit profile, and the new Control panel are reachable straight from the account menu; Settings gained a quick jump-to on mobile." },
-      { type: "fixed", text: "Your light/dark choice no longer flips on load." },
-      { type: "new", text: "This “What's New” page, so you can see what we ship." },
+      { type: "improved", text: "Post, reply and vote with any sign-in method." },
+      { type: "new", text: "Turn off feed ranking or trust checks anytime in Settings." },
+      { type: "new", text: "This What's New page, so you can see what we ship." },
     ],
   },
   {
     version: "1.0.0",
     date: "2026-06-11",
     title: "Public beta",
-    feedback: {
-      quote: "Would love group chats like Discord, but on Nostr.",
-      attribution: "Community request",
-    },
     changes: [
-      { type: "new", text: "Native channel rooms with a Discord/Signal-style chat experience." },
-      { type: "improved", text: "Feeds rank more accurately across Latest, Trending, Most Zapped, and Top Engaged." },
-      { type: "improved", text: "A friendly welcome brief explaining the beta, with quick links to the FAQ, Terms, and Privacy." },
+      { type: "new", text: "Chat rooms that feel like the chat apps you know." },
+      { type: "improved", text: "Feeds for Latest, Trending, Most Zapped and Top Engaged." },
+      { type: "improved", text: "A friendly welcome, with quick links to the FAQ, Terms and Privacy." },
     ],
   },
 ];
