@@ -28,7 +28,6 @@ import { setInviteConnect } from "@/lib/invite-connect";
 import { triggerGrapeRankCalculation } from "@/lib/graperank";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { markNewAccountPublicNostrOff } from "@/lib/public-nostr";
-import { markIaMovedNoticeSeen } from "@/lib/ia-moved-notice";
 import { uploadToNostrBuild, setBlossomServers, publishBlossomServerList, DEFAULT_BLOSSOM_SERVERS } from "@/lib/media-upload";
 import { setLocalDMRelays, publishDMRelayList, DM_FALLBACK_RELAYS } from "@/lib/outbox";
 import { loadSignupDraft, saveSignupDraft, clearSignupDraft, bytesToHex, hexToBytes, draftHasResumableContent } from "@/lib/account-draft";
@@ -992,11 +991,6 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
           // someone arriving today has no muscle memory to break, so they need
           // no such notice, which is exactly why this rail goes first.
           // Self-guards against overwriting an explicit choice on this device.
-          // Never show a new account the "here's where things moved" line.
-          // Nothing moved for someone who arrived after the move; that notice
-          // is for people whose nav changed under them. (The nav itself needs
-          // no marker any more — simplified IS the default now.)
-          markIaMovedNoticeSeen(account.pubkey);
           const guardKey = `relay-outpost-initial-calc:${account.pubkey}`;
           if (!localStorage.getItem(guardKey)) {
             // The global signer registers via a React effect after this login;
