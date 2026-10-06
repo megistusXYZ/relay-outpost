@@ -1,4 +1,5 @@
 import { startingTrendingSelector, TRENDING_CHART_CHOICES } from "@/pages/home/feed-menu";
+import { useTrustChoice, TRUST_CHOICES } from "@/lib/trust-choice";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +45,6 @@ import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useToast } from "@/hooks/use-toast";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { getSchedulerBaseUrl, setSchedulerBaseUrl } from "@/lib/schedule";
-import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { Switch } from "@/components/ui/switch";
 import { isFeedRankingEnabled, setFeedRankingEnabled, isEngagementScoreEnabled, setEngagementScoreEnabled } from "@/lib/feed-prefs";
 import { readFeedStyle, setFeedStyle, type FeedStyle } from "@/hooks/use-feed-style";
@@ -1593,7 +1593,6 @@ function ContentSection() {
   const [showBadges, setShowBadges] = useState(() => areBadgesEnabled());
   const [showClientTag, setShowClientTagState] = useState(getShowClientTag);
 
-  const { wotEnabled, setWotEnabled } = useGrapeRankScores();
   const [ranking, setRanking] = useState(isFeedRankingEnabled);
   const [engagement, setEngagement] = useState(isEngagementScoreEnabled);
 
@@ -1719,10 +1718,27 @@ function ContentSection() {
       <Row icon={BarChart3} label="Engagement score" sub="Interaction-score badge on posts" testId="row-feed-intel-engagement">
         <Switch checked={engagement} onCheckedChange={(v) => { setEngagementScoreEnabled(v); setEngagement(v); }} data-testid="toggle-feed-intel-engagement" />
       </Row>
-      <Row icon={ShieldCheck} label="Signal check (Web of Trust)" sub="Trust scores from your social graph" testId="row-feed-intel-signal">
-        <Switch checked={wotEnabled} onCheckedChange={(v) => setWotEnabled(v)} data-testid="toggle-feed-intel-signal" />
-      </Row>
+      {/* One place decides this: the Trust page's three choices (owner,
+          2026-10-06). This row says which is on and opens it. */}
+      <LinkRow
+        href="/account?tab=shield"
+        icon={ShieldCheck}
+        label="Who you see"
+        sub="How careful to be with people you don't know"
+        right={<TrustChoiceLabel />}
+        testId="row-feed-intel-signal"
+      />
     </RowSection>
+  );
+}
+
+/** The Trust page's current choice, in its own words ("Balanced"). */
+function TrustChoiceLabel() {
+  const { choice } = useTrustChoice();
+  return (
+    <span className="shrink-0 text-xs text-muted-foreground" data-testid="text-trust-choice">
+      {choice === "custom" ? "Your own levels" : TRUST_CHOICES[choice].label}
+    </span>
   );
 }
 
@@ -2172,7 +2188,6 @@ function FeedbackTicketsRow() {
 export default function Settings() {
   const { pubkey, loginMethod } = useNostrAuth();
   useDocumentTitle("Settings");
-  const { wotEnabled } = useGrapeRankScores();
 
   useEffect(() => {
     if (window.innerWidth >= 640) return;
@@ -2329,16 +2344,11 @@ export default function Settings() {
               <RowSection testId="section-privacy">
                 <HideMessagePreviewsRow />
                 <LinkRow
-                  href="/shield-matrix"
+                  href="/account?tab=shield"
                   icon={ShieldMatrixIcon}
                   label="Trust & safety"
-                  sub="Web of Trust & moderation"
-                  right={
-                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground/40 shrink-0">
-                      <span className={`w-2 h-2 rounded-full ${wotEnabled ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]" : "bg-slate-500/50"}`} />
-                      <span>{wotEnabled ? "Active" : "Off"}</span>
-                    </span>
-                  }
+                  sub="Who you see, and the people and words you've muted"
+                  right={<TrustChoiceLabel />}
                   testId="link-shield-matrix"
                 />
               </RowSection>
