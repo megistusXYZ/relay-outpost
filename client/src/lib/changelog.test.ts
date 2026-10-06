@@ -63,3 +63,36 @@ describe("package.json follows the changelog", () => {
     expect(pkg.version).toBe(APP_VERSION);
   });
 });
+
+/**
+ * Owner, 2026-10-06: "we are giving too much away … condense in larger
+ * rollouts … only add what's of value, they don't need to know all the extra
+ * jazz." What's New is for the people using the app, not a build log.
+ */
+describe("What's New says only what's of value", () => {
+  it("each release is a handful of short lines", () => {
+    for (const e of CHANGELOG) {
+      expect(e.changes.length, `${e.version} has ${e.changes.length} lines`).toBeLessThanOrEqual(5);
+      for (const c of e.changes) expect(c.text.length, `${e.version}: "${c.text}"`).toBeLessThanOrEqual(140);
+    }
+  });
+
+  it("says what works now — no tester quotes, no internals, no account of what broke", () => {
+    const tooMuch = /\b(NIP-?\d+|kind[- ]\d+|wss:|relay\.[a-z]|Primal|nostr\.band|WebKit|Safari|memory|crash\w*|bugs?|leak\w*|exploit\w*|vulnerab\w*|security|broken|blank|regression|cache)\b/i;
+    for (const e of CHANGELOG) {
+      expect(e.feedback, `${e.version} carries tester quotes`).toBeUndefined();
+      for (const c of [e.title ?? "", ...e.changes.map((x) => x.text)]) {
+        expect(c, `${e.version}`).not.toMatch(tooMuch);
+      }
+    }
+  });
+
+  it("releases come as rollouts, not daily bits: from 1.18.0 on, at least 5 days apart", () => {
+    const day = 86_400_000;
+    for (let i = 0; i < CHANGELOG.length - 1; i++) {
+      if (CHANGELOG[i].date <= "2026-10-06") break;
+      const gap = (Date.parse(CHANGELOG[i].date) - Date.parse(CHANGELOG[i + 1].date)) / day;
+      expect(gap, `${CHANGELOG[i].version} came ${gap} days after ${CHANGELOG[i + 1].version}`).toBeGreaterThanOrEqual(5);
+    }
+  });
+});
