@@ -39,6 +39,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.17.3",
+    date: "2026-10-05",
+    title: "Every post draws",
+    changes: [
+      { type: "fixed", text: "On iPhone, the home feed no longer leaves blank cards or empty stretches as you scroll quickly. Every post draws as it comes into view, as posts on profiles and in threads already did." },
+    ],
+    feedback: [
+      {
+        quote: "Posts are disappearing when scrolling threads and pages on mobile.",
+        attribution: "A tester on iPhone, with a screen recording. The last place posts could skip drawing is gone.",
+      },
+    ],
+  },
+  {
     version: "1.17.2",
     date: "2026-10-05",
     title: "Search that answers",
