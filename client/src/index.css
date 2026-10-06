@@ -481,6 +481,22 @@ textarea:focus {
   overflow: clip;
   visibility: hidden;
 }
+/* On a phone, a hidden Home's posts render nothing at all: no layout, no
+ * paint, and the engine may drop their decoded images. Measured 2026-10-06
+ * (ship/hidden-home-cost.cjs): beneath Live, the kept Home held every post laid
+ * out with 48 decoded images (12 Mpx) after a short session — far more after a
+ * real one — and the home-screen app, whose graphics budget is tighter than
+ * Safari's, left Live and Discover blank mid-fling, much worse after a long
+ * Home session (owner, 2026-10-06). `hidden` is explicit, unlike `auto`
+ * (posts-always-drawn.test.ts): nothing is skipped while on screen, and
+ * contain-intrinsic-size `auto` remembers each post's height, so Back lands
+ * on the same pixels. Desktop keeps full layout for its virtualizer. */
+@media (max-width: 767px) {
+  .surface-hidden .feed-post-item {
+    content-visibility: hidden;
+    contain-intrinsic-size: auto 220px;
+  }
+}
 
 
 .feed-post-item:focus-within {
