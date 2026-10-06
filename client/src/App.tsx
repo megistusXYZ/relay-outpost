@@ -1178,7 +1178,7 @@ function AppContent({ mainRef, scrollHidden }: { mainRef: React.RefObject<HTMLEl
   const headerVisible = railActive || sidebarState === "collapsed" || sidebarIsMobile || stickyAudioActive;
 
   return (
-    <div className="flex h-[100dvh] w-full">
+    <div className="app-shell flex h-[100dvh] w-full">
       {classicSidebar || sidebarIsMobile ? <AppSidebar /> : <DesktopStoriesRail />}
       <div className="flex flex-col flex-1 min-w-0 relative">
         <HeaderBar scrollHidden={scrollHidden} />

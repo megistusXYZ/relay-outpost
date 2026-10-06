@@ -499,6 +499,30 @@ textarea:focus {
 }
 
 
+/* On a phone, a post more than three screens from what you're reading draws
+ * nothing (lib/far-rows.ts marks it). Its height is the one it last drew at
+ * (`auto`, remembered while it was drawn), so the page never moves. Every post
+ * within three screens is drawn — unlike `content-visibility: auto`, which
+ * left posts blank mid-fling on iPhone (posts-always-drawn.test.ts). */
+@media (max-width: 767px) {
+  .feed-post-item {
+    contain-intrinsic-size: auto 220px;
+  }
+  .feed-post-item[data-far] {
+    content-visibility: hidden;
+  }
+}
+
+/* The app beneath the full-screen welcome (GalaxyWarpOverlay sets the
+ * attribute while it covers everything): no layout, no paint, no decoded
+ * images, no video — nobody can see it, and on a phone the cost of drawing it
+ * anyway made iOS drop the welcome's own backdrop (2026-10-06). The app's
+ * state and data load as usual, so "Look around first" opens onto a ready
+ * feed. */
+html[data-welcome-cover] .app-shell {
+  content-visibility: hidden;
+}
+
 .feed-post-item:focus-within {
   z-index: 10;
 }

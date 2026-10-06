@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import { ShieldAlert } from "lucide-react";
+import { useFarRow } from "@/lib/far-rows";
 
 /**
  * The shell every post in a feed sits in.
@@ -53,8 +54,10 @@ export function PostFrame({
   children,
 }: PostFrameProps) {
   const blurred = !!sensitive;
+  const rowRef = useRef<HTMLDivElement>(null);
+  useFarRow(rowRef);
   return (
-    <div className="overflow-visible feed-post-item" data-event-id={eventId}>
+    <div ref={rowRef} className="overflow-visible feed-post-item" data-event-id={eventId}>
       {repostSlot}
       <div className="relative">
         {sensitive && (

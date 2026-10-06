@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, lazy, Suspense } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, lazy, Suspense } from "react";
 import { Rocket, Radio, ShieldCheck, Lock, ArrowLeft, Eye, EyeOff, UserPlus, ChevronDown, HelpCircle } from "lucide-react";
 import { lazyNamed } from "@/lib/lazy-retry";
 // The sign-in options (every signer, key import, account creation) load when
@@ -185,6 +185,23 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
   // Re-evaluate when the overlay mode changes — e.g. launching from the footer
   // CTA (scrolled past the hero) must un-pause so the warp actually animates.
   useEffect(() => { recomputeStarfieldPaused(); }, [mode, recomputeStarfieldPaused]);
+
+  // While the welcome covers the whole screen, the app beneath it draws
+  // nothing (index.css, html[data-welcome-cover]). Measured 2026-10-06
+  // (ship/under-landing-cost.cjs): under the welcome a new visitor's phone
+  // was painting the whole feed — 7 posts, 17 decoded images, a video
+  // playing — that nobody could see. On iOS (Safari and DuckDuckGo alike) that
+  // pushed the graphics budget far enough for the engine to drop the
+  // welcome's own black backdrop, and the feed showed through it. Cleared
+  // the moment the welcome starts to step aside, so the feed is there
+  // while it fades.
+  const covering = (mode === "full" || mode === "cockpit" || mode === "warping_to_cockpit") && !fadeOut;
+  useLayoutEffect(() => {
+    if (!covering) return;
+    const root = document.documentElement;
+    root.setAttribute("data-welcome-cover", "");
+    return () => root.removeAttribute("data-welcome-cover");
+  }, [covering]);
 
   // Funnel telemetry: the marketing landing was shown (deduped per page load).
   useEffect(() => { if (mode === "full") trackSignupEvent("landing_viewed"); }, [mode]);
