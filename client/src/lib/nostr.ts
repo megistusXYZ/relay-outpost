@@ -1027,19 +1027,19 @@ function openPersistentSub(
   // non-Concord filters and unchallenged relays.
   for (const relayUrl of healthyRelays) armPlaneAuth(relayUrl, singleFilter.authors);
   let eoseFired = false;
-  let eoseCount = 0;
-  const totalRelays = healthyRelays.length;
 
   const sub = pool.subscribeMany(healthyRelays, singleFilter, {
     onevent(event: any) {
       handlers.onevent(event);
     },
+    // nostr-tools calls this ONCE, after every relay has answered or failed
+    // (one-eose-per-pool-sub.test.ts). It used to be counted up to the number
+    // of relays and so never passed on with more than one: a jump to an old
+    // pinned message always waited its 8 s cap, the poll catch-up 15 s.
     oneose() {
-      eoseCount++;
-      if (!eoseFired && eoseCount >= totalRelays) {
-        eoseFired = true;
-        handlers.oneose();
-      }
+      if (eoseFired) return;
+      eoseFired = true;
+      handlers.oneose();
     },
     // Fires once EVERY relay's REQ has ended (socket death, connect failure,
     // relay CLOSED, or our own close). The resilient wrapper distinguishes
