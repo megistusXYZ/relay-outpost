@@ -39,7 +39,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { indicatorHeight, pullArmed } from "@/lib/pull-to-refresh";
 import { ChatListRow } from "./ChatListRow";
-import { IaMovedNotice } from "@/components/IaMovedNotice";
 import { buildCreateActions } from "./create-actions";
 import { getDMDisplayName, formatMessageTime, sectionChatEntries, communitiesForTab, chatFilterOptions, applyChatFilter, resolveChatFilter, firstUnreadChat, chatHomeMenu, type ChatFilter, type ChatEntry, type ConversationPreview, type DmTab, type OutpostPreview, type ProfileInfo } from "./helpers";
 import { refreshOutcome, type RefreshOutcome } from "./refresh-outcome";
@@ -1566,12 +1565,6 @@ export function ChatList({
           </div>
         ) : (
           <>
-            {/* Where-did-it-go map, once. It lives HERE rather than on Discover
-                because opening the app now lands you here — the notice has to
-                be on the page people actually arrive at, or it explains the
-                move to nobody. Above the empty state as well as the list, since
-                someone with no chats yet needs it most. Self-hiding. */}
-            <IaMovedNotice className="mx-2 mt-2" />
             {/* Received group-chat invites — Accept lands you in the group and
                 refreshes the merged list. Self-hides when there are none. */}
             {dmTab === "primary" && (
