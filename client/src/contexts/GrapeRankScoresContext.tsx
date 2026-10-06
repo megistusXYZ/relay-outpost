@@ -195,7 +195,13 @@ export function GrapeRankScoresProvider({ children }: { children: ReactNode }) {
       markWotChoiceSet();
     };
     window.addEventListener("nip78-settings-applied", handleSettingsApplied);
-    return () => window.removeEventListener("nip78-settings-applied", handleSettingsApplied);
+    // A choice on the Trust page (lib/trust-choice.ts) writes the key itself.
+    const handleChoice = () => setWotEnabledRaw(getWotEnabled());
+    window.addEventListener("wot-enabled-changed", handleChoice);
+    return () => {
+      window.removeEventListener("nip78-settings-applied", handleSettingsApplied);
+      window.removeEventListener("wot-enabled-changed", handleChoice);
+    };
   }, []);
   const [recalculating, setRecalculating] = useState(() => {
     const saved = loadRecalcState();
