@@ -8,7 +8,7 @@ import { KIND_METADATA, getDisplayName, getAvatarUrl } from "@/lib/nostr-helpers
 import { Button } from "@/components/ui/button";
 import { Award, ChevronDown, ChevronUp, User, Plus } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
-import { acceptBadges, fetchProfileBadgesList } from "@/lib/nip58-badges";
+import { showBadgeOnProfile } from "@/lib/nip58-badges";
 import { useToast } from "@/hooks/use-toast";
 import { useAcceptedBadgesCached } from "@/hooks/use-badges";
 import type { ResolvedBadge } from "@/hooks/use-badges";
@@ -22,8 +22,11 @@ function subscribeBadgesChange(cb: () => void) {
   return () => window.removeEventListener(BADGES_CHANGED_EVENT, handler);
 }
 
+// On unless turned off (owner, 2026-10-06). It was off unless turned on, so
+// almost nobody saw a badge — giving one was pointless. Only badges a person
+// accepted ever show, so nothing appears on anyone without their say-so.
 function getBadgesSnapshot(): boolean {
-  try { return localStorage.getItem(SHOW_BADGES_KEY) === "true"; } catch { return false; }
+  try { return localStorage.getItem(SHOW_BADGES_KEY) !== "false"; } catch { return true; }
 }
 
 export function useBadgesEnabled(): boolean {
@@ -113,7 +116,7 @@ function BadgeCard({ badge, showAccept, onAccept, accepting }: {
           disabled={accepting}
         >
           <Plus className="w-3 h-3" />
-          Accept
+          Show on my profile
         </Button>
       )}
     </div>
@@ -139,25 +142,15 @@ export function ProfileBadgesSection({ badges, pubkey, onRefresh }: {
     if (!signer || !myPubkey) return;
     setAccepting(true);
     try {
-      const existing = await fetchProfileBadgesList(myPubkey);
-      const currentBadges = existing?.badges || [];
-      const newEntry = { badgeRef: badge.badgeRef, awardEventId: badge.awardEventId || badge.award?.id || "" };
-      const dedupedBadges = currentBadges.filter(
-        b => !(b.badgeRef === newEntry.badgeRef && b.awardEventId === newEntry.awardEventId)
-      );
-      const allBadges = [
-        ...dedupedBadges.map(b => ({ badgeRef: b.badgeRef, awardEventId: b.awardEventId })),
-        newEntry,
-      ];
-      const result = await acceptBadges(signer, allBadges);
-      if (result) {
-        toast({ title: "Badge accepted", description: `${badge.definition.name} added to your profile` });
+      const r = await showBadgeOnProfile(signer, myPubkey, { badgeRef: badge.badgeRef, awardEventId: badge.awardEventId || badge.award?.id || "" });
+      if (r === "shown") {
+        toast({ title: "On your profile", description: `${badge.definition.name} now shows on your profile.` });
         onRefresh?.();
       } else {
-        toast({ title: "Failed to accept badge", variant: "destructive" });
+        toast({ title: "Couldn't add the badge", description: r === "unreachable" ? "Your relays didn't answer, so nothing was changed. Try again in a moment." : "Try again in a moment.", variant: "destructive" });
       }
     } catch {
-      toast({ title: "Failed to accept badge", variant: "destructive" });
+      toast({ title: "Couldn't add the badge", description: "Try again in a moment.", variant: "destructive" });
     } finally {
       setAccepting(false);
     }
@@ -204,7 +197,7 @@ export function ProfileBadgesSection({ badges, pubkey, onRefresh }: {
       </div>
       {isOwnProfile && unaccepted.length > 0 && !expanded && (
         <p className="text-[10px] text-amber-500/70 pl-1">
-          {unaccepted.length} pending badge{unaccepted.length > 1 ? "s" : ""} to accept
+          {unaccepted.length} badge{unaccepted.length > 1 ? "s" : ""} waiting for you to show
         </p>
       )}
     </div>
@@ -224,7 +217,7 @@ export function BadgeIcons({ badges, maxVisible = 3, pubkey }: {
   const npub = pubkey ? (() => { try { return nip19.npubEncode(pubkey); } catch { return null; } })() : null;
 
   return (
-    <span className="inline-flex items-center gap-0.5 shrink-0">
+    <span className="inline-flex items-center gap-0.5 shrink-0" data-testid="badge-icons">
       {visible.map((badge) => {
         const imgSrc = badge.definition.thumb || badge.definition.image;
         return imgSrc ? (

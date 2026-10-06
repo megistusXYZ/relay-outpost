@@ -4,10 +4,12 @@ import { getOutpostRelays, getActiveDefaultRelays } from "./outpost-relays";
 import { canReachAny, type Reached } from "./relay-reach";
 import type { Event as NostrEvent } from "nostr-tools";
 import type { ISigner } from "applesauce-signers";
+import { badgeDefinitionTemplate, profileBadgesTemplates, pickProfileBadgesEvent, withAcceptedBadge, KIND_PROFILE_BADGES as KIND_PROFILE_LIST, KIND_PROFILE_BADGES_LEGACY } from "./badge-events";
 
 export const KIND_BADGE_DEFINITION = 30009;
 export const KIND_BADGE_AWARD = 8;
-export const KIND_PROFILE_BADGES = 30008;
+/** The profile list (kind 10008) and its deprecated twin (30008 d=profile_badges): lib/badge-events.ts. */
+export const KIND_PROFILE_BADGES = KIND_PROFILE_LIST;
 
 export interface BadgeDefinition {
   id: string;
@@ -232,12 +234,11 @@ export async function fetchProfileBadgesList(pubkey: string): Promise<ProfileBad
 
     sub = pool.subscribeMany(
       relays,
-      { kinds: [KIND_PROFILE_BADGES], authors: [pubkey], "#d": ["profile_badges"] },
+      // Both formats; the newer profile list counts (badge-events.ts).
+      { kinds: [KIND_PROFILE_LIST, KIND_PROFILE_BADGES_LEGACY], authors: [pubkey] },
       {
         onevent(event: NostrEvent) {
-          if (!bestEvent || event.created_at > bestEvent.created_at) {
-            bestEvent = event;
-          }
+          bestEvent = pickProfileBadgesEvent(bestEvent ? [bestEvent, event] : [event]) ?? bestEvent;
         },
         oneose() { finish(); },
       },
@@ -365,22 +366,8 @@ export async function createBadgeDefinition(
   thumbUrl: string,
   dTag?: string,
 ): Promise<NostrEvent | null> {
-  const identifier = dTag || name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-
-  const tags: string[][] = [
-    ["d", identifier],
-    ["name", name],
-    ["description", description],
-  ];
-  if (imageUrl) tags.push(["image", imageUrl]);
-  if (thumbUrl) tags.push(["thumb", thumbUrl]);
-
-  const eventTemplate = {
-    kind: KIND_BADGE_DEFINITION,
-    created_at: Math.floor(Date.now() / 1000),
-    tags,
-    content: "",
-  };
+  // A new badge gets a permanent identity of its own; pass dTag to edit one.
+  const eventTemplate = badgeDefinitionTemplate({ id: dTag, name, description, image: imageUrl, thumb: thumbUrl });
 
   try {
     const signed = await signWithTimeout(signer, eventTemplate as Parameters<ISigner["signEvent"]>[0]);
@@ -440,33 +427,62 @@ export async function acceptBadges(
   signer: ISigner,
   acceptedBadges: Array<{ badgeRef: string; awardEventId: string }>,
 ): Promise<NostrEvent | null> {
-  const tags: string[][] = [["d", "profile_badges"]];
-
-  for (const badge of acceptedBadges) {
-    tags.push(["a", badge.badgeRef]);
-    tags.push(["e", badge.awardEventId]);
-  }
-
-  const eventTemplate = {
-    kind: KIND_PROFILE_BADGES,
-    created_at: Math.floor(Date.now() / 1000),
-    tags,
-    content: "",
-  };
-
+  // The same ordered list in both formats, so every Nostr app shows the same
+  // badges (badge-events.ts). The current one decides success; the legacy
+  // twin is best effort for apps that still read only it.
+  const [current, legacy] = profileBadgesTemplates(acceptedBadges);
   try {
-    const signed = await signWithTimeout(signer, eventTemplate as Parameters<ISigner["signEvent"]>[0]);
-    const published = await publishEvent(signed, getBadgeRelays());
-    if (published) {
-      const parsed = parseProfileBadges(signed, signed.pubkey);
-      profileBadgesCache.set(signed.pubkey, parsed);
-      return signed;
+    const relays = getBadgeRelays();
+    const signed = await signWithTimeout(signer, current as Parameters<ISigner["signEvent"]>[0]);
+    const published = await publishEvent(signed, relays);
+    if (!published) return null;
+    const parsed = parseProfileBadges(signed, signed.pubkey);
+    profileBadgesCache.set(signed.pubkey, parsed);
+    try {
+      const signedLegacy = await signWithTimeout(signer, legacy as Parameters<ISigner["signEvent"]>[0]);
+      await publishEvent(signedLegacy, relays);
+    } catch (err) {
+      console.warn("[NIP-58] Legacy profile badges list not published:", err);
     }
-    return null;
+    return signed;
   } catch (err) {
     console.error("[NIP-58] Failed to accept badges:", err);
     return null;
   }
+}
+
+/**
+ * Show one more badge on your profile, after the ones already there.
+ *
+ * The profile list is replaced whole, so it is read fresh first — and if it
+ * can't be read because no relay answered, nothing is published: writing the
+ * one new badge on top of "nothing" would wipe every badge already shown
+ * (replaceable lists: never publish over a view you couldn't load).
+ */
+export async function showBadgeOnProfile(
+  signer: ISigner,
+  myPubkey: string,
+  badge: { badgeRef: string; awardEventId: string },
+): Promise<"shown" | "unreachable" | "failed"> {
+  clearBadgeCache(myPubkey);
+  const current = await fetchProfileBadgesList(myPubkey);
+  if (!current && !(await canReachAny(getBadgeRelays()))) return "unreachable";
+  const list = withAcceptedBadge(
+    (current?.badges ?? []).map((b) => ({ badgeRef: b.badgeRef, awardEventId: b.awardEventId })),
+    badge,
+  );
+  return (await acceptBadges(signer, list)) ? "shown" : "failed";
+}
+
+// "Not now" on a badge waiting for you: kept on this device, per account.
+const NOT_NOW_PREFIX = "relay-outpost-badges-not-now:";
+export function readBadgesNotNow(pubkey: string): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(NOT_NOW_PREFIX + pubkey) || "[]") as string[]); } catch { return new Set(); }
+}
+export function addBadgeNotNow(pubkey: string, awardId: string): void {
+  const next = readBadgesNotNow(pubkey);
+  next.add(awardId);
+  try { localStorage.setItem(NOT_NOW_PREFIX + pubkey, JSON.stringify([...next].slice(-500))); } catch { /* ignore */ }
 }
 
 export function clearBadgeCache(pubkey?: string): void {

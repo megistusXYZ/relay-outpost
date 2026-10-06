@@ -99,7 +99,7 @@ export function BadgeCreationForm({ onCreated }: { onCreated?: () => void }) {
     try {
       const result = await createBadgeDefinition(signer, name.trim(), description.trim(), imageUrl.trim(), thumbUrl.trim());
       if (result) {
-        toast({ title: "Badge created", description: `"${name}" badge definition published` });
+        toast({ title: "Badge created", description: `"${name}" is ready to give.` });
         setName("");
         setDescription("");
         setImageUrl("");
@@ -406,7 +406,7 @@ export function BadgeManagementPanel() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Award className="w-4.5 h-4.5 text-brand" />
-          <h2 className="text-sm font-bold text-foreground/90 uppercase tracking-wider">NIP-58 Badges</h2>
+          <h2 className="text-sm font-bold text-foreground/90 uppercase tracking-wider">Badges</h2>
         </div>
         <Button
           size="sm"
