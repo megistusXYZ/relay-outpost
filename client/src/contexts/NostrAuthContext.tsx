@@ -3,7 +3,8 @@ import { setPeopleSearchViewer } from "@/lib/people-search";
 import { setOutboxViewer } from "@/lib/outbox";
 import type { ReactNode } from "react";
 import { ExtensionSigner, NostrConnectSigner, PrivateKeySigner, type ISigner } from "applesauce-signers";
-import { loadSettingsFromRelay, initSettingsSync, scheduleSyncToRelay, teardownSettingsSync, handleAccountSwitch } from "@/lib/nip78-settings";
+import { loadSettingsFromRelay, initSettingsSync, scheduleSyncToRelay, teardownSettingsSync, handleAccountSwitch, hasKnownSettings } from "@/lib/nip78-settings";
+import { privateModeOnSignIn } from "@/lib/private-mode";
 import { loadReadStateFromRelay, initReadStateSync, scheduleReadStateSync, teardownReadStateSync } from "@/lib/read-state-sync";
 import { READSTATE_CHANGED_EVENT } from "@/lib/dm-read";
 import { Observable } from "rxjs";
@@ -1150,11 +1151,18 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
     settingsSyncInitRef.current = true;
 
     handleAccountSwitch(pubkey);
+    // Every sign-in decides the chat shield afresh (lib/private-mode.ts):
+    // from what this device holds when it knows this account's settings,
+    // otherwise shielded until they arrive.
+    const settingsKnown = hasKnownSettings(pubkey);
+    privateModeOnSignIn(settingsKnown);
     initSettingsSync(pubkey, signer);
 
+    // Deferred off the launch path — unless Chats is waiting on the answer
+    // (settings unknown on this device), then asked at once.
     const delayTimer = setTimeout(() => {
       loadSettingsFromRelay(pubkey, signer).catch(() => {});
-    }, 2000);
+    }, settingsKnown ? 2000 : 0);
 
     const handleSync = () => scheduleSyncToRelay();
 

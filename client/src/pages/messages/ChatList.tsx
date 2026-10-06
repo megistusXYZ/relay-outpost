@@ -48,7 +48,7 @@ import { getMyDMReceiveRelays } from "@/lib/outbox";
 import { getOutpostRelays, getOutpostMeta, saveOutpostMeta, type OutpostRelay } from "@/lib/outpost-relays";
 import { getPinnedFeeds, groupPinsByRelay, pinUrl, normalizeUrl, type PinnedFeed } from "@/lib/pinned-feeds";
 import { unpinRoomEverywhere } from "@/lib/room-pins";
-import { usePrivateMasked, togglePrivateMasked, revealPrivateMasked, ensurePrivateModeRearm, maskChips, getPrivateModeSetting } from "@/lib/private-mode";
+import { usePrivateMasked, usePrivateModePending, togglePrivateMasked, revealPrivateMasked, ensurePrivateModeRearm, maskChips, getPrivateModeSetting } from "@/lib/private-mode";
 import { onTabRetap } from "@/lib/tab-retap";
 import { PrivateModeShield } from "@/components/PrivateModeShield";
 import { KeyBackupNudge } from "@/components/KeyBackupNudge";
@@ -741,6 +741,7 @@ export function ChatList({
   // read through, guessed from their shape, or pulled from the page.
   ensurePrivateModeRearm();
   const privateMasked = usePrivateMasked();
+  const privatePending = usePrivateModePending();
 
   // A second tap on the Chats tab, already at the top, opens your first unread
   // chat (lib/footer-nav.ts): the first unread row as the list shows them,
@@ -1450,7 +1451,7 @@ export function ChatList({
         {privateMasked ? (
           // Ahead of everything else the list can show (the deleted view, the
           // loader, notices, invites, rows): masked, none of it is drawn.
-          <PrivateModeShield onShow={revealPrivateMasked} rearms={getPrivateModeSetting()} />
+          <PrivateModeShield onShow={revealPrivateMasked} rearms={getPrivateModeSetting()} pending={privatePending} />
         ) : showDeleted ? (
           <div className="p-3 space-y-3">
             {hiddenConvos.size > 0 && (

@@ -76,6 +76,10 @@ function applyMasked(value: boolean): void {
   }
 }
 
+function emit(): void {
+  listeners.forEach((l) => l());
+}
+
 export function isPrivateMasked(): boolean {
   return masked;
 }
@@ -90,6 +94,46 @@ export function isPrivateMasked(): boolean {
  */
 export function armPrivateModeIfSet(): void {
   if (getPrivateModeSetting()) applyMasked(true);
+}
+
+// ── Sign-in ─────────────────────────────────────────────────────────────────
+// Owner, 2026-10-06: signing in (a pasted nsec in a new browser, or just
+// signing in again) showed every chat with private mode on. The mask was
+// decided once, at page load, from what this device had stored — a session
+// that had tapped "Show chats" kept showing them, and a device that had never
+// received this account's settings showed them until the synced settings
+// arrived (2 s later at best, never if the relays didn't answer).
+let pending = false;
+
+/**
+ * An account just signed in. `settingsKnown`: this device already holds this
+ * account's settings (it has synced them before). Known → the shield follows
+ * the setting, re-arming it even after an earlier "Show chats". Unknown →
+ * Chats stays shielded until privateModeSettingsSettled(): whether private
+ * mode is on can't be known yet, and showing the list to find out is the leak.
+ */
+export function privateModeOnSignIn(settingsKnown: boolean): void {
+  pending = !settingsKnown;
+  applyMasked(settingsKnown ? nextMaskedState("open", masked, getPrivateModeSetting()) : true);
+  emit();
+}
+
+/**
+ * This account's settings are here (or the relays answered that it has
+ * none). A list still waiting under the shield now follows the setting; one
+ * revealed by hand while waiting stays revealed. Never called when nobody
+ * answered — then the shield stays, with its Show chats button (owner's call).
+ */
+export function privateModeSettingsSettled(): void {
+  if (!pending) return;
+  pending = false;
+  if (masked) applyMasked(getPrivateModeSetting());
+  emit();
+}
+
+/** Shielded only because this account's settings haven't arrived yet. */
+export function isPrivateModePending(): boolean {
+  return pending;
 }
 
 export function togglePrivateMasked(): void {
@@ -127,6 +171,11 @@ export function maskChips<C extends { count: number; unread: number }>(
   masked: boolean,
 ): Array<Omit<C, "count"> & { count: number | null }> {
   return masked ? chips.map((c) => ({ ...c, count: null, unread: 0 })) : chips;
+}
+
+/** Reactive read: shielded only while this account's settings are on their way. */
+export function usePrivateModePending(): boolean {
+  return useSyncExternalStore(subscribe, isPrivateModePending, () => false);
 }
 
 /** Reactive read of the session mask state. */
