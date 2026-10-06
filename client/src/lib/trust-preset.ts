@@ -27,7 +27,10 @@ export function readReachDepth(): ReachDepth {
   } catch {
     /* ignore */
   }
-  return "global";
+  // Nothing saved means no reach filter — what Home and the Trust page
+  // already assumed. This used to say "global" (hide anyone your network
+  // scores zero), so the feeds that read it disagreed with the ones that didn't.
+  return "off";
 }
 
 export function writeReachDepth(v: ReachDepth): void {
@@ -45,9 +48,12 @@ export const PRESET_DEFS: Record<
   Exclude<StrictnessPreset, "custom">,
   { reach: ReachDepth; tiers: SignalTier[]; label: string; blurb: string }
 > = {
-  open: { reach: "global", tiers: [], label: "Open", blurb: "Everyone — no filtering" },
-  balanced: { reach: "global", tiers: ["flagged"], label: "Balanced", blurb: "Hide accounts your network flagged as bad" },
-  strict: { reach: "2hops", tiers: ["flagged", "none", "weak"], label: "Strict", blurb: "Only well-trusted people close to your network" },
+  // Same as the Trust page's three choices (lib/trust-choice.ts). Reach is
+  // off or global only: Home reads hop depths as global, so a hop-based
+  // Strict always showed as "Custom" on the feed.
+  open: { reach: "off", tiers: [], label: "See everything", blurb: "Nothing hidden" },
+  balanced: { reach: "global", tiers: ["flagged"], label: "Balanced", blurb: "Hides accounts people you trust flagged" },
+  strict: { reach: "global", tiers: ["flagged", "none", "weak"], label: "Careful", blurb: "Also hides accounts your network doesn't know" },
 };
 
 /** The default a brand-new user lands on. */

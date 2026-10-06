@@ -20,7 +20,8 @@ import {
   Check, AlertTriangle, Sliders,
 } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { useStrictnessPreset, PRESET_DEFS } from "@/lib/trust-preset";
+import { applyTrustChoice, useTrustChoice, TRUST_CHOICES, type TrustChoice } from "@/lib/trust-choice";
+import { readExcludedTiers, writeExcludedTiers } from "@/lib/trust-filter";
 import { ShieldMatrixIcon } from "@/components/icons/ShieldMatrixIcon";
 import { TrustTierGlyph } from "@/components/nostr-post/trust-tier-glyph";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
@@ -97,61 +98,6 @@ function ShieldToggleRow({ label, description, checked, onToggle, testId }: { la
         <span
           className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200 ${
             checked ? "translate-x-4" : "translate-x-0"
-          }`}
-        />
-      </button>
-    </div>
-  );
-}
-
-function WotToggle() {
-  const { wotEnabled, wotReady, setWotEnabled } = useGrapeRankScores();
-  return (
-    <div
-      className="flex items-center justify-between rounded-lg p-4"
-      style={{ background: wotEnabled ? "rgba(140, 100, 220, 0.08)" : "rgba(140, 100, 220, 0.04)", border: `1px solid ${wotEnabled ? "rgba(140, 100, 220, 0.25)" : "rgba(140, 100, 220, 0.12)"}` }}
-      data-testid="wot-toggle-row"
-    >
-      <div className="flex-1 min-w-0 mr-3">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-semibold text-foreground/90">Web of Trust</p>
-          {/* "Active" state is already covered by the header stat + the status
-              line below, so we only surface the transient calculating state here. */}
-          {wotEnabled && !wotReady && (
-            <span className="text-[9px] font-bold uppercase tracking-wider text-amber-500/90 bg-amber-500/10 px-1.5 py-0.5 rounded-md border border-amber-500/15" data-testid="badge-wot-calculating">
-              Calculating…
-            </span>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground/60 leading-relaxed mt-1">
-          {wotEnabled
-            ? (wotReady
-                ? "Scoring people from your social graph. All defenses below are on."
-                : "Building your trust network — the first calculation takes about 15–20 minutes. Signals appear automatically when it's done.")
-            : "Off — enable to turn on trust scoring, filtering, and all defenses below."}
-        </p>
-        <a
-          href="https://brainstorm.nosfabrica.com/what-is-wot"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[10px] font-medium text-brand/70 hover:text-brand-strong dark:hover:text-brand transition-colors mt-1.5"
-        >
-          Learn more about Web of Trust
-          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        </a>
-      </div>
-      <button
-        role="switch"
-        aria-checked={wotEnabled}
-        onClick={() => setWotEnabled(!wotEnabled)}
-        className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 ${
-          wotEnabled ? "bg-brand" : "bg-muted-foreground/30"
-        }`}
-        data-testid="toggle-wot-enabled"
-      >
-        <span
-          className={`pointer-events-none inline-block h-6 w-6 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200 ${
-            wotEnabled ? "translate-x-5" : "translate-x-0"
           }`}
         />
       </button>
@@ -683,26 +629,23 @@ function ReachDepthDefault() {
 function TrustTierFilterPreset() {
   const { wotEnabled, flaggedPubkeys } = useGrapeRankScores();
   const { toast } = useToast();
-  const [excluded, setExcluded] = useState<Set<SignalTier>>(() => {
-    try {
-      const stored = localStorage.getItem("relay-outpost-excluded-tiers");
-      if (stored) return new Set(JSON.parse(stored) as SignalTier[]);
-    } catch {}
-    return new Set();
-  });
+  // Through trust-filter's reader/writer, so an open feed hears the change
+  // (trust-filter-tiers-changed) and a choice made above shows here at once.
+  const [excluded, setExcluded] = useState<Set<SignalTier>>(() => readExcludedTiers());
+  useEffect(() => {
+    const sync = () => setExcluded(readExcludedTiers());
+    window.addEventListener("trust-filter-tiers-changed", sync);
+    return () => window.removeEventListener("trust-filter-tiers-changed", sync);
+  }, []);
 
   const toggle = useCallback((tier: SignalTier) => {
-    setExcluded(prev => {
-      const next = new Set(prev);
-      if (next.has(tier)) next.delete(tier); else next.add(tier);
-      try { localStorage.setItem("relay-outpost-excluded-tiers", JSON.stringify([...next])); } catch {}
-      return next;
-    });
+    const next = new Set(readExcludedTiers());
+    if (next.has(tier)) next.delete(tier); else next.add(tier);
+    writeExcludedTiers(next);
   }, []);
 
   const clearAll = useCallback(() => {
-    setExcluded(new Set());
-    try { localStorage.removeItem("relay-outpost-excluded-tiers"); } catch {}
+    writeExcludedTiers(new Set());
   }, []);
 
   const [showOnFeed, setShowOnFeed] = useState(() => {
@@ -1126,7 +1069,7 @@ function MutedUsersSection({ mutedPubkeys, unmute }: { mutedPubkeys: string[]; u
         data-testid="button-toggle-muted-list"
       >
         <div className="flex items-center gap-1.5">
-          <p className="text-sm font-medium text-foreground/85">Muted Users</p>
+          <p className="text-sm font-medium text-foreground/85">Muted people</p>
           {mutedPubkeys.length > 0 && (
             <span className="text-[11px] text-muted-foreground/50 font-mono" data-testid="text-muted-count">
               ({mutedPubkeys.length})
@@ -1141,7 +1084,7 @@ function MutedUsersSection({ mutedPubkeys, unmute }: { mutedPubkeys: string[]; u
       </button>
       {mutedPubkeys.length === 0 ? (
         <p className="text-xs text-foreground/45 dark:text-muted-foreground/50 mt-2" data-testid="text-no-muted-users">
-          No muted users. Use the mute option in post menus to silence accounts.
+          None yet. Mute someone from the ⋯ menu on any of their posts.
         </p>
       ) : (
         <>
@@ -1164,7 +1107,7 @@ function MutedUsersSection({ mutedPubkeys, unmute }: { mutedPubkeys: string[]; u
             <div className="mt-2">
               {filteredPubkeys.length === 0 ? (
                 <p className="text-xs text-foreground/45 dark:text-muted-foreground/50" data-testid="text-no-muted-match">
-                  No muted users match your search.
+                  No muted people match your search.
                 </p>
               ) : (
                 <div className="space-y-1.5 max-h-[320px] overflow-y-auto pr-0.5" data-testid="list-muted-users">
@@ -1198,7 +1141,7 @@ function FilteredKeywordsSection({ mutedKeywords, addKeyword, removeKeyword, new
         data-testid="button-toggle-keywords-list"
       >
         <div className="flex items-center gap-1.5">
-          <p className="text-sm font-medium text-foreground/85">Filtered Keywords</p>
+          <p className="text-sm font-medium text-foreground/85">Muted words</p>
           {mutedKeywords.length > 0 && (
             <span className="text-[11px] text-muted-foreground/50 font-mono" data-testid="text-keywords-count">
               ({mutedKeywords.length})
@@ -1212,7 +1155,7 @@ function FilteredKeywordsSection({ mutedKeywords, addKeyword, removeKeyword, new
       </button>
       {!expanded && mutedKeywords.length === 0 && (
         <p className="text-xs text-foreground/45 dark:text-muted-foreground/50 mt-2" data-testid="text-no-keywords">
-          No keyword filters active. Posts containing filtered keywords will be hidden.
+          None yet. Posts containing these words are hidden.
         </p>
       )}
       {expanded && (
@@ -1221,7 +1164,7 @@ function FilteredKeywordsSection({ mutedKeywords, addKeyword, removeKeyword, new
             <Input
               value={newKeyword}
               onChange={(e) => setNewKeyword(e.target.value)}
-              placeholder="Add keyword to filter..."
+              placeholder="Add a word to hide…"
               className="text-xs bg-white/[0.03] border-brand/25 dark:border-brand/15 focus-visible:border-brand/40 dark:focus-visible:border-brand/30"
               data-testid="input-mute-keyword"
               onKeyDown={(e) => {
@@ -1249,7 +1192,7 @@ function FilteredKeywordsSection({ mutedKeywords, addKeyword, removeKeyword, new
           </div>
           {mutedKeywords.length === 0 ? (
             <p className="text-xs text-foreground/45 dark:text-muted-foreground/50" data-testid="text-no-keywords">
-              No keyword filters active. Posts containing filtered keywords will be hidden.
+              None yet. Posts containing these words are hidden.
             </p>
           ) : (
             <div className="flex flex-wrap gap-1.5" data-testid="list-muted-keywords">
@@ -1288,7 +1231,7 @@ function ReportedContentSection({ reportedItems, removeReport }: {
       >
         <div className="flex items-center gap-1.5">
           <Flag className="w-3.5 h-3.5 text-destructive/70" />
-          <p className="text-sm font-medium text-foreground/85">Reported Content</p>
+          <p className="text-sm font-medium text-foreground/85">Posts you reported</p>
           {reportedItems.length > 0 && (
             <span className="text-[11px] text-muted-foreground/50 font-mono" data-testid="text-reports-count">
               ({reportedItems.length})
@@ -1303,7 +1246,7 @@ function ReportedContentSection({ reportedItems, removeReport }: {
       </button>
       {reportedItems.length === 0 ? (
         <p className="text-xs text-foreground/45 dark:text-muted-foreground/50 mt-2" data-testid="text-no-reports">
-          No reported content. Use the report option in post menus to flag content.
+          None yet. Report a post from its ⋯ menu and it disappears from your feeds.
         </p>
       ) : expanded ? (
         <div className="space-y-1.5 mt-2" data-testid="list-reported-items">
@@ -1337,7 +1280,7 @@ function ReportedContentSection({ reportedItems, removeReport }: {
 // but boils them down to a single plain-language line + at most one action.
 // We deliberately avoid the proprietary "Brainstorm" name at this top level.
 function TrustHealthLine() {
-  const { wotEnabled, diagnostics, retryAuth } = useGrapeRankScores();
+  const { wotEnabled, wotReady, diagnostics, retryAuth } = useGrapeRankScores();
   const [retrying, setRetrying] = useState(false);
   const [now, setNow] = useState(Date.now());
 
@@ -1361,7 +1304,7 @@ function TrustHealthLine() {
   };
 
   // Healthy: signed in and scores have loaded without a more-recent failure.
-  if (signedIn && scoresLoaded) {
+  if (signedIn && scoresLoaded && wotReady) {
     const freshest = Math.max(diagnostics.connLastSuccessAt, diagnostics.batchLastSuccessAt);
     return (
       <div
@@ -1373,19 +1316,28 @@ function TrustHealthLine() {
           <Check className="h-3 w-3 text-emerald-500" />
         </span>
         <p className="text-xs text-foreground/75">
-          <span className="font-medium text-foreground/90">Trust scores up to date</span>
+          <span className="font-medium text-foreground/90">Working</span>
           <span className="text-muted-foreground/55"> · {formatRelativeTime(freshest)}</span>
         </p>
       </div>
     );
   }
 
-  // Problem: signed out / error. Show a plain line + one action.
-  const problem = authHasFail || !signedIn
-    ? "Not signed in to the trust-score service"
-    : connHasFail
-      ? "Couldn't load your trust scores"
-      : "Trust scores aren't ready yet";
+  // The first time, scores take a few minutes to work out. Say so plainly —
+  // nothing is hidden until they're ready — with no button to press.
+  if (!wotReady && !authHasFail && !connHasFail) {
+    return (
+      <div className="flex items-center gap-2.5 rounded-lg border border-border px-4 py-2.5" data-testid="trust-health-line">
+        <RelayOutpostInlineLoader />
+        <p className="text-xs text-foreground/75">
+          <span className="font-medium text-foreground/90">Getting ready.</span> This takes a few minutes the first time; nothing is hidden until then.
+        </p>
+      </div>
+    );
+  }
+
+  // Problem: show a plain line + one action.
+  const problem = "Can't reach your trust scores right now";
 
   return (
     <div
@@ -1408,69 +1360,93 @@ function TrustHealthLine() {
         data-testid="button-trust-health-retry"
       >
         <RotateCcw className="mr-1.5 h-3 w-3" />
-        {retrying ? "Fixing…" : "Fix"}
+        {retrying ? "Trying…" : "Try again"}
       </Button>
     </div>
   );
 }
 
-// "How strict is your feed?" — three plain-language presets that drive the
-// underlying reach + hidden-tier knobs. The active one is highlighted; if the
-// user has hand-tuned the raw Advanced controls we show a "Custom" note instead.
-function StrictnessPresetControl() {
-  const { wotEnabled } = useGrapeRankScores();
-  const { preset, setPreset } = useStrictnessPreset();
+// "How careful should we be with people you don't know?" — the page's one
+// question (owner, 2026-10-06). Three plain choices; each sets exactly what
+// the feeds hide (lib/trust-choice.ts). Replaces the Web of Trust switch and
+// the "How strict?" preset that only appeared once the switch was on.
+const CHOICE_ORDER: TrustChoice[] = ["everything", "balanced", "careful"];
 
-  if (!wotEnabled) return null;
-
-  const options: Exclude<typeof preset, "custom">[] = ["open", "balanced", "strict"];
-
+function TrustChoiceControl() {
+  const { choice } = useTrustChoice();
   return (
-    <div className="space-y-2" data-testid="strictness-preset">
-      <div>
-        <p className="text-sm font-semibold text-foreground/90">How strict is your feed?</p>
-        <p className="text-xs text-muted-foreground/55 leading-relaxed mt-0.5">
-          How much your network filters for you — fine-tune under Advanced.
-        </p>
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        {options.map((name) => {
-          const def = PRESET_DEFS[name];
-          const active = preset === name;
+    <div className="space-y-2" data-testid="trust-choice" role="radiogroup" aria-label="How careful should we be with people you don't know?">
+      <div className="grid gap-2 sm:grid-cols-3">
+        {CHOICE_ORDER.map((name) => {
+          const def = TRUST_CHOICES[name];
+          const active = choice === name;
           return (
             <button
               key={name}
               type="button"
-              onClick={() => setPreset(name)}
-              className={`flex flex-col items-start gap-0.5 rounded-lg border p-2.5 text-left transition-colors min-h-[44px] ${
-                active
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "border-border bg-transparent hover:bg-muted/40 text-foreground/80"
+              role="radio"
+              aria-checked={active}
+              onClick={() => applyTrustChoice(name)}
+              className={`flex min-h-[44px] flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors ${
+                active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-transparent text-foreground/85 hover:bg-muted/40"
               }`}
-              data-testid={`button-strictness-${name}`}
-              aria-pressed={active}
+              data-testid={`trust-choice-${name}`}
             >
-              <span className="flex flex-wrap items-center gap-1">
+              <span className="flex flex-wrap items-center gap-1.5">
                 <span className="text-sm font-semibold">{def.label}</span>
                 {name === "balanced" && (
-                  <span className={`rounded px-1 py-0.5 text-[8px] font-bold uppercase tracking-wide leading-none ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-brand/10 text-brand"}`}>
-                    Recommended
-                  </span>
+                  <span className={`text-[11px] font-medium ${active ? "text-primary-foreground/80" : "text-brand"}`}>Recommended</span>
                 )}
               </span>
-              <span className={`text-[11px] leading-snug ${active ? "text-primary-foreground/80" : "text-muted-foreground/60"}`}>
-                {def.blurb}
-              </span>
+              <span className={`text-xs leading-snug ${active ? "text-primary-foreground/85" : "text-muted-foreground"}`}>{def.line}</span>
             </button>
           );
         })}
       </div>
-      {preset === "custom" && (
-        <p className="text-[11px] text-muted-foreground/60" data-testid="strictness-custom-note">
-          Custom — using your Advanced settings.
+      {choice === "custom" && (
+        <p className="text-xs text-muted-foreground" data-testid="trust-choice-custom">
+          You've set your own levels under Fine-tune. Pick a choice above to go back to a simple setting.
         </p>
       )}
     </div>
+  );
+}
+
+// Existing accounts that never answered stay on See everything — turning
+// scores on asks them to sign once — and are invited here instead (owner,
+// 2026-10-06). New accounts start on Balanced and never see this.
+function TrustInvite() {
+  const { choice, chosen } = useTrustChoice();
+  if (chosen || choice !== "everything") return null;
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-brand/20 bg-brand/[0.05] px-4 py-3" data-testid="trust-invite">
+      <p className="min-w-0 flex-1 text-sm text-foreground/85">
+        Let the people you trust help keep spam out of your feed. Most people choose Balanced.
+      </p>
+      <div className="flex items-center gap-2">
+        <Button size="sm" className="min-h-[44px]" onClick={() => applyTrustChoice("balanced")} data-testid="trust-invite-accept">Choose Balanced</Button>
+        <Button size="sm" variant="ghost" className="min-h-[44px]" onClick={() => applyTrustChoice("everything")} data-testid="trust-invite-dismiss">Not now</Button>
+      </div>
+    </div>
+  );
+}
+
+// The line at the top: where your feed stands, in words. Counts only when
+// there's something to count.
+function TrustSummary({ mutedCount, wordCount, reportCount }: { mutedCount: number; wordCount: number; reportCount: number }) {
+  const { choice } = useTrustChoice();
+  const label = choice === "custom" ? "Your own levels" : TRUST_CHOICES[choice].label;
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  const extras = [
+    mutedCount > 0 && plural(mutedCount, "person muted", "people muted"),
+    wordCount > 0 && plural(wordCount, "word muted", "words muted"),
+    reportCount > 0 && plural(reportCount, "post reported", "posts reported"),
+  ].filter(Boolean) as string[];
+  return (
+    <p className="text-xs text-muted-foreground" data-testid="trust-summary">
+      Your feed: <span className="font-medium text-foreground/85">{label}</span>
+      {extras.length > 0 && <> · {extras.join(" · ")}</>}
+    </p>
   );
 }
 
@@ -1480,7 +1456,6 @@ export default function ShieldMatrix({ embedded = false }: { embedded?: boolean 
   const [newKeyword, setNewKeyword] = useState("");
   const { stats, reportedItems, removeReport } = useSpamFilter();
   const { mutedPubkeys, mutedKeywords, unmutePubkey: unmute, addKeyword, removeKeyword } = useNostrMuteList();
-  const { flaggedPubkeys, wotEnabled } = useGrapeRankScores();
   const [customTiersActive, setCustomTiersActive] = useState(() => isCustomTiersEnabled());
   // Advanced trust controls are collapsed by default — but if custom tiers are
   // active, open them so the header "Custom Tiers" badge (which scrolls to
@@ -1496,8 +1471,6 @@ export default function ShieldMatrix({ embedded = false }: { embedded?: boolean 
     }
   }, [mutedPubkeys]);
 
-  const threatCount = flaggedPubkeys?.size ?? 0;
-
   return (
     <div className={embedded ? "" : "min-h-screen"}>
       <MissionBriefing pageId="shield-matrix" steps={SHIELD_MATRIX_BRIEFING} />
@@ -1507,19 +1480,7 @@ export default function ShieldMatrix({ embedded = false }: { embedded?: boolean 
         <PageToolbar
           inStack
           testId="trust-status"
-          status={
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-              <span className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${wotEnabled ? "bg-emerald-500" : "bg-slate-500/50"}`} />
-                WoT {wotEnabled ? "Active" : "Off"}
-              </span>
-              {wotEnabled && <span data-testid="text-spam-known">{threatCount} known threats</span>}
-              {wotEnabled && <span data-testid="text-spam-flagged">{flaggedPubkeys?.size ?? 0} flagged</span>}
-              <span data-testid="text-spam-muted">{mutedPubkeys.length} muted</span>
-              <span data-testid="text-spam-keywords">{mutedKeywords.length} keywords</span>
-              <span data-testid="text-spam-reports">{reportedItems.length} reported</span>
-            </div>
-          }
+          status={<TrustSummary mutedCount={mutedPubkeys.length} wordCount={mutedKeywords.length} reportCount={reportedItems.length} />}
         >
           {customTiersActive && (
             <button
@@ -1527,28 +1488,26 @@ export default function ShieldMatrix({ embedded = false }: { embedded?: boolean 
               onClick={() => document.getElementById("trust-tiers")?.scrollIntoView({ behavior: "smooth", block: "start" })}
               className="whitespace-nowrap rounded-md border border-brand/15 bg-brand/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-brand/80 transition-colors hover:bg-brand/20 hover:text-brand-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
               data-testid="button-custom-tiers"
-              title="Edit custom trust tiers"
-              aria-label="Custom tiers active — edit trust tiers"
+              title="Edit your own trust levels"
+              aria-label="Your own trust levels are on — edit them"
             >
-              Custom Tiers
+              Custom levels
             </button>
           )}
         </PageToolbar>
 
-        {/* ① TRUST — automatic protection from your social graph */}
+        {/* ① WHO YOU SEE — one question, three answers */}
         <div className="space-y-3">
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-brand/70 dark:text-brand/60">
-              Trust
-            </h2>
-            <p className="text-xs text-muted-foreground/55 leading-relaxed mt-1">
-              Your network scores people automatically — turning down accounts no one you follow vouches for.
+            <h2 className="text-base font-semibold text-foreground">Who you see</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed mt-1">
+              How careful should we be with people you don't know? The people you follow help decide.
             </p>
           </div>
 
-          <WotToggle />
+          <TrustInvite />
+          <TrustChoiceControl />
           <TrustHealthLine />
-          <StrictnessPresetControl />
 
           <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
             <CollapsibleTrigger asChild>
@@ -1560,7 +1519,7 @@ export default function ShieldMatrix({ embedded = false }: { embedded?: boolean 
               >
                 <span className="flex items-center gap-2">
                   <Sliders className="h-3.5 w-3.5 text-brand/70" />
-                  <span className="text-sm font-medium text-foreground/85">Advanced trust controls</span>
+                  <span className="text-sm font-medium text-foreground/85">Fine-tune</span>
                 </span>
                 <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform duration-200 ${advancedOpen ? "rotate-180" : ""}`} />
               </button>
@@ -1582,11 +1541,9 @@ export default function ShieldMatrix({ embedded = false }: { embedded?: boolean 
         >
           <div className="p-4 space-y-3">
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-brand/70 dark:text-brand/60">
-                Safety
-              </h2>
-              <p className="text-xs text-muted-foreground/55 mt-1">
-                Tools you control by hand.
+              <h2 className="text-base font-semibold text-foreground">Your own filters</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                What you've chosen to hide yourself. It works with any choice above.
               </p>
             </div>
             <MutedUsersSection mutedPubkeys={mutedPubkeys} unmute={unmute} />
@@ -1602,6 +1559,15 @@ export default function ShieldMatrix({ embedded = false }: { embedded?: boolean 
             <ReportedContentSection reportedItems={reportedItems} removeReport={removeReport} />
           </div>
         </div>
+
+        {/* The one place Brainstorm is named (owner, 2026-10-06: subtly). */}
+        <p className="text-xs text-muted-foreground" data-testid="brainstorm-credit">
+          Trust scores by{" "}
+          <a href="https://brainstorm.world" target="_blank" rel="noopener noreferrer" className="font-medium text-foreground/80 underline-offset-2 hover:underline">
+            Brainstorm
+          </a>
+          , worked out from the people you follow.
+        </p>
 
         {/* Network Vouches — hidden for public beta (this was a placeholder-only
             "Coming Soon" card with no backing feature). Wrapped so it's a one-line

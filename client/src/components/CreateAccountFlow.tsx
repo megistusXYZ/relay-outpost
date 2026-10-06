@@ -28,6 +28,7 @@ import { setInviteConnect } from "@/lib/invite-connect";
 import { triggerGrapeRankCalculation } from "@/lib/graperank";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { markNewAccountPublicNostrOff } from "@/lib/public-nostr";
+import { startNewAccountTrust } from "@/lib/trust-choice";
 import { uploadToNostrBuild, setBlossomServers, publishBlossomServerList, DEFAULT_BLOSSOM_SERVERS } from "@/lib/media-upload";
 import { setLocalDMRelays, publishDMRelayList, DM_FALLBACK_RELAYS } from "@/lib/outbox";
 import { loadSignupDraft, saveSignupDraft, clearSignupDraft, bytesToHex, hexToBytes, draftHasResumableContent } from "@/lib/account-draft";
@@ -977,6 +978,8 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
         // the upstream ~30-min per-user cooldown is the server-side abuse cap.
         try {
           setWotEnabled(true);
+          // …on Balanced: hides accounts people they trust have flagged.
+          startNewAccountTrust();
           // Decision 4: public Nostr is OFF for new accounts and PRESERVED for
           // existing ones. This is the only place the opt-out is ever written,
           // and it must stay creation-only — never sign-in. An existing account
