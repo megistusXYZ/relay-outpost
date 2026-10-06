@@ -39,6 +39,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.17.4",
+    date: "2026-10-06",
+    title: "Lighter on your phone",
+    changes: [
+      { type: "fixed", text: "On a phone, the home feed no longer stays fully loaded in memory while you're on another page. The app added to your home screen has less memory to work with than Safari, and that hidden feed was what left Live, Discover and other pages blank as you scrolled. Coming back to the feed still lands where you left it." },
+    ],
+    feedback: [
+      {
+        quote: "It's happening across every page.",
+        attribution: "A tester on iPhone, with a screen recording and a quick A/B that pointed at memory.",
+      },
+    ],
+  },
+  {
     version: "1.17.3",
     date: "2026-10-05",
     title: "Every post draws",
