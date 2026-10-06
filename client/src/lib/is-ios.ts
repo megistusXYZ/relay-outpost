@@ -7,8 +7,9 @@
 // rows paint at wrong offsets — observed in production as random glitching
 // and, at worst, a near-black page with a single mispositioned row (third
 // escalation; PR #320's measurement fixes reduced but did not eliminate it).
-// On iOS we therefore render the plain (pre-virtualization) list path, which
-// relies on native `content-visibility` laziness instead.
+// On iOS we therefore render the plain (pre-virtualization) list path. (It
+// once leaned on `content-visibility: auto` for laziness; WebKit left rows
+// blank mid-fling, so posts always draw now — posts-always-drawn.test.ts.)
 //
 // Overrides, for testing on any device (read once per feed mount):
 //   • `?forcePlainFeed=1` in the URL          → plain list path

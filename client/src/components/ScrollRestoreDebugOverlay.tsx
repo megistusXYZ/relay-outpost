@@ -23,6 +23,16 @@ export function ScrollRestoreDebugOverlay() {
   // frame paints. Scrolling does not change it; content growing above the row
   // does. Counts per history entry, resets when the entry changes.
   const motionRef = useRef({ token: null as string | null, last: null as number | null, moves: 0, max: 0 });
+  // The same witness from LAYOUT (offsetTop up to the scroller) rather than
+  // the screen: on iPhone, mid-fling, the screen position and scrollTop can
+  // be a frame apart, which reads as a "move" when nothing grew. A move that
+  // shows here is real; one that shows only on the screen line is not.
+  const layoutRef = useRef({ last: null as number | null, moves: 0, max: 0 });
+  const anchorRef = useRef<string | null | undefined>(undefined);
+  // Which post ABOVE the anchor grew when the page moved under the reader:
+  // heights per post from the last frame, and the biggest change on a move.
+  const heightsRef = useRef(new WeakMap<Element, number>());
+  const grewRef = useRef<{ id: string; by: number; kind: string } | null>(null);
   // The witness for "a post on screen that isn't drawn": WebKit can leave a
   // `content-visibility: auto` post skipped while it scrolls into view (the
   // blank cards on profiles and threads, 2026-10-04). checkVisibility with
@@ -54,9 +64,33 @@ export function ScrollRestoreDebugOverlay() {
         const c = document.querySelector<HTMLElement>(".feed-scroll-container");
         const id = st.saved?.anchorId;
         const el = id && c ? c.querySelector<HTMLElement>(`[data-event-id="${cssEscape(id)}"]:not([inert] *)`) : null;
-        if (!c || !el) { m.last = null; return; }
-        const abs = Math.round(el.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop);
-        if (m.last != null && Math.abs(abs - m.last) > 2) { m.moves++; m.max = Math.max(m.max, Math.abs(abs - m.last)); }
+        if (!c || !el) { m.last = null; layoutRef.current.last = null; return; }
+        // A different anchor (re-picked as you scroll) is a new baseline, not
+        // a move: comparing two posts' positions read as a jump of one post's
+        // height (613–761px) with nothing grown.
+        if (anchorRef.current !== id) { anchorRef.current = id; m.last = null; layoutRef.current.last = null; }
+        const anchorTop = el.getBoundingClientRect().top;
+        const abs = Math.round(anchorTop - c.getBoundingClientRect().top + c.scrollTop);
+        const moved = m.last != null && Math.abs(abs - m.last) > 2;
+        let lay = 0; for (let n: HTMLElement | null = el; n && n !== c; n = n.offsetParent as HTMLElement | null) lay += n.offsetTop;
+        const L = layoutRef.current;
+        if (L.last != null && Math.abs(lay - L.last) > 2) { L.moves++; L.max = Math.max(L.max, Math.abs(lay - L.last)); }
+        L.last = lay;
+        if (moved) { m.moves++; m.max = Math.max(m.max, Math.abs(abs - m.last!)); }
+        // Posts above the anchor: remember each one's height; on a move, name
+        // the one that changed most (and what it holds — image, video, card).
+        let culprit: { id: string; by: number; kind: string } | null = null;
+        for (const post of c.querySelectorAll<HTMLElement>(".feed-post-item")) {
+          const r = post.getBoundingClientRect();
+          if (r.top >= anchorTop) continue;
+          const prev = heightsRef.current.get(post);
+          if (moved && prev != null && Math.abs(r.height - prev) > 2 && (!culprit || Math.abs(r.height - prev) > Math.abs(culprit.by))) {
+            const kind = post.querySelector("video") ? "video" : post.querySelector("[data-testid^='link-preview'], [data-testid^='embedded']") ? "card" : post.querySelector("img:not([class*='avatar'])") ? "image" : "text";
+            culprit = { id: (post.getAttribute("data-event-id") || "?").slice(0, 8), by: Math.round(r.height - prev), kind };
+          }
+          heightsRef.current.set(post, r.height);
+        }
+        if (culprit) grewRef.current = culprit;
         m.last = abs;
       };
     }
@@ -129,6 +163,8 @@ export function ScrollRestoreDebugOverlay() {
       )}
       {row("held px", container?.style.paddingTop ? container.style.paddingTop : "—")}
       {row("undrawn on screen", skipRef.current.supported === false ? "n/a" : `${skipRef.current.frames} frames (max ${skipRef.current.most})`, skipRef.current.frames ? "#f87171" : "#4ade80")}
+      {row("last grew above", grewRef.current ? `${grewRef.current.id} ${grewRef.current.by > 0 ? "+" : ""}${grewRef.current.by}px ${grewRef.current.kind}` : "—", grewRef.current ? "#f87171" : "#4ade80")}
+      {row("moved (layout)", `${layoutRef.current.moves}× (max ${layoutRef.current.max}px)`, layoutRef.current.moves ? "#f87171" : "#4ade80")}
       {row("moved under reader", `${motionRef.current.moves}× (max ${motionRef.current.max}px)`, motionRef.current.moves ? "#f87171" : "#4ade80")}
     </div>
   );

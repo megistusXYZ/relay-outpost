@@ -212,7 +212,6 @@ export function TranscriptSection({
                     <button
                       key={`${seg.start}-${i}`}
                       className={`w-full flex items-start gap-2 rounded-lg px-1.5 py-1 text-left transition-colors ${ isActive ? "bg-brand/10 dark:bg-brand/15" : "hover:bg-muted/15" }`}
-                      style={{ contentVisibility: "auto", containIntrinsicSize: "auto 36px" } as React.CSSProperties}
                       onClick={() => handleSegmentTap(seg)}
                       title="Jump to this moment"
                       data-testid={`transcript-segment-${i}`}
