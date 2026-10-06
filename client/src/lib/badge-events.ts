@@ -45,6 +45,8 @@ export function badgeDefinitionTemplate(b: {
   imageSize?: string;
   thumb?: string;
   thumbSize?: string;
+  /** The designer's settings, so Edit can reopen them. Other apps ignore it. */
+  design?: string;
 }): EventTemplate {
   const tags: string[][] = [
     ["d", b.id || newBadgeId()],
@@ -53,6 +55,7 @@ export function badgeDefinitionTemplate(b: {
   ];
   if (b.image) tags.push(b.imageSize ? ["image", b.image, b.imageSize] : ["image", b.image]);
   if (b.thumb) tags.push(b.thumbSize ? ["thumb", b.thumb, b.thumbSize] : ["thumb", b.thumb]);
+  if (b.design) tags.push(["design", b.design]);
   return { kind: KIND_BADGE_DEFINITION, created_at: now(), tags, content: "" };
 }
 
@@ -103,4 +106,36 @@ export function badgesWaiting<A extends { id: string; pubkey: string; badgeRef: 
     waiting: open.filter((a) => o.follows.has(a.pubkey)),
     fromStrangers: open.filter((a) => !o.follows.has(a.pubkey)),
   };
+}
+
+/** Ask relays to remove one badge (NIP-09). Badges already given stay with their holders. */
+export function badgeDeletionTemplate(b: { pubkey: string; id: string; eventId: string }): EventTemplate {
+  return {
+    kind: 5,
+    created_at: now(),
+    tags: [["a", `${KIND_BADGE_DEFINITION}:${b.pubkey}:${b.id}`], ["e", b.eventId], ["k", String(KIND_BADGE_DEFINITION)]],
+    content: "",
+  };
+}
+
+/**
+ * Badges minus the ones their maker deleted after their latest version —
+ * read from the deletion requests themselves, because not every relay
+ * honors them.
+ */
+export function withoutDeleted<D extends { pubkey: string; dTag: string; createdAt: number }>(
+  defs: D[],
+  deletions: Array<{ kind: number; created_at: number; tags: string[][] }>,
+): D[] {
+  const deletedAt = new Map<string, number>();
+  for (const e of deletions) {
+    if (e.kind !== 5) continue;
+    for (const t of e.tags) if (t[0] === "a" && t[1]?.startsWith(`${KIND_BADGE_DEFINITION}:`)) {
+      deletedAt.set(t[1], Math.max(deletedAt.get(t[1]) ?? 0, e.created_at));
+    }
+  }
+  return defs.filter((d) => {
+    const at = deletedAt.get(`${KIND_BADGE_DEFINITION}:${d.pubkey}:${d.dTag}`);
+    return at === undefined || d.createdAt > at;
+  });
 }

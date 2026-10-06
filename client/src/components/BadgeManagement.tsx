@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { nip19 } from "nostr-tools";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -7,16 +7,14 @@ import { eventStore, searchCachedProfiles } from "@/lib/nostr";
 import { searchUsers } from "@/lib/primal-cache";
 import { KIND_METADATA, getDisplayName, getAvatarUrl } from "@/lib/nostr-helpers";
 import {
-  createBadgeDefinition,
   awardBadge,
   fetchBadgeDefinitionsByAuthorResult,
   badgeATagValue,
   type BadgeDefinition } from "@/lib/nip58-badges";
-import { uploadMedia } from "@/lib/media-upload";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Award, Plus, Send, X, Search, User, Upload, ChevronDown, ChevronUp } from "lucide-react";
+import { Award, Send, X, Search, User, ChevronDown, ChevronUp } from "lucide-react";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 
 function RecipientChip({ pubkey, onRemove }: { pubkey: string; onRemove: () => void }) {
@@ -59,140 +57,6 @@ function UserSearchResult({ pubkey, onSelect }: { pubkey: string; onSelect: (pk:
       </Avatar>
       <span className="text-xs text-foreground/80 truncate">{name}</span>
     </button>
-  );
-}
-
-export function BadgeCreationForm({ onCreated }: { onCreated?: () => void }) {
-  const { signer } = useNostrAuth();
-  const { toast } = useToast();
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [thumbUrl, setThumbUrl] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleImageUpload = useCallback(async (file: File) => {
-    setUploading(true);
-    setUploadStatus("Uploading...");
-    try {
-      const result = await uploadMedia(file, setUploadStatus, signer);
-      if (result.url) {
-        setImageUrl(result.url);
-        toast({ title: "Image uploaded" });
-      } else {
-        toast({ title: "Upload failed", variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Upload failed", variant: "destructive" });
-    } finally {
-      setUploading(false);
-      setUploadStatus("");
-    }
-  }, [signer, toast]);
-
-  const handleCreate = useCallback(async () => {
-    if (!signer || !name.trim()) return;
-    setCreating(true);
-    try {
-      const result = await createBadgeDefinition(signer, name.trim(), description.trim(), imageUrl.trim(), thumbUrl.trim());
-      if (result) {
-        toast({ title: "Badge created", description: `"${name}" is ready to give.` });
-        setName("");
-        setDescription("");
-        setImageUrl("");
-        setThumbUrl("");
-        onCreated?.();
-      } else {
-        toast({ title: "Failed to create badge", variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Failed to create badge", variant: "destructive" });
-    } finally {
-      setCreating(false);
-    }
-  }, [signer, name, description, imageUrl, thumbUrl, toast, onCreated]);
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <Award className="w-4 h-4 text-brand/70" />
-        <h3 className="text-sm font-semibold text-foreground/90">Create Badge</h3>
-      </div>
-      <Input
-        placeholder="Badge name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        className="text-base h-9 bg-background/50"
-      />
-      <Input
-        placeholder="Description (optional)"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        className="text-base h-9 bg-background/50"
-      />
-      <div className="space-y-1.5">
-        <label className="text-xs text-muted-foreground/60 font-medium">Badge Image</label>
-        <div className="flex gap-2">
-          <Input
-            placeholder="Image URL or upload below"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            className="text-base h-9 bg-background/50 flex-1"
-          />
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleImageUpload(file);
-              e.target.value = "";
-            }}
-          />
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-9 gap-1 shrink-0"
-            disabled={uploading}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {uploading ? <RelayOutpostInlineLoader className="w-3.5 h-3.5" /> : <Upload className="w-3.5 h-3.5" />}
-            {uploading ? uploadStatus || "Uploading..." : "Upload"}
-          </Button>
-        </div>
-      </div>
-      <Input
-        placeholder="Thumbnail URL (optional)"
-        value={thumbUrl}
-        onChange={(e) => setThumbUrl(e.target.value)}
-        className="text-base h-9 bg-background/50"
-      />
-      {imageUrl && (
-        <div className="flex items-center gap-2">
-          <img
-            src={imageUrl}
-            alt="Preview"
-            className="w-12 h-12 rounded-md object-cover border border-border/30"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-          />
-          <span className="text-[10px] text-muted-foreground/50">Image preview</span>
-        </div>
-      )}
-      <Button
-        size="sm"
-        className="w-full gap-1.5"
-        disabled={!name.trim() || creating || uploading || !signer}
-        onClick={handleCreate}
-      >
-        {creating ? <RelayOutpostInlineLoader className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-        {creating ? "Creating..." : "Create Badge"}
-      </Button>
-    </div>
   );
 }
 
@@ -397,37 +261,12 @@ export function BadgeAwardForm({ onAwarded }: { onAwarded?: () => void }) {
   );
 }
 
-export function BadgeManagementPanel() {
-  const [showCreate, setShowCreate] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-
+/** Give one of your badges to people. (Step 3 of the badges plan rebuilds this.) */
+export function BadgeManagementPanel({ refreshKey = 0 }: { refreshKey?: number }) {
+  const [awarded, setAwarded] = useState(0);
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Award className="w-4.5 h-4.5 text-brand" />
-          <h2 className="text-sm font-bold text-foreground/90 uppercase tracking-wider">Badges</h2>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 text-xs gap-1"
-          onClick={() => setShowCreate(!showCreate)}
-        >
-          {showCreate ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-          {showCreate ? "Cancel" : "New Badge"}
-        </Button>
-      </div>
-
-      {showCreate && (
-        <div className="rounded-lg border border-brand/20 bg-brand/5 p-3">
-          <BadgeCreationForm onCreated={() => { setShowCreate(false); setRefreshKey(k => k + 1); }} />
-        </div>
-      )}
-
-      <div className="rounded-lg border border-border/30 bg-card/30 p-3">
-        <BadgeAwardForm key={refreshKey} onAwarded={() => setRefreshKey(k => k + 1)} />
-      </div>
+    <div className="rounded-lg border border-border/30 bg-card/30 p-3">
+      <BadgeAwardForm key={`${refreshKey}-${awarded}`} onAwarded={() => setAwarded((k) => k + 1)} />
     </div>
   );
 }

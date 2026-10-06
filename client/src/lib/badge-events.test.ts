@@ -9,7 +9,7 @@
  * kind 10008 as the profile list and asks clients to treat both as one).
  */
 import { describe, it, expect } from "vitest";
-import { badgeDefinitionTemplate, profileBadgesTemplates, withAcceptedBadge, pickProfileBadgesEvent, badgesWaiting } from "./badge-events";
+import { badgeDefinitionTemplate, profileBadgesTemplates, withAcceptedBadge, pickProfileBadgesEvent, badgesWaiting, badgeDeletionTemplate, withoutDeleted } from "./badge-events";
 
 const dOf = (t: { tags: string[][] }) => t.tags.find((x) => x[0] === "d")?.[1];
 const pairs = (t: { tags: string[][] }) => t.tags.filter((x) => x[0] === "a" || x[0] === "e").map((x) => `${x[0]}:${x[1]}`);
@@ -105,5 +105,26 @@ describe("badges waiting for you", () => {
     });
     expect(r.waiting.map((a) => a.id)).toEqual(["f"]);
     expect(r.fromStrangers.map((a) => a.id).sort()).toEqual(["s1", "s2"]);
+  });
+});
+
+describe("deleting a badge", () => {
+  it("asks relays to remove that one badge and nothing else", () => {
+    const t = badgeDeletionTemplate({ pubkey: "alice", id: "b-1", eventId: "ev1" });
+    expect(t.kind).toBe(5);
+    expect(t.tags).toEqual([["a", "30009:alice:b-1"], ["e", "ev1"], ["k", "30009"]]);
+  });
+});
+
+describe("your badges after deleting one", () => {
+  const def = (d: string, at: number) => ({ pubkey: "alice", dTag: d, createdAt: at });
+  const del = (d: string, at: number) => ({ kind: 5, created_at: at, tags: [["a", `30009:alice:${d}`]] });
+
+  it("a deleted badge leaves the list, even from relays that ignore deletions", () => {
+    expect(withoutDeleted([def("keep", 10), def("gone", 10)], [del("gone", 20)]).map((x) => x.dTag)).toEqual(["keep"]);
+  });
+
+  it("a badge remade after it was deleted comes back", () => {
+    expect(withoutDeleted([def("again", 30)], [del("again", 20)]).map((x) => x.dTag)).toEqual(["again"]);
   });
 });

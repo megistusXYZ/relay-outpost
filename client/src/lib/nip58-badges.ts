@@ -4,7 +4,7 @@ import { getOutpostRelays, getActiveDefaultRelays } from "./outpost-relays";
 import { canReachAny, type Reached } from "./relay-reach";
 import type { Event as NostrEvent } from "nostr-tools";
 import type { ISigner } from "applesauce-signers";
-import { badgeDefinitionTemplate, profileBadgesTemplates, pickProfileBadgesEvent, withAcceptedBadge, KIND_PROFILE_BADGES as KIND_PROFILE_LIST, KIND_PROFILE_BADGES_LEGACY } from "./badge-events";
+import { badgeDefinitionTemplate, badgeDeletionTemplate, withoutDeleted, profileBadgesTemplates, pickProfileBadgesEvent, withAcceptedBadge, KIND_PROFILE_BADGES as KIND_PROFILE_LIST, KIND_PROFILE_BADGES_LEGACY } from "./badge-events";
 
 export const KIND_BADGE_DEFINITION = 30009;
 export const KIND_BADGE_AWARD = 8;
@@ -19,6 +19,8 @@ export interface BadgeDefinition {
   description: string;
   image: string;
   thumb: string;
+  /** The designer's settings (JSON) when the badge was made in the designer. */
+  design?: string;
   createdAt: number;
   rawEvent: NostrEvent;
 }
@@ -69,6 +71,7 @@ export function parseBadgeDefinition(event: NostrEvent): BadgeDefinition {
   const description = event.tags.find(t => t[0] === "description")?.[1] || "";
   const image = event.tags.find(t => t[0] === "image")?.[1] || "";
   const thumb = event.tags.find(t => t[0] === "thumb")?.[1] || "";
+  const design = event.tags.find(t => t[0] === "design")?.[1] || undefined;
 
   return {
     id: event.id,
@@ -78,6 +81,7 @@ export function parseBadgeDefinition(event: NostrEvent): BadgeDefinition {
     description,
     image,
     thumb,
+    design,
     createdAt: event.created_at,
     rawEvent: event,
   };
@@ -323,21 +327,25 @@ async function fetchBadgeDefinitionsByAuthorUnchecked(pubkey: string): Promise<B
   return new Promise((resolve) => {
     let resolved = false;
     const defs: BadgeDefinition[] = [];
+    const deletions: NostrEvent[] = [];
     const seenATags = new Set<string>();
-    let sub: ReturnType<typeof pool.subscribeMany> | null = null;
+    let pending = 2;
+    const subs: Array<ReturnType<typeof pool.subscribeMany>> = [];
 
     const finish = () => {
       if (!resolved) {
         resolved = true;
         clearTimeout(timer);
-        try { sub?.close(); } catch {}
-        resolve(defs);
+        for (const sub of subs) { try { sub.close(); } catch {} }
+        // Not every relay honors a deletion: drop what was deleted ourselves.
+        resolve(withoutDeleted(defs, deletions));
       }
     };
+    const answered = () => { if (--pending === 0) finish(); };
 
     const timer = setTimeout(finish, 8000);
 
-    sub = pool.subscribeMany(
+    subs.push(pool.subscribeMany(
       relays,
       { kinds: [KIND_BADGE_DEFINITION], authors: [pubkey], limit: 50 },
       {
@@ -352,22 +360,25 @@ async function fetchBadgeDefinitionsByAuthorUnchecked(pubkey: string): Promise<B
             if (idx >= 0) defs[idx] = def; else defs.push(def);
           }
         },
-        oneose() { finish(); },
+        oneose: answered,
       },
-    );
+    ));
+    // Deletions of badges only (they carry k=30009), so a long history of
+    // deleted posts can't crowd them out.
+    subs.push(pool.subscribeMany(
+      relays,
+      { kinds: [5], authors: [pubkey], "#k": [String(KIND_BADGE_DEFINITION)], limit: 100 },
+      { onevent(event: NostrEvent) { deletions.push(event); }, oneose: answered },
+    ));
   });
 }
 
 export async function createBadgeDefinition(
   signer: ISigner,
-  name: string,
-  description: string,
-  imageUrl: string,
-  thumbUrl: string,
-  dTag?: string,
+  badge: { id?: string; name: string; description: string; image: string; imageSize?: string; thumb?: string; thumbSize?: string; design?: string },
 ): Promise<NostrEvent | null> {
-  // A new badge gets a permanent identity of its own; pass dTag to edit one.
-  const eventTemplate = badgeDefinitionTemplate({ id: dTag, name, description, image: imageUrl, thumb: thumbUrl });
+  // A new badge gets a permanent identity of its own; pass `id` to edit one.
+  const eventTemplate = badgeDefinitionTemplate(badge);
 
   try {
     const signed = await signWithTimeout(signer, eventTemplate as Parameters<ISigner["signEvent"]>[0]);
@@ -448,6 +459,19 @@ export async function acceptBadges(
   } catch (err) {
     console.error("[NIP-58] Failed to accept badges:", err);
     return null;
+  }
+}
+
+/** Remove one of your badges (NIP-09). Badges already given stay with their holders. */
+export async function deleteBadgeDefinition(signer: ISigner, def: BadgeDefinition): Promise<boolean> {
+  try {
+    const signed = await signWithTimeout(signer, badgeDeletionTemplate({ pubkey: def.pubkey, id: def.dTag, eventId: def.id }) as Parameters<ISigner["signEvent"]>[0]);
+    const ok = await publishEvent(signed, getBadgeRelays());
+    if (ok) badgeDefCache.delete(badgeATagValue(def.pubkey, def.dTag));
+    return !!ok;
+  } catch (err) {
+    console.error("[NIP-58] Failed to delete badge:", err);
+    return false;
   }
 }
 
