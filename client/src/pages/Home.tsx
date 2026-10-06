@@ -3420,7 +3420,7 @@ export default function Home() {
               </>
             ) : (
               <>
-                <div className="space-y-3 cv-list" data-testid="container-feed">
+                <div className="space-y-3" data-testid="container-feed">
                   {guestCapped.shown.map((event, i) => renderFeedRow(event, i))}
                 </div>
                 {guestCapped.walled && <GuestWall context="Keep exploring the feed" className="mt-4" />}

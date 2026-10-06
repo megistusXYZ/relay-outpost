@@ -836,21 +836,12 @@ html[data-perf="lite"] .glass-dropdown-label {
   background: hsl(var(--popover)) !important;
 }
 
-/* ---- Browser-native windowing for long feeds -------------------------------
- * content-visibility: auto lets the browser skip layout/paint/style for items
- * that are off-screen — the bulk of the scroll cost on long timelines — while
- * keeping every node in the DOM, so infinite scroll, new-post prepend and
- * scroll-position restore all keep working untouched. contain-intrinsic-size's
- * `auto` keyword caches each item's real measured height so the scrollbar never
- * jumps. Overlays (post menus, tooltips) are Radix-portaled to <body>, so paint
- * containment never clips them. */
-.cv-list > * {
-  content-visibility: auto;
-  /* Closer to a real feed-post height (text + media + actions) than 360px, so
-     fast scrolls reserve the right space and the browser repaints less. The
-     `auto` keyword still caches each item's measured height after first paint. */
-  contain-intrinsic-size: auto 480px;
-}
+/* A list of posts never hands drawing to the browser's lazy renderer. Home's
+ * phone feed carried `content-visibility: auto` on its rows (`.cv-list`) after
+ * #333 took it off posts everywhere else; iPhone WebKit left rows blank as
+ * they flung into view and moved the page under the reader when the 480px
+ * placeholder became the real height (owner's recording, 2026-10-05).
+ * Guard: posts-always-drawn.test.ts. */
 /* Drop purely-decorative animated/blurred overlays in lite mode. */
 html[data-perf="lite"] .glass-settings-glow,
 html[data-perf="lite"] .space-bg-nebula {
