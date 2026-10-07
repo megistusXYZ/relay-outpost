@@ -5,7 +5,8 @@
  * (nip05, petnames, WoT chips stay in the callers). Class strings are copied
  * verbatim: this extraction is pixel-parity by construction.
  */
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { isDrawnBanner } from "@/lib/default-banner";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 /** A MySpace-bones section: a quiet title bar + a bordered body. */
@@ -46,6 +47,11 @@ export function IdentityBanner({ src, fallbackSrc, blurBackdropSrc, topRight, li
   live?: ReactNode;
   className?: string;
 }) {
+  // Which picture is showing: the shading below is for photos, and the banner
+  // the app draws itself is not one (identity-banner.test.ts).
+  const [onFallback, setOnFallback] = useState(false);
+  useEffect(() => setOnFallback(false), [src]);
+  const drawn = isDrawnBanner(onFallback ? fallbackSrc : src);
   return (
     <div
       className={`relative overflow-hidden bg-gradient-to-br from-brand/25 via-primary/10 to-transparent ${
@@ -71,15 +77,17 @@ export function IdentityBanner({ src, fallbackSrc, blurBackdropSrc, topRight, li
           className="w-full h-full object-cover"
           onError={(e) => {
             const img = e.currentTarget;
-            if (fallbackSrc && img.src !== fallbackSrc) img.src = fallbackSrc;
+            if (fallbackSrc && img.src !== fallbackSrc) { img.src = fallbackSrc; setOnFallback(true); }
             else img.style.display = "none";
           }}
         />
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+      {!drawn && <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />}
       {/* The hero runs under the top bar: a soft dark scrim across its top
-          keeps the bar's controls readable over a bright picture. */}
-      {variant === "hero" && <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/45 via-black/15 to-transparent" aria-hidden="true" />}
+          keeps the bar's controls readable over a bright picture. The drawn
+          banner is quiet and the controls carry their own discs, so it gets
+          only a trace of it. */}
+      {variant === "hero" && <div className={`absolute inset-x-0 top-0 bg-gradient-to-b to-transparent ${drawn ? "h-20 from-black/10" : "h-32 from-black/45 via-black/15"}`} aria-hidden="true" />}
       {live}
       {topRight && <div className="absolute top-2 right-2 z-20">{topRight}</div>}
     </div>

@@ -4,6 +4,7 @@
  * Two reports, one file. Both came from the banner path having quietly diverged
  * from the avatar path that sits eight pixels away from it.
  */
+import { drawnBannerFor } from "./default-banner";
 import bannerNebula from "../assets/images/banner-nebula.webp";
 import bannerNetwork from "../assets/images/banner-network.webp";
 import bannerWasteland from "../assets/images/banner-outpost-wasteland.webp";
@@ -75,8 +76,10 @@ const ANIMATED = /\.(gif|webp|avif)(\?|#|$)/i;
  * the same GIF as a banner did not. The two paths had drifted; this closes the
  * gap on the side that was wrong.
  */
-export function bannerSrcFor(banner: string | undefined | null, pubkey?: string | null): string {
-  if (!banner) return presetBannerFor(pubkey);
+export function bannerSrcFor(banner: string | undefined | null, pubkey?: string | null, dark = false): string {
+  // No banner: the drawn default, in the current theme (lib/default-banner.ts).
+  // The photos above stay as choices at sign-up, never as the automatic default.
+  if (!banner) return drawnBannerFor(pubkey, dark);
   try {
     const u = new URL(banner);
     if (u.hostname === "wsrv.nl") return banner;

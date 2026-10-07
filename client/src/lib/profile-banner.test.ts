@@ -8,6 +8,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { bannerSrcFor, presetBannerFor, PRESET_BANNERS } from "./profile-banner";
+import { drawnBannerFor } from "./default-banner";
 
 const GIF = "https://image.nostr.build/d0516dca63cec66605bb464ca1ed1522a006953cf1d4ce3360e94beec3658752.gif";
 const JPG = "https://example.test/banner.jpg";
@@ -46,8 +47,10 @@ describe("animated banners keep animating", () => {
 });
 
 describe("a missing or broken banner gets a preset", () => {
-  it("falls back to a preset rather than an empty band", () => {
-    expect(PRESET_BANNERS).toContain(bannerSrcFor(undefined, PK_A));
+  it("without a banner: the drawn default for that person, in the current theme — never a stock photo", () => {
+    expect(bannerSrcFor(undefined, PK_A)).toBe(drawnBannerFor(PK_A, false));
+    expect(bannerSrcFor("", PK_A, true)).toBe(drawnBannerFor(PK_A, true));
+    expect(PRESET_BANNERS).not.toContain(bannerSrcFor(undefined, PK_A));
   });
 
   it("gives one account the SAME banner every time", () => {

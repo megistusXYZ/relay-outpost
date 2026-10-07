@@ -54,7 +54,9 @@ import { PostBoundary } from "@/components/PostBoundary";
 import { ZapDialog } from "@/components/ZapDialog";
 import { ConfirmAction } from "@/components/ConfirmAction";
 import relayOutpostBanner from "../assets/images/relay-outpost-banner.webp";
-import { bannerSrcFor, presetBannerFor } from "@/lib/profile-banner";
+import { bannerSrcFor } from "@/lib/profile-banner";
+import { drawnBannerFor } from "@/lib/default-banner";
+import { useTheme } from "@/hooks/use-theme";
 
 const PROFILE_BANNER_LQIP = "data:image/webp;base64,UklGRjwAAABXRUJQVlA4IDAAAABQAwCdASogABEAP1Wcwlexq6cjsBgIAjAqiWkAADpwMRjAAAD+7lRLBuvfssJ2UAA=";
 import { nip19 } from "nostr-tools";
@@ -1072,17 +1074,19 @@ export default function Profile() {
   // Proxy rules live in lib/profile-banner.ts so the two profile layouts cannot
   // disagree about what a banner loads — animated images skip the proxy, and a
   // profile with no banner gets a preset chosen from its own pubkey.
+  const { isDark: bannerDark } = useTheme();
   const profileBannerSrc = useMemo(
-    () => bannerSrcFor(profileContent?.banner, pubkey),
-    [profileContent?.banner, pubkey],
+    () => bannerSrcFor(profileContent?.banner, pubkey, bannerDark),
+    [profileContent?.banner, pubkey, bannerDark],
   );
-  /** Where a broken banner lands. Stable per account, so it reads as theirs. */
-  const bannerFallback = useMemo(() => presetBannerFor(pubkey), [pubkey]);
+  /** Where a broken banner lands: the drawn default, the same one a person
+   *  without a banner gets — stable per account, in the current theme. */
+  const bannerFallback = useMemo(() => drawnBannerFor(pubkey, bannerDark), [pubkey, bannerDark]);
   useEffect(() => { setProfileBannerLoaded(false); }, [profileBannerSrc]);
   const liveStream = useProfileLiveStream(pubkey);
 
   useEffect(() => {
-    if (!profileBannerSrc || profileBannerSrc === relayOutpostBanner) return;
+    if (!profileBannerSrc || profileBannerSrc === relayOutpostBanner || profileBannerSrc.startsWith("data:")) return;
     const link = document.createElement("link");
     link.rel = "preload";
     link.as = "image";
