@@ -14,7 +14,7 @@ import { nextMetadataEdition, type MetadataChanges, type MetadataHead } from "./
 import { publishControlEdition, publishGuestbook, publishChannelMessage } from "./concord-stream";
 import { buildTimerNotice } from "./concord-disappearing";
 import { parseCommunityImage, type CommunityImage } from "./concord-image";
-import { ownCallService } from "./concord-av-brokers";
+import { ownCallService, readAvBrokers } from "./concord-av-brokers";
 
 export interface CreateCommunityOpts {
   name: string;
@@ -181,6 +181,7 @@ export async function editMetadata(
     iconImage: parseCommunityImage(next.content.icon) ?? undefined,
     about: description || undefined,
     allowMemberInvites: allowMemberInvites !== undefined ? allowMemberInvites : community.allowMemberInvites,
+    avBrokers: readAvBrokers(next.content.av_brokers).length ? readAvBrokers(next.content.av_brokers) : undefined,
     metaVersion: next.version,
     metaEid: next.eid,
   };

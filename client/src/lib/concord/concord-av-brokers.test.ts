@@ -8,7 +8,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { createHash } from "node:crypto";
-import { canonicalOrigin, readAvBrokers, rankBrokers, planCallBroker, chooseCallService, noteCallPresence, callServicesIn } from "./concord-av-brokers";
+import { canonicalOrigin, readAvBrokers, rankBrokers, planCallBroker, chooseCallService, noteCallPresence, callServicesIn, callServiceSetting } from "./concord-av-brokers";
 import { buildPresenceRumor } from "./concord-presence";
 
 const ROOM = "a".repeat(62) + "01"; // a voice room: 32 bytes as hex
@@ -157,5 +157,22 @@ describe("who's already in a room's call, and where", () => {
     noteCallPresence(room, seat("a".repeat(64), "https://armada.buzz", T));
     expect(callServicesIn(room, T * 1000 + 120_000)).toEqual([]);
     expect(callServicesIn("never-heard", T * 1000)).toEqual([]);
+  });
+});
+
+describe("the Calls line in a group's settings", () => {
+  const own = "https://relayop.xyz";
+  it("names where the group's calls run", () => {
+    expect(callServiceSetting({ listed: ["https://armada.buzz"], own })).toEqual({ text: "Calls run on armada.buzz", canChooseOurs: false });
+    expect(callServiceSetting({ listed: [own], own })).toEqual({ text: "Calls run on Relay Outpost's call service", canChooseOurs: false });
+  });
+  it("a group that names none: says what that means, and offers ours", () => {
+    expect(callServiceSetting({ listed: [], own })).toEqual({
+      text: "Each app uses its own call service, so people on different apps can end up in separate calls.",
+      canChooseOurs: true,
+    });
+  });
+  it("offers nothing from a page that has no call service to offer (a laptop)", () => {
+    expect(callServiceSetting({ listed: [], own: null }).canChooseOurs).toBe(false);
   });
 });
