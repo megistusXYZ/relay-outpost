@@ -11,6 +11,8 @@
  * - this provider plays everyone's audio, so you keep hearing the call on any page.
  * Off the call's room, a small draggable bar keeps it in reach.
  */
+import { useLeaveWhenCallsOff } from "@/lib/concord/calls-off";
+import { useConcordCallsEnabled } from "@/lib/concord/concord-prefs";
 import { callTrouble, useCallAudio, type AudioRoom } from "@/lib/concord/call-trouble";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { setCallActive } from "@/lib/call-presence";
@@ -256,6 +258,10 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
 
   // Signing out, or closing the tab, ends the call.
   useEffect(() => { if (!pubkey) void leave(); }, [pubkey, leave]);
+  // …and so does switching Encrypted calls off (lib/concord/calls-off.ts).
+  const callsOn = useConcordCallsEnabled();
+  const leaveNow = useCallback(() => { void leave(); }, [leave]);
+  useLeaveWhenCallsOff(callsOn, !!call, leaveNow);
   useEffect(() => () => { void leave(); }, [leave]);
 
   const value = useMemo<CallCtx>(() => ({
