@@ -179,3 +179,30 @@ export function fromCommunityLine(relayUrl: string | undefined, name?: string): 
   const label = name?.trim() || relayUrl.replace(/^wss?:\/\//, "").replace(/\/+$/, "");
   return `from ${label}`;
 }
+
+/**
+ * The one badge beside a name in a given place (owner, 2026-10-06: helpful
+ * and meaningful, never in the way). Inside a community, only a badge that
+ * community gave — or none. Anywhere else, the person's first chosen badge.
+ */
+export function badgeForContext<B extends { community?: string }>(badges: B[], community?: string): B | undefined {
+  if (!community) return badges[0];
+  const norm = (u: string) => u.replace(/\/+$/, "").toLowerCase();
+  return badges.find((b) => b.community && norm(b.community) === norm(community));
+}
+
+/**
+ * Where to send a gift: the community's relay, up to 3 of each recipient's own
+ * (read) relays — where they look for things addressed to them — then yours.
+ * Each once, capped so a large gift doesn't dial half the network.
+ */
+export function awardRelays(o: { community?: string; recipients: string[][]; mine: string[] }, cap = 16): string[] {
+  const out: string[] = [];
+  const add = (u?: string) => { if (u && !out.includes(u) && out.length < cap) out.push(u); };
+  add(o.community);
+  for (const theirs of o.recipients) for (const u of theirs.slice(0, 3)) add(u);
+  // Always room for at least some of your own, so you can see what you gave.
+  while (out.length > cap - Math.min(3, o.mine.length)) out.pop();
+  for (const u of o.mine) add(u);
+  return out;
+}

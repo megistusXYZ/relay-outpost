@@ -9,7 +9,7 @@
  * kind 10008 as the profile list and asks clients to treat both as one).
  */
 import { describe, it, expect } from "vitest";
-import { badgeDefinitionTemplate, profileBadgesTemplates, withAcceptedBadge, pickProfileBadgesEvent, badgesWaiting, badgeDeletionTemplate, withoutDeleted, badgeAwardTemplate, moveShownBadge, hideShownBadge, besideName, badgeCommunity, fromCommunityLine } from "./badge-events";
+import { badgeDefinitionTemplate, profileBadgesTemplates, withAcceptedBadge, pickProfileBadgesEvent, badgesWaiting, badgeDeletionTemplate, withoutDeleted, badgeAwardTemplate, moveShownBadge, hideShownBadge, besideName, badgeCommunity, fromCommunityLine, badgeForContext, awardRelays } from "./badge-events";
 
 const dOf = (t: { tags: string[][] }) => t.tags.find((x) => x[0] === "d")?.[1];
 const pairs = (t: { tags: string[][] }) => t.tags.filter((x) => x[0] === "a" || x[0] === "e").map((x) => `${x[0]}:${x[1]}`);
@@ -177,5 +177,53 @@ describe("a community's badge", () => {
     expect(fromCommunityLine("wss://bali.example/", "Bitcoin Bali")).toBe("from Bitcoin Bali");
     expect(fromCommunityLine("wss://bali.example/")).toBe("from bali.example");
     expect(fromCommunityLine(undefined)).toBe("");
+  });
+});
+
+/**
+ * Owner, 2026-10-06: badges shouldn't be in the way, but should be helpful
+ * and meaningful when they appear. Inside a community, the badge that means
+ * something is the one THAT community gave — anyone's personal badge is noise
+ * there. Elsewhere, the person's chosen first badge.
+ */
+describe("which badge shows beside a name", () => {
+  const personal = { name: "Helper", community: undefined };
+  const bali = { name: "Founding member", community: "wss://bali.example/" };
+  const other = { name: "Moderator", community: "wss://other.example/" };
+
+  it("inside a community: only that community's badge", () => {
+    expect(badgeForContext([personal, other, bali], "wss://bali.example/")?.name).toBe("Founding member");
+  });
+
+  it("inside a community that gave them none: nothing", () => {
+    expect(badgeForContext([personal, other], "wss://bali.example/")).toBeUndefined();
+  });
+
+  it("anywhere else: their first badge", () => {
+    expect(badgeForContext([personal, bali])?.name).toBe("Helper");
+    expect(badgeForContext([])).toBeUndefined();
+  });
+});
+
+/**
+ * A badge has to reach the person it's given to. It went only to the giver's
+ * relays (and the community's); the recipient looks on their own. It arrived
+ * only because both lists happened to include the same big public relays.
+ */
+describe("where a gift is sent", () => {
+  it("the community's relay, each recipient's own relays, then yours — each once", () => {
+    const r = awardRelays({
+      community: "wss://bali.example",
+      recipients: [["wss://inbox-ana.example", "wss://shared.example"], ["wss://inbox-bob.example"]],
+      mine: ["wss://shared.example", "wss://mine.example"],
+    });
+    expect(r).toEqual(["wss://bali.example", "wss://inbox-ana.example", "wss://shared.example", "wss://inbox-bob.example", "wss://mine.example"]);
+  });
+
+  it("no more than a few of each recipient's relays, and a sane total", () => {
+    const many = Array.from({ length: 10 }, (_, i) => `wss://r${i}.example`);
+    const r = awardRelays({ recipients: Array.from({ length: 10 }, () => many), mine: ["wss://mine.example"] });
+    expect(r.length).toBeLessThanOrEqual(16);
+    expect(r).toContain("wss://mine.example");
   });
 });

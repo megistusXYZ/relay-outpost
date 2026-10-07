@@ -4,7 +4,9 @@ import { getOutpostRelays, getActiveDefaultRelays } from "./outpost-relays";
 import { canReachAny, type Reached } from "./relay-reach";
 import type { Event as NostrEvent } from "nostr-tools";
 import type { ISigner } from "applesauce-signers";
-import { badgeDefinitionTemplate, badgeDeletionTemplate, badgeAwardTemplate, badgeCommunity, withoutDeleted, profileBadgesTemplates, pickProfileBadgesEvent, withAcceptedBadge, KIND_PROFILE_BADGES as KIND_PROFILE_LIST, KIND_PROFILE_BADGES_LEGACY } from "./badge-events";
+import { parseRelayList, getReadRelays } from "./outbox";
+import { selectRelaysByMode } from "./relay-prefs";
+import { badgeDefinitionTemplate, badgeDeletionTemplate, badgeAwardTemplate, badgeCommunity, awardRelays, withoutDeleted, profileBadgesTemplates, pickProfileBadgesEvent, withAcceptedBadge, KIND_PROFILE_BADGES as KIND_PROFILE_LIST, KIND_PROFILE_BADGES_LEGACY } from "./badge-events";
 
 export const KIND_BADGE_DEFINITION = 30009;
 export const KIND_BADGE_AWARD = 8;
@@ -65,6 +67,29 @@ function getBadgeRelays(): string[] {
   const active = getActiveDefaultRelays();
   const combined = [...new Set([...outpost, ...active, ...BADGE_RELAYS])];
   return filterBlockedRelays(combined).slice(0, 6);
+}
+
+/** Where relay lists (NIP-65) are found. */
+const RELAY_LIST_RELAYS = ["wss://purplepag.es", "wss://user.kindpag.es"];
+
+/**
+ * Each recipient's own read relays — where they look for things addressed to
+ * them (NIP-65). Asked once, briefly: a gift that waited on a slow lookup
+ * would feel broken, and the giver's relays still carry it.
+ */
+async function recipientsReadRelays(pubkeys: string[]): Promise<string[][]> {
+  if (pubkeys.length === 0) return [];
+  try {
+    const evs = await pool.querySync(filterBlockedRelays([...RELAY_LIST_RELAYS, ...getBadgeRelays()]), { kinds: [10002], authors: pubkeys }, { maxWait: 3000 } as never);
+    const newest = new Map<string, NostrEvent>();
+    for (const e of evs) { const cur = newest.get(e.pubkey); if (!cur || e.created_at > cur.created_at) newest.set(e.pubkey, e); }
+    return pubkeys.map((pk) => {
+      const ev = newest.get(pk);
+      return ev ? filterBlockedRelays(selectRelaysByMode(parseRelayList(ev), "read", 3)) : [];
+    });
+  } catch {
+    return [];
+  }
 }
 
 /** A community badge (and its gifts) also goes to the community's own relay. */
@@ -270,7 +295,8 @@ export async function fetchBadgeAwardsForUser(pubkey: string): Promise<BadgeAwar
   const inflight = inflightPromises.get(fetchKey);
   if (inflight) return inflight as Promise<BadgeAward[]>;
 
-  const relays = getBadgeRelays();
+  // Gifts are addressed to them: look where they read, too (NIP-65).
+  const relays = filterBlockedRelays([...new Set([...getReadRelays(pubkey, []).slice(0, 4), ...getBadgeRelays()])]).slice(0, 10);
 
   const promise = new Promise<BadgeAward[]>((resolve) => {
     let resolved = false;
@@ -417,7 +443,14 @@ export async function awardBadge(
 
   try {
     const signed = await signWithTimeout(signer, eventTemplate as Parameters<ISigner["signEvent"]>[0]);
-    const published = await publishEvent(signed, relaysFor(community));
+    // To where each recipient looks, not only where the giver posts.
+    const relays = awardRelays({ community, recipients: await recipientsReadRelays(recipientPubkeys), mine: getBadgeRelays() });
+    const published = await publishEvent(signed, relays);
+    // The badge itself (name, picture) has to be where they'll find the gift,
+    // or they'd see "gave you a badge" and nothing more. It is already signed;
+    // this only copies it there.
+    const def = badgeDefCache.get(badgeATagValue(badgeDefPubkey, badgeDTag));
+    if (published && def?.rawEvent) void publishEvent(def.rawEvent, relays).catch(() => {});
     if (published) {
       for (const pk of recipientPubkeys) {
         const existing = badgeAwardsForUserCache.get(pk) || [];
