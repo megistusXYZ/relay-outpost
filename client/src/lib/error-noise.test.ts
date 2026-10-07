@@ -55,3 +55,20 @@ describe("WebKit media-controls internals are noise, not crashes", () => {
     expect(isUnactionableError("Can't find variable: myAppThing")).toBe(false);
   });
 });
+
+describe("cancellations and other apps' bridges are not our crashes", () => {
+  // Crash reports, 2026-10-07: "WKWebView API client did not respond to this
+  // postMessage" (DuckDuckGo's iPhone browser, its own injected script) and
+  // "The operation was aborted." (a request we cancelled, iPhone, /thread).
+  it("drops the DuckDuckGo browser's bridge error", () => {
+    expect(isUnactionableError("WKWebView API client did not respond to this postMessage")).toBe(true);
+  });
+  it("drops a cancelled request, as each browser words it", () => {
+    for (const m of ["The operation was aborted.", "This operation was aborted", "signal is aborted without reason", "The user aborted a request.", "Fetch is aborted"]) {
+      expect(isUnactionableError(m), m).toBe(true);
+    }
+  });
+  it("still reports a real error that merely mentions aborting", () => {
+    expect(isUnactionableError("Cannot read properties of undefined (reading 'aborted')")).toBe(false);
+  });
+});

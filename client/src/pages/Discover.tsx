@@ -1494,6 +1494,21 @@ export default function Discover() {
   const followSetForTrust = useMemo(() => new Set(viewerFollows ?? []), [viewerFollows]);
   setDiscoverTrust({ follows: followSetForTrust, wotEnabled: !!pubkey && viewerWot, ownScores: viewerScores ?? null });
 
+  // Every hook runs before the guest wall below: a render that returns early
+  // must call exactly the hooks the last one did (rules-of-hooks.test.ts).
+  // The rubber band's stamp: on LEAVE (hide or route-away), everything the
+  // tiles reported becomes the next visit's baseline. Never on mount — the
+  // chips must survive the visit they are greeting.
+  useEffect(() => {
+    freshReports.clear();
+    const onHide = () => { if (document.visibilityState === "hidden") stampReported(); };
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      stampReported();
+    };
+  }, []);
+
   // Hard wall (owner decision, 2026-08-14): browse surfaces are membership —
   // the legacy-social model. Shared deep links (a post, an article, an
   // invite, a channel preview) are separate routes and stay open; this page
@@ -1508,19 +1523,6 @@ export default function Discover() {
       </div>
     );
   }
-
-  // The rubber band's stamp: on LEAVE (hide or route-away), everything the
-  // tiles reported becomes the next visit's baseline. Never on mount — the
-  // chips must survive the visit they are greeting.
-  useEffect(() => {
-    freshReports.clear();
-    const onHide = () => { if (document.visibilityState === "hidden") stampReported(); };
-    document.addEventListener("visibilitychange", onHide);
-    return () => {
-      document.removeEventListener("visibilitychange", onHide);
-      stampReported();
-    };
-  }, []);
 
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 pb-24 space-y-4" data-testid="page-discover">
