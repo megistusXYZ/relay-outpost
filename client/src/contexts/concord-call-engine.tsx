@@ -13,7 +13,7 @@
  */
 import { useLeaveWhenCallsOff } from "@/lib/concord/calls-off";
 import { useConcordCallsEnabled } from "@/lib/concord/concord-prefs";
-import { callTrouble, useCallAudio, type AudioRoom } from "@/lib/concord/call-trouble";
+import { callTrouble, callJoinTrouble, useCallAudio, type AudioRoom } from "@/lib/concord/call-trouble";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { setCallActive } from "@/lib/call-presence";
 import { createPortal } from "react-dom";
@@ -273,7 +273,8 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
       }, KEY_CHECK_MS);
       resync();
     } catch (err) {
-      setError(String((err as Error)?.message ?? err));
+      // Plain words, with what to try (lib/concord/call-trouble.ts).
+      setError(callJoinTrouble(err));
     } finally {
       setJoining(false);
     }
