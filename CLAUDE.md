@@ -46,7 +46,7 @@ authority.
 |---|---|
 | `npm test` | all green, no tolerated failures |
 | `npm run test:ci-globals` | all green |
-| `npm run check` | **≤ 14** type errors — burn-down only, ratchet down in `ci.yml` when it drops |
+| `npm run check` | **0** type errors — any new one fails CI (burned down 90 → 0 by 2026-10-07; several were real bugs) |
 | `npm run build` | green |
 
 A baseline set above the real count is a check that can't fail. The tsc gate sat

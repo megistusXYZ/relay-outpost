@@ -94,7 +94,7 @@ function useIsMobile() {
 
 function QRScannerDialog({ open, onClose, onScan }: { open: boolean; onClose: () => void; onScan: (data: string) => void }) {
   const scannerRef = useRef<HTMLDivElement>(null);
-  const html5QrRef = useRef<{ stop: () => Promise<void>; clear: () => Promise<void> } | null>(null);
+  const html5QrRef = useRef<{ stop: () => Promise<void>; clear: () => void } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const hasScannedRef = useRef(false);

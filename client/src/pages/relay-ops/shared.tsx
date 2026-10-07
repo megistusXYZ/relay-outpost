@@ -208,10 +208,10 @@ export function subscribeWithReach(
     let refused: string | undefined;
 
     const doSubscribe = () => {
-      const filter: NostrFilter = filters.length === 1 ? filters[0] : Object.assign({}, ...filters);
-      const sub: SubCloser = pool.subscribeMany(
-        relayUrls,
-        filter,
+      // Every filter in one request per relay (subscribeMap): merging them into
+      // one object would have asked for events matching ALL of them at once.
+      const sub: SubCloser = pool.subscribeMap(
+        relayUrls.flatMap((url) => filters.map((f) => ({ url, filter: f as NostrToolsFilter }))),
         {
           onevent(e: NostrEvent) { collected.push(e); },
           // nostr-tools reports a refusal as "end of results" first and passes
@@ -1453,7 +1453,7 @@ export function getModLog(relayUrl: string): ModerationLogEntry[] {
     if (!Array.isArray(parsed)) return [];
     return parsed.filter((e: unknown) =>
       typeof e === "object" && e !== null && "id" in e && "ts" in e && "action" in e
-    );
+    ) as ModerationLogEntry[];
   } catch {
     return [];
   }

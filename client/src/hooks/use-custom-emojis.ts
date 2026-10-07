@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import type { NostrEvent } from "nostr-tools";
 import { pool, DEFAULT_RELAYS } from "@/lib/nostr";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { withSignerTimeout, SIGNER_SIGN_TIMEOUT } from "@/lib/signer-timeout";
@@ -226,7 +227,7 @@ export function useCustomEmojis(): CustomEmojiState {
       };
 
       if (typeof window !== "undefined" && (window as any).nostr) {
-        const signed = await withSignerTimeout((window as any).nostr.signEvent(event), SIGNER_SIGN_TIMEOUT, "signEvent");
+        const signed = await withSignerTimeout((window as any).nostr.signEvent(event), SIGNER_SIGN_TIMEOUT, "signEvent") as NostrEvent;
         await Promise.allSettled(relays.map((r) => pool.publish([r], signed)));
       }
 

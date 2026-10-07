@@ -126,14 +126,6 @@ function NostrReference({ encoded }: { encoded: string }) {
         </Link>
       );
     }
-    if (decoded.type === "nrelay") {
-      const relay = decoded.data as string;
-      return (
-        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground/80 font-mono bg-muted/30 rounded px-1.5 py-0.5">
-          {relay}
-        </span>
-      );
-    }
   } catch {}
   if (encoded.startsWith("nsec1")) {
     return <span className="text-xs text-red-500/70 font-mono">[private key redacted]</span>;

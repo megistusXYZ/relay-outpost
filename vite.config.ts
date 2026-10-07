@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type UserConfig } from "vite";
 import { nonBlockingAppCss } from "./shared/non-blocking-css";
 import { routePreloadMap, injectRoutePreload, PRELOAD_ROUTES } from "./shared/route-preload";
 import react from "@vitejs/plugin-react";
@@ -24,7 +24,7 @@ function computeAppVersion(): string {
   }
 }
 
-export default defineConfig(async ({ mode }) => {
+export default defineConfig(async ({ mode }): Promise<UserConfig> => {
   const isProd = mode === "production";
 
   return {

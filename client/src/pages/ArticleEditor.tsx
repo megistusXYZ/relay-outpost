@@ -231,7 +231,8 @@ turndownService.addRule("styledBlock", {
     `\n\n${buildSafeHtml(node as HTMLElement, content.trim())}\n\n` });
 
 turndownService.addRule("centerTag", {
-  filter: "center",
+  // <center> is long obsolete, so turndown's tag-name types leave it out.
+  filter: (node) => node.nodeName === "CENTER",
   replacement: (content) => `\n\n<center>${content.trim()}</center>\n\n` });
 
 turndownService.addRule("styledInline", {
