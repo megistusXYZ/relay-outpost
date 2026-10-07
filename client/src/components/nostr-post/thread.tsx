@@ -548,10 +548,11 @@ export function ReplyComposer({
       >
         <div className="flex-1 bg-black/40" onClick={onClose} data-testid={`overlay-reply-dismiss-${replyTo.id}`} />
 
-        {/* Glass composer bar: violet-tinted hairline + blur over the page —
-            same panel language as the app's dialogs/menus (PR #308). Static
-            gradients/blur only — no fixed-attachment textures (PR #98). */}
-        <div className="bg-background/90 supports-[backdrop-filter]:bg-background/80 backdrop-blur-xl border-t border-brand/15 dark:border-brand/20 shadow-[0_-10px_28px_-14px_rgba(139,92,246,0.22)]" style={vpRect ? {} : { paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+        {/* Composer bar: violet-tinted hairline over a SOLID ground. It was
+            80% see-through with a blur phones don't always paint, so the
+            page (Share this conversation, the footer's icons) showed through
+            the text you were typing (owner, 2026-10-07). */}
+        <div className="bg-background border-t border-brand/15 dark:border-brand/20 shadow-[0_-10px_28px_-14px_rgba(139,92,246,0.22)]" style={vpRect ? {} : { paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
           <div className="flex items-center gap-2 px-3 py-2 border-b border-brand/10 dark:border-white/[0.06]">
             <CornerUpLeft className="w-3 h-3 text-brand/60 shrink-0" />
             <span className="text-xs text-muted-foreground/70 truncate">

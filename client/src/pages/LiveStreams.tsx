@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useKeyboardViewport } from "@/hooks/use-keyboard-viewport";
 import { MissionBriefing, LIVE_STREAMS_BRIEFING } from "@/components/MissionBriefing";
 import { use$ } from "applesauce-react/hooks";
 import { pool, eventStore, fetchProfilesCached, publishEvent, throttledPoolSubscribe, getRelaysForPurpose } from "@/lib/nostr";
@@ -31,7 +32,7 @@ import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
 import { formatDistanceToNow, format, isToday, isTomorrow, isThisWeek } from "date-fns";
 import {
-  Radio, Users, ArrowLeft, Send, Zap, Eye, Clock, Calendar,
+  Radio, Users, Send, Zap, Eye, Clock, Calendar,
   Satellite, Signal, Volume2, ExternalLink, RefreshCw, Copy, Check, Share2,
   Maximize2, PictureInPicture2, ChevronDown, History,
 } from "lucide-react";
@@ -1449,7 +1450,7 @@ function StreamDetail({ stream }: { stream: LiveEventData }) {
   }, []);
 
   const sendChat = useCallback(async () => {
-    if (!chatInput.trim() || !signer || !myPubkey) return;
+    if (!chatInput.trim() || !signer || !myPubkey || sending) return;
     setSending(true);
     try {
       const unsigned: any = {
@@ -1465,7 +1466,9 @@ function StreamDetail({ stream }: { stream: LiveEventData }) {
         ...LIVE_STREAM_RELAYS,
       ]));
       await publishEvent(signed, chatRelays);
-      setChatInput("");
+      // The box stays editable while sending: clear it only if it still holds
+      // what was sent, not words typed in the meantime.
+      setChatInput((cur) => (cur.trim() === unsigned.content ? "" : cur));
       requestAnimationFrame(() => scrollChatToBottom());
     } catch (err: any) {
       if (isSignerError(err)) { await handleSignerError(err, toast, attemptReconnect); }
@@ -1473,36 +1476,51 @@ function StreamDetail({ stream }: { stream: LiveEventData }) {
     } finally {
       setSending(false);
     }
-  }, [chatInput, signer, myPubkey, aTag, stream.relays, toast, scrollChatToBottom, attemptReconnect]);
+  }, [chatInput, sending, signer, myPubkey, aTag, stream.relays, toast, scrollChatToBottom, attemptReconnect]);
 
   // Status-aware: an ended stream's recording beats its stale streaming tag
   // (user report: a Rumble replay sat unplayed behind a dead HLS URL).
   const playableUrl = pickStreamSource(stream.status, stream.streamUrl, stream.recordingUrl);
 
   const mobileChatActive = isMobileChat && chatFocused && stream.chatEnabled;
+  // Chat mode on a phone fills the space ABOVE the keyboard, like a private
+  // message thread. It was sized to the screen (100dvh), which iOS does not
+  // shrink for the keyboard, so the message box sat under it (owner,
+  // 2026-10-07; ship/phone-typing-e2e.cjs).
+  const chatKb = useKeyboardViewport(mobileChatActive);
 
   return (
     <div className="overflow-x-hidden space-y-4" data-testid="stream-detail">
       {/* No "Back to Streams" here: the app chrome's back owns /live/:naddr
           (back-affordance.ts maps cold entries to /search?tab=live) — this
           used to stack a second arrow under it. */}
-      <div className={mobileChatActive ? "flex flex-col" : `flex flex-col ${stream.chatEnabled ? "lg:flex-row" : ""} gap-4 lg:items-start`}>
+      <div
+        // Inside <main>'s stacking context nothing paints above the fixed top
+        // bar, so chat mode starts below it — the same as a private message
+        // thread (Messages.tsx); it covered the collapse arrow.
+        className={mobileChatActive ? "fixed inset-x-0 z-[55] flex flex-col bg-background pt-[calc(4.25rem+env(safe-area-inset-top,0px))]" : `flex flex-col ${stream.chatEnabled ? "lg:flex-row" : ""} gap-4 lg:items-start`}
+        style={mobileChatActive ? (chatKb.height ? { top: chatKb.offsetTop, height: chatKb.height } : { top: 0, bottom: 0 }) : undefined}
+        data-testid={mobileChatActive ? "stream-chat-mode" : undefined}
+      >
         <div
           ref={videoRef}
-          className={mobileChatActive ? "shrink-0 h-[30dvh] bg-black relative" : "flex-1 min-w-0"}
+          className={mobileChatActive ? "shrink-0 h-[28%] min-h-[96px] bg-black relative overflow-hidden" : "flex-1 min-w-0"}
         >
           {mobileChatActive && (
-            <div className="absolute top-0 left-0 right-0 z-10 flex items-center gap-2 px-3 py-1.5 bg-gradient-to-b from-black/60 to-transparent">
+            <div className="absolute top-0 left-0 right-0 z-10 flex items-center gap-2 pl-3 bg-gradient-to-b from-black/60 to-transparent">
+              <Signal className="w-3 h-3 text-red-500 animate-pulse" />
+              <span className="text-xs font-medium text-white/80 truncate flex-1">{stream.title}</span>
+              {/* Closes chat, back to the full player. A chevron, not an
+                  arrow: the top bar's arrow already means "leave". */}
               <button
                 type="button"
                 onClick={() => { setChatFocused(false); inputRef.current?.blur(); }}
-                className="p-1 -ml-1 text-white/70 hover:text-white"
+                aria-label="Close chat"
+                className="w-11 h-11 shrink-0 flex items-center justify-center text-white/70 hover:text-white"
                 data-testid="button-chat-collapse"
               >
-                <ArrowLeft className="w-4 h-4" />
+                <ChevronDown className="w-5 h-5" />
               </button>
-              <Signal className="w-3 h-3 text-red-500 animate-pulse" />
-              <span className="text-xs font-medium text-white/80 truncate flex-1">{stream.title}</span>
             </div>
           )}
           <StreamPlayer url={playableUrl || ""} title={stream.title} hlsUrl={stream.hlsUrl} isZapStream={stream.isZapStream} zapStreamNaddr={stream.zapStreamNaddr} mini={mobileChatActive} image={stream.image} status={stream.status} expandNaddr={expandNaddr} />
@@ -1513,10 +1531,10 @@ function StreamDetail({ stream }: { stream: LiveEventData }) {
             ref={chatPanelRef}
             className={`flex flex-col border border-border dark:border-white/[0.06] bg-card dark:bg-[#0a0a12]/80 backdrop-blur-sm dark:backdrop-blur-none overflow-hidden ${
               mobileChatActive
-                ? "rounded-none border-x-0 border-b-0"
+                ? "flex-1 min-h-0 rounded-none border-x-0 border-b-0"
                 : "w-full lg:w-[340px] lg:shrink-0 rounded-xl h-[280px] sm:h-[320px]"
             }`}
-            style={mobileChatActive ? { height: "calc(100dvh - 30dvh)" } : chatHeight ? { height: chatHeight } : undefined}
+            style={mobileChatActive ? undefined : chatHeight ? { height: chatHeight } : undefined}
             data-testid="chat-panel"
           >
             {!mobileChatActive && (
@@ -1577,7 +1595,9 @@ function StreamDetail({ stream }: { stream: LiveEventData }) {
                     onBlur={handleChatBlur}
                     placeholder="Send a message..."
                     className={`flex-1 bg-muted dark:bg-white/[0.04] border-border dark:border-white/[0.06] text-foreground dark:text-white/80 placeholder:text-muted-foreground dark:placeholder:text-white/20 focus-visible:ring-ring dark:focus-visible:ring-brand/30 rounded-md ${mobileChatActive ? "h-10 text-base" : "h-8 text-base sm:text-[11px]"}`}
-                    disabled={sending}
+                    // Never disabled while sending: a disabled box loses focus,
+                    // which dropped the keyboard and left chat mode after every
+                    // message. The send button waits instead (sendChat guards).
                     data-testid="input-chat-message"
                   />
                   <Button
