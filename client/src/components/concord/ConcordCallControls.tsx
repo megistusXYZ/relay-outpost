@@ -17,6 +17,7 @@ import { persistentPoolSubscribe } from "@/lib/nostr";
 import type { StoredChannel, StoredCommunity } from "@/lib/concord/concord-keys";
 import { callRoster } from "@/lib/concord/concord-presence";
 import { subscribeCallPresence } from "@/lib/concord/concord-stream";
+import { noteCallPresence } from "@/lib/concord/concord-av-brokers";
 import { canEncryptCalls, type CallerLabel } from "@/lib/concord/concord-call";
 
 /** Said wherever a call can't start here: calls are end to end encrypted or not at all. */
@@ -53,7 +54,8 @@ function useRoomCallCount(community: StoredCommunity, channel: StoredChannel | u
     if (!enabled || !ch) { setCount(0); return; }
     const rumors: PresenceRumor[] = [];
     const recount = () => setCount(callRoster(rumors, Date.now()).size);
-    const sub = subscribeCallPresence(c, ch, (r) => { rumors.push(r as PresenceRumor); recount(); },
+    const room = callRoomKey(c.community_id, ch.id);
+    const sub = subscribeCallPresence(c, ch, (r) => { rumors.push(r as PresenceRumor); noteCallPresence(room, r as PresenceRumor); recount(); },
       (relays, filter, onevent) => persistentPoolSubscribe(relays, filter, { onevent }));
     const tick = setInterval(recount, 10_000);
     return () => { sub.close(); clearInterval(tick); };

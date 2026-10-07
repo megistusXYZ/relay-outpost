@@ -177,6 +177,22 @@ describe("reconcilePatch — metadata, anchored", () => {
     expect(reconcilePatch(rec(), withRaw({}))).toBeNull();
   });
 
+  // CORD-07 §5: the group's call services, where every app sends its calls.
+  it("takes the group's call services from the edition, cleaned", () => {
+    const patch = reconcilePatch(rec(), withRaw({ av_brokers: ["https://armada.buzz/", "http://plain.example", 7] }));
+    expect(patch?.avBrokers).toEqual(["https://armada.buzz"]);
+  });
+
+  it("has nothing to say when it already holds those services", () => {
+    expect(reconcilePatch(rec({ avBrokers: ["https://armada.buzz"] }), withRaw({ av_brokers: ["https://armada.buzz"] }))).toBeNull();
+  });
+
+  it("drops the services when the latest edition lists none", () => {
+    const patch = reconcilePatch(rec({ avBrokers: ["https://armada.buzz"] }), withRaw({}));
+    expect(patch).toHaveProperty("avBrokers");
+    expect(patch?.avBrokers).toBeUndefined();
+  });
+
   it("closes invites when the live policy closed them", () => {
     expect(reconcilePatch(rec({ allowMemberInvites: true }), fold({ meta: { name: "Group", allowMemberInvites: false } }))?.allowMemberInvites).toBe(false);
   });

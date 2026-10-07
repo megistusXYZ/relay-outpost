@@ -5,7 +5,7 @@ import { serveStatic } from "./static";
 import { startScheduler } from "./scheduler";
 import { createServer } from "http";
 import helmet from "helmet";
-import cors from "cors";
+import { siteCors } from "./site-cors";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
 
@@ -95,22 +95,9 @@ app.use((_req, res, next) => {
   next();
 });
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim())
-  : [];
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.length === 0) {
-      const isReplit = origin.endsWith(".replit.dev") || origin.endsWith(".repl.co") || origin.endsWith(".replit.app");
-      return callback(null, isReplit || origin.startsWith("http://localhost:") || origin.startsWith("http://0.0.0.0:"));
-    }
-    return callback(null, allowedOrigins.includes(origin));
-  },
-  methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-  credentials: true,
-}));
+// The site's CORS rules live in site-cors.ts, so concord-av.test.ts can run
+// them in the real order ahead of the call-token service's own (open) CORS.
+app.use(siteCors());
 
 app.set("trust proxy", 1);
 

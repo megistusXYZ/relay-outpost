@@ -66,6 +66,8 @@ export interface StoredCommunity {
   about?: string;
   /** Community policy (mirrors folded metadata): members may create invites. */
   allowMemberInvites?: boolean;
+  /** The group's call services (CORD-07 §5 `av_brokers`), cleaned; absent when the group lists none. */
+  avBrokers?: string[];
   addedAt: number;
   /**
    * Client-side link (v1): if this community provides the encrypted channels for

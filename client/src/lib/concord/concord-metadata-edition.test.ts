@@ -176,6 +176,25 @@ describe("nextMetadataEdition — what other apps wrote survives our edit", () =
   });
 });
 
+describe("nextMetadataEdition — the group's call services (CORD-07 §5)", () => {
+  const head = { ev: 4, hash: H(4) };
+
+  it("a rename keeps another app's call services exactly", () => {
+    const live = fold({ raw: { name: "Group", description: "", relays: [], av_brokers: ["https://armada.buzz"] } });
+    expect(nextMetadataEdition(joined(), live, head, { name: "R" }).content.av_brokers).toEqual(["https://armada.buzz"]);
+  });
+
+  it("the owner's brand-new group, with no fold yet, keeps naming our service", () => {
+    const out = nextMetadataEdition(created({ avBrokers: ["https://relayop.xyz"] }), undefined, undefined, { name: "R" });
+    expect(out.content.av_brokers).toEqual(["https://relayop.xyz"]);
+  });
+
+  it("never adds our service to a group that lists none", () => {
+    const live = fold({ raw: { name: "Group", description: "", relays: [] } });
+    expect(nextMetadataEdition(joined(), live, head, { name: "R" }).content).not.toHaveProperty("av_brokers");
+  });
+});
+
 describe("nextMetadataEdition — the chain", () => {
   it("chains onto the fold head when this device has no cursor at all", () => {
     // The link-joined admin. Was publishing ev 2 with no `ep` → dropped by all.

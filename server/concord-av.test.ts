@@ -118,3 +118,39 @@ describe("call tokens", () => {
     }).status).toBe(503);
   });
 });
+
+/**
+ * Owner, 2026-10-06: groups made here name our call service, so members using
+ * other apps (Armada) join our calls — and our service answers their
+ * browsers. Only this endpoint opens to other sites; it stays members-only
+ * (the signed request) and rate-limited.
+ */
+describe("other apps can reach our call service", () => {
+  it("answers other sites' browsers on the probe, the preflight and a token request", async () => {
+    const express = (await import("express")).default;
+    const { registerConcordAvRoutes } = await import("./concord-av");
+    const { siteCors } = await import("./site-cors");
+    const app = express();
+    // The real order: the site-wide CORS layer first (index.ts), then routes.
+    app.use(siteCors());
+    registerConcordAvRoutes(app);
+    const server = app.listen(0);
+    const port = (server.address() as { port: number }).port;
+    try {
+      const base = `http://127.0.0.1:${port}/.well-known/concord/av`;
+      const origin = { Origin: "https://armada.buzz" };
+      const probe = await fetch(base, { headers: origin });
+      expect(probe.status).toBe(204);
+      expect(probe.headers.get("access-control-allow-origin")).toBe("*");
+      expect(probe.headers.get("cross-origin-resource-policy")).toBe("cross-origin");
+      const pre = await fetch(`${base}/${"a".repeat(64)}`, { method: "OPTIONS", headers: { ...origin, "Access-Control-Request-Method": "GET", "Access-Control-Request-Headers": "authorization" } });
+      expect(pre.status).toBe(204);
+      expect(pre.headers.get("access-control-allow-headers")?.toLowerCase()).toContain("authorization");
+      expect(pre.headers.get("access-control-allow-methods")).toContain("GET");
+      const token = await fetch(`${base}/${"a".repeat(64)}`, { headers: origin });
+      expect(token.headers.get("access-control-allow-origin")).toBe("*"); // even its refusals are readable
+    } finally {
+      server.close();
+    }
+  });
+});

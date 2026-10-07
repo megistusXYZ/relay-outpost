@@ -14,6 +14,7 @@ import { nextMetadataEdition, type MetadataChanges, type MetadataHead } from "./
 import { publishControlEdition, publishGuestbook, publishChannelMessage } from "./concord-stream";
 import { buildTimerNotice } from "./concord-disappearing";
 import { parseCommunityImage, type CommunityImage } from "./concord-image";
+import { ownCallService } from "./concord-av-brokers";
 
 export interface CreateCommunityOpts {
   name: string;
@@ -81,7 +82,15 @@ export async function createCommunity(
 
   // Record the v1 metadata edition id so later edits can chain to it.
   // `description` is CORD-02 §6's name for it, where other apps read it.
-  const metaContent = { name: opts.name, description: opts.about ?? "", picture: opts.icon ?? "", relays, ...(opts.image ? { icon: opts.image } : {}) };
+  // `av_brokers` names our call service (CORD-07 §5), so an Armada member's
+  // call lands where ours does rather than on their app's default.
+  const callService = ownCallService();
+  const metaContent = {
+    name: opts.name, description: opts.about ?? "", picture: opts.icon ?? "", relays,
+    ...(opts.image ? { icon: opts.image } : {}),
+    ...(callService ? { av_brokers: [callService] } : {}),
+  };
+  if (callService) record.avBrokers = [callService];
   record.metaVersion = 1;
   record.metaEid = computeEditionId(communityId, 1, undefined, JSON.stringify(metaContent));
 

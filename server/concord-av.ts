@@ -108,19 +108,36 @@ const REPLAY_MEMORY_MS = 5 * 60 * 1000;
  * GET /.well-known/concord/av         → 204: this server hands out call tokens.
  * GET /.well-known/concord/av/<room>  → { token, url, identity } for that room's call.
  * Keys come from LIVEKIT_API_KEY / LIVEKIT_API_SECRET, the media server from
- * LIVEKIT_URL; with any missing it answers 503. Same-origin for now: the
- * site-wide CORS rules apply, so only our own app can call it.
+ * LIVEKIT_URL; with any missing it answers 503. Other apps' browsers may
+ * call it too (see openToOtherApps below).
  */
 export function registerConcordAvRoutes(app: Express): void {
   const used = new TTLCache<true>(10_000, REPLAY_MEMORY_MS);
   const seen = { has: (id: string) => used.get(id) !== undefined, add: (id: string) => used.set(id, true) };
 
+  // Open to other apps' browsers (owner, 2026-10-06): groups made here name
+  // this service (`av_brokers`), so a member using Armada joins our calls.
+  // Only this endpoint; it stays members-only (the request is signed with the
+  // room's voice key) and rate-limited (callTokenLimiter). Armada's own
+  // service is open the same way.
+  const openToOtherApps = (res: import("express").Response) => res.set({
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Max-Age": "86400",
+    // helmet's same-origin resource policy would block the answer otherwise.
+    "Cross-Origin-Resource-Policy": "cross-origin",
+  });
+  app.options(["/.well-known/concord/av", "/.well-known/concord/av/:room"], (_req, res) => {
+    openToOtherApps(res).status(204).end();
+  });
+
   app.get("/.well-known/concord/av", (_req, res) => {
-    res.set("Cache-Control", "no-store").status(204).end();
+    openToOtherApps(res).set("Cache-Control", "no-store").status(204).end();
   });
 
   app.get("/.well-known/concord/av/:room", (req, res) => {
-    res.set("Cache-Control", "no-store");
+    openToOtherApps(res).set("Cache-Control", "no-store");
     const room = String(req.params.room);
     if (!/^[0-9a-f]{64}$/.test(room)) {
       return res.status(400).json({ error: "The room is the voice key's public key: 64 lowercase hex characters" });
