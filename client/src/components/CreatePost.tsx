@@ -10,7 +10,7 @@ import { markHasPosted } from "@/lib/adoption-flags";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
 import { RelayPublishPicker, usePublishRelayPreference } from "@/components/RelayPublishPicker";
 import { withOutboxFloor, fetchRelayLists } from "@/lib/outbox";
-import { classifyRelayUrl, getOutpostRelays } from "@/lib/outpost-relays";
+import { classifyRelayUrl, getOutpostRelays, getPublishRelayPreference, type RelayPreset } from "@/lib/outpost-relays";
 import { isAuthEnabled } from "@/lib/nip42-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
@@ -535,8 +535,11 @@ export function CreatePostFAB() {
     setMediaAttachments(draft.mediaAttachments);
     setAudioAttachment(draft.audioAttachment);
     setGifUrl(draft.gifUrl);
+    // A draft keeps only its preset. The rest (your chosen relays) comes from
+    // your saved choice: a preference without `selectedUrls` crashed the
+    // composer the moment a "custom" draft was restored.
     if (draft.relayPreset) {
-      setRelayPref({ preset: draft.relayPreset as any });
+      setRelayPref({ ...getPublishRelayPreference(), preset: draft.relayPreset as RelayPreset });
     }
     setIsPollMode(!!draft.isPollMode);
     setPollOptions(draft.pollOptions && draft.pollOptions.length >= 2 ? draft.pollOptions : ["", ""]);
