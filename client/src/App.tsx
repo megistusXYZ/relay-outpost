@@ -1603,8 +1603,6 @@ function AppLayout() {
 function SpaceBackground() {
   return (
     <>
-      <div className="light-galaxy-specks" aria-hidden="true" />
-      <div className="light-galaxy-drift" aria-hidden="true" />
       <div className="space-bg-nebula" aria-hidden="true" />
       <div className="space-bg-nebula-glow" aria-hidden="true" />
       <div className="space-bg-stars-deep" aria-hidden="true" />

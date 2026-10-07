@@ -16,7 +16,7 @@ export function IdentitySection({ title, children, className }: { title?: string
   return (
     <section className={`rounded-xl border border-border/60 dark:border-white/[0.07] bg-card overflow-hidden shadow-sm shadow-black/[0.04] dark:shadow-none ${className ?? ""}`}>
       {title && (
-        <div className="px-3 py-1.5 bg-gradient-to-r from-primary/[0.10] to-primary/[0.03] border-b border-border/50">
+        <div className="px-3 py-1.5 bg-muted/60 dark:bg-transparent dark:bg-gradient-to-r dark:from-primary/[0.10] dark:to-primary/[0.03] border-b border-border/50">
           <h2 className="text-[11px] font-semibold uppercase tracking-wider text-brand/90">{title}</h2>
         </div>
       )}
