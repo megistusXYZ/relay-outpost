@@ -11,11 +11,12 @@
  * - this provider plays everyone's audio, so you keep hearing the call on any page.
  * Off the call's room, a small draggable bar keeps it in reach.
  */
+import { callTrouble, useCallAudio, type AudioRoom } from "@/lib/concord/call-trouble";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { setCallActive } from "@/lib/call-presence";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
-import { GripVertical, Maximize2, Mic, MicOff, PhoneOff } from "lucide-react";
+import { GripVertical, Maximize2, Mic, MicOff, PhoneOff, Volume2 } from "lucide-react";
 import type { Room, RemoteTrack } from "livekit-client";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { getGlobalSigner } from "@/lib/nip42-auth";
@@ -134,6 +135,8 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
     s.joined.worker.terminate();
     s.audio.remove();
     setCall(null);
+    // A mic or camera trouble from this call isn't news after it ends.
+    setError(null);
   }, []);
 
   const join = useCallback(async (community: StoredCommunity, channel: StoredChannel, title: string) => {
@@ -240,8 +243,11 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
       if (which === "mic") await lp.setMicrophoneEnabled(!lp.isMicrophoneEnabled);
       if (which === "camera") await lp.setCameraEnabled(!lp.isCameraEnabled);
       if (which === "screen") await lp.setScreenShareEnabled(!lp.isScreenShareEnabled);
+      setError(null);
     } catch (err) {
-      setError(String((err as Error)?.message ?? err));
+      // In plain words, with what to do (lib/concord/call-trouble.ts) — and
+      // shown in the call itself, not only before joining.
+      setError(callTrouble(err, which));
     }
     resync();
   }, [resync]);
@@ -260,7 +266,7 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
   useEffect(() => { onChange(value); }, [value, onChange]);
 
   return call && onScreen !== callRoomKey(call.communityId, call.channelId)
-    ? <FloatingCallBar call={call} onToggleMic={value.toggleMic} onLeave={leave} />
+    ? <FloatingCallBar call={call} error={error} onToggleMic={value.toggleMic} onLeave={leave} />
     : null;
 }
 
@@ -277,8 +283,9 @@ function clampPos(x: number, y: number) {
 }
 
 /** The call in reach while you're elsewhere: who's talking, mute, back to the room, leave. */
-function FloatingCallBar({ call, onToggleMic, onLeave }: { call: ActiveCall; onToggleMic: () => Promise<void>; onLeave: () => Promise<void> }) {
+function FloatingCallBar({ call, error, onToggleMic, onLeave }: { call: ActiveCall; error: string | null; onToggleMic: () => Promise<void>; onLeave: () => Promise<void> }) {
   const [, navigate] = useLocation();
+  const sound = useCallAudio(call.room as unknown as AudioRoom);
   const [pos, setPos] = useState(() => clampPos(window.innerWidth - CARD_W - MARGIN, window.innerHeight - CARD_H - MARGIN - BOTTOM_NAV));
   const drag = useRef<{ dx: number; dy: number; moved: boolean } | null>(null);
   useEffect(() => {
@@ -308,8 +315,16 @@ function FloatingCallBar({ call, onToggleMic, onLeave }: { call: ActiveCall; onT
       <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground/50" />
       <button onClick={back} className="min-w-0 flex-1 text-left" data-testid="concord-call-floating-back">
         <p className="truncate text-sm font-medium leading-tight">{call.title}</p>
-        <p className="truncate text-[11px] text-muted-foreground">In call{others > 0 ? ` · ${others} other${others === 1 ? "" : "s"}` : ""}</p>
+        {error
+          ? <p className="truncate text-[11px] text-destructive" title={error} data-testid="concord-call-floating-error">{error}</p>
+          : <p className="truncate text-[11px] text-muted-foreground">In call{others > 0 ? ` · ${others} other${others === 1 ? "" : "s"}` : ""}</p>}
       </button>
+      {sound.blocked && (
+        <button onClick={() => void sound.start()} aria-label="Tap to hear the call" title="Tap to hear the call" data-testid="concord-call-floating-hear"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-primary-foreground">
+          <Volume2 className="h-4 w-4" />
+        </button>
+      )}
       <button onClick={() => void onToggleMic()} aria-label={call.micOn ? "Mute" : "Unmute"}
         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${call.micOn ? "bg-muted text-foreground" : "bg-destructive/15 text-destructive"}`}>
         {call.micOn ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
