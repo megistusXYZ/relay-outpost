@@ -37,12 +37,27 @@ export function ownCallService(): string | null {
   return canonicalOrigin((globalThis as { location?: { origin?: string } }).location?.origin);
 }
 
+/**
+ * A call service someone else named (a group's details, a caller's presence):
+ * an https origin on the public internet. Never an address or a local name —
+ * a member's browser would otherwise knock on a router or a printer inside
+ * their own network because a group said so.
+ */
+export function serviceOrigin(input: unknown): string | null {
+  const origin = canonicalOrigin(input);
+  if (!origin) return null;
+  const host = new URL(origin).hostname;
+  if (host.startsWith("[") || /^\d+(\.\d+){3}$/.test(host) || !host.includes(".")) return null;
+  if (/\.(localhost|local|lan|internal|intranet|home\.arpa|corp|private)$/.test(host)) return null;
+  return origin;
+}
+
 /** A group's `av_brokers`, cleaned: readable https origins only, each once, at most 5. */
 export function readAvBrokers(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   const out: string[] = [];
   for (const entry of raw) {
-    const o = canonicalOrigin(entry);
+    const o = serviceOrigin(entry);
     if (o && !out.includes(o)) out.push(o);
     if (out.length === 5) break;
   }
@@ -83,20 +98,28 @@ export function planCallBroker(o: {
 }
 
 /**
- * The service this call uses: the first candidate that answers its probe.
- * Ours is never probed (joining says so itself if it's down). A group that
- * lists services and none answers gets null — a separate call on ours would
- * leave the person alone while the group talks elsewhere. With no list, ours
- * is the last resort.
+ * The service this call uses. Another app's service is not contacted at all —
+ * not even checked — until the person agrees (`consent`, asked once for all of
+ * them): a check alone tells that service their address and that they're
+ * about to call. Declined → ours. Then the first that answers. Ours is never
+ * checked (joining says so itself if it's down). A group that lists services
+ * and none answers gets null: a separate call on ours would leave the person
+ * alone while the group talks elsewhere. With no list, ours is the last resort.
  */
 export async function chooseCallService(o: {
   room: string; listed: string[]; present: string[]; own: string; agreed: string[];
   probe: (origin: string) => Promise<boolean>;
-}): Promise<{ origin: string; ask: boolean } | null> {
+  consent: (origins: string[]) => Promise<boolean>;
+}): Promise<{ origin: string; agreedTo: string[] } | null> {
   const plan = planCallBroker(o);
   const tries = o.listed.length || plan.candidates.includes(o.own) ? plan.candidates : [...plan.candidates, o.own];
+  let agreedTo: string[] = [];
+  if (plan.ask.length) {
+    if (!(await o.consent(plan.ask).catch(() => false))) return { origin: o.own, agreedTo: [] };
+    agreedTo = plan.ask;
+  }
   for (const origin of tries) {
-    if (origin === o.own || (await o.probe(origin).catch(() => false))) return { origin, ask: plan.ask.includes(origin) };
+    if (origin === o.own || (await o.probe(origin).catch(() => false))) return { origin, agreedTo };
   }
   return null;
 }
@@ -135,7 +158,7 @@ export function noteCallPresence(roomKey: string, rumor: PresenceWord): void {
 export function callServicesIn(roomKey: string, nowMs: number): string[] {
   const out: string[] = [];
   for (const seat of callRoster(heard.get(roomKey) ?? [], nowMs).values()) {
-    const o = canonicalOrigin(seat.broker);
+    const o = serviceOrigin(seat.broker);
     if (o && !out.includes(o)) out.push(o);
   }
   return out;

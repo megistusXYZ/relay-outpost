@@ -64,40 +64,78 @@ describe("where a call goes", () => {
 
 describe("the service a call actually uses", () => {
   const own = "https://relayop.xyz";
+  const ARMADA = "https://armada.buzz";
   const answers = (up: string[]) => {
     const asked: string[] = [];
     return { asked, probe: async (o: string) => { asked.push(o); return up.includes(o); } };
   };
+  const consenting = (yes: boolean) => {
+    const asked: string[][] = [];
+    return { asked, consent: async (origins: string[]) => { asked.push(origins); return yes; } };
+  };
 
   it("the first of the group's services, in the shared order, that answers", async () => {
-    const listed = ["https://armada.buzz", "https://calls.example"];
+    const listed = [ARMADA, "https://calls.example"];
     const [, second] = rankBrokers(ROOM, listed);
     const { probe } = answers([second]);
-    expect(await chooseCallService({ room: ROOM, listed, present: [], own, agreed: [], probe }))
-      .toEqual({ origin: second, ask: true });
+    const { consent } = consenting(true);
+    expect(await chooseCallService({ room: ROOM, listed, present: [], own, agreed: [], probe, consent }))
+      .toEqual({ origin: second, agreedTo: rankBrokers(ROOM, listed) });
+  });
+
+  // Privacy: even a check tells a service your address and that you're about to call.
+  it("contacts no other app's service before the person agrees, and asks once for all of them", async () => {
+    const { asked: probed, probe } = answers([ARMADA]);
+    const { asked, consent } = consenting(false);
+    expect(await chooseCallService({ room: ROOM, listed: [ARMADA], present: [], own, agreed: [], probe, consent }))
+      .toEqual({ origin: own, agreedTo: [] });
+    expect(probed).toEqual([]);
+    expect(asked).toEqual([[ARMADA]]);
   });
 
   it("when none of the group's services answers, it says so instead of quietly starting a separate call on ours", async () => {
     const { probe } = answers([]);
-    expect(await chooseCallService({ room: ROOM, listed: ["https://armada.buzz"], present: [], own, agreed: [], probe })).toBeNull();
+    const { consent } = consenting(true);
+    expect(await chooseCallService({ room: ROOM, listed: [ARMADA], present: [], own, agreed: [], probe, consent })).toBeNull();
   });
 
   it("no list, and the service people are on doesn't answer: ours", async () => {
     const { probe } = answers([]);
-    expect(await chooseCallService({ room: ROOM, listed: [], present: ["https://armada.buzz"], own, agreed: [], probe }))
-      .toEqual({ origin: own, ask: false });
+    const { consent } = consenting(true);
+    expect((await chooseCallService({ room: ROOM, listed: [], present: [ARMADA], own, agreed: [], probe, consent }))?.origin).toBe(own);
   });
 
-  it("ours needs no check first: joining says so itself if it's down", async () => {
-    const { asked, probe } = answers([]);
-    expect(await chooseCallService({ room: ROOM, listed: [own], present: [], own, agreed: [], probe })).toEqual({ origin: own, ask: false });
+  it("ours needs no check and no question: joining says so itself if it's down", async () => {
+    const { asked: probed, probe } = answers([]);
+    const { asked, consent } = consenting(true);
+    expect(await chooseCallService({ room: ROOM, listed: [own], present: [], own, agreed: [], probe, consent })).toEqual({ origin: own, agreedTo: [] });
+    expect(probed).toEqual([]);
     expect(asked).toEqual([]);
   });
 
   it("doesn't ask again in a group where the person already agreed", async () => {
-    const { probe } = answers(["https://armada.buzz"]);
-    expect(await chooseCallService({ room: ROOM, listed: ["https://armada.buzz"], present: [], own, agreed: ["https://armada.buzz"], probe }))
-      .toEqual({ origin: "https://armada.buzz", ask: false });
+    const { probe } = answers([ARMADA]);
+    const { asked, consent } = consenting(false);
+    expect(await chooseCallService({ room: ROOM, listed: [ARMADA], present: [], own, agreed: [ARMADA], probe, consent }))
+      .toEqual({ origin: ARMADA, agreedTo: [] });
+    expect(asked).toEqual([]);
+  });
+});
+
+describe("services on someone's own network are never contacted", () => {
+  // A group's details or a caller's presence could name a router or a printer;
+  // the member's browser would then knock on it from inside their network.
+  it("ignores addresses, local names and one-word hosts", () => {
+    expect(readAvBrokers([
+      "https://192.168.1.1", "https://10.0.0.2:8443", "https://[::1]", "https://127.0.0.1",
+      "https://localhost", "https://printer.local", "https://nas.lan", "https://router", "https://box.internal",
+      "https://armada.buzz",
+    ])).toEqual(["https://armada.buzz"]);
+  });
+  it("…in a caller's presence too", () => {
+    const T = 1_789_240_000;
+    noteCallPresence("room-lan", buildPresenceRumor("d".repeat(64), ROOM, 0n, { state: "joined", identity: "seat-d", broker: "https://192.168.0.1" }, 0, T));
+    expect(callServicesIn("room-lan", T * 1000)).toEqual([]);
   });
 });
 

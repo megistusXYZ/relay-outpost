@@ -169,15 +169,14 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
         own,
         agreed: agreedCallServices(community.community_id),
         probe: (origin) => probeCallService(origin),
+        // Asked before anything is sent to another app's service.
+        consent: (origins) => new Promise<boolean>((answer) => {
+          setAsking({ host: origins.map((o) => new URL(o).host).join(" or "), answer: (ok) => { setAsking(null); answer(ok); } });
+        }),
       });
       if (!choice) { setError("This group's call service isn't answering. Try again in a moment."); return; }
-      let brokerOrigin = choice.origin;
-      if (choice.ask) {
-        const ok = await new Promise<boolean>((answer) => setAsking({ host: new URL(choice.origin).host, answer }));
-        setAsking(null);
-        if (ok) agreeCallService(community.community_id, choice.origin);
-        else brokerOrigin = own;
-      }
+      for (const origin of choice.agreedTo) agreeCallService(community.community_id, origin);
+      const brokerOrigin = choice.origin;
       const [{ joinCall }, lk, workerModule] = await Promise.all([
         import("@/lib/concord/concord-call-e2ee"),
         import("livekit-client"),

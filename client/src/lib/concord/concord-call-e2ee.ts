@@ -79,6 +79,8 @@ export async function joinCall(input: JoinCallInput): Promise<JoinedCall> {
     if (!res.ok || !body.token || !body.url || !body.identity) {
       throw new Error(body.error ?? `The call service answered ${res.status}`);
     }
+    // Only ever a secure media server, whatever a service hands back.
+    if (!/^wss:\/\/[^\s/]+/i.test(body.url)) throw new Error("The call service named a media server that isn't secure, so the call didn't join");
     const keyProvider = new CallKeyProvider();
     const room = input.createRoom({ keyProvider, worker });
     // Our own key first, then encryption on, then connect: nothing we send
