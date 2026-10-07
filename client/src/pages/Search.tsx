@@ -1656,7 +1656,7 @@ function ProfileCard({ profile, tier, isFollowed, followsYou, grouped = false }:
 type PostSortOption = "recent" | "reactions" | "zaps" | "replies";
 type PostTimeFilter = "all" | "24h" | "7d" | "30d" | "1y";
 
-const POST_SORT_OPTIONS: { value: PostSortOption; label: string; icon: typeof TrendingUp }[] = [
+const POST_SORT_OPTIONS: { value: PostSortOption; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { value: "recent", label: "Recent", icon: Clock },
   { value: "reactions", label: "Most Reacted", icon: Heart },
   { value: "zaps", label: "Most Zapped", icon: BtcZapIcon },
@@ -3760,7 +3760,7 @@ function FeedIcon({ feed, size = 32 }: { feed: SavedFeed; size?: number }) {
     return (
       <img
         src={`/api/rss/image-proxy?url=${encodeURIComponent(feed.feedImage)}`}
-        alt={`${feed.title || "Feed"} icon`}
+        alt={`${feed.name || "Feed"} icon`}
         loading="lazy"
         className="rounded-lg shrink-0 object-cover"
         style={{ width: size, height: size }}

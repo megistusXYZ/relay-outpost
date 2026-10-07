@@ -56,7 +56,8 @@ export function withSignerTimeout<T>(promise: Promise<T>, ms: number, operation 
 }
 
 export async function signWithTimeout(
-  signer: ISigner,
+  // Only signEvent is used, so a minimal signer (an upload's own) will do.
+  signer: Pick<ISigner, "signEvent">,
   eventTemplate: Parameters<ISigner["signEvent"]>[0],
   timeoutMs = SIGNER_SIGN_TIMEOUT,
 ): Promise<ReturnType<ISigner["signEvent"]>> {
