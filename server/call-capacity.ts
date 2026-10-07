@@ -19,6 +19,8 @@ export interface CallCapacity {
   refresh(nowMs: number): Promise<void>;
   /** For the site owner's status line. */
   usage(nowMs: number): { calls: number; max: number };
+  /** Is a call already running in this room (so a new seat doesn't start one)? */
+  isRunning(room: string, nowMs: number): boolean;
 }
 
 const MINUTE = 60_000;
@@ -70,6 +72,9 @@ export function createCallCapacity(o: {
     refresh,
     usage(now) {
       return { calls: running(now).size, max: o.maxCalls };
+    },
+    isRunning(room, now) {
+      return running(now).has(room);
     },
   };
 }

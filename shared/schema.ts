@@ -66,3 +66,19 @@ export const insertScheduledPostSchema = createInsertSchema(scheduledPosts).omit
 
 export type ScheduledPost = typeof scheduledPosts.$inferSelect;
 export type InsertScheduledPost = z.infer<typeof insertScheduledPostSchema>;
+
+// Devices that asked to be told about calls and messages while the app is
+// closed (owner, 2026-10-06; server/push/). Only the push address and what to
+// ring it for: never who sent what. A row goes the moment the device turns
+// notifications off, or its push service says it's gone.
+export const pushDevices = pgTable("push_devices", {
+  endpoint: text("endpoint").primaryKey(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  /** The key whose sealed messages ring this device; null for calls only. */
+  watch: text("watch"),
+  inboxRelays: text("inbox_relays").array().notNull().default([]),
+  /** Call rooms (voice keys' public keys) that ring this device. */
+  rooms: text("rooms").array().notNull().default([]),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});

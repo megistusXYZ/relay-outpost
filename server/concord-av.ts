@@ -157,6 +157,8 @@ export function registerConcordAvRoutes(app: Express, opts: {
   capacity?: CallCapacity;
   /** Our own addresses (ALLOWED_ORIGINS); unset, as on a laptop, means any. */
   ownOrigins?: string[];
+  /** The first seat in a room nobody was in: a call has started (rings closed apps). */
+  onCallStarted?: (room: string) => void | Promise<void>;
 } = {}): void {
   const ownOrigins = opts.ownOrigins
     ?? (process.env.ALLOWED_ORIGINS ?? "").split(",").map((o) => o.trim().toLowerCase()).filter(Boolean);
@@ -205,6 +207,7 @@ export function registerConcordAvRoutes(app: Express, opts: {
       return res.status(421).json({ error: "This request was made for a different call service" });
     }
     const url = `${origin}${req.originalUrl}`;
+    const wasRunning = capacity.isRunning(room, Date.now());
     const result = issueAvToken({
       authorization: req.get("authorization"),
       room,
@@ -216,6 +219,7 @@ export function registerConcordAvRoutes(app: Express, opts: {
       livekitUrl: process.env.LIVEKIT_URL ?? "",
       admit: (r) => capacity.admit(r, Date.now()),
     });
+    if (result.status === 200 && !wasRunning) void Promise.resolve(opts.onCallStarted?.(room)).catch(() => {});
     return res.status(result.status).json(result.body);
   });
 

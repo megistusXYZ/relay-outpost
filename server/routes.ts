@@ -10,6 +10,11 @@ import { db } from "./db";
 import { SERVER_APP_VERSION } from "./version";
 import { registerSignupTelemetryRoutes } from "./analytics/signup-telemetry";
 import { registerConcordAvRoutes } from "./concord-av";
+import { registerPushRoutes } from "./push/push-devices";
+import { dbPushStore } from "./push/push-store-db";
+import { createRinger } from "./push/push-ring";
+import { createMessageWatcher } from "./push/push-messages";
+import { vapidFromEnv, webPushSend } from "./push/push-send";
 import { scheduledPosts, podcastTrendSnapshots } from "@shared/schema";
 import { resolveBuzzDirectory } from "@shared/buzz-directory";
 import { safeStreamContentType, safeImageContentType } from "./media-safety";
@@ -394,8 +399,17 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   registerSignupTelemetryRoutes(app);
+  // Notifications while the app is closed (server/push/): devices sign up,
+  // a call's first seat rings its room, sealed messages alert their key.
+  const vapid = vapidFromEnv();
+  const pushStore = dbPushStore();
+  const pushSend = vapid ? webPushSend(vapid) : null;
+  const ringer = pushSend ? createRinger({ store: pushStore, send: pushSend }) : null;
+  const messageWatcher = pushSend ? createMessageWatcher({ store: pushStore, send: pushSend }) : null;
+  registerPushRoutes(app, { store: pushStore, publicKey: vapid?.publicKey ?? null, onChange: () => { void messageWatcher?.refresh().catch(() => {}); } });
+  void messageWatcher?.refresh().catch(() => {});
   // Call tokens for encrypted group-chat calls (Concord CORD-07).
-  registerConcordAvRoutes(app);
+  registerConcordAvRoutes(app, { onCallStarted: ringer ? (room) => ringer.ringRoom(room) : undefined });
 
   // Deployed app version — the same build-stamped string baked into the client
   // bundle (see script/build.ts). The client's update check polls this and

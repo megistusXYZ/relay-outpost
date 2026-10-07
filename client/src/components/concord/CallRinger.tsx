@@ -53,8 +53,10 @@ function CallerName({ pubkey }: { pubkey: string }) {
   return <>{name}</>;
 }
 
-export function CallRinger({ me, inCallKey, onJoin }: {
+export function CallRinger({ me, inCallKey, onJoin, onRing }: {
   me: string;
+  /** Each ring that shows (the engine offers closed-app notifications once). */
+  onRing?: () => void;
   /** The room key of the call you're in, if any (callRoomKey). */
   inCallKey: string | null;
   onJoin: (community: StoredCommunity, channel: StoredChannel) => void;
@@ -65,6 +67,8 @@ export function CallRinger({ me, inCallKey, onJoin }: {
   const inCallRef = useRef(inCallKey);
   inCallRef.current = inCallKey;
   const decider = useMemo(() => createRingDecider({ me }), [me]);
+  const onRingRef = useRef(onRing);
+  onRingRef.current = onRing;
 
   useEffect(() => {
     if (!enabled) { setCommunities([]); return; }
@@ -96,6 +100,7 @@ export function CallRinger({ me, inCallKey, onJoin }: {
           if (!ring) return;
           setRinging({ key, community, channel, caller: ring.caller, at: Date.now() });
           chime();
+          onRingRef.current?.();
           if (document.hidden && typeof Notification !== "undefined" && Notification.permission === "granted") {
             try { new Notification("Incoming call", { body: `A call started in ${community.name || "your group"}`, tag: `call-${key}` }); } catch { /* not allowed here */ }
           }
