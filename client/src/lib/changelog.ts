@@ -40,6 +40,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.19.0",
+    date: "2026-10-11",
+    title: "Calls that find you",
+    changes: [
+      { type: "new", text: "Calls ring now: \"Ana started a call in Bali crew\", with Join or Not now, and they can reach you even when the app is closed." },
+      { type: "new", text: "Turn on notifications in Settings › Chats to hear about calls and new messages. They never say who wrote or what." },
+      { type: "improved", text: "Call friends who use Armada: you all meet in the same call, and you are asked before another app's call service is used." },
+      { type: "new", text: "Badges: design your own, give them to people who earned them, and choose which ones show on your profile." },
+      { type: "improved", text: "Trust settings are simpler: three plain choices for how careful the app should be with people you don't know." },
+    ],
+  },
+  {
     version: "1.18.0",
     date: "2026-10-06",
     title: "Smoother, quicker, more private",
