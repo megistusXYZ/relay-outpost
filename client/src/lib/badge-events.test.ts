@@ -9,7 +9,7 @@
  * kind 10008 as the profile list and asks clients to treat both as one).
  */
 import { describe, it, expect } from "vitest";
-import { badgeDefinitionTemplate, profileBadgesTemplates, withAcceptedBadge, pickProfileBadgesEvent, badgesWaiting, badgeDeletionTemplate, withoutDeleted, badgeAwardTemplate, moveShownBadge, hideShownBadge, besideName } from "./badge-events";
+import { badgeDefinitionTemplate, profileBadgesTemplates, withAcceptedBadge, pickProfileBadgesEvent, badgesWaiting, badgeDeletionTemplate, withoutDeleted, badgeAwardTemplate, moveShownBadge, hideShownBadge, besideName, badgeCommunity, fromCommunityLine } from "./badge-events";
 
 const dOf = (t: { tags: string[][] }) => t.tags.find((x) => x[0] === "d")?.[1];
 const pairs = (t: { tags: string[][] }) => t.tags.filter((x) => x[0] === "a" || x[0] === "e").map((x) => `${x[0]}:${x[1]}`);
@@ -163,5 +163,19 @@ describe("beside a name", () => {
     expect(besideName(["first", "second", "third"])).toEqual({ first: "first", more: 2 });
     expect(besideName(["only"])).toEqual({ first: "only", more: 0 });
     expect(besideName([])).toEqual({ first: undefined, more: 0 });
+  });
+});
+
+describe("a community's badge", () => {
+  it("carries its community; a personal badge doesn't", () => {
+    const c = badgeDefinitionTemplate({ name: "Founding member", description: "", image: "", community: "wss://bali.example/" });
+    expect(badgeCommunity(c.tags)).toBe("wss://bali.example/");
+    expect(badgeCommunity(badgeDefinitionTemplate({ name: "Helper", description: "", image: "" }).tags)).toBeUndefined();
+  });
+
+  it("reads 'from' the community's name, or its address when it has none", () => {
+    expect(fromCommunityLine("wss://bali.example/", "Bitcoin Bali")).toBe("from Bitcoin Bali");
+    expect(fromCommunityLine("wss://bali.example/")).toBe("from bali.example");
+    expect(fromCommunityLine(undefined)).toBe("");
   });
 });

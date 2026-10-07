@@ -4,7 +4,7 @@ import { getOutpostRelays, getActiveDefaultRelays } from "./outpost-relays";
 import { canReachAny, type Reached } from "./relay-reach";
 import type { Event as NostrEvent } from "nostr-tools";
 import type { ISigner } from "applesauce-signers";
-import { badgeDefinitionTemplate, badgeDeletionTemplate, badgeAwardTemplate, withoutDeleted, profileBadgesTemplates, pickProfileBadgesEvent, withAcceptedBadge, KIND_PROFILE_BADGES as KIND_PROFILE_LIST, KIND_PROFILE_BADGES_LEGACY } from "./badge-events";
+import { badgeDefinitionTemplate, badgeDeletionTemplate, badgeAwardTemplate, badgeCommunity, withoutDeleted, profileBadgesTemplates, pickProfileBadgesEvent, withAcceptedBadge, KIND_PROFILE_BADGES as KIND_PROFILE_LIST, KIND_PROFILE_BADGES_LEGACY } from "./badge-events";
 
 export const KIND_BADGE_DEFINITION = 30009;
 export const KIND_BADGE_AWARD = 8;
@@ -21,6 +21,8 @@ export interface BadgeDefinition {
   thumb: string;
   /** The designer's settings (JSON) when the badge was made in the designer. */
   design?: string;
+  /** The community (relay address) a community badge belongs to. */
+  community?: string;
   createdAt: number;
   rawEvent: NostrEvent;
 }
@@ -65,6 +67,12 @@ function getBadgeRelays(): string[] {
   return filterBlockedRelays(combined).slice(0, 6);
 }
 
+/** A community badge (and its gifts) also goes to the community's own relay. */
+function relaysFor(community?: string): string[] {
+  const base = getBadgeRelays();
+  return community ? filterBlockedRelays([community, ...base.filter((r) => r !== community)]) : base;
+}
+
 export function parseBadgeDefinition(event: NostrEvent): BadgeDefinition {
   const dTag = event.tags.find(t => t[0] === "d")?.[1] || "";
   const name = event.tags.find(t => t[0] === "name")?.[1] || "";
@@ -82,6 +90,7 @@ export function parseBadgeDefinition(event: NostrEvent): BadgeDefinition {
     image,
     thumb,
     design,
+    community: badgeCommunity(event.tags),
     createdAt: event.created_at,
     rawEvent: event,
   };
@@ -375,14 +384,14 @@ async function fetchBadgeDefinitionsByAuthorUnchecked(pubkey: string): Promise<B
 
 export async function createBadgeDefinition(
   signer: ISigner,
-  badge: { id?: string; name: string; description: string; image: string; imageSize?: string; thumb?: string; thumbSize?: string; design?: string },
+  badge: { id?: string; name: string; description: string; image: string; imageSize?: string; thumb?: string; thumbSize?: string; design?: string; community?: string },
 ): Promise<NostrEvent | null> {
   // A new badge gets a permanent identity of its own; pass `id` to edit one.
   const eventTemplate = badgeDefinitionTemplate(badge);
 
   try {
     const signed = await signWithTimeout(signer, eventTemplate as Parameters<ISigner["signEvent"]>[0]);
-    const published = await publishEvent(signed, getBadgeRelays());
+    const published = await publishEvent(signed, relaysFor(badge.community));
     if (published) {
       const def = parseBadgeDefinition(signed);
       const aTag = badgeATagValue(signed.pubkey, def.dTag);
@@ -402,12 +411,13 @@ export async function awardBadge(
   badgeDTag: string,
   recipientPubkeys: string[],
   note?: string,
+  community?: string,
 ): Promise<NostrEvent | null> {
   const eventTemplate = badgeAwardTemplate({ badgeRef: badgeATagValue(badgeDefPubkey, badgeDTag), recipients: recipientPubkeys, note });
 
   try {
     const signed = await signWithTimeout(signer, eventTemplate as Parameters<ISigner["signEvent"]>[0]);
-    const published = await publishEvent(signed, getBadgeRelays());
+    const published = await publishEvent(signed, relaysFor(community));
     if (published) {
       for (const pk of recipientPubkeys) {
         const existing = badgeAwardsForUserCache.get(pk) || [];

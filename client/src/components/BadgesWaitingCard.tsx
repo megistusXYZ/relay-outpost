@@ -21,6 +21,7 @@ import {
   type BadgeAward, type BadgeDefinition,
 } from "@/lib/nip58-badges";
 import { badgesWaiting } from "@/lib/badge-events";
+import { FromCommunity } from "@/components/badges/FromCommunity";
 
 function GiverName({ pubkey }: { pubkey: string }) {
   const profile = use$(() => eventStore.replaceable(KIND_METADATA, pubkey), [pubkey]);
@@ -106,6 +107,7 @@ export function BadgesWaitingCard() {
               <span className="font-medium"><GiverName pubkey={award.pubkey} /></span> gave you{" "}
               <span className="font-semibold">{def?.name || "a badge"}</span>
             </p>
+            <FromCommunity url={def?.community} className="block text-xs text-muted-foreground" />
             {def?.description && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{def.description}</p>}
           </div>
           <div className="flex items-center gap-2">

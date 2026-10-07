@@ -15,7 +15,7 @@ import { useTechnicalDetails } from "@/lib/technical-details";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Link } from "wouter";
 import type { Event as NostrEvent } from "nostr-tools";
-import { Ban, Copy, Download, MessageCircle, ScanSearch, Search, ShieldCheck, SlidersHorizontal, UserRound, X } from "lucide-react";
+import { Award, Ban, Copy, Download, MessageCircle, ScanSearch, Search, ShieldCheck, SlidersHorizontal, UserRound, X } from "lucide-react";
 import { EventInspector, type InspectedEvent } from "./EventInspector";
 import { DEFAULT_RELAYS } from "@/lib/nostr";
 import { supportsNip, type Nip11Document } from "@/lib/nip11";
@@ -35,6 +35,8 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { GiveBadge } from "@/components/badges/GiveBadge";
 import { AccessControlTab } from "./AccessControlTab";
 import { ManagedAtNote } from "./ops-ui";
 import { ConfirmAction, type PendingAction } from "./ConfirmAction";
@@ -204,6 +206,7 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts, team, initialFilter }: 
   // ---- acting ----
   const [selectMode, setSelectMode] = useState(false);
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [giving, setGiving] = useState<string[] | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const toggle = (pk: string) => setChecked((prev) => { const n = new Set(prev); if (n.has(pk)) n.delete(pk); else n.add(pk); return n; });
@@ -391,11 +394,27 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts, team, initialFilter }: 
             <div className="ml-auto flex items-center gap-1">
               {can.ban && <Button size="sm" variant="ghost" disabled={!checked.size} onClick={() => setPending({ kind: "ban", pubkeys: [...checked], rule: false })} className="h-10 px-3 text-[13px]" data-testid="ops-people-bulk-ban"><Ban className="w-4 h-4 mr-1.5" />Ban</Button>}
               {can.allow && <Button size="sm" variant="ghost" disabled={!checked.size} onClick={() => quick("allow", [...checked])} className="h-10 px-3 text-[13px]" data-testid="ops-people-bulk-allow"><ShieldCheck className="w-4 h-4 mr-1.5" />Allow</Button>}
+              {/* The community's badges (badges-plan step 4) — the owner gives them, like Discord roles. */}
+              {team?.isOwner && <Button size="sm" variant="ghost" disabled={!checked.size} onClick={() => setGiving([...checked])} className="h-10 px-3 text-[13px]" data-testid="ops-people-bulk-badge"><Award className="w-4 h-4 mr-1.5" />Give badge</Button>}
               <Button size="sm" variant="ghost" disabled={!checked.size} onClick={exportCsv} className="h-10 px-3 text-[13px]"><Download className="w-4 h-4 mr-1.5" />Export</Button>
             </div>
           </div>
         </div>
       )}
+
+      <Dialog open={!!giving} onOpenChange={(o) => { if (!o) setGiving(null); }}>
+        <DialogContent className="max-h-[88dvh] overflow-y-auto" data-testid="ops-people-give-dialog">
+          <DialogHeader><DialogTitle>Give a badge</DialogTitle></DialogHeader>
+          {giving && (
+            <GiveBadge
+              community={relayUrl}
+              initialPeople={giving}
+              onCreate={() => { setGiving(null); window.location.hash = "badges"; }}
+              onGiven={() => { setGiving(null); setSelectMode(false); setChecked(new Set()); }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {pending && (
         <ConfirmAction pending={pending} relayName={relayName} canRestore={false} progress={progress}

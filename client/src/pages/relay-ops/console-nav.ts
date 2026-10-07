@@ -31,6 +31,7 @@ export const COMMUNITY_SCREENS: ReadonlyArray<ConsoleScreen> = [
   { tab: "featured", label: "Featured & announcements", hint: "What greets people, and news you post" },
   { tab: "contact", label: "Member inbox", hint: "Let members contact the team" },
   { tab: "team", label: "Team", hint: "Who helps you run it" },
+  { tab: "badges", label: "Badges", hint: "Badges your community gives" },
   { tab: "log", label: "Moderation log", hint: "Everything your team has done here" },
   // Only where the relay runs group chats (the page leaves it out otherwise).
   { tab: "groups", label: "Group chats", hint: "Create groups, invite people, set roles" },
@@ -46,7 +47,6 @@ export const ADVANCED_SCREENS: ReadonlyArray<ConsoleScreen> = [
 const MOVED: Record<string, TabId> = {
   // Public card's announcements moved to Featured & announcements (2026-10-04).
   announce: "featured",
-  badges: "access",
 };
 
 const ALL_TABS = new Set<string>([

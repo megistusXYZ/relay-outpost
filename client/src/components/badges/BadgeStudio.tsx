@@ -18,6 +18,7 @@ import {
   type BadgeDesign, type BadgeColour, type BadgeShape,
 } from "@/lib/badge-design";
 import { badgeDataUrl, renderBadgePng } from "@/lib/badge-render";
+import { FromCommunity } from "./FromCommunity";
 
 const SHAPE_LABEL: Record<BadgeShape, string> = { circle: "Circle", shield: "Shield", star: "Star", hexagon: "Hexagon" };
 
@@ -45,11 +46,13 @@ function Picture({ src, size, label }: { src: string; size: number; label?: stri
   return <img src={src} alt={label ?? ""} width={size} height={size} className="shrink-0 object-contain" style={{ width: size, height: size }} onError={() => setBroken(true)} />;
 }
 
-export function BadgeStudio({ editing, startTemplate, onDone, onCancel }: {
+export function BadgeStudio({ editing, startTemplate, community, onDone, onCancel }: {
   /** Edit this badge instead of making a new one. */
   editing?: BadgeDefinition;
   /** Open straight into a template (e.g. "thanks" from an empty page). */
   startTemplate?: string;
+  /** Make it the community's badge (its relay address): it reads "from <community>". */
+  community?: string;
   onDone: () => void;
   onCancel: () => void;
 }) {
@@ -136,6 +139,7 @@ export function BadgeStudio({ editing, startTemplate, onDone, onCancel }: {
       const ok = await createBadgeDefinition(signer, {
         id: editing?.dTag, name, description: design.description.trim(),
         image, imageSize, thumb: thumb || undefined, thumbSize: thumb ? thumbSize : undefined, design: saved,
+        community: editing?.community ?? community,
       });
       if (!ok) throw new Error("publish");
       toast({ title: editing ? "Badge updated" : "Badge created", description: editing ? "Everyone who has it sees the change." : `"${name}" is ready to give.` });
@@ -240,6 +244,7 @@ export function BadgeStudio({ editing, startTemplate, onDone, onCancel }: {
               <Picture src={picture} size={56} label={name} />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{name || "Your badge"}</p>
+                <FromCommunity url={editing?.community ?? community} className="block text-xs text-muted-foreground" />
                 {design.description && <p className="line-clamp-2 text-xs text-muted-foreground">{design.description}</p>}
               </div>
             </div>

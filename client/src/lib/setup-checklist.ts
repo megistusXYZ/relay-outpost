@@ -18,10 +18,12 @@ export interface SetupFacts {
   teammates: number;
   justMe: boolean;
   inboxOn: boolean;
+  /** The community's own badges (badges-plan step 4: a nudge, never automatic). */
+  badges: number;
   shared: boolean;
 }
 
-export type SetupItemId = "identity" | "about" | "who-can-post" | "team" | "inbox" | "share";
+export type SetupItemId = "identity" | "about" | "who-can-post" | "team" | "inbox" | "badge" | "share";
 
 export interface SetupItem {
   id: SetupItemId;
@@ -29,7 +31,7 @@ export interface SetupItem {
   hint: string;
   done: boolean;
   /** The screen where it's done; null when it's done right here (sharing). */
-  go: "community" | "access" | "team" | "contact" | null;
+  go: "community" | "access" | "team" | "contact" | "badges" | null;
 }
 
 export function setupChecklist(f: SetupFacts): { items: SetupItem[]; done: number; complete: boolean } {
@@ -39,6 +41,7 @@ export function setupChecklist(f: SetupFacts): { items: SetupItem[]; done: numbe
     { id: "who-can-post", label: "Who can post", hint: "Check it's how you want it", done: f.whoCanPostConfirmed, go: "access" },
     { id: "team", label: "Your team", hint: "Who helps you run it — or just you", done: f.teammates > 0 || f.justMe, go: "team" },
     { id: "inbox", label: "Member inbox", hint: "Let members contact you", done: f.inboxOn, go: "contact" },
+    { id: "badge", label: "Make your first badge", hint: "Founding member is ready to go", done: f.badges > 0, go: "badges" },
     { id: "share", label: "Share your community", hint: "Copy its link and send it to people", done: f.shared, go: null },
   ];
   const done = items.filter((i) => i.done).length;

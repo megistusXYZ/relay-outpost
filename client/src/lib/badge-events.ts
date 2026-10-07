@@ -47,6 +47,8 @@ export function badgeDefinitionTemplate(b: {
   thumbSize?: string;
   /** The designer's settings, so Edit can reopen them. Other apps ignore it. */
   design?: string;
+  /** The community (relay address) this badge belongs to; leave out for a personal one. */
+  community?: string;
 }): EventTemplate {
   const tags: string[][] = [
     ["d", b.id || newBadgeId()],
@@ -56,6 +58,7 @@ export function badgeDefinitionTemplate(b: {
   if (b.image) tags.push(b.imageSize ? ["image", b.image, b.imageSize] : ["image", b.image]);
   if (b.thumb) tags.push(b.thumbSize ? ["thumb", b.thumb, b.thumbSize] : ["thumb", b.thumb]);
   if (b.design) tags.push(["design", b.design]);
+  if (b.community) tags.push(["r", b.community]);
   return { kind: KIND_BADGE_DEFINITION, created_at: now(), tags, content: "" };
 }
 
@@ -163,4 +166,16 @@ export function hideShownBadge(shown: ShownBadge[], index: number): ShownBadge[]
 /** What shows beside a name: the first badge, and how many more there are. */
 export function besideName<T>(badges: T[]): { first: T | undefined; more: number } {
   return { first: badges[0], more: Math.max(0, badges.length - 1) };
+}
+
+/** The community a badge belongs to (its relay address), if it's a community badge. */
+export function badgeCommunity(tags: string[][]): string | undefined {
+  return tags.find((t) => t[0] === "r" && /^wss?:\/\//.test(t[1] ?? ""))?.[1];
+}
+
+/** "from Bitcoin Bali" — the community's name, or its address without the scheme. */
+export function fromCommunityLine(relayUrl: string | undefined, name?: string): string {
+  if (!relayUrl) return "";
+  const label = name?.trim() || relayUrl.replace(/^wss?:\/\//, "").replace(/\/+$/, "");
+  return `from ${label}`;
 }

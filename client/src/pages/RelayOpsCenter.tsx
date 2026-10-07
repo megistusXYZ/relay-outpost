@@ -17,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AlertTriangle, ShieldCheck, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Megaphone, Plus, Terminal, Users, UsersRound, ScrollText, Inbox, Cable, IdCard, BarChart3, MessagesSquare, Code2 } from "lucide-react";
+import { AlertTriangle, ShieldCheck, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Megaphone, Plus, Terminal, Users, UsersRound, ScrollText, Inbox, Cable, IdCard, BarChart3, MessagesSquare, Code2, Award } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useTechnicalDetails, setTechnicalDetails } from "@/lib/technical-details";
 import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
@@ -40,6 +40,7 @@ import { AnnounceTab } from "./relay-ops/AnnounceTab";
 import { CommunityTab } from "./relay-ops/CommunityTab";
 import { InboxTab } from "./relay-ops/InboxTab";
 import { TeamScreen, LogScreen } from "./relay-ops/TeamScreens";
+import { CommunityBadges } from "./relay-ops/CommunityBadges";
 import { useRelayTeam } from "@/hooks/use-relay-team";
 import { useRelaysNeedYou } from "@/contexts/NeedsYouContext";
 
@@ -55,6 +56,7 @@ const SCREEN_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   card: IdCard,
   scans: BarChart3,
   groups: MessagesSquare,
+  badges: Award,
 };
 
 /**
@@ -483,6 +485,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                 {(activeTab === "events" || activeTab === "live") && <ContentTab relayUrl={selectedRelay} nip11={nip11} initialLive={activeTab === "live"} initialQuery={contentSeed} />}
                 {activeTab === "people" && <PeopleTab relayUrl={selectedRelay} nip11={nip11} team={team} initialFilter={peopleFilter} onSeePosts={(npub) => { setContentSeed(npub); setActiveTab("events"); }} />}
                 {activeTab === "team" && <TeamScreen relayUrl={selectedRelay} nip11={nip11} team={team} />}
+                {activeTab === "badges" && <CommunityBadges relayUrl={selectedRelay} ownerPubkey={nip11?.pubkey?.toLowerCase()} isOwner={role === "Owner"} />}
                 {activeTab === "log" && <LogScreen relayUrl={selectedRelay} nip11={nip11} team={team} />}
                 {activeTab === "access" && (
                   // Who can post: the rules (who may, who's approved or banned, trust),
