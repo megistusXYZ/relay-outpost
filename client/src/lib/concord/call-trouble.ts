@@ -25,6 +25,30 @@ export function callTrouble(err: unknown, which: Device): string | null {
   return `Something went wrong with your ${NOUN[which]}. Try again.`;
 }
 
+/**
+ * What to tell someone when joining a call failed (owner, 2026-10-07). The
+ * call service's own refusals are already plain ("Calls are busy right
+ * now…") and are kept. LiveKit's connection errors are not — "could not
+ * establish pc connection" is what a network that only allows ordinary web
+ * traffic produces — so they become one plain line with what to try. Null
+ * when the person cancelled or left while joining.
+ *
+ * LiveKit's ConnectionError is recognised by name and reason (its
+ * ConnectionErrorReason numbers), so this needs no LiveKit import.
+ */
+const CONNECTION_REASON = { NotAllowed: 0, ServerUnreachable: 1, InternalError: 2, Cancelled: 3, LeaveRequest: 4, Timeout: 5, WebSocket: 6, ServiceNotFound: 7 } as const;
+const NETWORK_BLOCKED: number[] = [CONNECTION_REASON.ServerUnreachable, CONNECTION_REASON.InternalError, CONNECTION_REASON.Timeout, CONNECTION_REASON.WebSocket];
+
+export function callJoinTrouble(err: unknown): string | null {
+  const e = err as { name?: string; reason?: unknown; message?: string } | null;
+  if (e?.name === "ConnectionError" && typeof e.reason === "number") {
+    if (e.reason === CONNECTION_REASON.Cancelled || e.reason === CONNECTION_REASON.LeaveRequest) return null;
+    if (NETWORK_BLOCKED.includes(e.reason)) return "Your network seems to be blocking calls. Try mobile data or a different Wi-Fi.";
+    return "Couldn't join the call. Try again in a moment.";
+  }
+  return String(e?.message ?? err);
+}
+
 /** The slice of a LiveKit Room this needs. */
 export interface AudioRoom {
   readonly canPlaybackAudio: boolean;

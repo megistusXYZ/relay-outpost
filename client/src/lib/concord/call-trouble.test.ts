@@ -8,7 +8,8 @@
  */
 import { describe, it, expect, beforeAll, afterEach, vi } from "vitest";
 import { createElement } from "react";
-import { callTrouble, useCallAudio } from "./call-trouble";
+import { ConnectionError } from "livekit-client";
+import { callTrouble, callJoinTrouble, useCallAudio } from "./call-trouble";
 
 const err = (name: string) => Object.assign(new Error(name), { name });
 
@@ -60,6 +61,30 @@ function Probe({ room }: { room: ReturnType<typeof fakeRoom> | null }) {
   const { blocked, start } = useCallAudio(room as never);
   return blocked ? createElement("button", { "data-testid": "tap", onClick: () => void start() }, "Tap to hear the call") : createElement("span", { "data-testid": "fine" });
 }
+
+describe("what a call says when it can't connect", () => {
+  // LiveKit's own errors, as it throws them (livekit-client ConnectionError).
+  const BLOCKED = "Your network seems to be blocking calls. Try mobile data or a different Wi-Fi.";
+
+  it("a network that blocks the call says so, in plain words — never LiveKit's text", () => {
+    expect(callJoinTrouble(ConnectionError.internal("could not establish pc connection"))).toBe(BLOCKED);
+    expect(callJoinTrouble(ConnectionError.serverUnreachable("could not establish signal connection"))).toBe(BLOCKED);
+    expect(callJoinTrouble(ConnectionError.timeout("room connection has timed out"))).toBe(BLOCKED);
+    expect(callJoinTrouble(ConnectionError.websocket("websocket closed"))).toBe(BLOCKED);
+  });
+
+  it("leaving or cancelling while joining isn't an error", () => {
+    expect(callJoinTrouble(ConnectionError.cancelled("Signal connection aborted"))).toBeNull();
+  });
+
+  it("a call the server turned away gets a plain try-again", () => {
+    expect(callJoinTrouble(ConnectionError.notAllowed("permissions denied", 401))).toBe("Couldn't join the call. Try again in a moment.");
+  });
+
+  it("our own plain answers (a busy service, no encryption) are kept as they are", () => {
+    expect(callJoinTrouble(new Error("Calls are busy right now. Try again in a few minutes."))).toBe("Calls are busy right now. Try again in a few minutes.");
+  });
+});
 
 describe("a call's sound when the browser holds it back", () => {
   it("asks for a tap, and plays once tapped", async () => {
