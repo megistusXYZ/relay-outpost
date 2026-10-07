@@ -6,6 +6,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { createHmac, randomBytes } from "node:crypto";
+import { request } from "node:http";
 import { finalizeEvent, generateSecretKey, getPublicKey } from "nostr-tools";
 import { issueAvToken } from "./concord-av";
 
@@ -201,6 +202,37 @@ describe("how many calls are running, for the team only", () => {
       expect(ok.status).toBe(200);
       expect(await ok.json()).toEqual({ calls: 3, max: 50 });
       expect(ok.headers.get("access-control-allow-origin")).toBeNull();
+    } finally {
+      server.close();
+    }
+  });
+});
+
+describe("a request made to another address can't be replayed here", () => {
+  // Another call service receives requests signed for ITS address. Sent to
+  // our server with that address as the host, it must not get a seat here.
+  const send = (port: number, host: string, room: string, authorization: string) => new Promise<{ status: number; body: string }>((resolve, reject) => {
+    const req = request({ host: "127.0.0.1", port, path: `/.well-known/concord/av/${room}`, headers: { Host: host, "X-Forwarded-Proto": "https", Authorization: authorization } }, (res) => {
+      let body = ""; res.on("data", (c) => { body += c; }); res.on("end", () => resolve({ status: res.statusCode ?? 0, body }));
+    });
+    req.on("error", reject); req.end();
+  });
+
+  it("answers only requests made to our own address", async () => {
+    const express = (await import("express")).default;
+    const { registerConcordAvRoutes } = await import("./concord-av");
+    const app = express();
+    app.set("trust proxy", 1);
+    registerConcordAvRoutes(app, { ownOrigins: ["https://relayop.xyz"] });
+    const server = app.listen(0);
+    const port = (server.address() as { port: number }).port;
+    try {
+      const elsewhere = signedRequest({ url: "https://evil.example/.well-known/concord/av/{room}" });
+      const replayed = await send(port, "evil.example", elsewhere.room, elsewhere.authorization);
+      expect(replayed.status).toBe(421);
+      const ours = signedRequest({ url: "https://relayop.xyz/.well-known/concord/av/{room}" });
+      // Reaches the token check (which here says calls aren't set up).
+      expect((await send(port, "relayop.xyz", ours.room, ours.authorization)).status).toBe(503);
     } finally {
       server.close();
     }

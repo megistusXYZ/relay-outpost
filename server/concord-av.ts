@@ -155,7 +155,11 @@ export function registerConcordAvRoutes(app: Express, opts: {
   /** Who may read the call count (/api/calls/usage). */
   owners?: string[];
   capacity?: CallCapacity;
+  /** Our own addresses (ALLOWED_ORIGINS); unset, as on a laptop, means any. */
+  ownOrigins?: string[];
 } = {}): void {
+  const ownOrigins = opts.ownOrigins
+    ?? (process.env.ALLOWED_ORIGINS ?? "").split(",").map((o) => o.trim().toLowerCase()).filter(Boolean);
   const owners = new Set((opts.owners ?? [RELAY_OUTPOST_TEAM_PUBKEY]).map((p) => p.toLowerCase()));
   const capacity = opts.capacity ?? createCallCapacity({
     maxCalls: Number(process.env.CALLS_MAX) > 0 ? Number(process.env.CALLS_MAX) : DEFAULT_MAX_CALLS,
@@ -193,7 +197,14 @@ export function registerConcordAvRoutes(app: Express, opts: {
       return res.status(400).json({ error: "The room is the voice key's public key: 64 lowercase hex characters" });
     }
     // trust proxy is on, so this is the https://relayop.xyz/... the caller signed.
-    const url = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+    // The host is the caller's word, so it must be one of ours: otherwise a
+    // service could replay a request signed for its own address here, with
+    // that address as the host.
+    const origin = `${req.protocol}://${req.get("host")}`.toLowerCase();
+    if (ownOrigins.length && !ownOrigins.includes(origin)) {
+      return res.status(421).json({ error: "This request was made for a different call service" });
+    }
+    const url = `${origin}${req.originalUrl}`;
     const result = issueAvToken({
       authorization: req.get("authorization"),
       room,
