@@ -50,6 +50,9 @@ const allowlist = [
   "stripe",
   "undici",
   "uuid",
+  // Closed-app notifications (server/push/push-send.ts). Bundled like the rest:
+  // the runtime image installs only the few packages its Dockerfile names.
+  "web-push",
   "ws",
   "xlsx",
   "zod",

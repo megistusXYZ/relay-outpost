@@ -406,3 +406,70 @@ self.addEventListener('message', (event) => {
     );
   }
 });
+
+// ── Notifications while the app is closed (owner, 2026-10-06) ─────────────────
+// Our server only ever says "a call, in room <id>" or "a message": the
+// group's name comes from this phone's own list (lib/push-notify.ts keeps it
+// in IndexedDB ro-push/rooms), and a message never says who it's from. Every
+// push shows something: phones withdraw push from apps that stay silent.
+const PUSH_DB = 'ro-push';
+const PUSH_ICON = '/icons/icon-192.png';
+
+function pushRoom(room) {
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.open(PUSH_DB, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('rooms');
+      req.onerror = () => resolve(null);
+      req.onsuccess = () => {
+        try {
+          const get = req.result.transaction('rooms', 'readonly').objectStore('rooms').get(room);
+          get.onsuccess = () => { resolve(get.result || null); req.result.close(); };
+          get.onerror = () => { resolve(null); req.result.close(); };
+        } catch (e) { resolve(null); }
+      };
+    } catch (e) { resolve(null); }
+  });
+}
+
+/** Only ever a path on this site. */
+function safeOpen(path) {
+  return typeof path === 'string' && path.startsWith('/') && !path.startsWith('//') ? path : '/messages';
+}
+
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) { data = {}; }
+  event.waitUntil((async () => {
+    if (data.t === 'call' && typeof data.room === 'string') {
+      const info = await pushRoom(data.room);
+      return self.registration.showNotification(info ? `Call in ${info.label}` : 'Incoming call', {
+        body: 'Tap to join',
+        tag: `call-${data.room}`,
+        renotify: true,
+        icon: PUSH_ICON,
+        data: { open: safeOpen(info && info.open) },
+      });
+    }
+    return self.registration.showNotification(data.more ? 'New messages' : 'New message', {
+      tag: 'messages',
+      icon: PUSH_ICON,
+      data: { open: '/messages' },
+    });
+  })());
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const open = safeOpen(event.notification.data && event.notification.data.open);
+  event.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const win = wins.find((w) => 'focus' in w);
+    if (win) {
+      await win.focus();
+      try { if ('navigate' in win) await win.navigate(open); } catch (e) { /* not ours to steer */ }
+      return;
+    }
+    return self.clients.openWindow(open);
+  })());
+});

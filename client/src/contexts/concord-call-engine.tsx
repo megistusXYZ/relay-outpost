@@ -34,6 +34,10 @@ import type { JoinedCall } from "@/lib/concord/concord-call-e2ee";
 
 import { callRoomKey, type ActiveCall, type CallParticipant, type CallCtx } from "./ConcordCallContext";
 import { CallRinger } from "@/components/concord/CallRinger";
+import { syncClosedAppRooms, takeClosedAppNotifyOffer, turnOnClosedAppNotify } from "@/lib/push-notify";
+import { useNotifications } from "@/contexts/NotificationContext";
+import { ToastAction } from "@/components/ui/toast";
+import { MUTE_CHANGED_EVENT } from "@/lib/concord/concord-mute";
 import { chooseCallService, probeCallService, callServicesIn, agreedCallServices, agreeCallService } from "@/lib/concord/concord-av-brokers";
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
@@ -296,12 +300,50 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
     resync();
   }, [resync]);
 
+  // The first message or call that arrives while the app is open: offer to
+  // tell you about them when it's closed, once (lib/push-notify.ts).
+  const offerClosedApp = useCallback(() => {
+    if (!pubkey) return;
+    const readiness = takeClosedAppNotifyOffer();
+    if (readiness === "install-first") {
+      toast({ title: "Want to know about calls and messages when Relay Outpost is closed?", description: "Add it to your Home Screen (Share › Add to Home Screen), then turn it on in Settings › Chats." });
+    } else if (readiness === "ready") {
+      toast({
+        title: "Want to know about calls and messages when Relay Outpost is closed?",
+        description: "It only ever says \"New message\" or \"Call in\" a group — never who or what.",
+        action: (
+          <ToastAction altText="Turn on notifications" data-testid="offer-closed-app-notify"
+            onClick={() => { void turnOnClosedAppNotify(pubkey).then((r) => { if (!r.ok && r.reason === "denied") toast({ title: "Notifications are blocked for this site", description: "Allow them in your browser's settings, then turn this on in Settings › Chats." }); }); }}>
+            Turn on
+          </ToastAction>
+        ),
+      });
+    }
+  }, [pubkey, toast]);
+  const { unreadDmCount } = useNotifications();
+  const seenUnread = useRef(unreadDmCount);
+  useEffect(() => {
+    if (unreadDmCount > seenUnread.current) offerClosedApp();
+    seenUnread.current = unreadDmCount;
+  }, [unreadDmCount, offerClosedApp]);
+
   // Signing out, or closing the tab, ends the call.
   useEffect(() => { if (!pubkey) void leave(); }, [pubkey, leave]);
   // …and so does switching Encrypted calls off (lib/concord/calls-off.ts).
   const callsOn = useConcordCallsEnabled();
   const leaveNow = useCallback(() => { void leave(); }, [leave]);
   useLeaveWhenCallsOff(callsOn, !!call, leaveNow);
+  // Notifications while the app is closed: keep the rooms that ring this
+  // device current — calls switched, a group muted, a new group (lib/push-notify.ts).
+  useEffect(() => {
+    if (!pubkey) return;
+    const sync = () => { void syncClosedAppRooms(pubkey).catch(() => {}); };
+    sync();
+    window.addEventListener(MUTE_CHANGED_EVENT, sync);
+    const again = setInterval(sync, 5 * 60_000);
+    return () => { window.removeEventListener(MUTE_CHANGED_EVENT, sync); clearInterval(again); };
+  }, [pubkey, callsOn]);
+
   useEffect(() => () => { void leave(); }, [leave]);
 
   const value = useMemo<CallCtx>(() => ({
@@ -338,6 +380,7 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
         <CallRinger
           me={pubkey}
           inCallKey={call ? callRoomKey(call.communityId, call.channelId) : null}
+          onRing={offerClosedApp}
           onJoin={(community, channel) => {
             navigate(`/outposts/c/${community.community_id}?channel=${channel.id}`);
             void join(community, channel, channel.name || community.name || "Call");

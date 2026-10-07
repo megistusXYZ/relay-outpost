@@ -16,7 +16,8 @@ import {
   ChevronDown, RotateCcw, BarChart3, ChevronRight, Share,
   Wallet, Bell, Newspaper, Compass, BookOpen, MessageSquarePlus, KeyRound, QrCode, Puzzle,
   Smartphone, Globe, Eye, EyeOff, Lock, Inbox, Tag, Wrench, ShieldCheck, PanelLeft, Bug, Sparkles,
-  Copy, RefreshCw, LifeBuoy, Info, LayoutGrid, Phone } from "lucide-react";
+  Copy, RefreshCw, LifeBuoy, Info, LayoutGrid, Phone, BellRing } from "lucide-react";
+import { pushReadiness, isClosedAppNotifyOn, turnOnClosedAppNotify, turnOffClosedAppNotify } from "@/lib/push-notify";
 import { useIaCollapsed, setIaCollapsed } from "@/lib/ia-prefs";
 import { useNewsTrendingOn, setNewsTrendingOn } from "@/lib/news-trending";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -934,7 +935,63 @@ function ChatsSection() {
       <Row icon={Phone} label="Encrypted calls (beta)" sub="Voice, video and screen share in group chats. Still being tested; this device only">
         <Switch checked={calls} onCheckedChange={toggleCalls} data-testid="switch-concord-calls" />
       </Row>
+      <ClosedAppNotifyRow />
     </RowSection>
+  );
+}
+
+const MSGS_KEY = "ro_push_msgs";
+
+/**
+ * "Notify me when the app is closed" (owner, 2026-10-06; lib/push-notify.ts):
+ * calls and new messages, saying only "New message" — never who or what. On
+ * an iPhone, only once the app is on the Home Screen, so it says how.
+ */
+function ClosedAppNotifyRow() {
+  const { pubkey } = useNostrAuth();
+  const { toast } = useToast();
+  const readiness = pushReadiness();
+  const [on, setOn] = useState(() => isClosedAppNotifyOn());
+  const [busy, setBusy] = useState(false);
+  const [msgs, setMsgs] = useState(() => { try { return localStorage.getItem(MSGS_KEY); } catch { return null; } });
+
+  const toggle = async (v: boolean) => {
+    if (!pubkey || busy) return;
+    setBusy(true);
+    try {
+      if (!v) { await turnOffClosedAppNotify(); setOn(false); return; }
+      const r = await turnOnClosedAppNotify(pubkey);
+      if (r.ok) {
+        setOn(true);
+        setMsgs(r.messages);
+        try { localStorage.setItem(MSGS_KEY, r.messages); } catch { /* private window */ }
+      } else {
+        toast({
+          title: "Couldn't turn notifications on",
+          description: r.reason === "denied"
+            ? "Notifications are blocked for this site. Allow them in your browser's settings, then try again."
+            : r.reason === "unavailable" ? "This browser can't show notifications while the app is closed." : "Try again in a moment.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const sub = readiness === "install-first"
+    ? "On iPhone, add Relay Outpost to your Home Screen first (Share › Add to Home Screen), then turn this on there."
+    : readiness === "unsupported"
+      ? "This browser can't show notifications while the app is closed."
+      : on && msgs === "inbox-needs-sign-in"
+        ? "Calls are on. Your message inbox needs you to sign in, so we can't tell you about messages while the app is closed."
+        : "Calls and new messages, even when Relay Outpost isn't open. Says only \"New message\" — never who or what.";
+  return (
+    <Row icon={BellRing} label="Notify me when the app is closed" sub={sub} testId="row-closed-app-notify">
+      {readiness === "ready" && (
+        <Switch checked={on} disabled={busy || !pubkey} onCheckedChange={(v) => void toggle(v)} data-testid="switch-closed-app-notify" />
+      )}
+    </Row>
   );
 }
 
