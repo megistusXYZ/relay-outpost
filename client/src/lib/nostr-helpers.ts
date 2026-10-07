@@ -1,9 +1,51 @@
 import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
-import { getPublicContacts, getProfilePicture as _getProfilePicture, getDisplayName as _getDisplayName } from "applesauce-core/helpers";
+import { getPublicContacts, getProfilePicture as _getProfilePicture, getDisplayName as _getDisplayName, getProfileContent as _getProfileContent } from "applesauce-core/helpers";
 import type { ProfileContent } from "applesauce-core/helpers";
 
-export { getProfileContent } from "applesauce-core/helpers";
+/**
+ * A profile is whatever its owner published (owner, 2026-10-07): a name that's
+ * a number, a picture that's an object. The profile library's helpers call
+ * .trim() on those, and one such stranger took down every thread they posted
+ * in and their own page (ship/hostile-data-probe.cjs). So every standard text
+ * field is text, or absent — cleaned once, in the library's own cached copy,
+ * so its helpers and every reader here see the clean one (profile-clean.test.ts).
+ */
+const PROFILE_TEXT_FIELDS = ["name", "username", "display_name", "displayName", "about", "image", "picture", "banner", "website", "nip05", "lud06", "lud16"] as const;
+const CLEANED = Symbol.for("relay-outpost/profile-cleaned");
+
+/** `published`: the profile as its owner wrote it, when known — the library
+ *  turns some fields into text itself (a nip05 object becomes "[object Object]"),
+ *  so each field is judged by what was actually published. */
+function cleanInPlace(content: unknown, published?: unknown): ProfileContent | undefined {
+  if (!content || typeof content !== "object" || Array.isArray(content)) return undefined;
+  const c = content as Record<string | symbol, unknown>;
+  if (c[CLEANED]) return c as ProfileContent;
+  const raw = published && typeof published === "object" && !Array.isArray(published) ? published as Record<string, unknown> : c;
+  for (const f of PROFILE_TEXT_FIELDS) if (f in c && (typeof c[f] !== "string" || typeof raw[f] !== "string")) delete c[f];
+  Object.defineProperty(c, CLEANED, { value: true });
+  return c as ProfileContent;
+}
+
+const isEvent = (m: unknown): m is Event => !!m && typeof m === "object" && "pubkey" in m && "id" in m && "sig" in m;
+
+/** Clean whatever a helper is handed: a kind-0 event (its cached content) or the content itself. */
+function cleanMetadata(metadata: ProfileContent | Event | undefined): void {
+  if (!metadata) return;
+  if (isEvent(metadata)) getProfileContent(metadata);
+  else cleanInPlace(metadata);
+}
+
+export function getProfileContent(event: Event): ProfileContent | undefined;
+export function getProfileContent(event: Event | undefined): ProfileContent | undefined;
+export function getProfileContent(event: Event | undefined): ProfileContent | undefined {
+  if (!event) return undefined;
+  let content: unknown;
+  try { content = _getProfileContent(event); } catch { return undefined; }
+  let published: unknown;
+  try { published = JSON.parse(event.content); } catch { published = undefined; }
+  return cleanInPlace(content, published);
+}
 import { getPetname, isShowingRealNames } from "./petnames";
 import { petnameAvatarFor } from "./petname-images";
 
@@ -20,6 +62,7 @@ export function getDisplayName(metadata: ProfileContent | undefined): string | u
 export function getDisplayName(metadata: ProfileContent | Event | undefined, fallback: string): string;
 export function getDisplayName(metadata: ProfileContent | Event | undefined, fallback?: string): string | undefined;
 export function getDisplayName(metadata: ProfileContent | Event | undefined, fallback?: string): string | undefined {
+  cleanMetadata(metadata);
   const real = _getDisplayName(metadata as Event, fallback as string);
   const pk = (metadata as { pubkey?: unknown } | undefined)?.pubkey;
   if (typeof pk !== "string" || !pk || isShowingRealNames()) return real;
@@ -30,9 +73,16 @@ export function getDisplayName(metadata: ProfileContent | Event | undefined, fal
 export function getRealName(metadata: ProfileContent | Event | undefined, fallback: string): string;
 export function getRealName(metadata: ProfileContent | Event | undefined, fallback?: string): string | undefined;
 export function getRealName(metadata: ProfileContent | Event | undefined, fallback?: string): string | undefined {
+  cleanMetadata(metadata);
   return _getDisplayName(metadata as Event, fallback as string);
 }
-export { getProfilePicture, getProfilePicture as getRawAvatarUrl } from "applesauce-core/helpers";
+
+/** The profile picture URL, if the profile has one that is text. */
+export function getProfilePicture(metadata: ProfileContent | Event | undefined, fallback?: string): string | undefined {
+  cleanMetadata(metadata);
+  return _getProfilePicture(metadata as Event, fallback as string);
+}
+export { getProfilePicture as getRawAvatarUrl };
 
 export function getOptimizedImageUrl(url: string | undefined, size: number = 128): string | undefined {
   if (!url) return undefined;
@@ -68,7 +118,7 @@ export function getAvatarUrl(event: Event | undefined): string | undefined {
     const pet = petnameAvatarFor("person", event.pubkey);
     if (pet) return pet;
   }
-  const raw = _getProfilePicture(event);
+  const raw = getProfilePicture(event);
   return getOptimizedImageUrl(raw, 128);
 }
 
