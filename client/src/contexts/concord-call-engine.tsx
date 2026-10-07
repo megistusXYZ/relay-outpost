@@ -31,6 +31,7 @@ import { publishCallPresence, subscribeCallPresence } from "@/lib/concord/concor
 import type { JoinedCall } from "@/lib/concord/concord-call-e2ee";
 
 import { callRoomKey, type ActiveCall, type CallParticipant, type CallCtx } from "./ConcordCallContext";
+import { CallRinger } from "@/components/concord/CallRinger";
 
 /** Presence older than this can't change the roster (a "joined" goes stale at 90s). */
 const RUMOR_KEEP_MS = 3 * 60 * 1000;
@@ -69,6 +70,7 @@ interface Session {
  */
 export default function ConcordCallEngine({ onChange }: { onChange: (value: CallCtx) => void }) {
   const { pubkey } = useNostrAuth();
+  const [, navigate] = useLocation();
   const [call, setCall] = useState<ActiveCall | null>(null);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -265,9 +267,24 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
   }), [call, joining, error, join, leave, toggle]);
   useEffect(() => { onChange(value); }, [value, onChange]);
 
-  return call && onScreen !== callRoomKey(call.communityId, call.channelId)
-    ? <FloatingCallBar call={call} error={error} onToggleMic={value.toggleMic} onLeave={leave} />
-    : null;
+  return (
+    <>
+      {call && onScreen !== callRoomKey(call.communityId, call.channelId)
+        ? <FloatingCallBar call={call} error={error} onToggleMic={value.toggleMic} onLeave={leave} />
+        : null}
+      {/* "Ana started a call in Bali crew" — Join / Not now (components/concord/CallRinger). */}
+      {pubkey && (
+        <CallRinger
+          me={pubkey}
+          inCallKey={call ? callRoomKey(call.communityId, call.channelId) : null}
+          onJoin={(community, channel) => {
+            navigate(`/outposts/c/${community.community_id}?channel=${channel.id}`);
+            void join(community, channel, channel.name || community.name || "Call");
+          }}
+        />
+      )}
+    </>
+  );
 }
 
 const CARD_W = 260;
