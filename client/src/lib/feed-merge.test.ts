@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mergeSupplementIntoFeed, limitSupplementShare, interleaveSupplement, splitSupplement, spreadAuthors } from "./feed-merge";
+import { mergeSupplementIntoFeed, limitSupplementShare, interleaveSupplement, splitSupplement, spreadAuthors, trendingList } from "./feed-merge";
 import type { Event } from "nostr-tools";
 
 const ev = (id: string, created_at: number, kind = 1): Event =>
@@ -222,5 +222,27 @@ describe("spreadAuthors — one voice at a time", () => {
   it("is a no-op below three items", () => {
     const input = [p("a", "A"), p("b", "A")];
     expect(spreadAuthors(input)).toBe(input);
+  });
+});
+
+/**
+ * A count chart (Likes, Thanks, Replies, Reposts over a range) shows the chart
+ * and nothing else (owner, 2026-10-07: in Thanks · Week, posts from "now" with
+ * no thanks at all sat between the most-thanked ones — an IPTV channel's live
+ * post among them). Only Overall, which is a mix by design, takes new posts in.
+ */
+describe("trendingList", () => {
+  const ranked = [ev("top1", 100), ev("top2", 90), ev("top3", 80), ev("top4", 70)];
+  const media = [ev("pic", 999, 20)];
+  const fresh = [ev("now1", 1000), ev("now2", 998)];
+
+  it("a count chart is exactly the chart: nothing newer is mixed in", () => {
+    const out = trendingList(ranked, media, fresh, { chart: true });
+    expect(out.map((e) => e.id)).toEqual(["top1", "top2", "top3", "top4"]);
+  });
+  it("Overall still takes a share of new posts and media in among its ranking", () => {
+    const out = trendingList(ranked, media, fresh, { chart: false }).map((e) => e.id);
+    expect(out.filter((id) => ranked.some((r) => r.id === id))).toEqual(["top1", "top2", "top3", "top4"]);
+    expect(out.length).toBeGreaterThan(ranked.length);
   });
 });

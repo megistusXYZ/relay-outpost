@@ -177,3 +177,16 @@ export function spreadAuthors<T extends { pubkey: string }>(events: T[]): T[] {
   }
   return [...out, ...deferred];
 }
+
+/**
+ * What Trending shows (feed-merge.test.ts "trendingList"). A count chart
+ * (Likes, Thanks, Replies, Reposts over a range) is exactly the chart: the
+ * newest relay posts carry no count and no place in the range, and mixed in
+ * they sat between the most-thanked posts (owner, 2026-10-07). Overall is a
+ * mix by design, so it takes its capped share of new posts and media.
+ * `media` and `relay` arrive already gated (Home's stranger floor).
+ */
+export function trendingList(ranked: Event[], media: Event[], relay: Event[], opts: { chart: boolean }): Event[] {
+  if (opts.chart) return ranked;
+  return interleaveSupplement(ranked, splitSupplement(ranked, media, relay));
+}

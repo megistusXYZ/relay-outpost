@@ -18,7 +18,7 @@ import { NostrPost, VerifiedBadgeIcon, ParentUnresolvedContext } from "@/compone
 import { PollPost } from "@/components/PollPost";
 import { isPollEvent, KIND_POLL } from "@/lib/polls";
 import { feedKinds, mediaPageLimit } from "@/lib/feed-kinds";
-import { mergeSupplementIntoFeed, interleaveSupplement, splitSupplement, spreadAuthors } from "@/lib/feed-merge";
+import { mergeSupplementIntoFeed, splitSupplement, spreadAuthors, trendingList } from "@/lib/feed-merge";
 import { capForGuest } from "@/lib/guest-limits";
 import { GuestWall } from "@/components/GuestWall";
 import { MEDIA_EVENT_KINDS } from "@/lib/media-frame";
@@ -1450,18 +1450,25 @@ export default function Home() {
     };
   }, [feedSortMode, topTimeWindow, activeCustomFeed]);
 
+  // The chart on screen (selector + range). A load answers for ITS chart: the
+  // Likes prefetch, or the range you just switched away from, landing late
+  // used to replace the chart you were looking at (ship/trending-chart-e2e.cjs).
+  const shownTrendingKeyRef = useRef("");
+  shownTrendingKeyRef.current = isArchivesSelector(trendingSelector) ? `${trendingSelector}_${archivesRange}` : trendingSelector;
+
   const loadTrending = useCallback(async (selector: string, options?: { force?: boolean; background?: boolean }) => {
     const cacheKey = isArchivesSelector(selector) ? `${selector}_${archivesRange}` : selector;
     const cached = trendingCacheRef.current.get(cacheKey);
     const now = Date.now();
     const isStale = !cached || (now - cached.fetchedAt > TRENDING_CACHE_TTL);
+    const isShown = () => cacheKey === shownTrendingKeyRef.current;
 
     if (cached && !options?.force) {
-      setTrendingPosts(cached.posts);
+      if (isShown()) setTrendingPosts(cached.posts);
       if (!isStale) return;
     }
 
-    if (!options?.background || !cached) {
+    if ((!options?.background || !cached) && isShown()) {
       setTrendingLoading(true);
     }
 
@@ -1502,12 +1509,13 @@ export default function Home() {
 
       // A stand-in isn't kept as Overall's answer: the next visit asks again.
       if (!fellBack) trendingCacheRef.current.set(cacheKey, { posts, fetchedAt: Date.now() });
+      if (!isShown()) return; // cached for later; not the chart on screen
       if (!options?.background) setTrendingFellBack(fellBack);
       setTrendingPosts(posts);
     } catch (err) {
       console.error("Failed to fetch trending:", err);
     } finally {
-      setTrendingLoading(false);
+      if (isShown()) setTrendingLoading(false);
     }
   }, [pubkey, archivesRange]);
 
@@ -1524,6 +1532,8 @@ export default function Home() {
       const cached = trendingCacheRef.current.get(cacheKey);
       if (cached) {
         setTrendingPosts(cached.posts);
+        // Shown from memory: any spinner belonged to the chart left behind.
+        setTrendingLoading(false);
         const isStale = Date.now() - cached.fetchedAt > TRENDING_CACHE_TTL;
         if (isStale) {
           loadTrending(trendingSelector, { background: true });
@@ -2141,13 +2151,21 @@ export default function Home() {
       profileSettledGetter: isProfileFetchSettled,
       minFollowers: 0,
     });
-    const withMedia = interleaveSupplement(
+    //
+    // AND ONLY OVERALL TAKES IT. A count chart (Likes, Thanks… over a range)
+    // is exactly the chart: owner screenshot, Thanks · Week, an IPTV channel's
+    // post from "now" with no thanks at all between the most-thanked posts
+    // (lib/feed-merge.ts trendingList; ship/trending-chart-e2e.cjs).
+    const chart = isArchivesSelector(trendingSelector);
+    const withMedia = trendingList(
       trendingPosts,
-      splitSupplement(trendingPosts, gate(mediaNotes), gate(supplementNotes)),
+      chart ? [] : gate(mediaNotes),
+      chart ? [] : gate(supplementNotes),
+      { chart },
     );
     if (!wotEnabled || !flaggedPubkeys || flaggedPubkeys.size === 0) return withMedia;
     return withMedia.filter((e) => !flaggedPubkeys.has(e.pubkey));
-  }, [trendingPosts, mediaNotes, supplementNotes, wotEnabled, flaggedPubkeys, spamFilter, followSet, fofSet, profileGetter, profileVersion]);
+  }, [trendingPosts, trendingSelector, mediaNotes, supplementNotes, wotEnabled, flaggedPubkeys, spamFilter, followSet, fofSet, profileGetter, profileVersion]);
 
   // Trending has its own lens (Most Replied / Zapped / etc.), so the
   // Posts/Replies/All content filter doesn't apply here — Trending always shows
