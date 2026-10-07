@@ -1,3 +1,4 @@
+import { PostBoundary } from "@/components/PostBoundary";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from "react";
 import { ClampedText, LINES, textForLines } from "@/components/ClampedText";
 import { createPortal } from "react-dom";
@@ -1874,7 +1875,9 @@ export function ThreadReplyNode({ node, depth, opPubkey, indentCap = DESKTOP_THR
             className={`relative rounded-lg transition-colors duration-700 ${justSent ? "bg-brand/[0.08] ring-1 ring-brand/25" : ""}`}
             data-testid={`button-select-reply-${node.event.id}`}
           >
-            <ThreadReplyItem event={node.event} childCount={hasChildren ? node.children.length : 0} opPubkey={opPubkey} showParentCue={beyondCap} />
+            <PostBoundary id={node.event.id}>
+              <ThreadReplyItem event={node.event} childCount={hasChildren ? node.children.length : 0} opPubkey={opPubkey} showParentCue={beyondCap} />
+            </PostBoundary>
           </div>
 
           {hasChildren && continueBranch && <ContinueThreadRow node={node} />}

@@ -7,6 +7,7 @@ import type { Event } from "nostr-tools";
 import { eventStore, pool, fetchProfiles, DEFAULT_RELAYS, throttledPoolSubscribe } from "@/lib/nostr";
 import { KIND_METADATA, KIND_TEXT_NOTE, getAvatarUrl, getDisplayName, getProfileContent } from "@/lib/nostr-helpers";
 import { NostrPost } from "@/components/NostrPost";
+import { PostBoundary } from "@/components/PostBoundary";
 import { PollPost } from "@/components/PollPost";
 import { isPollEvent } from "@/lib/polls";
 import { InlineThreadReplyBar, ReplyDock, ReplyThread } from "@/components/nostr-post/thread";
@@ -746,12 +747,13 @@ export default function Thread() {
           {hasAncestors && (
             <div className="mb-1" data-testid="ancestor-chain">
               {filteredAncestors.map((ancestor, index) => (
-                <AncestorPost
-                  key={ancestor.id}
-                  event={ancestor}
-                  isLast={index === filteredAncestors.length - 1}
-                  isRoot={index === 0 && showRootMarker}
-                />
+                <PostBoundary key={ancestor.id} id={ancestor.id}>
+                  <AncestorPost
+                    event={ancestor}
+                    isLast={index === filteredAncestors.length - 1}
+                    isRoot={index === 0 && showRootMarker}
+                  />
+                </PostBoundary>
               ))}
               <div className="flex items-center gap-2 px-4 pb-1">
                 <div className="w-9 flex justify-center shrink-0">
@@ -779,6 +781,7 @@ export default function Thread() {
             data-no-navigate
             data-testid="target-post"
           >
+            <PostBoundary id={event.id}>
             {isPollEvent(event) ? (
               // Polls have their own renderer (question + options + live results
               // + voting). Mirror the focused NostrPost layout: reply composer,
@@ -805,6 +808,7 @@ export default function Thread() {
                 focused
               />
             )}
+            </PostBoundary>
           </div>
           </MaybeReplyDock>
 

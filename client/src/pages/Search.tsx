@@ -3,6 +3,7 @@ import { SEARCH_RELAYS } from "@/lib/relay-constants";
 import { useLocation, useSearch, Link } from "wouter";
 import { use$ } from "applesauce-react/hooks";
 import { NostrPost } from "@/components/NostrPost";
+import { PostBoundary } from "@/components/PostBoundary";
 import { Nip05Badge } from "@/components/Nip05Badge";
 import { MissionBriefing, LIVE_STREAMS_BRIEFING } from "@/components/MissionBriefing";
 import { SuggestedFollowsStrip } from "@/components/SuggestedFollowsStrip";
@@ -2103,7 +2104,7 @@ function PostsTab(_props: TabProps) {
                     estimateSize={340}
                     gap={12}
                     onReachEnd={loadMoreSearch}
-                    renderItem={(event) => <NostrPost event={event} />}
+                    renderItem={(event) => <PostBoundary id={event.id}><NostrPost event={event} /></PostBoundary>}
                   />
                   <ScrollSentinel onLoadMore={loadMoreSearch} isLoading={searchLoadingMore} hasMore={searchHasMore} />
                 </div>
@@ -2189,7 +2190,7 @@ function PostsTab(_props: TabProps) {
               estimateSize={340}
               gap={12}
               onReachEnd={!isDefaultFeed ? loadMoreFeed : undefined}
-              renderItem={(event) => <NostrPost event={event} />}
+              renderItem={(event) => <PostBoundary id={event.id}><NostrPost event={event} /></PostBoundary>}
             />
             {!isDefaultFeed && <ScrollSentinel onLoadMore={loadMoreFeed} isLoading={feedLoadingMore} hasMore={feedHasMore} />}
           </div>
@@ -2682,7 +2683,7 @@ function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
                   estimateSize={340}
                   gap={12}
                   onReachEnd={loadMore}
-                  renderItem={(event) => <NostrPost event={event} />}
+                  renderItem={(event) => <PostBoundary id={event.id}><NostrPost event={event} /></PostBoundary>}
                 />
                 <ScrollSentinel onLoadMore={loadMore} isLoading={isLoadingMore} hasMore={hasMore} />
               </div>

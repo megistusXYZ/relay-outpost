@@ -24,6 +24,7 @@ import { GuestWall } from "@/components/GuestWall";
 import { MEDIA_EVENT_KINDS } from "@/lib/media-frame";
 import { PrefetchPostWrapper } from "@/components/PrefetchPostWrapper";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PostBoundary } from "@/components/PostBoundary";
 import { HomeCoachmarks } from "@/components/HomeCoachmarks";
 import { PageTabs } from "@/components/PageTabs";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
@@ -2762,7 +2763,7 @@ export default function Home() {
     const enterClass = skipAnim ? "post-enter-skip" : "post-enter";
     return (
       <PrefetchPostWrapper key={event.id} pubkey={event.pubkey} className={`${enterClass} ${deEmphasis}`} style={!skipAnim ? { animationDelay: `${Math.min(i * 30, 300)}ms` } : undefined}>
-        <ErrorBoundary key={event.id} fallback={<div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-xs text-muted-foreground" data-testid="error-post-fallback">This note couldn't be displayed</div>}>
+        <PostBoundary key={event.id} id={event.id}>
           {isPollEvent(event) ? (
             <PollPost event={event} />
           ) : event.kind === KIND_LONG_FORM ? (
@@ -2770,7 +2771,7 @@ export default function Home() {
           ) : (
             <NostrPost event={event} repostedBy={repostMapRef.current.get(event.id) || null} priority={i === 0} />
           )}
-        </ErrorBoundary>
+        </PostBoundary>
       </PrefetchPostWrapper>
     );
   };
