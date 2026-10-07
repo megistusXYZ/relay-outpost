@@ -5,6 +5,8 @@ import { nip19 } from "nostr-tools";
 import { fetchNip11, supportsNip, getSoftwareDisplay, type Nip11Document } from "@/lib/nip11";
 import { getAuthStatus, getSignInPolicy, onAuthChange, type AuthStatus } from "@/lib/nip42-auth";
 import { probeRelay } from "@/lib/relay-probe";
+import { useNostrAuth } from "@/contexts/NostrAuthContext";
+import { useCallUsage, callUsageLine } from "@/lib/call-usage";
 import { copyNostrId } from "@/lib/clipboard-bridge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { OpsCard, OpsSectionHeader } from "./ops-ui";
@@ -160,6 +162,20 @@ function FeedbackSummaryCard({ inbox, onOpenFeedback }: { inbox: FeedbackInbox; 
         </div>
       )}
     </OpsCard>
+  );
+}
+
+/** The team's one line about our call service (lib/call-usage.ts); nothing for anyone else. */
+function CallsRightNow() {
+  const { pubkey } = useNostrAuth();
+  const usage = useCallUsage(pubkey);
+  if (!usage) return null;
+  const line = callUsageLine(usage);
+  return (
+    <p className="px-1 text-sm text-muted-foreground" data-testid="overview-calls-right-now">
+      {line.text}
+      {line.nearlyFull && <span className="ml-2 font-medium text-amber-600 dark:text-amber-400">Nearly full</span>}
+    </p>
   );
 }
 
@@ -876,6 +892,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
       </div>
 
       {inbox && <FeedbackSummaryCard inbox={inbox} onOpenFeedback={onOpenFeedback} />}
+      <CallsRightNow />
       </>}
 
       {part === "scans" && <OpsCard>

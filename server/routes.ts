@@ -41,7 +41,8 @@ async function loadDomModules() {
   }
 }
 import WebSocket from "ws";
-import { nip19, verifyEvent } from "nostr-tools";
+import { nip19 } from "nostr-tools";
+import { verifyNip98 } from "./nip98-auth";
 
 import { TTLCache } from "./ttl-cache";
 import { clusterNews, type NewsInput, type NewsCluster } from "./news-corroboration";
@@ -3760,65 +3761,7 @@ export async function registerRoutes(
   // pubkey proven by a signed token in the Authorization header — never on a
   // client-supplied param — closing the IDOR over users' scheduled posts.
   // The verified pubkey is attached as req.authPubkey for handlers to use.
-  const SCHEDULE_AUTH_MAX_AGE = 60; // seconds of created_at skew tolerated
-
-  function verifyScheduleAuth(req: any): { pubkey: string } | { status: number; error: string } {
-    const header: string | undefined = req.headers["authorization"];
-    if (!header || !header.startsWith("Nostr ")) {
-      return { status: 401, error: "Missing NIP-98 Authorization header" };
-    }
-
-    let event: any;
-    try {
-      const decoded = Buffer.from(header.slice(6).trim(), "base64").toString("utf8");
-      event = JSON.parse(decoded);
-    } catch {
-      return { status: 401, error: "Malformed Authorization token" };
-    }
-
-    if (!event || event.kind !== 27235 || typeof event.pubkey !== "string") {
-      return { status: 401, error: "Invalid auth event" };
-    }
-
-    const now = Math.floor(Date.now() / 1000);
-    if (typeof event.created_at !== "number" || Math.abs(now - event.created_at) > SCHEDULE_AUTH_MAX_AGE) {
-      return { status: 401, error: "Auth token expired" };
-    }
-
-    const tags: string[][] = Array.isArray(event.tags) ? event.tags : [];
-    const uTag = tags.find((t) => t[0] === "u")?.[1];
-    const methodTag = tags.find((t) => t[0] === "method")?.[1];
-    if (!uTag || !methodTag) {
-      return { status: 401, error: "Auth token missing u/method tag" };
-    }
-    if (methodTag.toUpperCase() !== String(req.method).toUpperCase()) {
-      return { status: 401, error: "Auth method mismatch" };
-    }
-
-    // Bind the token to this endpoint by path; compare pathname only so the
-    // proxy host and query string don't cause spurious mismatches.
-    let tokenPath: string;
-    try {
-      tokenPath = new URL(uTag).pathname;
-    } catch {
-      return { status: 401, error: "Invalid u tag" };
-    }
-    if (tokenPath !== req.path) {
-      return { status: 401, error: "Auth URL mismatch" };
-    }
-
-    let valid = false;
-    try {
-      valid = verifyEvent(event);
-    } catch {
-      valid = false;
-    }
-    if (!valid) {
-      return { status: 401, error: "Invalid auth signature" };
-    }
-
-    return { pubkey: event.pubkey };
-  }
+  const verifyScheduleAuth = verifyNip98;
 
   function requireScheduleAuth(req: any, res: any, next: any) {
     const result = verifyScheduleAuth(req);

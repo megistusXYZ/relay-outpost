@@ -154,3 +154,55 @@ describe("other apps can reach our call service", () => {
     }
   });
 });
+
+describe("call limits at the token check", () => {
+  const base = () => ({ now: NOW, apiKey: API_KEY, apiSecret: API_SECRET, livekitUrl: LIVEKIT_URL });
+
+  it("a request nobody signed never counts against a room's limit", () => {
+    const req = signedRequest({ url: "https://relayop.xyz/.well-known/concord/av/{room}" });
+    let asked = 0;
+    const res = issueAvToken({ ...base(), authorization: "Concord bm90IHNpZ25lZA==", room: req.room, url: req.url, seen: new Set<string>(), admit: () => { asked++; return { ok: true }; } });
+    expect(res.status).toBe(400);
+    expect(asked).toBe(0);
+  });
+
+  it("when calls are busy it says so plainly, gives no token, and the request can be tried again", () => {
+    const req = signedRequest({ url: "https://relayop.xyz/.well-known/concord/av/{room}" });
+    const seen = new Set<string>();
+    const busy = issueAvToken({ ...base(), authorization: req.authorization, room: req.room, url: req.url, seen, admit: () => ({ ok: false, reason: "busy" }) });
+    expect(busy).toEqual({ status: 503, body: { error: "Calls are busy right now. Try again in a few minutes." } });
+    const full = issueAvToken({ ...base(), authorization: req.authorization, room: req.room, url: req.url, seen, admit: () => ({ ok: false, reason: "room" }) });
+    expect(full).toEqual({ status: 429, body: { error: "Too many people are joining this call at once. Try again in a moment." } });
+    expect(issueAvToken({ ...base(), authorization: req.authorization, room: req.room, url: req.url, seen, admit: () => ({ ok: true }) }).status).toBe(200);
+  });
+});
+
+describe("how many calls are running, for the team only", () => {
+  const nip98 = (sk: Uint8Array, url: string) => {
+    const ev = finalizeEvent({ kind: 27235, created_at: Math.floor(Date.now() / 1000), tags: [["u", url], ["method", "GET"]], content: "" }, sk);
+    return `Nostr ${Buffer.from(JSON.stringify(ev)).toString("base64")}`;
+  };
+
+  it("answers the team's signed request with the count and the limit; nobody else gets it", async () => {
+    const express = (await import("express")).default;
+    const { registerConcordAvRoutes } = await import("./concord-av");
+    const { createCallCapacity } = await import("./call-capacity");
+    const team = generateSecretKey();
+    const capacity = createCallCapacity({ maxCalls: 50, seatsPerRoomPerMinute: 30, liveRooms: async () => new Set(["a".repeat(64), "b".repeat(64), "c".repeat(64)]) });
+    await capacity.refresh(Date.now());
+    const app = express();
+    registerConcordAvRoutes(app, { owners: [getPublicKey(team)], capacity });
+    const server = app.listen(0);
+    const url = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/calls/usage`;
+    try {
+      expect((await fetch(url)).status).toBe(401);
+      expect((await fetch(url, { headers: { Authorization: nip98(generateSecretKey(), url) } })).status).toBe(403);
+      const ok = await fetch(url, { headers: { Authorization: nip98(team, url) } });
+      expect(ok.status).toBe(200);
+      expect(await ok.json()).toEqual({ calls: 3, max: 50 });
+      expect(ok.headers.get("access-control-allow-origin")).toBeNull();
+    } finally {
+      server.close();
+    }
+  });
+});
