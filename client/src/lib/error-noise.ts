@@ -65,6 +65,20 @@ export const BROWSER_NOISE = [
   // with zero app frames. Not our bug, not actionable, filtered.
   // (First live reports: iPhone Safari 26.5 on /profile, 2026-08.)
   "Can't find variable: EmptyRanges",
+  // DuckDuckGo's iPhone browser injects its own script and talks to the app
+  // shell through a WKWebView bridge; when the shell doesn't answer, ITS
+  // promise rejects on our page. Not our code, nothing to fix.
+  // (First live report: Ddg/26.6 on /, app 1.17.3, 2026-10-06.)
+  "WKWebView API client did not respond",
+  // A request we cancelled on purpose (a page closed, a newer search replaced
+  // it, a timeout) rejects with an AbortError, worded differently by each
+  // browser. A cancellation is not a crash and no one ever sees it.
+  // (First live report: iPhone Safari on /thread, app 1.13.0, 2026-10-01.)
+  "The operation was aborted",
+  "This operation was aborted",
+  "signal is aborted without reason",
+  "The user aborted a request",
+  "Fetch is aborted",
 ];
 
 /** True for expected relay churn OR un-actionable cross-origin/browser noise —
