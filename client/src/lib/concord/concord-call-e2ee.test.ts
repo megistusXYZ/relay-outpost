@@ -107,4 +107,22 @@ describe("call encryption", () => {
     expect(terminated).toBe(true);
     expect(roomMade).toBe(false);
   });
+
+  it("connects only to a secure media server: a service that hands back anything else is refused", async () => {
+    const keys = voiceKeys(new Uint8Array(32).fill(0x11), new Uint8Array(32).fill(0x22), 0n);
+    for (const url of ["ws://media.example:7880", "https://media.example", "javascript:alert(1)"]) {
+      let terminated = false;
+      let roomMade = false;
+      await expect(joinCall({
+        keys,
+        brokerOrigin: "https://calls.example",
+        now: () => 1_789_240_000,
+        fetch: (async () => new Response(JSON.stringify({ token: "t", url, identity: "a".repeat(32) }), { status: 200 })) as typeof fetch,
+        startWorker: () => ({ terminate() { terminated = true; } }) as unknown as Worker,
+        createRoom: () => { roomMade = true; return { setE2EEEnabled: async () => {}, connect: async () => {}, disconnect: async () => {} }; },
+      })).rejects.toThrow(/secure/i);
+      expect(terminated).toBe(true);
+      expect(roomMade).toBe(false);
+    }
+  });
 });

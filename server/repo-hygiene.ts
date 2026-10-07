@@ -34,6 +34,9 @@ const ALLOW: Array<{ path: RegExp; rule: string }> = [
   // Junk-relay detection refuses private-network relays; its fixtures name some.
   { path: /^client\/src\/lib\/relay-junk\.test\.ts$/, rule: "LAN address" },
   { path: /^client\/src\/lib\/relay-junk\.test\.ts$/, rule: "local hostname" },
+  // Call services on someone's own network are refused; its fixtures name some.
+  { path: /^client\/src\/lib\/concord\/concord-av-brokers\.test\.ts$/, rule: "LAN address" },
+  { path: /^client\/src\/lib\/concord\/concord-av-brokers\.test\.ts$/, rule: "local hostname" },
   // Replit's (retired) package proxy host, a vendor name, in the lockfile fix-up.
   { path: /^(\.github\/workflows\/ci\.yml|\.agents\/memory\/build-and-deploy\.md)$/, rule: "local hostname" },
 ];
