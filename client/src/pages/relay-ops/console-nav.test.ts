@@ -11,8 +11,8 @@ describe("the operator console's sections", () => {
   });
 
   it("Community holds what a community manager sets up and looks after", () => {
-    expect(COMMUNITY_SCREENS.map((s) => s.tab)).toEqual(["community", "access", "featured", "contact", "team", "log", "groups"]);
-    expect(COMMUNITY_SCREENS.map((s) => s.label)).toEqual(["Community details", "Who can post", "Featured & announcements", "Member inbox", "Team", "Moderation log", "Group chats"]);
+    expect(COMMUNITY_SCREENS.map((s) => s.tab)).toEqual(["community", "access", "featured", "contact", "team", "badges", "log", "groups"]);
+    expect(COMMUNITY_SCREENS.map((s) => s.label)).toEqual(["Community details", "Who can post", "Featured & announcements", "Member inbox", "Team", "Badges", "Moderation log", "Group chats"]);
   });
 
   it("Advanced holds what only some people need", () => {
@@ -34,7 +34,8 @@ describe("the operator console's sections", () => {
       featured: "featured", connection: "connection",
       // Public card's announcements moved to Featured & announcements; the raw card is Advanced › Public card.
       announce: "featured",
-      badges: "access",
+      // Badges came back as the community's own screen (badges-plan step 4, 2026-10-06).
+      badges: "badges",
     };
     for (const [hash, tab] of Object.entries(old)) expect(resolveTab(hash)).toBe(tab);
     expect(resolveTab("nonsense")).toBe("overview");

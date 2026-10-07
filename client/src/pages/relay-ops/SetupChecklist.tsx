@@ -5,6 +5,7 @@
  * record, the team, the member-inbox listing); the two that can't — you
  * confirmed who can post, you copied the link — are remembered on this device.
  */
+import { fetchBadgeDefinitionsByAuthor } from "@/lib/nip58-badges";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Circle, ChevronRight } from "lucide-react";
 import type { Nip11Document } from "@/lib/nip11";
@@ -35,6 +36,7 @@ export function useSetupChecklist(relayUrl: string, nip11: Nip11Document | null,
   const owner = (nip11?.pubkey && /^[0-9a-f]{64}$/i.test(nip11.pubkey) ? nip11.pubkey : me)?.toLowerCase() ?? null;
   const [rules, setRules] = useState(false);
   const [inboxOn, setInboxOn] = useState(false);
+  const [badges, setBadges] = useState(0);
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const again = () => setTick((n) => n + 1);
@@ -53,6 +55,8 @@ export function useSetupChecklist(relayUrl: string, nip11: Nip11Document | null,
       })
       .catch(() => {});
     fetchFeedbackListing(relayUrl, owner).then((l) => { if (live) setInboxOn(readInboxSettings(l).on); }).catch(() => {});
+    // The community's own badges (badges-plan step 4): signed by the owner, carrying this relay.
+    fetchBadgeDefinitionsByAuthor(owner).then((defs) => { if (live) setBadges(defs.filter((d) => d.community === relayUrl).length); }).catch(() => {});
     return () => { live = false; };
   }, [relayUrl, owner, tick]);
   const facts = {
@@ -64,6 +68,7 @@ export function useSetupChecklist(relayUrl: string, nip11: Nip11Document | null,
     teammates: team.members.filter((m) => m !== team.owner).length,
     justMe: readFlag("justme", relayUrl),
     inboxOn,
+    badges,
     shared: readFlag("shared", relayUrl),
   };
   // `tick` re-reads the device flags when they change.

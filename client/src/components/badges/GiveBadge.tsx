@@ -66,12 +66,20 @@ function BadgeChoice({ def, selected, onPick }: { def: BadgeDefinition; selected
   );
 }
 
-export function GiveBadge({ refreshKey = 0, onCreate }: { refreshKey?: number; onCreate: () => void }) {
+export function GiveBadge({ refreshKey = 0, onCreate, community, initialPeople = [], onGiven }: {
+  refreshKey?: number;
+  onCreate: () => void;
+  /** Give this community's badges (and send them to its relay too). */
+  community?: string;
+  /** People already chosen (e.g. selected in the community's People list). */
+  initialPeople?: string[];
+  onGiven?: () => void;
+}) {
   const { pubkey, signer, follows } = useNostrAuth();
   const { toast } = useToast();
   const [badges, setBadges] = useState<BadgeDefinition[] | null>(null);
   const [badge, setBadge] = useState<BadgeDefinition | null>(null);
-  const [people, setPeople] = useState<string[]>([]);
+  const [people, setPeople] = useState<string[]>(initialPeople);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<string[]>([]);
   const [note, setNote] = useState("");
@@ -83,12 +91,12 @@ export function GiveBadge({ refreshKey = 0, onCreate }: { refreshKey?: number; o
     let off = false;
     void fetchBadgeDefinitionsByAuthorResult(pubkey).then(({ data }) => {
       if (off) return;
-      const sorted = [...data].sort((a, b) => b.createdAt - a.createdAt);
+      const sorted = data.filter((d) => (d.community ?? undefined) === community).sort((a, b) => b.createdAt - a.createdAt);
       setBadges(sorted);
       setBadge((cur) => cur ?? sorted[0] ?? null);
     });
     return () => { off = true; };
-  }, [pubkey, refreshKey]);
+  }, [pubkey, refreshKey, community]);
 
   const suggested = useMemo(() => follows.filter((f) => f !== pubkey).slice(0, 12), [follows, pubkey]);
   useEffect(() => { if (suggested.length) fetchProfilesCached(suggested); }, [suggested]);
@@ -112,10 +120,11 @@ export function GiveBadge({ refreshKey = 0, onCreate }: { refreshKey?: number; o
     setConfirming(false);
     setGiving(true);
     try {
-      const ok = await awardBadge(signer, badge.pubkey, badge.dTag, people, note);
+      const ok = await awardBadge(signer, badge.pubkey, badge.dTag, people, note, badge.community);
       if (ok) {
         toast({ title: "Badge given", description: `${badge.name} went to ${people.length === 1 ? "1 person" : `${people.length} people`}. They'll be asked whether to show it.` });
         setPeople([]); setNote(""); setQuery(""); setResults([]);
+        onGiven?.();
       } else {
         toast({ title: "Couldn't give the badge", description: "Nothing was sent. Try again in a moment.", variant: "destructive" });
       }
@@ -171,7 +180,8 @@ export function GiveBadge({ refreshKey = 0, onCreate }: { refreshKey?: number; o
       </Button>
 
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent>
+        {/* Above a Dialog (z-210): Give badge also opens inside Relay Control's People pop-up. */}
+        <AlertDialogContent className="z-[220]" overlayClassName="z-[220]">
           <AlertDialogHeader>
             <AlertDialogTitle data-testid="give-confirm-title">Give {badge?.name} to {count}?</AlertDialogTitle>
             <AlertDialogDescription>They'll be notified and can choose to show it on their profile.</AlertDialogDescription>

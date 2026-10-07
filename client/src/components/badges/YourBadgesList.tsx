@@ -21,8 +21,15 @@ function Thumb({ def }: { def: BadgeDefinition }) {
   return <img src={src} alt="" className="h-12 w-12 shrink-0 object-contain" onError={() => setBroken(true)} />;
 }
 
-export function YourBadgesList({ refreshKey, onEdit, onCreate, onThank }: {
+export function YourBadgesList({ refreshKey, onEdit, onCreate, onThank, community, author, readOnly = false, title = "Badges you've made" }: {
   refreshKey: number;
+  /** Only this community's badges; leave out for your personal ones. */
+  community?: string;
+  /** Whose badges to list (a community's owner); defaults to you. */
+  author?: string;
+  /** Moderators see the community's badges but can't change them yet. */
+  readOnly?: boolean;
+  title?: string;
   onEdit: (def: BadgeDefinition) => void;
   onCreate: () => void;
   onThank: () => void;
@@ -33,12 +40,13 @@ export function YourBadgesList({ refreshKey, onEdit, onCreate, onThank }: {
   const [unreachable, setUnreachable] = useState(false);
   const [deleting, setDeleting] = useState<BadgeDefinition | null>(null);
 
+  const whose = author ?? pubkey;
   const load = useCallback(async () => {
-    if (!pubkey) return;
-    const r = await fetchBadgeDefinitionsByAuthorResult(pubkey);
+    if (!whose) return;
+    const r = await fetchBadgeDefinitionsByAuthorResult(whose);
     setUnreachable(!r.reached);
-    setDefs([...r.data].sort((a, b) => b.createdAt - a.createdAt));
-  }, [pubkey]);
+    setDefs(r.data.filter((d) => (d.community ?? undefined) === community).sort((a, b) => b.createdAt - a.createdAt));
+  }, [whose, community]);
 
   useEffect(() => { void load(); }, [load, refreshKey]);
 
@@ -57,8 +65,8 @@ export function YourBadgesList({ refreshKey, onEdit, onCreate, onThank }: {
   return (
     <section className="space-y-3" data-testid="your-badges">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-base font-semibold">Badges you've made</h2>
-        <Button className="min-h-[44px]" onClick={onCreate} data-testid="button-create-badge">Create a badge</Button>
+        <h2 className="text-base font-semibold">{title}</h2>
+        {!readOnly && <Button className="min-h-[44px]" onClick={onCreate} data-testid="button-create-badge">Create a badge</Button>}
       </div>
       {defs === null ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
@@ -67,8 +75,12 @@ export function YourBadgesList({ refreshKey, onEdit, onCreate, onThank }: {
           <p className="text-sm text-muted-foreground">Couldn't reach your relays to list your badges. Try again in a moment.</p>
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-border p-4" data-testid="your-badges-empty">
-            <p className="text-sm text-muted-foreground">You haven't made a badge yet. Start by thanking someone.</p>
-            <Button variant="outline" className="min-h-[44px]" onClick={onThank} data-testid="button-thank-someone">Thank someone with a badge</Button>
+            <p className="text-sm text-muted-foreground">{readOnly ? "No badges yet." : community ? "No badges yet. Founding member is a good first one." : "You haven't made a badge yet. Start by thanking someone."}</p>
+            {!readOnly && (
+              <Button variant="outline" className="min-h-[44px]" onClick={onThank} data-testid="button-thank-someone">
+                {community ? "Make Founding member" : "Thank someone with a badge"}
+              </Button>
+            )}
           </div>
         )
       ) : (
@@ -80,10 +92,10 @@ export function YourBadgesList({ refreshKey, onEdit, onCreate, onThank }: {
                 <p className="truncate text-sm font-semibold">{d.name}</p>
                 {d.description && <p className="line-clamp-2 text-xs text-muted-foreground">{d.description}</p>}
               </div>
-              <div className="flex gap-2">
+              {!readOnly && <div className="flex gap-2">
                 <Button variant="outline" className="min-h-[44px]" onClick={() => onEdit(d)} data-testid={`button-edit-badge-${d.dTag}`}>Edit</Button>
                 <Button variant="ghost" className="min-h-[44px] text-destructive" onClick={() => setDeleting(d)} data-testid={`button-delete-badge-${d.dTag}`}>Delete</Button>
-              </div>
+              </div>}
             </li>
           ))}
         </ul>

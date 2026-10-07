@@ -10,6 +10,7 @@ import { Award, ChevronDown, ChevronUp, User, Plus, ArrowUp, ArrowDown, EyeOff }
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { showBadgeOnProfile, acceptBadges } from "@/lib/nip58-badges";
 import { besideName, moveShownBadge, hideShownBadge } from "@/lib/badge-events";
+import { FromCommunity } from "@/components/badges/FromCommunity";
 import { useToast } from "@/hooks/use-toast";
 import { useAcceptedBadgesCached } from "@/hooks/use-badges";
 import type { ResolvedBadge } from "@/hooks/use-badges";
@@ -96,8 +97,15 @@ function BadgeCard({ badge, showAccept, onAccept, accepting }: {
           <p className="text-[11px] text-muted-foreground/60 line-clamp-2 mt-0.5">{def.description}</p>
         )}
         <div className="flex items-center gap-1 mt-1 flex-wrap">
-          <span className="text-[9px] text-muted-foreground/40 uppercase tracking-wider">Awarded by</span>
-          <AwarderName pubkey={badge.awarderPubkey} />
+          {/* A community's badge reads "from <community>"; a personal one names who gave it. */}
+          {def.community ? (
+            <FromCommunity url={def.community} className="text-[11px] text-muted-foreground" />
+          ) : (
+            <>
+              <span className="text-[11px] text-muted-foreground">Given by</span>
+              <AwarderName pubkey={badge.awarderPubkey} />
+            </>
+          )}
           {badge.awardedAt > 0 && (
             <>
               <span className="text-[9px] text-muted-foreground/30">·</span>
