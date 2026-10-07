@@ -83,11 +83,14 @@ jobs:
       # are being burned down — the count may only ever go DOWN. A PR that
       # pushes it above the baseline fails CI. Ratchet the number here whenever
       # the burn-down lowers it. (125 → 123 on 2026-07-18, PR #318's cleanup;
-      # 123 → 90 on 2026-08-03, 90 → 89 on 2026-08-27, 89 → 88 on 2026-09-29 with the dead NIP-85 reader, 88 → 84 on 2026-10-02 (private-message rooms), 84 → 78 → 77 → 73 on 2026-10-03 (drifted down unratcheted, then the old Events list went), 73 → 72 the same day (dead Relay Control helpers removed), 72 → 54 on 2026-10-07 (Home's people search typed as Nostr events, toast headings, a dead MiniPlayer prop), 54 → 33 → 21 the same day (routes.ts clean: the image proxy's fetch Response vs Express's; typed tag lookups), 21 → 14 (four real bugs the errors pointed at: pinned calendar events, bookmarked articles, muted-people search, wallet details) — the real count had been 90 for a while, so the
+      # 123 → 90 on 2026-08-03, 90 → 89 on 2026-08-27, 89 → 88 on 2026-09-29 with the dead NIP-85 reader, 88 → 84 on 2026-10-02 (private-message rooms), 84 → 78 → 77 → 73 on 2026-10-03 (drifted down unratcheted, then the old Events list went), 73 → 72 the same day (dead Relay Control helpers removed), 72 → 54 on 2026-10-07 (Home's people search typed as Nostr events, toast headings, a dead MiniPlayer prop), 54 → 33 → 21 the same day (routes.ts clean: the image proxy's fetch Response vs Express's; typed tag lookups), 21 → 14 (four real bugs the errors pointed at: pinned calendar events, bookmarked articles, muted-people search, wallet details), 14 → 0 the same day — two more were crashes (a thread mentioning someone not yet loaded; restoring a draft for chosen relays). From here any type error fails CI. — the real count had been 90 for a while, so the
       # gate was leaving room for 33 new errors to land unnoticed.)
-      - name: Type-check (baseline ≤ 14)
+      - name: Type-check (none allowed)
         if: always()
-        run: |
-          count=$(npm run check 2>&1 | grep -c 'error TS' || true)
-          echo "tsc errors: $count (baseline 14)"
-          test "$count" -le 14
+        # tsc's own exit status, not a count of "error TS" lines: a tsc that
+        # crashes (out of memory exits 134) prints no errors at all, and a
+        # count read that as clean. Proven locally 2026-10-07: clean 0, one
+        # error 2, out of memory 134 with zero "error TS" lines.
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: npm run check
