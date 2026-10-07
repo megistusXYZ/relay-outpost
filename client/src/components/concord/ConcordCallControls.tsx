@@ -5,9 +5,10 @@
  *
  * Types only from LiveKit here: the library loads when you join, not before.
  */
+import { useCallAudio, type AudioRoom } from "@/lib/concord/call-trouble";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Loader2, Maximize2, Mic, MicOff, MonitorUp, MonitorX, Phone, PhoneOff, ShieldCheck, Video, VideoOff, X } from "lucide-react";
+import { Loader2, Maximize2, Mic, MicOff, MonitorUp, MonitorX, Phone, PhoneOff, ShieldCheck, Video, VideoOff, Volume2, X } from "lucide-react";
 import type { Participant, Track } from "livekit-client";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useConcordProfile } from "./ConcordIdentity";
@@ -100,6 +101,7 @@ export function ConcordCallBar({ community, channel, title }: {
   const canEncrypt = useCanEncryptCalls();
   // No listening for a room's call until calls are switched on here.
   const count = useRoomCallCount(community, channel, enabled && !here);
+  const sound = useCallAudio((here?.room ?? null) as unknown as AudioRoom | null);
 
   if (!here) {
     if (!enabled) return null;
@@ -127,12 +129,22 @@ export function ConcordCallBar({ community, channel, title }: {
   }
 
   return (
-    <div className="flex items-center gap-1.5 px-3 md:px-4 py-1.5 border-b border-border/20 shrink-0 bg-emerald-500/5" data-testid="concord-call-bar">
+    <div className="flex flex-wrap items-center gap-1.5 px-3 md:px-4 py-1.5 border-b border-border/20 shrink-0 bg-emerald-500/5" data-testid="concord-call-bar">
       <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium text-foreground/90 truncate">In the call · {here.participants.length}</p>
-        <p className="text-[11px] text-muted-foreground/70 truncate">End-to-end encrypted</p>
+        {/* A device that failed mid-call says so here, in plain words (call-trouble.ts). */}
+        {error
+          ? <p className="text-[11px] text-destructive" data-testid="concord-call-error">{error}</p>
+          : <p className="text-[11px] text-muted-foreground/70 truncate">End-to-end encrypted</p>}
       </div>
+      {/* iPhone can hold a call's sound back until a tap: say so, and take the tap. */}
+      {sound.blocked && (
+        <button onClick={() => void sound.start()} data-testid="concord-call-hear"
+          className="h-11 md:h-8 px-3 rounded-lg bg-brand text-primary-foreground text-xs font-medium shrink-0 flex items-center gap-1.5">
+          <Volume2 className="w-4 h-4" aria-hidden="true" /> Tap to hear the call
+        </button>
+      )}
       <button onClick={() => void toggleMic()} aria-label={here.micOn ? "Mute" : "Unmute"} aria-pressed={!here.micOn} data-testid="concord-call-mic"
         className={`${barButton} ${here.micOn ? "bg-muted/60 text-foreground" : "bg-destructive/15 text-destructive"}`}>
         {here.micOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
