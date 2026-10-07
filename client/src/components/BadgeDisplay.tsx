@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Award, ChevronDown, ChevronUp, User, Plus, ArrowUp, ArrowDown, EyeOff } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { showBadgeOnProfile, acceptBadges } from "@/lib/nip58-badges";
-import { besideName, moveShownBadge, hideShownBadge } from "@/lib/badge-events";
+import { besideName, moveShownBadge, hideShownBadge, badgeForContext } from "@/lib/badge-events";
+import { useBadgeCommunity } from "@/components/badges/badge-context";
 import { FromCommunity } from "@/components/badges/FromCommunity";
 import { useToast } from "@/hooks/use-toast";
 import { useAcceptedBadgesCached } from "@/hooks/use-badges";
@@ -280,12 +281,18 @@ export function ProfileBadgesSection({ badges, pubkey, onRefresh }: {
  * Beside a name: the person's first badge only, and "+N" for the rest
  * (owner, 2026-10-06 — badges-plan). Three icons crowded the name.
  */
-export function BadgeIcons({ badges, pubkey }: {
+export function BadgeIcons({ badges, pubkey, community }: {
   badges: ResolvedBadge[];
   pubkey?: string;
+  /** Inside this community: only its own badge, and no "+N" (badgeForContext). */
+  community?: string;
 }) {
   const accepted = useMemo(() => badges.filter(b => b.isAccepted), [badges]);
-  const { first, more } = besideName(accepted);
+  const general = besideName(accepted);
+  const first = community
+    ? badgeForContext(accepted.map((b) => ({ b, community: b.definition.community })), community)?.b
+    : general.first;
+  const more = community ? 0 : general.more;
   if (!first) return null;
   const npub = pubkey ? (() => { try { return nip19.npubEncode(pubkey); } catch { return null; } })() : null;
   const imgSrc = first.definition.thumb || first.definition.image;
@@ -316,9 +323,10 @@ export function BadgeIcons({ badges, pubkey }: {
   );
 }
 
-export function PostBadgeIcons({ pubkey }: { pubkey: string }) {
+export function PostBadgeIcons({ pubkey, linkMore = true }: { pubkey: string; /** False inside something that is already a link (a member row). */ linkMore?: boolean }) {
   const enabled = useBadgesEnabled();
   const badges = useAcceptedBadgesCached(pubkey);
+  const community = useBadgeCommunity();
   if (!enabled || badges.length === 0) return null;
-  return <BadgeIcons badges={badges} pubkey={pubkey} />;
+  return <BadgeIcons badges={badges} pubkey={linkMore ? pubkey : undefined} community={community} />;
 }

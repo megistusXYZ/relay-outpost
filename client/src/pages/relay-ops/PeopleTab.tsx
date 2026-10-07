@@ -37,6 +37,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { GiveBadge } from "@/components/badges/GiveBadge";
+import { PostBadgeIcons } from "@/components/BadgeDisplay";
+import { BadgeCommunityProvider } from "@/components/badges/badge-context";
 import { AccessControlTab } from "./AccessControlTab";
 import { ManagedAtNote } from "./ops-ui";
 import { ConfirmAction, type PendingAction } from "./ConfirmAction";
@@ -359,6 +361,8 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts, team, initialFilter }: 
                     <span className="min-w-0 flex-1">
                       <span className="flex items-baseline gap-2">
                         <span className="font-medium truncate">{name}</span>
+                        {/* This community's badge, if it gave them one. */}
+                        <BadgeCommunityProvider community={relayUrl}><PostBadgeIcons pubkey={p.pubkey} /></BadgeCommunityProvider>
                         {p.status === "banned" && <span className="shrink-0 text-[13px] font-medium text-red-600 dark:text-red-400">Banned</span>}
                         {p.status === "allowed" && <span className="shrink-0 text-[13px] font-medium text-emerald-700 dark:text-emerald-400">Allowed</span>}
                       </span>

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, memo, startTransition } from "react";
+import { BadgeCommunityProvider } from "@/components/badges/badge-context";
 import { analyticsRedirect } from "@/lib/console-query-params";
 import { Switch, Route, useLocation, useSearch, Link } from "wouter";
 import { queryClient } from "./lib/queryClient";
@@ -265,7 +266,8 @@ const FeedbackDrawer = lazy(() => lazyNamed(() => import("@/components/FeedbackD
 
 function OutpostDetail({ relayEncoded }: { relayEncoded: string }) {
   const relayUrl = decodeURIComponent(relayEncoded);
-  return <LazyOutpostFeedBrowser relayUrl={relayUrl} />;
+  // On a community's page, the badge beside a name is the one it gave (or none).
+  return <BadgeCommunityProvider community={relayUrl}><LazyOutpostFeedBrowser relayUrl={relayUrl} /></BadgeCommunityProvider>;
 }
 
 // Permanent client-side redirect for routes that moved into a consolidated hub

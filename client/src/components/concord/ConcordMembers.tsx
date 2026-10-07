@@ -3,6 +3,7 @@
  * into a member list; the owner can remove or ban a member — which fires the
  * CORD-06 rekey that actually cuts their access, with a progress indicator.
  */
+import { PostBadgeIcons } from "@/components/BadgeDisplay";
 import { useState, useCallback, useMemo } from "react";
 import { Link } from "wouter";
 import { nip19 } from "nostr-tools";
@@ -376,6 +377,8 @@ function MemberRow({ member, isSelf, isAdmin, canModerate, canToggleAdmin, admin
                 checking is off without a real kind-0, since `name` would be an
                 npub. */}
             <PersonBadges pubkey={member.pubkey} nip05={nip05} claimedName={claimedName} showCollision={hasProfile} />
+            {/* Their first chosen badge — in the member list only, never on each message. */}
+            <PostBadgeIcons pubkey={member.pubkey} linkMore={false} />
             {isSelf && <span className="text-[9px] text-brand/60">you</span>}
           </p>
           <p className="text-[10px] text-muted-foreground/50 flex items-center gap-1 min-w-0">
