@@ -42,6 +42,8 @@ import type { ISigner } from "applesauce-signers";
 import { RelayOutpostLoader, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import relayOutpostBanner from "../assets/images/relay-outpost-banner.webp";
+import { drawnBannerFor } from "@/lib/default-banner";
+import { useTheme } from "@/hooks/use-theme";
 import bannerNebula from "../assets/images/banner-nebula.webp";
 import bannerStation from "../assets/images/banner-station.webp";
 import bannerRelayTower from "../assets/images/banner-relay-tower.webp";
@@ -517,11 +519,14 @@ export default function MyOutpost() {
 
   const userBannerUrl = profileContent?.banner || null;
 
+  // No banner and no picture picked here: the drawn default, the same one
+  // everyone else sees for you (lib/default-banner.ts), in the current theme.
+  const { isDark: bannerDark } = useTheme();
+  const drawnBanner = useMemo(() => drawnBannerFor(pubkey, bannerDark), [pubkey, bannerDark]);
   const rawBannerSrc = useMemo(() => {
-    if (bannerIndex === -1 && userBannerUrl) return userBannerUrl;
-    const idx = bannerIndex >= 0 && bannerIndex < DEFAULT_BANNERS.length ? bannerIndex : 0;
-    return DEFAULT_BANNERS[idx];
-  }, [bannerIndex, userBannerUrl]);
+    if (bannerIndex === -1) return userBannerUrl || drawnBanner;
+    return DEFAULT_BANNERS[bannerIndex] ?? drawnBanner;
+  }, [bannerIndex, userBannerUrl, drawnBanner]);
 
   const activeBannerSrc = useMemo(() => {
     try {
@@ -1509,15 +1514,9 @@ export default function MyOutpost() {
             fetchPriority="high"
             onLoad={() => setBannerLoaded(true)}
             onError={(e) => {
+              // A banner that won't load shows the drawn default; your choice is kept.
               const img = e.target as HTMLImageElement;
-              if (bannerIndex === -1) {
-                setBannerIndex(0);
-                localStorage.setItem("outpost-banner-index", "0");
-              } else if (img.src !== DEFAULT_BANNERS[0]) {
-                img.src = DEFAULT_BANNERS[0];
-                setBannerIndex(0);
-                localStorage.setItem("outpost-banner-index", "0");
-              }
+              if (img.src !== drawnBanner) img.src = drawnBanner;
             }}
             data-testid="img-outpost-banner"
           />

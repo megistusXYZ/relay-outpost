@@ -3914,19 +3914,19 @@ export default function Messages() {
         </div>
       ) : (
         <div className="hidden md:flex flex-1 items-center justify-center p-8 relative overflow-hidden">
-          {/* Ambient space backdrop (desktop only) — same low-opacity image +
-              gradient-scrim treatment as create-bg, so the card stays legible in
-              both themes. Single static image, GPU-cheap. */}
+          {/* Ambient space backdrop (desktop, DARK only) — a low-opacity image +
+              gradient scrim. Light mode is the calm background token, no space
+              (LIGHT_MODE.md; light-mode-calm.test.ts). Single static image. */}
           <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
             <img
               src={messagesEmptyBg}
               alt=""
               loading="lazy"
               decoding="async"
-              className="absolute inset-0 h-full w-full object-cover object-center opacity-[0.10] dark:opacity-[0.22]"
+              className="absolute inset-0 hidden h-full w-full object-cover object-center dark:block dark:opacity-[0.22]"
             />
             <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background/95" />
-            <div className="absolute inset-x-0 top-0 h-56 bg-[radial-gradient(ellipse_70%_100%_at_50%_0%,rgba(139,92,246,0.10),transparent_70%)] dark:bg-[radial-gradient(ellipse_70%_100%_at_50%_0%,rgba(139,92,246,0.18),transparent_70%)]" />
+            <div className="absolute inset-x-0 top-0 h-56 dark:bg-[radial-gradient(ellipse_70%_100%_at_50%_0%,rgba(139,92,246,0.18),transparent_70%)]" />
           </div>
           <div className="glass-card w-full max-w-md rounded-2xl border border-brand/15 dark:border-brand/10 px-8 py-10 text-center shadow-sm">
             <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-brand/20 dark:border-brand/15 bg-brand/5 dark:bg-white/[0.03]">

@@ -223,7 +223,7 @@ export function CreateStudio() {
             alt=""
             loading="lazy"
             decoding="async"
-            className="absolute inset-0 h-full w-full object-cover object-top opacity-[0.12] dark:opacity-[0.24]"
+            className="absolute inset-0 hidden h-full w-full object-cover object-top dark:block dark:opacity-[0.24]"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-background/25 via-background/60 to-background/92" />
           <div className="absolute inset-x-0 top-0 h-44 bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(139,92,246,0.14),transparent_70%)] dark:bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(139,92,246,0.22),transparent_70%)]" />

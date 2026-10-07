@@ -257,24 +257,26 @@ function RailNode({
       : isCreate
         ? isDark
           ? "0 0 10px rgba(124,58,237,0.25)"
-          : "0 0 10px rgba(109,40,217,0.12)"
+          : "none"
         : isDark
           ? "0 0 8px rgba(124,58,237,0.16)"
-          : "0 0 8px rgba(109,40,217,0.08)";
+          // Light mode is quiet unless selected (owner, 2026-10-07): no glow
+          // on a destination you're not on; the active one keeps its ring.
+          : "none";
 
   const ringBg = live
     ? ringConic
     : active
       ? isDark ? "rgba(196,181,253,0.6)" : "rgba(109,40,217,0.6)"
       : isCreate
-        ? isDark ? "rgba(168,85,247,0.4)" : "rgba(109,40,217,0.42)"
-        : isDark ? "rgba(168,85,247,0.22)" : "rgba(109,40,217,0.26)";
+        ? isDark ? "rgba(168,85,247,0.4)" : "hsl(var(--border))"
+        : isDark ? "rgba(168,85,247,0.22)" : "hsl(var(--border))";
 
   const innerBg = active
     ? isDark ? "hsl(262 45% 17%)" : "hsl(262 45% 92%)"
     : isCreate
-      ? isDark ? "hsl(262 38% 12%)" : "hsl(262 40% 96%)"
-      : isDark ? "hsl(258 26% 10%)" : "#ffffff";
+      ? isDark ? "hsl(262 38% 12%)" : "hsl(var(--card))"
+      : isDark ? "hsl(258 26% 10%)" : "hsl(var(--card))";
 
   const button = (
     <button
