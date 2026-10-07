@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { use$ } from "applesauce-react/hooks";
+import type { NostrEvent } from "nostr-tools";
 import { eventStore, fetchProfilesCached, FAST_RELAYS } from "@/lib/nostr";
 import { fetchTrendingFeed, searchUsers, primalStatsCache } from "@/lib/primal-cache";
 import { MIN_FOLLOWERS_GLOBAL, type ReachDepth } from "@/lib/spam-filter";
@@ -175,10 +176,10 @@ export function PeopleSearch({
   onRemove: (index: number) => void;
 }) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Event[]>([]);
+  const [results, setResults] = useState<NostrEvent[]>([]);
   const [searching, setSearching] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const selectedSet = useMemo(() => new Set((selectedPubkeys || []).map(p => p.pubkey)), [selectedPubkeys]);
@@ -231,7 +232,7 @@ export function PeopleSearch({
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query, doSearch]);
 
-  const getProfile = (event: Event) => {
+  const getProfile = (event: NostrEvent) => {
     try { return JSON.parse(event.content); } catch { return {}; }
   };
 

@@ -879,8 +879,8 @@ function ZapNotificationWatcher() {
         const cached = eventStore.getReplaceable(KIND_METADATA, counterpartyPubkey);
         if (cached) {
           const content = getProfileContent(cached);
-          profileName = content.display_name || content.name || null;
-          profilePic = content.picture || null;
+          profileName = content?.display_name || content?.name || null;
+          profilePic = content?.picture || null;
         }
         if (!profileName) {
           profileName = counterpartyPubkey.slice(0, 8) + "…";
@@ -913,8 +913,8 @@ function ZapNotificationWatcher() {
           const evt = eventStore.getReplaceable(KIND_METADATA, counterpartyPubkey!);
           if (evt) {
             const content = getProfileContent(evt);
-            const name = content.display_name || content.name || counterpartyPubkey!.slice(0, 8) + "…";
-            const pic = content.picture || null;
+            const name = content?.display_name || content?.name || counterpartyPubkey!.slice(0, 8) + "…";
+            const pic = content?.picture || null;
             if (pic || name !== counterpartyPubkey!.slice(0, 8) + "…") {
               updateToast({
                 id: "",
@@ -1203,7 +1203,7 @@ function AppContent({ mainRef, scrollHidden }: { mainRef: React.RefObject<HTMLEl
         <CreateStudio />
         <OrbitMenu />
       </DeferredShell>
-      <MiniPlayer hidden={scrollHidden} />
+      <MiniPlayer />
       <SpeechReaderBar hidden={scrollHidden} />
       <MobileFooter hidden={scrollHidden} />
       {/* PWAInstallNudge removed: no auto install popups — installing lives in

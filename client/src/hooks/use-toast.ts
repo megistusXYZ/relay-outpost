@@ -8,7 +8,9 @@ import type {
 const TOAST_LIMIT = 1
 const TOAST_REMOVE_DELAY = 3000
 
-type ToasterToast = ToastProps & {
+// The root's own `title` is the HTML tooltip attribute (a string); ours is the
+// toast's heading, which can be any element.
+type ToasterToast = Omit<ToastProps, "title"> & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
