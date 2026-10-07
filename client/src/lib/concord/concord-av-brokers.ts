@@ -52,6 +52,22 @@ export function serviceOrigin(input: unknown): string | null {
   return origin;
 }
 
+/**
+ * The Calls line in a group's settings (owner, 2026-10-06): where its calls
+ * run, or — for a group that names no service, as every group made here
+ * before then — what that means, with ours offered to choose.
+ */
+export function callServiceSetting(o: { listed: string[]; own: string | null }): { text: string; canChooseOurs: boolean } {
+  if (o.listed.length) {
+    const names = o.listed.map((s) => (s === o.own ? "Relay Outpost's call service" : new URL(s).host));
+    return { text: `Calls run on ${names.join(" or ")}`, canChooseOurs: false };
+  }
+  return {
+    text: "Each app uses its own call service, so people on different apps can end up in separate calls.",
+    canChooseOurs: !!o.own,
+  };
+}
+
 /** A group's `av_brokers`, cleaned: readable https origins only, each once, at most 5. */
 export function readAvBrokers(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];

@@ -33,11 +33,12 @@ import { editMetadata, postTimerNotices } from "@/lib/concord/concord-community"
 import { disappearingTimer, timerSpan } from "@/lib/concord/concord-disappearing";
 import type { CommunityMetadata } from "@/lib/concord/concord-events";
 import { canPublishMetadata, type MetadataChanges, type MetadataHead } from "@/lib/concord/concord-metadata-edition";
+import { callServiceSetting, ownCallService, readAvBrokers } from "@/lib/concord/concord-av-brokers";
 import type { StoredCommunity } from "@/lib/concord/concord-keys";
 import { RoomImagePicker } from "./RoomImagePicker";
 import { parseCommunityImage, type CommunityImage } from "@/lib/concord/concord-image";
 
-type Field = "name" | "icon" | "about" | "allowMemberInvites" | "messageExpiration";
+type Field = "name" | "icon" | "about" | "allowMemberInvites" | "messageExpiration" | "callService";
 
 /** The choices CORD-08 suggests: a day is the shortest, so clock skew never matters. */
 const TIMER_CHOICES = [
@@ -79,6 +80,10 @@ export function ConcordEditOutpostDialog({ open, onOpenChange, community, onComm
   const [about, setAbout] = useState("");
   const [allowMemberInvites, setAllowMemberInvites] = useState(false);
   const [expiration, setExpiration] = useState(0);
+  const [useOurCalls, setUseOurCalls] = useState(false);
+  const ownCalls = ownCallService();
+  // Where calls run: the group's own list as folded, else the record's.
+  const callLine = callServiceSetting({ listed: folded?.raw ? readAvBrokers(folded.raw.av_brokers) : community.avBrokers ?? [], own: ownCalls });
   const touch = (f: Field) => setDirty((d) => (d[f] ? d : { ...d, [f]: true }));
 
   // Seeding is for DISPLAY only, and never reaches into a field the user has
@@ -98,6 +103,7 @@ export function ConcordEditOutpostDialog({ open, onOpenChange, community, onComm
     if (!dirty.about) setAbout(folded?.about ?? community.about ?? "");
     if (!dirty.allowMemberInvites) setAllowMemberInvites((folded?.allowMemberInvites ?? community.allowMemberInvites) === true);
     if (!dirty.messageExpiration) setExpiration(disappearingTimer(folded));
+    if (!dirty.callService) setUseOurCalls(false);
   }, [open, community, folded, dirty]);
 
   const ready = canPublishMetadata({ community, pubkey, govMetadata: folded, foldHead });
@@ -112,6 +118,7 @@ export function ConcordEditOutpostDialog({ open, onOpenChange, community, onComm
     if (dirty.about) changes.about = about.trim();
     if (dirty.allowMemberInvites) changes.allowMemberInvites = allowMemberInvites;
     if (dirty.messageExpiration) changes.messageExpiration = expiration;
+    if (dirty.callService && useOurCalls && ownCalls && callLine.canChooseOurs) changes.avBrokers = [ownCalls];
     // Publishing an edition that changes nothing is not free: it is a full
     // replacement at a version that outranks the real head. A Save with nothing
     // dirty has to go on the wire as nothing.
@@ -190,6 +197,17 @@ export function ConcordEditOutpostDialog({ open, onOpenChange, community, onComm
             </div>
             {expiration > 0 && !TIMER_CHOICES.some((c) => c.seconds === expiration) && (
               <p className="text-[11px] text-muted-foreground/60">Set elsewhere to {timerSpan(expiration)}.</p>
+            )}
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-border/30 bg-muted/10 p-2.5" data-testid="call-service-setting">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Calls</p>
+              <p className="text-[11px] text-muted-foreground/60">{callLine.text}</p>
+              {callLine.canChooseOurs && <p className="mt-1 text-[11px] text-muted-foreground/60">Use Relay Outpost's for this group, so everyone meets in one call.</p>}
+            </div>
+            {callLine.canChooseOurs && (
+              <Switch checked={useOurCalls} onCheckedChange={(v) => { touch("callService"); setUseOurCalls(v); }}
+                aria-label="Use Relay Outpost's call service for this group" data-testid="switch-our-call-service" />
             )}
           </div>
           {/* Say WHY it is disabled. A dead Save button with no reason is its own

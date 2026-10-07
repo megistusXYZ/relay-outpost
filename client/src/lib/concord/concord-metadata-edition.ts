@@ -66,6 +66,8 @@ export interface MetadataChanges {
   allowMemberInvites?: boolean;
   /** The disappearing-messages timer in seconds; 0 turns it off (CORD-08 §1). */
   messageExpiration?: number;
+  /** The group's call services (CORD-07 §5 `av_brokers`), when an admin chose them. */
+  avBrokers?: string[];
 }
 
 /**
@@ -177,7 +179,8 @@ export function nextMetadataEdition(
   // Call services have no UI field either: another app's list rides through in
   // the raw content above; our own brand-new group, not yet folded, carries the
   // list it was created with.
-  if (!raw && community.avBrokers?.length) content.av_brokers = community.avBrokers;
+  if (changes.avBrokers?.length) content.av_brokers = changes.avBrokers;
+  else if (!raw && community.avBrokers?.length) content.av_brokers = community.avBrokers;
   // Written only when someone set it here; untouched, the raw content above
   // already carries the group's timer through, including another app's.
   if (changes.messageExpiration !== undefined) content.message_expiration = Math.max(0, Math.floor(changes.messageExpiration));

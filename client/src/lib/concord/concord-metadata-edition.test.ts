@@ -189,6 +189,13 @@ describe("nextMetadataEdition — the group's call services (CORD-07 §5)", () =
     expect(out.content.av_brokers).toEqual(["https://relayop.xyz"]);
   });
 
+  it("an admin choosing our service for a group that lists none writes it, keeping everything else", () => {
+    const live = fold({ raw: { name: "Group", description: "", relays: ["wss://a"], message_expiration: 86400 } });
+    const out = nextMetadataEdition(joined(), live, head, { avBrokers: ["https://relayop.xyz"] });
+    expect(out.content.av_brokers).toEqual(["https://relayop.xyz"]);
+    expect(out.content).toMatchObject({ name: "Group", relays: ["wss://a"], message_expiration: 86400 });
+  });
+
   it("never adds our service to a group that lists none", () => {
     const live = fold({ raw: { name: "Group", description: "", relays: [] } });
     expect(nextMetadataEdition(joined(), live, head, { name: "R" }).content).not.toHaveProperty("av_brokers");
