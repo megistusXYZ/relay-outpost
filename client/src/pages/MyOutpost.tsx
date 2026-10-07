@@ -12,6 +12,7 @@ import { fetchUserProfileStats, fetchUserAuthoredFeed, fetchEventCounts, primalS
 import { fetchRelayLists, getUserNotesFetchRelays } from "@/lib/outbox";
 import { prefetchProfilesBulkFromBrainstorm } from "@/lib/brainstorm-search";
 import { NostrPost } from "@/components/NostrPost";
+import { PostBoundary } from "@/components/PostBoundary";
 import { BtcZapIcon } from "@/components/NostrPost";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
@@ -3343,7 +3344,9 @@ function NotesTab({ notes, loaded, repostMap, onLoadMore, hasMore, loadingMore }
   return (
     <div className="space-y-3" data-testid="container-outpost-notes">
       {notes.map((event) => (
-        <NostrPost key={event.id} event={event} repostedBy={repostMap?.get(event.id) || null} />
+        <PostBoundary key={event.id} id={event.id}>
+          <NostrPost event={event} repostedBy={repostMap?.get(event.id) || null} />
+        </PostBoundary>
       ))}
       {onLoadMore && hasMore !== undefined && loadingMore !== undefined && (
         <InfiniteScrollSentinel onLoadMore={onLoadMore} isLoading={loadingMore} hasMore={hasMore} />
@@ -3372,7 +3375,9 @@ function RepliesTab({ replies, loaded, onLoadMore, hasMore, loadingMore }: { rep
   return (
     <div className="space-y-3" data-testid="container-outpost-replies">
       {replies.map((event) => (
-        <NostrPost key={event.id} event={event} />
+        <PostBoundary key={event.id} id={event.id}>
+          <NostrPost event={event} />
+        </PostBoundary>
       ))}
       {onLoadMore && hasMore !== undefined && loadingMore !== undefined && (
         <InfiniteScrollSentinel onLoadMore={onLoadMore} isLoading={loadingMore} hasMore={hasMore} />

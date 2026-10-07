@@ -5,6 +5,7 @@ import { clientTags } from "@/lib/nostr-helpers";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
 import { ProfileLink } from "@/components/analytics/ProfileLink";
 import { NostrPost } from "@/components/NostrPost";
+import { PostBoundary } from "@/components/PostBoundary";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useDocumentTitle } from "@/hooks/use-document-title";
@@ -498,7 +499,7 @@ export default function CommunityPage() {
             </p>
           </div>
         ) : (
-          posts.map(event => <NostrPost key={event.id} event={event} />)
+          posts.map(event => <PostBoundary key={event.id} id={event.id}><NostrPost event={event} /></PostBoundary>)
         )}
       </div>
     </div>

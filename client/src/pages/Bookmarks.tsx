@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { Link } from "wouter";
 import { PageToolbar } from "@/components/PageToolbar";
 import { NostrPost } from "@/components/NostrPost";
+import { PostBoundary } from "@/components/PostBoundary";
 import { useNostrBookmarks } from "@/hooks/use-nostr-bookmarks";
 import { use$ } from "applesauce-react/hooks";
 import { eventStore, subscribeToFeed, fetchProfiles, fetchInteractions, DEFAULT_RELAYS, throttledPoolSubscribe } from "@/lib/nostr";
@@ -166,7 +167,9 @@ function BookmarkedPost({
       <div className="flex items-center justify-end px-1">
         <PrivacyToggleBadge isPrivate={isPrivate} onToggle={onTogglePrivacy} testId={`badge-privacy-${eventId.slice(0, 8)}`} />
       </div>
-      <NostrPost event={event} />
+      <PostBoundary id={event.id}>
+        <NostrPost event={event} />
+      </PostBoundary>
     </div>
   );
 }

@@ -50,6 +50,7 @@ import { ReportDialog } from "@/components/ReportDialog";
 import { useScrollRestore } from "@/hooks/use-scroll-restore";
 import { RelayOutpostLoader, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PostBoundary } from "@/components/PostBoundary";
 import { ZapDialog } from "@/components/ZapDialog";
 import { ConfirmAction } from "@/components/ConfirmAction";
 import relayOutpostBanner from "../assets/images/relay-outpost-banner.webp";
@@ -3072,9 +3073,9 @@ function NotesTab({ notes, loaded, repostMap, onLoadMore, hasMore, loadingMore, 
   return (
     <div className="space-y-3" data-testid="container-profile-notes">
       {notes.map((event) => (
-        <ErrorBoundary key={event.id} fallback={<div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-xs text-muted-foreground" data-testid="error-post-fallback">This note couldn't be displayed</div>}>
+        <PostBoundary key={event.id} id={event.id}>
           <NostrPost event={event} repostedBy={repostMap?.get(event.id) || null} />
-        </ErrorBoundary>
+        </PostBoundary>
       ))}
       {onLoadMore && hasMore !== undefined && loadingMore !== undefined && (
         <InfiniteScrollSentinel onLoadMore={onLoadMore} isLoading={loadingMore} hasMore={hasMore} />
@@ -3102,9 +3103,9 @@ function RepliesTab({ replies, loaded, onLoadMore, hasMore, loadingMore }: { rep
   return (
     <div className="space-y-3" data-testid="container-profile-replies">
       {replies.map((event) => (
-        <ErrorBoundary key={event.id} fallback={<div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-xs text-muted-foreground" data-testid="error-post-fallback">This note couldn't be displayed</div>}>
+        <PostBoundary key={event.id} id={event.id}>
           <NostrPost event={event} />
-        </ErrorBoundary>
+        </PostBoundary>
       ))}
       {onLoadMore && hasMore !== undefined && loadingMore !== undefined && (
         <InfiniteScrollSentinel onLoadMore={onLoadMore} isLoading={loadingMore} hasMore={hasMore} />

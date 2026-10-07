@@ -1789,8 +1789,10 @@ export function RawEventDialog({ open, onOpenChange, event }: { open: boolean; o
       `created: ${createdDate}`,
     ];
     if (event.tags.length > 0) {
-      const eTags = event.tags.filter(t => t[0] === "e").map(t => t[1].slice(0, 12) + "...");
-      const pTags = event.tags.filter(t => t[0] === "p").map(t => t[1].slice(0, 12) + "...");
+      // A tag can come without its value (["e"]): anyone can publish one, and
+      // reading it as a string took the whole page down.
+      const eTags = event.tags.filter(t => t[0] === "e" && typeof t[1] === "string").map(t => t[1].slice(0, 12) + "...");
+      const pTags = event.tags.filter(t => t[0] === "p" && typeof t[1] === "string").map(t => t[1].slice(0, 12) + "...");
       if (eTags.length > 0) parts.push(`refs: [${eTags.join(", ")}]`);
       if (pTags.length > 0) parts.push(`mentions: [${pTags.join(", ")}]`);
     }

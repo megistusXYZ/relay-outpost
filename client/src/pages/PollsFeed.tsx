@@ -3,6 +3,7 @@ import type { Event } from "nostr-tools";
 import { RefreshCw, Vote } from "lucide-react";
 import { fetchPollsFeed, filterPollsByShow, sortPolls, type PollShowMode, type PollSortMode } from "@/lib/polls";
 import { PollPost } from "@/components/PollPost";
+import { PostBoundary } from "@/components/PostBoundary";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { Button } from "@/components/ui/button";
@@ -109,7 +110,7 @@ export default function PollsFeed({
           Refresh
         </button>
       </div>
-      {visible.map((p) => <PollPost key={p.id} event={p} />)}
+      {visible.map((p) => <PostBoundary key={p.id} id={p.id}><PollPost event={p} /></PostBoundary>)}
       <InfiniteScrollSentinel
         onLoadMore={() => setCount((c) => Math.min(c + PAGE, filteredPolls.length))}
         isLoading={false}
