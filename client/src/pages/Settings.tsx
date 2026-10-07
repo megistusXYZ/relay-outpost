@@ -970,7 +970,8 @@ function ClosedAppNotifyRow() {
           title: "Couldn't turn notifications on",
           description: r.reason === "denied"
             ? "Notifications are blocked for this site. Allow them in your browser's settings, then try again."
-            : r.reason === "unavailable" ? "This browser can't show notifications while the app is closed." : "Try again in a moment.",
+            : r.reason === "unavailable" ? "This browser can't show notifications while the app is closed."
+              : r.reason === "not-set-up" ? "Notifications aren't available here yet." : "Try again in a moment.",
           variant: "destructive",
         });
       }

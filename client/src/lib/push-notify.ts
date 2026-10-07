@@ -112,7 +112,7 @@ async function send(body: object, signed: boolean): Promise<Response> {
 
 export type TurnOnResult =
   | { ok: true; messages: "on" | "inbox-needs-sign-in" }
-  | { ok: false; reason: "denied" | "unavailable" | "failed" };
+  | { ok: false; reason: "denied" | "unavailable" | "not-set-up" | "failed" };
 
 export async function turnOnClosedAppNotify(pubkey: string): Promise<TurnOnResult> {
   if (pushReadiness() !== "ready") return { ok: false, reason: "unavailable" };
@@ -120,7 +120,7 @@ export async function turnOnClosedAppNotify(pubkey: string): Promise<TurnOnResul
   if (permission !== "granted") return { ok: false, reason: "denied" };
   try {
     const keyRes = await fetch("/api/push/key");
-    if (!keyRes.ok) return { ok: false, reason: "unavailable" };
+    if (!keyRes.ok) return { ok: false, reason: "not-set-up" };
     const { publicKey } = (await keyRes.json()) as { publicKey: string };
     const reg = await registration();
     if (!reg) return { ok: false, reason: "unavailable" };
