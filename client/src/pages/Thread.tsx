@@ -142,7 +142,9 @@ function MentionName({ pubkey }: { pubkey: string }) {
   const profile = use$(() => eventStore.replaceable(KIND_METADATA, pubkey), [pubkey]);
   useEffect(() => { fetchProfiles([pubkey], DEFAULT_RELAYS.slice(0, 3)); }, [pubkey]);
   const name = useMemo(() => {
-    const content = getProfileContent(profile);
+    // Only once the profile has arrived: getProfileContent(undefined) throws,
+    // and a mention of anyone not yet loaded took the whole thread down.
+    const content = profile ? getProfileContent(profile) : undefined;
     if (content?.display_name || content?.name) return content.display_name || content.name;
     try { const n = nip19.npubEncode(pubkey); return `${n.slice(0, 9)}...${n.slice(-4)}`; } catch { return pubkey.slice(0, 8) + "..."; }
   }, [profile, pubkey]);
