@@ -9,6 +9,9 @@ import { createHmac, randomBytes } from "node:crypto";
 import { verifyEvent, type Event } from "nostr-tools";
 import type { Express } from "express";
 import { TTLCache } from "./ttl-cache";
+import { createCallCapacity, type Admit, type CallCapacity } from "./call-capacity";
+import { verifyNip98 } from "./nip98-auth";
+import { RELAY_OUTPOST_TEAM_PUBKEY } from "../shared/team-key";
 
 /** The token request's kind (CORD-07 §2, NIP-98 shaped). */
 export const KIND_AV_TOKEN_REQUEST = 27235;
@@ -28,11 +31,13 @@ export interface AvTokenInput {
   apiSecret: string;
   /** The media server clients connect to, e.g. wss://livekit.relayop.xyz. */
   livekitUrl: string;
+  /** Call limits (call-capacity.ts), asked only for a genuine request. */
+  admit?: (room: string) => Admit;
 }
 
 export type AvTokenResult =
   | { status: 200; body: { token: string; url: string; identity: string } }
-  | { status: 400 | 401 | 503; body: { error: string } };
+  | { status: 400 | 401 | 429 | 503; body: { error: string } };
 
 /** How far a request's timestamp may be from ours (CORD-07 §2: ±60s). */
 const FRESH_SECONDS = 60;
@@ -68,6 +73,14 @@ export function issueAvToken(input: AvTokenInput): AvTokenResult {
   if (input.seen.has(event.id)) {
     return { status: 401, body: { error: "Request already used" } };
   }
+  // Limits come after the signature, so nobody can use up a room's seats by
+  // sending requests they couldn't sign; a refused request isn't spent.
+  const admit = input.admit?.(event.pubkey) ?? { ok: true };
+  if (!admit.ok) {
+    return admit.reason === "room"
+      ? { status: 429, body: { error: "Too many people are joining this call at once. Try again in a moment." } }
+      : { status: 503, body: { error: "Calls are busy right now. Try again in a few minutes." } };
+  }
   input.seen.add(event.id);
   const identity = randomBytes(16).toString("hex");
   const token = mintLiveKitToken(input.apiKey, input.apiSecret, input.room, identity, input.now);
@@ -76,18 +89,45 @@ export function issueAvToken(input: AvTokenInput): AvTokenResult {
 
 /** A LiveKit access token: an HS256 JWT with the room grant, signed with the API secret. */
 function mintLiveKitToken(apiKey: string, apiSecret: string, room: string, identity: string, now: number): string {
-  const part = (x: object) => Buffer.from(JSON.stringify(x)).toString("base64url");
-  const header = part({ alg: "HS256", typ: "JWT" });
-  const payload = part({
-    iss: apiKey,
+  return signLiveKitJwt(apiKey, apiSecret, {
     sub: identity,
     nbf: now,
     exp: now + TOKEN_TTL_SECONDS,
     video: { room, roomJoin: true, canPublish: true, canSubscribe: true, canPublishData: true },
   });
+}
+
+function signLiveKitJwt(apiKey: string, apiSecret: string, claims: object): string {
+  const part = (x: object) => Buffer.from(JSON.stringify(x)).toString("base64url");
+  const header = part({ alg: "HS256", typ: "JWT" });
+  const payload = part({ iss: apiKey, ...claims });
   const sig = createHmac("sha256", apiSecret).update(`${header}.${payload}`).digest("base64url");
   return `${header}.${payload}.${sig}`;
 }
+
+/**
+ * The calls running on the media server right now: its room list (LiveKit's
+ * RoomService.ListRooms), asked with a short-lived list-only token.
+ */
+async function liveKitRooms(): Promise<Set<string>> {
+  const apiKey = process.env.LIVEKIT_API_KEY ?? "", apiSecret = process.env.LIVEKIT_API_SECRET ?? "", url = process.env.LIVEKIT_URL ?? "";
+  if (!apiKey || !apiSecret || !url) throw new Error("calls aren't set up");
+  const now = Math.floor(Date.now() / 1000);
+  const token = signLiveKitJwt(apiKey, apiSecret, { nbf: now, exp: now + 60, video: { roomList: true } });
+  const res = await fetch(`${url.replace(/^ws/, "http")}/twirp/livekit.RoomService/ListRooms`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: "{}",
+    signal: AbortSignal.timeout(3_000),
+  });
+  if (!res.ok) throw new Error(`media server answered ${res.status}`);
+  const body = (await res.json()) as { rooms?: Array<{ name?: string }> };
+  return new Set((body.rooms ?? []).map((r) => r.name).filter((n): n is string => typeof n === "string"));
+}
+
+/** Calls at once (CALLS_MAX overrides) and new seats a minute in one call (25 people plus rejoins). */
+const DEFAULT_MAX_CALLS = 50;
+const SEATS_PER_ROOM_PER_MINUTE = 30;
 
 /** The signed event inside `Authorization: Concord <base64>`, or null when there isn't one. */
 function readRequest(header: string | undefined): Event | null {
@@ -111,7 +151,17 @@ const REPLAY_MEMORY_MS = 5 * 60 * 1000;
  * LIVEKIT_URL; with any missing it answers 503. Other apps' browsers may
  * call it too (see openToOtherApps below).
  */
-export function registerConcordAvRoutes(app: Express): void {
+export function registerConcordAvRoutes(app: Express, opts: {
+  /** Who may read the call count (/api/calls/usage). */
+  owners?: string[];
+  capacity?: CallCapacity;
+} = {}): void {
+  const owners = new Set((opts.owners ?? [RELAY_OUTPOST_TEAM_PUBKEY]).map((p) => p.toLowerCase()));
+  const capacity = opts.capacity ?? createCallCapacity({
+    maxCalls: Number(process.env.CALLS_MAX) > 0 ? Number(process.env.CALLS_MAX) : DEFAULT_MAX_CALLS,
+    seatsPerRoomPerMinute: SEATS_PER_ROOM_PER_MINUTE,
+    liveRooms: liveKitRooms,
+  });
   const used = new TTLCache<true>(10_000, REPLAY_MEMORY_MS);
   const seen = { has: (id: string) => used.get(id) !== undefined, add: (id: string) => used.set(id, true) };
 
@@ -153,7 +203,19 @@ export function registerConcordAvRoutes(app: Express): void {
       apiKey: process.env.LIVEKIT_API_KEY ?? "",
       apiSecret: process.env.LIVEKIT_API_SECRET ?? "",
       livekitUrl: process.env.LIVEKIT_URL ?? "",
+      admit: (r) => capacity.admit(r, Date.now()),
     });
     return res.status(result.status).json(result.body);
+  });
+
+  // How many calls are running, out of how many allowed: the team's status
+  // line in Relay Control. Signed (NIP-98) by the team's key; our own site only.
+  app.get("/api/calls/usage", async (req, res) => {
+    res.set("Cache-Control", "no-store");
+    const who = verifyNip98(req);
+    if ("error" in who) return res.status(who.status).json({ error: who.error });
+    if (!owners.has(who.pubkey.toLowerCase())) return res.status(403).json({ error: "Only the Relay Outpost team can see this" });
+    await capacity.refresh(Date.now());
+    return res.json(capacity.usage(Date.now()));
   });
 }

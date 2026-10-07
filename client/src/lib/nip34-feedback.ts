@@ -37,7 +37,8 @@ export const RELAY_OUTPOST_TEAM_REPO_D = "relay-outpost";
 // The team relay doesn't advertise an operator pubkey via NIP-11, so feedback
 // couldn't be addressed to the team (it fell back to public-only). Hardcode the
 // team inbox pubkey so beta feedback always routes here — privately + tagged.
-export const RELAY_OUTPOST_TEAM_PUBKEY = "dabe380b225adf262f3e2cf96460d4879b15fafd2f4325939600fc5c3b50a122";
+import { RELAY_OUTPOST_TEAM_PUBKEY } from "@shared/team-key";
+export { RELAY_OUTPOST_TEAM_PUBKEY };
 
 // The human-facing release version comes from the changelog (single source of
 // truth — see APP_VERSION there). Re-exported here so existing importers keep
