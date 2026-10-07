@@ -829,7 +829,7 @@ export function ActivityHeatmap({ pubkey: propPubkey, relays: propRelays }: Acti
             </div>
             <Button
               onClick={handleSearch}
-              disabled={loading || !customRange.from || !customRange.to || (customRange.from && customRange.to && customRange.from > customRange.to)}
+              disabled={loading || !customRange.from || !customRange.to || customRange.from > customRange.to}
               className="shrink-0"
               data-testid="button-custom-search"
             >

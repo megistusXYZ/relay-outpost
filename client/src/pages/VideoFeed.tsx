@@ -172,7 +172,7 @@ function interleaveByKind<T extends { event: Event }>(entries: T[], maxRun = 2):
     if (kind === lastKind) {
       runCount++;
       if (runCount > maxRun) {
-        const altKind = kind === KIND_SHORT_VIDEO ? KIND_TEXT_NOTE : KIND_SHORT_VIDEO;
+        const altKind: number = kind === KIND_SHORT_VIDEO ? KIND_TEXT_NOTE : KIND_SHORT_VIDEO;
         const altIdx = queue.findIndex((e, j) => j > i && (e.event.kind === KIND_SHORT_VIDEO ? KIND_SHORT_VIDEO : KIND_TEXT_NOTE) === altKind);
         if (altIdx !== -1) {
           const [alt] = queue.splice(altIdx, 1);

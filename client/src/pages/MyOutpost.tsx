@@ -663,7 +663,7 @@ export default function MyOutpost() {
           } catch {}
         }
         if (!parsed) {
-          const eTag = repostEvent.tags.find((t) => t[0] === "e");
+          const eTag = repostEvent.tags.find((t: string[]) => t[0] === "e");
           if (eTag && eTag[1]) {
             const cachedSet = eventStore.getByFilters({ ids: [eTag[1]] });
             const cached = cachedSet ? [...cachedSet].find((ev) => ev.id === eTag[1]) : undefined;
@@ -4476,7 +4476,7 @@ function FlightLogTab({ pubkey }: { pubkey: string }) {
           timestamp: event.created_at,
           event,
           targetPubkey: targetP?.[1],
-          targetEventId: event.tags.find(t => t[0] === "e")?.[1],
+          targetEventId: event.tags.find((t: string[]) => t[0] === "e")?.[1],
           reportReason: reasonTag?.[1] || event.content?.slice(0, 100) || undefined });
       },
       oneose() { onSubComplete(); } });
@@ -4536,7 +4536,7 @@ function FlightLogTab({ pubkey }: { pubkey: string }) {
             const targetP = event.tags.find((t: string[]) => t[0] === "p");
             const reasonTag = event.tags.find((t: string[]) => t[0] === "l");
             if (targetP?.[1]) targetPubkeys.add(targetP[1]);
-            addEntry({ id: event.id, type: "report", timestamp: event.created_at, event, targetPubkey: targetP?.[1], targetEventId: event.tags.find(t => t[0] === "e")?.[1], reportReason: reasonTag?.[1] || event.content?.slice(0, 100) || undefined });
+            addEntry({ id: event.id, type: "report", timestamp: event.created_at, event, targetPubkey: targetP?.[1], targetEventId: event.tags.find((t: string[]) => t[0] === "e")?.[1], reportReason: reasonTag?.[1] || event.content?.slice(0, 100) || undefined });
           },
           oneose() { flushActivities(); },
         }));
