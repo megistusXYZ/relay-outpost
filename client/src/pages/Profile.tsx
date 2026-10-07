@@ -873,7 +873,7 @@ export default function Profile() {
             } catch {}
           }
           if (!parsed) {
-            const eTag = repostEvent.tags.find((t) => t[0] === "e");
+            const eTag = repostEvent.tags.find((t: string[]) => t[0] === "e");
             if (eTag && eTag[1]) {
               const cachedSet = eventStore.getByFilters({ ids: [eTag[1]] });
               const cached = cachedSet ? [...cachedSet].find((ev) => ev.id === eTag[1]) : undefined;

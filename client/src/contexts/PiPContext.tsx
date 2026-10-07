@@ -33,7 +33,9 @@ function isHlsSource(src: string): boolean {
 }
 
 function getCaptureStream(video: HTMLVideoElement): MediaStream | null {
-  if (typeof video.captureStream === "function") return video.captureStream();
+  // captureStream is in every current browser but not yet in TypeScript's DOM types.
+  const v = video as HTMLVideoElement & { captureStream?: () => MediaStream };
+  if (typeof v.captureStream === "function") return v.captureStream();
   if (typeof (video as any).mozCaptureStream === "function") return (video as any).mozCaptureStream();
   return null;
 }

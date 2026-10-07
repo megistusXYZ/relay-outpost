@@ -1589,7 +1589,7 @@ function ProfileCard({ profile, tier, isFollowed, followsYou, grouped = false }:
   /** Inside a tier section the heading already says it — the card stays quiet. */
   grouped?: boolean;
 }) {
-  let content: ReturnType<typeof getProfileContent> = null;
+  let content: ReturnType<typeof getProfileContent> | null = null;
   try {
     content = getProfileContent(profile);
   } catch {
