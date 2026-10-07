@@ -669,7 +669,8 @@ export async function registerRoutes(
             await new Promise(r => setTimeout(r, 1000));
             return attempt(retryCount + 1);
           }
-          return res.status(502).json({ error: `The recipient's lightning provider returned an error (${response.status}). They may be temporarily unavailable.` });
+          res.status(502).json({ error: `The recipient's lightning provider returned an error (${response.status}). They may be temporarily unavailable.` });
+          return;
         }
         const data = await response.json();
         res.json(data);
@@ -710,7 +711,8 @@ export async function registerRoutes(
             await new Promise(r => setTimeout(r, 1000));
             return attempt(retryCount + 1);
           }
-          return res.status(502).json({ error: `The recipient's lightning provider returned an error (${response.status}). The zap could not be completed.` });
+          res.status(502).json({ error: `The recipient's lightning provider returned an error (${response.status}). The zap could not be completed.` });
+          return;
         }
         const data = await response.json();
         res.json(data);
@@ -1050,11 +1052,13 @@ export async function registerRoutes(
         ["media:content", "mediaContents", { keepArray: true }],
         ["media:thumbnail", "mediaThumbnails", { keepArray: true }],
       ],
+      // rss-parser renames feed fields from [from, to] pairs exactly as it does
+      // item fields (lib/utils.js copyFromXML); only its typings allow names alone.
       feed: [
         ["itunes:image", "itunesImage"],
         ["itunes:author", "itunesAuthor"],
         ["podcast:value", "podcastValue"],
-      ],
+      ] as unknown as string[],
     },
   });
 
@@ -2144,7 +2148,7 @@ export async function registerRoutes(
       let articleContent = article.content || "";
       articleContent = articleContent.replace(
         /(<img[^>]+src=)(["'])([^"']+)\2/gi,
-        (_match, prefix, quote, url) => {
+        (_match: string, prefix: string, quote: string, url: string) => {
           if (url.startsWith('data:') || url.startsWith('/api/')) return _match;
           return `${prefix}${quote}/api/rss/image-proxy?url=${encodeURIComponent(url)}${quote}`;
         }
@@ -2198,7 +2202,8 @@ export async function registerRoutes(
       const timeout = setTimeout(() => controller.abort(), 8000);
 
       let currentUrl = imageUrl;
-      let response: Response | null = null;
+      // fetch's Response — `Response` alone is Express's here (imported above).
+      let response: globalThis.Response | null = null;
       for (let i = 0; i < 5; i++) {
         const curOrigin = new URL(currentUrl).origin;
         response = await fetch(currentUrl, {
