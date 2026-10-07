@@ -1052,7 +1052,9 @@ function MutedUsersSection({ mutedPubkeys, unmute }: { mutedPubkeys: string[]; u
     if (!muteSearch.trim()) return mutedPubkeys;
     const q = muteSearch.trim().toLowerCase();
     return mutedPubkeys.filter((pk) => {
-      const profileEvent = eventStore.replaceable(KIND_METADATA, pk)?.value;
+      // The profile as the store holds it (replaceable() is a live stream, and
+      // its `.value` was always empty: only npub searches ever matched).
+      const profileEvent = eventStore.getReplaceable(KIND_METADATA, pk);
       const profileContent = profileEvent ? getProfileContent(profileEvent) : null;
       const name = ((profileContent as any)?.display_name || (profileContent as any)?.name || "").toLowerCase();
       let npub = "";

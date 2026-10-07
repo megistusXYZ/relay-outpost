@@ -487,8 +487,10 @@ export default function Bookmarks({ embedded = false }: { embedded?: boolean } =
       const kind = parseInt(parts[0], 10);
       const authorPubkey = parts[1] || "";
       const dTag = parts[2] || "";
-      const results = eventStore.replaceable(kind, authorPubkey, dTag);
-      const event = results ?? null;
+      // The article itself, as the store holds it now (the list rebuilds when
+      // articles arrive). `replaceable()` is a live stream, not the event: read
+      // as one, every saved article was dated 0 and filed under "Unknown".
+      const event = eventStore.getReplaceable(kind, authorPubkey, dTag) ?? null;
       items.push({
         id: coord,
         type: "a",

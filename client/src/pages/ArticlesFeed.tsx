@@ -270,7 +270,7 @@ function ArticleStats({ eventId }: { eventId: string }) {
 // Articles render through the shared MediaRow/MediaHero (see MediaCard.tsx) so the
 // Media hub's Articles list is visually identical to the News list: a top-story
 // hero + flush glass-card rows. Q2/Q3 of the media-hub redesign.
-const ArticleCard = memo(function ArticleCard({ article, asHero, heroBadge, onShare, isBookmarked, coord, toggleBookmark }: { article: ArticleData; asHero?: boolean; heroBadge?: React.ReactNode; onShare?: (article: ArticleData) => void; isBookmarked: boolean; coord: string; toggleBookmark: (coord: string, kind: string) => void }) {
+const ArticleCard = memo(function ArticleCard({ article, asHero, heroBadge, onShare, isBookmarked, coord, toggleBookmark }: { article: ArticleData; asHero?: boolean; heroBadge?: React.ReactNode; onShare?: (article: ArticleData) => void; isBookmarked: boolean; coord: string; toggleBookmark: (coord: string, type: "a") => void }) {
   const [, navigate] = useLocation();
   const onToggleBookmark = useCallback(() => toggleBookmark(coord, "a"), [coord, toggleBookmark]);
   const authorProfile = use$(() => eventStore.replaceable(0, article.event.pubkey), [article.event.pubkey]);
