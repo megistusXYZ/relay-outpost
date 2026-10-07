@@ -36,6 +36,8 @@ type Act = (cb: () => void | Promise<void>) => Promise<void>;
 let act: Act;
 let createRoot: typeof import("react-dom/client").createRoot;
 beforeAll(async () => {
+  // test:ci-globals deletes navigator (Node 20 lacks it); React DOM reads it.
+  if (typeof navigator === "undefined") vi.stubGlobal("navigator", { userAgent: "Mozilla/5.0 (jsdom)" });
   (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   ({ createRoot } = await import("react-dom/client"));
   ({ act } = (await import("react")) as unknown as { act: Act });
