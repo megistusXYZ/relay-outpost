@@ -104,38 +104,8 @@ function fetchTopZappers(eventId: string, limit: number): Promise<TopZapper[]> {
         new Promise<Event[]>((resolve) => setTimeout(() => resolve([]), 5000)),
       ]) as Event[];
 
-      const byPubkey = new Map<string, { amount: number; bestAmount: number; message: string; emoji: string }>();
-      for (const ev of events) {
-        const info = parseZapRequest(ev);
-        const amount = getZapAmount(ev);
-        if (!info || amount <= 0) continue;
-        const existing = byPubkey.get(info.pubkey);
-        if (existing) {
-          existing.amount += amount;
-          if (amount > existing.bestAmount) {
-            existing.bestAmount = amount;
-            if (info.message) existing.message = info.message;
-            if (info.emoji) existing.emoji = info.emoji;
-          }
-        } else {
-          byPubkey.set(info.pubkey, { amount, bestAmount: amount, message: info.message, emoji: info.emoji });
-        }
-      }
-      const sorted = Array.from(byPubkey.entries())
-        .map(([pubkey, d]) => ({ pubkey, amount: d.amount, message: d.message, emoji: d.emoji }))
-        .sort((a, b) => b.amount - a.amount)
-        .slice(0, limit);
-
-      if (sorted.length > 0) {
-        topZappersCache.set(eventId, { zappers: sorted, ts: Date.now() });
-        if (topZappersCache.size > CACHE_MAX) {
-          const firstKey = topZappersCache.keys().next().value;
-          if (firstKey) topZappersCache.delete(firstKey);
-        }
-        const pubkeys = sorted.map(z => z.pubkey);
-        fetchProfilesCached(pubkeys);
-      }
-
+      const sorted = zappersFrom(events, limit);
+      remember(eventId, sorted);
       return sorted;
     } finally {
       releaseSlot();
@@ -147,8 +117,80 @@ function fetchTopZappers(eventId: string, limit: number): Promise<TopZapper[]> {
   return promise;
 }
 
+
+function zappersFrom(events: Event[], limit: number): TopZapper[] {
+  const byPubkey = new Map<string, { amount: number; bestAmount: number; message: string; emoji: string }>();
+  for (const ev of events) {
+    const info = parseZapRequest(ev);
+    const amount = getZapAmount(ev);
+    if (!info || amount <= 0) continue;
+    const existing = byPubkey.get(info.pubkey);
+    if (existing) {
+      existing.amount += amount;
+      if (amount > existing.bestAmount) {
+        existing.bestAmount = amount;
+        if (info.message) existing.message = info.message;
+        if (info.emoji) existing.emoji = info.emoji;
+      }
+    } else {
+      byPubkey.set(info.pubkey, { amount, bestAmount: amount, message: info.message, emoji: info.emoji });
+    }
+  }
+  return Array.from(byPubkey.entries())
+    .map(([pubkey, d]) => ({ pubkey, amount: d.amount, message: d.message, emoji: d.emoji }))
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, limit);
+}
+
+function remember(eventId: string, sorted: TopZapper[]): void {
+  if (sorted.length === 0) return;
+  topZappersCache.set(eventId, { zappers: sorted, ts: Date.now() });
+  if (topZappersCache.size > CACHE_MAX) {
+    const firstKey = topZappersCache.keys().next().value;
+    if (firstKey) topZappersCache.delete(firstKey);
+  }
+  fetchProfilesCached(sorted.map((z) => z.pubkey));
+}
+
+/**
+ * Top zappers for many posts in ONE ask (Home asks for its next posts as
+ * they arrive). One ask per post, three at a time, left the strip landing
+ * seconds after the post was drawn — 38px growing above the reader.
+ */
+export async function prefetchTopZappers(eventIds: string[], limit = 3): Promise<void> {
+  const need = eventIds.filter((id) => {
+    const c = topZappersCache.get(id);
+    return !(c && Date.now() - c.ts < CACHE_TTL) && !inflight.has(id);
+  }).slice(0, 50);
+  if (need.length === 0) return;
+  const shared = new Promise<Event[]>((resolve) => {
+    void Promise.race([
+      pool.querySync(DEFAULT_RELAYS.slice(0, 3), { kinds: [9735], "#e": need, limit: need.length * 15 }),
+      new Promise<Event[]>((r) => setTimeout(() => r([]), 6000)),
+    ]).then((evs) => resolve(evs as Event[])).catch(() => resolve([]));
+  });
+  for (const id of need) {
+    inflight.set(id, shared.then((evs) => {
+      const mine = evs.filter((e) => e.tags.some((t) => t[0] === "e" && t[1] === id));
+      const sorted = zappersFrom(mine, limit);
+      remember(id, sorted);
+      inflight.delete(id);
+      return sorted;
+    }));
+  }
+  await shared;
+}
+
+/** The cached top zappers, so a post that already has them is drawn with them. */
+function cachedZappers(eventId: string): TopZapper[] {
+  const c = topZappersCache.get(eventId);
+  return c && Date.now() - c.ts < CACHE_TTL ? c.zappers : [];
+}
+
 export function useTopZappers(eventId: string, hasZaps: boolean, limit = 3): TopZapper[] {
-  const [zappers, setZappers] = useState<TopZapper[]>([]);
+  // From the cache on the first render: a remounted post above the reader
+  // drawn without its strip, then with it, jumped by its 38px.
+  const [zappers, setZappers] = useState<TopZapper[]>(() => (hasZaps ? cachedZappers(eventId) : []));
   const prevEventIdRef = useRef<string>("");
 
   useEffect(() => {
