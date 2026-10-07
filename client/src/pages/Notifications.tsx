@@ -34,6 +34,8 @@ import { NotificationIcon } from "@/components/icons/NotificationIcon";
 import { BtcZapIcon } from "@/components/NostrPost";
 import { formatDistanceToNow, isToday, isYesterday, isThisWeek, isThisMonth, format } from "date-fns";
 import { useDocumentTitle } from "@/hooks/use-document-title";
+import { useMentionNames } from "@/hooks/use-mention-names";
+import { notificationPreview } from "@/lib/notification-preview";
 
 const TYPE_CONFIG = {
   accepted: { icon: DoorOpen, label: "accepted you into the community", color: "text-emerald-600 dark:text-emerald-400", bgAccent: "bg-emerald-500/15 dark:bg-emerald-500/10", borderAccent: "border-emerald-500/30 dark:border-emerald-500/20", dotColor: "bg-emerald-500 dark:bg-emerald-400" },
@@ -171,21 +173,13 @@ const AggregatedNotificationItem = memo(function AggregatedNotificationItem({ gr
     return config.label;
   }, [type, config.label]);
 
-  const repostedContent = useMemo(() => {
-    if (type !== "repost") return null;
-    for (const item of items) {
-      if (item.event?.content) {
-        try {
-          const parsed = JSON.parse(item.event.content);
-          if (parsed?.content) {
-            const text = parsed.content.trim();
-            return text.length > 120 ? text.slice(0, 120) + "…" : text;
-          }
-        } catch {}
-      }
-    }
-    return null;
-  }, [type, items]);
+  // The first repost that carries a copy of the note, with its tagged people named.
+  const repostRaw = type === "repost" ? (items.find((item: any) => notificationPreview("repost", item.event?.content, () => null))?.event?.content ?? "") : "";
+  const repostNames = useMentionNames(repostRaw);
+  const repostedContent = useMemo(
+    () => (repostRaw ? notificationPreview("repost", repostRaw, repostNames) : null),
+    [repostRaw, repostNames],
+  );
 
   const handleClick = useCallback(() => {
     for (const item of items) {
@@ -337,6 +331,7 @@ function FilteredSpamRow({ author, notifs, onMute, onReport }: { author: string;
   const name = profile ? getDisplayName(profile, shortenNpub(formatNpub(author))) : shortenNpub(formatNpub(author));
   const avatarUrl = profile ? getAvatarUrl(profile) : undefined;
   const newest = notifs[0];
+  const spamNames = useMentionNames(newest?.event?.content || "");
 
   return (
     <div className="flex items-center gap-2.5 rounded-lg border border-border/20 bg-background/40 px-2.5 py-2" data-testid={`filtered-spam-${author.slice(0, 8)}`}>
@@ -349,7 +344,7 @@ function FilteredSpamRow({ author, notifs, onMute, onReport }: { author: string;
           {name}
           {notifs.length > 1 && <span className="ml-1.5 text-[10px] text-muted-foreground/60">×{notifs.length}</span>}
         </p>
-        <p className="text-[11px] text-muted-foreground/60 truncate">{(newest.event?.content || "").slice(0, 90)}</p>
+        <p className="text-[11px] text-muted-foreground/60 truncate">{notificationPreview(newest.type ?? "mention", newest.event?.content, spamNames)}</p>
       </div>
       <div className="flex items-center gap-1 shrink-0">
         {muted ? (
@@ -465,22 +460,11 @@ const NotificationItem = memo(function NotificationItem({ notification, onRead }
     }
   }, [notification.fromPubkey]);
 
-  const contentPreview = useMemo(() => {
-    if (!notification.event.content || notification.type === "follow" || notification.type === "ticket") return null;
-
-    if (notification.type === "repost") {
-      try {
-        const reposted = JSON.parse(notification.event.content);
-        if (reposted?.content) {
-          const text = reposted.content.trim();
-          return text.length > 120 ? text.slice(0, 120) + "…" : text;
-        }
-      } catch {}
-      return null;
-    }
-
-    return notification.event.content.slice(0, 120) + (notification.event.content.length > 120 ? "..." : "");
-  }, [notification.event.content, notification.type]);
+  const previewNames = useMentionNames(notification.event.content || "");
+  const contentPreview = useMemo(
+    () => notificationPreview(notification.type, notification.event.content, previewNames),
+    [notification.event.content, notification.type, previewNames],
+  );
 
   const destination = useMemo(() => {
     if (notification.type === "accepted") {
