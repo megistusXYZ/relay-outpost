@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, useSyncExternalStore, type RefObject } from "react";
+import { prefetchPrimalStats } from "@/hooks/use-primal-stats";
+import { prefetchTopZappers } from "@/hooks/use-top-zappers";
 import { reachAdmits } from "@/lib/trust-reach";
 import { cn } from "@/lib/utils";
 import { flushSync } from "react-dom";
@@ -2309,6 +2311,19 @@ export default function Home() {
   // first few posts — a shared link into the feed still shows value — and the
   // wall card ends the scroll. Signed-in passes through untouched.
   const guestCapped = useMemo(() => capForGuest(displayedEvents, !!pubkey), [displayedEvents, pubkey]);
+  // Counts and top zappers for the next posts before they're drawn, so a post
+  // is drawn at its full height — a zap strip arriving later grew it by 38px
+  // under the reader (ship/home-scrollback-shift.cjs).
+  useEffect(() => {
+    const ids: string[] = [];
+    for (const e of guestCapped.shown.slice(0, 80)) {
+      ids.push(e.id);
+      if (e.kind === 6) { const inner = e.tags.find((t) => t[0] === "e")?.[1]; if (inner) ids.push(inner); }
+    }
+    void prefetchPrimalStats(ids).then(() => {
+      void prefetchTopZappers(ids.filter((id) => { const s = primalStatsCache.get(id); return !!s && (s.zaps > 0 || s.zapAmount > 0); }));
+    });
+  }, [guestCapped.shown]);
 
   useEffect(() => {
     resetVisibleWindowRef.current = () => {

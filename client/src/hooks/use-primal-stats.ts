@@ -78,6 +78,22 @@ function scheduleBatch() {
   }, BATCH_DELAY);
 }
 
+/**
+ * Ask for posts' counts before they're drawn (Home asks for its next posts as
+ * they arrive), in the same batches as usePrimalStats. A post drawn before
+ * its counts came in later grew under the reader — the zap strip alone is
+ * 38px (ship/home-scrollback-shift.cjs). Resolves when the batch has answered.
+ */
+export function prefetchPrimalStats(ids: string[]): Promise<void> {
+  const need = ids.filter((id) => id && !primalStatsCache.has(id) && !pendingIds.includes(id));
+  if (need.length === 0) return Promise.resolve();
+  return new Promise((resolve) => {
+    pendingIds.push(...need);
+    batchCallbacks.push(resolve);
+    scheduleBatch();
+  });
+}
+
 export function usePrimalStats(eventId: string): EventStats | null {
   const [stats, setStats] = useState<EventStats | null>(() => {
     return primalStatsCache.get(eventId) ?? null;
