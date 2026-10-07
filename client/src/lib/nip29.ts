@@ -502,61 +502,6 @@ export async function fetchSingleGroupMetadata(
   });
 }
 
-export async function fetchAllMemberCounts(
-  relayUrl: string,
-  groupIds?: string[],
-): Promise<Record<string, number>> {
-  return new Promise((resolve) => {
-    const counts: Record<string, number> = {};
-    const timestamps: Record<string, number> = {};
-    let closed = false;
-
-    const filters: Array<Record<string, unknown>> = [];
-    if (groupIds && groupIds.length > 0) {
-      const CHUNK = 100;
-      for (let i = 0; i < groupIds.length; i += CHUNK) {
-        const chunk = groupIds.slice(i, i + CHUNK);
-        filters.push({ kinds: [KIND_GROUP_MEMBERS], "#d": chunk });
-        filters.push({ kinds: [KIND_GROUP_MEMBERS], "#h": chunk });
-      }
-    } else {
-      filters.push({ kinds: [KIND_GROUP_MEMBERS] });
-    }
-
-    const sub = pool.subscribeMany(
-      [relayUrl],
-      filters as any,
-      {
-        onevent(e: NostrEvent) {
-          if (closed) return;
-          const gid = e.tags.find((t) => t[0] === "d")?.[1] || e.tags.find((t) => t[0] === "h")?.[1];
-          if (!gid) return;
-          const prevTs = timestamps[gid] || 0;
-          if (e.created_at >= prevTs) {
-            const memberPubkeys = e.tags.filter((t) => t[0] === "p" && t[1]);
-            counts[gid] = memberPubkeys.length;
-            timestamps[gid] = e.created_at;
-          }
-        },
-        oneose() {
-          if (closed) return;
-          closed = true;
-          sub.close();
-          clearTimeout(timer);
-          resolve(counts);
-        },
-      },
-    );
-    const timer = setTimeout(() => {
-      if (!closed) {
-        closed = true;
-        sub.close();
-        resolve(counts);
-      }
-    }, 10000);
-  });
-}
-
 export async function fetchLastActivityBatch(
   relayUrl: string,
   groupIds: string[],

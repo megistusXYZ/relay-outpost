@@ -1141,7 +1141,9 @@ export function persistentPoolSubscribe(
 
 export function throttledPoolSubscribe(
   relays: string[],
-  filters: Filter | Filter[],
+  // ONE filter. A list used to be accepted and all but the first silently
+  // dropped; a caller that needs several makes one call per filter.
+  filters: Filter,
   opts: {
     onevent?: (event: any) => void;
     oneose?: () => void;
@@ -1161,7 +1163,7 @@ export function throttledPoolSubscribe(
     opts.oneose?.();
     return { close() {} };
   }
-  const normalizedFilters = Array.isArray(filters) ? filters[0] : filters;
+  const normalizedFilters = filters;
   if (!normalizedFilters || typeof normalizedFilters !== 'object') {
     opts.oneose?.();
     return { close() {} };
