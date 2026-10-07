@@ -103,8 +103,11 @@ export function useBadges(pubkey: string | null) {
         }
       }
 
+      // Shown badges keep the order the person chose (their profile list);
+      // only the ones still waiting sort newest first.
       resolved.sort((a, b) => {
         if (a.isAccepted !== b.isAccepted) return a.isAccepted ? -1 : 1;
+        if (a.isAccepted) return 0;
         return b.awardedAt - a.awardedAt;
       });
       setBadges(resolved);

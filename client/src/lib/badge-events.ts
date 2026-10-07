@@ -139,3 +139,28 @@ export function withoutDeleted<D extends { pubkey: string; dTag: string; created
     return at === undefined || d.createdAt > at;
   });
 }
+
+/** Give a badge to people: each once, with an optional note in the award. */
+export function badgeAwardTemplate(g: { badgeRef: string; recipients: string[]; note?: string }): EventTemplate {
+  const people = [...new Set(g.recipients)];
+  return { kind: 8, created_at: now(), tags: [["a", g.badgeRef], ...people.map((p) => ["p", p])], content: g.note?.trim() ?? "" };
+}
+
+/** Move the badge at `index` one place up (-1) or down (+1); ends stay put. */
+export function moveShownBadge(shown: ShownBadge[], index: number, delta: -1 | 1): ShownBadge[] {
+  const to = index + delta;
+  if (index < 0 || index >= shown.length || to < 0 || to >= shown.length) return shown;
+  const next = [...shown];
+  [next[index], next[to]] = [next[to], next[index]];
+  return next;
+}
+
+/** Take one badge off your profile; the rest keep their order. */
+export function hideShownBadge(shown: ShownBadge[], index: number): ShownBadge[] {
+  return shown.filter((_, i) => i !== index);
+}
+
+/** What shows beside a name: the first badge, and how many more there are. */
+export function besideName<T>(badges: T[]): { first: T | undefined; more: number } {
+  return { first: badges[0], more: Math.max(0, badges.length - 1) };
+}

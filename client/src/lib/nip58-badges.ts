@@ -4,7 +4,7 @@ import { getOutpostRelays, getActiveDefaultRelays } from "./outpost-relays";
 import { canReachAny, type Reached } from "./relay-reach";
 import type { Event as NostrEvent } from "nostr-tools";
 import type { ISigner } from "applesauce-signers";
-import { badgeDefinitionTemplate, badgeDeletionTemplate, withoutDeleted, profileBadgesTemplates, pickProfileBadgesEvent, withAcceptedBadge, KIND_PROFILE_BADGES as KIND_PROFILE_LIST, KIND_PROFILE_BADGES_LEGACY } from "./badge-events";
+import { badgeDefinitionTemplate, badgeDeletionTemplate, badgeAwardTemplate, withoutDeleted, profileBadgesTemplates, pickProfileBadgesEvent, withAcceptedBadge, KIND_PROFILE_BADGES as KIND_PROFILE_LIST, KIND_PROFILE_BADGES_LEGACY } from "./badge-events";
 
 export const KIND_BADGE_DEFINITION = 30009;
 export const KIND_BADGE_AWARD = 8;
@@ -401,20 +401,9 @@ export async function awardBadge(
   badgeDefPubkey: string,
   badgeDTag: string,
   recipientPubkeys: string[],
+  note?: string,
 ): Promise<NostrEvent | null> {
-  const aTagValue = badgeATagValue(badgeDefPubkey, badgeDTag);
-
-  const tags: string[][] = [
-    ["a", aTagValue],
-    ...recipientPubkeys.map(pk => ["p", pk]),
-  ];
-
-  const eventTemplate = {
-    kind: KIND_BADGE_AWARD,
-    created_at: Math.floor(Date.now() / 1000),
-    tags,
-    content: "",
-  };
+  const eventTemplate = badgeAwardTemplate({ badgeRef: badgeATagValue(badgeDefPubkey, badgeDTag), recipients: recipientPubkeys, note });
 
   try {
     const signed = await signWithTimeout(signer, eventTemplate as Parameters<ISigner["signEvent"]>[0]);

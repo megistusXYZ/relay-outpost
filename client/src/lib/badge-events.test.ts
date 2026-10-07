@@ -9,7 +9,7 @@
  * kind 10008 as the profile list and asks clients to treat both as one).
  */
 import { describe, it, expect } from "vitest";
-import { badgeDefinitionTemplate, profileBadgesTemplates, withAcceptedBadge, pickProfileBadgesEvent, badgesWaiting, badgeDeletionTemplate, withoutDeleted } from "./badge-events";
+import { badgeDefinitionTemplate, profileBadgesTemplates, withAcceptedBadge, pickProfileBadgesEvent, badgesWaiting, badgeDeletionTemplate, withoutDeleted, badgeAwardTemplate, moveShownBadge, hideShownBadge, besideName } from "./badge-events";
 
 const dOf = (t: { tags: string[][] }) => t.tags.find((x) => x[0] === "d")?.[1];
 const pairs = (t: { tags: string[][] }) => t.tags.filter((x) => x[0] === "a" || x[0] === "e").map((x) => `${x[0]}:${x[1]}`);
@@ -126,5 +126,42 @@ describe("your badges after deleting one", () => {
 
   it("a badge remade after it was deleted comes back", () => {
     expect(withoutDeleted([def("again", 30)], [del("again", 20)]).map((x) => x.dTag)).toEqual(["again"]);
+  });
+});
+
+describe("giving a badge", () => {
+  it("names the badge, every chosen person once, and carries your note", () => {
+    const t = badgeAwardTemplate({ badgeRef: "30009:alice:b-1", recipients: ["bob", "carol", "bob"], note: "For running the meetup" });
+    expect(t.kind).toBe(8);
+    expect(t.tags).toEqual([["a", "30009:alice:b-1"], ["p", "bob"], ["p", "carol"]]);
+    expect(t.content).toBe("For running the meetup");
+  });
+
+  it("no note means no note", () => {
+    expect(badgeAwardTemplate({ badgeRef: "30009:alice:b-1", recipients: ["bob"] }).content).toBe("");
+  });
+});
+
+describe("arranging the badges you show", () => {
+  const a = { badgeRef: "30009:x:a", awardEventId: "ea" };
+  const b = { badgeRef: "30009:x:b", awardEventId: "eb" };
+  const c = { badgeRef: "30009:x:c", awardEventId: "ec" };
+
+  it("moves a badge up or down, and not past either end", () => {
+    expect(moveShownBadge([a, b, c], 2, -1)).toEqual([a, c, b]);
+    expect(moveShownBadge([a, b, c], 0, -1)).toEqual([a, b, c]);
+    expect(moveShownBadge([a, b, c], 2, 1)).toEqual([a, b, c]);
+  });
+
+  it("hiding one takes it off your profile and keeps the rest in order", () => {
+    expect(hideShownBadge([a, b, c], 1)).toEqual([a, c]);
+  });
+});
+
+describe("beside a name", () => {
+  it("shows the first badge and counts the rest — never more than one icon", () => {
+    expect(besideName(["first", "second", "third"])).toEqual({ first: "first", more: 2 });
+    expect(besideName(["only"])).toEqual({ first: "only", more: 0 });
+    expect(besideName([])).toEqual({ first: undefined, more: 0 });
   });
 });
