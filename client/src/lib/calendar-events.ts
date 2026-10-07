@@ -844,7 +844,11 @@ export async function fetchCalendarEventsByIds(eventIds: string[], refs?: Pinned
 
     for (const relay of relays) {
       const closer = throttledSubscribe(relay, () => {
-        return pool.subscribeMany([relay], filters, {
+        // Several filters go as one request with each filter in it
+        // (subscribeMap). subscribeMany takes ONE filter: handed the list, it
+        // sent ["REQ", id, [f1, f2]], which relays refuse, so pinned events
+        // only ever showed from this device's cache.
+        return pool.subscribeMap(filters.map((filter) => ({ url: relay, filter })), {
           onevent: handleEvent,
           oneose() {
             closer.close();

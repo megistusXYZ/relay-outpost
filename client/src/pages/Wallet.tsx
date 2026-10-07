@@ -1578,8 +1578,10 @@ function TransactionDetailModal({ tx, enrichment, myPubkey, balanceHidden, onClo
   const resolvedLnAddress = useMemo(() => {
     if (enrichment?.lnAddress) return enrichment.lnAddress;
     if (!counterpartyProfile) return null;
+    // From the profile already in hand. getLightningAddress takes a pubkey:
+    // handed this content, it looked up nothing and the address never showed.
     const content = getProfileContent(counterpartyProfile);
-    return getLightningAddress(content) || null;
+    return content?.lud16 || content?.lud06 || null;
   }, [enrichment?.lnAddress, counterpartyProfile]);
 
   const [eventContent, setEventContent] = useState<string | null>(null);
@@ -3250,7 +3252,9 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={loadTransactions}
+                    // No arguments: the click event would land in `silent` and
+                    // the refresh would run without its spinner.
+                    onClick={() => void loadTransactions()}
                     disabled={txLoading}
                     data-testid="button-refresh-transactions"
                   >
