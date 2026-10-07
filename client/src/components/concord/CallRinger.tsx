@@ -15,6 +15,7 @@ import { persistentPoolSubscribe } from "@/lib/nostr";
 import { getCommunities, type StoredChannel, type StoredCommunity } from "@/lib/concord/concord-keys";
 import { roomVoiceKeys } from "@/lib/concord/concord-voice";
 import { subscribeCallPresence } from "@/lib/concord/concord-stream";
+import { noteCallPresence } from "@/lib/concord/concord-av-brokers";
 import { isCommunityMuted, isChannelMuted } from "@/lib/concord/concord-mute";
 import { useConcordCallsEnabled } from "@/lib/concord/concord-prefs";
 import { createRingDecider, QUIET_MS } from "@/lib/concord/call-ring";
@@ -82,6 +83,7 @@ export function CallRinger({ me, inCallKey, onJoin }: {
         if (!roomVoiceKeys(community, channel)) continue; // no key, no call to join
         const key = `${community.community_id}:${channel.id}`;
         subs.push(subscribeCallPresence(community, channel, (rumor) => {
+          noteCallPresence(key, rumor);
           const ring = decider.see({
             room: key,
             caller: rumor.pubkey,

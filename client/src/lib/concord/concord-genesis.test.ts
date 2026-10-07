@@ -66,3 +66,39 @@ describe("a new group is split from creation", () => {
     expect([...state.channels.values()].map((c) => c.name)).toContain("general");
   });
 });
+
+describe("a group made here names our call service", () => {
+  const make = async () => {
+    const sk = generateSecretKey();
+    const me = getPublicKey(sk);
+    const published: Event[] = [];
+    const record = await createCommunity(signer(sk), me, { name: "Bali crew", relays: ["wss://r"] },
+      async (e) => { published.push(e); }, async () => {});
+    const planes = new Map(governancePlanes(recordFromBundle(bundleFromCommunity(record), [])).map((p) => [p.pk, p]));
+    const editions = published.flatMap((e) => {
+      const plane = planes.get(e.pubkey);
+      const rumor = plane ? decodeStreamEvent(plane, e) : null;
+      const edition = rumor ? parseControlEdition(rumor) : null;
+      return edition ? [edition] : [];
+    });
+    return { record, metadata: foldEditions(editions, me).metadata };
+  };
+
+  it("lists our service in the group's settings, where Armada reads it", async () => {
+    vi.stubGlobal("location", { origin: "https://relayop.xyz" });
+    try {
+      const { record, metadata } = await make();
+      expect(metadata?.raw?.av_brokers).toEqual(["https://relayop.xyz"]);
+      expect(record.avBrokers).toEqual(["https://relayop.xyz"]);
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it("lists nothing from a page that isn't https (a laptop), so no app is sent there", async () => {
+    vi.stubGlobal("location", { origin: "http://localhost:5002" });
+    try {
+      const { record, metadata } = await make();
+      expect(metadata?.raw && "av_brokers" in metadata.raw).toBe(false);
+      expect(record.avBrokers).toBeUndefined();
+    } finally { vi.unstubAllGlobals(); }
+  });
+});

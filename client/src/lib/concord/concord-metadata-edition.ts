@@ -174,6 +174,10 @@ export function nextMetadataEdition(
   if (ours("allow_member_invites", changes.allowMemberInvites !== undefined)) {
     content.allow_member_invites = changes.allowMemberInvites ?? base.allowMemberInvites ?? false;
   }
+  // Call services have no UI field either: another app's list rides through in
+  // the raw content above; our own brand-new group, not yet folded, carries the
+  // list it was created with.
+  if (!raw && community.avBrokers?.length) content.av_brokers = community.avBrokers;
   // Written only when someone set it here; untouched, the raw content above
   // already carries the group's timer through, including another app's.
   if (changes.messageExpiration !== undefined) content.message_expiration = Math.max(0, Math.floor(changes.messageExpiration));

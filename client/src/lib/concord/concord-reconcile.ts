@@ -30,13 +30,14 @@
  * Pure and synchronous by contract: it runs inside an IDB transaction (see
  * `updateCommunity`), and it must be provable without a relay.
  */
+import { readAvBrokers } from "./concord-av-brokers";
 import { VSK, ADMIN_ROLE_ID, type FoldedState } from "./concord-events";
 import type { StoredChannel, StoredCommunity } from "./concord-keys";
 import { parseCommunityImage, type CommunityImage } from "./concord-image";
 
 // ── The allowlist, as a closed set ────────────────────────────────────────────
 export const RECONCILABLE = [
-  "name", "about", "icon", "iconImage", "allowMemberInvites", "relays",
+  "name", "about", "icon", "iconImage", "allowMemberInvites", "avBrokers", "relays",
   "channels", "metaVersion", "metaEid", "adminRolePublished", "retractedChannels",
 ] as const;
 
@@ -160,6 +161,12 @@ function reconcileMetadata(record: StoredCommunity, folded: FoldedState, patch: 
   if (md.raw) {
     const next = parseCommunityImage(md.raw.icon) ?? undefined;
     if (!sameImage(next, record.iconImage)) patch.iconImage = next;
+
+    // avBrokers — the group's call services (CORD-07 §5), by the same rule: an
+    // edition without `av_brokers` means the group lists none.
+    const brokers = readAvBrokers(md.raw.av_brokers);
+    const nextBrokers = brokers.length ? brokers : undefined;
+    if ((nextBrokers ?? []).join(" ") !== (record.avBrokers ?? []).join(" ")) patch.avBrokers = nextBrokers;
   }
 
   // allowMemberInvites — the field this whole family circles. Written in BOTH

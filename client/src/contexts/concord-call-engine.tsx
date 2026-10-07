@@ -34,6 +34,11 @@ import type { JoinedCall } from "@/lib/concord/concord-call-e2ee";
 
 import { callRoomKey, type ActiveCall, type CallParticipant, type CallCtx } from "./ConcordCallContext";
 import { CallRinger } from "@/components/concord/CallRinger";
+import { chooseCallService, probeCallService, callServicesIn, agreedCallServices, agreeCallService } from "@/lib/concord/concord-av-brokers";
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 /** Presence older than this can't change the roster (a "joined" goes stale at 90s). */
 const RUMOR_KEEP_MS = 3 * 60 * 1000;
@@ -79,6 +84,8 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
   const [onScreen, setOnScreen] = useState<string | null>(null);
   const session = useRef<Session | null>(null);
   const { toast } = useToast();
+  /** "Join this call on armada.buzz?" — asked once per group before using another app's service. */
+  const [asking, setAsking] = useState<{ host: string; answer: (ok: boolean) => void } | null>(null);
 
   /** Re-decide every seat's key and redraw the callers. Cheap; runs on every room event and every 5s. */
   const resync = useCallback(() => {
@@ -152,6 +159,25 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
     setJoining(true);
     setError(null);
     try {
+      // Where the call is (CORD-07 §5): the group's listed services, or where
+      // people already are, or ours. Another app's only once you've agreed.
+      const own = window.location.origin;
+      const choice = await chooseCallService({
+        room: keys.room,
+        listed: community.avBrokers ?? [],
+        present: callServicesIn(callRoomKey(community.community_id, channel.id), Date.now()),
+        own,
+        agreed: agreedCallServices(community.community_id),
+        probe: (origin) => probeCallService(origin),
+      });
+      if (!choice) { setError("This group's call service isn't answering. Try again in a moment."); return; }
+      let brokerOrigin = choice.origin;
+      if (choice.ask) {
+        const ok = await new Promise<boolean>((answer) => setAsking({ host: new URL(choice.origin).host, answer }));
+        setAsking(null);
+        if (ok) agreeCallService(community.community_id, choice.origin);
+        else brokerOrigin = own;
+      }
       const [{ joinCall }, lk, workerModule] = await Promise.all([
         import("@/lib/concord/concord-call-e2ee"),
         import("livekit-client"),
@@ -159,7 +185,7 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
       ]);
       const joined = await joinCall({
         keys,
-        brokerOrigin: window.location.origin,
+        brokerOrigin,
         now: () => Math.floor(Date.now() / 1000),
         fetch: window.fetch.bind(window),
         startWorker: () => new workerModule.default(),
@@ -181,7 +207,7 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
       const heartbeat = startPresenceHeartbeat({
         announce: (presence) => publishCallPresence(signer, pubkey, community, channel, presence, (e, relays) => publishEvent(e, relays)),
         identity: joined.identity,
-        broker: window.location.origin,
+        broker: brokerOrigin,
       });
       const s: Session = {
         ownPubkey: pubkey, community, channel, title, keys, joined, room,
@@ -278,6 +304,21 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
       {call && onScreen !== callRoomKey(call.communityId, call.channelId)
         ? <FloatingCallBar call={call} error={error} onToggleMic={value.toggleMic} onLeave={leave} />
         : null}
+      <AlertDialog open={!!asking} onOpenChange={(open) => { if (!open) asking?.answer(false); }}>
+        <AlertDialogContent className="z-[320]" overlayClassName="z-[320]" data-testid="call-service-ask">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Join this call on {asking?.host}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This group's calls run on {asking?.host}, another app's call service. The call stays end-to-end encrypted:
+              that service can see when you join, not what's said. Using Relay Outpost's instead may put you in a separate call.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => asking?.answer(false)} data-testid="call-service-ours">Use Relay Outpost's</AlertDialogCancel>
+            <AlertDialogAction onClick={() => asking?.answer(true)} data-testid="call-service-there">Join there</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {/* "Ana started a call in Bali crew" — Join / Not now (components/concord/CallRinger). */}
       {pubkey && (
         <CallRinger
