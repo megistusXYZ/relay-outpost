@@ -91,3 +91,16 @@ describe("dark mode keeps what it inherited from the light rules", () => {
     });
   }
 });
+
+describe("the rail in light mode is quiet unless selected", () => {
+  // Owner, 2026-10-07: every rail icon sat in a lavender-glowing ring.
+  const RAIL = readFileSync(path.resolve(import.meta.dirname, "components/DesktopStoriesRail.tsx"), "utf8");
+  it("a destination you're not on has the neutral border and no glow in light mode", () => {
+    expect(RAIL).toMatch(/isDark \? "rgba\(168,85,247,0\.22\)" : "hsl\(var\(--border\)\)"/);
+    expect(RAIL).toMatch(/: isDark\s*\?\s*"0 0 8px rgba\(124,58,237,0\.16\)"[\s\S]{0,200}: "none"/);
+  });
+  it("the page you're on keeps its violet ring and glow", () => {
+    expect(RAIL).toMatch(/active\s*\?\s*isDark \? "rgba\(196,181,253,0\.6\)" : "rgba\(109,40,217,0\.6\)"/);
+    expect(RAIL).toMatch(/"0 0 18px rgba\(109,40,217,0\.30\)/);
+  });
+});
