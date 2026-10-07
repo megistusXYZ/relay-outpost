@@ -55,6 +55,8 @@ interface Session {
   channel: StoredChannel;
   title: string;
   keys: VoiceKeys;
+  /** The call service this call is on. */
+  brokerOrigin: string;
   joined: JoinedCall;
   room: Room;
   applied: Map<string, KeyState>;
@@ -150,7 +152,17 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
     setError(null);
   }, []);
 
-  const join = useCallback(async (community: StoredCommunity, channel: StoredChannel, title: string) => {
+  /** One join at a time: a second (the ringer's Join while the first waits on the question) would strand the first. */
+  const joiningNow = useRef(false);
+  const join = useCallback(async (community: StoredCommunity, channel: StoredChannel, title: string,
+    /** A rejoin after a rekey: the service the call was on, so the question isn't asked again mid-call. */
+    rejoinOn?: string) => {
+    if (joiningNow.current) return;
+    joiningNow.current = true;
+    // Through the ref: the latest render's joinOnce, never a stale one.
+    try { await joinOnceRef.current(community, channel, title, rejoinOn); } finally { joiningNow.current = false; }
+  }, []);
+  const joinOnce = async (community: StoredCommunity, channel: StoredChannel, title: string, rejoinOn?: string) => {
     if (session.current) await leave();
     const signer = getGlobalSigner();
     if (!pubkey || !signer) { setError("Sign in to join the call"); return; }
@@ -170,7 +182,8 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
         agreed: agreedCallServices(community.community_id),
         probe: (origin) => probeCallService(origin),
         // Asked before anything is sent to another app's service.
-        consent: (origins) => new Promise<boolean>((answer) => {
+        // A rejoin keeps the earlier answer: on ours, stay on ours; on theirs, it was already agreed.
+        consent: rejoinOn !== undefined ? async () => rejoinOn !== own : (origins) => new Promise<boolean>((answer) => {
           setAsking({ host: origins.map((o) => new URL(o).host).join(" or "), answer: (ok) => { setAsking(null); answer(ok); } });
         }),
       });
@@ -209,7 +222,7 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
         broker: brokerOrigin,
       });
       const s: Session = {
-        ownPubkey: pubkey, community, channel, title, keys, joined, room,
+        ownPubkey: pubkey, community, channel, title, keys, brokerOrigin, joined, room,
         applied: new Map(), rumors: [], firstSeen: new Map(), audio,
         stopBeat: heartbeat.stop,
         closePresence: () => {},
@@ -244,7 +257,7 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
           const latest = stored?.channels.find((c) => c.id === s.channel.id);
           const decision = stored ? callKeysForRoom(s.keys, stored, latest) : "leave";
           if (decision === "rejoin" && stored && latest) {
-            await joinRef.current(stored, latest, s.title);
+            await joinRef.current(stored, latest, s.title, s.brokerOrigin);
             toast({ title: "Call secured again", description: "The group's keys changed, so the call moved to its new room." });
           } else if (decision === "leave") {
             await leave();
@@ -260,7 +273,9 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
     } finally {
       setJoining(false);
     }
-  }, [pubkey, leave, resync, toast]);
+  };
+  const joinOnceRef = useRef(joinOnce);
+  joinOnceRef.current = joinOnce;
   const joinRef = useRef(join);
   joinRef.current = join;
 
