@@ -450,7 +450,7 @@ function LiveDuration({ starts }: { starts?: number }) {
   if (!label) return null;
 
   return (
-    <span className="text-[10px] font-mono text-red-700/70 dark:text-red-400/60 tabular-nums shrink-0">
+    <span className="text-[10px] font-mono text-danger dark:text-red-400/60 tabular-nums shrink-0">
       {label}
     </span>
   );
@@ -1883,14 +1883,14 @@ export default function Profile() {
       <DropdownMenuSeparator />
       <DropdownMenuItem
         onClick={muted ? handleMute : () => setShowMuteConfirm(true)}
-        className={`gap-2.5 cursor-pointer min-h-11 sm:min-h-0 ${muted ? "" : "text-red-500 focus:text-red-500"}`}
+        className={`gap-2.5 cursor-pointer min-h-11 sm:min-h-0 ${muted ? "" : "text-danger dark:text-red-500 focus:text-red-500"}`}
         data-testid="menu-item-mute"
       >
         <VolumeX className="w-4 h-4" /> {muted ? "Unmute" : "Mute"}
       </DropdownMenuItem>
       <DropdownMenuItem
         onClick={() => setShowReportDialog(true)}
-        className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0 text-red-500 focus:text-red-500"
+        className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0 text-danger dark:text-red-500 focus:text-red-500"
         data-testid="menu-item-report"
       >
         <Flag className="w-4 h-4" /> Report
@@ -3023,7 +3023,7 @@ export default function Profile() {
                   <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_6px_2px_rgba(239,68,68,0.4)] live-dot shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold uppercase tracking-wider text-red-500">Live Now</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-danger dark:text-red-500">Live Now</span>
                       <LiveDuration starts={liveStream?.starts} />
                       {liveStream?.currentParticipants != null && liveStream.currentParticipants > 0 && (
                         <span className="text-[10px] text-muted-foreground/60">{liveStream.currentParticipants} watching</span>

@@ -1019,7 +1019,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
             <div className="mb-3" data-testid="container-live-streams">
               <div className="flex items-center gap-2 mb-2">
                 <Radio className="w-3.5 h-3.5 text-red-500 live-dot" />
-                <span className="text-[10px] font-mono uppercase tracking-wider text-red-500/80 font-bold">Live Now</span>
+                <span className="text-[10px] font-mono uppercase tracking-wider text-danger dark:text-red-500/80 font-bold">Live Now</span>
               </div>
               <div className="space-y-2">
                 {liveNow.map((stream) => (

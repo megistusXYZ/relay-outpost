@@ -177,7 +177,7 @@ function AccountIdentitySection() {
       <div className="rounded-md border border-red-500/25 dark:border-red-500/20 bg-red-500/[0.04] dark:bg-red-500/[0.06] p-3 space-y-2.5" data-testid="container-danger-zone">
         <div className="flex items-center gap-1.5">
           <AlertTriangle className="w-3.5 h-3.5 text-red-500/80" />
-          <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-red-600/80 dark:text-red-400/80 font-semibold">
+          <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-danger dark:text-red-400/80 font-semibold">
             Danger zone
           </span>
         </div>
@@ -208,7 +208,7 @@ function AccountIdentitySection() {
       <AlertDialog open={open} onOpenChange={handleOpenChange}>
         <AlertDialogContent className="max-w-lg" data-testid="dialog-vanish">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+            <AlertDialogTitle className="flex items-center gap-2 text-danger dark:text-red-400">
               <UserX className="w-4 h-4" />
               Vanish from relays
             </AlertDialogTitle>
@@ -250,7 +250,7 @@ function AccountIdentitySection() {
                               )}
                               <span className="truncate">{r}</span>
                               {outcome?.error && (
-                                <span className="text-red-500/70 text-[9px] truncate">({outcome.error})</span>
+                                <span className="text-danger dark:text-red-500/70 text-[9px] truncate">({outcome.error})</span>
                               )}
                             </li>
                           );
@@ -283,7 +283,7 @@ function AccountIdentitySection() {
                     htmlFor="vanish-confirm"
                     className={`block text-[11px] font-medium mb-1 ${acknowledged ? "text-foreground/70" : "text-foreground/40"}`}
                   >
-                    Then type <span className="font-mono font-bold text-red-600 dark:text-red-400">DELETE</span> to confirm.
+                    Then type <span className="font-mono font-bold text-danger dark:text-red-400">DELETE</span> to confirm.
                   </label>
                   <Input
                     id="vanish-confirm"
@@ -298,7 +298,7 @@ function AccountIdentitySection() {
                   />
                 </div>
                 {errorMessage && (
-                  <div className="rounded-md border border-red-500/30 bg-red-500/[0.06] p-2 text-[11px] text-red-700 dark:text-red-300" data-testid="text-vanish-error">
+                  <div className="rounded-md border border-red-500/30 bg-red-500/[0.06] p-2 text-[11px] text-danger dark:text-red-300" data-testid="text-vanish-error">
                     {errorMessage}
                   </div>
                 )}

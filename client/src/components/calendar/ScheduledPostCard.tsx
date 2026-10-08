@@ -37,8 +37,8 @@ const STATUS_COLORS: Record<string, { dot: string; badge: string; text: string }
   },
   failed: {
     dot: "bg-red-500",
-    badge: "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20",
-    text: "text-red-700 dark:text-red-400",
+    badge: "bg-red-500/10 text-danger dark:text-red-400 border-red-500/20",
+    text: "text-danger dark:text-red-400",
   },
   published: {
     dot: "bg-emerald-500",
@@ -340,7 +340,7 @@ export function ScheduledPostCard({ post, onCancel, onReschedule, onRetry }: Sch
             {post.status === "failed" && (
               <div className="flex items-center gap-2 mt-1.5">
                 {post.failureReason && (
-                  <div className="flex items-center gap-1.5 text-[10px] text-red-700/70 dark:text-red-400/70 min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 text-[10px] text-danger dark:text-red-400/70 min-w-0 flex-1">
                     <AlertCircle className="w-3 h-3 flex-shrink-0" />
                     <span className="break-words truncate">{post.failureReason}</span>
                   </div>

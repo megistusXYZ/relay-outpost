@@ -192,7 +192,7 @@ const GUIDE_ITEMS: GuideItem[] = [
     title: "Post with privacy",
     description: "Choose who sees your posts, and what hidden info gets removed before you publish.",
     icon: Lock,
-    iconColor: "text-red-500",
+    iconColor: "text-danger dark:text-red-500",
     type: "article",
     tags: ["privacy"],
     href: "/help/publishing-privacy",

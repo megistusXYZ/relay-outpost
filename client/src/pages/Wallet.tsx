@@ -529,7 +529,7 @@ function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | nul
               data-testid="input-sweep-invoice"
             />
             {invoiceErr && (
-              <p className="text-xs text-red-600 dark:text-red-400" data-testid="text-sweep-invoice-error">{invoiceErr}</p>
+              <p className="text-xs text-danger dark:text-red-400" data-testid="text-sweep-invoice-error">{invoiceErr}</p>
             )}
             <div className="flex items-center gap-2">
               <Button
@@ -1900,8 +1900,8 @@ function TransactionMetricsDashboard({ transactions, balanceHidden }: { transact
           label="Net Flow"
           value={`${metrics.netFlow >= 0 ? "+" : ""}${metrics.netFlow.toLocaleString()}`}
           icon={metrics.netFlow >= 0 ? TrendingUp : TrendingDown}
-          iconColor={metrics.netFlow >= 0 ? "bg-emerald-500/10 text-success dark:text-emerald-400" : "bg-red-500/10 text-red-500 dark:text-red-400"}
-          valueColor={metrics.netFlow >= 0 ? "text-success dark:text-emerald-400" : "text-red-600 dark:text-red-400"}
+          iconColor={metrics.netFlow >= 0 ? "bg-emerald-500/10 text-success dark:text-emerald-400" : "bg-red-500/10 text-danger dark:text-red-400"}
+          valueColor={metrics.netFlow >= 0 ? "text-success dark:text-emerald-400" : "text-danger dark:text-red-400"}
           blurred={balanceHidden}
         />
         <MetricCard
@@ -2964,7 +2964,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                         <div className="rounded-lg border border-red-500/30 bg-red-500/[0.06] px-3 py-3 flex items-start gap-2" data-testid="invoice-invalid">
                           <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
                           <div>
-                            <p className="text-sm font-medium text-red-500">Couldn't read this invoice</p>
+                            <p className="text-sm font-medium text-danger dark:text-red-500">Couldn't read this invoice</p>
                             <p className="text-[11px] text-muted-foreground/60 mt-0.5">This doesn't look like a valid Lightning invoice. Don't pay it unless you're sure where it came from.</p>
                           </div>
                         </div>
@@ -2998,7 +2998,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                           {invoiceExpired && (
                             <div className="px-3 py-2.5 flex items-center gap-2" data-testid="invoice-expired">
                               <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                              <p className="text-[11px] text-red-500">This invoice has expired and will likely be rejected.</p>
+                              <p className="text-[11px] text-danger dark:text-red-500">This invoice has expired and will likely be rejected.</p>
                             </div>
                           )}
                         </div>
@@ -3635,7 +3635,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
               </>
             ) : (
               <>
-                <h3 className="text-base font-semibold text-red-600 dark:text-red-400 mb-2" data-testid="text-disconnect-confirm-title">Are you sure?</h3>
+                <h3 className="text-base font-semibold text-danger dark:text-red-400 mb-2" data-testid="text-disconnect-confirm-title">Are you sure?</h3>
                 <p className="text-sm text-muted-foreground text-center mb-5">
                   This action cannot be undone. You'll need your NWC connection string to reconnect your wallet.
                 </p>

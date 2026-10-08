@@ -54,7 +54,7 @@ export default function PublishingPrivacy() {
                 <div className="rounded-lg bg-red-500/[0.05] dark:bg-red-500/[0.03] border border-red-500/15 px-3 py-2">
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="w-3 h-3 text-red-500/60" />
-                    <span className="text-red-600 dark:text-red-400 font-bold text-[11px]">What hidden photo data can expose</span>
+                    <span className="text-danger dark:text-red-400 font-bold text-[11px]">What hidden photo data can expose</span>
                   </div>
                   <p className="text-[12px] text-foreground/60 mt-0.5">GPS coordinates (your exact location), device model, camera settings, date and time, and sometimes even your name or software used.</p>
                 </div>
@@ -169,7 +169,7 @@ export default function PublishingPrivacy() {
             Relay Outpost strips metadata, encrypts what should be private, and gives you full control over where your content lives. Your data, your rules.
           </p>
           <div className="flex items-center justify-center gap-3">
-            <Link href="/settings" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 text-xs font-medium transition-all duration-200 hover:bg-red-500/15">
+            <Link href="/settings" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-500/10 text-danger dark:text-red-400 border border-red-500/20 text-xs font-medium transition-all duration-200 hover:bg-red-500/15">
               Privacy Settings
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>

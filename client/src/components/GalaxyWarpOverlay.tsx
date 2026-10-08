@@ -884,7 +884,7 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
                   </div>
 
                   {betaError && (
-                    <p className="text-xs text-red-700/90 dark:text-red-400/90 text-center animate-in fade-in-0 slide-in-from-top-1 duration-200" data-testid="text-beta-error">
+                    <p className="text-xs text-danger dark:text-red-400/90 text-center animate-in fade-in-0 slide-in-from-top-1 duration-200" data-testid="text-beta-error">
                       {betaError}
                     </p>
                   )}

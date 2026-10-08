@@ -154,7 +154,7 @@ function InspectorBody({ event, relayUrl, relayName, ownRelay, canGoBack, onBack
             </h2>
             <p className="text-[13px]" data-testid="inspector-verdict" data-verdict={verdict.verdict}>
               {verdict.verdict === "valid" && <><span className="font-medium text-success dark:text-emerald-400">Genuine</span><span className="text-muted-foreground"> · signed by its author</span></>}
-              {verdict.verdict === "invalid" && <><span className="font-medium text-red-600 dark:text-red-400">Not genuine</span><span className="text-muted-foreground"> · {verdict.reason}</span></>}
+              {verdict.verdict === "invalid" && <><span className="font-medium text-danger dark:text-red-400">Not genuine</span><span className="text-muted-foreground"> · {verdict.reason}</span></>}
               {verdict.verdict === "unsigned" && <><span className="font-medium text-amber-600 dark:text-amber-400">Not signed</span><span className="text-muted-foreground"> · anyone could have written this</span></>}
             </p>
           </div>

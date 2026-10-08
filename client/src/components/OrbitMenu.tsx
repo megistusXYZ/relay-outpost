@@ -1774,7 +1774,7 @@ export function OrbitMenu() {
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-red-600/80 dark:text-red-300/80">
                       <LogOut className="h-4 w-4" aria-hidden="true" />
                     </span>
-                    <span className="text-[13px] font-medium text-red-600/90 dark:text-red-300/90">Sign out</span>
+                    <span className="text-[13px] font-medium text-danger dark:text-red-300/90">Sign out</span>
                   </button>
                 </div>
               )}

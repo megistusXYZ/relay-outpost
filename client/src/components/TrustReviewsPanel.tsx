@@ -315,7 +315,7 @@ function OwnerResponseComposer({
         data-testid={`response-text-${attestation.eventId}`}
         aria-label="Owner response text"
       />
-      {error && <p className="text-xs text-red-700/90 dark:text-red-400/90" role="alert">{error}</p>}
+      {error && <p className="text-xs text-danger dark:text-red-400/90" role="alert">{error}</p>}
       <div className="flex items-center justify-end gap-2">
         <span className="text-[10px] text-muted-foreground/50 mr-auto">
           {text.length}/{RESPONSE_MAX_LEN}

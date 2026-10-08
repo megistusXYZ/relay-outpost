@@ -334,7 +334,7 @@ export function HashtagTrends({ relays: propRelays }: { relays?: string[] }) {
                   {topHashtags.map((d, i) => {
                     const isUp = d.trendPercent > 0;
                     const isDown = d.trendPercent < 0;
-                    const trendColor = isUp ? "text-success dark:text-emerald-400" : isDown ? "text-red-700 dark:text-red-400" : "text-muted-foreground";
+                    const trendColor = isUp ? "text-success dark:text-emerald-400" : isDown ? "text-danger dark:text-red-400" : "text-muted-foreground";
                     const TrendIcon = isUp ? ArrowUpRight : isDown ? ArrowDownRight : Minus;
                     return (
                       <tr key={d.tag} className="border-b border-brand/5" data-testid={`row-hashtag-${i}`}>

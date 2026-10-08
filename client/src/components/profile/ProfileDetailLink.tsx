@@ -32,7 +32,7 @@ function brandFor(rawUrl: string): Brand {
   const h = host.toLowerCase();
   if (h.includes("github.")) return { Icon: Github, tint: "text-foreground", label: "GitHub" };
   if (h === "x.com" || h.includes("twitter.")) return { Icon: Twitter, tint: "text-sky-500", label: "X" };
-  if (h.includes("youtube.") || h === "youtu.be") return { Icon: Youtube, tint: "text-red-500", label: "YouTube" };
+  if (h.includes("youtube.") || h === "youtu.be") return { Icon: Youtube, tint: "text-danger dark:text-red-500", label: "YouTube" };
   if (h.includes("t.me") || h.includes("telegram.")) return { Icon: Send, tint: "text-sky-500", label: "Telegram" };
   if (h.includes("fountain.fm")) return { Icon: Zap, tint: "text-amber-500", label: "Fountain" };
   // Generic host: neutral chain/link glyph that matches the other Details-row icons.

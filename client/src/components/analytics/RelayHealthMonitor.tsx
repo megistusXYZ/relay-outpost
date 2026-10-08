@@ -274,7 +274,7 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
                 {healthyCount} Healthy
               </Badge>
               {coolingCount > 0 && (
-                <Badge variant="outline" className="text-[10px] border-red-400/20 text-red-700/60 dark:text-red-400/60">
+                <Badge variant="outline" className="text-[10px] border-red-400/20 text-danger dark:text-red-400/60">
                   {coolingCount} Cooldown
                 </Badge>
               )}
@@ -359,7 +359,7 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
                           Online
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-[10px] border-red-400/20 text-red-700/60 dark:text-red-400/60" data-testid={`badge-status-${idx}`}>
+                        <Badge variant="outline" className="text-[10px] border-red-400/20 text-danger dark:text-red-400/60" data-testid={`badge-status-${idx}`}>
                           <WifiOff className="w-2.5 h-2.5 mr-0.5" />
                           Offline
                         </Badge>
@@ -377,14 +377,14 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
                           Degraded{hd ? ` (${hd.failures})` : ""}
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-[10px] border-red-400/20 text-red-700/60 dark:text-red-400/60">
+                        <Badge variant="outline" className="text-[10px] border-red-400/20 text-danger dark:text-red-400/60">
                           <Timer className="w-2.5 h-2.5 mr-0.5" />
                           Cooldown
                         </Badge>
                       )}
                     </td>
                     <td className="py-2 px-3 text-right font-mono" data-testid={`text-score-${idx}`}>
-                      <span className={score < 2000 ? "text-success dark:text-green-400" : score < 5000 ? "text-amber-800 dark:text-amber-400" : "text-red-700 dark:text-red-400"}>
+                      <span className={score < 2000 ? "text-success dark:text-green-400" : score < 5000 ? "text-amber-800 dark:text-amber-400" : "text-danger dark:text-red-400"}>
                         {score.toLocaleString()}
                       </span>
                     </td>
@@ -399,7 +399,7 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
                     </td>
                     <td className="py-2 px-3 text-right font-mono" data-testid={`text-success-rate-${idx}`}>
                       {successRate !== null ? (
-                        <span className={successRate >= 90 ? "text-success dark:text-green-400" : successRate >= 70 ? "text-amber-800 dark:text-amber-400" : "text-red-700 dark:text-red-400"}>
+                        <span className={successRate >= 90 ? "text-success dark:text-green-400" : successRate >= 70 ? "text-amber-800 dark:text-amber-400" : "text-danger dark:text-red-400"}>
                           {successRate}%
                         </span>
                       ) : (

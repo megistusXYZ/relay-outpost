@@ -1072,7 +1072,7 @@ function LiveTile() {
   // On-air whenever ANYONE is live, not just followed hosts — the facepile
   // below shows real faces either way, so the chip's claim is always backed.
   const chip = anyLive ? (
-    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-red-500" data-testid="live-tile-chip">
+    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-danger dark:text-red-500" data-testid="live-tile-chip">
       <span className="w-1.5 h-1.5 rounded-full bg-red-500 live-dot" />
       On air
     </span>

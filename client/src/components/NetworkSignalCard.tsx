@@ -35,7 +35,7 @@ function RelationshipBadge({ relationship }: { relationship: string }) {
     mutual: { label: "Mutual", className: "text-success dark:text-green-400 bg-green-500/10 border-green-500/20" },
     "follows-you": { label: "Follows you", className: "text-brand bg-brand/10 border-brand/20" },
     "you-follow": { label: "You follow", className: "text-blue-700 dark:text-blue-400 bg-blue-500/10 border-blue-500/20" },
-    muted: { label: "Muted", className: "text-red-700 dark:text-red-400 bg-red-500/10 border-red-500/20" } };
+    muted: { label: "Muted", className: "text-danger dark:text-red-400 bg-red-500/10 border-red-500/20" } };
   const c = config[relationship];
   if (!c) return null;
   return (

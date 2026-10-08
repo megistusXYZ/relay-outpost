@@ -549,7 +549,7 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
             </Badge>
           )}
           {liveMode && (
-            <Badge variant="secondary" className="bg-red-500/10 text-red-500 border-red-500/20 animate-pulse">
+            <Badge variant="secondary" className="bg-red-500/10 text-danger dark:text-red-500 border-red-500/20 animate-pulse">
               <Radio className="w-3 h-3 mr-1" />
               Live
             </Badge>
@@ -595,7 +595,7 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
                   variant="outline"
                   onClick={startLive}
                   disabled={loading}
-                  className="border-red-500/20 text-red-500 hover:bg-red-500/10"
+                  className="border-red-500/20 text-danger dark:text-red-500 hover:bg-red-500/10"
                 >
                   <Radio className="w-4 h-4 mr-1.5" />
                   Live
@@ -604,7 +604,7 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
                 <Button
                   variant="outline"
                   onClick={stopLive}
-                  className="border-red-500/30 text-red-500 hover:bg-red-500/10"
+                  className="border-red-500/30 text-danger dark:text-red-500 hover:bg-red-500/10"
                 >
                   Stop
                 </Button>

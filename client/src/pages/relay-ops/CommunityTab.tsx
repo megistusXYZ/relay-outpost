@@ -1658,7 +1658,7 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
             <Hash className="w-3.5 h-3.5 text-brand dark:text-brand/70" />
             <span className="text-sm font-medium text-foreground/90">{selectedGroup.name || selectedGroup.id}</span>
             {selectedGroup.isPrivate && <Badge variant="outline" className="text-[10px] border-amber-400/30 text-amber-700 dark:text-amber-400/70">Private</Badge>}
-            {selectedGroup.isClosed && <Badge variant="outline" className="text-[10px] border-red-400/30 text-red-700 dark:text-red-400/70">Closed</Badge>}
+            {selectedGroup.isClosed && <Badge variant="outline" className="text-[10px] border-red-400/30 text-danger dark:text-red-400/70">Closed</Badge>}
             {selectedGroup.isRestricted && <Badge variant="outline" className="text-[10px] border-blue-400/30 text-blue-700 dark:text-blue-400/70">Restricted</Badge>}
           </div>
           {selectedGroup.about && <p className="text-[10px] text-muted-foreground/50">{selectedGroup.about}</p>}
@@ -1858,7 +1858,7 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
                     {mutedFiltered.filtered.map((p) => (
                       <div key={p} className="group flex items-center gap-2 px-2 py-1 rounded text-[10px] hover:bg-muted/20">
                         <div className="flex flex-col flex-1 min-w-0">
-                          <span className="font-mono text-red-600/70 dark:text-red-400/70 truncate">{memberProfiles[p]?.name || p.slice(0, 16) + "…"}</span>
+                          <span className="font-mono text-danger dark:text-red-400/70 truncate">{memberProfiles[p]?.name || p.slice(0, 16) + "…"}</span>
                           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60">
                             <span title={mutedAddedAt[p] ? undefined : "We only started tracking mute dates from now on."}>
                               {mutedAddedAt[p] ? `Muted ${formatRelativeMs(mutedAddedAt[p])}` : "Muted —"}

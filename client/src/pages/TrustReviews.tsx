@@ -141,7 +141,7 @@ function AuthoredReviewCard({
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => onRemove(review, profile.name)}
-                className="text-red-500 focus:text-red-500"
+                className="text-danger dark:text-red-500 focus:text-red-500"
                 data-testid={`menu-remove-${idShort}`}
               >
                 <Trash2 className="h-3.5 w-3.5 mr-2" /> Remove

@@ -303,7 +303,7 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
   }, [zapAmounts]);
 
   const TrendIcon = velocity?.trend === "up" ? TrendingUp : velocity?.trend === "down" ? TrendingDown : Minus;
-  const trendColor = velocity?.trend === "up" ? "text-success dark:text-emerald-400" : velocity?.trend === "down" ? "text-red-700 dark:text-red-400" : "text-muted-foreground";
+  const trendColor = velocity?.trend === "up" ? "text-success dark:text-emerald-400" : velocity?.trend === "down" ? "text-danger dark:text-red-400" : "text-muted-foreground";
   const trendLabel = velocity?.trend === "up" ? "Accelerating" : velocity?.trend === "down" ? "Decelerating" : "Steady";
 
   return (

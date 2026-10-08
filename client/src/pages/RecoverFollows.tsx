@@ -197,7 +197,7 @@ function verdictChipClasses(verdict: FlagVerdict): string {
     return "bg-brand/10 text-brand border border-brand/25";
   }
   switch (verdict.level) {
-    case "strong": return "bg-red-500/10 text-red-600 dark:text-red-300 border border-red-400/30";
+    case "strong": return "bg-red-500/10 text-danger dark:text-red-300 border border-red-400/30";
     case "worth-a-look": return "bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-400/30";
     case "weak": return "bg-muted/40 text-muted-foreground/80 border border-border/40";
   }

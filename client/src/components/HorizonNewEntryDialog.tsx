@@ -149,7 +149,7 @@ export function HorizonNewEntryDialog({ open, onOpenChange, relayUrl }: HorizonN
         <div className="px-5 pb-4 space-y-4 max-h-[60vh] overflow-y-auto overscroll-contain">
           <div className="space-y-1.5">
             <label className="text-[11px] font-medium text-foreground/70">
-              Title <span className="text-red-700/70 dark:text-red-400/70">*</span>
+              Title <span className="text-danger dark:text-red-400/70">*</span>
             </label>
             <Input
               value={title}

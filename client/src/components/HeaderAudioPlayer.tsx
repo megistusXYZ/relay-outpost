@@ -719,7 +719,7 @@ function ExpandedMusicPanel({
             )}
           </div>
           {isLive ? (
-            <div className="flex items-center justify-center gap-2 text-xs font-semibold tracking-wide text-red-600 dark:text-red-400" data-testid="music-live-row">
+            <div className="flex items-center justify-center gap-2 text-xs font-semibold tracking-wide text-danger dark:text-red-400" data-testid="music-live-row">
               <span className="relative flex h-2 w-2" aria-hidden>
                 <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-60" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
@@ -1416,7 +1416,7 @@ export function HeaderAudioPlayer() {
                 </Button>
               )}
               {isLive ? (
-                <span className="text-[9px] font-bold tracking-wide text-red-600 dark:text-red-400 mr-1" data-testid="header-audio-live">
+                <span className="text-[9px] font-bold tracking-wide text-danger dark:text-red-400 mr-1" data-testid="header-audio-live">
                   LIVE
                 </span>
               ) : (

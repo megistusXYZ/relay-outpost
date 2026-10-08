@@ -233,20 +233,20 @@ function WotDiagnosticsCard() {
           <span className="text-muted-foreground/70">Signed in</span>
           <span className="flex items-center gap-1.5" data-testid="wot-diag-auth">
             <span className={`w-1.5 h-1.5 rounded-full ${authOk ? "bg-emerald-500" : authHasFail ? "bg-red-500" : "bg-slate-500/50"}`} />
-            <span className={authOk ? "text-success dark:text-emerald-500/80" : authHasFail ? "text-red-500/85" : "text-muted-foreground/60"}>
+            <span className={authOk ? "text-success dark:text-emerald-500/80" : authHasFail ? "text-danger dark:text-red-500/85" : "text-muted-foreground/60"}>
               {authOk ? `Signed in · ${formatRelativeTime(diagnostics.authLastSuccessAt)}` : authHasFail ? `Failed · ${formatRelativeTime(diagnostics.authLastFailAt)}` : "Not yet attempted"}
             </span>
           </span>
         </div>
         {authHasFail && diagnostics.authLastFailReason && (
-          <p className="text-[10px] text-red-500/70 pl-2">{diagnostics.authLastFailReason}</p>
+          <p className="text-[10px] text-danger dark:text-red-500/70 pl-2">{diagnostics.authLastFailReason}</p>
         )}
 
         <div className="flex items-center justify-between gap-2">
           <span className="text-muted-foreground/70">Scores loaded</span>
           <span className="flex items-center gap-1.5" data-testid="wot-diag-conn">
             <span className={`w-1.5 h-1.5 rounded-full ${diagnostics.connLastSuccessAt && !connHasFail ? "bg-emerald-500" : connHasFail ? "bg-red-500" : "bg-slate-500/50"}`} />
-            <span className={diagnostics.connLastSuccessAt && !connHasFail ? "text-success dark:text-emerald-500/80" : connHasFail ? "text-red-500/85" : "text-muted-foreground/60"}>
+            <span className={diagnostics.connLastSuccessAt && !connHasFail ? "text-success dark:text-emerald-500/80" : connHasFail ? "text-danger dark:text-red-500/85" : "text-muted-foreground/60"}>
               {connHasFail
                 ? `Failed · ${formatRelativeTime(diagnostics.connLastFailAt)}`
                 : diagnostics.connLastSuccessAt
@@ -256,7 +256,7 @@ function WotDiagnosticsCard() {
           </span>
         </div>
         {connHasFail && diagnostics.connLastError && (
-          <p className="text-[10px] text-red-500/70 pl-2">{diagnostics.connLastError}</p>
+          <p className="text-[10px] text-danger dark:text-red-500/70 pl-2">{diagnostics.connLastError}</p>
         )}
 
         <div className="flex items-center justify-between gap-2">

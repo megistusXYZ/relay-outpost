@@ -927,7 +927,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
             {(() => {
               const recent = uptimeHistory.slice(-5);
               const recentDown = recent.filter(e => !e.online).length;
-              if (recentDown >= 2) return <Badge variant="outline" className="text-[10px] border-red-400/40 dark:border-red-400/30 text-red-600/80 dark:text-red-400/70 animate-pulse">Downtime detected</Badge>;
+              if (recentDown >= 2) return <Badge variant="outline" className="text-[10px] border-red-400/40 dark:border-red-400/30 text-danger dark:text-red-400/70 animate-pulse">Downtime detected</Badge>;
               if (recentDown === 1) return <Badge variant="outline" className="text-[10px] border-amber-400/30 dark:border-amber-400/20 text-amber-600 dark:text-amber-400/70">Intermittent</Badge>;
               return recent.length > 0 ? <Badge variant="outline" className="text-[10px] border-green-400/25 dark:border-green-400/15 text-success dark:text-green-400/70">Stable</Badge> : null;
             })()}

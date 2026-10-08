@@ -37,7 +37,7 @@ export const TIER_GLYPH: Record<SignalTier, TierGlyphDescriptor> = {
   low:      { kind: "dot",    colorToken: "teal",  className: "bg-cyan-500 dark:bg-cyan-400" },
   weak:     { kind: "dot",    colorToken: "amber", className: "bg-amber-500 dark:bg-amber-400" },
   none:     { kind: "hollow", colorToken: "gray",  className: "border-gray-400/70 dark:border-gray-500/70" },
-  flagged:  { kind: "flag",   colorToken: "red",   className: "text-red-500 dark:text-red-400" },
+  flagged:  { kind: "flag",   colorToken: "red",   className: "text-danger dark:text-red-400" },
 };
 
 /**

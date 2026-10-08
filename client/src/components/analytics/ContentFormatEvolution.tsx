@@ -433,7 +433,7 @@ export function ContentFormatEvolution({ relays: propRelays }: { relays?: string
                 <div className="space-y-2">
                   {formatStats.map((stat) => {
                     const DirectionIcon = stat.direction === "up" ? TrendingUp : stat.direction === "down" ? TrendingDown : Minus;
-                    const dirColor = stat.direction === "up" ? "text-success dark:text-emerald-400" : stat.direction === "down" ? "text-red-700 dark:text-red-400" : "text-muted-foreground";
+                    const dirColor = stat.direction === "up" ? "text-success dark:text-emerald-400" : stat.direction === "down" ? "text-danger dark:text-red-400" : "text-muted-foreground";
                     return (
                       <div
                         key={stat.name}

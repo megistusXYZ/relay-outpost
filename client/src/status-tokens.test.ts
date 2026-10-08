@@ -100,3 +100,37 @@ describe("green text", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+/**
+ * Light-mode red text is the danger colour (owner, 2026-10-08: Phase 2c
+ * slice 3) — destructive actions, errors, "Down", "Flagged", money going out.
+ * Kept on purpose, each with its reason: red as an IDENTITY colour (a liked
+ * heart's count; a category's icon). Rose is the calendar's category hue, not
+ * status, and -100..-300 are dark-surface shades. Icons may stay brighter.
+ */
+describe("red text", () => {
+  const IDENTITY = [
+    { file: "components/MediaInteractionBar.tsx", has: "hasLiked", why: "a liked heart's count: red is the like's identity" },
+    { file: "pages/Notifications.tsx", has: "reaction: { icon: Heart", why: "a category's icon colour (calm Activity, #399)" },
+    { file: "pages/WtfIsThis.tsx", has: 'label: "Video"', why: "a content type's icon colour (#400)" },
+  ];
+  it("in light mode is only ever text-danger", async () => {
+    const { readdirSync, statSync } = await import("node:fs");
+    const files: string[] = [];
+    const walk = (d: string) => { for (const n of readdirSync(d)) { const p = path.join(d, n); if (statSync(p).isDirectory()) walk(p); else if (p.endsWith(".tsx") && !p.includes(".test.")) files.push(p); } };
+    walk(import.meta.dirname);
+    const offenders: string[] = [];
+    const LIGHT_RED = /(^|[\s"'`{])text-red-[4-9]00(\/\d+)?(?=[\s"'`}]|$)/;
+    const ICON = /(^|[\s"'`])(w-\d|h-\d|size-\d|w-\[|h-\[)/;
+    for (const f of files) {
+      const rel = path.relative(import.meta.dirname, f);
+      readFileSync(f, "utf8").split("\n").forEach((line, i) => {
+        if (IDENTITY.some((x) => x.file === rel && line.includes(x.has))) return;
+        for (const cls of line.match(/"[^"]*"|`[^`]*`/g) || []) {
+          if (LIGHT_RED.test(cls) && !ICON.test(cls)) offenders.push(`${rel}:${i + 1}`);
+        }
+      });
+    }
+    expect(offenders).toEqual([]);
+  });
+});

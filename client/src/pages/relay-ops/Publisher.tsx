@@ -165,7 +165,7 @@ export function Publisher({ relays, initialText }: { relays: string[]; initialTe
                 {verdict?.verdict === "valid" && (mine
                   ? <span className="text-success dark:text-emerald-400">Genuine · signed by you</span>
                   : <><span className="text-success dark:text-emerald-400">Genuine</span><span className="text-muted-foreground"> · signed by someone else — it will be sent exactly as it is</span></>)}
-                {verdict?.verdict === "invalid" && <><span className="text-red-600 dark:text-red-400">Not genuine</span><span className="text-muted-foreground"> · {verdict.reason}. Sign it as you to send your own version.</span></>}
+                {verdict?.verdict === "invalid" && <><span className="text-danger dark:text-red-400">Not genuine</span><span className="text-muted-foreground"> · {verdict.reason}. Sign it as you to send your own version.</span></>}
               </>
             )}
           </p>

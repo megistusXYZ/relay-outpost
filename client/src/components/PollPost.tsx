@@ -623,9 +623,9 @@ export const PollPost = memo(function PollPost({ event }: PollPostProps) {
                       title={expiresTitle || undefined}
                       className={`flex items-center gap-1 text-[11px] tabular-nums whitespace-nowrap ${
                         expired
-                          ? "text-red-700/70 dark:text-red-400/70"
+                          ? "text-danger dark:text-red-400/70"
                           : isUrgent
-                          ? "text-red-700/90 dark:text-red-400/90 font-semibold"
+                          ? "text-danger dark:text-red-400/90 font-semibold"
                           : "text-amber-500/70"
                       }`}
                     >

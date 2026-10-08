@@ -52,16 +52,16 @@ export default function WhyDecentralization() {
               <p>Right now, a handful of companies control how billions of people communicate, create, and connect:</p>
               <div className="space-y-1.5 mt-2">
                 <div className="rounded-lg bg-red-500/[0.05] dark:bg-red-500/[0.03] border border-red-500/15 px-3 py-2">
-                  <p className="text-[12px] text-foreground/60"><strong className="text-red-500/80">Your content?</strong> Lives on their servers. They can delete it, suppress it, or change who sees it — without telling you.</p>
+                  <p className="text-[12px] text-foreground/60"><strong className="text-danger dark:text-red-500/80">Your content?</strong> Lives on their servers. They can delete it, suppress it, or change who sees it — without telling you.</p>
                 </div>
                 <div className="rounded-lg bg-red-500/[0.05] dark:bg-red-500/[0.03] border border-red-500/15 px-3 py-2">
-                  <p className="text-[12px] text-foreground/60"><strong className="text-red-500/80">Your audience?</strong> You built it on their platform. They can throttle your reach anytime — and they do, to sell you ads.</p>
+                  <p className="text-[12px] text-foreground/60"><strong className="text-danger dark:text-red-500/80">Your audience?</strong> You built it on their platform. They can throttle your reach anytime — and they do, to sell you ads.</p>
                 </div>
                 <div className="rounded-lg bg-red-500/[0.05] dark:bg-red-500/[0.03] border border-red-500/15 px-3 py-2">
-                  <p className="text-[12px] text-foreground/60"><strong className="text-red-500/80">Your identity?</strong> Tied to an email and a password they control. One ban, one hack, one policy change — and you disappear.</p>
+                  <p className="text-[12px] text-foreground/60"><strong className="text-danger dark:text-red-500/80">Your identity?</strong> Tied to an email and a password they control. One ban, one hack, one policy change — and you disappear.</p>
                 </div>
                 <div className="rounded-lg bg-red-500/[0.05] dark:bg-red-500/[0.03] border border-red-500/15 px-3 py-2">
-                  <p className="text-[12px] text-foreground/60"><strong className="text-red-500/80">Your data?</strong> Harvested, profiled, and sold. You are the product being monetized.</p>
+                  <p className="text-[12px] text-foreground/60"><strong className="text-danger dark:text-red-500/80">Your data?</strong> Harvested, profiled, and sold. You are the product being monetized.</p>
                 </div>
               </div>
               <p className="text-[12px] text-foreground/50 mt-2">This isn't a conspiracy — it's the business model. When a service is free, you're paying with your data, your attention, and your autonomy.</p>

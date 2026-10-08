@@ -328,7 +328,7 @@ export function ComposeEmojiPicker({ onInsert, onGifSelect, disabled, hideSticke
               {gifError === "GIF search not configured" ? (
                 <p className="text-[10px] text-brand/30 text-center py-6">GIF search not configured</p>
               ) : gifError ? (
-                <p className="text-[10px] text-red-700 dark:text-red-400 text-center py-4">{gifError}</p>
+                <p className="text-[10px] text-danger dark:text-red-400 text-center py-4">{gifError}</p>
               ) : gifs.length === 0 && !gifLoading ? (
                 <p className="text-[10px] text-brand/30 text-center py-6">
                   {gifSearch ? "No GIFs found" : "Loading trending GIFs..."}

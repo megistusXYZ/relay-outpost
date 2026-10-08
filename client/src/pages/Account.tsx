@@ -38,7 +38,7 @@ function Row({ icon, label, onClick, danger, trailing, chevron = true, testId }:
     <button
       type="button"
       onClick={onClick}
-      className={`w-full flex items-center gap-3.5 px-4 min-h-[52px] text-left transition-colors active:bg-primary/[0.06] hover:bg-primary/[0.04] dark:hover:bg-white/[0.03] ${danger ? "text-red-500 dark:text-red-400" : ""}`}
+      className={`w-full flex items-center gap-3.5 px-4 min-h-[52px] text-left transition-colors active:bg-primary/[0.06] hover:bg-primary/[0.04] dark:hover:bg-white/[0.03] ${danger ? "text-danger dark:text-red-400" : ""}`}
       data-testid={testId}
     >
       <span className={`shrink-0 ${danger ? "" : "text-muted-foreground"}`}>{icon}</span>
@@ -230,7 +230,7 @@ export default function Account() {
 
         {confirmSignOut ? (
           <div className="rounded-xl border border-red-500/30 bg-red-500/[0.06] p-3 space-y-2.5" data-testid="account-signout-confirm">
-            <p className="text-[11px] font-brand uppercase tracking-[0.15em] text-red-500 dark:text-red-400">Sign out?</p>
+            <p className="text-[11px] font-brand uppercase tracking-[0.15em] text-danger dark:text-red-400">Sign out?</p>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => { logout(); navigate("/"); }}

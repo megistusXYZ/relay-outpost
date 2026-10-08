@@ -140,7 +140,7 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost, onOpenMemberInbox 
           <div className="min-w-0 flex-1">
             <p className="text-[14px] leading-snug">
               <span className="font-medium">{whoName}</span>
-              <span className={r.severity === "severe" ? " text-red-600 dark:text-red-400" : " text-muted-foreground"}> · {describeReport(r)}</span>
+              <span className={r.severity === "severe" ? " text-danger dark:text-red-400" : " text-muted-foreground"}> · {describeReport(r)}</span>
             </p>
             {post && <p className="mt-1 text-[14px] leading-snug text-foreground/85 line-clamp-2" data-testid="ops-inbox-report-post">{rowPreview(post)}</p>}
             <p className="mt-1 text-[12px] text-muted-foreground">
@@ -152,7 +152,7 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost, onOpenMemberInbox 
         <div className="flex flex-wrap gap-1.5 pl-12">
           {r.targetEventId && <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px]" onClick={() => onSeePost(r.targetEventId!)} data-testid="ops-inbox-see"><Eye className="w-4 h-4 mr-1.5" />See it</Button>}
           {post && <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px]" onClick={() => setInspecting(post)} data-testid="ops-inbox-inspect"><ScanSearch className="w-4 h-4 mr-1.5" />Inspect</Button>}
-          {r.targetEventId && canRemove && <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px] text-red-600 dark:text-red-400" onClick={() => setPending({ kind: "remove", ids: [r.targetEventId!], rule: false, report: r })} data-testid="ops-inbox-remove"><Trash2 className="w-4 h-4 mr-1.5" />Remove post</Button>}
+          {r.targetEventId && canRemove && <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px] text-danger dark:text-red-400" onClick={() => setPending({ kind: "remove", ids: [r.targetEventId!], rule: false, report: r })} data-testid="ops-inbox-remove"><Trash2 className="w-4 h-4 mr-1.5" />Remove post</Button>}
           {canBan && <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px]" onClick={() => setPending({ kind: "ban", pubkeys: [r.targetPubkey], rule: false, report: r })} data-testid="ops-inbox-ban"><Ban className="w-4 h-4 mr-1.5" />Ban {who?.name ?? "them"}</Button>}
           <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px] text-muted-foreground" onClick={() => dismiss(r)} data-testid="ops-inbox-dismiss"><Check className="w-4 h-4 mr-1.5" />Nothing to do</Button>
         </div>

@@ -184,7 +184,7 @@ export function VouchComposer({
           </div>
 
           {error && (
-            <p className="text-xs text-red-700/90 dark:text-red-400/90" role="alert">
+            <p className="text-xs text-danger dark:text-red-400/90" role="alert">
               {error}
             </p>
           )}

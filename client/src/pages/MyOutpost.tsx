@@ -3046,7 +3046,7 @@ function UpcomingStreamsSection({
                     type="button"
                     onClick={() => handleCancel(stream)}
                     disabled={publishing}
-                    className="p-1 rounded text-red-500/50 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                    className="p-1 rounded text-danger dark:text-red-500/50 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                     title="Cancel stream"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -3748,8 +3748,8 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
                     </span>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-red-600 dark:text-red-400">Live Now</span>
-                    <span className="text-[10px] text-red-500/60 dark:text-red-400/50 font-medium">{liveCount} broadcasting</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-danger dark:text-red-400">Live Now</span>
+                    <span className="text-[10px] text-danger dark:text-red-400/50 font-medium">{liveCount} broadcasting</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {processedProfiles.slice(0, liveCount).map(renderCard)}
@@ -4088,7 +4088,7 @@ const ACTIVITY_TYPE_CONFIG: Record<ActivityType, { label: string; icon: typeof F
   unfollow: { label: "Unfollowed", icon: EyeOff, colorClass: "text-slate-500 dark:text-slate-400" },
   mute: { label: "Muted", icon: EyeOff, colorClass: "text-orange-600 dark:text-orange-400" },
   unmute: { label: "Unmuted", icon: Eye, colorClass: "text-teal-600 dark:text-teal-400" },
-  report: { label: "Reported", icon: ShieldCheck, colorClass: "text-red-600 dark:text-red-400" } };
+  report: { label: "Reported", icon: ShieldCheck, colorClass: "text-danger dark:text-red-400" } };
 
 const ACTIVITY_FILTERS: { value: ActivityType | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -4688,7 +4688,7 @@ function FlightLogTab({ pubkey }: { pubkey: string }) {
             { label: "Sats Sent", value: weekStats.totalSats > 999 ? `${(weekStats.totalSats / 1000).toFixed(1)}k` : weekStats.totalSats, color: "text-amber-600 dark:text-amber-300", icon: BtcZapIcon as typeof FileText, filter: "zap" as ActivityType | "all" },
             { label: "Follows", value: weekStats.follows + weekStats.unfollows, color: "text-success dark:text-emerald-400", icon: Users, filter: "follow" as ActivityType | "all" },
             { label: "Mutes", value: weekStats.mutes + weekStats.unmutes, color: "text-orange-600 dark:text-orange-400", icon: EyeOff, filter: "mute" as ActivityType | "all" },
-            { label: "Reports", value: weekStats.reports, color: "text-red-600 dark:text-red-400", icon: ShieldCheck, filter: "report" as ActivityType | "all" },
+            { label: "Reports", value: weekStats.reports, color: "text-danger dark:text-red-400", icon: ShieldCheck, filter: "report" as ActivityType | "all" },
           ].map((stat) => (
             <button
               key={stat.label}
@@ -4775,7 +4775,7 @@ function FlightLogTab({ pubkey }: { pubkey: string }) {
                             <span className="text-sm">{entry.reactionContent}</span>
                           )}
                           {entry.type === "report" && entry.reportReason && (
-                            <span className="text-[10px] text-red-500/70 dark:text-red-400/60 font-mono uppercase">{entry.reportReason}</span>
+                            <span className="text-[10px] text-danger dark:text-red-400/60 font-mono uppercase">{entry.reportReason}</span>
                           )}
                           {targetProfile && (
                             <span className="text-xs text-foreground/45 dark:text-muted-foreground/50 truncate">

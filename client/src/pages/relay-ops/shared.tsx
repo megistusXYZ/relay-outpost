@@ -1043,7 +1043,7 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
           <BarChart3 className="w-3.5 h-3.5 text-brand/70 shrink-0" />
           <span className="text-[10px] text-brand dark:text-brand/70 uppercase tracking-wider font-medium">Poll</span>
           {isExpired ? (
-            <span className="text-[10px] text-red-500/70 uppercase tracking-wider font-medium ml-1">Expired</span>
+            <span className="text-[10px] text-danger dark:text-red-500/70 uppercase tracking-wider font-medium ml-1">Expired</span>
           ) : expTs ? (
             <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1 ml-1">
               <Clock className="w-2.5 h-2.5" />

@@ -4401,7 +4401,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                 </Button>
               )
             ) : relayAuthFailed ? (
-              <span className="text-[10px] text-red-700/70 dark:text-red-400/70 flex items-center gap-1 -mb-px">
+              <span className="text-[10px] text-danger dark:text-red-400/70 flex items-center gap-1 -mb-px">
                 <ShieldAlert className="w-3 h-3" />
                 <span className="hidden sm:inline">Auth failed</span>
               </span>
