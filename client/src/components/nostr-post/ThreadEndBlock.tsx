@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { nip19, type Event } from "nostr-tools";
+import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { eventStore, fetchProfilesCached, getEventRelays } from "@/lib/nostr";
@@ -88,7 +89,8 @@ function PersonChip({ pubkey, guest, onSignIn }: { pubkey: string; guest: boolea
         variant={followed ? "secondary" : "outline"}
         disabled={busy || followed}
         onClick={() => (guest ? onSignIn() : follow(pubkey))}
-        className="h-6 px-2 text-[11px] gap-1 shrink-0"
+        // "Following" is a state, not a dead button: readable in light mode.
+        className={cn("h-6 px-2 text-[11px] gap-1 shrink-0", followed && "disabled:opacity-100 dark:disabled:opacity-50")}
         data-testid={`thread-follow-${pubkey.slice(0, 8)}`}
       >
         {busy ? "…" : followed ? <><Check className="w-3 h-3" />Following</> : <><Plus className="w-3 h-3" />Follow</>}

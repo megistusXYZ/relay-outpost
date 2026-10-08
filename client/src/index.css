@@ -301,23 +301,128 @@ textarea:focus {
  * Tailwind's own (non-important) utility of the same name, including dark:
  * variants (higher specificity, so their floor takes over in dark mode). */
 
+/* Dark mode only (since 2026-10-08): light mode has its own rule below. */
 /* muted-foreground — secondary text & icons (the bulk of the app's chrome) */
-.text-muted-foreground\/20, .dark .dark\:text-muted-foreground\/20 { color: hsl(var(--muted-foreground) / 0.42) !important; }
-.text-muted-foreground\/25, .dark .dark\:text-muted-foreground\/25 { color: hsl(var(--muted-foreground) / 0.48) !important; }
-.text-muted-foreground\/30, .dark .dark\:text-muted-foreground\/30 { color: hsl(var(--muted-foreground) / 0.54) !important; }
-.text-muted-foreground\/35, .dark .dark\:text-muted-foreground\/35 { color: hsl(var(--muted-foreground) / 0.60) !important; }
-.text-muted-foreground\/40, .dark .dark\:text-muted-foreground\/40 { color: hsl(var(--muted-foreground) / 0.66) !important; }
-.text-muted-foreground\/45, .dark .dark\:text-muted-foreground\/45 { color: hsl(var(--muted-foreground) / 0.72) !important; }
-.text-muted-foreground\/50, .dark .dark\:text-muted-foreground\/50 { color: hsl(var(--muted-foreground) / 0.76) !important; }
+:where(.dark) .text-muted-foreground\/20, .dark .dark\:text-muted-foreground\/20 { color: hsl(var(--muted-foreground) / 0.42) !important; }
+:where(.dark) .text-muted-foreground\/25, .dark .dark\:text-muted-foreground\/25 { color: hsl(var(--muted-foreground) / 0.48) !important; }
+:where(.dark) .text-muted-foreground\/30, .dark .dark\:text-muted-foreground\/30 { color: hsl(var(--muted-foreground) / 0.54) !important; }
+:where(.dark) .text-muted-foreground\/35, .dark .dark\:text-muted-foreground\/35 { color: hsl(var(--muted-foreground) / 0.60) !important; }
+:where(.dark) .text-muted-foreground\/40, .dark .dark\:text-muted-foreground\/40 { color: hsl(var(--muted-foreground) / 0.66) !important; }
+:where(.dark) .text-muted-foreground\/45, .dark .dark\:text-muted-foreground\/45 { color: hsl(var(--muted-foreground) / 0.72) !important; }
+:where(.dark) .text-muted-foreground\/50, .dark .dark\:text-muted-foreground\/50 { color: hsl(var(--muted-foreground) / 0.76) !important; }
 
 /* foreground — primary text deliberately dimmed; lift a touch higher */
-.text-foreground\/20, .dark .dark\:text-foreground\/20 { color: hsl(var(--foreground) / 0.46) !important; }
-.text-foreground\/25, .dark .dark\:text-foreground\/25 { color: hsl(var(--foreground) / 0.52) !important; }
-.text-foreground\/30, .dark .dark\:text-foreground\/30 { color: hsl(var(--foreground) / 0.58) !important; }
-.text-foreground\/35, .dark .dark\:text-foreground\/35 { color: hsl(var(--foreground) / 0.64) !important; }
-.text-foreground\/40, .dark .dark\:text-foreground\/40 { color: hsl(var(--foreground) / 0.70) !important; }
-.text-foreground\/45, .dark .dark\:text-foreground\/45 { color: hsl(var(--foreground) / 0.78) !important; }
-.text-foreground\/50, .dark .dark\:text-foreground\/50 { color: hsl(var(--foreground) / 0.84) !important; }
+:where(.dark) .text-foreground\/20, .dark .dark\:text-foreground\/20 { color: hsl(var(--foreground) / 0.46) !important; }
+:where(.dark) .text-foreground\/25, .dark .dark\:text-foreground\/25 { color: hsl(var(--foreground) / 0.52) !important; }
+:where(.dark) .text-foreground\/30, .dark .dark\:text-foreground\/30 { color: hsl(var(--foreground) / 0.58) !important; }
+:where(.dark) .text-foreground\/35, .dark .dark\:text-foreground\/35 { color: hsl(var(--foreground) / 0.64) !important; }
+:where(.dark) .text-foreground\/40, .dark .dark\:text-foreground\/40 { color: hsl(var(--foreground) / 0.70) !important; }
+:where(.dark) .text-foreground\/45, .dark .dark\:text-foreground\/45 { color: hsl(var(--foreground) / 0.78) !important; }
+:where(.dark) .text-foreground\/50, .dark .dark\:text-foreground\/50 { color: hsl(var(--foreground) / 0.84) !important; }
+
+/* ---- Light mode: secondary text is one grey (owner, 2026-10-08) ------------
+ * On the lightest tinted surface (--accent) even muted-foreground/90 is under
+ * 4.5:1, so no lighter grey is still readable: every faint step renders as the
+ * muted grey itself (4.9:1 on --accent, 6.0:1 on white), and dimmed
+ * foreground text stops at 0.7. Not !important and no class-level specificity
+ * added, so a selected or hovered colour (data-[state=active]:, hover:) still
+ * wins; icons (svg) keep their own opacity. Guarded by light-text-floor.test.ts. */
+:where(html:not(.dark)) .text-muted-foreground\/5:not(svg),
+:where(html:not(.dark)) .text-muted-foreground\/10:not(svg),
+:where(html:not(.dark)) .text-muted-foreground\/15:not(svg),
+:where(html:not(.dark)) .text-muted-foreground\/20:not(svg),
+:where(html:not(.dark)) .text-muted-foreground\/25:not(svg),
+:where(html:not(.dark)) .text-muted-foreground\/30:not(svg),
+:where(html:not(.dark)) .text-muted-foreground\/35:not(svg),
+:where(html:not(.dark)) .text-muted-foreground\/40:not(svg),
+:where(html:not(.dark)) .text-muted-foreground\/45:not(svg),
+:where(html:not(.dark)) .text-muted-foreground\/50:not(svg),
+:where(html:not(.dark)) .text-muted-foreground\/55:not(svg),
+:where(html:not(.dark)) .text-muted-foreground\/60:not(svg),
+:where(html:not(.dark)) .text-muted-foreground\/65:not(svg),
+:where(html:not(.dark)) .text-muted-foreground\/70:not(svg),
+:where(html:not(.dark)) .text-muted-foreground\/75:not(svg),
+:where(html:not(.dark)) .text-muted-foreground\/80:not(svg),
+:where(html:not(.dark)) .text-muted-foreground\/85:not(svg),
+:where(html:not(.dark)) .text-muted-foreground\/90:not(svg),
+:where(html:not(.dark)) .text-muted-foreground\/95:not(svg),
+:where(html:not(.dark)) .hover\:text-muted-foreground\/5:hover,
+:where(html:not(.dark)) .hover\:text-muted-foreground\/10:hover,
+:where(html:not(.dark)) .hover\:text-muted-foreground\/15:hover,
+:where(html:not(.dark)) .hover\:text-muted-foreground\/20:hover,
+:where(html:not(.dark)) .hover\:text-muted-foreground\/25:hover,
+:where(html:not(.dark)) .hover\:text-muted-foreground\/30:hover,
+:where(html:not(.dark)) .hover\:text-muted-foreground\/35:hover,
+:where(html:not(.dark)) .hover\:text-muted-foreground\/40:hover,
+:where(html:not(.dark)) .hover\:text-muted-foreground\/45:hover,
+:where(html:not(.dark)) .hover\:text-muted-foreground\/50:hover,
+:where(html:not(.dark)) .hover\:text-muted-foreground\/55:hover,
+:where(html:not(.dark)) .hover\:text-muted-foreground\/60:hover,
+:where(html:not(.dark)) .hover\:text-muted-foreground\/65:hover,
+:where(html:not(.dark)) .hover\:text-muted-foreground\/70:hover,
+:where(html:not(.dark)) .hover\:text-muted-foreground\/75:hover,
+:where(html:not(.dark)) .hover\:text-muted-foreground\/80:hover,
+:where(html:not(.dark)) .hover\:text-muted-foreground\/85:hover,
+:where(html:not(.dark)) .hover\:text-muted-foreground\/90:hover,
+:where(html:not(.dark)) .hover\:text-muted-foreground\/95:hover,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/5,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/10,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/15,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/20,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/25,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/30,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/35,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/40,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/45,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/50,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/55,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/60,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/65,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/70,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/75,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/80,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/85,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/90,
+:where(html:not(.dark)) .group:hover .group-hover\:text-muted-foreground\/95 { color: hsl(var(--muted-foreground)); }
+:where(html:not(.dark)) .text-foreground\/5:not(svg),
+:where(html:not(.dark)) .text-foreground\/10:not(svg),
+:where(html:not(.dark)) .text-foreground\/15:not(svg),
+:where(html:not(.dark)) .text-foreground\/20:not(svg),
+:where(html:not(.dark)) .text-foreground\/25:not(svg),
+:where(html:not(.dark)) .text-foreground\/30:not(svg),
+:where(html:not(.dark)) .text-foreground\/35:not(svg),
+:where(html:not(.dark)) .text-foreground\/40:not(svg),
+:where(html:not(.dark)) .text-foreground\/45:not(svg),
+:where(html:not(.dark)) .text-foreground\/50:not(svg),
+:where(html:not(.dark)) .text-foreground\/55:not(svg),
+:where(html:not(.dark)) .text-foreground\/60:not(svg),
+:where(html:not(.dark)) .text-foreground\/65:not(svg),
+:where(html:not(.dark)) .hover\:text-foreground\/5:hover,
+:where(html:not(.dark)) .hover\:text-foreground\/10:hover,
+:where(html:not(.dark)) .hover\:text-foreground\/15:hover,
+:where(html:not(.dark)) .hover\:text-foreground\/20:hover,
+:where(html:not(.dark)) .hover\:text-foreground\/25:hover,
+:where(html:not(.dark)) .hover\:text-foreground\/30:hover,
+:where(html:not(.dark)) .hover\:text-foreground\/35:hover,
+:where(html:not(.dark)) .hover\:text-foreground\/40:hover,
+:where(html:not(.dark)) .hover\:text-foreground\/45:hover,
+:where(html:not(.dark)) .hover\:text-foreground\/50:hover,
+:where(html:not(.dark)) .hover\:text-foreground\/55:hover,
+:where(html:not(.dark)) .hover\:text-foreground\/60:hover,
+:where(html:not(.dark)) .hover\:text-foreground\/65:hover,
+:where(html:not(.dark)) .group:hover .group-hover\:text-foreground\/5,
+:where(html:not(.dark)) .group:hover .group-hover\:text-foreground\/10,
+:where(html:not(.dark)) .group:hover .group-hover\:text-foreground\/15,
+:where(html:not(.dark)) .group:hover .group-hover\:text-foreground\/20,
+:where(html:not(.dark)) .group:hover .group-hover\:text-foreground\/25,
+:where(html:not(.dark)) .group:hover .group-hover\:text-foreground\/30,
+:where(html:not(.dark)) .group:hover .group-hover\:text-foreground\/35,
+:where(html:not(.dark)) .group:hover .group-hover\:text-foreground\/40,
+:where(html:not(.dark)) .group:hover .group-hover\:text-foreground\/45,
+:where(html:not(.dark)) .group:hover .group-hover\:text-foreground\/50,
+:where(html:not(.dark)) .group:hover .group-hover\:text-foreground\/55,
+:where(html:not(.dark)) .group:hover .group-hover\:text-foreground\/60,
+:where(html:not(.dark)) .group:hover .group-hover\:text-foreground\/65 { color: hsl(var(--foreground) / 0.7); }
 
 /* primary — accent labels */
 .text-primary\/20 { color: hsl(var(--primary) / 0.48) !important; }

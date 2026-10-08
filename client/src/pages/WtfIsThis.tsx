@@ -577,7 +577,7 @@ export default function WtfIsThis() {
             >
               Help &amp; Guides
             </h1>
-            <p className="text-[10px] text-brand/40 dark:text-brand/30 font-bold uppercase tracking-[0.2em] mt-0.5 ml-0.5">get started, post &amp; connect</p>
+            <p className="text-[10px] text-brand dark:text-brand/30 font-bold uppercase tracking-[0.2em] mt-0.5 ml-0.5">get started, post &amp; connect</p>
           </div>
         </div>
         {pubkey && (
