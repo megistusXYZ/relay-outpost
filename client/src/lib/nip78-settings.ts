@@ -246,9 +246,18 @@ let isApplyingRemote = false;
 // A settings write anywhere in the app schedules a sync. Through
 // lib/storage-write-hook, never `localStorage.setItem = fn`: Safari stores
 // that assignment as an item and keeps the real method, so sync never fired.
-setStorageWriteListener(localStorage, "nip78-settings", (_op, key) => {
+setStorageWriteListener(localStorage, "nip78-settings", (_op, key, changed) => {
   if (isApplyingRemote) return;
   if (WATCHED_LS_KEYS.has(key) || key.startsWith("relay-outpost-dm-demoted-") || key.startsWith(PINNED_EVENTS_PREFIX) || key.startsWith(CUSTOM_HOLIDAYS_PREFIX) || key.startsWith(HIDDEN_HOLIDAYS_PREFIX)) {
+    // The edit is newer than any synced copy from this moment — not from when
+    // the debounced sync gets round to it (3 s, or never if it lands before
+    // the first load). Close the app in that window and the next load applied
+    // the other device's older settings over it; an empty synced community
+    // list removed the whole list (settings-sync-edits.test.ts). Only on a
+    // device that already knows this account's settings: a new device's
+    // defaults must never outrank what's synced. And only a real change: the
+    // app rewrites some settings with the value they already had (the theme).
+    if (changed && currentPubkey && hasKnownSettings(currentPubkey)) setLocalTimestamp(currentPubkey, Date.now());
     try { window.dispatchEvent(new CustomEvent("nip78-trigger-sync")); } catch {}
   }
 });
