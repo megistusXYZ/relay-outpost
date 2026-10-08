@@ -242,18 +242,18 @@ function RailNode({
   const isCreate = destination.id === "create";
   const live = !!destination.live;
 
-  const ringConic = isDark
-    ? "conic-gradient(from 0deg, #7c3aed, #a855f7 26%, rgba(168,85,247,0.3) 50%, #a855f7 72%, #7c3aed)"
-    : "conic-gradient(from 0deg, #5b21b6, #7c3aed 26%, rgba(109,40,217,0.3) 50%, #7c3aed 72%, #5b21b6)";
+  // The unread ring (dark mode only — see boxShadow).
+  const ringConic = "conic-gradient(from 0deg, #7c3aed, #a855f7 26%, rgba(168,85,247,0.3) 50%, #a855f7 72%, #7c3aed)";
 
   const boxShadow = active
     ? isDark
       ? "0 0 18px rgba(168,85,247,0.55), 0 0 6px rgba(168,85,247,0.4)"
       : "0 0 18px rgba(109,40,217,0.30), 0 0 6px rgba(109,40,217,0.18)"
-    : live
-      ? isDark
-        ? "0 0 14px rgba(168,85,247,0.4)"
-        : "0 0 14px rgba(109,40,217,0.22)"
+    // Unread glows only in dark: in light the count badge says it, and a
+    // violet ring read as "the page you're on" (owner, 2026-10-07: quiet
+    // unless selected).
+    : live && isDark
+      ? "0 0 14px rgba(168,85,247,0.4)"
       : isCreate
         ? isDark
           ? "0 0 10px rgba(124,58,237,0.25)"
@@ -264,7 +264,7 @@ function RailNode({
           // on a destination you're not on; the active one keeps its ring.
           : "none";
 
-  const ringBg = live
+  const ringBg = live && isDark
     ? ringConic
     : active
       ? isDark ? "rgba(196,181,253,0.6)" : "rgba(109,40,217,0.6)"
@@ -293,7 +293,7 @@ function RailNode({
     >
       <span
         aria-hidden="true"
-        className={`absolute inset-0 rounded-full transition-transform ${live && !reducedMotion ? "rail-ring-spin" : ""}`}
+        className={`absolute inset-0 rounded-full transition-transform ${live && isDark && !reducedMotion ? "rail-ring-spin" : ""}`}
         style={{ background: ringBg }}
         data-testid={live ? `${testId}-ring-live` : `${testId}-ring-quiet`}
       />

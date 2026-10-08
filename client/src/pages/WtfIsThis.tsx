@@ -573,7 +573,7 @@ export default function WtfIsThis() {
           </div>
           <div>
             <h1
-              className="text-lg sm:text-xl font-black tracking-tight leading-none text-brand dark:text-brand/90"
+              className="text-lg sm:text-xl font-black tracking-tight leading-none text-foreground dark:text-brand/90"
             >
               Help &amp; Guides
             </h1>

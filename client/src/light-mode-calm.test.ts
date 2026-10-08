@@ -104,3 +104,53 @@ describe("the rail in light mode is quiet unless selected", () => {
     expect(RAIL).toMatch(/"0 0 18px rgba\(109,40,217,0\.30\)/);
   });
 });
+
+describe("unread in the light rail is the count, not a ring", () => {
+  // Owner, 2026-10-07: quiet unless selected. An unread destination already
+  // carries its count badge; in light mode the spinning violet ring made the
+  // bell look like the page you're on. Dark keeps its glowing unread ring.
+  const RAIL = readFileSync(path.resolve(import.meta.dirname, "components/DesktopStoriesRail.tsx"), "utf8");
+  it("the unread ring and glow are dark mode's", () => {
+    expect(RAIL).toMatch(/const ringBg = live && isDark\s*\n?\s*\? ringConic/);
+    expect(RAIL).toMatch(/: live && isDark\s*\n?\s*\? "0 0 14px rgba\(168,85,247,0\.4\)"/);
+  });
+  it("the ring still spins only where it shows", () => {
+    expect(RAIL).toMatch(/live && isDark && !reducedMotion \? "rail-ring-spin"/);
+  });
+});
+
+describe("section titles are grey in light mode", () => {
+  // Violet is for actions, focus and selection (LIGHT_MODE.md). A profile's
+  // "Connect with…" and "Details" bars were violet while "Jump through time"
+  // beside them was grey.
+  it("IdentitySection's title is the muted grey, violet only in dark", () => {
+    const src = readFileSync(path.resolve(import.meta.dirname, "components/identity/identity-shared.tsx"), "utf8");
+    expect(src).toMatch(/<h2 className="[^"]*\btext-muted-foreground dark:text-brand\/90\b[^"]*">\{title\}<\/h2>/);
+  });
+});
+
+describe("headings are not violet in light mode", () => {
+  const read = (f: string) => readFileSync(path.resolve(import.meta.dirname, f), "utf8");
+  it("Relays: Relay Health Monitor and Discover Relays match their sibling headings", () => {
+    const src = read("pages/RelayDashboard.tsx");
+    for (const title of ["Relay Health Monitor", "Discover Relays"]) {
+      expect(src, title).toContain(`<h2 className="text-sm font-brand tracking-wider uppercase dark:text-brand">${title}</h2>`);
+    }
+  });
+  it("Help: the page title is ink, violet in dark", () => {
+    expect(read("pages/WtfIsThis.tsx")).toMatch(/className="[^"]*\btext-foreground dark:text-brand\/90"\s*>\s*Help &amp; Guides/);
+  });
+});
+
+describe("no square icon tiles in light mode", () => {
+  // Owner, 2026-10-03: no icon tiles. The Chats empty state still had one.
+  it("Chats' empty state shows a bare grey icon; the dark tile stays", () => {
+    const src = readFileSync(path.resolve(import.meta.dirname, "pages/Messages.tsx"), "utf8");
+    const at = src.indexOf('<h2 className="text-base font-semibold text-foreground/90">Your messages</h2>');
+    expect(at).toBeGreaterThan(-1);
+    const tile = src.slice(src.lastIndexOf("<div", src.lastIndexOf("<MessagesIcon", at)), at);
+    expect(tile).toMatch(/dark:border dark:border-brand\/15 dark:bg-white\/\[0\.03\]/);
+    expect(tile).not.toMatch(/(^|\s)(border|bg-brand\/5|border-brand\/20)(\s|")/);
+    expect(tile).toMatch(/<MessagesIcon className="h-8 w-8 text-muted-foreground dark:text-brand\/70" \/>/);
+  });
+});

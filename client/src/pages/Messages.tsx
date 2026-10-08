@@ -3929,8 +3929,8 @@ export default function Messages() {
             <div className="absolute inset-x-0 top-0 h-56 dark:bg-[radial-gradient(ellipse_70%_100%_at_50%_0%,rgba(139,92,246,0.18),transparent_70%)]" />
           </div>
           <div className="glass-card w-full max-w-md rounded-2xl border border-brand/15 dark:border-brand/10 px-8 py-10 text-center shadow-sm">
-            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-brand/20 dark:border-brand/15 bg-brand/5 dark:bg-white/[0.03]">
-              <MessagesIcon className="h-8 w-8 text-brand/70" />
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl dark:border dark:border-brand/15 dark:bg-white/[0.03]">
+              <MessagesIcon className="h-8 w-8 text-muted-foreground dark:text-brand/70" />
             </div>
             <h2 className="text-base font-semibold text-foreground/90">Your messages</h2>
             <p className="mx-auto mt-1.5 max-w-[18rem] text-sm text-muted-foreground/70">
