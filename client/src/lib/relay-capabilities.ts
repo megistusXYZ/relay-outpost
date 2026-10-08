@@ -22,7 +22,9 @@ export type RelayAction =
   | "ban" | "unban" | "allow" | "unallow" | "listBanned" | "listAllowed"
   | "removeEvent" | "listRemoved" | "restoreEvent"
   | "name" | "description" | "icon" | "banner" | "moderators"
-  | "allowKind" | "disallowKind" | "listAllowedKinds" | "listDisallowedKinds";
+  | "allowKind" | "disallowKind" | "listAllowedKinds" | "listDisallowedKinds"
+  // newlay's own (relay.tools Feeds) — only ever offered when the relay lists them.
+  | "status";
 
 /** Method names for each action, the spec's first, then known alternatives. */
 const ACTION_METHODS: Record<RelayAction, readonly string[]> = {
@@ -45,6 +47,7 @@ const ACTION_METHODS: Record<RelayAction, readonly string[]> = {
   disallowKind: ["disallowkind"],
   listAllowedKinds: ["listallowedkinds"],
   listDisallowedKinds: ["listdisallowedkinds"],
+  status: ["getrelaystatus"],
 };
 
 /** Offered on a relay that didn't list its methods: what nearly every NIP-86 relay has. */
