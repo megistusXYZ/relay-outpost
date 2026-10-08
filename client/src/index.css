@@ -1349,6 +1349,21 @@ html[data-perf="lite"] .space-bg-nebula {
      layout the ops tables are designed around. Padding, not width/height, so it
      grows the hit area without moving the icon or reflowing the row. */
   @media (hover: none), (pointer: coarse) {
+    /* A fingertip's 44x44 around a control that is drawn smaller (a post's
+       action icons, header buttons, a settings segment): an invisible
+       ::after grows what can be tapped without moving or resizing what is
+       drawn (tap-targets-e2e.cjs). Each side grows only by what the control
+       lacks, so a control already 44px is untouched. Needs an ancestor that
+       does not clip it. */
+    .hit-area { position: relative; }
+    .hit-area::after {
+      content: "";
+      position: absolute;
+      top: min(0px, calc((100% - 44px) / 2));
+      bottom: min(0px, calc((100% - 44px) / 2));
+      left: min(0px, calc((100% - 44px) / 2));
+      right: min(0px, calc((100% - 44px) / 2));
+    }
     .touch-target {
       min-width: 44px;
       min-height: 44px;

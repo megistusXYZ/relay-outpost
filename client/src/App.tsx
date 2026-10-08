@@ -667,7 +667,7 @@ function HeaderBackButton() {
     <Button
       variant="ghost"
       size="icon"
-      className="shrink-0 w-9 h-9 rounded-full"
+      className="hit-area shrink-0 w-9 h-9 rounded-full"
       onClick={() => goBack(parentRouteOf(location) ?? (isIaCollapsed() ? "/messages" : "/"))}
       data-testid="button-header-back"
     >
@@ -1109,7 +1109,7 @@ const HeaderBar = memo(function HeaderBar({ scrollHidden }: { scrollHidden: bool
         // the player mounted across these short gaps.
         <div className="flex items-center gap-1 md:gap-1.5 min-w-0 flex-1">
           <div className="flex-1 hidden md:block" />
-          <Link href="/search" aria-label="Search" onClick={() => primeKeyboard()} className="flex shrink-0 items-center justify-center w-9 h-9 rounded-full text-foreground/70 hover:text-foreground hover:bg-muted/50 transition-colors" data-testid="mobile-header-search-audio">
+          <Link href="/search" aria-label="Search" onClick={() => primeKeyboard()} className="hit-area flex shrink-0 items-center justify-center w-9 h-9 rounded-full text-foreground/70 hover:text-foreground hover:bg-muted/50 transition-colors" data-testid="mobile-header-search-audio">
             <SearchIcon className="w-5 h-5" />
           </Link>
           {!identityPortalActive && notificationsBell}
@@ -1122,7 +1122,7 @@ const HeaderBar = memo(function HeaderBar({ scrollHidden }: { scrollHidden: bool
         </div>
       ) : (
         <>
-          <Link href="/search" aria-label="Search" onClick={() => primeKeyboard()} className="flex items-center justify-center w-9 h-9 rounded-full text-foreground/70 hover:text-foreground hover:bg-muted/50 transition-colors" data-testid="mobile-header-search">
+          <Link href="/search" aria-label="Search" onClick={() => primeKeyboard()} className="hit-area flex items-center justify-center w-9 h-9 rounded-full text-foreground/70 hover:text-foreground hover:bg-muted/50 transition-colors" data-testid="mobile-header-search">
             <SearchIcon className="w-5 h-5" />
           </Link>
           {!identityPortalActive && notificationsBell}

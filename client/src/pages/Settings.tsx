@@ -79,7 +79,7 @@ function RowText({ label, sub, labelTestId }: { label: React.ReactNode; sub?: Re
   return (
     <div className="flex-1 min-w-0 py-1.5">
       <p className="text-[13px] font-medium text-foreground/90 leading-tight truncate" data-testid={labelTestId}>{label}</p>
-      {sub != null && <p className="text-[11px] text-muted-foreground/60 leading-tight truncate mt-0.5">{sub}</p>}
+      {sub != null && <p className="text-[11px] text-muted-foreground leading-tight truncate mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -170,14 +170,14 @@ function Seg<T extends string>({ value, onChange, options, testIdBase, ariaLabel
   testIdBase: string; ariaLabel: string;
 }) {
   return (
-    <div className="flex rounded-md border border-border dark:border-brand/15 overflow-hidden shrink-0" role="group" aria-label={ariaLabel}>
+    <div className="flex rounded-md border border-border dark:border-brand/15 shrink-0" role="group" aria-label={ariaLabel}>
       {options.map((o, i) => (
         <button
           key={o.value}
           type="button"
           onClick={() => onChange(o.value)}
           aria-pressed={value === o.value}
-          className={`px-2.5 h-8 text-[11px] font-medium transition-colors cursor-pointer ${i > 0 ? "border-l border-border dark:border-brand/15" : ""} ${ value === o.value ? "bg-accent text-brand" : "text-muted-foreground/60 hover:text-foreground/80 hover:bg-foreground/[0.03]" }`}
+          className={`hit-area px-2.5 h-8 text-[11px] font-medium transition-colors cursor-pointer first:rounded-l-[5px] last:rounded-r-[5px] ${i > 0 ? "border-l border-border dark:border-brand/15" : ""} ${ value === o.value ? "bg-accent text-brand" : "text-muted-foreground/60 hover:text-foreground/80 hover:bg-foreground/[0.03]" }`}
           data-testid={`button-${testIdBase}-${o.value}`}
         >
           {o.label}
@@ -187,7 +187,7 @@ function Seg<T extends string>({ value, onChange, options, testIdBase, ariaLabel
   );
 }
 
-const SELECT_TRIGGER_CLS = "h-8 w-auto min-w-0 gap-1.5 px-2.5 text-xs border-border dark:border-brand/15 bg-transparent shrink-0";
+const SELECT_TRIGGER_CLS = "hit-area h-8 w-auto min-w-0 gap-1.5 px-2.5 text-xs border-border dark:border-brand/15 bg-transparent shrink-0";
 
 /** Bordered container of uniform rows with a tiny uppercase section header. */
 function RowSection({ id, label, children, testId }: {
@@ -2509,21 +2509,21 @@ export default function Settings() {
         </div>
         <div className="border-t border-black/[0.06] dark:border-white/[0.04] mt-3" />
 
-        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground/65 mt-3" data-testid="section-legal-links">
-          <Link href="/whats-new" className="inline-flex items-center gap-1 hover:text-foreground/70 transition-colors underline decoration-dotted underline-offset-2" data-testid="link-settings-whats-new">
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground mt-3" data-testid="section-legal-links">
+          <Link href="/whats-new" className="hit-area inline-flex items-center gap-1 hover:text-foreground/70 transition-colors underline decoration-dotted underline-offset-2" data-testid="link-settings-whats-new">
             What's new
             {hasUnseenChangelog() && <span className="w-1.5 h-1.5 rounded-full bg-primary" aria-label="new updates" />}
           </Link>
           <span className="text-muted-foreground/20">·</span>
-          <Link href="/privacy" className="hover:text-foreground/70 transition-colors underline decoration-dotted underline-offset-2" data-testid="link-settings-privacy">
+          <Link href="/privacy" className="hit-area hover:text-foreground/70 transition-colors underline decoration-dotted underline-offset-2" data-testid="link-settings-privacy">
             Privacy
           </Link>
           <span className="text-muted-foreground/20">·</span>
-          <Link href="/terms" className="hover:text-foreground/70 transition-colors underline decoration-dotted underline-offset-2" data-testid="link-settings-covenant">
+          <Link href="/terms" className="hit-area hover:text-foreground/70 transition-colors underline decoration-dotted underline-offset-2" data-testid="link-settings-covenant">
             Terms
           </Link>
           <span className="text-muted-foreground/20">·</span>
-          <Link href="/child-safety" className="hover:text-foreground/70 transition-colors underline decoration-dotted underline-offset-2" data-testid="link-settings-child-safety">
+          <Link href="/child-safety" className="hit-area hover:text-foreground/70 transition-colors underline decoration-dotted underline-offset-2" data-testid="link-settings-child-safety">
             Child safety
           </Link>
         </div>
