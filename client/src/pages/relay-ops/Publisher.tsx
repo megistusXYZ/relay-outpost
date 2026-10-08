@@ -30,10 +30,10 @@ const TEMPLATES: { label: string; value: object }[] = [
 ];
 
 const STATUS: Record<PublishStatus, { word: string; cls: string }> = {
-  accepted: { word: "Accepted", cls: "text-emerald-600 dark:text-emerald-400" },
-  refused: { word: "Refused", cls: "text-red-600 dark:text-red-400" },
+  accepted: { word: "Accepted", cls: "text-success dark:text-emerald-400" },
+  refused: { word: "Refused", cls: "text-danger dark:text-red-400" },
   "needs-sign-in": { word: "Wants you to sign in", cls: "text-amber-600 dark:text-amber-400" },
-  unreached: { word: "Couldn't reach", cls: "text-red-600 dark:text-red-400" },
+  unreached: { word: "Couldn't reach", cls: "text-warning dark:text-amber-400" },
   waiting: { word: "No answer yet", cls: "text-muted-foreground" },
 };
 
@@ -158,7 +158,7 @@ export function Publisher({ relays, initialText }: { relays: string[]; initialTe
           <Textarea value={text} onChange={(e) => setText(e.target.value)} spellCheck={false} rows={10}
             className="font-mono text-[12.5px] leading-relaxed" aria-label="Event as JSON" data-testid="publisher-json" />
           <p className="text-[13px]" data-testid="publisher-check" data-verdict={!read.ok ? "error" : verdict?.verdict ?? "unsigned"}>
-            {!read.ok ? <span className="text-red-600 dark:text-red-400">{read.error}</span> : (
+            {!read.ok ? <span className="text-danger dark:text-red-400">{read.error}</span> : (
               <>
                 <span className="text-muted-foreground">{plainKindName(read.draft.kind)} · kind {read.draft.kind} · </span>
                 {!verdict && <span className="text-muted-foreground">Not signed yet</span>}

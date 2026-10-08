@@ -310,7 +310,7 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts, team, initialFilter }: 
 
       <div className="flex items-center gap-x-2 gap-y-1 px-1 min-h-[36px] flex-wrap">
         <span className="text-[13px] text-muted-foreground" data-testid="ops-people-count">{loading ? "Looking…" : `${shown.length} ${shown.length === 1 ? "person" : "people"}`}</span>
-        {!loading && <span className={`text-[13px] ${reached ? "text-muted-foreground" : "text-amber-700 dark:text-amber-300"}`} data-testid="ops-people-scope">· {scope}</span>}
+        {!loading && <span className={`text-[13px] ${reached ? "text-muted-foreground" : "text-warning dark:text-amber-300"}`} data-testid="ops-people-scope">· {scope}</span>}
         {!loading && reached && !exhausted && events.length >= PAGE && (
           <button type="button" onClick={lookFurther} disabled={loadingMore} className="text-[13px] font-medium text-brand hover:underline underline-offset-4 min-h-[36px]" data-testid="ops-people-further">
             {loadingMore ? "Looking further back…" : "Look further back"}
@@ -363,8 +363,8 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts, team, initialFilter }: 
                         <span className="font-medium truncate">{name}</span>
                         {/* This community's badge, if it gave them one. */}
                         <BadgeCommunityProvider community={relayUrl}><PostBadgeIcons pubkey={p.pubkey} /></BadgeCommunityProvider>
-                        {p.status === "banned" && <span className="shrink-0 text-[13px] font-medium text-red-600 dark:text-red-400">Banned</span>}
-                        {p.status === "allowed" && <span className="shrink-0 text-[13px] font-medium text-emerald-700 dark:text-emerald-400">Allowed</span>}
+                        {p.status === "banned" && <span className="shrink-0 text-[13px] font-medium text-danger dark:text-red-400">Banned</span>}
+                        {p.status === "allowed" && <span className="shrink-0 text-[13px] font-medium text-success dark:text-emerald-400">Allowed</span>}
                       </span>
                       <span className="block text-[13px] text-muted-foreground truncate">{activityLine(p, nowSec)}{trust ? ` · ${trust}` : ""}</span>
                     </span>
@@ -458,7 +458,7 @@ function PersonDetail({ person, profile, trust, nowSec, relayName, can, where, o
         <div className="flex justify-between gap-3"><dt className="text-muted-foreground">On {relayName}</dt><dd className="text-right" data-testid="ops-person-activity">{activityLine(person, nowSec)}</dd></div>
         {trust && <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Your network</dt><dd className="text-right" data-testid="ops-person-trust">{trust}</dd></div>}
         <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Status</dt>
-          <dd className={`text-right font-medium ${person.status === "banned" ? "text-red-600 dark:text-red-400" : person.status === "allowed" ? "text-emerald-700 dark:text-emerald-400" : ""}`} data-testid="ops-person-status">
+          <dd className={`text-right font-medium ${person.status === "banned" ? "text-danger dark:text-red-400" : person.status === "allowed" ? "text-success dark:text-emerald-400" : ""}`} data-testid="ops-person-status">
             {person.status === "banned" ? "Banned" : person.status === "allowed" ? "Allowed to post" : "No rule for them"}
           </dd>
         </div>

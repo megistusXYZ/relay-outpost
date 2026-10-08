@@ -1246,7 +1246,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
               )}
             </OpsSectionHeader>
             {!countsReached && (
-              <p className="text-[10px] text-red-700/80 dark:text-red-400/70 mb-2">Couldn't reach this relay on the last scan — the counts below are not a measurement of what it holds.</p>
+              <p className="text-[10px] text-warning dark:text-amber-400/70 mb-2">Couldn't reach this relay on the last scan — the counts below are not a measurement of what it holds.</p>
             )}
             {nip45Supported === false && countsReached && kindCounts.length > 0 && (
               <p className="text-[10px] text-amber-700/80 dark:text-amber-400/60 mb-2">Relay didn't respond to COUNT — counts shown are sampled estimates (up to 100 per kind). Use Recheck after a relay upgrade.</p>

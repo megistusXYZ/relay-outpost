@@ -130,8 +130,8 @@ export function KindGateCard({ relayUrl }: { relayUrl: string; nip11: Nip11Docum
                       {technical && <p className="text-[10px] text-muted-foreground/50">kind {opt.kinds.join(", ")}</p>}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      {st === "allowed" && <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 dark:text-emerald-500"><Check className="w-3 h-3" />in</span>}
-                      {st === "blocked" && <span className="flex items-center gap-0.5 text-[10px] text-red-500"><Ban className="w-3 h-3" />out</span>}
+                      {st === "allowed" && <span className="flex items-center gap-0.5 text-[10px] text-success dark:text-emerald-500"><Check className="w-3 h-3" />in</span>}
+                      {st === "blocked" && <span className="flex items-center gap-0.5 text-[10px] text-danger dark:text-red-500"><Ban className="w-3 h-3" />out</span>}
                       <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" disabled={busy} onClick={() => act(opt.label, opt.kinds, "allow")} data-testid={`button-kind-allow-${opt.kinds[0]}`}>
                         Allow
                       </Button>

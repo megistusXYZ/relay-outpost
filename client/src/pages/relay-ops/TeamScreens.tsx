@@ -92,7 +92,7 @@ function TeamUnavailable({ team, relayName }: { team: RelayTeam; relayName: stri
     return <p className="rounded-xl bg-amber-500/10 px-3.5 py-3 text-[14px] text-amber-800 dark:text-amber-200" data-testid="ops-team-no-encrypt">Your signer can't encrypt, so team notes and the shared log are off. Sign in with a signer that supports private messages to use them.</p>;
   }
   if (!team.reached) {
-    return <p className="rounded-xl bg-amber-500/10 px-3.5 py-3 text-[14px] text-amber-800 dark:text-amber-200" data-testid="ops-team-unreached">We couldn't reach {relayName} to read your team's records. Nothing here is the full picture until it's back.</p>;
+    return <p className="rounded-xl bg-amber-500/10 px-3.5 py-3 text-[14px] text-warning dark:text-amber-200" data-testid="ops-team-unreached">We couldn't reach {relayName} to read your team's records. Nothing here is the full picture until it's back.</p>;
   }
   return null;
 }

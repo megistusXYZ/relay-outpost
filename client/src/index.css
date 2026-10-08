@@ -99,6 +99,11 @@ textarea:focus {
   --muted-foreground: 258 11% 42%;  /* captions, timestamps, metadata — ~5:1 on white */
 
   --accent: 262 45% 93%;            /* hover / soft-selected tint (visible but calm) */
+  /* Status, one colour each (LIGHT_MODE.md Phase 2c; status-tokens.test.ts):
+     text-safe on every light surface, --accent included. Info is violet. */
+  --success: 145 63% 28%;
+  --warning: 32 90% 32%;
+  --danger: 0 70% 42%;
   --accent-foreground: 262 45% 30%;
 
   --destructive: 0 65% 50%;
@@ -152,6 +157,11 @@ textarea:focus {
   --foreground: 0 0% 96%;
 
   --card: 262 9% 9%;
+  /* Status in dark: the shades dark mode already used (-400). Dark mode does
+     not change: converted sites keep their own dark: shade anyway. */
+  --success: 158 64% 52%;
+  --warning: 43 96% 56%;
+  --danger: 0 91% 71%;
   --card-foreground: 0 0% 96%;
 
   --popover: 262 9% 9%;

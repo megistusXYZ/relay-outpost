@@ -146,7 +146,7 @@ export function MemberInboxSettings({ relayUrl, relayName }: { relayUrl: string;
         <Button onClick={save} disabled={!dirty || saving || blank || !signer || notYours || ownerless} className="h-11 rounded-full px-6" data-testid="member-inbox-save">{saving ? "Saving…" : "Save"}</Button>
         {blank && <span className="text-[13px] text-amber-700 dark:text-amber-400">Give each request a name.</span>}
         {notYours && <span className="text-[13px] text-muted-foreground">Only {relayName}'s operator can change this.</span>}
-        {ownerless && <span className="text-[13px] text-amber-700 dark:text-amber-400" data-testid="member-inbox-ownerless">{relayName} doesn't name its owner, so members can't reach an inbox here yet. Ask your host to list you as the owner.</span>}
+        {ownerless && <span className="text-[13px] text-warning dark:text-amber-400" data-testid="member-inbox-ownerless">{relayName} doesn't name its owner, so members can't reach an inbox here yet. Ask your host to list you as the owner.</span>}
         {!dirty && !saving && savedAt && <span className="text-[13px] text-muted-foreground" data-testid="member-inbox-saved">Saved</span>}
       </div>
     </div>
