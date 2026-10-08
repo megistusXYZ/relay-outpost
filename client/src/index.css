@@ -104,6 +104,9 @@ textarea:focus {
   --success: 145 63% 28%;
   --warning: 32 90% 32%;
   --danger: 0 70% 42%;
+  /* Money (zaps, sats, thanks): amber is its identity — one shade, readable
+     as text (status-tokens.test.ts). Icons may stay brighter (3:1). */
+  --zap: 38 92% 28%;
   --accent-foreground: 262 45% 30%;
 
   --destructive: 0 65% 50%;
@@ -162,6 +165,7 @@ textarea:focus {
   --success: 158 64% 52%;
   --warning: 43 96% 56%;
   --danger: 0 91% 71%;
+  --zap: 40 78% 62%;
   --card-foreground: 0 0% 96%;
 
   --popover: 262 9% 9%;
@@ -1460,7 +1464,7 @@ html[data-perf="lite"] .space-bg-nebula {
   .stat-glow-replies { color: hsl(270 50% 50%); }
   .stat-glow-reposts { color: hsl(160 52% 36%); }
   .stat-glow-likes   { color: hsl(340 62% 50%); }
-  .stat-glow-zaps    { color: hsl(38 75% 44%); }
+  .stat-glow-zaps    { color: hsl(var(--zap)); } /* was 38 75% 44%: 3.2:1 on white */
   .dark .stat-glow-replies { color: hsl(270 48% 72%); }
   .dark .stat-glow-reposts { color: hsl(160 45% 58%); }
   .dark .stat-glow-likes   { color: hsl(340 58% 68%); }

@@ -196,7 +196,7 @@ export function TrustTierDot({ pubkey }: { pubkey: string }) {
         >
           <div className="flex items-center gap-1.5">
             <TrustTierGlyph tier="weak" size="w-2 h-2" decorative />
-            <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">Low Trust</span>
+            <span className="text-[11px] font-semibold text-zap dark:text-amber-400">Low Trust</span>
             <span className="text-[10px] font-mono text-muted-foreground/50 ml-auto">{weakRange}</span>
           </div>
           <p className="text-[10px] text-muted-foreground/60 leading-snug mt-1">Minimal trust score in your network</p>
@@ -377,7 +377,7 @@ export function ThreadTrustBar({ replies, excludedTiers, onFilterChange }: {
     : "text-slate-500 dark:text-slate-400";
 
   const concColor = concentration > 0.85 ? "text-red-500 dark:text-red-400"
-    : concentration > 0.6 ? "text-amber-600 dark:text-amber-400"
+    : concentration > 0.6 ? "text-zap dark:text-amber-400"
     : "text-emerald-600 dark:text-emerald-400";
 
   return (
@@ -439,7 +439,7 @@ export function ThreadTrustBar({ replies, excludedTiers, onFilterChange }: {
         </div>
       )}
       {warning && (
-        <p className="text-[11px] sm:text-xs text-amber-600 dark:text-amber-400 italic font-medium">
+        <p className="text-[11px] sm:text-xs text-zap dark:text-amber-400 italic font-medium">
           ⚠ {warning}
         </p>
       )}
@@ -636,7 +636,7 @@ export function HoverCardTrustBadge({ pubkey }: { pubkey: string }) {
     ? "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30"
     : tier === "low"
     ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-400 border-cyan-500/30"
-    : "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30";
+    : "bg-amber-500/15 text-zap dark:text-amber-400 border-amber-500/30";
   const label = tier === "strong" ? "Highly Trusted" : tier === "moderate" ? "Trusted" : tier === "low" ? "Neutral" : "Low Trust";
   return (
     <span className={`text-[9px] font-medium px-1.5 py-0 rounded-full border shrink-0 inline-flex items-center gap-0.5 ${badgeStyle}`}>
@@ -777,7 +777,7 @@ export function AuthorHoverCard({ pubkey, children, profile: externalProfile }: 
                   className="flex items-center gap-2 group w-full text-left cursor-pointer hover:bg-muted/50 rounded-md px-1 -mx-1 py-0.5 transition-colors"
                 >
                   <BtcZapIcon className="w-4 h-4 text-amber-800/70 dark:text-amber-400/70 shrink-0" />
-                  <span className="text-[11px] text-amber-600/60 dark:text-amber-300/60 truncate group-hover:text-amber-600/80 dark:group-hover:text-amber-300/80 transition-colors">
+                  <span className="text-[11px] text-zap dark:text-amber-300/60 truncate group-hover:text-amber-600/80 dark:group-hover:text-amber-300/80 transition-colors">
                     {lud16}
                   </span>
                   <Zap className="w-3 h-3 text-amber-500/30 dark:text-amber-400/25 ml-auto shrink-0 group-hover:text-amber-500/60 dark:group-hover:text-amber-400/60 transition-colors" />

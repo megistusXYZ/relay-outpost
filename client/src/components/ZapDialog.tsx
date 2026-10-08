@@ -331,7 +331,7 @@ export function ZapDialog({ open, onOpenChange, event, pubkey: directPubkey, rec
                           key={idx}
                           className={`relative px-2 py-2 sm:py-2.5 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer ${
                             selectedAmount === preset.amount && !customAmount
-                              ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.1)]"
+                              ? "bg-amber-500/15 text-zap dark:text-amber-300 border border-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.1)]"
                               : "bg-foreground/[0.03] text-foreground/50 border border-foreground/[0.08] hover:bg-foreground/[0.06] hover:text-foreground/70 hover:border-foreground/[0.12]"
                           }`}
                           onClick={() => { setSelectedAmount(preset.amount); setCustomAmount(""); }}
@@ -343,7 +343,7 @@ export function ZapDialog({ open, onOpenChange, event, pubkey: directPubkey, rec
                               <BtcZapIcon className={`w-3 h-3 shrink-0 ${selectedAmount === preset.amount && !customAmount ? "text-amber-600 dark:text-amber-300" : "text-amber-500/50"}`} />
                               {formatSats(preset.amount)}
                             </span>
-                            <span className={`text-[9px] sm:text-[10px] leading-tight ${selectedAmount === preset.amount && !customAmount ? "text-amber-600/70 dark:text-amber-300/70" : "text-muted-foreground/40"}`}>{preset.label}</span>
+                            <span className={`text-[9px] sm:text-[10px] leading-tight ${selectedAmount === preset.amount && !customAmount ? "text-zap dark:text-amber-300/70" : "text-muted-foreground/40"}`}>{preset.label}</span>
                           </span>
                         </button>
                       ))}
@@ -420,7 +420,7 @@ export function ZapDialog({ open, onOpenChange, event, pubkey: directPubkey, rec
                         onClick={() => handleZapPrivacyChange("public")}
                         className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium transition-all cursor-pointer ${
                           zapPrivacy === "public"
-                            ? "bg-amber-500/12 text-amber-700 dark:text-amber-300 border-r border-foreground/[0.08]"
+                            ? "bg-amber-500/12 text-zap dark:text-amber-300 border-r border-foreground/[0.08]"
                             : "text-muted-foreground/50 hover:text-muted-foreground/70 hover:bg-foreground/[0.03] border-r border-foreground/[0.08]"
                         }`}
                         data-testid="button-zap-dialog-public"
@@ -432,7 +432,7 @@ export function ZapDialog({ open, onOpenChange, event, pubkey: directPubkey, rec
                         onClick={() => handleZapPrivacyChange("anonymous")}
                         className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium transition-all cursor-pointer ${
                           zapPrivacy === "anonymous"
-                            ? "bg-amber-500/12 text-amber-700 dark:text-amber-300"
+                            ? "bg-amber-500/12 text-zap dark:text-amber-300"
                             : "text-muted-foreground/50 hover:text-muted-foreground/70 hover:bg-foreground/[0.03]"
                         }`}
                         data-testid="button-zap-dialog-anonymous"
@@ -482,7 +482,7 @@ export function ZapDialog({ open, onOpenChange, event, pubkey: directPubkey, rec
                       Back to zap
                     </button>
                     <p className="text-[13px] text-muted-foreground text-center">
-                      {isMobile ? "Pay" : "Scan to pay"} <span className="text-amber-600 dark:text-amber-400/80 font-medium">{resolvedName}</span>
+                      {isMobile ? "Pay" : "Scan to pay"} <span className="text-zap dark:text-amber-400/80 font-medium">{resolvedName}</span>
                     </p>
                     {isMobile && (
                       <button
@@ -556,7 +556,7 @@ export function ZapDialog({ open, onOpenChange, event, pubkey: directPubkey, rec
             {step === "invoice" && (
               <div className="flex flex-col items-center gap-4 px-5 pb-5" data-testid="container-zap-invoice">
                 <p className="text-[13px] text-muted-foreground text-center">
-                  Scan or copy to pay <span className="text-amber-600 dark:text-amber-400/80 font-medium">{formatSats(amount)} sats</span>
+                  Scan or copy to pay <span className="text-zap dark:text-amber-400/80 font-medium">{formatSats(amount)} sats</span>
                 </p>
                 <div className="relative p-4 rounded-xl bg-white">
                   <QRCodeSVG
@@ -620,7 +620,7 @@ export function ZapDialog({ open, onOpenChange, event, pubkey: directPubkey, rec
                   <div className="absolute inset-0 blur-xl bg-amber-400/20 rounded-full scale-150" />
                 </div>
                 <p className="text-lg font-semibold text-foreground tracking-tight">Thanks sent!</p>
-                <p className="text-sm text-amber-600/70 dark:text-amber-400/60 font-mono">{formatSats(amount)} sats sent</p>
+                <p className="text-sm text-zap dark:text-amber-400/60 font-mono">{formatSats(amount)} sats sent</p>
               </div>
             )}
 
