@@ -573,11 +573,11 @@ export default function WtfIsThis() {
           </div>
           <div>
             <h1
-              className="text-lg sm:text-xl font-black tracking-tight leading-none text-brand dark:text-brand/90"
+              className="text-lg sm:text-xl font-black tracking-tight leading-none text-foreground dark:text-brand/90"
             >
               Help &amp; Guides
             </h1>
-            <p className="text-[10px] text-brand dark:text-brand/30 font-bold uppercase tracking-[0.2em] mt-0.5 ml-0.5">get started, post &amp; connect</p>
+            <p className="text-[10px] text-muted-foreground dark:text-brand/30 font-bold uppercase tracking-[0.2em] mt-0.5 ml-0.5">get started, post &amp; connect</p>
           </div>
         </div>
         {pubkey && (

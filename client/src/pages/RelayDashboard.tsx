@@ -322,7 +322,7 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
             <button className="w-full flex items-center justify-between gap-2 p-4 text-left">
               <div className="flex items-center gap-2 flex-wrap">
                 <Globe className="w-4 h-4 text-brand" />
-                <h2 className="text-sm font-brand tracking-wider uppercase text-brand">Discover Relays</h2>
+                <h2 className="text-sm font-brand tracking-wider uppercase dark:text-brand">Discover Relays</h2>
               </div>
               {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
             </button>
@@ -1677,7 +1677,7 @@ export default function RelayDashboard() {
               <button className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 text-left" data-testid="button-toggle-relay-health">
                 <div className="flex items-center gap-2 flex-wrap">
                   <Activity className="w-4 h-4 text-brand" />
-                  <h2 className="text-sm font-brand tracking-wider uppercase text-brand">Relay Health Monitor</h2>
+                  <h2 className="text-sm font-brand tracking-wider uppercase dark:text-brand">Relay Health Monitor</h2>
                 </div>
                 {healthMonitorOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
               </button>
