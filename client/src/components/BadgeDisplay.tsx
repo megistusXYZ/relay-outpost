@@ -6,6 +6,8 @@ import { use$ } from "applesauce-react/hooks";
 import { eventStore } from "@/lib/nostr";
 import { KIND_METADATA, getDisplayName, getAvatarUrl } from "@/lib/nostr-helpers";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { IdentitySection } from "@/components/identity/identity-shared";
 import { Award, ChevronDown, ChevronUp, User, Plus, ArrowUp, ArrowDown, EyeOff } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { showBadgeOnProfile, acceptBadges } from "@/lib/nip58-badges";
@@ -47,23 +49,65 @@ export function setBadgesEnabled(enabled: boolean): void {
   window.dispatchEvent(new CustomEvent(BADGES_CHANGED_EVENT));
 }
 
-function AwarderName({ pubkey }: { pubkey: string }) {
+function AwarderName({ pubkey, large }: { pubkey: string; large?: boolean }) {
   const metadataEvent = use$(() => eventStore.replaceable(KIND_METADATA, pubkey), [pubkey]);
   const npub = useMemo(() => { try { return nip19.npubEncode(pubkey); } catch { return pubkey; } }, [pubkey]);
   const name = metadataEvent ? (getDisplayName(metadataEvent, npub.slice(0, 12) + "...") ?? npub.slice(0, 12) + "...") : npub.slice(0, 12) + "...";
   const avatar = metadataEvent ? getAvatarUrl(metadataEvent) : undefined;
 
   return (
-    <Link href={`/profile/${npub}`} className="flex items-center gap-1 min-w-0 hover:underline">
+    <Link href={`/profile/${npub}`} className={`relative z-10 flex items-center min-w-0 hover:underline ${large ? "gap-1.5 min-h-[44px]" : "gap-1"}`}>
       {avatar ? (
-        <img src={avatar} alt="" className="w-3.5 h-3.5 rounded-full object-cover shrink-0" />
+        <img src={avatar} alt="" className={`${large ? "w-6 h-6" : "w-3.5 h-3.5"} rounded-full object-cover shrink-0`} />
       ) : (
-        <span className="w-3.5 h-3.5 rounded-full bg-brand/20 shrink-0 flex items-center justify-center">
-          <User className="w-2 h-2 text-brand/50" />
+        <span className={`${large ? "w-6 h-6" : "w-3.5 h-3.5"} rounded-full bg-brand/20 shrink-0 flex items-center justify-center`}>
+          <User className={`${large ? "w-3.5 h-3.5" : "w-2 h-2"} text-brand/50`} />
         </span>
       )}
-      <span className="text-[10px] text-muted-foreground/70 truncate">{name}</span>
+      <span className={`${large ? "text-sm font-medium text-foreground" : "text-[11px] text-muted-foreground"} truncate`}>{name}</span>
     </Link>
+  );
+}
+
+/** One badge, large: its picture, its whole description, who gave it and when. */
+function BadgeDetails({ badge, open, onOpenChange }: { badge: ResolvedBadge; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const def = badge.definition;
+  const imgSrc = def.image || def.thumb;
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[calc(100%-2rem)] max-w-sm rounded-2xl p-6" data-testid="badge-details">
+        <div className="flex flex-col items-center text-center gap-3">
+          {imgSrc ? (
+            <img src={imgSrc} alt="" className="w-32 h-32 rounded-2xl object-contain bg-muted/40 border border-border/40" />
+          ) : (
+            <div className="w-32 h-32 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center">
+              <Award className="w-12 h-12 text-brand/60" />
+            </div>
+          )}
+          <DialogTitle className="text-lg font-semibold leading-snug [text-wrap:balance]">{def.name}</DialogTitle>
+          {def.description ? (
+            <DialogDescription className="text-sm text-muted-foreground whitespace-pre-line">{def.description}</DialogDescription>
+          ) : (
+            <DialogDescription className="sr-only">A badge</DialogDescription>
+          )}
+        </div>
+        <div className="mt-1 border-t border-border/50 pt-3 flex flex-col items-center gap-0.5 text-sm">
+          {def.community ? (
+            <FromCommunity url={def.community} className="text-sm text-muted-foreground" />
+          ) : (
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-muted-foreground shrink-0">Given by</span>
+              <AwarderName pubkey={badge.awarderPubkey} large />
+            </div>
+          )}
+          {badge.awardedAt > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {formatDistanceToNow(new Date(badge.awardedAt * 1000), { addSuffix: true })}
+            </span>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -75,18 +119,29 @@ function BadgeCard({ badge, showAccept, onAccept, accepting }: {
 }) {
   const def = badge.definition;
   const imgSrc = def.thumb || def.image;
+  const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex items-start gap-3 p-3 rounded-lg border border-border/30 bg-card/50 hover:bg-card/80 transition-colors">
+    <div className="relative flex items-start gap-3 p-2 -mx-1 rounded-lg hover:bg-muted/50 transition-colors">
+      {/* The whole card opens the badge (owner, 2026-10-07). "Given by" and
+          "Show on my profile" sit above this button and keep their own taps. */}
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={`About ${def.name}`}
+        className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        data-testid="badge-card-open"
+      />
+      <BadgeDetails badge={badge} open={open} onOpenChange={setOpen} />
       {imgSrc ? (
         <img
           src={imgSrc}
           alt={def.name}
-          className="w-10 h-10 rounded-md object-cover shrink-0 border border-border/20"
+          className="w-12 h-12 rounded-lg object-cover shrink-0 border border-border/30"
           loading="lazy"
         />
       ) : (
-        <div className="w-10 h-10 rounded-md bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0">
+        <div className="w-12 h-12 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0">
           <Award className="w-5 h-5 text-brand/60" />
         </div>
       )}
@@ -95,7 +150,7 @@ function BadgeCard({ badge, showAccept, onAccept, accepting }: {
           <span className="text-sm font-medium text-foreground truncate">{def.name}</span>
         </div>
         {def.description && (
-          <p className="text-[11px] text-muted-foreground/60 line-clamp-2 mt-0.5">{def.description}</p>
+          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{def.description}</p>
         )}
         <div className="flex items-center gap-1 mt-1 flex-wrap">
           {/* A community's badge reads "from <community>"; a personal one names who gave it. */}
@@ -109,8 +164,8 @@ function BadgeCard({ badge, showAccept, onAccept, accepting }: {
           )}
           {badge.awardedAt > 0 && (
             <>
-              <span className="text-[9px] text-muted-foreground/30">·</span>
-              <span className="text-[9px] text-muted-foreground/40">
+              <span className="text-[11px] text-muted-foreground/50" aria-hidden="true">·</span>
+              <span className="text-[11px] text-muted-foreground">
                 {formatDistanceToNow(new Date(badge.awardedAt * 1000), { addSuffix: true })}
               </span>
             </>
@@ -121,7 +176,7 @@ function BadgeCard({ badge, showAccept, onAccept, accepting }: {
         <Button
           size="sm"
           variant="outline"
-          className="shrink-0 h-7 text-xs gap-1"
+          className="relative z-10 shrink-0 min-h-[44px] text-xs gap-1"
           onClick={() => onAccept(badge)}
           disabled={accepting}
         >
@@ -228,35 +283,34 @@ export function ProfileBadgesSection({ badges, pubkey, onRefresh }: {
   const displayBadges = expanded ? visibleBadges : visibleBadges.slice(0, 3);
 
   return (
-    <div id="badges" className="space-y-2 scroll-mt-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <Award className="w-4 h-4 text-brand/70" />
-          <span className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wider">
-            Badges ({visibleBadges.length})
-          </span>
-        </div>
-        <div className="flex items-center gap-1">
-          {isOwnProfile && accepted.length > 0 && !arranging && (
-            <Button size="sm" variant="ghost" className="min-h-[44px] text-xs" onClick={() => setArranging(true)} data-testid="button-arrange-badges">
-              Edit
-            </Button>
-          )}
-          {!arranging && visibleBadges.length > 3 && (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="min-h-[44px] px-2 text-xs text-brand/80 hover:text-brand-strong flex items-center gap-0.5 transition-colors"
-            >
-              {expanded ? "Show less" : `Show all`}
-              {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            </button>
-          )}
-        </div>
-      </div>
+    // The same title bar as Circle and Details (owner, 2026-10-07): it had a
+    // heading of its own (an icon and grey caps) and looked out of place.
+    <div id="badges" className="scroll-mt-4">
+      <IdentitySection
+        title="Badges"
+        actions={(isOwnProfile && accepted.length > 0 && !arranging) || (!arranging && visibleBadges.length > 3) ? (
+          <>
+            {isOwnProfile && accepted.length > 0 && !arranging && (
+              <Button size="sm" variant="ghost" className="min-h-[44px] text-xs" onClick={() => setArranging(true)} data-testid="button-arrange-badges">
+                Edit
+              </Button>
+            )}
+            {!arranging && visibleBadges.length > 3 && (
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="min-h-[44px] px-2 text-xs text-brand/80 hover:text-brand-strong flex items-center gap-0.5 transition-colors"
+              >
+                {expanded ? "Show less" : `Show all ${visibleBadges.length}`}
+                {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+            )}
+          </>
+        ) : undefined}
+      >
       {arranging ? (
         <ArrangeBadges accepted={accepted} onCancel={() => setArranging(false)} onSaved={() => { setArranging(false); onRefresh?.(); }} />
       ) : (
-      <div className="space-y-2">
+      <div className="space-y-1">
         {displayBadges.map((badge) => (
           <BadgeCard
             key={`${badge.badgeRef}:${badge.awardEventId}`}
@@ -269,10 +323,11 @@ export function ProfileBadgesSection({ badges, pubkey, onRefresh }: {
       </div>
       )}
       {isOwnProfile && unaccepted.length > 0 && !expanded && !arranging && (
-        <p className="text-[10px] text-amber-500/70 pl-1">
+        <p className="mt-2 text-[11px] text-amber-800 dark:text-amber-500/70 pl-1">
           {unaccepted.length} badge{unaccepted.length > 1 ? "s" : ""} waiting for you to show
         </p>
       )}
+      </IdentitySection>
     </div>
   );
 }
