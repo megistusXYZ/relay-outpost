@@ -38,17 +38,23 @@ import { useMentionNames } from "@/hooks/use-mention-names";
 import { notificationPreview } from "@/lib/notification-preview";
 
 const TYPE_CONFIG = {
-  accepted: { icon: DoorOpen, label: "accepted you into the community", color: "text-emerald-600 dark:text-emerald-400", bgAccent: "bg-emerald-500/15 dark:bg-emerald-500/10", borderAccent: "border-emerald-500/30 dark:border-emerald-500/20", dotColor: "bg-emerald-500 dark:bg-emerald-400" },
-  reply: { icon: MessageSquare, label: "replied to you", color: "text-blue-600 dark:text-blue-400", bgAccent: "bg-blue-500/15 dark:bg-blue-500/10", borderAccent: "border-blue-500/30 dark:border-blue-500/20", dotColor: "bg-blue-500 dark:bg-blue-400" },
-  mention: { icon: AtSign, label: "mentioned you", color: "text-brand", bgAccent: "bg-brand/15 dark:bg-brand/10", borderAccent: "border-brand/30 dark:border-brand/20", dotColor: "bg-brand" },
-  reaction: { icon: Heart, label: "reacted to your post", color: "text-red-600 dark:text-red-400", bgAccent: "bg-red-500/15 dark:bg-red-500/10", borderAccent: "border-red-500/30 dark:border-red-500/20", dotColor: "bg-red-500 dark:bg-red-400" },
-  repost: { icon: Repeat, label: "reposted your note", color: "text-green-600 dark:text-green-400", bgAccent: "bg-green-500/15 dark:bg-green-500/10", borderAccent: "border-green-500/30 dark:border-green-500/20", dotColor: "bg-green-500 dark:bg-green-400" },
-  zap: { icon: BtcZapIcon, label: "zapped you", color: "text-amber-600 dark:text-amber-400", bgAccent: "bg-amber-500/15 dark:bg-amber-500/10", borderAccent: "border-amber-500/30 dark:border-amber-500/20", dotColor: "bg-amber-500 dark:bg-amber-400" },
-  follow: { icon: UserPlus, label: "followed you", color: "text-cyan-600 dark:text-cyan-400", bgAccent: "bg-cyan-500/15 dark:bg-cyan-500/10", borderAccent: "border-cyan-500/30 dark:border-cyan-500/20", dotColor: "bg-cyan-500 dark:bg-cyan-400" },
-  ticket: { icon: LifeBuoy, label: "replied to your ticket", color: "text-teal-600 dark:text-teal-400", bgAccent: "bg-teal-500/15 dark:bg-teal-500/10", borderAccent: "border-teal-500/30 dark:border-teal-500/20", dotColor: "bg-teal-500 dark:bg-teal-400" },
+  accepted: { icon: DoorOpen, label: "accepted you into the community", color: "text-emerald-600 dark:text-emerald-400", bgAccent: "bg-emerald-500/15 dark:bg-emerald-500/10", borderAccent: "border-emerald-500/30 dark:border-emerald-500/20", dotColor: "bg-emerald-500 dark:bg-emerald-400", chevDark: "dark:text-emerald-400/60" },
+  reply: { icon: MessageSquare, label: "replied to you", color: "text-blue-600 dark:text-blue-400", bgAccent: "bg-blue-500/15 dark:bg-blue-500/10", borderAccent: "border-blue-500/30 dark:border-blue-500/20", dotColor: "bg-blue-500 dark:bg-blue-400", chevDark: "dark:text-blue-400/60" },
+  mention: { icon: AtSign, label: "mentioned you", color: "text-brand", bgAccent: "bg-brand/15 dark:bg-brand/10", borderAccent: "border-brand/30 dark:border-brand/20", dotColor: "bg-brand", chevDark: "dark:text-brand/60" },
+  reaction: { icon: Heart, label: "reacted to your post", color: "text-red-600 dark:text-red-400", bgAccent: "bg-red-500/15 dark:bg-red-500/10", borderAccent: "border-red-500/30 dark:border-red-500/20", dotColor: "bg-red-500 dark:bg-red-400", chevDark: "dark:text-red-400/60" },
+  repost: { icon: Repeat, label: "reposted your note", color: "text-green-600 dark:text-green-400", bgAccent: "bg-green-500/15 dark:bg-green-500/10", borderAccent: "border-green-500/30 dark:border-green-500/20", dotColor: "bg-green-500 dark:bg-green-400", chevDark: "dark:text-green-400/60" },
+  zap: { icon: BtcZapIcon, label: "zapped you", color: "text-amber-600 dark:text-amber-400", bgAccent: "bg-amber-500/15 dark:bg-amber-500/10", borderAccent: "border-amber-500/30 dark:border-amber-500/20", dotColor: "bg-amber-500 dark:bg-amber-400", chevDark: "dark:text-amber-400/60" },
+  follow: { icon: UserPlus, label: "followed you", color: "text-cyan-600 dark:text-cyan-400", bgAccent: "bg-cyan-500/15 dark:bg-cyan-500/10", borderAccent: "border-cyan-500/30 dark:border-cyan-500/20", dotColor: "bg-cyan-500 dark:bg-cyan-400", chevDark: "dark:text-cyan-400/60" },
+  ticket: { icon: LifeBuoy, label: "replied to your ticket", color: "text-teal-600 dark:text-teal-400", bgAccent: "bg-teal-500/15 dark:bg-teal-500/10", borderAccent: "border-teal-500/30 dark:border-teal-500/20", dotColor: "bg-teal-500 dark:bg-teal-400", chevDark: "dark:text-teal-400/60" },
 };
 
 type NotifType = keyof typeof TYPE_CONFIG;
+
+// Light mode is calm (owner, 2026-10-08; LIGHT_MODE.md: violet is for
+// actions, focus and what's new): a category keeps its colour on its small
+// icon only — headers, borders and "new" markers are neutral or violet.
+// Dark mode does not change: each of these keeps the category's dark: classes.
+const darkOnly = (cls: string) => cls.split(" ").filter((c) => c.startsWith("dark:")).join(" ");
 
 const AGGREGATABLE_TYPES = new Set<string>(["reaction", "repost", "zap"]);
 
@@ -226,7 +232,7 @@ const AggregatedNotificationItem = memo(function AggregatedNotificationItem({ gr
           )}
           <span className="text-[11px] text-foreground/60 dark:text-muted-foreground/70">{actionLabel}</span>
           {group.hasUnread && (
-            <span className={`w-1.5 h-1.5 rounded-full ${config.dotColor} shrink-0`} />
+            <span className={`w-1.5 h-1.5 rounded-full bg-brand ${darkOnly(config.dotColor)} shrink-0`} />
           )}
         </div>
         {repostedContent && (
@@ -582,7 +588,7 @@ const NotificationItem = memo(function NotificationItem({ notification, onRead }
           <span className="text-[13px] font-medium" data-testid={`notification-author-${notification.id}`}>{displayName}</span>
           <span className="text-[11px] text-foreground/60 dark:text-muted-foreground/70">{zapAmountLabel || externalCommentLabel || config.label}</span>
           {!notification.read && (
-            <span className={`w-1.5 h-1.5 rounded-full ${config.dotColor} shrink-0`} />
+            <span className={`w-1.5 h-1.5 rounded-full bg-brand ${darkOnly(config.dotColor)} shrink-0`} />
           )}
         </div>
         {contentPreview && (
@@ -719,18 +725,18 @@ const GroupedNotifications = memo(function GroupedNotifications({ notifications,
     <div className="glass-card rounded-lg border overflow-hidden" data-testid={`notification-group-${type}`}>
       <button
         type="button"
-        className={`flex items-center gap-2 px-3 py-2 w-full ${config.bgAccent} ${collapsed ? "" : `border-b ${config.borderAccent}`} hover-elevate cursor-pointer`}
+        className={`flex items-center gap-2 px-3 py-2 w-full bg-muted/40 ${darkOnly(config.bgAccent)} ${collapsed ? "" : `border-b border-border ${darkOnly(config.borderAccent)}`} hover-elevate cursor-pointer`}
         onClick={() => onToggle(type)}
         data-testid={`button-toggle-group-${type}`}
       >
-        <CollapseIcon className={`w-3 h-3 ${config.color}/60 shrink-0 transition-transform`} />
+        <CollapseIcon className={`w-3 h-3 text-muted-foreground ${config.chevDark} shrink-0 transition-transform`} />
         <Icon className={`w-3.5 h-3.5 ${config.color}`} />
         <span className="text-[11px] font-mono uppercase tracking-[0.15em] text-foreground/80 dark:text-muted-foreground/90 font-semibold flex-1 text-left">
           {TYPE_LABEL[type]}
         </span>
         {unreadCount > 0 && (
-          <span className={`w-4 h-4 rounded-full ${config.bgAccent} border ${config.borderAccent} flex items-center justify-center`} data-testid={`badge-group-unread-${type}`}>
-            <span className={`text-[9px] font-bold ${config.color}`}>{unreadCount}</span>
+          <span className={`w-4 h-4 rounded-full bg-brand/10 ${darkOnly(config.bgAccent)} border border-brand/25 ${darkOnly(config.borderAccent)} flex items-center justify-center`} data-testid={`badge-group-unread-${type}`}>
+            <span className={`text-[9px] font-bold text-brand ${darkOnly(config.color)}`}>{unreadCount}</span>
           </span>
         )}
         <span className="text-[10px] text-muted-foreground/60 dark:text-muted-foreground/50" data-testid={`text-group-count-${type}`}>{notifications.length}</span>
@@ -739,7 +745,7 @@ const GroupedNotifications = memo(function GroupedNotifications({ notifications,
         <div className="divide-y divide-border/10">
           {aggregatedUnread.length > 0 && (
             <>
-              <div className="px-3 py-1.5 bg-brand/10 dark:bg-brand/5 border-b border-brand/20 dark:border-brand/10">
+              <div className="px-3 py-1.5 bg-muted/30 dark:bg-brand/5 border-b border-border dark:border-brand/10">
                 <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-brand/80 dark:text-brand/70">
                   New · {dateBuckets.unread.length}
                 </span>
