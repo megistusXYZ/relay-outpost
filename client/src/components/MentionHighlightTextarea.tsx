@@ -1,5 +1,6 @@
 import { forwardRef, useRef, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { backspaceMention, tidyMentions, snapOutOfMention } from "@/lib/mention-edit";
 
 interface MentionHighlightTextareaProps
   extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange"> {
@@ -154,6 +155,52 @@ export const MentionHighlightTextarea = forwardRef<
     syncScroll();
   }, [value, syncScroll]);
 
+  // A tagged @name is one thing (lib/mention-edit.ts; owner, 2026-10-07):
+  // backspace next to it takes the whole name. Its hidden characters used to
+  // go one press at a time — presses that seemed to do nothing — and a name
+  // cut part-way left a broken tag and stray gaps. `beforeinput`, not keydown:
+  // phone keyboards don't always send a Backspace key.
+  useEffect(() => {
+    const el = internalRef.current;
+    if (!el) return;
+    const onBeforeInput = (e: InputEvent) => {
+      if (e.inputType !== "deleteContentBackward" || el.selectionStart !== el.selectionEnd) return;
+      const next = backspaceMention(el.value, el.selectionStart ?? 0);
+      if (!next) return;
+      e.preventDefault();
+      // Through the native setter + an input event, so React's onChange (and
+      // the caller's mention bookkeeping) sees it like any other edit.
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(el, next.text);
+      el.setSelectionRange(next.caret, next.caret);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.setSelectionRange(next.caret, next.caret);
+    };
+    el.addEventListener("beforeinput", onBeforeInput);
+    return () => el.removeEventListener("beforeinput", onBeforeInput);
+  }, []);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const el = e.target;
+    const tidy = tidyMentions(value || "", el.value, el.selectionStart ?? el.value.length);
+    if (tidy.text !== el.value) {
+      el.value = tidy.text;
+      el.setSelectionRange(tidy.caret, tidy.caret);
+    }
+    onChange(e);
+  }, [value, onChange]);
+
+  // The caret never parks among a tag's hidden characters (a tap or arrow key
+  // could leave it there, and typing then broke the tag).
+  const lastCaret = useRef<number | undefined>(undefined);
+  const handleSelect = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    const el = e.currentTarget;
+    if (el.selectionStart !== el.selectionEnd) { lastCaret.current = undefined; return; }
+    const at = el.selectionStart ?? 0;
+    const snapped = snapOutOfMention(el.value, at, lastCaret.current);
+    if (snapped !== at) el.setSelectionRange(snapped, snapped);
+    lastCaret.current = snapped;
+  }, []);
+
   const hasMentions = new RegExp(pattern.source).test(value || "");
   const hasEmojis = emojiMap && emojiMap.size > 0 && /:[a-zA-Z0-9_]+:/.test(value || "");
   const hasHashtags = /(?:^|\s)#\w+/.test(value || "");
@@ -196,7 +243,8 @@ export const MentionHighlightTextarea = forwardRef<
       <textarea
         ref={setRefs}
         value={value}
-        onChange={onChange}
+        onChange={handleChange}
+        onSelect={handleSelect}
         onScroll={syncScroll}
         className={cn("mention-highlight-textarea border-0 outline-none focus:outline-none focus:ring-0", className)}
         style={{
