@@ -147,7 +147,7 @@ const GUIDE_ITEMS: GuideItem[] = [
     title: "Your First 10 Minutes",
     description: "A quick-start walkthrough from login to your first post. Everything you need to get oriented.",
     icon: Rocket,
-    iconColor: "text-emerald-500",
+    iconColor: "text-success dark:text-emerald-500",
     type: "article",
     tags: ["getting started"],
     href: "/help/first-10-minutes",
@@ -225,7 +225,7 @@ const DEEP_DIVE_ITEMS: DeepDiveItem[] = [
     subtitle: "From corporate curation to community trust",
     description: "Social media algorithms chase engagement — outrage, addiction. A Web of Trust ranks by the people you actually know and respect instead. Here's how it works and why it's better.",
     icon: Shield,
-    iconColor: "text-emerald-800 dark:text-emerald-400",
+    iconColor: "text-success dark:text-emerald-400",
     gradient: "from-emerald-500/10 to-teal-500/10",
     type: "article",
     tags: ["web of trust", "big ideas"],
@@ -314,7 +314,7 @@ function ContentTypeBadge({ type }: { type: "article" | "video" | "infographic" 
     // every class it wore, spelled out with dark:.
     article: { icon: FileText, label: "Article", chip: "dark:text-blue-400/80 dark:bg-blue-500/8 dark:border-blue-500/15", iconColor: "text-blue-700 dark:text-blue-400/80" },
     video: { icon: Play, label: "Video", chip: "dark:text-red-400/80 dark:bg-red-500/8 dark:border-red-500/15", iconColor: "text-red-700 dark:text-red-400/80" },
-    infographic: { icon: ImageIcon, label: "Infographic", chip: "dark:text-green-400/80 dark:bg-green-500/8 dark:border-green-500/15", iconColor: "text-green-800 dark:text-green-400/80" },
+    infographic: { icon: ImageIcon, label: "Infographic", chip: "dark:text-green-400/80 dark:bg-green-500/8 dark:border-green-500/15", iconColor: "text-success dark:text-green-400/80" },
   }[type];
 
   const Icon = config.icon;

@@ -1353,7 +1353,7 @@ function PeopleTab({ urlQuery, updateUrl }: TabProps) {
               <div data-testid="direct-match-section">
                 <div className="flex items-center gap-1.5 mb-2">
                   <Signal className="w-3 h-3 text-emerald-800 dark:text-emerald-400" />
-                  <span className="text-[10px] font-semibold text-emerald-800/80 dark:text-emerald-400/80 uppercase tracking-wider">Direct match</span>
+                  <span className="text-[10px] font-semibold text-success dark:text-emerald-400/80 uppercase tracking-wider">Direct match</span>
                 </div>
                 <div className="rounded-lg border border-emerald-500/20 dark:border-emerald-500/15 bg-emerald-500/[0.03] dark:bg-emerald-500/[0.04] p-1.5">
                   <ProfileCardErrorBoundary>
@@ -1638,7 +1638,7 @@ function ProfileCard({ profile, tier, isFollowed, followsYou, grouped = false }:
             </div>
             <div className="flex items-center gap-1.5 mt-0.5">
               {nip05Display && (
-                <Nip05Badge nip05={nip05!} pubkey={profile.pubkey} className="truncate max-w-[160px]" textClassName="text-[11px] text-emerald-800 dark:text-emerald-400/80" iconClassName="w-3 h-3" />
+                <Nip05Badge nip05={nip05!} pubkey={profile.pubkey} className="truncate max-w-[160px]" textClassName="text-[11px] text-success dark:text-emerald-400/80" iconClassName="w-3 h-3" />
               )}
               {!nip05Display && (
                 <span className="text-[11px] text-muted-foreground truncate">{shortenNpub(npub)}</span>
@@ -2312,7 +2312,7 @@ function MobileTrustedVoices({ voices, followSet }: {
                   {content?.display_name || content?.name || shortenNpub(npub)}
                 </p>
                 {content?.nip05 && (
-                  <p className="text-[10px] text-emerald-500/70 truncate leading-tight mt-0.5">
+                  <p className="text-[10px] text-success dark:text-emerald-500/70 truncate leading-tight mt-0.5">
                     {content.nip05.startsWith("_@") ? content.nip05.slice(2) : content.nip05}
                   </p>
                 )}
@@ -3625,7 +3625,7 @@ function LiveEventCard({ liveEvent }: { liveEvent: LiveEventInfo }) {
   const statusColor = isOffline
     ? "text-zinc-400 bg-zinc-500/10 border-zinc-500/20"
     : liveEvent.status === "live"
-    ? "text-green-800 dark:text-green-400 bg-green-400/10 border-green-400/20"
+    ? "text-success dark:text-green-400 bg-green-400/10 border-green-400/20"
     : liveEvent.status === "planned"
     ? "text-amber-800 dark:text-amber-400 bg-amber-400/10 border-amber-400/20"
     : "text-muted-foreground bg-muted/50 border-border";
@@ -3678,7 +3678,7 @@ function LiveEventCard({ liveEvent }: { liveEvent: LiveEventInfo }) {
                     {statusLabel}
                   </Badge>
                   {isVerified && (
-                    <Badge variant="outline" className="text-[9px] text-green-800 dark:text-green-400 bg-green-400/10 border-green-400/20 px-1">
+                    <Badge variant="outline" className="text-[9px] text-success dark:text-green-400 bg-green-400/10 border-green-400/20 px-1">
                       <Check className="w-2.5 h-2.5" />
                     </Badge>
                   )}
@@ -3742,7 +3742,7 @@ function RssResultCard({ feed }: { feed: SavedFeed }) {
         <p className="text-[10px] text-muted-foreground/70 dark:text-muted-foreground/50 font-mono truncate">{feed.category}</p>
       </div>
       {alreadySaved ? (
-        <span className="flex items-center gap-1 text-[10px] text-green-500/80 dark:text-green-400/70 font-mono shrink-0">
+        <span className="flex items-center gap-1 text-[10px] text-success dark:text-green-400/70 font-mono shrink-0">
           <Check className="w-3 h-3" /> Saved
         </span>
       ) : (

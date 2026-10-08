@@ -38,7 +38,7 @@ import { Calendar, Clock } from "lucide-react";
 function getRelayModeStyle(preset: string): { text: string; icon: string; dot: string } {
   switch (preset) {
     case "private": return { text: "text-amber-600 dark:text-amber-400/80", icon: "text-amber-500/70", dot: "bg-amber-400" };
-    case "public": return { text: "text-green-600 dark:text-green-400/80", icon: "text-green-500/70", dot: "bg-green-400" };
+    case "public": return { text: "text-success dark:text-green-400/80", icon: "text-success dark:text-green-500/70", dot: "bg-green-400" };
     case "all": return { text: "text-brand dark:text-brand/80", icon: "text-brand/70", dot: "bg-brand" };
     default: return { text: "text-muted-foreground/70", icon: "text-muted-foreground/50", dot: "bg-muted-foreground/40" };
   }
@@ -1284,7 +1284,7 @@ export function CreatePostFAB() {
                         <button
                           type="button"
                           onClick={() => chooseBackend("device")}
-                          className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${scheduleBackend === "device" ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-800 dark:text-emerald-300" : "border-border/30 text-muted-foreground/60 hover:text-foreground"}`}
+                          className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${scheduleBackend === "device" ? "bg-emerald-500/15 border-emerald-500/40 text-success dark:text-emerald-300" : "border-border/30 text-muted-foreground/60 hover:text-foreground"}`}
                           data-testid="button-schedule-backend-device"
                           title="Private — stays on this device and publishes when due, only while the app is open."
                         >
@@ -1293,7 +1293,7 @@ export function CreatePostFAB() {
                       </div>
                     )}
                     {!editingPost && scheduleBackend === "device" && (
-                      <p className="text-[8px] text-emerald-800/60 dark:text-emerald-400/60 pl-1">Publishes from this device when the app is open — nothing is sent to a server.</p>
+                      <p className="text-[8px] text-success dark:text-emerald-400/60 pl-1">Publishes from this device when the app is open — nothing is sent to a server.</p>
                     )}
                     {utcTime && (
                       <p className="text-[8px] text-muted-foreground/40 pl-6">{utcTime}</p>
@@ -1314,7 +1314,7 @@ export function CreatePostFAB() {
 
             {showShieldInfo && (
               <div className="relative z-10 mx-4 sm:mx-3 px-3 py-2.5 rounded-lg bg-green-500/[0.06] border border-green-500/15 space-y-1.5" data-testid="container-shield-info">
-                <div className="flex items-center gap-1.5 text-xs font-medium text-green-600 dark:text-green-400">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-success dark:text-green-400">
                   <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
                   Signal Protection Active
                 </div>
@@ -1326,7 +1326,7 @@ export function CreatePostFAB() {
                 </p>
                 <p className="text-[11px] leading-relaxed text-muted-foreground/60">
                   Video metadata can't be scrubbed in-browser. GPS and device info may be embedded — strip it before uploading with a free tool like{" "}
-                  <a href="https://handbrake.fr" target="_blank" rel="noopener noreferrer" className="text-green-600 dark:text-green-400 underline underline-offset-2 hover:text-green-500">HandBrake</a>.
+                  <a href="https://handbrake.fr" target="_blank" rel="noopener noreferrer" className="text-success dark:text-green-400 underline underline-offset-2 hover:text-green-500">HandBrake</a>.
                 </p>
               </div>
             )}

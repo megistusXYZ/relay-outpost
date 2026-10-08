@@ -114,7 +114,7 @@ export function GettingStartedChecklist({ className = "" }: { className?: string
           const checkmark = (
             <span
               className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                t.done ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-500" : "border-border/50 text-transparent"
+                t.done ? "border-emerald-500/40 bg-emerald-500/15 text-success dark:text-emerald-500" : "border-border/50 text-transparent"
               }`}
             >
               <Check className="h-3 w-3" />

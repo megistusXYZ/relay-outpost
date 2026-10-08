@@ -157,7 +157,7 @@ export function ActivityIndicator({ pubkey, className }: { pubkey: string; class
     dotColor = isActive ? "bg-emerald-400" : isFading ? "bg-amber-400" : "bg-slate-400";
     activityLabel = `${isActive ? "Active" : isFading ? "Seen" : "Last seen"} ${formatLastSeen(data.lastSeen!)}`;
     textColor = isActive
-      ? "text-emerald-800 dark:text-emerald-400/70"
+      ? "text-success dark:text-emerald-400/70"
       : isFading
       ? "text-amber-600/60 dark:text-amber-400/50"
       : "text-muted-foreground/40";

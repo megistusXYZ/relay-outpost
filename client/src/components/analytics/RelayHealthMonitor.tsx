@@ -270,7 +270,7 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
               <span className="text-xs text-muted-foreground/70 uppercase tracking-wide">Relay Health</span>
             </div>
             <div className="flex items-center gap-2 flex-wrap" data-testid="text-relay-health-summary">
-              <Badge variant="outline" className="text-[10px] border-green-400/20 text-green-800/60 dark:text-green-400/60">
+              <Badge variant="outline" className="text-[10px] border-green-400/20 text-success dark:text-green-400/60">
                 {healthyCount} Healthy
               </Badge>
               {coolingCount > 0 && (
@@ -354,7 +354,7 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
                           Testing
                         </Badge>
                       ) : relay.connected ? (
-                        <Badge variant="outline" className="text-[10px] border-green-400/20 text-green-800/60 dark:text-green-400/60" data-testid={`badge-status-${idx}`}>
+                        <Badge variant="outline" className="text-[10px] border-green-400/20 text-success dark:text-green-400/60" data-testid={`badge-status-${idx}`}>
                           <Wifi className="w-2.5 h-2.5 mr-0.5" />
                           Online
                         </Badge>
@@ -367,7 +367,7 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
                     </td>
                     <td className="py-2 px-3" data-testid={`badge-health-${idx}`}>
                       {healthStatus === "healthy" ? (
-                        <Badge variant="outline" className="text-[10px] border-green-400/20 text-green-800/60 dark:text-green-400/60">
+                        <Badge variant="outline" className="text-[10px] border-green-400/20 text-success dark:text-green-400/60">
                           <Shield className="w-2.5 h-2.5 mr-0.5" />
                           Healthy
                         </Badge>
@@ -384,7 +384,7 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
                       )}
                     </td>
                     <td className="py-2 px-3 text-right font-mono" data-testid={`text-score-${idx}`}>
-                      <span className={score < 2000 ? "text-green-800 dark:text-green-400" : score < 5000 ? "text-amber-800 dark:text-amber-400" : "text-red-700 dark:text-red-400"}>
+                      <span className={score < 2000 ? "text-success dark:text-green-400" : score < 5000 ? "text-amber-800 dark:text-amber-400" : "text-red-700 dark:text-red-400"}>
                         {score.toLocaleString()}
                       </span>
                     </td>
@@ -399,7 +399,7 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
                     </td>
                     <td className="py-2 px-3 text-right font-mono" data-testid={`text-success-rate-${idx}`}>
                       {successRate !== null ? (
-                        <span className={successRate >= 90 ? "text-green-800 dark:text-green-400" : successRate >= 70 ? "text-amber-800 dark:text-amber-400" : "text-red-700 dark:text-red-400"}>
+                        <span className={successRate >= 90 ? "text-success dark:text-green-400" : successRate >= 70 ? "text-amber-800 dark:text-amber-400" : "text-red-700 dark:text-red-400"}>
                           {successRate}%
                         </span>
                       ) : (

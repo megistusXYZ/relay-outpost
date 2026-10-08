@@ -92,7 +92,7 @@ export function PasskeyEnrollmentCard({
       <div className={`rounded-xl p-3.5 ${cardCls}`} data-testid="panel-passkey-enrolled">
         <div className="flex items-start gap-3">
           <span className={`shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg ${
-            isOverlay ? "bg-emerald-500/15 border border-emerald-400/25 text-emerald-200" : "bg-emerald-500/10 border border-emerald-500/25 text-emerald-700"
+            isOverlay ? "bg-emerald-500/15 border border-emerald-400/25 text-emerald-200" : "bg-emerald-500/10 border border-emerald-500/25 text-success dark:text-emerald-700"
           }`}>
             <Check className="w-4.5 h-4.5" />
           </span>

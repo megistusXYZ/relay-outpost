@@ -82,7 +82,7 @@ export default function KeyBackup() {
         </Button>
 
         {done && (
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300">
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-success dark:text-emerald-300">
             <ShieldCheck className="h-4 w-4 shrink-0" />
             Backup downloaded. Store the file and your passphrase separately.
           </div>

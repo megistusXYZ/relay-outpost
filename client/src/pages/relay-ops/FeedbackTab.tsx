@@ -64,7 +64,7 @@ import type { FeedbackInbox } from "@/hooks/use-feedback-inbox";
 
 const STATUSES: FeedbackStatus[] = ["open", "draft", "resolved", "closed"];
 const STATUS_TONE: Record<FeedbackStatus, string> = {
-  open: "text-emerald-700 dark:text-emerald-400",
+  open: "text-success dark:text-emerald-400",
   draft: "text-amber-700 dark:text-amber-400",
   resolved: "text-sky-700 dark:text-sky-400",
   closed: "text-muted-foreground",

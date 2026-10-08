@@ -160,19 +160,19 @@ export default function WhyDecentralization() {
               <p>Decentralization isn't just philosophy — it translates into real, tangible benefits you feel every day:</p>
               <div className="space-y-1.5 mt-2">
                 <div className="rounded-lg bg-emerald-500/[0.05] dark:bg-emerald-500/[0.03] border border-emerald-500/15 px-3 py-2">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">No single off-switch</span>
+                  <span className="text-success dark:text-emerald-400 font-bold text-[11px]">No single off-switch</span>
                   <p className="text-[12px] text-foreground/60 mt-0.5">No single entity can delete your account or remove your content. Your voice persists across the network.</p>
                 </div>
                 <div className="rounded-lg bg-emerald-500/[0.05] dark:bg-emerald-500/[0.03] border border-emerald-500/15 px-3 py-2">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">Your audience is portable</span>
+                  <span className="text-success dark:text-emerald-400 font-bold text-[11px]">Your audience is portable</span>
                   <p className="text-[12px] text-foreground/60 mt-0.5">Your followers follow your key, not a platform account. Switch apps, change relays — your audience comes with you.</p>
                 </div>
                 <div className="rounded-lg bg-emerald-500/[0.05] dark:bg-emerald-500/[0.03] border border-emerald-500/15 px-3 py-2">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">Support goes straight to you</span>
+                  <span className="text-success dark:text-emerald-400 font-bold text-[11px]">Support goes straight to you</span>
                   <p className="text-[12px] text-foreground/60 mt-0.5">With Lightning zaps, your audience can send you optional support instantly — and 100% of it goes to you.</p>
                 </div>
                 <div className="rounded-lg bg-emerald-500/[0.05] dark:bg-emerald-500/[0.03] border border-emerald-500/15 px-3 py-2">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">Privacy is the default</span>
+                  <span className="text-success dark:text-emerald-400 font-bold text-[11px]">Privacy is the default</span>
                   <p className="text-[12px] text-foreground/60 mt-0.5">No ad tracking, no behavioral profiles, no selling your data. Relay Outpost strips metadata from your uploads and encrypts your DMs end-to-end.</p>
                 </div>
               </div>

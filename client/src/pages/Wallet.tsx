@@ -562,7 +562,7 @@ function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | nul
         {outcome && (
           <div className="space-y-1" data-testid="sweep-outcome">
             {outcome.results.map((r) => (
-              <p key={r.mintUrl} className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+              <p key={r.mintUrl} className="text-xs font-medium text-success dark:text-emerald-400">
                 ⚡ {fmtSats(r.sweptSats)} arrived in your wallet
                 {r.feeSats > 0 ? ` (network fee: ${fmtSats(r.feeSats)})` : ""}
                 {r.changeSats > 0 ? `. ${fmtSats(r.changeSats)} in change stayed on this device and will go along next time` : ""}.
@@ -888,7 +888,7 @@ function NpubCashUsernameCard({ myPubkey, signer, profileEvent, currentLud16 }: 
               <span className="text-sm font-mono break-all">{address}</span>
             </div>
             {isCurrentAddress ? (
-              <p className="text-xs text-emerald-600 dark:text-emerald-400">✓ This is your profile's lightning address.</p>
+              <p className="text-xs text-success dark:text-emerald-400">✓ This is your profile's lightning address.</p>
             ) : (
               <div className="space-y-1.5">
                 <p className="text-xs text-muted-foreground">Set it as the lightning address on your profile so zaps use your name.</p>
@@ -920,7 +920,7 @@ function NpubCashUsernameCard({ myPubkey, signer, profileEvent, currentLud16 }: 
               <div className="flex items-center gap-2 text-xs text-muted-foreground"><RelayOutpostInlineLoader className="w-3.5 h-3.5" /> Checking…</div>
             ) : check?.status === "available" ? (
               <div className="space-y-2">
-                <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                <p className="text-xs text-success dark:text-emerald-400 flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 shrink-0" /> <span className="font-mono break-all">{name}@npub.cash</span> is available{check.priceSats ? ` · ${fmtSats(check.priceSats)}` : ""}
                 </p>
                 <Button size="sm" asChild className="bg-amber-500/90 hover:bg-amber-500 text-black">
@@ -1378,7 +1378,7 @@ function TransactionRow({ tx, index, enrichment, txNumber, myPubkey, balanceHidd
           <div className="flex items-center gap-1">
             <BtcZapIcon className={`w-3.5 h-3.5 ${isIncoming ? "text-emerald-500/70" : "text-amber-500/70"}`} />
             <span className={`text-sm font-semibold tabular-nums transition-all duration-200 ${
-              isIncoming ? "text-emerald-500 dark:text-emerald-400" : "text-foreground/80"
+              isIncoming ? "text-success dark:text-emerald-400" : "text-foreground/80"
             } ${balanceHidden ? "blur-[6px] select-none" : ""}`}>
               {isIncoming ? "+" : "-"}{amountSats.toLocaleString()}
             </span>
@@ -1653,12 +1653,12 @@ function TransactionDetailModal({ tx, enrichment, myPubkey, balanceHidden, onClo
         <div className="flex flex-col items-center py-6 px-4">
           <div className={`text-center transition-all duration-200 ${blur}`}>
             <span className={`text-4xl font-bold tabular-nums ${
-              isIncoming ? "text-emerald-500 dark:text-emerald-400" : "text-foreground/90"
+              isIncoming ? "text-success dark:text-emerald-400" : "text-foreground/90"
             }`} data-testid="text-tx-detail-amount">
               {amountSats.toLocaleString()}
             </span>
             <span className={`text-lg ml-1.5 ${
-              isIncoming ? "text-emerald-500/70 dark:text-emerald-400/70" : "text-muted-foreground/60"
+              isIncoming ? "text-success dark:text-emerald-400/70" : "text-muted-foreground/60"
             }`}>sats</span>
           </div>
           {tx.amount > 0 && (
@@ -1892,16 +1892,16 @@ function TransactionMetricsDashboard({ transactions, balanceHidden }: { transact
           label="Received"
           value={metrics.totalReceived.toLocaleString()}
           icon={ArrowDownLeft}
-          iconColor="bg-emerald-500/10 text-emerald-500 dark:text-emerald-400"
-          valueColor="text-emerald-600 dark:text-emerald-400"
+          iconColor="bg-emerald-500/10 text-success dark:text-emerald-400"
+          valueColor="text-success dark:text-emerald-400"
           blurred={balanceHidden}
         />
         <MetricCard
           label="Net Flow"
           value={`${metrics.netFlow >= 0 ? "+" : ""}${metrics.netFlow.toLocaleString()}`}
           icon={metrics.netFlow >= 0 ? TrendingUp : TrendingDown}
-          iconColor={metrics.netFlow >= 0 ? "bg-emerald-500/10 text-emerald-500 dark:text-emerald-400" : "bg-red-500/10 text-red-500 dark:text-red-400"}
-          valueColor={metrics.netFlow >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}
+          iconColor={metrics.netFlow >= 0 ? "bg-emerald-500/10 text-success dark:text-emerald-400" : "bg-red-500/10 text-red-500 dark:text-red-400"}
+          valueColor={metrics.netFlow >= 0 ? "text-success dark:text-emerald-400" : "text-red-600 dark:text-red-400"}
           blurred={balanceHidden}
         />
         <MetricCard
@@ -2884,7 +2884,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                     <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center">
                       <Check className="w-6 h-6 text-emerald-500" />
                     </div>
-                    <p className="text-sm font-medium text-emerald-500">Payment Sent</p>
+                    <p className="text-sm font-medium text-success dark:text-emerald-500">Payment Sent</p>
                     <p className="text-xs text-muted-foreground/60">
                       {sendSuccessAmount > 0 ? `${sendSuccessAmount.toLocaleString()} sats` : "Invoice"} paid successfully
                     </p>
@@ -3609,7 +3609,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                         </p>
                       </div>
                       {nwcCopied && (
-                        <p className="text-[10px] text-emerald-500 mt-1.5 text-center">Copied to clipboard</p>
+                        <p className="text-[10px] text-success dark:text-emerald-500 mt-1.5 text-center">Copied to clipboard</p>
                       )}
                     </div>
                   );

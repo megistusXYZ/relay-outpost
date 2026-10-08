@@ -550,7 +550,7 @@ function ShareToNostrDialog({ item, onClose, feedTitle, feedImage }: { item: RSS
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                 <div className="flex items-center gap-1">
                   <AudioLines className="w-3 h-3 text-green-800/70 dark:text-green-400/70" />
-                  <span className="text-[10px] text-green-800/60 dark:text-green-400/60 font-mono uppercase tracking-wider">Audio</span>
+                  <span className="text-[10px] text-success dark:text-green-400/60 font-mono uppercase tracking-wider">Audio</span>
                 </div>
                 {imageUrl && (
                   <div className="flex items-center gap-1">

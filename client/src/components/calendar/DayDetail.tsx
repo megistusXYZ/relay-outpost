@@ -206,7 +206,7 @@ export function DayDetail({
                 icon={<FileText className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
                 label="Published"
                 count={publishedItems.length}
-                colorClass="text-emerald-600 dark:text-emerald-400"
+                colorClass="text-success dark:text-emerald-400"
               >
                 {publishedItems.map((item) =>
                   item.type === "published" ? <PublishedPostCard key={item.id} item={item} /> : null,

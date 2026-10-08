@@ -1066,7 +1066,7 @@ function WaveCreateForm({
       <h3 className="text-xs font-brand tracking-wider uppercase text-brand">New discussion</h3>
       <div className="flex items-center gap-1.5">
         <Lock className="w-3 h-3 text-emerald-600/70 dark:text-emerald-400/70" />
-        <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70">
+        <p className="text-[10px] text-success dark:text-emerald-400/70">
           Publishing to {relayUrl.replace(/^wss?:\/\//, "")} only
         </p>
       </div>
@@ -1339,7 +1339,7 @@ function CommentComposer({
     <div className={`${compact ? "" : "mt-3"}`}>
       <div className="flex items-center gap-1.5 mb-1.5">
         <Lock className="w-2.5 h-2.5 text-emerald-600/60 dark:text-emerald-400/60" />
-        <span className="text-[9px] text-emerald-600/60 dark:text-emerald-400/60">
+        <span className="text-[9px] text-success dark:text-emerald-400/60">
           {relayUrl.replace(/^wss?:\/\//, "")} only
         </span>
       </div>
@@ -2637,7 +2637,7 @@ function CommunityInfoPanel({
               return (
                 <div key={server} className="flex items-center gap-1.5 text-[11px]">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/70 shrink-0" />
-                  <span className="text-emerald-600/80 dark:text-emerald-400/80 font-mono truncate">{hostname}</span>
+                  <span className="text-success dark:text-emerald-400/80 font-mono truncate">{hostname}</span>
                   <Badge variant="outline" className="text-[8px] h-3.5 px-1 border-emerald-600/20 dark:border-emerald-400/20 text-emerald-600/60 dark:text-emerald-400/60 shrink-0">
                     Blossom
                   </Badge>
@@ -4170,7 +4170,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                         )}
                         {operatorPubkey && <div className="flex-1" />}
                         {nip11?.blossom_servers && nip11.blossom_servers.length > 0 && (
-                          <span className="flex items-center gap-1 text-emerald-600/70 dark:text-emerald-400/70" title={`Media hosted by ${nip11.blossom_servers.map(s => { try { return new URL(s).hostname; } catch { return s; } }).join(", ")}`}>
+                          <span className="flex items-center gap-1 text-success dark:text-emerald-400/70" title={`Media hosted by ${nip11.blossom_servers.map(s => { try { return new URL(s).hostname; } catch { return s; } }).join(", ")}`}>
                             <Package className="w-3 h-3" />
                             <span className="hidden sm:inline">Blossom</span>
                           </span>
@@ -5525,7 +5525,7 @@ export default function Outposts() {
                             <span className="block text-sm truncate">{m.name}</span>
                             <span className="block text-[11px] text-muted-foreground/60 truncate">{m.url.replace(/^wss?:\/\//, "")}</span>
                           </span>
-                          <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 shrink-0">Joined</span>
+                          <span className="text-[10px] text-success dark:text-emerald-400/80 shrink-0">Joined</span>
                         </button>
                       ))}
                     </>
@@ -5575,7 +5575,7 @@ export default function Outposts() {
       {joinedRelays.length > 0 && (
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-2">
-            <h2 className="text-xs font-brand tracking-wider uppercase text-emerald-600/70 dark:text-emerald-400/70">
+            <h2 className="text-xs font-brand tracking-wider uppercase text-success dark:text-emerald-400/70">
               Your communities
             </h2>
             <span className="text-[10px] text-muted-foreground/40">{joinedRelays.length}</span>

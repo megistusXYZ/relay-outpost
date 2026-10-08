@@ -73,7 +73,7 @@ function escapeHtml(str: string): string {
 function getRelayModeStyle(preset: string): { text: string; dot: string } {
   switch (preset) {
     case "private": return { text: "text-amber-600 dark:text-amber-400/80", dot: "bg-amber-400" };
-    case "public": return { text: "text-green-600 dark:text-green-400/80", dot: "bg-green-400" };
+    case "public": return { text: "text-success dark:text-green-400/80", dot: "bg-green-400" };
     case "all": return { text: "text-brand dark:text-brand/80", dot: "bg-brand" };
     default: return { text: "text-muted-foreground/70", dot: "bg-muted-foreground/40" };
   }
@@ -400,7 +400,7 @@ function ImageInsertPopover({
         </Button>
         <Popover>
           <PopoverTrigger asChild>
-            <button className="text-[10px] text-green-500/40 hover:text-green-500/70 flex items-center gap-1 pt-1 transition-colors cursor-pointer" data-testid="button-inline-image-privacy">
+            <button className="text-[10px] text-success dark:text-green-500/40 hover:text-green-500/70 flex items-center gap-1 pt-1 transition-colors cursor-pointer" data-testid="button-inline-image-privacy">
               <ShieldCheck className="w-2.5 h-2.5" />
               Signal protected
             </button>
@@ -651,7 +651,7 @@ function BannerUploadZone({
       </button>
       <Popover>
         <PopoverTrigger asChild>
-          <button className="text-[10px] text-green-500/40 hover:text-green-500/70 flex items-center gap-1 justify-center w-full transition-colors cursor-pointer py-0.5" data-testid="button-banner-privacy">
+          <button className="text-[10px] text-success dark:text-green-500/40 hover:text-green-500/70 flex items-center gap-1 justify-center w-full transition-colors cursor-pointer py-0.5" data-testid="button-banner-privacy">
             <ShieldCheck className="w-2.5 h-2.5" />
             Signal protected
           </button>
@@ -2027,7 +2027,7 @@ export default function ArticleEditor() {
           <div className="flex items-center justify-between px-3 py-2 text-[11px] text-muted-foreground/50 rounded-lg bg-card/30 dark:bg-card/10 border border-border/20 dark:border-primary/8" data-testid="editor-stats">
             <span className="font-mono tracking-wide">{wordCount} words · {readTime} min read</span>
             {hasUnsavedChanges && <span className="text-amber-500/70 font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500/70 animate-pulse" />Unsaved changes</span>}
-            {currentDraftId && !hasUnsavedChanges && <span className="text-green-500/70 font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500/70" />Draft saved</span>}
+            {currentDraftId && !hasUnsavedChanges && <span className="text-success dark:text-green-500/70 font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500/70" />Draft saved</span>}
           </div>
         </div>
 

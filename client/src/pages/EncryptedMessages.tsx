@@ -145,7 +145,7 @@ export default function EncryptedMessages() {
                 <div className="rounded-lg bg-emerald-500/[0.05] dark:bg-emerald-500/[0.03] border border-emerald-500/15 px-3 py-2">
                   <div className="flex items-center gap-2">
                     <EyeOff className="w-3 h-3 text-emerald-500/60" />
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">Hidden from relays</span>
+                    <span className="text-success dark:text-emerald-400 font-bold text-[11px]">Hidden from relays</span>
                   </div>
                   <p className="text-[12px] text-foreground/60 mt-0.5">Message content, sender identity, conversation thread, and timestamps of the inner message.</p>
                 </div>

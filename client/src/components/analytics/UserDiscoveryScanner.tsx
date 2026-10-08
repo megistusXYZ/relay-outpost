@@ -95,7 +95,7 @@ const PACE_INFO: Record<string, string> = {
   "Just Started": "Not enough activity to assess pace yet" };
 
 const RATING_INFO: Record<string, { icon: typeof Rocket; color: string; description: string }> = {
-  "Fast Adopter": { icon: Rocket, color: "text-green-800 dark:text-green-400", description: "All milestones hit within 30 days" },
+  "Fast Adopter": { icon: Rocket, color: "text-success dark:text-green-400", description: "All milestones hit within 30 days" },
   "Steady Builder": { icon: Timer, color: "text-amber-800 dark:text-amber-400", description: "Longest milestone under 90 days" },
   "Slow Burner": { icon: Target, color: "text-orange-800 dark:text-orange-400", description: "Longest milestone over 90 days" },
   "No Activity": { icon: Gauge, color: "text-muted-foreground", description: "Zero milestones achieved" } };

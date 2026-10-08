@@ -2797,7 +2797,7 @@ export default function Profile() {
                         })}
                       </div>
                       <span className={`banner-hud-value font-mono text-[11px] font-bold ${
-                        grapeRankTier === "strong" ? "text-emerald-800 dark:text-emerald-300" :
+                        grapeRankTier === "strong" ? "text-success dark:text-emerald-300" :
                         grapeRankTier === "moderate" ? "text-blue-700 dark:text-blue-300" :
                         grapeRankTier === "low" ? "text-cyan-800 dark:text-cyan-300" :
                         "text-amber-800 dark:text-amber-300"
@@ -3582,7 +3582,7 @@ function ProfileRelaysTab({ relayList, fetched }: { relayList: RelayPreference[]
                   )}
                   <div className="ml-auto shrink-0">
                     {connected ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400/80 font-medium" data-testid={`badge-connected-${r.url}`}>
+                      <span className="inline-flex items-center gap-1 text-[10px] text-success dark:text-green-400/80 font-medium" data-testid={`badge-connected-${r.url}`}>
                         <Check className="w-3 h-3" />
                         Connected
                       </span>
@@ -3620,7 +3620,7 @@ function ProfileRelaysTab({ relayList, fetched }: { relayList: RelayPreference[]
                   <span className="font-mono text-xs truncate text-foreground/80 dark:text-foreground">{r.url.replace("wss://", "")}</span>
                   <div className="ml-auto shrink-0">
                     {connected ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400/80 font-medium" data-testid={`badge-connected-${r.url}`}>
+                      <span className="inline-flex items-center gap-1 text-[10px] text-success dark:text-green-400/80 font-medium" data-testid={`badge-connected-${r.url}`}>
                         <Check className="w-3 h-3" />
                         Connected
                       </span>

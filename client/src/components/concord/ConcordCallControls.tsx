@@ -79,7 +79,7 @@ export function ConcordCallButton({ community, channel, title, compact }: {
       onClick={() => { if (channel && !here && !joining && canEncrypt) void join(community, channel, title); }}
       disabled={!channel || joining || (!here && !canEncrypt)}
       className={`flex items-center justify-center ${size} shrink-0 rounded-full transition-colors disabled:opacity-60 ${
-        here ? "text-emerald-600 bg-emerald-500/10 dark:text-emerald-400" : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/40"
+        here ? "text-success bg-emerald-500/10 dark:text-emerald-400" : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/40"
       }`}
       title={here ? "You're in this room's call" : canEncrypt ? "Start or join a call" : NO_ENCRYPTION}
       aria-label={here ? "In this room's call" : canEncrypt ? "Start or join a call" : NO_ENCRYPTION}

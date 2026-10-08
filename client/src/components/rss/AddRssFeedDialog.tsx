@@ -289,7 +289,7 @@ function TrendingTile({ feed, onPreview, onAdd, isAdded }: {
 function MomentumChip({ momentum }: { momentum: TrendMomentum }) {
   const styles = {
     new: "bg-sky-400/10 border-sky-400/30 text-sky-500/90",
-    rising: "bg-emerald-400/10 border-emerald-400/30 text-emerald-500/90",
+    rising: "bg-emerald-400/10 border-emerald-400/30 text-success dark:text-emerald-500/90",
     surging: "bg-amber-400/10 border-amber-400/30 text-amber-500/90",
   }[momentum];
   return (
@@ -1061,7 +1061,7 @@ function AddFeedBody({
               <p className="text-[10px] text-muted-foreground/40 font-mono truncate">{f.url}</p>
             </div>
             {added
-              ? <span className="text-[10px] text-emerald-800/70 dark:text-emerald-400/70 shrink-0">Added</span>
+              ? <span className="text-[10px] text-success dark:text-emerald-400/70 shrink-0">Added</span>
               : <Plus className="w-3.5 h-3.5 text-muted-foreground/30 group-hover:text-brand shrink-0 transition-colors" />}
           </button>
         );

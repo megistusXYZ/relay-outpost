@@ -70,15 +70,15 @@ export default function WotVsAlgorithms() {
               <p>Web of Trust (WoT) is a completely different approach to filtering information. Instead of a company deciding what you see, <strong>your own network of trusted people decides</strong>:</p>
               <div className="space-y-1.5 mt-2">
                 <div className="rounded-lg bg-muted/10 dark:bg-white/[0.03] border border-border/20 px-3 py-2">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs">The Core Idea</span>
+                  <span className="text-success dark:text-emerald-400 font-bold text-xs">The Core Idea</span>
                   <p className="text-[12px] text-foreground/60 mt-0.5">You trust certain people. Those people trust certain people. Trust flows through the network like word-of-mouth recommendations — the same way humans have built trust for thousands of years.</p>
                 </div>
                 <div className="rounded-lg bg-muted/10 dark:bg-white/[0.03] border border-border/20 px-3 py-2">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs">How It's Calculated</span>
+                  <span className="text-success dark:text-emerald-400 font-bold text-xs">How It's Calculated</span>
                   <p className="text-[12px] text-foreground/60 mt-0.5">Your follow list is the starting point. People you follow get high trust. People they follow get lower trust. People three hops away get even less. The math creates concentric circles of trust radiating outward from you.</p>
                 </div>
                 <div className="rounded-lg bg-muted/10 dark:bg-white/[0.03] border border-border/20 px-3 py-2">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs">No Central Authority</span>
+                  <span className="text-success dark:text-emerald-400 font-bold text-xs">No Central Authority</span>
                   <p className="text-[12px] text-foreground/60 mt-0.5">Every person's WoT is unique. There's no global "trust score" — your trust network is shaped by your choices and your community.</p>
                 </div>
               </div>
@@ -96,7 +96,7 @@ export default function WotVsAlgorithms() {
                 <div className="grid grid-cols-3 gap-2 text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider px-1">
                   <span></span>
                   <span className="text-red-500/60">Algorithm</span>
-                  <span className="text-emerald-500/60">Web of Trust</span>
+                  <span className="text-success dark:text-emerald-500/60">Web of Trust</span>
                 </div>
                 {[
                   ["Who decides?", "A corporation", "You"],
@@ -110,7 +110,7 @@ export default function WotVsAlgorithms() {
                   <div key={i} className="grid grid-cols-3 gap-2 rounded-lg bg-muted/10 dark:bg-white/[0.03] border border-border/15 px-3 py-2">
                     <span className="text-[12px] font-semibold text-foreground/70">{label}</span>
                     <span className="text-[11px] text-red-500/70">{algo}</span>
-                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400">{wot}</span>
+                    <span className="text-[11px] text-success dark:text-emerald-400">{wot}</span>
                   </div>
                 ))}
               </div>
@@ -183,7 +183,7 @@ export default function WotVsAlgorithms() {
             Algorithms optimize for the platform's bottom line. WoT optimizes for what actually matters to you — the people you know, respect, and choose to listen to.
           </p>
           <div className="flex items-center justify-center gap-3">
-            <Link href="/shield-matrix" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-medium transition-all duration-200 hover:bg-emerald-500/15">
+            <Link href="/shield-matrix" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500/10 text-success dark:text-emerald-400 border border-emerald-500/20 text-xs font-medium transition-all duration-200 hover:bg-emerald-500/15">
               Open Trust &amp; Safety
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>

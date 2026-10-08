@@ -1139,7 +1139,7 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
 
       <div className="flex flex-wrap gap-2" data-testid="ops-access-strip">
         <button type="button" onClick={() => onOpenPeople?.("allowed")} className="min-h-[44px] inline-flex items-center gap-2 rounded-full border border-black/[0.1] dark:border-white/[0.12] px-4 text-[14px] hover:border-brand/40" data-testid="ops-access-stat-allowed">
-          Approved <span className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">{allowlist.length.toLocaleString()}</span>
+          Approved <span className="font-semibold tabular-nums text-success dark:text-emerald-400">{allowlist.length.toLocaleString()}</span>
         </button>
         <button type="button" onClick={() => onOpenPeople?.("banned")} className="min-h-[44px] inline-flex items-center gap-2 rounded-full border border-black/[0.1] dark:border-white/[0.12] px-4 text-[14px] hover:border-brand/40" data-testid="ops-access-stat-blocked">
           Banned <span className="font-semibold tabular-nums text-danger dark:text-red-400">{blocklist.length.toLocaleString()}</span>
@@ -1265,10 +1265,10 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
           type="allow"
           icon={<UserCheck className="w-3.5 h-3.5 text-green-600 dark:text-green-400/70" />}
           label="Allowed to post"
-          labelClass="text-green-700 dark:text-green-300/80"
+          labelClass="text-success dark:text-green-300/80"
           description="Where only approved people can post, these are the approved people."
           borderClass="border-green-400/25 dark:border-green-400/15"
-          badgeClass="border-green-400/30 dark:border-green-400/20 text-green-600 dark:text-green-400/70"
+          badgeClass="border-green-400/30 dark:border-green-400/20 text-success dark:text-green-400/70"
           list={allowlist}
           inputValue={newAllow}
           setInput={setNewAllow}

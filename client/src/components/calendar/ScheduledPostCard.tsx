@@ -42,8 +42,8 @@ const STATUS_COLORS: Record<string, { dot: string; badge: string; text: string }
   },
   published: {
     dot: "bg-emerald-500",
-    badge: "bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 border-emerald-500/20",
-    text: "text-emerald-800 dark:text-emerald-400",
+    badge: "bg-emerald-500/10 text-success dark:text-emerald-400 border-emerald-500/20",
+    text: "text-success dark:text-emerald-400",
   },
   cancelled: {
     dot: "bg-gray-500",
@@ -269,7 +269,7 @@ export function ScheduledPostCard({ post, onCancel, onReschedule, onRetry }: Sch
                 {getKindLabel(post.kind)}
               </Badge>
               {(post as any).backend === "device" && (
-                <Badge variant="outline" className="text-[9px] uppercase tracking-wider border-emerald-500/40 text-emerald-600 dark:text-emerald-400" title="Stored only on this device; publishes when the app is open.">
+                <Badge variant="outline" className="text-[9px] uppercase tracking-wider border-emerald-500/40 text-success dark:text-emerald-400" title="Stored only on this device; publishes when the app is open.">
                   On device
                 </Badge>
               )}

@@ -400,7 +400,7 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
                       <div className="text-[10px] text-muted-foreground/50">Invited {formatCompactTime(Math.floor(s.at / 1000))}</div>
                     </div>
                     {joined ? (
-                      <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-500 shrink-0 pr-1">
+                      <span className="flex items-center gap-1 text-[10px] font-medium text-success dark:text-emerald-500 shrink-0 pr-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> In the group
                       </span>
                     ) : (

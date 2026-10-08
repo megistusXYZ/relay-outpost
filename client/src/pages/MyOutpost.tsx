@@ -1564,7 +1564,7 @@ export default function MyOutpost() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className={`text-[9px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 leading-none ${recalculating ? "text-brand bg-brand/10 border border-brand/20 shadow-[0_0_6px_rgba(139,92,246,0.15)]" : "text-emerald-800 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_6px_rgba(52,211,153,0.15)]"}`}>{recalculating ? "Processing" : "Active"}</span>
+                    <span className={`text-[9px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 leading-none ${recalculating ? "text-brand bg-brand/10 border border-brand/20 shadow-[0_0_6px_rgba(139,92,246,0.15)]" : "text-success dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_6px_rgba(52,211,153,0.15)]"}`}>{recalculating ? "Processing" : "Active"}</span>
                     {recalculating ? (
                       <a
                         href="https://brainstorm.nosfabrica.com"
@@ -2553,7 +2553,7 @@ function EditProfileForm({
             {nip05HasValue && (
               <div className="mt-1 min-h-[1rem]" data-testid="status-nip05-verify">
                 {nip05Status === "verified" ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-600 dark:text-green-400">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success dark:text-green-400">
                     <BadgeCheck className="w-3.5 h-3.5" /> Verified
                   </span>
                 ) : nip05Status === "loading" || nip05Status === "unknown" ? (
@@ -2592,7 +2592,7 @@ function EditProfileForm({
             {lnTest !== "idle" && (
               <div className="mt-1 min-h-[1rem]" data-testid="status-lud16-test">
                 {lnTest === "ok" ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-600 dark:text-green-400">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success dark:text-green-400">
                     <Check className="w-3.5 h-3.5" /> Reachable
                   </span>
                 ) : lnTest === "fail" ? (
@@ -3029,7 +3029,7 @@ function UpcomingStreamsSection({
                   <button
                     type="button"
                     onClick={() => startGoLive(stream)}
-                    className="p-1 rounded text-green-600/60 dark:text-green-400/60 hover:text-green-700 dark:hover:text-green-300 transition-colors"
+                    className="p-1 rounded text-success dark:text-green-400/60 hover:text-green-700 dark:hover:text-green-300 transition-colors"
                     title="Go Live"
                   >
                     <Play className="w-3.5 h-3.5" />
@@ -3904,7 +3904,7 @@ function WalletSection({ visible, onToggleVisibility, balance, balanceLoading, t
                     <span className="truncate flex-1 text-muted-foreground">
                       {tx.description || (tx.type === "incoming" ? "Received" : "Sent")}
                     </span>
-                    <span className={`tabular-nums font-medium shrink-0 ${tx.type === "incoming" ? "text-green-500/90" : "text-orange-500/90"}`}>
+                    <span className={`tabular-nums font-medium shrink-0 ${tx.type === "incoming" ? "text-success dark:text-green-500/90" : "text-orange-500/90"}`}>
                       {tx.type === "incoming" ? "+" : "-"}{formatSats(msatToSats(tx.amount))}
                     </span>
                     <span className="text-[11px] text-muted-foreground/50 shrink-0 tabular-nums">
@@ -4082,9 +4082,9 @@ const ACTIVITY_TYPE_CONFIG: Record<ActivityType, { label: string; icon: typeof F
   post: { label: "Posted", icon: FileText, colorClass: "text-blue-600 dark:text-blue-400" },
   reply: { label: "Replied", icon: CornerUpLeft, colorClass: "text-brand" },
   reaction: { label: "Reacted", icon: Heart, colorClass: "text-pink-600 dark:text-pink-400" },
-  repost: { label: "Reposted", icon: Repeat2, colorClass: "text-green-600 dark:text-green-400" },
+  repost: { label: "Reposted", icon: Repeat2, colorClass: "text-success dark:text-green-400" },
   zap: { label: "Zapped", icon: BtcZapIcon as unknown as typeof FileText, colorClass: "text-amber-600 dark:text-amber-400" },
-  follow: { label: "Followed", icon: Users, colorClass: "text-emerald-600 dark:text-emerald-400" },
+  follow: { label: "Followed", icon: Users, colorClass: "text-success dark:text-emerald-400" },
   unfollow: { label: "Unfollowed", icon: EyeOff, colorClass: "text-slate-500 dark:text-slate-400" },
   mute: { label: "Muted", icon: EyeOff, colorClass: "text-orange-600 dark:text-orange-400" },
   unmute: { label: "Unmuted", icon: Eye, colorClass: "text-teal-600 dark:text-teal-400" },
@@ -4683,10 +4683,10 @@ function FlightLogTab({ pubkey }: { pubkey: string }) {
             { label: "Posts", value: weekStats.posts, color: "text-blue-600 dark:text-blue-400", icon: FileText, filter: "post" as ActivityType | "all" },
             { label: "Replies", value: weekStats.replies, color: "text-brand", icon: CornerUpLeft, filter: "reply" as ActivityType | "all" },
             { label: "Reactions", value: weekStats.reactions, color: "text-pink-600 dark:text-pink-400", icon: Heart, filter: "reaction" as ActivityType | "all" },
-            { label: "Reposts", value: weekStats.reposts, color: "text-green-600 dark:text-green-400", icon: Repeat2, filter: "repost" as ActivityType | "all" },
+            { label: "Reposts", value: weekStats.reposts, color: "text-success dark:text-green-400", icon: Repeat2, filter: "repost" as ActivityType | "all" },
             { label: "Zaps", value: weekStats.zaps, color: "text-amber-600 dark:text-amber-400", icon: BtcZapIcon as typeof FileText, filter: "zap" as ActivityType | "all" },
             { label: "Sats Sent", value: weekStats.totalSats > 999 ? `${(weekStats.totalSats / 1000).toFixed(1)}k` : weekStats.totalSats, color: "text-amber-600 dark:text-amber-300", icon: BtcZapIcon as typeof FileText, filter: "zap" as ActivityType | "all" },
-            { label: "Follows", value: weekStats.follows + weekStats.unfollows, color: "text-emerald-600 dark:text-emerald-400", icon: Users, filter: "follow" as ActivityType | "all" },
+            { label: "Follows", value: weekStats.follows + weekStats.unfollows, color: "text-success dark:text-emerald-400", icon: Users, filter: "follow" as ActivityType | "all" },
             { label: "Mutes", value: weekStats.mutes + weekStats.unmutes, color: "text-orange-600 dark:text-orange-400", icon: EyeOff, filter: "mute" as ActivityType | "all" },
             { label: "Reports", value: weekStats.reports, color: "text-red-600 dark:text-red-400", icon: ShieldCheck, filter: "report" as ActivityType | "all" },
           ].map((stat) => (

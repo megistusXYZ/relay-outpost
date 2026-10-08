@@ -313,7 +313,7 @@ export function ContentFormatEvolution({ relays: propRelays }: { relays?: string
               <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Fastest Growing</p>
               <div className="flex items-center gap-1.5">
                 <TrendIcon className="w-3.5 h-3.5 text-emerald-800 dark:text-emerald-400" />
-                <p className="text-lg font-mono text-emerald-800 dark:text-emerald-400" data-testid="text-fastest-growing">
+                <p className="text-lg font-mono text-success dark:text-emerald-400" data-testid="text-fastest-growing">
                   {summary.fastestGrowing}
                 </p>
               </div>
@@ -433,7 +433,7 @@ export function ContentFormatEvolution({ relays: propRelays }: { relays?: string
                 <div className="space-y-2">
                   {formatStats.map((stat) => {
                     const DirectionIcon = stat.direction === "up" ? TrendingUp : stat.direction === "down" ? TrendingDown : Minus;
-                    const dirColor = stat.direction === "up" ? "text-emerald-800 dark:text-emerald-400" : stat.direction === "down" ? "text-red-700 dark:text-red-400" : "text-muted-foreground";
+                    const dirColor = stat.direction === "up" ? "text-success dark:text-emerald-400" : stat.direction === "down" ? "text-red-700 dark:text-red-400" : "text-muted-foreground";
                     return (
                       <div
                         key={stat.name}

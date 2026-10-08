@@ -707,7 +707,7 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
               <div className="flex items-center gap-1.5">
                 <HelpCircle className="w-3.5 h-3.5 text-emerald-800 dark:text-emerald-400" />
                 <div className="min-w-0">
-                  <p className="text-lg font-mono text-emerald-800 dark:text-emerald-400" data-testid="text-identified-pct">
+                  <p className="text-lg font-mono text-success dark:text-emerald-400" data-testid="text-identified-pct">
                     {summary.identifiedPct}%
                   </p>
                   <p className="text-[10px] text-muted-foreground/50">

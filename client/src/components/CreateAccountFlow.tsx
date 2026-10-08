@@ -1720,7 +1720,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
               <div className="space-y-4">
                 <div className={`rounded-md p-3 flex items-start gap-2 ${isOverlay ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-emerald-500/10 border border-emerald-500/30"}`} data-testid="panel-secured">
                   <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${isOverlay ? "text-emerald-300" : "text-emerald-700"}`} />
-                  <p className={`text-xs leading-relaxed ${isOverlay ? "text-emerald-100" : "text-emerald-900"}`}>
+                  <p className={`text-xs leading-relaxed ${isOverlay ? "text-emerald-100" : "text-success dark:text-emerald-900"}`}>
                     Your account is saved on this device{passkeyBlob ? " and unlocks with a tap" : ""}. Only you hold the key that controls it.
                   </p>
                 </div>
@@ -1743,7 +1743,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                   <Button
                     onClick={handleDownloadBackup}
                     variant="outline"
-                    className={`w-full text-xs font-brand uppercase tracking-widest transition-all ${downloadJustSaved ? (isOverlay ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700") : (isOverlay ? "border-white/20 text-white/80" : "")}`}
+                    className={`w-full text-xs font-brand uppercase tracking-widest transition-all ${downloadJustSaved ? (isOverlay ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200" : "border-emerald-500/40 bg-emerald-500/10 text-success dark:text-emerald-700") : (isOverlay ? "border-white/20 text-white/80" : "")}`}
                     data-testid="button-download-backup"
                   >
                     {downloadJustSaved ? <CheckCircle2 className="w-4 h-4 mr-2" /> : downloaded ? <Check className="w-4 h-4 mr-2" /> : <Download className="w-4 h-4 mr-2" />}
@@ -1754,7 +1754,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                       onClick={handleSaveEncryptedToManager}
                       disabled={savingEncryptedToManager}
                       variant="outline"
-                      className={`w-full text-xs font-brand uppercase tracking-widest transition-all ${savedEncryptedToManager ? (isOverlay ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700") : (isOverlay ? "border-white/20 text-white/80" : "")}`}
+                      className={`w-full text-xs font-brand uppercase tracking-widest transition-all ${savedEncryptedToManager ? (isOverlay ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200" : "border-emerald-500/40 bg-emerald-500/10 text-success dark:text-emerald-700") : (isOverlay ? "border-white/20 text-white/80" : "")}`}
                       data-testid="button-save-ncryptsec-to-password-manager"
                     >
                       {savingEncryptedToManager ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : savedEncryptedToManager ? <Check className="w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />}

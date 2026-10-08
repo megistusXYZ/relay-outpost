@@ -475,7 +475,7 @@ export function UnifiedArticleSearch({
                       )}
                     </div>
                     {a.wot !== null && (
-                      <div className="flex items-center gap-1 text-[10px] text-emerald-500/80 shrink-0" title="Web of Trust score">
+                      <div className="flex items-center gap-1 text-[10px] text-success dark:text-emerald-500/80 shrink-0" title="Web of Trust score">
                         <ShieldCheck className="w-3 h-3" />
                         <span className="font-mono">{Math.round((a.wot ?? 0) * 100)}</span>
                       </div>

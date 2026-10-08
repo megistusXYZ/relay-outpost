@@ -389,7 +389,7 @@ export function AnnounceTab({ relayUrl, nip11, part = "card" }: { relayUrl: stri
             icon={Globe}
             label="Relay Card"
             action={nip11 && (
-              <Badge variant="outline" className={`text-[10px] ${completenessScore === 100 ? "border-green-400/30 dark:border-green-400/20 text-green-600 dark:text-green-400/70" : "border-amber-400/30 dark:border-amber-400/20 text-amber-600 dark:text-amber-400/70"}`}>
+              <Badge variant="outline" className={`text-[10px] ${completenessScore === 100 ? "border-green-400/30 dark:border-green-400/20 text-success dark:text-green-400/70" : "border-amber-400/30 dark:border-amber-400/20 text-amber-600 dark:text-amber-400/70"}`}>
                 {completenessScore}% complete
               </Badge>
             )}
@@ -600,7 +600,7 @@ export function AnnounceTab({ relayUrl, nip11, part = "card" }: { relayUrl: stri
                           className={`text-[10px] px-1.5 py-0 ${
                             protectedTagged
                               ? "border-amber-400/30 dark:border-amber-400/20 text-amber-600 dark:text-amber-400/70"
-                              : "border-green-400/30 dark:border-green-400/20 text-green-600 dark:text-green-400/70"
+                              : "border-green-400/30 dark:border-green-400/20 text-success dark:text-green-400/70"
                           }`}
                           title={protectedTagged
                             ? `NIP-70 ["-"] tag present — well-behaved relays will not rebroadcast this beyond ${relayUrl.replace(/^wss?:\/\//, "")}.`

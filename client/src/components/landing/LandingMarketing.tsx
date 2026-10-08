@@ -405,7 +405,7 @@ function PwaAction() {
 
   if (isStandalone) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[11px] font-brand uppercase tracking-[0.15em] text-emerald-800/90 dark:text-emerald-300/90">
+      <span className="inline-flex items-center gap-1.5 text-[11px] font-brand uppercase tracking-[0.15em] text-success dark:text-emerald-300/90">
         <Check className="h-3.5 w-3.5" />
         Installed
       </span>

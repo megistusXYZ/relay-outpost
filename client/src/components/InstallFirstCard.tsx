@@ -122,7 +122,7 @@ export function InstallFirstCard({ variant = "overlay" }: Props) {
           </p>
 
           {installed ? (
-            <div className={`mt-3 inline-flex items-center gap-1.5 text-xs ${isOverlay ? "text-emerald-200" : "text-emerald-600 dark:text-emerald-400"}`}>
+            <div className={`mt-3 inline-flex items-center gap-1.5 text-xs ${isOverlay ? "text-emerald-200" : "text-success dark:text-emerald-400"}`}>
               <Check className="w-3.5 h-3.5" />
               Installed — open from your home screen to continue.
             </div>

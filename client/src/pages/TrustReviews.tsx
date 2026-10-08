@@ -119,7 +119,7 @@ function AuthoredReviewCard({
             className={`gap-1 text-[10px] h-5 px-1.5 font-medium ${
               isIdentity
                 ? "text-muted-foreground/70 bg-muted/20 border-border/30"
-                : "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                : "text-success dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
             }`}
           >
             {isIdentity ? <BadgeCheck className="w-2.5 h-2.5" /> : <Heart className="w-2.5 h-2.5" />}

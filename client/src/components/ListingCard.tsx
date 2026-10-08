@@ -76,7 +76,7 @@ function SellerVouches({ pubkey, sellerNpub }: { pubkey: string; sellerNpub: str
     <div className="border-t border-border/40 pt-3 space-y-2" data-testid="listing-vouches">
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-1.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400"
+        className="flex w-full items-center gap-1.5 text-[11px] font-medium text-success dark:text-emerald-400"
         data-testid="listing-vouches-toggle"
       >
         <BadgeCheck className="w-3.5 h-3.5" />
@@ -202,7 +202,7 @@ export function ListingDialog({ listing, open, onOpenChange }: { listing: Listin
                         <ShieldAlert className="w-3 h-3 shrink-0" /> Flagged in your network
                       </span>
                     ) : (sellerTier === "strong" || sellerTier === "moderate") ? (
-                      <span className="inline-flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400 whitespace-nowrap" data-testid="listing-seller-trust">
+                      <span className="inline-flex items-center gap-1 font-medium text-success dark:text-emerald-400 whitespace-nowrap" data-testid="listing-seller-trust">
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${sellerTier === "strong" ? "bg-emerald-500" : "bg-sky-500"}`} />
                         {getSignalTierLabel(sellerTier)}
                       </span>

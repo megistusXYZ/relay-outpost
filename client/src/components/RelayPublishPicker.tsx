@@ -44,8 +44,8 @@ const PRESETS: { key: RelayPreset; label: string; icon: React.ReactNode; activeC
   },
   {
     key: "public", label: "Public Only", icon: <Globe className="w-3.5 h-3.5" />,
-    activeClasses: "border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-300 shadow-[0_0_12px_-3px_rgba(34,197,94,0.25)]",
-    checkBg: "bg-green-500/20", checkIcon: "text-green-800", iconActive: "text-green-600 dark:text-green-400",
+    activeClasses: "border-green-500/40 bg-green-500/10 text-success dark:text-green-300 shadow-[0_0_12px_-3px_rgba(34,197,94,0.25)]",
+    checkBg: "bg-green-500/20", checkIcon: "text-success dark:text-green-800", iconActive: "text-success dark:text-green-400",
   },
 ];
 
@@ -535,7 +535,7 @@ function RelayItem({
               className={`text-[8px] sm:text-[9px] px-1.5 py-0 h-4 shrink-0 gap-0.5 ${
                 access === "private"
                   ? "border-amber-500/30 text-amber-600 dark:text-amber-500/80 bg-amber-500/[0.06]"
-                  : "border-green-500/30 text-green-600 dark:text-green-500/80 bg-green-500/[0.06]"
+                  : "border-green-500/30 text-success dark:text-green-500/80 bg-green-500/[0.06]"
               }`}
             >
               {access === "private" ? (

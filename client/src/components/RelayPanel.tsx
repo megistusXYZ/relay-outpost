@@ -108,7 +108,7 @@ export function RelayPanel() {
   const renderStatusDot = (status: RelayStatus["status"]) => {
     const color =
       status === "connected"
-        ? "text-emerald-500"
+        ? "text-success dark:text-emerald-500"
         : status === "connecting"
           ? "text-yellow-500 animate-pulse"
           : "text-muted-foreground/60";
@@ -122,7 +122,7 @@ export function RelayPanel() {
         ? "text-brand/80 border-brand/30"
         : mode === "read"
           ? "text-brand/80 border-brand/30"
-          : "text-emerald-500/80 border-emerald-500/30";
+          : "text-success dark:text-emerald-500/80 border-emerald-500/30";
     return (
       <span
         className={`text-[9px] font-mono uppercase tracking-wider px-1 py-[1px] rounded border ${tone}`}

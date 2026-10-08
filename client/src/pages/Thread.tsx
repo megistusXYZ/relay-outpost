@@ -382,7 +382,7 @@ function NotificationBanner({ ntype, byPubkey, sats, emoji }: { ntype: string; b
         return {
           icon: <Repeat className="w-4 h-4" />,
           label: "reposted this note",
-          color: "text-green-600 dark:text-green-400",
+          color: "text-success dark:text-green-400",
           bgColor: "bg-green-500/10 dark:bg-green-500/8",
           borderColor: "border-green-500/25 dark:border-green-500/15",
         };

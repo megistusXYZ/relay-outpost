@@ -107,7 +107,7 @@ export function SuggestionsBoard({ relayUrl, recipient }: { relayUrl: string; re
           </button>
           <p className="text-[12px] text-muted-foreground">
             <Name pubkey={t.reporter} />
-            {t.status !== "open" && <> · <span className={t.status === "draft" ? "text-amber-700 dark:text-amber-400" : t.status === "resolved" ? "text-emerald-700 dark:text-emerald-400" : ""} data-testid="suggestion-status">{t.status === "resolved" ? "Done" : statusLabel(t.status)}</span></>}
+            {t.status !== "open" && <> · <span className={t.status === "draft" ? "text-amber-700 dark:text-amber-400" : t.status === "resolved" ? "text-success dark:text-emerald-400" : ""} data-testid="suggestion-status">{t.status === "resolved" ? "Done" : statusLabel(t.status)}</span></>}
             {replies ? ` · ${replies} ${replies === 1 ? "reply" : "replies"}` : ""} · {formatDistanceToNow(t.createdAt * 1000, { addSuffix: true })}
           </p>
           {expanded && (

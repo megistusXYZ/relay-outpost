@@ -214,7 +214,7 @@ export function TrustTierDot({ pubkey }: { pubkey: string }) {
     : tier === "moderate" ? `Recognized by your trusted connections · ${Math.round(tierThresholds.moderate * 100)}%–${Math.round(tierThresholds.strong * 100) - 1}%`
     : `Some presence in your trust graph · ${Math.round(tierThresholds.low * 100)}%–${Math.round(tierThresholds.moderate * 100) - 1}%`;
   const labelColor = tier === "strong"
-    ? "text-emerald-700 dark:text-emerald-400"
+    ? "text-success dark:text-emerald-400"
     : tier === "moderate"
     ? "text-blue-700 dark:text-blue-400"
     : "text-cyan-700 dark:text-cyan-400";
@@ -224,7 +224,7 @@ export function TrustTierDot({ pubkey }: { pubkey: string }) {
     ? "border-blue-500/25 shadow-[0_4px_20px_rgba(59,130,246,0.08)]"
     : "border-cyan-500/20 shadow-[0_4px_20px_rgba(34,211,238,0.06)]";
   const scoreColor = tier === "strong"
-    ? "text-emerald-600 dark:text-emerald-400"
+    ? "text-success dark:text-emerald-400"
     : tier === "moderate"
     ? "text-blue-600 dark:text-blue-400"
     : "text-cyan-600 dark:text-cyan-400";
@@ -371,14 +371,14 @@ export function ThreadTrustBar({ replies, excludedTiers, onFilterChange }: {
     ? segments.reduce((sum, seg) => sum + (excludedTiers.has(seg.tierId) ? 0 : seg.count), 0)
     : total;
 
-  const avgColor = avgInfluence >= 0.15 ? "text-emerald-600 dark:text-emerald-400"
+  const avgColor = avgInfluence >= 0.15 ? "text-success dark:text-emerald-400"
     : avgInfluence >= 0.02 ? "text-blue-600 dark:text-blue-400"
     : avgInfluence > 0 ? "text-cyan-600 dark:text-cyan-400"
     : "text-slate-500 dark:text-slate-400";
 
   const concColor = concentration > 0.85 ? "text-red-500 dark:text-red-400"
-    : concentration > 0.6 ? "text-zap dark:text-amber-400"
-    : "text-emerald-600 dark:text-emerald-400";
+    : concentration > 0.6 ? "text-warning dark:text-amber-400"
+    : "text-success dark:text-emerald-400";
 
   return (
     <div className="px-4 py-2.5 sm:py-3 border-b border-border/20 space-y-2" data-testid="thread-trust-bar">
@@ -501,14 +501,14 @@ export function VouchedBySection({ pubkey }: { pubkey: string }) {
     <div className="space-y-0.5" data-testid={`vouched-by-${pubkey.slice(0, 8)}`}>
       <div className="flex items-center gap-1.5">
         <ShieldCheck className="w-3 h-3 text-emerald-500/70 shrink-0" />
-        <span className="text-[9px] text-emerald-600/70 dark:text-emerald-400/60">
+        <span className="text-[9px] text-success dark:text-emerald-400/60">
           {label}
         </span>
         <div className="flex -space-x-1.5">
           {trustedVouchers.slice(0, 3).map((p) => (
             <Avatar key={p.pubkey} className="w-3.5 h-3.5 ring-1 ring-emerald-500/20 border border-background">
               <AvatarImage src={p.avatar} alt={`${p.name}'s avatar`} />
-              <AvatarFallback className="bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 text-[6px]">
+              <AvatarFallback className="bg-emerald-900/30 text-success dark:text-emerald-300 text-[6px]">
                 {p.name.slice(0, 1).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -519,7 +519,7 @@ export function VouchedBySection({ pubkey }: { pubkey: string }) {
         </span>
       </div>
       {topContent && (
-        <p className="text-[8px] text-emerald-600/50 dark:text-emerald-400/40 italic truncate ml-[18px]">
+        <p className="text-[8px] text-success dark:text-emerald-400/40 italic truncate ml-[18px]">
           &ldquo;{topContent.slice(0, 80)}{topContent.length > 80 ? "..." : ""}&rdquo;
         </p>
       )}
@@ -631,7 +631,7 @@ export function HoverCardTrustBadge({ pubkey }: { pubkey: string }) {
   }
   const influence = getAuthorInfluence(pubkey);
   const badgeStyle = tier === "strong"
-    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
+    ? "bg-emerald-500/15 text-success dark:text-emerald-400 border-emerald-500/30"
     : tier === "moderate"
     ? "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30"
     : tier === "low"

@@ -812,7 +812,7 @@ function ZapToastContent({ amountSats, isIncoming, message, profileName }: {
           <span className="text-sm font-semibold text-foreground/90 truncate max-w-[140px]">{profileName}</span>
         )}
         <span className={`text-sm font-semibold tabular-nums ${
-          isIncoming ? "text-emerald-500 dark:text-emerald-400" : "text-amber-500 dark:text-amber-400"
+          isIncoming ? "text-success dark:text-emerald-400" : "text-amber-500 dark:text-amber-400"
         }`}>
           {isIncoming ? "+" : "-"}{amountSats.toLocaleString()} sats
         </span>

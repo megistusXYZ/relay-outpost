@@ -315,7 +315,7 @@ export function MediaInteractionBar({ event, vertical, onCommentClick }: MediaIn
             </span>
           )}
           {!vertical && repostCount > 0 && (
-            <span className={`text-[11px] -ml-1 mr-0.5 ${boosted ? "text-green-500/80" : "text-muted-foreground/70"}`} data-testid={`text-media-repost-count-${event.id}`}>
+            <span className={`text-[11px] -ml-1 mr-0.5 ${boosted ? "text-success dark:text-green-500/80" : "text-muted-foreground/70"}`} data-testid={`text-media-repost-count-${event.id}`}>
               {repostCount}
             </span>
           )}
