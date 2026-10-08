@@ -24,9 +24,9 @@ function sources(dir: string, out: string[] = []): string[] {
 const ALL = sources(ROOT).map((p) => readFileSync(p, "utf8")).join("\n");
 const count = (re: RegExp) => (ALL.match(re) || []).length;
 
-// Ratchet: today's counts (2026-10-07). Lower them as screens are fixed.
-const TINY_TYPE = 378;
-const FAINT_GREY = 585;
+// Ratchet: counts as of 2026-10-08 (audit long tail). Lower them as screens are fixed.
+const TINY_TYPE = 376;
+const FAINT_GREY = 584;
 
 describe("readable text", () => {
   it("no new 7–9px text", () => {

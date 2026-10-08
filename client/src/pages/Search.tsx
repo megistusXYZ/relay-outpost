@@ -1633,15 +1633,15 @@ function ProfileCard({ profile, tier, isFollowed, followsYou, grouped = false }:
                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-brand/15 text-brand border border-brand/20">Follows you</span>
               )}
               {relationship === "following" && (
-                <span className="text-[9px] text-muted-foreground/40 font-mono">Following</span>
+                <span className="text-[11px] text-muted-foreground">Following</span>
               )}
             </div>
             <div className="flex items-center gap-1.5 mt-0.5">
               {nip05Display && (
-                <Nip05Badge nip05={nip05!} pubkey={profile.pubkey} className="truncate max-w-[160px]" textClassName="text-[10px] text-emerald-600 dark:text-emerald-400/80" iconClassName="w-3 h-3" />
+                <Nip05Badge nip05={nip05!} pubkey={profile.pubkey} className="truncate max-w-[160px]" textClassName="text-[11px] text-emerald-800 dark:text-emerald-400/80" iconClassName="w-3 h-3" />
               )}
               {!nip05Display && (
-                <span className="text-[10px] text-muted-foreground/50 truncate">{shortenNpub(npub)}</span>
+                <span className="text-[11px] text-muted-foreground truncate">{shortenNpub(npub)}</span>
               )}
               {!grouped && <TrustPhrase tier={tier} />}
             </div>
