@@ -2790,7 +2790,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
     <article data-testid={`post-${event.id}`} onClick={handleCardClick} className="cursor-pointer">
       <div className={`flex items-center gap-2.5 sm:gap-3 glass-header rounded-t-xl ${contentPadding}`}>
         <AuthorHoverCard pubkey={event.pubkey} profile={authorProfile}>
-          <Link href={profileUrl} data-testid={`link-avatar-${event.id}`} onMouseEnter={() => prefetchProfileOnHover(event.pubkey)}>
+          <Link href={profileUrl} className="hit-area rounded-full" data-testid={`link-avatar-${event.id}`} onMouseEnter={() => prefetchProfileOnHover(event.pubkey)}>
             <div className="relative">
               <Avatar className={`${avatarSize} shrink-0 ${authorIsLive ? "ring-2 ring-red-500/50" : "ring-1 ring-border dark:ring-white/10"} border border-background cursor-pointer`}>
                 <AvatarImage src={avatarUrl} alt={displayName} />
@@ -2818,13 +2818,13 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
             {authorNip05 && (
               <>
                 <Nip05VerifiedCheck nip05={authorNip05} pubkey={event.pubkey} className="w-3 h-3 shrink-0" />
-                <span className="text-[13px] text-muted-foreground/55 truncate shrink min-w-0 max-w-[42%] hidden min-[360px]:inline" data-testid={`text-nip05-${event.id}`}>
+                <span className="text-[13px] text-muted-foreground truncate shrink min-w-0 max-w-[42%] hidden min-[360px]:inline" data-testid={`text-nip05-${event.id}`}>
                   {authorNip05}
                 </span>
               </>
             )}
             <span className="text-muted-foreground/40 select-none shrink-0">·</span>
-            <span className="text-[13px] text-muted-foreground/70 whitespace-nowrap shrink-0" data-testid={`text-time-${event.id}`}>
+            <span className="text-[13px] text-muted-foreground whitespace-nowrap shrink-0" data-testid={`text-time-${event.id}`}>
               {timeAgo}
             </span>
           </div>
@@ -2842,7 +2842,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
               // Disclosure cues so the caret can't read as a downvote: smaller +
               // quieter than an action icon, labeled "Post menu", and it flips
               // 180° while the menu is open (votes never rotate; menus do).
-              className="w-7 h-7 shrink-0 text-muted-foreground/40 hover:text-muted-foreground/70 [&_svg]:size-3"
+              className="hit-area w-7 h-7 shrink-0 text-muted-foreground/40 hover:text-muted-foreground/70 [&_svg]:size-3"
               onClick={(e) => e.stopPropagation()}
               aria-label="Post menu"
               title="Post menu"
@@ -3219,7 +3219,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
         <Button
           variant="ghost"
           size="icon"
-          className={`w-8 h-8 sm:w-9 sm:h-9 gap-1 ${threadExpanded ? "text-foreground" : hasReplied ? "stat-glow-replies" : "text-muted-foreground"}`}
+          className={`hit-area w-11 h-8 sm:w-9 sm:h-9 gap-1 ${threadExpanded ? "text-foreground" : hasReplied ? "stat-glow-replies" : "text-muted-foreground"}`}
           onClick={onToggleThread}
           data-testid={`button-reply-${event.id}`}
         >
@@ -3238,7 +3238,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
             <Button
               variant="ghost"
               size="icon"
-              className={`w-8 h-8 sm:w-9 sm:h-9 ${boosted ? "stat-glow-reposts" : "text-muted-foreground"}`}
+              className={`hit-area w-11 h-8 sm:w-9 sm:h-9 ${boosted ? "stat-glow-reposts" : "text-muted-foreground"}`}
               data-testid={`button-repost-${event.id}`}
             >
               {isReposting ? <RelayOutpostInlineLoader className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Repeat className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
@@ -3297,7 +3297,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
         <Button
           variant="ghost"
           size="icon"
-          className={`w-8 h-8 sm:w-9 sm:h-9 ${reactionPopping ? "reaction-pop" : ""} ${hasLiked ? "stat-glow-likes" : "text-muted-foreground"}`}
+          className={`hit-area w-11 h-8 sm:w-9 sm:h-9 ${reactionPopping ? "reaction-pop" : ""} ${hasLiked ? "stat-glow-likes" : "text-muted-foreground"}`}
           onClick={(e) => { e.stopPropagation(); handleLike(); }}
           disabled={isLiking || hasLiked}
           data-testid={`button-like-${event.id}`}
@@ -3395,7 +3395,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
         <Button
           variant="ghost"
           size="icon"
-          className={`w-8 h-8 sm:w-9 sm:h-9 shrink-0 ml-2 ${zapCount > 0 || zapAmount > 0 ? "text-amber-500 dark:text-amber-400" : "text-muted-foreground"}`}
+          className={`hit-area w-11 h-8 sm:w-9 sm:h-9 shrink-0 ml-2 ${zapCount > 0 || zapAmount > 0 ? "text-amber-500 dark:text-amber-400" : "text-muted-foreground"}`}
           onClick={() => {
             if (!signer) {
               toast({ title: "Sign in required", description: "Sign in to send thanks.", variant: "destructive" });
