@@ -50,3 +50,22 @@ describe("status tokens (light)", () => {
     for (const name of ["success", "warning", "danger"]) expect(tw).toMatch(new RegExp(`${name}:\\s*\\{[^}]*hsl\\(var\\(--${name}\\)`));
   });
 });
+
+/**
+ * "Couldn't reach" is a warning, never an error (owner, 2026-10-08;
+ * RELAY_REACHABILITY.md): we never got to ask, which is not the relay saying
+ * no. It was red in the Publisher and the Wire Console, amber elsewhere.
+ */
+describe("Couldn't reach", () => {
+  it("is the warning colour everywhere in the relay console, light and dark", async () => {
+    const { readdirSync } = await import("node:fs");
+    const dir = path.resolve(import.meta.dirname, "pages/relay-ops");
+    const offenders: string[] = [];
+    for (const f of readdirSync(dir).filter((n) => n.endsWith(".tsx") && !n.includes(".test."))) {
+      readFileSync(path.join(dir, f), "utf8").split("\n").forEach((line, i) => {
+        if (/Couldn't reach/.test(line) && /text-(danger|red-)/.test(line)) offenders.push(`${f}:${i + 1}`);
+      });
+    }
+    expect(offenders).toEqual([]);
+  });
+});

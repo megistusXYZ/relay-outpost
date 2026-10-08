@@ -426,7 +426,7 @@ export function WireConsole({ initialRelays, initialText, initialTool = "ask", i
                     const word = !o || o.status === "waiting" ? <span className="text-muted-foreground">Still waiting</span>
                       : o.status === "answered" ? <span className="text-success dark:text-emerald-400">Answered</span>
                       : o.status === "refused" ? <span className="text-warning dark:text-amber-400">Refused — “{relayWords(o.reason ?? "")}”</span>
-                      : <span className="text-danger dark:text-red-400">Couldn't reach</span>;
+                      : <span className="text-warning dark:text-amber-400">Couldn't reach</span>;
                     return (
                       <tr key={r} data-testid="console-compare-row" data-relay={r} data-status={o?.status ?? "waiting"}>
                         <td className="py-2.5 pr-3 truncate max-w-[12rem]">{host(r)}</td>

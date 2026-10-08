@@ -33,7 +33,7 @@ const STATUS: Record<PublishStatus, { word: string; cls: string }> = {
   accepted: { word: "Accepted", cls: "text-success dark:text-emerald-400" },
   refused: { word: "Refused", cls: "text-danger dark:text-red-400" },
   "needs-sign-in": { word: "Wants you to sign in", cls: "text-amber-600 dark:text-amber-400" },
-  unreached: { word: "Couldn't reach", cls: "text-danger dark:text-red-400" },
+  unreached: { word: "Couldn't reach", cls: "text-warning dark:text-amber-400" },
   waiting: { word: "No answer yet", cls: "text-muted-foreground" },
 };
 
