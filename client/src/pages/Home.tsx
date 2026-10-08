@@ -3586,7 +3586,7 @@ export default function Home() {
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {feedToShare.hashtags.map(t => <Badge key={t} variant="secondary" className="text-[11px] bg-accent text-brand border-brand/20 dark:bg-brand/10">#{t}</Badge>)}
-                      {feedToShare.includeKeywords.map(k => <Badge key={k} variant="outline" className="text-[11px] border-emerald-500/20 text-emerald-800 dark:text-emerald-400">{k}</Badge>)}
+                      {feedToShare.includeKeywords.map(k => <Badge key={k} variant="outline" className="text-[11px] border-emerald-500/20 text-success dark:text-emerald-400">{k}</Badge>)}
                       {feedToShare.excludeKeywords.map(k => <Badge key={k} variant="outline" className="text-[11px] border-red-500/20 text-red-700 dark:text-red-400 line-through">{k}</Badge>)}
                       {feedToShare.authorPubkeys.length > 0 && <Badge variant="outline" className="text-[11px] border-blue-500/20 text-blue-700 dark:text-blue-400"><Users className="w-3 h-3 mr-1" />{feedToShare.authorPubkeys.length} {feedToShare.authorPubkeys.length === 1 ? "person" : "people"}</Badge>}
                       {feedToShare.contentType !== "all" && <Badge variant="outline" className="text-[11px] border-brand/20 text-brand">{feedToShare.contentType === "text_only" ? "Text" : feedToShare.contentType === "media" ? "Media" : "Links"}</Badge>}
@@ -3641,7 +3641,7 @@ export default function Home() {
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {feedToShare.hashtags.map(t => <Badge key={t} variant="secondary" className="text-[11px] bg-accent text-brand border-brand/20 dark:bg-brand/10">#{t}</Badge>)}
-                    {feedToShare.includeKeywords.map(k => <Badge key={k} variant="outline" className="text-[11px] border-emerald-500/20 text-emerald-800 dark:text-emerald-400">{k}</Badge>)}
+                    {feedToShare.includeKeywords.map(k => <Badge key={k} variant="outline" className="text-[11px] border-emerald-500/20 text-success dark:text-emerald-400">{k}</Badge>)}
                     {feedToShare.excludeKeywords.map(k => <Badge key={k} variant="outline" className="text-[11px] border-red-500/20 text-red-700 dark:text-red-400 line-through">{k}</Badge>)}
                     {feedToShare.authorPubkeys.length > 0 && <Badge variant="outline" className="text-[11px] border-blue-500/20 text-blue-700 dark:text-blue-400"><Users className="w-3 h-3 mr-1" />{feedToShare.authorPubkeys.length} {feedToShare.authorPubkeys.length === 1 ? "person" : "people"}</Badge>}
                     {feedToShare.contentType !== "all" && <Badge variant="outline" className="text-[11px] border-brand/20 text-brand">{feedToShare.contentType === "text_only" ? "Text" : feedToShare.contentType === "media" ? "Media" : "Links"}</Badge>}

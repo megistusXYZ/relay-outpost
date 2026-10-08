@@ -128,7 +128,7 @@ function getRatingIcon(rating: string) {
 }
 
 function getRatingColor(rating: string): string {
-  if (rating === "Fast Adopter") return "text-green-800 dark:text-green-400";
+  if (rating === "Fast Adopter") return "text-success dark:text-green-400";
   if (rating === "Steady Builder") return "text-amber-800 dark:text-amber-400";
   if (rating === "Slow Burner") return "text-orange-800 dark:text-orange-400";
   return "text-muted-foreground";

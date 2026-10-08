@@ -510,7 +510,7 @@ export const PollPost = memo(function PollPost({ event }: PollPostProps) {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {hasVoted ? (
-                <Badge variant="secondary" data-no-navigate className="text-[10px] px-2 py-0.5 bg-green-500/15 text-green-500 border-green-500/30 gap-1 font-semibold">
+                <Badge variant="secondary" data-no-navigate className="text-[10px] px-2 py-0.5 bg-green-500/15 text-success dark:text-green-500 border-green-500/30 gap-1 font-semibold">
                   <CheckCircle2 className="w-3 h-3" />
                   Voted
                 </Badge>
@@ -611,7 +611,7 @@ export const PollPost = memo(function PollPost({ event }: PollPostProps) {
                     <span>{totalVotes} vote{totalVotes !== 1 ? "s" : ""}</span>
                   </div>
                   {trustedVoteCount !== null && trustedVoteCount > 0 && (
-                    <div className="flex items-center gap-1 text-[11px] text-green-500/60" title="Votes from accounts in your trust network">
+                    <div className="flex items-center gap-1 text-[11px] text-success dark:text-green-500/60" title="Votes from accounts in your trust network">
                       <ShieldCheck className="w-3 h-3" />
                       <span>{trustedVoteCount} trusted</span>
                     </div>

@@ -39,7 +39,7 @@ const TYPES: { id: Step | "note" | "article"; label: string; icon: typeof Pencil
   { id: "video", label: "Video", icon: VideoIcon, desc: "Share a video", chip: "bg-rose-500/10", tint: "text-rose-600 dark:text-rose-400" },
   { id: "audio", label: "Audio", icon: Music, desc: "Publish a track", chip: "bg-teal-500/10", tint: "text-teal-600 dark:text-teal-400" },
   { id: "article", label: "Article", icon: BookOpen, desc: "Write long-form", chip: "bg-amber-500/10", tint: "text-amber-600 dark:text-amber-400" },
-  { id: "podcast", label: "Podcast", icon: Mic, desc: "Connect an RSS feed", chip: "bg-emerald-500/10", tint: "text-emerald-600 dark:text-emerald-400" },
+  { id: "podcast", label: "Podcast", icon: Mic, desc: "Connect an RSS feed", chip: "bg-emerald-500/10", tint: "text-success dark:text-emerald-400" },
 ];
 
 export function CreateStudio() {

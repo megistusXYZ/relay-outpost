@@ -492,7 +492,7 @@ function CalendarInviteCard({ invite, userPubkey }: { invite: CalendarInvitePayl
         )}
       </div>
       {pinned ? (
-        <div className="flex items-center gap-1.5 text-[10px] text-emerald-800/80 dark:text-emerald-400/80 pt-0.5">
+        <div className="flex items-center gap-1.5 text-[10px] text-success dark:text-emerald-400/80 pt-0.5">
           <CalendarCheck className="w-3 h-3" />
           Added to your calendar
         </div>

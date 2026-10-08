@@ -41,7 +41,7 @@ const pretty = (o: unknown) => JSON.stringify(o, null, 2);
 const DEFAULT_TEXT = pretty({ kinds: [1], since: "now-24h", limit: 50 });
 const TONE: Record<TranscriptLine["tone"], string> = {
   plain: "text-foreground/90",
-  good: "text-emerald-600 dark:text-emerald-400",
+  good: "text-success dark:text-emerald-400",
   warn: "text-amber-600 dark:text-amber-400",
   bad: "text-red-600 dark:text-red-400",
 };

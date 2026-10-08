@@ -24,7 +24,7 @@ import type { MembershipEvent } from "./useConcordGovernance";
 function ActivityRow({ pubkey, kind, t }: { pubkey: string; kind: "join" | "leave" | "ban"; t?: number }) {
   const { name } = useConcordProfile(pubkey);
   const Icon = kind === "join" ? LogIn : kind === "leave" ? LogOut : Ban;
-  const color = kind === "join" ? "text-emerald-500/70" : kind === "ban" ? "text-destructive/70" : "text-muted-foreground/50";
+  const color = kind === "join" ? "text-success dark:text-emerald-500/70" : kind === "ban" ? "text-destructive/70" : "text-muted-foreground/50";
   const verb = kind === "join" ? "joined" : kind === "leave" ? "left" : "banned";
   return (
     <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70 px-0.5">
@@ -39,7 +39,7 @@ function ActivityRow({ pubkey, kind, t }: { pubkey: string; kind: "join" | "leav
 const AUDIT_META: Record<AuditAction, { icon: typeof Ban; color: string; verb: string; hasTarget: boolean }> = {
   ban: { icon: Ban, color: "text-destructive/70", verb: "banned", hasTarget: true },
   kick: { icon: UserMinus, color: "text-amber-500/70", verb: "removed", hasTarget: true },
-  unban: { icon: ShieldCheck, color: "text-emerald-500/70", verb: "unbanned", hasTarget: true },
+  unban: { icon: ShieldCheck, color: "text-success dark:text-emerald-500/70", verb: "unbanned", hasTarget: true },
   delete_message: { icon: Trash2, color: "text-muted-foreground/60", verb: "removed a message by", hasTarget: true },
   make_admin: { icon: Shield, color: "text-primary/70", verb: "made admin", hasTarget: true },
   remove_admin: { icon: ShieldOff, color: "text-muted-foreground/60", verb: "removed admin from", hasTarget: true },

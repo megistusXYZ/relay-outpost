@@ -297,7 +297,7 @@ function SignalCheckBadge({ eventId, statsTotal = 0, size = "default" }: { event
             <p className="text-xs font-display text-brand">Signal Check</p>
             {fetched && (
               <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                tier === "high" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" :
+                tier === "high" ? "bg-emerald-500/15 text-success dark:text-emerald-400" :
                 tier === "mid" ? "bg-blue-500/15 text-blue-600 dark:text-blue-400" :
                 "bg-secondary/50 text-muted-foreground"
               }`}>
@@ -329,7 +329,7 @@ function SignalCheckBadge({ eventId, statsTotal = 0, size = "default" }: { event
                   <span className="text-foreground/80 font-medium">Crew</span>
                   <span className="text-muted-foreground/70 text-[10px]">you follow</span>
                 </div>
-                <span className="text-emerald-500 dark:text-emerald-400 font-mono font-bold">{crew}</span>
+                <span className="text-success dark:text-emerald-400 font-mono font-bold">{crew}</span>
               </div>
               <div className="flex items-center justify-between text-[11px]">
                 <div className="flex items-center gap-1.5">
@@ -390,13 +390,13 @@ function SignalCheckBadge({ eventId, statsTotal = 0, size = "default" }: { event
                 const topWeight = sorted.slice(0, topN).reduce((s, v) => s + v, 0);
                 const concentration = totalWeight > 0 ? topWeight / totalWeight : 0;
 
-                const grAvgColor = avgInfluence >= 0.15 ? "text-emerald-600 dark:text-emerald-400"
+                const grAvgColor = avgInfluence >= 0.15 ? "text-success dark:text-emerald-400"
                   : avgInfluence >= 0.02 ? "text-blue-600 dark:text-blue-400"
                   : avgInfluence > 0 ? "text-cyan-600 dark:text-cyan-400"
                   : "text-slate-500 dark:text-slate-400";
                 const grConcColor = concentration > 0.85 ? "text-red-500 dark:text-red-400"
                   : concentration > 0.6 ? "text-amber-600 dark:text-amber-400"
-                  : "text-emerald-600 dark:text-emerald-400";
+                  : "text-success dark:text-emerald-400";
 
                 const trustedRatio = total > 0 ? (grStrong + grModerate) / total : 0;
                 const verdict = grFlagged > 0 && grFlagged >= total * 0.2
@@ -404,7 +404,7 @@ function SignalCheckBadge({ eventId, statsTotal = 0, size = "default" }: { event
                   : total >= 10 && concentration > 0.85 && avgInfluence < 0.02
                   ? { label: "Inorganic", color: "text-red-600 dark:text-red-400 bg-red-500/10", desc: "Trust concentrated in few accounts" }
                   : trustedRatio >= 0.5
-                  ? { label: "Organic", color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10", desc: "Majority from trusted accounts" }
+                  ? { label: "Organic", color: "text-success dark:text-emerald-400 bg-emerald-500/10", desc: "Majority from trusted accounts" }
                   : trustedRatio >= 0.2
                   ? { label: "Mixed", color: "text-amber-600 dark:text-amber-400 bg-amber-500/10", desc: "Some trusted, some unknown" }
                   : { label: "Unverified", color: "text-slate-500 dark:text-slate-400 bg-slate-500/10", desc: "Few scored engagers" };
@@ -641,13 +641,13 @@ function EngagementScoreBadge({ eventId, score, stats, size = "default" }: { eve
                 const topWeight = sorted.slice(0, topN).reduce((s, v) => s + v, 0);
                 const concentration = totalWeight > 0 ? topWeight / totalWeight : 0;
 
-                const grAvgColor = avgInfluence >= 0.15 ? "text-emerald-600 dark:text-emerald-400"
+                const grAvgColor = avgInfluence >= 0.15 ? "text-success dark:text-emerald-400"
                   : avgInfluence >= 0.02 ? "text-blue-600 dark:text-blue-400"
                   : avgInfluence > 0 ? "text-cyan-600 dark:text-cyan-400"
                   : "text-slate-500 dark:text-slate-400";
                 const grConcColor = concentration > 0.85 ? "text-red-500 dark:text-red-400"
                   : concentration > 0.6 ? "text-amber-600 dark:text-amber-400"
-                  : "text-emerald-600 dark:text-emerald-400";
+                  : "text-success dark:text-emerald-400";
 
                 const trustedRatio = total > 0 ? (grStrong + grModerate) / total : 0;
                 const verdict = grFlagged > 0 && grFlagged >= total * 0.2
@@ -655,7 +655,7 @@ function EngagementScoreBadge({ eventId, score, stats, size = "default" }: { eve
                   : total >= 10 && concentration > 0.85 && avgInfluence < 0.02
                   ? { label: "Inorganic", color: "text-red-600 dark:text-red-400 bg-red-500/10", desc: "Trust concentrated in few accounts" }
                   : trustedRatio >= 0.5
-                  ? { label: "Organic", color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10", desc: "Majority from trusted accounts" }
+                  ? { label: "Organic", color: "text-success dark:text-emerald-400 bg-emerald-500/10", desc: "Majority from trusted accounts" }
                   : trustedRatio >= 0.2
                   ? { label: "Mixed", color: "text-amber-600 dark:text-amber-400 bg-amber-500/10", desc: "Some trusted, some unknown" }
                   : { label: "Unverified", color: "text-slate-500 dark:text-slate-400 bg-slate-500/10", desc: "Few scored engagers" };
@@ -1216,7 +1216,7 @@ function RelayPill({ url }: { url: string }) {
   return (
     <a
       href={`/outposts/${encodeURIComponent(url)}`}
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[0.85em] font-medium cursor-pointer bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/25 dark:border-emerald-400/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 dark:hover:bg-emerald-500/25 transition-colors no-underline"
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[0.85em] font-medium cursor-pointer bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/25 dark:border-emerald-400/20 text-success dark:text-emerald-300 hover:bg-emerald-500/20 dark:hover:bg-emerald-500/25 transition-colors no-underline"
       onClick={(e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();

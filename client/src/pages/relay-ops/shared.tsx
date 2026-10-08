@@ -887,7 +887,7 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
         <div className="rounded-lg bg-black/[0.03] dark:bg-white/[0.02] border border-black/[0.04] dark:border-white/[0.04] overflow-hidden p-3 space-y-2">
           <div className="flex items-center gap-2">
             <RefreshCw className="w-3.5 h-3.5 text-green-500/70 shrink-0" />
-            <span className="text-[10px] text-green-600 dark:text-green-400/70 uppercase tracking-wider font-medium">
+            <span className="text-[10px] text-success dark:text-green-400/70 uppercase tracking-wider font-medium">
               {event.kind === 16 ? "Generic Repost" : "Reposted"}
             </span>
             <span className="text-[10px] text-muted-foreground/60 ml-auto">{timeAgo(event.created_at)}</span>
@@ -964,7 +964,7 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
       <div className="p-2.5 rounded-lg bg-black/[0.03] dark:bg-white/[0.02] border border-black/[0.04] dark:border-white/[0.04]">
         <div className="flex items-center gap-2">
           <RefreshCw className="w-3 h-3 text-green-500/60 shrink-0" />
-          <span className="text-[11px] text-green-600 dark:text-green-400/70 font-medium">Reposted</span>
+          <span className="text-[11px] text-success dark:text-green-400/70 font-medium">Reposted</span>
           <span className="text-[10px] text-muted-foreground/60 ml-auto">{timeAgo(event.created_at)}</span>
         </div>
         {event.content && <p className="text-[11px] text-muted-foreground/60 mt-1.5 line-clamp-2 break-all">{event.content.slice(0, 200)}</p>}
@@ -1093,7 +1093,7 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
       <div className="rounded-lg bg-black/[0.03] dark:bg-white/[0.02] border border-black/[0.04] dark:border-white/[0.04] overflow-hidden">
         <div className="px-3 pt-3 pb-2 border-b border-black/[0.04] dark:border-white/[0.04] flex items-center gap-2">
           <Vote className="w-3.5 h-3.5 text-emerald-500/70 shrink-0" />
-          <span className="text-[10px] text-emerald-600 dark:text-emerald-400/70 uppercase tracking-wider font-medium">Poll Vote</span>
+          <span className="text-[10px] text-success dark:text-emerald-400/70 uppercase tracking-wider font-medium">Poll Vote</span>
           <span className="text-[10px] text-muted-foreground/60 ml-auto">{timeAgo(event.created_at)}</span>
         </div>
         <div className="px-3 py-2.5 space-y-2">
@@ -1106,7 +1106,7 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
           <div className="flex items-center gap-3 px-3 py-2 rounded-md bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-300/20 dark:border-emerald-400/15">
             <ListChecks className="w-3.5 h-3.5 text-emerald-500/60 shrink-0" />
             <div className="min-w-0">
-              <span className="text-[10px] text-emerald-600/60 dark:text-emerald-400/50 uppercase tracking-wider font-medium">Selected Option</span>
+              <span className="text-[10px] text-success dark:text-emerald-400/50 uppercase tracking-wider font-medium">Selected Option</span>
               <p className="text-[12px] font-mono font-semibold text-foreground/80 mt-0.5">
                 {optionIdx !== undefined && /^\d+$/.test(optionIdx) ? `Option ${String.fromCharCode(65 + Number(optionIdx))} (index ${optionIdx})` : optionIdx !== undefined ? `Response: ${optionIdx}` : "Unknown"}
               </p>

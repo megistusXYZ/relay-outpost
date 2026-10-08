@@ -120,7 +120,7 @@ export function AudioSpaceCard({ space, compact = false }: { space: AudioSpace; 
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wide uppercase text-emerald-700 dark:text-emerald-400">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wide uppercase text-success dark:text-emerald-400">
             <Radio className="w-3 h-3 shrink-0" />
             Audio space · {space.service}
           </div>

@@ -1173,7 +1173,7 @@ function AudioSpaceDetail({ stream }: { stream: LiveEventData }) {
           href={space.joinUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-6 text-sm font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+          className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-6 text-sm font-medium text-success dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
           data-testid="button-audio-space-join-external"
         >
           <Radio className="w-4 h-4" />

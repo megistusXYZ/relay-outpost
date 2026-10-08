@@ -69,3 +69,32 @@ describe("Couldn't reach", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+/**
+ * Light-mode green text is the success colour (owner, 2026-10-08: Phase 2c
+ * slice 2). It was a dozen greens — emerald-500 to -700, green-500/600, with
+ * opacities — and as text on white most of them were under 4.5:1. Dark mode
+ * keeps its own shades behind dark:, and icons (anything with a size) may
+ * stay brighter: 3:1 is enough for an icon.
+ */
+describe("green text", () => {
+  it("in light mode is only ever text-success", async () => {
+    const { readdirSync, statSync } = await import("node:fs");
+    const files: string[] = [];
+    const walk = (d: string) => { for (const n of readdirSync(d)) { const p = path.join(d, n); if (statSync(p).isDirectory()) walk(p); else if (p.endsWith(".tsx") && !p.includes(".test.")) files.push(p); } };
+    walk(import.meta.dirname);
+    const offenders: string[] = [];
+    // -100..-300 are dark-surface shades (an overlay's branch of a light/dark
+    // ternary — LIGHT_MODE.md "the tell"): correct as they are.
+    const LIGHT_GREEN = /(^|[\s"'`{])text-(emerald|green)-[4-9]00(\/\d+)?(?=[\s"'`}]|$)/;
+    const ICON = /(^|[\s"'`])(w-\d|h-\d|size-\d|w-\[|h-\[)/;
+    for (const f of files) {
+      readFileSync(f, "utf8").split("\n").forEach((line, i) => {
+        for (const cls of line.match(/"[^"]*"|`[^`]*`/g) || []) {
+          if (LIGHT_GREEN.test(cls) && !ICON.test(cls)) offenders.push(`${path.relative(import.meta.dirname, f)}:${i + 1}`);
+        }
+      });
+    }
+    expect(offenders).toEqual([]);
+  });
+});

@@ -208,13 +208,13 @@ export function SidebarOutposts({
                 <button
                   type="button"
                   onClick={toggleOpsSection}
-                  className="flex items-center gap-1.5 w-full px-2 py-1 rounded text-[11px] font-mono font-semibold uppercase tracking-[0.12em] text-emerald-600 dark:text-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-200 transition-colors"
+                  className="flex items-center gap-1.5 w-full px-2 py-1 rounded text-[11px] font-mono font-semibold uppercase tracking-[0.12em] text-success dark:text-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-200 transition-colors"
                   data-testid="button-sidebar-ops-toggle"
                   aria-label="Toggle relays you run"
                 >
                   <ChevronDown className={`w-3 h-3 shrink-0 transition-transform duration-200 ${effOpsSectionOpen ? "" : "-rotate-90"}`} />
                   <span className="flex-1 text-left">Relays you run</span>
-                  <span className="tabular-nums font-semibold text-emerald-600 dark:text-emerald-400">{operatedRelays.length}</span>
+                  <span className="tabular-nums font-semibold text-success dark:text-emerald-400">{operatedRelays.length}</span>
                 </button>
               </SidebarMenuItem>
               {effOpsSectionOpen && operatedRelays.map((o) => {

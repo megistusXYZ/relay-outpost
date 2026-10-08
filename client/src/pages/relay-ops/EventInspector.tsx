@@ -153,7 +153,7 @@ function InspectorBody({ event, relayUrl, relayName, ownRelay, canGoBack, onBack
               <span className="ml-2 text-[13px] font-normal text-muted-foreground">kind {event.kind}{info?.nip ? ` · ${info.nip}` : ""}</span>
             </h2>
             <p className="text-[13px]" data-testid="inspector-verdict" data-verdict={verdict.verdict}>
-              {verdict.verdict === "valid" && <><span className="font-medium text-emerald-600 dark:text-emerald-400">Genuine</span><span className="text-muted-foreground"> · signed by its author</span></>}
+              {verdict.verdict === "valid" && <><span className="font-medium text-success dark:text-emerald-400">Genuine</span><span className="text-muted-foreground"> · signed by its author</span></>}
               {verdict.verdict === "invalid" && <><span className="font-medium text-red-600 dark:text-red-400">Not genuine</span><span className="text-muted-foreground"> · {verdict.reason}</span></>}
               {verdict.verdict === "unsigned" && <><span className="font-medium text-amber-600 dark:text-amber-400">Not signed</span><span className="text-muted-foreground"> · anyone could have written this</span></>}
             </p>
@@ -311,7 +311,7 @@ function ResponsesPanel({ event, relayUrl, relayName, onInspect }: { event: Insp
 }
 
 const STATUS_WORD: Record<SeenStatus, { word: string; cls: string }> = {
-  has: { word: "Has it", cls: "text-emerald-600 dark:text-emerald-400" },
+  has: { word: "Has it", cls: "text-success dark:text-emerald-400" },
   missing: { word: "Doesn't have it", cls: "text-muted-foreground" },
   unreached: { word: "Couldn't reach", cls: "text-warning dark:text-amber-400" },
 };
@@ -375,7 +375,7 @@ function SeenOnPanel({ event, relayUrl, relayName, ownRelay, genuine }: { event:
           <p className="text-[13px] text-muted-foreground" data-testid="inspector-copy-blocked">Only a genuine, signed event can be copied to {relayName}.</p>
         )
       )}
-      {copy.done && mine === "has" && <p className="text-[13px] text-emerald-600 dark:text-emerald-400" data-testid="inspector-copied">Copied — {relayName} has it now.</p>}
+      {copy.done && mine === "has" && <p className="text-[13px] text-success dark:text-emerald-400" data-testid="inspector-copied">Copied — {relayName} has it now.</p>}
       {copy.refused && <p className="text-[13px] text-danger dark:text-red-400" data-testid="inspector-copy-refused">{relayName} turned it down: “{copy.refused}”</p>}
     </div>
   );

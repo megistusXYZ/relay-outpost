@@ -73,8 +73,8 @@ function getKindIcon(kind: number) {
 function getKindColor(kind: number): string {
   switch (kind) {
     case 1: return "text-blue-700 dark:text-blue-400";
-    case 4: return "text-green-800 dark:text-green-400";
-    case 6: return "text-emerald-800 dark:text-emerald-400";
+    case 4: return "text-success dark:text-green-400";
+    case 6: return "text-success dark:text-emerald-400";
     case 7: return "text-pink-400";
     case 9735: return "text-amber-800 dark:text-amber-400";
     case 20: case 21: return "text-cyan-800 dark:text-cyan-400";
@@ -208,10 +208,10 @@ function categorizeEvent(event: Event): EventCategory {
 const CATEGORY_META: Record<EventCategory, { label: string; icon: typeof FileText; color: string }> = {
   notes: { label: "Notes", icon: FileText, color: "text-blue-700 dark:text-blue-400" },
   replies: { label: "Replies", icon: MessageSquare, color: "text-sky-400" },
-  reposts: { label: "Reposts", icon: Repeat2, color: "text-emerald-800 dark:text-emerald-400" },
+  reposts: { label: "Reposts", icon: Repeat2, color: "text-success dark:text-emerald-400" },
   reactions: { label: "Reactions", icon: Heart, color: "text-pink-400" },
   zaps: { label: "Zaps", icon: Zap, color: "text-amber-800 dark:text-amber-400" },
-  dms: { label: "DMs", icon: Send, color: "text-green-800 dark:text-green-400" },
+  dms: { label: "DMs", icon: Send, color: "text-success dark:text-green-400" },
   media: { label: "Media", icon: Image, color: "text-cyan-800 dark:text-cyan-400" },
   articles: { label: "Articles", icon: FileText, color: "text-brand" },
   other: { label: "Other", icon: Eye, color: "text-muted-foreground" } };
@@ -280,11 +280,11 @@ function EventRow({ event }: { event: Event }) {
 
         {category === "reposts" && (
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-xs text-emerald-800/70 dark:text-emerald-400/70">Reposted</span>
+            <span className="text-xs text-success dark:text-emerald-400/70">Reposted</span>
             {taggedPubkey && (
               <span className="flex items-center gap-1">
                 <ProfileAvatar pubkey={taggedPubkey} />
-                <ProfileLink pubkey={taggedPubkey} className="text-xs text-emerald-800 dark:text-emerald-400" showAvatar={false} />
+                <ProfileLink pubkey={taggedPubkey} className="text-xs text-success dark:text-emerald-400" showAvatar={false} />
               </span>
             )}
             {(() => {
@@ -335,10 +335,10 @@ function EventRow({ event }: { event: Event }) {
 
         {category === "dms" && (
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-xs text-green-800/70 dark:text-green-400/70">Encrypted message</span>
+            <span className="text-xs text-success dark:text-green-400/70">Encrypted message</span>
             {taggedPubkey && (
               <span className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
-                to <ProfileAvatar pubkey={taggedPubkey} /> <ProfileLink pubkey={taggedPubkey} className="text-xs text-green-800 dark:text-green-400" showAvatar={false} />
+                to <ProfileAvatar pubkey={taggedPubkey} /> <ProfileLink pubkey={taggedPubkey} className="text-xs text-success dark:text-green-400" showAvatar={false} />
               </span>
             )}
           </div>

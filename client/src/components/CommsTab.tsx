@@ -997,7 +997,7 @@ function GroupCard({
                 </span>
               )}
               {isJoined && !isPending && (
-                <span className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80 flex items-center gap-0.5">
+                <span className="text-[11px] text-success dark:text-emerald-400/80 flex items-center gap-0.5">
                   <Eye className="w-2.5 h-2.5" />
                   Joined
                 </span>
@@ -1006,7 +1006,7 @@ function GroupCard({
                 <span className="text-[11px] text-brand/70">General</span>
               )}
               {activityLabel && (
-                <span className={`text-[11px] flex items-center gap-0.5 ${isRecentlyActive ? "text-emerald-700/80 dark:text-emerald-400/80" : "text-muted-foreground/50"}`}>
+                <span className={`text-[11px] flex items-center gap-0.5 ${isRecentlyActive ? "text-success dark:text-emerald-400/80" : "text-muted-foreground/50"}`}>
                   <Clock className="w-2.5 h-2.5" />
                   {activityLabel}
                 </span>

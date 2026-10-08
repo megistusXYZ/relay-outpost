@@ -39,7 +39,7 @@ function getModeIconColor(preset: RelayPreset): { text: string; hover: string; g
       glow: "drop-shadow-[0_0_4px_rgba(245,158,11,0.3)]",
     };
     case "public": return {
-      text: "text-green-500/80 dark:text-green-400/70",
+      text: "text-success dark:text-green-400/70",
       hover: "hover:text-green-500 dark:hover:text-green-400 hover:bg-green-500/10 dark:hover:bg-green-400/10",
       glow: "drop-shadow-[0_0_4px_rgba(34,197,94,0.3)]",
     };

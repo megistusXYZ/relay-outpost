@@ -1363,7 +1363,7 @@ function EventFeed({ events, profileMap }: { events: Event[]; profileMap?: Map<s
 }
 
 const ACTIVITY_META: Record<string, { label: string; color: string; icon: string }> = {
-  posted: { label: "Posted", color: "text-emerald-600 dark:text-emerald-400", icon: "✎" },
+  posted: { label: "Posted", color: "text-success dark:text-emerald-400", icon: "✎" },
   reacted: { label: "Reacted", color: "text-pink-600 dark:text-pink-400", icon: "♥" },
   zapped: { label: "Zapped", color: "text-amber-600 dark:text-amber-400", icon: "⚡" },
   reposted: { label: "Reposted", color: "text-sky-600 dark:text-sky-400", icon: "↻" },
@@ -1503,7 +1503,7 @@ function OnlineWotDialog({ open, onOpenChange, onlineCount }: { open: boolean; o
   );
 
   const TIER_BUTTON_STYLES: Record<string, string> = {
-    strong: "border-green-500/40 dark:border-green-500/30 text-green-600 dark:text-green-400 hover:bg-green-500/10",
+    strong: "border-green-500/40 dark:border-green-500/30 text-success dark:text-green-400 hover:bg-green-500/10",
     moderate: "border-blue-500/40 dark:border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10",
     low: "border-yellow-500/40 dark:border-yellow-500/30 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/10",
     weak: "border-orange-500/40 dark:border-orange-500/30 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10",
@@ -1511,7 +1511,7 @@ function OnlineWotDialog({ open, onOpenChange, onlineCount }: { open: boolean; o
   };
 
   const TIER_BUTTON_ACTIVE: Record<string, string> = {
-    strong: "bg-green-500/15 border-green-500/50 dark:border-green-500/40 text-green-700 dark:text-green-300",
+    strong: "bg-green-500/15 border-green-500/50 dark:border-green-500/40 text-success dark:text-green-300",
     moderate: "bg-blue-500/15 border-blue-500/50 dark:border-blue-500/40 text-blue-700 dark:text-blue-300",
     low: "bg-yellow-500/15 border-yellow-500/50 dark:border-yellow-500/40 text-yellow-700 dark:text-yellow-300",
     weak: "bg-orange-500/15 border-orange-500/50 dark:border-orange-500/40 text-orange-700 dark:text-orange-300",
@@ -1529,7 +1529,7 @@ function OnlineWotDialog({ open, onOpenChange, onlineCount }: { open: boolean; o
               </div>
               <span className="font-display">Active Today</span>
               <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-              <Badge variant="outline" className="text-[10px] border-green-500/30 dark:border-green-500/20 text-green-600 dark:text-green-400/80 font-mono tabular-nums">
+              <Badge variant="outline" className="text-[10px] border-green-500/30 dark:border-green-500/20 text-success dark:text-green-400/80 font-mono tabular-nums">
                 {onlineCount.toLocaleString()} online
               </Badge>
             </DialogTitle>
@@ -1799,7 +1799,7 @@ function NetworkPulse({ pubkey }: { pubkey?: string }) {
                     <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.04] p-2.5 sm:p-3 space-y-1">
                       <div className="flex items-center gap-1.5">
                         <Users className="w-3 h-3 text-emerald-600/70 dark:text-emerald-400/70" />
-                        <p className="text-[9px] sm:text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-brand uppercase tracking-widest">Unique Pubkeys</p>
+                        <p className="text-[9px] sm:text-[10px] text-success dark:text-emerald-400/70 font-brand uppercase tracking-widest">Unique Pubkeys</p>
                       </div>
                       <p className="text-xl sm:text-2xl font-mono font-bold text-foreground">{formatBigNumber(uniquePubkeys)}</p>
                     </div>
@@ -1873,7 +1873,7 @@ function NetworkPulse({ pubkey }: { pubkey?: string }) {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="space-y-0.5">
                     <p className="text-[10px] text-muted-foreground/50">Received</p>
-                    <p className="text-sm font-mono font-semibold text-green-600 dark:text-green-400">{formatBigNumber(zapStats.total_received)} sats</p>
+                    <p className="text-sm font-mono font-semibold text-success dark:text-green-400">{formatBigNumber(zapStats.total_received)} sats</p>
                   </div>
                   <div className="space-y-0.5">
                     <p className="text-[10px] text-muted-foreground/50">Sent</p>
@@ -2835,7 +2835,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                   {rawEvents.length.toLocaleString()} events
                 </Badge>
                 {wotFilterEnabled && wotFilteredCount > 0 && (
-                  <Badge variant="outline" className="gap-1 text-emerald-700 dark:text-emerald-400 border-emerald-400/40 dark:border-emerald-500/30" data-testid="badge-wot-filter">
+                  <Badge variant="outline" className="gap-1 text-success dark:text-emerald-400 border-emerald-400/40 dark:border-emerald-500/30" data-testid="badge-wot-filter">
                     <ShieldCheck className="w-3 h-3" />
                     WoT: {getSignalTierLabel(wotMinTier)}+
                   </Badge>

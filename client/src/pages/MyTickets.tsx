@@ -40,7 +40,7 @@ import type { Event as NostrEvent } from "nostr-tools";
 // The words come from the shared statusLabel() — the operator's screen uses the
 // same ones, so the person who reported something sees what the operator set.
 const STATUS_COLOR: Record<FeedbackStatus, string> = {
-  open: "border-emerald-400/40 text-emerald-700 dark:text-emerald-300/80 bg-emerald-500/10",
+  open: "border-emerald-400/40 text-success dark:text-emerald-300/80 bg-emerald-500/10",
   draft: "border-amber-400/40 text-amber-700 dark:text-amber-300/80 bg-amber-500/10",
   resolved: "border-blue-400/40 text-blue-700 dark:text-blue-300/80 bg-blue-500/10",
   closed: "border-muted-foreground/30 text-muted-foreground/60 bg-muted/20",

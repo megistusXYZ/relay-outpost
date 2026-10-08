@@ -1130,7 +1130,7 @@ function SchedulerExpandRow() {
           </Button>
         </div>
         {saved && (
-          <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400/70">Active: {saved}</p>
+          <p className="text-[10px] text-success dark:text-emerald-400/70">Active: {saved}</p>
         )}
       </div>
     </ExpandRow>

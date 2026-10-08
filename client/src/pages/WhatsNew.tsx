@@ -6,7 +6,7 @@ import { CHANGELOG, markChangelogSeen, type ChangeType } from "@/lib/changelog";
 const TYPE_STYLES: Record<ChangeType, { label: string; className: string }> = {
   new: { label: "New", className: "text-brand bg-brand/12 border-brand/20" },
   improved: { label: "Improved", className: "text-sky-700 dark:text-sky-300 bg-sky-500/12 border-sky-500/20" },
-  fixed: { label: "Fixed", className: "text-emerald-700 dark:text-emerald-300 bg-emerald-500/12 border-emerald-500/20" },
+  fixed: { label: "Fixed", className: "text-success dark:text-emerald-300 bg-emerald-500/12 border-emerald-500/20" },
 };
 
 function formatDate(iso: string): string {

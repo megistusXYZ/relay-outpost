@@ -62,7 +62,7 @@ function ContentTypeIcon({ type, className }: { type: HorizonContentType; classN
 const CONTENT_TYPE_COLORS: Record<HorizonContentType, string> = {
   article: "text-brand/60 bg-brand/8 border-brand/15",
   video: "text-blue-600/60 dark:text-blue-400/60 bg-blue-500/8 border-blue-500/15",
-  audio: "text-emerald-600/60 dark:text-emerald-400/60 bg-emerald-500/8 border-emerald-500/15",
+  audio: "text-success dark:text-emerald-400/60 bg-emerald-500/8 border-emerald-500/15",
   file: "text-amber-600/60 dark:text-amber-400/60 bg-amber-500/8 border-amber-500/15",
   link: "text-cyan-600/60 dark:text-cyan-400/60 bg-cyan-500/8 border-cyan-500/15",
 };

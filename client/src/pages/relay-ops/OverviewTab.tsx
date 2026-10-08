@@ -929,7 +929,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
               const recentDown = recent.filter(e => !e.online).length;
               if (recentDown >= 2) return <Badge variant="outline" className="text-[10px] border-red-400/40 dark:border-red-400/30 text-red-600/80 dark:text-red-400/70 animate-pulse">Downtime detected</Badge>;
               if (recentDown === 1) return <Badge variant="outline" className="text-[10px] border-amber-400/30 dark:border-amber-400/20 text-amber-600 dark:text-amber-400/70">Intermittent</Badge>;
-              return recent.length > 0 ? <Badge variant="outline" className="text-[10px] border-green-400/25 dark:border-green-400/15 text-green-700 dark:text-green-400/70">Stable</Badge> : null;
+              return recent.length > 0 ? <Badge variant="outline" className="text-[10px] border-green-400/25 dark:border-green-400/15 text-success dark:text-green-400/70">Stable</Badge> : null;
             })()}
           </div>
         </div>
@@ -1045,7 +1045,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
                         return (
                           <div key={server} className="flex items-center gap-1.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/70 shrink-0" />
-                            <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400/80">{hostname}</span>
+                            <span className="text-xs font-mono text-success dark:text-emerald-400/80">{hostname}</span>
                           </div>
                         );
                       })}
@@ -1080,10 +1080,10 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
                         <span className="text-[10px] text-muted-foreground/60">Max tags: <span className="text-brand dark:text-brand/70 font-mono">{nip11.limitation.max_event_tags}</span></span>
                       )}
                       {nip11.limitation.auth_required != null && (
-                        <span className="text-[10px] text-muted-foreground/60">Auth required: <span className={`font-mono ${nip11.limitation.auth_required ? "text-amber-600 dark:text-amber-400/70" : "text-green-600 dark:text-green-400/70"}`}>{nip11.limitation.auth_required ? "Yes" : "No"}</span></span>
+                        <span className="text-[10px] text-muted-foreground/60">Auth required: <span className={`font-mono ${nip11.limitation.auth_required ? "text-amber-600 dark:text-amber-400/70" : "text-success dark:text-green-400/70"}`}>{nip11.limitation.auth_required ? "Yes" : "No"}</span></span>
                       )}
                       {nip11.limitation.payment_required != null && (
-                        <span className="text-[10px] text-muted-foreground/60">Payment required: <span className={`font-mono ${nip11.limitation.payment_required ? "text-amber-600 dark:text-amber-400/70" : "text-green-600 dark:text-green-400/70"}`}>{nip11.limitation.payment_required ? "Yes" : "No"}</span></span>
+                        <span className="text-[10px] text-muted-foreground/60">Payment required: <span className={`font-mono ${nip11.limitation.payment_required ? "text-amber-600 dark:text-amber-400/70" : "text-success dark:text-green-400/70"}`}>{nip11.limitation.payment_required ? "Yes" : "No"}</span></span>
                       )}
                     </div>
                   </div>
@@ -1234,7 +1234,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
               }
             >
               {nip45Supported === true && (
-                <Badge variant="outline" className="text-[10px] border-green-400/25 dark:border-green-400/15 text-green-700 dark:text-green-400/70" title="Relay supports NIP-45 COUNT — exact totals.">NIP-45 COUNT</Badge>
+                <Badge variant="outline" className="text-[10px] border-green-400/25 dark:border-green-400/15 text-success dark:text-green-400/70" title="Relay supports NIP-45 COUNT — exact totals.">NIP-45 COUNT</Badge>
               )}
               {nip45Supported === false && (
                 <>
@@ -1366,7 +1366,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
                   )
                 )}
                 {deepScanStatus === "completed" && (
-                  <Badge variant="outline" className="text-[10px] border-green-400/25 dark:border-green-400/15 text-green-700 dark:text-green-400/70">
+                  <Badge variant="outline" className="text-[10px] border-green-400/25 dark:border-green-400/15 text-success dark:text-green-400/70">
                     Reached end of relay store
                   </Badge>
                 )}

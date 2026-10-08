@@ -309,7 +309,7 @@ export function UploadTrackDialog({ open, onOpenChange, onPublished }: UploadTra
               </span>
             )}
             {audioUrl && !audioUploading && (
-              <span className={`text-[10px] flex items-center gap-1 mt-2 ${audioMetadataStripped ? "text-green-500/70" : "text-amber-500/70"}`}>
+              <span className={`text-[10px] flex items-center gap-1 mt-2 ${audioMetadataStripped ? "text-success dark:text-green-500/70" : "text-amber-500/70"}`}>
                 {audioMetadataStripped ? <ShieldCheck className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
                 {audioMetadataStripped ? "Metadata scrubbed" : "Metadata could not be scrubbed for this format"}
               </span>

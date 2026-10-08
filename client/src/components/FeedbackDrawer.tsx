@@ -318,7 +318,7 @@ export function FeedbackDrawer() {
 
         {success ? (
           <div className="mt-6 space-y-4">
-            <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400">
+            <div className="flex items-center gap-2 text-sm text-success dark:text-emerald-400">
               <Check className="w-4 h-4" /> {success.isPrivate ? "Sent privately." : "Feedback sent."}
             </div>
             <p className="text-xs text-muted-foreground/70 leading-relaxed">

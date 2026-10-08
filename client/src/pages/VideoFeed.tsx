@@ -872,7 +872,7 @@ function VideoCard({ event, videoUrl }: { event: Event; videoUrl: string }) {
               if (!video) return;
               await enterPiP(video, videoUrl, true);
             }}
-            className={`absolute top-2 left-2 sm:left-auto sm:right-2 z-10 p-1.5 rounded-full backdrop-blur-md transition-all ${isThisPiP ? "bg-green-500/30 text-green-800 dark:text-green-300" : "bg-black/50 text-white/70 hover:text-white hover:bg-black/70"} opacity-0 group-hover/vcard:opacity-100 focus:opacity-100`}
+            className={`absolute top-2 left-2 sm:left-auto sm:right-2 z-10 p-1.5 rounded-full backdrop-blur-md transition-all ${isThisPiP ? "bg-green-500/30 text-success dark:text-green-300" : "bg-black/50 text-white/70 hover:text-white hover:bg-black/70"} opacity-0 group-hover/vcard:opacity-100 focus:opacity-100`}
             title={isThisPiP ? "Playing in Picture-in-Picture" : "Picture-in-Picture"}
             data-testid={`button-pip-${event.id}`}
           >

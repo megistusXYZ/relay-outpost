@@ -96,28 +96,28 @@ export default function DataSovereignty() {
                 <div className="rounded-lg bg-emerald-500/[0.05] dark:bg-emerald-500/[0.03] border border-emerald-500/15 px-3 py-2">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-3 h-3 text-emerald-500/60" />
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">Identity</span>
+                    <span className="text-success dark:text-emerald-400 font-bold text-[11px]">Identity</span>
                   </div>
                   <p className="text-[12px] text-foreground/60 mt-0.5">Your public key is your universal identity across every Nostr app. No signup forms, no email verification, no phone numbers.</p>
                 </div>
                 <div className="rounded-lg bg-emerald-500/[0.05] dark:bg-emerald-500/[0.03] border border-emerald-500/15 px-3 py-2">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-3 h-3 text-emerald-500/60" />
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">Authentication</span>
+                    <span className="text-success dark:text-emerald-400 font-bold text-[11px]">Authentication</span>
                   </div>
                   <p className="text-[12px] text-foreground/60 mt-0.5">Your key is your login. Walk into any Nostr app with your key and you're instantly you — with your profile, follows, and history intact.</p>
                 </div>
                 <div className="rounded-lg bg-emerald-500/[0.05] dark:bg-emerald-500/[0.03] border border-emerald-500/15 px-3 py-2">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-3 h-3 text-emerald-500/60" />
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">Proof of Authorship</span>
+                    <span className="text-success dark:text-emerald-400 font-bold text-[11px]">Proof of Authorship</span>
                   </div>
                   <p className="text-[12px] text-foreground/60 mt-0.5">Every post you publish is cryptographically signed. Anyone can mathematically verify that you wrote it — not a bot, not an impersonator, not an AI. You.</p>
                 </div>
                 <div className="rounded-lg bg-emerald-500/[0.05] dark:bg-emerald-500/[0.03] border border-emerald-500/15 px-3 py-2">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-3 h-3 text-emerald-500/60" />
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">Encryption</span>
+                    <span className="text-success dark:text-emerald-400 font-bold text-[11px]">Encryption</span>
                   </div>
                   <p className="text-[12px] text-foreground/60 mt-0.5">Your key encrypts and decrypts your private messages. End-to-end, with no third party involved — the same key that signs your posts also protects your DMs.</p>
                 </div>

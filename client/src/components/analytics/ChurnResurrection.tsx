@@ -418,7 +418,7 @@ export function ChurnResurrection({ relays: propRelays }: { relays?: string[] })
                   <UserPlus className="w-3.5 h-3.5 text-green-800 dark:text-green-400" />
                   <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Resurrected</p>
                 </div>
-                <p className="text-xl font-mono text-green-800 dark:text-green-400" data-testid="text-resurrected-count">
+                <p className="text-xl font-mono text-success dark:text-green-400" data-testid="text-resurrected-count">
                   {stats.resurrectedCount}
                 </p>
               </div>

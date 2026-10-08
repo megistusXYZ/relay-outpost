@@ -163,7 +163,7 @@ function FlyoutSearchResults({
               onOpen={onOpen}
               testId={`rail-flyout-joined-${encodeURIComponent(m.url).slice(0, 24)}`}
               trailing={
-                <span className="shrink-0 text-[9px] text-emerald-600/80 dark:text-emerald-400/80">Joined</span>
+                <span className="shrink-0 text-[9px] text-success dark:text-emerald-400/80">Joined</span>
               }
             />
           ))}

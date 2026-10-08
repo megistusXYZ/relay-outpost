@@ -112,8 +112,8 @@ export default function RelayCommunities() {
                         <span className="text-[11px] text-foreground/55">{platform}</span>
                       </div>
                       <div className="flex items-start gap-1.5">
-                        <span className="text-[9px] font-bold text-emerald-500/70 uppercase shrink-0 mt-0.5">Community</span>
-                        <span className="text-[11px] text-emerald-700 dark:text-emerald-400/80">{outpost}</span>
+                        <span className="text-[9px] font-bold text-success dark:text-emerald-500/70 uppercase shrink-0 mt-0.5">Community</span>
+                        <span className="text-[11px] text-success dark:text-emerald-400/80">{outpost}</span>
                       </div>
                     </div>
                   </div>

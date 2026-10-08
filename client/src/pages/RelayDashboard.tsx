@@ -1244,7 +1244,7 @@ export default function RelayDashboard() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className={`gap-1 text-xs ${outpostAccess === "private" ? "text-amber-600 dark:text-amber-400/80" : "text-green-600 dark:text-green-400/80"}`}
+                  className={`gap-1 text-xs ${outpostAccess === "private" ? "text-amber-600 dark:text-amber-400/80" : "text-success dark:text-green-400/80"}`}
                   onClick={() => setOutpostAccess(outpostAccess === "public" ? "private" : "public")}
                   data-testid="button-outpost-access-toggle"
                 >
@@ -1298,7 +1298,7 @@ export default function RelayDashboard() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className={`gap-1 text-[11px] shrink-0 ${editAccess === "private" ? "text-amber-600 dark:text-amber-400/80" : "text-green-600 dark:text-green-400/80"}`}
+                                className={`gap-1 text-[11px] shrink-0 ${editAccess === "private" ? "text-amber-600 dark:text-amber-400/80" : "text-success dark:text-green-400/80"}`}
                                 onClick={() => setEditAccess(editAccess === "public" ? "private" : "public")}
                               >
                                 {editAccess === "private" ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
@@ -1328,7 +1328,7 @@ export default function RelayDashboard() {
                               {operatorPubkeys.get(relay.url) && <TrustTierDot pubkey={operatorPubkeys.get(relay.url)!} />}
                               <Badge
                                 variant="outline"
-                                className={`text-[10px] ${relay.access === "private" ? "border-amber-300 dark:border-amber-400/20 text-amber-600 dark:text-amber-400/60" : "border-green-300 dark:border-green-400/20 text-green-600 dark:text-green-400/60"}`}
+                                className={`text-[10px] ${relay.access === "private" ? "border-amber-300 dark:border-amber-400/20 text-amber-600 dark:text-amber-400/60" : "border-green-300 dark:border-green-400/20 text-success dark:text-green-400/60"}`}
                               >
                                 {relay.access === "private" ? <Lock className="w-2.5 h-2.5 mr-0.5" /> : <Unlock className="w-2.5 h-2.5 mr-0.5" />}
                                 {relay.access}
@@ -1422,7 +1422,7 @@ export default function RelayDashboard() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => toggleRelay(relay.url)}
-                                className={isDisabled ? "text-green-800/60 dark:text-green-400/60" : "text-muted-foreground/40"}
+                                className={isDisabled ? "text-success dark:text-green-400/60" : "text-muted-foreground/40"}
                                 title={isDisabled ? "Enable relay" : "Disable relay"}
                                 data-testid={`button-toggle-outpost-${idx}`}
                               >
@@ -1544,7 +1544,7 @@ export default function RelayDashboard() {
                       variant="ghost"
                       size="icon"
                       onClick={() => toggleRelay(url)}
-                      className={isDisabled ? "text-green-800/60 dark:text-green-400/60" : "text-muted-foreground/40"}
+                      className={isDisabled ? "text-success dark:text-green-400/60" : "text-muted-foreground/40"}
                       title={isDisabled ? "Enable relay" : "Disable relay"}
                       data-testid={`button-toggle-relay-${url}`}
                     >
@@ -1655,7 +1655,7 @@ export default function RelayDashboard() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleUnblockRelay(url)}
-                        className="text-green-800/60 dark:text-green-400/60 shrink-0"
+                        className="text-success dark:text-green-400/60 shrink-0"
                         data-testid={`button-unblock-relay-${url}`}
                       >
                         <ShieldCheck className="w-3.5 h-3.5 mr-1" />

@@ -119,7 +119,7 @@ function VouchBadge({ attestation }: { attestation: Attestation }) {
   if (isVerified) {
     label = "Verified";
     Icon = BadgeCheck;
-    className = "text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
+    className = "text-success dark:text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
   } else if (attestation.type === "identity") {
     label = "Identity";
     Icon = BadgeCheck;
@@ -178,7 +178,7 @@ function AttesterInfo({
                 <span className="inline-flex items-center justify-center">
                   <TrustTierDot pubkey={pubkey} />
                 </span>
-                <span className="text-emerald-500/80">in your network</span>
+                <span className="text-success dark:text-emerald-500/80">in your network</span>
               </>
             ) : (
               <span className="text-muted-foreground/40">outside your network</span>
@@ -243,7 +243,7 @@ function VouchMenu({
 function OwnerResponseBlock({ response }: { response: VouchResponse }) {
   return (
     <div className="mt-2 pl-3 border-l-2 border-emerald-500/25">
-      <div className="text-[10px] font-medium text-emerald-800/80 dark:text-emerald-400/80 mb-0.5 flex items-center gap-1">
+      <div className="text-[10px] font-medium text-success dark:text-emerald-400/80 mb-0.5 flex items-center gap-1">
         <MessageSquare className="w-2.5 h-2.5" />
         Owner's response
       </div>
@@ -410,7 +410,7 @@ function AttestationCard({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onRespond(); }}
-          className="mt-2 inline-flex items-center gap-1 min-h-[44px] py-1 text-[11px] font-medium text-emerald-800/80 dark:text-emerald-400/80 hover:text-emerald-800 dark:hover:text-emerald-300 transition-colors"
+          className="mt-2 inline-flex items-center gap-1 min-h-[44px] py-1 text-[11px] font-medium text-success dark:text-emerald-400/80 hover:text-emerald-800 dark:hover:text-emerald-300 transition-colors"
           data-testid={`vouch-respond-${attestation.eventId}`}
         >
           <MessageSquare className="w-3 h-3" />
@@ -505,7 +505,7 @@ function ReviewDialog({
             <button
               type="button"
               onClick={() => setComposing(true)}
-              className="inline-flex items-center gap-1 min-h-[44px] py-1 text-xs font-medium text-emerald-800/80 dark:text-emerald-400/80 hover:text-emerald-800 dark:hover:text-emerald-300 transition-colors"
+              className="inline-flex items-center gap-1 min-h-[44px] py-1 text-xs font-medium text-success dark:text-emerald-400/80 hover:text-emerald-800 dark:hover:text-emerald-300 transition-colors"
               data-testid={`vouch-respond-dialog-${attestation.eventId}`}
             >
               <MessageSquare className="w-3.5 h-3.5" />
@@ -739,7 +739,7 @@ export function TrustReviewsPanel({ pubkey, embedded = false }: { pubkey: string
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <ShieldCheck className="w-4 h-4 text-emerald-500/80 shrink-0" />
-              <h3 className="text-xs font-brand tracking-wider uppercase text-emerald-800/90 dark:text-emerald-400/90">
+              <h3 className="text-xs font-brand tracking-wider uppercase text-success dark:text-emerald-400/90">
                 Trust Reviews
               </h3>
             </div>
@@ -779,7 +779,7 @@ export function TrustReviewsPanel({ pubkey, embedded = false }: { pubkey: string
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <div className="flex items-center gap-2 min-w-0">
             <ShieldCheck className="w-4 h-4 text-emerald-500/80 shrink-0" />
-            <h3 className="text-xs font-brand tracking-wider uppercase text-emerald-800/90 dark:text-emerald-400/90 truncate">
+            <h3 className="text-xs font-brand tracking-wider uppercase text-success dark:text-emerald-400/90 truncate">
               Trust Reviews
             </h3>
           </div>
@@ -790,7 +790,7 @@ export function TrustReviewsPanel({ pubkey, embedded = false }: { pubkey: string
                 {activeCount} {activeCount === 1 ? "vouch" : "vouches"}
               </span>
               {showTrust && trustedCount > 0 && !isOwnProfile && (
-                <span className="text-emerald-800/70 dark:text-emerald-400/70">
+                <span className="text-success dark:text-emerald-400/70">
                   {" · "}{trustedCount} from your network
                 </span>
               )}
