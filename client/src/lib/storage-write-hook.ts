@@ -13,7 +13,8 @@
  */
 
 export type StorageWriteOp = "set" | "remove";
-export type StorageWriteListener = (op: StorageWriteOp, key: string) => void;
+/** `changed`: whether the stored value is different afterwards (a rewrite of the same value is not). */
+export type StorageWriteListener = (op: StorageWriteOp, key: string, changed: boolean) => void;
 
 interface PrototypeHook {
   setItem: (this: Storage, key: string, value: string) => void;
@@ -39,20 +40,25 @@ function hookFor(storage: Storage): PrototypeHook {
   if (existing) return existing;
 
   const hook: PrototypeHook = { setItem: proto.setItem, removeItem: proto.removeItem, listeners: new Map() };
-  const notify = (target: Storage, op: StorageWriteOp, key: string) => {
+  const notify = (target: Storage, op: StorageWriteOp, key: string, changed: boolean) => {
     const forTarget = hook.listeners.get(target);
     if (!forTarget) return;
     for (const listener of forTarget.values()) {
-      try { listener(op, key); } catch {}
+      try { listener(op, key, changed); } catch {}
     }
   };
+  const read = (target: Storage, key: string): string | null => {
+    try { return target.getItem(key); } catch { return null; }
+  };
   proto.setItem = function (this: Storage, key: string, value: string) {
+    const before = hook.listeners.has(this) ? read(this, key) : null;
     hook.setItem.call(this, key, value);
-    notify(this, "set", String(key));
+    notify(this, "set", String(key), before !== String(value));
   };
   proto.removeItem = function (this: Storage, key: string) {
+    const before = hook.listeners.has(this) ? read(this, key) : null;
     hook.removeItem.call(this, key);
-    notify(this, "remove", String(key));
+    notify(this, "remove", String(key), before !== null);
   };
   registry().set(proto, hook);
   return hook;
