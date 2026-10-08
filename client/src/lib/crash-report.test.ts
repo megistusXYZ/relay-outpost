@@ -511,3 +511,21 @@ describe("tallyCrashStatuses — the numbers behind the filter chips", () => {
     expect(tallyCrashStatuses(groups, statuses)).toEqual({ new: 1, investigating: 1, fixed: 1, ignored: 0 });
   });
 });
+
+/**
+ * Safari's wording of a failed lazy import, as the WebKit sweep saw it
+ * (2026-10-08): a reload while a page chunk is still loading cancels it, and
+ * the page being left reports "Importing a module script failed." through its
+ * root error boundary. Nobody sees that page; it is never a crash report. (A
+ * stale shell after a deploy says the same — the recovery reload handles it,
+ * lib/stale-chunk-recovery.ts.) Pinned so a change to the filter can't let
+ * these into the operator inbox.
+ */
+describe("Safari's failed lazy import is not reported", () => {
+  it("drops WebKit's 'Importing a module script failed.'", () => {
+    expect(isReportableError(new TypeError("Importing a module script failed."))).toBe(false);
+  });
+  it("…including through the render path's slot (the root error boundary)", () => {
+    expect(claimCrashSlot(new TypeError("Importing a module script failed."))).toBeNull();
+  });
+});
