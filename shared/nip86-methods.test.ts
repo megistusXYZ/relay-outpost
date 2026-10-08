@@ -13,7 +13,7 @@ describe("the relay management methods", () => {
   });
 
   it("are one list: the server's proxy allows exactly what the app can call", () => {
-    const routes = readFileSync(path.join(root, "server/routes.ts"), "utf8");
+    const routes = readFileSync(path.join(root, "server/nip86-proxy.ts"), "utf8");
     expect(routes).toMatch(/NIP86_ALLOWED_METHODS = new Set<string>\(NIP86_METHODS\)/);
     expect(routes).not.toMatch(/NIP86_ALLOWED_METHODS = new Set\(\[/);
     const client = readFileSync(path.join(root, "client/src/lib/nip86.ts"), "utf8");

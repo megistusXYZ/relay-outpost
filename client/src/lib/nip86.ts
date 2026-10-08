@@ -7,7 +7,7 @@ import {
   readSupportedMethods, methodsToTry, callFirstSupported,
   UNKNOWN_CAPABILITIES, type RelayCapabilities, type RelayAction,
 } from "./relay-capabilities";
-import { isNip86Method } from "@shared/nip86-methods";
+import { isNip86Method, type Nip86Param } from "@shared/nip86-methods";
 
 export interface Nip86Response<T = unknown> {
   result?: T;
@@ -92,7 +92,7 @@ function normalizeHttpUrl(relayUrl: string): string {
 export async function nip86Call<T = unknown>(
   relayUrl: string,
   method: Nip86Method,
-  params: (string | number)[] = [],
+  params: Nip86Param[] = [],
 ): Promise<Nip86Response<T>> {
   try {
     const signer = getGlobalSigner();
