@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, memo } from "react";
+import { useTyping } from "@/lib/typing-focus";
 import { tabTap } from "@/lib/footer-nav";
 import { scrollPageToTop, isPageAtTop } from "@/lib/scroll-root";
 import { emitTabRetap } from "@/lib/tab-retap";
@@ -188,7 +189,10 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
     if (!location.startsWith("/messages") && !location.startsWith("/outposts/c/")) setDmThreadOpen(false);
   }, [location]);
 
-  const effectiveHidden = dmThreadOpen || hidden;
+  // Typing: the keyboard is up, and the bar would ride on it over the box
+  // being typed in (stream chat, the reply box). Native apps step it aside too.
+  const typing = useTyping();
+  const effectiveHidden = dmThreadOpen || hidden || typing;
 
   // What the footer covers right now, for bars that ride on it (the thread
   // page's docked reply bar): its height while shown, 0 once it slides away.
