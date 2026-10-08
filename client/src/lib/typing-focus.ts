@@ -20,19 +20,31 @@ export function isTypingField(el: Element | null): boolean {
   return !!host && host.getAttribute("contenteditable") !== "false";
 }
 
-/** True while a typing field has focus. */
+/** How long the bottom bar waits after typing ends before it returns. */
+export const BAR_RETURN_MS = 350;
+
+/** True while a typing field has focus (and briefly after: BAR_RETURN_MS). */
 export function useTyping(): boolean {
   const [typing, setTyping] = useState(() => typeof document !== "undefined" && isTypingField(document.activeElement));
   useEffect(() => {
-    const update = () => setTyping(isTypingField(document.activeElement));
-    // focusout fires before focus lands on the next field: read where it
-    // landed on the next tick, so moving between two boxes doesn't flash the bar.
-    const onOut = () => setTimeout(update, 0);
-    document.addEventListener("focusin", update);
-    document.addEventListener("focusout", onOut);
+    // Out of the way at once when typing starts; back only after the tap that
+    // ended it has landed. Back at once, the page's bottom spacing changed
+    // mid-tap and the tapped button moved from under the finger
+    // (ops-publisher-e2e: "Sign" under a text box never signed). Focus moving
+    // to a button ends typing through focusin, not only focusout — both wait.
+    // Moving between two boxes never brings it back in between.
+    let back: ReturnType<typeof setTimeout> | undefined;
+    const settle = () => {
+      clearTimeout(back);
+      if (isTypingField(document.activeElement)) { setTyping(true); return; }
+      back = setTimeout(() => setTyping(isTypingField(document.activeElement)), BAR_RETURN_MS);
+    };
+    document.addEventListener("focusin", settle);
+    document.addEventListener("focusout", settle);
     return () => {
-      document.removeEventListener("focusin", update);
-      document.removeEventListener("focusout", onOut);
+      clearTimeout(back);
+      document.removeEventListener("focusin", settle);
+      document.removeEventListener("focusout", settle);
     };
   }, []);
   return typing;
