@@ -137,8 +137,9 @@ describe("headings are not violet in light mode", () => {
       expect(src, title).toContain(`<h2 className="text-sm font-brand tracking-wider uppercase dark:text-brand">${title}</h2>`);
     }
   });
-  it("Help: the page title is ink, violet in dark", () => {
+  it("Help: the page title is ink and its kicker grey, violet in dark", () => {
     expect(read("pages/WtfIsThis.tsx")).toMatch(/className="[^"]*\btext-foreground dark:text-brand\/90"\s*>\s*Help &amp; Guides/);
+    expect(read("pages/WtfIsThis.tsx")).toMatch(/text-muted-foreground dark:text-brand\/30[^"]*">get started, post &amp; connect/);
   });
 });
 
