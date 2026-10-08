@@ -56,6 +56,7 @@ export default {
         success: { DEFAULT: "hsl(var(--success) / <alpha-value>)" },
         warning: { DEFAULT: "hsl(var(--warning) / <alpha-value>)" },
         danger: { DEFAULT: "hsl(var(--danger) / <alpha-value>)" },
+        zap: { DEFAULT: "hsl(var(--zap) / <alpha-value>)" },
         destructive: {
           DEFAULT: "hsl(var(--destructive) / <alpha-value>)",
           foreground: "hsl(var(--destructive-foreground) / <alpha-value>)",

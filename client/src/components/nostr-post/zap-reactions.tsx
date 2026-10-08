@@ -174,8 +174,8 @@ export function ZapReceiptsPopover({ eventId, zapAmount, zapCount, size = "defau
       >
         <div className="p-3 space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-display text-amber-700 dark:text-amber-400/90">Thanks received</p>
-            <span className="text-xs font-mono text-amber-700 dark:text-amber-400/70">
+            <p className="text-xs font-display text-zap dark:text-amber-400/90">Thanks received</p>
+            <span className="text-xs font-mono text-zap dark:text-amber-400/70">
               {zapAmount > 0 ? `${zapAmount.toLocaleString()} sats` : `${zapCount} ${zapCount === 1 ? "person" : "people"}`}
             </span>
           </div>
@@ -203,7 +203,7 @@ export function ZapReceiptsPopover({ eventId, zapAmount, zapCount, size = "defau
           {!loading && zappers.length > 0 && (
             <div className="flex items-center justify-between pt-1.5 border-t border-amber-500/10 text-[11px]">
               <span className="text-muted-foreground/50">{zappers.length} zapper{zappers.length !== 1 ? "s" : ""}</span>
-              <span className="text-amber-700 dark:text-amber-400/70 font-mono">{zappers.reduce((s, z) => s + z.amount, 0).toLocaleString()} sats total</span>
+              <span className="text-zap dark:text-amber-400/70 font-mono">{zappers.reduce((s, z) => s + z.amount, 0).toLocaleString()} sats total</span>
             </div>
           )}
         </div>
@@ -232,20 +232,20 @@ export function ZapperRow({ zapper }: { zapper: ZapperInfo }) {
       <div className={`flex items-center gap-2 py-1.5 px-1.5 rounded-md hover-elevate cursor-pointer ${isMe ? "bg-amber-500/10 ring-1 ring-amber-500/25" : ""}`} data-testid={`zapper-row-${zapper.pubkey}`}>
         <Avatar className="w-5 h-5 shrink-0 ring-1 ring-amber-500/20 border border-background">
           <AvatarImage src={avatarUrl} alt={displayName} data-testid={`img-zapper-avatar-${zapper.pubkey}`} />
-          <AvatarFallback className="bg-amber-500/10 text-amber-800 dark:text-amber-400 font-bold text-[8px]">
+          <AvatarFallback className="bg-amber-500/10 text-zap dark:text-amber-400 font-bold text-[8px]">
             {displayName.slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
           <span className="text-[11px] text-foreground/80 truncate block" data-testid={`text-zapper-name-${zapper.pubkey}`}>
             {displayName}
-            {isMe && <span className="ml-1 text-[9px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400/90">You</span>}
+            {isMe && <span className="ml-1 text-[9px] font-semibold uppercase tracking-wide text-zap dark:text-amber-400/90">You</span>}
           </span>
           {zapper.comment && (
             <span className="text-[10px] text-muted-foreground/50 truncate block" data-testid={`text-zapper-comment-${zapper.pubkey}`}>{zapper.comment}</span>
           )}
         </div>
-        <span className="text-[11px] font-mono text-amber-700 dark:text-amber-400 shrink-0" data-testid={`text-zapper-amount-${zapper.pubkey}`}>{formatSats(zapper.amount)}</span>
+        <span className="text-[11px] font-mono text-zap dark:text-amber-400 shrink-0" data-testid={`text-zapper-amount-${zapper.pubkey}`}>{formatSats(zapper.amount)}</span>
       </div>
     </Link>
   );
@@ -294,7 +294,7 @@ export function TopZapDetailContent({ pubkey, amount, message, emoji }: { pubkey
         <Link href={npub ? `/profile/${npub}` : "#"} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
           <Avatar className="w-10 h-10 ring-2 ring-amber-500/30 dark:ring-amber-400/25 cursor-pointer transition-transform hover:scale-105">
             <AvatarImage src={avatarUrl} alt={displayName} />
-            <AvatarFallback className="bg-amber-500/10 text-amber-800 dark:text-amber-400 font-bold text-xs">
+            <AvatarFallback className="bg-amber-500/10 text-zap dark:text-amber-400 font-bold text-xs">
               {displayName.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -306,7 +306,7 @@ export function TopZapDetailContent({ pubkey, amount, message, emoji }: { pubkey
           <div className="flex items-center gap-1.5">
             {emoji && <span className="text-sm">{emoji}</span>}
             <BtcZapIcon className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{amount.toLocaleString()} sats</span>
+            <span className="text-xs font-bold text-zap dark:text-amber-400">{amount.toLocaleString()} sats</span>
           </div>
         </div>
       </div>
@@ -383,7 +383,7 @@ export function TopZapperAvatars({ eventId, hasZaps }: { eventId: string; hasZap
                     <div className="mx-auto w-10 h-1 rounded-full bg-muted-foreground/20 mb-4" />
                     <div className="flex items-center gap-1.5 mb-4">
                       <BtcZapIcon className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                      <span className="text-xs font-display uppercase tracking-wider text-amber-600 dark:text-amber-400/90">Top Zap</span>
+                      <span className="text-xs font-display uppercase tracking-wider text-zap dark:text-amber-400/90">Top Zap</span>
                     </div>
                     {detailContent}
                   </SheetContent>
@@ -408,7 +408,7 @@ export function TopZapperAvatars({ eventId, hasZaps }: { eventId: string; hasZap
                 >
                   <div className="flex items-center gap-1.5 mb-3">
                     <BtcZapIcon className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                    <span className="text-xs font-display uppercase tracking-wider text-amber-600 dark:text-amber-400/90">Top Zap</span>
+                    <span className="text-xs font-display uppercase tracking-wider text-zap dark:text-amber-400/90">Top Zap</span>
                   </div>
                   {detailContent}
                 </PopoverContent>
@@ -453,7 +453,7 @@ export function TopZapperAvatar({ pubkey, size = "small" }: { pubkey: string; si
   const avatarNode = (
     <Avatar className={`${sizeClass} border border-background shadow-sm cursor-pointer transition-transform hover:scale-110`} data-testid={`img-top-zapper-${pubkey}`}>
       <AvatarImage src={avatarUrl} alt={displayName} />
-      <AvatarFallback className="bg-amber-500/10 text-amber-800 dark:text-amber-400 font-bold text-[7px]">
+      <AvatarFallback className="bg-amber-500/10 text-zap dark:text-amber-400 font-bold text-[7px]">
         {displayName.slice(0, 2).toUpperCase()}
       </AvatarFallback>
     </Avatar>
@@ -489,7 +489,7 @@ export function TopZapperAvatar({ pubkey, size = "small" }: { pubkey: string; si
               <Link href={`/profile/${npub}`} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                 <Avatar className="w-10 h-10 ring-2 ring-amber-500/30 border-2 border-brand dark:border-[#0d0d2b] shrink-0 cursor-pointer">
                   <AvatarImage src={avatarUrl} alt={displayName} />
-                  <AvatarFallback className="bg-amber-500/10 text-amber-800 dark:text-amber-400 text-sm font-bold">
+                  <AvatarFallback className="bg-amber-500/10 text-zap dark:text-amber-400 text-sm font-bold">
                     {displayName.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -504,7 +504,7 @@ export function TopZapperAvatar({ pubkey, size = "small" }: { pubkey: string; si
                   <HoverCardTrustBadge pubkey={pubkey} />
                 </div>
                 {nip05 && (
-                  <Nip05Badge nip05={nip05} pubkey={pubkey} className="mt-0.5" textClassName="text-[11px] text-amber-800/60 dark:text-amber-400/60" iconClassName="w-3 h-3" />
+                  <Nip05Badge nip05={nip05} pubkey={pubkey} className="mt-0.5" textClassName="text-[11px] text-zap dark:text-amber-400/60" iconClassName="w-3 h-3" />
                 )}
               </div>
             </div>
