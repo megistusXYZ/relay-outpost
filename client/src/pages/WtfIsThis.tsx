@@ -309,15 +309,15 @@ function faqOrder(question: string): number {
 
 function ContentTypeBadge({ type }: { type: "article" | "video" | "infographic" }) {
   const config = {
-    article: { icon: FileText, label: "Article", color: "text-blue-500/70 bg-blue-500/8 border-blue-500/15" },
-    video: { icon: Play, label: "Video", color: "text-red-500/70 bg-red-500/8 border-red-500/15" },
-    infographic: { icon: ImageIcon, label: "Infographic", color: "text-green-500/70 bg-green-500/8 border-green-500/15" },
+    article: { icon: FileText, label: "Article", color: "text-blue-700 dark:text-blue-400/80 bg-blue-500/8 border-blue-500/15" },
+    video: { icon: Play, label: "Video", color: "text-red-700 dark:text-red-400/80 bg-red-500/8 border-red-500/15" },
+    infographic: { icon: ImageIcon, label: "Infographic", color: "text-green-800 dark:text-green-400/80 bg-green-500/8 border-green-500/15" },
   }[type];
 
   const Icon = config.icon;
 
   return (
-    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${config.color}`}>
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-medium border ${config.color}`}>
       <Icon className="w-2.5 h-2.5" />
       {config.label}
     </span>
@@ -388,7 +388,7 @@ function GuideCard({ item }: { item: GuideItem }) {
                 </span>
               )}
             </div>
-            <p className="text-xs text-muted-foreground/60 leading-relaxed line-clamp-2">{item.description}</p>
+            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{item.description}</p>
             <div className="flex items-center gap-2 mt-3">
               <ContentTypeBadge type={item.type} />
             </div>
@@ -671,15 +671,18 @@ export default function WtfIsThis() {
       </div>
 
       {!searchQuery.trim() && (
-        <div className="flex flex-wrap gap-1.5 mb-5">
+        // 36px chips, 8px apart: each one's 44px target (.hit-area) meets the
+        // next row's without overlapping it (tap-targets-e2e.cjs).
+        <div className="flex flex-wrap gap-2 mb-5">
           {ALL_TAGS.map((tag) => (
             <button
               key={tag}
+              data-testid="help-tag-chip"
               onClick={() => { setExpandedTag(expandedTag === tag ? null : tag); setActiveCategory("all"); }}
-              className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-all duration-200 ${
+              className={`hit-area min-h-[36px] px-3 rounded-full text-xs font-medium transition-all duration-200 ${
                 expandedTag === tag
                   ? "bg-brand/15 text-brand border border-brand/20"
-                  : "bg-muted/20 text-muted-foreground/50 hover:text-muted-foreground/70 hover:bg-muted/30 border border-transparent"
+                  : "bg-card/70 text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-border"
               }`}
             >
               {tag}

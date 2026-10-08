@@ -2089,7 +2089,7 @@ function MatrixBrandBlock() {
       <p className={`text-[11px] font-semibold tracking-wide transition-all duration-300 whitespace-nowrap ${isMatrix ? "font-mono text-brand drop-shadow-[0_0_4px_rgba(139,92,246,0.4)]" : "text-foreground/70"}`}>
         {displayText}
         {versionText && (
-          <span className="text-[9px] text-foreground/25 dark:text-muted-foreground/35 font-mono font-normal ml-1" data-testid="text-about-version">{versionText}</span>
+          <span className="text-[11px] text-muted-foreground font-mono font-normal ml-1" data-testid="text-about-version">{versionText}</span>
         )}
       </p>
     </div>
