@@ -106,57 +106,61 @@ export function getKindLabel(kind: number, tags?: string[][]): string {
   return KIND_LABELS[kind] || `Kind ${kind}`;
 }
 
+// Light mode is calm (owner, 2026-10-08, after Activity #399): a kind badge
+// is a neutral chip; its category colour is for dark mode only, unchanged —
+// each string keeps every class dark mode wore (light ones it inherited are
+// spelled out with dark:), and dark:bg-transparent cancels the new light fill.
 export function getKindBadgeClasses(kind: number, tags?: string[][]): string {
   if (kind === 1 && tags && tags.some(t => t[0] === "r" && t[1] && /^wss?:\/\//.test(t[1]))) {
-    return "border-brand/30 dark:border-brand/20 text-brand dark:text-brand/80 bg-brand/5";
+    return "border-border text-muted-foreground bg-muted/40 dark:border-brand/20 dark:text-brand/80 dark:bg-brand/5";
   }
   switch (kind) {
     case 1:
-      return "border-blue-400/30 dark:border-blue-400/20 text-blue-600 dark:text-blue-400/80 bg-blue-500/5";
+      return "border-border text-muted-foreground bg-muted/40 dark:border-blue-400/20 dark:text-blue-400/80 dark:bg-blue-500/5";
     case 6:
     case 16:
-      return "border-green-400/30 dark:border-green-400/20 text-green-600 dark:text-green-400/80 bg-green-500/5";
+      return "border-border text-muted-foreground bg-muted/40 dark:border-green-400/20 dark:text-green-400/80 dark:bg-green-500/5";
     case 7:
-      return "border-pink-400/30 dark:border-pink-400/20 text-pink-600 dark:text-pink-400/80 bg-pink-500/5";
+      return "border-border text-muted-foreground bg-muted/40 dark:border-pink-400/20 dark:text-pink-400/80 dark:bg-pink-500/5";
     case 9735:
     case 9734:
-      return "border-amber-400/30 dark:border-amber-400/20 text-amber-600 dark:text-amber-400/80 bg-amber-500/5";
+      return "border-border text-muted-foreground bg-muted/40 dark:border-amber-400/20 dark:text-amber-400/80 dark:bg-amber-500/5";
     case 4:
     case 1059:
-      return "border-rose-400/30 dark:border-rose-400/20 text-rose-600 dark:text-rose-400/80 bg-rose-500/5";
+      return "border-border text-muted-foreground bg-muted/40 dark:border-rose-400/20 dark:text-rose-400/80 dark:bg-rose-500/5";
     case 5:
-      return "border-red-400/30 dark:border-red-400/20 text-red-600 dark:text-red-400/80 bg-red-500/5";
+      return "border-border text-muted-foreground bg-muted/40 dark:border-red-400/20 dark:text-red-400/80 dark:bg-red-500/5";
     case 0:
     case 3:
     case 10002:
-      return "border-cyan-400/30 dark:border-cyan-400/20 text-cyan-600 dark:text-cyan-400/80 bg-cyan-500/5";
+      return "border-border text-muted-foreground bg-muted/40 dark:border-cyan-400/20 dark:text-cyan-400/80 dark:bg-cyan-500/5";
     case 30023:
     case 30024:
-      return "border-brand/30 dark:border-brand/20 text-brand dark:text-brand/80 bg-brand/5";
+      return "border-border text-muted-foreground bg-muted/40 dark:border-brand/20 dark:text-brand/80 dark:bg-brand/5";
     case 30311:
     case 1311:
     case 9:
     case 10:
     case 42:
-      return "border-red-400/30 dark:border-red-400/20 text-red-500 dark:text-red-400/80 bg-red-500/5";
+      return "border-border text-muted-foreground bg-muted/40 dark:border-red-400/20 dark:text-red-400/80 dark:bg-red-500/5";
     case 1984:
     case 1985:
-      return "border-orange-400/30 dark:border-orange-400/20 text-orange-600 dark:text-orange-400/80 bg-orange-500/5";
+      return "border-border text-muted-foreground bg-muted/40 dark:border-orange-400/20 dark:text-orange-400/80 dark:bg-orange-500/5";
     case 1068:
-      return "border-brand/30 dark:border-brand/20 text-brand dark:text-brand/80 bg-brand/5";
+      return "border-border text-muted-foreground bg-muted/40 dark:border-brand/20 dark:text-brand/80 dark:bg-brand/5";
     case 1018:
-      return "border-emerald-400/30 dark:border-emerald-400/20 text-emerald-600 dark:text-emerald-400/80 bg-emerald-500/5";
+      return "border-border text-muted-foreground bg-muted/40 dark:border-emerald-400/20 dark:text-emerald-400/80 dark:bg-emerald-500/5";
     case 1111:
-      return "border-sky-400/30 dark:border-sky-400/20 text-sky-600 dark:text-sky-400/80 bg-sky-500/5";
+      return "border-border text-muted-foreground bg-muted/40 dark:border-sky-400/20 dark:text-sky-400/80 dark:bg-sky-500/5";
     case 9000: case 9001: case 9002: case 9003: case 9004: case 9005:
     case 9006: case 9007: case 9008: case 9009:
     case 9021: case 9022:
     case 11: case 12:
     case 39000: case 39001: case 39002:
     case 10009:
-      return "border-teal-400/30 dark:border-teal-400/20 text-teal-600 dark:text-teal-400/80 bg-teal-500/5";
+      return "border-border text-muted-foreground bg-muted/40 dark:border-teal-400/20 dark:text-teal-400/80 dark:bg-teal-500/5";
     default:
-      return "border-brand/30 dark:border-brand/20 text-brand dark:text-brand/70";
+      return "border-border text-muted-foreground bg-muted/40 dark:border-brand/20 dark:text-brand/70 dark:bg-transparent";
   }
 }
 

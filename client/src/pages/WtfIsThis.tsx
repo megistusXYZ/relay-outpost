@@ -309,16 +309,19 @@ function faqOrder(question: string): number {
 
 function ContentTypeBadge({ type }: { type: "article" | "video" | "infographic" }) {
   const config = {
-    article: { icon: FileText, label: "Article", color: "text-blue-700 dark:text-blue-400/80 bg-blue-500/8 border-blue-500/15" },
-    video: { icon: Play, label: "Video", color: "text-red-700 dark:text-red-400/80 bg-red-500/8 border-red-500/15" },
-    infographic: { icon: ImageIcon, label: "Infographic", color: "text-green-800 dark:text-green-400/80 bg-green-500/8 border-green-500/15" },
+    // Light: a neutral chip, the type's colour on its icon only (owner,
+    // 2026-10-08: calm, like Activity #399). Dark: unchanged — the chip keeps
+    // every class it wore, spelled out with dark:.
+    article: { icon: FileText, label: "Article", chip: "dark:text-blue-400/80 dark:bg-blue-500/8 dark:border-blue-500/15", iconColor: "text-blue-700 dark:text-blue-400/80" },
+    video: { icon: Play, label: "Video", chip: "dark:text-red-400/80 dark:bg-red-500/8 dark:border-red-500/15", iconColor: "text-red-700 dark:text-red-400/80" },
+    infographic: { icon: ImageIcon, label: "Infographic", chip: "dark:text-green-400/80 dark:bg-green-500/8 dark:border-green-500/15", iconColor: "text-green-800 dark:text-green-400/80" },
   }[type];
 
   const Icon = config.icon;
 
   return (
-    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-medium border ${config.color}`}>
-      <Icon className="w-2.5 h-2.5" />
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-medium border text-muted-foreground bg-muted/40 border-border ${config.chip}`}>
+      <Icon className={`w-2.5 h-2.5 ${config.iconColor}`} />
       {config.label}
     </span>
   );
