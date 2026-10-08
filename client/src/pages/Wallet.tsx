@@ -476,7 +476,7 @@ function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | nul
         )}
         {(exact !== null || stashSats > 0) && (exact?.sats ?? 0) + stashSats > 0 ? (
           <div className="space-y-0.5">
-            <p className="text-xs font-medium text-amber-700 dark:text-amber-400" data-testid="text-npubcash-exact">
+            <p className="text-xs font-medium text-zap dark:text-amber-400" data-testid="text-npubcash-exact">
               {fmtSats((exact?.sats ?? 0) + stashSats)} ready to move to your own wallet.
             </p>
             {/* Breakdown only when the total has two homes — one number is
@@ -498,7 +498,7 @@ function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | nul
             Nothing waiting right now. When someone zaps you, it shows up here.
           </p>
         ) : exact === null && waiting !== null && waiting.count > 0 ? (
-          <p className="text-xs font-medium text-amber-700 dark:text-amber-400" data-testid="text-npubcash-waiting">
+          <p className="text-xs font-medium text-zap dark:text-amber-400" data-testid="text-npubcash-waiting">
             At least {fmtSats(waiting.sats)} across {waiting.count} {waiting.count === 1 ? "zap" : "zaps"} have been sent to you.
           </p>
         ) : null}
@@ -577,7 +577,7 @@ function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | nul
               </p>
             )}
             {outcome.problems.map((p, i) => (
-              <p key={i} className="text-xs text-amber-700 dark:text-amber-400">{p}</p>
+              <p key={i} className="text-xs text-zap dark:text-amber-400">{p}</p>
             ))}
           </div>
         )}
@@ -953,7 +953,7 @@ function NpubCashUsernameCard({ myPubkey, signer, profileEvent, currentLud16 }: 
 type TransactionCategory = "zap" | "direct" | "self" | "lightning";
 
 const CATEGORY_CONFIG: Record<TransactionCategory, { label: string; color: string; bgClass: string }> = {
-  zap: { label: "Zap", color: "text-amber-600 dark:text-amber-400", bgClass: "bg-amber-500/10" },
+  zap: { label: "Zap", color: "text-zap dark:text-amber-400", bgClass: "bg-amber-500/10" },
   direct: { label: "Direct", color: "text-brand", bgClass: "bg-brand/10" },
   self: { label: "Self", color: "text-blue-600 dark:text-blue-400", bgClass: "bg-blue-500/10" },
   lightning: { label: "Invoice", color: "text-muted-foreground/70", bgClass: "bg-foreground/[0.04]" } };
@@ -1884,8 +1884,8 @@ function TransactionMetricsDashboard({ transactions, balanceHidden }: { transact
           label="Sent"
           value={metrics.totalSent.toLocaleString()}
           icon={ArrowUpRight}
-          iconColor="bg-amber-500/10 text-amber-500 dark:text-amber-400"
-          valueColor="text-amber-600 dark:text-amber-400"
+          iconColor="bg-amber-500/10 text-zap dark:text-amber-400"
+          valueColor="text-zap dark:text-amber-400"
           blurred={balanceHidden}
         />
         <MetricCard
@@ -1923,7 +1923,7 @@ function TransactionMetricsDashboard({ transactions, balanceHidden }: { transact
           label="Total Fees"
           value={metrics.totalFees.toLocaleString()}
           icon={CircleDollarSign}
-          iconColor="bg-orange-500/10 text-orange-500 dark:text-orange-400"
+          iconColor="bg-orange-500/10 text-zap dark:text-orange-400"
           blurred={balanceHidden}
         />
       </div>
@@ -2099,10 +2099,10 @@ function ZapPresetsEditor() {
             </button>
             <span className="text-base sm:text-lg leading-none">{preset.emoji}</span>
             <p className={`text-[10px] sm:text-[11px] font-medium mt-0.5 leading-tight truncate ${
-              defaultAmount === preset.amount ? "text-amber-700 dark:text-amber-300" : "text-foreground/60"
+              defaultAmount === preset.amount ? "text-zap dark:text-amber-300" : "text-foreground/60"
             }`}>{preset.label}</p>
             <p className={`text-[9px] sm:text-[10px] mt-0.5 leading-tight font-mono ${
-              defaultAmount === preset.amount ? "text-amber-600/70 dark:text-amber-400/60" : "text-muted-foreground/40"
+              defaultAmount === preset.amount ? "text-zap dark:text-amber-400/60" : "text-muted-foreground/40"
             }`}>{formatAmount(preset.amount)} sats</p>
             {defaultAmount === preset.amount && (
               <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-500 flex items-center justify-center">
@@ -2980,7 +2980,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                                   onSelect={setSendAmount}
                                   onCustomChange={setSendCustomAmount}
                                 />
-                                <p className="text-[10px] text-amber-500 mt-1.5">This invoice has no fixed amount — choose how much to send.</p>
+                                <p className="text-[10px] text-zap dark:text-amber-500 mt-1.5">This invoice has no fixed amount — choose how much to send.</p>
                               </>
                             ) : (
                               <p className="text-lg font-semibold tabular-nums" data-testid="invoice-amount">
@@ -3564,7 +3564,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                 <div className="w-full rounded-lg bg-amber-500/5 border border-amber-500/20 p-3 mb-4">
                   <div className="flex items-start gap-2">
                     <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                    <p className="text-xs text-amber-700 dark:text-amber-300/80 leading-relaxed">
+                    <p className="text-xs text-zap dark:text-amber-300/80 leading-relaxed">
                       <span className="font-semibold">Tip:</span> Save your connection string before disconnecting so you can reconnect later.
                     </p>
                   </div>

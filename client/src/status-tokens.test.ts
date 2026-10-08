@@ -38,7 +38,9 @@ const ratio = (a: [number, number, number], b: [number, number, number]) => {
 };
 
 describe("status tokens (light)", () => {
-  for (const name of ["success", "warning", "danger"]) {
+  // --zap is the money colour (zaps, sats, thanks): amber kept as identity,
+  // one shade, dark enough to read (owner, 2026-10-08).
+  for (const name of ["success", "warning", "danger", "zap"]) {
     it(`--${name} is readable as text on every light surface (4.5:1)`, () => {
       for (const surface of ["accent", "background", "card"]) {
         expect(ratio(token(name), token(surface)), `${name} on ${surface}`).toBeGreaterThanOrEqual(4.5);
@@ -47,7 +49,7 @@ describe("status tokens (light)", () => {
   }
   it("are Tailwind colours (text-success, bg-warning/10, border-danger/30…)", () => {
     const tw = readFileSync(path.resolve(import.meta.dirname, "../../tailwind.config.ts"), "utf8");
-    for (const name of ["success", "warning", "danger"]) expect(tw).toMatch(new RegExp(`${name}:\\s*\\{[^}]*hsl\\(var\\(--${name}\\)`));
+    for (const name of ["success", "warning", "danger", "zap"]) expect(tw).toMatch(new RegExp(`${name}:\\s*\\{[^}]*hsl\\(var\\(--${name}\\)`));
   });
 });
 

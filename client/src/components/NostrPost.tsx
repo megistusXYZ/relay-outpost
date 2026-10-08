@@ -222,7 +222,7 @@ function useBadgeMode() {
 export function ProtectedNoteBadge({ className }: { className?: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 shrink-0 ${className || ""}`}
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-zap dark:text-amber-300 border border-amber-500/20 shrink-0 ${className || ""}`}
       title="Protected (NIP-70) — only the author can publish this note. Other clients shouldn't rebroadcast it."
       data-testid="badge-protected-note"
     >
@@ -395,7 +395,7 @@ function SignalCheckBadge({ eventId, statsTotal = 0, size = "default" }: { event
                   : avgInfluence > 0 ? "text-cyan-600 dark:text-cyan-400"
                   : "text-slate-500 dark:text-slate-400";
                 const grConcColor = concentration > 0.85 ? "text-red-500 dark:text-red-400"
-                  : concentration > 0.6 ? "text-amber-600 dark:text-amber-400"
+                  : concentration > 0.6 ? "text-warning dark:text-amber-400"
                   : "text-success dark:text-emerald-400";
 
                 const trustedRatio = total > 0 ? (grStrong + grModerate) / total : 0;
@@ -406,7 +406,7 @@ function SignalCheckBadge({ eventId, statsTotal = 0, size = "default" }: { event
                   : trustedRatio >= 0.5
                   ? { label: "Organic", color: "text-success dark:text-emerald-400 bg-emerald-500/10", desc: "Majority from trusted accounts" }
                   : trustedRatio >= 0.2
-                  ? { label: "Mixed", color: "text-amber-600 dark:text-amber-400 bg-amber-500/10", desc: "Some trusted, some unknown" }
+                  ? { label: "Mixed", color: "text-zap dark:text-amber-400 bg-amber-500/10", desc: "Some trusted, some unknown" }
                   : { label: "Unverified", color: "text-slate-500 dark:text-slate-400 bg-slate-500/10", desc: "Few scored engagers" };
 
                 const grSegments = [
@@ -646,7 +646,7 @@ function EngagementScoreBadge({ eventId, score, stats, size = "default" }: { eve
                   : avgInfluence > 0 ? "text-cyan-600 dark:text-cyan-400"
                   : "text-slate-500 dark:text-slate-400";
                 const grConcColor = concentration > 0.85 ? "text-red-500 dark:text-red-400"
-                  : concentration > 0.6 ? "text-amber-600 dark:text-amber-400"
+                  : concentration > 0.6 ? "text-warning dark:text-amber-400"
                   : "text-success dark:text-emerald-400";
 
                 const trustedRatio = total > 0 ? (grStrong + grModerate) / total : 0;
@@ -657,7 +657,7 @@ function EngagementScoreBadge({ eventId, score, stats, size = "default" }: { eve
                   : trustedRatio >= 0.5
                   ? { label: "Organic", color: "text-success dark:text-emerald-400 bg-emerald-500/10", desc: "Majority from trusted accounts" }
                   : trustedRatio >= 0.2
-                  ? { label: "Mixed", color: "text-amber-600 dark:text-amber-400 bg-amber-500/10", desc: "Some trusted, some unknown" }
+                  ? { label: "Mixed", color: "text-zap dark:text-amber-400 bg-amber-500/10", desc: "Some trusted, some unknown" }
                   : { label: "Unverified", color: "text-slate-500 dark:text-slate-400 bg-slate-500/10", desc: "Few scored engagers" };
 
                 const grSegments = [
@@ -862,7 +862,7 @@ export function MentionProfileLink({ pubkey }: { pubkey: string }) {
                   data-testid={`button-zap-${npub.slice(0, 12)}`}
                 >
                   <BtcZapIcon className="w-4 h-4 text-amber-800/70 dark:text-amber-400/70 shrink-0" />
-                  <span className="text-[11px] text-amber-600/60 dark:text-amber-300/60 truncate group-hover:text-amber-600/80 dark:group-hover:text-amber-300/80 transition-colors">
+                  <span className="text-[11px] text-zap dark:text-amber-300/60 truncate group-hover:text-amber-600/80 dark:group-hover:text-amber-300/80 transition-colors">
                     {lud16}
                   </span>
                   <Zap className="w-3 h-3 text-amber-500/30 dark:text-amber-400/25 ml-auto shrink-0 group-hover:text-amber-500/60 dark:group-hover:text-amber-400/60 transition-colors" />
@@ -3395,7 +3395,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
         <Button
           variant="ghost"
           size="icon"
-          className={`hit-area w-11 h-8 sm:w-9 sm:h-9 shrink-0 ml-2 ${zapCount > 0 || zapAmount > 0 ? "text-amber-500 dark:text-amber-400" : "text-muted-foreground"}`}
+          className={`hit-area w-11 h-8 sm:w-9 sm:h-9 shrink-0 ml-2 ${zapCount > 0 || zapAmount > 0 ? "text-zap dark:text-amber-400" : "text-muted-foreground"}`}
           onClick={() => {
             if (!signer) {
               toast({ title: "Sign in required", description: "Sign in to send thanks.", variant: "destructive" });
