@@ -3424,7 +3424,7 @@ export default function Messages() {
                       if (threadMuted) { unmutePubkey(selectedPubkey); setThreadMuted(false); }
                       else { mutePubkey(selectedPubkey); setThreadMuted(true); }
                     }}
-                    className={`gap-2.5 cursor-pointer min-h-11 sm:min-h-0 ${threadMuted ? "" : "text-red-500 focus:text-red-500"}`}
+                    className={`gap-2.5 cursor-pointer min-h-11 sm:min-h-0 ${threadMuted ? "" : "text-danger dark:text-red-500 focus:text-red-500"}`}
                     data-testid="menu-item-thread-mute"
                   >
                     <VolumeX className="w-4 h-4" /> {threadMuted ? "Unmute" : "Mute"}
@@ -3433,7 +3433,7 @@ export default function Messages() {
                 {!selectedIsGroup && (
                   <DropdownMenuItem
                     onClick={() => setShowThreadReport(true)}
-                    className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0 text-red-500 focus:text-red-500"
+                    className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0 text-danger dark:text-red-500 focus:text-red-500"
                     data-testid="menu-item-thread-report"
                   >
                     <Flag className="w-4 h-4" /> Report
@@ -3672,7 +3672,7 @@ export default function Messages() {
                               <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); retryMessage(msg); }}
-                                className="inline-flex items-center text-red-500/80 hover:text-red-500 transition-colors"
+                                className="inline-flex items-center text-danger dark:text-red-500/80 hover:text-red-500 transition-colors"
                                 title="Didn't send — tap to retry"
                                 data-testid={`button-retry-${msg.id}`}
                               >

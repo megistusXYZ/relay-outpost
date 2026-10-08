@@ -373,7 +373,7 @@ function NotificationBanner({ ntype, byPubkey, sats, emoji }: { ntype: string; b
         return {
           icon: reactionIcon,
           label: "reacted to this post",
-          color: "text-red-600 dark:text-red-400",
+          color: "text-danger dark:text-red-400",
           bgColor: "bg-red-500/10 dark:bg-red-500/8",
           borderColor: "border-red-500/25 dark:border-red-500/15",
         };

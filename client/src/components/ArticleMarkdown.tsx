@@ -128,7 +128,7 @@ function NostrReference({ encoded }: { encoded: string }) {
     }
   } catch {}
   if (encoded.startsWith("nsec1")) {
-    return <span className="text-xs text-red-500/70 font-mono">[private key redacted]</span>;
+    return <span className="text-xs text-danger dark:text-red-500/70 font-mono">[private key redacted]</span>;
   }
   return <span className="text-xs text-muted-foreground/60 font-mono">{encoded.slice(0, 16)}…</span>;
 }

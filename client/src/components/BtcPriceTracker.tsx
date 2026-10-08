@@ -542,7 +542,7 @@ export function UnifiedBtcBadge() {
             <div className={`transition-all duration-200 ${mode === "price" ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full absolute inset-0"}`}>
               {data ? (
                 <span className={`text-xs font-semibold tabular-nums transition-colors duration-300 whitespace-nowrap ${
-                  priceFlash === "up" ? "text-success dark:text-emerald-400" : priceFlash === "down" ? "text-red-700 dark:text-red-400" : "text-foreground/80"
+                  priceFlash === "up" ? "text-success dark:text-emerald-400" : priceFlash === "down" ? "text-danger dark:text-red-400" : "text-foreground/80"
                 }`} data-testid="text-unified-price">
                   ${formatPrice(data.price)}
                 </span>
@@ -567,7 +567,7 @@ export function UnifiedBtcBadge() {
             </div>
           </div>
           {data && mode === "price" && data.changePercent24h !== 0 && (
-            <span className={`text-[10px] tabular-nums font-medium flex items-center gap-0.5 ${isPositive ? "text-success dark:text-emerald-400/80" : "text-red-700/80 dark:text-red-400/80"}`} data-testid="text-unified-change">
+            <span className={`text-[10px] tabular-nums font-medium flex items-center gap-0.5 ${isPositive ? "text-success dark:text-emerald-400/80" : "text-danger dark:text-red-400/80"}`} data-testid="text-unified-change">
               {isPositive ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
               {isPositive ? "+" : ""}{data.changePercent24h.toFixed(1)}%
             </span>
@@ -604,7 +604,7 @@ export function UnifiedBtcBadge() {
                 </svg>
                 <div>
                   <span className="text-lg font-bold text-foreground">${formatPrice(data.price)}</span>
-                  <span className={`ml-2 text-xs font-medium ${isPositive ? "text-success dark:text-emerald-400" : "text-red-700 dark:text-red-400"}`}>
+                  <span className={`ml-2 text-xs font-medium ${isPositive ? "text-success dark:text-emerald-400" : "text-danger dark:text-red-400"}`}>
                     {isPositive ? "+" : ""}{data.changePercent24h.toFixed(2)}%
                   </span>
                 </div>

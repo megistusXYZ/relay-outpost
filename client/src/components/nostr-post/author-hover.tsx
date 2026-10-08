@@ -127,7 +127,7 @@ export function TrustTierDot({ pubkey }: { pubkey: string }) {
         >
           <div className="flex items-center gap-1.5">
             <TrustTierGlyph tier="flagged" size="w-3.5 h-3.5" decorative />
-            <span className="text-[11px] font-semibold text-red-600 dark:text-red-400">Flagged</span>
+            <span className="text-[11px] font-semibold text-danger dark:text-red-400">Flagged</span>
           </div>
           <p className="text-[10px] text-muted-foreground/60 leading-snug mt-1">Reported by 2+ trusted users in your network</p>
         </PopoverContent>
@@ -376,7 +376,7 @@ export function ThreadTrustBar({ replies, excludedTiers, onFilterChange }: {
     : avgInfluence > 0 ? "text-cyan-600 dark:text-cyan-400"
     : "text-slate-500 dark:text-slate-400";
 
-  const concColor = concentration > 0.85 ? "text-red-500 dark:text-red-400"
+  const concColor = concentration > 0.85 ? "text-danger dark:text-red-400"
     : concentration > 0.6 ? "text-warning dark:text-amber-400"
     : "text-success dark:text-emerald-400";
 
@@ -616,7 +616,7 @@ export function HoverCardTrustBadge({ pubkey }: { pubkey: string }) {
   const flagged = isAuthorFlagged(pubkey);
   if (flagged) {
     return (
-      <span className="text-[9px] font-medium px-1.5 py-0 rounded-full border shrink-0 bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30 inline-flex items-center gap-0.5">
+      <span className="text-[9px] font-medium px-1.5 py-0 rounded-full border shrink-0 bg-red-500/15 text-danger dark:text-red-400 border-red-500/30 inline-flex items-center gap-0.5">
         <TrustTierGlyph tier="flagged" size="w-2.5 h-2.5" decorative /> Flagged
       </span>
     );

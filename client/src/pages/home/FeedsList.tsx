@@ -113,7 +113,7 @@ export function FeedsList({
               <button type="button" onClick={() => after(() => navigate("/search?tab=live"))} className={ROW} data-testid="feeds-live-now">
                 <Radio className="w-[18px] h-[18px] text-red-500 live-dot" />
                 <span className="flex-1 text-[15px] text-foreground/90">Live now</span>
-                <span className="text-xs font-semibold text-red-500 tabular-nums">{liveCount}</span>
+                <span className="text-xs font-semibold text-danger dark:text-red-500 tabular-nums">{liveCount}</span>
               </button>
             )}
 

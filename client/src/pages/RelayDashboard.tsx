@@ -1340,7 +1340,7 @@ export default function RelayDashboard() {
                                 </Badge>
                               )}
                               {isDisabled && (
-                                <Badge variant="outline" className="text-[10px] border-red-400/20 text-red-700/60 dark:text-red-400/60">Disabled</Badge>
+                                <Badge variant="outline" className="text-[10px] border-red-400/20 text-danger dark:text-red-400/60">Disabled</Badge>
                               )}
                             </div>
                             <div className="flex items-center gap-2 mt-0.5">
@@ -1352,7 +1352,7 @@ export default function RelayDashboard() {
                                 </span>
                               )}
                               {status?.error && (
-                                <span className="text-[11px] text-red-700/60 dark:text-red-400/60">{status.error}</span>
+                                <span className="text-[11px] text-danger dark:text-red-400/60">{status.error}</span>
                               )}
                             </div>
                           </>
@@ -1503,7 +1503,7 @@ export default function RelayDashboard() {
                       <Badge variant="outline" className="text-[11px] border-brand/20 text-brand/60">Default</Badge>
                     )}
                     {isDisabled && (
-                      <Badge variant="outline" className="text-[11px] border-red-400/20 text-red-700/60 dark:text-red-400/60">Disabled</Badge>
+                      <Badge variant="outline" className="text-[11px] border-red-400/20 text-danger dark:text-red-400/60">Disabled</Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
@@ -1514,7 +1514,7 @@ export default function RelayDashboard() {
                       </span>
                     )}
                     {!isDisabled && status?.error && (
-                      <span className="text-[11px] text-red-700/60 dark:text-red-400/60" data-testid={`text-relay-error-${url}`}>
+                      <span className="text-[11px] text-danger dark:text-red-400/60" data-testid={`text-relay-error-${url}`}>
                         {status.error}
                       </span>
                     )}

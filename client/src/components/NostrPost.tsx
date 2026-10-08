@@ -394,15 +394,15 @@ function SignalCheckBadge({ eventId, statsTotal = 0, size = "default" }: { event
                   : avgInfluence >= 0.02 ? "text-blue-600 dark:text-blue-400"
                   : avgInfluence > 0 ? "text-cyan-600 dark:text-cyan-400"
                   : "text-slate-500 dark:text-slate-400";
-                const grConcColor = concentration > 0.85 ? "text-red-500 dark:text-red-400"
+                const grConcColor = concentration > 0.85 ? "text-danger dark:text-red-400"
                   : concentration > 0.6 ? "text-warning dark:text-amber-400"
                   : "text-success dark:text-emerald-400";
 
                 const trustedRatio = total > 0 ? (grStrong + grModerate) / total : 0;
                 const verdict = grFlagged > 0 && grFlagged >= total * 0.2
-                  ? { label: "Suspicious", color: "text-red-600 dark:text-red-400 bg-red-500/10", desc: `${grFlagged} flagged engager${grFlagged > 1 ? "s" : ""}` }
+                  ? { label: "Suspicious", color: "text-danger dark:text-red-400 bg-red-500/10", desc: `${grFlagged} flagged engager${grFlagged > 1 ? "s" : ""}` }
                   : total >= 10 && concentration > 0.85 && avgInfluence < 0.02
-                  ? { label: "Inorganic", color: "text-red-600 dark:text-red-400 bg-red-500/10", desc: "Trust concentrated in few accounts" }
+                  ? { label: "Inorganic", color: "text-danger dark:text-red-400 bg-red-500/10", desc: "Trust concentrated in few accounts" }
                   : trustedRatio >= 0.5
                   ? { label: "Organic", color: "text-success dark:text-emerald-400 bg-emerald-500/10", desc: "Majority from trusted accounts" }
                   : trustedRatio >= 0.2
@@ -645,15 +645,15 @@ function EngagementScoreBadge({ eventId, score, stats, size = "default" }: { eve
                   : avgInfluence >= 0.02 ? "text-blue-600 dark:text-blue-400"
                   : avgInfluence > 0 ? "text-cyan-600 dark:text-cyan-400"
                   : "text-slate-500 dark:text-slate-400";
-                const grConcColor = concentration > 0.85 ? "text-red-500 dark:text-red-400"
+                const grConcColor = concentration > 0.85 ? "text-danger dark:text-red-400"
                   : concentration > 0.6 ? "text-warning dark:text-amber-400"
                   : "text-success dark:text-emerald-400";
 
                 const trustedRatio = total > 0 ? (grStrong + grModerate) / total : 0;
                 const verdict = grFlagged > 0 && grFlagged >= total * 0.2
-                  ? { label: "Suspicious", color: "text-red-600 dark:text-red-400 bg-red-500/10", desc: `${grFlagged} flagged engager${grFlagged > 1 ? "s" : ""}` }
+                  ? { label: "Suspicious", color: "text-danger dark:text-red-400 bg-red-500/10", desc: `${grFlagged} flagged engager${grFlagged > 1 ? "s" : ""}` }
                   : total >= 10 && concentration > 0.85 && avgInfluence < 0.02
-                  ? { label: "Inorganic", color: "text-red-600 dark:text-red-400 bg-red-500/10", desc: "Trust concentrated in few accounts" }
+                  ? { label: "Inorganic", color: "text-danger dark:text-red-400 bg-red-500/10", desc: "Trust concentrated in few accounts" }
                   : trustedRatio >= 0.5
                   ? { label: "Organic", color: "text-success dark:text-emerald-400 bg-emerald-500/10", desc: "Majority from trusted accounts" }
                   : trustedRatio >= 0.2

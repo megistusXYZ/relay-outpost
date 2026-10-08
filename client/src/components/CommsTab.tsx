@@ -767,7 +767,7 @@ function ChatMessageBubble({
             <PersonBadges pubkey={msg.pubkey} nip05={content?.nip05} claimedName={content?.display_name || content?.name} showCollision={!!profile} />
             <WotDot pubkey={msg.pubkey} />
             {isRemovedUser && (
-              <span className="text-[8px] text-red-600/50 dark:text-red-400/50 flex items-center gap-0.5">
+              <span className="text-[8px] text-danger dark:text-red-400/50 flex items-center gap-0.5">
                 <UserMinus className="w-2 h-2" />
                 removed
               </span>

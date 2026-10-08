@@ -43,7 +43,7 @@ const TONE: Record<TranscriptLine["tone"], string> = {
   plain: "text-foreground/90",
   good: "text-success dark:text-emerald-400",
   warn: "text-amber-600 dark:text-amber-400",
-  bad: "text-red-600 dark:text-red-400",
+  bad: "text-danger dark:text-red-400",
 };
 
 function offset(msN: number): string {
@@ -386,7 +386,7 @@ export function WireConsole({ initialRelays, initialText, initialTool = "ask", i
                           <span className="hidden sm:block text-[13px] truncate">{profiles.get(e.pubkey)?.name ?? `${e.pubkey.slice(0, 8)}…`}</span>
                           <span className="col-span-2 sm:col-span-1 row-start-2 sm:row-start-auto col-start-2 sm:col-start-auto text-[14px] truncate">{e.content.replace(/\s+/g, " ").slice(0, 160) || "—"}</span>
                           <span className="row-start-1 col-start-3 sm:col-start-auto text-[12px] text-right whitespace-nowrap">
-                            {!genuine(e) && <span className="text-red-600 dark:text-red-400 font-medium mr-2" data-testid="console-row-forged">Not genuine</span>}
+                            {!genuine(e) && <span className="text-danger dark:text-red-400 font-medium mr-2" data-testid="console-row-forged">Not genuine</span>}
                             {multi && <span className="text-muted-foreground">{on.length} of {relays.length}</span>}
                           </span>
                         </button>

@@ -86,7 +86,7 @@ export function RadioStationCard({
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <div className={`flex items-center gap-1.5 text-[10px] font-semibold tracking-wide uppercase ${info?.isLive ? "text-red-600 dark:text-red-400" : "text-brand"}`}>
+        <div className={`flex items-center gap-1.5 text-[10px] font-semibold tracking-wide uppercase ${info?.isLive ? "text-danger dark:text-red-400" : "text-brand"}`}>
           {info?.isLive ? (
             <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
               <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-60" />

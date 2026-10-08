@@ -626,7 +626,7 @@ export function ZapDialog({ open, onOpenChange, event, pubkey: directPubkey, rec
 
             {step === "error" && (
               <div className="flex flex-col items-center justify-center py-10 gap-4 px-5" data-testid="container-zap-error">
-                <p className="text-sm text-red-600 dark:text-red-400/80 text-center leading-relaxed">{errorMsg}</p>
+                <p className="text-sm text-danger dark:text-red-400/80 text-center leading-relaxed">{errorMsg}</p>
                 <button
                   onClick={resetState}
                   className="px-5 py-2 rounded-lg text-sm text-foreground/60 bg-foreground/[0.04] border border-foreground/[0.08] hover:bg-foreground/[0.08] hover:text-foreground/80 transition-all cursor-pointer"

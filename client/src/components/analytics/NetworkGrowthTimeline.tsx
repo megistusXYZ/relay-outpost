@@ -152,7 +152,7 @@ export function NetworkGrowthTimeline({ relays: propRelays }: { relays?: string[
     summary?.trend === "up"
       ? "text-success dark:text-emerald-400"
       : summary?.trend === "down"
-        ? "text-red-700 dark:text-red-400"
+        ? "text-danger dark:text-red-400"
         : "text-muted-foreground";
   const trendLabel =
     summary?.trend === "up" ? "Growing" : summary?.trend === "down" ? "Declining" : "Flat";

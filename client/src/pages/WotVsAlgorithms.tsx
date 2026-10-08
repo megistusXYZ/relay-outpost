@@ -95,7 +95,7 @@ export default function WotVsAlgorithms() {
               <div className="space-y-2 mt-1">
                 <div className="grid grid-cols-3 gap-2 text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider px-1">
                   <span></span>
-                  <span className="text-red-500/60">Algorithm</span>
+                  <span className="text-danger dark:text-red-500/60">Algorithm</span>
                   <span className="text-success dark:text-emerald-500/60">Web of Trust</span>
                 </div>
                 {[
@@ -109,7 +109,7 @@ export default function WotVsAlgorithms() {
                 ].map(([label, algo, wot], i) => (
                   <div key={i} className="grid grid-cols-3 gap-2 rounded-lg bg-muted/10 dark:bg-white/[0.03] border border-border/15 px-3 py-2">
                     <span className="text-[12px] font-semibold text-foreground/70">{label}</span>
-                    <span className="text-[11px] text-red-500/70">{algo}</span>
+                    <span className="text-[11px] text-danger dark:text-red-500/70">{algo}</span>
                     <span className="text-[11px] text-success dark:text-emerald-400">{wot}</span>
                   </div>
                 ))}

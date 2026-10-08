@@ -108,7 +108,7 @@ export default function RelayCommunities() {
                     <p className="text-[11px] font-bold text-foreground/70 mb-1.5">{scenario}</p>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="flex items-start gap-1.5">
-                        <span className="text-[9px] font-bold text-red-500/70 uppercase shrink-0 mt-0.5">Platform</span>
+                        <span className="text-[9px] font-bold text-danger dark:text-red-500/70 uppercase shrink-0 mt-0.5">Platform</span>
                         <span className="text-[11px] text-foreground/55">{platform}</span>
                       </div>
                       <div className="flex items-start gap-1.5">

@@ -157,7 +157,7 @@ function RatingLabel({ rating }: { rating: Rating }) {
     strong: "text-success dark:text-emerald-400",
     partial: "text-amber-600 dark:text-amber-400",
     weak: "text-orange-500/70 dark:text-orange-400/60",
-    none: "text-red-500/70 dark:text-red-400/60",
+    none: "text-danger dark:text-red-400/60",
   };
   return <span className={`text-[9px] font-bold uppercase tracking-wider ${colors[rating]}`}>{labels[rating]}</span>;
 }

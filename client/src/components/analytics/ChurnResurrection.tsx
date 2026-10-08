@@ -389,7 +389,7 @@ export function ChurnResurrection({ relays: propRelays }: { relays?: string[] })
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 text-xs text-red-700 dark:text-red-400" data-testid="text-error">
+            <div className="flex items-center gap-2 text-xs text-danger dark:text-red-400" data-testid="text-error">
               <AlertTriangle className="w-3.5 h-3.5" />
               {error}
             </div>
@@ -406,7 +406,7 @@ export function ChurnResurrection({ relays: propRelays }: { relays?: string[] })
                   <UserMinus className="w-3.5 h-3.5 text-red-700 dark:text-red-400" />
                   <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Churned</p>
                 </div>
-                <p className="text-xl font-mono text-red-700 dark:text-red-400" data-testid="text-churned-count">
+                <p className="text-xl font-mono text-danger dark:text-red-400" data-testid="text-churned-count">
                   {stats.churnedCount}
                 </p>
               </div>
