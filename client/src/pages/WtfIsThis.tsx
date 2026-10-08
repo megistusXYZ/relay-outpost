@@ -379,7 +379,10 @@ function GuideCard({ item }: { item: GuideItem }) {
     <>
       <div className="p-4 sm:p-5">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand/10 to-brand/10 border border-brand/10 flex items-center justify-center shrink-0">
+          {/* Light: a bare icon — no square around it (owner, 2026-10-03:
+              "we don't need all the square containers around the icons").
+              Dark: the tile it had, unchanged. */}
+          <div className="w-10 h-10 rounded-xl dark:bg-gradient-to-br dark:from-brand/10 dark:to-brand/10 dark:border dark:border-brand/10 flex items-center justify-center shrink-0">
             <Icon className={`w-5 h-5 ${item.iconColor}`} />
           </div>
           <div className="flex-1 min-w-0">
@@ -419,7 +422,7 @@ function DeepDiveCard({ item }: { item: DeepDiveItem }) {
       <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-40 dark:opacity-30`} />
       <div className="relative p-5 sm:p-6">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-11 h-11 rounded-xl bg-white/60 dark:bg-black/30 border border-white/30 dark:border-white/5 flex items-center justify-center shrink-0 shadow-sm backdrop-blur-sm">
+          <div className="w-11 h-11 rounded-xl dark:bg-black/30 dark:border dark:border-white/5 flex items-center justify-center shrink-0 dark:shadow-sm dark:backdrop-blur-sm">
             <Icon className={`w-5.5 h-5.5 ${item.iconColor}`} />
           </div>
           <div className="flex-1 min-w-0">
