@@ -1142,7 +1142,7 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
           Approved <span className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">{allowlist.length.toLocaleString()}</span>
         </button>
         <button type="button" onClick={() => onOpenPeople?.("banned")} className="min-h-[44px] inline-flex items-center gap-2 rounded-full border border-black/[0.1] dark:border-white/[0.12] px-4 text-[14px] hover:border-brand/40" data-testid="ops-access-stat-blocked">
-          Banned <span className="font-semibold tabular-nums text-red-700 dark:text-red-400">{blocklist.length.toLocaleString()}</span>
+          Banned <span className="font-semibold tabular-nums text-danger dark:text-red-400">{blocklist.length.toLocaleString()}</span>
         </button>
       </div>
 

@@ -245,7 +245,7 @@ function PointsPanel({ links, profiles, finding, notFound, onInspect }: {
             <div className="min-w-0 flex-1">
               <p className="text-[12px] text-muted-foreground">{word}</p>
               <p className={`text-[14px] truncate ${p.type === "person" && name ? "" : "font-mono text-[12.5px]"}`}>{shown}</p>
-              {notFound === p.value && <p className="text-[12px] text-amber-600 dark:text-amber-400" data-testid="inspector-point-missing">No relay that answered has it.</p>}
+              {notFound === p.value && <p className="text-[12px] text-warning dark:text-amber-400" data-testid="inspector-point-missing">No relay that answered has it.</p>}
             </div>
             {p.type === "person" ? (
               <button type="button" onClick={() => copyNostrId(pubkeyToNpub(p.value))} className="shrink-0 min-h-[44px] px-3 text-[13px] font-medium text-muted-foreground hover:text-foreground">Copy</button>
@@ -313,7 +313,7 @@ function ResponsesPanel({ event, relayUrl, relayName, onInspect }: { event: Insp
 const STATUS_WORD: Record<SeenStatus, { word: string; cls: string }> = {
   has: { word: "Has it", cls: "text-emerald-600 dark:text-emerald-400" },
   missing: { word: "Doesn't have it", cls: "text-muted-foreground" },
-  unreached: { word: "Couldn't reach", cls: "text-amber-600 dark:text-amber-400" },
+  unreached: { word: "Couldn't reach", cls: "text-warning dark:text-amber-400" },
 };
 
 function SeenOnPanel({ event, relayUrl, relayName, ownRelay, genuine }: { event: InspectedEvent; relayUrl: string; relayName: string; ownRelay: boolean; genuine: boolean }) {
@@ -376,7 +376,7 @@ function SeenOnPanel({ event, relayUrl, relayName, ownRelay, genuine }: { event:
         )
       )}
       {copy.done && mine === "has" && <p className="text-[13px] text-emerald-600 dark:text-emerald-400" data-testid="inspector-copied">Copied — {relayName} has it now.</p>}
-      {copy.refused && <p className="text-[13px] text-red-600 dark:text-red-400" data-testid="inspector-copy-refused">{relayName} turned it down: “{copy.refused}”</p>}
+      {copy.refused && <p className="text-[13px] text-danger dark:text-red-400" data-testid="inspector-copy-refused">{relayName} turned it down: “{copy.refused}”</p>}
     </div>
   );
 }

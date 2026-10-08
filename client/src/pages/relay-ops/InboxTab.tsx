@@ -186,7 +186,7 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost, onOpenMemberInbox 
       {showReports && (
         <section className="space-y-2" aria-label="Reports">
           {unreached && (
-            <p className="px-1 text-[13px] text-amber-700 dark:text-amber-300" data-testid="ops-inbox-unreached">
+            <p className="px-1 text-[13px] text-warning dark:text-amber-300" data-testid="ops-inbox-unreached">
               We couldn't reach this relay to check for reports. They may be waiting.
             </p>
           )}

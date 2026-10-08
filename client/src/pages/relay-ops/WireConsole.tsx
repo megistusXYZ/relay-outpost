@@ -334,7 +334,7 @@ export function WireConsole({ initialRelays, initialText, initialTool = "ask", i
             <Textarea value={text} onChange={(e) => setText(e.target.value)} spellCheck={false} rows={8}
               className="font-mono text-[12.5px] leading-relaxed" aria-label="Filter as JSON" data-testid="console-json" />
           )}
-          <p className={`text-[13px] ${resolved.ok ? "text-muted-foreground" : "text-red-600 dark:text-red-400"}`} data-testid="console-query-line">
+          <p className={`text-[13px] ${resolved.ok ? "text-muted-foreground" : "text-danger dark:text-red-400"}`} data-testid="console-query-line">
             {resolved.ok ? `Asks for ${resolved.filters.map((f) => describeFilter(f, nowSec)).join("; or ")}` : resolved.error}
           </p>
           {mode === "json" && <p className="text-[12px] text-muted-foreground">Times can be relative — <code>"since": "now-3h"</code>, <code>"2d"</code> — and people and posts can be npub or note codes.</p>}
@@ -424,9 +424,9 @@ export function WireConsole({ initialRelays, initialText, initialTool = "ask", i
                     const o = outcomes.get(r);
                     const c = compare.find((x) => x.relay === r);
                     const word = !o || o.status === "waiting" ? <span className="text-muted-foreground">Still waiting</span>
-                      : o.status === "answered" ? <span className="text-emerald-600 dark:text-emerald-400">Answered</span>
-                      : o.status === "refused" ? <span className="text-amber-600 dark:text-amber-400">Refused — “{relayWords(o.reason ?? "")}”</span>
-                      : <span className="text-red-600 dark:text-red-400">Couldn't reach</span>;
+                      : o.status === "answered" ? <span className="text-success dark:text-emerald-400">Answered</span>
+                      : o.status === "refused" ? <span className="text-warning dark:text-amber-400">Refused — “{relayWords(o.reason ?? "")}”</span>
+                      : <span className="text-danger dark:text-red-400">Couldn't reach</span>;
                     return (
                       <tr key={r} data-testid="console-compare-row" data-relay={r} data-status={o?.status ?? "waiting"}>
                         <td className="py-2.5 pr-3 truncate max-w-[12rem]">{host(r)}</td>

@@ -643,7 +643,7 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
               <span className={`text-[13px] ${count.status === "counted" ? "text-foreground" : "text-muted-foreground"}`} data-testid="ops-content-count">· {countLine(count)}</span>
             )}
             {scope && !searching && !refused && count?.status !== "counted" && (
-              <span className={`text-[13px] ${reached ? "text-muted-foreground" : "text-amber-700 dark:text-amber-300"}`} data-testid="ops-content-scope">· {scope}</span>
+              <span className={`text-[13px] ${reached ? "text-muted-foreground" : "text-warning dark:text-amber-300"}`} data-testid="ops-content-scope">· {scope}</span>
             )}
             {!live && !searching && reached && !exhausted && !askRelayToSearch && results.length >= PAGE && (
               <button type="button" onClick={searchFurther} disabled={loadingMore} className="text-[13px] font-medium text-brand hover:underline underline-offset-4 min-h-[36px]" data-testid="ops-content-further">

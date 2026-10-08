@@ -20,9 +20,9 @@ import { Button } from "@/components/ui/button";
 
 const TONE = {
   checking: "text-muted-foreground",
-  connected: "text-emerald-600 dark:text-emerald-400",
+  connected: "text-success dark:text-emerald-400",
   retrying: "text-amber-600 dark:text-amber-400",
-  error: "text-red-600 dark:text-red-400",
+  error: "text-danger dark:text-red-400",
   offline: "text-muted-foreground",
 } as const;
 
