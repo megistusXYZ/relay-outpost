@@ -469,9 +469,33 @@ export async function putMessages(ownerPubkey: string, peerPubkey: string, messa
       const tx = db.transaction(MESSAGES_STORE, "readwrite");
       const store = tx.objectStore(MESSAGES_STORE);
       for (const row of rows) store.put(row);
-      tx.oncomplete = () => { ownMessageStored(ownerPubkey, peerPubkey, messages); resolve(); };
+      tx.oncomplete = () => { ownMessageStored(ownerPubkey, peerPubkey, messages); void adoptHeldReactions(ownerPubkey, peerPubkey, messages); resolve(); };
       tx.onerror = () => reject(tx.error);
     });
+  } catch {}
+}
+
+/** Fired when a reaction has been stored: `detail.peer` is its chat, or null
+ *  while it is held for a message that has not arrived (lib/gift-wrap.ts). */
+export const REACTION_STORED = "dm-reaction-stored";
+
+/**
+ * A message just stored may be the one a held reaction was waiting for: file
+ * those reactions with it now, and say so. The open chat re-reads reactions
+ * when its message count changes, but that happens when the message reaches
+ * the screen — before it is in the store — so a reaction held for it was not
+ * found, and nothing asked again: it showed only after the chat was reopened
+ * (WebKit sweep, 2026-10-08: 6 in 10 dm-thread runs).
+ */
+async function adoptHeldReactions(ownerPubkey: string, peerPubkey: string, messages: CachedMessage[]): Promise<void> {
+  if (peerPubkey === HELD_REACTIONS) return;
+  const ids = new Set(messages.filter((m) => !m.reactsTo).map((m) => m.id));
+  if (!ids.size) return;
+  try {
+    const waiting = (await readChat(ownerPubkey, HELD_REACTIONS)).filter((r) => !!r.reactsTo && ids.has(r.reactsTo));
+    if (!waiting.length) return;
+    await putMessages(ownerPubkey, peerPubkey, waiting); // same key: moved, not copied
+    window.dispatchEvent(new CustomEvent(REACTION_STORED, { detail: { peer: peerPubkey } }));
   } catch {}
 }
 
@@ -487,7 +511,7 @@ export async function putMessage(ownerPubkey: string, peerPubkey: string, msg: C
   if (isLeakedInviteBundleJson(msg.content)) return; // never cache invite bundles as DMs
   if (isExpired(msg.expiresAt, Math.floor(Date.now() / 1000))) return; // already gone
   const row = await sealMessage(await deviceKey(ownerPubkey), { ...msg, ownerPubkey, peerPubkey });
-  return safeTx("readwrite", MESSAGES_STORE, (store) => store.put(row)).then(() => ownMessageStored(ownerPubkey, peerPubkey, [msg]));
+  return safeTx("readwrite", MESSAGES_STORE, (store) => store.put(row)).then(() => { ownMessageStored(ownerPubkey, peerPubkey, [msg]); void adoptHeldReactions(ownerPubkey, peerPubkey, [msg]); });
 }
 
 /**

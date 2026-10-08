@@ -16,6 +16,7 @@ import {
   putMessage,
   roomOfMessage,
   HELD_REACTIONS,
+  REACTION_STORED,
   type WrapStatus,
   type CachedFileMetadata,
 } from "@/lib/dm-cache";
@@ -60,9 +61,8 @@ export interface UnwrappedGiftWrap {
   replyTo?: string;
 }
 
-/** Fired when a reaction has been stored: `detail.peer` is its chat, or null
- *  while it is held for a message that has not arrived. */
-export const REACTION_STORED = "dm-reaction-stored";
+/** Fired when a reaction has been stored (lib/dm-cache.ts, where held ones are adopted too). */
+export { REACTION_STORED };
 
 /**
  * A reaction (kind 7) is filed here, by the one function every path opens
