@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { SECTIONS, COMMUNITY_SCREENS, ADVANCED_SCREENS, sectionOf, consoleTitle, resolveTab, listOf } from "./console-nav";
+import { SECTIONS, COMMUNITY_SCREENS, ADVANCED_SCREENS, sectionOf, consoleTitle, resolveTab, listOf, communityScreens } from "./console-nav";
 
 // The console, laid out like a community tool people already know (Discord's
 // server settings), with plain words (owner, 2026-10-04).
@@ -11,8 +11,15 @@ describe("the operator console's sections", () => {
   });
 
   it("Community holds what a community manager sets up and looks after", () => {
-    expect(COMMUNITY_SCREENS.map((s) => s.tab)).toEqual(["community", "access", "featured", "contact", "team", "badges", "log", "groups"]);
-    expect(COMMUNITY_SCREENS.map((s) => s.label)).toEqual(["Community details", "Who can post", "Featured & announcements", "Member inbox", "Team", "Badges", "Moderation log", "Group chats"]);
+    expect(COMMUNITY_SCREENS.map((s) => s.tab)).toEqual(["community", "access", "featured", "contact", "team", "badges", "media", "log", "groups"]);
+    expect(COMMUNITY_SCREENS.map((s) => s.label)).toEqual(["Community details", "Who can post", "Featured & announcements", "Member inbox", "Team", "Badges", "Media", "Moderation log", "Group chats"]);
+  });
+
+  it("lists Group chats and Media only where the relay has them", () => {
+    const tabs = (o: { groups: boolean; media: boolean }) => communityScreens(o).map((s) => s.tab);
+    expect(tabs({ groups: false, media: false })).toEqual(["community", "access", "featured", "contact", "team", "badges", "log"]);
+    expect(tabs({ groups: true, media: true })).toEqual(["community", "access", "featured", "contact", "team", "badges", "media", "log", "groups"]);
+    expect(resolveTab("media")).toBe("media");
   });
 
   it("Advanced holds what only some people need", () => {

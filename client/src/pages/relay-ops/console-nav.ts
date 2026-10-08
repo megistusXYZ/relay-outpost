@@ -32,10 +32,17 @@ export const COMMUNITY_SCREENS: ReadonlyArray<ConsoleScreen> = [
   { tab: "contact", label: "Member inbox", hint: "Let members contact the team" },
   { tab: "team", label: "Team", hint: "Who helps you run it" },
   { tab: "badges", label: "Badges", hint: "Badges your community gives" },
+  // Only where the relay stores uploads and lets its owner manage them (newlay).
+  { tab: "media", label: "Media", hint: "Pictures and videos people uploaded here" },
   { tab: "log", label: "Moderation log", hint: "Everything your team has done here" },
   // Only where the relay runs group chats (the page leaves it out otherwise).
   { tab: "groups", label: "Group chats", hint: "Create groups, invite people, set roles" },
 ];
+
+/** Community's rows for this relay: Group chats and Media only where it has them. */
+export function communityScreens({ groups, media }: { groups: boolean; media: boolean }): ConsoleScreen[] {
+  return COMMUNITY_SCREENS.filter((s) => (s.tab !== "groups" || groups) && (s.tab !== "media" || media));
+}
 
 export const ADVANCED_SCREENS: ReadonlyArray<ConsoleScreen> = [
   { tab: "connection", label: "Connection & sign-in", hint: "How this app reaches it, and when to sign in" },
