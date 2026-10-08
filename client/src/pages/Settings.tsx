@@ -2500,7 +2500,7 @@ export default function Settings() {
                 </defs>
               </svg>
               <span>Crafted by{" "}
-                <span className="text-brand/60 group-hover:text-brand-strong transition-colors duration-300 font-medium">
+                <span className="text-brand dark:text-brand/60 group-hover:text-brand-strong transition-colors duration-300 font-medium">
                   Megistus
                 </span>
               </span>

@@ -1611,7 +1611,7 @@ function ProfileCard({ profile, tier, isFollowed, followsYou, grouped = false }:
           <div className="relative shrink-0">
             <Avatar className={`w-12 h-12 ring-2 ${ringColor} border-2 border-primary/20 dark:border-[#0d0d2b]`}>
               <AvatarImage src={content?.picture} alt={content?.display_name || content?.name || "User"} />
-              <AvatarFallback className="text-xs bg-brand/40 text-brand font-bold">
+              <AvatarFallback className="text-xs bg-brand/15 dark:bg-brand/40 text-brand font-bold">
                 {(content?.display_name || content?.name || "?").slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -2297,7 +2297,7 @@ function MobileTrustedVoices({ voices, followSet }: {
               <div className="relative shrink-0">
                 <Avatar className={`w-9 h-9 ring-2 ${ringColor} border border-primary/20 dark:border-[#0d0d2b]`}>
                   <AvatarImage src={content?.picture} alt={content?.display_name || content?.name || "User"} />
-                  <AvatarFallback className="text-[9px] bg-brand/40 text-brand font-bold">
+                  <AvatarFallback className="text-[9px] bg-brand/15 dark:bg-brand/40 text-brand font-bold">
                     {(content?.display_name || content?.name || "?").slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -2638,7 +2638,7 @@ function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
                             <div className="relative">
                               <Avatar className={`w-11 h-11 ring-2 ${ringColor} border-2 border-primary/20 dark:border-[#0d0d2b]`}>
                                 <AvatarImage src={content?.picture} alt={content?.display_name || content?.name || "User"} />
-                                <AvatarFallback className="text-[10px] bg-brand/40 text-brand font-bold">
+                                <AvatarFallback className="text-[10px] bg-brand/15 dark:bg-brand/40 text-brand font-bold">
                                   {(content?.display_name || content?.name || "?").slice(0, 2).toUpperCase()}
                                 </AvatarFallback>
                               </Avatar>
