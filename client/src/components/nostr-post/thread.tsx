@@ -1,7 +1,7 @@
 import { PostBoundary } from "@/components/PostBoundary";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from "react";
 import { ClampedText, LINES, textForLines } from "@/components/ClampedText";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
 import { Link, useLocation } from "wouter";
@@ -319,7 +319,14 @@ export function ReplyDock({ root, children }: { root: Event; children: ReactNode
           )}
           <button
             type="button"
-            onClick={() => setOpen(true)}
+            onClick={() => {
+              // iPhone raises the keyboard only for a focus made inside the tap
+              // itself; the composer's own focus, 100 ms after it mounts, is
+              // ignored, and the box opened with no keyboard (owner, 2026-10-09,
+              // simulator). So: mount it now, then focus it, still in the tap.
+              flushSync(() => setOpen(true));
+              document.querySelector<HTMLTextAreaElement>('textarea[data-testid^="input-reply-"]')?.focus();
+            }}
             className={`w-full flex items-center gap-3 px-3 ${target ? "pb-2" : "py-2"} min-h-[52px] text-left`}
             data-testid="thread-reply-dock-open"
           >
