@@ -58,6 +58,7 @@ import { supportsNativeHls } from "@/contexts/PiPContext";
 import { needsProxy, proxyUrl, parseLiveEvent } from "@/lib/live-events";
 import type { LiveEventData } from "@/lib/live-events";
 import { useLiveStatus } from "@/contexts/LiveStatusContext";
+import { announcedHost, shoshoHandle } from "@/lib/shosho";
 import { useStreamLiveness } from "@/hooks/use-stream-liveness";
 import { KIND_LIVE_EVENT } from "@/lib/nostr-helpers";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -1142,6 +1143,75 @@ export function VideoEmbed({
   );
 }
 
+/**
+ * A Shosho announcement (owner, 2026-10-09): the post links the streamer's
+ * Shosho PAGE, not the stream. If that person has a live stream we can play
+ * (the live index already drops ended, stale and dead ones), the card is ours
+ * and opens our player; otherwise it opens their page on Shosho.
+ */
+export function ShoshoCard({ url, host }: { url: string; host: string }) {
+  const { getLiveStream } = useLiveStatus();
+  const handle = useMemo(() => shoshoHandle(url), [url]);
+  const stream = getLiveStream(host);
+  const playable = stream && stream.status === "live" && !!(stream.hlsUrl || stream.streamUrl);
+  if (playable) {
+    const naddr = nip19.naddrEncode({ identifier: stream.dTag, pubkey: stream.pubkey, kind: KIND_LIVE_EVENT });
+    return (
+      <Link
+        href={`/live/${naddr}`}
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        className="group/stream block rounded-xl overflow-hidden border border-border/60 hover:border-primary/40 bg-card transition-colors"
+        data-testid="shosho-live-card"
+      >
+        <div className="relative flex items-center gap-3.5 p-3.5 bg-gradient-to-r from-primary/[0.07] via-transparent to-transparent">
+          <span className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-brand to-brand" aria-hidden />
+          <div className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-brand/15 to-brand/10 border border-brand/20 text-brand">
+            <Cast className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                Live
+              </span>
+              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">Live on Shosho</span>
+            </div>
+            <p className="text-sm font-semibold text-foreground truncate">{stream.title?.trim() || "Watch the live stream"}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+              <RelayOutpostIcon className="w-3 h-3 text-brand/70" />
+              Opens in Relay Outpost
+            </p>
+          </div>
+          <div className="flex-shrink-0">
+            <div className="w-9 h-9 rounded-full flex items-center justify-center bg-primary/10 text-primary group-hover/stream:bg-primary group-hover/stream:text-primary-foreground transition-colors">
+              <Play className="w-4 h-4 ml-0.5" fill="currentColor" />
+            </div>
+          </div>
+        </div>
+      </Link>
+    );
+  }
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      className="group/stream flex items-center gap-3.5 rounded-xl border border-border/60 hover:border-primary/40 bg-card p-3.5 transition-colors"
+      data-testid="shosho-page-card"
+    >
+      <div className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center bg-muted text-muted-foreground">
+        <Cast className="w-5 h-5" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-foreground truncate">Watch on Shosho</p>
+        <p className="text-xs text-muted-foreground mt-0.5 truncate">shosho.live/{handle ?? ""}</p>
+      </div>
+      <ExternalLink className="w-4 h-4 flex-shrink-0 text-muted-foreground/70" aria-hidden="true" />
+    </a>
+  );
+}
+
 function ZapStreamCard({ url }: { url: string }) {
   const naddr = useMemo(() => extractZapStreamNaddr(url), [url]);
   if (!naddr) return null;
@@ -1883,6 +1953,7 @@ export function MediaRenderer({ event, compact = false, priority = false, blurRe
   const contentAudio = media.filter((m) => m.type === "audio");
   const contentEmbeds = media.filter((m) => isEmbedType(m.type));
   const contentZapStreams = media.filter((m) => m.type === "zapstream");
+  const contentShosho = media.filter((m) => m.type === "shosho");
   const contentMusicLinksRaw = media.filter((m) => m.type === "musiclink" && m.musicService);
 
   const allImageUrls = useMemo(() => {
@@ -1947,7 +2018,7 @@ export function MediaRenderer({ event, compact = false, priority = false, blurRe
     [previewLinks],
   );
 
-  const hasMedia = allImageUrls.size > 0 || allVideoUrls.size > 0 || allAudioUrls.size > 0 || contentEmbeds.length > 0 || contentLinks.length > 0 || contentZapStreams.length > 0 || contentMusicLinks.length > 0;
+  const hasMedia = allImageUrls.size > 0 || allVideoUrls.size > 0 || allAudioUrls.size > 0 || contentEmbeds.length > 0 || contentLinks.length > 0 || contentZapStreams.length > 0 || contentShosho.length > 0 || contentMusicLinks.length > 0;
 
   if (liveEventData) {
     return (
@@ -2010,6 +2081,10 @@ export function MediaRenderer({ event, compact = false, priority = false, blurRe
 
       {contentZapStreams.map((stream) => (
         <ZapStreamCard key={stream.url} url={stream.url} />
+      ))}
+
+      {contentShosho.map((m) => (
+        <ShoshoCard key={m.url} url={m.url} host={announcedHost(event)} />
       ))}
 
       {Array.from(allAudioUrls).map((url) => {

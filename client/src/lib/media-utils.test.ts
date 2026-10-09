@@ -160,3 +160,13 @@ describe("parseImetaTags x + fallback", () => {
     expect(data.fallbacks).toEqual(["https://m1.example/a.png", "https://m2.example/a.png"]);
   });
 });
+
+// A Shosho page link is its own kind of thing (owner, 2026-10-09): not a
+// video, not a plain link — the thread decides what to show from who's live.
+describe("classifyUrl: a Shosho page", () => {
+  it("is 'shosho', and only the page itself", () => {
+    expect(classifyUrl("https://shosho.live/jeeef")).toBe("shosho");
+    expect(classifyUrl("https://shosho.live/")).toBe("link");
+    expect(classifyUrl("https://shosho.live/jeeef/clips")).toBe("link");
+  });
+});
