@@ -10,6 +10,7 @@ import { useCallUsage, callUsageLine } from "@/lib/call-usage";
 import { copyNostrId } from "@/lib/clipboard-bridge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { OpsCard, OpsSectionHeader } from "./ops-ui";
+import { RelayHealthCard } from "./RelayHealthCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -891,6 +892,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
         </div>
       </div>
 
+      <RelayHealthCard relayUrl={relayUrl} />
       {inbox && <FeedbackSummaryCard inbox={inbox} onOpenFeedback={onOpenFeedback} />}
       <CallsRightNow />
       </>}
