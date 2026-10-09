@@ -49,7 +49,7 @@ export const START_OPTIONS: readonly StartOption[] = [
   {
     id: "hosted",
     title: "Hosted for you",
-    forWho: "The easy way: someone else keeps it running while you look after your people.",
+    forWho: "The easy way: relay.tools keeps it running while you look after your people.",
     // relay.tools Feeds, checked 2026-10-03: "14-day free trial · pay with lightning".
     points: ["Ready in minutes", "Free 14-day trial", "Every tool here works with it"],
     cta: "Start on relay.tools",
