@@ -29,6 +29,7 @@ export const NIP86_METHODS = [
   "setwotexemptkinds", "listwotexemptkinds",
   "getblobstats", "listblobs", "deleteblob", "deleteblobsbyowner",
   "getrelaymode", "setrelaymode",
+  "listtiers", "createtier", "assigntier", "unassigntier", "listassignments",
 ] as const;
 
 /** One management-call parameter: newlay's settings take more than text. */
