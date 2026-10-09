@@ -15,7 +15,9 @@ import { useEffect, useMemo, useState } from "react";
 import { nip19 } from "nostr-tools";
 import { Plus, X } from "lucide-react";
 import type { Nip11Document } from "@/lib/nip11";
-import { managedAt } from "@/lib/relay-capabilities";
+import { canDo, managedAt } from "@/lib/relay-capabilities";
+import { fetchRelayCapabilities, nip86Call } from "@/lib/nip86";
+import { adminTierNames, callsToSetActing, moderatorTierPlan, whoActs, type TierPlan } from "@/lib/team-powers";
 import { describeLogEntry, deviceOnlyEntries, teamSuggestions } from "@/lib/team-records";
 import { pool } from "@/lib/nostr";
 import { communityRecordRelays } from "@/lib/featured";
@@ -26,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ManagedAtNote } from "./ops-ui";
-import { getModLog, getStoredList, MANUAL_TEAM_KEY, pubkeyToNpub, resolveProfileBatch, type ProfileInfo } from "./shared";
+import { addModLogEntry, getModLog, getStoredList, MANUAL_TEAM_KEY, pubkeyToNpub, resolveProfileBatch, type ProfileInfo } from "./shared";
 
 const OFFER_NO_KEY = "ro_team_offer_no_";
 
@@ -87,6 +89,51 @@ function toHex(input: string): string | null {
   return null;
 }
 
+/**
+ * Who can act here (remove posts, ban people) as the host's engine holds it —
+ * a role with admin rights, assigned on the relay (lib/team-powers.ts). Only
+ * offered where the engine lists the calls (newlay); elsewhere `offered` is
+ * false and the screen keeps its "make them moderators at your host" note.
+ */
+function useTeamPowers(relayUrl: string) {
+  const [offered, setOffered] = useState<boolean | null>(null);
+  const [acting, setActing] = useState<Map<string, { byHost: boolean }>>(new Map());
+  const [plan, setPlan] = useState<TierPlan | null>(null);
+  const [busyFor, setBusyFor] = useState<string | null>(null);
+  const read = async () => {
+    const [tiers, assignments] = await Promise.all([nip86Call(relayUrl, "listtiers", []), nip86Call(relayUrl, "listassignments", [])]);
+    const names = adminTierNames(tiers.result);
+    setPlan(moderatorTierPlan(tiers.result));
+    setActing(whoActs(assignments.result, names));
+  };
+  useEffect(() => {
+    let live = true;
+    setOffered(null); setActing(new Map()); setPlan(null);
+    (async () => {
+      const caps = await fetchRelayCapabilities(relayUrl);
+      if (!live) return;
+      const ok = canDo(caps, "teamPowers");
+      setOffered(ok);
+      if (ok) await read();
+    })();
+    return () => { live = false; };
+  }, [relayUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  const set = async (pubkey: string, on: boolean): Promise<string | null> => {
+    if (!plan) return "Still reading who can act here.";
+    setBusyFor(pubkey);
+    let failed: string | null = null;
+    for (const c of callsToSetActing(on, pubkey, plan)) {
+      const r = await nip86Call(relayUrl, c.method as any, c.params);
+      if (r.error) { failed = r.error; break; }
+    }
+    if (!failed) addModLogEntry(relayUrl, { action: on ? "grant_powers" : "revoke_powers", targetPubkey: pubkey });
+    await read();
+    setBusyFor(null);
+    return failed;
+  };
+  return { offered, acting, busyFor, set };
+}
+
 function TeamUnavailable({ team, relayName }: { team: RelayTeam; relayName: string }) {
   if (!team.canEncrypt) {
     return <p className="rounded-xl bg-amber-500/10 px-3.5 py-3 text-[14px] text-amber-800 dark:text-amber-200" data-testid="ops-team-no-encrypt">Your signer can't encrypt, so team notes and the shared log are off. Sign in with a signer that supports private messages to use them.</p>;
@@ -107,6 +154,12 @@ export function TeamScreen({ relayUrl, nip11, team }: { relayUrl: string; nip11:
   const ownerName = profiles.get(team.owner)?.name ?? "the community's owner";
   const offer = useTeamOffer(relayUrl, nip11, team);
   const offerProfiles = useProfiles(offer.people);
+  const powers = useTeamPowers(relayUrl);
+  const setPowers = async (pk: string, name: string, on: boolean) => {
+    const failed = await powers.set(pk, on);
+    if (failed) toast({ title: on ? `Couldn't let ${name} act here` : `Couldn't stop ${name} acting here`, description: failed, variant: "destructive" });
+    else toast({ title: on ? `${name} can now remove posts and ban people here` : `${name} can no longer act here` });
+  };
 
   const change = async (next: string[], said: string) => {
     setBusy(true);
@@ -133,19 +186,41 @@ export function TeamScreen({ relayUrl, nip11, team }: { relayUrl: string; nip11:
         {team.members.map((pk) => {
           const p = profiles.get(pk);
           const name = p?.name || `${pubkeyToNpub(pk).slice(0, 14)}…`;
-          const role = pk === team.owner ? "Owner" : moderators.has(pk) ? "Moderator" : "Can see and add notes";
+          const acts = powers.acting.get(pk);
+          const role = pk === team.owner ? "Owner" : (moderators.has(pk) || acts) ? "Moderator" : "Can see and add notes";
+          const canSwitch = powers.offered && team.isOwner && pk !== team.owner && !acts?.byHost;
           return (
-            <li key={pk} className="flex items-center gap-3 px-3.5 min-h-[60px]" data-testid="ops-team-member" data-pubkey={pk}>
+            <li key={pk} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3.5 py-2 min-h-[60px]" data-testid="ops-team-member" data-pubkey={pk}>
               <Avatar className="w-9 h-9 shrink-0">{p?.picture && <AvatarImage src={p.picture} alt="" />}<AvatarFallback className="bg-brand/10 text-brand">{name.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
-              <span className="min-w-0 flex-1">
+              <span className="min-w-0 flex-1 basis-40">
                 <span className="block font-medium truncate">{name}</span>
-                <span className="block text-[13px] text-muted-foreground">{role}</span>
+                <span className="block text-[13px] text-muted-foreground" data-testid="ops-team-role">{role}{acts?.byHost ? " · Set by your host" : ""}</span>
               </span>
+              {/* On a phone the controls take a second line rather than squeezing the name. */}
+              <span className="flex items-center justify-end gap-1 basis-full sm:basis-auto sm:ml-auto">
+              {canSwitch && (
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={!!acts}
+                  aria-label={`${name} can remove posts and ban people here`}
+                  disabled={busy || powers.busyFor === pk}
+                  onClick={() => setPowers(pk, name, !acts)}
+                  className="min-h-[44px] inline-flex items-center gap-2 rounded-full border border-black/[0.1] dark:border-white/[0.12] px-3 text-[13px] hover:border-brand/40 disabled:opacity-60"
+                  data-testid="ops-team-acts"
+                >
+                  <span className={`relative inline-block w-8 h-[18px] rounded-full transition-colors ${acts ? "bg-primary" : "bg-muted-foreground/40"}`} aria-hidden="true">
+                    <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-transform ${acts ? "translate-x-[16px]" : "translate-x-[2px]"}`} />
+                  </span>
+                  {powers.busyFor === pk ? "Saving…" : acts ? "Can act here" : "Can act here?"}
+                </button>
+              )}
               {team.isOwner && pk !== team.owner && (
                 <Button variant="ghost" size="sm" disabled={busy} onClick={() => change(team.members.filter((m) => m !== pk), "Removed from the team")} className="h-10 px-3 text-[13px] text-red-600 dark:text-red-400" aria-label={`Remove ${name} from the team`} data-testid="ops-team-remove">
                   <X className="w-4 h-4 mr-1" />Remove
                 </Button>
               )}
+              </span>
             </li>
           );
         })}
@@ -180,12 +255,18 @@ export function TeamScreen({ relayUrl, nip11, team }: { relayUrl: string; nip11:
       <p className="text-[13px] leading-relaxed text-muted-foreground">
         Someone you remove can't read anything written after. What they've already seen can't be taken back.
       </p>
-      <ManagedAtNote
-        where={managedAt(relayUrl)}
-        lead="Being on the team lets someone read and add notes. To let them remove posts or ban people too,"
-        verb="make them moderators"
-        testId="ops-team-powers"
-      />
+      {powers.offered ? (
+        <p className="text-[13px] leading-relaxed text-muted-foreground" data-testid="ops-team-powers-here">
+          Being on the team lets someone read and add notes. "Can act here" also lets them remove posts and ban people, and it's saved with your host at once.
+        </p>
+      ) : (
+        <ManagedAtNote
+          where={managedAt(relayUrl)}
+          lead="Being on the team lets someone read and add notes. To let them remove posts or ban people too,"
+          verb="make them moderators"
+          testId="ops-team-powers"
+        />
+      )}
     </div>
   );
 }

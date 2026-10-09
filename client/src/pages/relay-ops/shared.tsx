@@ -1438,7 +1438,9 @@ export type ModAction =
   | "relay_online"
   | "relay_latency_spike"
   | "delete_media"
-  | "delete_media_by_owner";
+  | "delete_media_by_owner"
+  | "grant_powers"
+  | "revoke_powers";
 
 export interface ModerationLogEntry {
   id: string;
