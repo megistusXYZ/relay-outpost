@@ -1488,9 +1488,29 @@ function StreamDetail({ stream }: { stream: LiveEventData }) {
   // shrink for the keyboard, so the message box sat under it (owner,
   // 2026-10-07; ship/phone-typing-e2e.cjs).
   const chatKb = useKeyboardViewport(mobileChatActive);
+  // In chat mode the panel is the only thing in the page scroller (the rest
+  // of the page is not rendered), so the scroller has nothing to scroll and
+  // sits at 0 — the same as a private message thread. The page's offset is
+  // put back on exit so closing the chat doesn't land you at the top.
+  useEffect(() => {
+    if (!mobileChatActive) return;
+    const main = document.querySelector("main");
+    if (!main) return;
+    const saved = main.scrollTop;
+    main.scrollTop = 0;
+    return () => { main.scrollTop = saved; };
+  }, [mobileChatActive]);
 
   return (
-    <div className="overflow-x-hidden space-y-4" data-testid="stream-detail">
+    <div
+      // Not `overflow-x-hidden` in chat mode: that makes this box a scroller
+      // (overflow-y: auto), and on iPhone a scroller clips what is drawn
+      // inside it even when it is not what positions it — this box is 0px
+      // tall once the panel is out of the flow, so the panel laid out right
+      // and drew nothing (owner, 2026-10-09; measured in the simulator).
+      className={mobileChatActive ? "" : "overflow-x-hidden space-y-4"}
+      data-testid="stream-detail"
+    >
       {/* No "Back to Streams" here: the app chrome's back owns /live/:naddr
           (back-affordance.ts maps cold entries to /search?tab=live) — this
           used to stack a second arrow under it. */}
@@ -1498,7 +1518,10 @@ function StreamDetail({ stream }: { stream: LiveEventData }) {
         // Inside <main>'s stacking context nothing paints above the fixed top
         // bar, so chat mode starts below it — the same as a private message
         // thread (Messages.tsx); it covered the collapse arrow.
-        className={mobileChatActive ? "fixed inset-x-0 z-[55] flex flex-col bg-background pt-[calc(4.25rem+env(safe-area-inset-top,0px))]" : `flex flex-col ${stream.chatEnabled ? "lg:flex-row" : ""} gap-4 lg:items-start`}
+        // `absolute` against <main> (which positions a `fixed` child too, as it
+        // carries a transform): the panel fills the scroller, so there is
+        // nothing left to scroll while chat mode is on.
+        className={mobileChatActive ? "absolute inset-x-0 z-[55] flex flex-col bg-background pt-[calc(4.25rem+env(safe-area-inset-top,0px))]" : `flex flex-col ${stream.chatEnabled ? "lg:flex-row" : ""} gap-4 lg:items-start`}
         style={mobileChatActive ? (chatKb.height ? { top: chatKb.offsetTop, height: chatKb.height } : { top: 0, bottom: 0 }) : undefined}
         data-testid={mobileChatActive ? "stream-chat-mode" : undefined}
       >
