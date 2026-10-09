@@ -26,6 +26,7 @@ export const NIP86_METHODS = [
   "blockip", "unblockip", "listblockedips",
   "getrelaystatus",
   "getwotsettings", "setwotenabled", "setwotcompute", "setwotgatewrites", "setwotcutoff", "setwotobserver",
+  "setwotexemptkinds", "listwotexemptkinds",
   "getblobstats", "listblobs", "deleteblob", "deleteblobsbyowner",
 ] as const;
 
