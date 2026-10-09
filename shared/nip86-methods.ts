@@ -28,6 +28,7 @@ export const NIP86_METHODS = [
   "getwotsettings", "setwotenabled", "setwotcompute", "setwotgatewrites", "setwotcutoff", "setwotobserver",
   "setwotexemptkinds", "listwotexemptkinds",
   "getblobstats", "listblobs", "deleteblob", "deleteblobsbyowner",
+  "getrelaymode", "setrelaymode",
 ] as const;
 
 /** One management-call parameter: newlay's settings take more than text. */
