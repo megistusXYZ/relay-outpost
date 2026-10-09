@@ -13,7 +13,7 @@ import { ManagedAtNote } from "./ops-ui";
 
 const CHOICES: Array<{ id: PostingChoice; title: string; line: string }> = [
   { id: "anyone", title: "Anyone", line: "Everyone can post. You can still ban people." },
-  { id: "network", title: "People your network trusts", line: "Members, people you follow and people they trust can post. Posts from strangers are turned away." },
+  { id: "network", title: "People your network trusts", line: "Members, people you follow and people they trust can post. Posts from strangers are turned away. Private messages and group chats still get through." },
 ];
 
 export function PostingGateCard({ relayUrl, me, fallback }: { relayUrl: string; me: string | null; fallback: ReactNode }) {

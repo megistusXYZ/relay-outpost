@@ -54,7 +54,7 @@ const ACTION_METHODS: Record<RelayAction, readonly string[]> = {
 
 /** Actions that take several calls: every one must be listed (never assumed for an unlisted relay). */
 const NEEDS_ALSO: Partial<Record<RelayAction, readonly string[]>> = {
-  postingGate: ["getwotsettings", "setwotenabled", "setwotobserver"],
+  postingGate: ["getwotsettings", "setwotenabled", "setwotobserver", "setwotexemptkinds"],
   media: ["getblobstats", "deleteblob", "deleteblobsbyowner"],
 };
 

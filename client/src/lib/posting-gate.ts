@@ -22,8 +22,19 @@ export interface WotSettings {
   configured?: boolean;
   cutoff?: number;
   gate_writes: boolean;
+  /** Kinds the operator exempted from the gate (the whole operator set; setwotexemptkinds replaces it). */
+  gate_writes_exempt_kinds?: number[];
   observer: string | null;
 }
+
+/**
+ * What the gate must let through for members to keep talking: private
+ * messages and group chats (kind 1059, signed by a one-time key so nobody can
+ * tell who sent them — to the gate, always a stranger) and invite links
+ * (33301, signed by the link's own key). The relay still rate-limits exempt
+ * kinds on its own lane, and bans still apply.
+ */
+export const MESSAGE_KINDS = [1059, 33301] as const;
 
 export type PostingGate =
   | { choice: PostingChoice }
@@ -48,6 +59,11 @@ export function callsToChoose(choice: PostingChoice, now: WotSettings, me: strin
   if (choice === "network") {
     if (!now.observer) calls.push({ method: "setwotobserver", params: [me] });
     if (!now.enabled) calls.push({ method: "setwotenabled", params: [true] });
+    // Exemptions go up before the gate does, so no message is refused in between.
+    const have = new Set(now.gate_writes_exempt_kinds ?? []);
+    if (MESSAGE_KINDS.some((k) => !have.has(k))) {
+      calls.push({ method: "setwotexemptkinds", params: [[...new Set([...have, ...MESSAGE_KINDS])].sort((a, b) => a - b)] });
+    }
     if (!now.gate_writes) calls.push({ method: "setwotgatewrites", params: [true] });
   } else if (now.gate_writes) {
     calls.push({ method: "setwotgatewrites", params: [false] });
