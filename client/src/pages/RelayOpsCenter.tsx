@@ -26,7 +26,9 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ErrorScreen } from "@/components/ErrorScreen";
 import { TabId, getTabFromHash } from "./relay-ops/shared";
 import { SetupChecklist, setSetupFlag, useSetupChecklist } from "./relay-ops/SetupChecklist";
-import { SECTIONS, COMMUNITY_SCREENS, ADVANCED_SCREENS, sectionOf, listOf, consoleTitle, type ConsoleScreen } from "./relay-ops/console-nav";
+import { SECTIONS, COMMUNITY_SCREENS, ADVANCED_SCREENS, sectionOf, listOf, consoleTitle, communityScreens, type ConsoleScreen } from "./relay-ops/console-nav";
+import { MediaScreen } from "./relay-ops/MediaScreen";
+import { canDo, UNKNOWN_CAPABILITIES, type RelayCapabilities } from "@/lib/relay-capabilities";
 import { useFeedbackInbox } from "@/hooks/use-feedback-inbox";
 import { OverviewTab } from "./relay-ops/OverviewTab";
 import { ContentTab } from "./relay-ops/ContentTab";
@@ -199,6 +201,8 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
   const relaysNeedYou = useRelaysNeedYou();
   const inboxCount = feedbackUnread + relaysNeedYou.forRelay(selectedRelay);
 
+  // What this relay lets your key manage (the signed supportedmethods answer).
+  const [caps, setCaps] = useState<RelayCapabilities>(UNKNOWN_CAPABILITIES);
   useEffect(() => {
     if (!selectedRelay) return;
     const requestId = ++verifyRequestRef.current;
@@ -213,6 +217,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
     ]).then(([doc, probe]) => {
       if (requestId !== verifyRequestRef.current) return;
       setNip11(doc);
+      setCaps(probe?.caps ?? UNKNOWN_CAPABILITIES);
       if (!pubkey) { setAuthStatus("denied"); return; }
       const ownership = decideOwnership({
         pubkey,
@@ -497,7 +502,8 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                   </div>
                 )}
                 {activeTab === "feedback" && <InboxTab relayUrl={selectedRelay} nip11={nip11} inbox={inbox} onSeePost={(id) => { setContentSeed(id); setActiveTab("events"); }} onOpenMemberInbox={() => setActiveTab("contact")} />}
-                {activeTab === "settings" && <ScreenList screens={COMMUNITY_SCREENS.filter((r) => r.tab !== "groups" || (!!nip11 && supportsNip(nip11, 29)))} onOpen={setActiveTab} testId="ops-settings-rows" />}
+                {activeTab === "settings" && <ScreenList screens={communityScreens({ groups: !!nip11 && supportsNip(nip11, 29), media: canDo(caps, "media") })} onOpen={setActiveTab} testId="ops-settings-rows" />}
+                {activeTab === "media" && <MediaScreen relayUrl={selectedRelay} />}
                 {activeTab === "groups" && <CommunityTab relayUrl={selectedRelay} nip11={nip11} part="groups" />}
                 {activeTab === "advanced" && (
                   <ScreenList

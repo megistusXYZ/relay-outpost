@@ -124,6 +124,8 @@ const SENTENCES: Record<string, (e: { count?: number }) => string> = {
   remove_allowlist: () => "Took someone off the allow list",
   restore_event: () => "Brought a post back",
   dismiss_report: () => "Closed a report",
+  delete_media: () => "Removed a file",
+  delete_media_by_owner: (e) => `Removed ${e.count ?? "the"} file${e.count === 1 ? "" : "s"} someone uploaded`,
 };
 
 /** "Removed 32 posts · Spam" */

@@ -82,6 +82,8 @@ describe("notes and the log", () => {
     expect(describeLogEntry({ action: "bulk_delete", count: 32 })).toBe("Removed 32 posts");
     expect(describeLogEntry({ action: "block_author" })).toBe("Banned someone");
     expect(describeLogEntry({ action: "remove_blocklist" })).toBe("Lifted a ban");
+    expect(describeLogEntry({ action: "delete_media" })).toBe("Removed a file");
+    expect(describeLogEntry({ action: "delete_media_by_owner", count: 12 })).toBe("Removed 12 files someone uploaded");
   });
 });
 

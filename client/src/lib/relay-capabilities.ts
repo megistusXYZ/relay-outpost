@@ -24,7 +24,7 @@ export type RelayAction =
   | "name" | "description" | "icon" | "banner" | "moderators"
   | "allowKind" | "disallowKind" | "listAllowedKinds" | "listDisallowedKinds"
   // newlay's own (relay.tools Feeds) — only ever offered when the relay lists them.
-  | "status" | "postingGate";
+  | "status" | "postingGate" | "media";
 
 /** Method names for each action, the spec's first, then known alternatives. */
 const ACTION_METHODS: Record<RelayAction, readonly string[]> = {
@@ -49,11 +49,13 @@ const ACTION_METHODS: Record<RelayAction, readonly string[]> = {
   listDisallowedKinds: ["listdisallowedkinds"],
   status: ["getrelaystatus"],
   postingGate: ["setwotgatewrites"],
+  media: ["listblobs"],
 };
 
 /** Actions that take several calls: every one must be listed (never assumed for an unlisted relay). */
 const NEEDS_ALSO: Partial<Record<RelayAction, readonly string[]>> = {
   postingGate: ["getwotsettings", "setwotenabled", "setwotobserver"],
+  media: ["getblobstats", "deleteblob", "deleteblobsbyowner"],
 };
 
 /** Offered on a relay that didn't list its methods: what nearly every NIP-86 relay has. */
