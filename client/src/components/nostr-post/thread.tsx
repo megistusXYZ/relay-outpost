@@ -421,10 +421,8 @@ export function ReplyComposer({
 
   useEffect(() => {
     if (!isMobile) return;
-    const timer = setTimeout(() => {
-      textareaRef.current?.focus();
-    }, 100);
-
+    // No focus() here: iPhone ignores a focus made outside the tap, so the
+    // dock focuses the box itself, inside the tap (owner, 2026-10-09).
     const vv = window.visualViewport;
     const update = () => {
       if (vv) {
@@ -437,7 +435,7 @@ export function ReplyComposer({
       vv.addEventListener("scroll", update);
     }
     return () => {
-      clearTimeout(timer);
+      
       if (vv) {
         vv.removeEventListener("resize", update);
         vv.removeEventListener("scroll", update);
