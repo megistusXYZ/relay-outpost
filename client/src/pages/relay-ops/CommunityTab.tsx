@@ -7,7 +7,7 @@ import type { Event as NostrEvent } from "nostr-tools";
 import { pool } from "@/lib/nostr";
 import { signWithTimeout } from "@/lib/signer-timeout";
 import { buildFeaturedEventTemplate, parseFeaturedDoc, setDocAnnouncement, featuredDTag, refToFeaturedItem, featuredItemKey, kindLabel, MAX_FEATURED_ITEMS, communityRecordRelays, type FeaturedItem } from "@/lib/featured";
-import { type Nip11Document } from "@/lib/nip11";
+import { type Nip11Document, clearNip11Cache } from "@/lib/nip11";
 import {
   mayHostNip29,
   fetchGroupMetadataResult,
@@ -45,6 +45,7 @@ import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { OpsCard, OpsSubCard, OpsSectionHeader, ManagedAtNote } from "./ops-ui";
+import { SETUP_CHANGED_EVENT } from "./SetupChecklist";
 import { AddMemberSheet } from "@/components/AddMemberSheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -523,6 +524,9 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
     setSavingBrand(false);
     if (failed.length === 0) {
       toast({ title: "Saved", description: dirtyFields.length === 1 ? `The community's ${dirtyFields[0]} is updated.` : `${dirtyFields.length} changes are live.` });
+      // Overview's checklist re-reads the public card (it was fetched once, and cached).
+      clearNip11Cache(relayUrl);
+      try { window.dispatchEvent(new CustomEvent(SETUP_CHANGED_EVENT, { detail: { relayUrl } })); } catch { /* no window */ }
     } else if (failed.length < dirtyFields.length) {
       toast({ title: "Some changes didn't save", description: failed.join(" · "), variant: "destructive" });
     } else {
@@ -541,6 +545,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
         content: JSON.stringify({ rules: rulesText, relay: relayUrl }),
       };
       await publishRecord(eventTemplate);
+      try { window.dispatchEvent(new CustomEvent(SETUP_CHANGED_EVENT, { detail: { relayUrl } })); } catch { /* no window */ }
       toast({ title: "Community rules saved" });
     } catch (err) {
       toast({ title: "Couldn't save the rules", description: failed(err), variant: "destructive" });

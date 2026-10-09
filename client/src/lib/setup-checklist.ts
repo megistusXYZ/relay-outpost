@@ -30,19 +30,32 @@ export interface SetupItem {
   label: string;
   hint: string;
   done: boolean;
+  /** Done because the owner chose to skip it (counts as done; shown faded). */
+  skipped: boolean;
   /** The screen where it's done; null when it's done right here (sharing). */
   go: "community" | "access" | "team" | "contact" | "badges" | null;
 }
 
-export function setupChecklist(f: SetupFacts): { items: SetupItem[]; done: number; complete: boolean } {
+/**
+ * `progress` is what the owner did by hand (lib/setup-progress.ts): a step
+ * ticked or skipped there is done whatever the relay says; a step true on the
+ * relay is done whatever the hand says. The list is a guide, never a gate.
+ */
+export function setupChecklist(f: SetupFacts, progress: { done: SetupItemId[]; skipped: SetupItemId[] } = { done: [], skipped: [] }): { items: SetupItem[]; done: number; complete: boolean } {
+  const byHand = new Set(progress.done), skipped = new Set(progress.skipped);
+  const row = (id: SetupItemId, label: string, hint: string, fact: boolean, go: SetupItem["go"]): SetupItem => ({
+    id, label, hint, go,
+    done: fact || byHand.has(id) || skipped.has(id),
+    skipped: !fact && !byHand.has(id) && skipped.has(id),
+  });
   const items: SetupItem[] = [
-    { id: "identity", label: "Name and picture", hint: "What people see first", done: f.name && f.picture, go: "community" },
-    { id: "about", label: "Description and rules", hint: "What it's for, and how to behave", done: f.description && f.rules, go: "community" },
-    { id: "who-can-post", label: "Who can post", hint: "Check it's how you want it", done: f.whoCanPostConfirmed, go: "access" },
-    { id: "team", label: "Your team", hint: "Who helps you run it — or just you", done: f.teammates > 0 || f.justMe, go: "team" },
-    { id: "inbox", label: "Member inbox", hint: "Let members contact you", done: f.inboxOn, go: "contact" },
-    { id: "badge", label: "Make your first badge", hint: "Founding member is ready to go", done: f.badges > 0, go: "badges" },
-    { id: "share", label: "Share your community", hint: "Copy its link and send it to people", done: f.shared, go: null },
+    row("identity", "Name and picture", "What people see first", f.name && f.picture, "community"),
+    row("about", "Description and rules", "What it's for, and how to behave", f.description && f.rules, "community"),
+    row("who-can-post", "Who can post", "Check it's how you want it", f.whoCanPostConfirmed, "access"),
+    row("team", "Your team", "Who helps you run it — or just you", f.teammates > 0 || f.justMe, "team"),
+    row("inbox", "Member inbox", "Let members contact you", f.inboxOn, "contact"),
+    row("badge", "Make your first badge", "Founding member is ready to go", f.badges > 0, "badges"),
+    row("share", "Share your community", "Copy its link and send it to people", f.shared, null),
   ];
   const done = items.filter((i) => i.done).length;
   return { items, done, complete: done === items.length };

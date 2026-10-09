@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import { fetchNip11, supportsNip, type Nip11Document } from "@/lib/nip11";
-import { probeRelayManagement } from "@/lib/nip86";
+import { nip86Call, probeRelayManagement } from "@/lib/nip86";
+import { adminTierNames } from "@/lib/team-powers";
 import { loadTeamRumors } from "@/lib/relay-team";
 import { foldTeam } from "@/lib/team-records";
 import { decideOwnership } from "@/lib/relay-ownership";
@@ -227,8 +228,20 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
         managementReached: probe ? probe.reached : !!doc,
       });
       if (ownership.kind === "runs-it") {
-        setRole(doc?.pubkey && doc.pubkey.toLowerCase() === pubkey.toLowerCase() ? "Owner" : "Moderator");
+        const named = doc?.pubkey && doc.pubkey.toLowerCase() === pubkey.toLowerCase();
+        setRole(named ? "Owner" : "Moderator");
         setAuthStatus("authorized");
+        // newlay's card names no owner (10-09: the owner saw "Moderator" on
+        // their own relay). The relay's own config says who runs it: an admin
+        // assigned there, not by another admin, is the owner.
+        if (!named && probe && canDo(probe.caps, "teamPowers")) {
+          Promise.all([nip86Call(selectedRelay, "listtiers", []), nip86Call(selectedRelay, "listassignments", [])]).then(([tiers, assignments]) => {
+            if (requestId !== verifyRequestRef.current) return;
+            const acting = adminTierNames(tiers.result);
+            const mine = (Array.isArray(assignments.result) ? assignments.result : []) as Array<{ pubkey?: string; tier?: string; source?: string }>;
+            if (mine.some((a) => a.pubkey === pubkey.toLowerCase() && a.source === "config" && typeof a.tier === "string" && acting.includes(a.tier))) setRole("Owner");
+          }).catch(() => {});
+        }
         return;
       }
       // Not the owner or a moderator — but maybe on the team: the owner's own
