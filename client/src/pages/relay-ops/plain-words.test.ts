@@ -16,6 +16,7 @@ const PLAIN_SCREENS = [
   "ContentTab.tsx", "ContentFilterPanel.tsx", "PeopleTab.tsx", "InboxTab.tsx", "FeedbackTab.tsx",
   "AccessControlTab.tsx", "KindGateCard.tsx", "MemberInboxSettings.tsx", "TeamScreens.tsx",
   "FeaturedTab.tsx", "CommunityTab.tsx", "ConfirmAction.tsx", "ops-ui.tsx", "count-line.ts", "SetupChecklist.tsx",
+  "PostingGateCard.tsx", "RelayTypeCard.tsx", "MediaScreen.tsx",
 ];
 const WORDS: Array<[string, RegExp]> = [
   ["NIP number", /\bNIP-?\d+\b/],

@@ -66,7 +66,7 @@ export function PostingGateCard({ relayUrl, me, fallback }: { relayUrl: string; 
     return (
       <div className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] px-4 py-3 space-y-1" data-testid="ops-posting-gate-off">
         <p className="text-[15px] font-medium">
-          {gate.why === "host-off" ? "Your host hasn't switched on trust checks for this relay." : "We couldn't read who can post right now."}
+          {gate.why === "host-off" ? "Your host hasn't switched on trust checks here." : "We couldn't read who can post right now."}
         </p>
         {gate.why === "host-off" && <ManagedAtNote where={managedAt(relayUrl)} lead="Ask them, or" verb="change it" testId="ops-posting-gate-host" />}
       </div>

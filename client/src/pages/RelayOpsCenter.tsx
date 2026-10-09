@@ -28,6 +28,7 @@ import { TabId, getTabFromHash } from "./relay-ops/shared";
 import { SetupChecklist, setSetupFlag, useSetupChecklist } from "./relay-ops/SetupChecklist";
 import { SECTIONS, COMMUNITY_SCREENS, ADVANCED_SCREENS, sectionOf, listOf, consoleTitle, communityScreens, type ConsoleScreen } from "./relay-ops/console-nav";
 import { MediaScreen } from "./relay-ops/MediaScreen";
+import { RelayTypeCard } from "./relay-ops/RelayTypeCard";
 import { canDo, UNKNOWN_CAPABILITIES, type RelayCapabilities } from "@/lib/relay-capabilities";
 import { useFeedbackInbox } from "@/hooks/use-feedback-inbox";
 import { OverviewTab } from "./relay-ops/OverviewTab";
@@ -544,7 +545,13 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                   </div>
                 )}
                 {activeTab === "scans" && <OverviewTab relayUrl={selectedRelay} part="scans" />}
-                {activeTab === "community" && <CommunityTab relayUrl={selectedRelay} nip11={nip11} part="details" />}
+                {activeTab === "community" && (
+                  <div className="space-y-6" data-testid="ops-community-details">
+                    <CommunityTab relayUrl={selectedRelay} nip11={nip11} part="details" />
+                    {/* What it's used for — only where the host's engine lets the operator choose (newlay). */}
+                    <RelayTypeCard relayUrl={selectedRelay} />
+                  </div>
+                )}
                 {activeTab === "contact" && <MemberInboxSettings relayUrl={selectedRelay} relayName={relayName} />}
                 {activeTab === "connection" && <ConnectionPanel relayUrl={selectedRelay} relayName={relayName} />}
               </ErrorBoundary>

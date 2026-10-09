@@ -88,12 +88,12 @@ export function MediaScreen({ relayUrl }: { relayUrl: string }) {
   if (off) {
     return (
       <OpsCard data-testid="ops-media-off">
-        <p className="text-[15px] font-medium">Your host hasn't switched on media storage for this relay.</p>
+        <p className="text-[15px] font-medium">Your host hasn't switched on media storage here.</p>
         <ManagedAtNote where={managedAt(relayUrl)} lead="Ask them, or" verb="change it" testId="ops-media-host" />
       </OpsCard>
     );
   }
-  if (failed) return <OpsCard data-testid="ops-media-failed"><p className="text-[15px]">We couldn't read this relay's media right now.</p></OpsCard>;
+  if (failed) return <OpsCard data-testid="ops-media-failed"><p className="text-[15px]">We couldn't read the media here right now.</p></OpsCard>;
   if (!stats) return null;
 
   return (
