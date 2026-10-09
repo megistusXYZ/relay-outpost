@@ -3,9 +3,11 @@
  * feel more Relay Outpost … about the user and the experience, not the
  * protocol").
  *
- * It talks about a community and its home: what you get, how to start, and —
- * quietly, below — connecting one you already have. No protocol words on
- * the page at all (owner, 2026-10-03). The ways to start are plain links
+ * It talks about a relay as a space of your own — your people, their posts,
+ * your rules (owner, 2026-10-09: "relay", and make it feel like a space or a
+ * community): what you get, how to start, and — quietly, below — connecting
+ * one you already have. No protocol words beyond that (owner, 2026-10-03).
+ * The ways to start are plain links
  * to the provider (lib/relay-start-options.ts): we never host it, never take a
  * cut, never stand in between.
  *
@@ -15,12 +17,13 @@
 import { Link } from "wouter";
 import { ArrowUpRight, Check, ChevronRight } from "lucide-react";
 import { BUILD_YOUR_OWN, START_OPTIONS, type StartOption } from "@/lib/relay-start-options";
-import { ConnectIcon, HomeRing, HostedIcon, KeepIcon, PhoneIcon, RulesIcon, SelfHostIcon } from "./relays-icons";
+import { ConnectIcon, HomeRing, KeepIcon, PhoneIcon, RulesIcon, SelfHostIcon } from "./relays-icons";
+import { RelayToolsLogo } from "./RelayToolsLogo";
 
 const BENEFITS = [
   { Icon: RulesIcon, title: "Your members, your rules", line: "Decide who joins, what stays up and who's out." },
   { Icon: PhoneIcon, title: "Moderate from your phone", line: "Reports, requests and posts in one calm inbox." },
-  { Icon: KeepIcon, title: "Yours to keep", line: "Move to another provider anytime. Your community comes with you." },
+  { Icon: KeepIcon, title: "Yours to keep", line: "Move to another provider anytime. Your relay comes with you." },
 ] as const;
 
 /**
@@ -37,7 +40,8 @@ export function HostedCard({ option }: { option: StartOption }) {
       <div className="grid gap-6 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] sm:gap-8 sm:items-center">
         <div>
           <div className="flex items-center justify-between gap-3">
-            <HostedIcon className="w-6 h-6 text-brand" />
+            {/* The provider's own mark, so it's clear who keeps it running. */}
+            <RelayToolsLogo className="h-7 w-auto text-foreground" />
             {option.recommended && <span className="text-[12px] font-medium tracking-wide text-brand sm:hidden" data-testid="relays-start-recommended">Recommended</span>}
           </div>
           <h3 className="mt-4 flex items-baseline gap-2.5 text-[20px] font-semibold tracking-tight">
@@ -126,10 +130,10 @@ export function RelaysWelcome() {
       <header className="flex flex-col items-center text-center motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
         <HomeRing size={132} />
         <h1 className="mt-6 text-[32px] sm:text-[44px] font-semibold leading-[1.05] tracking-[-0.02em] [font-family:var(--font-display)] [text-wrap:balance]">
-          Give your community a home
+          Give your relay a home
         </h1>
         <p className="mt-4 max-w-[42ch] text-[16px] sm:text-[17px] leading-relaxed text-muted-foreground [text-wrap:pretty]">
-          Your own space for posts and members, with your rules. A provider keeps it running; you run it from here.
+          A relay is a space of your own: your people, their posts, your rules. A provider keeps it running; you run it from here.
         </p>
       </header>
 
@@ -162,7 +166,7 @@ export function RelaysWelcome() {
       </Link>
 
       <p className="mt-8 text-center text-[13px] leading-relaxed text-muted-foreground [text-wrap:balance]">
-        You own it. Relay Outpost never hosts your community or takes a cut — you pay your provider directly.
+        You own it. Relay Outpost never hosts your relay or takes a cut — you pay your provider directly.
       </p>
       <p className="mt-3 text-center text-[13px] text-muted-foreground">
         Building something?{" "}

@@ -1,7 +1,9 @@
 /**
- * The Relays welcome speaks to a person about their community, not about the
- * protocol (owner, 2026-10-03: "saying too much about the protocol in the
- * software and not about the user and the experience").
+ * The Relays welcome speaks to a person about their relay as a space of their
+ * own — their people, their posts, their rules — not about the protocol
+ * (owner, 2026-10-03: "saying too much about the protocol in the software and
+ * not about the user and the experience"; 2026-10-09: say "relay", and make
+ * it feel like a space or a community).
  */
 import { describe, it, expect } from "vitest";
 import { createElement } from "react";
@@ -16,8 +18,9 @@ const SOFTWARE = /<ul[^>]*data-testid="relays-software"[\s\S]*?<\/ul>/;
 const words = html.replace(SOFTWARE, " ").replace(/<[^>]+>/g, " ").replace(/&#x27;|&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 
 describe("the Relays welcome", () => {
-  it("opens on the community, not the technology", () => {
-    expect(words).toMatch(/Give your community a home/);
+  it("opens on your relay as a space of your own, not the technology", () => {
+    expect(words).toMatch(/Give your relay a home/);
+    expect(words).toMatch(/A relay is a space of your own: your people, their posts, your rules/);
   });
 
   it("uses no protocol or software words a newcomer would have to look up", () => {
@@ -26,10 +29,20 @@ describe("the Relays welcome", () => {
     }
   });
 
-  it("doesn't lean on the word 'relay' — at most once, and today not at all", () => {
-    // Not counting the brand ("Relay Outpost") or a provider's address ("relay.tools").
-    const mentions = words.match(/\brelays?\b(?!\.tools| Outpost)/gi) ?? [];
-    expect(mentions.length).toBeLessThanOrEqual(1);
+  it("says 'relay' as the thing you get, every time with 'your' beside it — a space, not a server", () => {
+    // Owner, 2026-10-09. Not counting the brand ("Relay Outpost") or the provider ("relay.tools").
+    const mentions = words.match(/\b(?:your|a) relays?\b(?!\.tools| Outpost)/gi) ?? [];
+    const bare = (words.match(/\brelays?\b(?!\.tools| Outpost)/gi) ?? []).length;
+    expect(mentions.length).toBeGreaterThanOrEqual(3);
+    expect(bare).toBe(mentions.length);
+  });
+
+  it("the hosted card carries the provider's own mark, readable in light as well as dark", () => {
+    const hosted = html.match(/<section[^>]*data-testid="relays-start-hosted"[\s\S]*?<\/section>/)?.[0] ?? "";
+    expect(hosted).toMatch(/data-testid="relay-tools-logo"/);
+    expect(hosted).toMatch(/aria-label="relay.tools"/);
+    expect(hosted).toMatch(/fill="currentColor"/);
+    expect(hosted).toMatch(/relay\.tools keeps it running/);
   });
 
   it("leads with how to start, and keeps connecting one you have", () => {
@@ -58,6 +71,6 @@ describe("the Relays welcome", () => {
   });
 
   it("says plainly that it's theirs and we take no cut", () => {
-    expect(words).toMatch(/never hosts your community or takes a cut/);
+    expect(words).toMatch(/never hosts your relay or takes a cut/);
   });
 });
