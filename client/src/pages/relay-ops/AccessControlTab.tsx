@@ -27,6 +27,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { OpsCard, OpsSectionHeader, ManagedAtNote } from "./ops-ui";
+import { PostingGateCard } from "./PostingGateCard";
 import { setSetupFlag } from "./SetupChecklist";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1004,6 +1005,14 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
   // a snapshot of trusted pubkeys (≥ chosen tier), applied via NIP-86. Optionally
   // ban flagged accounts. Not a live filter — refreshable on demand.
   const { pubkey: operatorPubkey } = useNostrAuth();
+  // On a relay with its own trust gate (newlay), "People your network trusts"
+  // above replaces the allowlist snapshot below.
+  const [hasPostingGate, setHasPostingGate] = useState(false);
+  useEffect(() => {
+    let live = true;
+    fetchRelayCapabilities(relayUrl).then((c) => { if (live) setHasPostingGate(canDo(c, "postingGate")); });
+    return () => { live = false; };
+  }, [relayUrl]);
   const [wotTier, setWotTier] = useState<"strong" | "moderate" | "low" | "weak">("moderate");
   const [wotBanFlagged, setWotBanFlagged] = useState(false);
   const [wotPreview, setWotPreview] = useState<{ trusted: string[]; flagged: string[]; alreadyAllowed: number; alreadyBanned: number } | null>(null);
@@ -1126,7 +1135,7 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
           : lim?.payment_required ? `People pay to post here${lim.auth_required ? ", after signing in" : ""}.`
           : lim?.auth_required ? "Anyone who signs in can post here."
           : "Anyone can post here.";
-        return (
+        const hostLine = (
           <div className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] px-4 py-3 space-y-1" data-testid="ops-who-can-post-status">
             <p className="text-[15px] font-medium">{rule}</p>
             <ManagedAtNote where={managedAt(relayUrl)} lead="Your host sets who may post." verb="Change it" testId="ops-who-can-post-host" />
@@ -1135,6 +1144,8 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
             )}
           </div>
         );
+        // A relay that lets the operator choose (newlay) shows the choice instead.
+        return <PostingGateCard relayUrl={relayUrl} me={operatorPubkey ?? null} fallback={hostLine} />;
       })()}
 
       <div className="flex flex-wrap gap-2" data-testid="ops-access-strip">
@@ -1146,7 +1157,7 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
         </button>
       </div>
 
-      {nip86Status === "supported" && operatorPubkey && (
+      {nip86Status === "supported" && operatorPubkey && !hasPostingGate && (
         <Card className="glass-card border-brand/25 dark:border-brand/15 p-3 sm:p-4">
           <div className="flex items-start gap-2.5">
             <ShieldCheck className="w-4 h-4 text-brand mt-0.5 shrink-0" />

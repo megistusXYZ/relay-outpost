@@ -24,7 +24,7 @@ export type RelayAction =
   | "name" | "description" | "icon" | "banner" | "moderators"
   | "allowKind" | "disallowKind" | "listAllowedKinds" | "listDisallowedKinds"
   // newlay's own (relay.tools Feeds) — only ever offered when the relay lists them.
-  | "status";
+  | "status" | "postingGate";
 
 /** Method names for each action, the spec's first, then known alternatives. */
 const ACTION_METHODS: Record<RelayAction, readonly string[]> = {
@@ -48,6 +48,12 @@ const ACTION_METHODS: Record<RelayAction, readonly string[]> = {
   listAllowedKinds: ["listallowedkinds"],
   listDisallowedKinds: ["listdisallowedkinds"],
   status: ["getrelaystatus"],
+  postingGate: ["setwotgatewrites"],
+};
+
+/** Actions that take several calls: every one must be listed (never assumed for an unlisted relay). */
+const NEEDS_ALSO: Partial<Record<RelayAction, readonly string[]>> = {
+  postingGate: ["getwotsettings", "setwotenabled", "setwotobserver"],
 };
 
 /** Offered on a relay that didn't list its methods: what nearly every NIP-86 relay has. */
@@ -85,6 +91,8 @@ export function methodsToTry(caps: RelayCapabilities, action: RelayAction): stri
 }
 
 export function canDo(caps: RelayCapabilities, action: RelayAction): boolean {
+  const also = NEEDS_ALSO[action];
+  if (also && !(caps.listed && also.every((m) => caps.listed!.has(m)))) return false;
   return methodsToTry(caps, action).length > 0;
 }
 
