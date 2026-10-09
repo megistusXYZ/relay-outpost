@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { setupChecklist, type SetupFacts } from "./setup-checklist";
+import { emptyProgress } from "./setup-progress";
 
 // The setup checklist on Overview (owner, 2026-10-04): each item ticks itself
 // off only when it's true on the relay — not when something was clicked.
@@ -37,5 +38,29 @@ describe("setupChecklist", () => {
     expect(item(0)?.done).toBe(false);
     expect(item(0)?.label).toBe("Make your first badge");
     expect(item(2)?.done).toBe(true);
+  });
+});
+
+// By hand (owner, 2026-10-09): any step can be ticked or skipped by the owner,
+// and that counts — the list is a guide, never a gate.
+describe("by hand", () => {
+  const facts: SetupFacts = { ...none, name: true, picture: true };
+  it("a step ticked by hand is done; a skipped one is done and marked skipped", () => {
+    const c = setupChecklist(facts, { ...emptyProgress(), done: ["share"], skipped: ["badge"] });
+    expect(c.items.find((i) => i.id === "share")).toMatchObject({ done: true, skipped: false });
+    expect(c.items.find((i) => i.id === "badge")).toMatchObject({ done: true, skipped: true });
+    expect(c.done).toBe(3);
+  });
+  it("what's true on the relay stays done even if the hand-tick is undone", () => {
+    const c = setupChecklist(facts, { ...emptyProgress(), done: [] });
+    expect(c.items.find((i) => i.id === "identity")?.done).toBe(true);
+  });
+  it("the three that can't be read from the relay are hand-ticks too: who can post, just me, shared", () => {
+    const c = setupChecklist(none, { ...emptyProgress(), done: ["who-can-post", "share"], skipped: ["team"] });
+    expect(c.items.filter((i) => i.done).map((i) => i.id)).toEqual(["who-can-post", "team", "share"]);
+  });
+  it("all seven by any mix of relay facts, hand-ticks and skips: complete", () => {
+    const c = setupChecklist({ ...none, name: true, picture: true, description: true, rules: true, inboxOn: true }, { ...emptyProgress(), done: ["who-can-post", "share"], skipped: ["team", "badge"] });
+    expect(c.complete).toBe(true);
   });
 });

@@ -10,6 +10,7 @@ import { canDo, managedAt } from "@/lib/relay-capabilities";
 import { callsToChoose, readPostingGate, type PostingChoice, type PostingGate, type WotSettings } from "@/lib/posting-gate";
 import { useToast } from "@/hooks/use-toast";
 import { ManagedAtNote } from "./ops-ui";
+import { setSetupFlag } from "./SetupChecklist";
 
 const CHOICES: Array<{ id: PostingChoice; title: string; line: string }> = [
   { id: "anyone", title: "Anyone", line: "Everyone can post. You can still ban people." },
@@ -57,6 +58,8 @@ export function PostingGateCard({ relayUrl, me, fallback }: { relayUrl: string; 
     }
     await read();
     setSaving(null);
+    // You chose: that's "Who can post" checked, for Overview's setup list.
+    setSetupFlag("wcp", relayUrl);
   };
 
   if (offered === false) return <>{fallback}</>;
