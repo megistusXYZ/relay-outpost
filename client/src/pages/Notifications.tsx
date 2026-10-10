@@ -21,7 +21,7 @@ import { PageTabs } from "@/components/PageTabs";
 import { onTabRetap } from "@/lib/tab-retap";
 import { firstUnreadSection } from "@/lib/activity-first-unread";
 import { ConcordActivityMentions } from "@/components/concord/ConcordActivityMentions";
-import { MessageSquare, Heart, Repeat, Zap, UserPlus, AtSign, CheckCheck, ChevronDown, ChevronRight, LifeBuoy, ShieldAlert, VolumeX, Flag, DoorOpen } from "lucide-react";
+import { MessageSquare, Heart, Repeat, Zap, UserPlus, AtSign, CheckCheck, ChevronDown, ChevronRight, LifeBuoy, ShieldAlert, VolumeX, Flag, DoorOpen, Globe } from "lucide-react";
 import { AdmissionQueue } from "@/components/AdmissionQueue";
 import { SweepNoticeCard } from "@/components/SweepNoticeCard";
 import { useNeedsYou } from "@/contexts/NeedsYouContext";
@@ -36,6 +36,8 @@ import { formatDistanceToNow, isToday, isYesterday, isThisWeek, isThisMonth, for
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useMentionNames } from "@/hooks/use-mention-names";
 import { notificationPreview } from "@/lib/notification-preview";
+import { useWiderNetwork } from "@/lib/network-mode";
+import { inYourSpace } from "@/lib/your-space";
 
 const TYPE_CONFIG = {
   accepted: { icon: DoorOpen, label: "accepted you into the community", color: "text-success dark:text-emerald-400", bgAccent: "bg-emerald-500/15 dark:bg-emerald-500/10", borderAccent: "border-emerald-500/30 dark:border-emerald-500/20", dotColor: "bg-emerald-500 dark:bg-emerald-400", chevDark: "dark:text-emerald-400/60" },
@@ -271,6 +273,38 @@ const AggregatedAvatar = memo(function AggregatedAvatar({ pubkey }: { pubkey: st
     </Link>
   );
 });
+
+/** Interactions from people outside your space while the wider network is
+ *  off: one folded row, opened by hand. Plain words; the rows inside are the
+ *  ordinary notification rows. */
+function OutsideSpaceSection({ items, onRead }: { items: any[]; onRead: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  if (items.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-border/25 bg-muted/[0.04]" data-testid="outside-space-section">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left min-h-[44px]"
+        aria-expanded={open}
+        data-testid="button-outside-space-toggle"
+      >
+        <Globe className="w-4 h-4 text-muted-foreground/60 shrink-0" />
+        <span className="flex-1 text-[12px] text-muted-foreground">
+          From outside your space — {items.length} {items.length === 1 ? "interaction" : "interactions"} from people you don't follow
+        </span>
+        <ChevronRight className={`w-3.5 h-3.5 text-muted-foreground/50 shrink-0 transition-transform ${open ? "rotate-90" : ""}`} />
+      </button>
+      {open && (
+        <div className="px-1 pb-2 space-y-0.5">
+          {items.slice(0, 50).map((notif) => (
+            <NotificationItem key={notif.id} notification={notif} onRead={onRead} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function FilteredSpamSection({ items }: { items: any[] }) {
   const [open, setOpen] = useState(false);
@@ -869,6 +903,7 @@ export default function Notifications() {
   const { getAuthorTier, isAuthorFlagged } = useGrapeRankScores();
   const { follows, pubkey } = useNostrAuth();
   const followSet = useMemo(() => new Set(follows || []), [follows]);
+  const widerNetworkOn = useWiderNetwork(pubkey);
 
   // Pending community join requests: check for acceptances whenever the
   // Activity page opens — an accepted request becomes a bell notification
@@ -884,13 +919,19 @@ export default function Notifications() {
   // Mention/reply fishing shield: suspect rows leave the main sections for a
   // collapsed "Filtered" bucket at the bottom — never deleted, always
   // reviewable, and the classification is narrow (see notification-spam.ts).
-  const { grouped, filteredSpam } = useMemo(() => {
+  const { grouped, filteredSpam, outsideSpace } = useMemo(() => {
     const groups = new Map<NotifType, any[]>();
     const typeOrder: NotifType[] = ["accepted", "ticket", "mention", "reply", "zap", "reaction", "repost", "follow"];
     const spam: any[] = [];
+    const outside: any[] = [];
+    const space = { widerNetworkOn, follows: followSet };
 
     for (const notif of notifications) {
       if (notif.fromPubkey && isMutedPubkey(notif.fromPubkey)) continue;
+      // While the wider network is off, what comes from outside your space
+      // folds into one quiet section (lib/your-space.ts) — kept, reviewable,
+      // never the first thing a new account sees.
+      if (notif.fromPubkey && !inYourSpace(space, notif.fromPubkey)) { outside.push(notif); continue; }
       const type = notif.type as NotifType;
       if ((type === "mention" || type === "reply") && notif.fromPubkey) {
         const tier = getAuthorTier(notif.fromPubkey);
@@ -914,8 +955,9 @@ export default function Notifications() {
         items: groups.get(t)!.sort((a, b) => b.event.created_at - a.event.created_at),
       })),
       filteredSpam: spam.sort((a, b) => b.event.created_at - a.event.created_at),
+      outsideSpace: outside.sort((a, b) => b.timestamp - a.timestamp),
     };
-  }, [notifications, getAuthorTier, isAuthorFlagged, followSet]);
+  }, [notifications, getAuthorTier, isAuthorFlagged, followSet, widerNetworkOn]);
 
   // Tabs are derived from the categories that actually have notifications, so
   // they always match the section headers below and never point at nothing.
@@ -1106,6 +1148,7 @@ export default function Notifications() {
               />
             ))
           )}
+          {filter === "all" && <OutsideSpaceSection items={outsideSpace} onRead={markRead} />}
           {filter === "all" && <FilteredSpamSection items={filteredSpam} />}
         </div>
       )}
