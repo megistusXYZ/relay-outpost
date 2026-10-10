@@ -37,20 +37,14 @@ export const CURATED_SEED_PUBKEYS: string[] = (() => {
 })();
 
 /**
- * The follow list a brand-new account is anchored with at creation. Deliberately
- * minimal + deterministic (frictionless-onboarding decision): every account
- * follows exactly the first curated seed (jack) so each new account's WoT score
- * reads the same known graph; invite-link arrivals additionally lead with their
- * inviter (the real relationship that seeds their score + outpost). Never
- * duplicates the inviter if they ARE the seed. Growth past this is organic
- * (search, invites, the Home suggested-follows strip).
+ * The follow list a brand-new account is anchored with at creation: the
+ * friend who invited it, or nobody (owner, 2026-10-10: "your space first").
+ * It used to also follow the first curated seed (jack) so no feed was ever
+ * empty — which put a stranger's posts first, before the person had made a
+ * single choice. The curated seeds remain suggestions (the people strip),
+ * never silent follows. Growth is the person's own: invites, communities,
+ * the people they choose.
  */
-export function buildAnchorFollows(
-  inviterHex: string | null | undefined,
-  curatedSeeds: string[] = CURATED_SEED_PUBKEYS,
-): string[] {
-  const seed = curatedSeeds[0];
-  if (!inviterHex) return seed ? [seed] : [];
-  if (!seed || inviterHex === seed) return [inviterHex];
-  return [inviterHex, seed];
+export function buildAnchorFollows(inviterHex: string | null | undefined): string[] {
+  return inviterHex ? [inviterHex] : [];
 }

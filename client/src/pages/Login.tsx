@@ -6,6 +6,8 @@ import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { Radio, UserPlus } from "lucide-react";
 import { LoginOptions } from "@/components/LoginOptions";
 import { isAddAccountPending, clearAddAccountPending } from "@/lib/account-registry";
+import { isNewAccount } from "@/lib/local-account";
+import { isWelcomed } from "@/lib/welcome";
 
 function BrandLogo({ className }: { className?: string }) {
   return (
@@ -134,7 +136,11 @@ export default function Login() {
     // Same rule as AppLayout's post-auth landing: under the collapsed IA,
     // "/search" is Discover, and Decision 8 says everyone lands on Chats. The
     // stashed deep link below still wins over both.
-    let dest = postAuthLandingPath(null, isIaCollapsed());
+    // A brand-new account meets the welcome once, from here too: this page's
+    // redirect used to omit the account state, so anyone who signed up on
+    // /login (not the landing overlay) never saw it (owner audit, 2026-10-10).
+    const account = { isNew: isNewAccount(pubkey), welcomed: isWelcomed(pubkey) };
+    let dest = postAuthLandingPath(null, isIaCollapsed(), account);
     try {
       // A stashed deep link (e.g. a Concord invite incl. its #fragment secret)
       // wins over the default landing page: consume it here so an account
@@ -145,7 +151,7 @@ export default function Login() {
         dest = stashed;
         sessionStorage.removeItem("relay-outpost-post-auth-redirect");
       } else {
-        dest = postAuthLandingPath(localStorage.getItem("relay-outpost-default-landing-page"), isIaCollapsed());
+        dest = postAuthLandingPath(localStorage.getItem("relay-outpost-default-landing-page"), isIaCollapsed(), account);
       }
       sessionStorage.setItem("relay-outpost-landing-redirected", "1");
       // This IS the arrival — mark it, so AppLayout's IA rule does not perform

@@ -1,28 +1,29 @@
-// A new account's anchor follows — deliberately minimal + deterministic
-// (frictionless onboarding): everyone follows exactly the first curated seed
-// (jack); invite-link arrivals additionally lead with their inviter.
+/**
+ * A new account's anchor follows (owner, 2026-10-10: "your space first").
+ * An account made here starts with the people it actually knows: the friend
+ * who invited it, or nobody. It used to also follow a curated seed (jack) so
+ * no feed was ever empty — but that put a stranger's posts first, before the
+ * person had made a single choice. The curated seeds remain suggestions
+ * (the people strip), never silent follows.
+ */
 import { describe, it, expect } from "vitest";
-import { buildAnchorFollows } from "./curated-seed-follows";
+import { buildAnchorFollows, CURATED_SEED_PUBKEYS } from "./curated-seed-follows";
 
-const SEEDS = Array.from({ length: 10 }, (_, i) => `seed${i}`.padEnd(64, "0"));
+const inviter = "inviter".padEnd(64, "0");
 
 describe("buildAnchorFollows", () => {
-  it("no inviter → exactly the first curated seed (jack)", () => {
-    expect(buildAnchorFollows(null, SEEDS)).toEqual([SEEDS[0]]);
+  it("no inviter → nobody: the feed starts with your own choices", () => {
+    expect(buildAnchorFollows(null)).toEqual([]);
+    expect(buildAnchorFollows(undefined)).toEqual([]);
   });
 
-  it("inviter leads, then jack — nothing else", () => {
-    const inviter = "inviter".padEnd(64, "0");
-    expect(buildAnchorFollows(inviter, SEEDS)).toEqual([inviter, SEEDS[0]]);
+  it("an inviter → the inviter, nobody else", () => {
+    expect(buildAnchorFollows(inviter)).toEqual([inviter]);
   });
 
-  it("never duplicates the inviter when they ARE the first seed", () => {
-    expect(buildAnchorFollows(SEEDS[0], SEEDS)).toEqual([SEEDS[0]]);
-  });
-
-  it("empty seed list → inviter only / empty", () => {
-    const inviter = "inviter".padEnd(64, "0");
-    expect(buildAnchorFollows(inviter, [])).toEqual([inviter]);
-    expect(buildAnchorFollows(null, [])).toEqual([]);
+  it("the curated seeds are still there for suggestions, and never in the anchor", () => {
+    expect(CURATED_SEED_PUBKEYS.length).toBeGreaterThan(0);
+    expect(buildAnchorFollows(null)).not.toContain(CURATED_SEED_PUBKEYS[0]);
+    expect(buildAnchorFollows(inviter)).not.toContain(CURATED_SEED_PUBKEYS[0]);
   });
 });

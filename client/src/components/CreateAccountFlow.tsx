@@ -23,7 +23,7 @@ import { PasskeyEnrollmentCard } from "@/components/PasskeyEnrollmentCard";
 import type { PasskeyEnrollment } from "@/lib/passkey";
 import { publishEvent, verifySignedEventKind } from "@/lib/nostr";
 import { clientTags, KIND_METADATA, KIND_FOLLOW_LIST } from "@/lib/nostr-helpers";
-import { CURATED_SEED_PUBKEYS, buildAnchorFollows } from "@/lib/curated-seed-follows";
+import { buildAnchorFollows } from "@/lib/curated-seed-follows";
 import { setInviteConnect } from "@/lib/invite-connect";
 import { triggerGrapeRankCalculation } from "@/lib/graperank";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
@@ -924,18 +924,21 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
       // day one AND their Web-of-Trust score has a real social graph to read.
       // If they arrived via a friend's invite link, the inviter is the best
       // possible anchor (a real relationship, already scored, already in the
-      // outpost they're landing in); otherwise fall back to a small curated
-      // starter set. Published here at creation so it survives a skipped
-      // onboarding.
+      // outpost they're landing in); otherwise nobody. Published here at
+      // creation so it survives a skipped onboarding.
+      // Whether the account starts following anyone (its inviter): the trust
+      // calculation has nothing to work from otherwise.
+      let anchoredSomeone = false;
       try {
         let inviterHex: string | null = null;
         try { inviterHex = sessionStorage.getItem("relay-outpost-inviter"); } catch {}
         if (inviterHex && inviterHex === account.pubkey) inviterHex = null; // never follow yourself
 
-        // Frictionless onboarding: every account follows exactly jack (a
-        // deterministic WoT seed); invite arrivals additionally lead with
-        // their inviter. No picker, no options — growth is organic.
-        const anchor = buildAnchorFollows(inviterHex, CURATED_SEED_PUBKEYS);
+        // Your space first (owner, 2026-10-10): the account starts following
+        // its inviter, or nobody. No curated seed, no picker — the first
+        // voice in the feed is a friend or the person's own choice.
+        const anchor = buildAnchorFollows(inviterHex);
+        anchoredSomeone = anchor.length > 0;
         if (anchor.length > 0) {
           const followTpl = {
             kind: KIND_FOLLOW_LIST,
@@ -1002,7 +1005,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
           // no such notice, which is exactly why this rail goes first.
           // Self-guards against overwriting an explicit choice on this device.
           const guardKey = `relay-outpost-initial-calc:${account.pubkey}`;
-          if (!localStorage.getItem(guardKey)) {
+          if (anchoredSomeone && !localStorage.getItem(guardKey)) {
             // The global signer registers via a React effect after this login;
             // triggerGrapeRankCalculation awaits a challenge fetch first, so the
             // signer is ready by the time it signs. Only consume the once-guard

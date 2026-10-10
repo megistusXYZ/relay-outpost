@@ -3278,7 +3278,7 @@ function OutpostComposeSheet({
 export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
   useDocumentTitle("Community · Relay Outpost");
   const [, setLocation] = useLocation();
-  const { pubkey } = useNostrAuth();
+  const { pubkey, signer } = useNostrAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const concordEnabled = useConcordEnabled();
@@ -3707,11 +3707,15 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
     setTimeout(() => setOutpostLinkCopied(false), 2000);
   }, [outpostInviteLink]);
   const handleSendOutpostInvite = useCallback(async () => {
-    if (!outpostInviteRecipient?.pubkey || !pubkey || !window.nostr) return;
+    // The session's signer, not window.nostr: every account made here signs
+    // with a local key or a bunker, and had no window.nostr to send with
+    // (owner audit, 2026-10-10; CommsTab does the same).
+    const dmSigner = signer || (window as any).nostr;
+    if (!outpostInviteRecipient?.pubkey || !pubkey || !dmSigner) return;
     setSendingOutpostInvite(true);
     try {
       const content = `You're invited to join the community "${name}". Tap to open and join:\n\n${outpostInviteLink}`;
-      const res = await sendDM({ signer: window.nostr, senderPubkey: pubkey, recipientPubkey: outpostInviteRecipient.pubkey, content });
+      const res = await sendDM({ signer: dmSigner, senderPubkey: pubkey, recipientPubkey: outpostInviteRecipient.pubkey, content });
       if (res.success) {
         toast({ title: "Invite sent", description: `Sent to ${outpostInviteRecipient.displayName || "the user"}.` });
         setOutpostInviteRecipient(null);

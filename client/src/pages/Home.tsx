@@ -68,7 +68,7 @@ import { getDiscoverFeedRelays, warmDiscoverRelays } from "@/lib/discover-relays
 import { getDiscoverPresetConfig, admitStranger } from "@/lib/discover-quality";
 import { effectivePow } from "@/lib/nip13-pow";
 import { getOutpostRelays } from "@/lib/outpost-relays";
-import { isWiderNetworkOnForViewer, useWiderNetwork } from "@/lib/network-mode";
+import { isWiderNetworkOnForViewer, isWiderNetworkOn, useWiderNetwork } from "@/lib/network-mode";
 import { WiderNetworkDoor } from "@/components/wider-network/WiderNetworkDoor";
 
 const KIND_LONG_FORM = 30023;
@@ -221,7 +221,10 @@ export default function Home() {
     if (defaultApplied.current || hasSessionPref.current) return;
     const defaultMode = getDefaultFeedMode();
     if (defaultMode === "open_comms") {
-      if (pubkey && follows.length > 0) {
+      // Following waits for the follow list — unless the wider network is
+      // off, when Following IS the home lane even with nobody followed yet
+      // (its empty state is the way into your space, not the door).
+      if (pubkey && (follows.length > 0 || !isWiderNetworkOn(pubkey))) {
         defaultApplied.current = true;
         setFeedModeState("open_comms");
       }
@@ -2915,7 +2918,9 @@ export default function Home() {
   // A new account follows only the seed account, so its Following feed is one
   // person and "zero follows" never fires for it. Offer people until they've
   // chosen three of their own (lib/discover-people.ts).
-  const offerPeople = feedMode === "open_comms" && follows.length > 0 && needsFollowSuggestions(follows, buildAnchorFollows(null));
+  // The people strip draws on trending authors — the wider network — so it
+  // waits until that is on (owner, 2026-10-10).
+  const offerPeople = widerNetworkOn && feedMode === "open_comms" && follows.length > 0 && needsFollowSuggestions(follows, buildAnchorFollows(null));
   const isFollowsLoading = feedMode === "open_comms" && follows.length > 0 && displayedEvents.length === 0 && isInitialLoading;
   // Global feed: keep the loader up (bounded — see grace timer) while raw
   // candidates exist but none have resolved profiles yet, instead of flashing
@@ -3350,6 +3355,27 @@ export default function Home() {
             data-testid="container-empty-following"
           >
             <NoSignalIllustration className="text-brand/70 mb-3" />
+            {!widerNetworkOn ? (
+              <>
+                {/* Your space, nobody in it yet: the way in is yours to make —
+                    a community, a friend — and the wider network stands as a
+                    door, not a default (owner, 2026-10-10). */}
+                <p className="text-sm font-medium mb-1">Your space is quiet</p>
+                <p className="text-xs text-muted-foreground max-w-xs">
+                  Posts from your communities and the people you follow will show here.
+                </p>
+                <div className="w-full max-w-sm mt-6 space-y-2 text-left">
+                  <Button
+                    className="w-full min-h-11 rounded-full"
+                    onClick={() => navigate("/welcome")}
+                    data-testid="button-set-up-space"
+                  >
+                    Set up your space
+                  </Button>
+                  <WiderNetworkDoor compact testId="wider-network-door-home-empty" />
+                </div>
+              </>
+            ) : (<>
             <p className="text-sm font-medium mb-1">Follow people to build your feed</p>
             <p className="text-xs text-muted-foreground max-w-xs">
               Posts from people you follow will appear here. Find people to follow using search or starter packs.
@@ -3390,6 +3416,7 @@ export default function Home() {
                 Explore Trending
               </Button>
             </div>
+            </>)}
           </div>
         ) : isFollowsLoading || isGlobalLoading || isTrendingLoading || isCustomLoading ? (
           <FeedSkeletonList count={5} />

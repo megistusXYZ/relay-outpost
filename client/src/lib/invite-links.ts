@@ -50,7 +50,9 @@ export function parseInviteParams(search: string, pathname: string): ParsedInvit
     const inviterParam = new URLSearchParams(search).get("inviter");
     if (inviterParam) inviterHex = decodeNpubToHex(inviterParam);
   } catch {}
-  const relayMatch = pathname.match(/^\/outposts\/([^/?]+)/);
+  // /outposts/c/<id> is an encrypted community, not a relay: "c" is a route
+  // segment and must never be captured as a relay to join.
+  const relayMatch = pathname.match(/^\/outposts\/(?!c(?:\/|$))([^/?]+)/);
   if (relayMatch) {
     try { relayUrl = decodeURIComponent(relayMatch[1]); } catch { relayUrl = relayMatch[1]; }
   }
