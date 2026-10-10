@@ -30,6 +30,7 @@ import { setInviteConnect } from "@/lib/invite-connect";
 import { triggerGrapeRankCalculation } from "@/lib/graperank";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { markNewAccountPublicNostrOff } from "@/lib/public-nostr";
+import { setClassicSidebar } from "@/lib/desktop-chrome";
 import { startNewAccountTrust } from "@/lib/trust-choice";
 import { uploadToNostrBuild, setBlossomServers, publishBlossomServerList, DEFAULT_BLOSSOM_SERVERS } from "@/lib/media-upload";
 import { setLocalDMRelays, publishDMRelayList } from "@/lib/outbox";
@@ -624,6 +625,10 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
         // (lib/signup-relays.ts). The old ten-relay list carried a test relay.
         const recommendedRelays = floorRelayList();
         markNewAccountPublicNostrOff(account.pubkey);
+      // Labels for newcomers (owner, 2026-10-10): the desktop chrome a brand-new
+      // account meets is the labelled sidebar, not the icon rail. Per device,
+      // written here only, so an existing account keeps what it chose.
+      setClassicSidebar(true);
         writeBlurOutside(true); // pictures from outside your space stay blurred until tapped
         const relayListEvent = {
           kind: 10002,

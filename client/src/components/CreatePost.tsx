@@ -1100,6 +1100,8 @@ export function CreatePostFAB() {
                   size="icon"
                   variant="ghost"
                   className="shrink-0 h-9 w-9"
+                  aria-label="Close"
+                  title="Close"
                   onClick={closeComposer}
                   data-testid="button-close-compose"
                 >
@@ -1371,7 +1373,7 @@ export function CreatePostFAB() {
               <div className="relative z-10 mx-3 sm:mx-3 mt-1 rounded-lg bg-accent/40 border border-border dark:bg-brand/[0.04] dark:border-brand/15 overflow-hidden" data-testid="container-drafts-panel">
                 <div className="flex items-center justify-between px-3 py-2 border-b border-border dark:border-brand/10">
                   <span className="text-[11px] font-medium text-brand/80 uppercase tracking-wider">Saved Drafts</span>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground/40 hover:text-muted-foreground" onClick={() => setShowDrafts(false)}>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground/40 hover:text-muted-foreground" onClick={() => setShowDrafts(false)} aria-label="Close drafts" title="Close drafts">
                     <X className="w-3 h-3" />
                   </Button>
                 </div>
@@ -1470,6 +1472,8 @@ export function CreatePostFAB() {
                       variant="ghost"
                       size="icon"
                       className="w-7 h-7 text-muted-foreground/50 hover:text-destructive"
+                      aria-label="Remove audio"
+                      title="Remove audio"
                       onClick={() => setAudioAttachment(null)}
                       data-testid="button-remove-audio-attachment"
                     >
@@ -1629,6 +1633,8 @@ export function CreatePostFAB() {
                               variant="ghost"
                               size="icon"
                               className="w-7 h-7 text-muted-foreground/40 hover:text-destructive shrink-0"
+                              aria-label="Remove this option"
+                              title="Remove this option"
                               onClick={() => setPollOptions(prev => prev.filter((_, j) => j !== i))}
                             >
                               <Minus className="w-3.5 h-3.5" />
@@ -1745,6 +1751,8 @@ export function CreatePostFAB() {
                   className="text-muted-foreground/60 shrink-0 h-9 w-9"
                   onClick={handleArticleNav}
                   data-testid="button-tab-article"
+                  title="Write an article"
+                  aria-label="Write an article"
                 >
                   <FileText className="w-[18px] h-[18px]" />
                 </Button>
@@ -1755,6 +1763,8 @@ export function CreatePostFAB() {
                   onClick={() => setIsPollMode(v => !v)}
                   data-testid="button-toggle-poll"
                   title="Create a poll"
+                  aria-label="Create a poll"
+                  aria-pressed={isPollMode}
                 >
                   <BarChart3 className="w-[18px] h-[18px]" />
                 </Button>
@@ -1764,6 +1774,9 @@ export function CreatePostFAB() {
                   className={`shrink-0 h-9 w-9 transition-colors ${showShieldInfo ? "text-green-500" : "text-green-500/50 hover:text-green-500/80"}`}
                   onClick={() => setShowShieldInfo((v) => !v)}
                   data-testid="button-privacy-info"
+                  title="Who can read this"
+                  aria-label="Who can read this"
+                  aria-expanded={showShieldInfo}
                 >
                   <ShieldCheck className="w-[16px] h-[16px]" />
                 </Button>
@@ -1802,6 +1815,8 @@ export function CreatePostFAB() {
         <Button
           onClick={() => startNoteRef.current()}
           size="icon"
+          aria-label="New post"
+          title="New post"
           className={`fixed z-40 rounded-full bg-foreground text-background shadow-lg hidden md:flex transition-all duration-300 ${
             outpostCompose?.activeTab === "horizon" && !outpostCompose?.canPostHorizon ? "opacity-0 pointer-events-none" : ""
           }`}
