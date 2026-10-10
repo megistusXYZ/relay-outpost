@@ -14,6 +14,8 @@ import * as dmCache from "@/lib/dm-cache";
 import { readDmLastRead, READSTATE_CHANGED_EVENT, READSTATE_HYDRATED_EVENT } from "@/lib/dm-read";
 import { getCachedNotifications, cacheNotifications } from "@/lib/indexeddb-cache";
 import { isMutedPubkey } from "@/lib/spam-filter";
+import { useWiderNetwork } from "@/lib/network-mode";
+import { badgeCountsNotification, badgeCountsChat } from "@/lib/your-space";
 import { readAcceptedJoins } from "@/lib/join-requests";
 import { shouldNotifyForComment, DISCUSSION_PUBLIC_FLOOR } from "@/lib/external-comments";
 import { KIND_COMMENT } from "@/lib/nostr-helpers";
@@ -180,6 +182,10 @@ function mergeNotifications(current: NotificationItem[], seeded: NotificationIte
  */
 export default function NotificationEngine({ onChange }: { onChange: (value: NotificationContextType) => void }) {
   const { pubkey, signer, follows } = useNostrAuth();
+  // While a new account's wider network is off, only its own space may
+  // raise a badge (lib/your-space.ts): a bot's mention or a stranger's
+  // request is kept, just not counted.
+  const widerNetworkOn = useWiderNetwork(pubkey);
   const { requestScoresBulk, scores, flaggedPubkeys } = useGrapeRankScores();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -850,9 +856,12 @@ export default function NotificationEngine({ onChange }: { onChange: (value: Not
   // so the badge can't say "1" while the page (which hides muted) renders
   // nothing. Ticket unreads are added on top.
   const unreadCount = useMemo(
-    () => notifications.filter(n => !n.read && !(n.fromPubkey && isMutedPubkey(n.fromPubkey))).length
-      + ticketItems.filter(t => !t.read).length,
-    [notifications, ticketItems],
+    () => {
+      const space = { widerNetworkOn, follows: new Set(follows || []) };
+      return notifications.filter(n => !n.read && !(n.fromPubkey && isMutedPubkey(n.fromPubkey)) && badgeCountsNotification(space, n.fromPubkey)).length
+        + ticketItems.filter(t => !t.read).length;
+    },
+    [notifications, ticketItems, widerNetworkOn, follows],
   );
 
   const markAllRead = useCallback(() => {
@@ -915,7 +924,12 @@ export default function NotificationEngine({ onChange }: { onChange: (value: Not
         // A muted chat (lib/dm-prefs.ts) doesn't count: muting it and still
         // seeing its number on the Chats badge would be no mute at all.
         const prefs = readDmPrefs(pubkey);
-        setUnreadDmCount(convos.filter(c => c.lastTimestamp > readDmLastRead(c.peerPubkey) && !isMutedChat(prefs, c.peerPubkey)).length);
+        // Nor a muted person's chat, nor — with the wider network off — a
+        // stranger's request (lib/your-space.ts).
+        const space = { widerNetworkOn, follows: followsRef.current };
+        let promoted = new Set<string>();
+        try { const raw = localStorage.getItem(`relay-outpost-dm-primary-${pubkey}`); if (raw) promoted = new Set(JSON.parse(raw)); } catch {}
+        setUnreadDmCount(convos.filter(c => c.lastTimestamp > readDmLastRead(c.peerPubkey) && !isMutedChat(prefs, c.peerPubkey) && !isMutedPubkey(c.peerPubkey) && badgeCountsChat(space, c.peerPubkey, promoted)).length);
       } catch { /* ignore */ }
     };
     recompute();
@@ -928,7 +942,7 @@ export default function NotificationEngine({ onChange }: { onChange: (value: Not
       window.removeEventListener("dm-read-updated", recompute);
       window.removeEventListener(DM_PREFS_EVENT, recompute);
     };
-  }, [pubkey]);
+  }, [pubkey, widerNetworkOn, follows]);
 
   // Cross-device hydration: read-state-sync raised markers directly in
   // localStorage (another device read something). Re-read lastSeen into React

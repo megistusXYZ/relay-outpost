@@ -86,7 +86,9 @@ import { extractMediaFromContent, getEventMediaInfo } from "@/lib/media-utils";
 import { primalStatsCache, fetchThreadRepliesStreaming, getCachedThread, setCachedThread } from "@/lib/primal-cache";
 import { computeEngagementScore, type EngagementStats } from "@/lib/engagement";
 import { useToast } from "@/hooks/use-toast";
-import { mutePubkey } from "@/lib/spam-filter";
+import { mutePubkey, isMutedPubkey } from "@/lib/spam-filter";
+import { useWiderNetwork } from "@/lib/network-mode";
+import { inYourSpace } from "@/lib/your-space";
 import { copyNostrId } from "@/lib/clipboard-bridge";
 import { ConfirmAction } from "@/components/ConfirmAction";
 import { useViewerInteraction } from "@/contexts/InteractionIndexContext";
@@ -1998,6 +2000,12 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
   const { enabled: ttsEnabled, startReadingThread, isReading, sourceUrl: ttsSourceUrl, stop: stopTTS } = useTTS();
   const { toast } = useToast();
   const commentTrustVisible = useCommentTrustVisible();
+  // Replies from outside your space fold away while the wider network is
+  // off (lib/your-space.ts); a muted person's replies never show, in any mode.
+  const { pubkey: viewerPubkey, follows: viewerFollows } = useNostrAuth();
+  const widerNetworkOn = useWiderNetwork(viewerPubkey);
+  const [showOutside, setShowOutside] = useState(false);
+  const viewerSpace = useMemo(() => ({ widerNetworkOn, follows: new Set(viewerFollows || []) }), [widerNetworkOn, viewerFollows]);
 
   useEffect(() => {
     if (fetchedRef.current) return;
@@ -2111,17 +2119,22 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
     return tree;
   }, [allReplies, rootId, sortOrder]);
 
-  const filteredThreadTree = useMemo(() => {
-    if (excludedTiers.size === 0) return threadTree;
+  const { filteredThreadTree, outsideCount } = useMemo(() => {
+    let outside = 0;
+    const authorInSpace = (pk: string) => pk === viewerPubkey || inYourSpace(viewerSpace, pk);
     function filterNodes(nodes: ThreadNode[]): ThreadNode[] {
       const result: ThreadNode[] = [];
       for (const node of nodes) {
-        const isFlagged = replyFlaggedPubkeys?.has(node.event.pubkey) ?? false;
+        const author = node.event.pubkey;
+        // A muted person's reply is gone; their replies' replies stay.
+        if (isMutedPubkey(author)) { result.push(...filterNodes(node.children)); continue; }
+        if (!showOutside && !authorInSpace(author)) { outside += 1; result.push(...filterNodes(node.children)); continue; }
+        const isFlagged = replyFlaggedPubkeys?.has(author) ?? false;
         // Same split as the trust bar: "unverified" (scored low) vs "unknown" (no
         // data). Excluding low-trust must NOT hide accounts we simply lack a score
         // for, so they stay visible unless the user filters "No data" explicitly.
-        const effectiveTier = getReplyTier(getReplyAuthorInfluence(node.event.pubkey), isFlagged);
-        if (excludedTiers.has(effectiveTier)) {
+        const effectiveTier = getReplyTier(getReplyAuthorInfluence(author), isFlagged);
+        if (excludedTiers.size > 0 && excludedTiers.has(effectiveTier)) {
           result.push(...filterNodes(node.children));
         } else {
           result.push({ ...node, children: filterNodes(node.children) });
@@ -2129,8 +2142,8 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
       }
       return result;
     }
-    return filterNodes(threadTree);
-  }, [threadTree, excludedTiers, getReplyAuthorInfluence, replyFlaggedPubkeys]);
+    return { filteredThreadTree: filterNodes(threadTree), outsideCount: outside };
+  }, [threadTree, excludedTiers, getReplyAuthorInfluence, replyFlaggedPubkeys, viewerSpace, viewerPubkey, showOutside]);
 
   const filteredNodeCount = useMemo(() => {
     function countNodes(nodes: ThreadNode[]): number {
@@ -2344,6 +2357,16 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
               <span className="text-brand/60 ml-1">
                 (showing {filteredNodeCount})
               </span>
+            )}
+            {outsideCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowOutside(true)}
+                className="ml-2 text-muted-foreground/70 underline decoration-dotted underline-offset-2 min-h-[44px] -my-3"
+                data-testid="button-show-outside-replies"
+              >
+                {outsideCount} from outside your space
+              </button>
             )}
           </span>
         </div>

@@ -43,6 +43,8 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ReportDialog } from "@/components/ReportDialog";
 import { isMutedPubkey, mutePubkey, unmutePubkey } from "@/lib/spam-filter";
+import { useWiderNetwork } from "@/lib/network-mode";
+import { dmLandsInPrimary } from "@/lib/your-space";
 import { classifyUrl } from "@/lib/media-utils";
 import { ImageLightbox, type LightboxImage } from "@/components/ImageLightbox";
 import { ComposeEmojiPicker } from "@/components/ComposeEmojiPicker";
@@ -2779,20 +2781,23 @@ export default function Messages() {
     })();
   }, [pubkey, conversations, followsSet, promotedPrimary, initiatedRecheck]);
 
-  const isPrimaryConversation = useCallback((peerPubkey: string): boolean => {
-    if (demotedToRequests.has(peerPubkey)) return false;
-    if (promotedPrimary.has(peerPubkey)) return true;
-    if (initiatedByMe.has(peerPubkey)) return true;
-    // A several-person chat is a chat (not a request) when someone in it is
-    // someone you'd take a message from; a group of strangers is a request.
-    for (const member of roomMembers(peerPubkey)) {
-      if (followsSet.has(member)) return true;
-      if (followedByPubkeys?.has(member)) return true;
-      const tier = getAuthorTier(member);
-      if (tier === "strong" || tier === "moderate") return true;
-    }
-    return false;
-  }, [demotedToRequests, promotedPrimary, followsSet, followedByPubkeys, getAuthorTier, initiatedByMe]);
+  // A several-person chat is a chat (not a request) when someone in it is
+  // someone you'd take a message from; a group of strangers is a request.
+  // While the wider network is off (a new account — lib/your-space.ts) only
+  // the people you follow, wrote to first or moved here count: a stranger
+  // who followed first is still a stranger, which is the bot pattern on
+  // the floor relays (owner, 2026-10-10).
+  const widerNetworkOn = useWiderNetwork(pubkey);
+  const isPrimaryConversation = useCallback((peerPubkey: string): boolean => dmLandsInPrimary({
+    space: { widerNetworkOn, follows: followsSet },
+    key: peerPubkey,
+    demoted: demotedToRequests,
+    promoted: promotedPrimary,
+    initiatedByMe,
+    members: roomMembers(peerPubkey),
+    followedBy: followedByPubkeys ?? undefined,
+    tierOf: getAuthorTier,
+  }), [widerNetworkOn, demotedToRequests, promotedPrimary, followsSet, followedByPubkeys, getAuthorTier, initiatedByMe]);
 
   // How a request's sender stands with your network. A several-person chat is
   // judged by its best-known member, and is flagged if anyone in it is.
@@ -2808,7 +2813,10 @@ export default function Messages() {
   }, [getAuthorTier, isAuthorFlagged]);
 
   const { primaryConversations, requestConversations, flaggedRequestCount } = useMemo(() => {
-    let list = conversations.filter(c => !hiddenConvos.has(c.pubkey));
+    // A muted person's chat is not listed: muting them and still seeing
+    // their messages would be no mute at all (a chat they're in with others
+    // stays; the key is the group's, not theirs).
+    let list = conversations.filter(c => !hiddenConvos.has(c.pubkey) && !isMutedPubkey(c.pubkey));
     if (searchFilter) {
       const q = searchFilter.toLowerCase();
       list = list.filter(c => {
