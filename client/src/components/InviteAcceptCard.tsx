@@ -54,7 +54,12 @@ function isValidHexPubkey(s: string | null): s is string {
 
 type Step = "follow" | "sayhi";
 
-export function InviteAcceptCard() {
+/**
+ * `inline`: drawn in the page's flow (the Welcome page's first card for an
+ * invited arrival, owner 2026-10-10) instead of floating over the content —
+ * floating, it covered the one paragraph that explains the account model.
+ */
+export function InviteAcceptCard({ inline = false }: { inline?: boolean } = {}) {
   const { pubkey, signer, follows, updateFollows } = useNostrAuth();
   const { toast } = useToast();
 
@@ -261,10 +266,11 @@ export function InviteAcceptCard() {
   // content around the card; the card itself re-enables them.
   return (
     <div
-      className="fixed inset-x-0 top-[calc(4.25rem+env(safe-area-inset-top,0px))] z-[60] px-3 pointer-events-none md:top-[calc(3.5rem+env(safe-area-inset-top,0px))]"
+      className={inline ? "mb-6" : "fixed inset-x-0 top-[calc(4.25rem+env(safe-area-inset-top,0px))] z-[60] px-3 pointer-events-none md:top-[calc(3.5rem+env(safe-area-inset-top,0px))]"}
       data-testid="invite-accept-card"
+      data-inline={inline ? "1" : undefined}
     >
-      <div className="pointer-events-auto mx-auto w-full max-w-md rounded-2xl border border-border/40 bg-background/95 backdrop-blur shadow-lg shadow-black/25 p-3 animate-in fade-in slide-in-from-top-2 duration-200">
+      <div className={inline ? "w-full rounded-2xl border border-border/40 bg-card/40 p-3" : "pointer-events-auto mx-auto w-full max-w-md rounded-2xl border border-border/40 bg-background/95 backdrop-blur shadow-lg shadow-black/25 p-3 animate-in fade-in slide-in-from-top-2 duration-200"}>
         {step === "follow" ? (
           <div className="flex items-center gap-3">
             {/* Face and name open the inviter's profile, so you can see who

@@ -41,9 +41,7 @@ import { indicatorHeight, pullArmed } from "@/lib/pull-to-refresh";
 import { ChatListRow } from "./ChatListRow";
 import { buildCreateActions } from "./create-actions";
 import { getDMDisplayName, formatMessageTime, sectionChatEntries, communitiesForTab, chatFilterOptions, applyChatFilter, resolveChatFilter, firstUnreadChat, chatHomeMenu, type ChatFilter, type ChatEntry, type ConversationPreview, type DmTab, type OutpostPreview, type ProfileInfo } from "./helpers";
-import { refreshOutcome, type RefreshOutcome } from "./refresh-outcome";
-import { canReachAny } from "@/lib/relay-reach";
-import { getMyDMReceiveRelays } from "@/lib/outbox";
+import { refreshOutcome, emptyChatsWords, type RefreshOutcome } from "./refresh-outcome";
 import { getOutpostRelays, getOutpostMeta, saveOutpostMeta, type OutpostRelay } from "@/lib/outpost-relays";
 import { getPinnedFeeds, groupPinsByRelay, pinUrl, normalizeUrl, type PinnedFeed } from "@/lib/pinned-feeds";
 import { unpinRoomEverywhere } from "@/lib/room-pins";
@@ -171,8 +169,10 @@ interface ChatListProps {
   showFlaggedRequests: boolean;
   setShowFlaggedRequests: (value: boolean) => void;
   loading: boolean;
+  /** Has a relay answered the inbox query: null = not asked yet, false = asked and nobody answered. */
+  inboxAnswered?: boolean | null;
   loadingTooLong: boolean;
-  loadConversations: (forceDecrypt?: boolean) => Promise<void>;
+  loadConversations: (forceDecrypt?: boolean) => Promise<boolean>;
   searchFilter: string;
   setSearchFilter: (value: string) => void;
   showNewChat: boolean;
@@ -250,6 +250,7 @@ export function ChatList({
   showFlaggedRequests,
   setShowFlaggedRequests,
   loading,
+  inboxAnswered,
   loadingTooLong,
   loadConversations,
   searchFilter,
@@ -686,14 +687,12 @@ export function ChatList({
     setRefreshing(true);
     setRefreshResult(null);
     const started = Date.now();
-    // Probe reachability ALONGSIDE the fetch. loadConversations resolves even
-    // offline (queryWithTimeout resolves on its timer; the no-signer path bails
-    // after the IndexedDB read), so it cannot answer "did we reach anyone" —
-    // this can. canReachAny measures the same pool sockets the fetch uses.
-    const reachProbe = canReachAny(getMyDMReceiveRelays(pubkey)).catch(() => false);
+    // "Up to date" is a claim that a relay ANSWERED the inbox query, which
+    // loadConversations now reports (queryAnswered). An open socket was the
+    // old bar, and it said "Up to date" while an invite sat unfetched.
     let reached = false;
     try {
-      [reached] = await Promise.all([reachProbe, loadConversations()]);
+      reached = await loadConversations();
     } finally {
       // A DISPLAY FLOOR, NOT A FAKE DURATION. The spin above now covers the real
       // operation and ends when it ends; this only holds the last frame long
@@ -729,6 +728,7 @@ export function ChatList({
   // Requests alone are enough to have something to show — otherwise an inbox
   // holding nothing BUT requests renders "no conversations yet" over five
   // people trying to reach you.
+  const emptyWords = emptyChatsWords({ loading, inboxAnswered: inboxAnswered ?? null });
   const nothingToShow = iaCollapsed
     ? sections.length === 0 && !needsPeopleForRequests
     : entries.length === 0;
@@ -1569,11 +1569,12 @@ export function ChatList({
                 refreshes the merged list. Self-hides when there are none. */}
             {dmTab === "primary" && (
               <div className="p-2 pb-0 empty:hidden">
-                {/* Under the collapsed IA these move to Activity — an invite is a
-                    decision, and decisions surface there. Rendered in one place
-                    only; two homes for one pending action is how you get an
-                    invite accepted twice or missed entirely. */}
-                {!iaCollapsed && <ConcordPendingInvites onAccepted={onReloadGroups} />}
+                {/* In Chats on every navigation (owner, 2026-10-10): the toast
+                    said "Open Chats to accept it" and, under the simplified
+                    navigation, the card was only in Activity. Activity keeps its
+                    copy; both read one store and refresh on its change event, so
+                    an invite accepted in one place leaves the other at once. */}
+                <ConcordPendingInvites onAccepted={onReloadGroups} />
               </div>
             )}
             {/* People were found for this search: "No matches" under them would
@@ -1583,8 +1584,11 @@ export function ChatList({
                 {dmTab === "primary" ? (
                   <>
                     <MessagesIcon className="w-10 h-10 mx-auto text-muted-foreground/50 mb-3" />
-                    <p className="text-sm text-muted-foreground mb-1">
-                      {searchFilter ? "No matches" : "No conversations yet"}
+                    {/* Three stories for an empty list, never one confident one:
+                        still asking, nobody answered, or answered and empty
+                        (pages/messages/refresh-outcome.ts). */}
+                    <p className="text-sm text-muted-foreground mb-1" data-testid="text-chats-empty">
+                      {searchFilter ? "No matches" : emptyWords === "checking" ? "Checking for messages…" : emptyWords === "unreachable" ? "Couldn't reach your relays" : "No conversations yet"}
                     </p>
                     {searchFilter ? (
                       <p className="text-xs text-muted-foreground/80">Try a different search</p>

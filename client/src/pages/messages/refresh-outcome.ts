@@ -21,3 +21,17 @@ export function refreshOutcome(reachedAnyRelay: boolean): RefreshOutcome {
   // silent all-clear.
   return reachedAnyRelay ? "up-to-date" : "unreachable";
 }
+
+/**
+ * What an EMPTY Chats list is honestly allowed to say (owner, 2026-10-10, from
+ * the first-use review: "No conversations yet" showed while a first message
+ * was still on its way). An empty list has three stories, not one: we're
+ * still asking, nobody answered, or a relay answered and there is nothing.
+ * Only the third earns "No conversations yet".
+ */
+export type EmptyChatsWords = "checking" | "unreachable" | "none";
+
+export function emptyChatsWords(s: { loading: boolean; inboxAnswered: boolean | null }): EmptyChatsWords {
+  if (s.loading || s.inboxAnswered === null) return "checking";
+  return s.inboxAnswered ? "none" : "unreachable";
+}

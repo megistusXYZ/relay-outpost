@@ -24,7 +24,7 @@ import { classifyStorageEnvironment, classifyStorageEnvironmentAsync, type Stora
 import { generatePassphraseSuggestion } from "@/lib/passphrase-suggest";
 import { PasskeyEnrollmentCard } from "@/components/PasskeyEnrollmentCard";
 import type { PasskeyEnrollment } from "@/lib/passkey";
-import { publishEvent, verifySignedEventKind } from "@/lib/nostr";
+import { publishEvent, verifySignedEventKind, eventStore } from "@/lib/nostr";
 import { clientTags, KIND_METADATA, KIND_FOLLOW_LIST } from "@/lib/nostr-helpers";
 import { buildAnchorFollows } from "@/lib/curated-seed-follows";
 import { setInviteConnect } from "@/lib/invite-connect";
@@ -572,10 +572,11 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
     if (!account || !stored || !canFinishSignup({ saved: keySaved, skipped: keySkipped })) return;
     setIsWorking(true);
     try {
-      await loginWithLocalKey(account.secretKey, { isNewAccount: true });
-      // The backup reminder waits a day from here (lib/key-backup.ts).
-      markAccountCreated(account.pubkey, Date.now());
-      // Publish kind 0 metadata in background
+      // The profile, signed BEFORE sign-in and put in the event store, so the
+      // account is called by its name from the first screen: the auth profile
+      // used to stay empty until a relay echoed the kind 0 back, and the hub
+      // chip and account page showed the npub for the whole first session
+      // (2026-10-10). Published after sign-in, as before.
       const dn = displayName.trim();
       const metadata: Record<string, string> = {
         name: (username.trim() || dn),
@@ -611,11 +612,15 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
         if (!verifySignedEventKind(signed, KIND_METADATA)) {
           console.warn("[CreateAccount] signer mutated event kind; skipping publish");
         } else {
+          eventStore.add(signed);
           void publishEvent(signed);
         }
       } catch (e) {
         console.warn("[CreateAccount] kind 0 publish failed:", e);
       }
+      await loginWithLocalKey(account.secretKey, { isNewAccount: true });
+      // The backup reminder waits a day from here (lib/key-backup.ts).
+      markAccountCreated(account.pubkey, Date.now());
       // Publish a NIP-65 relay list (kind 10002) seeded with the app's default
       // relays, so OTHER Nostr clients (Damus, Primal, Amethyst, …) can discover
       // where to find this account's posts from day one. Without it a brand-new

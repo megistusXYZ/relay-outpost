@@ -7,6 +7,7 @@ import { PersonBadges } from "@/components/PersonBadges";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { eventStore, pool, DEFAULT_RELAYS, PROFILE_RELAYS, throttledPoolSubscribe, persistentPoolSubscribe, publishEvent, fetchProfilesCached, searchCachedProfiles, getCachedProfile, filterBlockedRelays, subscriptionAuthAcrossRelays } from "@/lib/nostr";
+import { queryAnswered } from "@/lib/relay-reach";
 import { recordRecentDestination } from "@/lib/recent-destinations";
 import { insertSorted } from "@/lib/message-list";
 import { getProfileContent, KIND_METADATA } from "@/lib/nostr-helpers";
@@ -1145,10 +1146,14 @@ export default function Messages() {
     setConversations((shown) => (sameAccount ? keepNewerPreviews(shown, list) : list));
   }, [pubkey]);
 
-  const loadConversations = useCallback(async (forceDecrypt = false) => {
+  // Has a relay answered the inbox query? null = not asked yet; false = asked,
+  // nobody answered. The empty list and "Up to date" read this, never a timer
+  // (pages/messages/refresh-outcome.ts; owner, 2026-10-10).
+  const [inboxAnswered, setInboxAnswered] = useState<boolean | null>(null);
+  const loadConversations = useCallback(async (forceDecrypt = false): Promise<boolean> => {
     if (!pubkey) {
       setLoading(false);
-      return;
+      return false;
     }
     setLoading(true);
     setLoadingTooLong(false);
@@ -1220,7 +1225,7 @@ export default function Messages() {
     // screen, so the user keeps their chats instead of being told they have none.
     if (!signer?.nip44) {
       setLoading(false);
-      return;
+      return false;
     }
     // Ensure the decrypt-once ledger is hydrated before we decide what's pending.
     await seedProcessedWraps(pubkey);
@@ -1238,6 +1243,7 @@ export default function Messages() {
       if (mountedRef.current) setSelfAutopubFailed(computeSelfAutopubFailed(pubkey));
     });
 
+    let answered = false;
     const latestCachedTs = await dmCache.getLatestConversationTimestamp(pubkey);
     const sinceTs = latestCachedTs > 0 ? latestCachedTs - DM_CATCHUP_BACKDATE_SLACK : undefined;
 
@@ -1245,12 +1251,13 @@ export default function Messages() {
       // Broad receive set: own inbox (10050) + read + write + fallbacks, scored.
       const fetchRelays = getMyDMReceiveRelays(pubkey);
 
-      const [giftWraps] = await Promise.all([
-        queryWithTimeout(fetchRelays, {
-          kinds: [KIND_GIFT_WRAP], "#p": [pubkey],
-          limit: sinceTs ? 100 : 200,
-          ...(sinceTs ? { since: sinceTs } : {}) }),
-      ]);
+      const inbox = await queryAnswered(fetchRelays, {
+        kinds: [KIND_GIFT_WRAP], "#p": [pubkey],
+        limit: sinceTs ? 100 : 200,
+        ...(sinceTs ? { since: sinceTs } : {}) }, 8000);
+      const giftWraps = inbox.events as Event[];
+      answered = inbox.answered;
+      setInboxAnswered(answered);
 
       const seenIds = new Set<string>();
 
@@ -1410,6 +1417,7 @@ export default function Messages() {
       if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
       setLoading(false);
     }
+    return answered;
   }, [pubkey, signer, showLoadedList]);
 
   // Batched mode: run one deliberate decrypt pass over the pending history.
@@ -3256,6 +3264,7 @@ export default function Messages() {
           showFlaggedRequests={showFlaggedRequests}
           setShowFlaggedRequests={setShowFlaggedRequests}
           loading={loading}
+          inboxAnswered={inboxAnswered}
           loadingTooLong={loadingTooLong}
           loadConversations={loadConversations}
           searchFilter={searchFilter}

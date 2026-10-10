@@ -12,6 +12,7 @@
  * card still appears over it for invited arrivals.
  */
 import { useEffect, useState, type ReactNode } from "react";
+import { InviteAcceptCard } from "@/components/InviteAcceptCard";
 import { useLocation } from "wouter";
 import { ChevronRight, Compass, MessagesSquare, UserPlus, Users, Sparkles } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
@@ -64,6 +65,12 @@ export default function Welcome() {
         This is your space: your communities and the people you choose. Private messages and
         group chats are end-to-end encrypted, and your account is yours: no email, and no company can lock you out.
       </p>
+
+      {/* An invited arrival's "Say hi" is the first card, in the flow, so it
+          never covers the paragraph above (owner, 2026-10-10). */}
+      <div className="mt-6">
+        <InviteAcceptCard inline />
+      </div>
 
       <p className="mt-8 mb-1.5 px-1 text-[11px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Make it yours</p>
       <div className="rounded-xl border border-border/40 bg-card/40 overflow-hidden divide-y divide-border/25">
