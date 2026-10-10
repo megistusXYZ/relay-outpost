@@ -928,17 +928,28 @@ function langLabel(code: string): string {
 function ChatsSection() {
   const [on, setOn] = useState(() => isConcordEnabled());
   const toggle = (v: boolean) => { setOn(v); setConcordEnabled(v); };
-  const [calls, setCalls] = useState(() => isConcordCallsEnabled());
-  const toggleCalls = (v: boolean) => { setCalls(v); setConcordCallsEnabled(v); };
   return (
     <RowSection label="Chats" testId="section-concord">
       <Row icon={ShieldCheck} label="Private chats (beta)" sub="End-to-end-encrypted communities — keys stay on this device">
         <Switch checked={on} onCheckedChange={toggle} data-testid="switch-concord-enabled" />
       </Row>
-      <Row icon={Phone} label="Encrypted calls (beta)" sub="Voice, video and screen share in group chats. Still being tested; this device only">
+      <ClosedAppNotifyRow />
+    </RowSection>
+  );
+}
+
+/** Calls, in their own place (owner, 2026-10-10): the switch sat under
+ *  Feed & content beneath thirty feed toggles, where nobody looks for calls.
+ *  Its words are the call's own scope line, so the model is built before the
+ *  first call. */
+function CallsSection() {
+  const [calls, setCalls] = useState(() => isConcordCallsEnabled());
+  const toggleCalls = (v: boolean) => { setCalls(v); setConcordCallsEnabled(v); };
+  return (
+    <RowSection label="Calls" testId="section-calls">
+      <Row icon={Phone} label="Encrypted calls (beta)" sub="Voice, video and screen share in your group chats. Only members of the group can join; nothing leaves the room. Still being tested; this device only.">
         <Switch checked={calls} onCheckedChange={toggleCalls} data-testid="switch-concord-calls" />
       </Row>
-      <ClosedAppNotifyRow />
     </RowSection>
   );
 }
@@ -2305,6 +2316,7 @@ export default function Settings() {
   const settingsCategories: SettingsCategory[] = [
     { id: "appearance", label: "Appearance" },
     { id: "feed", label: "Feed & content" },
+    { id: "calls", label: "Calls" },
     { id: "network", label: "Network" },
     { id: "safety", label: "Safety" },
     ...(pubkey ? [{ id: "tools", label: "Tools" }] : []),
@@ -2393,6 +2405,10 @@ export default function Settings() {
               <ContentSection />
               <ChatsSection />
               <ReadAloudSection />
+            </CategoryGroup>
+
+            <CategoryGroup active={section} id="calls" title="Calls">
+              <CallsSection />
             </CategoryGroup>
 
             <CategoryGroup active={section} id="network" title="Network">

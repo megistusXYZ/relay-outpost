@@ -7,7 +7,8 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useSearch } from "wouter";
 import { useGoBack } from "@/hooks/use-go-back";
-import { ChevronDown, Copy, Check, Link2, Lock, Settings2 } from "lucide-react";
+import { ChevronDown, Copy, Check, Link2, Lock, Settings2, Phone } from "lucide-react";
+import { useConcordCallsEnabled } from "@/lib/concord/concord-prefs";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useKeyboardViewport } from "@/hooks/use-keyboard-viewport";
@@ -85,6 +86,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
   // composer rides the on-screen keyboard (same mechanics as the DM thread).
   const kb = useKeyboardViewport(!!community);
   const isOwner = !!community && pubkey === community.owner;
+  const callsOn = useConcordCallsEnabled();
   // Owner + admins (CREATE_INVITE) manage invite links; members forward them —
   // unless the owner opened invites to everyone (allowMemberInvites policy).
   const { state: govState, roster: govRoster, myMember, events: govEvents, auditLog: govAuditLog, deleted, linkJoins: govLinkJoins, compaction: govCompaction } = useConcordGovernance(community);
@@ -239,6 +241,13 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
       {aboutText ? (
         <p className="text-sm leading-relaxed text-foreground/85 whitespace-pre-wrap break-words" data-testid="concord-about-description">{aboutText}</p>
       ) : null}
+      {/* Calls exist and are off: say so here, where calls happen, with the
+          door to the switch (owner, 2026-10-10). */}
+      {!callsOn && (
+        <button onClick={() => setLocation("/settings?section=calls")} className="flex min-h-11 md:min-h-8 items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors" data-testid="concord-about-calls-off">
+          <Phone className="w-3.5 h-3.5" aria-hidden="true" /> Calls are off · Turn on
+        </button>
+      )}
       {/* What you can do here, side by side. Manage leads for admins: one clear
           door, with what's waiting on it, not a chip beside the description. */}
       {(canManage || canInvite) && (

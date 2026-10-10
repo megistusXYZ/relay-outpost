@@ -229,3 +229,12 @@ describe("chatRowMeta — date dividers + author grouping", () => {
     expect(meta[2].grouped).toBe(false);
   });
 });
+
+describe("the room's own call rows", () => {
+  it("interleave by time with messages and system lines, and never need a pubkey", () => {
+    const items = buildChatTimeline([{ t: 10 }, { t: 30 }], [], true, [{ at: 20, text: "Ben joined the call" }]);
+    expect(items.map((i) => i.kind)).toEqual(["msg", "call", "msg"]);
+    const call = items[1];
+    expect(call.kind === "call" && call.text).toBe("Ben joined the call");
+  });
+});

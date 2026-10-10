@@ -33,6 +33,7 @@ import { ACTIVE_ROOM, DAY_CHIP, NEW_TAG, COMPOSER_FIELD } from "@/lib/chat-look"
 import { useRoomInUrl, isRestoringRoom } from "@/lib/room-url";
 import { ConcordMediaView } from "./ConcordMediaView";
 import { ConcordCallButton, ConcordCallBar, ConcordCallStage } from "./ConcordCallControls";
+import { useCallLog } from "@/lib/concord/call-log";
 import { useConcordCall, callRoomKey } from "@/contexts/ConcordCallContext";
 import { withoutGameLinks } from "@/lib/concord/concord-game";
 import { getCachedMessages, cacheMessage, deleteCachedMessages, getCachedReactions, cacheReaction, removeCachedReaction, type StoredCommunity, type StoredChannel, type CachedReaction } from "@/lib/concord/concord-keys";
@@ -706,6 +707,9 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   // an admin" — no reason in-channel; that stays in the admin audit log).
   // Role changes (promote/demote) deliberately produce no line.
   const isDefaultChannel = !!activeChannel && activeChannel.id === channels[0]?.id;
+  // This screen's own record of the room's calls (owner, 2026-10-10): who
+  // started, joined and left, as rows here, so the room says what it did.
+  const callLog = useCallLog(activeChannel ? callRoomKey(community.community_id, activeChannel.id) : null);
   // Threads: replies collapse out of the channel and live under their starter,
   // which stays in place with a "N replies" chip. A reply whose starter isn't in
   // this channel keeps rendering inline (groupThreads' fallback) — never hidden.
@@ -730,8 +734,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
     () => buildChatTimeline(threading.timeline, [
       ...(isDefaultChannel ? [...govEvents, ...removals] : []),
       ...timerLines(timerNotices, govState, community.owner),
-    ], true),
-    [threading.timeline, govEvents, removals, isDefaultChannel, timerNotices, govState, community.owner],
+    ], true, callLog),
+    [threading.timeline, govEvents, removals, isDefaultChannel, timerNotices, govState, community.owner, callLog],
   );
   // First timeline item newer than where we left off → the "New" divider slot.
   const firstUnreadIdx = firstUnreadIndex(timeline, openLastRead);
@@ -1590,7 +1594,11 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
               <span className={NEW_TAG}>New</span>
             </div>
           )}
-          {item.kind === "sys" ? (
+          {item.kind === "call" ? (
+            <div className="flex justify-center my-1" data-testid="concord-call-line">
+              <span className="text-[11px] text-muted-foreground/60">{item.text}</span>
+            </div>
+          ) : item.kind === "sys" ? (
             <SystemLine pubkey={item.pubkey} action={item.action} timer={item.timer} />
           ) : (
           <ConcordMessageRow msgId={item.msg.id} pubkey={item.msg.pubkey} content={item.msg.content} media={item.msg.media} mine={item.msg.pubkey === pubkey}
