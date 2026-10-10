@@ -17,6 +17,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RECOVERY_WINDOW_MS, isChunkLoadError, nextRecoveryStep, resetChunkRecovery, tryRecoverFromStaleChunk } from "./stale-chunk-recovery";
+import { holdsForSignup } from "./stale-chunk-recovery";
 
 class MemoryStorage {
   private items = new Map<string, string>();
@@ -195,5 +196,19 @@ describe("who climbs the ladder", () => {
     // A plain reload is what already failed: the button repairs.
     expect(fallback).toMatch(/repairApp\(\)/);
     expect(fallback).not.toMatch(/location\.reload/);
+  });
+});
+
+describe("a sign-up in flight holds the reload", () => {
+  // 2026-10-10: a newcomer signing up from /login, twenty minutes after a
+  // deploy, was reloaded off the password step without a word. The hold
+  // covered only "/".
+  it("on the landing and on /login, with a draft", () => {
+    expect(holdsForSignup("/", true)).toBe(true);
+    expect(holdsForSignup("/login", true)).toBe(true);
+  });
+  it("not elsewhere, and not without a draft", () => {
+    expect(holdsForSignup("/discover", true)).toBe(false);
+    expect(holdsForSignup("/login", false)).toBe(false);
   });
 });
