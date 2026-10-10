@@ -97,6 +97,9 @@ import { getCachedFollowerCount, onFollowerCountUpdate, prefetchStatsImmediate, 
 import { getFirstSeen } from "@/lib/account-age";
 import { computeEngagementScore } from "@/lib/engagement";
 import { effectivePow } from "@/lib/nip13-pow";
+import { useWiderNetwork } from "@/lib/network-mode";
+import { discoverSurfaces } from "@/lib/discover-surfaces";
+import { WiderNetworkDoor } from "@/components/wider-network/WiderNetworkDoor";
 
 /**
  * The one item shape the News hero flows end to end: what /api/rss caches,
@@ -1514,6 +1517,11 @@ export default function Discover() {
   // invite, a channel preview) are separate routes and stay open; this page
   // is pure exploration, so guests meet the wall outright, in place, with
   // the URL intact for the post-signup return.
+  // Every tile here is the wider network. While a new account's wider network
+  // is off, the tab is the DOOR: the news (our own outlets) and one card that
+  // opens the switch (lib/discover-surfaces.ts, owner 2026-10-10).
+  const surfaces = discoverSurfaces(useWiderNetwork(pubkey));
+
   if (!pubkey && !guestCanBrowse(window.location.pathname)) {
     return (
       <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 pb-24" data-testid="page-discover">
@@ -1531,9 +1539,17 @@ export default function Discover() {
 
       <UniversalBar />
 
+      {surfaces.includes("door") && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+          <NewsHeroTile />
+          <div className="md:col-span-3"><WiderNetworkDoor testId="wider-network-door-discover" /></div>
+        </div>
+      )}
+
       {/* One grid, both breakpoints: mobile stacks hero-then-tiles in DOM
           order; md+ places the hero left (2 cols, 3 rows) with the compact
           tiles filling the right column. No JS layout fork. */}
+      {!surfaces.includes("door") && (<>
       <div className="discover-grid grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
         <NewsHeroTile />
         <FeedTile />
@@ -1568,6 +1584,7 @@ export default function Discover() {
           NOTHING — additive content claims nothing by being absent, which is
           why it carries no reach states (unlike the tiles, which are doors). */}
       <PeopleToFollowStrip strictTrust />
+      </>)}
     </div>
   );
 }

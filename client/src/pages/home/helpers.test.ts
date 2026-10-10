@@ -2,7 +2,7 @@
 // NOT in a sparse "Following" feed, and (since Trending got its own tab, 2026-10-02)
 // not on the Trending chart either. An explicit saved choice is always honored.
 import { describe, it, expect } from "vitest";
-import { resolveDefaultFeedMode, initialFeedMode, DEFAULT_FEED_MODE, isReplyEvent } from "./helpers";
+import { resolveDefaultFeedMode, initialFeedMode, DEFAULT_FEED_MODE, isReplyEvent, feedBodyFor } from "./helpers";
 
 describe("resolveDefaultFeedMode", () => {
   it("with no saved preference the app opens on For you — the first tab — not on Trending", () => {
@@ -109,5 +109,24 @@ describe("initialFeedMode — where the page starts, before sign-in and follows 
     expect(home).toMatch(/return initialFeedMode\(localStorage\.getItem\("relay-outpost-default-feed-mode"\)\);/);
     expect(home).not.toMatch(/return "deep_scan";/);
     expect(home).toMatch(/if \(feedMode === "raw_signal"\) startForYouOnNetwork\(\);/);
+  });
+});
+
+// "Your space" (owner, 2026-10-10): with the wider network off, the For you
+// and Trending lanes are the DOOR — one card that opens the switch — and
+// nothing is read for them. Following and a person's own feeds are the
+// account's space and stay feeds. With the wider network on, every lane is
+// a feed, exactly as before.
+describe("feedBodyFor — a feed, or the door to the wider network", () => {
+  it("off: For you and Trending are the door", () => {
+    expect(feedBodyFor("raw_signal", false)).toBe("door");
+    expect(feedBodyFor("deep_scan", false)).toBe("door");
+  });
+  it("off: Following and custom feeds are still feeds", () => {
+    expect(feedBodyFor("open_comms", false)).toBe("feed");
+    expect(feedBodyFor("custom_abc", false)).toBe("feed");
+  });
+  it("on: everything is a feed", () => {
+    for (const m of ["raw_signal", "deep_scan", "open_comms", "custom_abc"]) expect(feedBodyFor(m, true)).toBe("feed");
   });
 });

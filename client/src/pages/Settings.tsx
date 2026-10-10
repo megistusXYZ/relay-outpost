@@ -62,6 +62,8 @@ import {
 import { isAutoplayMediaEnabled, AUTOPLAY_CHANGED_EVENT } from "@/lib/video-prefs";
 import { getEngagementWeights, saveEngagementWeights, DEFAULT_ENGAGEMENT_WEIGHTS, type EngagementWeights } from "@/lib/engagement-weights";
 import { useNewsAlertPrefs, NEWS_MUTE_CAP } from "@/lib/news-alert-settings";
+import { useWiderNetwork } from "@/lib/network-mode";
+import { WiderNetworkRow } from "@/components/wider-network/WiderNetworkDoor";
 
 /* ---------------------------------------------------------------------------
  * Row primitives — every setting is ONE slim, uniform row:
@@ -2245,6 +2247,7 @@ function FeedbackTicketsRow() {
 
 export default function Settings() {
   const { pubkey, loginMethod } = useNostrAuth();
+  const settingsWiderNetworkOn = useWiderNetwork(pubkey);
   useDocumentTitle("Settings");
 
   useEffect(() => {
@@ -2362,6 +2365,16 @@ export default function Settings() {
           <SettingsNav items={settingsCategories} active={section} onSelect={selectSection} />
 
           <div className="min-w-0 space-y-7">
+
+            {/* The wider network: on every tab, above the categories — the one
+                setting a new account most needs to find (owner, 2026-10-10). */}
+            {pubkey && (
+              <RowSection label="Your space" testId="section-wider-network">
+                <div className="rounded-2xl border border-border/40 overflow-hidden">
+                  <WiderNetworkRow on={settingsWiderNetworkOn} testId="wider-network-row-settings" />
+                </div>
+              </RowSection>
+            )}
 
             <CategoryGroup active={section} id="appearance" title="Appearance">
               <AppearanceSection />

@@ -14,6 +14,7 @@ import { NostrAuthProvider, useNostrAuth, LOGIN_METHOD_KEY } from "@/contexts/No
 import "@/hooks/use-pwa-install";
 import { loadLocalAccount, isNewAccount } from "@/lib/local-account";
 import { InviteAcceptCard } from "@/components/InviteAcceptCard";
+import { WiderNetworkSheetHost } from "@/components/wider-network/WiderNetworkSheet";
 import { NWCProvider, useNWC } from "@/contexts/NWCContext";
 import type { NWCTransaction } from "@/contexts/NWCContext";
 
@@ -1591,6 +1592,8 @@ function AppLayout() {
       {/* Signed-in recipient invite prompt. New accounts consume + remove the
           invite markers inside CreateAccountFlow, so this never double-fires. */}
       {!!pubkey && <InviteAcceptCard />}
+      {/* The one sheet every "wider network" door opens (components/wider-network). */}
+      {!!pubkey && <WiderNetworkSheetHost />}
       {/* Own boundary: signed-in users mount this in "hidden" mode (renders
           null), so the lazy chunk must never suspend the app shell itself. */}
       {galaxyNeeded && <Suspense fallback={null}>

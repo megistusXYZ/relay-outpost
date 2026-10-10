@@ -167,6 +167,8 @@ import { OutpostHero } from "@/components/outpost/OutpostHero";
 import { communityRecordRelays } from "@/lib/featured";
 import { outpostPresenceProps } from "@/lib/outpost-presence";
 import { discoverRecipientForRelay, openFeedbackDrawer, repoCoord, subscribeFeedbackThread, hydrateIssues, type FeedbackRecipient } from "@/lib/nip34-feedback";
+import { useWiderNetwork } from "@/lib/network-mode";
+import { WiderNetworkDoor } from "@/components/wider-network/WiderNetworkDoor";
 
 
 
@@ -5276,6 +5278,7 @@ export default function Outposts() {
   const [joinedRelays, setJoinedRelays] = useState(() => getOutpostRelays());
   const [reordering, setReordering] = useState(false);
   const starterCards = useMemo(() => starterSuggestions(joinedRelays.map((r) => r.url)), [joinedRelays]);
+  const hubWiderNetworkOn = useWiderNetwork(pubkey);
 
   const [pinnedFeeds, setPinnedFeeds] = useState<PinnedFeed[]>(() => getPinnedFeeds());
   // Nested pins are EXPANDED by default (your shortcuts should be one tap away,
@@ -5632,7 +5635,14 @@ export default function Outposts() {
       {/* Curated starters — good rooms a new person can join without knowing
           what to search for. Each entry is wire-verified before it's listed
           (lib/starter-communities). Self-hides once everything is joined. */}
-      {pubkey && starterCards.length > 0 && (
+      {/* The public starters are the wider network; while it is off the door
+          stands here instead (components/wider-network, owner 2026-10-10). */}
+      {pubkey && !hubWiderNetworkOn && (
+        <div className="mt-5" data-testid="starter-communities-door">
+          <WiderNetworkDoor compact testId="wider-network-door-communities" />
+        </div>
+      )}
+      {pubkey && hubWiderNetworkOn && starterCards.length > 0 && (
         <div className="mt-5" data-testid="starter-communities">
           <p className="px-3 mb-1.5 text-[11px] font-brand uppercase tracking-wider text-muted-foreground/60">
             Good places to start

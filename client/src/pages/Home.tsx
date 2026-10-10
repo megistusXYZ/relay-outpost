@@ -68,7 +68,8 @@ import { getDiscoverFeedRelays, warmDiscoverRelays } from "@/lib/discover-relays
 import { getDiscoverPresetConfig, admitStranger } from "@/lib/discover-quality";
 import { effectivePow } from "@/lib/nip13-pow";
 import { getOutpostRelays } from "@/lib/outpost-relays";
-import { isWiderNetworkOnForViewer } from "@/lib/network-mode";
+import { isWiderNetworkOnForViewer, useWiderNetwork } from "@/lib/network-mode";
+import { WiderNetworkDoor } from "@/components/wider-network/WiderNetworkDoor";
 
 const KIND_LONG_FORM = 30023;
 // Discover safe floor: kinds the feed renders cleanly. The media kinds are
@@ -123,7 +124,7 @@ import { FeedIcon as FeedIconSvg, FEED_ICON_LIST, isValidFeedIconKey, type FeedI
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { publicNostrEnabled, publicNostrStorageKey } from "@/lib/public-nostr";
-import { FeedMode, type ContentFilter, isReplyEvent, FeedSortMode, TopTimeWindow, TRENDING_SELECTORS, type ArchivesRange, type ArchivesMetric, SAVED_POLL_SORTS, type SavedPollSort, SAVED_POLL_SHOW_OPTIONS, type SavedPollShow, FEED_SORT_OPTIONS, TIME_WINDOW_SORT_MODES, TOP_TIME_WINDOWS, PAGE_SIZE, TRENDING_CACHE_TTL, BUILT_IN_TABS, getFeedSortKey, getTopWindowKey, isArchivesSelector, getArchivesMetric, decodePubkey, resolveDefaultFeedMode, initialFeedMode, DEFAULT_FEED_MODE } from "./home/helpers";
+import { FeedMode, type ContentFilter, isReplyEvent, FeedSortMode, TopTimeWindow, TRENDING_SELECTORS, type ArchivesRange, type ArchivesMetric, SAVED_POLL_SORTS, type SavedPollSort, SAVED_POLL_SHOW_OPTIONS, type SavedPollShow, FEED_SORT_OPTIONS, TIME_WINDOW_SORT_MODES, TOP_TIME_WINDOWS, PAGE_SIZE, TRENDING_CACHE_TTL, BUILT_IN_TABS, getFeedSortKey, getTopWindowKey, isArchivesSelector, getArchivesMetric, decodePubkey, resolveDefaultFeedMode, initialFeedMode, DEFAULT_FEED_MODE, feedBodyFor } from "./home/helpers";
 
 /**
  * How long the network gets before the cached feed is allowed to paint.
@@ -475,7 +476,12 @@ export default function Home() {
   // "Changes apply immediately": this key re-runs the load + live-sub effects
   // when the Discover toggle, preset, or languages change mid-session, so the
   // feed re-fetches with the new relay pool instead of waiting for a reload.
-  const discoverEpoch = `${discoverV2 ? 1 : 0}:${activePreset}:${preferredLangs.join(",")}`;
+  // "Your space" (lib/network-mode.ts, owner 2026-10-10): while the wider
+  // network is off, For you and Trending are the door and every read this
+  // page makes is scoped to the people you follow — no firehose anywhere.
+  const widerNetworkOn = useWiderNetwork(pubkey);
+  const feedIsDoor = feedBodyFor(feedMode, widerNetworkOn) === "door";
+  const discoverEpoch = `${discoverV2 ? 1 : 0}:${activePreset}:${preferredLangs.join(",")}:${widerNetworkOn ? "net" : "space"}`;
   // Broaden the global For You relay set: FAST base → follows' outbox →
   // community (joined outposts + curated group relays) → curated-discover pool,
   // deduped and capped to the preset's sub cap. Higher-quality-by-default
@@ -944,7 +950,23 @@ export default function Home() {
       });
     }, CACHE_FALLBACK_DELAY_MS);
 
+    // Your space only: every subscription below is scoped to the people you
+    // follow, and the global first page (Primal) and the global sample are
+    // not asked for at all. With nobody followed yet there is nothing to read.
+    const spaceOnly = !isWiderNetworkOnForViewer();
+    const spaceAuthors = (followsRef.current ?? []).slice(0, 200);
+    const scope = spaceOnly ? { authors: spaceAuthors } : {};
+    if (spaceOnly && spaceAuthors.length === 0) {
+      clearTimeout(cacheFallback);
+      initialLoadDoneRef.current = true;
+      setCutoffTimestamp(now);
+      markFeedDataLoaded();
+      setIsInitialLoading(false);
+      return () => { cancelled = true; };
+    }
+
     async function loadFromPrimal() {
+      if (spaceOnly) return false;
       try {
         const result = await fetchGlobalFeed(PAGE_SIZE * 2, now - 6 * 60 * 60, undefined);
         if (cancelled) return false;
@@ -987,7 +1009,7 @@ export default function Home() {
       const unresolvedReposts: Event[] = [];
       const collectedEventIds: string[] = [];
       const collectedPubkeys: string[] = [];
-      const sub = throttledPoolSubscribe(noteRelays, { kinds: withDiscoverKinds([KIND_TEXT_NOTE, KIND_REPOST, KIND_POLL]), limit: PAGE_SIZE * 2, since: now - windowH * 60 * 60 }, {
+      const sub = throttledPoolSubscribe(noteRelays, { kinds: withDiscoverKinds([KIND_TEXT_NOTE, KIND_REPOST, KIND_POLL]), limit: PAGE_SIZE * 2, since: now - windowH * 60 * 60, ...scope }, {
         onevent(event) {
           if (cancelled) return;
           if (event.kind === KIND_REPOST) {
@@ -1091,6 +1113,7 @@ export default function Home() {
         kinds: [...MEDIA_EVENT_KINDS],
         limit: mediaPageLimit(PAGE_SIZE * 2),
         since: now - presetConfigRef.current.timeWindowH * 60 * 60,
+        ...scope,
       },
       {
         onevent(event) {
@@ -1170,12 +1193,14 @@ export default function Home() {
       );
       supplementSubs.push(followSub);
     }
-    const globalSub = throttledPoolSubscribe(
-      withDiscoverRelays(getRelaysForPurpose('notes')),
-      { kinds: [KIND_TEXT_NOTE], limit: PAGE_SIZE, since: supplementSince },
-      { onevent: takeSupplement, oneose() { finishSupplement(); globalSub.close(); } },
-    );
-    supplementSubs.push(globalSub);
+    if (!spaceOnly) {
+      const globalSub = throttledPoolSubscribe(
+        withDiscoverRelays(getRelaysForPurpose('notes')),
+        { kinds: [KIND_TEXT_NOTE], limit: PAGE_SIZE, since: supplementSince },
+        { onevent: takeSupplement, oneose() { finishSupplement(); globalSub.close(); } },
+      );
+      supplementSubs.push(globalSub);
+    }
 
     let relaySub: ReturnType<typeof throttledPoolSubscribe> | null = null;
     loadFromPrimal().then((success) => {
@@ -1201,8 +1226,13 @@ export default function Home() {
       liveSubRef.current = null;
     }
 
+    // Your space only: the live tail is scoped to the people you follow too
+    // (and not opened at all with nobody followed yet).
+    const tailSpaceOnly = !isWiderNetworkOnForViewer();
+    const tailAuthors = (followsRef.current ?? []).slice(0, 200);
+    if (tailSpaceOnly && tailAuthors.length === 0) return;
     const liveSub = subscribeToFeedPersistent(
-      { kinds: withDiscoverKinds([KIND_TEXT_NOTE, KIND_REPOST, KIND_POLL, ...MEDIA_EVENT_KINDS]), since: Math.floor(Date.now() / 1000) },
+      { kinds: withDiscoverKinds([KIND_TEXT_NOTE, KIND_REPOST, KIND_POLL, ...MEDIA_EVENT_KINDS]), since: Math.floor(Date.now() / 1000), ...(tailSpaceOnly ? { authors: tailAuthors } : {}) },
       // Live tail: preset-driven cap (was a fixed 6) so breadth scales with the dial.
       withDiscoverRelays(feedBaseRelays().slice(0, 4)),
       (event) => {
@@ -1524,13 +1554,15 @@ export default function Home() {
   }, [pubkey, archivesRange]);
 
   useEffect(() => {
+    if (!widerNetworkOn) return; // trending is the wider network
     if (!trendingPrefetchedRef.current) {
       trendingPrefetchedRef.current = true;
       loadTrending("arc_reactions", { background: true });
     }
-  }, [loadTrending]);
+  }, [loadTrending, widerNetworkOn]);
 
   useEffect(() => {
+    if (!widerNetworkOn) return; // the lane shows the door instead
     if (feedMode === "deep_scan") {
       const cacheKey = isArchivesSelector(trendingSelector) ? `${trendingSelector}_${archivesRange}` : trendingSelector;
       const cached = trendingCacheRef.current.get(cacheKey);
@@ -1546,7 +1578,7 @@ export default function Home() {
         loadTrending(trendingSelector);
       }
     }
-  }, [feedMode, trendingSelector, archivesRange, loadTrending]);
+  }, [feedMode, trendingSelector, archivesRange, loadTrending, widerNetworkOn]);
 
   // Throttled mirror of the eventStore timeline. Subscribing reactively (use$)
   // re-derived the whole feed pipeline (filter → sort → render) on EVERY incoming
@@ -1660,7 +1692,7 @@ export default function Home() {
   const usesDefaultLens = chooseDiscoverLens({ wotEnabled, ownScores: grapeRankScores ?? null }) === "default";
   const firstScreenTakenRef = useRef(firstScreenTaken());
   useEffect(() => {
-    if (!isGlobalForYou || !usesDefaultLens || firstScreenTakenRef.current) return;
+    if (!isGlobalForYou || !usesDefaultLens || firstScreenTakenRef.current || !widerNetworkOn) return;
     firstScreenTakenRef.current = true;
     let cancelled = false;
     void takeFirstScreen().then((fs) => {
@@ -3226,6 +3258,10 @@ export default function Home() {
           <Suspense fallback={<FeedSkeletonList count={5} />}>
             {feedStyle === "video" ? <VideoFeedLazy embedded sort={mediaSort} /> : feedStyle === "polls" ? <PollsFeedLazy embedded sort={savedPollSort} show={savedPollShow} /> : <ImagesFeedLazy embedded sort={mediaSort} />}
           </Suspense>
+        ) : feedIsDoor ? (
+          <div className="pt-2" data-testid="home-feed-door">
+            <WiderNetworkDoor testId="wider-network-door-home" />
+          </div>
         ) : showRawGate && feedMode === "raw_signal" ? (
           <div className="relative min-h-[420px] sm:min-h-[480px] rounded-xl overflow-hidden" data-testid="container-raw-gate">
             <div className="absolute inset-0 bg-gradient-to-b from-brand/80 via-white/90 to-white dark:from-brand/40 dark:via-black/70 dark:to-black/90" />

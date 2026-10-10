@@ -9,6 +9,7 @@ import { decideOwnership } from "@/lib/relay-ownership";
 import { useOperatedRelays, setLastUsedRelay } from "@/lib/operated-relays";
 import { RelaysWelcome } from "@/components/relays/RelaysWelcome";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
+import { useWiderNetwork } from "@/lib/network-mode";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { Button } from "@/components/ui/button";
 import {
@@ -129,6 +130,7 @@ function TabErrorFallback({ error }: { error: Error | null }) {
 
 export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: string } = {}) {
   const { pubkey, signer } = useNostrAuth();
+  const widerNetworkOn = useWiderNetwork(pubkey);
   const [, navigate] = useLocation();
   const [activeTab, setActiveTabRaw] = useState<TabId>(getTabFromHash);
   const [selectedRelay, setSelectedRelay] = useState<string>(propRelayUrl || "");
@@ -271,7 +273,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
   }, [selectedRelay, authStatus, isOwnedRelay]);
 
   if (adminRelays.length === 0 && !propRelayUrl) {
-    return <RelaysWelcome />;
+    return <RelaysWelcome widerNetwork={pubkey ? { on: widerNetworkOn } : undefined} />;
   }
 
   const renderAuthGate = () => {

@@ -19,6 +19,7 @@ import { ArrowUpRight, Check, ChevronRight } from "lucide-react";
 import { BUILD_YOUR_OWN, START_OPTIONS, type StartOption } from "@/lib/relay-start-options";
 import { ConnectIcon, HomeRing, KeepIcon, PhoneIcon, RulesIcon, SelfHostIcon } from "./relays-icons";
 import { RelayToolsLogo } from "./RelayToolsLogo";
+import { WiderNetworkRow } from "@/components/wider-network/WiderNetworkDoor";
 
 const BENEFITS = [
   { Icon: RulesIcon, title: "Your members, your rules", line: "Decide who joins, what stays up and who's out." },
@@ -122,7 +123,9 @@ export function SelfHostSection({ option }: { option: StartOption }) {
   );
 }
 
-export function RelaysWelcome() {
+/** `widerNetwork`: the signed-in account's switch, passed by the page (this
+ *  component stays free of the auth context so it renders anywhere). */
+export function RelaysWelcome({ widerNetwork }: { widerNetwork?: { on: boolean } } = {}) {
   return (
     <div className="relative max-w-3xl mx-auto px-4 pt-10 pb-16 sm:pt-14" data-testid="relays-welcome">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-96 bg-[radial-gradient(55%_100%_at_50%_0%,hsl(var(--brand)/0.16),transparent_70%)]" aria-hidden="true" />
@@ -164,6 +167,14 @@ export function RelaysWelcome() {
         </span>
         <ChevronRight className="w-5 h-5 text-muted-foreground/70 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
       </Link>
+
+      {/* The wider network, on or off, is a relay matter too: this is where
+          someone looks for it when they think "relays" (owner, 2026-10-10). */}
+      {widerNetwork && (
+        <div className="mt-8 border-y border-black/[0.06] dark:border-white/[0.06] py-1">
+          <WiderNetworkRow on={widerNetwork.on} testId="wider-network-row-relays" />
+        </div>
+      )}
 
       <p className="mt-8 text-center text-[13px] leading-relaxed text-muted-foreground [text-wrap:balance]">
         You own it. Relay Outpost never hosts your relay or takes a cut — you pay your provider directly.
