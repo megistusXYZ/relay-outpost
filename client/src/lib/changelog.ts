@@ -42,13 +42,13 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     version: "1.19.0",
     date: "2026-10-11",
-    title: "Calls that find you",
+    title: "Your space first",
     changes: [
-      { type: "new", text: "Calls ring now: \"Ana started a call in Bali crew\", with Join or Not now, and they can reach you even when the app is closed." },
-      { type: "new", text: "Turn on notifications in Settings › Chats to hear about calls and new messages. They never say who wrote or what." },
-      { type: "improved", text: "Call friends who use Armada: you all meet in the same call, and you are asked before another app's call service is used." },
+      { type: "new", text: "A new account starts in its own space: your people and your communities. The wider network is one switch away, explained in plain words." },
+      { type: "new", text: "Calls ring now and reach you even when the app is closed. Turn that on in Settings › Chats; it never says who wrote or what." },
       { type: "new", text: "Badges: design your own, give them to people who earned them, and choose which ones show on your profile." },
-      { type: "improved", text: "Trust settings are simpler: three plain choices for how careful the app should be with people you don't know." },
+      { type: "improved", text: "Posts in other languages show a Translate link on every phone, and three plain trust choices set how careful the app is with strangers." },
+      { type: "improved", text: "Running a community: a health card, who can post, media rules, team powers, and a setup checklist that keeps its place." },
     ],
   },
   {
