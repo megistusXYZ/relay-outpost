@@ -7,6 +7,8 @@ import { armPrivateModeIfSet, privateModeSettingsSettled } from "@/lib/private-m
 import { nativeSetItem, setStorageWriteListener } from "@/lib/storage-write-hook";
 import { isWiderNetworkOn } from "./network-mode";
 import { setPublicNostr } from "./public-nostr";
+import { BLUR_OUTSIDE_KEY, writeBlurOutside } from "./outside-space-blur";
+import { FIRST_OPT_IN_PREFIX, hasFirstOptIn, markFirstOptIn } from "./first-opt-in";
 
 const KIND_APP_DATA = 30078;
 const D_TAG = "relay-outpost-settings";
@@ -70,6 +72,10 @@ export interface PortableSettings {
   /** "The wider network" switch (lib/network-mode.ts). Absent = this copy was
    *  made by a build without the switch, and says nothing about it. */
   widerNetwork?: boolean;
+  /** "Blur pictures from people outside your space" (lib/outside-space-blur.ts). Absent = unknown. */
+  blurOutsideSpace?: boolean;
+  /** This account has opened the wider network once (lib/first-opt-in.ts); never tighten twice. */
+  widerFirstOptIn?: boolean;
 }
 
 type SettingType = "string" | "boolean" | "number" | "json";
@@ -254,7 +260,7 @@ let isApplyingRemote = false;
 // that assignment as an item and keeps the real method, so sync never fired.
 setStorageWriteListener(localStorage, "nip78-settings", (_op, key, changed) => {
   if (isApplyingRemote) return;
-  if (WATCHED_LS_KEYS.has(key) || key.startsWith("relay-outpost-dm-demoted-") || key.startsWith(WIDER_NETWORK_PREFIX) || key.startsWith(PINNED_EVENTS_PREFIX) || key.startsWith(CUSTOM_HOLIDAYS_PREFIX) || key.startsWith(HIDDEN_HOLIDAYS_PREFIX)) {
+  if (WATCHED_LS_KEYS.has(key) || key.startsWith("relay-outpost-dm-demoted-") || key.startsWith(WIDER_NETWORK_PREFIX) || key === BLUR_OUTSIDE_KEY || key.startsWith(FIRST_OPT_IN_PREFIX) || key.startsWith(PINNED_EVENTS_PREFIX) || key.startsWith(CUSTOM_HOLIDAYS_PREFIX) || key.startsWith(HIDDEN_HOLIDAYS_PREFIX)) {
     // The edit is newer than any synced copy from this moment — not from when
     // the debounced sync gets round to it (3 s, or never if it lands before
     // the first load). Close the app in that window and the next load applied
@@ -454,6 +460,8 @@ function collectLocalSettings(pubkey: string): PortableSettings {
   // The wider-network switch: what this account has, on or off. An unset
   // account (one from before the switch) reads as on, which is true.
   settings.widerNetwork = isWiderNetworkOn(pubkey);
+  try { settings.blurOutsideSpace = localStorage.getItem(BLUR_OUTSIDE_KEY) === "1"; } catch {}
+  settings.widerFirstOptIn = hasFirstOptIn(pubkey);
 
   try {
     settings.publishRelayPreference = localStorage.getItem("nostr_publish_relay_preference") || "";
@@ -528,6 +536,8 @@ function applySettingsToLocal(settings: PortableSettings, pubkey: string): void 
     if (typeof settings.widerNetwork === "boolean") {
       setPublicNostr(pubkey, settings.widerNetwork);
     }
+    if (typeof settings.blurOutsideSpace === "boolean") writeBlurOutside(settings.blurOutsideSpace);
+    if (settings.widerFirstOptIn === true) markFirstOptIn(pubkey);
 
     try {
       if (settings.publishRelayPreference) {

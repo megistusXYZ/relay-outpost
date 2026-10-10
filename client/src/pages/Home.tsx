@@ -70,6 +70,7 @@ import { effectivePow } from "@/lib/nip13-pow";
 import { getOutpostRelays } from "@/lib/outpost-relays";
 import { isWiderNetworkOnForViewer, isWiderNetworkOn, useWiderNetwork } from "@/lib/network-mode";
 import { WiderNetworkDoor } from "@/components/wider-network/WiderNetworkDoor";
+import { hasFirstOptIn } from "@/lib/first-opt-in";
 
 const KIND_LONG_FORM = 30023;
 // Discover safe floor: kinds the feed renders cleanly. The media kinds are
@@ -474,6 +475,7 @@ export default function Home() {
   // discoverEpoch) without churning the withDiscoverRelays identity.
   const presetConfigRef = useRef(getDiscoverPresetConfig(activePreset));
   const followsRef = useRef(follows);
+  const holdForTrustRef = useRef(false);
   useEffect(() => { presetConfigRef.current = getDiscoverPresetConfig(activePreset); }, [activePreset]);
   useEffect(() => { followsRef.current = follows; }, [follows]);
   // "Changes apply immediately": this key re-runs the load + live-sub effects
@@ -484,7 +486,12 @@ export default function Home() {
   // page makes is scoped to the people you follow — no firehose anywhere.
   const widerNetworkOn = useWiderNetwork(pubkey);
   const feedIsDoor = feedBodyFor(feedMode, widerNetworkOn) === "door";
-  const discoverEpoch = `${discoverV2 ? 1 : 0}:${activePreset}:${preferredLangs.join(",")}:${widerNetworkOn ? "net" : "space"}`;
+  // Just opened the wider network and the trust map isn't computed yet
+  // (~15–25 min after signup): the raw relay feeds wait, and only what the
+  // default lens vouches for shows (lib/first-opt-in.ts, owner 2026-10-10).
+  const holdForTrust = widerNetworkOn && wotEnabled && !wotReady && !!pubkey && hasFirstOptIn(pubkey);
+  holdForTrustRef.current = holdForTrust;
+  const discoverEpoch = `${discoverV2 ? 1 : 0}:${activePreset}:${preferredLangs.join(",")}:${widerNetworkOn ? "net" : "space"}:${holdForTrust ? "hold" : "go"}`;
   // Broaden the global For You relay set: FAST base → follows' outbox →
   // community (joined outposts + curated group relays) → curated-discover pool,
   // deduped and capped to the preset's sub cap. Higher-quality-by-default
@@ -957,9 +964,12 @@ export default function Home() {
     // follow, and the global first page (Primal) and the global sample are
     // not asked for at all. With nobody followed yet there is nothing to read.
     const spaceOnly = !isWiderNetworkOnForViewer();
+    // While the trust map is still being computed after the first opt-in,
+    // the firehose and the global first page wait too; follows still read.
+    const holding = holdForTrustRef.current;
     const spaceAuthors = (followsRef.current ?? []).slice(0, 200);
     const scope = spaceOnly ? { authors: spaceAuthors } : {};
-    if (spaceOnly && spaceAuthors.length === 0) {
+    if ((spaceOnly || holding) && spaceAuthors.length === 0) {
       clearTimeout(cacheFallback);
       initialLoadDoneRef.current = true;
       setCutoffTimestamp(now);
@@ -969,7 +979,7 @@ export default function Home() {
     }
 
     async function loadFromPrimal() {
-      if (spaceOnly) return false;
+      if (spaceOnly || holding) return false;
       try {
         const result = await fetchGlobalFeed(PAGE_SIZE * 2, now - 6 * 60 * 60, undefined);
         if (cancelled) return false;
@@ -1005,6 +1015,7 @@ export default function Home() {
     }
 
     function loadFromRelays() {
+      if (holding) return null;
       const noteRelays = withDiscoverRelays(getRelaysForPurpose('notes'));
       // Preset-driven initial window: a wider pool over a wider window is what
       // makes For You feel alive without lowering the quality bar.
@@ -1110,7 +1121,7 @@ export default function Home() {
     // single read path (allTextNotesObs) already unions everything in the store.
     // If it returns nothing, the feed is exactly what it is today.
     const mediaPubkeys: string[] = [];
-    const mediaSub = throttledPoolSubscribe(
+    const mediaSub = holding ? null : throttledPoolSubscribe(
       withDiscoverRelays(getRelaysForPurpose('notes')),
       {
         kinds: [...MEDIA_EVENT_KINDS],
@@ -1139,7 +1150,7 @@ export default function Home() {
           if (!cancelled && mediaPubkeys.length > 0) {
             fetchProfilesCached(Array.from(new Set(mediaPubkeys)));
           }
-          mediaSub.close();
+          mediaSub?.close();
         },
       },
     );
@@ -1196,7 +1207,7 @@ export default function Home() {
       );
       supplementSubs.push(followSub);
     }
-    if (!spaceOnly) {
+    if (!spaceOnly && !holding) {
       const globalSub = throttledPoolSubscribe(
         withDiscoverRelays(getRelaysForPurpose('notes')),
         { kinds: [KIND_TEXT_NOTE], limit: PAGE_SIZE, since: supplementSince },
@@ -1215,7 +1226,7 @@ export default function Home() {
     return () => {
       cancelled = true;
       clearTimeout(cacheFallback);
-      try { mediaSub.close(); } catch {}
+      try { mediaSub?.close(); } catch {}
       for (const sub of supplementSubs) { try { sub.close(); } catch {} }
       if (relaySub) relaySub.close();
     };
@@ -1231,7 +1242,9 @@ export default function Home() {
 
     // Your space only: the live tail is scoped to the people you follow too
     // (and not opened at all with nobody followed yet).
-    const tailSpaceOnly = !isWiderNetworkOnForViewer();
+    // (And while the trust map is still being computed after the first
+    // opt-in, the same: the tail is the firehose.)
+    const tailSpaceOnly = !isWiderNetworkOnForViewer() || holdForTrustRef.current;
     const tailAuthors = (followsRef.current ?? []).slice(0, 200);
     if (tailSpaceOnly && tailAuthors.length === 0) return;
     const liveSub = subscribeToFeedPersistent(
@@ -2604,6 +2617,11 @@ export default function Home() {
   const doLoadMoreBatch = useCallback(() => {
     const ctx = loadMoreCtxRef.current;
     if (!ctx) return;
+    // While the trust map is still being computed after the first opt-in
+    // there is no raw feed to page; while the wider network is off, older
+    // pages are scoped to the people you follow like everything else.
+    if (holdForTrustRef.current) return;
+    const spaceOnlyOlder = !isWiderNetworkOnForViewer();
     const untilTs = ctx.untilTs;
 
     const olderFilter: any = {
@@ -2631,6 +2649,11 @@ export default function Home() {
     const unresolvedReposts: Event[] = [];
     const moreEventIds: string[] = [];
     const morePubkeys: string[] = [];
+    if (spaceOnlyOlder && !olderFilter.authors) {
+      const mine = (ctx.follows ?? []).slice(0, 200);
+      if (mine.length === 0) return;
+      olderFilter.authors = mine;
+    }
     olderFilter.kinds = withDiscoverKinds([KIND_TEXT_NOTE, KIND_REPOST, KIND_POLL]);
     // Media's own REQ for this page too — same reason as the first page.
     const olderMediaSub = throttledPoolSubscribe(
@@ -2641,7 +2664,7 @@ export default function Home() {
         oneose() { olderMediaSub.close(); },
       },
     );
-    const sub = throttledPoolSubscribe(withDiscoverRelays(FAST_RELAYS), olderFilter, {
+    const sub = throttledPoolSubscribe(withDiscoverRelays(feedBaseRelays()), olderFilter, {
       onevent(event) {
         if (event.kind === KIND_REPOST) {
           let parsed = false;
@@ -3266,6 +3289,13 @@ export default function Home() {
         ) : feedIsDoor ? (
           <div className="pt-2" data-testid="home-feed-door">
             <WiderNetworkDoor testId="wider-network-door-home" />
+          </div>
+        ) : holdForTrust && (feedMode === "raw_signal" || feedMode === "deep_scan") ? (
+          <div className="glass-card rounded-lg flex flex-col items-center justify-center py-12 text-center px-4" data-testid="home-feed-trust-hold">
+            <p className="text-sm font-medium mb-1">Getting your safety filter ready</p>
+            <p className="text-xs text-muted-foreground max-w-xs">
+              This takes a few minutes the first time. Until then you see people your network already trusts.
+            </p>
           </div>
         ) : showRawGate && feedMode === "raw_signal" ? (
           <div className="relative min-h-[420px] sm:min-h-[480px] rounded-xl overflow-hidden" data-testid="container-raw-gate">

@@ -89,6 +89,7 @@ import { useToast } from "@/hooks/use-toast";
 import { mutePubkey, isMutedPubkey } from "@/lib/spam-filter";
 import { useWiderNetwork } from "@/lib/network-mode";
 import { inYourSpace } from "@/lib/your-space";
+import { useBlurOutside, outsideSpaceBlurReason } from "@/lib/outside-space-blur";
 import { copyNostrId } from "@/lib/clipboard-bridge";
 import { ConfirmAction } from "@/components/ConfirmAction";
 import { useViewerInteraction } from "@/contexts/InteractionIndexContext";
@@ -1006,7 +1007,13 @@ export function QuoteComposer({
  * someone opts into in Settings.
  */
 export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue = false }: { event: Event; childCount?: number; opPubkey?: string; showParentCue?: boolean }) {
-  const { signer, pubkey: myPubkey, attemptReconnect } = useNostrAuth();
+  const { signer, pubkey: myPubkey, attemptReconnect, follows: viewerFollows } = useNostrAuth();
+  // A reply's pictures from outside your space stay blurred until tapped (lib/outside-space-blur.ts).
+  const blurOutside = useBlurOutside();
+  const { getAuthorTier: tierForBlur } = useGrapeRankScores();
+  const outsideBlurReason = useMemo(() => outsideSpaceBlurReason({
+    enabled: blurOutside, viewer: myPubkey, author: event.pubkey, follows: new Set(viewerFollows || []), tierOf: tierForBlur, event,
+  }), [blurOutside, myPubkey, event, viewerFollows, tierForBlur]);
   const { toast } = useToast();
   const commentTrustVisible = useCommentTrustVisible();
   // Clean (bubbles off) → flat X-style comment; Bubbles → today's glass card.
@@ -1516,7 +1523,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
           </ClampedText>
         )}
         <TranslateLine tr={tr} eventId={event.id} />
-        <MediaRenderer event={event} compact />
+        <MediaRenderer event={event} compact blurReason={outsideBlurReason} />
       </div>
 
       <TopZapperAvatars eventId={event.id} hasZaps={zapCount > 0 || zapAmount > 0} />
