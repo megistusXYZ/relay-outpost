@@ -1047,7 +1047,10 @@ export function OrbitMenu() {
   const dockClass =
     "flex w-full max-w-[26rem] items-center justify-between gap-0.5 rounded-2xl border p-1.5 border-primary/25 bg-white/70 dark:border-brand/20 dark:bg-white/[0.05] sm:w-auto sm:max-w-none sm:justify-center sm:gap-1";
   const dockItemClass =
-    "flex min-h-[48px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-foreground/75 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring active:bg-primary/10 dark:text-white/70 dark:active:bg-white/[0.12] sm:h-11 sm:w-11 sm:min-h-0 sm:flex-none sm:basis-auto sm:p-0";
+    "flex min-h-[48px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-foreground/75 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring active:bg-primary/10 dark:text-white/70 dark:active:bg-white/[0.12] sm:min-h-0 sm:flex-none sm:basis-auto sm:px-2 sm:py-1.5";
+  // The name under each icon (owner, 2026-10-10, from the first-use review):
+  // a row of look-alike round icons is where the bug got clicked for the moon.
+  const dockLabelClass = "text-[10px] leading-none font-medium uppercase tracking-[0.08em] text-foreground/60 dark:text-white/55";
   // Signed-in adds equal flexing so 7–8 items share the mobile row evenly;
   // signed-out items stay content-sized (only 3, the dock hugs them).
   const dockItemFlexClass = "flex-1 basis-0";
@@ -1879,6 +1882,7 @@ export function OrbitMenu() {
                         data-testid="orbit-chip-wallet"
                       >
                         <Wallet className="h-5 w-5" aria-hidden="true" />
+                      <span className={dockLabelClass}>Wallet</span>
                       </button>
                     )}
                     <button
@@ -1890,6 +1894,7 @@ export function OrbitMenu() {
                       data-testid="orbit-chip-settings"
                     >
                       <Settings className="h-5 w-5" aria-hidden="true" />
+                      <span className={dockLabelClass}>Settings</span>
                     </button>
                     <button
                       type="button"
@@ -1900,6 +1905,7 @@ export function OrbitMenu() {
                       data-testid="orbit-chip-tools"
                     >
                       <Wrench className="h-5 w-5" aria-hidden="true" />
+                      <span className={dockLabelClass}>Tools</span>
                     </button>
                     <button
                       type="button"
@@ -1910,6 +1916,7 @@ export function OrbitMenu() {
                       data-testid="orbit-chip-invite"
                     >
                       <UserPlus className="h-5 w-5" aria-hidden="true" />
+                      <span className={dockLabelClass}>Invite</span>
                     </button>
                     <button
                       type="button"
@@ -1920,6 +1927,7 @@ export function OrbitMenu() {
                       data-testid="orbit-chip-help"
                     >
                       <HelpCircle className="h-5 w-5" aria-hidden="true" />
+                      <span className={dockLabelClass}>Help</span>
                     </button>
                     <button
                       type="button"
@@ -1930,26 +1938,21 @@ export function OrbitMenu() {
                       data-testid="orbit-chip-whats-new"
                     >
                       <WhatsNewIcon className="h-5 w-5" />
+                      <span className={dockLabelClass}>Updates</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={toggleThemeAnimated}
-                      className={`${dockItemClass} ${dockItemFlexClass}`}
-                      aria-label={theme === "dark" ? "Switch to black mode" : theme === "black" ? "Switch to light mode" : "Switch to dark mode"}
-                      title={theme === "dark" ? "Switch to black mode" : theme === "black" ? "Switch to light mode" : "Switch to dark mode"}
-                      data-testid="orbit-chip-theme"
-                    >
-                      {theme === "dark" ? <Eclipse className="h-5 w-5" aria-hidden="true" /> : theme === "black" ? <Sun className="h-5 w-5" aria-hidden="true" /> : <Moon className="h-5 w-5" aria-hidden="true" />}
-                    </button>
+                    {/* No theme toggle here: the theme has one home, Settings ›
+                        Theme (the Account page's row opens it). A bare moon beside
+                        the bug was a slip waiting to happen. Report sits apart. */}
                     <button
                       type="button"
                       onClick={reportProblem}
-                      className={`${dockItemClass} ${dockItemFlexClass}`}
+                      className={`${dockItemClass} ${dockItemFlexClass} ml-2 sm:ml-3`}
                       aria-label="Report a problem"
                       title="Report a problem"
                       data-testid="orbit-chip-report-problem"
                     >
                       <Bug className="h-5 w-5" aria-hidden="true" />
+                      <span className={dockLabelClass}>Report</span>
                     </button>
                   </div>
                 )
@@ -1970,32 +1973,36 @@ export function OrbitMenu() {
                     <button
                       type="button"
                       onClick={() => go("/help")}
-                      className={`${dockItemClass} px-3 sm:px-0`}
+                      className={`${dockItemClass} px-3`}
                       aria-label="Help"
                       title="Help"
                       data-testid="orbit-chip-help"
                     >
                       <HelpCircle className="h-5 w-5" aria-hidden="true" />
+                      <span className={dockLabelClass}>Help</span>
                     </button>
+                    {/* Signed out, Settings is walled, so the theme keeps a door here — named. */}
                     <button
                       type="button"
                       onClick={toggleThemeAnimated}
-                      className={`${dockItemClass} px-3 sm:px-0`}
-                      aria-label={theme === "dark" ? "Switch to black mode" : theme === "black" ? "Switch to light mode" : "Switch to dark mode"}
+                      className={`${dockItemClass} px-3`}
+                      aria-label={theme === "dark" ? "Theme: dark. Switch to black" : theme === "black" ? "Theme: black. Switch to light" : "Theme: light. Switch to dark"}
                       title={theme === "dark" ? "Switch to black mode" : theme === "black" ? "Switch to light mode" : "Switch to dark mode"}
                       data-testid="orbit-chip-theme"
                     >
                       {theme === "dark" ? <Eclipse className="h-5 w-5" aria-hidden="true" /> : theme === "black" ? <Sun className="h-5 w-5" aria-hidden="true" /> : <Moon className="h-5 w-5" aria-hidden="true" />}
+                      <span className={dockLabelClass}>Theme</span>
                     </button>
                     <button
                       type="button"
                       onClick={reportProblem}
-                      className={`${dockItemClass} px-3 sm:px-0`}
+                      className={`${dockItemClass} px-3 ml-2`}
                       aria-label="Report a problem"
                       title="Report a problem"
                       data-testid="orbit-chip-report-problem"
                     >
                       <Bug className="h-5 w-5" aria-hidden="true" />
+                      <span className={dockLabelClass}>Report</span>
                     </button>
                   </div>
                 </div>

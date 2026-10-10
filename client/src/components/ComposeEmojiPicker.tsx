@@ -164,6 +164,8 @@ export function ComposeEmojiPicker({ onInsert, onGifSelect, disabled, hideSticke
           disabled={disabled}
           onClick={(e) => e.stopPropagation()}
           data-testid="button-compose-emoji-picker"
+          title="Add an emoji or GIF"
+          aria-label="Add an emoji or GIF"
         >
           <SmilePlus className="w-[18px] h-[18px]" />
         </button>

@@ -498,6 +498,7 @@ export function DesktopStoriesRail() {
         type="button"
         onClick={openOrbitMenu}
         aria-label="Open menu"
+        title="Menu"
         className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-brand/30 bg-[hsl(235,30%,15%)] transition-colors hover:border-brand/60 dark:bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         data-testid="rail-logo"
       >
