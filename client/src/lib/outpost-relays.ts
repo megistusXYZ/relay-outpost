@@ -453,7 +453,7 @@ export function getPresetLabel(pref: PublishRelayPreference): string {
  * be the thing that ends this read. The old 6s fired before the relays could
  * finish, and resolved `[]` — indistinguishable from a genuinely empty list.
  */
-async function fetchCurrentRelayList(
+export async function fetchCurrentRelayList(
   pubkey: string,
 ): Promise<{ tags: string[][]; answered: boolean }> {
   const { events, answered } = await queryAnswered(

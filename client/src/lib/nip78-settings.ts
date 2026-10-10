@@ -5,6 +5,8 @@ import { signWithTimeout } from "@/lib/signer-timeout";
 import { getOutpostRelays, getActiveDefaultRelays, type OutpostRelay } from "@/lib/outpost-relays";
 import { armPrivateModeIfSet, privateModeSettingsSettled } from "@/lib/private-mode";
 import { nativeSetItem, setStorageWriteListener } from "@/lib/storage-write-hook";
+import { isWiderNetworkOn } from "./network-mode";
+import { setPublicNostr } from "./public-nostr";
 
 const KIND_APP_DATA = 30078;
 const D_TAG = "relay-outpost-settings";
@@ -65,6 +67,9 @@ export interface PortableSettings {
   /** News alert mute lists — capped small (≤50 each) client-side. */
   newsMutedSources?: string[];
   newsMutedKeywords?: string[];
+  /** "The wider network" switch (lib/network-mode.ts). Absent = this copy was
+   *  made by a build without the switch, and says nothing about it. */
+  widerNetwork?: boolean;
 }
 
 type SettingType = "string" | "boolean" | "number" | "json";
@@ -117,6 +122,7 @@ const LOCAL_SETTINGS_KEYS: SettingsMapping[] = [
 ];
 
 const WATCHED_LS_KEYS = new Set(LOCAL_SETTINGS_KEYS.map(m => m.lsKey));
+const WIDER_NETWORK_PREFIX = "ro_public_nostr:";
 WATCHED_LS_KEYS.add("nostr_outpost_relays");
 WATCHED_LS_KEYS.add("nostr_publish_relay_preference");
 
@@ -248,7 +254,7 @@ let isApplyingRemote = false;
 // that assignment as an item and keeps the real method, so sync never fired.
 setStorageWriteListener(localStorage, "nip78-settings", (_op, key, changed) => {
   if (isApplyingRemote) return;
-  if (WATCHED_LS_KEYS.has(key) || key.startsWith("relay-outpost-dm-demoted-") || key.startsWith(PINNED_EVENTS_PREFIX) || key.startsWith(CUSTOM_HOLIDAYS_PREFIX) || key.startsWith(HIDDEN_HOLIDAYS_PREFIX)) {
+  if (WATCHED_LS_KEYS.has(key) || key.startsWith("relay-outpost-dm-demoted-") || key.startsWith(WIDER_NETWORK_PREFIX) || key.startsWith(PINNED_EVENTS_PREFIX) || key.startsWith(CUSTOM_HOLIDAYS_PREFIX) || key.startsWith(HIDDEN_HOLIDAYS_PREFIX)) {
     // The edit is newer than any synced copy from this moment — not from when
     // the debounced sync gets round to it (3 s, or never if it lands before
     // the first load). Close the app in that window and the next load applied
@@ -387,6 +393,11 @@ function hasAnyPortableKeys(pubkey?: string): boolean {
     if (getOutpostRelays().length > 0) return true;
   } catch {}
   if (pubkey) {
+    // A brand-new account's one stored setting is its wider-network OFF; that
+    // alone is worth carrying to its other devices.
+    try {
+      if (localStorage.getItem(`${WIDER_NETWORK_PREFIX}${pubkey}`) !== null) return true;
+    } catch {}
     try {
       const pinnedKey = `${PINNED_EVENTS_PREFIX}:${pubkey}`;
       const pinned = localStorage.getItem(pinnedKey);
@@ -439,6 +450,10 @@ function collectLocalSettings(pubkey: string): PortableSettings {
   } catch {
     settings.dmDemotedPubkeys = [];
   }
+
+  // The wider-network switch: what this account has, on or off. An unset
+  // account (one from before the switch) reads as on, which is true.
+  settings.widerNetwork = isWiderNetworkOn(pubkey);
 
   try {
     settings.publishRelayPreference = localStorage.getItem("nostr_publish_relay_preference") || "";
@@ -506,6 +521,13 @@ function applySettingsToLocal(settings: PortableSettings, pubkey: string): void 
         localStorage.removeItem(demotedKey);
       }
     } catch {}
+
+    // Only a boolean is applied, and absence NEVER clears: a copy from an
+    // older build doesn't know the switch, and a new account's OFF must
+    // survive it (lib/network-mode.ts — absence means on for existing users).
+    if (typeof settings.widerNetwork === "boolean") {
+      setPublicNostr(pubkey, settings.widerNetwork);
+    }
 
     try {
       if (settings.publishRelayPreference) {

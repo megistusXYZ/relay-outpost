@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { setPeopleSearchViewer } from "@/lib/people-search";
 import { setOutboxViewer } from "@/lib/outbox";
+import { setNetworkModeViewer } from "@/lib/network-mode";
 import type { ReactNode } from "react";
 import { ExtensionSigner, NostrConnectSigner, PrivateKeySigner, type ISigner } from "applesauce-signers";
 import { loadSettingsFromRelay, initSettingsSync, scheduleSyncToRelay, teardownSettingsSync, handleAccountSwitch, hasKnownSettings } from "@/lib/nip78-settings";
@@ -293,6 +294,13 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
     // Your own relay list is used as written; others' are cleaned of junk.
     setOutboxViewer(pubkey ?? null);
   }, [pubkey]);
+  // Which relays feeds read from follows this account's wider-network switch.
+  // Set during render, not in an effect: a child's effects (Home's first
+  // feed subscriptions) run BEFORE this provider's, and read the viewer —
+  // an effect here left them reading "signed out → open" on first paint
+  // (the signup rig caught a firehose read fanning out to the whole
+  // discovery pool). Idempotent module write; nothing re-renders from it.
+  setNetworkModeViewer(pubkey ?? null);
 
   useEffect(() => {
     if (!pubkey) {
