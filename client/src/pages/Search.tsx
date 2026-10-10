@@ -1,3 +1,5 @@
+import { useWiderNetwork } from "@/lib/network-mode";
+import { WiderNetworkDoor } from "@/components/wider-network/WiderNetworkDoor";
 import React, { useEffect, useState, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import { SEARCH_RELAYS } from "@/lib/relay-constants";
 import { useLocation, useSearch, Link } from "wouter";
@@ -287,6 +289,7 @@ function useSearchUrl() {
 export default function Search() {
   const { searchStr, params, updateUrl } = useSearchUrl();
   const { pubkey: viewerPubkey } = useNostrAuth();
+  const searchWiderNetworkOn = useWiderNetwork(viewerPubkey);
   useDocumentTitle("Search");
   const urlQuery = params.get("q") || "";
   const { tab: initialTab, type: mediaType } = resolveTabAndType(params);
@@ -352,12 +355,16 @@ export default function Search() {
         />
         )}
 
+        {/* Finding a person is your space (a friend to follow); every other
+            kind of result is the wider network and stands behind its door
+            while that is off (owner, 2026-10-10; lib/network-mode.ts). */}
         {activeTab === "people" && <PeopleTab urlQuery={urlQuery} updateUrl={updateUrl} />}
-        {activeTab === "posts" && <PostsTab urlQuery={urlQuery} updateUrl={updateUrl} />}
-        {activeTab === "hashtags" && <HashtagsTab urlQuery={urlQuery} updateUrl={updateUrl} />}
-        {activeTab === "media" && <MediaTab mediaType={mediaType} urlQuery={urlQuery} updateUrl={updateUrl} />}
-        {activeTab === "live" && <LiveTab urlQuery={urlQuery} updateUrl={updateUrl} />}
-        {activeTab === "events" && <EventsTab urlQuery={urlQuery} updateUrl={updateUrl} />}
+        {activeTab !== "people" && !searchWiderNetworkOn && <div className="pt-2"><WiderNetworkDoor testId="wider-network-door-search" /></div>}
+        {searchWiderNetworkOn && activeTab === "posts" && <PostsTab urlQuery={urlQuery} updateUrl={updateUrl} />}
+        {searchWiderNetworkOn && activeTab === "hashtags" && <HashtagsTab urlQuery={urlQuery} updateUrl={updateUrl} />}
+        {searchWiderNetworkOn && activeTab === "media" && <MediaTab mediaType={mediaType} urlQuery={urlQuery} updateUrl={updateUrl} />}
+        {searchWiderNetworkOn && activeTab === "live" && <LiveTab urlQuery={urlQuery} updateUrl={updateUrl} />}
+        {searchWiderNetworkOn && activeTab === "events" && <EventsTab urlQuery={urlQuery} updateUrl={updateUrl} />}
         {activeTab === "vouches" && <VouchesTab urlQuery={urlQuery} updateUrl={updateUrl} />}
       </div>
     </div>
