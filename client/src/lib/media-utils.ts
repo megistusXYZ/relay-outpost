@@ -1,3 +1,4 @@
+import { shoshoHandle } from './shosho';
 // Platforms we play inline via an <iframe> embed (vs. native <video> or a link card).
 export type EmbedType = 'youtube' | 'vimeo' | 'rumble' | 'twitch' | 'streamable' | 'loom' | 'dailymotion';
 export const EMBED_TYPES: readonly EmbedType[] = ['youtube', 'vimeo', 'rumble', 'twitch', 'streamable', 'loom', 'dailymotion'];
@@ -5,7 +6,7 @@ export function isEmbedType(t: string): t is EmbedType {
   return (EMBED_TYPES as readonly string[]).includes(t);
 }
 
-export type MediaType = 'image' | 'video' | 'audio' | EmbedType | 'nostr' | 'zapstream' | 'musiclink' | 'link';
+export type MediaType = 'image' | 'video' | 'audio' | EmbedType | 'nostr' | 'zapstream' | 'shosho' | 'musiclink' | 'link';
 
 export type MusicService = 'spotify' | 'applemusic' | 'soundcloud' | 'tidal' | 'youtubemusic' | 'bandcamp' | 'wavlake';
 
@@ -140,6 +141,9 @@ export function classifyUrl(url: string): MediaType {
       const naddr = extractZapStreamNaddr(url);
       if (naddr) return 'zapstream';
     }
+
+    // A Shosho page (shosho.live/<handle>): the thread decides what to show from who's live.
+    if (shoshoHandle(url)) return 'shosho';
 
     return 'link';
   } catch {
