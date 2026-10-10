@@ -27,4 +27,11 @@ describe("parseInviteParams", () => {
   it("returns nulls when there is no invite context", () => {
     expect(parseInviteParams("", "/feed")).toEqual({ inviterHex: null, relayUrl: null });
   });
+
+  // An encrypted community lives at /outposts/c/<id>: "c" is a route segment,
+  // not a relay. It used to be captured as the relay to join (owner audit,
+  // 2026-10-10) and reached the say-hi join as "c".
+  it("does not mistake an encrypted community's path for a relay", () => {
+    expect(parseInviteParams(`?inviter=${NPUB}`, "/outposts/c/abc123")).toEqual({ inviterHex: HEX, relayUrl: null });
+  });
 });

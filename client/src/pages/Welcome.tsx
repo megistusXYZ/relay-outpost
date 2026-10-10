@@ -4,17 +4,23 @@
  * used to be an empty inbox: someone with no contacts saw "No conversations
  * yet" and nothing that said what the app is for or where to begin.
  *
- * It says what Relay Outpost is in two sentences, then offers three starts that
- * work with zero contacts. Seen once per account on this device (lib/welcome.ts);
- * the invite "say hi" card still appears over it for invited arrivals.
+ * Your space first (owner, 2026-10-10): the first act is to MAKE something
+ * — name a community, invite a friend. The wider network (public
+ * communities, people to follow) stands behind its door until the person
+ * opens it; with the wider network on, those two starts are offered too.
+ * Seen once per account on this device (lib/welcome.ts); the invite "say hi"
+ * card still appears over it for invited arrivals.
  */
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
-import { ChevronRight, Compass, MessagesSquare, UserPlus, Users } from "lucide-react";
+import { ChevronRight, Compass, MessagesSquare, UserPlus, Users, Sparkles } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { markWelcomed } from "@/lib/welcome";
 import { CHATS_PATH } from "@/lib/ia-landing";
+import { useWiderNetwork } from "@/lib/network-mode";
+import { WiderNetworkDoor } from "@/components/wider-network/WiderNetworkDoor";
+import { CreateOutpostDialog } from "@/components/concord/CreateOutpostDialog";
 
 function Start({ icon, title, desc, onClick, testId }: {
   icon: ReactNode; title: string; desc: string; onClick: () => void; testId: string;
@@ -31,7 +37,7 @@ function Start({ icon, title, desc, onClick, testId }: {
         <span className="block text-sm font-medium">{title}</span>
         <span className="block text-xs text-muted-foreground">{desc}</span>
       </span>
-      <ChevronRight className="w-4 h-4 text-muted-foreground/30 shrink-0" />
+      <ChevronRight className="w-4 h-4 text-muted-foreground/60 shrink-0" />
     </button>
   );
 }
@@ -39,6 +45,8 @@ function Start({ icon, title, desc, onClick, testId }: {
 export default function Welcome() {
   const [, navigate] = useLocation();
   const { pubkey, profile } = useNostrAuth();
+  const widerNetworkOn = useWiderNetwork(pubkey);
+  const [naming, setNaming] = useState(false);
   useDocumentTitle("Welcome");
 
   // Seen: the next sign-in lands on Chats as usual.
@@ -53,19 +61,31 @@ export default function Welcome() {
         {name ? `Welcome, ${name}.` : "Welcome."}
       </h1>
       <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground max-w-[60ch]">
-        Relay Outpost keeps your chats, group chats and communities in one place. Private messages and
+        This is your space: your communities and the people you choose. Private messages and
         group chats are end-to-end encrypted, and your account is yours: no email, and no company can lock you out.
       </p>
 
-      <p className="mt-8 mb-1.5 px-1 text-[11px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Where to start</p>
+      <p className="mt-8 mb-1.5 px-1 text-[11px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Make it yours</p>
       <div className="rounded-xl border border-border/40 bg-card/40 overflow-hidden divide-y divide-border/25">
+        <Start icon={<Sparkles className="w-5 h-5" />} title="Name your community"
+          desc="A private place for your people. You pick who's in it." onClick={() => setNaming(true)} testId="welcome-create-community" />
         <Start icon={<UserPlus className="w-5 h-5" />} title="Invite a friend"
           desc="Chats are better with people you know. Send them a link." onClick={go("/account?invite=1")} testId="welcome-invite" />
-        <Start icon={<Compass className="w-5 h-5" />} title="Join a community"
-          desc="Public rooms around shared interests. Drop in and say hello." onClick={go("/outposts")} testId="welcome-communities" />
-        <Start icon={<Users className="w-5 h-5" />} title="Follow a few people"
-          desc="Fill your feed with people worth hearing from." onClick={go("/discover")} testId="welcome-follow" />
+        {widerNetworkOn && (
+          <>
+            <Start icon={<Compass className="w-5 h-5" />} title="Join a community"
+              desc="Public rooms around shared interests. Drop in and say hello." onClick={go("/outposts")} testId="welcome-communities" />
+            <Start icon={<Users className="w-5 h-5" />} title="Follow a few people"
+              desc="Fill your feed with people worth hearing from." onClick={go("/discover")} testId="welcome-follow" />
+          </>
+        )}
       </div>
+
+      {!widerNetworkOn && (
+        <div className="mt-4">
+          <WiderNetworkDoor compact testId="wider-network-door-welcome" />
+        </div>
+      )}
 
       <button
         type="button"
@@ -75,6 +95,9 @@ export default function Welcome() {
       >
         <MessagesSquare className="w-4 h-4" /> Take me to my chats
       </button>
+
+      {/* Lands in the new community with its invite open (CreateOutpostDialog's own default). */}
+      <CreateOutpostDialog open={naming} onOpenChange={setNaming} />
     </div>
   );
 }

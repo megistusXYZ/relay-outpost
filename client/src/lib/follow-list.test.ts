@@ -167,3 +167,24 @@ describe("loadFollowBase", () => {
     expect(res.blocked).toBe(true);
   });
 });
+
+// "Your space" (owner, 2026-10-10): a brand-new account now starts with NO
+// follows at all (no curated seed), so its first follow is the first kind-3
+// it ever publishes. That is the one case where "no base anywhere" is
+// genuinely new — not a wipe — and must not be blocked.
+describe("a genuinely new account's first follow", () => {
+  it("no base, no cache, nothing known, zero in memory → not blocked", async () => {
+    vi.mocked(pool.querySync).mockResolvedValue([]);
+    vi.mocked(eventStore.getReplaceable).mockReturnValue(undefined);
+    const r = await loadFollowBase(PK, 0);
+    expect(r).toEqual({ base: null, blocked: false });
+  });
+  it("…but an account the device has seen follows for is still blocked", async () => {
+    cacheFollowEvent(mkFollowEvent(["b".repeat(64)], 100));
+    localStorage.clear(); // the cache is gone, the knowledge of it isn't
+    vi.mocked(pool.querySync).mockResolvedValue([]);
+    vi.mocked(eventStore.getReplaceable).mockReturnValue(undefined);
+    const r = await loadFollowBase(PK, 1);
+    expect(r.blocked).toBe(true);
+  });
+});

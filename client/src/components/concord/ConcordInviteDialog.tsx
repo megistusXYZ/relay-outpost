@@ -8,7 +8,7 @@
  */
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Link2, Copy, Check, Trash2, Loader2, QrCode, Send, X, RotateCw, Globe, Lock, ShieldCheck } from "lucide-react";
+import { Link2, Copy, Check, Trash2, Loader2, QrCode, Send, X, RotateCw, Globe, Lock, ShieldCheck, Share2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -317,6 +317,16 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
                 <QRCodeSVG value={lastLink} size={196} marginSize={2} bgColor="#ffffff" fgColor="#000000" />
               </div>
               <p className="text-[11px] text-center text-muted-foreground/60">Scan to join, or copy the link below</p>
+              {typeof navigator !== "undefined" && typeof (navigator as Navigator & { share?: unknown }).share === "function" && (
+                <Button
+                  variant="outline"
+                  className="w-full h-11 md:h-9"
+                  onClick={() => { void navigator.share({ title: "Join my community on Relay Outpost", url: lastLink }).catch(() => {}); }}
+                  data-testid="button-share-invite-link"
+                >
+                  <Share2 className="w-4 h-4 mr-1.5" /> Share link
+                </Button>
+              )}
               <button
                 onClick={() => { navigator.clipboard?.writeText(lastLink); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
                 className="w-full flex items-center gap-2 min-h-11 md:min-h-9 px-3 py-2 rounded-lg bg-muted/20 border border-border/30 text-left min-w-0"
