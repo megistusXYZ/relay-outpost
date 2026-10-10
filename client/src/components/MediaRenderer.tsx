@@ -1710,6 +1710,10 @@ export function QuotedVideo({ event, url }: { event: Event; url: string }) {
 }
 
 export interface MediaRendererProps {
+  /** A reason to blur this media until tapped beyond its own content warning —
+   *  "From outside your space" (lib/outside-space-blur.ts). The caller knows
+   *  the viewer; this renderer stays free of the auth and trust contexts. */
+  blurReason?: string | null;
   event: Event;
   compact?: boolean;
   priority?: boolean;
@@ -1758,7 +1762,7 @@ function MoreLinks({ urls }: { urls: string[] }) {
   );
 }
 
-export function MediaRenderer({ event, compact = false, priority = false }: MediaRendererProps) {
+export function MediaRenderer({ event, compact = false, priority = false, blurReason = null }: MediaRendererProps) {
   const profileEvent = use$(eventStore.replaceable(0, event.pubkey));
   const videoAuthorInfo = useMemo(() => {
     const npub = formatNpub(event.pubkey);
@@ -1775,7 +1779,7 @@ export function MediaRenderer({ event, compact = false, priority = false }: Medi
       return { displayName: shortenNpub(npub), postUrl };
     }
   }, [profileEvent, event.pubkey, event.id]);
-  const contentWarning = useMemo(() => getContentWarning(event), [event]);
+  const contentWarning = useMemo(() => getContentWarning(event) ?? blurReason ?? null, [event, blurReason]);
 
   const liveEventData = useMemo(() => {
     if (event.kind !== KIND_LIVE_EVENT) return null;

@@ -16,6 +16,7 @@ import { generateLocalAccount, encryptSecretKeyAsync, saveLocalAccountStrict, lo
 import { markAccountCreated, markBackedUp } from "@/lib/key-backup";
 import { DEFAULT_RELAYS } from "@/lib/relay-constants";
 import { floorRelayList, floorDmRelayList } from "@/lib/signup-relays";
+import { writeBlurOutside } from "@/lib/outside-space-blur";
 import { getPreferredLanguages } from "@/lib/language";
 import { classifyStorageEnvironment, classifyStorageEnvironmentAsync, describeStorageOutcome, type StorageEnvironment } from "@/lib/key-storage-environment";
 import { generatePassphraseSuggestion } from "@/lib/passphrase-suggest";
@@ -859,6 +860,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
         // (lib/signup-relays.ts). The old ten-relay list carried a test relay.
         const recommendedRelays = floorRelayList();
         markNewAccountPublicNostrOff(account.pubkey);
+        writeBlurOutside(true); // pictures from outside your space stay blurred until tapped
         const relayListEvent = {
           kind: 10002,
           created_at: Math.floor(Date.now() / 1000),

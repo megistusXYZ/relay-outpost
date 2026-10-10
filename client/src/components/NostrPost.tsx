@@ -184,6 +184,7 @@ function ReplyComposer(p: ComponentProps<typeof ReplyComposerLazy>) { return <Su
 function QuoteComposer(p: ComponentProps<typeof QuoteComposerLazy>) { return <Suspense fallback={null}><QuoteComposerLazy {...p} /></Suspense>; }
 import { getAdminOutposts } from "@/lib/featured-append";
 import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
+import { useBlurOutside, outsideSpaceBlurReason } from "@/lib/outside-space-blur";
 
 export { VerifiedBadgeIcon, TrustTierDot, AuthorHoverCard, BtcZapIcon } from "./nostr-post/author-hover";
 export { ZapReceiptsPopover, TopZapperAvatars, ReactionDetailsPopover, formatCount } from "./nostr-post/zap-reactions";
@@ -2148,7 +2149,14 @@ export const ParentUnresolvedContext = createContext<((eventId: string) => void)
 function PostBody({ event, compact = false, onToggleThread, threadExpanded, onModeratorRemove, onModeratorBanAuthor, priority = false, focused = false }: PostBodyProps) {
   usePetnamesVersion(); // repaint author names/avatars when a petname changes
   const { toast } = useToast();
-  const { pubkey, signer, attemptReconnect } = useNostrAuth();
+  const { pubkey, signer, attemptReconnect, follows: viewerFollows } = useNostrAuth();
+  // Pictures from people outside your space stay blurred until tapped
+  // (lib/outside-space-blur.ts): on for new accounts, off for everyone else.
+  const blurOutside = useBlurOutside();
+  const { getAuthorTier: tierForBlur } = useGrapeRankScores();
+  const outsideBlurReason = useMemo(() => outsideSpaceBlurReason({
+    enabled: blurOutside, viewer: pubkey, author: event.pubkey, follows: new Set(viewerFollows || []), tierOf: tierForBlur, event,
+  }), [blurOutside, pubkey, event, viewerFollows, tierForBlur]);
   const [, navigate] = useLocation();
   const { isBookmarked: checkBookmarked, isPrivateBookmark, toggleBookmark, addBookmark, removeBookmark, setBookmarkPrivacy } = useNostrBookmarks();
   const { isUserLive } = useLiveStatus();
@@ -3173,7 +3181,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
             // in a box", which is the language full-bleed exists to leave.
             style={fullBleed ? ({ "--media-radius": "0px" } as React.CSSProperties) : undefined}
           >
-            <MediaRenderer event={event} compact={compact} priority={priority} />
+            <MediaRenderer event={event} compact={compact} priority={priority} blurReason={outsideBlurReason} />
           </div>
 
           {noteRefs.length > 0 && (

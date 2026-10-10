@@ -64,6 +64,7 @@ import { getEngagementWeights, saveEngagementWeights, DEFAULT_ENGAGEMENT_WEIGHTS
 import { useNewsAlertPrefs, NEWS_MUTE_CAP } from "@/lib/news-alert-settings";
 import { useWiderNetwork } from "@/lib/network-mode";
 import { WiderNetworkRow } from "@/components/wider-network/WiderNetworkDoor";
+import { readBlurOutside, writeBlurOutside } from "@/lib/outside-space-blur";
 
 /* ---------------------------------------------------------------------------
  * Row primitives — every setting is ONE slim, uniform row:
@@ -1643,6 +1644,7 @@ function ContentSection() {
     } catch {}
     return "always";
   });
+  const [blurOutside, setBlurOutside] = useState<boolean>(() => readBlurOutside());
   const [sensitiveContent, setSensitiveContent] = useState<"hide" | "show">(() => {
     try {
       const saved = localStorage.getItem("sensitiveContent");
@@ -1721,6 +1723,9 @@ function ContentSection() {
       </Row>
       <Row icon={ShieldAlert} label="Blur sensitive content" sub="Flagged posts and explicit rooms stay hidden until you choose to see them">
         <Switch checked={sensitiveContent === "hide"} onCheckedChange={handleSensitiveChange} data-testid="switch-sensitive-blur" />
+      </Row>
+      <Row icon={ImageIcon} label="Blur pictures from people outside your space" sub="People you don't follow and your network doesn't vouch for — one tap shows them">
+        <Switch checked={blurOutside} onCheckedChange={(v) => { writeBlurOutside(v); setBlurOutside(v); }} data-testid="switch-blur-outside-space" />
       </Row>
       <Dialog open={ageScreenOpen} onOpenChange={(open) => { if (!open) setAgeScreenOpen(false); }}>
         <DialogContent className="max-w-sm" data-testid="dialog-age-screen">

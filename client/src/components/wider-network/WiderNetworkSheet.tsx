@@ -19,6 +19,7 @@ import { useWiderNetwork, setWiderNetwork } from "@/lib/network-mode";
 import { flipWiderNetwork } from "@/lib/wider-network-switch";
 import { publishRelayListForModeLive } from "@/lib/wider-network-relays";
 import { FLOOR_RELAYS } from "@/lib/signup-relays";
+import { applyFirstOptIn } from "@/lib/first-opt-in";
 
 import { WIDER_NETWORK_OPEN_EVENT as OPEN_EVENT, openWiderNetworkSheet } from "./open-sheet";
 export { openWiderNetworkSheet };
@@ -57,6 +58,9 @@ function WiderNetworkSheetBody() {
       });
       if (!outcome.ok) {
         toast({ title: "Couldn't reach your relays", description: "Nothing changed. Check your connection and try again." });
+      } else if (next && applyFirstOptIn(pubkey)) {
+        // The first time only (lib/first-opt-in.ts): they chose the network, not the worst of it.
+        toast({ title: "Careful, to start", description: "We set Trust & safety to Careful and keep sensitive posts hidden. Loosen it in Settings › Safety." });
       }
     } finally {
       setBusy(false);
