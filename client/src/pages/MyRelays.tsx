@@ -12,9 +12,13 @@ import { useLocation } from "wouter";
 import { RelaysWelcome } from "@/components/relays/RelaysWelcome";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { getLastUsedRelay, pickHomeRelay, useOperatedRelays } from "@/lib/operated-relays";
+import { useNostrAuth } from "@/contexts/NostrAuthContext";
+import { useWiderNetwork } from "@/lib/network-mode";
 
 export default function MyRelays() {
   useDocumentTitle("Relays");
+  const { pubkey } = useNostrAuth();
+  const widerNetworkOn = useWiderNetwork(pubkey);
   const operated = useOperatedRelays();
   const [, navigate] = useLocation();
   const home = pickHomeRelay(operated, getLastUsedRelay());
@@ -22,5 +26,5 @@ export default function MyRelays() {
     if (home) navigate(`/relay-ops-center/${encodeURIComponent(home)}`, { replace: true });
   }, [home, navigate]);
   if (home) return null;
-  return <RelaysWelcome />;
+  return <RelaysWelcome widerNetwork={pubkey ? { on: widerNetworkOn } : undefined} />;
 }

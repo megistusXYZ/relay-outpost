@@ -167,3 +167,15 @@ export function decodePubkey(input: string): string | null {
   return null;
 }
 
+
+/**
+ * A feed, or the door to the wider network (owner, 2026-10-10;
+ * lib/network-mode.ts). With the wider network off, For you and Trending are
+ * the door — one card that opens the switch, nothing read for them — while
+ * Following and a person's own feeds are the account's space and stay feeds.
+ * With the wider network on, every lane is a feed, exactly as before.
+ */
+export function feedBodyFor(feedMode: FeedMode, widerNetworkOn: boolean): "feed" | "door" {
+  if (widerNetworkOn) return "feed";
+  return feedMode === "raw_signal" || feedMode === "deep_scan" ? "door" : "feed";
+}
