@@ -15,7 +15,7 @@ import { WtfAlienIcon } from "@/components/icons/WtfAlienIcon";
 import { generateLocalAccount, encryptSecretKeyAsync, saveLocalAccountStrict, loadLocalAccount, clearLocalAccount, downloadBackupFile, saveCredentialToPasswordManager, decryptStored, markOnboardingComplete, type NewLocalAccount, type StoredLocalAccount } from "@/lib/local-account";
 import { markAccountCreated, markBackedUp } from "@/lib/key-backup";
 import { DEFAULT_RELAYS } from "@/lib/relay-constants";
-import { getDiscoverFeedRelays } from "@/lib/discover-relays";
+import { floorRelayList, floorDmRelayList } from "@/lib/signup-relays";
 import { getPreferredLanguages } from "@/lib/language";
 import { classifyStorageEnvironment, classifyStorageEnvironmentAsync, describeStorageOutcome, type StorageEnvironment } from "@/lib/key-storage-environment";
 import { generatePassphraseSuggestion } from "@/lib/passphrase-suggest";
@@ -30,7 +30,7 @@ import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { markNewAccountPublicNostrOff } from "@/lib/public-nostr";
 import { startNewAccountTrust } from "@/lib/trust-choice";
 import { uploadToNostrBuild, setBlossomServers, publishBlossomServerList, DEFAULT_BLOSSOM_SERVERS } from "@/lib/media-upload";
-import { setLocalDMRelays, publishDMRelayList, DM_FALLBACK_RELAYS } from "@/lib/outbox";
+import { setLocalDMRelays, publishDMRelayList } from "@/lib/outbox";
 import { loadSignupDraft, saveSignupDraft, clearSignupDraft, bytesToHex, hexToBytes, draftHasResumableContent } from "@/lib/account-draft";
 import { trackSignupEvent } from "@/lib/signup-telemetry";
 import { finalizeEvent, nip19 } from "nostr-tools";
@@ -852,7 +852,13 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
         // Seed the recommended set from the curated relay pool (activity + free +
         // native-nostr + the device's language), keeping the app defaults first as
         // reliable write relays. New users only — never rewrites existing lists.
-        const recommendedRelays = getDiscoverFeedRelays([...DEFAULT_RELAYS], true, getPreferredLanguages(), 10);
+        // The FLOOR, not the discovery pool: a new account starts with the
+        // wider network off (owner, 2026-10-10; lib/network-mode.ts), so its
+        // list names two relays — enough that friends on other apps can find
+        // its profile and message it. Opening the wider network expands it
+        // (lib/signup-relays.ts). The old ten-relay list carried a test relay.
+        const recommendedRelays = floorRelayList();
+        markNewAccountPublicNostrOff(account.pubkey);
         const relayListEvent = {
           kind: 10002,
           created_at: Math.floor(Date.now() / 1000),
@@ -876,8 +882,8 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
       // Best-effort like the neighbors: never blocks account creation.
       try {
         const seedSigner = { signEvent: async (event: any) => finalizeEvent(event, account.secretKey) };
-        setLocalDMRelays([...DM_FALLBACK_RELAYS]);
-        void publishDMRelayList([...DM_FALLBACK_RELAYS], seedSigner).catch((e) => {
+        setLocalDMRelays(floorDmRelayList());
+        void publishDMRelayList(floorDmRelayList(), seedSigner).catch((e) => {
           console.warn("[CreateAccount] DM relay list (kind 10050) publish failed:", e);
         });
         setBlossomServers([...DEFAULT_BLOSSOM_SERVERS]);
@@ -987,7 +993,8 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
           // new-account default there would opt a long-time user out of their
           // own feed. Unset means ON precisely so that path stays safe; see
           // lib/public-nostr.ts.
-          markNewAccountPublicNostrOff(account.pubkey);
+          // (The opt-out itself is written beside the relay list above, so
+          // the two facts about this account are born together.)
           // Simplified navigation (Chats · Activity · Discover · You) is the
           // default a new account is born into. Existing accounts keep the nav
           // they know until the "your feed moved to Discover" line ships —

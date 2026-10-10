@@ -33,7 +33,7 @@ const BATCH_DELAY = 100;
  * coverage these two indexers don't already provide. `relay.damus.io` was
  * removed in this audit for that reason.
  */
-const RELAY_LIST_RELAYS = ["wss://purplepag.es", "wss://user.kindpag.es"];
+export const RELAY_LIST_RELAYS = ["wss://purplepag.es", "wss://user.kindpag.es"];
 
 /**
  * Broader discovery set for kind-10002 lookups. The two specialized indexers in

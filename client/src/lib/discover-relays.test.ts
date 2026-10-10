@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { getDiscoverFeedRelays, getDiscoverRelayPool, blendDiscoverRelays } from "./discover-relays";
 import { isBridgeRelay } from "./relay-discovery";
 
@@ -94,5 +94,23 @@ describe("blendDiscoverRelays", () => {
     const norm = out.map((u) => u.toLowerCase().replace(/\/$/, ""));
     expect(new Set(norm).size).toBe(norm.length);
     expect(out[0]).toBe("wss://dup.example");
+  });
+});
+
+// The pool is built from NIP-66 monitor reports, which list test and staging
+// relays too; one of them (top.testrelay.top) reached a brand-new account's
+// relay list (owner, 2026-10-10). No junk relay, from the seed or a cache.
+describe("the pool never carries a junk relay", () => {
+  it("drops test, staging and local relays from a cached pool", () => {
+    const items = new Map<string, string>([["ro_discover_relays_v1", JSON.stringify({
+      urls: ["wss://relay.damus.io", "wss://top.testrelay.top", "wss://relay.staging.example", "wss://nos.lol"],
+      ts: Date.now(),
+    })]]);
+    vi.stubGlobal("localStorage", { getItem: (k: string) => items.get(k) ?? null, setItem: (k: string, v: string) => items.set(k, v), removeItem: (k: string) => items.delete(k) });
+    try {
+      expect(getDiscoverRelayPool(["en"])).toEqual(["wss://relay.damus.io", "wss://nos.lol"]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

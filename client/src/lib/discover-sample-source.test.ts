@@ -209,9 +209,9 @@ describe("Articles, Events and Videos take their broad sample from the server to
   const src = readFileSync(path.resolve(import.meta.dirname, "discover-data.ts"), "utf8");
 
   it.each([
-    ["articles", /broadSample\("articles", \(\) => collectOnce\(sampleRelays\(FAST_RELAYS\), \{ kinds: \[KIND_LONG_FORM\], limit: 40 \}/],
-    ["events", /broadSample\("events", \(\) => collectOnce\(sampleRelays\(FAST_RELAYS\), \{ kinds: \[KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT\], limit: 60 \}/],
-    ["videos", /broadSample\("videos", \(\) => collectOnce\(sampleRelays\(FAST_RELAYS\), \{ kinds: \[21, 22, 34235, 34236\], limit: 20 \}/],
+    ["articles", /broadSample\("articles", \(\) => collectOnce\(sampleRelays\(feedBaseRelays\(\)\), \{ kinds: \[KIND_LONG_FORM\], limit: 40 \}/],
+    ["events", /broadSample\("events", \(\) => collectOnce\(sampleRelays\(feedBaseRelays\(\)\), \{ kinds: \[KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT\], limit: 60 \}/],
+    ["videos", /broadSample\("videos", \(\) => collectOnce\(sampleRelays\(feedBaseRelays\(\)\), \{ kinds: \[21, 22, 34235, 34236\], limit: 20 \}/],
   ])("%s: the app's own read is only the fallback", (_name, pattern) => {
     expect(src).toMatch(pattern as RegExp);
   });
@@ -231,6 +231,6 @@ describe("Articles, Events and Videos take their broad sample from the server to
     // Marketplace reads Conduit's relay and has no server sample: its lookup stays.
     expect(lookups.length - guarded.length).toBe(1);
     expect(guarded).toHaveLength(5);
-    expect(src.match(/servedGiven\(started, FAST_RELAYS\)/g) ?? []).toHaveLength(4); // articles, events, videos, images
+    expect(src.match(/servedGiven\(started, feedBaseRelays\(\)\)/g) ?? []).toHaveLength(4); // articles, events, videos, images
   });
 });

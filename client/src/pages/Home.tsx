@@ -4,7 +4,7 @@ import { prefetchTopZappers } from "@/hooks/use-top-zappers";
 import { reachAdmits } from "@/lib/trust-reach";
 import { cn } from "@/lib/utils";
 import { flushSync } from "react-dom";
-import { eventStore, pool, subscribeToFeed, subscribeToFeedPersistent, fetchProfilesCached, fetchInteractionsCached, isProfileFetchSettled, FAST_RELAYS, getRelaysForPurpose, markFeedDataLoaded, hasFeedData, throttledPoolSubscribe, registerProfileInAllCaches } from "@/lib/nostr";
+import { eventStore, pool, subscribeToFeed, subscribeToFeedPersistent, fetchProfilesCached, fetchInteractionsCached, isProfileFetchSettled, FAST_RELAYS, feedBaseRelays, getRelaysForPurpose, markFeedDataLoaded, hasFeedData, throttledPoolSubscribe, registerProfileInAllCaches } from "@/lib/nostr";
 import { takeFirstScreen } from "@/lib/first-screen";
 import { overallOrOurs } from "@/lib/trending-source";
 import { firstScreenRanks, firstScreenTaken, subscribeFirstScreenRanks } from "@/lib/first-screen-ingest";
@@ -68,6 +68,7 @@ import { getDiscoverFeedRelays, warmDiscoverRelays } from "@/lib/discover-relays
 import { getDiscoverPresetConfig, admitStranger } from "@/lib/discover-quality";
 import { effectivePow } from "@/lib/nip13-pow";
 import { getOutpostRelays } from "@/lib/outpost-relays";
+import { isWiderNetworkOnForViewer } from "@/lib/network-mode";
 
 const KIND_LONG_FORM = 30023;
 // Discover safe floor: kinds the feed renders cleanly. The media kinds are
@@ -441,7 +442,8 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [postsShown]);
   useEffect(() => {
-    if (!discoverV2 || !postsShown) return;
+    // Not while the wider network is off: the pool is the wider network.
+    if (!discoverV2 || !postsShown || !isWiderNetworkOnForViewer()) return;
     warmDiscoverRelays(getPreferredLanguages()); // background: broaden the relay pool
   }, [discoverV2, postsShown]);
   useEffect(() => {
@@ -482,7 +484,9 @@ export default function Home() {
   const withDiscoverRelays = useCallback(
     (base: string[], capOverride?: number) => {
       const enabled = discoverV2Ref.current && discoverGlobalRef.current;
-      if (!enabled) return base;
+      // With the wider network off there is nothing to broaden with: the
+      // base is the floor and stays the floor (lib/network-mode.ts).
+      if (!enabled || !isWiderNetworkOnForViewer()) return base;
       const cfg = presetConfigRef.current;
       const cap = capOverride ?? cfg.subCap;
       const outbox = cfg.foldOutbox
@@ -1200,7 +1204,7 @@ export default function Home() {
     const liveSub = subscribeToFeedPersistent(
       { kinds: withDiscoverKinds([KIND_TEXT_NOTE, KIND_REPOST, KIND_POLL, ...MEDIA_EVENT_KINDS]), since: Math.floor(Date.now() / 1000) },
       // Live tail: preset-driven cap (was a fixed 6) so breadth scales with the dial.
-      withDiscoverRelays(FAST_RELAYS.slice(0, 4)),
+      withDiscoverRelays(feedBaseRelays().slice(0, 4)),
       (event) => {
         if (event.kind === KIND_REPOST) {
           handleRepostEvent(event);
@@ -1365,7 +1369,7 @@ export default function Home() {
     if (activeCustomFeed.authorPubkeys.length > 0) {
       filter.authors = activeCustomFeed.authorPubkeys.slice(0, 200);
     }
-    const sub = subscribeToFeed(filter, FAST_RELAYS, () => {
+    const sub = subscribeToFeed(filter, feedBaseRelays(), () => {
       if (cancelled) return;
       setIsInitialLoading(false);
       // Cache what we just streamed in so the next visit to this feed
@@ -1434,7 +1438,7 @@ export default function Home() {
       }
     }, 15000);
 
-    const sub = subscribeToFeed(filter, FAST_RELAYS, () => {
+    const sub = subscribeToFeed(filter, feedBaseRelays(), () => {
       if (!cancelled) {
         clearTimeout(safetyTimeout);
         fetched.add(topTimeWindow);

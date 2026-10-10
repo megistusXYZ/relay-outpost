@@ -11,6 +11,7 @@
  */
 import { throttledPoolSubscribe } from "./nostr";
 import { rankCuratedRelays, parseNip66Event, normalizeRelayUrl, type RelayCandidate } from "./relay-discovery";
+import { isJunkRelay } from "../../../shared/relay-junk";
 
 const MONITOR_RELAYS = ["wss://relaypag.es", "wss://monitorlizard.nostr1.com"];
 const CACHE_KEY = "ro_discover_relays_v1";
@@ -60,7 +61,9 @@ function readCache(): string[] | null {
 /** Synchronous pool: cached augmented set if fresh, else the curated seed. */
 export function getDiscoverRelayPool(langs: string[]): string[] {
   const c = readCache();
-  if (c && c.length) return c;
+  // Cleaned here too: a pool cached before the junk filter existed holds the
+  // same test relays the monitors reported (owner, 2026-10-10).
+  if (c && c.length) return c.filter((u) => !isJunkRelay(u));
   return rankCuratedRelays(SEED, { langs, limit: DISCOVER_POOL_SIZE }).map((r) => r.url);
 }
 
@@ -84,7 +87,9 @@ export function warmDiscoverRelays(langs: string[]): Promise<string[]> {
       done = true;
       try { (sub as any)?.close?.(); } catch {}
       const ranked = rankCuratedRelays(Array.from(byUrl.values()), { langs, limit: DISCOVER_POOL_SIZE });
-      const urls = ranked.map((r) => r.url).filter((u) => /^wss?:\/\//i.test(u));
+      // The monitors report test, staging and local relays alongside real
+      // ones; none of those belongs in a pool a new account is handed.
+      const urls = ranked.map((r) => r.url).filter((u) => /^wss?:\/\//i.test(u) && !isJunkRelay(u));
       cached = { urls, ts: Date.now() };
       try { localStorage.setItem(CACHE_KEY, JSON.stringify(cached)); } catch {}
       inflight = null;

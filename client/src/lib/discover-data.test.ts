@@ -29,6 +29,7 @@ vi.mock("@/lib/nostr", () => ({
   throttledPoolSubscribe: (...a: Parameters<typeof subscribeSpy>) => subscribeSpy(...a),
   // A general relay: the marketplace shelf must NOT read from it.
   FAST_RELAYS: ["wss://relay.primal.net"],
+  feedBaseRelays: () => ["wss://relay.primal.net"], // the wider network on: today's relays
   getRelaysForPurpose: () => [],
 }));
 // Primal, as the tiles see it. Tests can make it slow, silent or populated.

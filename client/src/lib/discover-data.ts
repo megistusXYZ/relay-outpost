@@ -18,7 +18,7 @@
  * those chunks into the landing page's bundle.
  */
 import type { Event } from "nostr-tools";
-import { eventStore, throttledPoolSubscribe, FAST_RELAYS, getRelaysForPurpose } from "@/lib/nostr";
+import { eventStore, throttledPoolSubscribe, feedBaseRelays, getRelaysForPurpose } from "@/lib/nostr";
 import { collectOnce as collectOnceWith } from "@/lib/collect-once";
 import { anyOf } from "@/lib/any-of";
 import { sampleRelays } from "@/lib/discover-sample-relays";
@@ -322,17 +322,17 @@ async function fetchNewestArticleFresh(follows: readonly string[]): Promise<Reac
   // 40, not the 2 the tile shows: the tile runs the Articles floor
   // (lib/article-floor.ts), which needs enough left over after it, and
   // enough of a flooder's articles in hand to see the flood.
-  const started = broadSample("articles", () => collectOnce(sampleRelays(FAST_RELAYS), { kinds: [KIND_LONG_FORM], limit: 40 }, 11_000));
+  const started = broadSample("articles", () => collectOnce(sampleRelays(feedBaseRelays()), { kinds: [KIND_LONG_FORM], limit: 40 }, 11_000));
   // Only when the server's sample (which includes them) isn't in hand; then
   // alongside the app's own broad read, not after it.
   const trustedArticlesP = Promise.all([topP, started.fromServer]).then(([t, fromServer]) => (!fromServer && t.reached && t.top.length > 0
-    ? collectOnce(FAST_RELAYS, { kinds: [KIND_LONG_FORM], authors: t.top.slice(0, 200), limit: 30 }, 8_000)
+    ? collectOnce(feedBaseRelays(), { kinds: [KIND_LONG_FORM], authors: t.top.slice(0, 200), limit: 30 }, 8_000)
     : ([] as Event[])));
   const [served, sample, followsArticles, trustedArticles] = await Promise.all([
-    servedGiven(started, FAST_RELAYS),
+    servedGiven(started, feedBaseRelays()),
     started.sample,
     follows.length > 0
-      ? collectOnce(FAST_RELAYS, { kinds: [KIND_LONG_FORM], authors: follows.slice(0, 100), limit: 15 }, 8_000)
+      ? collectOnce(feedBaseRelays(), { kinds: [KIND_LONG_FORM], authors: follows.slice(0, 100), limit: 15 }, 8_000)
       : Promise.resolve([] as Event[]),
     trustedArticlesP,
   ]);
@@ -608,8 +608,8 @@ export async function fetchNextCalendarEvent(): Promise<Reached<CalendarEventDat
 }
 
 async function fetchNextCalendarEventFresh(): Promise<Reached<CalendarEventData | null>> {
-  const started = broadSample("events", () => collectOnce(sampleRelays(FAST_RELAYS), { kinds: [KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT], limit: 60 }, 11_000));
-  const [served, sample] = await Promise.all([servedGiven(started, FAST_RELAYS), started.sample]);
+  const started = broadSample("events", () => collectOnce(sampleRelays(feedBaseRelays()), { kinds: [KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT], limit: 60 }, 11_000));
+  const [served, sample] = await Promise.all([servedGiven(started, feedBaseRelays()), started.sample]);
   const events = sample.events;
   // Only events hosted by highly trusted people (or your follows), topped up
   // with the most trusted people's own events (lib/discover-trust.ts).
@@ -617,7 +617,7 @@ async function fetchNextCalendarEventFresh(): Promise<Reached<CalendarEventData 
   if (!trust.reached) return { data: null, reached: false };
   // The server's sample includes the most trusted people's own events.
   const trustedEvents = !sample.vetted && trust.top.length > 0
-    ? await collectOnce(FAST_RELAYS, { kinds: [KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT], authors: trust.top.slice(0, 300), limit: 60 }, 8_000)
+    ? await collectOnce(feedBaseRelays(), { kinds: [KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT], authors: trust.top.slice(0, 300), limit: 60 }, 8_000)
     : [];
   const parsed = gateByTrust([...events, ...trustedEvents], (e) => e.pubkey, { follows: trustOpts.follows, scores: trust.scores })
     .map(parseCalendarEvent)
@@ -691,10 +691,10 @@ async function fetchImagesTeaserFresh(
   // reaches the front door), so without it the lookup below runs instead.
   const started = broadSample("images", async () => []);
   const [served, sample, networkEvents] = await Promise.all([
-    servedGiven(started, FAST_RELAYS),
+    servedGiven(started, feedBaseRelays()),
     started.sample,
     networkAuthors.length > 0
-      ? collectOnce(FAST_RELAYS, { kinds: [1, 20], authors: networkAuthors, since, limit: 60 }, 8_000)
+      ? collectOnce(feedBaseRelays(), { kinds: [1, 20], authors: networkAuthors, since, limit: 60 }, 8_000)
       : Promise.resolve([] as Event[]),
   ]);
   const toCandidates = (events: Event[]): ShelfImage[] => {
@@ -723,7 +723,7 @@ async function fetchImagesTeaserFresh(
   const trustedEvents = sample.vetted
     ? sample.events
     : trust.top.length > 0
-      ? await collectOnce(FAST_RELAYS, { kinds: [1, 20], authors: trust.top.slice(0, 300), since, limit: 80 }, 8_000)
+      ? await collectOnce(feedBaseRelays(), { kinds: [1, 20], authors: trust.top.slice(0, 300), since, limit: 80 }, 8_000)
       : [];
   const gate = { follows: new Set(follows), scores: trust.scores };
   const candidates = toCandidates(gateByTrust([...networkEvents, ...trustedEvents], (e) => e.pubkey, gate));
@@ -796,15 +796,15 @@ async function fetchMarketShelfFresh(): Promise<Reached<MarketTeaser[] | null>> 
 async function fetchVideoTeaserFresh(): Promise<Reached<VideoTeaser | null>> {
   // All four video generations — NIP-71 21/22 is where new publishing
   // lives; 34235/34236 is the legacy/archive pair (see VIDEO_EVENT_KINDS).
-  const started = broadSample("videos", () => collectOnce(sampleRelays(FAST_RELAYS), { kinds: [21, 22, 34235, 34236], limit: 20 }, 11_000));
-  const [served, sample] = await Promise.all([servedGiven(started, FAST_RELAYS), started.sample]);
+  const started = broadSample("videos", () => collectOnce(sampleRelays(feedBaseRelays()), { kinds: [21, 22, 34235, 34236], limit: 20 }, 11_000));
+  const [served, sample] = await Promise.all([servedGiven(started, feedBaseRelays()), started.sample]);
   const events = sample.events;
   // Only highly trusted people (and your follows) on the front door.
   const trust = await loadDiscoverTrust(events.map((e) => e.pubkey), { ...trustOpts, vetted: vettedAuthors(sample) });
   if (!trust.reached) return { data: null, reached: false };
   // The server's sample includes the most trusted people's own videos.
   const trustedVideos = !sample.vetted && trust.top.length > 0
-    ? await collectOnce(FAST_RELAYS, { kinds: [21, 22, 34235, 34236], authors: trust.top.slice(0, 200), limit: 20 }, 8_000)
+    ? await collectOnce(feedBaseRelays(), { kinds: [21, 22, 34235, 34236], authors: trust.top.slice(0, 200), limit: 20 }, 8_000)
     : [];
   const teasers = gateByTrust([...events, ...trustedVideos], (e) => e.pubkey, { follows: trustOpts.follows, scores: trust.scores })
     .sort((a, b) => b.created_at - a.created_at)

@@ -19,6 +19,8 @@ import type { PublishRejection } from "./publish-rejection";
 import { recordFirstSeen } from "./account-age";
 export { DEFAULT_RELAYS } from "./relay-constants";
 import { DEFAULT_RELAYS } from "./relay-constants";
+import { isWiderNetworkOnForViewer } from "./network-mode";
+import { readRelaysForMode } from "./signup-relays";
 import { openLaunchRelays } from "./launch-relays";
 import { boundEnsureRelay } from "./bounded-connect";
 
@@ -390,12 +392,23 @@ const outpostUrls = getOutpostRelays().map((r) => r.url);
 if (outpostUrls.length > 0) registerCoreRelays(outpostUrls);
 
 
+/**
+ * Where feeds are read from. An account whose wider network is off (a new
+ * account, until it opens it — lib/network-mode.ts) reads the two-relay
+ * floor; everyone else reads FAST_RELAYS exactly as before. Profiles,
+ * search and publishing are not feeds and are left alone: a followed
+ * person's profile and relay list still resolve, posts still go out.
+ */
+export function feedBaseRelays(): string[] {
+  return readRelaysForMode(isWiderNetworkOnForViewer(), FAST_RELAYS);
+}
+
 export function getRelaysForPurpose(purpose: "profiles" | "search" | "notes" | "interactions" | "publish"): string[] {
   switch (purpose) {
     case "profiles": return filterBlockedRelays(sortRelaysByScore(getHealthyRelays(PROFILE_RELAYS)));
     case "search": return filterBlockedRelays(getHealthyRelays(SEARCH_RELAYS));
-    case "interactions": return filterBlockedRelays(sortRelaysByScore(getHealthyRelays(FAST_RELAYS))).slice(0, 3);
-    case "notes": return filterBlockedRelays(sortRelaysByScore(getHealthyRelays(FAST_RELAYS)));
+    case "interactions": return filterBlockedRelays(sortRelaysByScore(getHealthyRelays(feedBaseRelays()))).slice(0, 3);
+    case "notes": return filterBlockedRelays(sortRelaysByScore(getHealthyRelays(feedBaseRelays())));
     case "publish": return filterBlockedRelays(getHealthyRelays(DEFAULT_RELAYS));
   }
 }
