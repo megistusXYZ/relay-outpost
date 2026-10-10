@@ -146,13 +146,19 @@ export default function Account() {
         <Section label="Your account">
           <Row icon={<Pencil className="w-5 h-5" />} label="Edit profile" onClick={go("/account?edit=profile")} testId="account-edit-profile" />
           <Row icon={<UserPlus className="w-5 h-5" />} label="Invite a friend" onClick={go("/account?invite=1")} testId="account-invite" />
-          {/* Until the key is backed up: it's the only way back into this account elsewhere. */}
-          {keyBackup.state !== "none" && (
+          {/* The key is the only way back into this account elsewhere. The word
+              is the state (status words, not pills): not saved, saved, or saved
+              and checked — "checked" means Check it works read the file back. */}
+          {keyBackup.status !== "none" && (
             <Row
               icon={<KeyRound className="w-5 h-5" />}
-              label="Back up your key"
+              label="Save your key"
               onClick={go("/key-backup")}
-              trailing={<span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">Not backed up</span>}
+              trailing={
+                <span className={`text-[11px] font-medium ${keyBackup.status === "not-saved" ? "text-amber-700 dark:text-amber-400" : "text-success"}`} data-testid="account-key-backup-status">
+                  {keyBackup.status === "not-saved" ? "Not saved" : keyBackup.status === "saved" ? "Saved" : "Saved and checked"}
+                </span>
+              }
               testId="account-key-backup"
             />
           )}

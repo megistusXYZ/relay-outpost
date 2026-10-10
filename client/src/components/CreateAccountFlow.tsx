@@ -6,19 +6,20 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ArrowRight, AtSign, BadgeCheck, Camera, Check, CheckCircle2, ChevronDown, Code2, Copy, Dice5, Download, Eye, EyeOff, FileText, Info, KeyRound, Link2, Lock, Mic, PlayCircle, QrCode, Rss, Save, ShieldAlert, User, Upload, UserCircle2, X, Youtube } from "lucide-react";
+import { ArrowLeft, ArrowRight, AtSign, BadgeCheck, Camera, Check, CheckCircle2, ChevronDown, Code2, Copy, Dice5, Eye, EyeOff, FileText, Info, KeyRound, Link2, Lock, Mic, PlayCircle, QrCode, Rss, ShieldAlert, User, Upload, UserCircle2, X, Youtube } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CameraOutpostIcon } from "@/components/icons/CameraOutpostIcon";
 import { BitcoinIcon } from "@/components/FeedIcons";
 import { savePodcastFeed, KIND_PODCAST_RSS, PODCAST_D_TAG } from "@/lib/music";
 import { WtfAlienIcon } from "@/components/icons/WtfAlienIcon";
-import { generateLocalAccount, encryptSecretKeyAsync, saveLocalAccountStrict, loadLocalAccount, clearLocalAccount, downloadBackupFile, saveCredentialToPasswordManager, decryptStored, markOnboardingComplete, type NewLocalAccount, type StoredLocalAccount } from "@/lib/local-account";
-import { markAccountCreated, markBackedUp } from "@/lib/key-backup";
+import { generateLocalAccount, encryptSecretKeyAsync, saveLocalAccountStrict, loadLocalAccount, clearLocalAccount, decryptStored, markOnboardingComplete, type NewLocalAccount, type StoredLocalAccount } from "@/lib/local-account";
+import { markAccountCreated, markBackedUp, canFinishSignup } from "@/lib/key-backup";
+import { KeyBackupActions } from "@/components/KeyBackupActions";
 import { DEFAULT_RELAYS } from "@/lib/relay-constants";
-import { floorRelayList, floorDmRelayList } from "@/lib/signup-relays";
+import { floorRelayList, floorDmRelayList, FLOOR_RELAYS } from "@/lib/signup-relays";
 import { writeBlurOutside } from "@/lib/outside-space-blur";
 import { getPreferredLanguages } from "@/lib/language";
-import { classifyStorageEnvironment, classifyStorageEnvironmentAsync, describeStorageOutcome, type StorageEnvironment } from "@/lib/key-storage-environment";
+import { classifyStorageEnvironment, classifyStorageEnvironmentAsync, type StorageEnvironment } from "@/lib/key-storage-environment";
 import { generatePassphraseSuggestion } from "@/lib/passphrase-suggest";
 import { PasskeyEnrollmentCard } from "@/components/PasskeyEnrollmentCard";
 import type { PasskeyEnrollment } from "@/lib/passkey";
@@ -142,35 +143,16 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
   const [showPassword, setShowPassword] = useState(false);
   const [isWorking, setIsWorking] = useState(false);
   const [stored, setStored] = useState<StoredLocalAccount | null>(null);
-  const [downloaded, setDownloaded] = useState(false);
-  const [downloadJustSaved, setDownloadJustSaved] = useState(false);
-  const [verifyError, setVerifyError] = useState("");
-  const [verified, setVerified] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [showVerify, setShowVerify] = useState(false);
-  // Tracks which passphrase value we last ran the decrypt round-trip
-  // against. Prevents the auto-verify effect from firing repeatedly for
-  // the same stable confirmed value, and lets any state-reset path
-  // force a fresh test by clearing this ref.
-  const verifiedAgainstRef = useRef<string | null>(null);
-  // Monotonic run token. Bumped by every state path that invalidates a
-  // prior encryption/verification context (passphrase edits, account
-  // regenerate, re-encrypt into a new `stored` record). An in-flight
-  // scrypt decrypt captures the token at start and refuses to commit a
-  // `verified=true` result if the token has moved by completion —
-  // otherwise a slow verify against an old `stored` could silently
-  // flip the flag against a newer, untested record.
-  const verifyRunIdRef = useRef(0);
-  const [savedToManager, setSavedToManager] = useState(false);
   const [passkeyBlob, setPasskeyBlob] = useState<PasskeyEnrollment | null>(null);
-  const [ackOnlyMe, setAckOnlyMe] = useState(false);
-  const acknowledged = ackOnlyMe;
+  // The last step's gate (owner, 2026-10-10): Finish opens after the key is
+  // saved, or after a deliberate skip — never a tick in a box.
+  const [keySaved, setKeySaved] = useState(false);
+  const [keySkipped, setKeySkipped] = useState(false);
   // Secure-step UI: reveal the password fallback, and the optional Advanced
   // (backup file / recovery code / password-manager) disclosure.
   const [showPasswordPath, setShowPasswordPath] = useState(false);
   const [showSecureAdvanced, setShowSecureAdvanced] = useState(false);
   const [copiedNpub, setCopiedNpub] = useState(false);
-  const [showRecoveryCode, setShowRecoveryCode] = useState(false);
   const [showNsec, setShowNsec] = useState(false);
   const [copiedNsec, setCopiedNsec] = useState(false);
   const [storageEnv, setStorageEnv] = useState<StorageEnvironment>(() => classifyStorageEnvironment());
@@ -267,12 +249,10 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
     clearSignupDraft();
     onBack();
   }, [onBack]);
-  const storageOutcome = useMemo(
-    () => describeStorageOutcome(storageEnv, savedToManager),
-    [storageEnv, savedToManager],
-  );
 
   const isOverlay = variant === "overlay";
+  /** Their account's own name, for the story on the last step. */
+  const who = displayName.trim() || "This account";
   const cardCls = isOverlay ? "border-white/10 bg-black/40 backdrop-blur-lg" : "border-border/60 bg-card/50";
   const titleCls = isOverlay ? "text-white" : "";
   const descCls = isOverlay ? "text-white/60" : "text-muted-foreground";
@@ -295,24 +275,16 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
 
   const passwordValid = password.length >= 8 && password === confirmPassword;
 
-  // If the user edits the passphrase after we've already encrypted, the saved
-  // ncryptsec no longer corresponds to what they're typing. Drop the stored
-  // record + verification state so they have to re-encrypt and re-verify.
+  // If the user edits the password after we've already encrypted, the saved
+  // record no longer corresponds to what they're typing. Drop it (and the
+  // saved/skipped gate) so they have to save again.
   useEffect(() => {
     if (!stored) return;
     setStored(null);
-    setDownloaded(false);
-    setDownloadJustSaved(false);
-    setShowVerify(false);
-    setVerified(false);
-    setVerifyError("");
-    setIsVerifying(false);
-    verifiedAgainstRef.current = null;
-    verifyRunIdRef.current += 1;
-    setSavedToManager(false);
-    setSavedEncryptedToManager(false);
+    setKeySaved(false);
+    setKeySkipped(false);
     setPasskeyBlob(null);
-    // We intentionally only react to passphrase edits, not to `stored` itself.
+    // We intentionally only react to password edits, not to `stored` itself.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [password, confirmPassword]);
 
@@ -386,17 +358,8 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
     // state — clear it so a stale "verified" flag from a previous key context
     // can never gate Continue past the storage step.
     setStored(null);
-    setDownloaded(false);
-    setDownloadJustSaved(false);
-    setShowVerify(false);
-    setVerified(false);
-    setVerifyError("");
-    setIsVerifying(false);
-    verifiedAgainstRef.current = null;
-    verifyRunIdRef.current += 1;
-    setSavedToManager(false);
-    setSavedNsecToManager(false);
-    setSavedEncryptedToManager(false);
+    setKeySaved(false);
+    setKeySkipped(false);
     setPasskeyBlob(null);
     setStep(2);
   }, [displayName, toast, account]);
@@ -468,18 +431,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
       }
 
       setStored(record);
-      setVerified(false);
-      setVerifyError("");
-      setIsVerifying(false);
-      verifiedAgainstRef.current = null;
-      verifyRunIdRef.current += 1;
-      setShowVerify(false);
-      // Don't silently hand credentials to the password manager here. The
-      // explicit "Save encrypted key to password manager" button that
-      // appears after verify succeeds routes through
-      // `saveCredentialToPasswordManager()` with the full npub as the
-      // username, which is the only path we want firing for new accounts.
-      toast({ title: "Password set", description: "You'll use it to sign in next time. Grab the backup file under Advanced too." });
+      toast({ title: "Password set", description: "You'll use it to sign in here. Now save your key." });
     } catch (err) {
       console.error("Encrypt failed:", err);
       toast({ title: "Encryption failed", description: err instanceof Error ? err.message : "Try again.", variant: "destructive" });
@@ -488,92 +440,6 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
     }
   }, [account, password, passwordValid, displayName, toast]);
 
-  const handleDownloadBackup = useCallback(() => {
-    if (!stored) return;
-    downloadBackupFile(stored, {
-      displayName: displayName.trim() || undefined,
-      // At signup, the user is publishing to the default relay set.
-      // NIP-05 / lud16 are not configured at this point.
-      relays: [...DEFAULT_RELAYS],
-      // Include the raw nsec alongside the encrypted ncryptsec. This
-      // makes the file more sensitive — see the file's own "HEADS UP"
-      // section for the storage caveat the user is shown.
-      nsec: account?.nsec,
-    });
-    if (account) markBackedUp(account.pubkey, Date.now());
-    setDownloaded(true);
-    setDownloadJustSaved(true);
-    setShowVerify(true);
-    setTimeout(() => setDownloadJustSaved(false), 2400);
-  }, [stored, displayName, account]);
-
-  const handleVerifyPassphrase = useCallback(async (passphrase: string) => {
-    if (!stored || !account) return;
-    if (!passphrase) return;
-    // Capture the run token + the ncryptsec we're testing against.
-    // If the user edits the passphrase or regenerates the account
-    // while scrypt is in flight, those paths bump `verifyRunIdRef`
-    // and we must not commit a stale success onto the new context.
-    const runId = verifyRunIdRef.current;
-    // Remember which value we're about to test so the auto-verify effect
-    // doesn't re-fire for the same string while scrypt is running.
-    verifiedAgainstRef.current = passphrase;
-    setIsVerifying(true);
-    setVerifyError("");
-    try {
-      // Yield so the testing state can paint before the heavy scrypt work.
-      await new Promise<void>((r) => setTimeout(r, 30));
-      const decrypted = decryptStored(stored.ncryptsec, passphrase);
-      const matches =
-        decrypted.length === account.secretKey.length &&
-        decrypted.every((b, i) => b === account.secretKey[i]);
-      // Stale-completion guard: if the context has changed since we
-      // started, drop the result on the floor. The fresh context will
-      // schedule its own verify.
-      if (runId !== verifyRunIdRef.current) return;
-      if (!matches) {
-        // Decrypted to a *different* key — shouldn't happen in the
-        // auto-verify path since we just encrypted with this same
-        // passphrase, but surface it rather than pass silently.
-        // IMPORTANT: keep `verifiedAgainstRef.current` set to the tested
-        // passphrase so the auto-verify effect's dedupe guard prevents
-        // an immediate retry loop. Retry is explicit (Retry button).
-        setVerifyError("Couldn't decrypt that backup on this device.");
-        setVerified(false);
-      } else {
-        setVerified(true);
-        setVerifyError("");
-      }
-    } catch (err) {
-      if (runId !== verifyRunIdRef.current) return;
-      console.warn("[CreateAccount] verify decrypt failed:", err);
-      // Keep the ref set (see note above) — Retry is user-initiated.
-      setVerifyError("Couldn't decrypt that backup on this device.");
-      setVerified(false);
-    } finally {
-      if (runId === verifyRunIdRef.current) setIsVerifying(false);
-    }
-  }, [stored, account]);
-
-  // Auto-verify: once the user has a stable confirmed passphrase and has
-  // saved the backup file, silently run the decrypt round-trip. No third
-  // input needed — the confirm field already tested the user can
-  // reproduce the string character-for-character. We debounce so
-  // scrypt doesn't thrash as the confirm field is being typed, and the
-  // verifiedAgainstRef gate ensures we don't re-run for the same value.
-  useEffect(() => {
-    if (!showVerify) return;
-    if (!stored || !account) return;
-    if (verified || isVerifying) return;
-    if (verifyError) return; // Failure is user-resolved via Retry; don't auto-loop.
-    if (!password || password !== confirmPassword) return;
-    if (password.length < 8) return;
-    if (verifiedAgainstRef.current === password) return;
-    const handle = setTimeout(() => {
-      void handleVerifyPassphrase(password);
-    }, 400);
-    return () => clearTimeout(handle);
-  }, [showVerify, stored, account, password, confirmPassword, verified, isVerifying, verifyError, handleVerifyPassphrase]);
 
   const handlePasskeyEnrolled = useCallback(async (blob: PasskeyEnrollment) => {
     // Case A — account already secured with a password: just attach the passkey
@@ -652,8 +518,9 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
       }
       setPasskeyBlob(blob);
       setStored(record);
-      setDownloaded(false);
-      toast({ title: "Account secured", description: "Sign in with a tap next time." });
+      setKeySaved(false);
+      setKeySkipped(false);
+      toast({ title: "Account secured", description: "Sign in with a tap next time. Now save your key." });
     } catch (err) {
       console.error("Passkey-first secure failed:", err);
       toast({ title: "Couldn't secure your account", description: err instanceof Error ? err.message : "Try again.", variant: "destructive" });
@@ -666,7 +533,6 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
     const suggestion = generatePassphraseSuggestion(6);
     setPassword(suggestion);
     setConfirmPassword(suggestion);
-    setShowPassword(true);
   }, []);
 
   const handleCopyNpub = useCallback(async () => {
@@ -683,120 +549,18 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
     try {
       await navigator.clipboard.writeText(account.nsec);
       setCopiedNsec(true);
-      markBackedUp(account.pubkey, Date.now());
+      markBackedUp(account.pubkey, Date.now(), "key");
+      setKeySaved(true);
       setTimeout(() => setCopiedNsec(false), 2000);
-      toast({ title: "Secret key copied", description: "Paste it somewhere safe — anyone holding it controls the account." });
+      toast({ title: "Key copied", description: "Paste it somewhere only you can reach. Anyone holding it can act as you." });
     } catch {
       toast({ title: "Couldn't copy", description: "Select the key and copy it by hand.", variant: "destructive" });
     }
   }, [account, toast]);
 
-  // Step 2: invite the browser / OS password manager to store the raw nsec
-  // keyed off the user's npub. On browsers without a native save path, fall
-  // back to copy-to-clipboard and tell the user what to paste where.
-  const [savingNsecToManager, setSavingNsecToManager] = useState(false);
-  const [savedNsecToManager, setSavedNsecToManager] = useState(false);
-  const handleSaveNsecToManager = useCallback(async () => {
-    if (!account) return;
-    setSavingNsecToManager(true);
-    try {
-      const label = displayName.trim() ? `${displayName.trim()} — Relay Outpost` : "Relay Outpost";
-      const result = await saveCredentialToPasswordManager({
-        username: account.npub,
-        password: account.nsec,
-        label,
-      });
-      if (result === "credential-api") {
-        // Chromium path — the native save sheet fired. Key material never
-        // left this tab.
-        setSavedNsecToManager(true);
-        toast({
-          title: "Offered to your password manager",
-          description: "Confirm in the browser prompt to save.",
-        });
-      } else {
-        // `fallback` — Safari / Firefox don't expose a no-network save API
-        // we can use without POSTing the secret somewhere, so we copy and
-        // tell the user where to paste.
-        try {
-          await navigator.clipboard.writeText(account.nsec);
-          toast({
-            title: "Copied — paste into your password manager",
-            description: "Your browser doesn't offer a no-network save here. Paste the key into 1Password, Bitwarden, or your manager of choice.",
-          });
-        } catch {
-          toast({
-            title: "Couldn't save automatically",
-            description: "Use the Copy nsec button above and paste it into your password manager by hand.",
-            variant: "destructive",
-          });
-        }
-      }
-    } catch (err) {
-      console.error("Save nsec to password manager failed:", err);
-      toast({
-        title: "Couldn't reach your password manager",
-        description: "Try again, or copy the key and paste it in manually.",
-        variant: "destructive",
-      });
-    } finally {
-      setSavingNsecToManager(false);
-    }
-  }, [account, displayName, toast]);
-
-  // Step 3: once the passphrase is verified, offer to stash the encrypted
-  // ncryptsec into the password manager. This is the recommended path —
-  // the saved value is useless without the passphrase, and it makes the
-  // account portable across devices that share a password manager.
-  const [savingEncryptedToManager, setSavingEncryptedToManager] = useState(false);
-  const [savedEncryptedToManager, setSavedEncryptedToManager] = useState(false);
-  const handleSaveEncryptedToManager = useCallback(async () => {
-    if (!account || !stored) return;
-    setSavingEncryptedToManager(true);
-    try {
-      const label = displayName.trim() ? `${displayName.trim()} — Relay Outpost` : "Relay Outpost";
-      const result = await saveCredentialToPasswordManager({
-        username: account.npub,
-        password: stored.ncryptsec,
-        label,
-      });
-      if (result === "credential-api") {
-        setSavedEncryptedToManager(true);
-        markBackedUp(account.pubkey, Date.now());
-        setSavedToManager(true);
-        toast({
-          title: "Offered to your password manager",
-          description: "Confirm in the browser prompt to save the encrypted key against your npub.",
-        });
-      } else {
-        try {
-          await navigator.clipboard.writeText(stored.ncryptsec);
-          toast({
-            title: "Copied — paste into your password manager",
-            description: "Your browser doesn't offer a no-network save here. Paste the encrypted key into your manager of choice, keyed off your npub.",
-          });
-        } catch {
-          toast({
-            title: "Couldn't save automatically",
-            description: "Use the Download encrypted backup button instead — it's the same material, as a file.",
-            variant: "destructive",
-          });
-        }
-      }
-    } catch (err) {
-      console.error("Save encrypted key to password manager failed:", err);
-      toast({
-        title: "Couldn't reach your password manager",
-        description: "Try again, or download the encrypted backup file as a fallback.",
-        variant: "destructive",
-      });
-    } finally {
-      setSavingEncryptedToManager(false);
-    }
-  }, [account, stored, displayName, toast]);
 
   const handleFinish = useCallback(async () => {
-    if (!account || !stored || !acknowledged) return;
+    if (!account || !stored || !canFinishSignup({ saved: keySaved, skipped: keySkipped })) return;
     setIsWorking(true);
     try {
       await loginWithLocalKey(account.secretKey, { isNewAccount: true });
@@ -1043,7 +807,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
     } finally {
       setIsWorking(false);
     }
-  }, [account, stored, acknowledged, displayName, username, bio, picture, banner, nip05, website, rss, lud16, loginWithLocalKey, updateFollows, setWotEnabled, notifyRecalculating, onComplete]);
+  }, [account, stored, keySaved, keySkipped, displayName, username, bio, picture, banner, nip05, website, rss, lud16, loginWithLocalKey, updateFollows, setWotEnabled, notifyRecalculating, onComplete]);
 
   const stepDots = (
     <div className="flex items-center justify-center gap-1.5 mb-4">
@@ -1602,11 +1366,11 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
               </div>
               <div>
                 <h3 className={`text-base font-semibold tracking-tight ${titleCls}`} data-testid="text-step2-title">
-                  {stored ? "You're all set" : "Secure your account"}
+                  {stored ? "Save your key" : "Secure your account"}
                 </h3>
                 <p className={`text-xs mt-0.5 leading-relaxed ${descCls}`}>
                   {stored
-                    ? (passkeyBlob ? "Sign in with a tap next time. One last thing:" : "Sign in with your password next time. One last thing:")
+                    ? "Last step, and the one that matters most."
                     : "One tap and you're in — we keep your account safe on this device."}
                 </p>
               </div>
@@ -1641,8 +1405,8 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                   >
                     <KeyRound className={`w-4 h-4 ${isOverlay ? "text-white/70" : "text-foreground/70"}`} />
                     <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-semibold ${titleCls}`}>Set a password instead</p>
-                      <p className={`text-xs ${descCls}`}>Sign in with a password you save to your browser.</p>
+                      <p className={`text-xs font-semibold ${titleCls}`}>Set a password for this browser instead</p>
+                      <p className={`text-xs ${descCls}`}>Unlocks this account here. It is not your key and can't open the account anywhere else.</p>
                     </div>
                     <ArrowRight className={`w-3.5 h-3.5 transition-transform ${showPasswordPath ? "rotate-90" : ""} ${ghostBtnCls}`} />
                   </button>
@@ -1651,7 +1415,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                     <div className={`px-3 py-3 space-y-3 border-t ${isOverlay ? "border-white/10 bg-black/20" : "border-border/40 bg-foreground/[0.02]"}`}>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-2">
-                          <Label className={`text-xs font-brand uppercase tracking-widest ${subtleCls}`}>Password</Label>
+                          <Label className={`text-xs font-brand uppercase tracking-widest ${subtleCls}`}>Password for this browser</Label>
                           <button
                             type="button"
                             onClick={handleSuggestPassphrase}
@@ -1675,6 +1439,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                           <button
                             type="button"
                             onClick={() => setShowPassword((v) => !v)}
+                            aria-label={showPassword ? "Hide password" : "Show password"}
                             className={`absolute right-2 top-1/2 -translate-y-1/2 ${ghostBtnCls}`}
                             data-testid="button-toggle-passphrase-visibility"
                           >
@@ -1733,46 +1498,24 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                 <div className={`rounded-md p-3 flex items-start gap-2 ${isOverlay ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-emerald-500/10 border border-emerald-500/30"}`} data-testid="panel-secured">
                   <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${isOverlay ? "text-emerald-300" : "text-emerald-700"}`} />
                   <p className={`text-xs leading-relaxed ${isOverlay ? "text-emerald-100" : "text-success dark:text-emerald-900"}`}>
-                    Your account is saved on this device{passkeyBlob ? " and unlocks with a tap" : ""}. Only you hold the key that controls it.
+                    {who} is saved on this device{passkeyBlob ? " and unlocks with a tap" : ""}. Only you hold the key that controls it.
                   </p>
                 </div>
 
-                <label className={`flex items-start gap-2.5 cursor-pointer p-3 rounded-md transition-colors ${ackOnlyMe ? (isOverlay ? "bg-emerald-500/[0.07] border border-emerald-400/25" : "bg-emerald-500/[0.05] border border-emerald-500/25") : (isOverlay ? "bg-white/[0.03] border border-white/10 hover:bg-white/[0.05]" : "bg-foreground/[0.03] border border-border/30 hover:bg-foreground/[0.05]")}`}>
-                  <input type="checkbox" checked={ackOnlyMe} onChange={(e) => setAckOnlyMe(e.target.checked)} className="mt-0.5" data-testid="checkbox-ack-only-me" />
-                  <span className={`text-xs leading-relaxed ${descCls}`}>
-                    I understand only I can recover this account — there's no password reset.
-                  </span>
-                </label>
-
-                {/* Up front, not under Advanced: the backup is the only way back into
-                    this account on another device, and people skipped what they never saw.
-                    Still optional; skipping it earns a reminder later (lib/key-backup.ts). */}
-                <div className={`rounded-md p-3 space-y-2.5 ${isOverlay ? "border border-white/10 bg-white/[0.03]" : "border border-border/40 bg-foreground/[0.02]"}`} data-testid="panel-save-backup">
-                  <div>
-                    <p className={`text-xs font-semibold ${titleCls}`}>Save a backup</p>
-                    <p className={`text-xs leading-relaxed ${descCls}`}>It's the only way back into this account on another phone or browser. We keep no copy.</p>
-                  </div>
-                  <Button
-                    onClick={handleDownloadBackup}
-                    variant="outline"
-                    className={`w-full text-xs font-brand uppercase tracking-widest transition-all ${downloadJustSaved ? (isOverlay ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200" : "border-emerald-500/40 bg-emerald-500/10 text-success dark:text-emerald-700") : (isOverlay ? "border-white/20 text-white/80" : "")}`}
-                    data-testid="button-download-backup"
-                  >
-                    {downloadJustSaved ? <CheckCircle2 className="w-4 h-4 mr-2" /> : downloaded ? <Check className="w-4 h-4 mr-2" /> : <Download className="w-4 h-4 mr-2" />}
-                    {downloadJustSaved ? "Saved — keep it safe" : downloaded ? "Backup saved — download again" : "Download backup file"}
-                  </Button>
-                  {!passkeyBlob && (
-                    <Button
-                      onClick={handleSaveEncryptedToManager}
-                      disabled={savingEncryptedToManager}
-                      variant="outline"
-                      className={`w-full text-xs font-brand uppercase tracking-widest transition-all ${savedEncryptedToManager ? (isOverlay ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200" : "border-emerald-500/40 bg-emerald-500/10 text-success dark:text-emerald-700") : (isOverlay ? "border-white/20 text-white/80" : "")}`}
-                      data-testid="button-save-ncryptsec-to-password-manager"
-                    >
-                      {savingEncryptedToManager ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : savedEncryptedToManager ? <Check className="w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                      {savingEncryptedToManager ? "Saving…" : savedEncryptedToManager ? "Saved to password manager" : "Save to password manager"}
-                    </Button>
-                  )}
+                {/* The consequence as a story, at the moment of choice, in their own
+                    account's name (owner, 2026-10-10). The key file is the thing to
+                    keep; Finish opens after a save or a deliberate skip. */}
+                <div className={`rounded-md p-3 space-y-2.5 ${isOverlay ? "border border-white/10 bg-white/[0.03]" : "border border-border/40 bg-foreground/[0.02]"}`} data-testid="panel-save-key">
+                  <p className={`text-xs leading-relaxed ${descCls}`} data-testid="text-key-story">
+                    {who} lives on this browser. If this browser is cleared or this device is lost, {who} is gone. Nobody, including us, can bring it back. Your key is the only way. We keep no copy.
+                  </p>
+                  <KeyBackupActions
+                    material={{ nsec: account.nsec, npub: account.npub, pubkey: account.pubkey, name: displayName.trim(), createdAt: stored.createdAt }}
+                    relays={[...FLOOR_RELAYS]}
+                    isOverlay={isOverlay}
+                    onSaved={() => setKeySaved(true)}
+                    testIdPrefix="signup-key"
+                  />
                 </div>
 
                 <div className={`rounded-md ${isOverlay ? "border border-white/10" : "border border-border/40"}`}>
@@ -1784,14 +1527,14 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                   >
                     <ChevronDown className={`w-4 h-4 transition-transform ${showSecureAdvanced ? "rotate-180" : ""} ${ghostBtnCls}`} />
                     <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-semibold ${titleCls}`}>Advanced: username &amp; recovery code</p>
-                      <p className={`text-xs ${descCls}`}>View your public username, or reveal your raw recovery code.</p>
+                      <p className={`text-xs font-semibold ${titleCls}`}>Advanced: your address &amp; your key as text</p>
+                      <p className={`text-xs ${descCls}`}>The address others find you by, and the key itself to copy.</p>
                     </div>
                   </button>
                   {showSecureAdvanced && (
                     <div className={`px-3 py-3 space-y-3 border-t ${isOverlay ? "border-white/10 bg-black/20" : "border-border/40 bg-foreground/[0.02]"}`}>
                       <div className="space-y-1.5">
-                        <p className={`text-[10px] font-brand uppercase tracking-[0.18em] font-bold ${subtleCls}`}>Your public username</p>
+                        <p className={`text-[10px] font-brand uppercase tracking-[0.18em] font-bold ${subtleCls}`}>Your address</p>
                         <code className={`block text-[11px] break-all font-mono ${isOverlay ? "text-white/80" : "text-foreground/80"}`} data-testid="text-new-npub">{account.npub}</code>
                         <Button size="sm" variant="outline" onClick={handleCopyNpub} className={`h-8 text-[11px] font-brand uppercase tracking-[0.12em] font-bold ${isOverlay ? "border-white/15 text-white/85 hover:bg-white/10" : ""}`} data-testid="button-copy-npub">
                           {copiedNpub ? <Check className="w-3.5 h-3.5 mr-1.5" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
@@ -1809,19 +1552,19 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                         >
                           {showNsec ? <EyeOff className={`w-4 h-4 ${isOverlay ? "text-white/70" : "text-foreground/70"}`} /> : <Eye className={`w-4 h-4 ${isOverlay ? "text-white/70" : "text-foreground/70"}`} />}
                           <div className="flex-1 min-w-0">
-                            <p className={`text-xs font-semibold ${titleCls}`}>{showNsec ? "Hide recovery code" : "Reveal recovery code"}</p>
-                            <p className={`text-xs ${descCls}`}>Your raw key. Anyone holding it controls the account.</p>
+                            <p className={`text-xs font-semibold ${titleCls}`}>{showNsec ? "Hide the key" : "Show the key as text"}</p>
+                            <p className={`text-xs ${descCls}`}>Hidden until you ask. Anyone holding it can act as you.</p>
                           </div>
                         </button>
-                        {showNsec && (
-                          <div className={`px-3 py-2.5 space-y-2 border-t ${isOverlay ? "border-white/10 bg-black/20" : "border-border/40 bg-foreground/[0.02]"}`}>
-                            <code className={`block text-xs break-all font-mono p-2 rounded select-all ${isOverlay ? "bg-black/40 text-white/80" : "bg-background text-foreground/80"}`} data-testid="text-step3-nsec">{account.nsec}</code>
-                            <Button size="sm" variant="outline" onClick={handleCopyNsec} className={`w-full text-xs font-brand uppercase tracking-widest ${isOverlay ? "border-white/20 text-white/80" : ""}`} data-testid="button-copy-nsec-step3">
-                              {copiedNsec ? <Check className="w-3.5 h-3.5 mr-1.5" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
-                              {copiedNsec ? "Copied" : "Copy recovery code"}
-                            </Button>
-                          </div>
-                        )}
+                        <div className={`px-3 py-2.5 space-y-2 border-t ${isOverlay ? "border-white/10 bg-black/20" : "border-border/40 bg-foreground/[0.02]"}`}>
+                          <code className={`block text-xs break-all font-mono p-2 rounded select-all ${isOverlay ? "bg-black/40 text-white/80" : "bg-background text-foreground/80"}`} data-testid="text-step3-nsec">
+                            {showNsec ? account.nsec : "•".repeat(24)}
+                          </code>
+                          <Button size="sm" variant="outline" onClick={handleCopyNsec} className={`w-full text-xs font-brand uppercase tracking-widest ${isOverlay ? "border-white/20 text-white/80" : ""}`} data-testid="button-copy-nsec-step3">
+                            {copiedNsec ? <Check className="w-3.5 h-3.5 mr-1.5" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
+                            {copiedNsec ? "Copied" : "Copy the key"}
+                          </Button>
+                        </div>
                       </div>
 
                     </div>
@@ -1833,15 +1576,27 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                   <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline decoration-dotted underline-offset-2 hover:text-foreground/80" data-testid="link-create-covenant">Terms</a>
                   {" "}and{" "}
                   <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline decoration-dotted underline-offset-2 hover:text-foreground/80" data-testid="link-create-privacy">Privacy</a>
-                  . Your keys are yours — if you lose them, no one can recover them for you.
+                  . Your key is yours — if you lose it, no one can recover it for you.
                 </p>
+
+                {!keySaved && (
+                  <button
+                    type="button"
+                    onClick={() => setKeySkipped(true)}
+                    disabled={keySkipped}
+                    className={`block text-[11px] underline decoration-dotted underline-offset-2 text-left ${subtleCls} disabled:no-underline disabled:opacity-80`}
+                    data-testid="button-skip-key"
+                  >
+                    {keySkipped ? `Skipped — we'll remind you in Chats` : `Skip for now — I accept ${who} could be lost`}
+                  </button>
+                )}
 
                 <div className="flex items-center gap-2 pt-1">
                   <Button variant="ghost" onClick={() => setStep(1)} className={`text-xs font-brand uppercase tracking-widest ${ghostBtnCls}`} data-testid="button-step2-back">
                     <ArrowLeft className="w-4 h-4 mr-2" /> Back
                   </Button>
                   <div className="flex-1" />
-                  <Button onClick={handleFinish} disabled={!acknowledged || isWorking} className={`text-xs font-brand uppercase tracking-widest ${primaryBtnCls}`} data-testid="button-finish-create">
+                  <Button onClick={handleFinish} disabled={!canFinishSignup({ saved: keySaved, skipped: keySkipped }) || isWorking} className={`text-xs font-brand uppercase tracking-widest ${primaryBtnCls}`} data-testid="button-finish-create">
                     {isWorking ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : null}
                     {isWorking ? "Signing in…" : "Finish"}
                   </Button>

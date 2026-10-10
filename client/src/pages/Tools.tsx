@@ -32,7 +32,7 @@ const TOOLS: ToolRow[] = [
 
 /** Only local accounts hold an exportable, encrypted key to back up. */
 const KEY_BACKUP_ROW: ToolRow = {
-  href: "/key-backup", icon: KeyRound, title: "Back up your key", desc: "Download an encrypted backup",
+  href: "/key-backup", icon: KeyRound, title: "Save your key", desc: "The only way back in from another device",
 };
 
 export default function Tools() {

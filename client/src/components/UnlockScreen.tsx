@@ -165,7 +165,7 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
         console.warn("Passkey unlock failed:", err);
         toast({
           title: "Couldn't unlock with passkey",
-          description: "Use your passphrase instead.",
+          description: "Use your password for this browser instead.",
           variant: "destructive",
         });
       }
@@ -216,8 +216,8 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
       });
       setPassword("");
       toast({
-        title: "Wrong passphrase",
-        description: "Try again, or restore from your backup file.",
+        title: "Wrong password",
+        description: "Try again. Your key file gets you in from any device.",
         variant: "destructive",
       });
     } finally {
@@ -265,7 +265,7 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
   const handleForget = useCallback(() => {
     const ok = window.confirm(
       "Forget this account from this device?\n\n" +
-      "Your encrypted key will be removed from this browser. You can still restore it from your backup file or another device."
+      "The copy of your key kept in this browser will be removed. Your key file, or another device, gets you back in."
     );
     if (!ok) return;
     // Multi-account: drop this account's registry entry and its per-pubkey
@@ -316,7 +316,7 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className={`text-base font-semibold ${titleCls}`} data-testid="text-stay-nudge-title">Stay signed in next time?</h3>
-                <p className={`text-xs mt-0.5 ${descCls}`}>Skip the passphrase on this device. Sign out from the menu when you want to remove your key.</p>
+                <p className={`text-xs mt-0.5 ${descCls}`}>Skip the password on this device. Sign out from the menu when you want to remove your key.</p>
               </div>
             </div>
 
@@ -346,7 +346,7 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
                 className={`w-full text-[11px] font-brand uppercase tracking-widest ${ghostBtnCls}`}
                 data-testid="button-stay-nudge-decline"
               >
-                Keep asking for my passphrase
+                Keep asking for my password
               </Button>
             </div>
           </CardContent>
@@ -365,8 +365,8 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
                 <KeyRound className={`w-6 h-6 ${isOverlay ? "text-emerald-300" : "text-emerald-700"}`} />
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className={`text-base font-semibold ${titleCls}`} data-testid="text-passkey-nudge-title">Skip the passphrase next time?</h3>
-                <p className={`text-xs mt-0.5 ${descCls}`}>One tap with {platform.name} on this device. Your passphrase still works as a backup.</p>
+                <h3 className={`text-base font-semibold ${titleCls}`} data-testid="text-passkey-nudge-title">Skip the password next time?</h3>
+                <p className={`text-xs mt-0.5 ${descCls}`}>One tap with {platform.name} on this device. Your password for this browser still works.</p>
               </div>
             </div>
 
@@ -391,7 +391,7 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
                 ? "Signing in…"
                 : activePasskey
                   ? "Continue"
-                  : "Not now — keep using passphrase"}
+                  : "Not now — keep using the password"}
             </Button>
           </CardContent>
         </Card>
@@ -428,14 +428,14 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
               </Button>
               <div className="flex items-center gap-3">
                 <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border/60"}`} />
-                <span className={`text-[10px] font-brand uppercase tracking-[0.18em] ${subtleCls}`}>or passphrase</span>
+                <span className={`text-[10px] font-brand uppercase tracking-[0.18em] ${subtleCls}`}>or password</span>
                 <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border/60"}`} />
               </div>
             </div>
           )}
 
           <div className="space-y-2">
-            <Label className={`text-[11px] font-brand uppercase tracking-widest ${subtleCls}`}>Passphrase</Label>
+            <Label className={`text-[11px] font-brand uppercase tracking-widest ${subtleCls}`}>Password for this browser</Label>
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
@@ -484,7 +484,7 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
               <div className="flex items-start gap-2">
                 <ShieldAlert className={`w-4 h-4 mt-0.5 shrink-0 ${isOverlay ? "text-amber-300" : "text-amber-600"}`} />
                 <p className={`text-[11px] ${descCls}`}>
-                  Stuck? Use <strong>Sign in another way</strong> below to import your nsec or your encrypted backup file from another device.
+                  Stuck? Use <strong>Sign in another way</strong> below and paste your key from your key file.
                 </p>
               </div>
             </div>
