@@ -563,6 +563,8 @@ export function removePendingInvite(owner: string, communityId: string): void {
   try {
     localStorage.setItem(pendingKey(owner), JSON.stringify(listPendingInvites(owner).filter((p) => p.bundle.community_id !== communityId)));
   } catch {}
+  // The card renders in Chats and in Activity: both re-read on this.
+  try { window.dispatchEvent(new Event("concord-invite-received")); } catch {}
 }
 
 // ── Direct gift-wrapped invite (CORD-05 §3313) ───────────────────────────────

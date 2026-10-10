@@ -1591,7 +1591,8 @@ function AppLayout() {
       <AppContent mainRef={mainRef} scrollHidden={scrollHidden} />
       {/* Signed-in recipient invite prompt. New accounts consume + remove the
           invite markers inside CreateAccountFlow, so this never double-fires. */}
-      {!!pubkey && <InviteAcceptCard />}
+      {/* Not over the Welcome page: there it is the page's first card, inline. */}
+      {!!pubkey && location !== "/welcome" && <InviteAcceptCard />}
       {/* The one sheet every "wider network" door opens (components/wider-network). */}
       {!!pubkey && <WiderNetworkSheetHost />}
       {/* Own boundary: signed-in users mount this in "hidden" mode (renders

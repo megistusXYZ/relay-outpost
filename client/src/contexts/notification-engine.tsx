@@ -10,6 +10,9 @@ import { DM_PREFS_EVENT, isMutedChat, readDmPrefs } from "@/lib/dm-prefs";
 import { routeGroupRumor } from "@/lib/concord/concord-dm-pipe";
 import { getCommunity } from "@/lib/concord/concord-keys";
 import { toast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
+import { useLocation } from "wouter";
+import { getProfileContent, KIND_METADATA } from "@/lib/nostr-helpers";
 import * as dmCache from "@/lib/dm-cache";
 import { readDmLastRead, READSTATE_CHANGED_EVENT, READSTATE_HYDRATED_EVENT } from "@/lib/dm-read";
 import { getCachedNotifications, cacheNotifications } from "@/lib/indexeddb-cache";
@@ -182,6 +185,7 @@ function mergeNotifications(current: NotificationItem[], seeded: NotificationIte
  */
 export default function NotificationEngine({ onChange }: { onChange: (value: NotificationContextType) => void }) {
   const { pubkey, signer, follows } = useNostrAuth();
+  const [, navigate] = useLocation();
   // While a new account's wider network is off, only its own space may
   // raise a badge (lib/your-space.ts): a bot's mention or a stranger's
   // request is kept, just not counted.
@@ -413,9 +417,18 @@ export default function NotificationEngine({ onChange }: { onChange: (value: Not
         // An invite to a group you're in carries a private room, taken when the
         // group opens (useConcordGovernance): there's nothing to accept.
         const inGroup = routed.communityId ? await getCommunity(currentPubkey, routed.communityId).catch(() => null) : null;
+        // Who, to what, and ONE action that lands on the card (owner,
+        // 2026-10-10): the old toast said "Open Chats" while the card sat in
+        // Activity under the simplified navigation, and had no action at all.
+        const inviter = getProfileContent(eventStore.getReplaceable(KIND_METADATA, unwrapped.senderPubkey) ?? undefined);
+        const who = (inviter?.display_name || inviter?.name || "").trim() || "Someone";
         toast(inGroup
           ? { title: "New private room", description: `You were added to a private room in ${inGroup.name ?? routed.name ?? "a group chat"}. Open the group to see it.` }
-          : { title: "Private chat invite", description: `You've been invited to ${routed.name ?? "a private chat"}. Open Chats to accept it.` });
+          : {
+              title: `${who} invited you to ${routed.name ?? "a private chat"}`,
+              description: "The invite is waiting at the top of Chats.",
+              action: <ToastAction altText="Open Chats" onClick={() => navigate("/messages")}>Open</ToastAction>,
+            });
       }
       if (routed.isNew && routed.kind === "report") {
         toast({ title: "A message was reported", description: "Someone reported a message in a group chat you moderate. Open the group's Manage to review it." });
