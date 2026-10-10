@@ -21,6 +21,7 @@ import { ManageCountBadge } from "@/components/concord/ManageCountBadge";
 import { canInviteToCommunity, rosterPubkeys } from "@/lib/concord/concord-invite-gate";
 import { ConcordMembers } from "@/components/concord/ConcordMembers";
 import { ConcordInviteDialog } from "@/components/concord/ConcordInviteDialog";
+import { setInviteNudge, hasInviteNudge, clearInviteNudge } from "@/lib/concord/invite-nudge";
 import { useConcordGovernance, COMMUNITY_UPDATED_EVENT } from "@/components/concord/useConcordGovernance";
 import { isStaff } from "@/lib/concord/concord-events";
 import { ConcordAdminDrawer } from "@/components/concord/ConcordAdminDrawer";
@@ -110,18 +111,23 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
     window.addEventListener(COMMUNITY_UPDATED_EVENT, onUpdated);
     return () => window.removeEventListener(COMMUNITY_UPDATED_EVENT, onUpdated);
   }, [pubkey, communityId]);
-  // Post-create nudge: open the invite dialog when arriving via ?invite=1 (owner).
+  // Post-create nudge: open the invite dialog on arriving in a community the
+  // person just made (owner). The URL's ?invite=1 is stripped at once; the
+  // session marker (lib/concord/invite-nudge.ts) is what survives this page
+  // mounting again after its record loads, and is cleared when they close it.
   useEffect(() => {
+    if (!isOwner) return;
     try {
-      if (new URLSearchParams(window.location.search).get("invite") === "1" && isOwner) {
-        setInviteOpen(true);
-        // Only the nudge goes: stripping the whole query also dropped the room.
-        const url = new URL(window.location.href);
+      const url = new URL(window.location.href);
+      const fromUrl = url.searchParams.get("invite") === "1";
+      if (fromUrl) {
         url.searchParams.delete("invite");
-        window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+        window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+        setInviteNudge(communityId);
       }
+      if (fromUrl || hasInviteNudge(communityId)) setInviteOpen(true);
     } catch {}
-  }, [isOwner]);
+  }, [isOwner, communityId]);
 
   // The SHARED group name shown to every member. Live folded metadata wins
   // over the stale local record (same "folded wins" rule as `about` below) so
@@ -342,7 +348,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
       {/* Identity in the top bar */}
       {slotEl && createPortal(identityStrip, slotEl)}
       <ConcordInviteDialog
-        open={inviteOpen} onOpenChange={setInviteOpen} community={community} memberPubkeys={rosterPks} linkJoins={govLinkJoins}
+        open={inviteOpen} onOpenChange={(o) => { setInviteOpen(o); if (!o) clearInviteNudge(communityId); }} community={community} memberPubkeys={rosterPks} linkJoins={govLinkJoins}
         govState={govState} myMember={myMember} roster={govRoster} compaction={govCompaction} onCommunityChange={setCommunity}
       />
       {/* Same component the chat mounts — this page (About's Manage, the group menu) needs its own door, but

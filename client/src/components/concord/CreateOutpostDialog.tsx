@@ -23,6 +23,7 @@ import { publishCommunityList, type StoredCommunity } from "@/lib/concord/concor
 import { RoomImagePicker } from "./RoomImagePicker";
 import type { CommunityImage } from "@/lib/concord/concord-image";
 import createBg from "../../assets/images/create-bg.webp";
+import { setInviteNudge } from "@/lib/concord/invite-nudge";
 
 export function CreateOutpostDialog({ open, onOpenChange, onCreated }: {
   open: boolean;
@@ -68,6 +69,7 @@ export function CreateOutpostDialog({ open, onOpenChange, onCreated }: {
       if (onCreated) { onCreated(record); return; }
       // Land in the new group chat with the invite dialog open — an empty community
       // is a dead end, so nudge the creator to share a link immediately.
+      setInviteNudge(record.community_id); // survives the page mounting twice (lib/concord/invite-nudge.ts)
       setLocation(`/outposts/c/${record.community_id}?invite=1`);
     } catch (err) {
       toast({ title: "Couldn't create group chat", description: String((err as Error)?.message ?? err), variant: "destructive" });
