@@ -4,7 +4,7 @@
  * only in this browser is one cleared cache away from gone.
  */
 import { describe, it, expect, beforeEach } from "vitest";
-import { backupNudge, backupFacts, markAccountCreated, markBackedUp, snoozeBackupNudge } from "./key-backup";
+import { backupNudge, backupFacts, backupStatus, markAccountCreated, markBackedUp, markBackupChecked, snoozeBackupNudge, momentDue, dismissMoment, canFinishSignup } from "./key-backup";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -61,5 +61,64 @@ describe("what this device remembers about backups", () => {
     expect(backupNudge(backupFacts(ME, true, true), T0 + 4 * DAY + 2 * HOUR)).toBe("nudge");
     markBackedUp(ME, T0 + 5 * DAY);
     expect(backupNudge(backupFacts(ME, true, true), T0 + 30 * DAY)).toBe("none");
+  });
+});
+
+describe("what counts as backed up (owner, 2026-10-10)", () => {
+  const ME = "b".repeat(64);
+  beforeEach(() => {
+    const store = new Map<string, string>();
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    };
+  });
+
+  it("a Touch ID-first account's old mark is not a backup: that file held only an encrypted copy nobody can open", () => {
+    // Those accounts were encrypted under a random password they never saw.
+    // A mark made before the key file existed is a false "backed up" — the one
+    // state worse than "not backed up" — so it is dropped and the reminder returns.
+    markAccountCreated(ME, T0);
+    markBackedUp(ME, T0 + HOUR); // the old, unversioned mark
+    expect(backupNudge(backupFacts(ME, true, true, { passkeyFirst: true }), T0 + 2 * DAY)).toBe("nudge");
+    // The same old mark on a password account stays: that file opened with the password.
+    expect(backupNudge(backupFacts(ME, true, true, { passkeyFirst: false }), T0 + 2 * DAY)).toBe("none");
+  });
+
+  it("a key-file mark counts for everyone", () => {
+    markAccountCreated(ME, T0);
+    markBackedUp(ME, T0 + HOUR, "key");
+    expect(backupNudge(backupFacts(ME, true, true, { passkeyFirst: true }), T0 + 2 * DAY)).toBe("none");
+  });
+
+  it("knows the difference between saved and saved-and-checked", () => {
+    markAccountCreated(ME, T0);
+    expect(backupStatus(backupFacts(ME, true, true))).toBe("not-saved");
+    markBackedUp(ME, T0 + HOUR, "key");
+    expect(backupStatus(backupFacts(ME, true, true))).toBe("saved");
+    markBackupChecked(ME, T0 + 2 * HOUR);
+    expect(backupStatus(backupFacts(ME, true, true))).toBe("checked");
+    // Someone who brought their own key has nothing to save here.
+    expect(backupStatus(backupFacts(ME, true, false))).toBe("none");
+  });
+
+  it("each reminder moment is met once: dismissed is dismissed", () => {
+    markAccountCreated(ME, T0);
+    expect(momentDue(backupFacts(ME, true, true), "community")).toBe(true);
+    dismissMoment(ME, "community");
+    expect(momentDue(backupFacts(ME, true, true), "community")).toBe(false);
+    expect(momentDue(backupFacts(ME, true, true), "members")).toBe(true);
+    // Nothing to remind once the key is saved.
+    markBackedUp(ME, T0 + HOUR, "key");
+    expect(momentDue(backupFacts(ME, true, true), "members")).toBe(false);
+  });
+});
+
+describe("what lets Finish through", () => {
+  it("a saved key, or a deliberate skip — never a tick in a box", () => {
+    expect(canFinishSignup({ saved: false, skipped: false })).toBe(false);
+    expect(canFinishSignup({ saved: true, skipped: false })).toBe(true);
+    expect(canFinishSignup({ saved: false, skipped: true })).toBe(true);
   });
 });

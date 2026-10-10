@@ -1,90 +1,127 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { Download, ShieldCheck, Lock } from "lucide-react";
+import { Eye, EyeOff, Fingerprint, KeyRound } from "lucide-react";
+import { nip19 } from "nostr-tools";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { loadLocalAccount, downloadBackupFile } from "@/lib/local-account";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { loadLocalAccount, decryptStored } from "@/lib/local-account";
 import { getWriteRelays } from "@/lib/outbox";
-import { markBackedUp } from "@/lib/key-backup";
+import { unlockWithPasskey, describePasskeyPlatform } from "@/lib/passkey";
+import { useKeyMaterial } from "@/hooks/use-key-material";
+import { KeyBackupActions, type KeyMaterial } from "@/components/KeyBackupActions";
+import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 
 /**
- * Re-download the ENCRYPTED (NIP-49 ncryptsec) key backup for a local account.
- *
- * SECURITY: this reuses the existing encrypted `downloadBackupFile` path only.
- * It never reveals or copies a plaintext nsec (no `nsec` extra is passed), and
- * the whole page is gated to local accounts — NIP-07 extension and NIP-46
- * remote-signer logins don't hold an exportable local key, so they never see
- * this at all. The ncryptsec is already stored encrypted, so no passphrase
- * re-entry is needed to regenerate the file.
+ * Save your key (owner, 2026-10-10). The key file holds the key itself, so
+ * this page needs the key unlocked: it is in memory when the person chose to
+ * stay signed in; otherwise the password for this browser (or Touch ID) opens
+ * the copy kept here first. Only local accounts hold a key to save — an
+ * extension, signer app or connection link keeps it elsewhere.
  */
 export default function KeyBackup() {
-  useDocumentTitle("Back up your key");
-  const { pubkey, loginMethod } = useNostrAuth();
+  useDocumentTitle("Save your key");
+  const { pubkey, loginMethod, profile } = useNostrAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [done, setDone] = useState(false);
+  const inMemory = useKeyMaterial();
+  const [unlocked, setUnlocked] = useState<KeyMaterial | null>(null);
+  const [password, setPassword] = useState("");
+  const [show, setShow] = useState(false);
+  const [working, setWorking] = useState(false);
 
-  // A local account holds an exportable, encrypted key. Extension/bunker/QR
-  // logins do not — there is nothing here to back up for them.
   const account = useMemo(() => (loginMethod === "local" ? loadLocalAccount() : null), [loginMethod]);
   const isLocal = loginMethod === "local" && !!account;
+  const platform = describePasskeyPlatform();
 
   useEffect(() => {
     if (!pubkey) { setLocation("/"); return; }
-    // Non-local logins can reach the route directly — bounce them to Tools.
     if (pubkey && loginMethod && !isLocal) setLocation("/tools");
   }, [pubkey, loginMethod, isLocal, setLocation]);
 
-  if (!pubkey || !isLocal || !account) return null;
+  const name = profile?.display_name || profile?.name || account?.label || "";
+  const toMaterial = useCallback((secret: Uint8Array): KeyMaterial | null => {
+    if (!account || !pubkey) return null;
+    return { nsec: nip19.nsecEncode(secret), npub: account.npub, pubkey, name, createdAt: account.createdAt };
+  }, [account, pubkey, name]);
 
-  const download = () => {
+  const unlockWithPassword = useCallback(async () => {
+    if (!account || !password) return;
+    setWorking(true);
     try {
-      downloadBackupFile(account, {
-        displayName: account.label,
-        relays: getWriteRelays(pubkey),
-      });
-      markBackedUp(pubkey, Date.now());
-      setDone(true);
-      toast({ title: "Encrypted backup downloaded", description: "Store it somewhere only you can reach." });
+      const secret = await new Promise<Uint8Array>((resolve, reject) => setTimeout(() => { try { resolve(decryptStored(account.ncryptsec, password)); } catch (e) { reject(e); } }, 20));
+      setUnlocked(toMaterial(secret));
+      setPassword("");
     } catch {
-      toast({ title: "Couldn't create backup", description: "Please try again.", variant: "destructive" });
+      toast({ title: "Wrong password", description: "That is not the password for this browser.", variant: "destructive" });
+    } finally {
+      setWorking(false);
     }
-  };
+  }, [account, password, toMaterial, toast]);
+
+  const unlockWithTouch = useCallback(async () => {
+    if (!account?.passkey) return;
+    setWorking(true);
+    try {
+      setUnlocked(toMaterial(await unlockWithPasskey(account.passkey)));
+    } catch {
+      toast({ title: `${platform.name} didn't unlock it`, description: "Try again.", variant: "destructive" });
+    } finally {
+      setWorking(false);
+    }
+  }, [account, toMaterial, toast, platform.name]);
+
+  if (!pubkey || !isLocal || !account) return null;
+  const material = unlocked ?? inMemory?.material ?? null;
+  const relays = inMemory?.relays ?? getWriteRelays(pubkey);
 
   return (
     <div className="max-w-xl mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-10 space-y-5" data-testid="page-key-backup">
-
       <Card className="glass-card p-5 sm:p-6 space-y-4">
-        <div className="flex items-start gap-2.5 rounded-lg border border-brand/25 bg-brand/[0.05] p-3">
-          <Lock className="h-4 w-4 shrink-0 mt-0.5 text-brand" />
-          <p className="text-xs leading-relaxed text-muted-foreground/80">
-            This downloads an <strong className="text-foreground/85">encrypted</strong> backup (NIP-49 ncryptsec).
-            Without your passphrase the file is useless to anyone who finds it — so it's safe to store in the cloud.
-            Your raw secret key is never included.
+        <div className="flex items-start gap-2.5">
+          <KeyRound className="h-4 w-4 shrink-0 mt-0.5 text-brand" />
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {name ? `${name} lives` : "This account lives"} only in this browser. If it is cleared or this device is lost, the account is gone and nobody, including us, can bring it back. Your key is the only way. We keep no copy.
           </p>
         </div>
 
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Keep at least one copy somewhere you'll find it again. If you ever lose access to this device, you can
-          restore your account from this file plus your passphrase.
-        </p>
-
-        <Button
-          onClick={download}
-          className="w-full min-h-11 gap-2 bg-brand text-white hover:bg-brand"
-          data-testid="button-download-key-backup"
-        >
-          <Download className="h-4 w-4" />
-          Download encrypted backup
-        </Button>
-
-        {done && (
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-success dark:text-emerald-300">
-            <ShieldCheck className="h-4 w-4 shrink-0" />
-            Backup downloaded. Store the file and your passphrase separately.
+        {material ? (
+          <KeyBackupActions material={material} relays={relays} testIdPrefix="key-page" />
+        ) : (
+          <div className="space-y-3" data-testid="key-page-unlock">
+            <p className="text-xs text-muted-foreground">Unlock the copy kept here first.</p>
+            {account.passkey && (
+              <Button onClick={unlockWithTouch} disabled={working} className="w-full min-h-11 gap-2 bg-brand text-white hover:bg-brand" data-testid="key-page-unlock-passkey">
+                {working ? <RelayOutpostInlineLoader className="h-4 w-4" /> : <Fingerprint className="h-4 w-4" />}
+                Unlock with {platform.name}
+              </Button>
+            )}
+            <div className="space-y-2">
+              <Label className="text-[11px] font-brand uppercase tracking-widest text-muted-foreground">Password for this browser</Label>
+              <div className="relative">
+                <Input
+                  type={show ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") void unlockWithPassword(); }}
+                  autoComplete="current-password"
+                  className="pr-10"
+                  style={{ fontSize: 16 }}
+                  data-testid="key-page-password"
+                />
+                <button type="button" onClick={() => setShow((v) => !v)} aria-label={show ? "Hide password" : "Show password"} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <Button onClick={unlockWithPassword} disabled={!password || working} variant="outline" className="w-full min-h-11" data-testid="key-page-unlock-password">
+                {working ? <RelayOutpostInlineLoader className="h-4 w-4 mr-2" /> : null}
+                Unlock
+              </Button>
+            </div>
           </div>
         )}
       </Card>

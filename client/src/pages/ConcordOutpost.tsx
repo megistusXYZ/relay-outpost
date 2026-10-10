@@ -22,6 +22,7 @@ import { canInviteToCommunity, rosterPubkeys } from "@/lib/concord/concord-invit
 import { ConcordMembers } from "@/components/concord/ConcordMembers";
 import { ConcordInviteDialog } from "@/components/concord/ConcordInviteDialog";
 import { setInviteNudge, hasInviteNudge, clearInviteNudge } from "@/lib/concord/invite-nudge";
+import { KeyBackupMoment } from "@/components/KeyBackupMoment";
 import { useConcordGovernance, COMMUNITY_UPDATED_EVENT } from "@/components/concord/useConcordGovernance";
 import { isStaff } from "@/lib/concord/concord-events";
 import { ConcordAdminDrawer } from "@/components/concord/ConcordAdminDrawer";
@@ -160,6 +161,10 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
     () => (community ? rosterPubkeys(community.community_id, govRoster) : []),
     [community, govRoster],
   );
+  // Where loss becomes expensive (owner, 2026-10-10): this community, and the
+  // people in it, depend on the owner's key. Above the messages on every
+  // layout, once per moment, gone for good once the key is saved.
+  const keyNotice = isOwner && community ? <KeyBackupMoment members={rosterPks.length} name={displayName} /> : null;
 
   // Same live list the chat builds, from the same function — the admin drawer
   // must not see a different set of channels depending on which door opened it.
@@ -408,6 +413,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
            past their narrowest, and give way in a narrow window (fitPanes). */
         <div ref={setPanesEl} className="flex flex-1 min-h-0 px-4 pb-4" data-testid="concord-panes">
           <ConcordChat community={community} onCommunityChange={setCommunity}
+            notice={keyNotice}
             initialChannelId={initialChannelId} roomInUrl
             onInvite={canInvite ? () => setInviteOpen(true) : undefined}
             // Two acts, two props. The ternary used to live here because
@@ -463,6 +469,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
           style={kb.height ? { height: `${kb.height}px`, top: `${kb.offsetTop}px`, bottom: "auto" } : undefined}
         >
           <ConcordChat community={community} onCommunityChange={setCommunity} viewportNudge={kb.height}
+            notice={keyNotice}
             initialChannelId={initialChannelId} roomInUrl
             onInvite={canInvite ? () => setInviteOpen(true) : undefined}
             onLeave={() => setDanger("leave")}

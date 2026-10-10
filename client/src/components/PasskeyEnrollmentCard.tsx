@@ -61,13 +61,13 @@ export function PasskeyEnrollmentCard({
         toast({
           title: "Passkey not compatible",
           description:
-            "Your passkey was created, but this device doesn't expose the secure derivation we need. Use your passphrase to sign in.",
+            "Your passkey was created, but this device doesn't expose the secure derivation we need. Use your password for this browser to sign in.",
           variant: "destructive",
         });
       } else {
         toast({
           title: "Couldn't save passkey",
-          description: err instanceof Error ? err.message : "Try again, or skip and use your passphrase.",
+          description: err instanceof Error ? err.message : "Try again, or skip and set a password for this browser.",
           variant: "destructive",
         });
       }
@@ -121,7 +121,7 @@ export function PasskeyEnrollmentCard({
           <div className="space-y-1 min-w-0 flex-1">
             <p className={`text-[13px] font-semibold ${titleCls}`}>One-tap unlock isn't set up on this device</p>
             <p className={`text-xs leading-relaxed ${bodyCls}`}>
-              We didn't find Face ID, Touch ID, fingerprint, or Windows Hello here. You can still create your account and sign in with your passphrase as usual.
+              We didn't find Face ID, Touch ID, fingerprint, or Windows Hello here. You can still create your account and sign in with a password for this browser instead.
             </p>
           </div>
         </div>
@@ -150,7 +150,7 @@ export function PasskeyEnrollmentCard({
               </span>
             </div>
             <p className={`text-xs leading-relaxed mt-1 ${bodyCls}`}>
-              Use {platform.name} to unlock this account with a tap. Your phone or computer creates the unlock key and stores it in {platform.name.startsWith("Face") || platform.name.startsWith("Touch") ? "iCloud Keychain" : platform.name.startsWith("fingerprint") ? "Google Password Manager" : "your OS keychain"} — Relay Outpost never sees it.
+              Use {platform.name} to unlock this account with a tap. Your phone or computer keeps the one-tap unlock in {platform.name.startsWith("Face") || platform.name.startsWith("Touch") ? "iCloud Keychain" : platform.name.startsWith("fingerprint") ? "Google Password Manager" : "your OS keychain"} — Relay Outpost never sees it.
             </p>
           </div>
 
@@ -161,7 +161,7 @@ export function PasskeyEnrollmentCard({
             </li>
             <li className="flex items-start gap-2">
               <RelayOutpostIcon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${isOverlay ? "text-brand" : "text-brand"}`} />
-              <span>Your passphrase still works as the recovery path</span>
+              <span>Your key file is the way back if this device is lost</span>
             </li>
           </ul>
 

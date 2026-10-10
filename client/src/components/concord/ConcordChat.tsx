@@ -186,7 +186,7 @@ function RoomsSide({ layout, onLayoutChange, count, action, children }: {
   );
 }
 
-export function ConcordChat({ community, onCommunityChange, onOverview, onInvite, onLeave, onDissolve, viewportNudge, membersCollapsed, onToggleMembers, initialChannelId, createChannelOpen, onCreateChannelClose, embedded, layout, onLayoutChange, roomsWidth, groupHeader, roomsHandle, groupSheetExtras, openGroupSheet, roomsCollapsed, onToggleRooms, roomInUrl }: {
+export function ConcordChat({ community, onCommunityChange, onOverview, onInvite, onLeave, onDissolve, viewportNudge, membersCollapsed, onToggleMembers, initialChannelId, createChannelOpen, onCreateChannelClose, embedded, layout, onLayoutChange, roomsWidth, groupHeader, roomsHandle, groupSheetExtras, openGroupSheet, roomsCollapsed, onToggleRooms, roomInUrl, notice }: {
   community: StoredCommunity;
   onCommunityChange: (c: StoredCommunity) => void;
   /**
@@ -248,6 +248,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
   roomsHandle?: ReactNode;
   /** Phone: the host's Members + About sections, below Rooms in the Group sheet. */
   groupSheetExtras?: ReactNode;
+  /** The host's card above the messages, on every layout (the owner's save-your-key reminder). */
+  notice?: ReactNode;
   /** Phone: bump to open the Group sheet from the host (the group's name in the top bar). */
   openGroupSheet?: number;
   /**
@@ -1539,6 +1541,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       {/* The room's call: who's in it and a Join, or the controls and the callers. */}
       {!groupDeleted && <ConcordCallBar community={community} channel={activeChannel} title={callTitle} />}
       <ConcordCallStage community={community} channel={activeChannel} />
+      {notice ? <div className="shrink-0 px-3 md:px-4 pt-3">{notice}</div> : null}
       <div ref={scrollRef} onScroll={onMessagesScroll} className="flex-1 overflow-y-auto overflow-x-hidden px-3 md:px-4 py-3">
         {/* Reading-width cap: messages stay scannable next to the sidebar.
             `justify-end` bottom-anchors a short conversation against the
