@@ -214,11 +214,14 @@ export default function Account() {
 
         <Section label="App">
           <Row icon={<Settings className="w-5 h-5" />} label="App settings" onClick={go("/settings")} testId="account-settings" />
+          {/* The theme has one home, Settings › Theme (owner, 2026-10-10): this
+              row names the current one and opens it. It used to be a toggle whose
+              label named the NEXT mode ("Black mode" meant "switch to black"). */}
           <Row
-            icon={theme === "dark" ? <Eclipse className="w-5 h-5" /> : theme === "black" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            label={theme === "dark" ? "Black mode" : theme === "black" ? "Light mode" : "Dark mode"}
-            onClick={toggleThemeAnimated}
-            chevron={false}
+            icon={theme === "dark" ? <Moon className="w-5 h-5" /> : theme === "black" ? <Eclipse className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+            label="Theme"
+            onClick={go("/settings?section=appearance")}
+            trailing={<span className="text-[12px] text-muted-foreground" data-testid="account-theme-value">{theme === "dark" ? "Dark" : theme === "black" ? "Black" : "Light"}</span>}
             testId="account-theme"
           />
         </Section>
