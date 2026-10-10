@@ -15,6 +15,7 @@ import { WtfAlienIcon } from "@/components/icons/WtfAlienIcon";
 import { generateLocalAccount, encryptSecretKeyAsync, saveLocalAccountStrict, loadLocalAccount, clearLocalAccount, decryptStored, markOnboardingComplete, type NewLocalAccount, type StoredLocalAccount } from "@/lib/local-account";
 import { markAccountCreated, markBackedUp, canFinishSignup } from "@/lib/key-backup";
 import { KeyBackupActions } from "@/components/KeyBackupActions";
+import { resumeStep } from "@/lib/login-mode";
 import { DEFAULT_RELAYS } from "@/lib/relay-constants";
 import { floorRelayList, floorDmRelayList, FLOOR_RELAYS } from "@/lib/signup-relays";
 import { writeBlurOutside } from "@/lib/outside-space-blur";
@@ -213,8 +214,15 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
         console.warn("[CreateAccount] failed to restore draft keypair:", e);
       }
     }
-    // Don't restore step past 1 — anything beyond step 1 requires the
-    // encrypted/stored record which we deliberately don't persist here.
+    // Resume where they were (owner, 2026-10-10): the password step stores
+    // the account before Finish, so a reload after "Save password & continue"
+    // picks that record up and lands on Save your key, not back at step 1.
+    const storedRecord = loadLocalAccount();
+    if (resumeStep({ draftPubkey: draft.account?.pubkey ?? null, storedPubkey: storedRecord?.pubkey ?? null }) === 2 && storedRecord) {
+      setStored(storedRecord);
+      setPasskeyBlob(storedRecord.passkey ?? null);
+      setStep(2);
+    }
   }, []);
 
   // Persist the in-progress draft on change (debounced) so a sudden tab

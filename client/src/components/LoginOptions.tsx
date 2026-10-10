@@ -15,6 +15,8 @@ import { UnlockScreen } from "@/components/UnlockScreen";
 import { loadLocalAccount, type StoredLocalAccount } from "@/lib/local-account";
 import { isAddAccountPending } from "@/lib/account-registry";
 import { loadImportDraft } from "@/lib/import-draft";
+import { loadSignupDraft, draftHasResumableContent } from "@/lib/account-draft";
+import { initialLoginMode } from "@/lib/login-mode";
 import { QRCodeSVG } from "qrcode.react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -400,10 +402,15 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
     // (still signed-in) identity — showing its unlock screen here would
     // invite the user to "add" the account they already have. Start at the
     // method picker instead.
-    if (isAddAccountPending()) return "select";
-    if (loadLocalAccount()) return "unlock";
-    if (loadImportDraft()) return "import";
-    return "select";
+    // Stated once in lib/login-mode.ts: a sign-up in flight resumes the
+    // sign-up (not the fork, not the unlock screen for an unfinished account).
+    const draft = loadSignupDraft();
+    return initialLoginMode({
+      addAccountPending: isAddAccountPending(),
+      localAccountPubkey: loadLocalAccount()?.pubkey ?? null,
+      signupDraft: draft ? { resumable: draftHasResumableContent(draft), pubkey: draft.account?.pubkey ?? null } : null,
+      importDraft: !!loadImportDraft(),
+    });
   });
   const [bunkerUri, setBunkerUri] = useState("");
 
@@ -594,6 +601,11 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
                   Use existing account
                 </Button>
               </div>
+              {/* "Existing account" means a key from another Nostr app — a rule
+                  newcomers can't know; one resumed a sign-up through it (2026-10-10). */}
+              <p className={`text-[11px] ${descCls}`} data-testid="text-existing-account-gloss">
+                "Use existing account" signs in with a key from another Nostr app.
+              </p>
 
               {/* Footer line — merges the non-custodial reassurance and the
                   WTF curiosity link into a single calm row so neither steals

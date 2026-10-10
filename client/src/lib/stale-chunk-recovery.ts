@@ -84,6 +84,14 @@ function writeState(attempts: number, at: number): boolean {
 /** One recovery per page load: the page is already on its way out. */
 let underway = false;
 
+/** The routes CreateAccountFlow renders on: the landing's cockpit and /login. */
+const SIGNUP_ROUTES = new Set(["/", "/login"]);
+
+/** A sign-up in flight on a sign-up route holds every automatic reload. */
+export function holdsForSignup(pathname: string, hasDraft: boolean): boolean {
+  return hasDraft && SIGNUP_ROUTES.has(pathname);
+}
+
 // Returns true if a reload was scheduled. Returns false when the ladder is
 // spent (or can't be counted) — the caller falls through to the error screen.
 export function tryRecoverFromStaleChunk(
@@ -93,18 +101,15 @@ export function tryRecoverFromStaleChunk(
     repair?: () => Promise<void>;
   } = {},
 ): boolean {
-  // If the user is mid-signup on the root route (where CreateAccountFlow
-  // lives), never silently reload — the form lives entirely in component
-  // state below the persistence layer for the current step, and a reload
-  // would still be jarring even with the draft restore. Let the error UI
-  // surface so the user makes the call themselves with a Reload button.
-  // Scoping to the root path means a stale draft left behind from an
-  // earlier session can't suppress legitimate stale-chunk recovery on
-  // unrelated routes.
+  // Mid-signup, never silently reload: the step's state lives in the
+  // component, and a reload throws the person out without a word. Let the
+  // error UI surface so they make the call with a Reload button. Scoped to
+  // the routes where CreateAccountFlow lives, so a stale draft can't suppress
+  // recovery elsewhere. "/login" was missing until 2026-10-10: a newcomer who
+  // signed up from /login twenty minutes after a deploy was reloaded off the
+  // password step with nothing said (the first-use review's "lost signup").
   try {
-    const onSignupRoute =
-      typeof window !== "undefined" && window.location?.pathname === "/";
-    if (onSignupRoute && hasSignupDraft()) return false;
+    if (typeof window !== "undefined" && holdsForSignup(window.location?.pathname ?? "", hasSignupDraft())) return false;
   } catch {}
 
   // Several chunks fail together (a page and everything it imports), and
