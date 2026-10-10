@@ -33,6 +33,8 @@ export interface ActiveCall {
   sharing: boolean;
   /** The LiveKit room, for the stage to attach video. */
   room: Room;
+  /** When the others all left (null while any are here, or none came yet): the bar says so and the room lets you go after a minute. */
+  aloneSince: number | null;
 }
 
 export interface CallCtx {

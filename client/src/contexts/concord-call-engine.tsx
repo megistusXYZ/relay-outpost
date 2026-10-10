@@ -22,7 +22,7 @@ import { GripVertical, Maximize2, Mic, MicOff, PhoneOff, Volume2 } from "lucide-
 import type { Room, RemoteTrack } from "livekit-client";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { getGlobalSigner } from "@/lib/nip42-auth";
-import { persistentPoolSubscribe, publishEvent } from "@/lib/nostr";
+import { persistentPoolSubscribe, publishEvent, getCachedProfile } from "@/lib/nostr";
 import { getCommunity, type StoredChannel, type StoredCommunity } from "@/lib/concord/concord-keys";
 import { useToast } from "@/hooks/use-toast";
 import { effectiveTime } from "@/lib/concord/concord-events";
@@ -33,6 +33,8 @@ import { publishCallPresence, subscribeCallPresence } from "@/lib/concord/concor
 import type { JoinedCall } from "@/lib/concord/concord-call-e2ee";
 
 import { callRoomKey, type ActiveCall, type CallParticipant, type CallCtx } from "./ConcordCallContext";
+import { nextAloneSince, aloneState, callLogDiff } from "@/lib/concord/call-words";
+import { appendCallLog } from "@/lib/concord/call-log";
 import { CallRinger } from "@/components/concord/CallRinger";
 import { syncClosedAppRooms, takeClosedAppNotifyOffer, turnOnClosedAppNotify } from "@/lib/push-notify";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -73,6 +75,12 @@ interface Session {
   /** Re-reads the group so a rekey moves the call (or ends it for us). */
   keyCheck?: ReturnType<typeof setInterval>;
   checking?: boolean;
+  /** Others have been in this call at some point (so "alone" means left behind, not waiting). */
+  hadOthers: boolean;
+  /** When the others all left; null while any are here. The room lets you go a minute later. */
+  aloneSince: number | null;
+  /** The remote seats last seen, for the joined/left rows. */
+  seenRemote: string[];
 }
 
 /**
@@ -111,6 +119,21 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
     }
     const matches = matchCallers(roster, remote.map((p) => p.identity));
     for (const p of remote) if (!s.firstSeen.has(p.identity)) s.firstSeen.set(p.identity, now);
+    // Who came and went, as rows in the room — this screen's own record
+    // (lib/concord/call-log.ts; owner, 2026-10-10).
+    const remoteIds = remote.map((p) => p.identity);
+    const nameOf = (id: string) => {
+      const m = matches[remoteIds.indexOf(id)];
+      if (!m?.member) return "Someone";
+      const prof = getCachedProfile(m.member);
+      return (prof?.display_name || prof?.name || "").trim() || "A member";
+    };
+    appendCallLog(callRoomKey(s.community.community_id, s.channel.id), callLogDiff(s.seenRemote, remoteIds, nameOf, now));
+    s.seenRemote = remoteIds;
+    if (remote.length > 0) s.hadOthers = true;
+    s.aloneSince = nextAloneSince({ othersNow: remote.length, hadOthers: s.hadOthers, aloneSince: s.aloneSince, now });
+    // The last one left: after a minute alone the room lets them go.
+    if (aloneState({ aloneSince: s.aloneSince, now }).leaveNow) { void leaveRef.current(); return; }
     const local = s.room.localParticipant;
     const participants: CallParticipant[] = [
       {
@@ -136,6 +159,7 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
       cameraOn: local.isCameraEnabled,
       sharing: local.isScreenShareEnabled,
       room: s.room,
+      aloneSince: s.aloneSince,
     });
   }, []);
 
@@ -143,6 +167,7 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
     const s = session.current;
     if (!s) return;
     session.current = null;
+    appendCallLog(callRoomKey(s.community.community_id, s.channel.id), [{ at: Date.now(), text: "You left the call" }]);
     setCallActive(false);
     clearInterval(s.tick);
     if (s.keyCheck) clearInterval(s.keyCheck);
@@ -155,6 +180,10 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
     // A mic or camera trouble from this call isn't news after it ends.
     setError(null);
   }, []);
+
+  // resync is declared first and must call leave: a ref breaks the cycle.
+  const leaveRef = useRef(leave);
+  leaveRef.current = leave;
 
   /** One join at a time: a second (the ringer's Join while the first waits on the question) would strand the first. */
   const joiningNow = useRef(false);
@@ -230,12 +259,14 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
         applied: new Map(), rumors: [], firstSeen: new Map(), audio,
         stopBeat: heartbeat.stop,
         closePresence: () => {},
+        hadOthers: false, aloneSince: null, seenRemote: [],
         tick: setInterval(() => resync(), RESYNC_MS),
       };
       const presence = subscribeCallPresence(community, channel, (rumor) => { s.rumors.push(rumor as PresenceRumor); resync(); },
         (relays, filter, onevent) => persistentPoolSubscribe(relays, filter, { onevent }));
       s.closePresence = () => presence.close();
       session.current = s;
+      appendCallLog(callRoomKey(community.community_id, channel.id), [{ at: Date.now(), text: room.remoteParticipants.size > 0 ? "You joined the call" : "You started the call" }]);
 
       for (const ev of [
         lk.RoomEvent.ParticipantConnected, lk.RoomEvent.ParticipantDisconnected, lk.RoomEvent.TrackSubscribed,

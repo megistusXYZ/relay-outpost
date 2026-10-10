@@ -29,6 +29,8 @@ function useCanEncryptCalls(): boolean {
 }
 import { useConcordCall, callRoomKey, type ActiveCall, type CallParticipant } from "@/contexts/ConcordCallContext";
 import { useConcordCallsEnabled } from "@/lib/concord/concord-prefs";
+import { callScopeLine, aloneState } from "@/lib/concord/call-words";
+import { useLocation } from "wouter";
 
 type PresenceRumor = { kind: number; pubkey: string; content: string; created_at: number; tags: string[][] };
 
@@ -71,7 +73,17 @@ export function ConcordCallButton({ community, channel, title, compact }: {
   const here = useHereCall(community, channel);
   const enabled = useConcordCallsEnabled();
   const canEncrypt = useCanEncryptCalls();
-  if (!enabled && !here) return null;
+  const [, navigate] = useLocation();
+  if (!enabled && !here) {
+    // Calls exist and are off: say so where calls happen, and open the switch
+    // (owner, 2026-10-10: nobody looks for calls under feed settings).
+    if (compact) return null;
+    return (
+      <button onClick={() => navigate("/settings?section=calls")} className="hidden md:inline-flex items-center gap-1 text-[11px] text-muted-foreground/70 hover:text-foreground whitespace-nowrap" data-testid="concord-calls-off">
+        <Phone className="w-3 h-3" aria-hidden="true" /> Calls are off · Turn on
+      </button>
+    );
+  }
   const size = compact ? "w-10 h-10" : "w-7 h-7";
   const icon = compact ? "w-[18px] h-[18px]" : "w-4 h-4";
   return (
@@ -104,6 +116,14 @@ export function ConcordCallBar({ community, channel, title }: {
   // No listening for a room's call until calls are switched on here.
   const count = useRoomCallCount(community, channel, enabled && !here);
   const sound = useCallAudio((here?.room ?? null) as unknown as AudioRoom | null);
+  // Ticks while alone so the countdown reads live.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!here?.aloneSince) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [here?.aloneSince]);
+  const alone = aloneState({ aloneSince: here?.aloneSince ?? null, now });
 
   if (!here) {
     if (!enabled) return null;
@@ -113,6 +133,7 @@ export function ConcordCallBar({ community, channel, title }: {
         <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
         <div className="min-w-0 flex-1">
           {count > 0 && <p className="text-xs font-medium text-foreground/90">{count} in the call</p>}
+          {count > 0 && !error && <p className="text-[11px] text-muted-foreground/70 truncate" data-testid="concord-call-scope">{callScopeLine(community.name ?? "")}</p>}
           {error && <p className="text-[11px] text-destructive truncate" data-testid="concord-call-error">{error}</p>}
           {count > 0 && !canEncrypt && <p className="text-[11px] text-muted-foreground truncate" data-testid="concord-call-cant-encrypt">{NO_ENCRYPTION}</p>}
         </div>
@@ -134,11 +155,16 @@ export function ConcordCallBar({ community, channel, title }: {
     <div className="flex flex-wrap items-center gap-1.5 px-3 md:px-4 py-1.5 border-b border-border/20 shrink-0 bg-emerald-500/5" data-testid="concord-call-bar">
       <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium text-foreground/90 truncate">In the call · {here.participants.length}</p>
-        {/* A device that failed mid-call says so here, in plain words (call-trouble.ts). */}
+        <p className="text-xs font-medium text-foreground/90 truncate">
+          {alone.alone ? "You're the only one here" : `In the call · ${here.participants.length}`}
+        </p>
+        {/* A device that failed mid-call says so here, in plain words (call-trouble.ts).
+            Otherwise: who can hear you (owner, 2026-10-10), or, left alone, when the room lets you go. */}
         {error
           ? <p className="text-[11px] text-destructive" data-testid="concord-call-error">{error}</p>
-          : <p className="text-[11px] text-muted-foreground/70 truncate">End-to-end encrypted</p>}
+          : alone.alone
+            ? <p className="text-[11px] text-muted-foreground/70 truncate" data-testid="concord-call-alone">The others left. Leaves on its own in {alone.secondsLeft}s.</p>
+            : <p className="text-[11px] text-muted-foreground/70 truncate" data-testid="concord-call-scope">{callScopeLine(community.name ?? "")} End-to-end encrypted.</p>}
       </div>
       {/* iPhone can hold a call's sound back until a tap: say so, and take the tap. */}
       {sound.blocked && (
@@ -159,9 +185,11 @@ export function ConcordCallBar({ community, channel, title }: {
         className={`${barButton} hidden sm:flex ${here.sharing ? "bg-brand/15 text-brand" : "bg-muted/60 text-foreground"}`}>
         {here.sharing ? <MonitorX className="w-4 h-4" /> : <MonitorUp className="w-4 h-4" />}
       </button>
+      {/* The handset promised a phone call, where one hang-up ends it for both.
+          This is a room you leave; the word says so (owner, 2026-10-10). */}
       <button onClick={() => void leave()} aria-label="Leave the call" data-testid="concord-call-leave"
-        className={`${barButton} bg-destructive text-destructive-foreground hover:bg-destructive/90`}>
-        <PhoneOff className="w-4 h-4" />
+        className="flex items-center justify-center gap-1.5 h-11 md:h-8 px-3 shrink-0 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-medium transition-colors">
+        <PhoneOff className="w-4 h-4" /> Leave
       </button>
     </div>
   );
