@@ -94,6 +94,8 @@ describe("Help & Guides describes today's app", () => {
     ["translation", /translat/i],
     // Shipped 2026-10-11: editing a published article from the article page or Account.
     ["editing an article", /Can I edit an article after publishing\?[\s\S]*Save changes/],
+    // Shipped 2026-10-11: Delete on posts, the honest line, the undo hold, private messages.
+    ["deleting a post", /Can I delete my posts or account\?[\s\S]*Delete<\/strong> in its menu[\s\S]*Undo[\s\S]*removed from this device/],
   ] as Array<[string, RegExp]>) {
     it(`answers about ${what}`, () => {
       expect(help).toMatch(re);

@@ -156,8 +156,8 @@ const FAQ_ITEMS: FAQItem[] = [
   },
   {
     question: "Can I delete my posts or account?",
-    answer: <>Yes. You can ask for a post to be deleted and most servers honour it, though like an email that's already arrived, copies may have spread, so there's no guaranteed wipe everywhere. To leave entirely, go to <Link href="/settings/danger" className="text-brand hover:underline font-medium">Settings → Advanced &amp; danger zone</Link>: we ask every server to delete what it holds and clear your account from this device.</>,
-    searchText: "can I delete my post account leave quit remove erase request deletion settings advanced danger zone",
+    answer: <>Yes. Every post has <strong>Delete</strong> in its menu, and articles have it next to Edit. Inside your community it's a removal. On the wider network it's a request: relays that honour deletions remove it, and we tell you afterwards how many did. Copies elsewhere may remain, like an email that's already arrived. A deleted post disappears for everyone using Relay Outpost. A new post also waits five seconds with <strong>Undo</strong>, in case of a typo. Private messages can only be removed from this device; the other person keeps their copy. To leave entirely, go to <Link href="/settings/danger" className="text-brand hover:underline font-medium">Settings → Advanced &amp; danger zone</Link>: we ask every relay to delete what it holds and clear your account from this device.</>,
+    searchText: "can I delete my post account leave quit remove erase undo request deletion private message settings advanced danger zone",
     icon: LogOut,
     tags: ["privacy", "keys & security"],
   },

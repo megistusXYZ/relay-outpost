@@ -4,6 +4,7 @@ import { pool, DEFAULT_RELAYS, filterBlockedRelays } from "./nostr";
 import { getOutpostRelays } from "./outpost-relays";
 import { getAllWriteRelays, getRelayListTimestamp, fetchRelayLists } from "./outbox";
 import { signWithTimeout, SIGNER_SIGN_TIMEOUT } from "./signer-timeout";
+import { buildVanishTemplate } from "./vanish-template";
 import { removeAccount as removeRegisteredAccount } from "./account-registry";
 
 export interface VanishRelayResult {
@@ -128,12 +129,12 @@ export async function publishVanishRequest(opts: {
   reason?: string;
 }): Promise<VanishBroadcastResult> {
   const { signer, pubkey, relays } = opts;
-  const template: EventTemplate = {
-    kind: 62,
-    created_at: Math.floor(Date.now() / 1000),
-    tags: [],
-    content: opts.reason?.trim() || "",
-  };
+  const targets = Array.from(
+    new Set(relays.map(normalizeRelayUrl).filter((u) => u.length > 0)),
+  );
+  // The request names the relays it is for (plus ALL_RELAYS); without those
+  // tags a relay that follows the spec may ignore it.
+  const template: EventTemplate = buildVanishTemplate(targets, opts.reason);
 
   const signed = (await signWithTimeout(signer, template, SIGNER_SIGN_TIMEOUT)) as NostrEvent;
   if (signed.pubkey !== pubkey) {
@@ -142,9 +143,6 @@ export async function publishVanishRequest(opts: {
     // worst identity-confusing.
     throw new Error("Signed vanish event pubkey does not match the active account");
   }
-  const targets = Array.from(
-    new Set(relays.map(normalizeRelayUrl).filter((u) => u.length > 0)),
-  );
   if (targets.length === 0) {
     return { eventId: signed.id, results: [], successCount: 0, total: 0 };
   }
