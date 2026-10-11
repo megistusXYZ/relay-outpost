@@ -148,6 +148,13 @@ const FAQ_ITEMS: FAQItem[] = [
     tags: ["zaps & bitcoin"],
   },
   {
+    question: "Can I edit an article after publishing?",
+    answer: <>Yes. Open the article and tap the pencil, <strong>Edit article</strong>, or find it under <Link href="/account?tab=media" className="text-brand hover:underline font-medium">Account → Media → Articles</Link>. Change the title, cover picture, hashtags or text, then tap <strong>Save changes</strong>. The link stays the same and readers see the new version, here and in other Nostr apps. <strong>Delete article</strong> sits next to Edit: relays that honour deletions remove it, though copies elsewhere may remain.</>,
+    searchText: "edit article change update fix typo add photo cover picture hashtags save changes delete article published long form",
+    icon: FileText,
+    tags: ["social", "getting started"],
+  },
+  {
     question: "Can I delete my posts or account?",
     answer: <>Yes. You can ask for a post to be deleted and most servers honour it, though like an email that's already arrived, copies may have spread, so there's no guaranteed wipe everywhere. To leave entirely, go to <Link href="/settings/danger" className="text-brand hover:underline font-medium">Settings → Advanced &amp; danger zone</Link>: we ask every server to delete what it holds and clear your account from this device.</>,
     searchText: "can I delete my post account leave quit remove erase request deletion settings advanced danger zone",
@@ -317,6 +324,7 @@ const FAQ_ORDER_KEYS = [
   "a relay?",           // What's a relay?
   "other languages",    // Can I read posts in other languages?
   "are zaps",           // What are zaps?
+  "edit an article",    // Can I edit an article after publishing?
   "delete my posts",    // Can I delete my posts or account?
 ];
 function faqOrder(question: string): number {

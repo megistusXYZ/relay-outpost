@@ -80,8 +80,8 @@ function getRelayModeStyle(preset: string): { text: string; dot: string } {
 }
 
 import type { Event } from "nostr-tools";
-import { publishEvent, pool } from "@/lib/nostr";
-import { buildArticleEvent, estimateReadingTime, KIND_LONG_FORM, HORIZON_SECTION_NAMESPACE, DEFAULT_HORIZON_SECTIONS } from "@/lib/nip23";
+import { publishEvent, pool, eventStore, throttledPoolSubscribe, FAST_RELAYS } from "@/lib/nostr";
+import { buildArticleEvent, estimateReadingTime, KIND_LONG_FORM, HORIZON_SECTION_NAMESPACE, DEFAULT_HORIZON_SECTIONS, decodeNaddr, articleToDraft } from "@/lib/nip23";
 import { RelayPublishPicker, usePublishRelayPreference } from "@/components/RelayPublishPicker";
 import { getOutpostRelays } from "@/lib/outpost-relays";
 import { createScheduledPost } from "@/lib/schedule";
@@ -797,10 +797,13 @@ export default function ArticleEditor() {
   const { pubkey, signer, attemptReconnect } = useNostrAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  useDocumentTitle("Write Article");
-
   const urlParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const outpostRelay = useMemo(() => urlParams.get("relay") || null, [urlParams]);
+  /** Editing a published article: its link. The edit saves to the same address. */
+  const editNaddr = useMemo(() => urlParams.get("edit") || null, [urlParams]);
+  const [editing, setEditing] = useState<{ naddr: string; dTag: string; publishedAt: number; title: string } | null>(null);
+  const [editLoading, setEditLoading] = useState(!!editNaddr);
+  useDocumentTitle(editNaddr ? "Edit article" : "Write Article");
 
   const [relayBlossomServers, setRelayBlossomServers] = useState<string[]>([]);
 
@@ -1389,6 +1392,63 @@ export default function ArticleEditor() {
   }, [editor]);
 
   useEffect(() => {
+    if (!editNaddr || !editor) return;
+    const decoded = decodeNaddr(editNaddr);
+    if (!decoded) {
+      setEditLoading(false);
+      toast({ title: "That link doesn't open an article", variant: "destructive" });
+      setLocation("/articles");
+      return;
+    }
+    let cancelled = false;
+    let newest: Event | null = null;
+    const apply = (evt: Event) => {
+      if (cancelled) return;
+      if (pubkey && evt.pubkey !== pubkey) {
+        toast({ title: "Only the author can edit this article" });
+        setLocation(`/articles/${editNaddr}`);
+        return;
+      }
+      const fields = articleToDraft(evt);
+      setTitle(fields.title);
+      setSummary(fields.summary);
+      setBannerUrl(fields.image);
+      setHashtags(fields.hashtags);
+      setSection(fields.section);
+      let html = "";
+      try { html = markdownToHtml(fields.markdown); } catch { html = `<p>${fields.markdown}</p>`; }
+      editor.commands.setContent(html);
+      setEditing({ naddr: editNaddr, dTag: fields.dTag, publishedAt: fields.publishedAt, title: fields.title });
+      setCurrentDraftId(null);
+      setHasUnsavedChanges(false);
+      setDraftBanner(null);
+      setEditLoading(false);
+    };
+    const existing = eventStore.getReplaceable(KIND_LONG_FORM, decoded.pubkey, decoded.identifier) as Event | undefined;
+    if (existing) {
+      apply(existing);
+      return () => { cancelled = true; };
+    }
+    const relays = Array.from(new Set([...(decoded.relays || []), ...FAST_RELAYS]));
+    const sub = throttledPoolSubscribe(relays, { kinds: [KIND_LONG_FORM], authors: [decoded.pubkey], "#d": [decoded.identifier], limit: 1 }, {
+      onevent(evt: Event) {
+        eventStore.add(evt);
+        if (!newest || evt.created_at > newest.created_at) newest = evt;
+      },
+      oneose() {
+        try { sub.close(); } catch {}
+        if (newest) apply(newest);
+        else if (!cancelled) {
+          setEditLoading(false);
+          toast({ title: "Couldn't load that article", description: "Check your connection and try again.", variant: "destructive" });
+        }
+      },
+    });
+    return () => { cancelled = true; try { sub.close(); } catch {} };
+  }, [editNaddr, editor, pubkey]);
+
+  useEffect(() => {
+    if (editNaddr) return;
     const existing = loadDrafts();
     if (existing.length > 0 && !title && (!editor || editor.getHTML() === "<p></p>")) {
       const latest = existing[0];
@@ -1450,7 +1510,9 @@ export default function ArticleEditor() {
         image: bannerUrl.trim(),
         hashtags,
         section: section.trim() || undefined,
-        commentsDisabled: commentsDisabled || undefined });
+        commentsDisabled: commentsDisabled || undefined,
+        dTag: editing?.dTag,
+        publishedAt: editing?.publishedAt });
 
       const publishRelays = outpostRelay ? [outpostRelay] : selectedRelays;
       if (publishRelays.length === 0) {
@@ -1470,13 +1532,17 @@ export default function ArticleEditor() {
       const success = await publishEvent(signedEvent, publishRelays, undefined, isUserSelected, isPrivateOnly);
 
       if (success) {
+        eventStore.add(signedEvent);
         if (currentDraftId) {
           const updated = loadDrafts().filter((d) => d.id !== currentDraftId);
           saveDrafts(updated);
           setDrafts(updated);
         }
         setHasUnsavedChanges(false);
-        if (outpostRelay) {
+        if (editing) {
+          toast({ title: "Changes saved", description: "Readers see the new version at the same link." });
+          setLocation(`/articles/${editing.naddr}`);
+        } else if (outpostRelay) {
           setLocation(`/outposts/${encodeURIComponent(outpostRelay)}`);
         } else {
           setLocation("/articles");
@@ -1606,15 +1672,20 @@ export default function ArticleEditor() {
         </div>
       )}
 
+      {editNaddr && (
+        <div className="mb-4 rounded-md border border-brand/25 bg-brand/5 px-3 py-2 text-xs text-foreground/80" data-testid="editing-article-banner">
+          {editLoading ? "Loading your article…" : <>Editing <strong>{editing?.title || "this article"}</strong>. Changes save to the same link, and readers see the new version.</>}
+        </div>
+      )}
       <div className="flex items-center justify-between gap-2 mb-5 flex-wrap">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-primary/10 dark:bg-primary/15 flex items-center justify-center shadow-sm">
             <BookOpen className="w-4 h-4 text-brand/70" />
           </div>
-          <h1 className="text-lg font-bold" data-testid="heading-write-article">Write Article</h1>
+          <h1 className="text-lg font-bold" data-testid="heading-write-article">{editNaddr ? "Edit article" : "Write Article"}</h1>
         </div>
         <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
-          <div className="flex items-center gap-0.5 sm:gap-1 mr-1 sm:mr-2">
+          {!editNaddr && <div className="flex items-center gap-0.5 sm:gap-1 mr-1 sm:mr-2">
             <Button
               variant="ghost"
               size="sm"
@@ -1639,7 +1710,7 @@ export default function ArticleEditor() {
               <FilePlus className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">New</span>
             </Button>
-          </div>
+          </div>}
 
           <div className="flex items-center rounded-lg border border-border/30 dark:border-primary/15 overflow-hidden bg-muted/10 dark:bg-muted/5 shadow-sm">
             <button
@@ -1716,7 +1787,7 @@ export default function ArticleEditor() {
             >
               <Upload className="w-4 h-4" />
             </Button>
-            <Button
+            {!editNaddr && <Button
               variant="ghost"
               size="sm"
               className={`shrink-0 h-9 w-9 p-0 ${showSchedule ? "text-brand" : "text-muted-foreground/40 hover:text-foreground"}`}
@@ -1725,7 +1796,7 @@ export default function ArticleEditor() {
               data-testid="button-toggle-schedule-article"
             >
               <Calendar className="w-4 h-4" />
-            </Button>
+            </Button>}
 
             {showSchedule ? (
               <Button
@@ -1744,7 +1815,7 @@ export default function ArticleEditor() {
             ) : (
               <Button
                 onClick={handlePublish}
-                disabled={isPublishing || !title.trim()}
+                disabled={isPublishing || !title.trim() || editLoading}
                 data-testid="button-publish-article"
               >
                 {isPublishing ? (
@@ -1752,7 +1823,7 @@ export default function ArticleEditor() {
                 ) : (
                   <Send className="w-3.5 h-3.5 mr-1.5" />
                 )}
-                {isPublishing ? "Publishing..." : "Publish"}
+                {isPublishing ? (editing ? "Saving..." : "Publishing...") : editing ? "Save changes" : "Publish"}
               </Button>
             )}
           </div>

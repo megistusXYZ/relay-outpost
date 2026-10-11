@@ -92,6 +92,8 @@ describe("Help & Guides describes today's app", () => {
     ["how careful: the three choices", /Careful[\s\S]*Balanced/],
     ["pictures from outside your space", /blur/i],
     ["translation", /translat/i],
+    // Shipped 2026-10-11: editing a published article from the article page or Account.
+    ["editing an article", /Can I edit an article after publishing\?[\s\S]*Save changes/],
   ] as Array<[string, RegExp]>) {
     it(`answers about ${what}`, () => {
       expect(help).toMatch(re);

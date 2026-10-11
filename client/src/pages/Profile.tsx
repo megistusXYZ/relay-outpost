@@ -1,3 +1,4 @@
+import { newestByAddress } from "@/lib/nip23";
 import { CollapsibleBio } from "@/components/profile/CollapsibleBio";
 import { SearchPill } from "@/components/SearchPill";
 import { useEffect, useRef, useMemo, useState, useCallback } from "react";
@@ -1211,8 +1212,7 @@ export default function Profile() {
         authors: [pubkey],
         limit: 100,
       });
-      const sorted = events.sort((a, b) => b.created_at - a.created_at);
-      setArticles(sorted);
+      setArticles(newestByAddress(events));
       if (events.length < 100) {
         setHasMoreArticles(false);
       }
@@ -1377,7 +1377,7 @@ export default function Profile() {
         setHasMoreArticles(false);
       }
       if (newEvents.length > 0) {
-        setArticles(prev => [...prev, ...newEvents].sort((a, b) => b.created_at - a.created_at));
+        setArticles(prev => newestByAddress([...prev, ...newEvents]));
       }
     } catch (err) {
       console.error("Failed to load more articles:", err);

@@ -1,3 +1,5 @@
+import { newestByAddress } from "@/lib/nip23";
+import { DeleteArticleButton } from "@/components/articles/DeleteArticleButton";
 import { SearchPill } from "@/components/SearchPill";
 import { useEffect, useMemo, useState, useCallback, useRef, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
@@ -862,7 +864,7 @@ export default function MyOutpost() {
         kinds: [KIND_LONG_FORM],
         authors: [pubkey],
         limit: 30 });
-      setArticles(events.sort((a, b) => b.created_at - a.created_at));
+      setArticles(newestByAddress(events));
       if (events.length < 30) setHasMoreArticles(false);
     } catch (err) {
       console.error("Failed to fetch articles:", err);
@@ -1070,7 +1072,7 @@ export default function MyOutpost() {
         until: oldestTimestamp - 1 });
       if (events.length < 30) setHasMoreArticles(false);
       if (events.length > 0) {
-        setArticles(prev => [...prev, ...events.sort((a, b) => b.created_at - a.created_at)]);
+        setArticles(prev => newestByAddress([...prev, ...events]));
       }
     } catch (err) {
       console.error("Failed to load more articles:", err);
@@ -1899,7 +1901,7 @@ export default function MyOutpost() {
               articleCount={profileStats?.longFormCount}
               onArticlesOpen={loadArticles}
               articlesSlot={
-                <ArticlesTab articles={articles} loaded={articlesLoaded} onLoadMore={loadMoreArticles} hasMore={hasMoreArticles} loadingMore={loadingMoreArticles} />
+                <ArticlesTab articles={articles} loaded={articlesLoaded} onLoadMore={loadMoreArticles} hasMore={hasMoreArticles} loadingMore={loadingMoreArticles} onDeleted={(id) => setArticles(prev => prev.filter(a => a.id !== id))} />
               }
               onLoadAudio={loadAudio}
               onRefreshAudio={refreshAudio}
@@ -3385,7 +3387,7 @@ function RepliesTab({ replies, loaded, onLoadMore, hasMore, loadingMore }: { rep
   );
 }
 
-function ArticlesTab({ articles, loaded, onLoadMore, hasMore, loadingMore }: { articles: Event[]; loaded: boolean; onLoadMore?: () => void; hasMore?: boolean; loadingMore?: boolean }) {
+function ArticlesTab({ articles, loaded, onLoadMore, hasMore, loadingMore, onDeleted }: { articles: Event[]; loaded: boolean; onLoadMore?: () => void; hasMore?: boolean; loadingMore?: boolean; onDeleted?: (id: string) => void }) {
   if (!loaded) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -3427,9 +3429,15 @@ function ArticlesTab({ articles, loaded, onLoadMore, hasMore, loadingMore }: { a
         } catch {}
 
         return (
-          <Link key={article.id} href={`/articles/${naddr}`} className="block" data-testid={`article-${article.id.slice(0, 8)}`}>
-            <div className="glass-card rounded-md hover-elevate">
-              <div className="p-3 sm:p-4">
+          <div key={article.id} className="glass-card rounded-md hover-elevate relative">
+            <div className="absolute top-2 right-2 z-10 flex items-center gap-0.5" data-testid={`article-actions-${article.id.slice(0, 8)}`}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Edit article" title="Edit article" asChild data-testid={`button-edit-article-${article.id.slice(0, 8)}`}>
+                <Link href={`/articles/write?edit=${encodeURIComponent(naddr)}`}><Pencil className="w-3.5 h-3.5" /></Link>
+              </Button>
+              <DeleteArticleButton event={article} className="h-8 w-8" testId={`button-delete-article-${article.id.slice(0, 8)}`} onDeleted={() => onDeleted?.(article.id)} />
+            </div>
+          <Link href={`/articles/${naddr}`} className="block" data-testid={`article-${article.id.slice(0, 8)}`}>
+              <div className="p-3 sm:p-4 pr-20">
                 <div className="flex gap-3">
                   {image && (
                     <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-md overflow-hidden shrink-0 bg-muted">
@@ -3454,8 +3462,8 @@ function ArticlesTab({ articles, loaded, onLoadMore, hasMore, loadingMore }: { a
                   </div>
                 </div>
               </div>
-            </div>
           </Link>
+          </div>
         );
       })}
       {onLoadMore && hasMore !== undefined && loadingMore !== undefined && (
