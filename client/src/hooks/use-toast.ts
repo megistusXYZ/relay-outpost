@@ -164,9 +164,11 @@ function toast({ ...props }: Toast) {
     },
   })
 
+  // A toast that carries its own duration keeps it (the five-second post hold's
+  // Undo needs to outlive the usual three seconds); everything else closes at 3 s.
   setTimeout(() => {
     dismiss()
-  }, 3000)
+  }, typeof props.duration === "number" && props.duration > 0 ? props.duration : TOAST_REMOVE_DELAY)
 
   return {
     id: id,
