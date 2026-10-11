@@ -150,6 +150,7 @@ import { mutePubkey, isMutedPubkey } from "@/lib/spam-filter";
 import { ConfirmAction } from "@/components/ConfirmAction";
 import { DeletePostConfirm, DeletedPost } from "@/components/DeletePostConfirm";
 import { useDeletedEvents } from "@/lib/deleted-events";
+import { watchDeletionsFor } from "@/lib/deletion-watch-live";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useTTS, type ThreadTTSSegment } from "@/contexts/TextToSpeechContext";
 import { createContext, useContext } from "react";
@@ -2187,6 +2188,8 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
   const [showMuteConfirm, setShowMuteConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const deletedEvents = useDeletedEvents();
+  // Everyone's deletions are honoured: ask this author's once (batched).
+  useEffect(() => { watchDeletionsFor([event.pubkey]); }, [event.pubkey]);
   const [showPrivateReply, setShowPrivateReply] = useState(false);
   const parentFetchedRef = useRef(false);
 
