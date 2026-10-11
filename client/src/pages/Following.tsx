@@ -490,7 +490,7 @@ export default function Following() {
             <Users className="w-12 h-12 text-muted-foreground/60 mb-3" />
             <p className="text-sm font-medium mb-1">Not following anyone yet</p>
             <p className="text-xs text-muted-foreground max-w-xs">
-              Explore the Global feed to discover people in the Nostr network.
+              Open the wider network to find people across Nostr.
             </p>
             <Button
               variant="outline"
@@ -499,7 +499,7 @@ export default function Following() {
               asChild
               data-testid="button-browse-global"
             >
-              <Link href="/">Browse Global Feed</Link>
+              <Link href="/">Open the wider network</Link>
             </Button>
           </div>
         ) : filteredFollows.length === 0 ? (

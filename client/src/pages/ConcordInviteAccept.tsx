@@ -243,7 +243,7 @@ export default function ConcordInviteAccept({ naddr }: { naddr: string }) {
         {/* Armada-style bundles ship channels: [] (the list lives in the encrypted
             governance stream and appears after joining) — "0 channels" read broken. */}
         <Lock className="w-3 h-3 text-muted-foreground/50" aria-hidden="true" /> {bundle.channels?.length
-          ? `${bundle.channels.length} channel${bundle.channels.length !== 1 ? "s" : ""} · encrypted`
+          ? `${bundle.channels.length} room${bundle.channels.length !== 1 ? "s" : ""} · encrypted`
           : "Encrypted group chat"}
       </p>
       {held ? (

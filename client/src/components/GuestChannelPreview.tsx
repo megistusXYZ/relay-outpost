@@ -80,7 +80,7 @@ export function GuestChannelPreview({ relayUrl, channelId }: { relayUrl: string;
         {!blocked && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
           {isPrivate ? <Lock className="w-4 h-4 shrink-0" /> : <MessagesSquare className="w-4 h-4 shrink-0" />}
-          <span>{isPrivate ? "Private channel — sign in and join to see the chat" : "Sign in to see the conversation and join in"}</span>
+          <span>{isPrivate ? "Private room — sign in and join to see the chat" : "Sign in to see the conversation and join in"}</span>
         </div>
         )}
       </div>

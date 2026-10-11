@@ -90,7 +90,7 @@ export function ConcordChannelSettingsDialog({ open, onOpenChange, community, ch
             <Input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") run({ name: name.trim() }); }} data-testid="input-channel-name" />
           </div>
           {/* Say WHY it is disabled. A dead Save with no reason is its own
-              defect, and "we don't know this channel's current details" really
+              defect, and "we don't know this room's current details" really
               happens — permanently, to anyone who joined after a rekey. */}
           {!ready && (
             <p className="text-[11px] text-muted-foreground/60" data-testid="channel-settings-not-ready">

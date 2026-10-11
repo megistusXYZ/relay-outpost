@@ -90,7 +90,7 @@ export const NAV_TITLES: Record<NavDestinationId, string> = {
   feed: "Feed",
   chats: "Chats",
   news: "News",
-  alerts: "Alerts",
+  alerts: "Activity",
   media: "Media",
   calendar: "Calendar",
   communities: "Communities",

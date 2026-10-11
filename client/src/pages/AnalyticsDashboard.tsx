@@ -1755,7 +1755,7 @@ function NetworkPulse({ pubkey }: { pubkey?: string }) {
                       type="button"
                       className="rounded-lg border border-cyan-500/20 bg-gradient-to-br from-cyan-500/[0.06] to-cyan-500/[0.02] p-2.5 sm:p-3 space-y-1 cursor-pointer hover:border-cyan-500/40 hover:from-cyan-500/[0.10] hover:to-cyan-500/[0.04] transition-all text-left w-full focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
                       onClick={() => setOnlineWotOpen(true)}
-                      title="Click to see active users today filtered by WoT"
+                      title="Click to see active users today filtered by trust"
                     >
                       <div className="flex items-center gap-1.5">
                         <Users className="w-3 h-3 text-cyan-600/70 dark:text-cyan-400/70" />

@@ -871,7 +871,7 @@ export function OrbitMenu() {
             .sort((a, b) => b.timestamp - a.timestamp)[0] ??
           [...notifications].sort((a, b) => b.timestamp - a.timestamp)[0];
         if (newest) bits.push(`latest: ${NOTIFICATION_LABELS[newest.type] ?? newest.type}`);
-        next.push({ id: "alerts", title: "Alerts", body: bits.join(" · "), path: "/notifications", testId: "orbit-card-alerts" });
+        next.push({ id: "alerts", title: "Activity", body: bits.join(" · "), path: "/notifications", testId: "orbit-card-alerts" });
       }
       // News: priority unread + the newest PRIORITY unread headline as teaser.
       // Tapping the card lands ON the teased article (News page opens its

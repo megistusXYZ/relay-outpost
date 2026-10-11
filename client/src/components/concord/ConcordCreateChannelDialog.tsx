@@ -105,11 +105,14 @@ export function ConcordCreateChannelDialog({ open, onOpenChange, community, onCo
           <DialogDescription className="text-xs">Pick a type and give it a name.</DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-3 gap-2">
+        {/* Two kinds of room. The third, a voice room on Corny Chat, left the
+            chooser once Encrypted calls existed (owner, 2026-10-10): a community
+            must never offer two kinds of voice with opposite privacy. Existing
+            ones keep working. */}
+        <div className="grid grid-cols-2 gap-2">
           {([
             ["text", "Text", Hash, "Anyone in the group"],
             ["private", "Private", Lock, "Sealed for members"],
-            ["hangout", "Hangout", Headphones, "Voice + chat"],
           ] as const).map(([key, label, Icon, sub]) => {
             const disabled = false;
             const active = type === key;

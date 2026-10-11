@@ -444,7 +444,7 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
       if (isPWAStandalone()) {
         if (!reconnect) {
           toast({
-            title: "No signal in app mode",
+            title: "No connection in app mode",
             description: "Browser extensions aren't available here. Try the Signer app (QR) or a connection link to connect.",
             variant: "destructive",
           });

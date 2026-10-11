@@ -466,10 +466,10 @@ export function describeKeyError(err: unknown, context: "parse" | "decrypt" = "p
   const lower = raw.toLowerCase();
   if (context === "decrypt") {
     if (lower.includes("invalid tag") || lower.includes("decrypt") || lower.includes("malformed") || lower.includes("authentication")) {
-      return "That passphrase doesn't match this encrypted key. Double-check both — the passphrase is case-sensitive, and make sure the ncryptsec1… string was copied in full from your backup file.";
+      return "That password doesn't match this encrypted key. Double-check both — the password is case-sensitive, and make sure the ncryptsec1… string was copied in full from your key file.";
     }
     if (lower.includes("ncryptsec")) return raw;
-    return "Couldn't decrypt this key. Verify the ncryptsec1… string is complete and the passphrase is correct.";
+    return "Couldn't decrypt this key. Verify the ncryptsec1… string is complete and the password is correct.";
   }
   if (lower.includes("unrecognized") || lower.includes("not a valid") || lower.includes("not an ncryptsec")) {
     return "That doesn't look like a Nostr key. Paste an nsec1…, ncryptsec1…, or 64-character hex secret.";

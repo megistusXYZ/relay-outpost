@@ -120,7 +120,7 @@ function TabErrorFallback({ error }: { error: Error | null }) {
       layout="section"
       kind="broken"
       title="This section didn't load"
-      body="The rest of Relay Control is fine. Switch to another tab above, or reload to try this one again."
+      body="The rest of the console is fine. Switch to another tab above, or reload to try this one again."
       primary={{ label: "Reload", onClick: () => window.location.reload() }}
       detail={error?.message}
       testId="relay-ops-tab-error"

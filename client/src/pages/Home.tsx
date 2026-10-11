@@ -3312,7 +3312,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <h3 className="text-lg sm:text-xl font-bold tracking-tight text-[#1f1b4b] dark:text-white mb-2">Global feed</h3>
+              <h3 className="text-lg sm:text-xl font-bold tracking-tight text-[#1f1b4b] dark:text-white mb-2">The wider network</h3>
               <p className="text-sm text-[#1f1b4b]/50 dark:text-white/50 max-w-[280px] leading-relaxed mb-8">
                 The global feed shows recent posts from every connected relay, with no filtering applied.
               </p>
@@ -3443,7 +3443,7 @@ export default function Home() {
                 data-testid="button-switch-scan"
               >
                 <Radar className="w-3.5 h-3.5" />
-                Explore Trending
+                See what's trending
               </Button>
             </div>
             </>)}
@@ -3508,7 +3508,7 @@ export default function Home() {
                 data-testid="button-empty-explore"
               >
                 <Radar className="w-3.5 h-3.5" />
-                Explore Trending
+                See what's trending
               </Button>
               <Button
                 variant="outline"

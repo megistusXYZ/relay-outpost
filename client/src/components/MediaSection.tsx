@@ -977,7 +977,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
             onClick={(e) => { e.stopPropagation(); handleShare(track); }}
             disabled={isSharing}
             className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/40 hover:text-brand opacity-0 group-hover/mrow:opacity-100 transition-all"
-            aria-label="Share as note" title="Share as note" data-testid={`button-share-track-row-${track.id}`}
+            aria-label="Share as post" title="Share as post" data-testid={`button-share-track-row-${track.id}`}
           >
             {isSharing ? <RelayOutpostInlineLoader className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
           </button>

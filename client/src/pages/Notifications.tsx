@@ -852,7 +852,7 @@ export default function Notifications() {
   // The nav calls this destination Activity; the tab said "Notifications". A
   // place should answer to one name — NAV_TITLES is where that name lives, so
   // the page reads it rather than keeping its own copy to drift from.
-  useDocumentTitle(iaCollapsed ? NAV_TITLES.activity : "Notifications");
+  useDocumentTitle(NAV_TITLES.activity);
 
   // Mark the list seen on open, and keep it seen as items stream in while the
   // page is mounted, so the badge stays at zero while the user is looking.

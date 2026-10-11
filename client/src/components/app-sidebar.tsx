@@ -167,7 +167,7 @@ export function AppSidebar() {
   const outpostSubItems: { title: string; icon: any; path: string; testId: string; badge?: number }[] = pubkey ? [
     { title: "Chats", icon: MessagesIcon, path: "/messages", testId: "link-sidebar-messages", badge: chatsUnread > 0 ? chatsUnread : undefined },
     { title: "Calendar", icon: CalendarAddIcon, path: "/calendar", testId: "link-sidebar-calendar" },
-    { title: "Notifications", icon: NotificationIcon, path: "/notifications", testId: "link-sidebar-notifications", badge: unreadCount > 0 ? unreadCount : undefined },
+    { title: "Activity", icon: NotificationIcon, path: "/notifications", testId: "link-sidebar-notifications", badge: unreadCount > 0 ? unreadCount : undefined },
   ] : [];
 
 

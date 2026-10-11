@@ -2129,7 +2129,7 @@ function TopicsTab({
     } else {
       setTopics(prev => prev.filter(t => t.id !== eventId));
       setPinnedIds(prev => { const next = new Set(prev); next.delete(eventId); return next; });
-      toast({ title: "Wave removed from relay" });
+      toast({ title: "Post removed from relay" });
     }
   }, [relayUrl, toast]);
 
@@ -2928,7 +2928,7 @@ function OutpostComposeSheet({
         toast({ title: "Relay rejected your post", description: "The community relay did not accept your post. You may not be authenticated or connected.", variant: "destructive" });
         return;
       }
-      toast({ title: crossPosting ? "Posted to community + your feed" : (mode === "topic" ? "Wave posted" : "Note published") });
+      toast({ title: crossPosting ? "Posted to community + your feed" : (mode === "topic" ? "Posted" : "Posted") });
       setContent("");
       setTitle("");
       setGifUrl(null);
@@ -4642,7 +4642,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                           data-testid="sheet-new-channel"
                         >
                           <PenSquare className="w-4 h-4 shrink-0" />
-                          New channel
+                          New room
                         </button>
                       )}
                       {activeTab === "horizon" && relayReady && pubkey && (

@@ -52,7 +52,7 @@ export default function EncryptedMessages() {
               <p>Your account has two keys — a <strong>public key</strong> (your identity) and a <strong>secret key</strong> (yours alone). Messages use them like this:</p>
               <ul className="list-disc list-inside space-y-1 text-[13px] text-foreground/60">
                 <li>Your message is encrypted with the recipient's public key</li>
-                <li>Only the recipient's private key can decrypt it</li>
+                <li>Only the recipient's key can open it</li>
                 <li>Relays only store the scrambled message — they can't read it</li>
                 <li>Even if a relay is compromised, your messages remain private</li>
               </ul>

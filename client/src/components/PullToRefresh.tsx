@@ -156,7 +156,7 @@ export function PullToRefresh({ onRefresh, children, disabled, scrollContainerSe
                 </svg>
               </div>
               <span className={`text-[11px] font-mono tracking-wider uppercase transition-colors duration-200 ${pastThreshold ? "text-brand/70" : "text-muted-foreground/50"}`}>
-                {pastThreshold ? "Release to refresh" : "Pull for new signal"}
+                {pastThreshold ? "Release to refresh" : "Pull to refresh"}
               </span>
             </>
           )}

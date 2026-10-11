@@ -104,7 +104,7 @@ export default function FirstTenMinutes() {
           icon={PenLine}
           description={
             <>
-              <p>Ready to broadcast? Tap the <strong>center button</strong> in the bottom bar and write your first note.</p>
+              <p>Ready to post? Tap the <strong>center button</strong> in the bottom bar and write your first note.</p>
               <ul className="list-disc list-inside space-y-1 text-[13px] text-foreground/60">
                 <li>Write a short introduction — tell the network who you are</li>
                 <li>Add #hashtags to help others discover your post</li>

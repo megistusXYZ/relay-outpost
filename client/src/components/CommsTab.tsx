@@ -1495,7 +1495,7 @@ function ChatRoomView({
     try {
       const link = buildChannelInviteLink(relayUrl, group.id, inviteCode || undefined, formatNpub(pubkey));
       const chName = group.name || group.id;
-      const content = `You're invited to join the channel "${chName}". Tap to open and join:\n\n${link}`;
+      const content = `You're invited to join the room "${chName}". Tap to open and join:\n\n${link}`;
       const res = await sendDM({ signer: dmSigner, senderPubkey: pubkey, recipientPubkey: inviteRecipient.pubkey, content });
       if (res.success) {
         toast({ title: "Invite sent", description: `Sent to ${inviteRecipient.displayName || "the user"}.` });
@@ -3877,7 +3877,7 @@ export function CommsTab({
                 className="mt-1 text-[10px] text-brand gap-1"
               >
                 <Plus className="w-3 h-3" />
-                Create Channel
+                Create room
               </Button>
             )}
           </div>

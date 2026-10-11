@@ -1036,7 +1036,7 @@ const HeaderBar = memo(function HeaderBar({ scrollHidden }: { scrollHidden: bool
   const notificationsBell = iaCollapsed ? null : (
     <Link
       href="/notifications"
-      aria-label="Notifications"
+      aria-label="Activity"
       className={`relative flex shrink-0 items-center justify-center w-9 h-9 rounded-full transition-colors hover:bg-muted/50 ${
         bellLit ? "text-foreground/90 hover:text-foreground" : "text-foreground/45 hover:text-foreground/70"
       }`}

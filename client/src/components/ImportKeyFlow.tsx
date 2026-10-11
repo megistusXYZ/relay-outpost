@@ -130,7 +130,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
         // passphrase — the user re-confirms their device passphrase and
         // proceeds normally.
         setStep("passphrase");
-        debugAuth("draft restored — resumed at passphrase step");
+        debugAuth("draft restored — resumed at password step");
       } catch (err) {
         debugAuth("draft restored — could not re-derive secret, defaulting to key step", err);
       }
@@ -213,7 +213,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
       let secret: Uint8Array;
       if (isEncrypted) {
         if (!importPassword) {
-          setError("Enter the passphrase that protects this encrypted key.");
+          setError("Enter the password that protects this key (the one you set in the other app).");
           return;
         }
         try {
@@ -238,7 +238,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
       const { npub } = pubkeyFromSecret(secret);
       setDecryptedSecret(secret);
       setDecryptedNpub(npub);
-      debugAuth("step transition key -> passphrase");
+      debugAuth("step transition key -> password");
       setStep("passphrase");
     } catch (err) {
       console.warn("Import key parse failed:", err);
@@ -408,7 +408,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
       }
 
       if (canOffer) {
-        debugAuth("step transition passphrase -> passkey (post-login nudge)");
+        debugAuth("step transition password -> passkey (post-login nudge)");
         setStep("passkey");
         setIsWorking(false);
         return;
@@ -526,7 +526,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                   type="button"
                   onClick={() => setShowKey((v) => !v)}
                   className={`absolute right-2 top-1/2 -translate-y-1/2 z-10 p-1 rounded ${eyeBtnCls}`}
-                  aria-label={showKey ? "Hide secret key" : "Reveal secret key"}
+                  aria-label={showKey ? "Hide the key" : "Show the key"}
                   data-testid="button-toggle-key-visibility"
                 >
                   {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -555,7 +555,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                     type={showImport ? "text" : "password"}
                     value={importPassword}
                     onChange={(e) => setImportPassword(e.target.value)}
-                    placeholder="Passphrase that protects this key"
+                    placeholder="Password that protects this key"
                     className={`${inputCls} pr-10`}
                     style={{ fontSize: 16 }}
                     autoComplete="current-password"

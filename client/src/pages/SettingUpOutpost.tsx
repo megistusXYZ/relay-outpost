@@ -94,7 +94,7 @@ export default function SettingUpOutpost() {
                 <li>Open the Community and tap <strong>Join</strong> in its header — private communities say <strong>Request</strong>, and the operator approves</li>
                 <li>The relay is added to your relay list automatically</li>
                 <li>You'll start seeing Community content in your feeds</li>
-                <li>Your posts can now be broadcast to that community's relay</li>
+                <li>Your posts now go to that community's relay</li>
               </ul>
               <p className="text-[12px] text-foreground/50">You can join as many Communities as you like — each one adds a new dimension to your network.</p>
             </>
@@ -126,10 +126,10 @@ export default function SettingUpOutpost() {
           icon={PenLine}
           description={
             <>
-              <p>Ready to contribute? When you're inside a Community, your posts are broadcast to that community's relay.</p>
+              <p>Ready to contribute? When you're inside a Community, your posts go to that community's relay.</p>
               <ul className="list-disc list-inside space-y-1 text-[13px] text-foreground/60">
                 <li>Write a note in the Community's timeline — it goes to members of that relay</li>
-                <li>Start a Wave to kick off a threaded discussion</li>
+                <li>Start a post to kick off a threaded discussion</li>
                 <li>Drop into a Room for real-time chat</li>
                 <li>Use #hashtags to help your posts get discovered</li>
               </ul>
@@ -176,7 +176,7 @@ export default function SettingUpOutpost() {
 
         <StepCard
           number={8}
-          title="Use Relay Control"
+          title="Use the console"
           icon={Eye}
           description={
             <>

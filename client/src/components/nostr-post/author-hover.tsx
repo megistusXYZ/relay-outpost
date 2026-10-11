@@ -330,7 +330,7 @@ export function ThreadTrustBar({ replies, excludedTiers, onFilterChange }: {
     } else if (total >= 10 && scoredCount >= 3 && concentration > 0.85 && median < 0.02) {
       warning = "High volume from low-scored accounts — trust weight concentrated in few participants";
     } else if (noSignalRatio > 0.6) {
-      warning = `${Math.round(noSignalRatio * 100)}% of participants carry little or no trust signal`;
+      warning = `${Math.round(noSignalRatio * 100)}% of participants carry little or no trust`;
     } else if (total >= 5 && avgInfluence < 0.01 && scoredCount >= total * 0.5) {
       warning = `Low avg influence (${avgInfluence.toFixed(4)}) despite ${scoredCount} scored accounts`;
     }

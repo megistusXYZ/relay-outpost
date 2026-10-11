@@ -259,7 +259,7 @@ const DEEP_DIVE_ITEMS: DeepDiveItem[] = [
   {
     title: "Owning Your Data & Keys",
     subtitle: "You own your identity. Period.",
-    description: "Your private key is your identity, your login, and your proof of authorship — all in one. No email, no phone number, no recovery form. Here's why that's a feature, not a bug.",
+    description: "Your key is your identity, your login, and your proof of authorship — all in one. No email, no phone number, no recovery form. Here's why that's a feature, not a bug.",
     icon: Key,
     iconColor: "text-amber-800 dark:text-amber-400",
     gradient: "from-amber-500/10 to-orange-500/10",

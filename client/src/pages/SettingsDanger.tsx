@@ -142,7 +142,7 @@ function AccountIdentitySection() {
       // from logout() is surfaced — we do not want to leak a live signer
       // after telling the user their account is cleared.
       toast({
-        title: "Vanish request broadcast",
+        title: "Vanish request sent",
         description: `${result.successCount} of ${result.total} relays accepted. Clearing your local keys now.`,
       });
       performFullLocalWipe(pubkey);
@@ -152,7 +152,7 @@ function AccountIdentitySection() {
       console.error("[vanish] sign or broadcast failed", err);
       const msg = err instanceof Error ? err.message : "Unknown error";
       setErrorMessage(
-        `Could not sign or broadcast the vanish request: ${msg}. Your local account is intact — you can retry.`,
+        `Could not sign or send the vanish request: ${msg}. Your local account is intact — you can retry.`,
       );
       toast({
         title: "Vanish request failed",

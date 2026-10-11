@@ -541,7 +541,7 @@ function LaunchSection() {
           merged stages existed only for whoever typed into a devtools console,
           and the first defect (the rail marking Discover as current on every
           route) survived all of them and 2184 green tests. */}
-      <Row icon={LayoutGrid} label="Simplified navigation" sub="Four places instead of eight — Chats, Activity, Discover, You. Turn off for the classic eight-item menu.">
+      <Row icon={LayoutGrid} label="Simplified navigation" sub="Four places instead of eight — Chats, Activity, Discover, Account. Turn off for the classic eight-item menu.">
         <Switch
           checked={iaCollapsed}
           onCheckedChange={setIaCollapsed}
@@ -930,7 +930,7 @@ function ChatsSection() {
   const toggle = (v: boolean) => { setOn(v); setConcordEnabled(v); };
   return (
     <RowSection label="Chats" testId="section-concord">
-      <Row icon={ShieldCheck} label="Private chats (beta)" sub="End-to-end-encrypted communities — keys stay on this device">
+      <Row icon={ShieldCheck} label="Communities (beta)" sub="End-to-end-encrypted communities — keys stay on this device">
         <Switch checked={on} onCheckedChange={toggle} data-testid="switch-concord-enabled" />
       </Row>
       <ClosedAppNotifyRow />
@@ -1637,7 +1637,7 @@ function EngagementWeightsEditor() {
         <ul className="text-[11px] text-foreground/50 dark:text-muted-foreground/60 space-y-1 list-disc list-inside">
           <li>Each weight multiplies that interaction's contribution to a post's score</li>
           <li>Higher-scored posts appear closer to the top of your feed</li>
-          <li>Set a weight to x0 to ignore that signal entirely</li>
+          <li>Set a weight to x0 to ignore that input entirely</li>
           <li>Sats Bonus rewards zapped posts, but the boost levels off as the amount grows — a 10k sat zap doesn't score 10x more than a 1k sat zap, it only scores about 2x more. This keeps big-wallet zaps from dominating your feed.</li>
         </ul>
       </div>
@@ -2345,26 +2345,26 @@ export default function Settings() {
 
     let Icon: IconComponent = Fingerprint;
     let title = "Connected";
-    let trustLine = "Your private key is held by your signer";
+    let trustLine = "Your key is held by your signer";
 
     if (loginMethod === "extension") {
       Icon = Puzzle;
       title = "Browser Extension";
-      trustLine = "Your private key stays inside your extension";
+      trustLine = "Your key stays inside your extension";
     } else if (loginMethod === "bunker") {
       Icon = Unplug;
       title = "Remote Signer";
-      trustLine = "Your private key never leaves your remote signer";
+      trustLine = "Your key never leaves your remote signer";
     } else if (loginMethod === "qr") {
       Icon = QrCode;
       title = "Remote Signer (paired by QR)";
-      trustLine = "Your private key never leaves your remote signer";
+      trustLine = "Your key never leaves your remote signer";
     } else if (loginMethod === "local") {
       Icon = standalone ? Smartphone : KeyRound;
       title = standalone ? "On-Device Key (installed app)" : "On-Device Key";
       trustLine = standalone
-        ? "Your private key is encrypted on this device"
-        : "Your private key is encrypted in this browser's storage";
+        ? "Your key is encrypted on this device"
+        : "Your key is encrypted in this browser's storage";
     }
 
     return (

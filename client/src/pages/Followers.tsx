@@ -210,7 +210,7 @@ export default function Followers() {
   const { livePubkeys } = useLiveStatus();
   const { scores: connectionScores, requestScoresBulk } = useGrapeRankScores();
   const [, setLocation] = useLocation();
-  useDocumentTitle("Orbit \u2014 Followers");
+  useDocumentTitle("Followers");
   const [searchQuery, setSearchQuery] = useState("");
 
   const [followerPubkeys, setFollowerPubkeys] = useState<string[]>([]);

@@ -2855,7 +2855,7 @@ function LiveTab({ urlQuery, updateUrl }: TabProps) {
       />
 
       {loading ? (
-        <LoadingState message="Scanning for live broadcasts..." />
+        <LoadingState message="Looking for live streams…" />
       ) : unreachable && filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-sm text-muted-foreground" data-testid="live-tab-unreachable">
           Couldn't reach the stream relays — nothing is known about live broadcasts right now.
@@ -2872,7 +2872,7 @@ function LiveTab({ urlQuery, updateUrl }: TabProps) {
         <EmptyState
           icon={Radio}
           message={query ? "No matching streams" : "No live events right now"}
-          hint={query ? "Try different keywords." : "Live transmissions come and go. Check back for the next broadcast."}
+          hint={query ? "Try different keywords." : "Live streams come and go. Check back for the next one."}
         />
       ) : (
         <div className="space-y-2" data-testid="container-live-results">
