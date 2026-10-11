@@ -633,7 +633,7 @@ export function CreatePostFAB() {
           setActiveDraftId(null);
           setDraftCount(getDraftCount());
         }
-        toast({ title: "Poll published", description: "Your poll has been broadcast to the network." });
+        toast({ title: "Poll published", description: "Your poll is posted." });
         setIsPublishing(false);
         return;
       }

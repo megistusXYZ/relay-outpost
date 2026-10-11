@@ -970,7 +970,7 @@ export default function RelayDashboard() {
       });
       toast({
         title: "Admin mode enabled",
-        description: `${relay.label} verified — Relay Control is now active.`,
+        description: `${relay.label} verified — The console is now active.`,
       });
     } catch {
       toast({

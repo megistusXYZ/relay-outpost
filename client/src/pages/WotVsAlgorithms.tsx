@@ -67,7 +67,7 @@ export default function WotVsAlgorithms() {
           icon={Users}
           description={
             <>
-              <p>Web of Trust (WoT) is a completely different approach to filtering information. Instead of a company deciding what you see, <strong>your own network of trusted people decides</strong>:</p>
+              <p>Web of Trust is a completely different approach to filtering information. Instead of a company deciding what you see, <strong>your own network of trusted people decides</strong>:</p>
               <div className="space-y-1.5 mt-2">
                 <div className="rounded-lg bg-muted/10 dark:bg-white/[0.03] border border-border/20 px-3 py-2">
                   <span className="text-success dark:text-emerald-400 font-bold text-xs">The Core Idea</span>
@@ -79,7 +79,7 @@ export default function WotVsAlgorithms() {
                 </div>
                 <div className="rounded-lg bg-muted/10 dark:bg-white/[0.03] border border-border/20 px-3 py-2">
                   <span className="text-success dark:text-emerald-400 font-bold text-xs">No Central Authority</span>
-                  <p className="text-[12px] text-foreground/60 mt-0.5">Every person's WoT is unique. There's no global "trust score" — your trust network is shaped by your choices and your community.</p>
+                  <p className="text-[12px] text-foreground/60 mt-0.5">Every person's Web of Trust is unique. There's no global "trust score" — your trust network is shaped by your choices and your community.</p>
                 </div>
               </div>
             </>
@@ -88,7 +88,7 @@ export default function WotVsAlgorithms() {
 
         <SectionCard
           number={3}
-          title="Algorithm vs. WoT: Side by Side"
+          title="Algorithm vs. Web of Trust: Side by Side"
           icon={Scale}
           description={
             <>
@@ -120,34 +120,34 @@ export default function WotVsAlgorithms() {
 
         <SectionCard
           number={4}
-          title="How WoT Kills Spam (Without Censorship)"
+          title="How Web of Trust Kills Spam (Without Censorship)"
           icon={Shield}
           description={
             <>
-              <p>One of the biggest challenges on any open network is spam and abuse. Centralized platforms solve this with content moderation teams and AI filters — and they still fail constantly. WoT takes a radically different approach:</p>
+              <p>One of the biggest challenges on any open network is spam and abuse. Centralized platforms solve this with content moderation teams and AI filters — and they still fail constantly. Web of Trust takes a radically different approach:</p>
               <ul className="list-disc list-inside space-y-1.5 text-[13px] text-foreground/60">
                 <li><strong>No trust score = invisible</strong> — if nobody in your extended network follows a spammer, their content simply doesn't appear in your feed. No ban needed.</li>
                 <li><strong>Trust must be earned</strong> — new accounts start with zero trust. They become visible as real people in the network follow them. This is how real-world trust works too.</li>
-                <li><strong>Bots can't fake it</strong> — a bot can create a million accounts, but none of them will have legitimate trust connections. WoT pushes them out of your feed.</li>
+                <li><strong>Bots can't fake it</strong> — a bot can create a million accounts, but none of them will have legitimate trust connections. Web of Trust pushes them out of your feed.</li>
                 <li><strong>Nobody is censored</strong> — spammers can still post. Their content still exists on relays. It just never reaches people who didn't ask for it. The difference: filtering at the edges (your choice) vs. filtering at the center (their choice).</li>
               </ul>
-              <p className="text-[12px] text-foreground/50">WoT doesn't decide what's "allowed" — it lets you decide who's worth listening to. The result is the same (less spam), but the power dynamic is completely different.</p>
+              <p className="text-[12px] text-foreground/50">Web of Trust doesn't decide what's "allowed" — it lets you decide who's worth listening to. The result is the same (less spam), but the power dynamic is completely different.</p>
             </>
           }
         />
 
         <SectionCard
           number={5}
-          title="Trust & Safety: WoT In Action"
+          title="Trust & safety: it in action"
           icon={Sparkles}
           description={
             <>
-              <p>In Relay Outpost, <strong>Trust &amp; Safety</strong> is where your Web of Trust comes to life. It's your personal trust control center:</p>
+              <p>In Relay Outpost, <strong>Trust &amp; safety</strong> is where your Web of Trust comes to life. It's your personal trust control center:</p>
               <ul className="list-disc list-inside space-y-1.5 text-[13px] text-foreground/60">
                 <li><strong>Trust tiers</strong> — people are organized into tiers based on how closely connected they are to your network. Highly Trusted is your inner circle; Low Trust is the far edge of your reach.</li>
                 <li><strong>Adjustable</strong> — <strong>Careful</strong>, <strong>Balanced</strong> or <strong>See everything</strong>, in Trust &amp; safety. Tighter means less noise; wider means more discovery.</li>
                 <li><strong>Visual indicators</strong> — color-coded trust dots appear next to every profile, so you can instantly see how someone connects to your network.</li>
-                <li><strong>Feed filtering</strong> — toggle WoT filtering on your feed to only see content from people within your trust network. Or turn it off for full discovery mode.</li>
+                <li><strong>Feed filtering</strong> — choose how careful to be in Trust &amp; safety, so you only see people within your trust network. Or turn it off for full discovery mode.</li>
               </ul>
               <p className="text-[12px] text-foreground/50">Trust &amp; Safety gives you the controls that algorithms hide from you. Every knob and lever is transparent, adjustable, and under your control.</p>
             </>
@@ -161,13 +161,13 @@ export default function WotVsAlgorithms() {
           description={
             <>
               <p>As AI-generated content floods the internet and deepfakes become indistinguishable from reality, the question shifts from "what is true?" to <strong>"who do I trust?"</strong></p>
-              <p>That's exactly the question WoT is built to answer:</p>
+              <p>That's exactly the question Web of Trust is built to answer:</p>
               <ul className="list-disc list-inside space-y-1.5 text-[13px] text-foreground/60">
                 <li><strong>AI can't forge trust</strong> — generating content is cheap, but building genuine social connections over time is something only real humans do</li>
                 <li><strong>Verification through relationships</strong> — in a world where you can't trust content at face value, knowing who created it (and whether your network trusts them) becomes the only reliable signal</li>
-                <li><strong>Scales without a company</strong> — WoT works without any central authority. It scales the same way human trust has always scaled: through networks of personal connections</li>
+                <li><strong>Scales without a company</strong> — Web of Trust works without any central authority. It scales the same way human trust has always scaled: through networks of personal connections</li>
               </ul>
-              <p className="text-[12px] text-foreground/50">Algorithms were the answer to an old internet. WoT is the answer to the internet we're entering now — one where trust, not engagement, is the most valuable signal.</p>
+              <p className="text-[12px] text-foreground/50">Algorithms were the answer to an old internet. Web of Trust is the answer to the internet we're entering now — one where trust, not engagement, is the most valuable signal.</p>
             </>
           }
         />
@@ -180,7 +180,7 @@ export default function WotVsAlgorithms() {
           </div>
           <h3 className="text-sm font-bold text-foreground/80 mb-1">Trust over engagement</h3>
           <p className="text-xs text-muted-foreground/50 max-w-sm mx-auto leading-relaxed mb-4">
-            Algorithms optimize for the platform's bottom line. WoT optimizes for what actually matters to you — the people you know, respect, and choose to listen to.
+            Algorithms optimize for the platform's bottom line. Web of Trust optimizes for what actually matters to you — the people you know, respect, and choose to listen to.
           </p>
           <div className="flex items-center justify-center gap-3">
             <Link href="/shield-matrix" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500/10 text-success dark:text-emerald-400 border border-emerald-500/20 text-xs font-medium transition-all duration-200 hover:bg-emerald-500/15">

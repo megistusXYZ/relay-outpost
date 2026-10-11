@@ -54,12 +54,12 @@ async function viaApi(
 
 export function blockAuthorOnRelay(relayUrl: string, pubkey: string, deps: ModerationDeps = {}): Promise<ModerationOutcome> {
   const ban = deps.ban ?? banPubkey;
-  return viaApi(relayUrl, () => ban(relayUrl, pubkey, "Blocked from Relay Control"), deps.support ?? cachedSupport);
+  return viaApi(relayUrl, () => ban(relayUrl, pubkey, "Blocked from the console"), deps.support ?? cachedSupport);
 }
 
 export function removeEventOnRelay(relayUrl: string, eventId: string, deps: ModerationDeps = {}): Promise<ModerationOutcome> {
   const remove = deps.banEvent ?? banEvent;
-  return viaApi(relayUrl, () => remove(relayUrl, eventId, "Removed from Relay Control"), deps.support ?? cachedSupport);
+  return viaApi(relayUrl, () => remove(relayUrl, eventId, "Removed from the console"), deps.support ?? cachedSupport);
 }
 
 export interface BatchOutcome {

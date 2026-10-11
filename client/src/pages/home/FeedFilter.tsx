@@ -79,8 +79,8 @@ export function FeedFilter({
     strictness: () => (
       <div>
         <Segment
-          label="How strict"
-          options={[{ value: "open", label: "Open" }, { value: "balanced", label: "Balanced" }, { value: "strict", label: "Strict" }]}
+          label="How careful"
+          options={[{ value: "open", label: "See everything" }, { value: "balanced", label: "Balanced" }, { value: "strict", label: "Careful" }]}
           value={(["open", "balanced", "strict"].includes(activePreset) ? (activePreset as PresetValue) : null)}
           onChange={onPreset}
           testPrefix="feed-filter-strict"

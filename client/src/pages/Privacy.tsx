@@ -75,7 +75,7 @@ export default function Privacy() {
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand/80 dark:text-brand/70 mb-3">At a glance</p>
         <ul className="space-y-2 text-[13px] text-foreground/85 dark:text-foreground/80">
           {[
-            "Your private key never reaches our servers.",
+            "Your key never reaches our servers.",
             "Relay Outpost doesn't show ads or track your activity.",
             "Direct messages are end-to-end encrypted.",
             "What you post to Nostr is public by design.",
@@ -91,7 +91,7 @@ export default function Privacy() {
       <div className="space-y-4">
         <Section icon={Eye} title="What we don't do">
           <ul className="list-disc list-inside space-y-1.5">
-            <li>We don't hold your private key. Depending on how you signed in, it lives in this browser (encrypted by a passphrase only you know), in a separate signer extension, or on a remote signer you've connected — never on our servers.</li>
+            <li>We don't hold your key. Depending on how you signed in, it lives in this browser (encrypted by a password for this browser only you know), in a separate signer extension, or on a remote signer you've connected — never on our servers.</li>
             <li>We don't read or store the contents of your direct messages. End-to-end encrypted messages pass through relays, not us.</li>
             <li>We don't build profiles of you across the relays you visit.</li>
             <li>We don't sell or share personal data with advertisers or data brokers. There are no ads.</li>
@@ -106,20 +106,20 @@ export default function Privacy() {
             <li><strong>Link previews & NIP-05 checks.</strong> When the app shows a link card or verifies a profile's name, our server fetches that page or the domain's verification file so your browser doesn't have to. Results are cached briefly, not kept long-term.</li>
             <li><strong>Media uploads.</strong> Images, audio, and video you upload go to the media host you've configured, signed with your key. We don't keep a copy.</li>
             <li><strong>Text-to-speech.</strong> If you have a post read aloud, the text is sent to a speech backend and played back. We don't retain the audio.</li>
-            <li><strong>Discovery & relay health.</strong> Trending feeds come from public Nostr events that were already broadcast openly; relay checks use only public relay URLs.</li>
+            <li><strong>Discovery & relay health.</strong> Trending feeds come from posts that were already published openly on the wider network; relay checks use only public relay URLs.</li>
           </ul>
         </Section>
 
         <Section icon={Radio} title="Data on Nostr itself">
-          <p>Nostr is a public, open network. Anything you publish — posts, reactions, your follow list, your profile — is signed by your key and broadcast to the relays you chose. From there it can be stored, copied, and read by anyone who can reach those relays.</p>
-          <p>Relays are run by independent operators. Each one decides what it stores, for how long, and with whom. Choosing your relays is choosing the neighborhood your signal travels through.</p>
+          <p>Nostr is a public, open network. Anything you publish — posts, reactions, your follow list, your profile — is signed by your key and sent to the relays you chose. From there it can be stored, copied, and read by anyone who can reach those relays.</p>
+          <p>Relays are run by independent operators. Each one decides what it stores, for how long, and with whom. Choosing your relays is choosing the neighborhood your health travels through.</p>
           <p>Direct messages are end-to-end encrypted, but metadata like who you messaged and when can still be visible to relays.</p>
         </Section>
 
         <Section icon={Key} title="Your controls">
           <ul className="list-disc list-inside space-y-1.5">
             <li>Change or add relays any time from Settings.</li>
-            <li>Remove the local account from this device in Settings — your key and its encrypted passphrase are deleted from this browser.</li>
+            <li>Remove the local account from this device in Settings — your key and its password for this browser are deleted from this browser.</li>
             <li>Start fresh with a new key. Old posts stay on the relays that stored them (that's how Nostr works), but new activity is signed by the new key.</li>
             <li>Export your key whenever you like — it was always yours to leave with.</li>
           </ul>

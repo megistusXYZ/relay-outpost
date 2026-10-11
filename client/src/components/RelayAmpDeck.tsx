@@ -67,7 +67,7 @@ export function RelayAmpDeck({ tracks }: { tracks: MusicTrack[] }) {
               <span className={`w-1 h-1 rounded-full ${isPlaying ? "bg-brand animate-pulse" : "bg-brand/30"}`} />
             </div>
             <p className="text-[13px] font-mono text-brand-strong dark:text-brand truncate leading-tight mt-0.5" data-testid="amp-title">
-              {track ? track.title : "— no signal —"}
+              {track ? track.title : "— quiet —"}
             </p>
             <p className="text-[10px] font-mono text-brand-strong/70 dark:text-brand/60 truncate leading-tight">
               {track ? track.artist : "select a track below"}

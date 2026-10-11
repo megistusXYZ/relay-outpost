@@ -97,14 +97,14 @@ export default function Covenant() {
         <Section icon={Key} title="Your key, your account">
           <ul className="list-disc list-inside space-y-1.5">
             <li><strong>You are the sole custodian of your key.</strong> Whether it's stored locally in this browser, in a signer extension, or held by a remote signer, your key is yours — not ours.</li>
-            <li><strong>We cannot recover your key.</strong> There is no reset button. If you lose access to your key (and the passphrase or signer that unlocks it), the account is effectively gone. Back things up.</li>
+            <li><strong>We cannot recover your key.</strong> There is no reset button. If you lose access to your key (and the password for this browser, or the signer app, that unlocks it), the account is effectively gone. Back things up.</li>
             <li>Passkeys, if you enroll one, are an extra local unlock path — not a recovery service we provide.</li>
             <li>Keeping your signer and devices secure — screen lock, disk encryption, no shared accounts — is part of keeping the account secure. We can't protect what happens outside this app.</li>
           </ul>
         </Section>
 
         <Section icon={Radio} title="What you publish">
-          <p>Anything you post is signed by your key and broadcast to your chosen relays. Once it's out, copies may persist on relays, caches, and indexers outside our control. We can't "unpublish" a note for you.</p>
+          <p>Anything you post is signed by your key and sent to your chosen relays. Once it's out, copies may persist on relays, caches, and indexers outside our control. We can't "unpublish" a note for you.</p>
           <p>You're responsible for what you publish. Don't use Relay Outpost to:</p>
           <ul className="list-disc list-inside space-y-1">
             <li>Do anything illegal under the laws that apply to you.</li>

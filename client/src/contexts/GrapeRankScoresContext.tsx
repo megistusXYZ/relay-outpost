@@ -937,7 +937,7 @@ export function GrapeRankScoresProvider({ children }: { children: ReactNode }) {
     } catch {}
     toast({
       title: "Your trust network is ready",
-      description: "Trust signals are now live across your feed.",
+      description: "Trust is now on across your feed.",
     });
   }, [wotReady, pubkey]);
 

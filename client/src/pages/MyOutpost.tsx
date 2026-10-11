@@ -1280,8 +1280,8 @@ export default function MyOutpost() {
         toast({
           title: n > 0 ? `Published to ${n} relay${n === 1 ? "" : "s"}` : "Profile published",
           description: n > 0
-            ? "Your profile changes were broadcast to your write relays."
-            : "Your profile changes were broadcast to relays.",
+            ? "Your profile changes were sent to your write relays."
+            : "Your profile changes were sent to relays.",
         });
       } else {
         toast({ title: "Broadcast failed", description: "Could not publish to relays", variant: "destructive" });
@@ -1962,7 +1962,7 @@ export default function MyOutpost() {
                 <PeopleTab profiles={followingProfiles} loaded={followingLoaded} emptyText="You're not following anyone yet. Follow people to build your network." onLoadMore={loadMoreFollowing} hasMore={hasMoreFollowing} loadingMore={loadingMoreFollowing} livePubkeys={livePubkeys} followOrder={userFollowList} tabKey="outpost_crew" connectionScores={connectionScoresData.scores} totalCount={userFollowList.length} />
               )}
               {networkView === "orbit" && (
-                <PeopleTab profiles={followerProfiles} loaded={followersLoaded} emptyText="No followers yet. Broadcast to attract followers." onLoadMore={loadMoreFollowers} hasMore={hasMoreFollowers} loadingMore={loadingMoreFollowers} livePubkeys={livePubkeys} tabKey="outpost_orbit" connectionScores={connectionScoresData.scores} totalCount={allFollowerProfilesRef.current.length} />
+                <PeopleTab profiles={followerProfiles} loaded={followersLoaded} emptyText="No followers yet. Post, and people will find you." onLoadMore={loadMoreFollowers} hasMore={hasMoreFollowers} loadingMore={loadingMoreFollowers} livePubkeys={livePubkeys} tabKey="outpost_orbit" connectionScores={connectionScoresData.scores} totalCount={allFollowerProfilesRef.current.length} />
               )}
               {networkView === "relays" && (
                 <RelaysTab relayList={relayList} writeRelays={writeRelays} readRelays={readRelays} loaded={relayListLoaded} />
@@ -2955,7 +2955,7 @@ function UpcomingStreamsSection({
             : "Your signer modified the event type. Please try again.",
           variant: "destructive" });
       } else if (publishedCount === 0) {
-        toast({ title: "Publish failed", description: "Could not broadcast to relays.", variant: "destructive" });
+        toast({ title: "Publish failed", description: "Could not send to relays.", variant: "destructive" });
       }
     } catch (err: any) {
       console.error("Failed to publish stream event:", err);

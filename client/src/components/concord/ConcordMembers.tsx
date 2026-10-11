@@ -282,7 +282,7 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
             <AlertDialogTitle className="text-sm">{pendingAdmin?.make ? "Make this member an admin?" : "Remove admin from this member?"}</AlertDialogTitle>
             <AlertDialogDescription className="text-xs">
               {pendingAdmin?.make
-                ? "Admins can manage channels, create invites, edit the group chat, and remove or ban members. You can undo this anytime."
+                ? "Admins can manage rooms, create invites, edit the community, and remove or ban members. You can undo this anytime."
                 : "They'll lose admin powers and become a regular member."}
             </AlertDialogDescription>
           </AlertDialogHeader>

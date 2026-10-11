@@ -507,7 +507,7 @@ export function PostBadgeToggle({ eventId, score, stats, size = "default" }: { e
         <button
           className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors cursor-pointer"
           onClick={(e) => { e.stopPropagation(); toggle(); }}
-          title={showSignal ? "Switch to engagement score" : "Switch to signal check"}
+          title={showSignal ? "Switch to engagement score" : "Switch to trust check"}
           data-testid={`button-badge-toggle-${eventId}`}
         >
           <ArrowLeftRight className="w-2.5 h-2.5" />

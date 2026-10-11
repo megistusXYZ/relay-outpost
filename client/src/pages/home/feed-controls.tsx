@@ -692,7 +692,7 @@ export function ReachDepthSlider({
     : depth === "2hops"
     ? "You + friends of friends"
     : depth === "3hops"
-    ? "2 hops + anyone we have a trust signal for"
+    ? "Friends of friends, plus anyone we already know a little"
     : "2 hops + anyone with positive trust";
 
   return (
@@ -786,7 +786,7 @@ export function ReachDepthSlider({
 const PRESET_ORDER: Exclude<StrictnessPreset, "custom">[] = ["open", "balanced", "strict"];
 
 /**
- * "How strict?" — the single headline trust control for the feed. Shows a
+ * "How careful?" — the single headline trust control for the feed. Shows a
  * compact Open · Balanced · Strict segmented control (or a non-clickable
  * "Custom" pill when the raw knobs don't match any preset), the reach-count
  * for context, an "Adjust in Trust & Safety →" link, and a collapsible
@@ -816,7 +816,7 @@ export function StrictnessPresetControl({
         <div className="flex items-center gap-1.5 shrink-0">
           <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-brand/70" />
           <span className="text-[11px] font-medium text-foreground/70 dark:text-foreground/60 tracking-wide uppercase">
-            How strict?
+            How careful?
           </span>
         </div>
 

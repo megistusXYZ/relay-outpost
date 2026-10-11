@@ -133,7 +133,7 @@ export async function classifyStorageEnvironmentAsync(): Promise<StorageEnvironm
       reason: "private-mode",
       headline: "This looks like a private / incognito window",
       detail:
-        "Browsers clear everything when you close private tabs — including your encrypted key. Open this in a normal window, or download the backup file before you finish so you don't lose access.",
+        "Browsers clear everything when you close private tabs — including your key. Open this in a normal window, or download the key file before you finish so you don't lose access.",
     };
   }
   return sync;
@@ -156,7 +156,7 @@ export function classifyStorageEnvironment(): StorageEnvironment {
       isInAppBrowser,
       headline: "This browser is blocking storage",
       detail:
-        "We can't save your encrypted key here. Disable private mode or change browser settings, or download the backup file and store it yourself before continuing.",
+        "We can't save your key here. Disable private mode or change browser settings, or download the key file and store it yourself before continuing.",
     };
   }
 
@@ -170,7 +170,7 @@ export function classifyStorageEnvironment(): StorageEnvironment {
       isInAppBrowser,
       headline: "You're in an in-app browser",
       detail:
-        "Browsers inside apps like Instagram, TikTok or Facebook often forget your data when the app closes. Open this in your real browser (Safari, Chrome, Firefox) — or be sure to download the backup file before you finish.",
+        "Browsers inside apps like Instagram, TikTok or Facebook often forget your data when the app closes. Open this in your real browser (Safari, Chrome, Firefox) — or be sure to download the key file before you finish.",
     };
   }
 
@@ -184,7 +184,7 @@ export function classifyStorageEnvironment(): StorageEnvironment {
       isInAppBrowser,
       headline: "Heads up — iOS Home Screen apps have their own storage",
       detail:
-        "Your key will live only inside this Home Screen install. It won't be visible in regular Safari, and iOS may clear it if the app sits unused for weeks. Save the backup file too — it's the only thing that survives.",
+        "Your key will live only inside this Home Screen install. It won't be visible in regular Safari, and iOS may clear it if the app sits unused for weeks. Save the key file too — it's the only thing that survives.",
     };
   }
 
@@ -199,7 +199,7 @@ export function classifyStorageEnvironment(): StorageEnvironment {
       isInAppBrowser,
       headline: "This looks like a private / incognito window",
       detail:
-        "Browsers clear everything when you close private tabs — including your encrypted key. Open this in a normal window, or download the backup file before you finish so you don't lose access.",
+        "Browsers clear everything when you close private tabs — including your key. Open this in a normal window, or download the key file before you finish so you don't lose access.",
     };
   }
 
@@ -216,7 +216,7 @@ export function classifyStorageEnvironment(): StorageEnvironment {
       isInAppBrowser,
       headline: "This browser may not remember your account",
       detail:
-        "We can't confirm your browser will keep your encrypted key between visits. To be safe, download the backup file before you finish.",
+        "We can't confirm your browser will keep your key between visits. To be safe, download the key file before you finish.",
     };
   }
 
@@ -252,26 +252,26 @@ export function describeStorageOutcome(
     return {
       title: "Saved to this in-app browser only",
       detail:
-        "This storage may be wiped when the host app closes. Download the backup file now — it is the only copy you can carry to another device. We do not have one.",
+        "This storage may be wiped when the host app closes. Download the key file now — it is the only copy you can carry to another device. We do not have one.",
     };
   }
   if (env.reason === "ios-pwa") {
     return {
       title: "Saved to this Home Screen install only",
       detail:
-        "It won't appear in Safari or on any other device. The backup file is your only way to get back in elsewhere. We don't keep a copy.",
+        "It won't appear in Safari or on any other device. The key file is your only way to get back in elsewhere. We don't keep a copy.",
     };
   }
   if (env.reason === "no-storage") {
     return {
       title: "Browser refused to save your key",
       detail:
-        "Nothing was stored on this device. Download the backup file now or you will lose access. We have no copy.",
+        "Nothing was stored on this device. Download the key file now or you will lose access. We have no copy.",
     };
   }
   return {
     title: "Saved to this browser only",
     detail:
-      "Your encrypted key lives in this browser, on this device. To use this account elsewhere, sign in with your backup file. We do not store it for you.",
+      "Your key lives in this browser, on this device. To use this account elsewhere, sign in with your key file. We do not store it for you.",
   };
 }

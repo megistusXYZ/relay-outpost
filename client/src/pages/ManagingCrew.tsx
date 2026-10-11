@@ -114,7 +114,7 @@ export default function ManagingCrew() {
               <p>Your follow list and trust levels directly influence what you see in your feed:</p>
               <ul className="list-disc list-inside space-y-1 text-[13px] text-foreground/60">
                 <li><strong>Home feed</strong> — Posts from people you follow, ordered by time</li>
-                <li><strong>Trust filtering</strong> — When enabled, Trust &amp; Safety hides content from untrusted accounts</li>
+                <li><strong>Trust filtering</strong> — When enabled, Trust &amp; safety hides content from untrusted accounts</li>
                 <li><strong>Replies and interactions</strong> — Trust scores help surface meaningful replies over spam</li>
                 <li><strong>Community feeds</strong> — Community posts are enriched with trust context from your network</li>
               </ul>
@@ -143,11 +143,11 @@ export default function ManagingCrew() {
 
         <StepCard
           number={6}
-          title="The Trust & Safety Connection"
+          title="The Trust & safety Connection"
           icon={Layers}
           description={
             <>
-              <p>Your social graph feeds directly into Trust &amp; Safety — your Web of Trust control center:</p>
+              <p>Your social graph feeds directly into Trust &amp; safety, where you choose how careful to be:</p>
               <ul className="list-disc list-inside space-y-1 text-[13px] text-foreground/60">
                 <li>People you follow form the foundation of your trust network</li>
                 <li>The people they follow count for a little less: friends of friends</li>
