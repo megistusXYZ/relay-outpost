@@ -1,5 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { useLocation, useRoute } from "wouter";
+import { MissionBriefing, CHATS_BRIEFING } from "@/components/MissionBriefing";
 import { useGoBack } from "@/hooks/use-go-back";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -3238,6 +3239,8 @@ export default function Messages() {
         which is what let the list slide under the fixed top bar and left a ghost
         gap above the bottom nav. Only the inner lists scroll. */}
     <div className="flex h-[calc(100svh-4.25rem-7rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] md:h-[calc(100dvh-5rem)]" data-testid="page-messages">
+      {/* The quick tour for the page a new account lands on; replayed from Help & Guides. */}
+      <MissionBriefing pageId="chats" steps={CHATS_BRIEFING} />
       <div className={`flex flex-col w-full md:w-[320px] md:shrink-0 md:border-r md:border-foreground/15 dark:md:border-white/15 ${selectedPubkey ? "hidden md:flex" : "flex"}`}>
         <ChatList
           pubkey={pubkey}

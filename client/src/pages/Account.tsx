@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
+import { MissionBriefing, ACCOUNT_BRIEFING } from "@/components/MissionBriefing";
 import { ChevronRight, Pencil, Wallet, ShieldCheck, Wrench, UserPlus, Users, Settings, Sun, Moon, Eclipse, LogOut, Unplug, Fingerprint, CalendarDays, KeyRound, Award } from "lucide-react";
 import { useKeyBackupNudge } from "@/hooks/use-key-backup";
 import {
@@ -106,6 +107,7 @@ export default function Account() {
   return (
     <div className="mx-auto w-full max-w-lg md:max-w-2xl px-3 sm:px-4 md:px-6 pt-4 sm:pt-6 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
       {/* No title block: pages open with their content (lib/page-titles.test.ts). */}
+      <MissionBriefing pageId="account" steps={ACCOUNT_BRIEFING} />
 
       {/* Your face and your name, so this opens the page that IS your face and
           your name. It used to go to the edit form — the same place the "Edit
