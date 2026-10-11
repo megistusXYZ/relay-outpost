@@ -211,10 +211,10 @@ export function WtfWelcomeOverlay({ open, onDismiss }: Props) {
               className="font-display font-semibold text-[22px] min-[480px]:text-[26px] leading-tight tracking-tight text-foreground dark:text-white"
               data-testid="text-wtf-welcome-headline"
             >
-              Welcome, traveler<span className="text-brand drop-shadow-[0_0_8px_rgba(139,92,246,0.6)]">.</span>
+              Welcome<span className="text-brand drop-shadow-[0_0_8px_rgba(139,92,246,0.6)]">.</span>
             </h2>
             <p className="mt-1.5 text-[14px] leading-snug text-muted-foreground dark:text-white/60 max-w-[40ch]">
-              You've found the field manual. Learn more about the next phase of the internet.
+              Plain answers about how Relay Outpost works, and what makes it different.
             </p>
           </div>
 
@@ -241,7 +241,7 @@ export function WtfWelcomeOverlay({ open, onDismiss }: Props) {
                 <Radio className="w-4 h-4" />
               </span>
               <p className="text-[13.5px] leading-snug text-foreground/80 dark:text-white/80 pt-1">
-                A Community is your home base for everything you say — public feeds and private rooms in one place. Join one or launch your own, run on your terms — your identity moves with you.
+                A community is a private place for your people: group chats with rooms, end-to-end encrypted, where you pick who's in it. Make your own in a minute, and step into the wider network only when you choose.
               </p>
             </li>
           </ul>

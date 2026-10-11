@@ -53,12 +53,12 @@ export default function FirstTenMinutes() {
             <>
               <p>Tap <strong>Get Started</strong> on the landing screen. You have a few options:</p>
               <ul className="list-disc list-inside space-y-1 text-[13px] text-foreground/60">
-                <li><strong>New here?</strong> — Create a fresh account in seconds. Your key is your identity — save it somewhere safe.</li>
+                <li><strong>Create account</strong> — a new account in about thirty seconds. It starts in your space: your communities and the people you follow, nothing else, until you open the wider network. The last step is <strong>Save your key</strong>: save the file, then tap <strong>Check it works</strong>.</li>
                 <li><strong>Signer app (QR)</strong> — On a phone, scan a QR code with a signer app like Amber. The most secure way in, and the one we suggest on mobile.</li>
                 <li><strong>Browser Extension</strong> — On desktop with a key manager (like Alby or nos2x), this is the fastest way in.</li>
-                <li><strong>Secret key</strong> — Paste an existing secret key to sign in directly.</li>
+                <li><strong>Use existing account</strong> — paste the key from another app, the same one in your key file.</li>
               </ul>
-              <p className="text-[12px] text-foreground/50">Your keys are never stored on our servers. You own your identity — always.</p>
+              <p className="text-[12px] text-foreground/50">Your key never leaves your device. You own your account, always.</p>
             </>
           }
         />
@@ -69,7 +69,7 @@ export default function FirstTenMinutes() {
           icon={UserCircle}
           description={
             <>
-              <p>Open the <strong>You</strong> tab (your avatar, bottom right) and tap <strong>Edit profile</strong>:</p>
+              <p>Open the <strong>Account</strong> page (your face, at the bottom of the bar) and tap <strong>Edit profile</strong>:</p>
               <ul className="list-disc list-inside space-y-1 text-[13px] text-foreground/60">
                 <li>Add a display name and bio</li>
                 <li>Upload a profile picture</li>
@@ -124,7 +124,7 @@ export default function FirstTenMinutes() {
             <>
               <p>See a post you like? Zap it. Zaps are tiny, optional Bitcoin tips over Lightning — real appreciation instead of empty likes.</p>
               <ul className="list-disc list-inside space-y-1 text-[13px] text-foreground/60">
-                <li>Open the <strong>You</strong> tab → <strong>Wallet</strong> to connect a Lightning wallet (Alby, Coinos, Zeus, LNbits) — or get zappable instantly with an npub.cash address</li>
+                <li>Open the <strong>Account</strong> page → <strong>Wallet</strong> to connect your own wallet app (Alby, Coinos, Zeus, LNbits), or get an npub.cash address so people can tip you right away</li>
                 <li>Tap the zap icon on any post</li>
                 <li>Choose an amount and send</li>
               </ul>
@@ -135,17 +135,17 @@ export default function FirstTenMinutes() {
 
         <StepCard
           number={6}
-          title="Activate Trust & Safety"
+          title="Choose how careful"
           icon={Shield}
           description={
             <>
-              <p>Trust &amp; Safety is your Web of Trust control center. It filters signal from noise based on who you trust — not an algorithm.</p>
+              <p>Trust &amp; safety decides how the app treats people you don't know, based on who you and your friends trust, not on a company's algorithm.</p>
               <ul className="list-disc list-inside space-y-1 text-[13px] text-foreground/60">
-                <li>Open the <strong>You</strong> tab → <strong>Trust &amp; safety</strong></li>
-                <li>Review your trust tiers and how connections propagate</li>
-                <li>Adjust your reach depth and filter settings</li>
+                <li>Open the <strong>Account</strong> page → <strong>Trust &amp; safety</strong></li>
+                <li>Pick <strong>Careful</strong>, <strong>Balanced</strong> or <strong>See everything</strong></li>
+                <li>New accounts start on Balanced; the first time you open the wider network it goes to Careful</li>
               </ul>
-              <p className="text-[12px] text-foreground/50">Your trust network grows organically as you follow and interact. Trust &amp; Safety gives you full control over your signal quality.</p>
+              <p className="text-[12px] text-foreground/50">Loosen it when you're ready. Pictures from people outside your space stay blurred until you tap them.</p>
             </>
           }
         />

@@ -10,7 +10,7 @@ import { WtfAlienIcon } from "@/components/icons/WtfAlienIcon";
 import { StepCard } from "@/components/wtf/StepCard";
 
 export default function ManagingCrew() {
-  useDocumentTitle("Managing Your Crew & Orbit — Relay Outpost");
+  useDocumentTitle("Your People — Relay Outpost");
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-in fade-in duration-300">
@@ -23,9 +23,9 @@ export default function ManagingCrew() {
           </div>
           <div>
             <h1 className="text-lg sm:text-xl font-black uppercase tracking-[0.06em] leading-none text-brand dark:text-brand/90" style={{ fontStyle: "italic" }}>
-              Managing Your Crew & Orbit
+              Your People
             </h1>
-            <p className="text-[10px] text-brand/40 dark:text-brand/30 font-bold uppercase tracking-[0.2em] mt-0.5 ml-0.5">your social graph</p>
+            <p className="text-[10px] text-brand/40 dark:text-brand/30 font-bold uppercase tracking-[0.2em] mt-0.5 ml-0.5">who you follow, who follows you</p>
           </div>
         </div>
       </div>
@@ -132,7 +132,7 @@ export default function ManagingCrew() {
               <p>Growing your network is easy — and trust-aware:</p>
               <ul className="list-disc list-inside space-y-1 text-[13px] text-foreground/60">
                 <li>Use <strong>Search</strong> to find people by name or verified username</li>
-                <li>Browse profiles in Community communities to find aligned voices</li>
+                <li>Browse profiles in your communities to find people worth hearing from</li>
                 <li>Check someone's followers and following to discover mutual connections</li>
                 <li>Trust indicators show you how someone connects to your circle before you follow them</li>
               </ul>
@@ -150,11 +150,11 @@ export default function ManagingCrew() {
               <p>Your social graph feeds directly into Trust &amp; Safety — your Web of Trust control center:</p>
               <ul className="list-disc list-inside space-y-1 text-[13px] text-foreground/60">
                 <li>People you follow form the foundation of your trust network</li>
-                <li>Their follows extend trust outward (configurable reach depth)</li>
-                <li>Trust tiers are calculated based on how many hops away someone is</li>
-                <li>You can adjust reach depth and tier thresholds in Trust &amp; Safety</li>
+                <li>The people they follow count for a little less: friends of friends</li>
+                <li>A stranger is someone nobody in that circle vouches for</li>
+                <li>How strict that is comes down to one choice in Trust &amp; safety: <strong>Careful</strong>, <strong>Balanced</strong> or <strong>See everything</strong></li>
               </ul>
-              <p className="text-[12px] text-foreground/50">Think of it as concentric circles — your follows are the inner ring, their follows are the next ring, and so on. Trust &amp; Safety lets you decide how many rings to include.</p>
+              <p className="text-[12px] text-foreground/50">Think of it as rings: the people you follow are the inner ring, their people the next, and so on. Your choice in Trust &amp; safety is how many rings get in.</p>
             </>
           }
         />
@@ -171,7 +171,7 @@ export default function ManagingCrew() {
           </p>
           <div className="flex items-center justify-center gap-3">
             <Link href="/account?tab=crew" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand/10 text-brand border border-brand/20 text-xs font-medium transition-all duration-200 hover:bg-brand/15">
-              View Your Crew
+              See who you follow
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
             <Link href="/help" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-muted/20 text-muted-foreground/70 border border-border/20 text-xs font-medium transition-all duration-200 hover:bg-muted/30">

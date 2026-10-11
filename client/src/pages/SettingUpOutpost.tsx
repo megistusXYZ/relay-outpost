@@ -29,7 +29,7 @@ export default function SettingUpOutpost() {
             >
               Setting Up Your Community
             </h1>
-            <p className="text-[10px] text-brand/40 dark:text-brand/30 font-bold uppercase tracking-[0.2em] mt-0.5 ml-0.5">build your home base</p>
+            <p className="text-[10px] text-brand/40 dark:text-brand/30 font-bold uppercase tracking-[0.2em] mt-0.5 ml-0.5">your people, your place</p>
           </div>
         </div>
       </div>
@@ -37,7 +37,7 @@ export default function SettingUpOutpost() {
       <div className="mb-8">
         <div className="rounded-xl border border-border/30 dark:border-border/15 bg-white/50 dark:bg-muted/10 p-5">
           <p className="text-sm text-foreground/70 dark:text-muted-foreground leading-relaxed">
-            A community is built around a relay — your crew's home base on the open social web. This guide walks you through discovering communities, joining your first Community, and making it your own. Whether you're looking for a niche interest group or building one from scratch, this is where it starts.
+            A community is a private place for your people: group chats with rooms, end-to-end encrypted, where you pick who's in it. This guide starts with making your own, then covers finding and joining other people's, and opening up to the wider network when you choose.
           </p>
           <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border/20">
             <OutpostIcon className="w-3.5 h-3.5 text-brand/70" />
@@ -49,6 +49,24 @@ export default function SettingUpOutpost() {
       <div className="space-y-6">
         <StepCard
           number={1}
+          title="Name your community"
+          icon={OutpostIcon}
+          description={
+            <>
+              <p>The quickest way to a place of your own, and the first thing a new account is offered:</p>
+              <ul className="list-disc list-inside space-y-1 text-[13px] text-foreground/60">
+                <li>On <strong>Welcome</strong>, or from your <strong>Account</strong> page, tap <strong>Name your community</strong></li>
+                <li>Give it a name. That's it: it exists, end-to-end encrypted, with you as its owner</li>
+                <li>The invite opens by itself. Send the link, or invite a person directly. Only people with an invite can join</li>
+                <li>Add rooms as it grows; everything in it stays between its members</li>
+              </ul>
+              <p className="text-[12px] text-foreground/50">The community depends on your key, so the page reminds you to save it until you have.</p>
+            </>
+          }
+        />
+
+        <StepCard
+          number={2}
           title="Discover Communities"
           icon={Search}
           description={
@@ -66,7 +84,7 @@ export default function SettingUpOutpost() {
         />
 
         <StepCard
-          number={2}
+          number={3}
           title="Join Your First Community"
           icon={Users}
           description={
@@ -84,7 +102,7 @@ export default function SettingUpOutpost() {
         />
 
         <StepCard
-          number={3}
+          number={4}
           title="Explore Community Sections"
           icon={Layers}
           description={
@@ -103,7 +121,7 @@ export default function SettingUpOutpost() {
         />
 
         <StepCard
-          number={4}
+          number={5}
           title="Post to Your Community"
           icon={PenLine}
           description={
@@ -121,7 +139,7 @@ export default function SettingUpOutpost() {
         />
 
         <StepCard
-          number={5}
+          number={6}
           title="Manage Your Relay Connection"
           icon={Settings}
           description={
@@ -139,7 +157,7 @@ export default function SettingUpOutpost() {
         />
 
         <StepCard
-          number={6}
+          number={7}
           title="Run Your Own Community (optional)"
           icon={Globe}
           description={
@@ -157,7 +175,7 @@ export default function SettingUpOutpost() {
         />
 
         <StepCard
-          number={7}
+          number={8}
           title="Use Relay Control"
           icon={Eye}
           description={
@@ -169,7 +187,7 @@ export default function SettingUpOutpost() {
                 <li>Review event logs and relay health metrics</li>
                 <li>Configure relay settings and policies</li>
               </ul>
-              <p className="text-[12px] text-foreground/50">Relay Control gives operators full visibility into their relay — the backbone of their Community community.</p>
+              <p className="text-[12px] text-foreground/50">Relay Control gives operators full visibility into their relay, the server behind a public community.</p>
             </>
           }
         />
