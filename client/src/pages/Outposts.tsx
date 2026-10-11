@@ -16,6 +16,9 @@ import { FOCUS_RING } from "@/lib/a11y";
 import { isReplyEvent } from "./home/helpers";
 import { fetchNip11, isNip11Operator, type Nip11Document, getSoftwareDisplay } from "@/lib/nip11";
 import { banEvent, banPubkey, listAllowedPubkeys } from "@/lib/nip86";
+import { RemoveFromCommunityDialog } from "@/components/community/RemoveFromCommunityDialog";
+import { removalNotice, REMOVED_BY_COMMUNITY } from "@/lib/community-removal";
+import { markRemovedByCommunity, useRemovedByCommunity } from "@/lib/removed-by-community";
 import { addModLogEntry, ADMIN_BLOCKLIST_KEY, getStoredList, saveStoredList } from "@/pages/relay-ops/shared";
 import { withSignerTimeout, SIGNER_SIGN_TIMEOUT } from "@/lib/signer-timeout";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
@@ -858,9 +861,10 @@ function WavePostCard({
               variant="ghost"
               size="sm"
               className="h-6 w-6 p-0 text-muted-foreground/30 hover:text-red-600 dark:hover:text-red-400 shrink-0 reveal-on-hover touch-target"
-              aria-label="Remove from relay"
-              title="Remove from relay"
+              aria-label="Remove from community"
+              title="Remove from community"
               onClick={(e) => { e.stopPropagation(); onBan(topic.id); }}
+              data-testid={`button-remove-topic-${topic.id}`}
             >
               <Trash2 className="w-3 h-3" />
             </Button>
@@ -1636,11 +1640,26 @@ function CommentTreeItem({
 
   const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
   const indent = depth > 0 ? (isMobile ? Math.min(depth * 4, 16) : Math.min(depth * 10, 40)) : 0;
+  const removedByCommunity = useRemovedByCommunity().has(node.event.id);
+
+  // Removed by an admin: gone outright, unless replies hang off it — then a placeholder keeps their place.
+  if (removedByCommunity) {
+    if (node.children.length === 0) return null;
+    return (
+      <div style={{ marginLeft: indent }} className={`${depth > 0 ? `border-l-2 ${borderColor} pl-1.5 sm:pl-3` : ""} mt-2 min-w-0`} data-testid={`comment-item-${node.event.id}`}>
+        <p className="text-sm italic text-muted-foreground/60 py-1" data-testid={`removed-by-community-${node.event.id}`}>{REMOVED_BY_COMMUNITY}</p>
+        {node.children.map((child) => (
+          <CommentTreeItem key={child.event.id} node={child} depth={depth + 1} rootEvent={rootEvent} relayUrl={relayUrl} onCommented={onCommented} onBan={onBan} opPubkey={opPubkey} authRequired={authRequired} />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div
       style={{ marginLeft: indent }}
       className={`${depth > 0 ? `border-l-2 ${borderColor} pl-1.5 sm:pl-3` : ""} mt-2 min-w-0`}
+      data-testid={`comment-item-${node.event.id}`}
     >
       <div className="space-y-1 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
@@ -1686,7 +1705,9 @@ function CommentTreeItem({
                 <button
                   onClick={() => onBan(node.event.id)}
                   className="flex items-center gap-1 px-2.5 py-1.5 sm:px-2 sm:py-1 rounded-full text-[10px] text-muted-foreground/30 hover:text-red-600 dark:hover:text-red-400 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] active:bg-black/[0.06] dark:active:bg-white/[0.06] transition-colors"
-                  title="Remove from relay"
+                  title="Remove from community"
+                  aria-label="Remove from community"
+                  data-testid={`button-remove-comment-${node.event.id}`}
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -1740,14 +1761,22 @@ function TopicThreadView({
   relayUrl,
   onBack,
   canModerate = false,
-  authRequired }: {
+  authRequired,
+  communityName,
+  onNotifyRemoved }: {
   topic: NostrEvent;
   relayUrl: string;
   onBack: () => void;
   canModerate?: boolean;
   authRequired?: boolean;
+  communityName?: string;
+  /** Sends the author the private note; resolves true when it went. */
+  onNotifyRemoved?: (authorPubkey: string) => Promise<boolean>;
 }) {
   const [comments, setComments] = useState<NostrEvent[]>([]);
+  const [removeTarget, setRemoveTarget] = useState<{ eventId: string; pubkey: string } | null>(null);
+  const [removeReason, setRemoveReason] = useState("");
+  const [removeBusy, setRemoveBusy] = useState(false);
   const [reactions, setReactions] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -1850,15 +1879,28 @@ function TopicThreadView({
   }, []);
 
   const { toast } = useToast();
-  const handleBanCommentLocal = useCallback(async (eventId: string) => {
-    const res = await banEvent(relayUrl, eventId, "Removed by moderator");
-    if (res.error) {
-      toast({ title: "Failed to remove comment", description: res.error, variant: "destructive" });
-    } else {
-      setComments(prev => prev.filter(c => c.id !== eventId));
-      toast({ title: "Comment removed from relay" });
+  const handleBanCommentLocal = useCallback((eventId: string) => {
+    setRemoveReason("");
+    setRemoveTarget({ eventId, pubkey: commentMapRef.current.get(eventId)?.pubkey || "" });
+  }, []);
+  const confirmRemoveComment = useCallback(async () => {
+    if (!removeTarget) return;
+    const reason = removeReason.trim();
+    setRemoveBusy(true);
+    try {
+      const res = await banEvent(relayUrl, removeTarget.eventId, reason || "Removed by a community admin");
+      if (res.error) { toast({ title: "Couldn't remove the comment", description: res.error, variant: "destructive" }); return; }
+      // Kept in state: the tree shows a placeholder only where replies hang off it.
+      markRemovedByCommunity(removeTarget.eventId);
+      commentMapRef.current.delete(removeTarget.eventId);
+      addModLogEntry(relayUrl, { action: "delete_event", targetEventId: removeTarget.eventId, targetPubkey: removeTarget.pubkey || undefined, targetKind: KIND_COMMENT, note: reason || undefined });
+      const sent = removeTarget.pubkey && onNotifyRemoved ? await onNotifyRemoved(removeTarget.pubkey) : false;
+      toast({ title: `Removed from ${communityName || "the community"}`, description: sent ? "The author was sent a note." : "The author couldn't be sent a note." });
+      setRemoveTarget(null);
+    } finally {
+      setRemoveBusy(false);
     }
-  }, [relayUrl, toast]);
+  }, [removeTarget, removeReason, relayUrl, toast, communityName, onNotifyRemoved]);
 
   const tree = useMemo(
     () => buildCommentTree(comments, topic.id, reactions),
@@ -2037,6 +2079,7 @@ function TopicThreadView({
           ))}
         </div>
       )}
+      <RemoveFromCommunityDialog open={!!removeTarget} kind="comment" communityName={communityName || "this community"} reason={removeReason} onReasonChange={setRemoveReason} busy={removeBusy} onConfirm={confirmRemoveComment} onOpenChange={(o) => { if (!o) setRemoveTarget(null); }} />
 
       {/* Reddit-style: the bottom "Join the conversation" box expands into the
           composer in place (no jump to a composer elsewhere on the page). In-flow
@@ -2080,7 +2123,9 @@ function TopicsTab({
   authRequired,
   trustFilterEnabled = false,
   isHiddenByTrust,
-  onTrustHidden }: {
+  onTrustHidden,
+  communityName,
+  onNotifyRemoved }: {
   relayUrl: string;
   externalRefreshKey?: number;
   canModerate?: boolean;
@@ -2090,6 +2135,8 @@ function TopicsTab({
   trustFilterEnabled?: boolean;
   isHiddenByTrust?: (pubkey: string) => boolean;
   onTrustHidden?: (count: number) => void;
+  communityName?: string;
+  onNotifyRemoved?: (authorPubkey: string) => Promise<boolean>;
 }) {
   const { pubkey } = useNostrAuth();
   const { toast } = useToast();
@@ -2122,16 +2169,30 @@ function TopicsTab({
     return () => { sub.close(); clearTimeout(timer); };
   }, [operatorPubkey, relayUrl]);
 
-  const handleBanTopic = useCallback(async (eventId: string) => {
-    const res = await banEvent(relayUrl, eventId, "Removed by moderator");
-    if (res.error) {
-      toast({ title: "Failed to remove", description: res.error, variant: "destructive" });
-    } else {
-      setTopics(prev => prev.filter(t => t.id !== eventId));
-      setPinnedIds(prev => { const next = new Set(prev); next.delete(eventId); return next; });
-      toast({ title: "Post removed from relay" });
+  const [removeTopic, setRemoveTopic] = useState<{ eventId: string; pubkey: string } | null>(null);
+  const [removeTopicReason, setRemoveTopicReason] = useState("");
+  const [removeTopicBusy, setRemoveTopicBusy] = useState(false);
+  const handleBanTopic = useCallback((eventId: string) => {
+    setRemoveTopicReason("");
+    setRemoveTopic({ eventId, pubkey: topics.find((t) => t.id === eventId)?.pubkey || "" });
+  }, [topics]);
+  const confirmRemoveTopic = useCallback(async () => {
+    if (!removeTopic) return;
+    const reason = removeTopicReason.trim();
+    setRemoveTopicBusy(true);
+    try {
+      const res = await banEvent(relayUrl, removeTopic.eventId, reason || "Removed by a community admin");
+      if (res.error) { toast({ title: "Couldn't remove it", description: res.error, variant: "destructive" }); return; }
+      setTopics(prev => prev.filter(t => t.id !== removeTopic.eventId));
+      setPinnedIds(prev => { const next = new Set(prev); next.delete(removeTopic.eventId); return next; });
+      addModLogEntry(relayUrl, { action: "delete_event", targetEventId: removeTopic.eventId, targetPubkey: removeTopic.pubkey || undefined, targetKind: KIND_TOPIC, note: reason || undefined });
+      const sent = removeTopic.pubkey && onNotifyRemoved ? await onNotifyRemoved(removeTopic.pubkey) : false;
+      toast({ title: `Removed from ${communityName || "the community"}`, description: sent ? "The author was sent a note." : "The author couldn't be sent a note." });
+      setRemoveTopic(null);
+    } finally {
+      setRemoveTopicBusy(false);
     }
-  }, [relayUrl, toast]);
+  }, [removeTopic, removeTopicReason, relayUrl, toast, communityName, onNotifyRemoved]);
 
   const fetchTopics = useCallback(() => {
     const topicMap = new Map<string, NostrEvent>();
@@ -2358,6 +2419,8 @@ function TopicsTab({
         onBack={() => setSelectedTopic(null)}
         canModerate={canModerate}
         authRequired={authRequired}
+        communityName={communityName}
+        onNotifyRemoved={onNotifyRemoved}
       />
     );
   }
@@ -2420,6 +2483,7 @@ function TopicsTab({
               relayUrl={relayUrl}
             />
           ))}
+          <RemoveFromCommunityDialog open={!!removeTopic} kind="topic" communityName={communityName || "this community"} reason={removeTopicReason} onReasonChange={setRemoveTopicReason} busy={removeTopicBusy} onConfirm={confirmRemoveTopic} onOpenChange={(o) => { if (!o) setRemoveTopic(null); }} />
         </div>
       )}
     </div>
@@ -3989,18 +4053,30 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
     setModAction({ kind: "ban", eventId, pubkey: authorPubkey });
   }, []);
 
+  // The private note to a removed post's author, from this admin's account. True when it went.
+  const notifyRemoved = useCallback(async (authorPubkey: string): Promise<boolean> => {
+    const dmSigner = signer || (window as any).nostr;
+    if (!pubkey || !dmSigner || !authorPubkey || authorPubkey === pubkey) return false;
+    try {
+      const res = await sendDM({ signer: dmSigner, senderPubkey: pubkey, recipientPubkey: authorPubkey, content: removalNotice(name) });
+      return !!res.success;
+    } catch { return false; }
+  }, [signer, pubkey, name]);
+
   const confirmModAction = useCallback(async () => {
     if (!modAction) return;
     const reason = modReason.trim();
     setModBusy(true);
     try {
       if (modAction.kind === "remove") {
-        const res = await banEvent(relayUrl, modAction.eventId, reason || "Removed by moderator");
-        if (res.error) { toast({ title: "Failed to remove", description: res.error, variant: "destructive" }); return; }
+        const res = await banEvent(relayUrl, modAction.eventId, reason || "Removed by a community admin");
+        if (res.error) { toast({ title: "Couldn't remove it", description: res.error, variant: "destructive" }); return; }
         setEvents(prev => prev.filter(e => e.id !== modAction.eventId));
         eventMapRef.current.delete(modAction.eventId);
+        markRemovedByCommunity(modAction.eventId);
         addModLogEntry(relayUrl, { action: "delete_event", targetEventId: modAction.eventId, targetPubkey: modAction.pubkey || undefined, note: reason || undefined });
-        toast({ title: "Content removed from relay" });
+        const sent = modAction.pubkey ? await notifyRemoved(modAction.pubkey) : false;
+        toast({ title: `Removed from ${name}`, description: sent ? "The author was sent a note." : "The author couldn't be sent a note." });
       } else {
         const res = await banPubkey(relayUrl, modAction.pubkey, reason || "Banned by moderator");
         if (res.error) { toast({ title: "Failed to ban author", description: res.error, variant: "destructive" }); return; }
@@ -4014,7 +4090,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
     } finally {
       setModBusy(false);
     }
-  }, [modAction, modReason, relayUrl, toast]);
+  }, [modAction, modReason, relayUrl, toast, name, notifyRemoved]);
 
   // Yield-aware page size (lib/adaptive-page.ts): grows while the trust
   // filter eats pages so one round-trip buys a screenful, settles back when
@@ -4923,46 +4999,15 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
           </div>
         )}
 
-        <AlertDialog open={!!modAction} onOpenChange={(o) => { if (!o && !modBusy) setModAction(null); }}>
-          <AlertDialogContent className="glass-dialog-card max-w-sm">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-sm font-brand tracking-wide">
-                {modAction?.kind === "ban" ? "Ban author from relay?" : "Remove from relay?"}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-xs text-muted-foreground/70">
-                {modAction?.kind === "ban"
-                  ? "Their posts will be removed from this relay and they'll be added to your blocklist."
-                  : "This removes the post from your relay."}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <Input
-              value={modReason}
-              onChange={(e) => setModReason(e.target.value)}
-              placeholder="Reason (optional, logged)"
-              className="text-base sm:text-sm"
-              autoFocus
-              onKeyDown={(e) => { if (e.key === "Enter" && !modBusy) confirmModAction(); }}
-              data-testid="input-mod-reason"
-            />
-            <AlertDialogFooter>
-              <AlertDialogCancel className="h-8 text-xs" disabled={modBusy}>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                className="h-8 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={(e) => { e.preventDefault(); confirmModAction(); }}
-                disabled={modBusy}
-                data-testid="button-confirm-mod-action"
-              >
-                {modBusy ? "Working…" : modAction?.kind === "ban" ? "Ban author" : "Remove"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <RemoveFromCommunityDialog open={!!modAction} kind={modAction?.kind === "ban" ? "ban" : "post"} communityName={name} reason={modReason} onReasonChange={setModReason} busy={modBusy} onConfirm={confirmModAction} onOpenChange={(o) => { if (!o) setModAction(null); }} />
 
         {activeTab === "topics" && (
           <TopicsTab
             relayUrl={relayUrl}
             externalRefreshKey={feedRefreshKey}
             canModerate={canModerate}
+            communityName={name}
+            onNotifyRemoved={notifyRemoved}
             operatorPubkey={operatorPubkey || undefined}
             onThreadOpen={setWaveThreadOpen}
             authRequired={authRequired}
