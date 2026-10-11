@@ -12,7 +12,7 @@ import { RelayOutpostLoader, RelayOutpostInlineLoader } from "@/components/Relay
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Link, useParams } from "wouter";
+import { Link, useParams, useLocation } from "wouter";
 import { useGoBack } from "@/hooks/use-go-back";
 import { nip19 } from "nostr-tools";
 import { formatDistanceToNow, format } from "date-fns";
@@ -41,6 +41,7 @@ import {
   Pause,
   SkipBack,
   SkipForward,
+  Pencil,
   X } from "lucide-react";
 import {
   DropdownMenu,
@@ -63,6 +64,7 @@ import { BtcZapIcon } from "@/components/NostrPost";
 import type { Event } from "nostr-tools";
 import type { ArticleData } from "@/lib/nip23";
 import { useDocumentTitle } from "@/hooks/use-document-title";
+import { DeleteArticleButton } from "@/components/articles/DeleteArticleButton";
 
 const KIND_TEXT_NOTE = 1;
 
@@ -453,7 +455,8 @@ export default function ArticleDetail() {
       onevent(evt: Event) {
         found = true;
         eventStore.add(evt);
-        setEvent(evt);
+        // Relays can hold different versions of an edited article: the newest wins.
+        setEvent((prev) => (prev && prev.created_at >= evt.created_at ? prev : evt));
         fetchProfiles([evt.pubkey]);
       },
       oneose() {
@@ -540,6 +543,10 @@ export default function ArticleDetail() {
 
   const articleCoord = article ? `${KIND_LONG_FORM}:${article.event.pubkey}:${article.dTag}` : "";
   const articleBookmarked = isBookmarked(articleCoord);
+  const [, setLocation] = useLocation();
+  const isAuthor = !!pubkey && !!event && event.pubkey === pubkey;
+  const editHref = `/articles/write?edit=${encodeURIComponent(params.naddr || "")}`;
+  const afterDelete = () => setLocation("/account?tab=media");
 
   if (loading) {
     return (
@@ -634,6 +641,14 @@ export default function ArticleDetail() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {isAuthor && event && (
+            <>
+              <Button variant="ghost" size="icon" aria-label="Edit article" title="Edit article" asChild data-testid="button-edit-article">
+                <Link href={editHref}><Pencil className="w-4 h-4" /></Link>
+              </Button>
+              <DeleteArticleButton event={event} onDeleted={afterDelete} />
+            </>
+          )}
           {pubkey && article && (() => {
             const coord = `${KIND_LONG_FORM}:${article.event.pubkey}:${article.dTag}`;
             const bookmarked = isBookmarked(coord);
@@ -789,6 +804,14 @@ export default function ArticleDetail() {
                 >
                   <Send className="w-4 h-4" />
                 </Button>
+              )}
+              {isAuthor && event && (
+                <>
+                  <Button variant="ghost" size="icon" aria-label="Edit article" title="Edit article" asChild data-testid="button-edit-article-mobile">
+                    <Link href={editHref}><Pencil className="w-4 h-4" /></Link>
+                  </Button>
+                  <DeleteArticleButton event={event} onDeleted={afterDelete} testId="button-delete-article-mobile" />
+                </>
               )}
               {pubkey && (
                 <Button

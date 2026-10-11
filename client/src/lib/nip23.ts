@@ -133,17 +133,21 @@ export function buildArticleEvent(params: {
   content: string;
   image: string;
   hashtags: string[];
+  /** Editing: the existing address. Omit for a new article. */
   dTag?: string;
+  /** Editing: the first publish date, kept so an edit doesn't re-date the piece. */
+  publishedAt?: number;
   section?: string;
   commentsDisabled?: boolean;
 }): { kind: number; created_at: number; tags: string[][]; content: string } {
   const now = Math.floor(Date.now() / 1000);
   const d = params.dTag || generateDTag(params.title);
+  const publishedAt = params.publishedAt && params.publishedAt > 0 && params.publishedAt <= now ? params.publishedAt : now;
 
   const tags: string[][] = [
     ["d", d],
     ["title", params.title],
-    ["published_at", String(now)],
+    ["published_at", String(publishedAt)],
   ];
 
   if (params.summary) tags.push(["summary", params.summary]);
@@ -175,4 +179,56 @@ export function buildArticleEvent(params: {
 export function estimateReadingTime(content: string): number {
   const words = content.split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.ceil(words / 200));
+}
+
+/** What the editor needs to open a published article and save it back at the same address. */
+export interface PublishedArticleFields {
+  title: string;
+  summary: string;
+  image: string;
+  hashtags: string[];
+  section: string;
+  commentsDisabled: boolean;
+  dTag: string;
+  publishedAt: number;
+  /** The body as published (articles are markdown on the wire). */
+  markdown: string;
+}
+
+export function articleToDraft(event: Event): PublishedArticleFields {
+  const a = parseArticle(event);
+  return {
+    title: a.title,
+    summary: a.summary,
+    image: a.image,
+    hashtags: a.hashtags,
+    section: a.section,
+    commentsDisabled: a.commentsDisabled,
+    dTag: a.dTag,
+    publishedAt: a.publishedAt,
+    markdown: event.content,
+  };
+}
+
+/** One version per article address (pubkey + d), the newest. Order: newest first. */
+export function newestByAddress<T extends Pick<Event, "pubkey" | "created_at" | "tags">>(events: T[]): T[] {
+  const byAddress = new Map<string, T>();
+  for (const ev of events) {
+    const d = ev.tags.find((t) => t[0] === "d")?.[1] ?? "";
+    const key = `${ev.pubkey}:${d}`;
+    const have = byAddress.get(key);
+    if (!have || ev.created_at > have.created_at) byAddress.set(key, ev);
+  }
+  return [...byAddress.values()].sort((x, y) => y.created_at - x.created_at);
+}
+
+/** NIP-09 deletion for an article: the event, its address and its kind. */
+export function buildArticleDeletion(event: Pick<Event, "id" | "pubkey" | "kind" | "tags">): { kind: number; created_at: number; tags: string[][]; content: string } {
+  const d = event.tags.find((t) => t[0] === "d")?.[1] ?? "";
+  return {
+    kind: 5,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [["e", event.id], ["a", `${event.kind}:${event.pubkey}:${d}`], ["k", String(event.kind)]],
+    content: "Article deleted",
+  };
 }
