@@ -402,16 +402,16 @@ function ImageInsertPopover({
           <PopoverTrigger asChild>
             <button className="text-[10px] text-success dark:text-green-500/40 hover:text-green-500/70 flex items-center gap-1 pt-1 transition-colors cursor-pointer" data-testid="button-inline-image-privacy">
               <ShieldCheck className="w-2.5 h-2.5" />
-              Signal protected
+              Location removed from photos
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-60 p-3 text-xs space-y-2" align="start" side="top">
             <div className="flex items-center gap-1.5 font-medium text-foreground/90">
               <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
-              Signal Protection Active
+              Photos leave without their location
             </div>
             <p className="text-muted-foreground leading-relaxed">
-              Images are scrubbed of GPS, device, and camera data before leaving your device.
+              Pictures are stripped of GPS, device and camera details before they leave your device.
             </p>
           </PopoverContent>
         </Popover>
@@ -653,13 +653,13 @@ function BannerUploadZone({
         <PopoverTrigger asChild>
           <button className="text-[10px] text-success dark:text-green-500/40 hover:text-green-500/70 flex items-center gap-1 justify-center w-full transition-colors cursor-pointer py-0.5" data-testid="button-banner-privacy">
             <ShieldCheck className="w-2.5 h-2.5" />
-            Signal protected
+            Location removed from photos
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-64 p-3 text-xs space-y-2" align="center">
           <div className="flex items-center gap-1.5 font-medium text-foreground/90">
             <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
-            Signal Protection Active
+            Photos leave without their location
           </div>
           <p className="text-muted-foreground leading-relaxed">
             Your images are scrubbed before they leave your device. GPS coordinates, device info, timestamps, and camera data are stripped automatically — keeping your location and identity private on the network.
