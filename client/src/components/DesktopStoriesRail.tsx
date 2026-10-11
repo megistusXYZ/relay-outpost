@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useReducedMotion } from "framer-motion";
-import { ArrowRight, ChevronRight, Lock, Rocket } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight, Lock, Rocket } from "lucide-react";
 import { openOrbitMenu, openCreateStudio } from "@/lib/shell-events";
 import { buildNavDestinations, NAV_ICONS, type NavDestination } from "@/lib/nav-destinations";
 import { useNeedsYouCount, useRelaysNeedYou } from "@/contexts/NeedsYouContext";
@@ -499,7 +499,7 @@ export function DesktopStoriesRail() {
         onClick={openOrbitMenu}
         aria-label="Open menu"
         title="Menu"
-        className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-brand/30 bg-[hsl(235,30%,15%)] transition-colors hover:border-brand/60 dark:bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="relative mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-brand/30 bg-[hsl(235,30%,15%)] transition-colors hover:border-brand/60 dark:bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         data-testid="rail-logo"
       >
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 drop-shadow-[0_0_3px_rgba(255,255,255,0.15)]" aria-hidden="true">
@@ -509,6 +509,8 @@ export function DesktopStoriesRail() {
           </g>
           <defs><clipPath id="clip0_rail_brand"><rect width="24" height="24" /></clipPath></defs>
         </svg>
+        {/* The mark that this is a door (owner, 2026-10-10): nothing said the logo opened the hub. */}
+        <ChevronDown className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border border-border/60 bg-background p-[1px] text-muted-foreground" aria-hidden="true" data-testid="rail-logo-mark" />
       </button>
 
       {/* Ring nodes */}

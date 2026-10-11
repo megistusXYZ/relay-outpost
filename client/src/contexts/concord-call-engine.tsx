@@ -179,11 +179,15 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
     setCall(null);
     // A mic or camera trouble from this call isn't news after it ends.
     setError(null);
+    // The closed-app notifications offer waits until after the first call,
+    // not during its first twelve seconds (owner, 2026-10-10).
+    offerClosedAppRef.current?.();
   }, []);
 
   // resync is declared first and must call leave: a ref breaks the cycle.
   const leaveRef = useRef(leave);
   leaveRef.current = leave;
+  const offerClosedAppRef = useRef<(() => void) | null>(null);
 
   /** One join at a time: a second (the ringer's Join while the first waits on the question) would strand the first. */
   const joiningNow = useRef(false);
@@ -352,6 +356,7 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
       });
     }
   }, [pubkey, toast]);
+  offerClosedAppRef.current = offerClosedApp;
   const { unreadDmCount } = useNotifications();
   const seenUnread = useRef(unreadDmCount);
   useEffect(() => {
@@ -412,7 +417,7 @@ export default function ConcordCallEngine({ onChange }: { onChange: (value: Call
         <CallRinger
           me={pubkey}
           inCallKey={call ? callRoomKey(call.communityId, call.channelId) : null}
-          onRing={offerClosedApp}
+          onScreenKey={onScreen}
           onJoin={(community, channel) => {
             navigate(`/outposts/c/${community.community_id}?channel=${channel.id}`);
             void join(community, channel, channel.name || community.name || "Call");

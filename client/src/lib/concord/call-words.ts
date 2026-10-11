@@ -38,6 +38,17 @@ export function nextAloneSince(s: { othersNow: number; hadOthers: boolean; alone
 
 export interface CallLogEntry { at: number; text: string }
 
+/**
+ * Once someone shares a screen the activity has changed from talking to
+ * looking (owner, 2026-10-10: the shared screen came through as a thin strip
+ * under two empty face tiles). Screens take the stage, full width; faces
+ * become a strip. With nothing shared, it's the grid of faces.
+ */
+export function stageLayout<P extends { sharing: boolean }>(participants: P[]): { screens: P[]; faces: P[]; mode: "grid" | "stage" } {
+  const screens = participants.filter((p) => p.sharing);
+  return { screens, faces: participants, mode: screens.length ? "stage" : "grid" };
+}
+
 /** The rows for who came and went since the last look: "<name> joined the call" / "<name> left the call". */
 export function callLogDiff(prev: string[], next: string[], nameOf: (identity: string) => string, now: number): CallLogEntry[] {
   const out: CallLogEntry[] = [];

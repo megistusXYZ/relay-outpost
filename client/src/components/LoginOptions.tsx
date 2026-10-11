@@ -646,7 +646,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
                 key: "qr",
                 icon: QrCode,
                 title: "Signer app",
-                caption: "Scan a QR code — most secure",
+                caption: "Scan a QR code with a signer app",
                 onClick: () => setMode("qr"),
                 disabled: isLoggingIn,
                 order: recommended === "qr" ? 1 : 2,

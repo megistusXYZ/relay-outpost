@@ -4,7 +4,7 @@
  * whether the call was over; one sat alone in "In the call · 1".
  */
 import { describe, it, expect } from "vitest";
-import { callScopeLine, aloneState, nextAloneSince, callLogDiff, ALONE_LEAVE_MS } from "./call-words";
+import { callScopeLine, aloneState, nextAloneSince, callLogDiff, stageLayout, ALONE_LEAVE_MS } from "./call-words";
 
 describe("who a call reaches", () => {
   it("names the group and says nothing leaves the room", () => {
@@ -39,5 +39,16 @@ describe("who came and went", () => {
     expect(callLogDiff([], ["a"], name, 1).map((e) => e.text)).toEqual(["Ben joined the call"]);
     expect(callLogDiff(["a", "b"], ["b"], name, 2).map((e) => e.text)).toEqual(["Ben left the call"]);
     expect(callLogDiff(["a"], ["a"], name, 3)).toEqual([]);
+  });
+});
+
+describe("a shared screen takes the stage", () => {
+  it("is a grid of faces until someone shares, then the screens lead and the faces become a strip", () => {
+    const a = { id: "a", sharing: false }, b = { id: "b", sharing: false };
+    expect(stageLayout([a, b]).mode).toBe("grid");
+    const sharing = stageLayout([a, { ...b, sharing: true }]);
+    expect(sharing.mode).toBe("stage");
+    expect(sharing.screens.map((p) => p.id)).toEqual(["b"]);
+    expect(sharing.faces.map((p) => p.id)).toEqual(["a", "b"]);
   });
 });
