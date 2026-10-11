@@ -2724,7 +2724,8 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
 
   return (
     <div className={embedded ? "" : "px-3 sm:px-4 py-4 sm:py-6"} data-testid="page-wallet">
-      {!embedded && <MissionBriefing pageId="wallet" steps={WALLET_BRIEFING} />}
+      {/* The Account page embeds this view; the tour plays here too (it played nowhere, 2026-10-10). */}
+      <MissionBriefing pageId="wallet" steps={WALLET_BRIEFING} />
       <div className={embedded ? "space-y-4 sm:space-y-5" : "max-w-2xl mx-auto space-y-4 sm:space-y-5"}>
         {/* Rendered even with NWC connected: zaps follow the PROFILE's
             lightning address, not the connected wallet — an npub.cash lud16

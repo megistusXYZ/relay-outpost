@@ -588,22 +588,23 @@ export default function WtfIsThis() {
                   type="button"
                   className="inline-flex items-center gap-1.5 rounded-md border border-brand/25 bg-brand/[0.06] hover:bg-brand/[0.12] px-2.5 py-1.5 text-[10px] font-brand uppercase tracking-[0.15em] text-brand transition-colors"
                   data-testid="button-restart-mission-briefing"
-                  title="Replay a page briefing"
+                  title="Replay a tour"
                 >
                   <PlayCircle className="w-3.5 h-3.5" />
-                  Replay briefing
+                  Replay a tour
                   <ChevronDown className="w-3 h-3 opacity-60" />
                 </button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-56 p-1.5">
                 <p className="px-2.5 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium">
-                  Pick a tour to replay
+                  Pick a tour
                 </p>
                 {replayablePages.map((p) => (
                   <button
                     key={p.pageId}
                     type="button"
                     onClick={() => handleRestartTour(p.pageId, p.path)}
+                    aria-label={`Replay the ${p.label} tour`}
                     className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors cursor-pointer"
                     data-testid={`button-replay-briefing-${p.pageId}`}
                   >
