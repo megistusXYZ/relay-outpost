@@ -75,7 +75,7 @@ export default function WotVsAlgorithms() {
                 </div>
                 <div className="rounded-lg bg-muted/10 dark:bg-white/[0.03] border border-border/20 px-3 py-2">
                   <span className="text-success dark:text-emerald-400 font-bold text-xs">How It's Calculated</span>
-                  <p className="text-[12px] text-foreground/60 mt-0.5">Your follow list is the starting point. People you follow get high trust. People they follow get lower trust. People three hops away get even less. The math creates concentric circles of trust radiating outward from you.</p>
+                  <p className="text-[12px] text-foreground/60 mt-0.5">Your follow list is the starting point. People you follow get high trust. People they follow get lower trust. Friends of friends of friends get even less. The math creates concentric circles of trust radiating outward from you.</p>
                 </div>
                 <div className="rounded-lg bg-muted/10 dark:bg-white/[0.03] border border-border/20 px-3 py-2">
                   <span className="text-success dark:text-emerald-400 font-bold text-xs">No Central Authority</span>
@@ -145,7 +145,7 @@ export default function WotVsAlgorithms() {
               <p>In Relay Outpost, <strong>Trust &amp; Safety</strong> is where your Web of Trust comes to life. It's your personal trust control center:</p>
               <ul className="list-disc list-inside space-y-1.5 text-[13px] text-foreground/60">
                 <li><strong>Trust tiers</strong> — people are organized into tiers based on how closely connected they are to your network. Highly Trusted is your inner circle; Low Trust is the far edge of your reach.</li>
-                <li><strong>Adjustable reach</strong> — you control how many hops outward your trust extends. Tighter reach = less noise. Wider reach = more discovery.</li>
+                <li><strong>Adjustable</strong> — <strong>Careful</strong>, <strong>Balanced</strong> or <strong>See everything</strong>, in Trust &amp; safety. Tighter means less noise; wider means more discovery.</li>
                 <li><strong>Visual indicators</strong> — color-coded trust dots appear next to every profile, so you can instantly see how someone connects to your network.</li>
                 <li><strong>Feed filtering</strong> — toggle WoT filtering on your feed to only see content from people within your trust network. Or turn it off for full discovery mode.</li>
               </ul>

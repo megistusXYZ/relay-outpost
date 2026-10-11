@@ -64,88 +64,102 @@ interface DeepDiveItem {
 
 const FAQ_ITEMS: FAQItem[] = [
   {
+    question: "Is this like X or Instagram?",
+    answer: "It has a familiar feed: post, reply, repost, like. The difference is who's in charge. You own your account, you choose who you hear from, and no company's algorithm decides who sees your posts. No one can take your account away, and your followers come with you if you ever move to another app.",
+    icon: Compass,
+    tags: ["vs other platforms", "getting started"],
+  },
+  {
+    question: "What is \"your space\"?",
+    answer: <>A new account starts in <strong>your space</strong>: your communities and the people you follow, and nothing else. That's on purpose. The rest of the network is big and nobody moderates all of it, so you step into it only when you choose. One switch, <strong>The wider network</strong>, opens it up: public posts, Discover, trending, and public communities. You can turn it off again any time, in Settings › Your space.</>,
+    searchText: "your space wider network switch new account private start discover trending public posts settings off",
+    icon: Compass,
+    tags: ["getting started", "privacy"],
+  },
+  {
     question: "Why is signing in different here?",
-    answer: <>There's no email or password. Your account is a key that's yours alone — it lives on your device, not in a company database, so no one can lock you out or reset it but you. Keep it saved in this browser (and optionally lock it with a passphrase), or use a browser extension or a separate signer app. It's a little more up front, and then you're set.</>,
-    searchText: "sign in signing in login no email no password account is a key on your device browser extension signer app passphrase no forgot password reset",
+    answer: <>There's no email and no company password. Your account is a <strong>key</strong> that's yours alone. It lives on your device, so nobody can lock you out, and nobody can reset it for you either. Day to day you unlock the copy kept in this browser with a <strong>password for this browser</strong>, or with Touch ID or Face ID. That password only opens this browser's copy; your key is what gets you in anywhere.</>,
+    searchText: "sign in signing in login no email no password account is a key on your device password for this browser touch id face id",
     icon: Lock,
     tags: ["getting started", "keys & security"],
   },
   {
-    question: "What if I lose my key?",
-    answer: <>Because no company holds your account, there's no "reset" — so keep a backup. When you sign up we give you a few easy ways: a backup file you download, your key saved into a password manager (like iCloud Keychain, 1Password, or Bitwarden), and a recovery code you can reveal and copy somewhere safe. Keep at least two. If every copy is gone, the account can't be recovered.</>,
-    searchText: "lose my key recovery backup no password reset backup file password manager iCloud keychain 1password bitwarden paper recovery code keep two copies",
-    icon: LifeBuoy,
+    question: "What's my key, and how do I save it?",
+    answer: <>Your key is the one thing that is your account. Anyone holding it can act as you; nobody, including us, can replace it. The last step of signing up is <strong>Save your key</strong>: save the key file (or put the key in your password manager), then tap <strong>Check it works</strong>, which reads the file back and confirms it opens your account. You can do it later from your Account page, where the row says Not saved, Saved, or Saved and checked.</>,
+    searchText: "account key save your key key file check it works password manager not saved saved and checked account page",
+    icon: Key,
     tags: ["keys & security", "getting started"],
   },
   {
+    question: "What if I lose my key?",
+    answer: <>If the key file is gone and this browser is cleared, the account is gone. There is no reset, because no company holds a copy. That's why the app asks you to save the key and check it, and reminds you until you do: in Chats a day after you sign up, and on any community you make. Two copies in two places is the habit.</>,
+    searchText: "lose my key no reset gone cleared browser reminder two copies",
+    icon: LifeBuoy,
+    tags: ["keys & security"],
+  },
+  {
     question: "Can I use my account on other apps?",
-    answer: <>Yes — that's the whole point of an open network. The same login works in other compatible apps, and your profile, posts, and follows come with you automatically (they don't live in our database). Try Damus or Primal on iPhone, or Amethyst on Android — same you, same followers.</>,
-    searchText: "use same account on other apps open network portable damus primal amethyst snort cross app your follows posts profile come with you",
+    answer: <>Yes. Your key works in any app built on the same open network, and your profile, posts and follows come with you, because they were never in our database. Sign in there with your key file, the same one you saved here. Damus and Primal on iPhone and Amethyst on Android are popular ones.</>,
+    searchText: "use same account on other apps open network portable damus primal amethyst key file follows posts profile come with you",
     icon: LayoutGrid,
     tags: ["getting started", "vs other platforms"],
   },
   {
-    question: "What's a relay?",
-    answer: <>Relays are the servers that store and pass along posts — think of them like radio towers your posts broadcast through. You choose which ones to use, and you're never locked to a single one. <strong>Public relays</strong> are open to everyone — great for reach and discovery, where most people start. <strong>Private relays</strong> are invite- or pay-to-join — quieter, less spam, and you can even run your own for personal or business data that never leaves your control. Your relay, your rules.</>,
-    searchText: "what is a relay servers store and pass posts radio towers public relays open private relays invite paid run your own business data your relay your rules",
-    icon: Radio,
-    tags: ["getting started", "relays & communities"],
-  },
-  {
-    question: "What's a Community?",
-    answer: <>A Community is your crew's home base on a relay — one place to speak publicly and privately. Each one comes with <strong>Posts</strong> (a social feed like X), <strong>Discussions</strong> (threaded discussions like Reddit), <strong>Chat</strong> (group chat like Discord), <strong>Articles</strong> (a shared knowledge base like a wiki), and an <strong>About</strong> page. If you run the relay, you also get a dashboard to manage members, moderation, and settings. Your community, your rules.</>,
-    searchText: "what is a community community built around a relay home base posts timeline discussions waves chat channels articles horizon about dashboard moderation members your community your rules",
+    question: "What's a community?",
+    answer: <>A community is a private place for your people: group chats with rooms, end-to-end encrypted, where you pick who's in it. Make one in a minute from Welcome or your Account page ("Name your community"), then send the invite link. Only people with the link can join. Public communities from across the network show up in Communities once the wider network is on.</>,
+    searchText: "what is a community private group chat rooms encrypted invite link name your community public communities",
     icon: OutpostIcon,
     tags: ["relays & communities", "social"],
   },
   {
-    question: "What's my account key?",
-    answer: <>Your account is built on a pair of keys. Your <strong>public key</strong> is your shareable identity — like a username nobody can fake or take from you; people use it to follow and verify you in any app. Your <strong>secret key</strong> is the private half that proves it's really you — never share it, and keep it backed up. One you hand out, one you guard.</>,
-    searchText: "account key public key shareable identity username secret key private never share back up keep safe verify you npub nsec",
-    icon: Users,
-    tags: ["keys & security"],
+    question: "Who can read my messages and hear my calls?",
+    answer: <>Private messages and community chats are end-to-end encrypted: only the people in the conversation can read them. Not the servers that carry them, not us. Calls work the same way. Only members of the group can join a call, and nothing leaves the room. Calls are still being tested, so they're off until you turn them on in Settings › Calls.</>,
+    searchText: "who can see my messages private end-to-end encrypted group chat calls settings calls members only",
+    icon: MessagesIcon,
+    tags: ["privacy"],
   },
   {
-    question: "How do you keep spam out without an algorithm?",
-    answer: <>Your own circle decides — not a company's engagement algorithm. The people you follow, and the people <em>they</em> trust, quietly vouch for who's real, which lifts genuine voices and pushes spam down. Turn it on with one tap (<strong>Calculate</strong> on the Trust &amp; Safety page) — it runs quietly in the background and powers a "Trusted first" option in search plus cleaner feeds. Fine-tune everything under <strong>Trust &amp; Safety</strong>.</>,
-    searchText: "how do you keep spam out web of trust your circle vouch trusted first calculate trust and safety no algorithm moderation mute block trust and safety",
+    question: "How do you keep spam and nasty stuff away?",
+    answer: <>Your own circle decides, not a company's engagement machine. People you follow, and the people they trust, quietly vouch for who's real; that lifts real voices and sinks spam. You pick how strict it is in Trust &amp; safety: <strong>Careful</strong>, <strong>Balanced</strong> or <strong>See everything</strong>. New accounts start on Balanced, and the first time you open the wider network it goes to Careful, with pictures from people outside your space blurred until you tap them. Loosen any of it when you're ready.</>,
+    searchText: "spam offensive content trust safety careful balanced see everything blur pictures outside your space mute block report",
     icon: Shield,
-    tags: ["web of trust"],
+    tags: ["web of trust", "privacy"],
+  },
+  {
+    question: "What's a relay?",
+    answer: <>Relays are the servers that store and pass along posts, like post offices for the network. Your account uses two well-known ones to start, so friends on other apps can find you, and your communities add their own. You never depend on just one, and you can run your own. You don't need to think about relays day to day; they're in Settings when you want them.</>,
+    searchText: "what is a relay servers store and pass posts run your own settings relays",
+    icon: Radio,
+    tags: ["relays & communities"],
+  },
+  {
+    question: "Can I read posts in other languages?",
+    answer: <>Yes. A post in another language shows a <strong>Translate</strong> link under it. The translation comes from a public translation service, so it isn't applied to private messages.</>,
+    searchText: "translate posts other languages translation link",
+    icon: Globe,
+    tags: ["social", "getting started"],
   },
   {
     question: "What are zaps?",
-    answer: <>Zaps are small, optional Bitcoin tips — a way to say thanks with real value, even a fraction of a cent. Instead of just a like, you can send someone an optional tip of appreciation — it goes 100% to them, and Relay Outpost takes nothing. They're fast, nearly free, and always the sender's choice.</>,
-    searchText: "what are zaps optional bitcoin tips lightning send a tip appreciation goes 100% to them sats",
+    answer: <>Zaps are small, optional tips in bitcoin: a way to say thanks with something real, even a fraction of a cent. The money goes straight from your wallet to theirs. Relay Outpost never holds it and never takes a cut. You connect your own wallet app once, and you approve every payment.</>,
+    searchText: "what are zaps optional bitcoin tips lightning send a tip wallet",
     icon: BtcZapIcon,
     iconColor: "text-[#F7931A]",
     tags: ["zaps & bitcoin"],
   },
   {
-    question: "Is this like X or Instagram?",
-    answer: "It has a familiar feed — post, reply, repost, and like — but you're in charge, not a company. You own your account, you pick where your posts live, and no algorithm decides who sees your work. No company can take your account away — individual servers can decline to host you, but your identity and followers move with you — and nobody can sell your data out from under you.",
-    icon: Compass,
-    tags: ["vs other platforms", "getting started"],
-  },
-  {
-    question: "Who can see my messages?",
-    answer: "Your direct messages are end-to-end encrypted — meaning only you and the person you're talking to can read them. Not even the relays that deliver the messages can see what's inside. No company, no server admin, no third party. It's true private messaging, built into the protocol from the ground up.",
-    icon: MessagesIcon,
-    tags: ["privacy"],
-  },
-
-  {
     question: "Can I delete my posts or account?",
-    answer: <>Yes. You can request deletion of a post and most relays will honor it — though, like an email that's already been delivered, copies may have spread to other servers, so there's no guaranteed wipe everywhere. To leave entirely, go to <Link href="/settings/danger" className="text-brand hover:underline font-medium">Settings → Advanced &amp; danger zone</Link> and remove your account; we'll ask every relay to delete what they hold and clear your account from this device.</>,
-    searchText: "can I delete my post account leave quit remove erase request deletion relays honor copies may persist vanish settings advanced danger zone",
+    answer: <>Yes. You can ask for a post to be deleted and most servers honour it, though like an email that's already arrived, copies may have spread, so there's no guaranteed wipe everywhere. To leave entirely, go to <Link href="/settings/danger" className="text-brand hover:underline font-medium">Settings → Advanced &amp; danger zone</Link>: we ask every server to delete what it holds and clear your account from this device.</>,
+    searchText: "can I delete my post account leave quit remove erase request deletion settings advanced danger zone",
     icon: LogOut,
-    tags: ["privacy", "keys & security", "getting started"],
+    tags: ["privacy", "keys & security"],
   },
 ];
 
 const GUIDE_ITEMS: GuideItem[] = [
   {
     title: "Your First 10 Minutes",
-    description: "A quick-start walkthrough from login to your first post. Everything you need to get oriented.",
+    description: "From a new account to your first post: your space, saving your key, finding your people.",
     icon: Rocket,
     iconColor: "text-success dark:text-emerald-500",
     type: "article",
@@ -154,7 +168,7 @@ const GUIDE_ITEMS: GuideItem[] = [
   },
   {
     title: "Setting Up Your Community",
-    description: "How to discover relay communities, join communities, and build your home base.",
+    description: "Name a community, invite your people, and open it to the wider network when you choose.",
     icon: Radio,
     iconColor: "text-brand",
     type: "article",
@@ -163,7 +177,7 @@ const GUIDE_ITEMS: GuideItem[] = [
   },
   {
     title: "Set up zaps",
-    description: "Connect a wallet and send your first zap — optional tips that go 100% to the recipient.",
+    description: "Connect your own wallet and send a first tip. Optional, and every bit goes to them.",
     icon: BtcZapIcon,
     iconColor: "text-amber-500",
     type: "article",
@@ -172,7 +186,7 @@ const GUIDE_ITEMS: GuideItem[] = [
   },
   {
     title: "Using the Content Calendar",
-    description: "Discover events, RSVP to meetups, schedule future posts, and manage your publishing timeline.",
+    description: "Find events, say you're coming, and schedule posts for later.",
     icon: BookOpen,
     iconColor: "text-cyan-500",
     type: "article",
@@ -181,7 +195,7 @@ const GUIDE_ITEMS: GuideItem[] = [
   },
   {
     title: "Private messages",
-    description: "How direct messages stay end-to-end encrypted — only you and the recipient can read them.",
+    description: "Why only the people in a chat can read it, and what the app says while it checks for new ones.",
     icon: MessageCircle,
     iconColor: "text-pink-500",
     type: "article",
@@ -190,7 +204,7 @@ const GUIDE_ITEMS: GuideItem[] = [
   },
   {
     title: "Post with privacy",
-    description: "Choose who sees your posts, and what hidden info gets removed before you publish.",
+    description: "Who sees your posts, what hidden details are stripped before you publish, and blurred pictures.",
     icon: Lock,
     iconColor: "text-danger dark:text-red-500",
     type: "article",
@@ -198,8 +212,8 @@ const GUIDE_ITEMS: GuideItem[] = [
     href: "/help/publishing-privacy",
   },
   {
-    title: "Your people (Crew & Orbit)",
-    description: "Follow people, build your circle, and see who you can trust at a glance.",
+    title: "Your people",
+    description: "Who you follow, who follows you, and how the app tells a friend of a friend from a stranger.",
     icon: Users,
     iconColor: "text-brand",
     type: "article",
@@ -233,8 +247,8 @@ const DEEP_DIVE_ITEMS: DeepDiveItem[] = [
   },
   {
     title: "Relay Communities vs. Platforms",
-    subtitle: "Why Communities are the future of online communities",
-    description: "Discord servers, Subreddits, Facebook Groups — all controlled by one company. Communities are community spaces with no lock-in — if a server disappears, your identity and community connections move with you.",
+    subtitle: "Why a community you own beats a group someone else runs",
+    description: "Discord servers, subreddits, Facebook groups: all controlled by one company. Here a community is yours, end-to-end encrypted, and if any server disappears your identity and your people move with you.",
     icon: Rocket,
     iconColor: "text-brand",
     gradient: "from-brand/10 to-brand/10",
@@ -285,22 +299,25 @@ const ALL_TAGS = [
   "privacy", "vs other platforms", "big ideas",
 ];
 
-// FAQ display order — adoption arc: the two structural concepts first
-// (relay → outpost), then orientation, identity, trust, money, then the
-// advanced/edge questions last. Matched by a unique substring of each question
-// so it's robust to punctuation. Anything unlisted falls to the end.
+// FAQ display order — the arc of a newcomer's first week: what this is, where
+// you start (your space), getting in and saving your key, your people, what's
+// private, what keeps the bad stuff out, then the rest. Matched by a unique
+// substring of each question so it's robust to punctuation. Anything unlisted
+// falls to the end.
 const FAQ_ORDER_KEYS = [
-  "like X",            // Is this like X or Instagram?
-  "signing in",        // Why is signing in different here?
-  "account key",       // What's my account key?
-  "lose my key",       // What if I lose my key?
-  "other apps",        // Can I use my account on other apps?
-  "a relay?",          // What's a relay?
-  "a Community?",       // What's a Community?
-  "are zaps",          // What are zaps?
-  "keep spam out",     // How do you keep spam out…
-  "see my messages",   // Who can see my messages?
-  "delete my posts",   // Can I delete my posts or account?
+  "like X",             // Is this like X or Instagram?
+  "your space",         // What is "your space"?
+  "signing in",         // Why is signing in different here?
+  "my key, and",        // What's my key, and how do I save it?
+  "lose my key",        // What if I lose my key?
+  "other apps",         // Can I use my account on other apps?
+  "a community?",       // What's a community?
+  "hear my calls",      // Who can read my messages and hear my calls?
+  "spam and nasty",     // How do you keep spam and nasty stuff away?
+  "a relay?",           // What's a relay?
+  "other languages",    // Can I read posts in other languages?
+  "are zaps",           // What are zaps?
+  "delete my posts",    // Can I delete my posts or account?
 ];
 function faqOrder(question: string): number {
   const i = FAQ_ORDER_KEYS.findIndex((k) => question.includes(k));

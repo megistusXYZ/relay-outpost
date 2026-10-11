@@ -49,7 +49,7 @@ export default function UsingContentCalendar() {
           icon={Calendar}
           description={
             <>
-              <p>Open the <strong>You</strong> tab → <strong>Calendar</strong>. You'll see a monthly grid view with all your events, pins, and subscriptions:</p>
+              <p>Open the <strong>Account</strong> page → <strong>Calendar</strong>. You'll see a monthly grid view with all your events, pins, and subscriptions:</p>
               <ul className="list-disc list-inside space-y-1 text-[13px] text-foreground/60">
                 <li>Navigate between months using the arrow controls</li>
                 <li>Tap any day to see its events in detail</li>
@@ -109,7 +109,7 @@ export default function UsingContentCalendar() {
                 <li>Subscribed events automatically appear on your calendar</li>
                 <li>Manage and remove subscriptions anytime</li>
               </ul>
-              <p className="text-[12px] text-foreground/50">Feed subscriptions let you aggregate events from multiple sources — conferences, meetup groups, Community communities, and more.</p>
+              <p className="text-[12px] text-foreground/50">Feed subscriptions let you aggregate events from multiple sources — conferences, meetup groups, communities, and more.</p>
             </>
           }
         />

@@ -125,7 +125,7 @@ export default function ConnectingWallet() {
           icon={Unplug}
           description={
             <>
-              <p>Now open the <strong>You</strong> tab (your avatar, bottom right) → <strong>Wallet</strong> and paste your connection string:</p>
+              <p>Now open the <strong>account</strong> page (your face, at the bottom of the bar) → <strong>Wallet</strong> and paste your connection string:</p>
               <ol className="list-decimal list-inside space-y-1 text-[13px] text-foreground/60">
                 <li>Navigate to the <strong>Lightning Wallet</strong> page</li>
                 <li>Paste your connection code into the field</li>
@@ -147,7 +147,7 @@ export default function ConnectingWallet() {
               <p>A Lightning address is like an email address for receiving Bitcoin. Zaps go to the address on your <em>profile</em> — and there are two ways to get one:</p>
               <ol className="list-decimal list-inside space-y-1 text-[13px] text-foreground/60">
                 <li><strong>No wallet yet?</strong> On the Wallet page, tap <strong>Use npub.cash address</strong> — you're zappable instantly, and the same page shows what's waiting and lets you claim it later</li>
-                <li><strong>Have a wallet with an address?</strong> Open the <strong>You</strong> tab → <strong>Edit profile</strong> and enter it (e.g., <code className="text-[11px] bg-muted/30 px-1 py-0.5 rounded font-mono">you@getalby.com</code>)</li>
+                <li><strong>Have a wallet with an address?</strong> Open the <strong>Account</strong> page → <strong>Edit profile</strong> and enter it (e.g., <code className="text-[11px] bg-muted/30 px-1 py-0.5 rounded font-mono">you@getalby.com</code>)</li>
                 <li>Save — this publishes it to your relays</li>
               </ol>
               <p className="text-[12px] text-foreground/50">Zaps land at your profile's address, not the connected wallet — the Wallet page tells you when sats are waiting at npub.cash and can sweep them to a wallet you control.</p>
