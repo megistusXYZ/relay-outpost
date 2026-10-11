@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Event as NostrEvent } from "nostr-tools";
 import { use$ } from "applesauce-react/hooks";
 import { formatDistanceToNow } from "date-fns";
-import { ChevronLeft, Lock, RefreshCw, SlidersHorizontal, Send, MessageSquareText } from "lucide-react";
+import { ChevronLeft, Lock, RefreshCw, SlidersHorizontal, Send, MessageSquareText, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -49,6 +49,7 @@ import {
   stripContextBlock,
 } from "@/lib/nip34-feedback";
 import { CRASH_SIG_TAG, deriveCrashStatuses, groupCrashesBySig, isCrashIssue, issueStatusForCrashStatus, type CrashGroup } from "@/lib/crash-report";
+import { crashReportText, crashReportsText } from "@/lib/crash-report-text";
 import {
   feedbackView,
   hasNewFromOthers,
@@ -246,9 +247,27 @@ export function FeedbackTab({ relayUrl, inbox, mode = "feedback", onOpenMemberIn
     const isDone = (g: CrashGroup) => ["fixed", "ignored"].includes(statuses[g.sig]);
     const errCounts = { needs: crashGroups.filter((g) => !isDone(g)).length, all: crashGroups.length, done: crashGroups.filter(isDone).length };
     const shown = crashGroups.filter((g) => view === "all" || (view === "done" ? isDone(g) : !isDone(g)));
+    // Everything on this list as one block of text, for a model or a bug
+    // report (owner, 2026-10-10): the error, how often and where, the stack,
+    // the device, the build, and the ask (lib/crash-report-text.ts).
+    const copyAll = async () => {
+      try {
+        await navigator.clipboard.writeText(crashReportsText(shown.map((g) => ({ issue: g.latest, group: g }))));
+        toast({ title: `Copied ${shown.length} ${shown.length === 1 ? "error" : "errors"}`, description: "Paste it to a model or into a bug report." });
+      } catch {
+        toast({ title: "Couldn't copy", description: "Open an error and copy it from there.", variant: "destructive" });
+      }
+    };
     return (
       <div className="space-y-3" data-testid="feedback-errors">
-        <ViewTabs view={view} setView={setView} counts={errCounts} />
+        <div className="flex items-center gap-2">
+          <ViewTabs view={view} setView={setView} counts={errCounts} />
+          {shown.length > 0 && (
+            <button type="button" onClick={() => void copyAll()} className="ml-auto inline-flex items-center gap-1.5 min-h-[40px] px-3 rounded-full text-[13px] text-muted-foreground hover:text-foreground hover:bg-black/[0.03] dark:hover:bg-white/[0.04]" data-testid="button-copy-all-errors">
+              <Copy className="w-3.5 h-3.5" aria-hidden="true" /> Copy {view === "needs" ? "all open" : "all"}
+            </button>
+          )}
+        </div>
         {shown.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">{view === "needs" ? "No app errors waiting." : "Nothing here."}</p>
         ) : (
@@ -541,6 +560,16 @@ function SavedRepliesEditor({ open, onClose, saved }: { open: boolean; onClose: 
 }
 
 function ErrorDetail({ issue, group, onBack, onStatus }: { issue: FeedbackIssue; group?: CrashGroup; onBack: () => void; onStatus: (s: FeedbackStatus) => void }) {
+  const { toast } = useToast();
+  // The whole report as one block, with its ask, for a model or a bug report.
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(crashReportText(issue, group));
+      toast({ title: "Copied", description: "The error, its stack, the device and the build, with what to ask. Paste it to a model." });
+    } catch {
+      toast({ title: "Couldn't copy", description: "Select the text and copy it by hand.", variant: "destructive" });
+    }
+  };
   return (
     <div className="space-y-5" data-testid="feedback-error-detail">
       <button type="button" onClick={onBack} className="-ml-2 inline-flex items-center gap-0.5 min-h-[44px] pl-1.5 pr-2.5 rounded-full text-sm text-brand hover:bg-brand/[0.06]" data-testid="button-feedback-back">
@@ -556,6 +585,9 @@ function ErrorDetail({ issue, group, onBack, onStatus }: { issue: FeedbackIssue;
         <p className="text-[12px] font-medium text-muted-foreground mb-1.5">Status</p>
         <StatusControl value={issue.status} words={ERROR_WORD} onChange={onStatus} />
       </section>
+      <Button variant="outline" className="h-11 rounded-full px-4 gap-2" onClick={() => void copy()} data-testid="button-copy-error-report">
+        <Copy className="w-4 h-4" aria-hidden="true" /> Copy for a bug report
+      </Button>
       <pre className="max-h-80 overflow-auto rounded-lg border border-border bg-muted p-3 text-[12px] leading-relaxed font-mono whitespace-pre-wrap break-all" data-testid="feedback-error-stack">{stripContextBlock(issue.event.content)}</pre>
       <DeviceDetails issue={issue} />
     </div>

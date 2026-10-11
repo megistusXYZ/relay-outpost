@@ -9,6 +9,7 @@ import { SubscriptionRegistry } from "./subscription-registry";
 import { openResilientSub } from "./resilient-subscription";
 import { putProfile, getAllProfiles, pruneOldProfiles } from "./indexeddb-cache";
 import { setPoolRef, createPoolAuthHandler, createTemplateScopedAuthHandler, setOutpostUrlsProvider } from "./nip42-auth";
+import { installRelayFrameGuard } from "./relay-frame-guard";
 import { recordNotice } from "./relay-probe";
 import { resolveSessionSigner } from "./session-signer";
 import { armPlaneAuth, planeAuthForSubscription } from "./concord/concord-plane-auth";
@@ -468,6 +469,13 @@ export function warmRelayConnections() {
   }
 }
 
+// The frame guard must be in place BEFORE the first socket is opened: a relay
+// binds the vendor's _onmessage at connect time, and this module warms the
+// launch relays at import — which runs before main.tsx's body. Installed from
+// main.tsx only, a malformed frame on one of these first sockets escaped as
+// an uncaught "JSON Parse error: Unterminated string" (live report, iPhone,
+// /discover, 1.18.0, 2026-10-08). lib/relay-frame-guard.ts installs once.
+installRelayFrameGuard();
 warmRelayConnections();
 
 const HEX_RE = /^[0-9a-f]{64}$/i;
