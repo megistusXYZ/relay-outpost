@@ -148,6 +148,8 @@ import { useFeedPrefs } from "@/lib/feed-prefs";
 import { useToast } from "@/hooks/use-toast";
 import { mutePubkey, isMutedPubkey } from "@/lib/spam-filter";
 import { ConfirmAction } from "@/components/ConfirmAction";
+import { DeletePostConfirm, DeletedPost } from "@/components/DeletePostConfirm";
+import { useDeletedEvents } from "@/lib/deleted-events";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useTTS, type ThreadTTSSegment } from "@/contexts/TextToSpeechContext";
 import { createContext, useContext } from "react";
@@ -2183,6 +2185,8 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
   const [showRawData, setShowRawData] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [showMuteConfirm, setShowMuteConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const deletedEvents = useDeletedEvents();
   const [showPrivateReply, setShowPrivateReply] = useState(false);
   const parentFetchedRef = useRef(false);
 
@@ -2794,6 +2798,11 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
   const contentPadding = compact ? "px-2.5 sm:px-3.5 pt-2.5 sm:pt-3 pb-2 sm:pb-2.5" : "px-3.5 sm:px-5 pt-3.5 sm:pt-4 pb-2.5 sm:pb-3";
   const authorIsLive = isUserLive(event.pubkey);
 
+  // A deleted post: the thread it anchors keeps a tombstone; feeds drop it (Home filters).
+  if (deletedEvents.has(event.id)) {
+    return <article data-testid={`post-${event.id}`} className="glass-card rounded-xl"><DeletedPost id={event.id} /></article>;
+  }
+
   return (
     <article data-testid={`post-${event.id}`} onClick={handleCardClick} className="cursor-pointer">
       <div className={`flex items-center gap-2.5 sm:gap-3 glass-header rounded-t-xl ${contentPadding}`}>
@@ -2982,6 +2991,12 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
               Inspect raw event
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            {isOwnPost && signer && (
+              <DropdownMenuItem className="gap-2.5 cursor-pointer text-destructive" onSelect={() => setTimeout(() => setShowDeleteConfirm(true), 0)} data-testid={`menu-delete-${event.id}`}>
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem className="gap-2.5 cursor-pointer text-destructive" onSelect={() => setTimeout(() => setShowMuteConfirm(true), 0)} data-testid={`menu-mute-${event.id}`}>
               <VolumeX className="w-3.5 h-3.5" />
               Mute Signal
@@ -3030,6 +3045,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
           mutePubkey(event.pubkey);
         }}
       />
+      {isOwnPost && <DeletePostConfirm event={event} open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm} />}
 
       {/* With the spine on, this whole row goes: the thread-line and the parent's
           own byline already say who is being answered, so "Replying to @x" plus
