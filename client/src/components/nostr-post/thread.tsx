@@ -46,7 +46,7 @@ import {
   FileJson,
   Check,
   Orbit,
-  MoreHorizontal,
+  MoreHorizontal, Trash2,
   Type,
   Hash,
   Flag,
@@ -92,6 +92,8 @@ import { inYourSpace } from "@/lib/your-space";
 import { useBlurOutside, outsideSpaceBlurReason } from "@/lib/outside-space-blur";
 import { copyNostrId } from "@/lib/clipboard-bridge";
 import { ConfirmAction } from "@/components/ConfirmAction";
+import { DeletePostConfirm, DeletedPost } from "@/components/DeletePostConfirm";
+import { useDeletedEvents } from "@/lib/deleted-events";
 import { useViewerInteraction } from "@/contexts/InteractionIndexContext";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { ZapDialog } from "@/components/ZapDialog";
@@ -1057,6 +1059,8 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
   // nostr: reference (shown natively) instead of being stripped with the URLs.
   const { text: textContent, media: replyMediaItems } = useMemo(() => extractMediaFromContent(normalizeNostrClientLinks(event.content)), [event.content]);
   const isOwnReply = myPubkey === event.pubkey;
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const replyDeleted = useDeletedEvents().has(event.id);
   const isOP = !!(opPubkey && event.pubkey === opPubkey);
   const hasReplyMedia = replyMediaItems.length > 0;
 
@@ -1394,6 +1398,10 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
 
   const isShortReply = textContent.length <= 120 && textContent.length > 0 && !hasReplyMedia;
 
+  if (replyDeleted) {
+    return <div className="thread-reply-flat" data-testid={`thread-reply-content-${event.id}`}><DeletedPost id={event.id} className="px-3 sm:px-3.5 py-2.5" /></div>;
+  }
+
   return (
     <div className={`group/reply overflow-visible ${isBubbles ? `thread-reply-item rounded-xl ${isOP ? "thread-reply-item-op" : ""}` : `thread-reply-flat ${isOP ? "thread-reply-flat-op" : ""}`}`} data-testid={`thread-reply-content-${event.id}`}>
       <div className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2.5 sm:py-2.5 overflow-hidden ${isBubbles ? "glass-header rounded-t-xl" : ""}`} onClick={(e) => e.stopPropagation()}>
@@ -1483,6 +1491,12 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
               Raw Telemetry
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            {isOwnReply && signer && (
+              <DropdownMenuItem className="gap-2.5 cursor-pointer text-destructive" onSelect={() => setTimeout(() => setShowDeleteConfirm(true), 0)} data-testid={`menu-thread-delete-${event.id}`}>
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem className="gap-2.5 cursor-pointer text-destructive" onSelect={() => setTimeout(() => setShowMuteConfirm(true), 0)} data-testid={`menu-thread-mute-${event.id}`}>
               <VolumeX className="w-3.5 h-3.5" />
               Mute Signal
@@ -1508,6 +1522,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
           mutePubkey(event.pubkey);
         }}
       />
+      {isOwnReply && <DeletePostConfirm event={event} open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm} />}
       <div className="px-3 sm:px-3.5 py-2.5 sm:py-3">
         {renderedContent && (
           <ClampedText
@@ -2126,6 +2141,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
     return tree;
   }, [allReplies, rootId, sortOrder]);
 
+  const deletedEvents = useDeletedEvents();
   const { filteredThreadTree, outsideCount } = useMemo(() => {
     let outside = 0;
     const authorInSpace = (pk: string) => pk === viewerPubkey || inYourSpace(viewerSpace, pk);
@@ -2133,6 +2149,12 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
       const result: ThreadNode[] = [];
       for (const node of nodes) {
         const author = node.event.pubkey;
+        // A deleted reply leaves a tombstone only where replies hang off it.
+        if (deletedEvents.has(node.event.id)) {
+          const kept = filterNodes(node.children);
+          if (kept.length > 0) result.push({ ...node, children: kept });
+          continue;
+        }
         // A muted person's reply is gone; their replies' replies stay.
         if (isMutedPubkey(author)) { result.push(...filterNodes(node.children)); continue; }
         if (!showOutside && !authorInSpace(author)) { outside += 1; result.push(...filterNodes(node.children)); continue; }
@@ -2150,7 +2172,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
       return result;
     }
     return { filteredThreadTree: filterNodes(threadTree), outsideCount: outside };
-  }, [threadTree, excludedTiers, getReplyAuthorInfluence, replyFlaggedPubkeys, viewerSpace, viewerPubkey, showOutside]);
+  }, [threadTree, excludedTiers, getReplyAuthorInfluence, replyFlaggedPubkeys, viewerSpace, viewerPubkey, showOutside, deletedEvents]);
 
   const filteredNodeCount = useMemo(() => {
     function countNodes(nodes: ThreadNode[]): number {

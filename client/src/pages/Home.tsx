@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, useSyncExternalStore, type RefObject } from "react";
+import { useDeletedEvents } from "@/lib/deleted-events";
 import { prefetchPrimalStats } from "@/hooks/use-primal-stats";
 import { prefetchTopZappers } from "@/hooks/use-top-zappers";
 import { reachAdmits } from "@/lib/trust-reach";
@@ -2381,7 +2382,8 @@ export default function Home() {
   // Guest taste-then-wall (lib/guest-limits.ts): a signed-out visitor sees the
   // first few posts — a shared link into the feed still shows value — and the
   // wall card ends the scroll. Signed-in passes through untouched.
-  const guestCapped = useMemo(() => capForGuest(displayedEvents, !!pubkey), [displayedEvents, pubkey]);
+  const deletedEvents = useDeletedEvents();
+  const guestCapped = useMemo(() => capForGuest(displayedEvents.filter((e) => !deletedEvents.has(e.id)), !!pubkey), [displayedEvents, pubkey, deletedEvents]);
   // Counts and top zappers for the next posts before they're drawn, so a post
   // is drawn at its full height — a zap strip arriving later grew it by 38px
   // under the reader (ship/home-scrollback-shift.cjs).
