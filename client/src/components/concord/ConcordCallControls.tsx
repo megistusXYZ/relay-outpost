@@ -29,7 +29,7 @@ function useCanEncryptCalls(): boolean {
 }
 import { useConcordCall, callRoomKey, type ActiveCall, type CallParticipant } from "@/contexts/ConcordCallContext";
 import { useConcordCallsEnabled } from "@/lib/concord/concord-prefs";
-import { callScopeLine, aloneState } from "@/lib/concord/call-words";
+import { callScopeLine, aloneState, stageLayout } from "@/lib/concord/call-words";
 import { useLocation } from "wouter";
 
 type PresenceRumor = { kind: number; pubkey: string; content: string; created_at: number; tags: string[][] };
@@ -207,14 +207,19 @@ export function ConcordCallStage({ community, channel }: { community: StoredComm
   }, [full]);
   if (!here) return null;
 
-  const grid = (big: boolean) => (
+  // A shared screen takes the stage, full width, and the faces become a strip
+  // under it (lib/concord/call-words.ts stageLayout). Nothing shared: a grid.
+  const layout = stageLayout(here.participants);
+  const grid = (big: boolean) => layout.mode === "stage" ? (
+    <div className={`space-y-2 ${big ? "p-4" : ""}`} data-testid="concord-call-stage-layout">
+      {layout.screens.map((p) => <CallTile key={`${p.identity}-screen`} p={p} participant={participantOf(here, p)} source="screen_share" />)}
+      <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
+        {layout.faces.map((p) => <CallTile key={p.identity} p={p} participant={participantOf(here, p)} source="camera" small />)}
+      </div>
+    </div>
+  ) : (
     <div className={`grid gap-2 ${big ? "grid-cols-2 lg:grid-cols-3 p-4" : "grid-cols-2 md:grid-cols-3"}`}>
-      {here.participants.flatMap((p) => {
-        const lp = participantOf(here, p);
-        const tiles = [<CallTile key={p.identity} p={p} participant={lp} source="camera" />];
-        if (p.sharing) tiles.push(<CallTile key={`${p.identity}-screen`} p={p} participant={lp} source="screen_share" />);
-        return tiles;
-      })}
+      {layout.faces.map((p) => <CallTile key={p.identity} p={p} participant={participantOf(here, p)} source="camera" />)}
     </div>
   );
 
@@ -246,7 +251,7 @@ function participantOf(call: ActiveCall, p: CallParticipant): Participant | unde
   return p.isLocal ? call.room.localParticipant : call.room.remoteParticipants.get(p.identity);
 }
 
-function CallTile({ p, participant, source }: { p: CallParticipant; participant: Participant | undefined; source: "camera" | "screen_share" }) {
+function CallTile({ p, participant, source, small = false }: { p: CallParticipant; participant: Participant | undefined; source: "camera" | "screen_share"; small?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const showVideo = source === "screen_share" ? p.sharing : p.cameraOn;
   const track = showVideo ? participant?.getTrackPublication(source as Track.Source)?.track : undefined;
@@ -259,7 +264,7 @@ function CallTile({ p, participant, source }: { p: CallParticipant; participant:
   const screen = source === "screen_share";
   return (
     <div
-      className={`relative aspect-video overflow-hidden rounded-xl bg-muted/40 ${screen ? "col-span-2" : ""} ${p.speaking && !screen ? "ring-2 ring-emerald-500" : ""}`}
+      className={`relative aspect-video overflow-hidden rounded-xl bg-muted/40 ${screen ? "col-span-full w-full" : ""} ${small ? "text-[10px]" : ""} ${p.speaking && !screen ? "ring-2 ring-emerald-500" : ""}`}
       data-testid={screen ? "concord-call-screen-tile" : "concord-call-tile"}
     >
       {track ? (

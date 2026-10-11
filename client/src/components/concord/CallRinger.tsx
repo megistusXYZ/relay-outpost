@@ -53,12 +53,14 @@ function CallerName({ pubkey }: { pubkey: string }) {
   return <>{name}</>;
 }
 
-export function CallRinger({ me, inCallKey, onJoin, onRing }: {
+export function CallRinger({ me, inCallKey, onScreenKey = null, onJoin, onRing }: {
   me: string;
-  /** Each ring that shows (the engine offers closed-app notifications once). */
+  /** Each ring that shows. */
   onRing?: () => void;
   /** The room key of the call you're in, if any (callRoomKey). */
   inCallKey: string | null;
+  /** The room on screen: its own call bar already offers Join, so no banner on top of it (owner, 2026-10-10: a call's start arrived as four things at once). */
+  onScreenKey?: string | null;
   onJoin: (community: StoredCommunity, channel: StoredChannel) => void;
 }) {
   const enabled = useConcordCallsEnabled();
@@ -66,6 +68,8 @@ export function CallRinger({ me, inCallKey, onJoin, onRing }: {
   const [ringing, setRinging] = useState<Ringing | null>(null);
   const inCallRef = useRef(inCallKey);
   inCallRef.current = inCallKey;
+  const onScreenRef = useRef(onScreenKey);
+  onScreenRef.current = onScreenKey;
   const decider = useMemo(() => createRingDecider({ me }), [me]);
   const onRingRef = useRef(onRing);
   onRingRef.current = onRing;
@@ -98,6 +102,7 @@ export function CallRinger({ me, inCallKey, onJoin, onRing }: {
             inCall: inCallRef.current === key,
           });
           if (!ring) return;
+          if (onScreenRef.current === key) return; // the room's bar says "1 in the call · Join" already
           setRinging({ key, community, channel, caller: ring.caller, at: Date.now() });
           chime();
           onRingRef.current?.();
