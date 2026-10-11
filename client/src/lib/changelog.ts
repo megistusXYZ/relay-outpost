@@ -44,11 +44,11 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-10-11",
     title: "Your space first",
     changes: [
-      { type: "new", text: "A new account starts in its own space: your people and your communities. The wider network is one switch away, explained in plain words." },
-      { type: "new", text: "Calls ring now and reach you even when the app is closed. Turn that on in Settings › Chats; it never says who wrote or what." },
-      { type: "new", text: "Badges: design your own, give them to people who earned them, and choose which ones show on your profile." },
-      { type: "improved", text: "Posts in other languages show a Translate link on every phone, and three plain trust choices set how careful the app is with strangers." },
-      { type: "improved", text: "Running a community: a health card, who can post, media rules, team powers, and a setup checklist that keeps its place." },
+      { type: "new", text: "A new account starts in its own space: your people and your communities. The wider network is one switch away, in plain words." },
+      { type: "new", text: "Signing up ends with saving your key and checking it opens your account. A lost sign-up comes back to where you were." },
+      { type: "new", text: "Calls ring, reach you when the app is closed, say who can hear you, and live in Settings › Calls. Badges you can give and show." },
+      { type: "improved", text: "Posts in other languages show Translate. Three plain choices set how careful the app is with strangers; their pictures stay blurred." },
+      { type: "improved", text: "Running a community: who can post, media rules, team powers, a setup checklist. Names on every menu, quick tours, a plainer Help." },
     ],
   },
   {
