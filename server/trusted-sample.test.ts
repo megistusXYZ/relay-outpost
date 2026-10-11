@@ -9,6 +9,7 @@ import { readFileSync } from "fs";
 import path from "path";
 import { createDiscoverSampleReader, FRESH_MS, RELAY_ANSWER_MS, ROUTE_WAIT_MS } from "./trusted-sample";
 import type { RelayQuery } from "./score-cards";
+import { generateSecretKey, getPublicKey, finalizeEvent } from "nostr-tools";
 
 const hex = (c: string, n = 64) => c.repeat(n);
 const ALICE = hex("a");
@@ -82,12 +83,13 @@ describe("discover sample reader", () => {
 
   it("each sample is its own read and its own cache", async () => {
     const { reader, query, advance } = setup({ answers: { [R1]: ok(article("1", ALICE, 100)), [R2]: ok() } });
+    const reads = () => query.mock.calls.filter((c) => (c[1] as any).kinds?.[0] !== 5).length;
     await reader.read("articles");
     advance(FRESH_MS - 1);
     await reader.read("articles");
-    expect(query).toHaveBeenCalledTimes(4);
+    expect(reads()).toBe(4);
     await reader.read("events");
-    expect(query).toHaveBeenCalledTimes(8);
+    expect(reads()).toBe(8);
   });
 
   /**
@@ -135,5 +137,31 @@ describe("discover sample reader", () => {
   it("relays answered and no trusted person posted: a real empty answer", async () => {
     const { reader } = setup({ answers: { [R1]: ok(article("2", MALLORY, 300)), [R2]: down } });
     expect(await reader.read("articles")).toEqual({ reached: true, events: [] });
+  });
+});
+
+describe("discover sample reader honours deletions", () => {
+  it("a post its author deleted never reaches Discover", async () => {
+    const sk = generateSecretKey();
+    const alice = getPublicKey(sk);
+    const deletion = finalizeEvent({ kind: 5, created_at: 400, tags: [["e", hex("9")], ["k", "30023"]], content: "" }, sk);
+    const { reader, query } = setup({
+      answers: {
+        [R1]: ok(article("9", alice, 50), article("8", alice, 40)),
+        [R2]: ok(),
+        [TOP]: ok(),
+      },
+      trusted: { authors: [alice], reached: true },
+    });
+    // The second round asks the same relays for the authors' deletions.
+    query.mockImplementation(async (relay, filter) => {
+      if ((filter as any).kinds?.[0] === 5) return relay === R1 ? ok(deletion)() : ok()();
+      return relay === R1 ? ok(article("9", alice, 50), article("8", alice, 40))() : ok()();
+    });
+    const r = await reader.read("articles");
+    expect(r.events.map((e) => e.id)).toEqual([hex("8")]);
+    const deletionAsks = query.mock.calls.filter((c) => (c[1] as any).kinds?.[0] === 5);
+    expect(deletionAsks.length).toBeGreaterThan(0);
+    expect((deletionAsks[0][1] as any).authors).toEqual([alice]);
   });
 });

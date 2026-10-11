@@ -18,7 +18,7 @@ function sourceFiles(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
     const full = join(dir, name);
     if (statSync(full).isDirectory()) { if (name !== "__tests__") sourceFiles(full, out); }
-    else if (/\.(ts|tsx)$/.test(name) && !/\.test\.tsx?$/.test(name) && !/ 2\./.test(name)) out.push(full);
+    else if (/\.(ts|tsx)$/.test(name) && !/\.test\.tsx?$/.test(name) && !/ \d\./.test(name)) out.push(full);
   }
   return out;
 }

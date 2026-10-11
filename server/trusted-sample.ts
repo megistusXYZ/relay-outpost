@@ -16,6 +16,7 @@
  * signed; the app checks the signatures.
  */
 import { queryRelay, type RelayQuery } from "./score-cards";
+import { dropDeleted, deletionAsk, looksLikeEvent } from "@shared/deletions";
 import { createSharedRead } from "./shared-read";
 import { DISCOVER_SAMPLES, SAMPLE_RELAYS, TOP_LOOKUP_RELAYS, sampleRequests, trustedSample, type DiscoverSampleName, type SampleDef, type SignedEvent } from "@shared/discover-samples";
 
@@ -77,9 +78,18 @@ export function createTrustedRead<T>(opts: {
             .catch(() => ({ reached: false, answered: false, events: [] as any[] })),
         ),
       );
-      const events = answers.flatMap((a) => a.events);
+      const read = answers.flatMap((a) => a.events);
       // A relay cut off mid-answer still sent real events.
-      const reached = events.length > 0 || answers.some((a) => a.answered);
+      const reached = read.length > 0 || answers.some((a) => a.answered);
+      // Then the authors' deletions, from the same relays: a deleted post never goes out.
+      const candidates = read.filter(looksLikeEvent);
+      const ask = deletionAsk(candidates);
+      const deletions = ask
+        ? (await Promise.all(Array.from(new Set(asks.map((a) => a.relay))).map((relay) =>
+            Promise.resolve().then(() => query(relay, ask, opts.readMs)).catch(() => ({ reached: false, answered: false, events: [] as any[] })),
+          ))).flatMap((a) => a.events)
+        : [];
+      const events = dropDeleted(candidates, deletions);
       return { reached, items: opts.pick(events, new Set(list.authors)) };
     },
   });

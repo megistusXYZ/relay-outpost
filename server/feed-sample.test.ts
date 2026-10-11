@@ -51,7 +51,9 @@ describe("feed sample reader", () => {
     expect(query.mock.calls.map((c) => [c[0], c[1]])).toContainEqual(
       [TOP, { kinds: [1], authors: [ALICE], since: 1_790_000_000 - 24 * 3600, limit: 150 }],
     );
-    expect(query).toHaveBeenCalledTimes(3);
+    // Three reads, then one deletion ask per relay for the authors read (events came back).
+    expect(query.mock.calls.filter((c) => (c[1] as any).kinds?.[0] !== 5)).toHaveLength(3);
+    expect(query.mock.calls.filter((c) => (c[1] as any).kinds?.[0] === 5)).toHaveLength(3);
     expect(r.notes.map((e) => e.id)).toEqual([hex("9")]);
   });
 
@@ -88,7 +90,7 @@ describe("feed sample reader", () => {
     await reader.read();
     advance(FRESH_MS - 1);
     await reader.read();
-    expect(query).toHaveBeenCalledTimes(3);
+    expect(query.mock.calls.filter((c) => (c[1] as any).kinds?.[0] !== 5)).toHaveLength(3);
   });
 });
 

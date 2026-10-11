@@ -94,6 +94,7 @@ import { copyNostrId } from "@/lib/clipboard-bridge";
 import { ConfirmAction } from "@/components/ConfirmAction";
 import { DeletePostConfirm, DeletedPost } from "@/components/DeletePostConfirm";
 import { useDeletedEvents } from "@/lib/deleted-events";
+import { watchDeletionsFor } from "@/lib/deletion-watch-live";
 import { useViewerInteraction } from "@/contexts/InteractionIndexContext";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { ZapDialog } from "@/components/ZapDialog";
@@ -1061,6 +1062,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
   const isOwnReply = myPubkey === event.pubkey;
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const replyDeleted = useDeletedEvents().has(event.id);
+  useEffect(() => { watchDeletionsFor([event.pubkey]); }, [event.pubkey]);
   const isOP = !!(opPubkey && event.pubkey === opPubkey);
   const hasReplyMedia = replyMediaItems.length > 0;
 

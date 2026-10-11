@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useDeletedEvents } from "@/lib/deleted-events";
+import { DeletedPost } from "@/components/DeletePostConfirm";
 import { Link } from "wouter";
 import { PageToolbar } from "@/components/PageToolbar";
 import { NostrPost } from "@/components/NostrPost";
@@ -137,6 +139,16 @@ function BookmarkedPost({
   onTogglePrivacy: () => void;
 }) {
   const event = use$(() => eventStore.event(eventId), [eventId]) ?? null;
+  const deleted = useDeletedEvents().has(eventId);
+
+  if (deleted) {
+    return (
+      <div className="border border-border rounded-md flex items-center justify-between gap-4 flex-wrap" data-testid={`bookmark-deleted-${eventId.slice(0, 8)}`}>
+        <DeletedPost id={eventId} />
+        <PrivacyToggleBadge isPrivate={isPrivate} onToggle={onTogglePrivacy} testId={`badge-privacy-deleted-${eventId.slice(0, 8)}`} />
+      </div>
+    );
+  }
 
   if (!event) {
     return (
