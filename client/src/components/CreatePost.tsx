@@ -8,6 +8,8 @@ import { publishEvent, wasAuthRequiredRecently } from "@/lib/nostr";
 import { KIND_TEXT_NOTE, clientTags, extractHashtags } from "@/lib/nostr-helpers";
 import { markHasPosted } from "@/lib/adoption-flags";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
+import { ToastAction } from "@/components/ui/toast";
+import { createHold, HOLD_MS, type Hold } from "@/lib/post-hold";
 import { RelayPublishPicker, usePublishRelayPreference } from "@/components/RelayPublishPicker";
 import { withOutboxFloor, fetchRelayLists } from "@/lib/outbox";
 import { classifyRelayUrl, getOutpostRelays, getPublishRelayPreference, type RelayPreset } from "@/lib/outpost-relays";
@@ -113,6 +115,13 @@ function RelayOutpostIcon({ className }: { className?: string }) {
 }
 
 export function CreatePostFAB() {
+  // The post being held before it leaves (lib/post-hold.ts). The page closing sends it at once.
+  const holdRef = useRef<Hold | null>(null);
+  useEffect(() => {
+    const flush = () => holdRef.current?.flush();
+    window.addEventListener("pagehide", flush);
+    return () => window.removeEventListener("pagehide", flush);
+  }, []);
   const { outpostCompose } = useOutpostCompose();
   const [isOpen, setIsOpen] = useState(false);
   const [showShieldInfo, setShowShieldInfo] = useState(false);
@@ -746,6 +755,7 @@ export function CreatePostFAB() {
         publishContent = publishContent + separator + gifUrl;
       }
 
+      let send: (() => void) | null = null;
       if (publishContent.trim()) {
         const eventTemplate = {
           kind: KIND_TEXT_NOTE,
@@ -756,34 +766,38 @@ export function CreatePostFAB() {
         markHasPosted(signedEvent.pubkey); // ticks the getting-started checklist
         const isUserSelected = relayPref.preset !== "all";
         const isPrivateOnly = relayPref.preset === "private";
-        // Optimistic: publishEvent adds the note to the local eventStore
-        // synchronously (for non-private notes), so it surfaces at the top of the
-        // feed immediately and the composer can close without waiting for the
-        // relay round-trip. The publish completes in the background; on failure we
-        // surface a retry that re-broadcasts the already-signed event.
-        publishEvent(signedEvent, publishTargets, undefined, isUserSelected, isPrivateOnly)
-          .then((published) => { if (!published) throw new Error("Event was rejected by all relays"); })
-          .catch((err) => {
-            // Signing already succeeded in the foreground above, so a background
-            // failure here is a relay/publish error (never a signer error).
-            console.error(err);
-            if (!wasAuthRequiredRecently()) {
-              toast({
-                title: "Couldn't publish",
-                description: "Your note didn't reach any relays.",
-                variant: "destructive",
-                action: (
-                  <button
-                    onClick={() => { publishEvent(signedEvent, publishTargets, undefined, isUserSelected, isPrivateOnly).catch(() => {}); }}
-                    className="shrink-0 px-3 py-1.5 rounded-md text-xs font-medium bg-foreground/10 hover:bg-foreground/20 transition-colors"
-                  >
-                    Retry
-                  </button>
-                ) as any,
-              });
-            }
-          });
+        // publishEvent adds the post to the local eventStore synchronously (for
+        // non-private posts), so it surfaces at the top of the feed the moment it
+        // is sent. The publish completes in the background; on failure we surface
+        // a retry that re-sends the already-signed event.
+        send = () => {
+          publishEvent(signedEvent, publishTargets, undefined, isUserSelected, isPrivateOnly)
+            .then((published) => { if (!published) throw new Error("Event was rejected by all relays"); })
+            .catch((err) => {
+              // Signing already succeeded in the foreground above, so a background
+              // failure here is a relay/publish error (never a signer error).
+              console.error(err);
+              if (!wasAuthRequiredRecently()) {
+                toast({
+                  title: "Couldn't post",
+                  description: "Your post didn't reach any relays.",
+                  variant: "destructive",
+                  action: (
+                    <button
+                      onClick={() => { publishEvent(signedEvent, publishTargets, undefined, isUserSelected, isPrivateOnly).catch(() => {}); }}
+                      className="shrink-0 px-3 py-1.5 rounded-md text-xs font-medium bg-foreground/10 hover:bg-foreground/20 transition-colors"
+                    >
+                      Retry
+                    </button>
+                  ) as any,
+                });
+              }
+            });
+        };
       }
+
+      // What Undo brings back: the composer as it was before Post.
+      const before = { content, mediaAttachments, gifUrl, previewMedia };
 
       if (activeDraftId) {
         deleteDraft(activeDraftId);
@@ -800,28 +814,80 @@ export function CreatePostFAB() {
       setIsOpen(false);
       clearMentionTags();
       clearEmojiTags();
-      toast({ title: "Published", description: audioAttachment ? "Your track and note have been broadcast." : "Your note has been broadcast." });
 
-      try {
-        const HINT_KEY = "nostr_first_post_outpost_hint_shown";
-        if (outpostCount === 0 && localStorage.getItem(HINT_KEY) !== "true") {
-          localStorage.setItem(HINT_KEY, "true");
-          setTimeout(() => {
-            toast({
-              title: "Want to reach specific communities?",
-              description: "Communities are relays focused on topics or groups. Discover them anytime.",
-              action: (
-                <button
-                  onClick={() => setLocation("/outposts")}
-                  className="shrink-0 px-3 py-1.5 rounded-md text-xs font-medium bg-accent text-brand hover:bg-accent/70 dark:bg-brand/15 dark:hover:bg-brand/25 transition-colors"
-                >
-                  Discover Communities
-                </button>
-              ) as any,
-            });
-          }, 1200);
-        }
-      } catch {}
+      const showFirstPostHint = () => {
+        try {
+          const HINT_KEY = "nostr_first_post_outpost_hint_shown";
+          if (outpostCount === 0 && localStorage.getItem(HINT_KEY) !== "true") {
+            localStorage.setItem(HINT_KEY, "true");
+            setTimeout(() => {
+              toast({
+                title: "Want to reach specific communities?",
+                description: "Communities are relays focused on topics or groups. Discover them anytime.",
+                action: (
+                  <button
+                    onClick={() => setLocation("/outposts")}
+                    className="shrink-0 px-3 py-1.5 rounded-md text-xs font-medium bg-accent text-brand hover:bg-accent/70 dark:bg-brand/15 dark:hover:bg-brand/25 transition-colors"
+                  >
+                    Discover Communities
+                  </button>
+                ) as any,
+              });
+            }, 1200);
+          }
+        } catch {}
+      };
+
+      if (!send) {
+        // Nothing to send (media/gif only was folded into the text above, so this is rare).
+      } else if (audioAttachment) {
+        // The track already left; the post follows at once.
+        send();
+        toast({ title: "Posted", description: "Your track and post are out." });
+        showFirstPostHint();
+      } else {
+        // The five-second hold (lib/post-hold.ts): nothing leaves until the
+        // countdown ends; Undo brings the composer back as it was.
+        holdRef.current?.flush();
+        const seconds = Math.round(HOLD_MS / 1000);
+        const sendNow = send;
+        let hold: Hold | null = null;
+        const t = toast({
+          title: "Posted",
+          description: `Sending in ${seconds} s. Undo brings it back.`,
+          duration: HOLD_MS + 800,
+          action: (
+            <ToastAction
+              altText="Undo"
+              className="h-11 px-4"
+              data-testid="button-undo-post"
+              onClick={() => {
+                if (!hold?.undo()) return;
+                setContent(before.content);
+                setMediaAttachments(before.mediaAttachments);
+                setGifUrl(before.gifUrl);
+                setPreviewMedia(before.previewMedia);
+                setIsOpen(true);
+                // The action closes its toast (Radix), so the word comes on a fresh one.
+                toast({ title: "Brought back", description: "Your post never left. It's back in the composer." });
+              }}
+            >
+              Undo
+            </ToastAction>
+          ),
+        });
+        hold = createHold(() => {
+          sendNow();
+          t.update({ id: t.id, title: "Posted", description: "Your post is out.", action: undefined });
+          setTimeout(() => t.dismiss(), 2500);
+          showFirstPostHint();
+        });
+        holdRef.current = hold;
+        const tick = setInterval(() => {
+          if (!hold || hold.state() !== "holding") { clearInterval(tick); return; }
+          t.update({ id: t.id, description: `Sending in ${hold.secondsLeft()} s. Undo brings it back.` });
+        }, 500);
+      }
     } catch (err) {
       console.error(err);
       if (isSignerError(err)) {
