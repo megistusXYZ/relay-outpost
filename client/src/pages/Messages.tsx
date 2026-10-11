@@ -2549,28 +2549,16 @@ export default function Messages() {
     navigateToConversation(resultPubkey);
   }, [pubkey, toast, openConversation]);
 
-  const handleDeleteMessage = useCallback(async (msgId: string, isMine: boolean) => {
+  // A private message can only be removed from this device (owner, 2026-10-11):
+  // the other person's copy is theirs, and a sent message's id lives on no relay
+  // (it is the id inside the sealed wrap), so a deletion request would be a no-op.
+  const handleDeleteMessage = useCallback(async (msgId: string, _isMine: boolean) => {
     addHiddenMessageId(msgId);
     setHiddenMsgIds(prev => { const s = new Set(Array.from(prev)); s.add(msgId); return s; });
     setMessages(prev => prev.filter(m => m.id !== msgId));
-
-    if (isMine && signer && pubkey) {
-      try {
-        const deleteEvent = {
-          kind: 5,
-          created_at: Math.floor(Date.now() / 1000),
-          tags: [["e", msgId]],
-          content: "" };
-        const signed = await signWithTimeout(signer, deleteEvent);
-        await publishEvent(signed as Event);
-      } catch (err) {
-        console.error("Failed to publish deletion event:", err);
-      }
-    }
-
-    toast({ title: isMine ? "Message deleted" : "Message hidden" });
+    toast({ title: "Removed from this device" });
     setDeleteConfirm(null);
-  }, [signer, pubkey, toast]);
+  }, [toast]);
 
   const handleDeleteConversation = useCallback((contactPubkey: string) => {
     addHiddenConvoPubkey(contactPubkey);
@@ -3623,7 +3611,7 @@ export default function Messages() {
                       <button
                         className={`reveal-on-hover p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer shrink-0 ${beside} hidden md:block transition-colors`}
                         onClick={() => setDeleteConfirm({ type: "message", id: msg.id, isMine: true })}
-                        aria-label="Delete message" title="Delete message"
+                        aria-label="Remove from this device" title="Remove from this device"
                         data-testid={`button-delete-msg-${msg.id}`}
                       >
                         <Trash2 className="w-3 h-3" />
@@ -3773,7 +3761,7 @@ export default function Messages() {
                   }}
                 >
                   {longPressTarget.isMine ? <Trash2 className="w-4 h-4 text-destructive" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
-                  <span className="text-sm font-medium">{longPressTarget.isMine ? "Delete message" : "Hide message"}</span>
+                  <span className="text-sm font-medium">{longPressTarget.isMine ? "Remove from this device" : "Hide message"}</span>
                 </button>
                 <div className="border-t border-border/20" />
                 <button
@@ -3994,13 +3982,13 @@ export default function Messages() {
       <AlertDialogContent className="glass-dialog-card">
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {deleteConfirm?.type === "conversation" ? "Remove conversation?" : deleteConfirm?.isMine ? "Delete message?" : "Hide message?"}
+            {deleteConfirm?.type === "conversation" ? "Remove conversation?" : deleteConfirm?.isMine ? "Remove from this device?" : "Hide message?"}
           </AlertDialogTitle>
           <AlertDialogDescription>
             {deleteConfirm?.type === "conversation"
               ? "This conversation will be removed from your list. You can still find it if they message you again."
               : deleteConfirm?.isMine
-                ? "This will hide the message locally and request relays to delete it. The recipient may still have a copy."
+                ? "This removes the message from this device only. The other person keeps their copy."
                 : "This will hide the message from your view. It won't affect the sender's copy."}
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -4018,7 +4006,7 @@ export default function Messages() {
             }}
             data-testid="button-confirm-delete"
           >
-            {deleteConfirm?.type === "conversation" ? "Remove" : deleteConfirm?.isMine ? "Delete" : "Hide"}
+            {deleteConfirm?.type === "conversation" ? "Remove" : deleteConfirm?.isMine ? "Remove" : "Hide"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
