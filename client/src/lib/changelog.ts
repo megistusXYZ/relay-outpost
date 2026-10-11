@@ -40,6 +40,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.20.0",
+    date: "2026-10-16",
+    title: "Delete means delete",
+    changes: [
+      { type: "new", text: "Delete your own posts and replies. One word, honest about where the post lives, and a note afterwards on what the relays did." },
+      { type: "new", text: "A post someone deleted disappears for everyone here: feeds, threads, profiles, Activity and Discover." },
+      { type: "new", text: "A new post waits five seconds with Undo, so a typo never has to leave." },
+      { type: "improved", text: "Community admins: one confirmation, a log entry, and the author gets a private note. Replies keep their place." },
+      { type: "improved", text: "Private messages say what they can do: Remove from this device. Leaving the network now reaches every relay." },
+    ],
+  },
+  {
     version: "1.19.0",
     date: "2026-10-11",
     title: "Your space first",
