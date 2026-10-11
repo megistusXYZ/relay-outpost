@@ -1,5 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Relay } from "nostr-tools";
 import { installRelayFrameGuard, __resetRelayFrameGuardForTests } from "./relay-frame-guard";
 
@@ -293,5 +295,20 @@ describe("a throwing auth signer must not wedge the relay", () => {
     await settles(second);
     expect(r.sent.length).toBeGreaterThan(0);
     expect(r.sent[0]).toContain('["AUTH"');
+  });
+});
+
+describe("the guard is in place before the first socket opens", () => {
+  // A relay binds the vendor's _onmessage when it connects. lib/nostr.ts warms
+  // the launch relays at import, which runs before main.tsx's body — so a
+  // guard installed only from main.tsx missed those sockets (live report:
+  // "JSON Parse error: Unterminated string", iPhone, /discover, 2026-10-08).
+  it("lib/nostr.ts installs it before warming the launch relays", () => {
+    const src = readFileSync(join(process.cwd(), "client", "src", "lib", "nostr.ts"), "utf8");
+    const install = src.indexOf("\ninstallRelayFrameGuard();");
+    const warm = src.indexOf("\nwarmRelayConnections();");
+    expect(install).toBeGreaterThan(-1);
+    expect(warm).toBeGreaterThan(-1);
+    expect(install).toBeLessThan(warm);
   });
 });
