@@ -1061,15 +1061,17 @@ export default function Profile() {
   const mediaMeta = mediaState.mediaMeta;
 
   const fallbackName = pubkey ? shortenNpub(formatNpub(pubkey)) : "Unknown";
-  const displayName = pubkey && metadataEvent ? (getDisplayName(metadataEvent, fallbackName) ?? fallbackName) : fallbackName;
+  // How this person looks to you: your name for them (even before their
+  // profile loads), your photo, else your icon tile, else their picture
+  // (lib/person-look.ts).
+  const look = personLook(pubkey ? metadataEvent : undefined, pubkey ?? "", fallbackName);
+  const displayName = look.name;
+  const avatarUrl = look.avatarUrl;
+  const avatarTile = look.tile;
   // The RAW profile name: the rename dialog's "Real name:" line and the
   // header's reveal caption must never show the petname back.
   const realDisplayName = pubkey && metadataEvent ? (getRealName(metadataEvent, fallbackName) ?? fallbackName) : fallbackName;
   useDocumentTitle(displayName || "Profile");
-  // How this person looks to you: your photo, else your icon tile, else their picture (lib/person-look.ts).
-  const look = personLook(metadataEvent, pubkey ?? "", fallbackName);
-  const avatarUrl = look.avatarUrl;
-  const avatarTile = look.tile;
   const profileContent = useMemo<ProfileContentData | null>(() => {
     if (!metadataEvent) return null;
     const raw = getProfileContent(metadataEvent);
