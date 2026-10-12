@@ -89,8 +89,14 @@ describe("What's New says only what's of value", () => {
 
   it("releases come as rollouts, not daily bits: from 1.18.0 on, at least 5 days apart", () => {
     const day = 86_400_000;
+    // The owner's cadence rule allows an exception for privacy, sign-in, messages
+    // or data loss. Each one is named here, with the day it was decided.
+    const OWNER_EXCEPTIONS: Record<string, string> = {
+      "1.20.0": "2026-10-11: delete means delete — privacy; owner said 'roll it now'",
+    };
     for (let i = 0; i < CHANGELOG.length - 1; i++) {
       if (CHANGELOG[i].date <= "2026-10-06") break;
+      if (OWNER_EXCEPTIONS[CHANGELOG[i].version]) continue;
       const gap = (Date.parse(CHANGELOG[i].date) - Date.parse(CHANGELOG[i + 1].date)) / day;
       expect(gap, `${CHANGELOG[i].version} came ${gap} days after ${CHANGELOG[i + 1].version}`).toBeGreaterThanOrEqual(5);
     }
