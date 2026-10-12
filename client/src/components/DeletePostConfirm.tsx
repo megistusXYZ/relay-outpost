@@ -5,7 +5,7 @@ import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { publishEventDetailed } from "@/lib/nostr";
 import { getPublishTarget, getOutpostRelays } from "@/lib/outpost-relays";
-import { buildDeletion, deletionHome, deletionWords, deletionReport } from "@/lib/deletion";
+import { buildDeletion, deletionHome, deletionWords, deletionReport, communityFor } from "@/lib/deletion";
 import { verifyDeletion } from "@/lib/deletion-check";
 import { markDeleted } from "@/lib/deleted-events";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
@@ -26,13 +26,14 @@ export function DeletePostConfirm({ event, open, onOpenChange, onDeleted }: {
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
 
+  // Re-read each time the dialog opens: the relay preference and the joined
+  // communities can change between one Delete and the next.
   const plan = useMemo(() => {
     const { relays, userSelected } = getPublishTarget();
     const ours = getOutpostRelays();
     const home = deletionHome(relays, ours.map((r) => r.url));
-    const name = home === "community" ? ours.find((r) => relays.some((u) => u.replace(/\/+$/, "") === r.url.replace(/\/+$/, "")))?.label : undefined;
-    return { relays, userSelected, words: deletionWords(home, name) };
-  }, [open]);
+    return { relays, userSelected, words: deletionWords(home, communityFor(relays, ours)) };
+  }, [open]); // `open` is the refresh trigger, on purpose: no linter runs here, so the comment is the record
 
   const confirm = async () => {
     if (!signer || busy) return;
@@ -46,7 +47,7 @@ export function DeletePostConfirm({ event, open, onOpenChange, onDeleted }: {
       }
       markDeleted(event.id);
       onDeleted?.();
-      toast({ title: "Deleted", description: "Checking what the relays did…" });
+      toast({ title: "Deletion sent", description: "Checking what the relays did…" });
       const outcome = await verifyDeletion(event.id, plan.relays);
       toast({ title: "Deleted", description: outcome.asked === 0 ? "Couldn't reach your relays to check." : deletionReport(outcome) });
     } catch (err) {

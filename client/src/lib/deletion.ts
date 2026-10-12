@@ -31,6 +31,13 @@ export function deletionHome(relaysAsked: string[], communityRelays: string[]): 
   return relaysAsked.every((r) => ours.has(norm(r))) ? "community" : "wider";
 }
 
+/** The community a deletion lives in, by name, when every relay asked is one of ours. One place decides what "the same relay" means. */
+export function communityFor(relaysAsked: string[], communities: { url: string; label: string }[]): string | undefined {
+  if (deletionHome(relaysAsked, communities.map((c) => c.url)) !== "community") return undefined;
+  const asked = new Set(relaysAsked.map(norm));
+  return communities.find((c) => asked.has(norm(c.url)))?.label;
+}
+
 export function deletionWords(home: DeletionHome, communityName?: string): { title: string; description: string; confirmLabel: string } {
   return {
     title: "Delete this post?",
