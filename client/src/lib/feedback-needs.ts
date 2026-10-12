@@ -39,11 +39,25 @@ export function feedbackNeedsYou(issues: FeedbackIssue[], me: string | null): Fe
 
 const sigOf = (t: FeedbackIssue) => t.event.tags.find((x) => x[0] === "crash-sig")?.[1] || t.event.id;
 
-/** App errors with an occurrence you haven't seen: one entry per error (its signature). */
-export function newAppErrorGroups(issues: FeedbackIssue[]): string[] {
-  const sigs = new Set<string>();
-  for (const t of issues) if (isCrashIssue(t) && t.latestActivityAt > getIssueLastRead(t.event.id)) sigs.add(sigOf(t));
-  return [...sigs];
+/**
+ * App errors that need you: one entry per error (its signature). An error
+ * counts when it is not done (its latest occurrence is New or Looking into
+ * it) and someone other than you has added to it since you last opened it.
+ * Your own status change is never news, and a Fixed or Ignored error never
+ * counts however fresh its activity (owner, 2026-10-12: the chip said 2
+ * while every error was done).
+ */
+export function newAppErrorGroups(issues: FeedbackIssue[], me: string | null = null): string[] {
+  const latestBySig = new Map<string, FeedbackIssue>();
+  const newsBySig = new Set<string>();
+  for (const t of issues) {
+    if (!isCrashIssue(t)) continue;
+    const sig = sigOf(t);
+    const have = latestBySig.get(sig);
+    if (!have || t.latestActivityAt > have.latestActivityAt) latestBySig.set(sig, t);
+    if (hasNewFromOthers(t, me)) newsBySig.add(sig);
+  }
+  return [...latestBySig].filter(([sig, latest]) => waiting(latest) && newsBySig.has(sig)).map(([sig]) => sig);
 }
 
 /** Opening an error clears every occurrence of it, not just the latest. */
