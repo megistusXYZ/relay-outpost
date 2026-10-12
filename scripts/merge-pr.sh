@@ -28,7 +28,7 @@ fi
 
 echo "PR #$PR — reading CI before merging, not after."
 
-ROLLUP=$(gh pr view "$PR" --json statusCheckRollup --jq '[.statusCheckRollup[]? | {name, status, conclusion}]')
+ROLLUP=$(gh pr view "$PR" --json statusCheckRollup --jq '[.statusCheckRollup[]? | {name, status, conclusion, startedAt}]')
 COUNT=$(jq 'length' <<<"$ROLLUP")
 
 if [[ "$COUNT" == "0" ]]; then
@@ -36,18 +36,18 @@ if [[ "$COUNT" == "0" ]]; then
   # docs-only PR legitimately has no run. Say so rather than blocking forever.
   echo "No checks reported. CI's paths-ignore skips docs-only changes — verify that's why."
 else
-  jq -r '.[] | "  \(.conclusion // .status)  \(.name)"' <<<"$ROLLUP"
+  # Per check name, the latest run answers (scripts/merge-verdict.mjs, tested):
+  # a duplicate run GitHub cancelled on the same commit is superseded, not red.
+  # Exit 0 = merge, 1 = did not pass, 2 = still running.
+  set +e
+  node "$(dirname "$0")/merge-verdict.mjs" <<<"$ROLLUP"
+  VERDICT=$?
+  set -e
 
-  PENDING=$(jq '[.[] | select(.status != "COMPLETED")] | length' <<<"$ROLLUP")
-  FAILED=$(jq '[.[] | select(.conclusion != null and .conclusion != "SUCCESS" and .conclusion != "NEUTRAL" and .conclusion != "SKIPPED")] | length' <<<"$ROLLUP")
-
-  if [[ "$PENDING" != "0" ]]; then
-    echo "REFUSING: $PENDING check(s) still running. Wait for the answer." >&2
+  if [[ "$VERDICT" == "2" ]]; then
     exit 1
   fi
-
-  if [[ "$FAILED" != "0" ]]; then
-    echo "REFUSING: $FAILED check(s) did not pass." >&2
+  if [[ "$VERDICT" != "0" ]]; then
     if [[ "$FORCE" != "true" ]]; then
       echo "If they're pre-existing and unrelated, PROVE it — compare against main's" >&2
       echo "latest run — then re-run with: npm run merge $PR -- --force-red" >&2
