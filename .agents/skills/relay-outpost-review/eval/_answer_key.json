@@ -1,0 +1,35 @@
+{
+  "_sealed": "Do not read before reviewing. known-bad.tsx plants these; known-good.tsx plants none.",
+  "fails": [
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "R6",
+    "R7",
+    "R8",
+    "R9",
+    "S3",
+    "C5"
+  ],
+  "flags": [
+    "R10"
+  ],
+  "traps": [
+    "C7"
+  ],
+  "_notes": {
+    "R1": "members.length === 0 renders 'No members yet' with no answered/reached signal",
+    "R2": "oneose sets reachable=true (nostr-tools fires it on a failed connect)",
+    "R3": "'Crew' heading and 'broadcast' in the empty state are retired words",
+    "R4": "tier rendered as a green pill with text-green-500; 'Loading\u2026' at 9px and /40 grey",
+    "R6": "close() calls history.back() for a manual close",
+    "R8": "follow() publishes a kind-3 built from the panel's member list, not the loaded follow base",
+    "R9": "setLoading(false) runs synchronously before the subscription answers",
+    "R10": "the X close button has no aria-label (flag); the Follow button does",
+    "C7": "tierWord's 4-case switch is cohesive: must not fail on complexity",
+    "R7": "every member is hard-coded tier 'none' and shown as 'New here': a status asserted without asking (found by the first cold reviewer, promoted to planted)",
+    "S3": "relay-supplied p tags used unvalidated as pubkeys, React keys and kind-3 entries (found by the first cold reviewer, promoted to planted)",
+    "C5": "tierWord re-states the tier phrasebook in client/src/lib/trust-words.ts (found by the first cold reviewer, promoted to planted)"
+  }
+}

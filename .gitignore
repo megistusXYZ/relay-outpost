@@ -66,3 +66,4 @@ CONCORD_PLAN.md
 
 # Local security/QA probe scripts (never shipped)
 scratch-*.mjs
+!.agents/skills/relay-outpost-review/
