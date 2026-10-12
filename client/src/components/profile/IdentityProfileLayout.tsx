@@ -40,6 +40,8 @@ export interface IdentityProfileData {
   /** Shown when the real banner fails to load. Stable per account. */
   bannerFallbackSrc?: string;
   avatarUrl?: string;
+  /** Your icon for them, when you chose one and no photo (lib/person-look.ts). */
+  tile?: { emoji?: string; color?: string };
   displayName: string;
   /** Raw profile name — shown in the reveal caption + rename dialog. */
   realName: string;
@@ -231,6 +233,7 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
                 the cover overlap is a look, not a load-bearing layout. */}
             <IdentityHead
               avatarUrl={data.avatarUrl}
+              tile={data.tile}
               title={data.displayName}
               lift={!liveStream}
               // Phones: the verified glyph beside the name; the domain is a

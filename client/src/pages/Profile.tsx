@@ -1,4 +1,5 @@
 import { newestByAddress } from "@/lib/nip23";
+import { personLook } from "@/lib/person-look";
 import { CollapsibleBio } from "@/components/profile/CollapsibleBio";
 import { SearchPill } from "@/components/SearchPill";
 import { useEffect, useRef, useMemo, useState, useCallback } from "react";
@@ -1065,7 +1066,10 @@ export default function Profile() {
   // header's reveal caption must never show the petname back.
   const realDisplayName = pubkey && metadataEvent ? (getRealName(metadataEvent, fallbackName) ?? fallbackName) : fallbackName;
   useDocumentTitle(displayName || "Profile");
-  const avatarUrl = metadataEvent ? getAvatarUrl(metadataEvent) : undefined;
+  // How this person looks to you: your photo, else your icon tile, else their picture (lib/person-look.ts).
+  const look = personLook(metadataEvent, pubkey ?? "", fallbackName);
+  const avatarUrl = look.avatarUrl;
+  const avatarTile = look.tile;
   const profileContent = useMemo<ProfileContentData | null>(() => {
     if (!metadataEvent) return null;
     const raw = getProfileContent(metadataEvent);
@@ -2471,6 +2475,7 @@ export default function Profile() {
             bannerSrc: profileBannerSrc,
             bannerFallbackSrc: bannerFallback,
             avatarUrl,
+            tile: avatarTile,
             displayName,
             realName: realDisplayName,
             about: profileContent?.about,
