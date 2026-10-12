@@ -1,4 +1,5 @@
 import { PostBoundary } from "@/components/PostBoundary";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from "react";
 import { ClampedText, LINES, textForLines } from "@/components/ClampedText";
 import { createPortal, flushSync } from "react-dom";
@@ -1409,12 +1410,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
       <div className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2.5 sm:py-2.5 overflow-hidden ${isBubbles ? "glass-header rounded-t-xl" : ""}`} onClick={(e) => e.stopPropagation()}>
         <AuthorHoverCard pubkey={event.pubkey} profile={authorProfile}>
           <Link href={profileUrl} data-testid={`link-thread-avatar-${event.id}`}>
-            <Avatar className={`w-7 h-7 sm:w-6 sm:h-6 shrink-0 ring-1 ${isOP ? "ring-brand/40" : "ring-primary/20"} border border-background cursor-pointer`}>
-              <AvatarImage src={avatarUrl} alt={displayName} />
-              <AvatarFallback className="bg-brand/10 text-brand font-bold text-xs sm:text-[11px]">
-                {displayName.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <PersonAvatar pubkey={event.pubkey} profile={authorProfile} alt={displayName} className={`w-7 h-7 sm:w-6 sm:h-6 shrink-0 ring-1 ${isOP ? "ring-brand/40" : "ring-primary/20"} border border-background cursor-pointer`} fallbackClassName="bg-brand/10 text-brand font-bold text-xs sm:text-[11px]" />
           </Link>
         </AuthorHoverCard>
         <div className="flex-1 min-w-0">

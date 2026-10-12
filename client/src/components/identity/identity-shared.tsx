@@ -6,6 +6,7 @@
  * verbatim: this extraction is pixel-parity by construction.
  */
 import { useEffect, useState, type ReactNode } from "react";
+import { PersonTileMark } from "@/components/PersonAvatar";
 import { isDrawnBanner } from "@/lib/default-banner";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
@@ -100,8 +101,10 @@ export function IdentityBanner({ src, fallbackSrc, blurBackdropSrc, topRight, li
  * idiom), title, and caption rows below. `lift` off when the cover's bottom
  * edge is in use (the profile's live overlay) and the avatar would cover it.
  */
-export function IdentityHead({ avatarUrl, title, lift = true, inlineBadge, children }: {
+export function IdentityHead({ avatarUrl, tile, title, lift = true, inlineBadge, children }: {
   avatarUrl?: string;
+  /** Your icon for this person: replaces the picture entirely. */
+  tile?: { emoji?: string; color?: string };
   title: string;
   lift?: boolean;
   /** Drawn beside the name on its line (a verified glyph), not under it. */
@@ -110,10 +113,14 @@ export function IdentityHead({ avatarUrl, title, lift = true, inlineBadge, child
 }) {
   return (
     <div className={`flex flex-col items-center text-center ${lift ? "-mt-14" : "pt-1"}`} data-testid="identity-head">
-      <Avatar className="w-24 h-24 border-4 border-card shadow-lg">
-        {avatarUrl && <AvatarImage src={avatarUrl} alt={title} />}
-        <AvatarFallback className="text-2xl bg-brand/10 text-brand font-semibold">{title.slice(0, 2).toUpperCase()}</AvatarFallback>
-      </Avatar>
+      {tile ? (
+        <PersonTileMark tile={tile} name={title} className="w-24 h-24 border-4 border-card shadow-lg text-4xl" testId="identity-head-avatar" />
+      ) : (
+        <Avatar className="w-24 h-24 border-4 border-card shadow-lg">
+          {avatarUrl && <AvatarImage src={avatarUrl} alt={title} />}
+          <AvatarFallback className="text-2xl bg-brand/10 text-brand font-semibold">{title.slice(0, 2).toUpperCase()}</AvatarFallback>
+        </Avatar>
+      )}
       <h1 className="mt-2 text-lg font-bold leading-tight break-words inline-flex items-center gap-1 max-w-full">
         <span className="min-w-0">{title}</span>
         {inlineBadge}

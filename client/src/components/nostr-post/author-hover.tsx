@@ -1,4 +1,6 @@
 import { BtcZapIcon } from "@/components/icons/BtcZapIcon";
+import { PersonAvatar } from "@/components/PersonAvatar";
+import { usePetnamesVersion } from "@/lib/petnames";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
@@ -666,10 +668,9 @@ export function AuthorHoverCard({ pubkey, children, profile: externalProfile }: 
     }
   }, [pubkey, externalProfile, lookedUpProfile]);
   const profileContent = useMemo(() => profile ? getProfileContent(profile) : null, [profile]);
-  const displayName = useMemo(() => {
-    if (!profileContent) return npub ? `${npub.slice(0, 9)}...${npub.slice(-4)}` : "?";
-    return profileContent.display_name || profileContent.name || `${npub.slice(0, 9)}...${npub.slice(-4)}`;
-  }, [profileContent, npub]);
+  usePetnamesVersion();
+  const npubShort = npub ? `${npub.slice(0, 9)}...${npub.slice(-4)}` : "?";
+  const displayName = profile ? (getDisplayName(profile, npubShort) ?? npubShort) : npubShort;
   const avatarUrl = getAvatarUrl(profile);
   const nip05 = (profileContent as Record<string, string | undefined>)?.nip05 || null;
   const about = (profileContent as Record<string, string | undefined>)?.about || null;
@@ -726,12 +727,7 @@ export function AuthorHoverCard({ pubkey, children, profile: externalProfile }: 
           <div className="relative z-10 p-4 space-y-3">
             <div className="flex items-start gap-3">
               <Link href={`/profile/${npub}`} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                <Avatar className="w-12 h-12 ring-2 ring-brand/30 border-2 border-brand dark:border-[#0d0d2b] shrink-0 cursor-pointer">
-                  <AvatarImage src={avatarUrl} alt={displayName} />
-                  <AvatarFallback className="bg-brand/40 text-brand text-sm font-bold">
-                    {displayName.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <PersonAvatar pubkey={pubkey} profile={profile ?? undefined} alt={displayName} className="w-12 h-12 ring-2 ring-brand/30 border-2 border-brand dark:border-[#0d0d2b] shrink-0 cursor-pointer" />
               </Link>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">

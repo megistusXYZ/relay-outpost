@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback, memo, isValidElement, cloneElement, lazy, Suspense, type ReactNode, type ComponentProps } from "react";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { quotedImageUrls } from "@/components/nostr-post/quoted-images";
 import { ClampedText, LINES, textForLines } from "@/components/ClampedText";
 import { createPortal } from "react-dom";
@@ -743,16 +744,14 @@ export function MentionProfileLink({ pubkey }: { pubkey: string }) {
     if (!profile) return null;
     return getProfileContent(profile);
   }, [profile]);
-  const displayName = useMemo(() => {
-    if (!profileContent) return null;
-    return profileContent.display_name || profileContent.name || null;
-  }, [profileContent]);
+  usePetnamesVersion();
+  const displayName = profile ? (getDisplayName(profile) ?? null) : null;
 
   useEffect(() => {
     fetchProfilesCached([pubkey]);
   }, [pubkey]);
 
-  const avatarUrl = useMemo(() => getAvatarUrl(profile), [profile]);
+  const avatarUrl = getAvatarUrl(profile);
   const nip05 = (profileContent as any)?.nip05 || null;
   const lud16 = (profileContent as any)?.lud16 || null;
   const about = (profileContent as any)?.about || null;
@@ -2812,12 +2811,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
         <AuthorHoverCard pubkey={event.pubkey} profile={authorProfile}>
           <Link href={profileUrl} className="hit-area rounded-full" data-testid={`link-avatar-${event.id}`} onMouseEnter={() => prefetchProfileOnHover(event.pubkey)}>
             <div className="relative">
-              <Avatar className={`${avatarSize} shrink-0 ${authorIsLive ? "ring-2 ring-red-500/50" : "ring-1 ring-border dark:ring-white/10"} border border-background cursor-pointer`}>
-                <AvatarImage src={avatarUrl} alt={displayName} />
-                <AvatarFallback className="bg-brand/10 text-brand font-bold text-xs">
-                  {displayName.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <PersonAvatar pubkey={event.pubkey} profile={authorProfile} alt={displayName} className={`${avatarSize} shrink-0 ${authorIsLive ? "ring-2 ring-red-500/50" : "ring-1 ring-border dark:ring-white/10"} border border-background cursor-pointer`} />
               {authorIsLive && (
                 <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-red-500 border-2 border-background shadow-[0_0_6px_1px_rgba(239,68,68,0.4)] live-dot" title="Live now" data-testid={`indicator-live-dot-${event.id}`} />
               )}
@@ -3493,8 +3487,8 @@ export const NostrPost = memo(function NostrPost({ event, showReplies = false, r
   const repostDisplayName = useMemo(() => {
     if (!repostedBy) return null;
     if (repostProfile) {
-      const content = getProfileContent(repostProfile);
-      if (content) return content.display_name || content.name || null;
+      const name = getDisplayName(repostProfile);
+      if (name) return name;
     }
     try {
       const npub = nip19.npubEncode(repostedBy.pubkey);

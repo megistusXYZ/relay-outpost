@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { useLocation, useRoute } from "wouter";
 import { MissionBriefing, CHATS_BRIEFING } from "@/components/MissionBriefing";
 import { useGoBack } from "@/hooks/use-go-back";
@@ -3347,12 +3348,16 @@ export default function Messages() {
               className={`flex items-center gap-3 flex-1 min-w-0 text-left ${selectedIsGroup ? "cursor-default" : "cursor-pointer hover:opacity-80 transition-opacity"}`}
               data-testid="button-thread-profile"
             >
+              {!selectedIsGroup && selectedPubkey ? (
+                <PersonAvatar pubkey={selectedPubkey} name={contactName} picture={contactProfile?.picture} alt={contactName} className="w-8 h-8 border border-border shrink-0" fallbackClassName="text-xs bg-muted text-muted-foreground" />
+              ) : (
               <Avatar className="w-8 h-8 border border-border shrink-0">
                 <AvatarImage src={contactProfile?.picture} alt={contactName} />
                 <AvatarFallback className="text-xs bg-muted text-muted-foreground">
                   {selectedIsGroup ? <Users className="w-4 h-4" /> : contactName.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate flex items-center gap-1.5" data-testid="text-thread-contact-name">
                   <span className="truncate">{contactName}</span>
@@ -3628,12 +3633,7 @@ export default function Messages() {
                           className={`shrink-0 ${beside} cursor-pointer hover:ring-2 hover:ring-brand/50 rounded-full transition-all`}
                           aria-label={`Open ${nameOf(msg.from)}'s profile`}
                         >
-                          <Avatar className="w-6 h-6 md:w-7 md:h-7 border border-border/60">
-                            <AvatarImage src={profiles.get(msg.from)?.picture} alt={nameOf(msg.from)} />
-                            <AvatarFallback className="text-[9px] bg-muted text-muted-foreground">
-                              {nameOf(msg.from).slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
+                          <PersonAvatar pubkey={msg.from} name={nameOf(msg.from)} picture={profiles.get(msg.from)?.picture} alt={nameOf(msg.from)} className="w-6 h-6 md:w-7 md:h-7 border border-border/60" fallbackClassName="text-[9px] bg-muted text-muted-foreground" />
                         </button>
                       ) : (
                         <div className="w-6 md:w-7 shrink-0" />
