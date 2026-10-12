@@ -12,6 +12,7 @@
  * lib/feedback-needs.ts, shared with the badge.
  */
 import { templateLabelFor } from "@/lib/inbox-settings";
+import { useOptimisticFeedback, addOptimisticRumor, addOptimisticEvent, removeOptimistic } from "@/lib/feedback-optimistic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Event as NostrEvent } from "nostr-tools";
 import { use$ } from "applesauce-react/hooks";
@@ -136,8 +137,8 @@ export function FeedbackTab({ relayUrl, inbox, mode = "feedback", onOpenMemberIn
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [posting, setPosting] = useState(false);
-  const [optimisticEvents, setOptimisticEvents] = useState<NostrEvent[]>([]);
-  const [optimisticRumors, setOptimisticRumors] = useState<UnwrappedRumor[]>([]);
+  // Shared with the chip and the badge, and kept across leaving the tab (lib/feedback-optimistic.ts).
+  const { events: optimisticEvents, rumors: optimisticRumors } = useOptimisticFeedback();
   const [, setReadTick] = useState(0);
   useEffect(() => {
     const onRead = () => setReadTick((n) => n + 1);
@@ -179,11 +180,11 @@ export function FeedbackTab({ relayUrl, inbox, mode = "feedback", onOpenMemberIn
       if (selected.private) {
         const res = await sendPrivateReply({ signer, myPubkey: pubkey, recipientPubkey: selected.reporter, issueRumorId: selected.event.id, body: text.trim() });
         if (!res.success) throw new Error(res.error || "Send failed");
-        setOptimisticRumors((prev) => [...prev, { pubkey, kind: 1111, tags: [["E", selected.event.id]], content: text.trim(), created_at: at, id: `opt-${at}-${Math.random().toString(36).slice(2)}` } as UnwrappedRumor]);
+        addOptimisticRumor({ pubkey, kind: 1111, tags: [["E", selected.event.id]], content: text.trim(), created_at: at, id: `opt-${at}-${Math.random().toString(36).slice(2)}` } as UnwrappedRumor);
       } else {
         const signed = await signWithTimeout(signer, buildCommentTemplate({ issue: selected.event, body: text.trim(), recipient: effectiveRecipient }));
         await publishEvent(signed, [relayUrl], selected.reporter, false);
-        setOptimisticEvents((prev) => [...prev, signed as unknown as NostrEvent]);
+        addOptimisticEvent(signed as unknown as NostrEvent);
       }
       markIssueRead(selected.event.id, at);
       setReply("");
@@ -201,10 +202,10 @@ export function FeedbackTab({ relayUrl, inbox, mode = "feedback", onOpenMemberIn
     const at = Math.floor(Date.now() / 1000);
     const optId = `opt-${at}-${Math.random().toString(36).slice(2)}`;
     if (issue.private) {
-      setOptimisticRumors((prev) => [...prev, { pubkey, kind: 1111, tags: [["E", issue.event.id], ["status", status], ["p", issue.reporter]], content: "", created_at: at, id: optId } as UnwrappedRumor]);
+      addOptimisticRumor({ pubkey, kind: 1111, tags: [["E", issue.event.id], ["status", status], ["p", issue.reporter]], content: "", created_at: at, id: optId } as UnwrappedRumor);
     } else {
       const tpl = buildStatusTemplate({ issue: issue.event, status, recipient: effectiveRecipient });
-      setOptimisticEvents((prev) => [...prev, { ...tpl, pubkey, created_at: at, id: optId, sig: "" } as unknown as NostrEvent]);
+      addOptimisticEvent({ ...tpl, pubkey, created_at: at, id: optId, sig: "" } as unknown as NostrEvent);
     }
     markIssueRead(issue.event.id, at);
     const word = isCrashIssue(issue) ? ERROR_WORD[status] : statusLabel(status);
@@ -218,8 +219,7 @@ export function FeedbackTab({ relayUrl, inbox, mode = "feedback", onOpenMemberIn
         await publishEvent(signed, [relayUrl], issue.reporter, false);
       }
     } catch (err) {
-      if (issue.private) setOptimisticRumors((prev) => prev.filter((r) => r.id !== optId));
-      else setOptimisticEvents((prev) => prev.filter((e) => e.id !== optId));
+      removeOptimistic(optId);
       toast({ title: "Couldn't change the status", description: err instanceof Error ? err.message : "Try again.", variant: "destructive" });
     }
   };

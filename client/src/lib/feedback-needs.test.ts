@@ -77,6 +77,22 @@ describe("app errors: one per error, cleared by opening it", () => {
     markAppErrorGroupRead([a, b], "sigA");
     expect(newAppErrorGroups([a, b])).toEqual([]);
   });
+
+  // Owner, 2026-10-12: the chip said 2 while "Needs you" said 0 and all four were
+  // done. The chip counts what needs you: not done, with news from someone else.
+  it("an error you fixed or ignored never counts, however fresh its activity", () => {
+    const fixed = ticket({ by: BOB, crash: "sigA", at: 1000, status: "resolved", changes: [{ status: "resolved", by: ME, at: 5000 }] });
+    const ignored = ticket({ by: AMY, crash: "sigB", at: 1000, status: "closed", changes: [{ status: "closed", by: ME, at: 5000 }] });
+    expect(newAppErrorGroups([fixed, ignored], ME)).toEqual([]);
+  });
+
+  it("your own status change is not news; a new occurrence from a reporter is", () => {
+    const looked = ticket({ by: BOB, crash: "sigA", at: 1000, status: "draft", changes: [{ status: "draft", by: ME, at: 5000 }] });
+    markAppErrorGroupRead([looked], "sigA");
+    expect(newAppErrorGroups([looked], ME)).toEqual([]);
+    const again = ticket({ by: AMY, crash: "sigA", at: 9000 });
+    expect(newAppErrorGroups([looked, again], ME)).toEqual(["sigA"]);
+  });
 });
 
 describe("what's new for the person who reported it", () => {

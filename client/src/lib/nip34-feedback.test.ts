@@ -244,6 +244,17 @@ describe("combineFeedbackIssues is the single source of truth for tab + badge (b
     expect(countUnread("", combineFeedbackIssues([pubIssue], [privTicket]))).toBe(1);
   });
 
+  // Owner, 2026-10-12: "when I fix I have to do it twice". Fixed, then New, then
+  // Fixed again: the second Fixed shares a key with the first and was dropped.
+  it("a status set again after a change still wins (Fixed → New → Fixed)", () => {
+    const E = "v".repeat(64);
+    const fixed1 = rumor({ id: "s1", pubkey: OPERATOR, kind: KIND_NIP22_COMMENT, content: "", created_at: 10, tags: [["E", E], ["status", "resolved"]] });
+    const reopened = rumor({ id: "s2", pubkey: OPERATOR, kind: KIND_NIP22_COMMENT, content: "", created_at: 20, tags: [["E", E], ["status", "open"]] });
+    const fixed2 = rumor({ id: "s3", pubkey: OPERATOR, kind: KIND_NIP22_COMMENT, content: "", created_at: 30, tags: [["E", E], ["status", "resolved"]] });
+    const t = combineFeedbackIssues([], [privTicket, fixed1, reopened, fixed2]).find((i) => i.event.id === E)!;
+    expect(t.status).toBe("resolved");
+  });
+
   it("dedupes an optimistic private rumor against its real round-trip (same status)", () => {
     const optimistic = rumor({ id: "opt-1", pubkey: OPERATOR, kind: KIND_NIP22_COMMENT, content: "", tags: [["E", "v".repeat(64)], ["status", "closed"]] });
     const real = rumor({ id: "z".repeat(64), pubkey: OPERATOR, kind: KIND_NIP22_COMMENT, content: "", tags: [["E", "v".repeat(64)], ["status", "closed"]] });

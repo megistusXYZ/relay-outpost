@@ -1107,15 +1107,16 @@ export function combineFeedbackIssues(
   for (const e of events) byId.set(e.id, e);
   const pub = hydrateIssues(Array.from(byId.values()));
 
-  const seen = new Set<string>();
-  const rumors: UnwrappedRumor[] = [];
+  // One entry per key, the NEWEST: an optimistic status and its real round-trip
+  // still collapse, and a status set again after a change (Fixed → New → Fixed)
+  // keeps its latest time so it wins (owner, 2026-10-12: "fix it twice").
+  const byKey = new Map<string, UnwrappedRumor>();
   for (const r of privateRumors) {
     const key = privateRumorKey(r);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    rumors.push(r);
+    const have = byKey.get(key);
+    if (!have || r.created_at > have.created_at) byKey.set(key, r);
   }
-  const priv = hydratePrivateTickets(rumors);
+  const priv = hydratePrivateTickets(Array.from(byKey.values()));
 
   return [...pub, ...priv].sort((a, b) => b.latestActivityAt - a.latestActivityAt);
 }

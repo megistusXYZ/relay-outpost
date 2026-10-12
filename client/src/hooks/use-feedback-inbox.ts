@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useOptimisticFeedback } from "@/lib/feedback-optimistic";
 import type { Event as NostrEvent } from "nostr-tools";
 import type { UnwrappedRumor } from "@/lib/dm";
 import {
@@ -113,14 +114,16 @@ export function useFeedbackInbox(
     return () => window.removeEventListener("relay-outpost:feedback-read", onRead);
   }, []);
 
+  // The operator's own instant changes ride along, so the chip and the tab agree at once.
+  const optimistic = useOptimisticFeedback();
   const { issues, untiedIds } = useMemo(
-    () => operatorInbox(combineFeedbackIssues(events, privateRumors), pubkey, relayUrl),
-    [events, privateRumors, pubkey, relayUrl],
+    () => operatorInbox(combineFeedbackIssues([...events, ...optimistic.events], [...privateRumors, ...optimistic.rumors]), pubkey, relayUrl),
+    [events, privateRumors, optimistic, pubkey, relayUrl],
   );
 
   // readTick participates so the counts refresh after markIssueRead.
   const unreadCount = useMemo(() => feedbackNeedsYou(issues, pubkey).length, [issues, pubkey, readTick]);
-  const newAppErrors = useMemo(() => newAppErrorGroups(issues).length, [issues, readTick]);
+  const newAppErrors = useMemo(() => newAppErrorGroups(issues, pubkey).length, [issues, pubkey, readTick]);
 
   return {
     recipient,
