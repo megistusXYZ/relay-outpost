@@ -60,3 +60,17 @@ describe("deletionReport", () => {
     expect(deletionReport({ asked: 2, removed: 0 })).toBe("No relay has removed it yet. Some take a moment; some keep copies.");
   });
 });
+
+describe("communityFor", () => {
+  it("names the community when every relay asked is one of ours, tolerating a trailing slash", async () => {
+    const { communityFor } = await import("./deletion");
+    const ours = [{ url: "wss://night-market.relayop.xyz/", label: "Night Market" }];
+    expect(communityFor(["wss://night-market.relayop.xyz"], ours)).toBe("Night Market");
+  });
+  it("names nothing on the wider network", async () => {
+    const { communityFor } = await import("./deletion");
+    const ours = [{ url: "wss://night-market.relayop.xyz", label: "Night Market" }];
+    expect(communityFor(["wss://night-market.relayop.xyz", "wss://relay.damus.io"], ours)).toBeUndefined();
+    expect(communityFor(["wss://relay.damus.io"], [])).toBeUndefined();
+  });
+});
