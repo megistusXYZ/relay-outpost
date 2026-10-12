@@ -26,9 +26,13 @@ export interface RelayReport {
   firstAt: number;
   lastAt: number;
   reportIds: string[];
+  /** What each reporter wrote, when they wrote anything. */
+  reasons: { by: string; text: string }[];
+  /** Relays the reports said the post lives on: where to look when this relay no longer has it. */
+  relayHints: string[];
 }
 
-interface ReportEvent { id: string; pubkey: string; created_at: number; tags: string[][] }
+interface ReportEvent { id: string; pubkey: string; created_at: number; tags: string[][]; content?: string }
 
 export function reportKey(r: { targetEventId?: string; targetPubkey: string }): string {
   return r.targetEventId ? `e:${r.targetEventId}` : `p:${r.targetPubkey}`;
@@ -51,11 +55,16 @@ export function foldRelayReports(
     if (!(targetEventId && ctx.relayEventIds.has(targetEventId)) && !ctx.relayAuthors.has(targetPubkey)) continue;
     const key = reportKey({ targetEventId, targetPubkey });
     if (ctx.dismissed.has(key)) continue;
+    const slots = [e?.[2], e?.[3], p[2], p[3]].map((t) => (t ?? "").trim());
+    const hints = slots.filter((t) => /^wss?:\/\//i.test(t)).map((t) => t.replace(/\/+$/, ""));
     const types = [e?.[2], p[2], p[3], ...ev.tags.filter((t) => t[0] === "report").map((t) => t[1])]
       .map((t) => (t ?? "").toLowerCase().trim())
       .filter((t) => t && !/^wss?:\/\//.test(t));
-    const row = rows.get(key) ?? { targetEventId, targetPubkey, reporters: [], types: [], severity: "neutral" as Severity, firstAt: ev.created_at, lastAt: ev.created_at, reportIds: [] };
+    const row = rows.get(key) ?? { targetEventId, targetPubkey, reporters: [], types: [], severity: "neutral" as Severity, firstAt: ev.created_at, lastAt: ev.created_at, reportIds: [], reasons: [], relayHints: [] };
     if (!row.reporters.includes(ev.pubkey)) row.reporters.push(ev.pubkey);
+    const text = (ev.content ?? "").trim();
+    if (text && !row.reasons.some((x) => x.by === ev.pubkey)) row.reasons.push({ by: ev.pubkey, text: text.slice(0, 280) });
+    for (const h of hints) if (!row.relayHints.includes(h)) row.relayHints.push(h);
     for (const t of types) if (!row.types.includes(t)) row.types.push(t);
     row.firstAt = Math.min(row.firstAt, ev.created_at);
     row.lastAt = Math.max(row.lastAt, ev.created_at);
@@ -80,6 +89,19 @@ export function splitByTrust(
   const strangers: RelayReport[] = [];
   for (const r of rows) (r.reporters.some((pk) => KNOWN.has(tierOf(pk))) ? known : strangers).push(r);
   return { known, strangers };
+}
+
+/** Why a report sits under "From people you don't know". */
+export function strangersExplanation(): string {
+  return "Reports from people your network trusts come first. These reporters aren't known to your network yet.";
+}
+
+/** "See it", honestly: where the reported post is, after asking. Empty when it is right here. */
+export function seeItWords(o: { reached: boolean; here: boolean; elsewhere: boolean }): string {
+  if (o.here) return "";
+  if (!o.reached) return "Couldn't reach the relays to check. Try again in a moment.";
+  if (o.elsewhere) return "Not on this relay any more, but still up on other relays.";
+  return "Not on this relay, and no relay we asked still has it. It was probably removed.";
 }
 
 function list(words: string[]): string {

@@ -78,3 +78,30 @@ describe("saying what a report is", () => {
     expect(describeReport({ types: [], reporters: [R1], targetEventId: POST })).toBe("A post reported by 1 person");
   });
 });
+
+// Owner, 2026-10-12: the card never showed the post, the reporter's reason, who
+// the reporter was, or why the report sat under "From people you don't know".
+describe("what a report card knows and says", () => {
+  it("keeps each reporter's reason and the relay hints the report carried", () => {
+    const rows = foldRelayReports([
+      { ...report(R1, [["e", POST, "wss://relay.damus.io", "spam"], ["p", P1]], 10), content: "Selling parking passes" },
+      { ...report(R2, [["e", POST, "spam"], ["p", P1, "wss://nos.lol"]], 20), content: "" },
+    ], ctx);
+    expect(rows[0].reasons).toEqual([{ by: R1, text: "Selling parking passes" }]);
+    expect(rows[0].relayHints).toEqual(["wss://relay.damus.io", "wss://nos.lol"]);
+    expect(rows[0].types).toEqual(["spam"]);
+  });
+
+  it("says why a report sits under 'From people you don't know'", async () => {
+    const { strangersExplanation } = await import("./relay-reports");
+    expect(strangersExplanation()).toBe("Reports from people your network trusts come first. These reporters aren't known to your network yet.");
+  });
+
+  it("'See it' tells the truth about where the post is", async () => {
+    const { seeItWords } = await import("./relay-reports");
+    expect(seeItWords({ reached: true, here: false, elsewhere: true })).toBe("Not on this relay any more, but still up on other relays.");
+    expect(seeItWords({ reached: true, here: false, elsewhere: false })).toBe("Not on this relay, and no relay we asked still has it. It was probably removed.");
+    expect(seeItWords({ reached: false, here: false, elsewhere: false })).toBe("Couldn't reach the relays to check. Try again in a moment.");
+    expect(seeItWords({ reached: true, here: true, elsewhere: false })).toBe("");
+  });
+});

@@ -18,7 +18,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Event as NostrEvent } from "nostr-tools";
 import { ChevronDown, Eye, Ban, Trash2, Check, ScanSearch } from "lucide-react";
 import { EventInspector, type InspectedEvent } from "./EventInspector";
-import { pool } from "@/lib/nostr";
+import { FAST_RELAYS } from "@/lib/nostr";
+import { queryAnswered } from "@/lib/relay-reach";
+import { Link } from "wouter";
 import { supportsNip, type Nip11Document } from "@/lib/nip11";
 import { banPubkey, fetchRelayCapabilities, removeEventByAction } from "@/lib/nip86";
 import { canDo, UNKNOWN_CAPABILITIES, type RelayCapabilities } from "@/lib/relay-capabilities";
@@ -38,6 +40,7 @@ import { ReportsQueue } from "@/components/ReportsQueue";
 import { FeedbackTab } from "./FeedbackTab";
 import { ConfirmAction, type PendingAction } from "./ConfirmAction";
 import { addModLogEntry, pubkeyToNpub, resolveProfileBatch, type ProfileInfo } from "./shared";
+import { strangersExplanation, seeItWords } from "@/lib/relay-reports";
 import { rowPreview } from "./content-model";
 
 type InboxView = "all" | "reports" | "requests" | "feedback" | "errors";
@@ -88,16 +91,38 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost, onOpenMemberInbox 
 
   // Names, faces and the reported posts themselves.
   const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
-  const [posts, setPosts] = useState<Map<string, NostrEvent>>(new Map());
+  // Where each reported post is: here, elsewhere, nowhere we asked, or unknown
+  // because no relay answered (three outcomes, never "nothing here" by default).
+  type PostWhere = { event?: NostrEvent; here: boolean; elsewhere: boolean; reached: boolean };
+  const [posts, setPosts] = useState<Map<string, PostWhere>>(new Map());
   useEffect(() => {
     const pks = [...new Set(relayReports.flatMap((r) => [r.targetPubkey, ...r.reporters.slice(0, 3)]))].filter((pk) => !profiles.has(pk));
     if (pks.length) resolveProfileBatch(pks).then((m) => setProfiles((prev) => { const n = new Map(prev); m.forEach((v, k) => n.set(k, v)); return n; })).catch(() => {});
-    const ids = relayReports.map((r) => r.targetEventId).filter((id): id is string => !!id && !posts.has(id));
-    if (ids.length) {
-      pool.querySync([relayUrl], { ids: ids.slice(0, 100) }, { maxWait: 5000 } as never)
-        .then((evs) => setPosts((prev) => { const n = new Map(prev); evs.forEach((e) => n.set(e.id, e)); return n; }))
-        .catch(() => {});
-    }
+    const wanted = relayReports.filter((r) => r.targetEventId && !posts.has(r.targetEventId));
+    if (!wanted.length) return;
+    let off = false;
+    (async () => {
+      const ids = wanted.map((r) => r.targetEventId!).slice(0, 100);
+      const here = await queryAnswered([relayUrl], { ids });
+      const found = new Map(here.events.map((e) => [e.id, e]));
+      const missing = ids.filter((id) => !found.has(id));
+      let elsewhere = { events: [] as NostrEvent[], answered: false };
+      if (missing.length) {
+        const hints = [...new Set(wanted.flatMap((r) => r.relayHints))];
+        elsewhere = await queryAnswered([...new Set([...hints, ...FAST_RELAYS])], { ids: missing });
+      }
+      if (off) return;
+      const away = new Map(elsewhere.events.map((e) => [e.id, e]));
+      setPosts((prev) => {
+        const n = new Map(prev);
+        for (const id of ids) {
+          const ev = found.get(id) ?? away.get(id);
+          n.set(id, { event: ev, here: found.has(id), elsewhere: !found.has(id) && away.has(id), reached: here.answered || elsewhere.answered || !!ev });
+        }
+        return n;
+      });
+    })().catch(() => {});
+    return () => { off = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [relayReports, relayUrl]);
 
@@ -127,30 +152,46 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost, onOpenMemberInbox 
   }, [pending, relayUrl, relayName, toast, dismiss]);
 
   const nameOf = (pk: string) => profiles.get(pk)?.name;
+  const profileHref = (pk: string) => `/profile/${pubkeyToNpub(pk)}`;
+  const trustWord = (pk: string) => getTrustPhrase(tierOf(pk)) || "Not known to your network";
   const reportRow = (r: RelayReport) => {
     const who = profiles.get(r.targetPubkey);
     const whoName = who?.name || `${pubkeyToNpub(r.targetPubkey).slice(0, 14)}…`;
-    const post = r.targetEventId ? posts.get(r.targetEventId) : undefined;
-    const knownReporter = r.reporters.find((pk) => ["strong", "moderate"].includes(tierOf(pk)));
-    const by = knownReporter ? (profiles.get(knownReporter)?.name ?? "Someone") : null;
+    const where = r.targetEventId ? posts.get(r.targetEventId) : undefined;
+    const post = where?.event;
+    const whereWords = r.targetEventId && where ? seeItWords(where) : "";
+    const reporters = r.reporters.slice(0, 3);
     return (
       <li key={reportKey(r)} className="px-3.5 py-3 space-y-2" data-testid="ops-inbox-report" data-key={reportKey(r)}>
         <div className="flex items-start gap-3">
-          <Avatar className="w-9 h-9 shrink-0">{who?.picture && <AvatarImage src={who.picture} alt="" />}<AvatarFallback className="bg-brand/10 text-brand text-[12px]">{whoName.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
+          <Link href={profileHref(r.targetPubkey)} className="shrink-0" data-testid="ops-inbox-report-author-avatar">
+            <Avatar className="w-9 h-9">{who?.picture && <AvatarImage src={who.picture} alt="" />}<AvatarFallback className="bg-brand/10 text-brand text-[12px]">{whoName.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
+          </Link>
           <div className="min-w-0 flex-1">
             <p className="text-[14px] leading-snug">
-              <span className="font-medium">{whoName}</span>
-              <span className={r.severity === "severe" ? " text-danger dark:text-red-400" : " text-muted-foreground"}> · {describeReport(r)}</span>
+              <Link href={profileHref(r.targetPubkey)} className="font-medium hover:underline" data-testid="ops-inbox-report-author">{whoName}</Link>
+              <span className="text-muted-foreground"> · {trustWord(r.targetPubkey)}</span>
             </p>
+            <p className={`text-[13px] leading-snug ${r.severity === "severe" ? "text-danger dark:text-red-400" : "text-muted-foreground"}`}>{describeReport(r)}</p>
+            {r.reasons.map((x) => (
+              <p key={x.by} className="mt-1 text-[13px] leading-snug text-foreground/85" data-testid="ops-inbox-report-reason">“{x.text}”</p>
+            ))}
             {post && <p className="mt-1 text-[14px] leading-snug text-foreground/85 line-clamp-2" data-testid="ops-inbox-report-post">{rowPreview(post)}</p>}
-            <p className="mt-1 text-[12px] text-muted-foreground">
-              {by ? <>{by}{r.reporters.length > 1 ? ` and ${r.reporters.length - 1} more` : ""} · {getTrustPhrase(tierOf(knownReporter!))} · </> : null}
-              {ago(r.lastAt)}
+            {!post && r.targetEventId && (
+              <p className="mt-1 text-[13px] leading-snug text-muted-foreground" data-testid="ops-inbox-report-where">
+                {where ? whereWords : "Looking for the post…"}
+              </p>
+            )}
+            {post && where?.elsewhere && <p className="mt-0.5 text-[12px] text-muted-foreground" data-testid="ops-inbox-report-where">{whereWords}</p>}
+            <p className="mt-1 text-[12px] text-muted-foreground" data-testid="ops-inbox-report-reporters">
+              Reported by {reporters.map((pk, i) => (
+                <span key={pk}>{i > 0 ? ", " : ""}<Link href={profileHref(pk)} className="hover:underline text-foreground/80">{nameOf(pk) ?? `${pubkeyToNpub(pk).slice(0, 12)}…`}</Link> ({trustWord(pk)})</span>
+              ))}{r.reporters.length > 3 ? ` and ${r.reporters.length - 3} more` : ""} · {ago(r.lastAt)}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5 pl-12">
-          {r.targetEventId && <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px]" onClick={() => onSeePost(r.targetEventId!)} data-testid="ops-inbox-see"><Eye className="w-4 h-4 mr-1.5" />See it</Button>}
+          {r.targetEventId && where?.here && <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px]" onClick={() => onSeePost(r.targetEventId!)} data-testid="ops-inbox-see"><Eye className="w-4 h-4 mr-1.5" />Open in Content</Button>}
           {post && <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px]" onClick={() => setInspecting(post)} data-testid="ops-inbox-inspect"><ScanSearch className="w-4 h-4 mr-1.5" />Inspect</Button>}
           {r.targetEventId && canRemove && <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px] text-danger dark:text-red-400" onClick={() => setPending({ kind: "remove", ids: [r.targetEventId!], rule: false, report: r })} data-testid="ops-inbox-remove"><Trash2 className="w-4 h-4 mr-1.5" />Remove post</Button>}
           {canBan && <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px]" onClick={() => setPending({ kind: "ban", pubkeys: [r.targetPubkey], rule: false, report: r })} data-testid="ops-inbox-ban"><Ban className="w-4 h-4 mr-1.5" />Ban {who?.name ?? "them"}</Button>}
@@ -200,6 +241,7 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost, onOpenMemberInbox 
             <Collapsible defaultOpen={known.length === 0 && strangers.length <= 3}>
               <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 min-h-[44px] px-3.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] text-[14px] font-medium" data-testid="ops-inbox-strangers">
                 <span>From people you don't know <span className="tabular-nums text-muted-foreground">{strangers.length}</span></span>
+                <span className="block text-[12px] text-muted-foreground font-normal" data-testid="ops-inbox-strangers-why">{strangersExplanation()}</span>
                 <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
               </CollapsibleTrigger>
               <CollapsibleContent>
