@@ -41,7 +41,7 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: "1.20.0",
-    date: "2026-10-16",
+    date: "2026-10-11",
     title: "Delete means delete",
     changes: [
       { type: "new", text: "Delete your own posts and replies. One word, honest about where the post lives, and a note afterwards on what the relays did." },
