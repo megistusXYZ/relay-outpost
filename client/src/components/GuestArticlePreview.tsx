@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import type { Event } from "nostr-tools";
-import { ArticleMarkdown } from "@/components/ArticleMarkdown";
+import { ArticleBody } from "@/components/ArticleBody";
 import { pool } from "@/lib/nostr";
 import { decodeNaddr, parseArticle, KIND_LONG_FORM, type ArticleData } from "@/lib/nip23";
 import { Button } from "@/components/ui/button";
@@ -126,7 +126,7 @@ export function GuestArticlePreview({ naddr }: { naddr: string }) {
             <h1 className="text-2xl font-bold leading-tight mb-3">{article.title || "Untitled"}</h1>
             <div className="mb-5"><GuestAuthorRow pubkey={article.event.pubkey} /></div>
             <article className="article-prose">
-              <ArticleMarkdown content={article.event.content} />
+              <ArticleBody versionId={article.event.id} content={article.event.content} />
             </article>
           </div>
         )}

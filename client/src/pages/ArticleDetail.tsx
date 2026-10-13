@@ -19,7 +19,7 @@ import { formatDistanceToNow, format } from "date-fns";
 // The markdown pipeline (sanitize schemas, style-attr scrubbing, nostr-embed
 // remark plugin, video/iframe/nostr-embed overrides) lives in the shared
 // ArticleMarkdown component so GuestArticlePreview renders identically.
-import { ArticleMarkdown } from "@/components/ArticleMarkdown";
+import { ArticleBody } from "@/components/ArticleBody";
 import { CommentContent } from "@/components/CommentContent";
 import { ErrorScreen } from "@/components/ErrorScreen";
 import { LinkNotOpenable } from "@/pages/not-found";
@@ -691,7 +691,7 @@ export default function ArticleDetail() {
       )}
 
       <article className="article-prose mb-8" data-testid="container-article-content">
-        <ArticleMarkdown content={article.event.content} />
+        <ArticleBody versionId={article.event.id} content={article.event.content} />
       </article>
 
       {event && (
