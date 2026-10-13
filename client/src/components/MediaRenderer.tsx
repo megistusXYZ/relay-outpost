@@ -256,34 +256,6 @@ function InlineImage({
     : null;
   const box = useReservedRatio(containerRef, effectiveSrc, imetaRatio);
 
-  if (heal.exhausted) return <WalledGardenFallback type="image" compact className="my-1" />;
-
-  // Reserved space (feed-stability): the container ALWAYS owns the box, so a
-  // late-loading image can never change the row's height and the virtualizer's
-  // first measurement is already the final one. That part was always right.
-  //
-  // What was wrong: when `dim` was missing it reserved 16/10 and filled with
-  // `cover`, so every portrait photo got centre-cropped into a landscape box.
-  // Real feed images range 0.462–2.215; a guess paired with `cover` is a crop.
-  // The box is LEARNED now (see lib/media-ratio.ts) and only covers once it is
-  // known to match; until then the image is contained over a blurred copy of
-  // itself, which loses nothing.
-  // Reserve ONLY when the shape is actually known. A guessed box is worse than
-  // no box: it renders at the wrong height and, because a box on screen never
-  // resizes, stays wrong for as long as you are looking at it. Unknown images
-  // flow at their natural height — width 100%, height auto — which is right the
-  // instant they decode.
-  const reservedStyle: React.CSSProperties = box.known
-    ? { aspectRatio: String(box.ratio), maxHeight: compact ? COMPACT_MAX_HEIGHT : IMAGE_MAX_HEIGHT }
-    // A flowing image is height:auto, so before it decodes the container would
-    // collapse to nothing and the post would look empty. A modest placeholder
-    // height holds the space until the real height is known — small enough that
-    // the settle is a nudge rather than the jump a full guessed box produces.
-    : {
-        maxHeight: compact ? COMPACT_MAX_HEIGHT : IMAGE_MAX_HEIGHT,
-        ...(loaded ? {} : { minHeight: UNKNOWN_PLACEHOLDER_HEIGHT }),
-      };
-
   // One attempt failed (an error, or nothing at all within the timeout):
   // proxy → direct → IPFS gateway → the next Blossom alternate → the honest card.
   const failAttempt = () => {
@@ -316,6 +288,34 @@ function InlineImage({
     const t = setTimeout(() => failRef.current(), IMAGE_LOAD_TIMEOUT_MS);
     return () => clearTimeout(t);
   }, [shouldLoad, loaded, imgSrc, heal.exhausted]);
+
+  if (heal.exhausted) return <WalledGardenFallback type="image" compact className="my-1" />;
+
+  // Reserved space (feed-stability): the container ALWAYS owns the box, so a
+  // late-loading image can never change the row's height and the virtualizer's
+  // first measurement is already the final one. That part was always right.
+  //
+  // What was wrong: when `dim` was missing it reserved 16/10 and filled with
+  // `cover`, so every portrait photo got centre-cropped into a landscape box.
+  // Real feed images range 0.462–2.215; a guess paired with `cover` is a crop.
+  // The box is LEARNED now (see lib/media-ratio.ts) and only covers once it is
+  // known to match; until then the image is contained over a blurred copy of
+  // itself, which loses nothing.
+  // Reserve ONLY when the shape is actually known. A guessed box is worse than
+  // no box: it renders at the wrong height and, because a box on screen never
+  // resizes, stays wrong for as long as you are looking at it. Unknown images
+  // flow at their natural height — width 100%, height auto — which is right the
+  // instant they decode.
+  const reservedStyle: React.CSSProperties = box.known
+    ? { aspectRatio: String(box.ratio), maxHeight: compact ? COMPACT_MAX_HEIGHT : IMAGE_MAX_HEIGHT }
+    // A flowing image is height:auto, so before it decodes the container would
+    // collapse to nothing and the post would look empty. A modest placeholder
+    // height holds the space until the real height is known — small enough that
+    // the settle is a nudge rather than the jump a full guessed box produces.
+    : {
+        maxHeight: compact ? COMPACT_MAX_HEIGHT : IMAGE_MAX_HEIGHT,
+        ...(loaded ? {} : { minHeight: UNKNOWN_PLACEHOLDER_HEIGHT }),
+      };
 
   const handleClick = (e: React.MouseEvent) => {
     if (hasCW && !cwRevealed) {

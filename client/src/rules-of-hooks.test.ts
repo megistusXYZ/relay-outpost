@@ -34,7 +34,10 @@ function hooksAfterReturn(src: string): string[] {
     let early = -1, inIf = false;
     for (let k = i + 1; k < L.length; k++) {
       const l = L[k];
-      if (/^\}/.test(l)) break;
+      // The body ends at a lone closing brace. A `}: {` or `}) {` line closes a
+      // multi-line props destructuring, not the component (first missed: InlineImage,
+      // 2026-10-13, hooks after an early return went unscanned).
+      if (/^\}\)?;?\s*$/.test(l)) break;
       if (/^  if \(.*\)\s*return\b/.test(l) && early < 0) early = k;
       if (/^  if \(.*\)\s*\{\s*$/.test(l) || /^  \} else (if \(.*\) )?\{\s*$/.test(l)) inIf = true;
       else if (/^  \}\s*$/.test(l)) inIf = false;
@@ -54,6 +57,12 @@ describe("no hook after an early return", () => {
     expect(hooksAfterReturn(bad)).toEqual(["Page: line 6 (after the return at line 4)"]);
     const good = ["export default function Page() {", "  const a = useA();", "  useEffect(() => {}, []);", "  if (!a) return null;", "  return null;", "}"].join("\n");
     expect(hooksAfterReturn(good)).toEqual([]);
+    // Props destructured over several lines: the body still gets scanned.
+    const props = ["function Card({", "  a,", "}: {", "  a: string;", "}) {", "  if (!a) return null;", "  const r = useRef(null);", "  return null;", "}"].join("\n");
+    expect(hooksAfterReturn(props)).toEqual(["Card: line 7 (after the return at line 6)"]);
+    // A memo-wrapped component ends with `});`: the scan stops there and never reads the next component as this one's body.
+    const wrapped = ["const Row = memo(function Row({", "  a,", "}: {", "  a: string;", "}) {", "  if (!a) return null;", "  return null;", "});", "function Next() {", "  const r = useRef(null);", "  return null;", "}"].join("\n");
+    expect(hooksAfterReturn(wrapped)).toEqual([]);
   });
 
   it("no component in the app calls a hook after it may already have returned", () => {
