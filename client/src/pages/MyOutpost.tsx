@@ -1,4 +1,5 @@
 import { newestByAddress } from "@/lib/nip23";
+import { articleCountToShow } from "@/lib/article-count";
 import { DeleteArticleButton } from "@/components/articles/DeleteArticleButton";
 import { SearchPill } from "@/components/SearchPill";
 import { useEffect, useMemo, useState, useCallback, useRef, lazy, Suspense } from "react";
@@ -1328,7 +1329,7 @@ export default function MyOutpost() {
   const tabCounts: { notes?: number; replies?: number; media?: number } = {
     notes: profileStats?.noteCount,
     replies: profileStats?.replyCount || replyNotes.length || undefined,
-    media: (mediaUrls.length + audioTracks.length + (profileStats?.longFormCount || 0)) || undefined,
+    media: (mediaUrls.length + audioTracks.length + (articleCountToShow({ loaded: articlesLoaded, ours: articles.length, index: profileStats?.longFormCount }) || 0)) || undefined,
   };
   // Crew / Orbit / Relays collapse into the Network tab's sub-view selector.
   const networkViewDefs: { id: NetworkView; label: string; subtitle?: string; icon: typeof FileText; hasLive?: boolean }[] = [
@@ -1898,7 +1899,7 @@ export default function MyOutpost() {
               audioTracks={audioTracks}
               audioLoaded={audioLoaded}
               isOwnProfile={true}
-              articleCount={profileStats?.longFormCount}
+              articleCount={articleCountToShow({ loaded: articlesLoaded, ours: articles.length, index: profileStats?.longFormCount })}
               onArticlesOpen={loadArticles}
               articlesSlot={
                 <ArticlesTab articles={articles} loaded={articlesLoaded} onLoadMore={loadMoreArticles} hasMore={hasMoreArticles} loadingMore={loadingMoreArticles} onDeleted={(id) => setArticles(prev => prev.filter(a => a.id !== id))} />

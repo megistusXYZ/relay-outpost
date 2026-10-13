@@ -1,4 +1,5 @@
 import { newestByAddress } from "@/lib/nip23";
+import { articleCountToShow } from "@/lib/article-count";
 import { personLook } from "@/lib/person-look";
 import { CollapsibleBio } from "@/components/profile/CollapsibleBio";
 import { SearchPill } from "@/components/SearchPill";
@@ -1678,7 +1679,7 @@ export default function Profile() {
   const tabCounts: { notes?: number; replies?: number; media?: number } = {
     notes: profileStats?.noteCount,
     replies: profileStats?.replyCount,
-    media: (mediaUrls.length + shownAudio.length + (profileStats?.longFormCount || 0)) || undefined,
+    media: (mediaUrls.length + shownAudio.length + (articleCountToShow({ loaded: articlesLoaded, ours: articles.length, index: profileStats?.longFormCount }) || 0)) || undefined,
   };
 
   const relayListEvent = use$(() => pubkey ? eventStore.replaceable(10002, pubkey) : undefined, [pubkey]);
@@ -2130,7 +2131,7 @@ export default function Profile() {
             loadingMore={loadingMoreNotes}
             connectedPodcastFeed={discoveredPodcastFeed}
             orientationMap={orientationMap}
-            articleCount={profileStats?.longFormCount}
+            articleCount={articleCountToShow({ loaded: articlesLoaded, ours: articles.length, index: profileStats?.longFormCount })}
             onArticlesOpen={loadArticles}
             articlesSlot={
               <ArticlesTab articles={articles} loaded={articlesLoaded} onLoadMore={loadMoreArticles} hasMore={hasMoreArticles} loadingMore={loadingMoreArticles} />
@@ -2563,7 +2564,7 @@ export default function Profile() {
               followers: profileStats?.measured ? profileStats.followersCount : undefined,
               totalPosts: profileStats?.measured ? profileStats.noteCount : undefined,
               totalReplies: profileStats?.measured ? profileStats.replyCount : undefined,
-              totalArticles: profileStats?.measured ? profileStats.longFormCount : undefined,
+              totalArticles: articleCountToShow({ loaded: articlesLoaded, ours: articles.length, index: profileStats?.measured ? profileStats.longFormCount : undefined }),
               joinedAt: profileStats?.timeJoined,
               lastActiveAt: profileStats?.lastSeen,
             }}
