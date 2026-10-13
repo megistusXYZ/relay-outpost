@@ -1,4 +1,6 @@
 import { useState, useRef, useMemo, useCallback, useEffect, lazy, Suspense } from "react";
+/** How long one image attempt may stay silent before the chain moves on (proxy → direct → …). */
+const IMAGE_LOAD_TIMEOUT_MS = 10_000;
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
@@ -282,6 +284,39 @@ function InlineImage({
         ...(loaded ? {} : { minHeight: UNKNOWN_PLACEHOLDER_HEIGHT }),
       };
 
+  // One attempt failed (an error, or nothing at all within the timeout):
+  // proxy → direct → IPFS gateway → the next Blossom alternate → the honest card.
+  const failAttempt = () => {
+    if (useProxy) {
+      setProxyFailed(true);
+      return;
+    }
+    if (!heal.isAlternate) {
+      // Direct load failed — for IPFS gateway URLs, retry once on the
+      // fallback gateway (fresh proxy attempt) before giving up.
+      const fallback = gatewayRetrySrc ? null : ipfsGatewayFallback(effectiveSrc);
+      if (fallback) {
+        setGatewayRetrySrc(fallback);
+        setProxyFailed(false);
+        return;
+      }
+    }
+    // Proxy, direct and IPFS all failed — try the next Blossom
+    // alternate (bounded; dead URLs are session-cached). When none
+    // remain, `heal.exhausted` flips and the terminal fallback shows.
+    heal.advance();
+  };
+  // A request that never answers (a hung proxy on a weak connection) used to
+  // leave the box black for as long as you looked. After the timeout the
+  // attempt counts as failed and the chain moves on.
+  const failRef = useRef(failAttempt);
+  failRef.current = failAttempt;
+  useEffect(() => {
+    if (!shouldLoad || loaded || heal.exhausted) return;
+    const t = setTimeout(() => failRef.current(), IMAGE_LOAD_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [shouldLoad, loaded, imgSrc, heal.exhausted]);
+
   const handleClick = (e: React.MouseEvent) => {
     if (hasCW && !cwRevealed) {
       return;
@@ -353,27 +388,13 @@ function InlineImage({
               // The shape, learned from the element that was loading anyway.
               box.learn(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight);
             }}
-            onError={() => {
-              if (useProxy) {
-                setProxyFailed(true);
-                return;
-              }
-              if (!heal.isAlternate) {
-                // Direct load failed — for IPFS gateway URLs, retry once on the
-                // fallback gateway (fresh proxy attempt) before giving up.
-                const fallback = gatewayRetrySrc ? null : ipfsGatewayFallback(effectiveSrc);
-                if (fallback) {
-                  setGatewayRetrySrc(fallback);
-                  setProxyFailed(false);
-                  return;
-                }
-              }
-              // Proxy, direct and IPFS all failed — try the next Blossom
-              // alternate (bounded; dead URLs are session-cached). When none
-              // remain, `heal.exhausted` flips and the terminal fallback shows.
-              heal.advance();
-            }}
+            onError={failAttempt}
           />
+        )}
+        {shouldLoad && !loaded && !blurhashUrl && (
+          // Something is on its way: a reserved box that sits black on a slow
+          // connection reads as broken (owner, 2026-10-13, one bar of signal).
+          <div className="absolute inset-0 animate-pulse bg-muted/40" aria-hidden="true" data-testid="media-loading" />
         )}
         {hasCW && !cwRevealed && loaded && (
           <SensitiveContentOverlay
