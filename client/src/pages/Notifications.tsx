@@ -3,7 +3,7 @@ import { nip19 } from "nostr-tools";
 import { Link, useLocation } from "wouter";
 import { use$ } from "applesauce-react/hooks";
 import { eventStore } from "@/lib/nostr";
-import { useDeletedEvents } from "@/lib/deleted-events";
+import { useDeletedEvents, deletedByAuthor } from "@/lib/deleted-events";
 import { watchDeletionsFor } from "@/lib/deletion-watch-live";
 import { KIND_METADATA, KIND_COMMENT, getDisplayName, getAvatarUrl, formatNpub, shortenNpub } from "@/lib/nostr-helpers";
 import { extractExternalAnchor } from "@/lib/external-id";
@@ -851,7 +851,7 @@ export default function Notifications() {
   const { notifications: allNotifications, unreadCount, markAllRead, markRead, clearAll, loading, updateLastSeen } = useNotifications();
   // A deleted reply, mention or repost leaves Activity too; their authors' deletions are asked once.
   const deletedEvents = useDeletedEvents();
-  const notifications = useMemo(() => allNotifications.filter((n: any) => !deletedEvents.has(n?.event?.id)), [allNotifications, deletedEvents]);
+  const notifications = useMemo(() => allNotifications.filter((n: any) => !deletedByAuthor(deletedEvents, n?.event?.id, n?.event?.pubkey)), [allNotifications, deletedEvents]);
   useEffect(() => { watchDeletionsFor(allNotifications.map((n: any) => n?.event?.pubkey).filter(Boolean)); }, [allNotifications]);
   const iaCollapsed = useIaCollapsed();
   const needsYou = useNeedsYou();

@@ -45,7 +45,7 @@ export function DeletePostConfirm({ event, open, onOpenChange, onDeleted }: {
         toast({ title: "Couldn't reach your relays", description: "The post is still up. Try again in a moment.", variant: "destructive" });
         return;
       }
-      markDeleted(event.id);
+      markDeleted(event.id, event.pubkey);
       onDeleted?.();
       toast({ title: "Deletion sent", description: "Checking what the relays did…" });
       const outcome = await verifyDeletion(event.id, plan.relays);

@@ -47,7 +47,7 @@ export function acceptDeletion(ev: Event): boolean {
   const ids = deletedIdsFrom(ev);
   if (ids.length === 0) return false;
   eventStore.add(ev);
-  markDeleted(ids);
+  markDeleted(ids, ev.pubkey);
   return true;
 }
 
