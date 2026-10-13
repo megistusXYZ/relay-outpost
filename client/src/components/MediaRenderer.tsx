@@ -1,6 +1,5 @@
 import { useState, useRef, useMemo, useCallback, useEffect, lazy, Suspense } from "react";
-/** How long one image attempt may stay silent before the chain moves on (proxy → direct → …). */
-const IMAGE_LOAD_TIMEOUT_MS = 10_000;
+import { ATTEMPT_TIMEOUT_MS, nextOnSilence, noteProxyAnswered, proxyAnsweredAgo } from "@/lib/image-load-policy";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
@@ -279,14 +278,27 @@ function InlineImage({
     heal.advance();
   };
   // A request that never answers (a hung proxy on a weak connection) used to
-  // leave the box black for as long as you looked. After the timeout the
-  // attempt counts as failed and the chain moves on.
+  // leave the box black for as long as you looked. A silent attempt is looked
+  // at every ATTEMPT_TIMEOUT_MS; lib/image-load-policy decides whether it is
+  // slow (the proxy is still delivering other pictures — wait) or hung (move
+  // on). Leaving the proxy is the costly move: the host's original is decoded
+  // at full size, and a screen of those starves a phone's graphics memory
+  // (owner's recording, 2026-10-13: blank post bodies, an empty sheet).
   const failRef = useRef(failAttempt);
   failRef.current = failAttempt;
   useEffect(() => {
     if (!shouldLoad || loaded || heal.exhausted) return;
-    const t = setTimeout(() => failRef.current(), IMAGE_LOAD_TIMEOUT_MS);
+    const viaProxy = useProxy;
+    const started = Date.now();
+    let t: ReturnType<typeof setTimeout>;
+    const look = () => {
+      const verdict = nextOnSilence({ viaProxy, waitedMs: Date.now() - started, proxyAnsweredAgoMs: proxyAnsweredAgo() });
+      if (verdict === "move-on") { failRef.current(); return; }
+      t = setTimeout(look, ATTEMPT_TIMEOUT_MS);
+    };
+    t = setTimeout(look, ATTEMPT_TIMEOUT_MS);
     return () => clearTimeout(t);
+    // useProxy is implied by imgSrc, which is in the list.
   }, [shouldLoad, loaded, imgSrc, heal.exhausted]);
 
   if (heal.exhausted) return <WalledGardenFallback type="image" compact className="my-1" />;
@@ -385,6 +397,8 @@ function InlineImage({
             onClick={inGallery ? undefined : handleClick}
             onLoad={(e) => {
               setLoaded(true);
+              // The proxy is alive: other silent attempts through it keep waiting.
+              if (useProxy) noteProxyAnswered();
               // The shape, learned from the element that was loading anyway.
               box.learn(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight);
             }}
@@ -394,7 +408,11 @@ function InlineImage({
         {shouldLoad && !loaded && !blurhashUrl && (
           // Something is on its way: a reserved box that sits black on a slow
           // connection reads as broken (owner, 2026-10-13, one bar of signal).
-          <div className="absolute inset-0 animate-pulse bg-muted/40" aria-hidden="true" data-testid="media-loading" />
+          // A quiet tint, lifted off the page on every theme (muted/40 vanished
+          // on Black), and NOT a pulse: an opacity animation gives each loading
+          // picture its own compositing layer, and a screen of those is what
+          // starved the phone (same recording).
+          <div className="absolute inset-0 bg-foreground/[0.06]" aria-hidden="true" data-testid="media-loading" />
         )}
         {hasCW && !cwRevealed && loaded && (
           <SensitiveContentOverlay
