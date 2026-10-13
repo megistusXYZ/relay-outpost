@@ -19,7 +19,7 @@
  *    that opening /news is what clears it.
  */
 import { useState, useEffect, useMemo, useCallback, useRef, type ReactNode } from "react";
-import { useDeletedEvents } from "@/lib/deleted-events";
+import { useDeletedEvents, deletedByAuthor } from "@/lib/deleted-events";
 import { watchDeletionsFor } from "@/lib/deletion-watch-live";
 import { guestCanBrowse } from "@/lib/guest-limits";
 import { GuestLookingAround } from "@/components/GuestLookingAround";
@@ -511,7 +511,7 @@ function FeedTile() {
 
   const state = shieldReady ? resolveTile(teaser) : resolveTile<Event[]>(null);
   const deletedEvents = useDeletedEvents();
-  const posts = useMemo(() => (state.status === "ready" && state.data ? state.data.filter((p) => !deletedEvents.has(p.id)) : []), [state, deletedEvents]);
+  const posts = useMemo(() => (state.status === "ready" && state.data ? state.data.filter((p) => !deletedByAuthor(deletedEvents, p.id, p.pubkey)) : []), [state, deletedEvents]);
   useEffect(() => { if (posts.length > 0) watchDeletionsFor(posts.map((p) => p.pubkey)); }, [posts]);
   // Names/avatars for the rows — the relay fallback path doesn't volunteer
   // kind-0s for everyone; a cached fetch fills them in and re-render follows.

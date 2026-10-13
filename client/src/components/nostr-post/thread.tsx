@@ -94,7 +94,7 @@ import { useBlurOutside, outsideSpaceBlurReason } from "@/lib/outside-space-blur
 import { copyNostrId } from "@/lib/clipboard-bridge";
 import { ConfirmAction } from "@/components/ConfirmAction";
 import { DeletePostConfirm, DeletedPost } from "@/components/DeletePostConfirm";
-import { useDeletedEvents } from "@/lib/deleted-events";
+import { useDeletedEvents, deletedByAuthor } from "@/lib/deleted-events";
 import { watchDeletionsFor } from "@/lib/deletion-watch-live";
 import { useViewerInteraction } from "@/contexts/InteractionIndexContext";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
@@ -1062,7 +1062,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
   const { text: textContent, media: replyMediaItems } = useMemo(() => extractMediaFromContent(normalizeNostrClientLinks(event.content)), [event.content]);
   const isOwnReply = myPubkey === event.pubkey;
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const replyDeleted = useDeletedEvents().has(event.id);
+  const replyDeleted = deletedByAuthor(useDeletedEvents(), event.id, event.pubkey);
   useEffect(() => { watchDeletionsFor([event.pubkey]); }, [event.pubkey]);
   const isOP = !!(opPubkey && event.pubkey === opPubkey);
   const hasReplyMedia = replyMediaItems.length > 0;
@@ -2148,7 +2148,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
       for (const node of nodes) {
         const author = node.event.pubkey;
         // A deleted reply leaves a tombstone only where replies hang off it.
-        if (deletedEvents.has(node.event.id)) {
+        if (deletedByAuthor(deletedEvents, node.event.id, node.event.pubkey)) {
           const kept = filterNodes(node.children);
           if (kept.length > 0) result.push({ ...node, children: kept });
           continue;

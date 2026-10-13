@@ -150,7 +150,7 @@ import { useToast } from "@/hooks/use-toast";
 import { mutePubkey, isMutedPubkey } from "@/lib/spam-filter";
 import { ConfirmAction } from "@/components/ConfirmAction";
 import { DeletePostConfirm, DeletedPost } from "@/components/DeletePostConfirm";
-import { useDeletedEvents } from "@/lib/deleted-events";
+import { useDeletedEvents, deletedByAuthor } from "@/lib/deleted-events";
 import { watchDeletionsFor } from "@/lib/deletion-watch-live";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useTTS, type ThreadTTSSegment } from "@/contexts/TextToSpeechContext";
@@ -2801,7 +2801,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
   const authorIsLive = isUserLive(event.pubkey);
 
   // A deleted post: the thread it anchors keeps a tombstone; feeds drop it (Home filters).
-  if (deletedEvents.has(event.id)) {
+  if (deletedByAuthor(deletedEvents, event.id, event.pubkey)) {
     return <article data-testid={`post-${event.id}`} className="glass-card rounded-xl"><DeletedPost id={event.id} /></article>;
   }
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import { useDeletedEvents } from "@/lib/deleted-events";
+import { useDeletedEvents, deletedByAuthor } from "@/lib/deleted-events";
 import { DeletedPost } from "@/components/DeletePostConfirm";
 import { Link } from "wouter";
 import { PageToolbar } from "@/components/PageToolbar";
@@ -139,7 +139,7 @@ function BookmarkedPost({
   onTogglePrivacy: () => void;
 }) {
   const event = use$(() => eventStore.event(eventId), [eventId]) ?? null;
-  const deleted = useDeletedEvents().has(eventId);
+  const deleted = deletedByAuthor(useDeletedEvents(), eventId, event?.pubkey);
 
   if (deleted) {
     return (
