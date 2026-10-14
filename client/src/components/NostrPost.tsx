@@ -283,7 +283,7 @@ function SignalCheckBadge({ eventId, statsTotal = 0, size = "default" }: { event
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
-          className={`inline-flex items-center gap-0.5 font-mono cursor-pointer text-muted-foreground/55 hover:text-muted-foreground transition-colors ${sizeClass}`}
+          className={`hit-area inline-flex items-center gap-0.5 font-mono cursor-pointer text-muted-foreground/55 hover:text-muted-foreground transition-colors ${sizeClass}`}
           data-testid={`badge-signal-check-${eventId}`}
           onClick={(e) => e.stopPropagation()}
         >
@@ -509,7 +509,7 @@ export function PostBadgeToggle({ eventId, score, stats, size = "default" }: { e
       )}
       {canToggle && (
         <button
-          className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors cursor-pointer"
+          className="hit-area w-5 h-5 flex items-center justify-center rounded text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors cursor-pointer"
           onClick={(e) => { e.stopPropagation(); toggle(); }}
           title={showSignal ? "Switch to engagement score" : "Switch to trust check"}
           data-testid={`button-badge-toggle-${eventId}`}
@@ -563,7 +563,7 @@ function EngagementScoreBadge({ eventId, score, stats, size = "default" }: { eve
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
-          className={`inline-flex items-center gap-0.5 font-mono cursor-pointer text-muted-foreground/55 hover:text-muted-foreground transition-colors ${sizeClass}`}
+          className={`hit-area inline-flex items-center gap-0.5 font-mono cursor-pointer text-muted-foreground/55 hover:text-muted-foreground transition-colors ${sizeClass}`}
           data-testid="badge-engagement-score"
           onClick={(e) => e.stopPropagation()}
         >

@@ -3171,7 +3171,9 @@ export default function Home() {
               } else if (tap.do === "open-feeds") {
                 feedsTabRef.current = document.querySelector<HTMLElement>('[data-testid="button-feed-feeds"]');
                 setFilterOpen(false);
-                setFeedsOpen(true);
+                // A second tap on the pill closes what the first opened (the
+                // popover ignores a tap on its own pill, DesktopOptionsPopover).
+                setFeedsOpen((o) => !o);
               } else if (tap.do === "switch") {
                 if (tap.to === "foryou") handleForYouClick();
                 else setFeedMode(tap.to === "following" ? "open_comms" : "deep_scan");
