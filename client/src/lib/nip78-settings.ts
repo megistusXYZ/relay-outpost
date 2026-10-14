@@ -9,6 +9,7 @@ import { isWiderNetworkOn } from "./network-mode";
 import { setPublicNostr } from "./public-nostr";
 import { BLUR_OUTSIDE_KEY, writeBlurOutside } from "./outside-space-blur";
 import { FIRST_OPT_IN_PREFIX, hasFirstOptIn, markFirstOptIn } from "./first-opt-in";
+import { CONSENT_PREFIX, adultConsentAt, recordAdultConsent } from "./wider-network-consent";
 
 const KIND_APP_DATA = 30078;
 const D_TAG = "relay-outpost-settings";
@@ -76,6 +77,8 @@ export interface PortableSettings {
   blurOutsideSpace?: boolean;
   /** This account has opened the wider network once (lib/first-opt-in.ts); never tighten twice. */
   widerFirstOptIn?: boolean;
+  /** When this account confirmed it is 18+ before the wider network (lib/wider-network-consent.ts), ISO; absent = never asked here. */
+  widerAdultConsentAt?: string;
 }
 
 type SettingType = "string" | "boolean" | "number" | "json";
@@ -260,7 +263,7 @@ let isApplyingRemote = false;
 // that assignment as an item and keeps the real method, so sync never fired.
 setStorageWriteListener(localStorage, "nip78-settings", (_op, key, changed) => {
   if (isApplyingRemote) return;
-  if (WATCHED_LS_KEYS.has(key) || key.startsWith("relay-outpost-dm-demoted-") || key.startsWith(WIDER_NETWORK_PREFIX) || key === BLUR_OUTSIDE_KEY || key.startsWith(FIRST_OPT_IN_PREFIX) || key.startsWith(PINNED_EVENTS_PREFIX) || key.startsWith(CUSTOM_HOLIDAYS_PREFIX) || key.startsWith(HIDDEN_HOLIDAYS_PREFIX)) {
+  if (WATCHED_LS_KEYS.has(key) || key.startsWith("relay-outpost-dm-demoted-") || key.startsWith(WIDER_NETWORK_PREFIX) || key === BLUR_OUTSIDE_KEY || key.startsWith(FIRST_OPT_IN_PREFIX) || key.startsWith(CONSENT_PREFIX) || key.startsWith(PINNED_EVENTS_PREFIX) || key.startsWith(CUSTOM_HOLIDAYS_PREFIX) || key.startsWith(HIDDEN_HOLIDAYS_PREFIX)) {
     // The edit is newer than any synced copy from this moment — not from when
     // the debounced sync gets round to it (3 s, or never if it lands before
     // the first load). Close the app in that window and the next load applied
@@ -462,6 +465,8 @@ function collectLocalSettings(pubkey: string): PortableSettings {
   settings.widerNetwork = isWiderNetworkOn(pubkey);
   try { settings.blurOutsideSpace = localStorage.getItem(BLUR_OUTSIDE_KEY) === "1"; } catch {}
   settings.widerFirstOptIn = hasFirstOptIn(pubkey);
+  const consentAt = adultConsentAt(pubkey);
+  if (consentAt) settings.widerAdultConsentAt = consentAt;
 
   try {
     settings.publishRelayPreference = localStorage.getItem("nostr_publish_relay_preference") || "";
@@ -538,6 +543,10 @@ function applySettingsToLocal(settings: PortableSettings, pubkey: string): void 
     }
     if (typeof settings.blurOutsideSpace === "boolean") writeBlurOutside(settings.blurOutsideSpace);
     if (settings.widerFirstOptIn === true) markFirstOptIn(pubkey);
+    // A confirmation given on another device counts here; absence never clears one.
+    if (typeof settings.widerAdultConsentAt === "string" && !Number.isNaN(Date.parse(settings.widerAdultConsentAt)) && !adultConsentAt(pubkey)) {
+      recordAdultConsent(pubkey, new Date(settings.widerAdultConsentAt));
+    }
 
     try {
       if (settings.publishRelayPreference) {

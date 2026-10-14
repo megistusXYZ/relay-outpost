@@ -89,6 +89,25 @@ describe("the wider-network switch and the synced settings", () => {
     expect(localStorage.getItem(KEY)).toBeNull();
   });
 
+  it("the adult confirmation given on another device counts here, with its moment", async () => {
+    const s = await freshSettings();
+    remote = { lastModified: Date.now(), widerAdultConsentAt: "2026-10-13T20:15:00.000Z" };
+    await s.loadSettingsFromRelay(PK, signer as never);
+    expect(localStorage.getItem(`ro_wider_consent:${PK}`)).toBe("2026-10-13T20:15:00.000Z");
+  });
+
+  it("a synced copy without the confirmation never clears one given here, and a damaged one is ignored", async () => {
+    localStorage.setItem(`ro_wider_consent:${PK}`, "2026-10-12T09:00:00.000Z");
+    const s = await freshSettings();
+    remote = { lastModified: Date.now(), theme: "dark" };
+    await s.loadSettingsFromRelay(PK, signer as never);
+    expect(localStorage.getItem(`ro_wider_consent:${PK}`)).toBe("2026-10-12T09:00:00.000Z");
+    const s2 = await freshSettings();
+    remote = { lastModified: Date.now(), widerAdultConsentAt: "not a moment" };
+    await s2.loadSettingsFromRelay("ef".repeat(32), signer as never);
+    expect(localStorage.getItem(`ro_wider_consent:${"ef".repeat(32)}`)).toBeNull();
+  });
+
   it("this device's OFF rides up to the relays when settings sync (a new account's only setting)", async () => {
     localStorage.setItem(KEY, "0");
     const s = await freshSettings();
