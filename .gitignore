@@ -66,4 +66,7 @@ CONCORD_PLAN.md
 
 # Local security/QA probe scripts (never shipped)
 scratch-*.mjs
+
+# Local-only folders
+relay-op-ops/
 !.agents/skills/relay-outpost-review/
