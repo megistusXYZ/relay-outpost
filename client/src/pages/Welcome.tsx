@@ -14,7 +14,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { InviteAcceptCard } from "@/components/InviteAcceptCard";
 import { useLocation } from "wouter";
-import { ChevronRight, Compass, MessagesSquare, UserPlus, Users, Sparkles } from "lucide-react";
+import { ChevronRight, Compass, MessagesSquare, UserPlus, Users } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { markWelcomed } from "@/lib/welcome";
@@ -74,7 +75,7 @@ export default function Welcome() {
 
       <p className="mt-8 mb-1.5 px-1 text-[11px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Make it yours</p>
       <div className="rounded-xl border border-border/40 bg-card/40 overflow-hidden divide-y divide-border/25">
-        <Start icon={<Sparkles className="w-5 h-5" />} title="Name your community"
+        <Start icon={<BrandMark className="w-5 h-5" aria-hidden="true" />} title="Name your community"
           desc="A private place for your people. You pick who's in it." onClick={() => setNaming(true)} testId="welcome-create-community" />
         <Start icon={<UserPlus className="w-5 h-5" />} title="Invite a friend"
           desc="Chats are better with people you know. Send them a link." onClick={go("/account?invite=1")} testId="welcome-invite" />
