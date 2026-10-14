@@ -2,10 +2,10 @@
 #
 # Build on Apple Silicon with:
 #   docker buildx build --platform linux/amd64 -t <registry>/relay-outpost:latest .
-# (sharp/esbuild ship per-arch binaries; the arrowhead cluster is amd64.)
+# (sharp/esbuild ship per-arch binaries; production runs amd64.)
 #
 # The runtime stage does NOT run `drizzle-kit push` — schema push runs as a
-# Helm hook Job in the cluster (charts/relay-outpost in relay-op-ops), or via
+# Helm hook Job in the cluster (the deployment chart), or via
 # the explicit `command:` override in docker-compose.yml locally. A pod
 # restart must never race DDL.
 

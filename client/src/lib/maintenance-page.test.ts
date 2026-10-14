@@ -4,8 +4,8 @@
  * Production runs one pod with a Recreate rollout, so every deploy has a gap
  * where the ingress has no app to send traffic to, and visitors got nginx's
  * bare "502 Bad Gateway". The F5 NGINX Ingress Controller now serves this
- * file for 502/503/504 on page routes (relay-op-ops, charts/relay-outpost,
- * VirtualServer errorPages). So it must work with the app DOWN, and it must
+ * file for 502/503/504 on page routes (the deployment chart's VirtualServer
+ * errorPages). So it must work with the app DOWN, and it must
  * pass NIC's body validation, `([^"$\\]|\\[^$])*`: no double quotes, no
  * dollar signs, no backslashes.
  *

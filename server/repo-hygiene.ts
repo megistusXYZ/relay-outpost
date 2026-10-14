@@ -19,9 +19,10 @@ const RULES: Array<{ rule: string; re: RegExp }> = [
   { rule: "LAN address", re: /\b192\.168\.\d{1,3}\.\d{1,3}\b/ },
   { rule: "local hostname", re: /\b[a-z0-9][a-z0-9-]*\.local\b(?!\w)/ },
   { rule: "cluster credentials", re: /kubeconfig|\.kube\//i },
-  // Not a rule: the NAME of the private ops repo. It is already in the public
-  // history (a comment in .gitlab-ci.yml, a test), and a name reveals nothing;
-  // paths and credentials into it are what the rules above catch.
+  // Where the build and the cluster live (owner, 2026-10-13): the private ops
+  // repo, the cluster, the image registry and the private mirror namespace.
+  // The public engine project under the same host is fine (a product link).
+  { rule: "private infrastructure", re: /relay-op-ops|arrowhead|artifacts\.relay\.tools|code\.relay\.tools\/relay-op\b/i },
 ];
 
 /**

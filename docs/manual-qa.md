@@ -6,7 +6,7 @@ content creation (`client/src/lib/content-pipeline.test.ts`) and NIP-65 relay
 selection (`client/src/lib/relay-prefs.test.ts`); this checklist covers the rest.
 
 ## Setup (do this first)
-- [ ] Test on **cellular or VPN** — home Wi-Fi with Spectrum/CUJO false-blocks `relayop.xyz`.
+- [ ] Test on **cellular or VPN** as well as Wi-Fi — some home routers' filters false-block `relayop.xyz`.
 - [ ] Run each section **twice**: once with **raw nsec / local key**, once with the **NoStash extension**.
 - [ ] Test at least once on a **fresh install / incognito** (real network load, not service-worker cache).
 

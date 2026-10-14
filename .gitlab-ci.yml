@@ -1,7 +1,6 @@
-# Build + push the Relay Outpost image to artifacts.relay.tools on every
-# default-branch push to the code.relay.tools mirror. Adapted from
-# relay-op-ops/docs/example.gitlab-ci.yml — the Replit-lockfile normalization
-# lives inside the Dockerfile build stage, so no extra CI step is needed.
+# Build + push the Relay Outpost image to the registry on every default-branch
+# push. The Replit-lockfile normalization lives inside the Dockerfile build
+# stage, so no extra CI step is needed.
 #
 # BUILDKIT_HOST is injected by the runner config; CI_REGISTRY_* are set by
 # GitLab automatically.
