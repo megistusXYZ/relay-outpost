@@ -29,7 +29,7 @@ import { queryClient } from "@/lib/queryClient";
 import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
 import { formatDistanceToNow } from "date-fns";
-import { ChevronRight, Hash } from "lucide-react";
+import { ChevronRight, Hash, UserPlus } from "lucide-react";
 import { TILE_TITLE } from "@/components/discover-tile-title";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -102,6 +102,7 @@ import { effectivePow } from "@/lib/nip13-pow";
 import { useWiderNetwork } from "@/lib/network-mode";
 import { discoverSurfaces } from "@/lib/discover-surfaces";
 import { WiderNetworkDoor } from "@/components/wider-network/WiderNetworkDoor";
+import { PodcastTrendingRail } from "@/components/news/PodcastTrendingRail";
 
 /**
  * The one item shape the News hero flows end to end: what /api/rss caches,
@@ -570,7 +571,7 @@ function FeedTile() {
 
 // ── Communities ──────────────────────────────────────────────────────────────
 
-function CommunitiesTile() {
+function CommunitiesTile({ widerNetworkOn = true }: { widerNetworkOn?: boolean }) {
   const [, setLocation] = useLocation();
   const [joined, setJoined] = useState<OutpostRelay[]>(() => getOutpostRelays());
   useEffect(() => {
@@ -604,14 +605,15 @@ function CommunitiesTile() {
   // Guest path: the public directory. Discovery is a one-shot shared store;
   // `active` only when this tile actually needs it, so joined users never pay
   // for a NIP-66 sweep they won't see.
-  const dir = useOutpostDirectory(!hasJoined);
+  // The public directory is the wider network: never fetched while it is off.
+  const dir = useOutpostDirectory(widerNetworkOn && !hasJoined);
   const guestMatches = useMemo(
-    () => (hasJoined ? [] : toDirMatches(filterDirectory(dir.relays, "", joinedUrlSet(joined)), 3)),
-    [hasJoined, dir.relays, joined],
+    () => (hasJoined || !widerNetworkOn ? [] : toDirMatches(filterDirectory(dir.relays, "", joinedUrlSet(joined)), 3)),
+    [hasJoined, widerNetworkOn, dir.relays, joined],
   );
   const [dirReached, setDirReached] = useState<boolean | null>(null);
   useEffect(() => {
-    if (hasJoined || dir.loading || dir.relays.length > 0) return;
+    if (!widerNetworkOn || hasJoined || dir.loading || dir.relays.length > 0) return;
     let cancelled = false;
     canReachAny(NIP_66_MONITOR_RELAYS).then((ok) => { if (!cancelled) setDirReached(ok); });
     return () => { cancelled = true; };
@@ -674,6 +676,15 @@ function CommunitiesTile() {
     } else {
       body = <span className="block text-xs text-muted-foreground">Quiet this week.</span>;
     }
+  } else if (!widerNetworkOn) {
+    // Your space, no community yet: the public directory is the wider network,
+    // so the tile says how to start one instead (the Welcome screen does it).
+    body = (
+      <>
+        <span className="block text-xs font-medium text-foreground/90" data-testid="communities-tile-start">Name your community</span>
+        <span className="block text-xs text-muted-foreground">A private place for your people. You pick who's in it.</span>
+      </>
+    );
   } else if (dir.loading) {
     body = <TileSkeleton />;
   } else if (dir.relays.length > 0) {
@@ -724,7 +735,7 @@ function CommunitiesTile() {
   }
 
   return (
-    <TileShell label="Communities" onOpen={() => setLocation("/outposts")} testId="tile-communities" footer={footer}>
+    <TileShell label="Communities" onOpen={() => setLocation(!widerNetworkOn && !hasJoined ? "/welcome" : "/outposts")} testId="tile-communities" footer={footer}>
       {body}
     </TileShell>
   );
@@ -1156,9 +1167,12 @@ function LiveTile() {
 
 // ── Podcasts ─────────────────────────────────────────────────────────────────
 
-function PodcastsTile() {
+function PodcastsTile({ widerNetworkOn = true }: { widerNetworkOn?: boolean }) {
   const [, setLocation] = useLocation();
   const { feeds, isLoading, isError } = usePodcastTrending(null, 5, true);
+  // With the wider network off, Search's media tab is the door; the News page
+  // carries the same shows, playable.
+  const destination = widerNetworkOn ? "/search?tab=media&type=audio" : "/news";
   const top = feeds[0];
   const freshItems = useMemo<FreshItem[] | null>(
     () => (feeds.length > 0
@@ -1175,7 +1189,7 @@ function PodcastsTile() {
       label="Audio"
       chip={freshN > 0 && !isError ? <FreshChip count={freshN} /> : undefined}
       fresh={freshN > 0 && !isError}
-      onOpen={() => { stampReported("podcasts"); setLocation("/search?tab=media&type=audio"); }}
+      onOpen={() => { stampReported("podcasts"); setLocation(destination); }}
       testId="tile-audio"
       footer={isError ? <RetryFooter onRetry={() => queryClient.invalidateQueries({ queryKey: ["/api/podcastindex/trending"] })} testId="button-retry-audio" /> : undefined}
     >
@@ -1193,6 +1207,24 @@ function PodcastsTile() {
       )}
       {!isLoading && !isError && !top && <span className="block text-xs text-muted-foreground">Browse trending shows.</span>}
       {isError && unreachableBody("the podcast index")}
+    </TileShell>
+  );
+}
+
+// ── Invite ───────────────────────────────────────────────────────────────────
+
+/** Your space grows by invitation: the same words and route as the Welcome screen. */
+function InviteTile() {
+  const [, setLocation] = useLocation();
+  return (
+    <TileShell label="Invite" onOpen={() => setLocation("/account?invite=1")} testId="tile-invite">
+      <span className="flex items-center gap-2.5">
+        <span className="w-10 h-10 rounded-md bg-brand/15 flex items-center justify-center shrink-0"><UserPlus className="w-5 h-5 text-brand" /></span>
+        <span className="min-w-0">
+          <span className="block text-xs font-medium text-foreground/90">Invite a friend</span>
+          <span className="block text-xs text-muted-foreground">Chats are better with people you know. Send them a link.</span>
+        </span>
+      </span>
     </TileShell>
   );
 }
@@ -1543,12 +1575,21 @@ export default function Discover() {
 
       <UniversalBar />
 
-      {surfaces.includes("door") && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+      {/* Your space (the wider network is off): the news hero with podcasts,
+          your own communities and invite beside it — the same hero-plus-column
+          grid as the open tab, so no cell sits empty — then shows to play, and
+          the door last. Nothing here reads from strangers
+          (lib/discover-surfaces.ts). */}
+      {surfaces.includes("door") && (<>
+        <div className="discover-grid grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4" data-testid="discover-your-space">
           <NewsHeroTile />
-          <div className="md:col-span-3"><WiderNetworkDoor testId="wider-network-door-discover" /></div>
+          {surfaces.includes("podcasts") && <PodcastsTile widerNetworkOn={false} />}
+          {surfaces.includes("communities") && <CommunitiesTile widerNetworkOn={false} />}
+          {surfaces.includes("invite") && <InviteTile />}
         </div>
-      )}
+        {surfaces.includes("listen") && <PodcastTrendingRail />}
+        <WiderNetworkDoor testId="wider-network-door-discover" />
+      </>)}
 
       {/* One grid, both breakpoints: mobile stacks hero-then-tiles in DOM
           order; md+ places the hero left (2 cols, 3 rows) with the compact
