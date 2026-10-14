@@ -11,8 +11,14 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { Globe } from "lucide-react";
+import { Link } from "wouter";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useWiderNetwork, setWiderNetwork } from "@/lib/network-mode";
@@ -20,6 +26,7 @@ import { flipWiderNetwork } from "@/lib/wider-network-switch";
 import { publishRelayListForModeLive } from "@/lib/wider-network-relays";
 import { FLOOR_RELAYS } from "@/lib/signup-relays";
 import { applyFirstOptIn } from "@/lib/first-opt-in";
+import { needsAdultConfirm, recordAdultConsent } from "@/lib/wider-network-consent";
 
 import { WIDER_NETWORK_OPEN_EVENT as OPEN_EVENT, openWiderNetworkSheet } from "./open-sheet";
 export { openWiderNetworkSheet };
@@ -46,6 +53,11 @@ function WiderNetworkSheetBody() {
   const { pubkey, signer } = useNostrAuth();
   const on = useWiderNetwork(pubkey);
   const [busy, setBusy] = useState(false);
+  // The adult confirmation (lib/wider-network-consent.ts): asked once per
+  // account before the first turn-on; the switch itself does not move until
+  // the box is ticked and Connect is pressed.
+  const [confirming, setConfirming] = useState(false);
+  const [understood, setUnderstood] = useState(false);
   const { toast } = useToast();
 
   const flip = useCallback(async (next: boolean) => {
@@ -67,6 +79,17 @@ function WiderNetworkSheetBody() {
     }
   }, [pubkey, signer, busy, toast]);
 
+  const onSwitch = (next: boolean) => {
+    if (needsAdultConfirm(pubkey, next)) { setUnderstood(false); setConfirming(true); return; }
+    void flip(next);
+  };
+  const confirm = () => {
+    if (!pubkey || !understood) return;
+    recordAdultConsent(pubkey);
+    setConfirming(false);
+    void flip(true);
+  };
+
   return (
     <div className="space-y-5">
       <SheetHeader className="text-left space-y-2">
@@ -81,14 +104,36 @@ function WiderNetworkSheetBody() {
 
       <ul className="space-y-2.5 text-sm leading-relaxed text-foreground/85" data-testid="wider-network-lines">
         <li className="flex gap-2.5"><span className="text-muted-foreground/60 select-none">—</span><span>What opens up: people and posts from everywhere, trending, places to explore.</span></li>
-        <li className="flex gap-2.5"><span className="text-muted-foreground/60 select-none">—</span><span>What you should know: anyone can post anything there. We filter for you, but nobody moderates all of it.</span></li>
+        <li className="flex gap-2.5"><span className="text-muted-foreground/60 select-none">—</span><span>What you should know: anyone can post anything there, and nobody checks it all first. Some of it is for adults only. We filter for you.</span></li>
         <li className="flex gap-2.5"><span className="text-muted-foreground/60 select-none">—</span><span>You can turn it off again any time. Your people and your communities stay as they are.</span></li>
       </ul>
 
       <label className="flex items-center justify-between gap-4 rounded-xl border border-border/40 px-4 min-h-[56px] py-3 cursor-pointer" data-testid="wider-network-switch-row">
         <span className="text-[15px] font-medium">Connect to the wider network</span>
-        <Switch checked={on} disabled={busy || !pubkey} onCheckedChange={(v) => void flip(v)} data-testid="switch-wider-network" aria-label="Connect to the wider network" />
+        <Switch checked={on} disabled={busy || !pubkey} onCheckedChange={onSwitch} data-testid="switch-wider-network" aria-label="Connect to the wider network" />
       </label>
+
+      <AlertDialog open={confirming} onOpenChange={(o) => { if (!o) setConfirming(false); }}>
+        <AlertDialogContent data-testid="wider-network-consent">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Connect to the wider network?</AlertDialogTitle>
+            <AlertDialogDescription className="leading-relaxed">
+              Everyone on Nostr, from everywhere. It's lively and open, and nobody checks it all before you see it, so some of what's out there is for adults only. We start you on Careful and keep sensitive posts hidden; the rest is yours to choose.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <label className="flex items-start gap-3 rounded-xl border border-border/40 px-4 py-3 cursor-pointer" data-testid="wider-network-consent-row">
+            <Checkbox checked={understood} onCheckedChange={(v) => setUnderstood(v === true)} className="mt-0.5" data-testid="wider-network-consent-check" aria-label="I'm 18 or older, and I understand that the wider network isn't moderated" />
+            <span className="text-sm leading-relaxed">I'm 18 or older, and I understand that the wider network isn't moderated.</span>
+          </label>
+          <p className="text-xs leading-relaxed text-muted-foreground/80">
+            You can turn it off again any time. Our <Link href="/terms" className="underline underline-offset-2 hover:text-foreground">Terms</Link> say more.
+          </p>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="wider-network-consent-cancel">Not now</AlertDialogCancel>
+            <AlertDialogAction onClick={confirm} disabled={!understood || busy} data-testid="wider-network-consent-connect">Connect</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <p className="text-xs leading-relaxed text-muted-foreground/80" data-testid="wider-network-floor-note">
         Either way, your profile and messages are reachable through two relays ({floorHosts}) so friends on other apps can find you.
