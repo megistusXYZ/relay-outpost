@@ -36,6 +36,13 @@ export function DesktopOptionsPopover({
         align={align}
         sideOffset={8}
         collisionPadding={12}
+        // The pill that opened this is not "outside": a tap on it would close
+        // the panel here and the pill's own toggle would open it again in the
+        // same instant, so it never closed from the pill (owner, 2026-10-14,
+        // tablet and desktop). Pointer AND focus: Chromium focuses a button on
+        // click, which counts as focus-outside; WebKit does not. Let the pill's
+        // toggle be the one to decide.
+        onInteractOutside={(e) => { const a = anchorRef.current; if (a && e.target instanceof Node && a.contains(e.target)) e.preventDefault(); }}
         className={cn(width, "max-h-[70vh] overflow-y-auto rounded-xl border-brand/15 p-4")}
         data-testid={testId}
       >

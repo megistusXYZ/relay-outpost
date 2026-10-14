@@ -226,7 +226,10 @@ describe("the page draws these rules — and nothing opens on a tab tap but the 
     // The tab handler may CLOSE the filter (when the Feeds list opens); it never opens it.
     const handler = tabs.slice(tabs.indexOf("onChange={(key) =>"), tabs.indexOf("<button"));
     expect(handler).not.toMatch(/setFilterOpen\(true\)/);
-    expect(handler.match(/setFeedsOpen\(true\)/g)).toHaveLength(1);
+    // The Feeds pill toggles: a second tap closes what the first opened
+    // (2026-10-14; the popover ignores a tap on its own pill).
+    expect(handler.match(/setFeedsOpen\(\(o\) => !o\)/g)).toHaveLength(1);
+    expect(handler).not.toMatch(/setFeedsOpen\(true\)/);
     // One filter button, one filter, fed by filterGroups.
     expect(home.match(/data-testid="button-feed-filter"/g)).toHaveLength(1);
     expect(home).toMatch(/groups=\{filterGroups\(\{/);
