@@ -29,6 +29,16 @@ describe("the detector", () => {
     expect(found.find((f) => f.rule === "LAN address")?.line).toBe(1);
   });
 
+  it("catches the private ops repo, the cluster and the registry, but not the public engine project's link", () => {
+    const found = findPersonalDetails([
+      { path: "Dockerfile", text: "# charts/relay-outpost in relay-op-ops; the arrowhead cluster" },
+      { path: ".gitlab-ci.yml", text: "# push to artifacts.relay.tools from the code.relay.tools/relay-op mirror" },
+      { path: "client/src/lib/relay-start-options.ts", text: 'href: "https://code.relay.tools/opensauce/newlay"' },
+    ]);
+    expect(found.map((f) => `${f.path}:${f.line}`)).toEqual(["Dockerfile:1", ".gitlab-ci.yml:1"]);
+    expect(found.every((f) => f.rule === "private infrastructure")).toBe(true);
+  });
+
   it("leaves the SSRF guard alone: naming private ranges is its job", () => {
     expect(findPersonalDetails([{ path: "server/net-safety.ts", text: "inCidr(v4, '192.168.0.0', 16)" }])).toEqual([]);
     // Elsewhere the same text is a finding.
