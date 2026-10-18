@@ -1,5 +1,26 @@
 # Working in this repo
 
+## This repo is public: nothing private goes in it
+
+Everything committed here is public and indexed: code, comments, commit
+messages, PR titles and descriptions, `.gitignore` lines, test fixtures,
+images. Edits and force-pushes don't take it back.
+
+- **Never commit** internal plans, strategy or roadmap docs, security notes,
+  screenshots, keys, tokens, `.env` files, or anything about where servers,
+  clusters, private repos or files live.
+- **Private material lives outside this folder**, never inside it, even
+  untracked. Keep it beside the repo, not in it.
+- **Add files by explicit path.** Never `git add .`, `git add -A` or a
+  directory.
+- **Commit messages and PR text describe what the code does**, nothing about
+  infrastructure, people, accounts or private work.
+- **An unfamiliar untracked folder or file is a stop sign.** Don't add it,
+  don't name what's in it anywhere public, and ask the owner.
+
+`server/repo-hygiene.test.ts` fails CI on some of this in tracked files; it
+can't see commit messages, PR text or untracked folders, so this is on you.
+
 ## Merging: read the CI result, not a local run
 
 **Never merge a PR without looking at its CI conclusion.** Use:
