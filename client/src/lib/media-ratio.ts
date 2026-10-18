@@ -57,10 +57,13 @@ export const UNKNOWN_PLACEHOLDER_HEIGHT = 160;
 /** Quoted/embedded contexts, where media is a reference and not the subject. */
 export const COMPACT_MAX_HEIGHT = 280;
 
-/** 9:16 is as tall as a real clip gets; past 16:9 it is a banner, not a video.
- *  Images are deliberately NOT clamped — 0.462 and 2.215 both occur in the
- *  wild and both are what the person meant to post. */
-export const VIDEO_TALLEST_RATIO = 9 / 16;
+/** A feed video is never taller than 4:5 (owner, 2026-10-18): a 9:16 phone
+ *  clip used to take most of a phone screen. Taller clips fill the 4:5 frame,
+ *  cropped top and bottom, and open whole on a tap (feedVideoFrame). Past
+ *  16:9 it is a banner, not a video. Images are deliberately NOT clamped —
+ *  0.462 and 2.215 both occur in the wild and both are what the person meant
+ *  to post. */
+export const VIDEO_TALLEST_RATIO = 4 / 5;
 export const VIDEO_WIDEST_RATIO = 16 / 9;
 
 /** How early media mounts, and therefore how much head start the shape probe
@@ -72,6 +75,17 @@ export const MEDIA_MOUNT_LEAD = "1500px 0px";
 export function clampVideoRatio(ratio: number): number {
   if (!Number.isFinite(ratio) || ratio <= 0) return VIDEO_WIDEST_RATIO;
   return Math.min(Math.max(ratio, VIDEO_TALLEST_RATIO), VIDEO_WIDEST_RATIO);
+}
+
+/**
+ * How a feed video sits in its box. A clip KNOWN to be taller than 4:5 fills
+ * the 4:5 frame and is cropped (the full view shows it whole); a shape we only
+ * guessed is never cropped, since the guess could be wrong.
+ */
+export function feedVideoFrame(ratio: number, known: boolean): { ratio: number; fit: "cover" | "contain"; cropped: boolean } {
+  const clamped = clampVideoRatio(ratio);
+  const cropped = known && Number.isFinite(ratio) && ratio > 0 && ratio < VIDEO_TALLEST_RATIO - 1e-6;
+  return { ratio: clamped, fit: cropped ? "cover" : "contain", cropped };
 }
 
 /** Learned width/height ratios, keyed by media URL. Memory-only and unbounded
