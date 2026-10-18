@@ -65,8 +65,10 @@ import { KIND_LIVE_EVENT } from "@/lib/nostr-helpers";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useReservedRatio } from "@/hooks/use-reserved-ratio";
 import { useNearViewport } from "@/hooks/use-near-viewport";
+import { scrollRootFor } from "@/lib/scroll-root";
+import { pickVideoVariant, videoTargetWidth } from "@/lib/video-variant";
 import {
-  clampVideoRatio,
+  feedVideoFrame,
   COMPACT_MAX_HEIGHT,
   IMAGE_MAX_HEIGHT,
   UNKNOWN_PLACEHOLDER_HEIGHT,
@@ -155,6 +157,9 @@ function decodeBlurhashToDataUrl(blurhash: string, width = 32, height = 32): str
   }
 }
 
+/** NIP-71 video kinds: every imeta tag is the same clip at a different size. */
+const NIP71_VIDEO_KINDS = new Set([21, 22, 34235, 34236]);
+
 /**
  * Is this box within N screens of the viewport, tracked BOTH ways?
  *
@@ -174,9 +179,12 @@ function useWithinScreens(ref: React.RefObject<HTMLElement | null>, screens = 1)
   useEffect(() => {
     const el = ref.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
+    // root: the scroller the box is in. With the default root, <main> clips
+    // the box before the margin applies, so "a screen early" was 0px and the
+    // player only got ready once on screen (lib/scroll-root.ts).
     const obs = new IntersectionObserver(
       ([entry]) => setWithin(!!entry?.isIntersecting),
-      { rootMargin: `${screens * 100}% 0px` },
+      { root: scrollRootFor(el), rootMargin: `${screens * 100}% 0px` },
     );
     obs.observe(el);
     return () => obs.disconnect();
@@ -587,10 +595,18 @@ function InlineVideo({
   // The decoder budget: a real <video> only exists within a screen of the
   // viewport. Everything further away is a poster in the same reserved box.
   const videoLive = useWithinScreens(videoBoxRef, 1);
+  // Never taller than 4:5; a clip known to be taller fills that frame,
+  // cropped, and a tap opens it whole (lib/media-ratio.ts feedVideoFrame).
+  const frame = feedVideoFrame(box.ratio, box.known);
+  const fitCls = frame.fit === "cover" ? "object-cover" : "object-contain";
   const reservedVideoStyle: React.CSSProperties = {
-    aspectRatio: `${clampVideoRatio(box.ratio)}`,
+    aspectRatio: `${frame.ratio}`,
     maxHeight: compact ? COMPACT_MAX_HEIGHT : VIDEO_MAX_HEIGHT,
   };
+  // The thumbnail is a picture like any other: resized by the image proxy,
+  // not the full-size original; the original if the proxy can't serve it.
+  const [posterDirect, setPosterDirect] = useState(false);
+  const posterSrc = poster ? (posterDirect ? poster : proxiedImageUrl(poster, 800)) : undefined;
   const { isPiP, pipVideoSrc, notifyUnmount } = usePiP();
   const { handoffVideo, claimVideo } = usePersistentMedia();
   const isHls = src.includes(".m3u8");
@@ -899,6 +915,14 @@ function InlineVideo({
     }
     lastTapTimeRef.current = now;
 
+    // A cropped clip: one tap shows it whole.
+    if (frame.cropped) {
+      e.preventDefault();
+      lastTapTimeRef.current = 0;
+      openTheater();
+      return;
+    }
+
     if (treatAsMobile) {
       setMobileControlsVisible((v) => {
         const next = !v;
@@ -915,7 +939,7 @@ function InlineVideo({
         return next;
       });
     }
-  }, [openTheater, hasCW, cwRevealed, treatAsMobile]);
+  }, [openTheater, hasCW, cwRevealed, treatAsMobile, frame.cropped]);
 
   const handleTheaterClose = useCallback((finalTime: number, wasMuted: boolean, wasPlaying: boolean) => {
     setTheaterOpen(false);
@@ -984,15 +1008,17 @@ function InlineVideo({
             very fast scroll. Jank is felt continuously; a 200ms poster is felt
             once. */}
         {!videoLive && (
-          poster
-            ? <img src={poster} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-contain" />
+          posterSrc
+            ? <img src={posterSrc} alt="" aria-hidden="true" className={`absolute inset-0 w-full h-full ${fitCls}`} onError={() => setPosterDirect(true)} data-testid="video-poster" />
             : <div className="absolute inset-0 bg-black/40" aria-hidden="true" />
         )}
         {videoLive && (
         <video
           ref={videoRef}
-          poster={poster}
-          className={`absolute inset-0 w-full h-full object-contain ${hasCW && !cwRevealed ? "blur-xl scale-105" : ""}`}
+          poster={posterSrc}
+          className={`absolute inset-0 w-full h-full ${fitCls} ${hasCW && !cwRevealed ? "blur-xl scale-105" : ""}`}
+          data-fit={frame.fit}
+          onClick={frame.cropped && !treatAsMobile && (!hasCW || cwRevealed) ? (e) => { e.stopPropagation(); openTheater(); } : undefined}
           muted={muted}
           loop={!isHls}
           playsInline
@@ -1974,11 +2000,22 @@ export function MediaRenderer({ event, compact = false, priority = false, blurRe
   }, [imetaData]);
 
   const imetaVideos = useMemo(() => {
-    return imetaData.filter((d) => {
+    const videos = imetaData.filter((d) => {
       if (d.mimeType) return getMediaTypeFromMime(d.mimeType) === "video";
       return classifyUrl(d.url) === "video";
     });
-  }, [imetaData]);
+    // A NIP-71 video post lists ONE clip at several sizes (an imeta tag
+    // each): play the smallest that is sharp at feed width, and keep the
+    // others as alternates if that file is gone (lib/video-variant.ts).
+    if (videos.length > 1 && NIP71_VIDEO_KINDS.has(event.kind)) {
+      const cssWidth = typeof window !== "undefined" ? Math.min(window.innerWidth, 640) : 640;
+      const dpr = typeof window !== "undefined" ? window.devicePixelRatio : 1;
+      const chosen = pickVideoVariant(videos, videoTargetWidth(cssWidth, dpr)) ?? videos[0];
+      const others = videos.filter((v) => v !== chosen).map((v) => v.url);
+      return [{ ...chosen, fallbacks: [...(chosen.fallbacks ?? []), ...others] }];
+    }
+    return videos;
+  }, [imetaData, event.kind]);
 
   const imetaAudio = useMemo(() => {
     return imetaData.filter((d) => {

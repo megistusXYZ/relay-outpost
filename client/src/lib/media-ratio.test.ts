@@ -4,6 +4,7 @@ import {
   VIDEO_TALLEST_RATIO,
   VIDEO_WIDEST_RATIO,
   clampVideoRatio,
+  feedVideoFrame,
   ratioFromSize,
   rememberRatio,
   recallRatio,
@@ -117,21 +118,44 @@ describe("nextFrozenRatio — capture, hold, release", () => {
 });
 
 describe("clampVideoRatio", () => {
-  it("leaves a real clip's shape alone", () => {
-    expect(clampVideoRatio(PORTRAIT)).toBeCloseTo(PORTRAIT, 5);
-    expect(clampVideoRatio(0.75)).toBe(0.75);
+  it("leaves a clip between 4:5 and 16:9 alone", () => {
+    expect(clampVideoRatio(0.8)).toBeCloseTo(0.8, 5);
+    expect(clampVideoRatio(0.75 * 1.2)).toBeCloseTo(0.9, 5);
     expect(clampVideoRatio(LANDSCAPE)).toBeCloseTo(LANDSCAPE, 5);
   });
 
-  it("pulls anything beyond a real clip's range back to the edge", () => {
-    expect(clampVideoRatio(0.2)).toBeCloseTo(VIDEO_TALLEST_RATIO, 5); // skyscraper
-    expect(clampVideoRatio(3.5)).toBeCloseTo(VIDEO_WIDEST_RATIO, 5); // banner
+  it("holds a tall clip to a 4:5 frame (owner, 2026-10-18) and a banner to 16:9", () => {
+    expect(VIDEO_TALLEST_RATIO).toBeCloseTo(4 / 5, 5);
+    expect(clampVideoRatio(PORTRAIT)).toBeCloseTo(4 / 5, 5); // 9:16 phone clip
+    expect(clampVideoRatio(0.2)).toBeCloseTo(4 / 5, 5);
+    expect(clampVideoRatio(3.5)).toBeCloseTo(VIDEO_WIDEST_RATIO, 5);
   });
 
   it("falls back to wide rather than reserving a broken box", () => {
     for (const bad of [0, -1, NaN, Infinity]) {
       expect(clampVideoRatio(bad)).toBeCloseTo(VIDEO_WIDEST_RATIO, 5);
     }
+  });
+});
+
+describe("feedVideoFrame — fill and crop a tall clip, never a guessed one", () => {
+  it("a known 9:16 clip fills a 4:5 frame, cropped", () => {
+    expect(feedVideoFrame(9 / 16, true)).toEqual({ ratio: 0.8, fit: "cover", cropped: true });
+  });
+
+  it("a clip already within the range keeps its shape and is never cropped", () => {
+    const f = feedVideoFrame(4 / 3, true);
+    expect(f.fit).toBe("contain");
+    expect(f.cropped).toBe(false);
+    expect(f.ratio).toBeCloseTo(4 / 3, 5);
+  });
+
+  it("a shape we only guessed is shown whole, not cropped", () => {
+    expect(feedVideoFrame(9 / 16, false)).toMatchObject({ fit: "contain", cropped: false });
+  });
+
+  it("a banner is held to 16:9 and shown whole", () => {
+    expect(feedVideoFrame(3.5, true)).toMatchObject({ fit: "contain", cropped: false });
   });
 });
 
