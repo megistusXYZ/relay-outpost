@@ -3,7 +3,7 @@
  *
  * The reports queue used to ask ONE relay for kind-1984: the group's own. That
  * is the one place a report can never be, and it was measured rather than
- * argued (2026-08-05, see POSITIONING_AND_IA.md):
+ * argued (2026-08-05):
  *
  *   bunk-test (newlay 0.3.6)      OK:true, then silently dropped — never served
  *                                 back by #p, #h, authors or ids, authenticated

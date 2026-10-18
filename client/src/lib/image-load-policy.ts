@@ -3,7 +3,7 @@
  * source, or keep waiting?
  *
  * Why this exists (owner's screen recording, 2026-10-13 06:58, iPhone PWA on
- * one bar of signal): pipeline 870 counted a silent proxy attempt as failed
+ * one bar of signal): the previous build counted a silent proxy attempt as failed
  * after 10 s and moved on to the picture's host. The host hands out the
  * ORIGINAL, which the phone decodes at full size — a dozen of those on one
  * screen starve iOS of graphics memory, and WebKit stops drawing layers: post

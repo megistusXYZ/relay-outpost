@@ -49,10 +49,8 @@ Thumbs.db
 # so a stray `git add -A` (or Replit auto-push) can't sweep them into the repo.
 .agents/skills/*
 !.agents/skills/nostr-dev/
+!.agents/skills/relay-outpost-review/
 skills-lock.json
-
-# Held design docs — keep local, never commit (see repo-visibility-private policy)
-EXTERNAL_DISCUSSION_PLAN.md
 
 # Agent-canvas leftovers and test artifacts — never track
 .canvas/
@@ -60,13 +58,5 @@ test-results/
 coverage/
 playwright-report/
 
-# Internal strategy docs — live locally and in the private archive, never here
-POSITIONING_AND_IA.md
-CONCORD_PLAN.md
-
 # Local security/QA probe scripts (never shipped)
 scratch-*.mjs
-
-# Local-only folders
-relay-op-ops/
-!.agents/skills/relay-outpost-review/
