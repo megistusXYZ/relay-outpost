@@ -14,6 +14,8 @@ const SUGGESTION_CARDS = [
   "components/SuggestedFollowsStrip.tsx",
   "components/PeopleToFollowStrip.tsx",
   "components/InviteAcceptCard.tsx",
+  // Activity's "followed you" rows: Follow back for trusted followers; the row opens their profile.
+  "pages/Notifications.tsx",
 ];
 
 describe("follow suggestions open the person's profile", () => {

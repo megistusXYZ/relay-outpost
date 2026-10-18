@@ -19,8 +19,13 @@ export function knownNameOf(pubkey: string): string | null {
  * name arrives — so a preview says "@someone" for a moment, never a code.
  */
 export function useMentionNames(text: string): (pubkey: string) => string | null {
+  return useKnownNames(mentionedPubkeys(text));
+}
+
+/** Names for any set of people, looked up when unknown; redraws as names arrive. */
+export function useKnownNames(pubkeys: string[]): (pubkey: string) => string | null {
   const [, setTick] = useState(0);
-  const unknown = mentionedPubkeys(text).filter((pk) => !knownNameOf(pk)).join(",");
+  const unknown = pubkeys.filter((pk) => !knownNameOf(pk)).join(",");
   useEffect(() => {
     if (!unknown) return;
     const keys = unknown.split(",");

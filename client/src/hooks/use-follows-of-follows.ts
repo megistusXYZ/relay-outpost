@@ -38,14 +38,17 @@ export function useFollowsOfFollows(follows: string[] | undefined) {
     [followsKey],
   );
 
-  const { fofSet, fofCounts } = useMemo(() => {
+  const { fofSet, fofCounts, fofBy } = useMemo(() => {
     const set = new Set<string>();
+    // pubkey → WHICH of my follows follow them (faces and names on a new
+    // follower's row, owner 2026-10-18). Same counting rules as fofCounts.
+    const by = new Map<string, string[]>();
     // pubkey → how many DISTINCT follows of mine follow them. The count is the
     // ranking signal for "people to follow" (Discover strip): one overlap is
     // noise, several is a pattern. Counted per latest-kind-3-per-author so a
     // republished contact list can't double-count its author.
     const counts = new Map<string, number>();
-    if (!contactListEvents || !follows || follows.length === 0) return { fofSet: set, fofCounts: counts };
+    if (!contactListEvents || !follows || follows.length === 0) return { fofSet: set, fofCounts: counts, fofBy: by };
     const followSet = new Set(follows);
     const latestPerAuthor = new Map<string, { created_at: number; tags: string[][] }>();
     for (const ev of contactListEvents) {
@@ -54,7 +57,7 @@ export function useFollowsOfFollows(follows: string[] | undefined) {
         latestPerAuthor.set(ev.pubkey, { created_at: ev.created_at, tags: ev.tags });
       }
     }
-    latestPerAuthor.forEach(({ tags }) => {
+    latestPerAuthor.forEach(({ tags }, author) => {
       // A malformed list can repeat a p-tag; count each candidate once per list.
       const seenInList = new Set<string>();
       for (const tag of tags) {
@@ -64,12 +67,14 @@ export function useFollowsOfFollows(follows: string[] | undefined) {
             if (!seenInList.has(tag[1])) {
               seenInList.add(tag[1]);
               counts.set(tag[1], (counts.get(tag[1]) ?? 0) + 1);
+              const list = by.get(tag[1]);
+              if (list) list.push(author); else by.set(tag[1], [author]);
             }
           }
         }
       }
     });
-    return { fofSet: set, fofCounts: counts };
+    return { fofSet: set, fofCounts: counts, fofBy: by };
   }, [contactListEvents, follows]);
 
   const coverage = useMemo(() => {
@@ -81,5 +86,5 @@ export function useFollowsOfFollows(follows: string[] | undefined) {
     return { fetched: seen.size, total: follows.length };
   }, [contactListEvents, follows]);
 
-  return { fofSet, fofCounts, coverage };
+  return { fofSet, fofCounts, fofBy, coverage };
 }
