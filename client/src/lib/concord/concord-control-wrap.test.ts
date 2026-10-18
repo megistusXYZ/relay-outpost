@@ -82,3 +82,14 @@ describe("controlWrapFor: the wrap in the grant that currently stands for me", (
     expect(controlWrapFor(editions, foldEditions(editions, owner).heads, owner)).toBeNull();
   });
 });
+
+describe("control_wrap matches the reference client byte for byte", () => {
+  // Vector's frozen test (vector-core community/v2/rekey.rs): epoch 7 and a
+  // control_root of 0xCD × 32 encode to this base64, which NIP-44 then carries.
+  it("encodes epoch 7, root cd×32 exactly as Vector does", async () => {
+    let plaintext = "";
+    const echo = { nip44: { encrypt: async (_pk: string, s: string) => { plaintext = s; return s; } } };
+    await sealControlWrap(echo as never, "f".repeat(64), 7, new Uint8Array(32).fill(0xcd));
+    expect(plaintext).toBe("AAAAAAAAAAfNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3NzQ==");
+  });
+});
