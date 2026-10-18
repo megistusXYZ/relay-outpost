@@ -8,6 +8,8 @@ import { createServer } from "http";
 import helmet from "helmet";
 import { siteCors } from "./site-cors";
 import compression from "compression";
+import path from "path";
+import { scriptHashesForDir } from "./csp-hashes";
 
 const app = express();
 // Replit's proxy used to gzip for us; the k8s ingress does not — without this
@@ -24,11 +26,18 @@ declare module "http" {
   }
 }
 
+// Production allows exactly the inline scripts of the build it serves, by
+// SHA-256 (server/csp-hashes.ts), never 'unsafe-inline'. Dev keeps it: Vite
+// injects its own inline scripts there.
+const scriptSources = process.env.NODE_ENV === "production"
+  ? ["'self'", ...scriptHashesForDir(path.resolve(__dirname, "public"))]
+  : ["'self'", "'unsafe-inline'"];
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: scriptSources,
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
       imgSrc: ["'self'", "data:", "blob:", "https:"],

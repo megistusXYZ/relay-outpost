@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { scrubMp4MetadataBoxes } from "./media-upload";
+import { scrubMp4MetadataBoxes, canStripVideoMetadata } from "./media-upload";
 
 // ISO-BMFF box: [4-byte big-endian size][4-byte ascii type][payload].
 const ascii = (s: string) => new Uint8Array([...s].map((c) => c.charCodeAt(0)));
@@ -66,5 +66,15 @@ describe("scrubMp4MetadataBoxes — strip GPS/device metadata, corruption-free",
     const copy = file.slice();
     expect(scrubMp4MetadataBoxes(file)).toBe(false);
     expect(file).toEqual(copy);
+  });
+});
+
+describe("canStripVideoMetadata — which videos the composer can clean", () => {
+  const f = (type: string) => new File([new Uint8Array(4)], "v", { type });
+  it("phone formats (MP4, MOV, M4V) are cleaned before upload", () => {
+    for (const t of ["video/mp4", "video/quicktime", "video/x-m4v"]) expect(canStripVideoMetadata(f(t)), t).toBe(true);
+  });
+  it("other formats are not, so the composer warns about them", () => {
+    for (const t of ["video/webm", "video/x-matroska", ""]) expect(canStripVideoMetadata(f(t)), t).toBe(false);
   });
 });

@@ -150,7 +150,8 @@ import {
   UploadError,
   validateFile,
   isVideoFile,
-  isAudioFile } from "@/lib/media-upload";
+  isAudioFile,
+  canStripVideoMetadata } from "@/lib/media-upload";
 import {
   getAvatarUrl,
   getProfileContent,
@@ -2875,8 +2876,8 @@ function OutpostComposeSheet({
       toast({ title: "Invalid file", description: err instanceof UploadError ? err.message : "Unsupported file.", variant: "destructive" });
       return;
     }
-    if (isVideoFile(file)) {
-      toast({ title: "Privacy notice", description: "Video metadata cannot be stripped in-browser. Consider removing location data before uploading." });
+    if (isVideoFile(file) && !canStripVideoMetadata(file)) {
+      toast({ title: "Privacy notice", description: "This video format's location and device data can't be removed here. Consider removing it before uploading." });
     }
     setIsUploading(true);
     setUploadStatus("Preparing...");
