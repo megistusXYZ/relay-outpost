@@ -10,6 +10,10 @@ import { setPublicNostr } from "./public-nostr";
 import { BLUR_OUTSIDE_KEY, writeBlurOutside } from "./outside-space-blur";
 import { FIRST_OPT_IN_PREFIX, hasFirstOptIn, markFirstOptIn } from "./first-opt-in";
 import { CONSENT_PREFIX, adultConsentAt, recordAdultConsent } from "./wider-network-consent";
+import {
+  IGNORE_PREFIX, DISMISS_PREFIX, readIgnoreMap, writeIgnoreMap, mergeIgnoreMaps,
+  readDismissMap, writeDismissMap, mergeDismissMaps, type IgnoreMap, type DismissMap,
+} from "./report-moderation-prefs";
 
 const KIND_APP_DATA = 30078;
 const D_TAG = "relay-outpost-settings";
@@ -79,6 +83,10 @@ export interface PortableSettings {
   widerFirstOptIn?: boolean;
   /** When this account confirmed it is 18+ before the wider network (lib/wider-network-consent.ts), ISO; absent = never asked here. */
   widerAdultConsentAt?: string;
+  /** Reporters whose reports this operator ignores, each with its time (lib/report-moderation-prefs.ts). */
+  ignoredReporters?: IgnoreMap;
+  /** When each report row was dismissed, per relay (lib/report-moderation-prefs.ts). */
+  reportDismissals?: DismissMap;
 }
 
 type SettingType = "string" | "boolean" | "number" | "json";
@@ -263,7 +271,7 @@ let isApplyingRemote = false;
 // that assignment as an item and keeps the real method, so sync never fired.
 setStorageWriteListener(localStorage, "nip78-settings", (_op, key, changed) => {
   if (isApplyingRemote) return;
-  if (WATCHED_LS_KEYS.has(key) || key.startsWith("relay-outpost-dm-demoted-") || key.startsWith(WIDER_NETWORK_PREFIX) || key === BLUR_OUTSIDE_KEY || key.startsWith(FIRST_OPT_IN_PREFIX) || key.startsWith(CONSENT_PREFIX) || key.startsWith(PINNED_EVENTS_PREFIX) || key.startsWith(CUSTOM_HOLIDAYS_PREFIX) || key.startsWith(HIDDEN_HOLIDAYS_PREFIX)) {
+  if (WATCHED_LS_KEYS.has(key) || key.startsWith("relay-outpost-dm-demoted-") || key.startsWith(WIDER_NETWORK_PREFIX) || key === BLUR_OUTSIDE_KEY || key.startsWith(FIRST_OPT_IN_PREFIX) || key.startsWith(CONSENT_PREFIX) || key.startsWith(IGNORE_PREFIX) || key.startsWith(DISMISS_PREFIX) || key.startsWith(PINNED_EVENTS_PREFIX) || key.startsWith(CUSTOM_HOLIDAYS_PREFIX) || key.startsWith(HIDDEN_HOLIDAYS_PREFIX)) {
     // The edit is newer than any synced copy from this moment — not from when
     // the debounced sync gets round to it (3 s, or never if it lands before
     // the first load). Close the app in that window and the next load applied
@@ -407,6 +415,8 @@ function hasAnyPortableKeys(pubkey?: string): boolean {
     try {
       if (localStorage.getItem(`${WIDER_NETWORK_PREFIX}${pubkey}`) !== null) return true;
     } catch {}
+    // An operator's report decisions are worth carrying too.
+    if (Object.keys(readIgnoreMap(pubkey)).length > 0 || Object.keys(readDismissMap(pubkey)).length > 0) return true;
     try {
       const pinnedKey = `${PINNED_EVENTS_PREFIX}:${pubkey}`;
       const pinned = localStorage.getItem(pinnedKey);
@@ -467,6 +477,11 @@ function collectLocalSettings(pubkey: string): PortableSettings {
   settings.widerFirstOptIn = hasFirstOptIn(pubkey);
   const consentAt = adultConsentAt(pubkey);
   if (consentAt) settings.widerAdultConsentAt = consentAt;
+  // Report decisions: sent whole; the receiving side merges entry by entry.
+  const ignored = readIgnoreMap(pubkey);
+  if (Object.keys(ignored).length > 0) settings.ignoredReporters = ignored;
+  const dismissals = readDismissMap(pubkey);
+  if (Object.keys(dismissals).length > 0) settings.reportDismissals = dismissals;
 
   try {
     settings.publishRelayPreference = localStorage.getItem("nostr_publish_relay_preference") || "";
@@ -546,6 +561,16 @@ function applySettingsToLocal(settings: PortableSettings, pubkey: string): void 
     // A confirmation given on another device counts here; absence never clears one.
     if (typeof settings.widerAdultConsentAt === "string" && !Number.isNaN(Date.parse(settings.widerAdultConsentAt)) && !adultConsentAt(pubkey)) {
       recordAdultConsent(pubkey, new Date(settings.widerAdultConsentAt));
+    }
+    // Report decisions merge entry by entry, newest decision winning, so an
+    // undo here survives an older copy from another device.
+    if (settings.ignoredReporters && typeof settings.ignoredReporters === "object") {
+      const merged = mergeIgnoreMaps(readIgnoreMap(pubkey), settings.ignoredReporters);
+      if (JSON.stringify(merged) !== JSON.stringify(readIgnoreMap(pubkey))) writeIgnoreMap(pubkey, merged);
+    }
+    if (settings.reportDismissals && typeof settings.reportDismissals === "object") {
+      const merged = mergeDismissMaps(readDismissMap(pubkey), settings.reportDismissals);
+      if (JSON.stringify(merged) !== JSON.stringify(readDismissMap(pubkey))) writeDismissMap(pubkey, merged);
     }
 
     try {

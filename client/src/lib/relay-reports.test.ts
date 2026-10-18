@@ -10,7 +10,8 @@ const report = (by: string, tags: string[][], at: number) => ({ id: String(++n).
 const ctx = {
   relayEventIds: new Set([POST]),
   relayAuthors: new Set([P1, P2]),
-  dismissed: new Set<string>(),
+  dismissedAt: (_key: string): number | undefined => undefined,
+  ignoredReporters: new Set<string>(),
 };
 
 describe("reports about what's on your relay", () => {
@@ -37,9 +38,20 @@ describe("reports about what's on your relay", () => {
     expect(rows[0].reporters).toEqual([R1]);
   });
 
-  it("leaves out what you've dismissed", () => {
-    const dismissed = new Set([reportKey({ targetEventId: POST, targetPubkey: P1 })]);
-    expect(foldRelayReports([report(R1, [["e", POST, "spam"], ["p", P1]], 5)], { ...ctx, dismissed })).toEqual([]);
+  it("leaves out reports from before you dismissed the row, and brings it back on a newer one", () => {
+    const key = reportKey({ targetEventId: POST, targetPubkey: P1 });
+    const dismissedAt = (k: string) => (k === key ? 100 : undefined);
+    expect(foldRelayReports([report(R1, [["e", POST, "spam"], ["p", P1]], 90)], { ...ctx, dismissedAt })).toEqual([]);
+    const back = foldRelayReports([report(R1, [["e", POST, "spam"], ["p", P1]], 90), report(R2, [["e", POST, "spam"], ["p", P1]], 150)], { ...ctx, dismissedAt });
+    expect(back).toHaveLength(1);
+    expect(back[0].reporters).toEqual([R2]);
+  });
+
+  it("leaves out reports from people whose reports you ignore", () => {
+    const ignoredReporters = new Set([R1]);
+    expect(foldRelayReports([report(R1, [["p", P2, "spam"]], 5)], { ...ctx, ignoredReporters })).toEqual([]);
+    const rows = foldRelayReports([report(R1, [["p", P2, "spam"]], 5), report(R2, [["p", P2, "spam"]], 6)], { ...ctx, ignoredReporters });
+    expect(rows[0].reporters).toEqual([R2]);
   });
 
   it("puts the most serious and most reported first", () => {
@@ -59,15 +71,25 @@ describe("reports from people you know first", () => {
   const tierOf = (pk: string) => (pk === R3 ? "strong" as const : "none" as const);
 
   it("a report backed by your network goes above; strangers' fold below", () => {
-    const { known, strangers } = splitByTrust(rows, tierOf);
+    const { known, strangers, probablyFine } = splitByTrust(rows, tierOf);
     expect(known.map((r) => r.targetPubkey)).toEqual([P2]);
     expect(strangers.map((r) => r.targetPubkey)).toEqual([P1]);
+    expect(probablyFine).toHaveLength(0);
+  });
+
+  it("strangers reporting someone your network trusts fold into 'probably fine'", () => {
+    const trustsP1 = (pk: string) => (pk === R3 || pk === P1 ? "strong" as const : "none" as const);
+    const { known, strangers, probablyFine } = splitByTrust(rows, trustsP1);
+    expect(known.map((r) => r.targetPubkey)).toEqual([P2]);
+    expect(strangers).toHaveLength(0);
+    expect(probablyFine.map((r) => r.targetPubkey)).toEqual([P1]);
   });
 
   it("without your network loaded, nothing is folded away", () => {
-    const { known, strangers } = splitByTrust(rows, tierOf, false);
+    const { known, strangers, probablyFine } = splitByTrust(rows, tierOf, false);
     expect(known).toHaveLength(2);
     expect(strangers).toHaveLength(0);
+    expect(probablyFine).toHaveLength(0);
   });
 });
 
