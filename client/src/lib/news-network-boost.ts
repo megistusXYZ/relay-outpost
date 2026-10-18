@@ -1,12 +1,12 @@
 /**
- * The Nostr-network boost for trending news (NEWS_TRENDING_PLAN.md, decision 8)
+ * The Nostr-network boost for trending news
  * — the differentiator no aggregator can copy. The base trending order is the
  * server's universal corroboration ranking; this LIFTS the stories the viewer's
  * own web-of-trust is sharing, and annotates each with "N you follow shared."
  *
  * Pure by design. The component fetches recent notes from the viewer's follows;
  * this module turns them into a share map and re-ranks the story list. Computed
- * client-side (decision 8) so the base payload stays one cached, universal
+ * client-side so the base payload stays one cached, universal
  * thing — this is the personal lift, riding follow-feed data the client already
  * has.
  */

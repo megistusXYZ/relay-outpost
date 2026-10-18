@@ -21,8 +21,6 @@ import { useFarRow } from "@/lib/far-rows";
  * already produced. That is the point. A refactor that looks like wasted motion
  * is what lets full-bleed media, the immersive pager and the other kinds land
  * as small diffs instead of each rewriting the wrapper again.
- *
- * See MEDIA_FEED_PLAN.md, decisions 7 and 11.
  */
 export interface PostFrameProps {
   /** Drives `data-event-id`, which scroll restoration and tests both key on. */

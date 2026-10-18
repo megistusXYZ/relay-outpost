@@ -21,8 +21,7 @@ import { KIND_PICTURE, KIND_VIDEO, KIND_SHORT_VIDEO, ADDRESSABLE_VIDEO_KINDS } f
  * On the publish side, kind 1 with `imeta` stays the DEFAULT — a photo posted
  * as kind 20 is invisible to every client without NIP-68, which is most of
  * them. Kind 20 is published only through the composer's explicit "post as
- * picture" opt-in (lib/picture-post.ts) — see MEDIA_FEED_PLAN.md decision 9,
- * as amended. Kinds 21/22 are still never published.
+ * picture" opt-in (lib/picture-post.ts). Kinds 21/22 are still never published.
  */
 export const FEED_KINDS: readonly number[] = [
   KIND_TEXT_NOTE,

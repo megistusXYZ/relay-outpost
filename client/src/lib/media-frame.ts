@@ -10,8 +10,6 @@
  * Nothing consumes this yet. It ships dark ahead of the frame itself so the rule
  * can be argued with, and tested, in one place instead of being discovered later
  * as a condition scattered through JSX.
- *
- * See MEDIA_FEED_PLAN.md, decision 6.
  */
 import { extractMediaFromContent } from "./media-utils";
 

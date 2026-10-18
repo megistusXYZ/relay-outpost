@@ -1,6 +1,6 @@
 /**
  * "People to follow" — the ranking half, kept pure because every rule in it is
- * a safety or trust rule (DISCOVER_BENTO_PLAN.md round 2, #15/#16):
+ * a safety or trust rule:
  *
  *  - friends-of-follows FIRST: people followed by several of YOUR follows are
  *    the un-gameable signal; trending only fills what's left

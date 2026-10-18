@@ -159,8 +159,7 @@ export function CreatePostFAB() {
   const [isPollMode, setIsPollMode] = useState(false);
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
   const [pollExpiration, setPollExpiration] = useState<string>("1d");
-  // NIP-68 opt-in. Kind 1 stays the default (MEDIA_FEED_PLAN decision 9, as
-  // amended): kind 20 is only offered when the post is picture-dominant, and
+  // NIP-68 opt-in. Kind 1 stays the default: kind 20 is only offered when the post is picture-dominant, and
   // only published when the author flips this on.
   const [postAsPicture, setPostAsPicture] = useState(false);
   const [pictureTitle, setPictureTitle] = useState("");

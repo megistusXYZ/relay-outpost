@@ -169,7 +169,7 @@ export function buildNavDestinations(opts: {
  *
  * Four choices worth stating, because each removes something:
  *  - **No Feed node.** Public Nostr stops being a mode and becomes a source you
- *    reach through Discover — since the bento (DISCOVER_BENTO_PLAN.md) that is
+ *    reach through Discover — since the bento that is
  *    literal: /discover is a chooser and the feed at `/` is its first tile.
  *    News is a tile there too; its unread count renders ON that tile, next to
  *    the thing that clears it, never on this tab (see below).

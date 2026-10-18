@@ -1,6 +1,6 @@
 /**
  * Trending pool for the Discover "People to follow" strip — the FALLBACK
- * source (DISCOVER_BENTO_PLAN.md round 2, decision 16). Friends-of-follows
+ * source. Friends-of-follows
  * ranks first and comes from useFollowsOfFollows; this only fills what's left
  * for sparse accounts and guests.
  *

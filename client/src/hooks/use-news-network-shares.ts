@@ -1,5 +1,5 @@
 /**
- * The Nostr signal behind the news boost (NEWS_TRENDING_PLAN.md, decision 8):
+ * The Nostr signal behind the news boost:
  * "which news links is my network sharing right now." Fetches recent kind-1
  * notes from a bounded sample of the viewer's follows and folds them into a
  * share map (lib/news-network-boost.ts), weighted by GrapeRank influence when

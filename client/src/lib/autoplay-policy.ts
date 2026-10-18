@@ -12,8 +12,6 @@
  * "this person asked for less motion" and "this connection is metered" are
  * different facts, and collapsing them to `false` throws away the only
  * information anyone debugging a report would want.
- *
- * See MEDIA_FEED_PLAN.md, decision 5.
  */
 
 /** Below this, a phone will stutter decoding video while scrolling. */
