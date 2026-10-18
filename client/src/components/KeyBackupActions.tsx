@@ -20,6 +20,7 @@ import { buildKeyFile, saveKeyFile, checkBackup } from "@/lib/key-file";
 import { markBackedUp, markBackupChecked } from "@/lib/key-backup";
 import { saveCredentialToPasswordManager } from "@/lib/local-account";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
+import { CredentialUsername } from "@/components/CredentialUsername";
 
 export interface KeyMaterial {
   nsec: string;
@@ -42,6 +43,11 @@ export function KeyBackupActions({ material, relays, isOverlay = false, onSaved,
   const [fileSaved, setFileSaved] = useState(false);
   const [managerSaved, setManagerSaved] = useState(false);
   const [managerWorking, setManagerWorking] = useState(false);
+  // Browsers without the save API (Safari on every iPhone, Firefox) only offer
+  // to save what was entered into a password field. So: copy the key, have
+  // them paste it under their npub, and remove the form on Save — the moment
+  // the browser offers to keep it. Nothing is sent anywhere.
+  const [managerPaste, setManagerPaste] = useState<string | null>(null);
   const [check, setCheck] = useState<"idle" | "opens" | "other-account" | "unreadable">("idle");
   const [pasted, setPasted] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -75,12 +81,8 @@ export function KeyBackupActions({ material, relays, isOverlay = false, onSaved,
         onSaved?.();
         toast({ title: "Offered to your password manager", description: "Confirm in the browser prompt. Your key is the password; your address is the username." });
       } else {
-        // Safari and Firefox offer no no-network save: copy, and say where to paste.
-        await navigator.clipboard.writeText(material.nsec);
-        markBackedUp(material.pubkey, Date.now(), "key");
-        setManagerSaved(true);
-        onSaved?.();
-        toast({ title: "Key copied", description: "Paste it into your password manager as the password, with your address as the username." });
+        try { await navigator.clipboard.writeText(material.nsec); } catch { /* they can still type it */ }
+        setManagerPaste("");
       }
     } catch {
       toast({ title: "Couldn't reach your password manager", description: "Save the key file instead.", variant: "destructive" });
@@ -88,6 +90,18 @@ export function KeyBackupActions({ material, relays, isOverlay = false, onSaved,
       setManagerWorking(false);
     }
   }, [material, onSaved, toast]);
+
+  const managerPasteOpens = managerPaste !== null && checkBackup(managerPaste, material.pubkey) === "opens";
+  const finishManagerSave = useCallback(() => {
+    if (!managerPasteOpens) return;
+    markBackedUp(material.pubkey, Date.now(), "key");
+    markBackupChecked(material.pubkey, Date.now());
+    setManagerPaste(null);
+    setManagerSaved(true);
+    setCheck("opens");
+    onSaved?.();
+    toast({ title: "Saved", description: "If your phone asked to save a password, say yes: that is your key, filed under your address." });
+  }, [managerPasteOpens, material.pubkey, onSaved, toast]);
 
   const runCheck = useCallback((text: string) => {
     const result = checkBackup(text, material.pubkey);
@@ -111,13 +125,45 @@ export function KeyBackupActions({ material, relays, isOverlay = false, onSaved,
         {managerWorking ? "Saving…" : managerSaved ? "Saved to password manager" : "Save to password manager"}
       </Button>
 
+      {managerPaste !== null && (
+        <form
+          onSubmit={(e) => { e.preventDefault(); finishManagerSave(); }}
+          className={`rounded-md p-3 space-y-2 ${isOverlay ? "border border-white/10 bg-white/[0.03]" : "border border-border/40 bg-foreground/[0.02]"}`}
+          data-testid={`${testIdPrefix}-manager-form`}
+        >
+          <CredentialUsername npub={material.npub} testId={`${testIdPrefix}-manager-username`} />
+          <p className={`text-xs leading-relaxed ${quiet}`}>Your key is copied. Paste it here and tap Save: your password manager offers to keep it, with your address as the username.</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="password"
+              name="password"
+              value={managerPaste}
+              onChange={(e) => setManagerPaste(e.target.value)}
+              placeholder="Paste your key (nsec1…)"
+              autoComplete="current-password"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              className={`flex-1 min-w-0 h-9 rounded-md border px-2 text-xs bg-transparent ${isOverlay ? "border-white/15 text-white placeholder:text-white/40" : "border-border/50"}`}
+              style={{ fontSize: 16 }}
+              data-testid={`${testIdPrefix}-manager-paste`}
+            />
+            <Button type="submit" size="sm" disabled={!managerPasteOpens} className="h-9" data-testid={`${testIdPrefix}-manager-save`}>Save</Button>
+          </div>
+          {managerPaste.trim() !== "" && !managerPasteOpens && (
+            <p className="text-xs text-destructive" role="status">That isn't the key for {who}.</p>
+          )}
+        </form>
+      )}
+
       {saved && (
         <div className={`rounded-md p-3 space-y-2 ${isOverlay ? "border border-white/10 bg-white/[0.03]" : "border border-border/40 bg-foreground/[0.02]"}`} data-testid={`${testIdPrefix}-check`}>
           <p className={`text-xs font-semibold ${isOverlay ? "text-white" : ""}`}>Check it works</p>
           <p className={`text-xs leading-relaxed ${quiet}`}>Open the saved file here, or paste the key. We read it back and say whether it opens {who}. Nothing is sent anywhere.</p>
           <input ref={fileRef} type="file" accept=".txt,text/plain" className="sr-only" onChange={(e) => void onFile(e.target.files?.[0])} data-testid={`${testIdPrefix}-check-file`} />
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} className={`h-8 text-[11px] font-brand uppercase tracking-[0.12em] font-bold ${outline}`} data-testid={`${testIdPrefix}-check-open`}>
+          <form onSubmit={(e) => e.preventDefault()} className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <CredentialUsername npub={material.npub} testId={`${testIdPrefix}-check-username`} />
+            <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} className={`h-8 text-[11px] font-brand uppercase tracking-[0.12em] font-bold ${outline}`} data-testid={`${testIdPrefix}-check-open`}>
               <FileText className="w-3.5 h-3.5 mr-1.5" /> Open the file
             </Button>
             <span className={`text-[11px] ${quiet}`}>or paste the key:</span>
@@ -131,7 +177,7 @@ export function KeyBackupActions({ material, relays, isOverlay = false, onSaved,
               style={{ fontSize: 16 }}
               data-testid={`${testIdPrefix}-check-paste`}
             />
-          </div>
+          </form>
           {check !== "idle" && (
             <p
               className={`text-xs flex items-center gap-1.5 ${check === "opens" ? (isOverlay ? "text-emerald-200" : "text-success") : "text-destructive"}`}

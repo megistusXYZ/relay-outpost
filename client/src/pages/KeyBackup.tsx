@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loadLocalAccount, decryptStored } from "@/lib/local-account";
+import { deviceSecretInputProps } from "@/lib/credential-fields";
 import { getWriteRelays } from "@/lib/outbox";
 import { unlockWithPasskey, describePasskeyPlatform } from "@/lib/passkey";
 import { useKeyMaterial } from "@/hooks/use-key-material";
@@ -104,13 +105,11 @@ export default function KeyBackup() {
               <Label className="text-[11px] font-brand uppercase tracking-widest text-muted-foreground">Password for this browser</Label>
               <div className="relative">
                 <Input
-                  type={show ? "text" : "password"}
+                  {...deviceSecretInputProps(show)}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") void unlockWithPassword(); }}
-                  autoComplete="current-password"
                   className="pr-10"
-                  style={{ fontSize: 16 }}
                   data-testid="key-page-password"
                 />
                 <button type="button" onClick={() => setShow((v) => !v)} aria-label={show ? "Hide password" : "Show password"} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">

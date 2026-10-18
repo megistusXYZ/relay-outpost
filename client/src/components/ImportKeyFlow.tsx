@@ -18,12 +18,15 @@ import {
   loadLocalAccount,
   pubkeyFromSecret,
   markOnboardingComplete,
-  tryStorePassphraseInPasswordManager,
   describeKeyError,
   type StoredLocalAccount,
 } from "@/lib/local-account";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { PasskeyEnrollmentCard } from "@/components/PasskeyEnrollmentCard";
+import { CredentialUsername } from "@/components/CredentialUsername";
+import { deviceSecretInputProps } from "@/lib/credential-fields";
+import { generatePassphraseSuggestion } from "@/lib/passphrase-suggest";
+import { npubForKeyInput } from "@/lib/key-input-npub";
 import { canOfferPasskeyEnrollment, type PasskeyEnrollment } from "@/lib/passkey";
 import { loadImportDraft, saveImportDraft, clearImportDraft, type ImportStep } from "@/lib/import-draft";
 
@@ -69,6 +72,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>("key");
   const [keyInput, setKeyInput] = useState("");
+  const keyFieldNpub = useMemo(() => npubForKeyInput(keyInput), [keyInput]);
   const [importPassword, setImportPassword] = useState("");
   const [showImport, setShowImport] = useState(false);
   const [showKey, setShowKey] = useState(false);
@@ -82,10 +86,16 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
   const [error, setError] = useState("");
   const [savedAccount, setSavedAccount] = useState<StoredLocalAccount | null>(null);
   const [passkeyEnrolled, setPasskeyEnrolled] = useState(false);
-  // Default UX matches the rest of the Nostr ecosystem (Ditto / Iris / Snort
-  // / Coracle / Damus Web): paste an nsec, stay signed in. Users who want
-  // a device passphrase can opt in via the disclosure below.
-  const [passphraseMode, setPassphraseMode] = useState<"stay" | "lock">("stay");
+  // Locked by default (owner, 2026-10-18): Face ID / Touch ID where the
+  // device offers it, otherwise a passphrase for this device. Staying signed
+  // in without unlocking is still a clear choice, with its warning.
+  const [passphraseMode, setPassphraseMode] = useState<"stay" | "lock">("lock");
+  const [canOfferPasskey, setCanOfferPasskey] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void canOfferPasskeyEnrollment().then((ok) => { if (live) setCanOfferPasskey(ok); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
 
   // Hydrate the import draft on mount so a mid-flow reload (notably on
   // mobile where the OS evicts the WebView during keyboard / focus changes)
@@ -314,12 +324,14 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
     }
   }, [decryptedSecret, finalizeLogin, toast]);
 
-  const handleFinishImport = useCallback(async () => {
-    if (!decryptedSecret || !passwordValid) return;
-    setIsWorking(true);
-    try {
+  // Encrypt the key under `passphrase`, save it on this device, and prove it
+  // reads back before trusting it. Shared by the passphrase path and the
+  // Face ID / Touch ID path (which uses a random passphrase nobody types).
+  const persistEncrypted = useCallback(async (passphrase: string, passkey?: PasskeyEnrollment): Promise<StoredLocalAccount | null> => {
+    if (!decryptedSecret) return null;
+    {
       const ncryptsec = await new Promise<string>((resolve) => {
-        setTimeout(() => resolve(encryptSecretKey(decryptedSecret, newPassword)), 30);
+        setTimeout(() => resolve(encryptSecretKey(decryptedSecret, passphrase)), 30);
       });
 
       const { pubkey, npub } = pubkeyFromSecret(decryptedSecret);
@@ -328,6 +340,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
         npub,
         ncryptsec,
         createdAt: Date.now(),
+        ...(passkey ? { passkey } : {}),
       };
 
       // Persist first, then re-read from storage and decrypt. This catches
@@ -343,7 +356,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
           description: "Storage may be full or blocked (e.g. private browsing). Free up space or try a normal window, then try again — your secret is still in the box above.",
           variant: "destructive",
         });
-        return;
+        return null;
       }
 
       let verified: Uint8Array | null = null;
@@ -354,7 +367,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
         }
         verified = await new Promise<Uint8Array>((resolve, reject) => {
           setTimeout(() => {
-            try { resolve(decryptStored(reloaded.ncryptsec, newPassword)); }
+            try { resolve(decryptStored(reloaded.ncryptsec, passphrase)); }
             catch (e) { reject(e); }
           }, 30);
         });
@@ -375,16 +388,47 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
           description: "Your key wasn't saved cleanly on this device. Please try again — your secret is still in the box above.",
           variant: "destructive",
         });
-        return;
+        return null;
       } finally {
         if (verified) verified.fill(0);
       }
       // Imported accounts already have their own social graph — don't trigger the new-user onboarding overlay
       markOnboardingComplete(pubkey);
-      // Best-effort: ask the OS / browser password manager to remember the passphrase
-      // keyed by this npub. On the next visit we can auto-fill, no copy-paste needed.
-      void tryStorePassphraseInPasswordManager(npub, newPassword);
+      // The password manager's entry for this account is the key (saved from
+      // the key field, under the npub), never this device passphrase.
       setSavedAccount(record);
+      return record;
+    }
+  }, [decryptedSecret, toast]);
+
+  // Face ID / Touch ID first: the passkey unlocks this device day to day. The
+  // stored copy is encrypted under a random passphrase nobody has to type.
+  const handlePasskeyFirst = useCallback(async (blob: PasskeyEnrollment) => {
+    if (!decryptedSecret) return;
+    setIsWorking(true);
+    try {
+      const record = await persistEncrypted(generatePassphraseSuggestion(8), blob);
+      if (!record) return;
+      setPasskeyEnrolled(true);
+      try {
+        await finalizeLogin(decryptedSecret, { toastDescription: "Unlock with your face or fingerprint next time." });
+      } catch {
+        return;
+      }
+    } catch (err) {
+      console.error("Face ID import failed:", err);
+      toast({ title: "Sign-in failed", description: err instanceof Error ? err.message : "Try again.", variant: "destructive" });
+    } finally {
+      setIsWorking(false);
+    }
+  }, [decryptedSecret, persistEncrypted, finalizeLogin, toast]);
+
+  const handleFinishImport = useCallback(async () => {
+    if (!decryptedSecret || !passwordValid) return;
+    setIsWorking(true);
+    try {
+      const record = await persistEncrypted(newPassword);
+      if (!record) return;
 
       // Decide up-front whether we'll show the passkey nudge so we can set
       // the deferral flag BEFORE login finalizes (otherwise Login.tsx's
@@ -425,7 +469,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
     } finally {
       setIsWorking(false);
     }
-  }, [decryptedSecret, newPassword, passwordValid, finalizeLogin, toast]);
+  }, [decryptedSecret, newPassword, passwordValid, persistEncrypted, finalizeLogin, toast]);
 
   const handlePasskeyEnrolled = useCallback((blob: PasskeyEnrollment) => {
     if (!savedAccount) return;
@@ -501,25 +545,22 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
             <div className="space-y-2">
               <Label className={`text-xs font-brand uppercase tracking-widest ${subtleCls}`}>Secret key</Label>
               <div className="relative">
+                {/* A password field under the account's npub, so a password
+                    manager fills in a saved key here and offers to keep a
+                    pasted one, filed under the right account. */}
+                <CredentialUsername npub={keyFieldNpub} testId="input-import-username" />
                 <Input
-                  type="text"
+                  type={showKey ? "text" : "password"}
+                  name="password"
                   value={keyInput}
                   onChange={(e) => { setKeyInput(e.target.value); setError(""); }}
                   placeholder="nsec1… or ncryptsec1… or 64-char hex"
                   className={`font-mono ${inputCls} h-11 pr-10 text-xs tracking-tight`}
-                  style={{
-                    fontSize: 16,
-                    ...({ WebkitTextSecurity: showKey ? "none" : "disc" } as React.CSSProperties),
-                  }}
+                  style={{ fontSize: 16 }}
                   autoCapitalize="off"
                   autoCorrect="off"
-                  autoComplete="off"
+                  autoComplete="current-password"
                   spellCheck={false}
-                  inputMode="text"
-                  data-1p-ignore="true"
-                  data-lpignore="true"
-                  data-bwignore="true"
-                  data-form-type="other"
                   data-testid="input-import-key"
                 />
                 <button
@@ -667,19 +708,24 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
               </>
             ) : (
               <form onSubmit={(e) => { e.preventDefault(); if (passwordValid && !isWorking) handleFinishImport(); }}>
-                {/* Hidden username field so password managers (iCloud Keychain, Google PM, 1Password)
-                    pair the saved passphrase with this account's npub instead of treating each
-                    Relay Outpost login as a separate, indistinguishable entry. */}
-                <input
-                  type="text"
-                  name="username"
-                  autoComplete="username"
-                  value={decryptedNpub}
-                  readOnly
-                  tabIndex={-1}
-                  aria-hidden="true"
-                  style={{ position: "absolute", opacity: 0, pointerEvents: "none", height: 0, width: 0 }}
-                />
+                {canOfferPasskey && decryptedSecret && (
+                  <div className="space-y-3 mb-4" data-testid="import-passkey-first">
+                    <PasskeyEnrollmentCard
+                      variant={variant}
+                      secretKey={decryptedSecret}
+                      pubkey={pubkeyFromSecret(decryptedSecret).pubkey}
+                      npub={pubkeyFromSecret(decryptedSecret).npub}
+                      accountLabel="Relay Outpost account"
+                      enrolled={passkeyEnrolled}
+                      onEnrolled={(blob) => void handlePasskeyFirst(blob)}
+                    />
+                    <div className="flex items-center gap-3">
+                      <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border/60"}`} />
+                      <span className={`text-[10px] font-brand uppercase tracking-[0.18em] ${subtleCls}`}>or a passphrase</span>
+                      <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border/60"}`} />
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center gap-3">
                   <div className={`flex items-center justify-center w-10 h-10 rounded-md ${isOverlay ? "bg-white/5 border border-white/10" : "bg-foreground/5 border border-border/40"}`}>
                     <Lock className={`w-5 h-5 ${isOverlay ? "text-white/70" : "text-foreground/70"}`} />
@@ -695,15 +741,12 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                     <Label className={`text-xs font-brand uppercase tracking-widest ${subtleCls}`}>Passphrase</Label>
                     <div className="relative">
                       <Input
-                        type={showNew ? "text" : "password"}
+                        {...deviceSecretInputProps(showNew)}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="At least 8 characters"
                         className={`${inputCls} pr-10`}
-                        style={{ fontSize: 16 }}
-                        name="new-password"
-                        autoComplete="new-password"
-                        autoFocus
+                        autoFocus={!canOfferPasskey}
                         data-testid="input-new-passphrase"
                       />
                       <button
@@ -719,13 +762,11 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                   <div className="space-y-2">
                     <Label className={`text-xs font-brand uppercase tracking-widest ${subtleCls}`}>Confirm</Label>
                     <Input
-                      type={showNew ? "text" : "password"}
+                      {...deviceSecretInputProps(showNew)}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Type it again"
                       className={inputCls}
-                      style={{ fontSize: 16 }}
-                      autoComplete="new-password"
                       data-testid="input-new-passphrase-confirm"
                     />
                     {confirmPassword && newPassword !== confirmPassword && (
@@ -738,11 +779,20 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => setPassphraseMode("stay")}
+                    onClick={() => setStep("key")}
                     className={`text-xs font-brand uppercase tracking-widest ${ghostBtnCls}`}
-                    data-testid="button-switch-to-stay"
+                    data-testid="button-lock-back-to-key"
                   >
                     <ArrowLeft className="w-4 h-4 mr-2" /> Back
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setPassphraseMode("stay")}
+                    className={`text-[11px] font-brand uppercase tracking-widest ${ghostBtnCls}`}
+                    data-testid="button-switch-to-stay"
+                  >
+                    Stay signed in without unlocking
                   </Button>
                   <div className="hidden sm:block sm:flex-1" />
                   <Button

@@ -20,6 +20,7 @@ import { writeBlurOutside } from "@/lib/outside-space-blur";
 import { getPreferredLanguages } from "@/lib/language";
 import { classifyStorageEnvironment, classifyStorageEnvironmentAsync, type StorageEnvironment } from "@/lib/key-storage-environment";
 import { generatePassphraseSuggestion } from "@/lib/passphrase-suggest";
+import { deviceSecretInputProps } from "@/lib/credential-fields";
 import { PasskeyEnrollmentCard } from "@/components/PasskeyEnrollmentCard";
 import type { PasskeyEnrollment } from "@/lib/passkey";
 import { publishEvent, verifySignedEventKind, eventStore } from "@/lib/nostr";
@@ -1430,13 +1431,11 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                         </div>
                         <div className="relative">
                           <Input
-                            type={showPassword ? "text" : "password"}
+                            {...deviceSecretInputProps(showPassword)}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="At least 8 characters"
                             className={`${inputCls} pr-10`}
-                            style={{ fontSize: 16 }}
-                            autoComplete="new-password"
                             data-testid="input-passphrase"
                           />
                           <button
@@ -1464,13 +1463,11 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                       <div className="space-y-2">
                         <Label className={`text-xs font-brand uppercase tracking-widest ${subtleCls}`}>Confirm password</Label>
                         <Input
-                          type={showPassword ? "text" : "password"}
+                          {...deviceSecretInputProps(showPassword)}
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
                           placeholder="Type it again"
                           className={inputCls}
-                          style={{ fontSize: 16 }}
-                          autoComplete="new-password"
                           data-testid="input-passphrase-confirm"
                         />
                         {confirmPassword && password !== confirmPassword && (
