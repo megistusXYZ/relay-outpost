@@ -11,8 +11,6 @@
  * would be learned. Shipping with no flag at all was also rejected: this
  * changes the primary surface for every user, and a bad result on real devices
  * has to be undoable without a deploy.
- *
- * See MEDIA_FEED_PLAN.md, decision 13.
  */
 const KEY = "ro_media_feed";
 const OFF = "0";

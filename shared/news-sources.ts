@@ -1,5 +1,5 @@
-// The canonical news source pool for the trending front page
-// (NEWS_TRENDING_PLAN.md). This is the SUBSTRATE of the corroboration signal —
+// The canonical news source pool for the trending front page.
+// This is the SUBSTRATE of the corroboration signal —
 // the invisible ingredients, never shown to a user as "your subscriptions."
 // The server aggregation job fans this out, clusters near-duplicate coverage,
 // and ranks by outlet consensus (server/news-corroboration.ts).

@@ -73,7 +73,7 @@ const ALLOW: Array<{ path: RegExp; rule: string }> = [
   { path: /^client\/src\/lib\/concord\/concord-av-brokers\.test\.ts$/, rule: "LAN address" },
   { path: /^client\/src\/lib\/concord\/concord-av-brokers\.test\.ts$/, rule: "local hostname" },
   // Replit's (retired) package proxy host, a vendor name, in the lockfile fix-up.
-  { path: /^(\.github\/workflows\/ci\.yml|\.agents\/memory\/build-and-deploy\.md)$/, rule: "local hostname" },
+  { path: /^\.github\/workflows\/ci\.yml$/, rule: "local hostname" },
 ];
 
 export function findPersonalDetails(

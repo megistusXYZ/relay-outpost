@@ -1842,7 +1842,7 @@ export async function registerRoutes(
     }
   });
 
-  // ── Trending news front page (NEWS_TRENDING_PLAN.md) ────────────────────────
+  // ── Trending news front page ─────────────────────────────────────────────────
   // ONE cached job computes the universal trending front page: fan out the
   // shared news pool, cluster near-duplicate coverage across outlets, rank by
   // consensus × recency (server/news-corroboration.ts). Every client fetches
@@ -1911,7 +1911,7 @@ export async function registerRoutes(
       pubDate: new Date(c.lead.pubDateMs).toISOString(),
       // Every member link, so the client's Nostr-network re-rank can match a
       // shared URL to the story even when a friend linked a different outlet's
-      // copy (decision 8).
+      // copy.
       memberLinks: c.items.map((i) => i.link).filter(Boolean),
     };
   }

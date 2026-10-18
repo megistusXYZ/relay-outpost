@@ -1,5 +1,5 @@
-// Pure corroboration engine for the trending-news front page
-// (NEWS_TRENDING_PLAN.md, decision 7). No I/O, no timers, no globals —
+// Pure corroboration engine for the trending-news front page.
+// No I/O, no timers, no globals —
 // everything is a deterministic function over parsed feed items, so it is
 // fully unit-testable with synthetic fixtures (see news-corroboration.test.ts).
 // The routes layer owns the /api/rss fan-out, the periodic cache, and the
@@ -9,8 +9,8 @@
 // THE SIGNAL. A story that many independent outlets are running RIGHT NOW is
 // the definition of trending news — outlet consensus, not our editorial pick.
 // So we cluster headlines that describe the same event and rank a cluster by
-// how many DISTINCT outlets cover it, decayed by age. Fuzzy, not semantic
-// (decision 7A): token/entity overlap within a time window, no ML. Good enough
+// how many DISTINCT outlets cover it, decayed by age. Fuzzy, not semantic:
+// token/entity overlap within a time window, no ML. Good enough
 // that "8 outlets are running this" rises; cheap enough to recompute per
 // interval; with a clean seam to swap in embeddings later.
 

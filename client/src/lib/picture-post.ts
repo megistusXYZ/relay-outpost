@@ -1,7 +1,7 @@
 /**
  * NIP-68 picture-first posts (kind 20) — the opt-in publish path.
  *
- * MEDIA_FEED_PLAN decision 9 said "read kinds 20/21/22, keep publishing kind 1",
+ * The first media-feed rule said "read kinds 20/21/22, keep publishing kind 1",
  * because a kind-20 photo is invisible to clients without NIP-68. That reasoning
  * still holds as the DEFAULT — which is why everything here is gated twice:
  * the post must be picture-dominant (all attachments are pictures, caption-length

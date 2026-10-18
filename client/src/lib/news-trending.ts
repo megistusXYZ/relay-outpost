@@ -1,8 +1,8 @@
 /**
- * Client types + pure helpers for the trending-news front page
- * (NEWS_TRENDING_PLAN.md, phase 2). The ranking is computed server-side
+ * Client types + pure helpers for the trending-news front page.
+ * The ranking is computed server-side
  * (/api/news/trending); the client fetches one payload and renders it. This
- * module owns the shape and the read-state annotation — which, per decision 5,
+ * module owns the shape and the read-state annotation — which
  * DIMS read stories in place and never reorders them: rank leads, read-state
  * is a visual, not the sort key.
  */
@@ -22,7 +22,7 @@ export interface TrendingStory {
   thumbnail: string;
   description: string;
   pubDate: string;
-  /** Every member outlet's link — so the Nostr-network re-rank (phase 3) can
+  /** Every member outlet's link — so the Nostr-network re-rank can
    *  match a shared URL even when a friend linked a different outlet's copy. */
   memberLinks: string[];
 }
@@ -53,7 +53,7 @@ export function annotateReadState(stories: TrendingStory[], readSet: Set<string>
 
 /**
  * How many of the currently-shown stories are new since the reference build —
- * for the "N new since you looked" nudge (decision 5), which surfaces freshness
+ * for the "N new since you looked" nudge, which surfaces freshness
  * without reordering. A story counts as new when its lead is newer than the
  * last time the user looked at this feed.
  */

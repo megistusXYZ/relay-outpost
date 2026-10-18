@@ -1,6 +1,5 @@
 /**
- * "People to follow" ranking for the Discover strip (DISCOVER_BENTO_PLAN.md
- * round 2, decisions 15–16). Pure: the component fetches the pools, this
+ * "People to follow" ranking for the Discover strip. Pure: the component fetches the pools, this
  * decides who appears and in what order.
  *
  * TWO POOLS, STRICT PRECEDENCE. Friends-of-follows — people followed by

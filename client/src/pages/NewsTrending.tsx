@@ -1,12 +1,11 @@
 /**
- * The trending-news front page (NEWS_TRENDING_PLAN.md, phase 2).
+ * The trending-news front page.
  *
- * Fetches ONE ranked payload from /api/news/trending (the corroboration spine,
- * phase 1) and renders it: a topic lens, a hero, a ranked river. The order is
- * the server's trending rank; read stories DIM IN PLACE and never reorder
- * (decision 5). Each story shows its corroboration signal — "N outlets" — the
- * transparent "why it's ranked here" (decision 9). The Nostr-network lift and
- * the podcast rail land in later phases.
+ * Fetches ONE ranked payload from /api/news/trending (the corroboration spine)
+ * and renders it: a topic lens, a hero, a ranked river. The order is
+ * the server's trending rank; read stories DIM IN PLACE and never reorder.
+ * Each story shows its corroboration signal — "N outlets" — the
+ * transparent "why it's ranked here".
  *
  * Flag-gated (ro_news_trending, default off): mounted by RSSFeed only when the
  * flag is on, so the proven reader keeps serving until this is verified.
@@ -86,7 +85,7 @@ export function NewsTrending({ embedded = false }: { embedded?: boolean }) {
   // Read ledger, re-read when the query data changes (opening a story rewrites
   // it, and react-query's dataUpdatedAt flips when we refetch).
   const readSet = useMemo(() => loadRssReadLedger(), [query.dataUpdatedAt, topic]);
-  // The Nostr-network lift (decision 8): fetch what the viewer's follows are
+  // The Nostr-network lift: fetch what the viewer's follows are
   // sharing and re-rank the base list against it. Additive — a signed-out
   // viewer or an empty network gets the pure corroboration order.
   const shareMap = useNewsNetworkShares(true);
@@ -125,7 +124,7 @@ export function NewsTrending({ embedded = false }: { embedded?: boolean }) {
   return (
     <div className={embedded ? "" : "max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6"} data-testid="page-news-trending">
       {!pubkey && !embedded && <div className="mb-4"><GuestLookingAround /></div>}
-      {/* Topic lens — the "from the jump" selection (decision 3). */}
+      {/* Topic lens — the "from the jump" selection. */}
       <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 mb-3" role="tablist" aria-label="News topics" data-testid="news-topic-lens">
         {TOPICS.map((t) => {
           const active = topic === t;

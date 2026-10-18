@@ -4,7 +4,7 @@
  * This page exists because "Discover" was a tab named for a job it was never
  * given: its nav entry pointed at "/" (the feed), and when the IA collapsed
  * 8 → 4, News, Articles and Communities lost their nav entries entirely. The
- * decision record is DISCOVER_BENTO_PLAN.md; the rules that shape this file:
+ * rules that shape this file:
  *
  *  - REPLACE, not contain: the landing is a chooser; the feed is one tile.
  *  - LIVE tiles: each shows real content, or it is a menu and a step backward.
@@ -1624,7 +1624,7 @@ export default function Discover() {
         </div>
       </div>
 
-      {/* Quiet, below the doors on purpose (plan round 2, #15): a fifth TILE
+      {/* Quiet, below the doors on purpose: a fifth TILE
           would fight the grid; a strip is a bonus. Renders 4-6 cards or
           NOTHING — additive content claims nothing by being absent, which is
           why it carries no reach states (unlike the tiles, which are doors). */}

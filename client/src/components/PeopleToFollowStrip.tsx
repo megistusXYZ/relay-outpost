@@ -1,6 +1,5 @@
 /**
- * "People to follow" — the quiet strip under the Discover bento grid
- * (DISCOVER_BENTO_PLAN.md round 2, decisions 15–16).
+ * "People to follow" — the quiet strip under the Discover bento grid.
  *
  * SOURCING: friends-of-follows first (people followed by ≥2 of YOUR follows,
  * ranked by that count — the signal no global trending list can fake),

@@ -22,7 +22,6 @@ replit.md
 
 # Internal planning docs stay private by default; published docs are re-included below.
 docs/*
-!docs/DISTRIBUTION.md
 !docs/manual-qa.md
 
 # Logs
