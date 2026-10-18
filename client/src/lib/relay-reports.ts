@@ -10,7 +10,8 @@
  * in your network made fold into "From people you don't know" — never hidden,
  * so a pile-on from fresh accounts can't jump the queue.
  *
- * Pure apart from the dismissed-list storage at the bottom.
+ * Pure: what was dismissed and whose reports are ignored come in from
+ * lib/report-moderation-prefs.ts.
  */
 import type { SignalTier } from "./graperank";
 import { severityFromReportTypes, type Severity } from "./follow-flag-verdict";
@@ -42,10 +43,18 @@ const RANK: Record<Severity, number> = { severe: 2, mild: 1, neutral: 0 };
 
 export function foldRelayReports(
   reports: readonly ReportEvent[],
-  ctx: { relayEventIds: ReadonlySet<string>; relayAuthors: ReadonlySet<string>; dismissed: ReadonlySet<string> },
+  ctx: {
+    relayEventIds: ReadonlySet<string>;
+    relayAuthors: ReadonlySet<string>;
+    /** When the operator dismissed this row: reports up to then stay out, newer ones bring it back. */
+    dismissedAt: (key: string) => number | undefined;
+    /** People whose reports the operator ignores, on every relay they run. */
+    ignoredReporters: ReadonlySet<string>;
+  },
 ): RelayReport[] {
   const rows = new Map<string, RelayReport>();
   for (const ev of reports) {
+    if (ctx.ignoredReporters.has(ev.pubkey)) continue;
     const e = ev.tags.find((t) => t[0] === "e" && /^[0-9a-f]{64}$/i.test(t[1] ?? ""));
     const p = ev.tags.find((t) => t[0] === "p" && /^[0-9a-f]{64}$/i.test(t[1] ?? ""));
     if (!p) continue;
@@ -54,7 +63,8 @@ export function foldRelayReports(
     // On this relay: the post is one we've seen here, or its author posts here.
     if (!(targetEventId && ctx.relayEventIds.has(targetEventId)) && !ctx.relayAuthors.has(targetPubkey)) continue;
     const key = reportKey({ targetEventId, targetPubkey });
-    if (ctx.dismissed.has(key)) continue;
+    const dismissedAt = ctx.dismissedAt(key);
+    if (dismissedAt !== undefined && ev.created_at <= dismissedAt) continue;
     const slots = [e?.[2], e?.[3], p[2], p[3]].map((t) => (t ?? "").trim());
     const hints = slots.filter((t) => /^wss?:\/\//i.test(t)).map((t) => t.replace(/\/+$/, ""));
     const types = [e?.[2], p[2], p[3], ...ev.tags.filter((t) => t[0] === "report").map((t) => t[1])]
@@ -78,17 +88,31 @@ export function foldRelayReports(
 
 const KNOWN: ReadonlySet<SignalTier> = new Set(["strong", "moderate"]);
 
-/** Reports someone in your network made, and the rest — folded, never dropped. */
+/**
+ * Reports someone in your network made, then the rest — folded, never dropped.
+ * Strangers' reports about someone your network trusts (owner, 2026-10-18)
+ * fold further, into "probably fine", and aren't counted in the badge.
+ */
 export function splitByTrust(
   rows: readonly RelayReport[],
   tierOf: (pubkey: string) => SignalTier,
   networkLoaded = true,
-): { known: RelayReport[]; strangers: RelayReport[] } {
-  if (!networkLoaded) return { known: [...rows], strangers: [] };
+): { known: RelayReport[]; strangers: RelayReport[]; probablyFine: RelayReport[] } {
+  if (!networkLoaded) return { known: [...rows], strangers: [], probablyFine: [] };
   const known: RelayReport[] = [];
   const strangers: RelayReport[] = [];
-  for (const r of rows) (r.reporters.some((pk) => KNOWN.has(tierOf(pk))) ? known : strangers).push(r);
-  return { known, strangers };
+  const probablyFine: RelayReport[] = [];
+  for (const r of rows) {
+    if (r.reporters.some((pk) => KNOWN.has(tierOf(pk)))) known.push(r);
+    else if (KNOWN.has(tierOf(r.targetPubkey))) probablyFine.push(r);
+    else strangers.push(r);
+  }
+  return { known, strangers, probablyFine };
+}
+
+/** Why a report sits under "Probably fine". */
+export function probablyFineExplanation(): string {
+  return "Your network trusts the people these are about, and doesn't know who reported them.";
 }
 
 /** Why a report sits under "From people you don't know". */
@@ -115,16 +139,4 @@ export function describeReport(r: { types: string[]; reporters: string[]; target
   const why = r.types.length ? ` for ${list(r.types)}` : "";
   const who = `${r.reporters.length} ${r.reporters.length === 1 ? "person" : "people"}`;
   return `${what} reported${why} by ${who}`;
-}
-
-const DISMISSED_KEY = "ro_relay_reports_dismissed_";
-
-export function readDismissedRelayReports(relayUrl: string): Set<string> {
-  try { return new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY + relayUrl) || "[]")); } catch { return new Set(); }
-}
-
-export function dismissRelayReport(relayUrl: string, key: string): void {
-  const all = readDismissedRelayReports(relayUrl);
-  all.add(key);
-  try { localStorage.setItem(DISMISSED_KEY + relayUrl, JSON.stringify([...all].slice(-2000))); } catch {}
 }

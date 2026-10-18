@@ -40,7 +40,7 @@ import { ReportsQueue } from "@/components/ReportsQueue";
 import { FeedbackTab } from "./FeedbackTab";
 import { ConfirmAction, type PendingAction } from "./ConfirmAction";
 import { addModLogEntry, pubkeyToNpub, resolveProfileBatch, type ProfileInfo } from "./shared";
-import { strangersExplanation, seeItWords } from "@/lib/relay-reports";
+import { strangersExplanation, probablyFineExplanation, seeItWords } from "@/lib/relay-reports";
 import { rowPreview } from "./content-model";
 
 type InboxView = "all" | "reports" | "requests" | "feedback" | "errors";
@@ -86,8 +86,11 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost, onOpenMemberInbox 
   const requests = (needsYou?.admissions.queue ?? []).filter((r) => norm(r.relayUrl) === norm(relayUrl)).length;
   const feedback = inbox.unreadCount;
   const hasAppErrors = inbox.issues.some(isCrashIssue);
-  const reportCount = relayReports.length + groupReports;
-  const { known, strangers } = useMemo(() => splitByTrust(relayReports, tierOf, wotEnabled && wotReady), [relayReports, tierOf, wotEnabled, wotReady]);
+  const { known, strangers, probablyFine } = useMemo(() => splitByTrust(relayReports, tierOf, wotEnabled && wotReady), [relayReports, tierOf, wotEnabled, wotReady]);
+  // "Probably fine" isn't counted: strangers reporting someone your network trusts.
+  const reportCount = known.length + strangers.length + groupReports;
+  const ignored = needsYou?.relayReports.ignored ?? [];
+  const setIgnored = needsYou?.relayReports.setIgnored;
 
   // Names, faces and the reported posts themselves.
   const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
@@ -96,7 +99,7 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost, onOpenMemberInbox 
   type PostWhere = { event?: NostrEvent; here: boolean; elsewhere: boolean; reached: boolean };
   const [posts, setPosts] = useState<Map<string, PostWhere>>(new Map());
   useEffect(() => {
-    const pks = [...new Set(relayReports.flatMap((r) => [r.targetPubkey, ...r.reporters.slice(0, 3)]))].filter((pk) => !profiles.has(pk));
+    const pks = [...new Set([...relayReports.flatMap((r) => [r.targetPubkey, ...r.reporters.slice(0, 3)]), ...ignored])].filter((pk) => !profiles.has(pk));
     if (pks.length) resolveProfileBatch(pks).then((m) => setProfiles((prev) => { const n = new Map(prev); m.forEach((v, k) => n.set(k, v)); return n; })).catch(() => {});
     const wanted = relayReports.filter((r) => r.targetEventId && !posts.has(r.targetEventId));
     if (!wanted.length) return;
@@ -130,7 +133,8 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost, onOpenMemberInbox 
   const [inspecting, setInspecting] = useState<InspectedEvent | null>(null);
 
   // ---- acting ----
-  const [pending, setPending] = useState<(PendingAction & { report: RelayReport }) | null>(null);
+  // reporterBan: the ban is aimed at a reporter, not the person reported.
+  const [pending, setPending] = useState<(PendingAction & { report: RelayReport; reporterBan?: boolean }) | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const dismiss = useCallback((r: RelayReport) => needsYou?.relayReports.dismiss(relayUrl, r), [needsYou, relayUrl]);
   const carryOut = useCallback(async (reason: string | undefined) => {
@@ -147,9 +151,15 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost, onOpenMemberInbox 
     }
     if (pending.kind === "remove") addModLogEntry(relayUrl, { action: "delete_event", targetEventId: out.done[0], targetPubkey: report.targetPubkey, note: reason });
     else addModLogEntry(relayUrl, { action: "block_author", targetPubkey: out.done[0], note: reason });
+    if (pending.reporterBan) {
+      // Banning a reporter also sets their reports aside, on every relay you run.
+      setIgnored?.(out.done[0], true);
+      toast({ title: `Banned them from ${relayName}`, description: "Their reports are set aside everywhere you moderate." });
+      return;
+    }
     dismiss(report);
     toast({ title: pending.kind === "remove" ? `Removed the post from ${relayName}` : `Banned them from ${relayName}`, description: "The report is handled." });
-  }, [pending, relayUrl, relayName, toast, dismiss]);
+  }, [pending, relayUrl, relayName, toast, dismiss, setIgnored]);
 
   const nameOf = (pk: string) => profiles.get(pk)?.name;
   const profileHref = (pk: string) => `/profile/${pubkeyToNpub(pk)}`;
@@ -188,6 +198,25 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost, onOpenMemberInbox 
                 <span key={pk}>{i > 0 ? ", " : ""}<Link href={profileHref(pk)} className="hover:underline text-foreground/80">{nameOf(pk) ?? `${pubkeyToNpub(pk).slice(0, 12)}…`}</Link> ({trustWord(pk)})</span>
               ))}{r.reporters.length > 3 ? ` and ${r.reporters.length - 3} more` : ""} · {ago(r.lastAt)}
             </p>
+            {/* The reporter can be the problem (owner, 2026-10-18): set their
+                reports aside on every relay you run, or ban them. */}
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+              {reporters.map((pk) => {
+                const name = nameOf(pk) ?? "this reporter";
+                return (
+                  <span key={pk} className="flex flex-wrap gap-x-3">
+                    <button type="button" className="min-h-[44px] sm:min-h-0 text-[12px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline" onClick={() => { setIgnored?.(pk, true); toast({ title: `Ignoring reports from ${name}`, description: "Everywhere you moderate. Undo under Ignored reporters." }); }} data-testid="ops-inbox-ignore-reporter">
+                      Ignore reports from {name}
+                    </button>
+                    {canBan && (
+                      <button type="button" className="min-h-[44px] sm:min-h-0 text-[12px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline" onClick={() => setPending({ kind: "ban", pubkeys: [pk], rule: false, report: r, reporterBan: true })} data-testid="ops-inbox-ban-reporter">
+                        Ban {name}
+                      </button>
+                    )}
+                  </span>
+                );
+              })}
+            </div>
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5 pl-12">
@@ -247,6 +276,38 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost, onOpenMemberInbox 
               <CollapsibleContent>
                 <ul className="mt-2 rounded-xl border border-black/[0.08] dark:border-white/[0.08] divide-y divide-black/[0.06] dark:divide-white/[0.06]" data-testid="ops-inbox-reports-strangers">
                   {strangers.map(reportRow)}
+                </ul>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+          {probablyFine.length > 0 && (
+            <Collapsible defaultOpen={false}>
+              <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 min-h-[44px] px-3.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] text-[14px] font-medium" data-testid="ops-inbox-probably-fine">
+                <span>Probably fine <span className="tabular-nums text-muted-foreground">{probablyFine.length}</span></span>
+                <span className="block text-[12px] text-muted-foreground font-normal" data-testid="ops-inbox-probably-fine-why">{probablyFineExplanation()}</span>
+                <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <ul className="mt-2 rounded-xl border border-black/[0.08] dark:border-white/[0.08] divide-y divide-black/[0.06] dark:divide-white/[0.06]" data-testid="ops-inbox-reports-probably-fine">
+                  {probablyFine.map(reportRow)}
+                </ul>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+          {ignored.length > 0 && (
+            <Collapsible defaultOpen={false}>
+              <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 min-h-[44px] px-3.5 rounded-xl text-[13px] text-muted-foreground" data-testid="ops-inbox-ignored">
+                <span>Ignored reporters <span className="tabular-nums">{ignored.length}</span></span>
+                <ChevronDown className="w-4 h-4 transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <ul className="mt-1 space-y-1" data-testid="ops-inbox-ignored-list">
+                  {ignored.map((pk) => (
+                    <li key={pk} className="flex items-center justify-between gap-2 px-3.5 text-[13px]">
+                      <Link href={profileHref(pk)} className="truncate hover:underline">{nameOf(pk) ?? `${pubkeyToNpub(pk).slice(0, 14)}…`}</Link>
+                      <Button size="sm" variant="ghost" className="min-h-[44px] px-3 text-[13px]" onClick={() => setIgnored?.(pk, false)} data-testid="ops-inbox-unignore">Stop ignoring</Button>
+                    </li>
+                  ))}
                 </ul>
               </CollapsibleContent>
             </Collapsible>

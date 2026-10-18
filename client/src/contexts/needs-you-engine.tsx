@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useAdmissionQueue } from "@/hooks/use-admission-queue";
 import { useReportsQueue } from "@/hooks/use-reports-queue";
 import { useRelayReportsQueue } from "@/hooks/use-relay-reports-queue";
+import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
+import { splitByTrust, type RelayReport } from "@/lib/relay-reports";
 import { getOperatedRelays, useOperatedRelays } from "@/lib/operated-relays";
 import { NEEDS_YOU_CHANGED_EVENT, type NeedsYouValue } from "./NeedsYouContext";
 
@@ -35,8 +37,16 @@ export default function NeedsYouEngine({ onChange }: { onChange: (value: NeedsYo
   const relayReports = useMemo(
     () => relayReportsLive,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [relayReportsLive.byRelay, relayReportsLive.unreached, relayReportsLive.loading, relayReportsLive.refresh, relayReportsLive.dismiss],
+    [relayReportsLive.byRelay, relayReportsLive.unreached, relayReportsLive.loading, relayReportsLive.refresh, relayReportsLive.dismiss, relayReportsLive.ignored, relayReportsLive.setIgnored],
   );
+  // Reports that count toward the badge: not the "probably fine" ones
+  // (strangers reporting someone your network trusts, lib/relay-reports.ts).
+  const { getAuthorTier, isAuthorFlagged, wotEnabled, wotReady } = useGrapeRankScores();
+  const countRelayReports = useCallback((rows: RelayReport[]) => {
+    const tierOf = (pk: string) => (isAuthorFlagged(pk) ? "flagged" as const : getAuthorTier(pk));
+    const { known, strangers } = splitByTrust(rows, tierOf, wotEnabled && wotReady);
+    return known.length + strangers.length;
+  }, [getAuthorTier, isAuthorFlagged, wotEnabled, wotReady]);
   const count = admissions.queue.length + reports.queue.length;
 
   // The relays you run, and what's waiting on each.
@@ -46,8 +56,8 @@ export default function NeedsYouEngine({ onChange }: { onChange: (value: NeedsYo
     const on = (u: string) => u.replace(/\/+$/, "").toLowerCase() === k;
     return admissions.queue.filter((a) => on(a.relayUrl)).length
       + reports.queue.filter((r) => on(r.relayUrl)).length
-      + (relayReports.byRelay[k]?.length ?? 0);
-  }, [admissions.queue, reports.queue, relayReports.byRelay]);
+      + countRelayReports(relayReports.byRelay[k] ?? []);
+  }, [admissions.queue, reports.queue, relayReports.byRelay, countRelayReports]);
   const relaysCount = useMemo(
     () => operated.reduce((sum, r) => sum + relaysCountFor(r.url), 0),
     [operated, relaysCountFor],
