@@ -22,6 +22,12 @@ export interface SignupDraft {
   website?: string;
   rss?: string;
   lud16?: string;
+  // What the first step chose for them (2026-10-17): the suggested name, the
+  // generated photo's seed and the banner. Kept so a reload shows the same
+  // choices; on their own they are not work to resume.
+  suggestedName?: string;
+  avatarSeed?: number;
+  bannerIndex?: number;
   // Pre-passphrase keypair generated to sign NIP-98 upload auth headers.
   // We persist it so reloads don't change the user's npub mid-flow and
   // already-uploaded media remain owned by the same key. Cleared on
@@ -113,7 +119,10 @@ export function hasSignupDraft(): boolean {
 export function draftHasResumableContent(draft: SignupDraft): boolean {
   for (const f of DRAFT_TEXT_FIELDS) {
     const v = draft[f];
-    if (typeof v === "string" && v.trim().length > 0) return true;
+    if (typeof v !== "string" || v.trim().length === 0) continue;
+    // The name we suggested, untouched, is ours, not theirs.
+    if (f === "displayName" && draft.suggestedName && v.trim() === draft.suggestedName.trim()) continue;
+    return true;
   }
   if (draft.account?.secretKeyHex) return true;
   return false;

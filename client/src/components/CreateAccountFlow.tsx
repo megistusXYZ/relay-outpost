@@ -6,12 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ArrowRight, AtSign, BadgeCheck, Camera, Check, CheckCircle2, ChevronDown, Code2, Copy, Dice5, Eye, EyeOff, FileText, Info, KeyRound, Link2, Lock, Mic, PlayCircle, QrCode, Rss, ShieldAlert, User, Upload, UserCircle2, X, Youtube } from "lucide-react";
+import { ArrowLeft, ArrowRight, AtSign, BadgeCheck, Camera, Check, CheckCircle2, ChevronDown, Code2, Copy, Dice5, Eye, EyeOff, FileText, Info, KeyRound, Link2, Lock, Mic, PlayCircle, QrCode, Rss, ShieldAlert, Shuffle, User, Upload, UserCircle2, X, Youtube } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CameraOutpostIcon } from "@/components/icons/CameraOutpostIcon";
 import { BitcoinIcon } from "@/components/FeedIcons";
 import { savePodcastFeed, KIND_PODCAST_RSS, PODCAST_D_TAG } from "@/lib/music";
-import { WtfAlienIcon } from "@/components/icons/WtfAlienIcon";
 import { generateLocalAccount, encryptSecretKeyAsync, saveLocalAccountStrict, loadLocalAccount, clearLocalAccount, decryptStored, markOnboardingComplete, type NewLocalAccount, type StoredLocalAccount } from "@/lib/local-account";
 import { markAccountCreated, markBackedUp, canFinishSignup } from "@/lib/key-backup";
 import { KeyBackupActions } from "@/components/KeyBackupActions";
@@ -37,6 +35,8 @@ import { uploadToNostrBuild, setBlossomServers, publishBlossomServerList, DEFAUL
 import { setLocalDMRelays, publishDMRelayList } from "@/lib/outbox";
 import { loadSignupDraft, saveSignupDraft, clearSignupDraft, bytesToHex, hexToBytes, draftHasResumableContent } from "@/lib/account-draft";
 import { trackSignupEvent } from "@/lib/signup-telemetry";
+import { friendlyName, seededRandom, newSeed, avatarDataUrl, SIGNUP_BANNERS, nextBanner, randomBannerIndex, signupMetadata } from "@/lib/signup-identity";
+import { uploadChosen, withTimeout, type ChosenUploads } from "@/lib/signup-identity-upload";
 import { finalizeEvent, nip19 } from "nostr-tools";
 import { QRCodeSVG } from "qrcode.react";
 import { RelayOutpostInlineLoader, RelayOutpostIcon } from "@/components/RelayOutpostLoader";
@@ -121,7 +121,14 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
   const { setWotEnabled, notifyRecalculating } = useGrapeRankScores();
   const { toast } = useToast();
   const [step, setStep] = useState<Step>(1);
-  const [displayName, setDisplayName] = useState("");
+  // Chosen for them (owner, 2026-10-17): a name, a photo and a banner, so
+  // nothing on this step has to be typed. Each shuffles or is replaced; what
+  // is chosen is what the profile publishes (lib/signup-identity.ts).
+  const [initialChoice] = useState(() => ({ name: friendlyName(seededRandom(newSeed())), seed: newSeed(), banner: randomBannerIndex() }));
+  const [suggestedName, setSuggestedName] = useState(initialChoice.name);
+  const [avatarSeed, setAvatarSeed] = useState(initialChoice.seed);
+  const [bannerIndex, setBannerIndex] = useState(initialChoice.banner);
+  const [displayName, setDisplayName] = useState(initialChoice.name);
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [picture, setPicture] = useState("");
@@ -190,6 +197,9 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
       wasResumedRef.current = true;
       trackSignupEvent("draft_hydrated");
     }
+    if (draft.suggestedName) setSuggestedName(draft.suggestedName);
+    if (typeof draft.avatarSeed === "number") setAvatarSeed(draft.avatarSeed);
+    if (typeof draft.bannerIndex === "number" && draft.bannerIndex >= 0 && draft.bannerIndex < SIGNUP_BANNERS.length) setBannerIndex(draft.bannerIndex);
     if (draft.displayName) setDisplayName(draft.displayName);
     if (draft.username) setUsername(draft.username);
     if (draft.bio) setBio(draft.bio);
@@ -234,6 +244,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
       saveSignupDraft({
         displayName, username, bio, picture, banner,
         nip05, website, rss, lud16,
+        suggestedName, avatarSeed, bannerIndex,
         step: 1,
         account: account ? {
           secretKeyHex: bytesToHex(account.secretKey),
@@ -243,7 +254,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
       });
     }, 250);
     return () => clearTimeout(handle);
-  }, [displayName, username, bio, picture, banner, nip05, website, rss, lud16, account]);
+  }, [displayName, username, bio, picture, banner, nip05, website, rss, lud16, suggestedName, avatarSeed, bannerIndex, account]);
 
   const handleBack = useCallback(() => {
     // The user explicitly bailed out — drop the draft so the Launch Station
@@ -260,8 +271,10 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
   }, [onBack]);
 
   const isOverlay = variant === "overlay";
+  /** The name the account goes out with: what they typed, or what we chose. */
+  const effectiveName = displayName.trim() || suggestedName;
   /** Their account's own name, for the story on the last step. */
-  const who = displayName.trim() || "This account";
+  const who = effectiveName;
   const cardCls = isOverlay ? "border-white/10 bg-black/40 backdrop-blur-lg" : "border-border/60 bg-card/50";
   const titleCls = isOverlay ? "text-white" : "";
   const descCls = isOverlay ? "text-white/60" : "text-muted-foreground";
@@ -352,12 +365,21 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
     if (bannerInputRef.current) bannerInputRef.current.value = "";
   }, [toast, ensureSignupAccount, makeLocalSigner]);
 
+  // The chosen photo and banner are uploaded in the background from Continue
+  // (the password step gives them a head start); Finish waits briefly for
+  // them. Keyed by the choice, so going back and changing it starts over.
+  const chosenUploadRef = useRef<{ key: string; promise: Promise<ChosenUploads> } | null>(null);
+  const startChosenUploads = useCallback((acct: NewLocalAccount) => {
+    const seed = picture.trim() ? null : avatarSeed;
+    const bIndex = banner.trim() ? null : bannerIndex;
+    const key = `${acct.pubkey}|${seed ?? "own"}|${bIndex ?? "own"}`;
+    if (chosenUploadRef.current?.key === key) return chosenUploadRef.current.promise;
+    const promise = uploadChosen({ avatarSeed: seed, bannerIndex: bIndex }, makeLocalSigner(acct.secretKey));
+    chosenUploadRef.current = { key, promise };
+    return promise;
+  }, [picture, banner, avatarSeed, bannerIndex, makeLocalSigner]);
+
   const handleStep1Continue = useCallback(() => {
-    const trimmed = displayName.trim();
-    if (!trimmed) {
-      toast({ title: "Choose a display name", description: "Pick anything — you can change it later.", variant: "destructive" });
-      return;
-    }
     // Reuse the account if one was already generated to sign an avatar or
     // banner upload — regenerating here would orphan the key that signed
     // any uploaded NIP-98 headers and change the npub the user sees next.
@@ -370,8 +392,9 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
     setKeySaved(false);
     setKeySkipped(false);
     setPasskeyBlob(null);
+    void startChosenUploads(acct);
     setStep(2);
-  }, [displayName, toast, account]);
+  }, [account, startChosenUploads]);
 
   const handleEncryptAndSave = useCallback(async () => {
     if (!account || !passwordValid) return;
@@ -382,7 +405,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
         pubkey: account.pubkey,
         npub: account.npub,
         ncryptsec,
-        label: displayName.trim() || undefined,
+        label: effectiveName || undefined,
         createdAt: Date.now(),
       };
 
@@ -447,7 +470,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
     } finally {
       setIsWorking(false);
     }
-  }, [account, password, passwordValid, displayName, toast]);
+  }, [account, password, passwordValid, effectiveName, toast]);
 
 
   const handlePasskeyEnrolled = useCallback(async (blob: PasskeyEnrollment) => {
@@ -485,7 +508,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
         pubkey: account.pubkey,
         npub: account.npub,
         ncryptsec,
-        label: displayName.trim() || undefined,
+        label: effectiveName || undefined,
         createdAt: Date.now(),
         passkey: blob,
       };
@@ -536,7 +559,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
     } finally {
       setIsWorking(false);
     }
-  }, [stored, account, displayName, toast]);
+  }, [stored, account, effectiveName, toast]);
 
   const handleSuggestPassphrase = useCallback(() => {
     const suggestion = generatePassphraseSuggestion(6);
@@ -577,17 +600,15 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
       // used to stay empty until a relay echoed the kind 0 back, and the hub
       // chip and account page showed the npub for the whole first session
       // (2026-10-10). Published after sign-in, as before.
-      const dn = displayName.trim();
-      const metadata: Record<string, string> = {
-        name: (username.trim() || dn),
-        display_name: dn,
-      };
-      if (bio.trim()) metadata.about = bio.trim();
-      if (picture.trim()) metadata.picture = picture.trim();
-      if (banner.trim()) metadata.banner = banner.trim();
-      if (nip05.trim()) metadata.nip05 = nip05.trim();
-      if (website.trim()) metadata.website = website.trim();
-      if (lud16.trim()) metadata.lud16 = lud16.trim();
+      // What was chosen for them, uploaded since Continue: waited for briefly,
+      // and left out (as before) if it didn't make it.
+      const chosen = await withTimeout(startChosenUploads(account), 15_000, {} as ChosenUploads);
+      const metadata = signupMetadata({
+        typedName: displayName, suggestedName, username, bio,
+        photoUrl: picture.trim() || chosen.photoUrl,
+        bannerUrl: banner.trim() || chosen.bannerUrl,
+        nip05, website, lud16,
+      });
       const tags: string[][] = [...clientTags()];
       if (
         website.trim() &&
@@ -825,7 +846,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
     } finally {
       setIsWorking(false);
     }
-  }, [account, stored, keySaved, keySkipped, displayName, username, bio, picture, banner, nip05, website, rss, lud16, loginWithLocalKey, updateFollows, setWotEnabled, notifyRecalculating, onComplete]);
+  }, [account, stored, keySaved, keySkipped, displayName, suggestedName, username, bio, picture, banner, nip05, website, rss, lud16, startChosenUploads, loginWithLocalKey, updateFollows, setWotEnabled, notifyRecalculating, onComplete]);
 
   const stepDots = (
     <div className="flex items-center justify-center gap-1.5 mb-4">
@@ -850,8 +871,6 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
           ? "Uploading banner…"
           : avatarUploading
           ? "Uploading avatar…"
-          : !displayName.trim()
-          ? "Add a display name to continue"
           : "";
         const fieldInputCls = `${inputCls} h-11 transition-shadow focus-visible:ring-2 ${isOverlay ? "focus-visible:ring-brand/40 focus-visible:shadow-[0_0_0_4px_rgba(139,92,246,0.08)]" : "focus-visible:ring-brand/30 focus-visible:shadow-[0_0_0_4px_rgba(139,92,246,0.06)]"}`;
         const optionalBadge = (
@@ -865,39 +884,6 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
           <div aria-hidden className={`pointer-events-none absolute -bottom-24 -right-16 w-64 h-64 rounded-full blur-3xl ${isOverlay ? "bg-brand/[0.07]" : "bg-brand/[0.04]"}`} />
 
           <CardContent className="relative p-5 sm:p-6 space-y-6">
-            {/* Branded header */}
-            <div className={`relative rounded-xl p-4 ${isOverlay ? "bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent border border-white/10" : "bg-gradient-to-br from-brand/[0.06] via-foreground/[0.02] to-transparent border border-border/40"}`}>
-              <div className="flex items-start gap-3 flex-wrap sm:flex-nowrap">
-                <div className="min-w-0 flex-1 basis-full sm:basis-0">
-                  <h3 className={`text-base font-semibold tracking-tight ${titleCls}`} data-testid="text-step1-title">Create your profile</h3>
-                  <p className={`text-xs mt-1 leading-relaxed ${descCls}`}>
-                    Add a photo, banner, and a few details. Only the display name is required — you can change the rest later.
-                  </p>
-                </div>
-                <a
-                  href="/help"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="WTF is this? — open the FAQ in a new tab"
-                  data-testid="link-create-wtf"
-                  className={`group/wtf shrink-0 self-start order-first sm:order-last inline-flex items-center gap-2 rounded-full transition-all duration-300 px-2 py-1.5 sm:px-2.5 sm:py-1.5 ${isOverlay ? "border border-white/10 bg-white/[0.04] hover:bg-white/[0.09] hover:border-white/25" : "border border-border/50 bg-foreground/[0.03] hover:bg-foreground/[0.06] hover:border-border"}`}
-                >
-                  <span className="relative shrink-0 -rotate-[8deg] group-hover/wtf:-rotate-[14deg] group-hover/wtf:scale-110 transition-transform duration-500 ease-out">
-                    <WtfAlienIcon className={`w-6 h-6 sm:w-5 sm:h-5 transition-all duration-500 ${isOverlay ? "text-brand/80 group-hover/wtf:text-brand-strong group-hover/wtf:drop-shadow-[0_0_10px_rgba(167,139,250,0.55)]" : "text-brand/80 group-hover/wtf:text-brand-strong group-hover/wtf:drop-shadow-[0_0_10px_rgba(124,58,237,0.4)]"}`} />
-                    <span className={`absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full transition-all duration-500 ${isOverlay ? "bg-brand/70 group-hover/wtf:bg-brand group-hover/wtf:shadow-[0_0_6px_rgba(167,139,250,0.6)]" : "bg-brand/60 group-hover/wtf:bg-brand group-hover/wtf:shadow-[0_0_6px_rgba(124,58,237,0.5)]"}`} />
-                  </span>
-                  <span className="hidden sm:flex flex-col leading-none transform -rotate-[2deg] pr-0.5">
-                    <span className={`text-[11px] font-black tracking-tight ${isOverlay ? "text-brand" : "text-brand dark:text-brand/90"}`}>
-                      Help &amp; Guides
-                    </span>
-                    <span className={`text-[7px] uppercase tracking-[0.3em] font-bold mt-0.5 ${isOverlay ? "text-brand/50" : "text-brand/40"}`}>
-                      get started
-                    </span>
-                  </span>
-                </a>
-              </div>
-            </div>
-
             {/* Banner + avatar (above-the-fold) */}
             <div className={`relative rounded-xl overflow-hidden border ${isOverlay ? "border-white/10 bg-white/[0.02]" : "border-border/40 bg-muted/30"}`}>
               <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} data-testid="input-upload-banner" />
@@ -916,47 +902,19 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                   className="absolute inset-0 w-full h-full object-cover scale-105 blur-[6px] pointer-events-none select-none"
                   draggable={false}
                 />
-                {banner ? (
-                  <img
-                    src={banner}
-                    alt="Banner preview"
-                    className={`relative w-full h-full object-cover transition-all duration-500 group-hover/banner:scale-[1.02] ${bannerLoaded ? "opacity-100" : "opacity-0"}`}
-                    onLoad={() => setBannerLoaded(true)}
-                    onError={() => setBannerLoaded(true)}
-                    data-testid="img-banner-preview"
-                  />
-                ) : (
-                  <>
-                    {/* Ghost preview of the default banner so users see what would be used */}
-                    <img
-                      src="/images/default-relay-banner.jpg"
-                      alt=""
-                      aria-hidden="true"
-                      loading="eager"
-                      decoding="async"
-                      className="absolute inset-0 w-full h-full object-cover opacity-[0.18] group-hover/banner:opacity-[0.28] transition-opacity duration-500 pointer-events-none select-none"
-                      draggable={false}
-                    />
-                    <div aria-hidden className="absolute inset-0 pointer-events-none bg-gradient-to-b from-black/10 via-transparent to-black/40" />
-                    <div aria-hidden className="absolute inset-0 pointer-events-none [background:radial-gradient(120%_80%_at_50%_50%,transparent_40%,rgba(0,0,0,0.35)_100%)]" />
-                    {/* Subtle violet→cyan aurora wash for cosmic depth — very low
-                        opacity so it never overwhelms the banner art. */}
-                    <div aria-hidden className="absolute inset-0 pointer-events-none opacity-60 [background:radial-gradient(80%_120%_at_15%_30%,rgba(139,92,246,0.18),transparent_55%),radial-gradient(70%_110%_at_85%_70%,rgba(56,189,248,0.14),transparent_55%)]" />
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-3 text-center">
-                      <div className="relative">
-                        {/* Soft violet halo behind the pill */}
-                        <div aria-hidden className="absolute -inset-1.5 rounded-full bg-brand/8 blur-md pointer-events-none" />
-                        <div className={`relative flex items-center px-3.5 py-1.5 rounded-full backdrop-blur-md ring-1 ring-brand/15 ${isOverlay ? "bg-black/65 text-white group-hover/banner:bg-black/75 border border-white/15" : "bg-black/70 text-white group-hover/banner:bg-black/80 border border-white/20"} transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.35)]`}>
-                          <span className="text-xs font-medium tracking-tight">Add a banner image</span>
-                        </div>
-                      </div>
-                      <span className="text-[10px] sm:text-[11px] font-mono uppercase tracking-wider text-white/75 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">1500 × 500 recommended</span>
-                    </div>
-                  </>
-                )}
+                {/* Theirs, or one of the app's banners (lib/signup-identity.ts),
+                    chosen for them and swapped with the button below. */}
+                <img
+                  src={banner || SIGNUP_BANNERS[bannerIndex].src}
+                  alt={banner ? "Banner preview" : `Banner: ${SIGNUP_BANNERS[bannerIndex].name}`}
+                  className={`relative w-full h-full object-cover transition-all duration-500 group-hover/banner:scale-[1.02] ${bannerLoaded ? "opacity-100" : "opacity-0"}`}
+                  onLoad={() => setBannerLoaded(true)}
+                  onError={() => setBannerLoaded(true)}
+                  data-testid="img-banner-preview"
+                />
                 {/* Shimmer over the LQIP while a user-uploaded banner is still
                     decoding, so it feels alive instead of stuck. */}
-                {banner && !bannerLoaded && (
+                {!bannerLoaded && (
                   <div aria-hidden className="absolute inset-0 pointer-events-none">
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent animate-shimmer" />
                   </div>
@@ -969,13 +927,25 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                     brighter on hover. Skipped when a banner is already set;
                     the existing bottom-right Replace button covers that case. */}
                 {!banner && !bannerUploading && (
-                  <div
-                    className="absolute bottom-2 right-2 z-10 flex items-center gap-1.5 bg-black/55 group-hover/banner:bg-black/75 backdrop-blur-sm rounded-full pl-2.5 pr-3 py-1 shadow-md transition-colors pointer-events-none"
-                    data-testid="banner-upload-pill"
-                  >
-                    <Upload className="w-3 h-3 text-white" />
-                    <span className="text-[10px] sm:text-xs font-brand uppercase tracking-widest text-white">Upload</span>
-                  </div>
+                  <>
+                    <button
+                      type="button"
+                      className="absolute top-2 right-2 z-10 flex items-center gap-1.5 bg-black/55 hover:bg-black/75 text-white rounded-full pl-2.5 pr-3 py-1 min-h-8 backdrop-blur-sm shadow-md text-xs font-brand uppercase tracking-widest transition-colors"
+                      onClick={(e) => { e.stopPropagation(); setBannerLoaded(false); setBannerIndex((i) => nextBanner(i)); }}
+                      data-testid="button-next-banner"
+                      aria-label="Show another banner"
+                    >
+                      <Shuffle className="w-3 h-3" />
+                      Shuffle
+                    </button>
+                    <div
+                      className="absolute bottom-2 right-2 z-10 flex items-center gap-1.5 bg-black/55 group-hover/banner:bg-black/75 backdrop-blur-sm rounded-full pl-2.5 pr-3 py-1 shadow-md transition-colors pointer-events-none"
+                      data-testid="banner-upload-pill"
+                    >
+                      <Upload className="w-3 h-3 text-white" />
+                      <span className="text-[10px] sm:text-xs font-brand uppercase tracking-widest text-white">Upload</span>
+                    </div>
+                  </>
                 )}
                 {banner && !bannerUploading && (
                   <>
@@ -991,7 +961,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                     <button
                       type="button"
                       className="absolute top-2 right-2 z-10 h-7 w-7 flex items-center justify-center bg-black/55 hover:bg-black/75 text-white/85 hover:text-white rounded-full backdrop-blur-sm shadow-md transition-colors"
-                      onClick={(e) => { e.stopPropagation(); setBanner(""); }}
+                      onClick={(e) => { e.stopPropagation(); setBannerLoaded(false); setBanner(""); }}
                       data-testid="button-remove-banner"
                       aria-label="Remove banner"
                     >
@@ -1014,7 +984,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
               <div className="relative -mt-10 sm:-mt-12 px-4 pb-4">
                 <div className="flex flex-col sm:flex-row sm:items-end gap-2 sm:gap-3">
                   <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} data-testid="input-upload-avatar" />
-                  <div className="relative shrink-0">
+                  <div className="relative shrink-0 self-start">
                     {avatarUploading && (
                       <div aria-hidden className={`absolute inset-0 rounded-full blur-md animate-pulse ${isOverlay ? "bg-brand/40" : "bg-brand/25"}`} />
                     )}
@@ -1023,13 +993,8 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                       onClick={() => !avatarUploading && avatarInputRef.current?.click()}
                       data-testid="button-upload-avatar"
                     >
-                      {picture ? (
-                        <img src={picture} alt="Avatar preview" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className={`w-full h-full flex items-center justify-center ${isOverlay ? "bg-brand/15" : "bg-primary/10"}`}>
-                          <CameraOutpostIcon className={`w-12 h-12 sm:w-14 sm:h-14 ${isOverlay ? "text-white/40" : "text-white/50 drop-shadow-sm"}`} />
-                        </div>
-                      )}
+                      {/* Theirs, or the one made for them (lib/signup-identity.ts). */}
+                      <img src={picture || avatarDataUrl(avatarSeed)} alt="Profile photo" className="w-full h-full object-cover" data-testid="img-avatar-preview" />
                       <div className="absolute inset-0 bg-black/0 group-hover/avatar:bg-black/35 transition-colors rounded-full flex items-center justify-center">
                         <div className="opacity-0 group-hover/avatar:opacity-100 transition-opacity">
                           {avatarUploading ? <RelayOutpostInlineLoader className="w-5 h-5 text-white" /> : <Upload className="w-5 h-5 text-white" />}
@@ -1039,6 +1004,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                     <div
                       className={`absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full flex items-center justify-center shadow-lg pointer-events-none ${isOverlay ? "bg-white text-black border-2 border-black/80" : "bg-foreground text-background border-2 border-background"}`}
                       aria-hidden
+                      data-testid="badge-avatar-camera"
                     >
                       {avatarUploading ? <RelayOutpostInlineLoader className="w-3 h-3" /> : <Camera className="w-3.5 h-3.5" />}
                     </div>
@@ -1062,10 +1028,20 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                       </span>
                     ) : (
                       <>
-                        <p className={`text-xs font-medium leading-tight ${isOverlay ? "text-white/85" : "text-foreground/85"}`}>Profile photo</p>
-                        <p className={`text-[11px] sm:text-xs mt-0.5 leading-snug ${subtleCls}`}>
-                          <span className="sm:hidden">Tap to change · max 10MB</span>
-                          <span className="hidden sm:inline">Tap avatar or banner to change · PNG/JPG, up to 10MB</span>
+                        <div className="flex items-center gap-2">
+                          <p className={`text-xs font-medium leading-tight ${isOverlay ? "text-white/85" : "text-foreground/85"}`}>Profile photo</p>
+                          <button
+                            type="button"
+                            onClick={() => { setPicture(""); setAvatarSeed(newSeed()); }}
+                            className={`hit-area inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors ${isOverlay ? "bg-white/[0.08] text-white/85 hover:bg-white/[0.14]" : "bg-foreground/[0.06] text-foreground/80 hover:bg-foreground/[0.1]"}`}
+                            data-testid="button-shuffle-avatar"
+                            aria-label="Show another photo"
+                          >
+                            <Shuffle className="w-3 h-3" /> Shuffle
+                          </button>
+                        </div>
+                        <p className={`text-[11px] sm:text-xs mt-1 leading-snug ${subtleCls}`}>
+                          Or tap the photo to use your own. Change it any time.
                         </p>
                       </>
                     )}
@@ -1077,55 +1053,33 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
             {/* Essentials: display name + bio (above the fold) */}
             <div className="space-y-4">
               {/* Display name (required) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {/* Display name (required) */}
-                <div className="space-y-1.5 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label className={labelBase}>
-                      <User className="w-3 h-3 opacity-60" />
-                      Display name
-                      <span className={`text-xs tracking-normal ${isOverlay ? "text-brand" : "text-brand"}`}>*</span>
-                    </Label>
-                    {displayName && (
-                      <span className={`text-xs tabular-nums ${subtleCls}`}>{displayName.length}/50</span>
-                    )}
-                  </div>
-                  <Input
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value.slice(0, 50))}
-                    placeholder="e.g. Buzz"
-                    className={fieldInputCls}
-                    style={{ fontSize: 16 }}
-                    autoFocus
-                    data-testid="input-display-name"
-                  />
-                  <p className={`text-xs ${subtleCls}`}>Shown publicly on your profile.</p>
+              {/* Name: filled in for them, shuffle or type over it. */}
+              <div className="space-y-1.5 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className={labelBase} htmlFor="input-display-name">
+                    <User className="w-3 h-3 opacity-60" />
+                    Display name
+                  </Label>
+                  <button
+                    type="button"
+                    onClick={() => { const n = friendlyName(seededRandom(newSeed())); setSuggestedName(n); setDisplayName(n); }}
+                    className={`hit-area inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors ${isOverlay ? "bg-white/[0.08] text-white/85 hover:bg-white/[0.14]" : "bg-foreground/[0.06] text-foreground/80 hover:bg-foreground/[0.1]"}`}
+                    data-testid="button-shuffle-name"
+                    aria-label="Suggest another name"
+                  >
+                    <Shuffle className="w-3 h-3" /> Shuffle
+                  </button>
                 </div>
-
-                {/* Username (optional) */}
-                <div className="space-y-1.5 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label className={labelBase}>
-                      <AtSign className="w-3 h-3 opacity-60" />
-                      Username
-                      {optionalBadge}
-                    </Label>
-                    {username && (
-                      <span className={`text-xs tabular-nums ${subtleCls}`}>{username.length}/30</span>
-                    )}
-                  </div>
-                  <Input
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value.slice(0, 30))}
-                    placeholder="e.g. Buzz333"
-                    className={fieldInputCls}
-                    style={{ fontSize: 16 }}
-                    autoCapitalize="off"
-                    autoCorrect="off"
-                    data-testid="input-username"
-                  />
-                  <p className={`text-xs ${subtleCls}`}>Short handle. Defaults to display name.</p>
-                </div>
+                <Input
+                  id="input-display-name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value.slice(0, 50))}
+                  placeholder={suggestedName}
+                  className={fieldInputCls}
+                  style={{ fontSize: 16 }}
+                  data-testid="input-display-name"
+                />
+                <p className={`text-xs ${subtleCls}`}>Shown publicly. Change it any time.</p>
               </div>
 
               {/* Bio */}
@@ -1182,7 +1136,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm sm:text-xs font-semibold tracking-tight ${isOverlay ? "text-white" : "text-foreground"}`}>Add more details</p>
                   <p className={`text-xs sm:text-[11px] mt-0.5 sm:hidden ${subtleCls}`}>
-                    Verified address, featured link, Bitcoin tips — all optional.
+                    Username, verified address, featured link, Bitcoin tips — all optional.
                   </p>
                 </div>
                 <span
@@ -1199,6 +1153,31 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                   id="create-advanced-panel"
                   className={`px-4 pb-4 pt-1 space-y-4 border-t ${isOverlay ? "border-white/10" : "border-border/40"}`}
                 >
+                  {/* Username (optional) */}
+                  <div className="space-y-1.5 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className={labelBase}>
+                        <AtSign className="w-3 h-3 opacity-60" />
+                        Username
+                        {optionalBadge}
+                      </Label>
+                      {username && (
+                        <span className={`text-xs tabular-nums ${subtleCls}`}>{username.length}/30</span>
+                      )}
+                    </div>
+                    <Input
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value.slice(0, 30))}
+                      placeholder="e.g. Buzz333"
+                      className={fieldInputCls}
+                      style={{ fontSize: 16 }}
+                      autoCapitalize="off"
+                      autoCorrect="off"
+                      data-testid="input-username"
+                    />
+                    <p className={`text-xs ${subtleCls}`}>Short handle. Defaults to display name.</p>
+                  </div>
+
                   {/* NIP-05 */}
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-1.5">
@@ -1357,7 +1336,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                 <div className="flex-1" />
                 <Button
                   onClick={handleStep1Continue}
-                  disabled={!displayName.trim() || avatarUploading || bannerUploading}
+                  disabled={avatarUploading || bannerUploading}
                   className={`group/cta relative text-xs font-brand uppercase tracking-widest h-11 px-5 shadow-lg transition-all hover:shadow-xl disabled:shadow-none ${
                     isOverlay
                       ? "bg-gradient-to-r from-white to-white/90 text-black hover:from-white hover:to-white shadow-white/20"
@@ -1369,6 +1348,12 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                   <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover/cta:translate-x-0.5" />
                 </Button>
               </div>
+              <p className={`text-center text-xs pt-1 ${subtleCls}`}>
+                New to this?{" "}
+                <a href="/help" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground" data-testid="link-create-wtf">
+                  Help &amp; guides
+                </a>
+              </p>
             </div>
           </CardContent>
         </Card>
