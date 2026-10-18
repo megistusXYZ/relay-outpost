@@ -1,3 +1,5 @@
+import { readUnlockInput } from "@/lib/unlock-input";
+import { CredentialUsername } from "@/components/CredentialUsername";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -177,14 +179,29 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
   const handleUnlock = useCallback(async () => {
     if (!password) return;
     if (inCooldown) return;
+    // The field takes the key itself (a password manager fills it in) or the
+    // password for this browser (lib/unlock-input.ts).
+    const typed = readUnlockInput(password, account.pubkey);
+    if (typed.kind === "other-key" || typed.kind === "bad-key") {
+      toast({
+        title: typed.kind === "other-key" ? "That key is for a different account" : "That key isn't complete",
+        description: typed.kind === "other-key" ? `Use the key for ${account.label || "this account"}, or sign in another way.` : "Paste the whole key, starting with nsec1.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsWorking(true);
     try {
-      const secretKey = await new Promise<Uint8Array>((resolve, reject) => {
+      const secretKey = typed.kind === "key" ? typed.secret : await new Promise<Uint8Array>((resolve, reject) => {
         setTimeout(() => {
           try { resolve(decryptStored(account.ncryptsec, password)); }
           catch (e) { reject(e); }
         }, 30);
       });
+      // Clear the field before this screen goes away: a browser offers to save
+      // what a disappearing password field held, and the entry for this
+      // account must stay the key, never the password for this browser.
+      setPassword("");
       setAttempts(0);
       setCooldownUntil(null);
       // If this device can offer one-tap unlock and we haven't already enrolled
@@ -434,20 +451,28 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label className={`text-[11px] font-brand uppercase tracking-widest ${subtleCls}`}>Password for this browser</Label>
+          <form
+            className="space-y-2"
+            onSubmit={(e) => { e.preventDefault(); if (password) void handleUnlock(); }}
+            data-testid="form-unlock"
+          >
+            <CredentialUsername npub={account.npub} />
+            <Label className={`text-[11px] font-brand uppercase tracking-widest ${subtleCls}`}>Your key, or the password for this browser</Label>
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
+                name="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter to unlock"
+                placeholder="Fill in your key, or type the password"
                 className={`${inputCls} pr-10`}
                 style={{ fontSize: 16 }}
                 autoFocus
                 autoComplete="current-password"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
                 data-testid="input-unlock-passphrase"
-                onKeyDown={(e) => { if (e.key === "Enter" && password) handleUnlock(); }}
               />
               <button
                 type="button"
@@ -458,7 +483,7 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-          </div>
+          </form>
 
           {inCooldown && (
             <div
