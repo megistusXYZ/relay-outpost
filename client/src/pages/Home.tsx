@@ -1,3 +1,5 @@
+import { feedKeepsComment, isTopLevelArticleComment } from "@/lib/article-reply";
+import { KIND_NIP22_COMMENT } from "@/lib/reply-target";
 import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, useSyncExternalStore, type RefObject } from "react";
 import { useDeletedEvents, deletedByAuthor } from "@/lib/deleted-events";
 import { prefetchPrimalStats } from "@/hooks/use-primal-stats";
@@ -1611,9 +1613,11 @@ export default function Home() {
   // pointed at the read rather than at any of the gates downstream.
   const allTextNotesObs = useMemo(
     () => eventStore.timeline({
+      // KIND_NIP22_COMMENT: only top-level comments on articles, from people
+      // you follow, survive the feed filter (feedKeepsComment).
       kinds: discoverV2
-        ? [KIND_TEXT_NOTE, KIND_POLL, KIND_LONG_FORM, ...MEDIA_EVENT_KINDS]
-        : [KIND_TEXT_NOTE, KIND_POLL, ...MEDIA_EVENT_KINDS],
+        ? [KIND_TEXT_NOTE, KIND_POLL, KIND_LONG_FORM, KIND_NIP22_COMMENT, ...MEDIA_EVENT_KINDS]
+        : [KIND_TEXT_NOTE, KIND_POLL, KIND_NIP22_COMMENT, ...MEDIA_EVENT_KINDS],
     }),
     [discoverV2],
   );
@@ -1770,6 +1774,9 @@ export default function Home() {
       allTextNotes ?? [],
       splitSupplement(allTextNotes ?? [], mediaNotes, supplementNotes),
     );
+    // Comments (kind 1111) come in only as top-level comments on articles,
+    // from people you follow (lib/article-reply.ts).
+    filtered = filtered.filter((e) => feedKeepsComment(e, followSet, pubkey));
 
     if (feedMode === "open_comms") {
       filtered = filtered.filter((e) => inFollowing(e, followingGate));
@@ -1782,7 +1789,9 @@ export default function Home() {
       filtered = filtered.filter((e) => {
         const repostInfo = repostMapRef.current.get(e.id);
         if (repostInfo) return contentFilter === "posts";
-        return isReplyEvent(e.tags) ? contentFilter === "replies" : contentFilter === "posts";
+        // A top-level comment on an article is commentary: it reads as a post.
+        const reply = isReplyEvent(e.tags) && !isTopLevelArticleComment(e);
+        return reply ? contentFilter === "replies" : contentFilter === "posts";
       });
     }
 

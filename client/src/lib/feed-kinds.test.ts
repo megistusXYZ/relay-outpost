@@ -7,7 +7,9 @@ describe("FEED_KINDS", () => {
     // Pinned deliberately. Changing what the timeline asks relays for changes
     // what every user sees, so it should take editing a test that says so —
     // not slip in as one more number in a filter literal.
-    expect(feedKinds().slice().sort((a, b) => a - b)).toEqual([1, 20, 21, 22, 1068]);
+    // 1111 (owner, 2026-10-18): NIP-22 comments, kept by Home only as
+    // top-level comments on articles from people you follow.
+    expect(feedKinds().slice().sort((a, b) => a - b)).toEqual([1, 20, 21, 22, 1068, 1111]);
   });
 
   it("carries the three media kinds", () => {

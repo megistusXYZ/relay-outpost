@@ -1,6 +1,7 @@
 import { KIND_TEXT_NOTE } from "./nostr-helpers";
 import { KIND_POLL } from "./polls";
 import { KIND_PICTURE, KIND_VIDEO, KIND_SHORT_VIDEO, ADDRESSABLE_VIDEO_KINDS } from "./media-frame";
+import { KIND_NIP22_COMMENT as KIND_COMMENT } from "./reply-target";
 
 /**
  * What the timeline asks relays for.
@@ -29,6 +30,9 @@ export const FEED_KINDS: readonly number[] = [
   KIND_PICTURE,
   KIND_VIDEO,
   KIND_SHORT_VIDEO,
+  // NIP-22 comments: Home keeps only top-level comments on articles, from
+  // people you follow (lib/article-reply.ts feedKeepsComment).
+  KIND_COMMENT,
 ];
 
 /** Mutable copy — nostr-tools filters take `number[]`, not a readonly array. */

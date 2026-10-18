@@ -22,6 +22,9 @@ const subscribeById: Subscribe = (relays, filter, handlers) => throttledPoolSubs
 const idLookups = createIdBatcher(subscribeById);
 import { noteShareId } from "@/lib/share-links";
 import { queryAnswered } from "@/lib/relay-reach";
+import { useAddressableEvent } from "@/hooks/use-addressable-event";
+import { articleReplyTarget, isTopLevelArticleComment } from "@/lib/article-reply";
+import { ArticleRibbon } from "@/components/ArticleRibbon";
 import { classifyParentTarget, orderedRelayCandidates, parentRelayCandidates } from "@/lib/parent-resolve";
 import { parseListing, KIND_CLASSIFIED_LISTING, LISTING_RELAYS } from "@/lib/listing";
 import { ListingCard } from "@/components/ListingCard";
@@ -1897,51 +1900,10 @@ const NOTE_REF_RE = /nostr:(note1[a-z0-9]+|nevent1[a-z0-9]+|naddr1[a-z0-9]+)/gi;
 export function EmbeddedAddressCard({ kind, pubkey: authorPk, identifier, relays, encoded }: { kind: number; pubkey: string; identifier: string; relays?: string[]; encoded?: string }) {
   const petnamesVersion = usePetnamesVersion(); // author name below re-derives on petname changes
   const [, navigate] = useLocation();
-  const [resolved, setResolved] = useState<Event | null>(null);
-  const [loading, setLoading] = useState(true);
   // Same contract as EmbeddedNote: nobody answering is a settled, retryable
   // state, not "content unavailable" — that line is a claim about the content.
-  const [unreached, setUnreached] = useState(false);
-  const [retryNonce, setRetryNonce] = useState(0);
+  const { resolved, loading, unreached, retry } = useAddressableEvent(kind, authorPk, identifier, relays);
   const [shareEvent, setShareEvent] = useState<CalendarEventData | null>(null);
-
-  useEffect(() => {
-    setResolved(null);
-    setLoading(true);
-    setUnreached(false);
-    const existing = eventStore.getByFilters({ kinds: [kind], authors: [authorPk], "#d": [identifier] });
-    const found = existing ? [...existing].sort((a, b) => b.created_at - a.created_at)[0] : null;
-    if (found) { setResolved(found); setLoading(false); return; }
-    // Resolve via the naddr's own relay hints, then the AUTHOR'S write relays
-    // (NIP-65 outbox — an event lives where its author published it, which is
-    // usually NOT in a handful of generic defaults; without this, a shared
-    // calendar event / article on the creator's own or a community relay never
-    // resolved → "content unavailable"), then a broad default set.
-    const relaySet = orderedRelayCandidates([
-      relays ?? [],
-      // Listings cluster on the marketplace's own relay (measured:
-      // relay.conduit.market serves 30402 that general relays may lack).
-      kind === KIND_CLASSIFIED_LISTING ? LISTING_RELAYS : [],
-      getWriteRelays(authorPk, []),
-      FAST_RELAYS,
-      DEFAULT_RELAYS.slice(0, 6),
-    ]);
-    let cancelled = false;
-    queryAnswered(relaySet, { kinds: [kind], authors: [authorPk], "#d": [identifier], limit: 1 }, 8_000).then((res) => {
-      if (cancelled) return;
-      // Addressable events are replaceable — relays may hold different
-      // versions of the same coordinate, so keep the newest.
-      const newest = [...res.events].sort((a, b) => b.created_at - a.created_at)[0] as Event | undefined;
-      if (newest) {
-        eventStore.add(newest);
-        setResolved(newest);
-      } else if (!res.answered) {
-        setUnreached(true);
-      }
-      setLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [kind, authorPk, identifier, relays, retryNonce]);
 
   const authorProfile = use$(() => resolved ? eventStore.replaceable(KIND_METADATA, resolved.pubkey) : undefined, [resolved?.pubkey]);
   useEffect(() => { if (resolved && !authorProfile) fetchProfilesCached([resolved.pubkey]); }, [resolved, authorProfile]);
@@ -1998,7 +1960,7 @@ export function EmbeddedAddressCard({ kind, pubkey: authorPk, identifier, relays
     // it unavailable. A tap retries the fetch.
     return (
       <button
-        onClick={(e) => { e.stopPropagation(); setRetryNonce((v) => v + 1); }}
+        onClick={(e) => { e.stopPropagation(); retry(); }}
         className="mt-2 rounded-lg border border-border/30 bg-background/20 p-2.5 flex items-center gap-2 w-full text-left cursor-pointer"
         data-testid={`address-card-unreached-${kind}`}
       >
@@ -2194,7 +2156,10 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
 
   const authorProfile = use$(() => eventStore.replaceable(KIND_METADATA, event.pubkey), [event.pubkey]);
 
-  const replyTargetId = useMemo(() => getReplyTargetId(event), [event]);
+  // A top-level comment on an article shows the article on top (ArticleRibbon)
+  // instead of note-style "Replying to" context, and has no parent to fetch.
+  const articleTarget = useMemo(() => (isTopLevelArticleComment(event) ? articleReplyTarget(event) : null), [event]);
+  const replyTargetId = useMemo(() => (articleTarget ? null : getReplyTargetId(event)), [event, articleTarget]);
   const isReply = !!replyTargetId;
 
   const replyToPubkey = useMemo(() => {
@@ -3095,6 +3060,12 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
           )}
         </div>,
         marginSlot.el,
+      )}
+
+      {articleTarget && (
+        <div className={compact ? "px-4 sm:px-5 pt-2.5" : "px-5 sm:px-8 pt-3.5"}>
+          <ArticleRibbon coord={articleTarget} replyAuthor={event.pubkey} />
+        </div>
       )}
 
       {isReply && !parentIsQuoted && !replyContextOn && !inMargin && (
