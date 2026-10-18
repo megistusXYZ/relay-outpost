@@ -715,6 +715,10 @@ export function canStripMetadata(file: File): boolean {
   return STRIPPABLE_TYPES.includes(file.type) || STRIPPABLE_AUDIO_TYPES.includes(file.type);
 }
 
+export function canStripVideoMetadata(file: File): boolean {
+  return STRIPPABLE_VIDEO_TYPES.includes(file.type);
+}
+
 export function canStripAudioMetadata(file: File): boolean {
   return STRIPPABLE_AUDIO_TYPES.includes(file.type);
 }

@@ -14,9 +14,9 @@ export function siteCors(): RequestHandler {
   return cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
+      // No list set means local development: only localhost.
       if (allowedOrigins.length === 0) {
-        const isReplit = origin.endsWith(".replit.dev") || origin.endsWith(".repl.co") || origin.endsWith(".replit.app");
-        return callback(null, isReplit || origin.startsWith("http://localhost:") || origin.startsWith("http://0.0.0.0:"));
+        return callback(null, origin.startsWith("http://localhost:") || origin.startsWith("http://0.0.0.0:"));
       }
       return callback(null, allowedOrigins.includes(origin));
     },

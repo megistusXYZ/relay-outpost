@@ -19,7 +19,7 @@ import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useMention } from "@/hooks/use-mention";
 import { MentionSearch } from "@/components/MentionSearch";
 import { MentionHighlightTextarea } from "@/components/MentionHighlightTextarea";
-import { uploadToNostrBuild, startAutoMirror, UploadError, validateFile, isVideoFile, isAudioFile, canStripAudioMetadata } from "@/lib/media-upload";
+import { uploadToNostrBuild, startAutoMirror, UploadError, validateFile, isVideoFile, isAudioFile, canStripAudioMetadata, canStripVideoMetadata } from "@/lib/media-upload";
 import { buildImetaTag } from "@/lib/blossom-media";
 import { buildPictureEvent, canPostAsPicture } from "@/lib/picture-post";
 import { KIND_PICTURE } from "@/lib/media-frame";
@@ -367,8 +367,8 @@ export function CreatePostFAB() {
       return;
     }
 
-    if (isVideoFile(file)) {
-      toast({ title: "Privacy notice", description: "Video metadata cannot be stripped in-browser. Consider removing location data before uploading." });
+    if (isVideoFile(file) && !canStripVideoMetadata(file)) {
+      toast({ title: "Privacy notice", description: "This video format's location and device data can't be removed here. Consider removing it before uploading." });
     }
 
     const fileIsVideo = isVideoFile(file);
@@ -1392,7 +1392,7 @@ export function CreatePostFAB() {
                   Audio files (MP3, WAV, FLAC) are scrubbed of ID3 tags, recording metadata, and embedded info before upload.
                 </p>
                 <p className="text-[11px] leading-relaxed text-muted-foreground/60">
-                  Video metadata can't be scrubbed in-browser. GPS and device info may be embedded — strip it before uploading with a free tool like{" "}
+                  Phone videos (MP4, MOV) have their location and device data removed before upload. Other video formats can't be cleaned here; strip them first with a free tool like{" "}
                   <a href="https://handbrake.fr" target="_blank" rel="noopener noreferrer" className="text-success dark:text-green-400 underline underline-offset-2 hover:text-green-500">HandBrake</a>.
                 </p>
               </div>

@@ -287,7 +287,7 @@ export function UploadVideoDialog({ open, onOpenChange, onPublished }: UploadVid
                 <div className="flex items-start gap-1.5">
                   <AlertTriangle className="w-3 h-3 text-amber-500/70 shrink-0 mt-0.5" />
                   <p className="text-[10px] text-muted-foreground/60 leading-relaxed">
-                    Video metadata (GPS, device info) cannot be stripped in-browser. Consider removing location data beforehand.
+                    Phone videos (MP4, MOV) have their location and device data removed before upload. Other formats can't be cleaned here, so remove it beforehand.
                   </p>
                 </div>
               </div>
