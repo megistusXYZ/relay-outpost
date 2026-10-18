@@ -3,6 +3,7 @@ import { scheduledPosts } from "@shared/schema";
 import { eq, lte, and } from "drizzle-orm";
 import { Relay } from "nostr-tools";
 import WebSocket from "ws";
+import { connectScheduledRelay } from "./scheduled-relays";
 
 (globalThis as any).WebSocket = WebSocket;
 
@@ -19,7 +20,9 @@ function sleep(ms: number) {
 
 async function connectRelay(url: string, timeoutMs = RELAY_CONNECT_TIMEOUT_MS): Promise<Relay | null> {
   try {
-    const relay = await Relay.connect(url);
+    // Re-checks where the name points now, not just when it was scheduled.
+    const relay = await connectScheduledRelay(url);
+    if (!relay) console.warn(`[Scheduler] Refused relay address ${url}`);
     return relay;
   } catch (err: any) {
     console.warn(`[Scheduler] Failed to connect to ${url}: ${err.message || err}`);
