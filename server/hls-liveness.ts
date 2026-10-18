@@ -7,6 +7,7 @@
  * still being appended to has no #EXT-X-ENDLIST and no VOD type. A master
  * playlist says nothing until one of its variants is read.
  */
+import { safeFetch } from "./safe-fetch";
 
 export type PlaylistKind = "live" | "vod" | "master" | "not-hls";
 
@@ -118,12 +119,12 @@ export async function probeHlsLiveness(
   return kind === "live" && !truncated;
 }
 
-/** GET a playlist without following redirects, reading at most PLAYLIST_MAX_BYTES. */
+/** GET a playlist without following redirects (the caller re-checks every
+ *  hop), pinned to the checked address, reading at most PLAYLIST_MAX_BYTES. */
 export const fetchPlaylistText: PlaylistFetch = async (url) => {
-  const res = await fetch(url, {
-    method: "GET",
-    redirect: "manual",
-    signal: AbortSignal.timeout(PLAYLIST_TIMEOUT_MS),
+  const res = await safeFetch(url, {
+    maxRedirects: 0,
+    timeoutMs: PLAYLIST_TIMEOUT_MS,
     headers: {
       "User-Agent": "Mozilla/5.0 (compatible; NostrClient/1.0)",
       Accept: "application/vnd.apple.mpegurl, application/x-mpegurl, */*",

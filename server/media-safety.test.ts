@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { safeStreamContentType, safeImageContentType } from "./media-safety";
+import { safeStreamContentType, safeImageContentType, isRelayableStreamType } from "./media-safety";
 
 describe("safeStreamContentType — never let a proxied stream render as a document", () => {
   it("passes real media types through unchanged", () => {
@@ -41,5 +41,24 @@ describe("safeImageContentType — raster allowlist, SVG and html rejected", () 
     expect(safeImageContentType("text/html")).toBeNull();
     expect(safeImageContentType(null)).toBeNull();
     expect(safeImageContentType("")).toBeNull();
+  });
+});
+
+describe("isRelayableStreamType — the stream proxy only relays media", () => {
+  it("relays video, audio, playlists and the opaque type HLS segments often use", () => {
+    for (const ct of ["video/mp2t", "audio/aac", "application/vnd.apple.mpegurl", "application/octet-stream", "video/mp4; codecs=avc1"]) {
+      expect(isRelayableStreamType(ct), ct).toBe(true);
+    }
+  });
+
+  it("relays a response that names no type at all", () => {
+    expect(isRelayableStreamType(null)).toBe(true);
+    expect(isRelayableStreamType("")).toBe(true);
+  });
+
+  it("refuses pages, data and pictures, so it can't be used to fetch the web", () => {
+    for (const ct of ["text/html", "application/json", "text/plain", "image/png", "application/xml"]) {
+      expect(isRelayableStreamType(ct), ct).toBe(false);
+    }
   });
 });

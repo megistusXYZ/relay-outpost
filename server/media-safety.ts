@@ -38,6 +38,17 @@ export function safeStreamContentType(
   return { contentType: "application/octet-stream", attachment: true };
 }
 
+/**
+ * Whether the stream proxy should relay an upstream response at all. Media and
+ * an unnamed type pass (some hosts send segments with none); anything that
+ * declares itself a page, data or a picture is refused, so the proxy can't be
+ * used to fetch the web through this server.
+ */
+export function isRelayableStreamType(upstream: string | null | undefined): boolean {
+  const base = (upstream || "").split(";")[0].trim().toLowerCase();
+  return base === "" || STREAM_MEDIA_RE.test(base) || STREAM_EXTRA.has(base);
+}
+
 // The image proxy serves inline <img> content only, so a strict raster allowlist
 // is safe. SVG is intentionally excluded — it can carry script.
 const IMAGE_ALLOW = new Set([

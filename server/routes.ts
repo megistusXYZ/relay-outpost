@@ -5,7 +5,6 @@ import { z } from "zod";
 import dns from "dns/promises";
 import crypto from "crypto";
 import RSSParser from "rss-parser";
-import { Agent, fetch as undiciFetch } from "undici";
 import { db } from "./db";
 import { SERVER_APP_VERSION } from "./version";
 import { registerSignupTelemetryRoutes } from "./analytics/signup-telemetry";
@@ -17,8 +16,8 @@ import { createMessageWatcher } from "./push/push-messages";
 import { vapidFromEnv, webPushSend } from "./push/push-send";
 import { scheduledPosts, podcastTrendSnapshots } from "@shared/schema";
 import { resolveBuzzDirectory } from "@shared/buzz-directory";
-import { safeStreamContentType, safeImageContentType } from "./media-safety";
-import { safeFetch } from "./safe-fetch";
+import { safeStreamContentType, safeImageContentType, isRelayableStreamType } from "./media-safety";
+import { safeFetch, readBodyCapped, SafeFetchBlocked, type SafeResponse } from "./safe-fetch";
 import { applyNip86Proxy } from "./nip86-proxy";
 import { eq, and, sql, gte, lt } from "drizzle-orm";
 import {
@@ -88,12 +87,6 @@ const ogCache = new TTLCache<OgData>(500, 60 * 60 * 1000);
 // Short TTL: a transient timeout / rate-limit shouldn't blank a link preview
 // for long. The data is usually fetchable on the next try.
 const ogNegativeCache = new TTLCache<true>(500, 90 * 1000);
-
-// Some sites (notably Yahoo, with its pile of consent Set-Cookie headers) send
-// response headers larger than undici's default 16 KB buffer, which makes
-// `fetch` throw UND_ERR_HEADERS_OVERFLOW before we ever see the body. A roomier
-// header buffer lets those previews succeed.
-const ogDispatcher = new Agent({ maxHeaderSize: 96 * 1024 });
 
 import type { Response } from "express";
 
@@ -246,46 +239,23 @@ async function fetchExternalOgData(targetUrl: string, timeoutMs = 4500): Promise
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      let currentUrl = targetUrl;
-      // undici's OWN fetch, not the global: passing the npm-undici Agent as
-      // `dispatcher` to Node's built-in fetch silently breaks the response
-      // Headers on newer Node (content-type reads as null → every page was
-      // rejected as "Not an HTML page"). Same-package fetch+Agent is the
-      // supported pairing and types `dispatcher` natively.
-      let finalResponse: Awaited<ReturnType<typeof undiciFetch>> | null = null;
-      const MAX_REDIRECTS = 5;
-
-      for (let i = 0; i <= MAX_REDIRECTS; i++) {
-        const resp = await undiciFetch(currentUrl, {
+      // safeFetch checks every redirect hop and pins each connection to the
+      // address it checked. Some sites (consent Set-Cookie piles) send headers
+      // past undici's default 16 KB, which throws before the body: allow 96 KB.
+      let finalResponse: SafeResponse;
+      try {
+        finalResponse = await safeFetch(targetUrl, {
           signal: controller.signal,
-          redirect: "manual",
+          timeoutMs,
           headers: OG_HEADERS,
-          dispatcher: ogDispatcher,
+          maxHeaderSize: 96 * 1024,
         });
-
-        if (resp.status >= 300 && resp.status < 400 && i < MAX_REDIRECTS) {
-          const location = resp.headers.get('location');
-          if (location) {
-            try {
-              const redirectUrl = new URL(location, currentUrl);
-              if (!['http:', 'https:'].includes(redirectUrl.protocol)) break;
-              const redirectSafe = await validateHostSafety(redirectUrl.hostname);
-              if (!redirectSafe) break;
-              currentUrl = redirectUrl.toString();
-              continue;
-            } catch { break; }
-          }
-          break;
-        }
-
-        finalResponse = resp;
-        break;
-      }
-
-      if (!finalResponse) {
+      } catch (err) {
+        if (!(err instanceof SafeFetchBlocked)) throw err;
         ogNegativeCache.set(targetUrl, true);
         return { ok: false, status: 502, error: "Failed to follow redirects" };
       }
+      const currentUrl = finalResponse.url || targetUrl;
 
       // Bot walls / rate limits (401/403/429) and upstream 5xx serve a block
       // page with no usable OpenGraph. Don't parse it — fail fast with the
@@ -493,6 +463,9 @@ export async function registerRoutes(
   const nip05Cache = new Map<string, { verified: boolean; ts: number }>();
   const NIP05_CACHE_TTL = 4 * 60 * 60 * 1000;
   const NIP05_CACHE_MAX = 5000;
+  // A nostr.json answered for one ?name= is small; big providers can still send
+  // every name they host, so allow room but never an unbounded read.
+  const NIP05_MAX_BYTES = 2 * 1024 * 1024;
 
   app.get("/api/nip05/verify", async (req, res) => {
     try {
@@ -535,17 +508,21 @@ export async function registerRoutes(
       }
 
       const url = `https://${domain}/.well-known/nostr.json?name=${encodeURIComponent(local)}`;
-      const response = await fetch(url, {
-        signal: AbortSignal.timeout(8000),
+      // NIP-05: fetchers must ignore redirects. A redirect comes back as a 3xx,
+      // which is not ok, so it reads as unverified.
+      const response = await safeFetch(url, {
+        timeoutMs: 8000,
+        maxRedirects: 0,
         headers: { "Accept": "application/json" },
       });
-
-      if (!response.ok) {
+      const raw = response.ok ? await readBodyCapped(response, NIP05_MAX_BYTES) : null;
+      if (!raw) {
+        try { await response.body?.cancel(); } catch {}
         nip05Cache.set(cacheKey, { verified: false, ts: Date.now() });
         return res.json({ verified: false });
       }
 
-      const data = await response.json();
+      const data = JSON.parse(raw.toString("utf8"));
       const names = data?.names;
       const verified = typeof names === "object" && names !== null && (names[local] || "").toLowerCase() === pubkey.toLowerCase();
 
@@ -599,10 +576,11 @@ export async function registerRoutes(
       }
 
       const url = `https://${domain}/.well-known/nostr.json?name=${encodeURIComponent(local)}`;
-      let upstream: globalThis.Response;
+      let upstream: SafeResponse;
       try {
-        upstream = await fetch(url, {
-          signal: AbortSignal.timeout(8000),
+        upstream = await safeFetch(url, {
+          timeoutMs: 8000,
+          maxRedirects: 0, // NIP-05: fetchers must ignore redirects
           headers: { "Accept": "application/json" },
         });
       } catch (fetchErr: any) {
@@ -615,12 +593,15 @@ export async function registerRoutes(
         return res.status(404).json({ error: "No .well-known/nostr.json found", reason: "no_wellknown", domain });
       }
       if (!upstream.ok) {
+        try { await upstream.body?.cancel(); } catch {}
         return res.status(502).json({ error: `Upstream returned ${upstream.status}`, reason: "unreachable", domain });
       }
 
       let data: any;
       try {
-        data = await upstream.json();
+        const raw = await readBodyCapped(upstream, NIP05_MAX_BYTES);
+        if (!raw) return res.status(502).json({ error: "nostr.json is too large", reason: "invalid_json", domain });
+        data = JSON.parse(raw.toString("utf8"));
       } catch {
         return res.status(502).json({ error: "Invalid JSON at .well-known/nostr.json", reason: "invalid_json", domain });
       }
@@ -802,51 +783,25 @@ export async function registerRoutes(
     }
 
     try {
-      const response = await fetch(feedUrl, {
-        signal: AbortSignal.timeout(15000),
-        redirect: "follow",
+      const response = await safeFetch(feedUrl, {
+        timeoutMs: 15000,
         headers: {
           "Accept": "text/calendar, application/ics, text/plain, */*",
           "User-Agent": "RelayOutpost/1.0 Calendar Feed Reader",
         },
       });
       if (!response.ok) {
+        try { await response.body?.cancel(); } catch {}
         return res.status(502).json({ error: `Feed returned status ${response.status}` });
       }
 
-      // Cap the response size. A hostile or misconfigured feed could stream
-      // gigabytes; response.text() would buffer all of it. Reject early on a
-      // declared Content-Length, and otherwise read the body with a hard byte
-      // cap, aborting as soon as it's exceeded.
-      const MAX_ICAL_BYTES = 5 * 1024 * 1024; // 5MB
-      const declaredLen = parseInt(response.headers.get("content-length") || "", 10);
-      if (Number.isFinite(declaredLen) && declaredLen > MAX_ICAL_BYTES) {
+      // A hostile or misconfigured feed could stream gigabytes: read at most 5MB.
+      const MAX_ICAL_BYTES = 5 * 1024 * 1024;
+      const body = await readBodyCapped(response, MAX_ICAL_BYTES);
+      if (!body) {
         return res.status(413).json({ error: "Calendar feed is too large" });
       }
-      let text: string;
-      const reader = response.body?.getReader();
-      if (reader) {
-        const chunks: Buffer[] = [];
-        let received = 0;
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (value) {
-            received += value.length;
-            if (received > MAX_ICAL_BYTES) {
-              try { await reader.cancel(); } catch {}
-              return res.status(413).json({ error: "Calendar feed is too large" });
-            }
-            chunks.push(Buffer.from(value));
-          }
-        }
-        text = Buffer.concat(chunks).toString("utf-8");
-      } else {
-        text = await response.text();
-        if (text.length > MAX_ICAL_BYTES) {
-          return res.status(413).json({ error: "Calendar feed is too large" });
-        }
-      }
+      const text = body.toString("utf-8");
 
       if (!text.includes("BEGIN:VCALENDAR") && !text.includes("BEGIN:VEVENT")) {
         return res.status(422).json({ error: "URL does not appear to be a valid iCal feed" });
@@ -1061,6 +1016,32 @@ export async function registerRoutes(
       ] as unknown as string[],
     },
   });
+
+  // Feeds are fetched here, never by the parser itself: safeFetch checks every
+  // redirect hop and pins the connection, and the read is capped. Podcast feeds
+  // with a long back catalogue run to tens of MB, hence the generous default.
+  const FEED_MAX_BYTES = 25 * 1024 * 1024;
+  const FEED_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+  };
+  async function fetchFeedText(
+    url: string,
+    opts: { timeoutMs?: number; headers?: Record<string, string>; maxBytes?: number; truncate?: boolean; requireOk?: boolean } = {},
+  ): Promise<string | null> {
+    const r = await safeFetch(url, { timeoutMs: opts.timeoutMs ?? 8000, headers: opts.headers ?? FEED_HEADERS });
+    if ((opts.requireOk ?? true) && !r.ok) {
+      try { await r.body?.cancel(); } catch {}
+      return null;
+    }
+    const buf = await readBodyCapped(r, opts.maxBytes ?? FEED_MAX_BYTES, { truncate: opts.truncate });
+    return buf ? buf.toString("utf8") : null;
+  }
+  async function parseFeedUrl(url: string, timeoutMs = 8000) {
+    const text = await fetchFeedText(url, { timeoutMs });
+    if (text == null) throw new Error("Feed could not be fetched");
+    return rssParser.parseString(text);
+  }
 
   // Capacity must comfortably exceed the News "All feeds" set (~90 feeds) plus
   // drill-ins, or LRU eviction makes most feeds re-parse cold on every load. TTL
@@ -1594,17 +1575,13 @@ export async function registerRoutes(
   async function validateFeedUrl(u: string): Promise<{ title: string } | null> {
     if (!(await isPublicHttpUrl(u))) return null;
     try {
-      const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 7000);
-      const r = await fetch(u, {
+      const text = await fetchFeedText(u, {
+        timeoutMs: 7000,
         headers: { "User-Agent": "RelayOutpost/1.0", "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, */*" },
-        signal: controller.signal,
-        redirect: "follow",
+        maxBytes: 1.5 * 1024 * 1024,
+        truncate: true,
       });
-      clearTimeout(t);
-      if (!r.ok) return null;
-      const buf = await r.arrayBuffer();
-      const text = new TextDecoder().decode(buf.slice(0, 1.5 * 1024 * 1024));
+      if (text == null) return null;
       if (!/<(rss|feed)[\s>]/i.test(text)) return null;
       const feed = await rssParser.parseString(text);
       if (!feed || !Array.isArray(feed.items)) return null;
@@ -1627,20 +1604,17 @@ export async function registerRoutes(
     let body = "";
     try {
       const origin = new URL(normalized).origin;
-      const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 8000);
-      const r = await fetch(normalized, {
+      body = (await fetchFeedText(normalized, {
+        timeoutMs: 8000,
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
           "Accept": "text/html, application/xhtml+xml, application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
           "Referer": origin + "/",
         },
-        signal: controller.signal,
-        redirect: "follow",
-      });
-      clearTimeout(t);
-      const buf = await r.arrayBuffer();
-      body = new TextDecoder().decode(buf.slice(0, 1.5 * 1024 * 1024));
+        maxBytes: 1.5 * 1024 * 1024,
+        truncate: true,
+        requireOk: false,
+      })) ?? "";
     } catch {
       return res.json({ feeds: [] });
     }
@@ -1727,7 +1701,7 @@ export async function registerRoutes(
     }
 
     try {
-      const feed = await rssParser.parseURL(feedUrl);
+      const feed = await parseFeedUrl(feedUrl);
 
       function parseItunesDuration(raw: string | undefined): number {
         if (!raw) return 0;
@@ -1871,7 +1845,7 @@ export async function registerRoutes(
       let items: any[] | undefined = rssCache.get(src.url)?.items;
       if (!items) {
         const feed = await Promise.race([
-          rssParser.parseURL(src.url),
+          parseFeedUrl(src.url),
           new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), 8000)),
         ]);
         items = (feed.items || []).slice(0, 30).map((i: any) => ({
@@ -2010,29 +1984,21 @@ export async function registerRoutes(
     }
 
     try {
-      let currentUrl = initial;
-      let response: globalThis.Response | null = null;
-      for (let hop = 0; hop < 4; hop++) {
-        const resp = await fetch(currentUrl.toString(), {
+      let response: SafeResponse;
+      try {
+        response = await safeFetch(initial.toString(), {
+          timeoutMs: 10000,
+          maxRedirects: 3,
           headers: {
             'User-Agent': 'RelayOutpost/1.0',
             'Accept': 'text/vtt, application/json, application/srt, text/plain, */*',
           },
-          redirect: 'manual',
-          signal: AbortSignal.timeout(10000),
         });
-        if (resp.status >= 300 && resp.status < 400) {
-          const location = resp.headers.get('location');
-          if (!location) return res.status(502).json({ error: "Bad redirect" });
-          const next = await validateUrl(new URL(location, currentUrl).toString());
-          if (!next) return res.status(400).json({ error: "Invalid redirect" });
-          currentUrl = next;
-          continue;
-        }
-        response = resp;
-        break;
+      } catch (err) {
+        if (err instanceof SafeFetchBlocked) return res.status(400).json({ error: "Invalid redirect" });
+        throw err;
       }
-      if (!response) return res.status(502).json({ error: "Too many redirects" });
+      if (response.status >= 300 && response.status < 400) return res.status(502).json({ error: "Too many redirects" });
       if (!response.ok) return res.status(502).json({ error: "Upstream error" });
 
       const contentType = (response.headers.get('content-type') || '').toLowerCase();
@@ -2040,34 +2006,9 @@ export async function registerRoutes(
       if (/^(image|video|audio)\//.test(contentType)) {
         return res.status(415).json({ error: "Unsupported content type" });
       }
-      const declaredLength = parseInt(response.headers.get('content-length') || '0', 10);
-      if (declaredLength > MAX_PODCAST_FILE_BYTES) {
-        return res.status(413).json({ error: "File too large" });
-      }
-
-      let content = "";
-      const reader = response.body?.getReader();
-      if (reader) {
-        const decoder = new TextDecoder();
-        let received = 0;
-        while (received < MAX_PODCAST_FILE_BYTES) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          received += value.length;
-          if (received > MAX_PODCAST_FILE_BYTES) {
-            try { await reader.cancel(); } catch {}
-            return res.status(413).json({ error: "File too large" });
-          }
-          content += decoder.decode(value, { stream: true });
-        }
-        content += decoder.decode();
-        try { await reader.cancel(); } catch {}
-      } else {
-        content = await response.text();
-        if (content.length > MAX_PODCAST_FILE_BYTES) {
-          return res.status(413).json({ error: "File too large" });
-        }
-      }
+      const body = await readBodyCapped(response, MAX_PODCAST_FILE_BYTES);
+      if (!body) return res.status(413).json({ error: "File too large" });
+      const content = body.toString("utf8");
 
       const result = { content, contentType };
       podcastFileCache.set(targetUrl, result);
@@ -2198,41 +2139,26 @@ export async function registerRoutes(
     }
 
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-
-      let currentUrl = imageUrl;
-      // fetch's Response — `Response` alone is Express's here (imported above).
-      let response: globalThis.Response | null = null;
-      for (let i = 0; i < 5; i++) {
-        const curOrigin = new URL(currentUrl).origin;
-        response = await fetch(currentUrl, {
-          headers: {
+      // Every hop checked and pinned. The 8 s bounds the wait for headers only:
+      // a slow picture keeps streaming (phones on a weak signal wait for this).
+      let response: SafeResponse;
+      try {
+        response = await safeFetch(imageUrl, {
+          timeoutMs: 8000,
+          timeoutCovers: "headers",
+          headers: (u) => ({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-            'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-            'Referer': curOrigin + '/',
-          },
-          signal: controller.signal,
-          redirect: 'manual',
+            'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+            'Referer': u.origin + '/',
+          }),
         });
-        if (response.status >= 300 && response.status < 400) {
-          const location = response.headers.get('location');
-          if (!location) break;
-          const nextUrl = new URL(location, currentUrl).href;
-          const nextHost = new URL(nextUrl).hostname.toLowerCase();
-          const nextSafe = await validateHostSafety(nextHost);
-          if (!nextSafe) {
-            clearTimeout(timeout);
-            return res.status(400).json({ error: "Redirect to unsafe host" });
-          }
-          currentUrl = nextUrl;
-          continue;
-        }
-        break;
+      } catch (err) {
+        if (err instanceof SafeFetchBlocked) return res.status(400).json({ error: "Redirect to unsafe host" });
+        throw err;
       }
-      clearTimeout(timeout);
 
-      if (!response || !response.ok || !response.body) {
+      if (!response.ok || !response.body) {
+        try { await response.body?.cancel(); } catch {}
         return res.status(502).json({ error: "Failed to fetch image" });
       }
 
@@ -2596,13 +2522,21 @@ export async function registerRoutes(
     }
 
     try {
-      const upstream = await fetch(targetUrl, {
-        redirect: "manual",
-        signal: AbortSignal.timeout(10000),
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; NostrClient/1.0)",
-        },
-      });
+      // Pinned to the checked address; a redirect comes back to us unfollowed
+      // and is re-routed through this proxy below, so its host is checked too.
+      let upstream: SafeResponse;
+      try {
+        upstream = await safeFetch(targetUrl, {
+          maxRedirects: 0,
+          timeoutMs: 10000,
+          headers: {
+            "User-Agent": "Mozilla/5.0 (compatible; NostrClient/1.0)",
+          },
+        });
+      } catch (err) {
+        if (err instanceof SafeFetchBlocked) return res.status(403).json({ error: "Domain failed safety check" });
+        throw err;
+      }
 
       if ([301, 302, 303, 307, 308].includes(upstream.status)) {
         const location = upstream.headers.get("location");
@@ -2669,6 +2603,13 @@ export async function registerRoutes(
         res.set("Cache-Control", "no-cache");
         res.set("Access-Control-Allow-Origin", "*");
         return res.send(rewritten);
+      }
+
+      // Only media is relayed: a page, data or a picture is refused, so this
+      // can't be used to fetch the web through our server.
+      if (!isRelayableStreamType(upstream.headers.get("content-type"))) {
+        try { await upstream.body?.cancel(); } catch {}
+        return res.status(415).json({ error: "Not a media stream" });
       }
 
       // Cap bytes per request so this proxy can't be abused as an open media CDN
