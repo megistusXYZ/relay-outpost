@@ -9,6 +9,8 @@
 // page load can be stitched into a tiny funnel server-side.
 
 import type { Express, Request } from "express";
+import { verifyNip98 } from "../nip98-auth";
+import { RELAY_OUTPOST_TEAM_PUBKEY } from "@shared/team-key";
 
 const ALLOWED_EVENTS = [
   "landing_viewed",       // the marketing landing (full warp overlay) was shown
@@ -119,7 +121,8 @@ function isValidPayload(body: any): body is IncomingPayload {
   return true;
 }
 
-export function registerSignupTelemetryRoutes(app: Express): void {
+export function registerSignupTelemetryRoutes(app: Express, opts: { owners?: string[] } = {}): void {
+  const owners = new Set((opts.owners ?? [RELAY_OUTPOST_TEAM_PUBKEY]).map((p) => p.toLowerCase()));
   app.post("/api/telemetry/signup", (req, res) => {
     // sendBeacon ships bodies as text/plain; accept either JSON or string.
     let body: any = req.body;
@@ -169,7 +172,12 @@ export function registerSignupTelemetryRoutes(app: Express): void {
     return res.status(204).end();
   });
 
-  app.get("/api/telemetry/signup/summary", (_req, res) => {
+  // Lists recent sessions and device flags: the team's signed request only.
+  app.get("/api/telemetry/signup/summary", (req, res) => {
+    res.set("Cache-Control", "no-store");
+    const who = verifyNip98(req);
+    if ("error" in who) return res.status(who.status).json({ error: who.error });
+    if (!owners.has(who.pubkey.toLowerCase())) return res.status(403).json({ error: "Only the Relay Outpost team can see this" });
     const completed = counters.signup_completed;
     const abandoned = counters.signup_abandoned;
     const completionRate = completed + abandoned > 0

@@ -8,6 +8,8 @@ import RSSParser from "rss-parser";
 import { db } from "./db";
 import { SERVER_APP_VERSION } from "./version";
 import { registerSignupTelemetryRoutes } from "./analytics/signup-telemetry";
+import { registerGrapeRankProxy } from "./graperank-proxy";
+import { isSchedulableRelayUrl } from "./scheduled-relays";
 import { registerConcordAvRoutes } from "./concord-av";
 import { registerPushRoutes } from "./push/push-devices";
 import { dbPushStore } from "./push/push-store-db";
@@ -3360,89 +3362,7 @@ export async function registerRoutes(
     }
   });
 
-  const BRAINSTORM_API = "https://brainstormserver.nosfabrica.com";
-
-  app.get("/api/graperank/authChallenge/:pubkey", async (req, res) => {
-    try {
-      const upstream = await fetch(`${BRAINSTORM_API}/authChallenge/${req.params.pubkey}`, { signal: AbortSignal.timeout(5000) });
-      const data = await upstream.text();
-      res.status(upstream.status).set({ "Content-Type": "application/json" }).end(data);
-    } catch (err) {
-      console.error("[graperank proxy] authChallenge error:", err);
-      res.status(502).json({ error: "Upstream unavailable" });
-    }
-  });
-
-  app.post("/api/graperank/authChallenge/:pubkey/verify", async (req, res) => {
-    try {
-      const upstream = await fetch(`${BRAINSTORM_API}/authChallenge/${req.params.pubkey}/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(req.body),
-        signal: AbortSignal.timeout(5000),
-      });
-      const data = await upstream.text();
-      res.status(upstream.status).set({ "Content-Type": "application/json" }).end(data);
-    } catch (err) {
-      console.error("[graperank proxy] verify error:", err);
-      res.status(502).json({ error: "Upstream unavailable" });
-    }
-  });
-
-  app.get("/api/graperank/user/self", async (req, res) => {
-    try {
-      const headers: Record<string, string> = {};
-      if (req.headers["access_token"]) headers["access_token"] = req.headers["access_token"] as string;
-      const upstream = await fetch(`${BRAINSTORM_API}/user/self`, { headers, signal: AbortSignal.timeout(5000) });
-      const data = await upstream.text();
-      res.status(upstream.status).set({ "Content-Type": "application/json" }).end(data);
-    } catch (err) {
-      console.error("[graperank proxy] user/self error:", err);
-      res.status(502).json({ error: "Upstream unavailable" });
-    }
-  });
-
-  app.get("/api/graperank/user/:pubkey", async (req, res) => {
-    try {
-      const headers: Record<string, string> = {};
-      if (req.headers["access_token"]) headers["access_token"] = req.headers["access_token"] as string;
-      const upstream = await fetch(`${BRAINSTORM_API}/user/${req.params.pubkey}`, { headers, signal: AbortSignal.timeout(5000) });
-      const data = await upstream.text();
-      res.status(upstream.status).set({ "Content-Type": "application/json" }).end(data);
-    } catch (err) {
-      console.error("[graperank proxy] user error:", err);
-      res.status(502).json({ error: "Upstream unavailable" });
-    }
-  });
-
-  app.get("/api/graperank/setup/:pubkey", async (req, res) => {
-    try {
-      const upstream = await fetch(`${BRAINSTORM_API}/setup/${req.params.pubkey}`, { signal: AbortSignal.timeout(5000) });
-      const data = await upstream.text();
-      res.status(upstream.status).set({ "Content-Type": "application/json" }).end(data);
-    } catch (err) {
-      console.error("[graperank proxy] setup error:", err);
-      res.status(502).json({ error: "Upstream unavailable" });
-    }
-  });
-
-  // Trigger a GrapeRank calculation for the authenticated user (their own
-  // pubkey, via the forwarded access_token). Lets users (re)calculate their web
-  // of trust IN-APP instead of being bounced to brainstorm.nosfabrica.com. The
-  // upstream rate-limits this per user (~30-min cooldown); the status is passed
-  // through so the client can message it.
-  app.post("/api/graperank/trigger", async (req, res) => {
-    try {
-      const headers: Record<string, string> = {};
-      if (req.headers["access_token"]) headers["access_token"] = req.headers["access_token"] as string;
-      const upstream = await fetch(`${BRAINSTORM_API}/user/graperank`, { method: "POST", headers, signal: AbortSignal.timeout(8000) });
-      const data = await upstream.text();
-      res.status(upstream.status).set({ "Content-Type": "application/json" }).end(data);
-    } catch (err) {
-      console.error("[graperank proxy] trigger error:", err);
-      res.status(502).json({ error: "Upstream unavailable" });
-    }
-  });
+  registerGrapeRankProxy(app);
 
   const gifCache = new TTLCache<any>(20, 5 * 60 * 1000);
 
@@ -3603,10 +3523,8 @@ export async function registerRoutes(
         return res.status(400).json({ error: "At least one relay URL is required" });
       }
 
-      const validRelayUrlPattern = /^wss?:\/\/[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}/;
-      const blockedHostPatterns = /^wss?:\/\/(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|0\.0\.0\.0|\[::1\])/i;
       for (const url of relayUrls) {
-        if (typeof url !== "string" || !validRelayUrlPattern.test(url) || blockedHostPatterns.test(url)) {
+        if (!isSchedulableRelayUrl(url)) {
           return res.status(400).json({ error: `Invalid relay URL: ${url}` });
         }
       }
@@ -3804,10 +3722,8 @@ export async function registerRoutes(
         if (relayUrls.length > 20) {
           return res.status(400).json({ error: "Too many relay URLs (max 20)" });
         }
-        const validRelayUrlPattern = /^wss?:\/\/[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}/;
-        const blockedHostPatterns = /^wss?:\/\/(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|0\.0\.0\.0|\[::1\])/i;
         for (const url of relayUrls) {
-          if (typeof url !== "string" || !validRelayUrlPattern.test(url) || blockedHostPatterns.test(url)) {
+          if (!isSchedulableRelayUrl(url)) {
             return res.status(400).json({ error: `Invalid relay URL: ${url}` });
           }
         }
