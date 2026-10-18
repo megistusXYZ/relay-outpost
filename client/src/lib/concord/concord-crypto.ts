@@ -224,10 +224,9 @@ export function buildPlainSeal(authorPubkey: string, rumorJson: string, createdA
  * Build an encrypted seal (kind 20013): the rumor is NIP-44-encrypted so the
  * inner event can never be extracted and replayed as a standalone public note.
  *
- * NOTE (confirm before Slice 2 wires real chat traffic): the exact key that
- * encrypts the inner rumor is parametrized here (`sealKey`) because the CORD-01
- * prose left it under-specified vs. reference vectors. Slice-1 ships dark, so
- * this is safe to pin down against the reference implementation next.
+ * The inner rumor is encrypted under the plane's conversation key, the same
+ * key as the outer wrap: CORD-01's example, Vector's stream.rs seal_content
+ * and Armada's sealRumor all do this (checked 2026-10-18).
  */
 export function buildEncryptedSeal(authorPubkey: string, rumorJson: string, sealKey: Uint8Array, createdAt: number): Seal {
   return {

@@ -33,6 +33,19 @@ describe("decodeStreamEvent (CORD-01/03)", () => {
     expect(out!.kind).toBe(KIND_MESSAGE);
   });
 
+  // Vector (stream.rs open_wrap_at, BadRumorId) and Armada (stream.ts,
+  // bad-rumor-id) both drop a rumor whose claimed id isn't its hash. The id is
+  // the tie-breaker and dedup key, so a member must not be able to pick it.
+  it("drops a rumor whose claimed id isn't its hash, and still opens an honest one", () => {
+    const rumor = buildMessageRumor(author, CH, 0n, "forged", 0, 1_700_000_000) as unknown as DecodedRumor;
+    const forged = { ...rumor, id: "0".repeat(64) };
+    const seal = buildEncryptedSeal(author, JSON.stringify(forged), planeConvKey(plane), 1_700_000_000);
+    const signedSeal = finalizeEvent({ kind: seal.kind, created_at: seal.created_at, tags: seal.tags, content: seal.content }, authorSk);
+    expect(decodeStreamEvent(plane, wrapStream(plane, signedSeal as never, 1_700_000_000))).toBeNull();
+    const honest = authorEncryptedWrap(authorSk, plane, rumor, 1_700_000_000);
+    expect(decodeStreamEvent(plane, honest)?.id).toBe(getEventHash(rumor as never));
+  });
+
   it("returns null for the wrong plane key", () => {
     const rumor = buildMessageRumor(author, CH, 0n, "secret", 0, 1_700_000_000) as unknown as DecodedRumor;
     const wrap = authorEncryptedWrap(authorSk, plane, rumor, 1_700_000_000);

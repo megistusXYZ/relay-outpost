@@ -206,8 +206,9 @@ export interface DecodedRumor {
 
 /**
  * Decode one stream wrap with a plane key. Verifies the plane-signed outer, the
- * author-signed seal, and that the rumor author matches the seal author (no
- * forged sender). Returns null on any failure. Pure given (plane, wrap).
+ * author-signed seal, that the rumor author matches the seal author (no forged
+ * sender), and that the rumor's id is its hash (no chosen id). Returns null on
+ * any failure. Pure given (plane, wrap).
  */
 export function decodeStreamEvent(plane: GroupKey, wrap: Event): DecodedRumor | null {
   const decoded = decodeStreamEventWithSeal(plane, wrap);
@@ -235,6 +236,10 @@ export function decodeStreamEventWithSeal(plane: GroupKey, wrap: Event): (Decode
   try {
     const rumor = JSON.parse(rumorJson) as DecodedRumor;
     if (rumor.pubkey !== seal.pubkey) return null; // sender attribution
+    // The id must be the rumor's own hash, as Vector (BadRumorId) and Armada
+    // (bad-rumor-id) require: it is the tie-breaker and the dedup key, so a
+    // member must not be able to choose it. Ours always is (publishToPlane).
+    if (rumor.id !== getEventHash({ kind: rumor.kind, pubkey: rumor.pubkey, created_at: rumor.created_at, tags: rumor.tags, content: rumor.content } as never)) return null;
     return { ...rumor, seal };
   } catch {
     return null;

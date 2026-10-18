@@ -9,8 +9,8 @@
  * mismatch is dropped, never adopted."
  *
  * NIP-44 carries a string, so the 40 bytes travel base64-encoded, the same
- * convention our rekey blobs use (concord-rekey). Not yet checked against
- * another client's control_wrap.
+ * convention our rekey blobs use (concord-rekey), and the one Vector (rekey.rs
+ * control_wrap_b64) and Armada (useRoles.ts) use (checked 2026-10-18).
  */
 import type { ISigner } from "applesauce-signers";
 import { bytesToHex } from "@noble/hashes/utils.js";
