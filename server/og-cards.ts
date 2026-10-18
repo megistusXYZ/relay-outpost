@@ -59,7 +59,7 @@ async function getSharp(): Promise<typeof SharpNS> {
 // resolves the real ESM default. Normalize once.
 const satori: typeof satoriImport = ((satoriImport as unknown as { default?: typeof satoriImport }).default ?? satoriImport);
 import { TTLCache } from "./ttl-cache";
-import { validateHostSafety } from "./net-safety";
+import { fetchRemoteRaster, REMOTE_IMAGE_DECODE } from "./remote-image";
 import {
   INTER_400_WOFF_B64,
   INTER_700_WOFF_B64,
@@ -225,32 +225,17 @@ const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
 
 /**
  * Fetch a profile avatar and normalize it to a small square PNG data URI.
- * SSRF-guarded (public hosts only), time-capped, size-capped; null on any
+ * Fetched through fetchRemoteRaster (every hop checked, size-capped, raster
+ * formats only), time-capped; null on any
  * failure — the card falls back to an initial disc. `size` is the square
  * output edge (profile cards render the avatar large, so they ask for 256).
  */
 async function fetchAvatarDataUri(url: string, size = 128): Promise<string | null> {
   try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
-    if (!(await validateHostSafety(parsed.hostname))) return null;
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 3500);
-    let resp: globalThis.Response;
-    try {
-      resp = await fetch(url, { signal: controller.signal, redirect: "follow" });
-    } finally {
-      clearTimeout(timer);
-    }
-    if (!resp.ok) return null;
-    const declared = Number(resp.headers.get("content-length") || 0);
-    if (declared > AVATAR_MAX_BYTES) return null;
-    const buf = Buffer.from(await resp.arrayBuffer());
-    if (buf.length === 0 || buf.length > AVATAR_MAX_BYTES) return null;
-
+    const buf = await fetchRemoteRaster(url, AVATAR_MAX_BYTES, 3500);
+    if (!buf) return null;
     const sharp = await getSharp();
-    const png = await sharp(buf).resize(size, size, { fit: "cover" }).png().toBuffer();
+    const png = await sharp(buf, REMOTE_IMAGE_DECODE).resize(size, size, { fit: "cover" }).png().toBuffer();
     return `data:image/png;base64,${png.toString("base64")}`;
   } catch {
     return null;
@@ -287,25 +272,11 @@ export function firstPostImageUrl(event: { content?: string; tags?: string[][] }
  *  text-only layout — never a broken card). */
 async function fetchCoverImageDataUri(url: string, width: number, height: number): Promise<string | null> {
   try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
-    if (!(await validateHostSafety(parsed.hostname))) return null;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 4000);
-    let resp: globalThis.Response;
-    try {
-      resp = await fetch(url, { signal: controller.signal, redirect: "follow" });
-    } finally {
-      clearTimeout(timer);
-    }
-    if (!resp.ok) return null;
-    const declared = Number(resp.headers.get("content-length") || 0);
-    if (declared > POST_IMAGE_MAX_BYTES) return null;
-    const buf = Buffer.from(await resp.arrayBuffer());
-    if (buf.length === 0 || buf.length > POST_IMAGE_MAX_BYTES) return null;
+    const buf = await fetchRemoteRaster(url, POST_IMAGE_MAX_BYTES, 4000);
+    if (!buf) return null;
     const sharp = await getSharp();
     if (!sharp) return null;
-    const png = await sharp(buf).resize(width, height, { fit: "cover" }).png().toBuffer();
+    const png = await sharp(buf, REMOTE_IMAGE_DECODE).resize(width, height, { fit: "cover" }).png().toBuffer();
     return `data:image/png;base64,${png.toString("base64")}`;
   } catch {
     return null;

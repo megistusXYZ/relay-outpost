@@ -53,3 +53,28 @@ describe("isPrivateIp — whole-CIDR checks, not string prefixes", () => {
     expect(isPrivateIp("not-an-ip")).toBe(false);
   });
 });
+
+describe("isPrivateIp — the less common ranges a server must never reach", () => {
+  it("blocks reserved, multicast, broadcast, benchmark and protocol ranges", () => {
+    for (const ip of ["192.0.0.8", "198.18.0.1", "198.19.255.254", "224.0.0.1", "239.255.255.250", "240.0.0.1", "255.255.255.255"]) {
+      expect(isPrivateIp(ip), ip).toBe(true);
+    }
+  });
+
+  it("blocks IPv6 forms that carry a private IPv4 address inside them", () => {
+    expect(isPrivateIp("::ffff:7f00:1")).toBe(true); // ::ffff:127.0.0.1 in hex
+    expect(isPrivateIp("::127.0.0.1")).toBe(true); // IPv4-compatible
+    expect(isPrivateIp("64:ff9b::a9fe:a9fe")).toBe(true); // NAT64 of 169.254.169.254
+    expect(isPrivateIp("2002:c0a8:0101::1")).toBe(true); // 6to4 of 192.168.1.1
+  });
+
+  it("blocks IPv6 multicast, site-local and discard ranges", () => {
+    for (const ip of ["ff02::1", "fec0::1", "100::1"]) expect(isPrivateIp(ip), ip).toBe(true);
+  });
+
+  it("still allows public IPv6 and a NAT64 of a public address", () => {
+    expect(isPrivateIp("2606:4700:4700::1111")).toBe(false);
+    expect(isPrivateIp("64:ff9b::808:808")).toBe(false); // NAT64 of 8.8.8.8
+    expect(isPrivateIp("::ffff:808:808")).toBe(false);
+  });
+});
