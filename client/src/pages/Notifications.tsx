@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect, useRef, memo } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef, memo, createContext, useContext } from "react";
 import { nip19 } from "nostr-tools";
 import { Link, useLocation } from "wouter";
 import { use$ } from "applesauce-react/hooks";
@@ -36,7 +36,10 @@ import { NotificationIcon } from "@/components/icons/NotificationIcon";
 import { BtcZapIcon } from "@/components/NostrPost";
 import { formatDistanceToNow, isToday, isYesterday, isThisWeek, isThisMonth, format } from "date-fns";
 import { useDocumentTitle } from "@/hooks/use-document-title";
-import { useMentionNames } from "@/hooks/use-mention-names";
+import { useMentionNames, useKnownNames } from "@/hooks/use-mention-names";
+import { useFollowerStanding } from "@/hooks/use-follower-standing";
+import { useFollowAction } from "@/hooks/use-follow-action";
+import { followerTrustWords, sharedFollowersLine, followerCountsInBadge, offersFollowBack } from "@/lib/follower-standing";
 import { notificationPreview } from "@/lib/notification-preview";
 import { useWiderNetwork } from "@/lib/network-mode";
 import { inYourSpace } from "@/lib/your-space";
@@ -251,6 +254,92 @@ const AggregatedNotificationItem = memo(function AggregatedNotificationItem({ gr
     </div>
   );
 });
+
+/** Where each new follower stands with you; provided by the page (hooks/use-follower-standing.ts). */
+const FollowerInfo = createContext<ReturnType<typeof useFollowerStanding> | null>(null);
+
+/**
+ * On a "followed you" row (owner, 2026-10-18): how your network sees them, in
+ * words, who you follow that follows them too (names and faces), and Follow
+ * back for the ones your network trusts or knows.
+ */
+function FollowerStandingLine({ pubkey }: { pubkey: string }) {
+  const info = useContext(FollowerInfo);
+  const shared = info ? info.sharedOf(pubkey) : [];
+  const nameOf = useKnownNames(shared.slice(0, 2));
+  const { follow, isFollowing, pending, canFollow } = useFollowAction();
+  if (!info) return null;
+  const standing = info.standingOf(pubkey);
+  const words = followerTrustWords(standing);
+  const line = sharedFollowersLine(shared.slice(0, 2).map((pk) => nameOf(pk) ?? shortenNpub(formatNpub(pk))), shared.length);
+  const text = [words, words && line ? line.charAt(0).toLowerCase() + line.slice(1) : line].filter(Boolean).join(" · ");
+  const followBack = canFollow && offersFollowBack(standing, isFollowing(pubkey));
+  if (!text && !followBack) return null;
+  return (
+    <div className="mt-1 flex items-center gap-2 flex-wrap" data-testid="follower-standing" data-standing={standing}>
+      {shared.length > 0 && (
+        <span className="flex -space-x-1.5 shrink-0" aria-hidden="true">
+          {shared.slice(0, 3).map((pk) => <SharedFace key={pk} pubkey={pk} />)}
+        </span>
+      )}
+      {text && <span className="text-[11px] text-foreground/60 dark:text-muted-foreground/75 min-w-0" data-testid="follower-standing-words">{text}</span>}
+      {followBack && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); void follow(pubkey); }}
+          disabled={pending.has(pubkey)}
+          className="min-h-[44px] sm:min-h-0 sm:h-7 px-3 rounded-full border border-border/60 text-[12px] font-medium hover:bg-foreground/[0.05] disabled:opacity-50"
+          data-testid="button-follow-back"
+        >
+          Follow back
+        </button>
+      )}
+    </div>
+  );
+}
+
+const SharedFace = memo(function SharedFace({ pubkey }: { pubkey: string }) {
+  const profile = use$(() => eventStore.replaceable(KIND_METADATA, pubkey), [pubkey]);
+  const avatarUrl = profile ? getAvatarUrl(profile) : undefined;
+  const name = profile ? getDisplayName(profile, "") : "";
+  return (
+    <Avatar className="w-4 h-4 border border-background">
+      <AvatarImage src={avatarUrl} />
+      <AvatarFallback className="text-[7px] bg-muted">{(name || "?")[0]?.toUpperCase()}</AvatarFallback>
+    </Avatar>
+  );
+});
+
+/** Followers with no ties to you whom your network doesn't trust (and flagged
+ *  accounts): one folded row, opened by hand, not counted in the badge. */
+function OutsideNetworkFollowers({ items, onRead }: { items: any[]; onRead: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  if (items.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-border/25 bg-muted/[0.04]" data-testid="outside-network-followers">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left min-h-[44px]"
+        aria-expanded={open}
+        data-testid="button-outside-network-followers"
+      >
+        <UserPlus className="w-4 h-4 text-muted-foreground/60 shrink-0" />
+        <span className="flex-1 text-[12px] text-muted-foreground">
+          From outside your network — {items.length} {items.length === 1 ? "new follower" : "new followers"} your network doesn't know
+        </span>
+        <ChevronRight className={`w-3.5 h-3.5 text-muted-foreground/50 shrink-0 transition-transform ${open ? "rotate-90" : ""}`} />
+      </button>
+      {open && (
+        <div className="px-1 pb-2 space-y-0.5">
+          {items.slice(0, 100).map((notif) => (
+            <NotificationItem key={notif.id} notification={notif} onRead={onRead} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const AggregatedAvatar = memo(function AggregatedAvatar({ pubkey }: { pubkey: string }) {
   const profile = use$(() => eventStore.replaceable(KIND_METADATA, pubkey), [pubkey]);
@@ -632,6 +721,7 @@ const NotificationItem = memo(function NotificationItem({ notification, onRead }
             {contentPreview}
           </p>
         )}
+        {notification.type === "follow" && notification.fromPubkey && <FollowerStandingLine pubkey={notification.fromPubkey} />}
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           <span className="text-[10px] text-foreground/45 dark:text-muted-foreground/50">{timeAgo}</span>
         </div>
@@ -907,6 +997,7 @@ export default function Notifications() {
   }, []);
 
   const { getAuthorTier, isAuthorFlagged } = useGrapeRankScores();
+  const followerInfo = useFollowerStanding();
   const { follows, pubkey } = useNostrAuth();
   const followSet = useMemo(() => new Set(follows || []), [follows]);
   const widerNetworkOn = useWiderNetwork(pubkey);
@@ -925,8 +1016,9 @@ export default function Notifications() {
   // Mention/reply fishing shield: suspect rows leave the main sections for a
   // collapsed "Filtered" bucket at the bottom — never deleted, always
   // reviewable, and the classification is narrow (see notification-spam.ts).
-  const { grouped, filteredSpam, outsideSpace } = useMemo(() => {
+  const { grouped, filteredSpam, outsideSpace, outsideFollowers } = useMemo(() => {
     const groups = new Map<NotifType, any[]>();
+    const outsideFollows: any[] = [];
     const typeOrder: NotifType[] = ["accepted", "ticket", "mention", "reply", "zap", "reaction", "repost", "follow"];
     const spam: any[] = [];
     const outside: any[] = [];
@@ -939,6 +1031,12 @@ export default function Notifications() {
       // never the first thing a new account sees.
       if (notif.fromPubkey && !inYourSpace(space, notif.fromPubkey)) { outside.push(notif); continue; }
       const type = notif.type as NotifType;
+      // New followers with no ties whom your network doesn't trust fold away
+      // (lib/follower-standing.ts) — kept, reviewable, not counted.
+      if (type === "follow" && notif.fromPubkey && !followerCountsInBadge(followerInfo.standingOf(notif.fromPubkey))) {
+        outsideFollows.push(notif);
+        continue;
+      }
       if ((type === "mention" || type === "reply") && notif.fromPubkey) {
         const tier = getAuthorTier(notif.fromPubkey);
         const verdict = classifyMentionSpam({
@@ -962,8 +1060,9 @@ export default function Notifications() {
       })),
       filteredSpam: spam.sort((a, b) => b.event.created_at - a.event.created_at),
       outsideSpace: outside.sort((a, b) => b.timestamp - a.timestamp),
+      outsideFollowers: outsideFollows.sort((a, b) => b.timestamp - a.timestamp),
     };
-  }, [notifications, getAuthorTier, isAuthorFlagged, followSet, widerNetworkOn]);
+  }, [notifications, getAuthorTier, isAuthorFlagged, followSet, widerNetworkOn, followerInfo]);
 
   // Tabs are derived from the categories that actually have notifications, so
   // they always match the section headers below and never point at nothing.
@@ -1131,6 +1230,7 @@ export default function Notifications() {
           </div>
         </div>
       ) : (
+        <FollowerInfo.Provider value={followerInfo}>
         <div className="space-y-3">
           {loading && (
             <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] text-muted-foreground/50">
@@ -1154,9 +1254,11 @@ export default function Notifications() {
               />
             ))
           )}
+          {(filter === "all" || filter === "follow") && <OutsideNetworkFollowers items={outsideFollowers} onRead={markRead} />}
           {filter === "all" && <OutsideSpaceSection items={outsideSpace} onRead={markRead} />}
           {filter === "all" && <FilteredSpamSection items={filteredSpam} />}
         </div>
+        </FollowerInfo.Provider>
       )}
     </div>
   );

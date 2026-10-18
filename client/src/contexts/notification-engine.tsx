@@ -4,6 +4,8 @@ import type { Event } from "nostr-tools";
 import { eventStore, FAST_RELAYS, fetchProfiles, throttledPoolSubscribe, persistentPoolSubscribe } from "@/lib/nostr";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
+import { useFollowerStanding } from "@/hooks/use-follower-standing";
+import { followerCountsInBadge } from "@/lib/follower-standing";
 import { unwrapGiftWrap, seedProcessedWraps, roomKeyOfUnwrapped } from "@/lib/gift-wrap";
 import { isExpired } from "@/lib/dm-room";
 import { DM_PREFS_EVENT, isMutedChat, readDmPrefs } from "@/lib/dm-prefs";
@@ -868,13 +870,17 @@ export default function NotificationEngine({ onChange }: { onChange: (value: Not
   // created_at predates lastSeen (the "days behind" bug). Exclude muted authors
   // so the badge can't say "1" while the page (which hides muted) renders
   // nothing. Ticket unreads are added on top.
+  // New followers from outside your network don't raise the badge
+  // (lib/follower-standing.ts); the Activity page folds them the same way.
+  const followerInfo = useFollowerStanding();
   const unreadCount = useMemo(
     () => {
       const space = { widerNetworkOn, follows: new Set(follows || []) };
-      return notifications.filter(n => !n.read && !(n.fromPubkey && isMutedPubkey(n.fromPubkey)) && badgeCountsNotification(space, n.fromPubkey)).length
+      return notifications.filter(n => !n.read && !(n.fromPubkey && isMutedPubkey(n.fromPubkey)) && badgeCountsNotification(space, n.fromPubkey)
+        && !(n.type === "follow" && n.fromPubkey && !followerCountsInBadge(followerInfo.standingOf(n.fromPubkey)))).length
         + ticketItems.filter(t => !t.read).length;
     },
-    [notifications, ticketItems, widerNetworkOn, follows],
+    [notifications, ticketItems, widerNetworkOn, follows, followerInfo],
   );
 
   const markAllRead = useCallback(() => {
