@@ -72,6 +72,8 @@ const ALLOW: Array<{ path: RegExp; rule: string }> = [
   // Call services on someone's own network are refused; its fixtures name some.
   { path: /^client\/src\/lib\/concord\/concord-av-brokers\.test\.ts$/, rule: "LAN address" },
   { path: /^client\/src\/lib\/concord\/concord-av-brokers\.test\.ts$/, rule: "local hostname" },
+  // Scheduled posts refuse relays on someone's own network; its fixtures name one.
+  { path: /^server\/scheduled-relays\.test\.ts$/, rule: "local hostname" },
   // Replit's (retired) package proxy host, a vendor name, in the lockfile fix-up.
   { path: /^\.github\/workflows\/ci\.yml$/, rule: "local hostname" },
 ];
