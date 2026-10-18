@@ -1,17 +1,17 @@
 /**
  * Tripwire: nothing machine- or infrastructure-specific lands in the public
- * repo. Asked for by the owner 2026-10-01 after a day of local QA that used
- * the Mac's hostname, LAN address and cluster paths — all of which stayed in
- * local notes, and must keep staying there.
+ * repo — home paths, LAN addresses, local hostnames, credential paths, and the
+ * names of private infrastructure.
  *
  * Two halves: the detector proves it CAN fail on the things we care about,
- * then the real scan over every tracked text file must find nothing.
+ * then the real scan over every tracked text file must find nothing. The
+ * private names are checked by hash, so these tests use made-up names.
  */
 import { describe, it, expect } from "vitest";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { findPersonalDetails, isScannable } from "./repo-hygiene";
+import { findPersonalDetails, isScannable, termHash, PRIVATE_TERM_HASHES } from "./repo-hygiene";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 
@@ -19,7 +19,7 @@ describe("the detector", () => {
   it("catches a home-directory path, a LAN address, a local hostname and cluster credential paths", () => {
     const found = findPersonalDetails([
       { path: "scripts/qa/x.cjs", text: 'require("/Users/someone/.npm/_npx/abc/node_modules/playwright")' },
-      { path: "docs/qa.md", text: "open http://192.168.1.51:5003 then http://my-macbook-pro.local:5006" },
+      { path: "docs/qa.md", text: "open http://192.168.100.200:5003 then http://my-macbook-pro.local:5006" },
       { path: "scripts/ship.sh", text: "export KUBECONFIG=/Users/someone/.kube/clusters/x.kubeconfig" },
     ]);
     expect(found.map((f) => f.rule).sort()).toEqual([
@@ -29,14 +29,36 @@ describe("the detector", () => {
     expect(found.find((f) => f.rule === "LAN address")?.line).toBe(1);
   });
 
-  it("catches the private ops repo, the cluster and the registry, but not the public engine project's link", () => {
-    const found = findPersonalDetails([
-      { path: "Dockerfile", text: "# charts/relay-outpost in relay-op-ops; the arrowhead cluster" },
-      { path: ".gitlab-ci.yml", text: "# push to artifacts.relay.tools from the code.relay.tools/relay-op mirror" },
-      { path: "client/src/lib/relay-start-options.ts", text: 'href: "https://code.relay.tools/opensauce/newlay"' },
-    ]);
-    expect(found.map((f) => `${f.path}:${f.line}`)).toEqual(["Dockerfile:1", ".gitlab-ci.yml:1"]);
-    expect(found.every((f) => f.rule === "private infrastructure")).toBe(true);
+  describe("private names, checked by hash", () => {
+    const terms = ["moonbase-ops", "kestrel", "vault.example.net", "git.example.net/secret-team", "203.0.113.77"];
+    const opts = { privateTermHashes: terms.map(termHash) };
+
+    it("catches each name as a path segment, a word in a longer name, a host and a host path", () => {
+      const found = findPersonalDetails([
+        { path: "Dockerfile", text: "# chart lives in ~/work/moonbase-ops/charts" },
+        { path: "deploy.sh", text: "export CTX=acme-KESTREL-cluster" },
+        { path: "ci.yml", text: "image: vault.example.net/team/app:latest" },
+        { path: "README.md", text: "mirror at https://git.example.net/secret-team/app." },
+        { path: "notes.md", text: "ingress answers on 203.0.113.77, see above" },
+      ], opts);
+      expect(found.map((f) => `${f.path}:${f.line}`)).toEqual([
+        "Dockerfile:1", "deploy.sh:1", "ci.yml:1", "README.md:1", "notes.md:1",
+      ]);
+      expect(found.every((f) => f.rule === "private infrastructure")).toBe(true);
+    });
+
+    it("leaves near misses alone: another project on the same host, a longer word, a different address", () => {
+      expect(findPersonalDetails([
+        { path: "a.ts", text: 'href: "https://git.example.net/public-project"' },
+        { path: "b.ts", text: "const kestrels = 3; // moonbase-opsy" },
+        { path: "c.ts", text: "203.0.113.7 and 203.0.113.770" },
+      ], opts)).toEqual([]);
+    });
+
+    it("keeps the real list as hashes only, so this file never names what it guards", () => {
+      expect(PRIVATE_TERM_HASHES.length).toBeGreaterThan(0);
+      for (const h of PRIVATE_TERM_HASHES) expect(h).toMatch(/^[0-9a-f]{64}$/);
+    });
   });
 
   it("leaves the SSRF guard alone: naming private ranges is its job", () => {

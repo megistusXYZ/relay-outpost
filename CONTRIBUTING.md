@@ -15,8 +15,8 @@ You'll need **Node.js 20+**, a **PostgreSQL** database, and a Nostr signer (a NI
 extension such as Alby or nos2x, or a NIP-46 remote signer).
 
 ```bash
-git clone https://github.com/megistusXYZ/relay-outpost-xyz.git
-cd relay-outpost-xyz
+git clone https://github.com/megistusXYZ/relay-outpost.git
+cd relay-outpost
 npm install
 cp .env.example .env          # then set DATABASE_URL (only required var)
 npm run db:push               # apply the schema
@@ -33,13 +33,13 @@ Run the same checks CI runs:
 ```bash
 npm test          # vitest — must stay green
 npm run build     # client + server build — must pass
-npm run check     # tsc type-check (informational; see note below)
+npm run check     # tsc type-check — must report 0 errors
+npm run test:ci-globals  # the suite without newer-Node globals (CI runs Node 20)
 ```
 
 - **Tests and build must pass.** PRs that break either won't be merged until fixed.
-- **Type-check (`npm run check`):** the project currently carries ~137 pre-existing type
-  errors that are being burned down over time. Don't *add* new ones — if your change
-  introduces type errors, please resolve them. (CI runs `tsc` non-blocking for now.)
+- **Type-check (`npm run check`):** the project has no type errors, and CI fails on any
+  new one.
 - Match the surrounding code style — naming, formatting, and patterns of the files you touch.
 
 ## Pull request flow

@@ -10,13 +10,8 @@ on:
   pull_request:
     branches: [main, local-dev]
 
-# Cost control (private repo → 2,000 Actions min/month cap). Two levers, neither
-# weakens what actually runs on real code:
-#   1. cancel-in-progress — when a branch/PR is pushed again before its run
-#      finishes (agents iterate fast), cancel the now-stale in-flight run instead
-#      of letting both burn minutes. Only ever cancels superseded runs.
-#   2. paths-ignore above — docs/markdown-only changes skip the full suite.
-# Safe here because no status check is required for merge.
+# When a branch or PR is pushed again before its run finishes, cancel the
+# now-stale run. Only ever cancels superseded runs.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -79,12 +74,8 @@ jobs:
         if: always()
         run: npm run build
 
-      # Blocking baseline gate: the repo carries pre-existing type errors that
-      # are being burned down — the count may only ever go DOWN. A PR that
-      # pushes it above the baseline fails CI. Ratchet the number here whenever
-      # the burn-down lowers it. (125 → 123 on 2026-07-18, PR #318's cleanup;
-      # 123 → 90 on 2026-08-03, 90 → 89 on 2026-08-27, 89 → 88 on 2026-09-29 with the dead NIP-85 reader, 88 → 84 on 2026-10-02 (private-message rooms), 84 → 78 → 77 → 73 on 2026-10-03 (drifted down unratcheted, then the old Events list went), 73 → 72 the same day (dead Relay Control helpers removed), 72 → 54 on 2026-10-07 (Home's people search typed as Nostr events, toast headings, a dead MiniPlayer prop), 54 → 33 → 21 the same day (routes.ts clean: the image proxy's fetch Response vs Express's; typed tag lookups), 21 → 14 (four real bugs the errors pointed at: pinned calendar events, bookmarked articles, muted-people search, wallet details), 14 → 0 the same day — two more were crashes (a thread mentioning someone not yet loaded; restoring a draft for chosen relays). From here any type error fails CI. — the real count had been 90 for a while, so the
-      # gate was leaving room for 33 new errors to land unnoticed.)
+      # Zero type errors, and any new one fails CI. (A baseline count used to
+      # sit here; set above the real count, it let new errors land unnoticed.)
       - name: Type-check (none allowed)
         if: always()
         # tsc's own exit status, not a count of "error TS" lines: a tsc that

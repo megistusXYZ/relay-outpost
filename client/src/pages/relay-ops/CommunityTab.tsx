@@ -1458,9 +1458,8 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
    *
    * The drawer cannot host the second one, because it only renders for someone
    * in the room's kind-39001 admin list — and the whole case for this button is
-   * a group the operator does NOT admin. So the scope rule
-   * (POSITIONING_AND_IA.md: a control belongs in the drawer only if its subject
-   * is one space) puts it here rather than being bent to allow it.
+   * a group the operator does NOT admin. So the scope rule (a control
+   * belongs in the drawer only if its subject is one space) puts it here rather than being bent to allow it.
    *
    * HONEST ABOUT THE ODDS: newlay gates group moderation on the 39001 list, and
    * a non-admin key was measured being refused for both 9008 and 9000

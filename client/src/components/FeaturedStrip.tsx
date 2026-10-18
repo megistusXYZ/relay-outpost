@@ -115,7 +115,7 @@ export function FeaturedStrip({ relayUrl, operatorPubkey }: { relayUrl: string; 
         return;
       }
       // A live stream opens THE STREAM. Sending kind-30311 to /calendar was a
-      // recorded dead end (POSITIONING_AND_IA.md's calendar audit): the calendar
+      // recorded dead end: the calendar
       // has no player, so a featured broadcast landed on a date grid.
       if (it.kind === 30311 && it.coord) {
         const [k, pk, d] = it.coord.split(":");
