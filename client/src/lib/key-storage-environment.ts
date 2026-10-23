@@ -1,3 +1,4 @@
+import { isIOSDevice, isPWAStandalone, isInAppBrowser } from "./platform";
 export type StorageRiskLevel = "safe" | "cautious" | "at-risk";
 
 export type StorageRiskReason =
@@ -19,41 +20,10 @@ export interface StorageEnvironment {
   detail: string;
 }
 
-const IN_APP_BROWSER_PATTERNS = [
-  /FBAN|FBAV|FB_IAB|FBIOS/i,
-  /Instagram/i,
-  /TikTok|musical_ly|BytedanceWebview/i,
-  /Line\//i,
-  /KAKAOTALK/i,
-  /Snapchat/i,
-  /Twitter/i,
-  /Pinterest/i,
-  /MicroMessenger/i,
-  /WhatsApp/i,
-  /WeBView/i,
-];
-
-function detectIOS(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent || "";
-  if (/iPad|iPhone|iPod/.test(ua)) return true;
-  return /Mac/.test(ua) && (navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints! > 1;
-}
-
-function detectStandalonePWA(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    if (window.matchMedia?.("(display-mode: standalone)")?.matches) return true;
-  } catch {}
-  const nav = navigator as Navigator & { standalone?: boolean };
-  return nav.standalone === true;
-}
-
-function detectInAppBrowser(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent || "";
-  return IN_APP_BROWSER_PATTERNS.some((p) => p.test(ua));
-}
+// Device checks live in lib/platform.ts.
+const detectIOS = () => isIOSDevice();
+const detectStandalonePWA = () => isPWAStandalone();
+const detectInAppBrowser = () => isInAppBrowser();
 
 function detectCredentialApi(): boolean {
   if (typeof window === "undefined") return false;

@@ -1,3 +1,4 @@
+import { isMobileDevice, isAndroidDevice } from "@/lib/platform";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,16 +21,6 @@ import { initialLoginMode } from "@/lib/login-mode";
 import { QRCodeSVG } from "qrcode.react";
 import { useToast } from "@/hooks/use-toast";
 
-function isMobileDevice(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /Android|iPhone|iPad|iPod|webOS|BlackBerry|Opera Mini|IEMobile/i.test(navigator.userAgent) ||
-    (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
-}
-
-function isAndroidDevice(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /Android/i.test(navigator.userAgent);
-}
 
 interface LoginOptionsProps {
   variant?: "page" | "overlay";

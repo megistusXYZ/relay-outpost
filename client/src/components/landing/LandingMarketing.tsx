@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { BtcZapIcon } from "@/components/icons/BtcZapIcon";
 import { Link } from "wouter";
 import { Rocket, Globe, Download, Check, ArrowUpRight } from "lucide-react";
-import { useInstallPrompt } from "@/hooks/use-install-prompt";
+import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { compactCount } from "@/lib/compact-count";
 import { RelayOutpostIcon } from "@/components/RelayOutpostLoader";
 import { AmbientVideo } from "@/components/landing/HeroAmbientVideo";
@@ -401,7 +401,8 @@ function SectionEyebrow({ children }: { children: React.ReactNode }) {
 }
 
 function PwaAction() {
-  const { canInstall, promptInstall, isIOS, isStandalone } = useInstallPrompt();
+  const { installMethod, canPromptInstall: canInstall, promptInstall, isIOS } = usePWAInstall();
+  const isStandalone = installMethod === "installed";
 
   if (isStandalone) {
     return (

@@ -55,19 +55,9 @@ NostrConnectSigner.publishMethod = (relays, event) => {
   return Promise.any(pool.publish(relays, event as any));
 };
 
-export function isPWAStandalone(): boolean {
-  if (typeof window === "undefined") return false;
-  return (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    (window.navigator as any).standalone === true
-  );
-}
-
-export function isIOSDevice(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-}
+// Device checks live in lib/platform.ts; re-exported here for older imports.
+import { isPWAStandalone, isIOSDevice } from "@/lib/platform";
+export { isPWAStandalone, isIOSDevice };
 
 interface ProfileData {
   name?: string;

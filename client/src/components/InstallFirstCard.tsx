@@ -36,7 +36,7 @@ export function InstallFirstCard({ variant = "overlay" }: Props) {
   if (!isMobileViewport) return null;
   if (dismissed) return null;
 
-  // On Android, we can only meaningfully act when beforeinstallprompt has
+  // On Android, we can only meaningfully act when the install-prompt event has
   // fired. If it hasn't (Chrome's engagement heuristics), stay quiet rather
   // than show a button that does nothing.
   if (!isIOS && !canPromptInstall) return null;
