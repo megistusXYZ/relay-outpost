@@ -62,6 +62,15 @@ export async function runInstallPrompt(
   method: InstallMethod,
   rt: { install?: () => Promise<unknown>; bip: BeforeInstallPromptLike | null },
 ): Promise<InstallRunResult> {
+  if (method === "web-install" && rt.install) {
+    try {
+      await rt.install();
+      return { outcome: "accepted" };
+    } catch (err) {
+      if ((err as { name?: string } | null)?.name === "AbortError") return { outcome: "dismissed" };
+      return { outcome: "unavailable", webInstallFailed: true };
+    }
+  }
   if (method === "bip" && rt.bip) {
     try {
       await rt.bip.prompt();

@@ -26,8 +26,13 @@ export interface PWAInstallState {
 // its hooks, so it is stashed at module scope for any later consumer. App.tsx
 // imports this module eagerly so the listener is registered at boot.
 // ---------------------------------------------------------------------------
+/** Chromium's install-prompt event. */
+export const INSTALL_PROMPT_EVENT = "beforeinstallprompt";
+
 let deferredEvent: BeforeInstallPromptLike | null = null;
 let appInstalled = false;
+/** Web Install threw (not a cancel) this session: the next tap uses the old prompt. */
+let webInstallFailed = false;
 const subscribers = new Set<() => void>();
 
 function notify() {
@@ -35,7 +40,7 @@ function notify() {
 }
 
 if (typeof window !== "undefined") {
-  window.addEventListener("beforeinstallprompt", (e: Event) => {
+  window.addEventListener(INSTALL_PROMPT_EVENT, (e: Event) => {
     e.preventDefault();
     deferredEvent = e as unknown as BeforeInstallPromptLike;
     notify();
@@ -52,24 +57,42 @@ function readMobileViewport(): boolean {
   return window.matchMedia("(max-width: 768px)").matches;
 }
 
-function currentMethod(): InstallMethod {
+function webInstallAvailable(): boolean {
+  return typeof navigator !== "undefined" && typeof navigator.install === "function";
+}
+
+/** How this device installs the app, right now. */
+export function installMethodNow(): InstallMethod {
   return chooseInstallMethod({
     standalone: isPWAStandalone(),
     installed: appInstalled,
     inAppBrowser: inAppBrowserOf() !== null,
     ios: isIOSDevice(),
-    webInstallAvailable: false,
-    webInstallFailed: false,
+    webInstallAvailable: webInstallAvailable(),
+    webInstallFailed,
     bipAvailable: !!deferredEvent,
     macSafari: isMacSafari(),
   });
+}
+
+/** One tap on "Install". Call it straight from the tap: both APIs need its user activation. */
+export async function promptInstallOnce(): Promise<InstallOutcome> {
+  const result = await runInstallPrompt(installMethodNow(), {
+    install: webInstallAvailable() ? () => navigator.install!() : undefined,
+    bip: deferredEvent,
+  });
+  if (result.webInstallFailed) webInstallFailed = true;
+  if (result.bipUsed) deferredEvent = null;
+  if (result.outcome === "accepted") appInstalled = true;
+  notify();
+  return result.outcome;
 }
 
 export function usePWAInstall(): PWAInstallState {
   const [isStandalone, setIsStandalone] = useState<boolean>(() => isPWAStandalone());
   const [installed, setInstalled] = useState<boolean>(appInstalled);
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() => readMobileViewport());
-  const [installMethod, setInstallMethod] = useState<InstallMethod>(() => currentMethod());
+  const [installMethod, setInstallMethod] = useState<InstallMethod>(() => installMethodNow());
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -77,7 +100,7 @@ export function usePWAInstall(): PWAInstallState {
     const sync = () => {
       setInstalled(appInstalled);
       setIsStandalone(isPWAStandalone());
-      setInstallMethod(currentMethod());
+      setInstallMethod(installMethodNow());
     };
     subscribers.add(sync);
     sync();
@@ -97,13 +120,7 @@ export function usePWAInstall(): PWAInstallState {
     };
   }, []);
 
-  const promptInstall = useCallback(async (): Promise<InstallOutcome> => {
-    const result = await runInstallPrompt(currentMethod(), { bip: deferredEvent });
-    if (result.bipUsed) deferredEvent = null;
-    if (result.outcome === "accepted") appInstalled = true;
-    notify();
-    return result.outcome;
-  }, []);
+  const promptInstall = useCallback(() => promptInstallOnce(), []);
 
   return {
     installMethod,

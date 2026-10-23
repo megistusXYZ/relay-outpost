@@ -37,8 +37,28 @@ describe("chooseInstallMethod", () => {
   });
 });
 
+const abortError = () => Object.assign(new Error("cancelled"), { name: "AbortError" });
+const notAllowed = () => Object.assign(new Error("no"), { name: "NotAllowedError" });
 
 describe("runInstallPrompt", () => {
+  it("Web Install that resolves is accepted", async () => {
+    const install = vi.fn(async () => undefined);
+    expect(await runInstallPrompt("web-install", { install, bip: null })).toEqual({ outcome: "accepted" });
+    expect(install).toHaveBeenCalledWith();
+  });
+
+  it("Web Install the person cancels is dismissed, and stays available", async () => {
+    const r = await runInstallPrompt("web-install", { install: async () => { throw abortError(); }, bip: null });
+    expect(r).toEqual({ outcome: "dismissed" });
+  });
+
+  it("Web Install that fails is marked failed, and the old prompt is NOT called in the same tap", async () => {
+    const bip = { prompt: vi.fn(async () => undefined), userChoice: Promise.resolve({ outcome: "accepted" as const }) };
+    const r = await runInstallPrompt("web-install", { install: async () => { throw notAllowed(); }, bip });
+    expect(r).toEqual({ outcome: "unavailable", webInstallFailed: true });
+    expect(bip.prompt).not.toHaveBeenCalled();
+  });
+
   it("the old prompt reports the person's choice and is used up", async () => {
     const bip = { prompt: vi.fn(async () => undefined), userChoice: Promise.resolve({ outcome: "dismissed" as const }) };
     expect(await runInstallPrompt("bip", { bip })).toEqual({ outcome: "dismissed", bipUsed: true });
