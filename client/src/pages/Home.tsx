@@ -50,6 +50,7 @@ import { type SignalTier, getSignalTierLabel } from "@/lib/graperank";
 import { BrowsePacksDialog } from "@/components/BrowsePacksDialog";
 import { SuggestedFollowsStrip } from "@/components/SuggestedFollowsStrip";
 import { PeopleToFollowStrip } from "@/components/PeopleToFollowStrip";
+import { InstallFirstCard } from "@/components/InstallFirstCard";
 import { needsFollowSuggestions } from "@/lib/discover-people";
 import { buildAnchorFollows } from "@/lib/curated-seed-follows";
 import { TuneAntennaIllustration, NoSignalIllustration, RadarSweepIllustration, StaticNoiseIllustration } from "@/components/EmptyStateIllustrations";
@@ -3289,7 +3290,9 @@ export default function Home() {
         )}
 
         {/* Getting-started checklist removed — the feed opens clean for new
-            users; guides live in Help & Guides only. */}
+            users; guides live in Help & Guides only. The one exception is the
+            install card: once, after onboarding, on a phone, dismissible. */}
+        {pubkey && <InstallFirstCard pubkey={pubkey} className="mb-4" />}
 
         {/* FeedErrorBoundary: a render crash inside any feed lane (post card,
             virtualizer, media mosaic) must never unmount the tabs/menu/nav

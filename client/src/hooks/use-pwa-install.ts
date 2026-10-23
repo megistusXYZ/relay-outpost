@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { isPWAStandalone, isIOSDevice, isAndroidDevice, isMacSafari, inAppBrowserOf } from "@/lib/platform";
+import { isPWAStandalone, isIOSDevice, isIPadDevice, isAndroidDevice, isMacSafari, inAppBrowserOf } from "@/lib/platform";
 import {
   chooseInstallMethod, runInstallPrompt,
   type BeforeInstallPromptLike, type InstallMethod, type InstallOutcome,
@@ -12,6 +12,7 @@ export interface PWAInstallState {
   inAppBrowser: string | null;
   isStandalone: boolean;
   isIOS: boolean;
+  isIPad: boolean;
   isMobileViewport: boolean;
   isAndroid: boolean;
   /** A tap on "Install" can open the browser's own install dialog. */
@@ -127,6 +128,7 @@ export function usePWAInstall(): PWAInstallState {
     inAppBrowser: inAppBrowserOf(),
     isStandalone,
     isIOS: isIOSDevice(),
+    isIPad: isIPadDevice(),
     isMobileViewport,
     isAndroid: isAndroidDevice(),
     canPromptInstall: installMethod === "web-install" || installMethod === "bip",

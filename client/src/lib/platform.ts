@@ -30,6 +30,13 @@ export function isIOSDevice(n?: NavigatorLike): boolean {
   return platform === "MacIntel" && (v.maxTouchPoints ?? 0) > 1;
 }
 
+/** An iPad, including the one that reports itself as a Mac. Safari's Share button sits at its top. */
+export function isIPadDevice(n?: NavigatorLike): boolean {
+  const v = nav(n);
+  if (!v || !isIOSDevice(v)) return false;
+  return /iPad/i.test(v.userAgent ?? "") || /iPad/i.test(v.platform ?? "") || v.platform === "MacIntel";
+}
+
 export function isAndroidDevice(n?: NavigatorLike): boolean {
   return /Android/i.test(nav(n)?.userAgent ?? "");
 }

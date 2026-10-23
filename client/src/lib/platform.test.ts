@@ -5,7 +5,7 @@
  * installing and signing in don't work the way they do in a real browser.
  */
 import { describe, it, expect } from "vitest";
-import { isIOSDevice, isAndroidDevice, isMacSafari, inAppBrowserOf, isPWAStandalone } from "./platform";
+import { isIOSDevice, isIPadDevice, isAndroidDevice, isMacSafari, inAppBrowserOf, isPWAStandalone } from "./platform";
 
 const UA = {
   iphoneSafari: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1",
@@ -35,6 +35,14 @@ describe("isIOSDevice", () => {
   it("a real Mac or an Android phone is not iOS", () => {
     expect(isIOSDevice({ userAgent: UA.macSafari, platform: "MacIntel", maxTouchPoints: 0 })).toBe(false);
     expect(isIOSDevice({ userAgent: UA.androidChrome, platform: "Linux armv8l", maxTouchPoints: 5 })).toBe(false);
+  });
+});
+
+describe("isIPadDevice", () => {
+  it("the iPad, also when it reports itself as a Mac; not the iPhone or a real Mac", () => {
+    expect(isIPadDevice({ userAgent: UA.ipadAsMac, platform: "MacIntel", maxTouchPoints: 5 })).toBe(true);
+    expect(isIPadDevice({ userAgent: UA.iphoneSafari, platform: "iPhone", maxTouchPoints: 5 })).toBe(false);
+    expect(isIPadDevice({ userAgent: UA.macSafari, platform: "MacIntel", maxTouchPoints: 0 })).toBe(false);
   });
 });
 
