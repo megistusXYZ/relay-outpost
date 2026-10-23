@@ -7,7 +7,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { installGuideFor, stepText, offerInstallCard } from "./install-guide";
+import { installGuideFor, stepText, offerInstallCard, chromeIntentUrl } from "./install-guide";
 
 const phone = { ipad: false, android: false, inAppBrowser: null };
 
@@ -47,8 +47,37 @@ describe("installGuideFor", () => {
     expect(installGuideFor("unsupported", phone)!.steps.map(stepText).join(" ")).toMatch(/Install/);
   });
 
+  it("in another app's browser on Android: one button opens Chrome, steps as a fallback", () => {
+    const g = installGuideFor("in-app-browser", { ...phone, android: true, inAppBrowser: "Instagram" })!;
+    expect(g.action).toBe("open-in-chrome");
+    expect(g.copyLink).toBe(true);
+    expect(g.steps.map(stepText).join(" ")).toMatch(/Open in Chrome/);
+  });
+
+  it("in another app's browser on iOS: Open in Safari steps and a copy-link button", () => {
+    const g = installGuideFor("in-app-browser", { ...phone, inAppBrowser: "X" })!;
+    expect(g.action).toBeUndefined();
+    expect(g.copyLink).toBe(true);
+    const steps = g.steps.map(stepText);
+    expect(steps[0]).toMatch(/••• or the menu/);
+    expect(steps[1]).toMatch(/Open in Safari/);
+    expect(steps[1]).toMatch(/Open in Browser/);
+    expect(g.title).toMatch(/Safari/);
+  });
+
   it("nothing to do once installed", () => {
     expect(installGuideFor("installed", phone)).toBeNull();
+  });
+});
+
+describe("chromeIntentUrl", () => {
+  it("opens this exact page in Chrome", () => {
+    expect(chromeIntentUrl({ host: "relayop.xyz", pathname: "/discover", search: "?tab=people", hash: "" }))
+      .toBe("intent://relayop.xyz/discover?tab=people#Intent;scheme=https;package=com.android.chrome;end");
+  });
+  it("keeps a fragment before the intent part (Android reads from the last #)", () => {
+    expect(chromeIntentUrl({ host: "relayop.xyz", pathname: "/invite/abc", search: "", hash: "#k" }))
+      .toBe("intent://relayop.xyz/invite/abc#k#Intent;scheme=https;package=com.android.chrome;end");
   });
 });
 
@@ -64,6 +93,9 @@ describe("offerInstallCard", () => {
     expect(offerInstallCard({ ...ready, method: "installed" })).toBe(false);
     expect(offerInstallCard({ ...ready, dismissed: true })).toBe(false);
   });
+  it("offers the way out of another app's browser", () => {
+    expect(offerInstallCard({ ...ready, method: "in-app-browser" })).toBe(true);
+  });
   it("stays quiet where there is nothing it can do", () => {
     expect(offerInstallCard({ ...ready, method: "unsupported" })).toBe(false);
   });
@@ -71,7 +103,7 @@ describe("offerInstallCard", () => {
 
 describe("install screens", () => {
   it("never open the share sheet themselves (it can't add to the Home Screen)", () => {
-    for (const f of ["components/InstallFirstCard.tsx", "components/install/InstallSteps.tsx"]) {
+    for (const f of ["components/InstallFirstCard.tsx", "components/install/InstallSteps.tsx", "components/install/InAppBrowserEscape.tsx"]) {
       const src = readFileSync(path.join(__dirname, "..", f), "utf8");
       expect(src, f).not.toMatch(/navigator\.share/);
     }

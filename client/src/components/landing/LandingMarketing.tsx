@@ -5,6 +5,7 @@ import { Rocket, Globe, Download, Check, ArrowUpRight } from "lucide-react";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { installGuideFor } from "@/lib/install-guide";
 import { InstallSteps } from "@/components/install/InstallSteps";
+import { InAppBrowserEscape } from "@/components/install/InAppBrowserEscape";
 import { compactCount } from "@/lib/compact-count";
 import { RelayOutpostIcon } from "@/components/RelayOutpostLoader";
 import { AmbientVideo } from "@/components/landing/HeroAmbientVideo";
@@ -427,6 +428,14 @@ function PwaAction() {
   }
   const guide = installGuideFor(pwa.installMethod, { ipad: pwa.isIPad, android: pwa.isAndroid, inAppBrowser: pwa.inAppBrowser });
   if (!guide) return null;
+  if (pwa.installMethod === "in-app-browser") {
+    return (
+      <div className="text-white/70">
+        <p className="mb-2 text-[13px] text-white/85">{guide.title}</p>
+        <InAppBrowserEscape guide={guide} />
+      </div>
+    );
+  }
   return <InstallSteps guide={guide} className="text-white/70" />;
 }
 

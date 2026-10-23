@@ -23,6 +23,11 @@ const UA = {
   xAndroid: "Mozilla/5.0 (Linux; Android 15; Pixel 9; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/141.0 Mobile Safari/537.36 TwitterAndroid",
   telegramAndroid: "Mozilla/5.0 (Linux; Android 15; Pixel 9; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/141.0 Mobile Safari/537.36 Telegram-Android/12.0.1",
   linkedinIOS: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [LinkedInApp]/9.31.1",
+  snapchatIOS: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Snapchat/13.50.0.38 (like Safari/8621.1.15.10.7, panda)",
+  pinterestAndroid: "Mozilla/5.0 (Linux; Android 15; Pixel 9; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/141.0 Mobile Safari/537.36 [Pinterest/Android]",
+  lineIOS: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Safari Line/15.10.0",
+  wechatIOS: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.50(0x18003237) NetType/WIFI Language/en",
+  googleAppIOS: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) GSA/380.0.0 Mobile/15E148 Safari/604.1",
   androidWebView: "Mozilla/5.0 (Linux; Android 15; Pixel 9; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/141.0 Mobile Safari/537.36",
 };
 
@@ -68,6 +73,11 @@ describe("inAppBrowserOf", () => {
     expect(inAppBrowserOf(UA.xAndroid)).toBe("X");
     expect(inAppBrowserOf(UA.telegramAndroid)).toBe("Telegram");
     expect(inAppBrowserOf(UA.linkedinIOS)).toBe("LinkedIn");
+    expect(inAppBrowserOf(UA.snapchatIOS)).toBe("Snapchat");
+    expect(inAppBrowserOf(UA.pinterestAndroid)).toBe("Pinterest");
+    expect(inAppBrowserOf(UA.lineIOS)).toBe("LINE");
+    expect(inAppBrowserOf(UA.wechatIOS)).toBe("WeChat");
+    expect(inAppBrowserOf(UA.googleAppIOS)).toBe("the Google app");
   });
   it("calls a bare Android web view an in-app browser", () => {
     expect(inAppBrowserOf(UA.androidWebView)).toBe("an app");

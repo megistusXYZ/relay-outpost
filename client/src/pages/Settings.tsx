@@ -47,6 +47,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { installGuideFor } from "@/lib/install-guide";
 import { InstallSteps } from "@/components/install/InstallSteps";
+import { InAppBrowserEscape } from "@/components/install/InAppBrowserEscape";
 import { getSchedulerBaseUrl, setSchedulerBaseUrl } from "@/lib/schedule";
 import { Switch } from "@/components/ui/switch";
 import { isFeedRankingEnabled, setFeedRankingEnabled, isEngagementScoreEnabled, setEngagementScoreEnabled } from "@/lib/feed-prefs";
@@ -1199,7 +1200,11 @@ function InstallAppRow() {
               Add it to your device from your browser. No app store needed.
             </DialogDescription>
           </DialogHeader>
-          {steps && <InstallSteps guide={steps} className="text-foreground/85" />}
+          {steps && pwa.installMethod === "in-app-browser" ? (
+            <InAppBrowserEscape guide={steps} className="text-foreground/85" />
+          ) : steps ? (
+            <InstallSteps guide={steps} className="text-foreground/85" />
+          ) : null}
         </DialogContent>
       </Dialog>
     </>

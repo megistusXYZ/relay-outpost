@@ -5,6 +5,7 @@ import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { isOnboardingComplete } from "@/lib/local-account";
 import { installGuideFor, offerInstallCard } from "@/lib/install-guide";
 import { InstallSteps } from "@/components/install/InstallSteps";
+import { InAppBrowserEscape } from "@/components/install/InAppBrowserEscape";
 
 // Kept from the old install pop-up, so a "no thanks" given there still holds.
 const dismissKey = (pubkey: string) => `relay-outpost-pwa-nudge-dismissed:${pubkey}`;
@@ -89,7 +90,15 @@ export function InstallFirstCard({ pubkey, className = "" }: { pubkey: string; c
             No app store.
           </p>
 
-          {guide?.action === "prompt" ? (
+          {pwa.installMethod === "in-app-browser" && guide ? (
+            <>
+              <p className="mt-3 text-[13px] font-medium text-foreground">{guide.title}</p>
+              <InAppBrowserEscape guide={guide} className="mt-2 text-foreground/85" />
+              <button type="button" onClick={dismiss} className="mt-1 text-xs text-muted-foreground hover:text-foreground min-h-[44px]" data-testid="link-install-first-skip">
+                Not now
+              </button>
+            </>
+          ) : guide?.action === "prompt" ? (
             <>
               {showSteps && fallback && <InstallSteps guide={fallback} className="mt-3 text-foreground/85" />}
               <div className="mt-3 flex items-center gap-3">

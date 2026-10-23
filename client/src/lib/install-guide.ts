@@ -18,8 +18,13 @@ export interface InstallStep {
 
 export interface InstallGuide {
   title: string;
-  /** "prompt": one button opens the browser's own install dialog. */
-  action?: "prompt";
+  /**
+   * "prompt": one button opens the browser's own install dialog.
+   * "open-in-chrome": one button hands this page to Chrome (Android).
+   */
+  action?: "prompt" | "open-in-chrome";
+  /** Offer a copy-link button, for pasting into a real browser. */
+  copyLink?: boolean;
   steps: InstallStep[];
   /** One quiet line under the steps. */
   note?: string;
@@ -72,8 +77,24 @@ export function installGuideFor(method: InstallMethod, ctx: InstallGuideContext)
     case "web-install":
     case "bip":
       return { title: "Install Relay Outpost", action: "prompt", steps: [] };
-    case "in-app-browser":
-      return null;
+    case "in-app-browser": {
+      const app = ctx.inAppBrowser ?? "This app";
+      const why = `${app === "an app" ? "Apps like this one open" : `${app} opens`} links in its own browser, which can't install apps.`;
+      return ctx.android
+        ? {
+            title: "Open in Chrome to install",
+            action: "open-in-chrome",
+            copyLink: true,
+            steps: [{ text: "Or tap {menu} or {more} at the top" }, { text: "Choose Open in Chrome (or Open in browser)" }],
+            note: why,
+          }
+        : {
+            title: "Open in Safari to install",
+            copyLink: true,
+            steps: [{ text: "Tap {more} or the menu" }, { text: "Choose Open in Safari (or Open in Browser)" }],
+            note: why,
+          };
+    }
     case "unsupported":
       return ctx.android
         ? {
@@ -86,6 +107,14 @@ export function installGuideFor(method: InstallMethod, ctx: InstallGuideContext)
             note: "Don't see it? Chrome, Edge and Safari can install it.",
           };
   }
+}
+
+/**
+ * Android's link that opens this page in Chrome, out of another app's browser.
+ * A fragment stays in the page part: Android reads the intent from the last #.
+ */
+export function chromeIntentUrl(loc: { host: string; pathname: string; search: string; hash: string }): string {
+  return `intent://${loc.host}${loc.pathname}${loc.search}${loc.hash}#Intent;scheme=https;package=com.android.chrome;end`;
 }
 
 /**
