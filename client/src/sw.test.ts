@@ -265,6 +265,72 @@ describe("restarting onto a new version", () => {
   });
 });
 
+describe("a launch asks whether it is running an old build", () => {
+  // A page names the build it runs (its start script); the worker compares it
+  // with the page it has kept. Asking replaces hoping to catch the one-off
+  // "ro-shell-updated" message, which a page that isn't listening yet misses.
+  const page = (build: string) => new Response(`<html><script type="module" src="/assets/${build}.js"></script></html>`, { headers: { "Content-Type": "text/html" } });
+  const script = () => new Response("export {}", { headers: { "Content-Type": "text/javascript" } });
+  const serve = (w: ReturnType<typeof makeWorld>, build: string | null) =>
+    w.fetch.mockImplementation(async (req: any) => {
+      const url = typeof req === "string" ? req : req.url;
+      if (/\/assets\//.test(url)) return script();
+      if (build === null) throw new TypeError("offline");
+      return page(build);
+    });
+  const ask = async (w: ReturnType<typeof makeWorld>, build: string) => {
+    const replies: any[] = [];
+    const m = await w.fire("message", { data: { type: "ro-shell-status", build }, ports: [{ postMessage: (x: any) => replies.push(x) }] });
+    return { replies, settle: m.settle };
+  };
+
+  it("asked at launch, before the fresh page has arrived, it answers once it has: outdated", async () => {
+    const w = makeWorld();
+    await w.install();
+    serve(w, "index-AAA");
+    await (await w.navigate("/")).settle();
+    let release!: () => void;
+    const gate = new Promise<void>((ok) => { release = ok; });
+    w.fetch.mockImplementation(async (req: any) => {
+      const url = typeof req === "string" ? req : req.url;
+      if (/\/assets\//.test(url)) return script();
+      await gate;
+      return page("index-BBB");
+    });
+    const launch = await w.navigate("/");
+    expect(await (await launch.responded!).text()).toContain("index-AAA");
+    const q = await ask(w, "index-AAA");
+    expect(q.replies).toEqual([]);
+    release();
+    await launch.settle();
+    await q.settle();
+    expect(q.replies).toEqual([{ outdated: true }]);
+  });
+
+  it("a page already on the kept build is not outdated", async () => {
+    const w = makeWorld();
+    await w.install();
+    serve(w, "index-BBB");
+    await (await w.navigate("/")).settle();
+    const q = await ask(w, "index-BBB");
+    await q.settle();
+    expect(q.replies).toEqual([{ outdated: false }]);
+  });
+
+  it("with no network it never claims an update it can't deliver", async () => {
+    const w = makeWorld();
+    await w.install();
+    serve(w, "index-AAA");
+    await (await w.navigate("/")).settle();
+    serve(w, null);
+    const launch = await w.navigate("/");
+    const q = await ask(w, "index-AAA");
+    await launch.settle();
+    await q.settle();
+    expect(q.replies).toEqual([{ outdated: false }]);
+  });
+});
+
 describe("content-hashed files", () => {
   it("come from cache without asking the network: their name changes when they do", async () => {
     const w = makeWorld();

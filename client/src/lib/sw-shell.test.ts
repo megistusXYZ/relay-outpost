@@ -3,10 +3,10 @@
  * hearing that a newer page arrived, and making a restart land on it.
  */
 import { describe, it, expect, vi } from "vitest";
-import { dropWorkerAndCaches, onShellUpdated, refreshShell, reloadOntoFreshShell } from "./sw-shell";
+import { askShellStatus, dropWorkerAndCaches, onShellUpdated, refreshShell, reloadOntoFreshShell } from "./sw-shell";
 
 /** A stand-in for navigator.serviceWorker whose worker answers a refresh with `answer`. */
-function container(answer: { ok: boolean } | "silent" | "no-worker") {
+function container(answer: { ok: boolean } | { outdated: boolean } | "silent" | "no-worker") {
   const listeners = new Set<(e: any) => void>();
   const sent: any[] = [];
   return {
@@ -131,5 +131,32 @@ describe("dropWorkerAndCaches", () => {
 
   it("with no worker and no cache storage there is nothing to do", async () => {
     await expect(dropWorkerAndCaches({ sw: undefined, caches: undefined })).resolves.toBeUndefined();
+  });
+});
+
+describe("askShellStatus", () => {
+  it("tells the worker which build this page runs and resolves with whether it's outdated", async () => {
+    const sw = container({ outdated: true });
+    expect(await askShellStatus("index-AAA", sw as any)).toBe(true);
+    expect(sw.sent).toEqual([{ type: "ro-shell-status", build: "index-AAA" }]);
+    expect(await askShellStatus("index-BBB", container({ outdated: false }) as any)).toBe(false);
+  });
+
+  it("a worker that never answers, or no worker at all, means no", async () => {
+    vi.useFakeTimers();
+    try {
+      const p = askShellStatus("index-AAA", container("silent") as any, 12000);
+      await vi.advanceTimersByTimeAsync(12000);
+      expect(await p).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(await askShellStatus("index-AAA", container("no-worker") as any)).toBe(false);
+  });
+
+  it("a page that can't name its build doesn't ask", async () => {
+    const sw = container({ outdated: true });
+    expect(await askShellStatus(null, sw as any)).toBe(false);
+    expect(sw.sent).toEqual([]);
   });
 });

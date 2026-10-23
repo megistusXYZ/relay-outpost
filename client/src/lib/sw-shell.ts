@@ -44,6 +44,45 @@ export function refreshShell(sw: SwContainer | undefined = container(), timeoutM
   });
 }
 
+/**
+ * Ask the worker whether this page runs an older build than the page it has
+ * kept. Replaces relying on "ro-shell-updated" alone, which the worker posts
+ * while a launching page may not be listening yet. The worker answers once
+ * this launch's fresh page has arrived (it caps its own wait at 10 s).
+ */
+export function askShellStatus(
+  build: string | null,
+  sw: SwContainer | undefined = container(),
+  timeoutMs = 12000,
+): Promise<boolean> {
+  const worker = sw?.controller;
+  if (!build || !worker || typeof MessageChannel === "undefined") return Promise.resolve(false);
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    const timer = setTimeout(() => { channel.port1.close(); resolve(false); }, timeoutMs);
+    channel.port1.onmessage = (e) => {
+      clearTimeout(timer);
+      channel.port1.close();
+      resolve(e.data?.outdated === true);
+    };
+    try {
+      worker.postMessage({ type: "ro-shell-status", build }, [channel.port2]);
+    } catch {
+      clearTimeout(timer);
+      resolve(false);
+    }
+  });
+}
+
+/** The build this page runs: the name of the script that starts it (as the worker reads it). */
+export function runningBuild(doc: Document = document): string | null {
+  for (const s of Array.from(doc.querySelectorAll<HTMLScriptElement>("script[src]"))) {
+    const m = /\/assets\/(index-[A-Za-z0-9_-]+)\.js/.exec(s.getAttribute("src") || "");
+    if (m) return m[1];
+  }
+  return null;
+}
+
 /** Reload onto the newest build: refresh the worker's page first, then reload
  *  whatever the outcome, so a restart always happens. */
 export async function reloadOntoFreshShell(
