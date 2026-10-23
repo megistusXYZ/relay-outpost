@@ -45,7 +45,7 @@ import { settingsSectionFor } from "@/lib/settings-section";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useToast } from "@/hooks/use-toast";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
-import { installGuideFor } from "@/lib/install-guide";
+import { installGuideFor, appHandoffNote } from "@/lib/install-guide";
 import { InstallSteps } from "@/components/install/InstallSteps";
 import { InAppBrowserEscape } from "@/components/install/InAppBrowserEscape";
 import { getSchedulerBaseUrl, setSchedulerBaseUrl } from "@/lib/schedule";
@@ -1162,6 +1162,7 @@ function SchedulerExpandRow() {
  */
 function InstallAppRow() {
   const pwa = usePWAInstall();
+  const { pubkey, loginMethod } = useNostrAuth();
   const [helpOpen, setHelpOpen] = useState(false);
 
   if (pwa.isStandalone || pwa.installed) return null;
@@ -1205,6 +1206,10 @@ function InstallAppRow() {
           ) : steps ? (
             <InstallSteps guide={steps} className="text-foreground/85" />
           ) : null}
+          {(() => {
+            const note = pubkey ? appHandoffNote({ ios: pwa.installMethod === "ios-instructions", loginMethod }) : null;
+            return note ? <p className="text-xs leading-relaxed text-muted-foreground" data-testid="text-install-handoff">{note}</p> : null;
+          })()}
         </DialogContent>
       </Dialog>
     </>

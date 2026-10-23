@@ -7,7 +7,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { installGuideFor, stepText, offerInstallCard, chromeIntentUrl } from "./install-guide";
+import { installGuideFor, stepText, offerInstallCard, chromeIntentUrl, appHandoffNote } from "./install-guide";
 
 const phone = { ipad: false, android: false, inAppBrowser: null };
 
@@ -98,6 +98,30 @@ describe("offerInstallCard", () => {
   });
   it("stays quiet where there is nothing it can do", () => {
     expect(offerInstallCard({ ...ready, method: "unsupported" })).toBe(false);
+  });
+});
+
+describe("appHandoffNote", () => {
+  it("on iOS, someone signed in hears they'll sign in once more in the app, the way they signed in", () => {
+    expect(appHandoffNote({ ios: true, loginMethod: "qr" })).toMatch(/reconnect once with your signer/);
+    expect(appHandoffNote({ ios: true, loginMethod: "bunker" })).toMatch(/reconnect once with your signer/);
+    const local = appHandoffNote({ ios: true, loginMethod: "local" })!;
+    expect(local).toMatch(/your key/);
+    expect(local).toMatch(/password manager|key file/);
+    expect(appHandoffNote({ ios: true, loginMethod: "extension" })).toMatch(/signer app/);
+    for (const m of ["qr", "local", "extension"]) expect(appHandoffNote({ ios: true, loginMethod: m })).toMatch(/own storage/);
+  });
+  it("says nothing when signed out, or where the app shares the browser's storage", () => {
+    expect(appHandoffNote({ ios: true, loginMethod: null })).toBeNull();
+    expect(appHandoffNote({ ios: false, loginMethod: "local" })).toBeNull();
+  });
+});
+
+describe("the installed app's address", () => {
+  it("opens at / with nothing in the address: no key, no session, no fragment", () => {
+    const m = JSON.parse(readFileSync(path.join(__dirname, "../../public/manifest.json"), "utf8"));
+    expect(m.start_url).toBe("/");
+    expect(m.id).toBe("/");
   });
 });
 

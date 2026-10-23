@@ -110,6 +110,25 @@ export function installGuideFor(method: InstallMethod, ctx: InstallGuideContext)
 }
 
 /**
+ * What a signed-in person should expect when they open the app they just
+ * added. Only on iOS, where the home-screen app keeps its own storage apart
+ * from Safari: Android and desktop apps share the browser's, so the session
+ * carries over. Worded for how they signed in.
+ */
+export function appHandoffNote(s: { ios: boolean; loginMethod: string | null }): string | null {
+  if (!s.ios || !s.loginMethod) return null;
+  const storage = "The app keeps its own storage, apart from Safari.";
+  switch (s.loginMethod) {
+    case "local":
+      return `When you open the app, sign in once with your key: paste it from your password manager or open your key file. ${storage}`;
+    case "extension":
+      return `When you open the app, sign in once with a signer app or a connection link (extensions don't run there). ${storage}`;
+    default:
+      return `When you open the app, you'll reconnect once with your signer. ${storage}`;
+  }
+}
+
+/**
  * Android's link that opens this page in Chrome, out of another app's browser.
  * A fragment stays in the page part: Android reads the intent from the last #.
  */

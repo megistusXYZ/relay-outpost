@@ -18,6 +18,7 @@ import { isAddAccountPending } from "@/lib/account-registry";
 import { loadImportDraft } from "@/lib/import-draft";
 import { loadSignupDraft, draftHasResumableContent } from "@/lib/account-draft";
 import { initialLoginMode } from "@/lib/login-mode";
+import { isFirstAppLaunch } from "@/lib/app-launch";
 import { QRCodeSVG } from "qrcode.react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -375,7 +376,7 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
   );
 }
 
-type LoginMode = "select" | "bunker" | "qr" | "create" | "import" | "unlock";
+type LoginMode = "select" | "bunker" | "qr" | "create" | "import" | "unlock" | "reconnect";
 
 export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
   const { isLoggingIn, loginWithExtension, loginWithBunker } = useNostrAuth();
@@ -401,14 +402,17 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
       localAccountPubkey: loadLocalAccount()?.pubkey ?? null,
       signupDraft: draft ? { resumable: draftHasResumableContent(draft), pubkey: draft.account?.pubkey ?? null } : null,
       importDraft: !!loadImportDraft(),
+      firstAppLaunch: isFirstAppLaunch(),
     });
   });
+  // Started at the app's reconnect screen: every sub-flow's Back returns there.
+  const [home] = useState<LoginMode>(() => (mode === "reconnect" ? "reconnect" : "select"));
   const [bunkerUri, setBunkerUri] = useState("");
 
   // Scroll to top whenever the user enters a sub-flow so they always land
   // at the top of the new screen (especially important on mobile).
   useEffect(() => {
-    if (mode === "select" || mode === "unlock") return;
+    if (mode === "select" || mode === "unlock" || mode === "reconnect") return;
     if (typeof window === "undefined") return;
     try {
       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -492,7 +496,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
         <ErrorBoundary fallbackRender={(error) => <OnboardingErrorFallback error={error} />}>
           <CreateAccountFlow
             variant={variant}
-            onBack={() => setMode("select")}
+            onBack={() => setMode(home)}
             onComplete={() => { /* auth state will rerender */ }}
           />
         </ErrorBoundary>
@@ -501,10 +505,79 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
         <ErrorBoundary fallbackRender={(error) => <OnboardingErrorFallback error={error} />}>
           <ImportKeyFlow
             variant={variant}
-            onBack={() => setMode("select")}
+            onBack={() => setMode(home)}
             onComplete={() => { /* auth state will rerender */ }}
           />
         </ErrorBoundary>
+      )}
+      {mode === "reconnect" && (
+        <div className="space-y-4" data-testid="container-app-reconnect">
+          <div className="text-center space-y-2 px-2">
+            <h2 className={`text-xl font-semibold tracking-tight text-balance ${isOverlay ? "text-white" : "text-foreground"}`}>
+              Welcome to the app
+            </h2>
+            <p className={`text-sm leading-relaxed max-w-sm mx-auto ${descCls}`}>
+              Reconnect your account once and pick up where you left off.
+            </p>
+            {isIOS && (
+              <p className={`text-xs leading-relaxed max-w-sm mx-auto ${descCls}`} data-testid="text-app-separate-storage">
+                The app keeps its own storage, apart from Safari, so it doesn't know you yet. Nothing is lost: your posts and follows are still yours.
+              </p>
+            )}
+          </div>
+          <div
+            className={`rounded-lg border overflow-hidden ${isOverlay ? "border-white/10 bg-white/[0.03]" : "border-border/50 bg-card/40"}`}
+          >
+            {[
+              { key: "qr", icon: QrCode, title: "Reconnect with your signer", caption: "Open your signer app, or scan its code", mode: "qr" as const, testId: "button-reconnect-signer" },
+              { key: "bunker", icon: Unplug, title: "Paste a connection link", caption: "A link from your signer app", mode: "bunker" as const, testId: "button-reconnect-link" },
+              {
+                key: "import", icon: KeyRound, title: "Import your key again",
+                caption: `Signed in with your key ${isIOS ? "in Safari" : "in the browser"}? Paste it from your password manager or open your key file.`,
+                mode: "import" as const, testId: "button-reconnect-key",
+              },
+            ].map((opt, i, arr) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setMode(opt.mode)}
+                disabled={isLoggingIn}
+                className={`w-full flex items-center gap-3 px-4 py-3.5 min-h-[56px] text-left transition-colors disabled:opacity-45 ${
+                  isOverlay ? "hover:bg-white/[0.05]" : "hover:bg-foreground/[0.04]"
+                } ${i < arr.length - 1 ? (isOverlay ? "border-b border-white/10" : "border-b border-border/40") : ""}`}
+                data-testid={opt.testId}
+              >
+                <opt.icon className={`w-5 h-5 shrink-0 ${iconCls}`} />
+                <span className="flex-1 min-w-0">
+                  <span className={`block text-sm font-semibold ${titleCls}`}>{opt.title}</span>
+                  <span className={`block text-[11px] leading-snug ${descCls}`}>{opt.caption}</span>
+                </span>
+                <ChevronRight className={`w-4 h-4 shrink-0 ${isOverlay ? "text-white/30" : "text-muted-foreground/40"}`} />
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-col items-center gap-1 pt-1">
+            <p className={`text-xs ${descCls}`}>New here?</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-10"
+              onClick={() => setMode("create")}
+              data-testid="button-reconnect-create"
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              Create an account
+            </Button>
+            <button
+              type="button"
+              onClick={() => setMode("select")}
+              className={`mt-1 min-h-[44px] text-xs ${linkCls}`}
+              data-testid="button-reconnect-other"
+            >
+              Other ways to sign in
+            </button>
+          </div>
+        </div>
       )}
       {mode === "select" && (
         <div className="space-y-3 md:space-y-4" data-testid="container-login-options">
@@ -726,7 +799,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
         </div>
       )}
       {mode === "qr" && (
-        <QRLoginFlow onBack={() => setMode("select")} variant={variant} />
+        <QRLoginFlow onBack={() => setMode(home)} variant={variant} />
       )}
       {mode === "bunker" && (
         <div className="space-y-4" data-testid="container-bunker-form">
@@ -797,7 +870,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
 
           <Button
             onClick={() => {
-              setMode("select");
+              setMode(home);
               setBunkerError("");
             }}
             variant="ghost"

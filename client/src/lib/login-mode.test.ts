@@ -35,6 +35,22 @@ describe("where a visit to the sign-in screen starts", () => {
   });
 });
 
+describe("the first time the installed app opens without a session", () => {
+  const first = { addAccountPending: false, localAccountPubkey: null, signupDraft: null, importDraft: false, firstAppLaunch: true };
+  it("starts at reconnect, not at a fork that reads like a stranger's first visit", () => {
+    expect(initialLoginMode(first)).toBe("reconnect");
+  });
+  it("an account already stored in the app, or work in flight, still wins", () => {
+    expect(initialLoginMode({ ...first, localAccountPubkey: PK })).toBe("unlock");
+    expect(initialLoginMode({ ...first, signupDraft: { resumable: true, pubkey: PK } })).toBe("create");
+    expect(initialLoginMode({ ...first, importDraft: true })).toBe("import");
+    expect(initialLoginMode({ ...first, addAccountPending: true })).toBe("select");
+  });
+  it("once the app has had a session, signing out leads to the usual choice", () => {
+    expect(initialLoginMode({ ...first, firstAppLaunch: false })).toBe("select");
+  });
+});
+
 describe("which step a draft resumes at", () => {
   it("the profile step, when no password was saved yet", () => {
     expect(resumeStep({ draftPubkey: PK, storedPubkey: null })).toBe(1);

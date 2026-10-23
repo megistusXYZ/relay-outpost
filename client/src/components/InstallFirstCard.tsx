@@ -3,7 +3,9 @@ import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { isOnboardingComplete } from "@/lib/local-account";
-import { installGuideFor, offerInstallCard } from "@/lib/install-guide";
+import { installGuideFor, offerInstallCard, appHandoffNote } from "@/lib/install-guide";
+import { useNostrAuth } from "@/contexts/NostrAuthContext";
+import { useKeyBackupNudge } from "@/hooks/use-key-backup";
 import { InstallSteps } from "@/components/install/InstallSteps";
 import { InAppBrowserEscape } from "@/components/install/InAppBrowserEscape";
 
@@ -18,12 +20,16 @@ function markDismissed(pubkey: string): void {
 }
 
 /**
- * One inline card on Home, offered once after onboarding on a phone or tablet:
+ * One inline card at the top of Chats (where everyone lands), offered once
+ * after onboarding on a phone or tablet:
  * install the app to get notified about replies and open it like any app.
  * Dismissed per account, for good. Never a pop-up.
  */
 export function InstallFirstCard({ pubkey, className = "" }: { pubkey: string; className?: string }) {
   const pwa = usePWAInstall();
+  const { loginMethod } = useNostrAuth();
+  // One card at a time: saving the key comes first.
+  const keyNudge = useKeyBackupNudge().state === "nudge";
   const [dismissed, setDismissed] = useState(() => isDismissed(pubkey));
   const [showSteps, setShowSteps] = useState(false);
   const [installing, setInstalling] = useState(false);
@@ -38,7 +44,7 @@ export function InstallFirstCard({ pubkey, className = "" }: { pubkey: string; c
     onboarded: isOnboardingComplete(pubkey),
     dismissed,
   });
-  if (!offered || (!guide && !justInstalled)) return null;
+  if (keyNudge || !offered || (!guide && !justInstalled)) return null;
 
   const dismiss = () => {
     markDismissed(pubkey);
@@ -59,11 +65,12 @@ export function InstallFirstCard({ pubkey, className = "" }: { pubkey: string; c
     }
   };
 
+  const handoff = appHandoffNote({ ios: pwa.installMethod === "ios-instructions", loginMethod });
   const fallback = installGuideFor("unsupported", { ipad: false, android: pwa.isAndroid, inAppBrowser: null });
 
   return (
     <section
-      className={`relative rounded-lg border border-border/70 bg-card/80 p-4 ${className}`}
+      className={`relative rounded-lg border border-border/70 bg-card p-4 ${className}`}
       aria-label="Get the app"
       data-testid="card-install-first"
     >
@@ -86,7 +93,7 @@ export function InstallFirstCard({ pubkey, className = "" }: { pubkey: string; c
         <>
           <p className="pr-10 text-sm font-medium text-foreground">Get the app</p>
           <p className="mt-1 pr-10 text-[13px] leading-relaxed text-muted-foreground">
-            Get notified when someone replies, and open Relay Outpost from your home screen like any app.
+            Get notified when someone replies, and open Relay Outpost like any app.
             No app store.
           </p>
 
@@ -111,7 +118,10 @@ export function InstallFirstCard({ pubkey, className = "" }: { pubkey: string; c
               </div>
             </>
           ) : showSteps && guide ? (
-            <InstallSteps guide={guide} className="mt-3 text-foreground/85" />
+            <>
+              <InstallSteps guide={guide} className="mt-3 text-foreground/85" />
+              {handoff && <p className="mt-2 text-xs leading-relaxed text-muted-foreground" data-testid="text-install-handoff">{handoff}</p>}
+            </>
           ) : (
             <div className="mt-3 flex items-center gap-3">
               <Button size="sm" variant="outline" className="h-9" onClick={() => setShowSteps(true)} data-testid="button-install-first-how">
