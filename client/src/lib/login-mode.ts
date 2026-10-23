@@ -5,7 +5,7 @@
  * "Resume signup" pill warped to the generic fork, and a reload after the
  * password was saved opened the unlock screen for an unfinished account.
  */
-export type LoginStart = "select" | "create" | "import" | "unlock";
+export type LoginStart = "select" | "create" | "import" | "unlock" | "reconnect";
 
 export function initialLoginMode(env: {
   /** Adding a second account: the stored account is the one already signed in. */
@@ -15,6 +15,8 @@ export function initialLoginMode(env: {
   /** The sign-up draft in this tab, if any: whether it carries work, and its key. */
   signupDraft: { resumable: boolean; pubkey: string | null } | null;
   importDraft: boolean;
+  /** The installed app, never signed in there before (lib/app-launch.ts). */
+  firstAppLaunch?: boolean;
 }): LoginStart {
   if (env.addAccountPending) return "select";
   const draft = env.signupDraft?.resumable ? env.signupDraft : null;
@@ -25,6 +27,8 @@ export function initialLoginMode(env: {
   }
   if (draft) return "create";
   if (env.importDraft) return "import";
+  // The app's first launch: welcome them in and reconnect, not a stranger's fork.
+  if (env.firstAppLaunch) return "reconnect";
   return "select";
 }
 

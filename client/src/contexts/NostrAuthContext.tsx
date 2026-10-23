@@ -55,19 +55,10 @@ NostrConnectSigner.publishMethod = (relays, event) => {
   return Promise.any(pool.publish(relays, event as any));
 };
 
-export function isPWAStandalone(): boolean {
-  if (typeof window === "undefined") return false;
-  return (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    (window.navigator as any).standalone === true
-  );
-}
-
-export function isIOSDevice(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-}
+// Device checks live in lib/platform.ts; re-exported here for older imports.
+import { isPWAStandalone, isIOSDevice } from "@/lib/platform";
+import { markAppSignedIn } from "@/lib/app-launch";
+export { isPWAStandalone, isIOSDevice };
 
 interface ProfileData {
   name?: string;
@@ -272,6 +263,12 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
     setGlobalSigner(signer);
   }, [signer]);
 
+  // The installed app has had a session: from now on a sign-out there leads
+  // to the usual sign-in choice, not the first-launch reconnect screen.
+  useEffect(() => {
+    if (signer && pubkey) markAppSignedIn();
+  }, [signer, pubkey]);
+
   // Invalidate the cached Brainstorm session token whenever the active signer
   // changes (login, logout, switch from extension to nsec, bunker reconnect).
   // The token is keyed to the previous signer's identity; the next status
@@ -441,21 +438,20 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithExtension = useCallback(async (reconnect = false) => {
     if (!window.nostr) {
+      // Not an error: extensions simply don't run here. Point at what does.
       if (isPWAStandalone()) {
         if (!reconnect) {
           toast({
-            title: "No connection in app mode",
-            description: "Browser extensions aren't available here. Try the Signer app (QR) or a connection link to connect.",
-            variant: "destructive",
+            title: "Extensions don't run in the app",
+            description: "Sign in with your signer app or a connection link instead.",
           });
         }
         return;
       }
       if (isIOSDevice() && !reconnect) {
         toast({
-          title: "No signer detected",
-          description: "Install Nostash from the App Store for Safari. Extensions only work in the browser, not home screen apps.",
-          variant: "destructive",
+          title: "No extension in this browser",
+          description: "Nostash adds one to Safari from the App Store. Or sign in with your signer app instead.",
         });
         return;
       }

@@ -49,6 +49,7 @@ import { usePrivateMasked, usePrivateModePending, togglePrivateMasked, revealPri
 import { onTabRetap } from "@/lib/tab-retap";
 import { PrivateModeShield } from "@/components/PrivateModeShield";
 import { KeyBackupNudge } from "@/components/KeyBackupNudge";
+import { InstallFirstCard } from "@/components/InstallFirstCard";
 import { displayNameWith, getPetname, matchesQueryWith, usePetnamesVersion, isShowingRealNames, toggleShowRealNames, hasAnyPetnames, type PetnameKind } from "@/lib/petnames";
 import { petnameImageUrlSync } from "@/lib/petname-images";
 import { PetnameDialog } from "@/components/PetnameDialog";
@@ -1447,6 +1448,8 @@ export function ChatList({
       >
         {/* A key that lives only in this browser, not yet backed up (never while masked). */}
         {!privateMasked && <KeyBackupNudge />}
+        {/* Then, once after onboarding on a phone: get the app (it waits while the key nudge shows). */}
+        {!privateMasked && pubkey && <InstallFirstCard pubkey={pubkey} className="m-3" />}
         {privateMasked ? (
           // Ahead of everything else the list can show (the deleted view, the
           // loader, notices, invites, rows): masked, none of it is drawn.

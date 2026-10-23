@@ -13,7 +13,7 @@ import {
   CheckCircle2, ShieldAlert, X, Plus, Radio, Check,
   Radar, Clock, TrendingUp, Award, Sun, Moon, Eclipse, Search, Volume2, MessageCircle,
   HardDrive, Trash2, Satellite, Type, Sliders, Film, ImageIcon, Antenna, MessageSquare, CornerUpLeft,
-  ChevronDown, RotateCcw, BarChart3, ChevronRight, Share,
+  ChevronDown, RotateCcw, BarChart3, ChevronRight,
   Wallet, Bell, Newspaper, Compass, BookOpen, MessageSquarePlus, KeyRound, QrCode, Puzzle,
   Smartphone, Globe, Eye, EyeOff, Lock, Inbox, Tag, Wrench, ShieldCheck, PanelLeft, Bug, Sparkles,
   Copy, RefreshCw, LifeBuoy, Info, LayoutGrid, Phone, BellRing } from "lucide-react";
@@ -45,6 +45,9 @@ import { settingsSectionFor } from "@/lib/settings-section";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useToast } from "@/hooks/use-toast";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
+import { installGuideFor, appHandoffNote } from "@/lib/install-guide";
+import { InstallSteps } from "@/components/install/InstallSteps";
+import { InAppBrowserEscape } from "@/components/install/InAppBrowserEscape";
 import { getSchedulerBaseUrl, setSchedulerBaseUrl } from "@/lib/schedule";
 import { Switch } from "@/components/ui/switch";
 import { isFeedRankingEnabled, setFeedRankingEnabled, isEngagementScoreEnabled, setEngagementScoreEnabled } from "@/lib/feed-prefs";
@@ -995,7 +998,7 @@ function ClosedAppNotifyRow() {
   };
 
   const sub = readiness === "install-first"
-    ? "On iPhone, add Relay Outpost to your Home Screen first (Share › Add to Home Screen), then turn this on there."
+    ? "On iPhone, add Relay Outpost to your Home Screen first (••• › Share › Add to Home Screen), then turn this on there."
     : readiness === "unsupported"
       ? "This browser can't show notifications while the app is closed."
       : on && msgs === "inbox-needs-sign-in"
@@ -1158,14 +1161,20 @@ function SchedulerExpandRow() {
  * small dialog with the two-line platform instructions.
  */
 function InstallAppRow() {
-  const { isStandalone, installed, canPromptInstall, promptInstall, isIOS } = usePWAInstall();
+  const pwa = usePWAInstall();
+  const { pubkey, loginMethod } = useNostrAuth();
   const [helpOpen, setHelpOpen] = useState(false);
 
-  if (isStandalone || installed) return null;
+  if (pwa.isStandalone || pwa.installed) return null;
+
+  const ctx = { ipad: pwa.isIPad, android: pwa.isAndroid, inAppBrowser: pwa.inAppBrowser };
+  const guide = installGuideFor(pwa.installMethod, ctx);
+  // A browser with its own install dialog that declined without asking: its menu still works.
+  const steps = guide?.action === "prompt" ? installGuideFor("unsupported", ctx) : guide;
 
   const handleTap = async () => {
-    if (canPromptInstall) {
-      const r = await promptInstall();
+    if (pwa.canPromptInstall) {
+      const r = await pwa.promptInstall();
       if (r === "unavailable") setHelpOpen(true);
       return;
     }
@@ -1177,7 +1186,7 @@ function InstallAppRow() {
       <ActionRow
         icon={Smartphone}
         label="Install app"
-        sub="Full-screen, home-screen experience — no app store"
+        sub="Get notified when someone replies, and open it like any app. No app store."
         onClick={handleTap}
         testId="button-install-app"
       />
@@ -1186,37 +1195,21 @@ function InstallAppRow() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <Smartphone className="w-4 h-4 text-brand dark:text-brand/80" />
-              Install Relay Outpost
+              {steps?.title ?? "Install Relay Outpost"}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Add it to your device from your browser — no app store needed.
+              Add it to your device from your browser. No app store needed.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2.5 text-[13px] text-foreground/85">
-            {isIOS ? (
-              <>
-                <p className="flex items-start gap-2">
-                  <Share className="w-4 h-4 mt-0.5 shrink-0 text-brand dark:text-brand/80" aria-hidden />
-                  <span>iPhone/iPad (Safari): tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>.</span>
-                </p>
-                <p className="flex items-start gap-2 text-foreground/60">
-                  <Globe className="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground/60" aria-hidden />
-                  <span>Chrome/Edge/Brave: browser menu → <strong>Install app</strong>.</span>
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="flex items-start gap-2">
-                  <Globe className="w-4 h-4 mt-0.5 shrink-0 text-brand dark:text-brand/80" aria-hidden />
-                  <span>Chrome/Edge/Brave: browser menu → <strong>Install app</strong>.</span>
-                </p>
-                <p className="flex items-start gap-2 text-foreground/60">
-                  <Share className="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground/60" aria-hidden />
-                  <span>iPhone/iPad (Safari): <strong>Share</strong> → <strong>Add to Home Screen</strong>.</span>
-                </p>
-              </>
-            )}
-          </div>
+          {steps && pwa.installMethod === "in-app-browser" ? (
+            <InAppBrowserEscape guide={steps} className="text-foreground/85" />
+          ) : steps ? (
+            <InstallSteps guide={steps} className="text-foreground/85" />
+          ) : null}
+          {(() => {
+            const note = pubkey ? appHandoffNote({ ios: pwa.installMethod === "ios-instructions", loginMethod }) : null;
+            return note ? <p className="text-xs leading-relaxed text-muted-foreground" data-testid="text-install-handoff">{note}</p> : null;
+          })()}
         </DialogContent>
       </Dialog>
     </>

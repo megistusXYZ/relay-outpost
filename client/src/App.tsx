@@ -8,7 +8,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NostrAuthProvider, useNostrAuth, LOGIN_METHOD_KEY } from "@/contexts/NostrAuthContext";
-// Eager side-effect import: registers the module-level `beforeinstallprompt`
+// Eager side-effect import: registers the module-level install-prompt (BIP)
 // listener at boot so the lazily-loaded Settings page can still offer the
 // native PWA install prompt (Chromium fires the event once, early).
 import "@/hooks/use-pwa-install";
@@ -1207,8 +1207,6 @@ function AppContent({ mainRef, scrollHidden }: { mainRef: React.RefObject<HTMLEl
       <MiniPlayer />
       <SpeechReaderBar hidden={scrollHidden} />
       <MobileFooter hidden={scrollHidden} />
-      {/* PWAInstallNudge removed: no auto install popups — installing lives in
-          Settings and the Help & Guides install guide. */}
     </div>
   );
 }

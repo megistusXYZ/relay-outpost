@@ -2,7 +2,10 @@ import { useRef, useState, useEffect } from "react";
 import { BtcZapIcon } from "@/components/icons/BtcZapIcon";
 import { Link } from "wouter";
 import { Rocket, Globe, Download, Check, ArrowUpRight } from "lucide-react";
-import { useInstallPrompt } from "@/hooks/use-install-prompt";
+import { usePWAInstall } from "@/hooks/use-pwa-install";
+import { installGuideFor } from "@/lib/install-guide";
+import { InstallSteps } from "@/components/install/InstallSteps";
+import { InAppBrowserEscape } from "@/components/install/InAppBrowserEscape";
 import { compactCount } from "@/lib/compact-count";
 import { RelayOutpostIcon } from "@/components/RelayOutpostLoader";
 import { AmbientVideo } from "@/components/landing/HeroAmbientVideo";
@@ -401,9 +404,9 @@ function SectionEyebrow({ children }: { children: React.ReactNode }) {
 }
 
 function PwaAction() {
-  const { canInstall, promptInstall, isIOS, isStandalone } = useInstallPrompt();
+  const pwa = usePWAInstall();
 
-  if (isStandalone) {
+  if (pwa.installMethod === "installed") {
     return (
       <span className="inline-flex items-center gap-1.5 text-[11px] font-brand uppercase tracking-[0.15em] text-success dark:text-emerald-300/90">
         <Check className="h-3.5 w-3.5" />
@@ -411,10 +414,10 @@ function PwaAction() {
       </span>
     );
   }
-  if (canInstall) {
+  if (pwa.canPromptInstall) {
     return (
       <button
-        onClick={() => { void promptInstall(); }}
+        onClick={() => { void pwa.promptInstall(); }}
         className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-brand/30 bg-brand/[0.12] px-5 py-2.5 text-[11px] font-brand uppercase tracking-[0.18em] text-brand transition-colors hover:border-brand/50 hover:bg-brand/[0.2] active:scale-[0.98]"
         data-testid="button-install-pwa"
       >
@@ -423,18 +426,17 @@ function PwaAction() {
       </button>
     );
   }
-  if (isIOS) {
+  const guide = installGuideFor(pwa.installMethod, { ipad: pwa.isIPad, android: pwa.isAndroid, inAppBrowser: pwa.inAppBrowser });
+  if (!guide) return null;
+  if (pwa.installMethod === "in-app-browser") {
     return (
-      <p className="text-[11px] leading-relaxed text-white/70">
-        On iPhone or iPad: tap <span className="text-white/80">Share</span> → <span className="text-white/80">Add to Home Screen</span>.
-      </p>
+      <div className="text-white/70">
+        <p className="mb-2 text-[13px] text-white/85">{guide.title}</p>
+        <InAppBrowserEscape guide={guide} />
+      </div>
     );
   }
-  return (
-    <p className="text-[11px] leading-relaxed text-white/55">
-      Open the menu in your browser and choose <span className="text-white/80">Install</span> to add it to your device.
-    </p>
-  );
+  return <InstallSteps guide={guide} className="text-white/70" />;
 }
 
 export function LandingMarketing({ onLaunch }: { onLaunch: () => void }) {

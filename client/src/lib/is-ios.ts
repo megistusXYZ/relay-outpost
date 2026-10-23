@@ -16,25 +16,12 @@
 //   • `localStorage.ro_virtual_feed = "0"`    → plain list path (kill-switch)
 //   • `localStorage.ro_virtual_feed = "1"`    → virtualize even on iOS (debug)
 
-/** The subset of `navigator` the detector reads — injectable for tests. */
-export interface IOSNavigatorLike {
-  userAgent?: string;
-  platform?: string;
-  maxTouchPoints?: number;
-}
+import { isIOSDevice, type NavigatorLike } from "./platform";
 
-/**
- * True on iPhone/iPod/iPad, including iPadOS 13+ which masquerades as a
- * desktop Mac ("MacIntel") but is the only Mac with a multi-touch screen.
- */
-export function isIOSDevice(nav?: IOSNavigatorLike): boolean {
-  const n = nav ?? (typeof navigator !== "undefined" ? (navigator as IOSNavigatorLike) : undefined);
-  if (!n) return false;
-  const ua = n.userAgent ?? "";
-  const platform = n.platform ?? "";
-  if (/iPhone|iPad|iPod/i.test(ua) || /iPhone|iPad|iPod/i.test(platform)) return true;
-  return platform === "MacIntel" && (n.maxTouchPoints ?? 0) > 1;
-}
+// The iOS check lives in lib/platform.ts with the other device checks.
+export { isIOSDevice };
+/** The subset of `navigator` the detector reads — injectable for tests. */
+export type IOSNavigatorLike = NavigatorLike;
 
 /** Injectable environment for `feedVirtualizationEnabled` — tests pass all fields. */
 export interface FeedVirtualizationEnv {
