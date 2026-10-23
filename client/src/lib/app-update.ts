@@ -26,7 +26,7 @@
 //    the very first install fires updatefound + controllerchange (via
 //    clients.claim()) even though the user just loaded the latest version.
 
-import { dropWorkerAndCaches, onShellUpdated, reloadOntoFreshShell } from "./sw-shell";
+import { askShellStatus, dropWorkerAndCaches, onShellUpdated, reloadOntoFreshShell, runningBuild } from "./sw-shell";
 import { installUpdateOnReturn, pageLooksBusy } from "./update-on-return";
 import { shouldApplyUpdate, type UpdateContext } from "./update-policy";
 import { onAppNavigation } from "./app-history";
@@ -62,6 +62,28 @@ export function shouldOfferUpdate(running: string, fetched: unknown): boolean {
   // Unstamped builds ("dev") have nothing meaningful to compare against.
   if (!running || running === "dev" || running === "unknown") return false;
   return v !== running;
+}
+
+/**
+ * At launch: is this an old build? A launch is answered from the worker's
+ * kept page, which can be a build behind, and the worker's one-off "a newer
+ * page arrived" message is often posted before the page listens. So the
+ * launch asks the worker directly AND asks the server once. Either saying so
+ * makes the update ready; it then applies at the next quiet moment
+ * (update-policy.ts). Failures mean "no", never an update that isn't there.
+ */
+export async function launchCheck(deps: {
+  running: string;
+  askWorker: () => Promise<boolean>;
+  fetchServerVersion: () => Promise<string | null>;
+}): Promise<{ ready: boolean; version: string | null }> {
+  const [worker, server] = await Promise.all([
+    deps.askWorker().catch(() => false),
+    deps.fetchServerVersion().catch(() => null),
+  ]);
+  if (server && shouldOfferUpdate(deps.running, server)) return { ready: true, version: server };
+  if (worker) return { ready: true, version: null };
+  return { ready: false, version: null };
 }
 
 /** Visibility-driven poll throttle: at most one network check per interval. */
@@ -209,10 +231,17 @@ export function startAppUpdatePolling(): void {
   if (!import.meta.env.PROD) return;
   if (RUNNING_APP_VERSION === "dev" || RUNNING_APP_VERSION === "unknown") return;
 
-  // Arm the throttle from now so a quick tab-switch right after load doesn't
-  // poll. A launch served from the worker's cached page may be one build
-  // behind; the worker says so itself ("ro-shell-updated", wired above).
+  // A launch served from the worker's kept page may be a build behind. Find
+  // out now, from the worker and the server, instead of waiting for a message
+  // that may have been posted before anyone was listening (launchCheck).
+  // That check arms the throttle, so a quick tab-switch right after load
+  // doesn't poll again.
   lastPollAt = Date.now();
+  void launchCheck({
+    running: RUNNING_APP_VERSION,
+    askWorker: () => askShellStatus(runningBuild()),
+    fetchServerVersion,
+  }).then((r) => { if (r.ready) reportUpdate(r.version ? "poll" : "sw", r.version); });
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;

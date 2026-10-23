@@ -175,6 +175,9 @@ function offlinePage() {
  * to a blank screen with nothing running that could recover. Then the network
  * answers, as on a first open.
  */
+/** The latest launch's "fetch and keep the fresh page", for ro-shell-status. */
+let shellKeeping = Promise.resolve();
+
 async function openShell(event) {
   const cache = await caches.open(SHELL_CACHE);
   const cached = await cache.match(SHELL_KEY);
@@ -184,7 +187,9 @@ async function openShell(event) {
   const fresh = fetchShell(event.preloadResponse);
 
   if (cached && await canStart(beforeText)) {
-    return { response: cached, background: fresh.then((next) => keepShell(next, before)).then((kept) => kept.settled) };
+    const keeping = fresh.then((next) => keepShell(next, before));
+    shellKeeping = keeping.then(() => {}, () => {});
+    return { response: cached, background: keeping.then((kept) => kept.settled) };
   }
 
   // First open (or a kept page that can't start): the network, kept for the
@@ -403,6 +408,25 @@ self.addEventListener('message', (event) => {
         // Answer as soon as the page is kept; its files follow behind.
         .then((kept) => { if (port) port.postMessage({ ok: true }); return kept.settled; })
         .catch(() => { if (port) port.postMessage({ ok: false }); })
+    );
+  }
+  // "Am I running an old build?" — asked by a page as it starts. The answer
+  // waits for this launch's fresh page (capped), so it can't come too early;
+  // the one-off "ro-shell-updated" message is missed by a page not yet
+  // listening. Never claims an update the network couldn't deliver.
+  if (event.data && event.data.type === 'ro-shell-status') {
+    const port = event.ports && event.ports[0];
+    const build = event.data.build;
+    event.waitUntil(
+      Promise.race([shellKeeping, new Promise((done) => setTimeout(done, 10000))])
+        .then(async () => {
+          const cache = await caches.open(SHELL_CACHE);
+          const kept = await cache.match(SHELL_KEY);
+          const keptBuild = kept ? buildOf(await kept.text()) : 'unknown';
+          const outdated = typeof build === 'string' && !!build && keptBuild !== 'unknown' && keptBuild !== build;
+          if (port) port.postMessage({ outdated });
+        })
+        .catch(() => { if (port) port.postMessage({ outdated: false }); })
     );
   }
 });

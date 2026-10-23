@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { shouldOfferUpdate, shouldPollNow } from "./app-update";
+import { shouldOfferUpdate, shouldPollNow, launchCheck } from "./app-update";
 
 describe("shouldOfferUpdate", () => {
   const RUNNING = "1.0.0+2026-07-19T22:41";
@@ -59,3 +59,19 @@ describe("shouldPollNow", () => {
   });
 });
 
+
+describe("launchCheck — a launch finds out at once whether it runs an old build", () => {
+  const RUNNING = "1.20.0+2026-10-18T13:17";
+  const NEWER = "1.21.0+2026-10-23T20:00";
+  it("the worker says the page it opened from is outdated", async () => {
+    expect(await launchCheck({ running: RUNNING, askWorker: async () => true, fetchServerVersion: async () => null })).toEqual({ ready: true, version: null });
+  });
+  it("…or the server is on a different build (the worker's message was missed, or there is no worker)", async () => {
+    expect(await launchCheck({ running: RUNNING, askWorker: async () => false, fetchServerVersion: async () => NEWER })).toEqual({ ready: true, version: NEWER });
+  });
+  it("same build, or nobody answers: nothing to do", async () => {
+    expect(await launchCheck({ running: RUNNING, askWorker: async () => false, fetchServerVersion: async () => RUNNING })).toEqual({ ready: false, version: null });
+    expect(await launchCheck({ running: RUNNING, askWorker: async () => false, fetchServerVersion: async () => null })).toEqual({ ready: false, version: null });
+    expect(await launchCheck({ running: RUNNING, askWorker: async () => { throw new Error("x"); }, fetchServerVersion: async () => { throw new Error("offline"); } })).toEqual({ ready: false, version: null });
+  });
+});
