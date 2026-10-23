@@ -45,5 +45,9 @@ RUN npm install --no-save --no-audit --no-fund \
 COPY package.json drizzle.config.ts ./
 COPY shared ./shared
 COPY --from=build /app/dist ./dist
+# Run as the image's unprivileged `node` user (uid 1000), not root. The server
+# only reads /app (root-owned, world-readable) and never writes to disk; the
+# schema-push job's npx cache goes to /home/node.
+USER node
 EXPOSE 5000
 CMD ["node", "dist/index.cjs"]
