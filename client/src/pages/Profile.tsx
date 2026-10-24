@@ -106,7 +106,6 @@ import { fetchCommunitySubscriptions, getOutpostRelays, getBadgeDisplayName, get
 import { fetchNip11 } from "@/lib/nip11";
 import { useBadges } from "@/hooks/use-badges";
 import { ProfileBadgesSection } from "@/components/BadgeDisplay";
-import { prefetchProfileFromBrainstorm, prefetchProfilesBulkFromBrainstorm } from "@/lib/brainstorm-search";
 import { useHeaderIdentitySlot } from "@/hooks/use-header-identity-slot";
 
 const KIND_LONG_FORM = 30023;
@@ -693,7 +692,6 @@ export default function Profile() {
     setShowNetworkDialog(false);
     setFollowProcessing(false);
 
-    prefetchProfileFromBrainstorm(pubkey);
     fetchProfiles([pubkey], DEFAULT_RELAYS);
     // force: re-query on every profile open so a stale negative (e.g. an earlier
     // indexer miss before the broadened discovery set) isn't cached as "no list".
@@ -1402,7 +1400,6 @@ export default function Profile() {
         ? userFollowList.filter(pk => livePubkeys.has(pk) && !batchSet.has(pk))
         : [];
       const authors = liveMissing.length > 0 ? [...batch, ...liveMissing] : batch;
-      prefetchProfilesBulkFromBrainstorm(authors.slice(0, 50));
       const profiles = await fetchBulkProfiles(authors);
       setFollowingProfiles(profiles);
       setFollowingBatchIndex(1);

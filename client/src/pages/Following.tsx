@@ -5,7 +5,6 @@ import { useLiveStatus } from "@/contexts/LiveStatusContext";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { use$ } from "applesauce-react/hooks";
 import { eventStore, fetchProfiles, DEFAULT_RELAYS } from "@/lib/nostr";
-import { prefetchProfilesBulkFromBrainstorm } from "@/lib/brainstorm-search";
 import { fetchRelayLists } from "@/lib/outbox";
 import { KIND_METADATA, getDisplayName, getAvatarUrl, getProfileContent, formatNpub, shortenNpub } from "@/lib/nostr-helpers";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -268,7 +267,6 @@ export default function Following() {
 
   useEffect(() => {
     if (follows.length > 0) {
-      prefetchProfilesBulkFromBrainstorm(follows.slice(0, 50));
       fetchRelayLists(follows);
       const unfetched = follows.filter(
         (pk) => !eventStore.getReplaceable(KIND_METADATA, pk)
