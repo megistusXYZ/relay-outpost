@@ -46,7 +46,13 @@ class FakeSocket {
 }
 
 describe("Primal cache connection", () => {
-  beforeAll(() => { vi.stubGlobal("WebSocket", FakeSocket); });
+  beforeAll(() => {
+    vi.stubGlobal("WebSocket", FakeSocket);
+    // Start at the refusing host on purpose: the list no longer leads with it,
+    // but a remembered host (lib/primal-cache.ts primal_host) can be one.
+    const m = new Map([["primal_host", REFUSING]]);
+    vi.stubGlobal("localStorage", { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => { m.set(k, v); }, removeItem: (k: string) => { m.delete(k); } });
+  });
   afterAll(() => { vi.unstubAllGlobals(); });
 
   it("a refused first host falls through to the next one instead of hanging", async () => {
