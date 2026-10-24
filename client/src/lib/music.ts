@@ -20,7 +20,6 @@ export const MUSIC_RELAYS = [
   "wss://relay.primal.net",
   "wss://nostr.wine",
   "wss://relay.snort.social",
-  "wss://nostr-01.yakihonne.com",
 ];
 
 export interface ZapSplitRecipient {
