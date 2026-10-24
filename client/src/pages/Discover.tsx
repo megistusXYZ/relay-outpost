@@ -18,6 +18,7 @@
  *  - The bento must NOT mark news read — the unread count's whole meaning is
  *    that opening /news is what clears it.
  */
+import { useFollowsOfFollows } from "@/hooks/use-follows-of-follows";
 import { useState, useEffect, useMemo, useCallback, useRef, type ReactNode } from "react";
 import { useDeletedEvents, deletedByAuthor } from "@/lib/deleted-events";
 import { watchDeletionsFor } from "@/lib/deletion-watch-live";
@@ -87,7 +88,7 @@ import { usePeopleTypeahead } from "@/hooks/use-people-typeahead";
 import { PeopleToFollowStrip } from "@/components/PeopleToFollowStrip";
 import { useDiscoverTrust } from "@/hooks/use-discover-trust";
 import { onTabRetap } from "@/lib/tab-retap";
-import { DISCOVER_MIN_SCORE } from "@/lib/discover-trust";
+import { DISCOVER_MIN_SCORE, discoverLensKey } from "@/lib/discover-trust";
 import { getDisplayName, getAvatarUrl, getProfileContent } from "@/lib/nostr-helpers";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import type { ArticleData } from "@/lib/nip23";
@@ -484,7 +485,9 @@ function NewsHeroTile() {
 
 // ── Feed teaser ──────────────────────────────────────────────────────────────
 
-function FeedTile() {
+/** `trustKey` (lib/discover-trust.ts discoverLensKey): the tile reloads when
+ *  whose trust applies changes, e.g. your follows' follows arriving for the blend. */
+function FeedTile({ trustKey }: { trustKey: string }) {
   const [, setLocation] = useLocation();
   const { pubkey, follows } = useNostrAuth();
   const { flaggedPubkeys, wotEnabled } = useGrapeRankScores();
@@ -505,7 +508,7 @@ function FeedTile() {
     followAnswer(fetchFeedTeaser(flaggedPubkeys ?? new Set(), follows ?? []), (r) => { if (seq.current === id) setTeaser(r); })
       .catch(() => { if (seq.current === id) setTeaser({ data: [], reached: false }); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flaggedPubkeys, follows]);
+  }, [flaggedPubkeys, follows, trustKey]);
   // Refetch once the shield lands (the memo keys on shield readiness, so this
   // gets a freshly-floored pick rather than the pre-shield one).
   useEffect(() => { if (shieldReady) load(); return () => { seq.current++; }; }, [load, shieldReady]);
@@ -1531,7 +1534,12 @@ export default function Discover() {
   const { follows: viewerFollows } = useNostrAuth();
   const { wotEnabled: viewerWot, scores: viewerScores } = useGrapeRankScores();
   const followSetForTrust = useMemo(() => new Set(viewerFollows ?? []), [viewerFollows]);
-  setDiscoverTrust({ follows: followSetForTrust, wotEnabled: !!pubkey && viewerWot, ownScores: viewerScores ?? null });
+  // Who your follows follow, counted on your device: they lead the Feed tile
+  // once you follow 10+ (lib/discover-trust.ts fofLeaders).
+  const { fofCounts: viewerFof } = useFollowsOfFollows(pubkey ? viewerFollows : undefined);
+  const discoverTrustOpts = { follows: followSetForTrust, wotEnabled: !!pubkey && viewerWot, ownScores: viewerScores ?? null, fof: viewerFof };
+  setDiscoverTrust(discoverTrustOpts);
+  const trustKey = discoverLensKey(discoverTrustOpts);
 
   // Every hook runs before the guest wall below: a render that returns early
   // must call exactly the hooks the last one did (rules-of-hooks.test.ts).
@@ -1597,7 +1605,7 @@ export default function Discover() {
       {!surfaces.includes("door") && (<>
       <div className="discover-grid grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
         <NewsHeroTile />
-        <FeedTile />
+        <FeedTile trustKey={trustKey} />
         <CommunitiesTile />
         <ArticlesTile />
         {/* Wide strip under the grid: a ticker-shaped door suits "live". */}

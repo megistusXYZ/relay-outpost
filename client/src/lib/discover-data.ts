@@ -37,7 +37,7 @@ import { rankByTrustAndFreshness } from "@/lib/discover-rank";
 import { isPromoBait, preferFollowed } from "@/lib/discover-curation";
 import { rankTopics, pickNextUpcoming, pickImageShelf, isSensitiveMedia, hasContent, isPlaceholderPost, type RankedTopic, type ShelfImage } from "@/lib/discover-tiles";
 import { saveSnapshot, readSnapshot, type SnapshotStore } from "@/lib/tile-snapshot";
-import { loadDiscoverTrust, gateByTrust, chooseDiscoverLens, emptyIsUnproven, DISCOVER_MIN_SCORE } from "@/lib/discover-trust";
+import { loadDiscoverTrust, gateByTrust, chooseDiscoverLens, emptyIsUnproven, DISCOVER_MIN_SCORE, discoverLensKey, fofLeaders } from "@/lib/discover-trust";
 import { getEventMediaInfo } from "@/lib/media-utils";
 import { parseCalendarEvent, KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT, type CalendarEventData } from "@/lib/calendar-events";
 import type { SavedFeed } from "@/lib/rss-feeds";
@@ -163,7 +163,7 @@ export function setDiscoverViewer(pubkey: string | null): void {
  * Discover shows only highly trusted people (lib/discover-trust.ts). The page
  * sets whose trust applies during render, like the snapshot viewer.
  */
-let trustOpts: { follows: ReadonlySet<string>; wotEnabled: boolean; ownScores: ReadonlyMap<string, number> | null } = {
+let trustOpts: Parameters<typeof discoverLensKey>[0] = {
   follows: new Set(), wotEnabled: false, ownScores: null,
 };
 export function setDiscoverTrust(opts: typeof trustOpts): void {
@@ -172,7 +172,7 @@ export function setDiscoverTrust(opts: typeof trustOpts): void {
 /** Memo/snapshot key suffix: answers from different lenses never mix, and
  *  snapshots saved before the trust gate are never painted. */
 function lensKey(): string {
-  return `trusted:${chooseDiscoverLens(trustOpts)}`;
+  return discoverLensKey(trustOpts);
 }
 
 /** Forget every remembered tile answer (tests; also safe on account switch). */
@@ -464,21 +464,28 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
       ? await collectOnce(getRelaysForPurpose("notes"), { kinds: [1], authors: t.top.slice(0, 300), since: Math.floor(Date.now() / 1000) - 24 * 3600, limit: 150 }, 8_000)
       : [],
   }));
+  // Your follows' follows lead Discover once you follow 10+ (owner,
+  // 2026-10-23): their last day, asked of the note relays alongside the rest.
+  const leaders = fofLeaders(trustOpts).map(([pk]) => pk);
+  const fofPostsP: Promise<Event[]> = leaders.length > 0
+    ? collectOnce(getRelaysForPurpose("notes"), { kinds: [1], authors: leaders, since: Math.floor(Date.now() / 1000) - 24 * 3600, limit: 150 }, 8_000).catch(() => [] as Event[])
+    : Promise.resolve([]);
   // Primal in support, never the main (owner, 2026-09-30): its trending
   // posts join if they have arrived by the time ours are in hand (plus
   // PRIMAL_GRACE_MS, which is none). The tile never waits for it, and its
   // posts pass the same trust check as everyone else's.
   const primalP = fetchGlobalFeed(30, sinceSecs).then((r) => r.posts, () => [] as Event[]);
-  const [followsPosts, recent, trusted] = await Promise.all([
+  const [followsPosts, recent, trusted, fofPosts] = await Promise.all([
     followsPostsP,
     recentSample.sample,
     trustedPostsP,
+    fofPostsP,
   ]);
   const primalPosts = await Promise.race([primalP, new Promise<Event[]>((r) => setTimeout(() => r([]), PRIMAL_GRACE_MS))]);
   if (!trusted.reached) return { data: [], reached: false };
   const trustedPosts = trusted.posts;
   const recentPosts = recent.events;
-  const pool = [...followsPosts, ...recentPosts, ...trustedPosts, ...primalPosts];
+  const pool = [...followsPosts, ...fofPosts, ...recentPosts, ...trustedPosts, ...primalPosts];
   // The server's sample is already cut down to trusted people, so its
   // authors aren't asked about again (one score lookup fewer per load).
   const trust = await loadDiscoverTrust(pool.map((e) => e.pubkey), {
@@ -507,7 +514,10 @@ async function fetchFeedTeaserFresh(flagged: Set<string>, follows: readonly stri
     if (missing.length > 0) await collectOnce(getRelaysForPurpose("notes"), { kinds: [0], authors: missing }, 3_000);
     // Trust: the scores our server sent for the authors it vetted, else the
     // ones looked up here; the bar if neither is known.
-    const picked = pick(gated, (pk) => recent.ranks.get(pk) ?? trust.scores.get(pk) ?? DISCOVER_MIN_SCORE);
+    // Your follows' follows rank on the trust loadDiscoverTrust gave them
+    // (that of a follow), even when the server's sample ranked them lower.
+    const led = new Set(leaders);
+    const picked = pick(gated, (pk) => (led.has(pk) ? trust.scores.get(pk) : undefined) ?? recent.ranks.get(pk) ?? trust.scores.get(pk) ?? DISCOVER_MIN_SCORE);
     // An empty pick while some authors' scores couldn't be read (the lookup
     // is rate limited per IP) is not "Quiet right now": measured 2026-09-30,
     // that emptied this tile over a busy network.

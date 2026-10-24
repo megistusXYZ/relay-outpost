@@ -12,6 +12,15 @@
  */
 
 export const DISCOVER_MIN_SCORE = 0.5;
+/**
+ * Your own network leads (owner, 2026-10-23): from this many follows on, the
+ * people your follows follow come first, then the lens's trusted list.
+ */
+export const FOF_MIN_FOLLOWS = 10;
+/** Followed by at least this many of your follows, so one follow's whole list doesn't flood in. */
+const FOF_MIN_SHARED = 2;
+/** At most this many of them lead. */
+const FOF_TOP = 150;
 export const OWN_LENS_MIN_PEOPLE = 100;
 const TOP_SIZE = 300;
 
@@ -41,6 +50,28 @@ function highlyTrusted(scores: ReadonlyMap<string, number>): string[] {
 export function chooseDiscoverLens(opts: { wotEnabled: boolean; ownScores: ReadonlyMap<string, number> | null }): "own" | "default" {
   if (!opts.wotEnabled || !opts.ownScores) return "default";
   return highlyTrusted(opts.ownScores).length >= OWN_LENS_MIN_PEOPLE ? "own" : "default";
+}
+
+type TrustOpts = {
+  follows: ReadonlySet<string>;
+  wotEnabled: boolean;
+  ownScores: ReadonlyMap<string, number> | null;
+  /** How many of your follows follow each person (use-follows-of-follows), on your device. */
+  fof?: ReadonlyMap<string, number>;
+};
+
+/** Your follows' follows, most shared first: who leads Discover, or [] when the blend doesn't apply. */
+export function fofLeaders(opts: TrustOpts): Array<[string, number]> {
+  if (chooseDiscoverLens(opts) !== "default" || !opts.fof || opts.follows.size < FOF_MIN_FOLLOWS) return [];
+  return [...opts.fof]
+    .filter(([pk, n]) => n >= FOF_MIN_SHARED && !opts.follows.has(pk))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, FOF_TOP);
+}
+
+/** Memo/snapshot key: answers from different lenses, or with and without the blend, never mix. */
+export function discoverLensKey(opts: TrustOpts): string {
+  return `trusted:${chooseDiscoverLens(opts)}${fofLeaders(opts).length > 0 ? "+fof" : ""}`;
 }
 
 export interface DiscoverTrust {
@@ -80,10 +111,7 @@ export interface DiscoverTrustDeps {
 
 export async function loadDiscoverTrust(
   candidates: readonly string[],
-  opts: {
-    follows: ReadonlySet<string>;
-    wotEnabled: boolean;
-    ownScores: ReadonlyMap<string, number> | null;
+  opts: TrustOpts & {
     /**
      * People our server already checked against the default lens's trusted
      * list (the Feed tile's sample, server/feed-sample.ts). Not asked about
@@ -105,10 +133,17 @@ export async function loadDiscoverTrust(
   for (const pk of top) if (!scores.has(pk)) scores.set(pk, DISCOVER_MIN_SCORE);
   // So is everyone the server vetted: it used the same list these scores come from.
   for (const pk of opts.vetted ?? []) if (!scores.has(pk)) scores.set(pk, DISCOVER_MIN_SCORE);
+  // Your follows' follows lead: admitted, and trusted like the people you
+  // follow (1, the top of the 0-1 scale the ranker weighs with freshness),
+  // and first in `top`, most shared first, so their posts are fetched first.
+  const leaders = fofLeaders(opts);
+  for (const [pk] of leaders) scores.set(pk, 1);
+  const led = new Set(leaders.map(([pk]) => pk));
+  const blendedTop = leaders.length > 0 ? [...leaders.map(([pk]) => pk), ...top.filter((pk) => !led.has(pk))] : top;
   // Whoever is still without an entry was never answered about: the server
   // sends a number for everyone it could check (-1 = no score card).
   const unscored = new Set(unique.filter((pk) => !scores.has(pk)));
-  return { reached: true, top, scores, unscored, lens };
+  return { reached: true, top: blendedTop, scores, unscored, lens };
 }
 
 const defaultDeps: DiscoverTrustDeps = {
