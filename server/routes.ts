@@ -8,7 +8,9 @@ import RSSParser from "rss-parser";
 import { db } from "./db";
 import { SERVER_APP_VERSION } from "./version";
 import { registerSignupTelemetryRoutes } from "./analytics/signup-telemetry";
-import { registerGrapeRankProxy } from "./graperank-proxy";
+import { registerGrapeRankProxy, BRAINSTORM_SEARCH_API } from "./graperank-proxy";
+import { getPodcastIndexHeaders, serviceHealthTargets } from "./service-health-targets";
+import { registerServiceHealth } from "./service-health";
 import { isSchedulableRelayUrl } from "./scheduled-relays";
 import { registerConcordAvRoutes } from "./concord-av";
 import { registerPushRoutes } from "./push/push-devices";
@@ -1131,18 +1133,6 @@ export async function registerRoutes(
 
   const podcastIndexCache = new TTLCache<any>(200, 5 * 60 * 1000);
 
-  function getPodcastIndexHeaders() {
-    const apiKey = process.env.PODCAST_INDEX_API_KEY || "";
-    const apiSecret = process.env.PODCAST_INDEX_API_SECRET || "";
-    const ts = Math.floor(Date.now() / 1000);
-    const hash = crypto.createHash("sha1").update(apiKey + apiSecret + String(ts)).digest("hex");
-    return {
-      "User-Agent": "RelayOutpost/1.0",
-      "X-Auth-Date": String(ts),
-      "X-Auth-Key": apiKey,
-      "Authorization": hash,
-    };
-  }
 
   // Shared feed shaper for search/trending/byfeedurl. Preserves freshness
   // (lastUpdateTime / newestItemPubdate) and the category id→name MAP (upstream
@@ -2766,7 +2756,6 @@ export async function registerRoutes(
 
   applyNip86Proxy(app);
 
-  const BRAINSTORM_SEARCH_API = "https://brainstorm.world";
 
   /**
    * Trust scores for everyone without a trust map of their own: NIP-85 score
@@ -3819,6 +3808,16 @@ export async function registerRoutes(
 
   registerOgCardRoutes(app, fetchNostrEvent);
   registerTranslateRoute(app);
+  // The services the app can't work without, checked every 15 minutes
+  // (service-health.ts): GET /api/service-health, and the console's card.
+  {
+    const targets = serviceHealthTargets();
+    registerServiceHealth(app, {
+      targets,
+      probe: (dep) => targets.find((t) => t.id === dep.id)!.probe(),
+      everyMs: process.env.NODE_ENV === "test" ? 0 : undefined,
+    });
+  }
 
   app.use((req, res, next) => {
     const ua = req.headers["user-agent"] || "";
