@@ -9,9 +9,10 @@
  * is never turned into "unranked".
  */
 import { rankServicesFromMap, scoresFromCards, KIND_TRUST_MAP, KIND_SCORE_CARD, type RankService } from "@shared/nip85";
+import { LIST_DIRECTORIES } from "@shared/profile-directories";
 
 /** General relays where people publish their replaceable lists. */
-const MAP_RELAYS = ["wss://purplepag.es", "wss://relay.damus.io", "wss://nos.lol"];
+const MAP_RELAYS = [...LIST_DIRECTORIES, "wss://relay.damus.io", "wss://nos.lol"];
 /** Where cards are read when a map names a service without a usable relay. */
 const FALLBACK_CARD_RELAY = "wss://nip85.nosfabrica.com";
 const MAP_TTL = 60 * 60 * 1000;

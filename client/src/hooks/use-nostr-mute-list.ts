@@ -47,10 +47,11 @@ import {
   type MuteListState,
   type SelfCrypto,
 } from "@/lib/mute-list";
+import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
 
 const KIND_MUTE_LIST = 10000;
 /** Archives replaceable lists; often still holds one other relays lost. */
-const LIST_ARCHIVE_RELAYS = ["wss://purplepag.es"];
+const LIST_ARCHIVE_RELAYS = PROFILE_DIRECTORIES;
 const FETCH_TIMEOUT_MS = 8_000;
 const SAVE_DEBOUNCE_MS = 1_500;
 /** Changes made here that haven't reached your list yet (MuteChange[]). */

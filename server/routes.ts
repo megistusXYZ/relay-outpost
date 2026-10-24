@@ -91,6 +91,7 @@ const ogCache = new TTLCache<OgData>(500, 60 * 60 * 1000);
 const ogNegativeCache = new TTLCache<true>(500, 90 * 1000);
 
 import type { Response } from "express";
+import { PROFILE_DIRECTORIES, LIST_DIRECTORIES } from "@shared/profile-directories";
 
 function parseOgHtml(html: string, targetUrl: string, resolvedUrl?: string): OgData {
   const baseUrl = resolvedUrl || targetUrl;
@@ -2775,7 +2776,7 @@ export async function registerRoutes(
   const scoreCards = createScoreCardReader({
     lens: DEFAULT_LENS,
     // nos.lol measured never answering a 10040 read (6s timeout), so it's out.
-    mapRelays: ["wss://purplepag.es", "wss://relay.damus.io"],
+    mapRelays: [...LIST_DIRECTORIES, "wss://relay.damus.io"],
   });
   /** Discover shows only people the lens ranks 50+ (owner call, 2026-09-29). */
   const DISCOVER_MIN_RANK = 50;
@@ -3766,7 +3767,7 @@ export async function registerRoutes(
   });
 
   const CRAWLER_UA = /bot|crawler|spider|preview|embed|whatsapp|telegram|slack|discord|facebook|facebookexternalhit|twitterbot|linkedinbot|pinterest|google|bing|yandex|baidu|duckduckbot|applebot|ia_archiver|semrush|ahref|mj12bot|dotbot|petalbot|bytespider|imessagebot|iMessage/i;
-  const OG_RELAYS = ["wss://relay.damus.io", "wss://relay.primal.net", "wss://nos.lol", "wss://purplepag.es"];
+  const OG_RELAYS = ["wss://relay.damus.io", "wss://relay.primal.net", "wss://nos.lol", ...PROFILE_DIRECTORIES];
   // `cardPath` = server-rendered OG card endpoint (og-cards.ts); it's stored as
   // a path and resolved against the request host at render time so cards work
   // on every domain the app is served from.

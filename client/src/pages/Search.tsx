@@ -85,6 +85,7 @@ import {
   isActiveAttestation, getAttestationStatusLabel, getAttestationStatusColor,
   type Attestation,
 } from "@/hooks/use-attestations";
+import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
 
 class ProfileCardErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -3950,7 +3951,7 @@ const VOUCH_RELAYS = [
   "wss://relay.damus.io",
   "wss://relay.primal.net",
   "wss://nos.lol",
-  "wss://purplepag.es",
+  ...PROFILE_DIRECTORIES,
 ];
 
 interface VouchEntry {

@@ -8,7 +8,7 @@ import { nip19 } from "nostr-tools";
 
 export const KIND_APP_DATA = 30078;
 export const FEATURED_D_TAG = "relay-outpost/featured";
-export const APP_DATA_RELAYS = ["wss://purplepag.es", "wss://relay.damus.io", "wss://nos.lol"];
+export const APP_DATA_RELAYS = ["wss://relay.damus.io", "wss://nos.lol"];
 
 /**
  * Where a community's own records live (rules, the featured doc, pinned

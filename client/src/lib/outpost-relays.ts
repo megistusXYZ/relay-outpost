@@ -7,10 +7,11 @@ import { withSignerTimeout, SIGNER_SIGN_TIMEOUT } from "@/lib/signer-timeout";
 import { resolveSessionSigner } from "./session-signer";
 import { queryAnswered } from "./relay-reach";
 import { fetchNip11 } from "@/lib/nip11";
+import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
 
 const KIND_RELAY_LIST = 10002;
 const KIND_COMMUNITY_SUBS = 10073;
-const RELAY_LIST_RELAYS = ["wss://purplepag.es", "wss://relay.damus.io", "wss://user.kindpag.es", "wss://nos.lol"];
+const RELAY_LIST_RELAYS = [...PROFILE_DIRECTORIES, "wss://relay.damus.io", "wss://nos.lol"];
 
 const OUTPOST_RELAYS_KEY = "nostr_outpost_relays";
 const PUBLISH_RELAY_PREF_KEY = "nostr_publish_relay_preference";

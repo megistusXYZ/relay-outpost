@@ -17,6 +17,7 @@
 import { isSignedEvent, type SignedEvent } from "@shared/discover-samples";
 import type { SampleNote } from "@shared/feed-sample";
 import { queryRelay, type RelayQuery } from "./score-cards";
+import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
 
 /** Enough for a phone's first two screens, small enough to check quickly. */
 export const FIRST_SCREEN_NOTES = 16;
@@ -25,7 +26,7 @@ const CANDIDATES = 40;
 const PER_AUTHOR = 2;
 
 /** Where profiles are asked for: a profile index first, then the big relays. */
-export const PROFILE_RELAYS = ["wss://purplepag.es", "wss://relay.damus.io", "wss://relay.primal.net", "wss://nos.lol"];
+export const PROFILE_RELAYS = [...PROFILE_DIRECTORIES, "wss://relay.damus.io", "wss://relay.primal.net", "wss://nos.lol"];
 const PROFILE_TTL_MS = 60 * 60 * 1000;
 const PROFILE_READ_MS = 4_000;
 /** A visitor never waits longer than this for profiles; the next one gets them. */

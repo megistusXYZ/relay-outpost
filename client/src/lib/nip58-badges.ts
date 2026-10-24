@@ -7,6 +7,7 @@ import type { ISigner } from "applesauce-signers";
 import { parseRelayList, getReadRelays } from "./outbox";
 import { selectRelaysByMode } from "./relay-prefs";
 import { badgeDefinitionTemplate, badgeDeletionTemplate, badgeAwardTemplate, badgeCommunity, awardRelays, withoutDeleted, profileBadgesTemplates, pickProfileBadgesEvent, withAcceptedBadge, KIND_PROFILE_BADGES as KIND_PROFILE_LIST, KIND_PROFILE_BADGES_LEGACY } from "./badge-events";
+import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
 
 export const KIND_BADGE_DEFINITION = 30009;
 export const KIND_BADGE_AWARD = 8;
@@ -59,7 +60,6 @@ const inflightPromises = new Map<string, Promise<unknown>>();
 const BADGE_RELAYS = [
   "wss://relay.damus.io",
   "wss://nos.lol",
-  "wss://purplepag.es",
 ];
 
 function getBadgeRelays(): string[] {
@@ -70,7 +70,7 @@ function getBadgeRelays(): string[] {
 }
 
 /** Where relay lists (NIP-65) are found. */
-const RELAY_LIST_RELAYS = ["wss://purplepag.es", "wss://user.kindpag.es"];
+const RELAY_LIST_RELAYS = PROFILE_DIRECTORIES;
 
 /**
  * Each recipient's own read relays — where they look for things addressed to

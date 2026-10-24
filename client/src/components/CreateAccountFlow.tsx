@@ -41,6 +41,7 @@ import { uploadChosen, withTimeout, type ChosenUploads } from "@/lib/signup-iden
 import { finalizeEvent, nip19 } from "nostr-tools";
 import { QRCodeSVG } from "qrcode.react";
 import { RelayOutpostInlineLoader, RelayOutpostIcon } from "@/components/RelayOutpostLoader";
+import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
 
 interface Props {
   variant?: "page" | "overlay";
@@ -675,7 +676,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
         if (!verifySignedEventKind(signedRelayList, 10002)) {
           console.warn("[CreateAccount] signer mutated relay-list kind; skipping publish");
         } else {
-          void publishEvent(signedRelayList, [...DEFAULT_RELAYS, "wss://purplepag.es", "wss://user.kindpag.es"]);
+          void publishEvent(signedRelayList, [...DEFAULT_RELAYS, ...PROFILE_DIRECTORIES]);
         }
       } catch (e) {
         console.warn("[CreateAccount] relay list (kind 10002) publish failed:", e);
