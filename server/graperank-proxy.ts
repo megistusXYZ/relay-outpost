@@ -8,6 +8,8 @@
 import type { Express, Request, Response } from "express";
 
 export const GRAPERANK_UPSTREAM = "https://brainstormserver.nosfabrica.com";
+/** Brainstorm's search API (profile documents), read by routes.ts. */
+export const BRAINSTORM_SEARCH_API = "https://brainstorm.world";
 
 const HEX_KEY = /^[0-9a-f]{64}$/i;
 

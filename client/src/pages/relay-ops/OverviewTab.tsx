@@ -7,6 +7,8 @@ import { getAuthStatus, getSignInPolicy, onAuthChange, type AuthStatus } from "@
 import { probeRelay } from "@/lib/relay-probe";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useCallUsage, callUsageLine } from "@/lib/call-usage";
+import { serviceHealthView, type ServiceHealthBody } from "@/lib/service-health-view";
+import { RELAY_OUTPOST_TEAM_PUBKEY } from "@shared/team-key";
 import { copyNostrId } from "@/lib/clipboard-bridge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { OpsCard, OpsSectionHeader } from "./ops-ui";
@@ -177,6 +179,56 @@ function CallsRightNow() {
       {line.text}
       {line.nearlyFull && <span className="ml-2 font-medium text-amber-600 dark:text-amber-400">Nearly full</span>}
     </p>
+  );
+}
+
+/**
+ * The team's card about the services the app depends on (server checks them
+ * every 15 minutes; /api/service-health). Nothing for anyone else.
+ */
+function ServicesWeDependOn() {
+  const { pubkey } = useNostrAuth();
+  const isTeam = !!pubkey && pubkey.toLowerCase() === RELAY_OUTPOST_TEAM_PUBKEY;
+  const [body, setBody] = useState<ServiceHealthBody | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!isTeam) return;
+    let live = true;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/service-health", { cache: "no-store" });
+        if (res.ok && live) { setBody((await res.json()) as ServiceHealthBody); setNow(Date.now()); }
+      } catch { /* the card says nothing rather than guess */ }
+    };
+    void load();
+    const again = setInterval(load, 60_000);
+    return () => { live = false; clearInterval(again); };
+  }, [isTeam]);
+  if (!isTeam || !body) return null;
+  const view = serviceHealthView(body, now);
+  return (
+    <OpsCard>
+      <OpsSectionHeader icon={Activity} label="Services we depend on" />
+      <p className={`text-sm ${view.kind === "ok" || view.kind === "waiting" ? "text-muted-foreground" : "text-amber-700 dark:text-amber-300"}`} data-testid="overview-services-line">
+        {view.line}
+      </p>
+      {view.kind === "problems" && (
+        <ul className="mt-3 divide-y divide-border/50" data-testid="overview-services-problems">
+          {view.rows.map((r) => (
+            <li key={r.id} className="py-2" data-testid={`overview-service-${r.id}`}>
+              <p className="text-sm">
+                <span className="font-medium">{r.name}</span>
+                <span className="text-muted-foreground"> · {r.group}</span>
+              </p>
+              <p className="text-[13px]">
+                <span className={r.severity === "down" ? "font-medium text-danger dark:text-red-400" : "font-medium text-amber-700 dark:text-amber-300"}>{r.word}</span>
+                <span className="text-muted-foreground"> {r.since}{r.why ? ` · ${r.why}` : ""}</span>
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </OpsCard>
   );
 }
 
@@ -895,6 +947,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
       <RelayHealthCard relayUrl={relayUrl} />
       {inbox && <FeedbackSummaryCard inbox={inbox} onOpenFeedback={onOpenFeedback} />}
       <CallsRightNow />
+      <ServicesWeDependOn />
       </>}
 
       {part === "scans" && <OpsCard>

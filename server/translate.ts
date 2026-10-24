@@ -56,8 +56,9 @@ export function parseDictChromeExResponse(data: unknown): { text: string; from: 
 type Fetcher = (url: string, init?: RequestInit) => Promise<globalThis.Response>;
 type Translated = { text: string; from: string };
 
-const FORM = { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" };
-const LANES: { name: string; url: (target: string) => string; parse: (data: unknown) => Translated | null }[] = [
+export const FORM = { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" };
+/** The translate endpoints, tried in order (also checked by service-health-targets.ts). */
+export const LANES: { name: string; url: (target: string) => string; parse: (data: unknown) => Translated | null }[] = [
   { name: "gtx", url: (t) => "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&dt=t&tl=" + t, parse: parseGtxResponse },
   { name: "dict", url: (t) => "https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=" + t, parse: parseDictChromeExResponse },
 ];
