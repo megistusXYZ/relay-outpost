@@ -79,7 +79,9 @@ describe("score lookup gate", () => {
 
 describe("the score lookup route uses it", () => {
   const src = readFileSync(path.resolve(import.meta.dirname, "routes.ts"), "utf8");
-  const route = src.slice(src.indexOf('app.post("/api/brainstorm/wot-batch"'), src.indexOf('app.post("/api/brainstorm/profiles-bulk"'));
+  const start = src.indexOf('app.post("/api/brainstorm/wot-batch"');
+  // The route's own body: up to the first route-closing line after it.
+  const route = src.slice(start, src.indexOf("\n  });\n", start) + 6);
 
   it("asks the gate, telling it whether this lookup needs the relay", () => {
     expect(route).toMatch(/scoreLookupGate\.allow\(req\.ip \|\| "unknown", \{ needsRelay: scoreCards\.needsRelay\(batch\) \}\)/);

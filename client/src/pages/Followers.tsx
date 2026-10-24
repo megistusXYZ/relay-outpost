@@ -6,7 +6,6 @@ import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { eventStore, fetchProfiles, DEFAULT_RELAYS } from "@/lib/nostr";
 import { KIND_METADATA, getProfileContent, formatNpub, shortenNpub } from "@/lib/nostr-helpers";
 import { fetchFollowersList } from "@/lib/primal-cache";
-import { prefetchProfilesBulkFromBrainstorm } from "@/lib/brainstorm-search";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -255,7 +254,6 @@ export default function Followers() {
         const { profiles } = await fetchFollowersList(pubkey, 500);
         if (!cancelled) {
           const pks = profiles.map((e: Event) => e.pubkey);
-          prefetchProfilesBulkFromBrainstorm(pks.slice(0, 50));
           const createdAtMap = new Map<string, number>();
           profiles.forEach((e: Event) => createdAtMap.set(e.pubkey, e.created_at));
           setFollowerPubkeys(pks);

@@ -1,65 +1,10 @@
 import type { Event } from "nostr-tools";
 import { ownMapScores } from "./own-trust-map";
 import { searchPeopleRanked } from "./people-search";
-import { registerProfileInAllCaches, isProfileCached } from "./nostr";
+import { registerProfileInAllCaches } from "./nostr";
 import { createScoreBatcher } from "./score-batch";
 import { WOT_BATCH_MAX } from "@shared/wot-batch";
 
-export interface BrainstormHit {
-  id: string;
-  pubkey: string;
-  npub: string;
-  name: string;
-  display_name: string;
-  displayName: string;
-  username: string;
-  nip05: string;
-  about: string;
-  picture: string;
-  banner: string;
-  lud16: string;
-  lud06: string;
-  website: string;
-  created_at: number;
-  wot_rank: number | undefined;
-  wot_followers: number | undefined;
-}
-
-interface BrainstormResponse {
-  hits: BrainstormHit[];
-  estimatedTotalHits: number;
-  processingTimeMs: number;
-  error?: string;
-}
-
-function brainstormHitToKind0Event(hit: BrainstormHit): Event {
-  const content = JSON.stringify({
-    name: hit.name || "",
-    display_name: hit.display_name || hit.displayName || "",
-    about: hit.about || "",
-    picture: hit.picture || "",
-    banner: hit.banner || "",
-    nip05: hit.nip05 || "",
-    lud16: hit.lud16 || "",
-    lud06: hit.lud06 || "",
-    website: hit.website || "",
-  });
-
-  return {
-    id: hit.id || hit.pubkey,
-    pubkey: hit.pubkey,
-    kind: 0,
-    content,
-    tags: [],
-    created_at: hit.created_at || Math.floor(Date.now() / 1000),
-    sig: "",
-  } as Event;
-}
-
-export function brainstormWotToInfluence(wotRank: number | undefined): number | null {
-  if (wotRank === undefined || wotRank === null) return null;
-  return wotRank / 100;
-}
 
 /**
  * People around a topic, ranked through the viewer's web of trust. Uses the
@@ -77,66 +22,6 @@ export async function discoverByTopic(topic: string, limit: number = 20): Promis
   }
 }
 
-const _prefetchedPubkeys = new Set<string>();
-
-export function prefetchProfileFromBrainstorm(pubkey: string): void {
-  if (!pubkey || _prefetchedPubkeys.has(pubkey)) return;
-  _prefetchedPubkeys.add(pubkey);
-
-  fetch(`/api/brainstorm/profile/${pubkey}`, {
-    signal: AbortSignal.timeout(4000),
-  })
-    .then((res) => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    })
-    .then((data: { hit?: BrainstormHit } | null) => {
-      if (!data?.hit || !data.hit.pubkey) return;
-      if (isProfileCached(data.hit.pubkey)) return;
-      const event = brainstormHitToKind0Event(data.hit);
-      registerProfileInAllCaches(event);
-    })
-    .catch(() => {
-      _prefetchedPubkeys.delete(pubkey);
-    });
-}
-
-let _bulkInFlight = false;
-
-export function prefetchProfilesBulkFromBrainstorm(pubkeys: string[]): void {
-  if (pubkeys.length === 0 || _bulkInFlight) return;
-  const uncached = pubkeys.filter(pk => pk && !_prefetchedPubkeys.has(pk));
-  if (uncached.length === 0) return;
-
-  const batch = uncached.slice(0, 50);
-  _bulkInFlight = true;
-  for (const pk of batch) _prefetchedPubkeys.add(pk);
-
-  fetch("/api/brainstorm/profiles-bulk", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pubkeys: batch }),
-    signal: AbortSignal.timeout(6000),
-  })
-    .then((res) => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    })
-    .then((data: { profiles?: BrainstormHit[] }) => {
-      if (!data?.profiles) return;
-      for (const hit of data.profiles) {
-        if (!hit.pubkey || isProfileCached(hit.pubkey)) continue;
-        const event = brainstormHitToKind0Event(hit);
-        registerProfileInAllCaches(event);
-      }
-    })
-    .catch(() => {
-      for (const pk of batch) _prefetchedPubkeys.delete(pk);
-    })
-    .finally(() => {
-      _bulkInFlight = false;
-    });
-}
 
 let _batchCooldownUntil = 0;
 let _batchLastSuccessAt = 0;
@@ -232,19 +117,4 @@ function fetchLensBatch(pubkeys: string[]): Promise<Map<string, number>> {
   return lensBatcher.ask(pubkeys);
 }
 
-export async function lookupProfileDirect(pubkey: string): Promise<{ event: Event | null; wotScore: number | null }> {
-  try {
-    const res = await fetch(`/api/brainstorm/profile/${encodeURIComponent(pubkey)}`, {
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) return { event: null, wotScore: null };
-    const data: { hit?: BrainstormHit } | null = await res.json();
-    if (!data?.hit || !data.hit.pubkey) return { event: null, wotScore: null };
-    const event = brainstormHitToKind0Event(data.hit);
-    registerProfileInAllCaches(event);
-    return { event, wotScore: brainstormWotToInfluence(data.hit.wot_rank) };
-  } catch {
-    return { event: null, wotScore: null };
-  }
-}
 

@@ -13,7 +13,6 @@ import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-
 import { peekAccountHeaderExpand, clearAccountHeaderExpand } from "@/lib/account-expand";
 import { fetchUserProfileStats, fetchUserAuthoredFeed, fetchEventCounts, primalStatsCache, prefetchStatsImmediate, fetchBulkProfiles, fetchFollowersList, fetchContactListHistory, fetchMuteListHistory, type UserProfileStats } from "@/lib/primal-cache";
 import { fetchRelayLists, getUserNotesFetchRelays } from "@/lib/outbox";
-import { prefetchProfilesBulkFromBrainstorm } from "@/lib/brainstorm-search";
 import { NostrPost } from "@/components/NostrPost";
 import { PostBoundary } from "@/components/PostBoundary";
 import { BtcZapIcon } from "@/components/NostrPost";
@@ -1003,7 +1002,6 @@ export default function MyOutpost() {
         ? userFollowList.filter(pk => livePubkeys.has(pk) && !batchSet.has(pk))
         : [];
       const authors = liveMissing.length > 0 ? [...batch, ...liveMissing] : batch;
-      prefetchProfilesBulkFromBrainstorm(authors.slice(0, 50));
       const profiles = await fetchBulkProfiles(authors);
       setFollowingProfiles(profiles);
       setFollowingBatchIndex(1);
