@@ -8,7 +8,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { nip19 } from "nostr-tools";
-import { serviceHealthTargets, PRIMAL_CACHES, PEOPLE_SEARCH, KNOWN_PROFILES } from "./service-health-targets";
+import { serviceHealthTargets, PRIMAL_CACHES, PEOPLE_SEARCH, KNOWN_PROFILES, UPLOAD_SERVERS } from "./service-health-targets";
 import { DEFAULT_RELAYS, SEARCH_RELAYS } from "../client/src/lib/relay-constants";
 import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
 import { CURATED_SEED_NPUBS } from "../client/src/lib/curated-seed-follows";
@@ -21,6 +21,15 @@ describe("service health targets", () => {
     for (const url of PRIMAL_CACHES) expect(primal).toContain(`"${url}"`);
     expect(primal.match(/"wss:\/\/cache[0-9]*\.primal\.net\/v1"/g)?.length).toBe(PRIMAL_CACHES.length);
     expect(client("people-search.ts")).toContain(`PEOPLE_SEARCH_RELAY = "${PEOPLE_SEARCH}"`);
+  });
+
+  it("the default upload servers are the client's own, and are checked", () => {
+    const media = client("media-upload.ts");
+    for (const url of UPLOAD_SERVERS) expect(media).toContain(`"${url}"`);
+    const block = media.slice(media.indexOf("DEFAULT_BLOSSOM_SERVERS"), media.indexOf("];", media.indexOf("DEFAULT_BLOSSOM_SERVERS")));
+    expect(block.match(/"https:\/\/[^"]+"/g)?.length).toBe(UPLOAD_SERVERS.length);
+    const targets = serviceHealthTargets({}).map((t) => t.target);
+    for (const url of UPLOAD_SERVERS) expect(targets).toContain(url);
   });
 
   it("the well-known profiles are the first suggested people", () => {
