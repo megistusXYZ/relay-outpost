@@ -7,7 +7,7 @@
  */
 import { describe, it, expect, afterEach } from "vitest";
 import { WebSocketServer } from "ws";
-import { probeRelay, probeDirectory, probeHttp } from "./service-probes";
+import { probeRelay, probeDirectory, probeHttp, probeReachable } from "./service-probes";
 
 let server: WebSocketServer | null = null;
 afterEach(() => { server?.close(); server = null; });
@@ -83,5 +83,17 @@ describe("probeHttp", () => {
   it("a body check can say an answer is empty", async () => {
     const r = await probeHttp("https://x.test", { fetcher: answer(200, "application/json", "[]"), check: (j) => Array.isArray(j) && j.length > 0 });
     expect(r.state).toBe("empty");
+  });
+});
+
+describe("probeReachable (upload servers: any web answer, not a 5xx)", () => {
+  const answer = (status: number) => async () => new Response("", { status });
+  it("an answer, even a 404 for an unknown file, is up", async () => {
+    expect((await probeReachable("https://x.test", { fetcher: answer(404) })).state).toBe("up");
+    expect((await probeReachable("https://x.test", { fetcher: answer(200) })).state).toBe("up");
+  });
+  it("a 5xx or no answer is down", async () => {
+    expect(await probeReachable("https://x.test", { fetcher: answer(502) })).toMatchObject({ state: "down", detail: "HTTP 502" });
+    expect((await probeReachable("https://x.test", { fetcher: async () => { throw new TypeError("x"); } })).state).toBe("down");
   });
 });

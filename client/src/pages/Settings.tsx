@@ -1293,6 +1293,14 @@ function AppSection() {
         testId="button-repair-app"
       />
 
+      <LinkRow
+        href="/settings/services"
+        icon={Globe}
+        label="Relays & services"
+        sub="What the app connects to for you, and whether each is answering"
+        testId="link-settings-services"
+      />
+
       <Dialog open={repairOpen} onOpenChange={(o) => { if (!repairing) setRepairOpen(o); }}>
         <DialogContent className="max-w-sm" data-testid="dialog-repair-app">
           <DialogHeader>

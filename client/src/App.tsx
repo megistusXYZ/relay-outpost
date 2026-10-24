@@ -111,6 +111,7 @@ const lazyChunks = {
   Generator: () => lazyRetry(() => import("@/pages/Generator")),
   Settings: () => lazyRetry(() => import("@/pages/Settings")),
   SettingsDanger: () => lazyRetry(() => import("@/pages/SettingsDanger")),
+  SettingsServices: () => lazyRetry(() => import("@/pages/SettingsServices")),
   Account: () => lazyRetry(() => import("@/pages/Account")),
   MyTickets: () => lazyRetry(() => import("@/pages/MyTickets")),
   RecoverFollows: () => lazyRetry(() => import("@/pages/RecoverFollows")),
@@ -187,6 +188,7 @@ const Widget = lazy(lazyChunks.Widget);
 const Generator = lazy(lazyChunks.Generator);
 const Settings = lazy(lazyChunks.Settings);
 const SettingsDanger = lazy(lazyChunks.SettingsDanger);
+const SettingsServices = lazy(lazyChunks.SettingsServices);
 const Account = lazy(lazyChunks.Account);
 const MyTickets = lazy(lazyChunks.MyTickets);
 const RecoverFollows = lazy(lazyChunks.RecoverFollows);
@@ -427,6 +429,7 @@ function Router() {
         <Route path="/search" component={Search} />
         <Route path="/settings" component={Settings} />
         <Route path="/settings/danger" component={SettingsDanger} />
+        <Route path="/settings/services" component={SettingsServices} />
         {/* /account is the user's own account dashboard (MyOutpost); the mobile
             grouped-rows account menu now lives under /account/menu. */}
         <Route path="/account/menu" component={Account} />

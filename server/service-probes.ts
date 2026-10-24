@@ -148,3 +148,19 @@ export async function probeHttp(
   if (opts.check && !opts.check(json)) return { state: "empty", ms, detail: "answered, with nothing in it" };
   return { state: "up", ms };
 }
+
+/**
+ * A server that only has to answer the web (upload servers): any answer
+ * below 500, even a 404 for a file it doesn't have, is up.
+ */
+export async function probeReachable(url: string, opts: { timeoutMs?: number; fetcher?: Fetcher } = {}): Promise<CheckResult> {
+  const fetcher: Fetcher = opts.fetcher ?? ((u, i) => fetch(u, i));
+  const t0 = Date.now();
+  try {
+    const res = await fetcher(url, { method: "GET", signal: AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS) });
+    const ms = Date.now() - t0;
+    return res.status < 500 ? { state: "up", ms } : { state: "down", ms, detail: `HTTP ${res.status}` };
+  } catch {
+    return { state: "down", ms: Date.now() - t0, detail: "no answer" };
+  }
+}

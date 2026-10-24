@@ -12,7 +12,7 @@ import { GRAPERANK_UPSTREAM, BRAINSTORM_SEARCH_API } from "./graperank-proxy";
 import { LANES, FORM } from "./translate";
 import { PRICE_SOURCES } from "./btc-price";
 import type { CheckResult, Dependency } from "./service-health";
-import { probeDirectory, probeHttp, probeRelay } from "./service-probes";
+import { probeDirectory, probeHttp, probeReachable, probeRelay } from "./service-probes";
 
 /** Podcast Index signs every request with the key, the secret and the time. */
 export function getPodcastIndexHeaders(): Record<string, string> {
@@ -30,6 +30,8 @@ export function getPodcastIndexHeaders(): Record<string, string> {
 
 /** Primal's caches (client/src/lib/primal-cache.ts PRIMAL_CACHE_URLS). */
 export const PRIMAL_CACHES = ["wss://cache.primal.net/v1", "wss://cache2.primal.net/v1", "wss://cache1.primal.net/v1"];
+/** The default upload servers (client/src/lib/media-upload.ts DEFAULT_BLOSSOM_SERVERS). */
+export const UPLOAD_SERVERS = ["https://blossom.primal.net", "https://nostr.build"];
 /** People search (client/src/lib/people-search.ts PEOPLE_SEARCH_RELAY). */
 export const PEOPLE_SEARCH = "wss://search.brainstorm.world";
 
@@ -64,6 +66,10 @@ export function serviceHealthTargets(env: NodeJS.ProcessEnv = process.env): Targ
     id: `primal:${host(url)}`, label: host(url), group: "Primal", kind: "socket", target: url,
     probe: () => probeRelay(url),
   }));
+  const uploads: Target[] = UPLOAD_SERVERS.map((url) => ({
+    id: `upload:${host(url)}`, label: host(url), group: "Uploads", kind: "http", target: url,
+    probe: () => probeReachable(url),
+  }));
   const services: Target[] = [
     {
       id: "http:trust-scores", label: "Trust scores (Brainstorm)", group: "Outside services", kind: "http",
@@ -96,5 +102,5 @@ export function serviceHealthTargets(env: NodeJS.ProcessEnv = process.env): Targ
       probe: () => probeHttp("https://api.podcastindex.org/api/1.0/categories/list", { init: { headers: getPodcastIndexHeaders() } }),
     });
   }
-  return [...relays, ...search, ...directories, ...primal, ...services];
+  return [...relays, ...search, ...directories, ...primal, ...uploads, ...services];
 }

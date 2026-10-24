@@ -27,6 +27,7 @@ const PARENT_ROUTES: Array<[RegExp, string]> = [
   [/^\/help\/./, "/help"],
   [/^\/whats-new$/, "/"],
   [/^\/settings\/danger$/, "/settings"],
+  [/^\/settings\/services$/, "/settings"],
   [/^\/(key-backup|muted|media-servers|trust-reviews|tickets)$/, "/tools"],
   [/^\/community\//, "/search"],
   [/^\/live\/./, "/live"],
