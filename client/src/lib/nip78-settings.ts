@@ -3,6 +3,7 @@ import type { NostrEvent } from "nostr-tools";
 import { pool, publishEvent, filterBlockedRelays } from "@/lib/nostr";
 import { signWithTimeout } from "@/lib/signer-timeout";
 import { getOutpostRelays, getActiveDefaultRelays, type OutpostRelay } from "@/lib/outpost-relays";
+import { appDataRelays } from "@/lib/app-data-relays";
 import { armPrivateModeIfSet, privateModeSettingsSettled } from "@/lib/private-mode";
 import { nativeSetItem, setStorageWriteListener } from "@/lib/storage-write-hook";
 import { isWiderNetworkOn } from "./network-mode";
@@ -333,13 +334,14 @@ function setLocalTimestamp(pubkey: string, ts: number): void {
   } catch {}
 }
 
-function getUserWriteRelays(): string[] {
-  const active = getActiveDefaultRelays();
-  const outpost = getOutpostRelays().map(r => r.url);
-  const combined = [...new Set([...active, ...outpost])];
-  const filtered = filterBlockedRelays(combined);
-  if (filtered.length > 0) return filtered.slice(0, 6);
-  return filterBlockedRelays(FALLBACK_SETTINGS_RELAYS);
+/** Written to your relays only, read from yours then your communities (lib/app-data-relays.ts). */
+function settingsRelays(mode: "read" | "write"): string[] {
+  return appDataRelays(mode, {
+    active: getActiveDefaultRelays(),
+    communities: getOutpostRelays().map((r) => r.url),
+    filter: filterBlockedRelays,
+    fallback: FALLBACK_SETTINGS_RELAYS,
+  });
 }
 
 function defaultForType(type: SettingsMapping["type"]): string | boolean | number | string[] {
@@ -629,7 +631,7 @@ function applySettingsToLocal(settings: PortableSettings, pubkey: string): void 
  * reached).
  */
 async function fetchSettingsFromRelay(pubkey: string, signer: ISigner): Promise<{ settings: PortableSettings | null; reached: boolean }> {
-  const relays = getUserWriteRelays();
+  const relays = settingsRelays("read");
   const reachedAny = () => {
     try {
       const status = pool.listConnectionStatus();
@@ -740,7 +742,7 @@ async function publishSettingsToRelay(settings: PortableSettings, pubkey: string
     const signed = await signWithTimeout(signer, eventTemplate as Parameters<ISigner["signEvent"]>[0]);
     if (!signed) return false;
 
-    const relays = getUserWriteRelays();
+    const relays = settingsRelays("write");
     await publishEvent(signed, relays, undefined, true);
     console.log("[NIP-78] Settings published to relays");
     return true;

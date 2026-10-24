@@ -293,22 +293,26 @@ export function isReadStateDoc(parsed: unknown): parsed is ReadState {
 // Relay I/O (mirrors nip78-settings.ts)
 // ---------------------------------------------------------------------------
 
-async function getUserWriteRelays(): Promise<string[]> {
+/** Your relays for this data: written to yours only, read from yours then your communities (lib/app-data-relays.ts). */
+async function appDataRelaysFor(mode: "read" | "write"): Promise<string[]> {
   const { filterBlockedRelays } = await import("@/lib/nostr");
+  const { appDataRelays } = await import("@/lib/app-data-relays");
   try {
     const { getActiveDefaultRelays, getOutpostRelays } = await import("@/lib/outpost-relays");
-    const active = getActiveDefaultRelays();
-    const outpost = getOutpostRelays().map(r => r.url);
-    const combined = [...new Set([...active, ...outpost])];
-    const filtered = filterBlockedRelays(combined);
-    if (filtered.length > 0) return filtered.slice(0, 6);
-  } catch { /* fall through */ }
-  return filterBlockedRelays(FALLBACK_RELAYS);
+    return appDataRelays(mode, {
+      active: getActiveDefaultRelays(),
+      communities: getOutpostRelays().map((r) => r.url),
+      filter: filterBlockedRelays,
+      fallback: FALLBACK_RELAYS,
+    });
+  } catch {
+    return filterBlockedRelays(FALLBACK_RELAYS);
+  }
 }
 
 async function fetchReadStateFromRelay(pubkey: string, signer: ISigner): Promise<ReadState | null> {
   const { pool } = await import("@/lib/nostr");
-  const relays = await getUserWriteRelays();
+  const relays = await appDataRelaysFor("read");
   return new Promise((resolve) => {
     let bestEvent: NostrEvent | null = null;
     let resolved = false;
@@ -380,7 +384,7 @@ async function publishReadStateToRelay(state: ReadState, pubkey: string, signer:
     if (!signed) return false;
 
     const { publishEvent } = await import("@/lib/nostr");
-    await publishEvent(signed, await getUserWriteRelays(), undefined, true);
+    await publishEvent(signed, await appDataRelaysFor("write"), undefined, true);
     console.log("[readstate] Read-state published to relays");
     return true;
   } catch (err) {
@@ -514,7 +518,7 @@ export async function loadReadStateFromRelay(pubkey: string, signer: ISigner): P
 async function startLiveSubscription(pubkey: string, signer: ISigner): Promise<void> {
   if (liveSub || currentPubkey !== pubkey) return;
   const { pool } = await import("@/lib/nostr");
-  const relays = await getUserWriteRelays();
+  const relays = await appDataRelaysFor("read");
   if (liveSub || currentPubkey !== pubkey) return; // re-check after awaits
 
   const since = Math.floor(Date.now() / 1000) - 60;
