@@ -40,6 +40,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.21.0",
+    date: "2026-10-23",
+    title: "At home on every screen",
+    changes: [
+      { type: "new", text: "Install Relay Outpost from any browser: clear steps for iPhone, iPad, Mac and Android, and a way out of in-app browsers." },
+      { type: "new", text: "The first time you open the app from your home screen, it welcomes you in and reconnects your account in one step." },
+      { type: "improved", text: "New followers show how you're connected: who you follow that follows them, and a Follow back button." },
+      { type: "improved", text: "Replies to articles show the article on top, and videos in the feed keep a calm size." },
+      { type: "improved", text: "Names and pictures now appear for far more people, and the first screen loads faster." },
+    ],
+  },
+  {
     version: "1.20.0",
     date: "2026-10-11",
     title: "Delete means delete",
