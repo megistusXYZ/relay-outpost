@@ -8,7 +8,6 @@ export const DISCOVERY_RELAYS = [
   "wss://relay.primal.net",
   "wss://nos.lol",
   "wss://relay.snort.social",
-  "wss://nostr-01.yakihonne.com",
 ];
 
 const DISCOVERY_CACHE_TTL = 5 * 60 * 1000;

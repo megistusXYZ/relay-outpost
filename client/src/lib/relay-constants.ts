@@ -22,7 +22,6 @@ export const DEFAULT_RELAYS = [
   "wss://relay.snort.social",
   "wss://nostr.land",
   "wss://relay.primal.net",
-  "wss://nostr-01.yakihonne.com",
 ];
 
 /**
