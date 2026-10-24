@@ -3,6 +3,7 @@
 // playback, and NO external links anywhere (required for the podcastindex.org
 // apps directory). Extracted from RSSFeed.tsx; preserves the external contract
 // (onAdd / existingUrls / onOpenFeed / trigger / autoFocusSearch).
+import { useCuratedLists } from "@/lib/curated-lists-source";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -42,7 +43,6 @@ import { formatDistanceToNow } from "date-fns";
 import { episodeTrack, podcastFeedToSaved } from "@/lib/podcast-episode";
 import {
   type SavedFeed,
-  SUGGESTED_FEEDS,
   EXTRA_DEFAULT_FEEDS,
 } from "@/lib/rss-feeds";
 import {
@@ -608,12 +608,13 @@ function AddFeedBody({
   const searchHasMore = searchPage.length >= searchMax && searchMax < 40;
 
   // ── News & blogs presets (client-side filtered). ──
+  const curated = useCuratedLists();
   const availableSuggested = useMemo(() => {
     const seen = new Set<string>();
-    return [...SUGGESTED_FEEDS, ...EXTRA_DEFAULT_FEEDS].filter(
+    return [...curated.suggestedFeeds, ...EXTRA_DEFAULT_FEEDS].filter(
       (sf) => !existingUrls.has(sf.url) && !seen.has(sf.url) && (seen.add(sf.url), true),
     );
-  }, [existingUrls]);
+  }, [existingUrls, curated.suggestedFeeds]);
   const filteredSuggested = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [] as SavedFeed[];

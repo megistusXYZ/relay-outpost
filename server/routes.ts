@@ -11,6 +11,7 @@ import { registerSignupTelemetryRoutes } from "./analytics/signup-telemetry";
 import { registerGrapeRankProxy, BRAINSTORM_SEARCH_API } from "./graperank-proxy";
 import { getPodcastIndexHeaders, serviceHealthTargets } from "./service-health-targets";
 import { registerServiceHealth } from "./service-health";
+import { registerCuratedRoute } from "./curated-route";
 import { isSchedulableRelayUrl } from "./scheduled-relays";
 import { registerConcordAvRoutes } from "./concord-av";
 import { registerPushRoutes } from "./push/push-devices";
@@ -3808,6 +3809,8 @@ export async function registerRoutes(
 
   registerOgCardRoutes(app, fetchNostrEvent);
   registerTranslateRoute(app);
+  // The curated lists the app suggests (curated-route.ts).
+  registerCuratedRoute(app);
   // The services the app can't work without, checked every 15 minutes
   // (service-health.ts): GET /api/service-health, and the console's card.
   {
