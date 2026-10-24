@@ -36,7 +36,8 @@ import { useFollowsOfFollows } from "@/hooks/use-follows-of-follows";
 import { useFollowAction } from "@/hooks/use-follow-action";
 import { rankPeopleToFollow, type PersonCandidate } from "@/lib/discover-people";
 import { fetchTrendingAuthors } from "@/lib/discover-people-data";
-import { CURATED_SEED_PUBKEYS } from "@/lib/curated-seed-follows";
+import { seedPubkeysFrom } from "@/lib/curated-seed-follows";
+import { useCuratedLists } from "@/lib/curated-lists-source";
 import { isMutedPubkey, onMuteChange } from "@/lib/spam-filter";
 import { eventStore, fetchProfilesCached } from "@/lib/nostr";
 import { KIND_METADATA, getAvatarUrl } from "@/lib/nostr-helpers";
@@ -100,6 +101,9 @@ export function PeopleToFollowStrip({ className = "", strictTrust = false }: {
 
   const followSet = useMemo(() => new Set(follows ?? []), [follows]);
 
+  const curatedLists = useCuratedLists();
+  const seeds = useMemo(() => seedPubkeysFrom(curatedLists.suggestedPeople), [curatedLists.suggestedPeople]);
+
   const ranked: PersonCandidate[] = useMemo(() => {
     // Muted is a function-check, not a set — fold it into the exclusion
     // by pre-filtering both pools so the ranker's flagged-set contract stays
@@ -114,13 +118,13 @@ export function PeopleToFollowStrip({ className = "", strictTrust = false }: {
       trending: trending.filter(clean),
       // The hand-picked starters, last, and only once trending has answered
       // with nothing: a fallback, never a competitor.
-      curated: trendingAnswered && trending.length === 0 ? CURATED_SEED_PUBKEYS.filter(clean) : [],
+      curated: trendingAnswered && trending.length === 0 ? seeds.filter(clean) : [],
       flagged: flaggedPubkeys ?? new Set(),
       limit: RANK_POOL,
     });
     // floorVersion re-runs the spam/mute checks when those lists ARRIVE.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pubkey, followSet, fofCounts, trending, trendingAnswered, flaggedPubkeys, floorVersion]);
+  }, [pubkey, followSet, fofCounts, trending, trendingAnswered, flaggedPubkeys, floorVersion, seeds]);
 
   // The curated starters on their own: what a new member sees while their
   // trust floor is still loading (holdCards below).
@@ -129,11 +133,11 @@ export function PeopleToFollowStrip({ className = "", strictTrust = false }: {
     followSet,
     networkCounts: new Map(),
     trending: [],
-    curated: CURATED_SEED_PUBKEYS.filter((pk) => !isMutedPubkey(pk)),
+    curated: seeds.filter((pk) => !isMutedPubkey(pk)),
     flagged: new Set(),
     limit: SHOW_LIMIT,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [pubkey, followSet, floorVersion]);
+  }), [pubkey, followSet, floorVersion, seeds]);
 
   // Store-poll until profiles resolve (the SuggestedFollowsStrip /
   // IdentityCircleCard pattern — there is no awaitable "profiles ready").

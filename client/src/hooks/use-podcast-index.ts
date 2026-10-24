@@ -1,6 +1,7 @@
 // React-query hooks over the server-side Podcast Index proxy (+ the generic RSS
 // proxy for episode previews). Every request stays in-app; the server holds the
 // SHA-1 API auth. Hooks expose typed data + loading/error state.
+import { useCuratedLists } from "@/lib/curated-lists-source";
 import { useMemo } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import {
@@ -12,7 +13,6 @@ import {
   matchPresetShow,
   mergeDedupeById,
   PODCAST_CATEGORIES,
-  PRESET_SHOWS,
   type PodcastCategory,
   type PodcastEpisode,
   type PodcastFeed,
@@ -79,7 +79,8 @@ export function usePodcastTrending(cat: string | null, max: number, enabled = tr
  * (never a dead card).
  */
 export function usePresetShows(pillKey: string | null, enabled = true) {
-  const shows = (pillKey && PRESET_SHOWS[pillKey]) || [];
+  const curated = useCuratedLists();
+  const shows = (pillKey && curated.podcastShows[pillKey]) || [];
   const results = useQueries({
     queries: shows.map((s) => ({
       queryKey: ["/api/podcastindex/resolve", s.searchTerm.toLowerCase()],

@@ -9,6 +9,7 @@
  * shown only on a positive verified-live answer, never inferred from the
  * URL's shape (the old feed LIVE chip lied exactly that way).
  */
+import { CURATED_LISTS } from "@shared/curated-lists";
 import type { Event } from "nostr-tools";
 import type { LiveEventData } from "@/lib/live-events";
 
@@ -90,12 +91,7 @@ export function isFeedStreamEntry(stream: Pick<LiveEventData, "dTag">): boolean 
  * search can't match URLs, and these bots tag nothing), so curation is how
  * the directory reaches beyond the viewer's own graph.
  */
-export const CHANNEL_SEED_POSTERS: readonly string[] = [
-  // notes@nostrverse.net — IPTV channel directory bot (25 channels, reposted
-  // in batches). npub1eek26qhlhptxku39008vnpdzlalksd5z0sn2s4ynmnscwz260h7q57sxmr,
-  // decoded in full — never hand-complete a truncated hex.
-  "ce6cad02ffb8566b72257bcec985a2ff7f6836827c26a85493dce187095a7dfc",
-];
+export const CHANNEL_SEED_POSTERS: readonly string[] = CURATED_LISTS.channelSeedPosters;
 
 /**
  * How long an UNWATCHABLE (offline/unknown) entry keeps its dimmed row.

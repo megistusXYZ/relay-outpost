@@ -1,3 +1,5 @@
+import { CURATED_LISTS, type PresetCategoryPill, type PresetShow } from "@shared/curated-lists";
+export type { PresetCategoryPill, PresetShow };
 // Podcast Index shared types + pure helpers for the in-app "Add RSS feed"
 // discovery experience. Everything here is framework-free (no React) so it can
 // be unit-tested in the node vitest env and reused by hooks + components.
@@ -81,12 +83,6 @@ export interface PodcastCategory {
 }
 
 /** A zero-state category pill. `cat === null` means "Top" (no category filter). */
-export interface PresetCategoryPill {
-  key: string;
-  label: string;
-  /** Trending `cat` param — a Podcast Index category id, or null for Top. */
-  cat: string | null;
-}
 
 // ── Static category catalog (Podcast Index `/categories/list`, 112 entries) ──
 // Mirrors github.com/Podcastindex-org/podcast-namespace/categories.json so pills
@@ -210,17 +206,7 @@ export const PODCAST_CATEGORIES: PodcastCategory[] = [
  * The zero-state pills. "Top" (no cat) leads, then a broad, mainstream spread
  * that maps to real Podcast Index category ids so trending filters correctly.
  */
-export const PRESET_CATEGORY_PILLS: PresetCategoryPill[] = [
-  { key: "top", label: "Top", cat: null },
-  { key: "news", label: "News", cat: "55" },
-  { key: "business", label: "Business", cat: "9" },
-  { key: "sports", label: "Sports", cat: "86" },
-  { key: "technology", label: "Technology", cat: "102" },
-  { key: "health", label: "Health", cat: "29" },
-  { key: "science", label: "Science", cat: "67" },
-  { key: "stories", label: "Stories", cat: "41" },
-  { key: "comedy", label: "Comedy", cat: "16" },
-];
+export const PRESET_CATEGORY_PILLS: PresetCategoryPill[] = CURATED_LISTS.podcastPills;
 
 // ── Creator-led preset lists ─────────────────────────────────────────────────
 
@@ -230,94 +216,12 @@ export const PRESET_CATEGORY_PILLS: PresetCategoryPill[] = [
  * runtime and {@link matchPresetShow} picks the live feed (ids/artwork/URLs
  * drift upstream). A show the index doesn't return simply isn't rendered.
  */
-export interface PresetShow {
-  /** Display/spec title as curated (used for matching). */
-  title: string;
-  /** Term sent to the search proxy to find the live feed. */
-  searchTerm: string;
-  /**
-   * Alternate canonical titles the index is known to use (e.g. host-name
-   * variants that plain normalization can't bridge). Matching still happens
-   * against LIVE search results — aliases only widen what counts as "same show".
-   */
-  aliases?: string[];
-}
 
 /**
  * Curated flagship shows per preset pill (keys match {@link PRESET_CATEGORY_PILLS}).
  * "top" is intentionally absent — Top stays fully dynamic via trending.
  */
-export const PRESET_SHOWS: Record<string, PresetShow[]> = {
-  news: [
-    { title: "The Joe Rogan Experience", searchTerm: "The Joe Rogan Experience" },
-    { title: "Diary of a CEO", searchTerm: "Diary of a CEO" },
-    { title: "The Tim Ferriss Show", searchTerm: "The Tim Ferriss Show" },
-    { title: "Armchair Expert", searchTerm: "Armchair Expert Dax Shepard" },
-    { title: "WTF with Marc Maron", searchTerm: "WTF with Marc Maron" },
-    { title: "Tucker Carlson Show", searchTerm: "The Tucker Carlson Show" },
-  ],
-  business: [
-    { title: "My First Million", searchTerm: "My First Million" },
-    { title: "Acquired", searchTerm: "Acquired podcast" },
-    {
-      title: "The All-In Podcast",
-      searchTerm: "All-In Podcast",
-      aliases: ["All-In with Chamath, Jason, Sacks & Friedberg"],
-    },
-    { title: "The Knowledge Project", searchTerm: "The Knowledge Project" },
-    { title: "Impact Theory", searchTerm: "Impact Theory Tom Bilyeu" },
-  ],
-  sports: [
-    { title: "Pat McAfee Show", searchTerm: "The Pat McAfee Show" },
-    { title: "New Heights", searchTerm: "New Heights Jason Travis Kelce" },
-    { title: "The Dan Le Batard Show with Stugotz", searchTerm: "Dan Le Batard Show Stugotz" },
-    { title: "Pardon My Take", searchTerm: "Pardon My Take" },
-    { title: "The Mina Kimes Show", searchTerm: "The Mina Kimes Show" },
-  ],
-  technology: [
-    { title: "Lex Fridman Podcast", searchTerm: "Lex Fridman Podcast" },
-    { title: "Acquired", searchTerm: "Acquired podcast" },
-    {
-      title: "The All-In Podcast",
-      searchTerm: "All-In Podcast",
-      aliases: ["All-In with Chamath, Jason, Sacks & Friedberg"],
-    },
-    { title: "The Knowledge Project", searchTerm: "The Knowledge Project" },
-  ],
-  health: [
-    { title: "Huberman Lab", searchTerm: "Huberman Lab" },
-    {
-      title: "The Drive (Peter Attia)",
-      searchTerm: "Peter Attia Drive",
-      aliases: ["The Peter Attia Drive"],
-    },
-    { title: "FoundMyFitness", searchTerm: "FoundMyFitness" },
-    { title: "The Model Health Show", searchTerm: "The Model Health Show" },
-  ],
-  science: [
-    { title: "Huberman Lab", searchTerm: "Huberman Lab" },
-    { title: "Lex Fridman Podcast", searchTerm: "Lex Fridman Podcast" },
-    { title: "The Jordan B. Peterson Podcast", searchTerm: "Jordan B Peterson Podcast" },
-    { title: "FoundMyFitness", searchTerm: "FoundMyFitness" },
-  ],
-  stories: [
-    { title: "Duncan Trussell Family Hour", searchTerm: "Duncan Trussell Family Hour" },
-    { title: "The Tim Ferriss Show", searchTerm: "The Tim Ferriss Show" },
-    { title: "Diary of a CEO", searchTerm: "Diary of a CEO" },
-    { title: "Heavyweight", searchTerm: "Heavyweight podcast" },
-    { title: "Armchair Expert", searchTerm: "Armchair Expert Dax Shepard" },
-    { title: "WTF with Marc Maron", searchTerm: "WTF with Marc Maron" },
-    { title: "This is Actually Happening", searchTerm: "This is Actually Happening" },
-  ],
-  comedy: [
-    { title: "Your Mom's House", searchTerm: "Your Mom's House" },
-    { title: "Bad Friends", searchTerm: "Bad Friends podcast" },
-    { title: "The Joe Rogan Experience", searchTerm: "The Joe Rogan Experience" },
-    { title: "Kill Tony", searchTerm: "Kill Tony" },
-    { title: "2 Bears 1 Cave", searchTerm: "2 Bears 1 Cave" },
-    { title: "The Bertcast", searchTerm: "Bertcast Bert Kreischer" },
-  ],
-};
+export const PRESET_SHOWS: Record<string, PresetShow[]> = CURATED_LISTS.podcastShows;
 
 // ── Trend suggestions ("Rising now") ─────────────────────────────────────────
 

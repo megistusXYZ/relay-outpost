@@ -32,7 +32,7 @@ import { filterSpamEvents, isReportedEvent, isReportedPubkey } from "@/lib/spam-
 import { computeEngagementScore } from "@/lib/engagement";
 import { ensureLanguageDetector, getPreferredLanguages, languageAllowed } from "@/lib/language";
 import { getContentWarning } from "@/lib/sensitive-content";
-import { pickMarketListings, formatListingPrice, CATALOG_MUTED_SELLERS, KIND_CLASSIFIED_LISTING, LISTING_RELAYS } from "@/lib/listing";
+import { pickMarketListings, formatListingPrice, catalogMutedSellersNow, KIND_CLASSIFIED_LISTING, LISTING_RELAYS } from "@/lib/listing";
 import { rankByTrustAndFreshness } from "@/lib/discover-rank";
 import { isPromoBait, preferFollowed } from "@/lib/discover-curation";
 import { rankTopics, pickNextUpcoming, pickImageShelf, isSensitiveMedia, hasContent, isPlaceholderPost, type RankedTopic, type ShelfImage } from "@/lib/discover-tiles";
@@ -773,7 +773,7 @@ async function fetchMarketShelfFresh(): Promise<Reached<MarketTeaser[] | null>> 
   // (ImagesShelf precedent) — image-bearing, unsold, front-door-safe.
   const teasers = pickMarketListings(gated.filter((e) => !isSensitiveMedia(e)), {
     isReported: (e) => isReportedEvent(e.id) || isReportedPubkey(e.pubkey),
-    mutedSellers: CATALOG_MUTED_SELLERS,
+    mutedSellers: catalogMutedSellersNow(),
   })
     .filter((l) => !l.sold && l.images.length > 0)
     // Front-door quality: no placeholder listings ("Test"), and one listing

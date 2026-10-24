@@ -1,9 +1,10 @@
+import { curatedNow } from "@/lib/curated-lists-source";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useKeyboardViewport } from "@/hooks/use-keyboard-viewport";
 import { MissionBriefing, LIVE_STREAMS_BRIEFING } from "@/components/MissionBriefing";
 import { use$ } from "applesauce-react/hooks";
 import { pool, eventStore, fetchProfilesCached, publishEvent, throttledPoolSubscribe, getRelaysForPurpose } from "@/lib/nostr";
-import { pickFeedStreams, toLiveEventData, isFeedStreamEntry, rankChannels, CHANNEL_SEED_POSTERS, type FeedStreamPost } from "@/lib/feed-streams";
+import { pickFeedStreams, toLiveEventData, isFeedStreamEntry, rankChannels, type FeedStreamPost } from "@/lib/feed-streams";
 import { isReportedEvent, isReportedPubkey } from "@/lib/spam-filter";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { getPublishTarget } from "@/lib/outpost-relays";
@@ -1913,7 +1914,7 @@ function useChannelNotes(): { channels: FeedStreamPost[]; channelsLoading: boole
     let cancelled = false;
     setChannelsLoading(true);
     const authors = Array.from(new Set([
-      ...CHANNEL_SEED_POSTERS,
+      ...curatedNow().channelSeedPosters,
       ...(follows ?? []).slice(0, CHANNEL_MAX_FOLLOWS),
     ]));
     const since = Math.floor((Date.now() - CHANNEL_SINCE_MS) / 1000);
