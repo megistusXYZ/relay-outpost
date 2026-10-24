@@ -1,3 +1,4 @@
+import { CURATED_LISTS } from "@shared/curated-lists";
 export interface SavedFeed {
   name: string;
   url: string;
@@ -239,60 +240,9 @@ export const EXTRA_DEFAULT_FEEDS: SavedFeed[] = ALL_DEFAULT_FEEDS.filter((f) => 
  *  user's OWN custom subscription apart from an auto-loaded default. */
 export const PRESET_FEED_URLS: ReadonlySet<string> = new Set(ALL_PRESET_FEEDS.map((f) => f.url));
 
-export const SUGGESTED_FEEDS: SavedFeed[] = [
-  // World
-  { name: "DW News", url: "https://rss.dw.com/rdf/rss-en-all", category: "World", siteUrl: "https://www.dw.com" },
-  // US & Breaking
-  { name: "ABC News", url: "https://abcnews.go.com/abcnews/topstories", category: "US & Breaking", siteUrl: "https://abcnews.go.com" },
-  { name: "Axios", url: "https://api.axios.com/feed/", category: "US & Breaking", siteUrl: "https://www.axios.com" },
-  // Business & Finance
-  { name: "Fortune", url: "https://fortune.com/feed/", category: "Business & Finance", siteUrl: "https://fortune.com" },
-  { name: "NPR Business", url: "https://feeds.npr.org/1006/rss.xml", category: "Business & Finance", siteUrl: "https://www.npr.org/sections/business/" },
-  { name: "Business Insider", url: "https://feeds.businessinsider.com/custom/all", category: "Business & Finance", siteUrl: "https://www.businessinsider.com" },
-  // Markets
-  { name: "CNBC Markets", url: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10000664", category: "Markets", siteUrl: "https://www.cnbc.com/markets/" },
-  { name: "Investing.com", url: "https://www.investing.com/rss/news.rss", category: "Markets", siteUrl: "https://www.investing.com" },
-  // Politics
-  { name: "Politico", url: "https://rss.politico.com/politics-news.xml", category: "Politics", siteUrl: "https://www.politico.com" },
-  { name: "The Hill", url: "https://thehill.com/feed/", category: "Politics", siteUrl: "https://thehill.com" },
-  // Technology
-  { name: "TechCrunch", url: "https://techcrunch.com/feed/", category: "Technology" },
-  { name: "Wired", url: "https://www.wired.com/feed/rss", category: "Technology" },
-  { name: "MIT Tech Review", url: "https://www.technologyreview.com/feed/", category: "Technology" },
-  { name: "404 Media", url: "https://www.404media.co/rss/", category: "Technology" },
-  { name: "The Register", url: "https://www.theregister.com/headlines.atom", category: "Technology" },
-  // Science
-  { name: "Nature News", url: "https://www.nature.com/nature.rss", category: "Science", siteUrl: "https://www.nature.com" },
-  { name: "Space.com", url: "https://www.space.com/feeds/all", category: "Science" },
-  // Health
-  { name: "KFF Health News", url: "https://kffhealthnews.org/feed/", category: "Health", siteUrl: "https://kffhealthnews.org" },
-  // Sports
-  { name: "Yahoo Sports", url: "https://sports.yahoo.com/rss/", category: "Sports", siteUrl: "https://sports.yahoo.com" },
-  // Entertainment & Culture
-  { name: "Hollywood Reporter", url: "https://www.hollywoodreporter.com/feed/", category: "Entertainment & Culture", siteUrl: "https://www.hollywoodreporter.com" },
-  { name: "Pitchfork", url: "https://pitchfork.com/feed/feed-news/rss", category: "Entertainment & Culture", siteUrl: "https://pitchfork.com" },
-  { name: "AV Club", url: "https://www.avclub.com/rss", category: "Entertainment & Culture", siteUrl: "https://www.avclub.com" },
-  { name: "Atlas Obscura", url: "https://www.atlasobscura.com/feeds/latest", category: "Entertainment & Culture", siteUrl: "https://www.atlasobscura.com" },
-  // Longform
-  { name: "Aeon Essays", url: "https://aeon.co/feed.rss", category: "Longform", siteUrl: "https://aeon.co" },
-  { name: "Longreads", url: "https://longreads.com/feed/", category: "Longform", siteUrl: "https://longreads.com" },
-  { name: "The Marginalian", url: "https://www.themarginalian.org/feed/", category: "Longform", siteUrl: "https://www.themarginalian.org" },
-  { name: "Nautilus", url: "https://nautil.us/feed/", category: "Longform", siteUrl: "https://nautil.us" },
-  // Local
-  { name: "Chicago Sun-Times", url: "https://chicago.suntimes.com/feed", category: "Local", siteUrl: "https://chicago.suntimes.com" },
-  { name: "Seattle Times", url: "https://www.seattletimes.com/feed/", category: "Local", siteUrl: "https://www.seattletimes.com" },
-  { name: "Texas Tribune", url: "https://www.texastribune.org/feeds/main/", category: "Local", siteUrl: "https://www.texastribune.org" },
-  { name: "SFGate Bay Area", url: "https://www.sfgate.com/bayarea/feed/bay-area-news-429.php", category: "Local", siteUrl: "https://www.sfgate.com" },
-  { name: "Boston.com", url: "https://www.boston.com/tag/local-news/feed", category: "Local", siteUrl: "https://www.boston.com" },
-  // Bitcoin
-  { name: "CoinDesk", url: "https://www.coindesk.com/arc/outboundfeeds/rss/", category: "Bitcoin", siteUrl: "https://www.coindesk.com" },
-  // Nostr
-  { name: "Stacker News", url: "https://stacker.news/rss", category: "Nostr", siteUrl: "https://stacker.news" },
-  // Privacy
-  { name: "Schneier on Security", url: "https://www.schneier.com/feed/", category: "Privacy", siteUrl: "https://www.schneier.com" },
-  { name: "The Tor Project", url: "https://blog.torproject.org/rss.xml", category: "Privacy", siteUrl: "https://blog.torproject.org" },
-  { name: "Signal Blog", url: "https://signal.org/blog/rss.xml", category: "Privacy", siteUrl: "https://signal.org/blog/" },
-];
+/** Offered when adding sources; served from the server too (shared/curated-lists.ts). */
+export const SUGGESTED_FEEDS: SavedFeed[] = CURATED_LISTS.suggestedFeeds;
+
 
 export const CUSTOM_FEEDS_KEY = "relay-outpost-custom-feeds";
 export const HIDDEN_DEFAULTS_KEY = "relay-outpost-hidden-defaults";

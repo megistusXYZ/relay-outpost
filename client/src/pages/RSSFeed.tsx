@@ -1,3 +1,4 @@
+import { useCuratedLists } from "@/lib/curated-lists-source";
 import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent } from "react";
 import { discussionSignals } from "@/lib/discussion-signals";
 import { guestCanBrowse } from "@/lib/guest-limits";
@@ -127,7 +128,6 @@ import { useAudioPlayer, getTrackPosition } from "@/contexts/AudioPlayerContext"
 import {
   type SavedFeed,
   DEFAULT_FEEDS,
-  SUGGESTED_FEEDS,
   EXTRA_DEFAULT_FEEDS,
   loadCustomFeeds,
   saveCustomFeeds,
@@ -1811,6 +1811,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
   const [editName, setEditName] = useState("");
   const [editCategory, setEditCategory] = useState("");
 
+  const curated = useCuratedLists();
   const feedParamHandledRef = useRef<string>("");
 
   useEffect(() => {
@@ -1820,7 +1821,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
 
     if (feedParam && feedParam !== feedParamHandledRef.current) {
       feedParamHandledRef.current = feedParam;
-      const allKnown = [...DEFAULT_FEEDS, ...EXTRA_DEFAULT_FEEDS, ...SUGGESTED_FEEDS];
+      const allKnown = [...DEFAULT_FEEDS, ...EXTRA_DEFAULT_FEEDS, ...curated.suggestedFeeds];
       const match = feeds.find(f => f.url === feedParam) || allKnown.find(f => f.url === feedParam);
       if (match) {
         if (!feeds.some(f => f.url === match.url)) {
@@ -1838,7 +1839,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
     }
     // No ?feed= param: leave activeFeedUrl as-is. "" keeps the merged "All feeds"
     // thread (the default); a persisted url reopens that single source.
-  }, [feeds, activeFeedUrl]);
+  }, [feeds, activeFeedUrl, curated.suggestedFeeds]);
 
   // Persist the last picker choice ("" = All feeds) so News reopens where it was.
   useEffect(() => {

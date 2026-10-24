@@ -131,6 +131,7 @@ import { TimelineIcon } from "@/components/icons/TimelineIcon";
 import { AboutIcon } from "@/components/icons/AboutIcon";
 import { RelayFeaturedFeed, useRelayFeaturedSets } from "@/components/RelayFeaturedFeed";
 import { starterSuggestions } from "@/lib/starter-communities";
+import { useCuratedLists } from "@/lib/curated-lists-source";
 import { readPendingJoins, addPendingJoin, checkPendingJoins } from "@/lib/join-requests";
 import { fetchGroupMetadataResult, sendJoinRequest } from "@/lib/nip29";
 import { isBuzzCommunityHost, fetchBuzzJoinPolicy, claimBuzzInvite, type BuzzJoinPolicy } from "@/lib/buzz-join";
@@ -5327,7 +5328,8 @@ export default function Outposts() {
 
   const [joinedRelays, setJoinedRelays] = useState(() => getOutpostRelays());
   const [reordering, setReordering] = useState(false);
-  const starterCards = useMemo(() => starterSuggestions(joinedRelays.map((r) => r.url)), [joinedRelays]);
+  const curated = useCuratedLists();
+  const starterCards = useMemo(() => starterSuggestions(joinedRelays.map((r) => r.url), curated.starterCommunities), [joinedRelays, curated.starterCommunities]);
   const hubWiderNetworkOn = useWiderNetwork(pubkey);
 
   const [pinnedFeeds, setPinnedFeeds] = useState<PinnedFeed[]>(() => getPinnedFeeds());

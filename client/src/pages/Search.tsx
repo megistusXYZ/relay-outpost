@@ -68,7 +68,8 @@ import { DesktopOptionsPopover } from "@/components/DesktopOptionsPopover";
 import { PageTabs } from "@/components/PageTabs";
 import { ActivityIndicator, activityCache } from "@/components/ActivityIndicator";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
-import { ALL_NEWS_FEEDS, SUGGESTED_FEEDS, getAllSavedFeedUrls, addFeedToLibrary, loadCustomFeeds, type SavedFeed } from "@/lib/rss-feeds";
+import { ALL_NEWS_FEEDS, getAllSavedFeedUrls, addFeedToLibrary, loadCustomFeeds, type SavedFeed } from "@/lib/rss-feeds";
+import { useCuratedLists } from "@/lib/curated-lists-source";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useStreamLiveness } from "@/hooks/use-stream-liveness";
 import { useToast } from "@/hooks/use-toast";
@@ -2899,6 +2900,7 @@ function RssTab({ urlQuery, updateUrl }: TabProps) {
     if (urlQuery) setSearched(true);
   }, [urlQuery]);
 
+  const curated = useCuratedLists();
   const executeSearch = useCallback(async (q_?: string, fromUrl = false) => {
     const searchQuery = q_ ?? query;
     if (!searchQuery.trim()) return;
@@ -2907,7 +2909,7 @@ function RssTab({ urlQuery, updateUrl }: TabProps) {
     if (!fromUrl) updateUrl({ q: searchQuery.trim() });
 
     const q = searchQuery.trim().toLowerCase();
-    const allAvailable = [...ALL_NEWS_FEEDS, ...SUGGESTED_FEEDS, ...loadCustomFeeds()];
+    const allAvailable = [...ALL_NEWS_FEEDS, ...curated.suggestedFeeds, ...loadCustomFeeds()];
     const seen = new Set<string>();
     const matched: SavedFeed[] = [];
     for (const f of allAvailable) {
@@ -2942,7 +2944,7 @@ function RssTab({ urlQuery, updateUrl }: TabProps) {
 
     setSearchResults(matched);
     setLoading(false);
-  }, [query, updateUrl]);
+  }, [query, updateUrl, curated.suggestedFeeds]);
 
   const handleClear = () => {
     setQuery("");
@@ -3864,6 +3866,7 @@ function DiscoveryFeedCard({ feed, onAdd, onNavigate }: { feed: SavedFeed; onAdd
 
 function FeedDiscoverySection() {
   const { toast } = useToast();
+  const curated = useCuratedLists();
   const [, setLocation] = useLocation();
   const [savedUrls, setSavedUrls] = useState<Set<string>>(() => getAllSavedFeedUrls());
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
@@ -3871,14 +3874,14 @@ function FeedDiscoverySection() {
   const allFeeds = useMemo(() => {
     const seen = new Set<string>();
     const feeds: SavedFeed[] = [];
-    for (const f of [...ALL_NEWS_FEEDS, ...SUGGESTED_FEEDS]) {
+    for (const f of [...ALL_NEWS_FEEDS, ...curated.suggestedFeeds]) {
       if (!seen.has(f.url)) {
         seen.add(f.url);
         feeds.push(f);
       }
     }
     return feeds;
-  }, []);
+  }, [curated.suggestedFeeds]);
 
   const groupedFeeds = useMemo(() => {
     return RSS_FEED_CATEGORIES.map(cat => ({
