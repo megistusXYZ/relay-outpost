@@ -103,6 +103,7 @@ import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { getSignalTier, getSignalTierColor, getSignalTierBg, triggerGrapeRankCalculation } from "@/lib/graperank";
 import { copyNostrId } from "@/lib/clipboard-bridge";
 import { lazyRetry } from "@/lib/lazy-retry";
+import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
 
 const KIND_LONG_FORM = 30023;
 const KIND_RELAY_LIST = 10002;
@@ -843,7 +844,7 @@ export default function MyOutpost() {
     if (!pubkey) return;
     setRelayListLoaded(false);
     const sub = throttledPoolSubscribe(
-      ["wss://purplepag.es", ...PROFILE_RELAYS.slice(0, 3)],
+      [...PROFILE_DIRECTORIES, "wss://relay.damus.io"],
       { kinds: [KIND_RELAY_LIST], authors: [pubkey] },
       {
         onevent(event: Event) {
@@ -4425,7 +4426,7 @@ function FlightLogTab({ pubkey }: { pubkey: string }) {
 
     const contactListEvents: Event[] = [];
     const CONTACT_SNAPSHOT_KEY = `flight_log_contacts_${pubkey.slice(0, 16)}`;
-    const contactRelays = Array.from(new Set([...flightInitialRelays, "wss://purplepag.es"]));
+    const contactRelays = Array.from(new Set([...flightInitialRelays, ...PROFILE_DIRECTORIES]));
     const contactSub = throttledPoolSubscribe(contactRelays, {
       kinds: [KIND_FOLLOW_LIST],
       authors: [pubkey],

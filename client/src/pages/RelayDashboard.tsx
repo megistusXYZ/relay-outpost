@@ -42,6 +42,7 @@ import {
 import { fetchNip11, type Nip11Document } from "@/lib/nip11";
 import { TrustTierDot } from "@/components/NostrPost";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
+import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
 
 const CUSTOM_RELAYS_KEY = "nostr_custom_relays";
 const DISABLED_RELAYS_KEY = "nostr_disabled_relays";
@@ -992,7 +993,7 @@ export default function RelayDashboard() {
     if (!pubkey) { setRoutesLoaded(true); return; }
     setRoutesLoaded(false);
     const sub = throttledPoolSubscribe(
-      ["wss://purplepag.es", ...DEFAULT_RELAYS.slice(0, 3)],
+      [...PROFILE_DIRECTORIES, ...DEFAULT_RELAYS.slice(0, 3)],
       { kinds: [10002], authors: [pubkey] },
       {
         onevent(event: NostrEvent) {
@@ -1061,7 +1062,7 @@ export default function RelayDashboard() {
         toast({ title: "Signer error", description: "Your signer modified the event — routing was not updated.", variant: "destructive" });
         return;
       }
-      const targets = Array.from(new Set(["wss://purplepag.es", ...DEFAULT_RELAYS, ...active.filter((r) => r.write).map((r) => r.url.replace(/\/+$/, ""))]));
+      const targets = Array.from(new Set([...PROFILE_DIRECTORIES, ...DEFAULT_RELAYS, ...active.filter((r) => r.write).map((r) => r.url.replace(/\/+$/, ""))]));
       await publishEvent(signed, targets);
       setRelayRoutes(active.map((r) => ({ url: r.url.replace(/\/+$/, ""), mode: r.read && r.write ? "both" : r.read ? "read" : "write" })));
       setEditingRoutes(false);

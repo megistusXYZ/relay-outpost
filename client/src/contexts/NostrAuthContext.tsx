@@ -58,6 +58,7 @@ NostrConnectSigner.publishMethod = (relays, event) => {
 // Device checks live in lib/platform.ts; re-exported here for older imports.
 import { isPWAStandalone, isIOSDevice } from "@/lib/platform";
 import { markAppSignedIn } from "@/lib/app-launch";
+import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
 export { isPWAStandalone, isIOSDevice };
 
 interface ProfileData {
@@ -318,13 +319,13 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
     // list: a narrow 4-relay set meant metadata living on purplepag.es /
     // primal never hydrated, leaving profile (and the user's avatar) blank everywhere.
     const authRelays = Array.from(new Set([
-      ...DEFAULT_RELAYS.slice(0, 4), "wss://purplepag.es", "wss://user.kindpag.es", "wss://relay.primal.net",
+      ...DEFAULT_RELAYS.slice(0, 4), ...PROFILE_DIRECTORIES, "wss://relay.primal.net",
     ]));
     // Broad set for the follow list specifically — a narrow set was a root cause
     // of the wipe bug: if the kind-3 wasn't on these relays it never hydrated,
     // leaving in-memory follows empty so a follow click clobbered the real list.
     const followRelays = Array.from(new Set([
-      ...DEFAULT_RELAYS, "wss://purplepag.es", "wss://user.kindpag.es", "wss://relay.primal.net",
+      ...DEFAULT_RELAYS, ...PROFILE_DIRECTORIES, "wss://relay.primal.net",
     ]));
     const profileSub = throttledPoolSubscribe(authRelays, { kinds: [KIND_METADATA], authors: [pubkey] }, {
       onevent(event) {

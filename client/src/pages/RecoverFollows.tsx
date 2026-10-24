@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { Event } from "nostr-tools";
+import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
 
 /**
  * Follow-list health. Three stacked cards over your OWN follow list:
@@ -51,7 +52,7 @@ const FLAG_THRESHOLD = 2;
 // ─── Recover follows (original page, now the first card) ──────────────────────
 
 const SCAN_RELAYS = [
-  "wss://nostr21.com", "wss://purplepag.es",
+  "wss://nostr21.com", ...PROFILE_DIRECTORIES,
   "wss://relay.primal.net", "wss://relay.damus.io", "wss://nos.lol",
   "wss://nostr.wine", "wss://relay.snort.social",
 ];

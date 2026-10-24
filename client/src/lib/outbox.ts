@@ -6,6 +6,7 @@ import { getHealthyRelays, sortRelaysByScore } from "@/lib/relay-health";
 import { getPrivateOutpostUrls } from "@/lib/outpost-relays";
 import { selectRelaysByMode, type RelayPreference } from "@/lib/relay-prefs";
 import type { Event } from "nostr-tools";
+import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
 
 const KIND_RELAY_LIST = 10002;
 
@@ -22,18 +23,15 @@ const BATCH_DELAY = 100;
  * RELAY_LIST_RELAYS — discovery for Kind 10002 (NIP-65 relay list) and
  * Kind 10050 (NIP-17 DM relay list).
  *
- * Only the two specialized indexers that actively mirror these replaceable
- * metadata events:
- *  - `purplepag.es`     — dedicated profile/relay-list indexer.
- *  - `user.kindpag.es` — a second relay-list indexer (relay.nostr.band, the
- *    one used before, stopped answering 2026-10-05).
+ * Only the profile directories, which mirror these replaceable metadata
+ * events (shared/profile-directories.ts).
  *
  * Do not add general-purpose relays here — they enforce REQ caps that produce
  * "too many concurrent REQs" notices under batch lookups, and they don't add
  * coverage these two indexers don't already provide. `relay.damus.io` was
  * removed in this audit for that reason.
  */
-export const RELAY_LIST_RELAYS = ["wss://purplepag.es", "wss://user.kindpag.es"];
+export const RELAY_LIST_RELAYS = [...PROFILE_DIRECTORIES];
 
 /**
  * Broader discovery set for kind-10002 lookups. The two specialized indexers in

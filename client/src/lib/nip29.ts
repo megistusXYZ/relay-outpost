@@ -5,6 +5,7 @@ import { pool, publishEvent, publishEventDetailed, subscriptionAuthFor } from ".
 import { explainPublishFailure } from "./publish-rejection";
 import { resolveSessionSigner } from "./session-signer";
 import { withReach, canReachAny, relayRefusedUs, type Reached } from "./relay-reach";
+import { LIST_DIRECTORIES } from "@shared/profile-directories";
 
 // The active session signer, whatever the login method. Lifted into
 // lib/session-signer.ts once outpost-relays.ts turned out to have MISSED this
@@ -1561,7 +1562,7 @@ export async function publishSimpleGroupsList(groups: SimpleGroupEntry[]): Promi
   }
 }
 
-const SIMPLE_GROUPS_RELAYS = ["wss://purplepag.es", "wss://relay.damus.io", "wss://nos.lol"];
+const SIMPLE_GROUPS_RELAYS = [...LIST_DIRECTORIES, "wss://relay.damus.io", "wss://nos.lol"];
 const simpleGroupsCacheKey = (pubkey: string) => `relay_outpost_simple_groups_${pubkey}`;
 
 /** Remember that this account HAS joined rooms, durably, so a later empty read

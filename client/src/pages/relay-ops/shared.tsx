@@ -17,6 +17,7 @@ import { LinkPreviewCard } from "@/components/MediaRenderer";
 
 import { Badge } from "@/components/ui/badge";
 import { Radio, Activity, Info, Shield, Lock, RefreshCw, Hash, Zap, Copy, Check, Search, Megaphone, ScrollText, X, User, Users, Music, Video, ExternalLink, BarChart3, Key, Vote, Clock, ListChecks, MessageSquare, Inbox } from "lucide-react";
+import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
 
 export interface NostrFilter {
   ids?: string[];
@@ -452,7 +453,7 @@ export async function resolveProfileBatch(pubkeys: string[]): Promise<Map<string
   const toFetch = pubkeys.filter(pk => pk && !profileCacheGlobal.has(pk));
   if (toFetch.length > 0) {
     const events = await subscribeWithTimeout(
-      ["wss://purplepag.es", "wss://relay.damus.io"],
+      [...PROFILE_DIRECTORIES, "wss://relay.damus.io"],
       [{ kinds: [0], authors: toFetch.slice(0, 20), limit: 20 }],
       3000,
     );

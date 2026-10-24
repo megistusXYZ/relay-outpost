@@ -40,6 +40,7 @@ import {
   resolveBase,
   type InterestsBase,
 } from "@/lib/interests-core";
+import { LIST_DIRECTORIES } from "@shared/profile-directories";
 
 // Re-export the pure surface so callers import everything from "@/lib/interests".
 export {
@@ -58,7 +59,7 @@ export {
 // Broad, history-keeping relays so an existing kind-10015 is reliably found even
 // if it isn't on the user's primary set (mirrors follow-list's scan set).
 const INTERESTS_SCAN_RELAYS = [
-  "wss://purplepag.es", "wss://relay.primal.net",
+  ...LIST_DIRECTORIES, "wss://relay.primal.net",
   "wss://relay.damus.io", "wss://nos.lol", "wss://nostr21.com",
 ];
 

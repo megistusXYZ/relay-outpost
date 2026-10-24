@@ -98,7 +98,6 @@ const FALLBACK_RELAYS = [
   "wss://relay.damus.io",
   "wss://nos.lol",
   "wss://relay.primal.net",
-  "wss://purplepag.es",
 ];
 
 /**

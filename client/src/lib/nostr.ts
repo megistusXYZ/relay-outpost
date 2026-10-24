@@ -24,6 +24,7 @@ import { isWiderNetworkOnForViewer } from "./network-mode";
 import { readRelaysForMode } from "./signup-relays";
 import { openLaunchRelays } from "./launch-relays";
 import { boundEnsureRelay } from "./bounded-connect";
+import { PROFILE_DIRECTORIES, LIST_DIRECTORIES } from "@shared/profile-directories";
 
 export const eventStore = new EventStore();
 // enablePing: keepalive probes (browser fallback = a dummy REQ/EOSE roundtrip)
@@ -257,7 +258,7 @@ export function filterBlockedRelays(relays: string[]): string[] {
 }
 
 export async function fetchBlockedRelayList(pubkey: string) {
-  const relays = ["wss://purplepag.es", "wss://relay.damus.io", "wss://nos.lol"];
+  const relays = [...LIST_DIRECTORIES, "wss://relay.damus.io", "wss://nos.lol"];
   return new Promise<string[]>((resolve) => {
     let resolved = false;
     let latestEvent: any = null;
@@ -339,10 +340,7 @@ export async function publishBlockedRelayList(blockedUrls: string[]): Promise<bo
  * PROFILE_RELAYS — Kind 0 metadata fetches and short-lived profile lookups.
  *
  * Membership is intentionally specialized:
- *  - `purplepag.es`        — dedicated profile/relay-list indexer.
- *  - `user.kindpag.es`     — a second profile/relay-list indexer
- *                            (relay.nostr.band, used before, stopped
- *                            answering 2026-10-05).
+ *  - the profile directories (shared/profile-directories.ts), asked equally.
  *  - `relay.damus.io`      — large general-purpose relay used as a fallback
  *                            so we still hit a generic relay even if the two
  *                            indexers are slow.
@@ -352,8 +350,7 @@ export async function publishBlockedRelayList(blockedUrls: string[]): Promise<bo
  * "Too many concurrent REQs" rate-limit notices on `nos.lol`.
  */
 export const PROFILE_RELAYS = [
-  "wss://purplepag.es",
-  "wss://user.kindpag.es",
+  ...PROFILE_DIRECTORIES,
   "wss://relay.damus.io",
 ];
 

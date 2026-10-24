@@ -15,11 +15,12 @@ import type { Event } from "nostr-tools";
 import { pool, eventStore, DEFAULT_RELAYS } from "@/lib/nostr";
 import { getWriteRelays, getReadRelays } from "@/lib/outbox";
 import { KIND_FOLLOW_LIST, parseFollowList } from "@/lib/nostr-helpers";
+import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
 
 // Broad, history-keeping relays so an existing kind-3 is reliably found even if
 // it isn't on the user's primary set (mirrors RecoverFollows' scan set).
 const FOLLOW_SCAN_RELAYS = [
-  "wss://purplepag.es", "wss://relay.primal.net",
+  ...PROFILE_DIRECTORIES, "wss://relay.primal.net",
   "wss://relay.damus.io", "wss://nos.lol", "wss://nostr21.com",
 ];
 
