@@ -10,7 +10,8 @@
 // web-push/notification infrastructure; tier 1 means "pinned at the top of the
 // Alerts strip, visually prominent", nothing leaves the page.
 
-import { normalizeShowTitle, PRESET_SHOWS } from "@/lib/podcast-index";
+import { normalizeShowTitle } from "@/lib/podcast-index";
+import { curatedNow } from "@/lib/curated-lists-source";
 
 // ── Weights (documented contract; see scoreNewsItem) ─────────────────────────
 
@@ -168,11 +169,14 @@ export function looksLikePersonName(name: string | undefined): boolean {
 }
 
 let presetShowKeysCache: Set<string> | null = null;
-/** normalizeShowTitle() keys of every curated PRESET_SHOWS title + alias. */
+let presetShowKeysFor: object | null = null;
+/** normalizeShowTitle() keys of every curated show title + alias (rebuilt when the served list arrives). */
 export function presetShowTitleKeys(): Set<string> {
-  if (!presetShowKeysCache) {
+  const source = curatedNow().podcastShows;
+  if (!presetShowKeysCache || presetShowKeysFor !== source) {
+    presetShowKeysFor = source;
     presetShowKeysCache = new Set<string>();
-    for (const shows of Object.values(PRESET_SHOWS)) {
+    for (const shows of Object.values(source)) {
       for (const show of shows) {
         for (const t of [show.title, ...(show.aliases ?? [])]) {
           const k = normalizeShowTitle(t);

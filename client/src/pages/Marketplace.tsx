@@ -28,7 +28,7 @@ import { getSignalTier } from "@/lib/graperank";
 import { use$ } from "applesauce-react/hooks";
 import { eventStore } from "@/lib/nostr";
 import { KIND_METADATA, getDisplayName, getAvatarUrl, formatNpub, shortenNpub } from "@/lib/nostr-helpers";
-import { formatListingPrice, pickMarketListings, rankListingCategories, filterListings, rankListingsTrustFirst, CATALOG_MUTED_SELLERS, KIND_CLASSIFIED_LISTING, LISTING_RELAYS, type Listing } from "@/lib/listing";
+import { formatListingPrice, pickMarketListings, rankListingCategories, filterListings, rankListingsTrustFirst, catalogMutedSellersNow, KIND_CLASSIFIED_LISTING, LISTING_RELAYS, type Listing } from "@/lib/listing";
 
 type PageState =
   | { status: "loading" }
@@ -136,7 +136,7 @@ export default function Marketplace() {
   const assemble = useCallback((events: Event[]) =>
     pickMarketListings(events, {
       flagged: flaggedPubkeys ?? undefined,
-      mutedSellers: CATALOG_MUTED_SELLERS,
+      mutedSellers: catalogMutedSellersNow(),
       // What YOU reported disappears from the shelf immediately — same
       // id-or-author rule the feeds use — without waiting for the
       // network-level flag to catch up.

@@ -49,8 +49,6 @@ import {
   type PodcastFeed,
   type PodcastEpisode,
   type TrendMomentum,
-  PRESET_CATEGORY_PILLS,
-  PRESET_SHOWS,
   MOMENTUM_LABELS,
   formatDuration,
   stripHtml,
@@ -595,7 +593,8 @@ function AddFeedBody({
   // Creator-led preset list for the active category pill (Top stays dynamic).
   // Each curated show is resolved against the LIVE index and title-matched —
   // unresolvable shows are simply not rendered.
-  const presetKey = activeCat.cat !== null && PRESET_SHOWS[activeCat.key] ? activeCat.key : null;
+  const curated = useCuratedLists();
+  const presetKey = activeCat.cat !== null && curated.podcastShows[activeCat.key] ? activeCat.key : null;
   const { feeds: presetFeeds } = usePresetShows(presetKey, trendingEnabled);
 
   // ── Search path (podcasts). ──
@@ -608,7 +607,6 @@ function AddFeedBody({
   const searchHasMore = searchPage.length >= searchMax && searchMax < 40;
 
   // ── News & blogs presets (client-side filtered). ──
-  const curated = useCuratedLists();
   const availableSuggested = useMemo(() => {
     const seen = new Set<string>();
     return [...curated.suggestedFeeds, ...EXTRA_DEFAULT_FEEDS].filter(
@@ -809,13 +807,13 @@ function AddFeedBody({
                 ariaLabel="Podcast categories"
                 active={activeCat.key}
                 onChange={(key) => {
-                  const pill = PRESET_CATEGORY_PILLS.find((p) => p.key === key);
+                  const pill = curated.podcastPills.find((p) => p.key === key);
                   if (pill) setActiveCat({ key: pill.key, label: pill.label, cat: pill.cat });
                 }}
                 tabs={[
-                  ...PRESET_CATEGORY_PILLS.map((p) => ({ key: p.key, label: p.label, testId: `pill-feed-cat-${p.key}` })),
+                  ...curated.podcastPills.map((p) => ({ key: p.key, label: p.label, testId: `pill-feed-cat-${p.key}` })),
                   // Keep a non-preset active category visible/selected in the row.
-                  ...(!PRESET_CATEGORY_PILLS.some((p) => p.key === activeCat.key)
+                  ...(!curated.podcastPills.some((p) => p.key === activeCat.key)
                     ? [{ key: activeCat.key, label: activeCat.label, testId: `pill-feed-cat-active` }]
                     : []),
                 ]}

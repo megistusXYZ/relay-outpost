@@ -24,17 +24,43 @@ export async function fetchCuratedLists(fetchImpl: FetchLike = fetch): Promise<P
 
 /** List by list: the server's when it has entries, the built-in one when not. */
 export function pickCurated(server: Partial<CuratedLists> | null, fallback: CuratedLists = CURATED_LISTS): CuratedLists {
-  return {
-    starterCommunities: server?.starterCommunities?.length ? server.starterCommunities : fallback.starterCommunities,
-    suggestedFeeds: server?.suggestedFeeds?.length ? server.suggestedFeeds : fallback.suggestedFeeds,
+  const list = <K extends keyof CuratedLists>(k: K): CuratedLists[K] => {
+    const v = server?.[k];
+    const has = Array.isArray(v) ? v.length > 0 : !!v && Object.keys(v).length > 0;
+    return (has ? v : fallback[k]) as CuratedLists[K];
   };
+  return {
+    starterCommunities: list("starterCommunities"),
+    suggestedFeeds: list("suggestedFeeds"),
+    suggestedPeople: list("suggestedPeople"),
+    channelSeedPosters: list("channelSeedPosters"),
+    mutedSellers: list("mutedSellers"),
+    podcastPills: list("podcastPills"),
+    podcastShows: list("podcastShows"),
+  };
+}
+
+/**
+ * For code that isn't a screen (scoring, Discover's data): the latest lists
+ * known, built-in until the server's arrive. A later failed fetch keeps them.
+ */
+let latest: CuratedLists = CURATED_LISTS;
+export function rememberCurated(server: Partial<CuratedLists> | null): void {
+  if (server) latest = pickCurated(server, latest);
+}
+export function curatedNow(): CuratedLists {
+  return latest;
 }
 
 /** The curated lists for a screen: the built-in ones at once, the server's when they arrive. */
 export function useCuratedLists(): CuratedLists {
   const { data } = useQuery({
     queryKey: ["curated-lists"],
-    queryFn: () => fetchCuratedLists(),
+    queryFn: async () => {
+      const server = await fetchCuratedLists();
+      rememberCurated(server);
+      return server;
+    },
     staleTime: 30 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
     retry: false,

@@ -5,7 +5,8 @@ import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useFollowAction } from "@/hooks/use-follow-action";
 import { eventStore, fetchProfilesCached } from "@/lib/nostr";
 import { KIND_METADATA, getDisplayName, getAvatarUrl } from "@/lib/nostr-helpers";
-import { CURATED_SEED_PUBKEYS } from "@/lib/curated-seed-follows";
+import { seedPubkeysFrom } from "@/lib/curated-seed-follows";
+import { useCuratedLists } from "@/lib/curated-lists-source";
 import { Check, Plus } from "lucide-react";
 import { Link } from "wouter";
 import { nip19 } from "nostr-tools";
@@ -27,10 +28,12 @@ export function SuggestedFollowsStrip({ limit = 8, className }: Props) {
   // Full candidate pool (no slice) — the render slices AFTER dropping
   // unresolved profiles, so the strip stays a full 2×4 as long as enough
   // curated seeds resolve, instead of burning slots on placeholders.
+  const curated = useCuratedLists();
+  const seeds = useMemo(() => seedPubkeysFrom(curated.suggestedPeople), [curated.suggestedPeople]);
   const candidates = useMemo(() => {
     const followSet = new Set(follows);
-    return CURATED_SEED_PUBKEYS.filter(pk => pk !== myPubkey && !followSet.has(pk));
-  }, [follows, myPubkey]);
+    return seeds.filter(pk => pk !== myPubkey && !followSet.has(pk));
+  }, [follows, myPubkey, seeds]);
 
   const [profiles, setProfiles] = useState<Map<string, Event | null>>(new Map());
   const { follow, pending } = useFollowAction();

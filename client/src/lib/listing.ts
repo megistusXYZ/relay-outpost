@@ -13,6 +13,8 @@
  * marketplace apps' jobs — we render, link people, and hand conversation to
  * DMs and zaps, never money.
  */
+import { curatedNow } from "@/lib/curated-lists-source";
+import { CURATED_LISTS } from "@shared/curated-lists";
 import type { Event } from "nostr-tools";
 
 export const KIND_CLASSIFIED_LISTING = 30402;
@@ -135,10 +137,15 @@ export const CLIENT_STAMP_TAGS: ReadonlySet<string> = new Set(["shopstr"]);
  * page still shows their goods, and reporting/flagging stays a separate,
  * user-driven act.
  */
-export const CATALOG_MUTED_SELLERS: ReadonlySet<string> = new Set([
-  // TravelTelly (traveltelly@ditto.pub) — stock-photo flood, resolved live 2026-08-31.
-  "7d33ba57d8a6e8869a1f1d5215254597594ac0dbfeb01b690def8c461b82db35",
-]);
+export const CATALOG_MUTED_SELLERS: ReadonlySet<string> = new Set(CURATED_LISTS.mutedSellers);
+
+let mutedNow: { from: readonly string[]; set: ReadonlySet<string> } | null = null;
+/** The muted sellers as of now: the server's list once it arrived, the built-in one before. */
+export function catalogMutedSellersNow(): ReadonlySet<string> {
+  const from = curatedNow().mutedSellers;
+  if (!mutedNow || mutedNow.from !== from) mutedNow = { from, set: new Set(from) };
+  return mutedNow.set;
+}
 
 /**
  * The shop's category chips, from the vocabulary sellers actually use:
