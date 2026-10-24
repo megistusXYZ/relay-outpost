@@ -6,24 +6,32 @@ import { searchPeopleRanked } from "./people-search";
 import { adjustStats } from "./stat-adjust";
 
 // Primal's cache hosts, tried in order. `cache.primal.net` is the documented
-// entry point and stays first, but MEASURED 2026-08-03 it flaps: six probes
+// entry point, but MEASURED 2026-08-03 it flaps: six probes
 // 30s apart returned 502/200/200/502/502/200 — roughly half — while
 // cache2.primal.net answered every time and primal.net itself was up, so it is
 // the host and not the network. There was no fallback, and ensureConnection
 // catches its own failure and resolves into a backoff (:139-153), so every
 // caller proceeded as though connected and got []. For fetchUserProfileStats
 // that renders as "0 followers · 0 following · 0 posts" on a real profile.
+// Order matters for a first visit only: cache.primal.net refused every fresh
+// load on 2026-10-23 (5 of 5, ~0.5 s each before the next host answered), so
+// the hosts that answer come first. After that a visit starts at the host
+// that last worked (primal_host).
 const PRIMAL_CACHE_URLS = [
-  "wss://cache.primal.net/v1",
   "wss://cache2.primal.net/v1",
   "wss://cache1.primal.net/v1",
+  "wss://cache.primal.net/v1",
 ];
-/** Index of the host that last worked — start there next time, reloads included. */
-const PRIMAL_HOST_KEY = "primal_host_index";
+/**
+ * The host that last worked, by address, in localStorage: a new tab or an app
+ * launch starts there too (sessionStorage started every launch over at the
+ * top of the list). An address no longer on the list is ignored.
+ */
+const PRIMAL_HOST_KEY = "primal_host";
 let primalHostIndex = (() => {
   try {
-    const n = Number(sessionStorage.getItem(PRIMAL_HOST_KEY));
-    return Number.isInteger(n) && n >= 0 && n < PRIMAL_CACHE_URLS.length ? n : 0;
+    const i = PRIMAL_CACHE_URLS.indexOf(localStorage.getItem(PRIMAL_HOST_KEY) ?? "");
+    return i >= 0 ? i : 0;
   } catch { return 0; }
 })();
 const PRIMAL_CACHE_URL = PRIMAL_CACHE_URLS[0];
@@ -143,7 +151,7 @@ function createConnection(): Promise<void> {
         reconnectDelay = 1000;
         failedHostsInARow = 0;
         // This host answered — stay on it until it stops, and start here next load.
-        try { sessionStorage.setItem(PRIMAL_HOST_KEY, String(primalHostIndex)); } catch {}
+        try { localStorage.setItem(PRIMAL_HOST_KEY, PRIMAL_CACHE_URLS[primalHostIndex]); } catch {}
         resolve();
       };
 
