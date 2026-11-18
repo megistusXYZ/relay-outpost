@@ -65,7 +65,7 @@ export default function Covenant() {
         <p className="text-sm text-foreground/85 dark:text-foreground/80 leading-relaxed">
           These are the terms for using Relay Outpost, written plainly. They're short because Relay Outpost is a thin client onto the Nostr network — a window, not a walled platform. The one thing to take away sits right at the top: <strong>your keys are yours, and we can't recover them.</strong>
         </p>
-        <p className="text-[12px] text-muted-foreground/70 mt-3 pt-3 border-t border-border/20">
+        <p className="text-[12px] text-muted-foreground mt-3 pt-3 border-t border-border/20">
           Last updated {LAST_UPDATED} · Using Relay Outpost means you accept these terms
         </p>
       </div>

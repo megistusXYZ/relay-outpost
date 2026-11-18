@@ -1,4 +1,11 @@
 /**
+ * The character is called RELAY (owner, 2026-11-18; it was "Otto" until then).
+ * Everything a person can see or hear says Relay; the vocabulary guard retires
+ * "Otto" on screens. The component, file and class names keep "Otto": in this
+ * codebase "RelayMark" would read as the mark of a relay (the servers), which
+ * is a different thing.
+ */
+/**
  * Otto, the mark with character (owner, 2026-11-16): the open ring is the
  * head, the Ember dot sits at its opening, and the eyes say what the app is
  * doing. The landing's Otto animates its own copy; this one is for the app's

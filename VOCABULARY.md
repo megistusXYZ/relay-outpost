@@ -30,6 +30,7 @@ eight names for one secret and a mission-control metaphor on every screen.)
 | People | **follow**, **your people**, **Following / Followers**, **Invite a friend** | crew, orbit, circle (except the profile's "Circle" of mutuals), social graph |
 | The hub | **menu** (the logo opens it) | launcher, cockpit, dock |
 | Tours | **quick tour**, **Step 1 of 3**, **Replay a tour** | mission, briefing, orientation, stops |
+| The assistant (the mark with a face) | **Relay** | Otto |
 
 ## Kept on purpose
 

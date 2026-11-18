@@ -7,9 +7,6 @@ import { useNostrAuth, type QRLoginState, isPWAStandalone, isIOSDevice } from "@
 import { ErrorBoundary, OnboardingErrorFallback } from "@/components/ErrorBoundary";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { Unplug, ArrowLeft, Lock, Fingerprint, QrCode, Copy, Check, RefreshCw, Smartphone, ExternalLink, UserPlus, KeyRound, Radio, Plug, ChevronRight } from "lucide-react";
-import { Link } from "wouter";
-import { WtfAlienIcon } from "@/components/icons/WtfAlienIcon";
-import { KeysInHandIcon } from "@/components/icons/KeysInHandIcon";
 import { CreateAccountFlow } from "@/components/CreateAccountFlow";
 import { ImportKeyFlow } from "@/components/ImportKeyFlow";
 import { UnlockScreen } from "@/components/UnlockScreen";
@@ -379,6 +376,8 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
 type LoginMode = "select" | "bunker" | "qr" | "create" | "import" | "unlock" | "reconnect";
 
 export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
+  // The three other sign-in methods stay folded until asked for.
+  const [moreOpen, setMoreOpen] = useState(false);
   const { isLoggingIn, loginWithExtension, loginWithBunker } = useNostrAuth();
   const [storedLocal, setStoredLocal] = useState<StoredLocalAccount | null>(() => loadLocalAccount());
   // Initial mode resolution priority:
@@ -471,15 +470,18 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
   return (
     <div className="w-full">
       {mode === "select" && onBack && (
-        <Button
-          variant="ghost"
-          onClick={onBack}
-          className={`text-xs mb-4 font-medium ${isOverlay ? "text-white/70" : "text-muted-foreground"}`}
-          data-testid="button-back-from-login"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
-        </Button>
+        // In the content's own column, so it lines up with the heading and buttons.
+        <div className="mx-auto w-full max-w-sm">
+          <Button
+            variant="ghost"
+            onClick={onBack}
+            className={`-ml-3 min-h-[44px] text-sm mb-2 font-medium ${isOverlay ? "text-white/70" : "text-muted-foreground hover:text-foreground"}`}
+            data-testid="button-back-from-login"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+        </div>
       )}
       {mode === "unlock" && storedLocal && (
         <UnlockScreen
@@ -577,129 +579,53 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
         </div>
       )}
       {mode === "select" && (
-        <div className="space-y-3 md:space-y-4" data-testid="container-login-options">
-          <div
-            className={`banner-warp relative rounded-lg p-6 sm:p-8 md:p-10 overflow-hidden transition-[transform,box-shadow,border-color] duration-500 ease-out will-change-transform hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${
-              isOverlay
-                ? "bg-white/[0.05] backdrop-blur-lg border border-white/10 shadow-[0_18px_48px_-12px_rgba(0,0,0,0.7)] hover:border-white/20 hover:shadow-[0_42px_92px_-26px_rgba(0,0,0,0.8)]"
-                : "bg-card/70 border border-border/60 shadow-[0_14px_40px_-12px_rgba(0,0,0,0.45)] hover:border-foreground/25 hover:shadow-[0_36px_84px_-26px_rgba(0,0,0,0.5)]"
-            }`}
-            data-testid="banner-create-account"
-          >
-            {/* Soft top-edge highlight — a faint "lit from above" cue that
-                lifts this card above the calmer sign-in options below. */}
-            <div
-              aria-hidden
-              className={`pointer-events-none absolute inset-x-0 top-0 h-px ${
-                isOverlay ? "bg-gradient-to-r from-transparent via-white/30 to-transparent" : "bg-gradient-to-r from-transparent via-foreground/20 to-transparent"
-              }`}
-            />
-            <div className="relative flex flex-col items-center text-center gap-4 sm:gap-5">
-              <div className="w-full space-y-3 sm:space-y-4">
-                {/* Eyebrow — small operator-voice kicker that frames the headline.
-                    0.2em, not the 0.4em it shipped with. It measured fine
-                    (4.61:1 on dark, 5.40:1 on light) and still read washed out,
-                    because the problem was never contrast: at 11px, 0.4em puts
-                    almost half a character of air between every letter, so the
-                    word stops being a word and becomes spaced-out texture.
-                    0.2em is also the house value — 43 uses across the app, and
-                    the two sibling kickers in this very card sit at 0.25/0.3em.
-                    The 0.4em was a one-off, the only one in the codebase.
-                    Full-strength brand rather than /75 and /85 for the same
-                    reason: a kicker this small has no room to be faint. */}
-                <p
-                  className="text-[12px] sm:text-xs text-brand font-medium"
-                  data-testid="text-banner-eyebrow"
-                >
-                  Welcome
-                </p>
-                {/* Headline. Solid colour, NOT a bg-clip-text gradient.
-                    The gradient was `text-transparent` with the colour supplied
-                    entirely by a clipped background — which means anywhere that
-                    background does not paint, the headline is not faint, it is
-                    INVISIBLE. Forced-colors mode strips it; so do some print
-                    paths. The most important line on the sign-in screen should
-                    not depend on a decorative fill to exist, and there was no
-                    fallback colour behind it.
-                    It was also the only bg-clip-text in the app, so nothing else
-                    is built on this idiom. Losing the violet fade costs little:
-                    the eyebrow above and the CTA's glow still carry the brand,
-                    and the headline gets to be the plainly-strongest thing on
-                    the card, which is its job. */}
-                <h3
-                  className={`text-lg sm:text-xl md:text-2xl font-semibold tracking-tight leading-[1.1] text-balance ${
-                    isOverlay ? "text-white" : "text-foreground"
-                  }`}
-                >
-                  Create your account.
-                </h3>
-                {/* Pitch is the speed claim. */}
-                <p className={`text-sm sm:text-base leading-relaxed max-w-md mx-auto ${descCls}`}>
-                  Takes about 30 seconds — no email or phone number required.
-                </p>
-              </div>
-
-              {/* CTAs: primary is sized up and solid so it reads first (no
-                  glow: the theme keeps chrome neutral). Secondary stays understated. */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 w-full sm:w-auto pt-1">
-                <Button
-                  onClick={() => setMode("create")}
-                  size="lg"
-                  className={`w-full sm:w-auto justify-center text-xs sm:text-sm px-6 font-medium ${isOverlay ? "bg-white text-black hover:bg-white/90" : "bg-foreground text-background hover:bg-foreground/90"}`}
-                  data-testid="button-create-account"
-                >
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Create account
-                </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => setMode("import")}
-                  className={`w-full sm:w-auto justify-center text-xs sm:text-sm px-6 font-medium ${isOverlay ? "border-white/20 text-white/80 bg-transparent hover:bg-white/[0.06]" : "border-border/60"}`}
-                  data-testid="button-import-key"
-                >
-                  <KeyRound className="w-4 h-4 mr-2" />
-                  Use existing account
-                </Button>
-              </div>
-              {/* "Existing account" means a key from another Nostr app — a rule
-                  newcomers can't know; one resumed a sign-up through it (2026-10-10). */}
-              <p className={`text-xs ${descCls}`} data-testid="text-existing-account-gloss">
-                "Use existing account" signs in with a key from another Nostr app.
-              </p>
-
-              {/* Footer line — merges the non-custodial reassurance and the
-                  WTF curiosity link into a single calm row so neither steals
-                  attention from the buttons. */}
-              <div className={`flex items-center gap-2 text-xs ${
-                isOverlay ? "text-white/75" : "text-muted-foreground"
-              }`}>
-                <KeysInHandIcon className="w-3.5 h-3.5" />
-                <span>Yours alone</span>
-                <span aria-hidden className={isOverlay ? "text-white/25" : "text-muted-foreground/40"}>·</span>
-                <Link
-                  href="/help"
-                  className={`inline-flex items-center gap-1 transition-colors ${isOverlay ? "text-brand/80 hover:text-brand-strong" : "text-brand hover:text-brand-strong"}`}
-                  data-testid="link-wtf"
-                >
-                  <WtfAlienIcon className="w-3 h-3" />
-                  <span>Help &amp; guides</span>
-                </Link>
-              </div>
+        <div className="mx-auto w-full max-w-sm flex flex-col items-stretch gap-5 text-center" data-testid="container-login-options">
+          {/* Less is more (owner, 2026-11-18): the heading, two buttons, one link
+              that unfolds the other ways in, and the legal line. No eyebrow, no
+              pitch, no reassurance row; the container above draws the mark. The
+              headline is a solid colour (never a clipped gradient: that vanished
+              in forced-colours mode). */}
+          <div className="flex flex-col gap-6" data-testid="banner-create-account">
+            <h3 className={`text-[28px] sm:text-[32px] font-semibold tracking-[-0.02em] leading-[1.1] text-balance ${isOverlay ? "text-white" : "text-foreground"}`}>
+              Create your account.
+            </h3>
+            <div className="flex flex-col gap-2.5">
+              <Button
+                onClick={() => setMode("create")}
+                size="lg"
+                className={`w-full h-12 rounded-full justify-center text-[15px] font-medium ${isOverlay ? "bg-white text-black hover:bg-white/90" : "bg-foreground text-background hover:bg-foreground/90"}`}
+                data-testid="button-create-account"
+              >
+                Create account
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => setMode("import")}
+                className={`w-full h-12 rounded-full justify-center text-[15px] font-medium ${isOverlay ? "border-white/30 text-white bg-transparent hover:bg-white/[0.06]" : ""}`}
+                data-testid="button-import-key"
+              >
+                Use existing account
+              </Button>
             </div>
           </div>
 
-          <div className={`flex items-center gap-3 ${isOverlay ? "text-white/75" : "text-muted-foreground"}`}>
-            <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border"}`} />
-            <span className="text-[13px] font-medium">or sign in with</span>
-            <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border"}`} />
-          </div>
-
-          {/* Compact chooser: every sign-in option, one tap each. Which app or
-              extension to use is explained inside each flow's own screen (and in
-              Help & guides) — not up front. Platform-recommended option leads. */}
+          {/* Every other sign-in option, one tap away. Which app or extension to
+              use is explained inside each flow's own screen and in Help & guides. */}
+          <button
+            type="button"
+            onClick={() => setMoreOpen((v) => !v)}
+            aria-expanded={moreOpen}
+            aria-controls="signin-more"
+            className={`mx-auto min-h-[44px] px-3 text-sm ${linkCls}`}
+            data-testid="button-other-signin"
+          >
+            Other ways to sign in
+          </button>
+          {moreOpen && (
           <div
-            className={`rounded-lg border overflow-hidden ${isOverlay ? "border-white/10 bg-white/[0.03]" : "border-border/50 bg-card/40"}`}
+            id="signin-more"
+            className={`rounded-2xl border overflow-hidden text-left ${isOverlay ? "border-white/10 bg-white/[0.03]" : "border-border bg-card"}`}
             data-testid="container-signin-options"
           >
             {[
@@ -776,6 +702,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
                 </button>
               ))}
           </div>
+          )}
 
           {/* Store QA 2.2: signup surfaces its own terms line inside
               CreateAccountFlow, but every SIGN-IN path (extension, QR,

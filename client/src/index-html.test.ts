@@ -18,34 +18,23 @@ describe("index.html", () => {
     expect(withoutScripts.match(/<[^>]*\son[a-z]+=/gi) ?? []).toEqual([]);
   });
 
-  describe("the webfonts", () => {
-    function page() {
-      // jsdom has no CSP and would happily run an inline handler, so drop them
-      // as production's browser effectively does.
-      const asInProduction = HTML
-        .replace(/<script type="module"[^>]*><\/script>/g, "")
-        .replace(/\son[a-z]+="[^"]*"/gi, "");
-      const dom = new JSDOM(asInProduction, {
-        runScripts: "dangerously",
-        beforeParse(w: any) { w.WebSocket = undefined; },
-      });
-      const w = dom.window as any;
-      const link = () => w.document.querySelector('link[href^="https://fonts.googleapis.com/css2"]:not(noscript link)') as HTMLLinkElement;
-      return { w, link };
-    }
-
-    it("load without blocking the first paint", () => {
-      expect(page().link().media).toBe("print");
+  describe("the fonts", () => {
+    // Owner, 2026-11-18: the app serves its own fonts. The old async link to
+    // Google Fonts (and the inline-handler lesson that came with it, above) is
+    // gone; the browser check own-fonts-e2e watches the network for the same.
+    it("never asks a font CDN for anything", () => {
+      expect(HTML).not.toMatch(/fonts\.googleapis\.com|fonts\.gstatic\.com/);
     });
 
-    it("apply once their stylesheet has loaded", () => {
-      const { w, link } = page();
-      link().dispatchEvent(new w.Event("load"));
-      expect(link().media).toBe("all");
+    it("preloads Geist from our own origin so the first paint has it", () => {
+      const dom = new JSDOM(HTML.replace(/<script\b[\s\S]*?<\/script>/g, ""));
+      const link = dom.window.document.querySelector('link[rel="preload"][as="font"]') as HTMLLinkElement | null;
+      expect(link?.getAttribute("href")).toBe("/fonts/Geist-Variable.woff2");
+      expect(link?.hasAttribute("crossorigin")).toBe(true);
     });
 
-    it("keep a plain link for browsers without JavaScript", () => {
-      expect(HTML).toMatch(/<noscript><link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/css2/);
+    it("the check can fail: the old link would be caught", () => {
+      expect(HTML + '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter">').toMatch(/fonts\.googleapis\.com/);
     });
   });
 });

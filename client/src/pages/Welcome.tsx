@@ -60,7 +60,7 @@ export default function Welcome() {
   return (
     <div className="mx-auto w-full max-w-lg md:max-w-2xl px-3 sm:px-4 md:px-6 pt-6 md:pt-10 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]" data-testid="welcome-page">
       {/* Otto greets: this is the one screen where the face says hello before anything else. */}
-      <OttoMark size={48} className="-ml-1 text-foreground" label="Otto says hello" />
+      <OttoMark size={48} className="-ml-1 text-foreground" label="Relay says hello" />
       <h1 className="mt-4 text-[34px] md:text-[40px] leading-[1.05] font-semibold tracking-[-0.035em] [text-wrap:balance]">
         {name ? `Welcome, ${name}.` : "Welcome."}
       </h1>

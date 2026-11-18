@@ -76,7 +76,7 @@ export default function ChildSafety() {
             <a href="/terms" className="text-brand hover:underline">Terms</a> and has no home in this app.
             This page explains the standards we hold, how to report violations, and exactly what happens when you do.
           </p>
-          <p className="text-[12px] text-muted-foreground/70 mt-3 pt-3 border-t border-border/20">
+          <p className="text-[12px] text-muted-foreground mt-3 pt-3 border-t border-border/20">
             Last updated {LAST_UPDATED}
           </p>
         </div>

@@ -3,7 +3,7 @@ import { isIaCollapsed } from "@/lib/ia-prefs";
 import { postAuthLandingPath, markLanded } from "@/lib/ia-landing";
 import { useLocation } from "wouter";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
-import { Radio, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { LoginOptions } from "@/components/LoginOptions";
 import { OttoMark } from "@/components/OttoMark";
 import { isAddAccountPending, clearAddAccountPending } from "@/lib/account-registry";
@@ -18,23 +18,6 @@ function BrandLogo({ className }: { className?: string }) {
       <OttoMark size={44} className="shrink-0" />
       <span className="text-[22px] font-semibold leading-none tracking-[-0.01em] text-foreground">Relay Outpost</span>
     </div>
-  );
-}
-
-/** CRT scanlines — white-on-dark by construction, so dark mode only. */
-function ScanlineOverlay() {
-  return (
-    <div
-      // `hidden dark:block`, not just a faint opacity: the lines are drawn in
-      // rgba(255,255,255,.08), which over a light canvas is either invisible or
-      // a haze that lightens the page for no reason. A texture that only reads
-      // on a dark surface should not be painted on a light one.
-      className="pointer-events-none fixed inset-0 z-50 opacity-[0.03] hidden dark:block"
-      style={{
-        backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.08) 1px, rgba(255,255,255,0.08) 2px)",
-        backgroundSize: "100% 2px",
-      }}
-    />
   );
 }
 
@@ -183,29 +166,13 @@ export default function Login() {
           So the scrim and the scanlines are dark-mode only, and the cockpit is
           faint-but-present in light. A dark scrim exists to sink a photo into a
           dark page; over a light page it just makes mud. */}
-      <div className="fixed inset-0 z-0 pointer-events-none" aria-hidden="true">
-        <div className="absolute inset-0 dark:bg-black/50" />
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-[0.06] dark:opacity-10"
-          style={{
-            backgroundImage: "url(/images/landing/cockpit-bg.webp)",
-            WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, #000 24%, #000 50%, transparent 82%)",
-            maskImage: "linear-gradient(to bottom, transparent 0%, #000 24%, #000 50%, transparent 82%)",
-          }}
-        />
-      </div>
-      <ScanlineOverlay />
+      {/* A plain page in the visitor's theme, with the landing's soft glow (owner,
+          2026-11-18): no cockpit photo, no scanlines, no scrim. */}
+      <div className="fixed inset-0 z-0 pointer-events-none signin-surface" aria-hidden="true" />
 
       <div className="w-full max-w-md md:max-w-5xl space-y-8 relative z-10">
         <div className="flex flex-col items-center space-y-4">
           <BrandLogo />
-          <div className="text-center space-y-2">
-            <div className="flex items-center justify-center gap-2">
-              <div className="h-px w-8 bg-border" />
-              <Radio className="w-3 h-3 text-muted-foreground" />
-              <div className="h-px w-8 bg-border" />
-            </div>
-          </div>
         </div>
 
         {addMode && (

@@ -65,7 +65,7 @@ export default function Privacy() {
         <p className="text-sm text-foreground/85 dark:text-foreground/80 leading-relaxed">
           The short version: almost everything you do happens between your device and the relays you choose — not on our servers. Your posts are signed on your device and sent straight to those relays. This page explains the few places our infrastructure does sit in the middle, and what we do (and don't) do there.
         </p>
-        <p className="text-[12px] text-muted-foreground/70 mt-3 pt-3 border-t border-border/20">
+        <p className="text-[12px] text-muted-foreground mt-3 pt-3 border-t border-border/20">
           Last updated {LAST_UPDATED} · Written in plain language on purpose
         </p>
       </div>
@@ -112,7 +112,7 @@ export default function Privacy() {
 
         <Section icon={Radio} title="Data on Nostr itself">
           <p>Nostr is a public, open network. Anything you publish — posts, reactions, your follow list, your profile — is signed by your key and sent to the relays you chose. From there it can be stored, copied, and read by anyone who can reach those relays.</p>
-          <p>Relays are run by independent operators. Each one decides what it stores, for how long, and with whom. Choosing your relays is choosing the neighborhood your health travels through.</p>
+          <p>Relays are run by independent operators. Each one decides what it stores, for how long, and with whom. Choosing your relays is choosing the neighborhood your posts travel through.</p>
           <p>Direct messages are end-to-end encrypted, but metadata like who you messaged and when can still be visible to relays.</p>
         </Section>
 

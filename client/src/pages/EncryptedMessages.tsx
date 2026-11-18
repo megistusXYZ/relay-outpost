@@ -24,7 +24,7 @@ export default function EncryptedMessages() {
       <div className="flex items-center gap-3 mb-1">
         {/* Chrome back owns the route (back-affordance.ts) — no hero dupe. */}
         <div className="flex items-center gap-2">
-          <OttoMark size={40} label="Otto" className="shrink-0 text-foreground !w-9 !h-9 sm:!w-10 sm:!h-10" />
+          <OttoMark size={40} label="Relay" className="shrink-0 text-foreground !w-9 !h-9 sm:!w-10 sm:!h-10" />
           <div>
             <h1 className="text-[24px] sm:text-[30px] font-semibold tracking-[-0.025em] leading-[1.1] text-foreground">
               Encrypted direct messages

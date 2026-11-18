@@ -6,6 +6,7 @@ import { lazyNamed } from "@/lib/lazy-retry";
 // (guest-first-load.test.ts).
 const LoginOptions = lazy(() => lazyNamed(() => import("@/components/LoginOptions"), "LoginOptions"));
 import { OutpostLanding } from "@/components/landing/OutpostLanding";
+import { OttoMark } from "@/components/OttoMark";
 import { trackSignupEvent } from "@/lib/signup-telemetry";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
@@ -168,7 +169,7 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
   // covers it (OutpostLanding is its own page; the canvas draws the warp
   // after the launch). Reads modeRef so the callback stays stable.
   const recomputeStarfieldPaused = useCallback(() => {
-    const next = (typeof document !== "undefined" && document.hidden) || modeRef.current === "full";
+    const next = (typeof document !== "undefined" && document.hidden) || modeRef.current === "full" || modeRef.current === "cockpit" || modeRef.current === "warping_to_cockpit";
     if (next === starfieldPausedRef.current) return;
     starfieldPausedRef.current = next;
     if (!next) starfieldKickRef.current();
@@ -617,7 +618,7 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
     >
       <canvas
         ref={canvasRef}
-        className={`absolute inset-0 w-full h-full ${isFull && !warping ? "invisible" : ""}`}
+        className={`absolute inset-0 w-full h-full ${(isFull && !warping) || isCockpit || isWarpingToCockpit ? "invisible" : ""}`}
         style={{ background: "black" }}
       />
       {/* Black-hole transition at the warp apex — a violet event horizon closes
@@ -631,20 +632,11 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
       {isDimmed && (
         <div className="absolute inset-0 bg-black/60" />
       )}
-      {isCockpit && (
-        <div className="absolute inset-0 bg-black/50" />
-      )}
-      {isCockpit && (
-        <div
-          aria-hidden
-          className="absolute inset-0 z-0 pointer-events-none bg-cover bg-center"
-          style={{
-            backgroundImage: "url(/images/landing/cockpit-bg.webp)",
-            opacity: 0.1,
-            WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, #000 24%, #000 50%, transparent 82%)",
-            maskImage: "linear-gradient(to bottom, transparent 0%, #000 24%, #000 50%, transparent 82%)",
-          }}
-        />
+      {/* The sign-in screen is a plain page in the visitor's theme (owner,
+          2026-11-18): it covers the starfield, with the landing's soft glow and
+          no cockpit photo, so light stays light and dark stays dark. */}
+      {(isCockpit || isWarpingToCockpit) && (
+        <div className="absolute inset-0 bg-background signin-surface" data-covered="true" data-testid="signin-surface" />
       )}
       {isFull && !warping && (
         <div
@@ -773,10 +765,13 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
       )}
       {isCockpit && !warping && (
         <div className="absolute inset-0 z-10 flex flex-col items-center overflow-y-auto" data-testid="cockpit-login-panel">
-          <div className="w-full max-w-md md:max-w-5xl px-4 sm:px-6 py-6 sm:py-8 space-y-5 sm:space-y-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
+          <div className="w-full max-w-md md:max-w-5xl px-4 sm:px-6 py-8 sm:py-12 space-y-8 animate-in fade-in-0 duration-300">
+            <div className="flex items-center justify-center gap-3" data-testid="login-brand">
+              <OttoMark size={44} className="shrink-0" />
+              <span className="text-[22px] font-semibold leading-none tracking-[-0.01em] text-foreground">Relay Outpost</span>
+            </div>
             <Suspense fallback={<div className="min-h-[280px]" aria-busy="true" />}>
               <LoginOptions
-                variant="overlay"
                 onBack={onCockpitBack}
               />
             </Suspense>

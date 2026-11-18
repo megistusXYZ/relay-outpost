@@ -678,7 +678,7 @@ export function DesktopStoriesRail() {
                 type="button"
                 onClick={() => setLocation("/login")}
                 aria-label="Sign in"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-brand/40 bg-brand/10 text-[11px] font-semibold text-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-foreground/30 text-xs font-semibold text-foreground hover:bg-foreground/[0.06] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 data-testid="rail-signin"
               >
                 In
