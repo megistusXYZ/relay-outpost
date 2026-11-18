@@ -1,4 +1,22 @@
+# Outpost: relayop.xyz
+# Search engines and AI search assistants are welcome; AI training crawlers are not.
+
 User-agent: *
 Allow: /
+
+# AI search and assistants (answer questions about Outpost)
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: PerplexityBot
+Allow: /
+
+# AI training crawlers
+User-agent: GPTBot
+User-agent: ClaudeBot
+User-agent: Google-Extended
+User-agent: CCBot
+Disallow: /
 
 Sitemap: https://relayop.xyz/sitemap.xml

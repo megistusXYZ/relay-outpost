@@ -44,11 +44,11 @@ describe("iOS launch images", () => {
     const { data } = await img.raw().toBuffer({ resolveWithObject: true });
     const px = (x: number, y: number) => [data[(y * w * s + x) * 3], data[(y * w * s + x) * 3 + 1], data[(y * w * s + x) * 3 + 2]];
     expect(px(0, 0)).toEqual([10, 10, 10]); // corner: the canvas
-    // The mark is 54 CSS px, centred, drawn on a 24-unit grid; its left loop
-    // is solid at (3.5, 13.5) of that grid (the exact centre is the gap
-    // between the two halves).
-    const m = 54 * s, u = m / 24;
-    const [cr, cg, cb] = px(Math.round((w * s) / 2 - m / 2 + 3.5 * u), Math.round((h * s) / 2 - m / 2 + 13.5 * u));
+    // The mark is 54 CSS px, centred, drawn on a 100-unit grid (Otto: the
+    // open ring). The ring's left side is solid at (20, 50) of that grid (the
+    // exact centre is the empty face).
+    const m = 54 * s, u = m / 100;
+    const [cr, cg, cb] = px(Math.round((w * s) / 2 - m / 2 + 20 * u), Math.round((h * s) / 2 - m / 2 + 50 * u));
     expect(Math.min(cr, cg, cb)).toBeGreaterThan(200); // the mark, white
   });
 });
