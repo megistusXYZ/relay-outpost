@@ -75,7 +75,7 @@ export function WeekRibbon({
       data-testid="week-ribbon"
     >
       <div className="flex items-center justify-between px-1 mb-1">
-        <span className="text-[13px] text-gray-500 dark:text-gray-400 font-medium">
+        <span className="text-[13px] text-muted-foreground font-medium">
           {monthLabel}
         </span>
         <div className="flex items-center gap-0.5">
@@ -121,7 +121,7 @@ export function WeekRibbon({
         <Button
           variant="ghost"
           size="sm"
-          className="min-h-[44px] w-9 p-0 shrink-0 text-gray-400 dark:text-gray-500"
+          className="min-h-[44px] w-9 p-0 shrink-0 text-muted-foreground"
           onClick={onPrevWeek}
           aria-label="Previous week"
           data-testid="button-prev-week"
@@ -145,20 +145,19 @@ export function WeekRibbon({
                   transition-colors touch-manipulation
                   ${isSelected
                     ? "bg-foreground/[0.08] ring-1 ring-foreground/40"
-                    : "hover:bg-gray-100 dark:hover:bg-white/[0.06]"}
-                  ${isPast && !isSelected ? "opacity-50" : ""}
+                    : "hover:bg-foreground/[0.06]"}
                 `}
                 aria-label={day.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
                 aria-pressed={isSelected}
                 data-testid={`ribbon-day-${dayKeyLocal(day)}`}
               >
-                <span className={`text-[12px] font-medium ${isToday ? "text-brand" : "text-gray-400 dark:text-gray-500"}`}>
+                <span className={`text-[12px] font-medium ${isToday ? "text-brand" : "text-muted-foreground"}`}>
                   {WEEKDAY_LETTERS[day.getDay()]}
                 </span>
                 <span className={`text-[13px] leading-none font-medium ${
                   isToday
                     ? "text-brand font-bold"
-                    : "text-gray-700 dark:text-gray-300"
+                    : isPast && !isSelected ? "text-muted-foreground" : "text-foreground"
                 }`}>
                   {day.getDate()}
                 </span>
@@ -175,7 +174,7 @@ export function WeekRibbon({
         <Button
           variant="ghost"
           size="sm"
-          className="min-h-[44px] w-9 p-0 shrink-0 text-gray-400 dark:text-gray-500"
+          className="min-h-[44px] w-9 p-0 shrink-0 text-muted-foreground"
           onClick={onNextWeek}
           aria-label={`Next week (from ${weekEnd.toLocaleDateString()})`}
           data-testid="button-next-week"

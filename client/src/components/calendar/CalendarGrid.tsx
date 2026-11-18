@@ -116,8 +116,8 @@ export function CalendarGrid({
             <ChevronLeft className="w-4 h-4" />
           </Button>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-900 dark:text-gray-100 font-medium">{monthLabel}</span>
-            <Button variant="ghost" size="sm" className="min-h-[36px] text-[10px] px-2.5 text-gray-500 dark:text-gray-400" onClick={onGoToToday}>
+            <span className="text-sm text-foreground font-medium">{monthLabel}</span>
+            <Button variant="ghost" size="sm" className="min-h-[36px] text-xs px-2.5 text-muted-foreground" onClick={onGoToToday}>
               Today
             </Button>
           </div>
@@ -142,7 +142,7 @@ export function CalendarGrid({
 
         <div className="grid grid-cols-7 gap-px mb-1">
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-            <div key={d} className="text-center text-[12px] text-gray-500 dark:text-gray-400 py-1 font-medium">
+            <div key={d} className="text-center text-[12px] text-muted-foreground py-1 font-medium">
               {d}
             </div>
           ))}
@@ -169,15 +169,15 @@ export function CalendarGrid({
                   className={`
                     relative p-1.5 min-h-[52px] md:min-h-[64px] rounded-md text-left transition-colors
                     ${isCurrentMonth
-                      ? "hover:bg-gray-100 dark:hover:bg-white/[0.06]"
-                      : "opacity-40"
+                      ? "hover:bg-foreground/[0.06]"
+                      : ""
                     }
                     ${isSelected
                       ? "bg-foreground/[0.08] ring-1 ring-foreground/40"
                       : ""
                     }
                     ${isToday && !isSelected
-                      ? "bg-gray-50 dark:bg-white/[0.04]"
+                      ? "bg-foreground/[0.04]"
                       : ""
                     }
                   `}
@@ -188,8 +188,8 @@ export function CalendarGrid({
                       ${isToday
                         ? "text-brand font-bold"
                         : isCurrentMonth
-                          ? "text-gray-700 dark:text-gray-300"
-                          : "text-gray-400 dark:text-gray-600"
+                          ? "text-foreground"
+                          : "text-muted-foreground"
                       }
                     `}
                   >
@@ -197,7 +197,7 @@ export function CalendarGrid({
                   </span>
                   {dayHolidays.length > 0 && (
                     <div className="mt-0.5 hidden md:block">
-                      <span className="text-[8px] leading-tight text-amber-600 dark:text-amber-400 line-clamp-1 block">
+                      <span className="text-xs leading-tight text-warning line-clamp-1 block">
                         {dayHolidays[0].emoji ? `${dayHolidays[0].emoji} ` : ""}{dayHolidays[0].name}
                       </span>
                     </div>
@@ -213,7 +213,7 @@ export function CalendarGrid({
                         <div key={`${item.id}-${idx}`} className={`w-1.5 h-1.5 rounded-full ${item.dotColor}`} />
                       ))}
                       {dayItems.length > 4 && (
-                        <span className="text-[8px] text-gray-500 dark:text-gray-400">+{dayItems.length - 4}</span>
+                        <span className="text-xs text-muted-foreground">+{dayItems.length - 4}</span>
                       )}
                     </div>
                   )}

@@ -1222,7 +1222,7 @@ function PeopleTab({ urlQuery, updateUrl }: TabProps) {
                   </Avatar>
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-medium text-foreground/90 truncate">{name}</div>
-                    {nip05 && <div className="text-[11px] text-muted-foreground/60 truncate">{nip05}</div>}
+                    {nip05 && <div className="text-xs text-muted-foreground truncate">{nip05}</div>}
                   </div>
                 </button>
               );
@@ -1538,7 +1538,7 @@ function ProfileCard({ profile, tier, isFollowed, followsYou, grouped = false }:
               )}
               {!grouped && <TrustPhrase tier={tier} />}
             </div>
-            {content?.about && <p className="text-xs text-muted-foreground/70 mt-1 line-clamp-2">{content.about}</p>}
+            {content?.about && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{content.about}</p>}
           </div>
         </CardContent>
       </Card>
@@ -3127,7 +3127,7 @@ function EventsTab({ urlQuery, updateUrl }: TabProps) {
                     </Avatar>
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium text-foreground/90 truncate">{name}</div>
-                      {nip05 && <div className="text-[11px] text-muted-foreground/60 truncate">{nip05}</div>}
+                      {nip05 && <div className="text-xs text-muted-foreground truncate">{nip05}</div>}
                     </div>
                   </button>
                 );
