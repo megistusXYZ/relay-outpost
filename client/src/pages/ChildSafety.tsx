@@ -15,7 +15,7 @@ import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useGoBack } from "@/hooks/use-go-back";
 import { openFeedbackDrawer } from "@/lib/nip34-feedback";
 
-const LAST_UPDATED = "August 18, 2026";
+const LAST_UPDATED = "November 18, 2026";
 // No email on this page by design (owner call, 2026-08-18): Play's designated
 // child-safety contact is a CONSOLE form field submitted to Google at listing
 // time — it is not required to be published here. Until a dedicated address
@@ -124,7 +124,7 @@ export default function ChildSafety() {
             <ul className="list-disc list-inside space-y-1.5">
               <li><strong>Review.</strong> CSAE reports are treated as the highest-priority category and reviewed promptly.</li>
               <li><strong>Removal from our surfaces.</strong> Confirmed CSAE content and the accounts behind it are excluded from Relay Outpost's feeds, search, and discovery through our moderation systems.</li>
-              <li><strong>Removal at the source where we can.</strong> On relays and infrastructure we or our partners operate, the content is deleted and the account is banned. For content hosted on third-party relays, we notify the operator.</li>
+              <li><strong>Removal at the source where we can.</strong> On infrastructure we operate, the content is deleted and the account is banned. For content hosted on third-party relays, we notify the operator.</li>
               <li><strong>Escalation.</strong> We report apparent CSAM to the National Center for Missing &amp; Exploited Children (NCMEC) in accordance with applicable law, and we cooperate with law enforcement.</li>
             </ul>
           </Section>
