@@ -111,7 +111,7 @@ export function ClampedText({
           type="button"
           onClick={(e) => { e.stopPropagation(); e.preventDefault(); setExpanded(!expanded); }}
           aria-expanded={expanded}
-          className={toggleClassName ?? "text-xs text-brand/80 mt-1.5 cursor-pointer font-medium tracking-wide"}
+          className={toggleClassName ?? "text-xs text-brand hover:text-brand-strong mt-1.5 cursor-pointer font-medium tracking-wide"}
           data-testid={toggleTestId}
         >
           {expanded ? "Show less" : "Show more"}

@@ -1563,10 +1563,10 @@ function OgLinkPreviewCard({
           </div>
         ) : (
           <>
-            <div className="text-[12px] text-muted-foreground/70 truncate font-medium">
+            <div className="text-xs text-muted-foreground truncate font-medium">
               {domainLabel}
             </div>
-            <div className={`font-medium text-foreground/90 mt-0.5 ${compact ? "text-xs line-clamp-2" : "text-sm line-clamp-2"}`}>
+            <div className={`font-medium text-foreground mt-0.5 ${compact ? "text-xs line-clamp-2" : "text-sm line-clamp-2"}`}>
               {title}
             </div>
           </>

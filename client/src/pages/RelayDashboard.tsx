@@ -1102,20 +1102,20 @@ export default function RelayDashboard() {
       {pubkey && (
         <Card className="glass-card border-border/40 p-4 mb-5" data-testid="section-relay-routes">
           <div className="flex items-center gap-2 mb-1">
-            <Mail className="w-4 h-4 text-brand/70" />
+            <Mail className="w-4 h-4 text-muted-foreground" />
             <h2 className="text-[15px] font-semibold">Where your posts go</h2>
             {routesLoaded && !editingRoutes && (
-              <Button variant="ghost" size="sm" className="ml-auto h-7 text-[11px]" onClick={beginEditRoutes} data-testid="button-edit-routes">
+              <Button variant="ghost" size="sm" className="ml-auto h-7 text-xs" onClick={beginEditRoutes} data-testid="button-edit-routes">
                 <Pencil className="w-3 h-3 mr-1" />Edit
               </Button>
             )}
           </div>
-          <p className="text-[11px] text-muted-foreground/70 mb-3">Your published routing (NIP-65) — where other clients fetch your posts and reach you.</p>
+          <p className="text-xs text-muted-foreground mb-3">Your relay list: where other apps find your posts and reach you.</p>
           {!routesLoaded ? (
             <RelayOutpostInlineLoader />
           ) : editingRoutes ? (
             <div className="space-y-3">
-              <div className="flex items-start gap-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 p-2 text-[10px] leading-relaxed text-amber-700 dark:text-amber-300/90">
+              <div className="flex items-start gap-1.5 rounded-md bg-muted border border-border p-2 text-xs leading-relaxed text-warning">
                 <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
                 <span>This is advanced. Your routing tells the whole network where to find and reach you — a wrong list can quietly stop people seeing your posts. Only change it if you know what you're doing.</span>
               </div>
@@ -1123,20 +1123,20 @@ export default function RelayDashboard() {
                 <div key={role}>
                   <div className="flex items-center gap-1.5 mb-1">
                     {role === "read" ? <Satellite className="w-3.5 h-3.5 text-brand" /> : <Signal className="w-3.5 h-3.5 text-brand" />}
-                    <span className="text-xs font-medium text-foreground/70">{label}</span>
+                    <span className="text-xs font-medium text-foreground">{label}</span>
                   </div>
-                  <p className="text-[10px] text-muted-foreground/60 mb-1.5">{hint}.</p>
+                  <p className="text-xs text-muted-foreground mb-1.5">{hint}.</p>
                   {editRoutes.filter((r) => r[role]).map((r) => (
                     <div key={`${role}-${r.url}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-muted/20 border border-border/40 mb-1">
-                      <span className="font-mono text-[11px] truncate flex-1">{r.url.replace("wss://", "")}</span>
-                      <button onClick={() => removeRoute(r.url, role)} className="text-muted-foreground/50 hover:text-red-500 shrink-0" title={`Remove from ${label.toLowerCase()}`} data-testid={`button-remove-route-${role}-${r.url}`}>
+                      <span className="font-mono text-xs truncate flex-1">{r.url.replace("wss://", "")}</span>
+                      <button onClick={() => removeRoute(r.url, role)} className="text-muted-foreground hover:text-danger shrink-0" title={`Remove from ${label.toLowerCase()}`} data-testid={`button-remove-route-${role}-${r.url}`}>
                         <X className="w-3 h-3" />
                       </button>
                     </div>
                   ))}
                   <div className="flex gap-1.5 mt-1">
                     <Input value={val} onChange={(e) => setVal(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { addRoute(val, role); setVal(""); } }} placeholder="relay.example.com" className="h-7 text-xs font-mono" inputMode="url" autoCapitalize="off" autoCorrect="off" data-testid={`input-add-route-${role}`} />
-                    <Button size="sm" variant="outline" className="h-7 text-[11px] shrink-0" onClick={() => { addRoute(val, role); setVal(""); }}>Add</Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={() => { addRoute(val, role); setVal(""); }}>Add</Button>
                   </div>
                 </div>
               ))}
@@ -1153,30 +1153,30 @@ export default function RelayDashboard() {
               <div>
                 <div className="flex items-center gap-1.5 mb-1">
                   <Satellite className="w-3.5 h-3.5 text-brand" />
-                  <span className="text-xs font-medium text-foreground/70">Inbox</span>
-                  <Badge variant="secondary" className="text-[10px] ml-auto">{readRoutes.length}</Badge>
+                  <span className="text-xs font-medium text-foreground">Inbox</span>
+                  <Badge variant="secondary" className="text-xs ml-auto">{readRoutes.length}</Badge>
                 </div>
-                <p className="text-[10px] text-muted-foreground/60 mb-1.5">Where people reach you.</p>
+                <p className="text-xs text-muted-foreground mb-1.5">Where people reach you.</p>
                 {readRoutes.length > 0 ? readRoutes.map((r) => (
                   <div key={`in-${r.url}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-muted/20 border border-border/40 mb-1" data-testid={`route-read-${r.url}`}>
                     <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
-                    <span className="font-mono text-[11px] truncate">{r.url.replace("wss://", "")}</span>
+                    <span className="font-mono text-xs truncate">{r.url.replace("wss://", "")}</span>
                   </div>
-                )) : <div className="px-2.5 py-1.5 rounded-md border border-dashed border-border/40 text-[10px] text-muted-foreground/60">None declared.</div>}
+                )) : <div className="px-2.5 py-1.5 rounded-md border border-dashed border-border/40 text-xs text-muted-foreground">None declared.</div>}
               </div>
               <div>
                 <div className="flex items-center gap-1.5 mb-1">
                   <Signal className="w-3.5 h-3.5 text-brand" />
-                  <span className="text-xs font-medium text-foreground/70">Outbox</span>
-                  <Badge variant="secondary" className="text-[10px] ml-auto">{writeRoutes.length}</Badge>
+                  <span className="text-xs font-medium text-foreground">Outbox</span>
+                  <Badge variant="secondary" className="text-xs ml-auto">{writeRoutes.length}</Badge>
                 </div>
-                <p className="text-[10px] text-muted-foreground/60 mb-1.5">Where your posts go out from.</p>
+                <p className="text-xs text-muted-foreground mb-1.5">Where your posts go out from.</p>
                 {writeRoutes.length > 0 ? writeRoutes.map((r) => (
                   <div key={`out-${r.url}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-muted/20 border border-border/40 mb-1" data-testid={`route-write-${r.url}`}>
                     <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
-                    <span className="font-mono text-[11px] truncate">{r.url.replace("wss://", "")}</span>
+                    <span className="font-mono text-xs truncate">{r.url.replace("wss://", "")}</span>
                   </div>
-                )) : <div className="px-2.5 py-1.5 rounded-md border border-dashed border-border/40 text-[10px] text-muted-foreground/60">None declared.</div>}
+                )) : <div className="px-2.5 py-1.5 rounded-md border border-dashed border-border/40 text-xs text-muted-foreground">None declared.</div>}
               </div>
             </div>
           )}

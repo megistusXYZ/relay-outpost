@@ -780,8 +780,8 @@ const DateSubGroup = memo(function DateSubGroup({ label, bucketKey, items, onRea
         onClick={() => setExpanded(e => !e)}
         data-testid={`button-toggle-date-${typeKey}-${bucketKey}`}
       >
-        <SubIcon className="w-2.5 h-2.5 text-muted-foreground/50 shrink-0 transition-transform" />
-        <span className="text-[13px] text-foreground/55 dark:text-muted-foreground/60 flex-1 text-left font-medium">
+        <SubIcon className="w-2.5 h-2.5 text-muted-foreground shrink-0 transition-transform" />
+        <span className="text-[13px] text-muted-foreground flex-1 text-left font-medium">
           {label}
         </span>
         <span className="text-[12px] text-muted-foreground tabular-nums" data-testid={`text-date-count-${typeKey}-${bucketKey}`}>

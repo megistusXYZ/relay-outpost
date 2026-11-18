@@ -45,27 +45,27 @@ export function WalledGardenFallback({
         className={`rounded-xl border overflow-hidden ${
           dark
             ? "border-white/10 bg-white/[0.04]"
-            : "border-brand/15 bg-brand/[0.04]/[0.04]"
+            : "border-border bg-card"
         } ${className}`}
         data-testid="walled-garden-compact"
       >
         <div className="flex items-center gap-3 px-3 py-2.5">
           <RelayOutpostGlyph
             className={`w-5 h-5 shrink-0 ${
-              dark ? "text-brand/60" : "text-brand/50"
+              dark ? "text-white/70" : "text-muted-foreground"
             }`}
           />
           <div className="flex-1 min-w-0">
             <p
               className={`text-xs font-medium ${
-                dark ? "text-white/70" : "text-foreground/70"
+                dark ? "text-white/90" : "text-foreground"
               }`}
             >
               This {label} can't be shown here
             </p>
             <p
-              className={`text-[10px] mt-0.5 ${
-                dark ? "text-white/35" : "text-muted-foreground/50"
+              className={`text-xs mt-0.5 ${
+                dark ? "text-white/70" : "text-muted-foreground"
               }`}
             >
               It may be unavailable, or its host doesn't allow embedding
@@ -76,10 +76,10 @@ export function WalledGardenFallback({
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`shrink-0 flex items-center gap-1 text-[11px] font-medium rounded-md px-2 py-1 transition-colors ${
+              className={`shrink-0 flex items-center gap-1 min-h-9 text-xs font-medium rounded-full px-3 transition-colors ${
                 dark
-                  ? "text-brand bg-brand/25 hover:bg-brand/35"
-                  : "text-brand bg-brand/10 hover:bg-brand/20"
+                  ? "text-white border border-white/40 hover:bg-white/10"
+                  : "text-foreground border border-foreground/30 hover:bg-foreground/[0.04]"
               }`}
               data-testid="link-walled-garden-open"
             >
@@ -117,7 +117,7 @@ export function WalledGardenFallback({
           This content can't be shown here
         </p>
 
-        <p className="text-[11px] text-white/40 mt-1.5 max-w-[280px] leading-relaxed">
+        <p className="text-xs text-white/75 mt-1.5 max-w-[280px] leading-relaxed">
           It may be unavailable, or its host doesn't allow embedding.
         </p>
 

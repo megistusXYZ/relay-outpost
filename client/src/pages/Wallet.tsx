@@ -1444,11 +1444,11 @@ function TransactionDateGroup({
         onClick={() => setExpanded(e => !e)}
         data-testid={`button-toggle-tx-date-${bucket.key}`}
       >
-        <Icon className="w-2.5 h-2.5 text-muted-foreground/50 shrink-0 transition-transform" />
-        <span className="text-[13px] text-foreground/55 dark:text-muted-foreground/60 flex-1 text-left font-medium">
+        <Icon className="w-2.5 h-2.5 text-muted-foreground shrink-0 transition-transform" />
+        <span className="text-[13px] text-muted-foreground flex-1 text-left font-medium">
           {bucket.label}
         </span>
-        <span className={`text-[11px] text-muted-foreground tabular-nums mr-1.5 transition-all duration-200 ${balanceHidden ? "blur-[6px] select-none" : ""}`}>
+        <span className={`text-xs text-muted-foreground tabular-nums mr-1.5 transition-all duration-200 ${balanceHidden ? "blur-[6px] select-none" : ""}`}>
           {bucket.totalSats.toLocaleString()} sats
         </span>
         <span className="text-[12px] text-muted-foreground tabular-nums" data-testid={`text-tx-date-count-${bucket.key}`}>
@@ -2588,7 +2588,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
 
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <div className="text-[12px] text-muted-foreground/70 font-medium">Setup steps</div>
+                  <div className="text-[12px] text-muted-foreground font-medium">Setup steps</div>
                   <div className="space-y-1">
                     {[
                       "Open your Lightning wallet app or website",
@@ -2597,7 +2597,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                       "Paste it below to link your wallet",
                     ].map((step, i) => (
                       <div key={i} className="flex items-start gap-2">
-                        <Badge variant="outline" className="shrink-0 text-[11px] mt-0.5">{i + 1}</Badge>
+                        <Badge variant="outline" className="shrink-0 text-xs mt-0.5">{i + 1}</Badge>
                         <span className="text-xs text-muted-foreground">{step}</span>
                       </div>
                     ))}
@@ -2630,8 +2630,8 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
               <div className="pt-3 border-t border-border/20">
                 <div className="flex items-center gap-1.5">
                   <Unplug className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-[12px] text-muted-foreground/60 font-medium">
-                    NIP-47 Nostr Wallet Connect
+                  <span className="text-[12px] text-muted-foreground font-medium">
+                    Nostr Wallet Connect
                   </span>
                 </div>
               </div>
@@ -2647,8 +2647,8 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                     Your wallet keys never leave your wallet provider.
                     This app communicates with your wallet through encrypted Nostr relay messages.
                   </p>
-                  <p className="text-xs text-muted-foreground/60">
-                    Compatible: Alby, Coinos, Zeus, LNbits, and others supporting NWC.
+                  <p className="text-xs text-muted-foreground">
+                    Works with Alby, Coinos, Zeus, LNbits and other wallets that support Nostr Wallet Connect.
                   </p>
                 </div>
               </div>

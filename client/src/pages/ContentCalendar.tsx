@@ -837,7 +837,7 @@ export default function ContentCalendar() {
                     {activeFilters.size}/{FILTER_CONFIG.length}
                   </span>
                 )}
-                <ChevronDown className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+                <ChevronDown className="w-3 h-3 text-muted-foreground" />
               </button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-56 p-2" sideOffset={8}>
@@ -889,21 +889,21 @@ export default function ContentCalendar() {
             )}
           </button>
           <button
-            className="glass-tab-exempt text-[11px] text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors flex items-center gap-1"
+            className="glass-tab-exempt min-h-11 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
             onClick={() => setShowHolidayManager(true)}
           >
             <CreateEventIcon className="w-3 h-3" />
             Create event
           </button>
           <button
-            className="glass-tab-exempt text-[11px] text-gray-500 dark:text-gray-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors flex items-center gap-1"
+            className="glass-tab-exempt min-h-11 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
             onClick={() => setShowEventSearch(true)}
           >
             <Search className="w-3 h-3" />
             Discover events
           </button>
           <button
-            className="glass-tab-exempt text-[11px] text-gray-500 dark:text-gray-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors flex items-center gap-1"
+            className="glass-tab-exempt min-h-11 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
             onClick={() => setShowSubscriptionManager(true)}
           >
             <SubscriptionIcon className="w-3 h-3" />

@@ -162,8 +162,8 @@ function ExpandRow({ icon, label, sub, value, children, testId, id, defaultOpen 
       >
         <RowIcon icon={icon} />
         <RowText label={label} sub={sub} />
-        {value != null && <span className="text-xs text-muted-foreground/60 shrink-0 max-w-[40%] truncate">{value}</span>}
-        <ChevronDown className={`w-4 h-4 text-muted-foreground/40 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        {value != null && <span className="text-xs text-muted-foreground shrink-0 max-w-[40%] truncate">{value}</span>}
+        <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
       {open && <div className="px-3 pb-3 pt-0.5">{children}</div>}
     </div>
@@ -2553,15 +2553,15 @@ export default function Settings() {
             What's new
             {hasUnseenChangelog() && <span className="w-1.5 h-1.5 rounded-full bg-primary" aria-label="new updates" />}
           </Link>
-          <span className="text-muted-foreground/20">·</span>
+          <span aria-hidden="true" className="text-muted-foreground/40">·</span>
           <Link href="/privacy" className="hit-area hover:text-foreground/70 transition-colors underline decoration-dotted underline-offset-2" data-testid="link-settings-privacy">
             Privacy
           </Link>
-          <span className="text-muted-foreground/20">·</span>
+          <span aria-hidden="true" className="text-muted-foreground/40">·</span>
           <Link href="/terms" className="hit-area hover:text-foreground/70 transition-colors underline decoration-dotted underline-offset-2" data-testid="link-settings-covenant">
             Terms
           </Link>
-          <span className="text-muted-foreground/20">·</span>
+          <span aria-hidden="true" className="text-muted-foreground/40">·</span>
           <Link href="/child-safety" className="hit-area hover:text-foreground/70 transition-colors underline decoration-dotted underline-offset-2" data-testid="link-settings-child-safety">
             Child safety
           </Link>
