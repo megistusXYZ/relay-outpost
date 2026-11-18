@@ -11,6 +11,7 @@ import { markHasPosted } from "@/lib/adoption-flags";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
 import { ToastAction } from "@/components/ui/toast";
 import { createHold, HOLD_MS, type Hold } from "@/lib/post-hold";
+import { followSend, holdSend } from "@/lib/mark-signals";
 import { RelayPublishPicker, usePublishRelayPreference } from "@/components/RelayPublishPicker";
 import { withOutboxFloor, fetchRelayLists } from "@/lib/outbox";
 import { classifyRelayUrl, getOutpostRelays, getPublishRelayPreference, type RelayPreset } from "@/lib/outpost-relays";
@@ -617,7 +618,7 @@ export function CreatePostFAB() {
         const signedPoll = await signWithTimeout(signer, pollEvent);
         const isUserSelected = relayPref.preset !== "all";
         const isPrivateOnly = relayPref.preset === "private";
-        const published = await publishEvent(signedPoll, publishTargets, undefined, isUserSelected, isPrivateOnly);
+        const published = await followSend(publishEvent(signedPoll, publishTargets, undefined, isUserSelected, isPrivateOnly));
         if (!published) {
           throw new Error("Poll was rejected by all relays");
         }
@@ -658,7 +659,7 @@ export function CreatePostFAB() {
         const isPrivateOnly = relayPref.preset === "private";
         // Same optimistic contract as notes below: local echo immediately,
         // background publish, retry toast on total rejection.
-        publishEvent(signedEvent, publishTargets, undefined, isUserSelected, isPrivateOnly)
+        followSend(publishEvent(signedEvent, publishTargets, undefined, isUserSelected, isPrivateOnly))
           .then((published) => { if (!published) throw new Error("Event was rejected by all relays"); })
           .catch((err) => {
             console.error(err);
@@ -669,7 +670,7 @@ export function CreatePostFAB() {
                 variant: "destructive",
                 action: (
                   <button
-                    onClick={() => { publishEvent(signedEvent, publishTargets, undefined, isUserSelected, isPrivateOnly).catch(() => {}); }}
+                    onClick={() => { followSend(publishEvent(signedEvent, publishTargets, undefined, isUserSelected, isPrivateOnly)).catch(() => {}); }}
                     className="shrink-0 px-3 py-1.5 rounded-md text-xs font-medium bg-foreground/10 hover:bg-foreground/20 transition-colors"
                   >
                     Retry
@@ -763,7 +764,9 @@ export function CreatePostFAB() {
         // is sent. The publish completes in the background; on failure we surface
         // a retry that re-sends the already-signed event.
         send = () => {
-          publishEvent(signedEvent, publishTargets, undefined, isUserSelected, isPrivateOnly)
+          // followSend: the New-post button thinks while this is out, smiles only
+          // when a relay took it, and shows concern when none did (lib/mark-signals).
+          followSend(publishEvent(signedEvent, publishTargets, undefined, isUserSelected, isPrivateOnly))
             .then((published) => { if (!published) throw new Error("Event was rejected by all relays"); })
             .catch((err) => {
               // Signing already succeeded in the foreground above, so a background
@@ -776,7 +779,7 @@ export function CreatePostFAB() {
                   variant: "destructive",
                   action: (
                     <button
-                      onClick={() => { publishEvent(signedEvent, publishTargets, undefined, isUserSelected, isPrivateOnly).catch(() => {}); }}
+                      onClick={() => { followSend(publishEvent(signedEvent, publishTargets, undefined, isUserSelected, isPrivateOnly)).catch(() => {}); }}
                       className="shrink-0 px-3 py-1.5 rounded-md text-xs font-medium bg-foreground/10 hover:bg-foreground/20 transition-colors"
                     >
                       Retry
@@ -844,6 +847,8 @@ export function CreatePostFAB() {
         const seconds = Math.round(HOLD_MS / 1000);
         const sendNow = send;
         let hold: Hold | null = null;
+        // Nothing has left yet: the New-post button waits with you.
+        const stopWaiting = holdSend();
         const t = toast({
           title: "Posted",
           description: `Sending in ${seconds} s. Undo brings it back.`,
@@ -855,6 +860,7 @@ export function CreatePostFAB() {
               data-testid="button-undo-post"
               onClick={() => {
                 if (!hold?.undo()) return;
+                stopWaiting();
                 setContent(before.content);
                 setMediaAttachments(before.mediaAttachments);
                 setGifUrl(before.gifUrl);
@@ -1873,7 +1879,7 @@ export function CreatePostFAB() {
           style={{ bottom: "1.5rem", right: "1.5rem" }}
           data-testid="button-fab-compose"
         >
-          <OttoMark size={32} className="!size-8" />
+          <OttoMark size={32} className="!size-8" role="post" />
         </Button>
       )}
 

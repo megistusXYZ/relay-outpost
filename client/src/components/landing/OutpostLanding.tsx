@@ -13,9 +13,10 @@
  * toggle where view transitions exist. All of it stands down for
  * prefers-reduced-motion.
  */
-import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FocusEvent, type MouseEvent, type PointerEvent, type Ref } from "react";
 import { useLocation } from "wouter";
 import { useTheme } from "@/hooks/use-theme";
+import { choseLite } from "@/hooks/use-perf-mode";
 import { InviteGreeting } from "@/components/landing/InviteGreeting";
 import { loadSignupDraft } from "@/lib/account-draft";
 import { trackSignupEvent } from "@/lib/signup-telemetry";
@@ -33,10 +34,15 @@ const stroke = (w: number): CSSProperties => ({ fill: "none", stroke: "currentCo
 const INK: CSSProperties = { fill: "currentColor" };
 const dot: CSSProperties = { display: "inline-block", width: ".15em", height: ".15em", borderRadius: "50%", background: "var(--accent)", marginInlineStart: ".05em" };
 
+/** The mark's face. It changes for a reason, never on a timer (owner, 2026-11-18). */
+type MarkMood = "here" | "done";
+/** A passing reaction: a blink, or the theme changing. */
+type MarkReact = "blink" | "light" | "dark" | null;
+
 /** Otto: the open ring with the Ember dot, and eyes for each mood. */
-function Otto({ size, mood, className = "", label }: { size: number; mood: "cycle" | "here"; className?: string; label?: string }) {
+function Otto({ size, mood = "here", react, markRef, className = "", label }: { size: number; mood?: MarkMood; react?: MarkReact; markRef?: Ref<SVGSVGElement>; className?: string; label?: string }) {
   return (
-    <svg className={`otto ${mood === "cycle" ? "otto-cycle" : ""} ${className}`} data-mood={mood} viewBox="0 0 100 100" width={size} height={size}
+    <svg ref={markRef} className={`otto ${className}`} data-mood={mood} data-react={react || undefined} viewBox="0 0 100 100" width={size} height={size}
       role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true} style={{ overflow: "visible" }}>
       <path d="M78.98 42.24 A30 30 0 1 1 57.76 21.02" style={{ fill: "none", stroke: "currentColor", strokeWidth: 9, strokeLinecap: "round" }} />
       <circle className="m m-ask" cx="71.2" cy="28.8" r="12" style={{ fill: "none", stroke: "var(--accent)", strokeWidth: 2, strokeOpacity: 0.45 }} />
@@ -116,9 +122,11 @@ const pillarText = { margin: 0, fontSize: 19, color: "var(--ink2)", textWrap: "p
  * a second, then the warm dot appears.
  * Screen readers get the sentence from aria-label. Reduced motion: no decode.
  */
-function DecodeHeadline({ text }: { text: string }) {
+function DecodeHeadline({ text, onLetter }: { text: string; /** Each letter as it settles (its box), then null when the sentence is done. */ onLetter?: (box: DOMRect | null) => void }) {
   const rootRef = useRef<HTMLSpanElement>(null);
   const layerRef = useRef<HTMLSpanElement>(null);
+  const watcher = useRef(onLetter);
+  watcher.current = onLetter;
   // Layout effect: start scrambled before the first paint, so the sentence never flashes first.
   // The letters only turn transparent (their kerning and places never change); the flickering
   // glyphs live in a separate layer, each centred over its letter's measured box.
@@ -151,11 +159,11 @@ function DecodeHeadline({ text }: { text: string }) {
       let left = 0;
       cells.forEach((c, i) => {
         if (!c.classList.contains("scr")) return;
-        if (now >= settleAt[i]) { c.classList.remove("scr"); glyphs[i].remove(); }
+        if (now >= settleAt[i]) { c.classList.remove("scr"); glyphs[i].remove(); watcher.current?.(c.getBoundingClientRect()); }
         else { left++; if (swap) glyphs[i].textContent = pick(); }
       });
       if (left) raf = requestAnimationFrame(frame);
-      else root.classList.remove("decoding");
+      else { root.classList.remove("decoding"); watcher.current?.(null); }
     };
     raf = requestAnimationFrame(frame);
     return () => { cancelAnimationFrame(raf); cells.forEach((c) => c.classList.remove("scr")); glyphs.forEach((g) => g.remove()); root.classList.remove("decoding"); };
@@ -186,6 +194,106 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
   const heroRef = useRef<HTMLElement>(null);
   const closingRef = useRef<HTMLElement>(null);
   const [asleep, setAsleep] = useState(false);
+
+  // Relay comes alive, and only for a reason (owner, 2026-11-18): the small mark
+  // in the header watches the headline decode, notices the buttons, follows the
+  // scroll and reacts to the theme; the large one at the bottom greets you once.
+  // Each reaction is short and plays once. Reduced motion: faces may change,
+  // nothing moves. Lite mode: no pointer-follow and no idle glances.
+  const headMarkRef = useRef<SVGSVGElement>(null);
+  const bigMarkRef = useRef<SVGSVGElement>(null);
+  const [headMood, setHeadMood] = useState<MarkMood>("here");
+  const [headReact, setHeadReact] = useState<MarkReact>(null);
+  const [bigMood, setBigMood] = useState<MarkMood>("here");
+  const gazeTimer = useRef(0);
+  const gazeHeld = useRef(false);
+  const lastPointer = useRef(0);
+  const timers = useRef<number[]>([]);
+  const later = useCallback((fn: () => void, ms: number) => { timers.current.push(window.setTimeout(fn, ms)); }, []);
+  useEffect(() => () => { timers.current.forEach((t) => window.clearTimeout(t)); window.clearTimeout(gazeTimer.current); }, []);
+
+  // A reaction points the header mark's eyes by setting --ex/--ey on the mark
+  // itself, which wins over the pointer-follow values it inherits from the page.
+  const releaseGaze = useCallback(() => {
+    window.clearTimeout(gazeTimer.current);
+    gazeHeld.current = false;
+    headMarkRef.current?.style.removeProperty("--ex");
+    headMarkRef.current?.style.removeProperty("--ey");
+  }, []);
+  const gaze = useCallback((x: number, y: number, holdMs?: number) => {
+    const el = headMarkRef.current;
+    if (!el || reducedMotion()) return;
+    el.style.setProperty("--ex", x.toFixed(2));
+    el.style.setProperty("--ey", y.toFixed(2));
+    gazeHeld.current = true;
+    window.clearTimeout(gazeTimer.current);
+    if (holdMs) gazeTimer.current = window.setTimeout(releaseGaze, holdMs);
+  }, [releaseGaze]);
+  const lookAt = useCallback((clientX: number, clientY: number, holdMs?: number) => {
+    const el = headMarkRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const dx = clientX - (r.left + r.width / 2), dy = clientY - (r.top + r.height / 2);
+    const d = Math.hypot(dx, dy) || 1;
+    gaze((dx / d) * 4, (dy / d) * 3.4, holdMs);
+  }, [gaze]);
+  const lookAtEl = useCallback((el: Element) => { const r = el.getBoundingClientRect(); lookAt(r.left + r.width / 2, r.top + r.height / 2); }, [lookAt]);
+  const smile = useCallback(() => { setHeadMood("done"); later(() => setHeadMood("here"), 700); }, [later]);
+  const reactOnce = useCallback((kind: Exclude<MarkReact, null>, ms: number) => { setHeadReact(kind); later(() => setHeadReact((k) => (k === kind ? null : k)), ms); }, [later]);
+
+  // It watches the headline decode, then looks at you and blinks.
+  const onLetter = useCallback((box: DOMRect | null) => {
+    if (box) lookAt(box.left + box.width / 2, box.top + box.height / 2, 1200);
+    else { releaseGaze(); reactOnce("blink", 450); }
+  }, [lookAt, releaseGaze, reactOnce]);
+  // It notices the buttons: looks toward one you hover or focus, smiles when you press it.
+  const noticed = {
+    onPointerEnter: (e: PointerEvent<HTMLButtonElement>) => { if (e.pointerType === "mouse") lookAtEl(e.currentTarget); },
+    onPointerLeave: () => releaseGaze(),
+    onFocus: (e: FocusEvent<HTMLButtonElement>) => lookAtEl(e.currentTarget),
+    onBlur: () => releaseGaze(),
+    onPointerDown: () => smile(),
+  };
+  // It follows your scroll: eyes down while the page moves down, up while it moves up.
+  useEffect(() => {
+    const scroller = rootRef.current?.parentElement;
+    if (!scroller) return;
+    let last = scroller.scrollTop;
+    const onScroll = () => {
+      const now = scroller.scrollTop;
+      if (now !== last) gaze(0, now > last ? 3.4 : -3, 350);
+      last = now;
+    };
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    return () => scroller.removeEventListener("scroll", onScroll);
+  }, [gaze]);
+  // At rest: one small glance every 8 to 12 seconds, when nothing else has its attention.
+  useEffect(() => {
+    let t = 0;
+    const tick = () => {
+      t = window.setTimeout(() => {
+        if (!gazeHeld.current && !reducedMotion() && !choseLite() && Date.now() - lastPointer.current > 4000 && !document.hidden) {
+          gaze((Math.random() < 0.5 ? -1 : 1) * (1.6 + Math.random()), (Math.random() - 0.5) * 2, 600);
+        }
+        tick();
+      }, 8000 + Math.random() * 4000);
+    };
+    tick();
+    return () => window.clearTimeout(t);
+  }, [gaze]);
+  // The large mark at the bottom greets you once, the first time it scrolls into view.
+  useEffect(() => {
+    const el = bigMarkRef.current;
+    if (!el || typeof IntersectionObserver !== "function") return;
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) return;
+      io.disconnect();
+      setBigMood("done");
+      later(() => setBigMood("here"), 700);
+    }, { threshold: 0.6 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [later]);
   const topRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -207,18 +315,21 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
     const next = isDark ? "light" : "dark";
     const html = document.documentElement;
     const apply = () => setTheme(next);
+    reactOnce(next, 700); // the mark blinks at the light, or settles for the dark
     if (typeof document.startViewTransition !== "function" || reducedMotion()) { apply(); return; }
     html.style.setProperty("--vx", `${e.clientX}px`);
     html.style.setProperty("--vy", `${e.clientY}px`);
     html.classList.add("theming");
     document.startViewTransition(apply).finished.finally(() => html.classList.remove("theming"));
-  }, [isDark, setTheme]);
+  }, [isDark, setTheme, reactOnce]);
 
   // Otto's eyes follow the pointer and the dot grids light up under it.
   const onPointerMove = useCallback((e: PointerEvent<HTMLDivElement>) => {
+    lastPointer.current = Date.now();
     if (e.pointerType !== "mouse" || reducedMotion()) return;
     const root = rootRef.current;
     if (!root) return;
+    if (choseLite()) return; // Lite, when chosen: the eyes don't follow the pointer (a phone only defaults to it)
     const set = (k: string, v: string) => root.style.setProperty(k, v);
     set("--ex", ((e.clientX / window.innerWidth - 0.5) * 7).toFixed(2));
     set("--ey", ((e.clientY / window.innerHeight - 0.5) * 6).toFixed(2));
@@ -268,14 +379,14 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
       <header className={`ol-header${scrolled ? " scrolled" : ""}`} style={{ position: "sticky", top: 0, zIndex: 20 }}>
         <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 clamp(16px, 5vw, 24px)", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <a href="#top" onClick={toTop} style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 44, fontSize: 19, fontWeight: 600, letterSpacing: "-0.02em" }}>
-            <Otto size={34} mood="cycle" /> Outpost
+            <Otto size={34} mood={headMood} react={headReact} markRef={headMarkRef} /> Outpost
           </a>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button type="button" className="tap" onClick={onToggleTheme} aria-label="Switch between light and dark" data-testid="landing-theme-toggle"
               style={{ width: 44, height: 44, borderRadius: 999, border: 0, background: "transparent", color: "var(--ink)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
               <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="8.2" style={{ fill: "none", stroke: "currentColor", strokeWidth: 1.6 }} /><path d="M12 3.8a8.2 8.2 0 0 1 0 16.4z" style={INK} /></svg>
             </button>
-            <button type="button" className="btn" onClick={onLaunch} data-testid="landing-get-outpost"
+            <button type="button" className="btn" onClick={onLaunch} {...noticed} data-testid="landing-get-outpost"
               style={{ display: "inline-flex", alignItems: "center", height: 44, padding: "0 clamp(14px, 4vw, 18px)", borderRadius: 999, background: "var(--btn)", color: "var(--btnink)", fontSize: 14, fontWeight: 500, whiteSpace: "nowrap" }}>Get Outpost</button>
           </div>
         </div>
@@ -288,10 +399,10 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
           <HeroDoodles />
         </div>
         <div style={{ position: "relative", zIndex: 2, maxWidth: 920, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 28 }}>
-          <DecodeHeadline text={HEADLINE} />
+          <DecodeHeadline text={HEADLINE} onLetter={onLetter} />
           <InviteGreeting />
           <div className="in" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: 20, marginTop: 8, animationDelay: ".44s" }}>
-            <button type="button" className="btn" onClick={onLaunch} style={btnStyle} data-testid="button-engage-warp">Create your space</button>
+            <button type="button" className="btn" onClick={onLaunch} {...noticed} style={btnStyle} data-testid="button-engage-warp">Create your space</button>
           </div>
           <p className="in" style={{ margin: 0, fontSize: 14, color: "var(--ink2)", animationDelay: ".52s" }}>Free. Open source. No email or phone number.</p>
           {resumable && (
@@ -359,7 +470,7 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
           <div className="cta-dots" style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle, var(--ink) 1px, transparent 1.6px)", backgroundSize: "28px 28px", WebkitMaskImage: "radial-gradient(320px circle at var(--qx, 50%) var(--qy, -400px), #000, transparent)", maskImage: "radial-gradient(320px circle at var(--qx, 50%) var(--qy, -400px), #000, transparent)" }} />
         </div>
         <div className="rv" style={{ position: "relative", maxWidth: 760, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 28 }}>
-          <Otto size={132} mood="here" className="float" label="Relay, pleased" />
+          <Otto size={132} mood={bigMood} markRef={bigMarkRef} label="Relay, pleased" />
           <h2 style={{ margin: 0, fontSize: "clamp(40px, 6vw, 76px)", lineHeight: 1.02, fontWeight: 600, letterSpacing: "-0.045em", textWrap: "balance" } as CSSProperties}>Start with a space that’s yours<span aria-hidden="true" style={dot} /></h2>
           <button type="button" className="btn" onClick={onLaunch} style={{ ...btnStyle, marginTop: 8 }} data-testid="landing-closing-cta">Create your space</button>
         </div>
@@ -370,7 +481,7 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: "40px 64px" }}>
             <div style={{ flex: "1 1 280px", maxWidth: 360, display: "flex", flexDirection: "column", gap: 14 }}>
               <a href="#top" onClick={toTop} style={{ display: "inline-flex", alignItems: "center", gap: 10, minHeight: 44, alignSelf: "flex-start", color: "var(--ink)", fontSize: 19, fontWeight: 600, letterSpacing: "-0.02em" }}>
-                <Otto size={30} mood="cycle" /> Outpost
+                <Otto size={30} /> Outpost
               </a>
               <p style={{ margin: 0, textWrap: "pretty" } as CSSProperties}>The next phase of the internet.</p>
             </div>

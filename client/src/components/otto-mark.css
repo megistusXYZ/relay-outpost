@@ -9,8 +9,20 @@
 .otto-mark[data-mood="done"] .look { animation: otto-hop 0.7s cubic-bezier(0.3, 1.5, 0.5, 1); }
 .otto-mark .blink { transform-box: fill-box; transform-origin: center; animation: otto-blink 5.5s infinite; }
 /* At rest on a device without a mouse the eyes glance about now and then; with a mouse they follow it instead. */
-@media (hover: none) { .otto-mark[data-mood="here"] .look { animation: otto-glance 14s ease-in-out infinite; } }
-@keyframes otto-glance { 0%, 86%, 100% { transform: translate(0, 0); } 89%, 92% { transform: translate(-3px, 0.5px); } 95%, 98% { transform: translate(3px, 0.5px); } }
+@media (hover: none) { .otto-mark[data-mood="here"] .look { animation: otto-glance 20s ease-in-out infinite; } }
+/* One small glance about every ten seconds, left then right (the calm budget: 8 to 12 s). */
+@keyframes otto-glance { 0%, 44%, 49%, 94%, 100% { transform: translate(0, 0); } 45.5%, 47.5% { transform: translate(-3px, 0.5px); } 95.5%, 97.5% { transform: translate(3px, 0.5px); } }
+/* Concern, and waiting out the Undo time (the dot is hollow until the post has really gone). */
+.otto-mark[data-mood="worry"] .m-worry, .otto-mark[data-mood="wait"] .m-here { opacity: 1; }
+.otto-mark[data-mood="wait"] .dot { fill: transparent !important; stroke: hsl(var(--brand)); stroke-width: 2.6px; }
+/* A passing reaction, played once: a look up then down toward the tabs when something arrives; a blink on coming back. */
+.otto-mark[data-react="perk"] .look { animation: otto-perk 0.6s ease-out; }
+.otto-mark[data-react="wake"] .look > .m { transform-box: fill-box; transform-origin: center; animation: otto-blink-once 0.4s ease-in-out; }
+@keyframes otto-perk { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(0, -4px); } 60%, 80% { transform: translate(0, 4px); } }
+@keyframes otto-blink-once { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.08); } }
+/* Lite, when the person chose it (data-quiet): faces and short reactions stay; no idle glances, and no
+   pointer-follow (OttoMark.tsx). A phone only defaults to Lite, and keeps its glance. */
+.otto-mark[data-quiet][data-mood="here"] .look { animation: none; }
 @keyframes otto-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.3); } }
 @keyframes otto-hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-7px); } }
 @keyframes otto-blink { 0%, 94%, 100% { transform: scaleY(1); } 96.5% { transform: scaleY(0.08); } }

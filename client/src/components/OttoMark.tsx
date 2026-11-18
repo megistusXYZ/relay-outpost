@@ -19,7 +19,24 @@
  *   here   otherwise: a calm face that blinks, glances about now and then on
  *          a phone, follows the mouse on a desktop, and smiles when tapped
  *
- * The eyes follow the mouse. Everything stands down for reduced motion.
+ * Relay moves only for a reason (owner, 2026-11-18). A mark with a `role`
+ * also reads the real signals in lib/mark-signals, and problems come first:
+ *
+ *   role="logo"  the app's logo (rail, classic sidebar, phone header):
+ *     worry  the connection is lost (the browser is offline, or the relays
+ *            dropped and will not connect again)
+ *     ask    a call is ringing, or something new just arrived (with one
+ *            short look up, `data-react="perk"`)
+ *     and one blink when you come back (`data-react="wake"`)
+ *   role="post"  the New-post button, which speaks only about your post:
+ *     wait   the post is waiting out its Undo time (the dot is hollow)
+ *     work   it is on its way
+ *     done   a relay took it; never before
+ *     worry  no relay took it
+ *
+ * Reactions play once and last well under a second; nothing loops. Reduced
+ * motion: the faces still change and nothing moves. Lite, when the person
+ * chose it: no pointer-follow and no idle glances.
  * Styles: otto-mark.css, scoped to .otto-mark.
  *
  * The face is on by default (owner, 2026-11-16: the animated faces in the
@@ -29,14 +46,22 @@
 import { useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { QueryClientContext } from "@tanstack/react-query";
 import { isBusy, subscribeBusy } from "@/lib/otto-busy";
+import { useChoseLite } from "@/hooks/use-perf-mode";
+import { logoMood, postMood, getConnectionLost, subscribeConnectionLost, getCallRinging, subscribeCallRinging, getPostStatus, subscribePostStatus } from "@/lib/mark-signals";
 import "./otto-mark.css";
 
-export type OttoMood = "cycle" | "here" | "work" | "done" | "ask" | "rest";
+export type OttoMood = "cycle" | "here" | "work" | "done" | "ask" | "rest" | "worry" | "wait";
+/** A passing reaction, played once: a glance toward the tabs when something arrives, a blink on coming back. */
+export type OttoReact = "perk" | "wake" | null;
+/** Where the mark sits: the logo reacts to the app; the New-post button speaks only about your post. */
+export type OttoRole = "logo" | "post";
 
 const INK = "currentColor";
 const IDLE_MS = 180_000;
 const WORK_GRACE_MS = 600;
 const DONE_MS = 1_400;
+/** An arrival holds the face this long; a passing reaction lasts this long; counts that load as the app opens are not arrivals. */
+const ARRIVED_MS = 1500, REACT_MS = 600, ARRIVAL_GRACE_MS = 6000;
 
 function reducedMotion(): boolean {
   try { return !!window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; }
@@ -52,6 +77,9 @@ function armIdle() {
   idleTimer = window.setTimeout(() => { awake = false; notifyIdle(); }, IDLE_MS);
 }
 function onActivity() {
+  // A hidden tab stays asleep whatever scrolls inside it, so coming back is
+  // one clear moment (and gets its blink).
+  if (document.hidden) return;
   if (!awake) { awake = true; notifyIdle(); }
   armIdle();
 }
@@ -101,7 +129,7 @@ function subscribeLook(el: SVGSVGElement) {
 }
 
 /** The mood the app's state asks for; `cycle` when nothing is going on. */
-export function useOttoMood({ attention = false, hover = false }: { attention?: boolean; hover?: boolean }): OttoMood {
+export function useOttoMood({ attention = false, hover = false, role, waiting = 0 }: { attention?: boolean; hover?: boolean; role?: OttoRole; /** How many things wait for the person; a rise is an arrival. */ waiting?: number }): { mood: OttoMood; react: OttoReact } {
   const isAwake = useSyncExternalStore(subscribeIdle, getAwake, () => true);
   // The query client, when there is one: a mark rendered outside the app
   // (a test, a static page) just never works.
@@ -117,6 +145,10 @@ export function useOttoMood({ attention = false, hover = false }: { attention?: 
   const [working, setWorking] = useState(false);
   const [justDone, setJustDone] = useState(false);
   const wasWorking = useRef(false);
+  // The real signals (lib/mark-signals): the connection, a ringing call, your post.
+  const lost = useSyncExternalStore(subscribeConnectionLost, getConnectionLost, () => false);
+  const ringing = useSyncExternalStore(subscribeCallRinging, getCallRinging, () => false);
+  const postStatus = useSyncExternalStore(subscribePostStatus, getPostStatus, () => "idle" as const);
 
   // A fetch has to last a moment before it is "work": the app fetches constantly.
   useEffect(() => {
@@ -138,11 +170,38 @@ export function useOttoMood({ attention = false, hover = false }: { attention?: 
     return () => window.clearTimeout(t);
   }, [working]);
 
-  if (!isAwake) return "rest";
-  if (working) return "work";
-  if (hover || justDone) return "done";
-  if (attention) return "ask";
-  return "here";
+  // Something new arrived: the count of things waiting went up. Not the first
+  // counts after the app opens: those were already there.
+  const [arrived, setArrived] = useState(false);
+  const [react, setReact] = useState<OttoReact>(null);
+  const seen = useRef(waiting);
+  const mountedAt = useRef(Date.now());
+  const arrivedTimer = useRef(0), reactTimer = useRef(0);
+  const once = (kind: Exclude<OttoReact, null>) => {
+    setReact(kind);
+    window.clearTimeout(reactTimer.current);
+    reactTimer.current = window.setTimeout(() => setReact(null), REACT_MS);
+  };
+  useEffect(() => {
+    if (role === "logo" && waiting > seen.current && Date.now() - mountedAt.current > ARRIVAL_GRACE_MS) {
+      setArrived(true);
+      once("perk");
+      window.clearTimeout(arrivedTimer.current);
+      arrivedTimer.current = window.setTimeout(() => setArrived(false), ARRIVED_MS);
+    }
+    seen.current = waiting;
+  }, [waiting, role]);
+  // You came back: a blink.
+  const wasAwake = useRef(isAwake);
+  useEffect(() => {
+    if (role === "logo" && isAwake && !wasAwake.current) once("wake");
+    wasAwake.current = isAwake;
+  }, [isAwake, role]);
+  useEffect(() => () => { window.clearTimeout(arrivedTimer.current); window.clearTimeout(reactTimer.current); }, []);
+
+  if (role === "post") return { mood: postMood({ awake: isAwake, status: postStatus, hover }), react: null };
+  const logo = role === "logo";
+  return { mood: logoMood({ awake: isAwake, lost: logo && lost, ringing: logo && ringing, arrived: logo && arrived, attention, working, justDone, hover }), react };
 }
 
 export function OttoMark({
@@ -152,7 +211,13 @@ export function OttoMark({
   mood: forced,
   label,
   face = true,
+  role,
+  waiting = 0,
 }: {
+  /** The logo reacts to the app (connection, a call, arrivals); the New-post button speaks only about your post. */
+  role?: OttoRole;
+  /** How many things wait for the person. When it rises, the logo perks up. */
+  waiting?: number;
   size?: number;
   className?: string;
   /** Show the eyes. Off, it is the mark: ring and dot. */
@@ -166,22 +231,28 @@ export function OttoMark({
   const ref = useRef<SVGSVGElement>(null);
   const [hover, setHover] = useState(false);
   const [pressed, setPressed] = useState(false);
-  const mood = useOttoMood({ attention, hover: hover || pressed });
+  const { mood, react } = useOttoMood({ attention, hover: hover || pressed, role, waiting });
   const shown: OttoMood = forced ?? mood;
+  const quiet = useChoseLite();
   // A tap gets a smile: the button it sits in acts, Otto acknowledges.
   const onPress = () => { setPressed(true); window.setTimeout(() => setPressed(false), 700); };
 
   useEffect(() => {
     const el = ref.current;
-    if (!el || !face || reducedMotion()) return;
+    // Lite, when the person chose it: faces and short reactions stay, but the
+    // eyes don't follow the pointer and there are no idle glances (otto-mark.css).
+    if (!el || !face || quiet || reducedMotion()) return;
     return subscribeLook(el);
-  }, [face]);
+  }, [face, quiet]);
 
   return (
     <svg
       ref={ref}
       className={`otto-mark ${className}`}
       data-mood={shown}
+      data-react={react || undefined}
+      data-role={role}
+      data-quiet={quiet || undefined}
       data-testid="otto-mark"
       viewBox="0 0 100 100"
       width={size}
@@ -203,6 +274,8 @@ export function OttoMark({
           <path className="m m-done" d="M37 53.5q5-8 10 0M53 53.5q5-8 10 0" fill="none" stroke={INK} strokeWidth={4.2} strokeLinecap="round" />
           <g className="m m-ask"><circle cx="42" cy="50" r="5" fill={INK} /><circle cx="58" cy="50" r="5" fill={INK} /></g>
           <path className="m m-rest" d="M37 51.5h10M53 51.5h10" fill="none" stroke={INK} strokeWidth={4.2} strokeLinecap="round" />
+          {/* Concern: the eyes slant, inner ends high. For a lost connection, or a post no relay accepted. */}
+          <path className="m m-worry" d="M37 54l9.5-4.5M63 54l-9.5-4.5" fill="none" stroke={INK} strokeWidth={4.2} strokeLinecap="round" />
         </g>
       )}
     </svg>

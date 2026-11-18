@@ -304,7 +304,7 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
         >
           {/* Otto is the compose button on every screen size (owner, 2026-11-16): the same
               mark as the desktop button and the classic dock, alive (blinks, works, smiles on tap). */}
-          <OttoMark size={36} className="!size-9" />
+          <OttoMark size={36} className="!size-9" role="post" />
         </button>
         <nav
           className={`fixed bottom-0 left-0 right-0 z-50 md:hidden px-3 ${motion} ${hiddenCls}`}
@@ -343,7 +343,7 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
               className={`mobile-nav-center ${centreActive ? "mobile-nav-center-active" : ""} ${composeDisabled ? "opacity-40 pointer-events-none" : ""}`}
               data-testid="mobile-nav-create"
             >
-              <OttoMark size={34} className="!size-[34px]" />
+              <OttoMark size={34} className="!size-[34px]" role="post" />
             </button>
           </div>
 
