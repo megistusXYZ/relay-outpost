@@ -106,7 +106,7 @@ export function PageTabs({
                 ? "feed-tab-active no-default-hover-elevate"
                 : tab.dimmed
                   ? "opacity-50"
-                  : "text-foreground/70 dark:text-inherit",
+                  : "text-muted-foreground",
             )}
             onClick={() => onChange(tab.key)}
             data-testid={tab.testId ?? `tab-${tab.key}`}

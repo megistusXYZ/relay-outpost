@@ -183,14 +183,14 @@ export function EventCard({ ce, variant = "list", dimmed = false, actions, onOpe
           {/* Fixed-height header row: label left, host right. The host name is a
               single truncated line, so profile resolution can't change height. */}
           <div className="flex items-center gap-1.5 mb-2 h-4">
-            <CalendarDays className="w-3.5 h-3.5 text-brand/70 shrink-0" />
-            <span className="text-[13px] text-muted-foreground/60 font-medium">Event</span>
+            <CalendarDays className="w-3.5 h-3.5 text-brand shrink-0" />
+            <span className="text-[13px] text-muted-foreground font-medium">Event</span>
             <span className="ml-auto flex items-center gap-1.5 min-w-0">
               <Avatar className="w-4 h-4 shrink-0">
                 {host.avatar && <AvatarImage src={host.avatar} alt={host.name} />}
                 <AvatarFallback className="text-[7px] bg-muted">{host.name.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
-              <span className="text-[11px] font-medium text-muted-foreground/80 truncate max-w-[140px]">{host.name}</span>
+              <span className="text-xs font-medium text-muted-foreground truncate max-w-[140px]">{host.name}</span>
             </span>
           </div>
           <div className="flex items-start gap-3">
@@ -204,12 +204,12 @@ export function EventCard({ ce, variant = "list", dimmed = false, actions, onOpe
               >
                 {ce.title}
               </button>
-              <p className="mt-1 text-xs text-muted-foreground/80 flex items-center gap-1.5">
+              <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1.5">
                 <Clock className="w-3 h-3 shrink-0" />
                 <span className="truncate">{formatEventWhen(ce)}</span>
               </p>
               {ce.location && (
-                <p className="mt-0.5 text-xs text-muted-foreground/70 flex items-center gap-1.5 min-w-0">
+                <p className="mt-0.5 text-xs text-muted-foreground flex items-center gap-1.5 min-w-0">
                   <MapPin className="w-3 h-3 shrink-0" />
                   <span className="truncate">{ce.location}</span>
                 </p>
@@ -235,12 +235,12 @@ export function EventCard({ ce, variant = "list", dimmed = false, actions, onOpe
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); openDetails(); }}
-            className="block w-full text-left text-sm font-medium text-foreground/90 mb-1 leading-snug line-clamp-2 hover:text-foreground focus-visible:outline-none focus-visible:underline"
+            className="block w-full text-left text-sm font-medium text-foreground mb-1 leading-snug line-clamp-2 focus-visible:outline-none focus-visible:underline"
             data-testid={`event-card-open-${ce.id.slice(0, 8)}`}
           >
             {ce.title}
           </button>
-          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1 sm:gap-2 text-[11px] text-muted-foreground/60 mb-1.5">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1 sm:gap-2 text-xs text-muted-foreground mb-1.5">
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3 shrink-0" />
               {formatEventWhen(ce)}
@@ -253,13 +253,13 @@ export function EventCard({ ce, variant = "list", dimmed = false, actions, onOpe
             )}
           </div>
           {ce.description && (
-            <p className="text-xs text-foreground/60 line-clamp-2 mb-2 leading-relaxed">
+            <p className="text-xs text-foreground line-clamp-2 mb-2 leading-relaxed">
               <Linkify text={ce.description.slice(0, 180)} />
             </p>
           )}
           <MeetingLinkChip ce={ce} suppressIfInText={ce.description ? ce.description.slice(0, 180) : ""} />
           <div className="flex items-center gap-2 flex-wrap mt-1.5">
-            <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Avatar className="w-4 h-4 border border-border/30">
                 {host.avatar && <AvatarImage src={host.avatar} alt={host.name} />}
                 <AvatarFallback className="text-[6px] bg-muted">{host.name.charAt(0).toUpperCase()}</AvatarFallback>
@@ -284,7 +284,7 @@ export function EventCardSkeleton({ variant = "list" }: { variant?: "list" | "em
       <div className="mt-2 rounded-lg border border-border/30 bg-background/20 p-3" data-testid="event-embed-skeleton">
         <div className="animate-pulse">
           <div className="flex items-center gap-1.5 mb-2 h-4">
-            <CalendarDays className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0" />
+            <CalendarDays className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
             <span className="text-[13px] text-muted-foreground font-medium">Event</span>
             <div className="ml-auto h-3 w-20 rounded bg-muted/40" />
           </div>

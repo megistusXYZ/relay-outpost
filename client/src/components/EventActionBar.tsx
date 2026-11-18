@@ -171,7 +171,7 @@ export function EventActionBar({
       </button>
 
       {goingCount > 0 && (
-        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/70" data-testid="rsvp-going-count">
+        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" data-testid="rsvp-going-count">
           <Users className="w-3 h-3" />
           {goingCount} going
         </span>
@@ -183,7 +183,7 @@ export function EventActionBar({
             <button
               type="button"
               onClick={(e) => e.stopPropagation()}
-              className={`${pill} bg-transparent border border-border/50 text-foreground/70 hover:bg-muted/60 hover:text-foreground`}
+              className={`${pill} bg-transparent border border-border/50 text-foreground hover:bg-muted/60`}
               data-testid="button-add-to-calendar"
               aria-label={pinned ? "Add to calendar (pinned to your Relay Outpost calendar)" : "Add to calendar"}
             >
@@ -198,7 +198,7 @@ export function EventActionBar({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()} className="w-52">
-            <DropdownMenuLabel className="text-[13px] text-muted-foreground/60 font-medium">
+            <DropdownMenuLabel className="text-[13px] text-muted-foreground font-medium">
               Add to calendar
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -212,7 +212,7 @@ export function EventActionBar({
                 : <OutpostIcon className="w-4 h-4 mr-2" />}
               <span className="flex flex-col items-start">
                 <span>{pinned ? "Pinned · Remove" : "Relay Outpost calendar"}</span>
-                <span className="text-[10px] text-muted-foreground/70">
+                <span className="text-xs text-muted-foreground">
                   {pinned ? "In your in-app calendar" : "Save privately — no RSVP"}
                 </span>
               </span>
@@ -243,7 +243,7 @@ export function EventActionBar({
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onShare(); }}
-            className={`${iconBtn} text-muted-foreground/60 hover:bg-muted/60 hover:text-brand`}
+            className={`${iconBtn} text-muted-foreground hover:bg-muted/60 hover:text-brand`}
             data-testid="button-share-event"
             aria-label="Share to feed"
             title="Share to feed"

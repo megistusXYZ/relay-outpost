@@ -1221,7 +1221,7 @@ function PeopleTab({ urlQuery, updateUrl }: TabProps) {
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-foreground/90 truncate">{name}</div>
+                    <div className="text-sm font-medium text-foreground truncate">{name}</div>
                     {nip05 && <div className="text-xs text-muted-foreground truncate">{nip05}</div>}
                   </div>
                 </button>
@@ -1240,13 +1240,13 @@ function PeopleTab({ urlQuery, updateUrl }: TabProps) {
         ) : !directMatch && searchProfilesWithTier.length === 0 ? (
           backendFailed ? (
             <div className="flex flex-col items-center justify-center py-14 text-center" data-testid="container-backend-failed">
-              <OttoEmpty mood="looking" size={88} className="mb-3 text-foreground/70" />
+              <OttoEmpty mood="looking" size={88} className="mb-3 text-foreground" />
               <p className="text-sm font-medium mb-1">Search backends unreachable</p>
-              <p className="text-xs text-muted-foreground/80 dark:text-muted-foreground/70 max-w-xs mb-3">
+              <p className="text-xs text-muted-foreground max-w-xs mb-3">
                 We couldn't reach the search sources. Check your connection and try again.
               </p>
               {nip05Failure && (
-                <p className="text-[11px] text-amber-500/90 dark:text-amber-400/80 max-w-xs mb-3">
+                <p className="text-xs text-warning max-w-xs mb-3">
                   {nip05ReasonMessage(nip05Failure.reason, nip05Failure.domain)}
                 </p>
               )}
@@ -1260,13 +1260,13 @@ function PeopleTab({ urlQuery, updateUrl }: TabProps) {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-14 text-center" data-testid="container-empty-results">
-              <OttoEmpty mood="looking" size={88} className="mb-3 text-foreground/70" />
+              <OttoEmpty mood="looking" size={88} className="mb-3 text-foreground" />
               <p className="text-sm font-medium mb-1">No people found</p>
               <p className="text-[13px] text-muted-foreground max-w-xs">
                 Try different search terms or check the spelling.
               </p>
               {nip05Failure && (
-                <p className="text-[11px] text-amber-500/90 dark:text-amber-400/80 max-w-xs mt-3">
+                <p className="text-xs text-warning max-w-xs mt-3">
                   NIP-05 lookup: {nip05ReasonMessage(nip05Failure.reason, nip05Failure.domain)}
                 </p>
               )}
@@ -1428,7 +1428,7 @@ function TierSection({ tierKey, tierLabel, profiles, followSet, followedByPubkey
           {!showAll && profiles.length > displayCount && (
             <button
               onClick={() => setShowAll(true)}
-              className="w-full text-center py-2 text-[12px] text-brand/70 hover:text-brand transition-colors font-medium"
+              className="w-full text-center py-2 text-[12px] text-brand transition-colors font-medium"
             >
               Show {profiles.length - displayCount} more
             </button>
@@ -1917,7 +1917,7 @@ function PostsTab(_props: TabProps) {
           <button
             key={val}
             onClick={() => setPostsMode(val)}
-            className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${ postsMode === val ? "bg-accent text-accent-foreground dark:text-brand border border-brand/20 dark:border-brand/30" : "text-muted-foreground/60 hover:text-muted-foreground border border-transparent" }`}
+            className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${ postsMode === val ? "bg-accent text-accent-foreground dark:text-brand border border-brand/20 dark:border-brand/30" : "text-muted-foreground hover:text-muted-foreground border border-transparent" }`}
             data-testid={`posts-mode-${val}`}
           >
             {val === "trending" ? <TrendingChartIcon className="w-3.5 h-3.5" /> : <SearchIcon className="w-3.5 h-3.5" />}
@@ -2012,8 +2012,8 @@ function PostsTab(_props: TabProps) {
       {!isDefaultFeed && (
         <div className="flex items-center mb-2">
           <a href="https://nostrarchives.com" target="_blank" rel="noopener noreferrer" className="inline-flex">
-            <Badge variant="secondary" className="text-[9px] bg-brand/10 text-brand border-brand/20 cursor-pointer hover:bg-brand/20 hover:text-brand transition-colors gap-1">
-              <span className="opacity-50 font-normal">powered by</span>
+            <Badge variant="secondary" className="text-xs bg-brand/10 text-brand border-brand/20 cursor-pointer hover:bg-brand/20 transition-colors gap-1">
+              <span className="font-normal">powered by</span>
               <Globe className="w-2.5 h-2.5 opacity-60" />
               Archives
             </Badge>
@@ -2027,7 +2027,7 @@ function PostsTab(_props: TabProps) {
             <button
               key={opt.value}
               onClick={() => setSortOption(opt.value)}
-              className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-[10px] sm:text-[11px] font-medium transition-all cursor-pointer ${ sortOption === opt.value ? "bg-accent text-accent-foreground dark:text-brand shadow-sm border border-brand/20 dark:border-brand/30" : "text-muted-foreground/50 hover:text-muted-foreground/80 hover:bg-secondary/50 border border-transparent" }`}
+              className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${ sortOption === opt.value ? "bg-accent text-accent-foreground dark:text-brand shadow-sm border border-brand/20 dark:border-brand/30" : "text-muted-foreground hover:bg-secondary/50 border border-transparent" }`}
               data-testid={`sort-${opt.value}`}
             >
               <opt.icon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
@@ -2041,10 +2041,10 @@ function PostsTab(_props: TabProps) {
             <button
               key={tf.value}
               onClick={() => setTimeFilter(tf.value)}
-              className={`px-2 sm:px-2.5 py-1.5 rounded-md text-[10px] sm:text-[11px] font-medium transition-all cursor-pointer ${
+              className={`px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
                 timeFilter === tf.value
                   ? "bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-400/30"
-                  : "text-muted-foreground/40 hover:text-muted-foreground/70 border border-transparent hover:border-border/30"
+                  : "text-muted-foreground border border-transparent hover:border-border/30"
               }`}
               data-testid={`time-${tf.value}`}
             >
@@ -2068,8 +2068,8 @@ function PostsTab(_props: TabProps) {
             <Clock className="w-4 h-4 text-brand" />
           )}
           <h3 className="text-sm font-semibold">{feedLabel}</h3>
-          {isDefaultFeed && <span className="text-[10px] font-mono text-muted-foreground/30">4H</span>}
-          {!isDefaultFeed && timeLabel && <span className="text-[10px] font-mono text-muted-foreground/30">{timeLabel}</span>}
+          {isDefaultFeed && <span className="text-xs font-mono text-muted-foreground">4H</span>}
+          {!isDefaultFeed && timeLabel && <span className="text-xs font-mono text-muted-foreground">{timeLabel}</span>}
         </div>
         {feedLoading ? (
           <LoadingState message={isDefaultFeed ? "Loading trending posts..." : `Loading ${feedLabel.toLowerCase()} posts...`} />
@@ -2159,8 +2159,8 @@ function QuickFollowButton({ targetPubkey, isFollowed }: { targetPubkey: string;
       onClick={handleClick}
       className={`text-[10px] transition-colors cursor-pointer select-none ${
         localFollowed
-          ? "text-brand/50"
-          : "text-brand/40 hover:text-brand/70"
+          ? "text-brand"
+          : "text-brand"
       } ${processing ? "opacity-40 pointer-events-none" : ""}`}
     >
       {processing ? "..." : localFollowed ? "Following" : "+ Follow"}
@@ -2201,7 +2201,7 @@ function MobileTrustedVoices({ voices, followSet }: {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-medium text-foreground/85 truncate leading-tight">
+                <p className="text-[12px] font-medium text-foreground truncate leading-tight">
                   {content?.display_name || content?.name || shortenNpub(npub)}
                 </p>
                 {content?.nip05 && (
@@ -2486,9 +2486,9 @@ function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
                 <SaveFrequencyButton query={`#${activeTag}`} hashtags={[activeTag]} />
               </div>
             </div>
-            <p className="text-[11px] text-muted-foreground/50 leading-snug -mt-2">
-              <span className="text-foreground/70">Follow</span> adds #{activeTag} to your portable hashtags (shared across all your Nostr apps).{" "}
-              <span className="text-foreground/70">Save Feed</span> keeps a custom feed here in Relay Outpost.
+            <p className="text-xs text-muted-foreground leading-snug -mt-2">
+              <span className="text-foreground">Follow</span> adds #{activeTag} to your portable hashtags (shared across all your Nostr apps).{" "}
+              <span className="text-foreground">Save Feed</span> keeps a custom feed here in Relay Outpost.
             </p>
             {relatedTags.length > 0 && (
               <div>
@@ -2502,7 +2502,7 @@ function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
                     >
                       <Badge
                         variant="outline"
-                        className="text-[11px] border-brand/15 text-brand/70 cursor-pointer hover:border-brand/30 transition-colors"
+                        className="text-xs border-brand/15 text-brand cursor-pointer hover:border-brand/30 transition-colors"
                         data-testid={`badge-related-${tag}`}
                       >
                         #{tag}
@@ -2516,7 +2516,7 @@ function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
               <div>
                 <div className="flex items-center gap-2 mb-2.5">
                   <Brain className="w-3.5 h-3.5 text-brand" />
-                  <span className="text-[12px] font-semibold text-foreground/70">Trusted voices</span>
+                  <span className="text-[12px] font-semibold text-foreground">Trusted voices</span>
                   <span className="text-[13px] text-muted-foreground tabular-nums">{trustedVoices.length}</span>
                 </div>
                 <div className="hidden sm:flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
@@ -2541,7 +2541,7 @@ function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
                                 </span>
                               )}
                             </div>
-                            <span className="text-[12px] text-foreground/80 group-hover:text-brand transition-colors truncate w-full text-center leading-tight">
+                            <span className="text-[12px] text-foreground group-hover:text-brand transition-colors truncate w-full text-center leading-tight">
                               {content?.display_name || content?.name || shortenNpub(npub)}
                             </span>
                           </div>
@@ -2589,7 +2589,7 @@ function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
             <div className="flex items-center gap-2 mb-3">
               <Activity className="w-4 h-4 text-brand drop-shadow-[0_0_4px_rgba(13,15,18,0.5)]" />
               <h3 className="text-sm font-semibold">Trending</h3>
-              <span className="text-[10px] font-mono text-muted-foreground/70 dark:text-muted-foreground/60">24H</span>
+              <span className="text-xs font-mono text-muted-foreground">24H</span>
             </div>
             {trendingLoading ? (
               <LoadingState message="Loading trending tags..." />
@@ -2608,7 +2608,7 @@ function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Compass className="w-4 h-4 text-brand" />
-                <h3 className="text-sm font-semibold text-foreground/90 dark:text-foreground/80">Browse Topics</h3>
+                <h3 className="text-sm font-semibold text-foreground">Browse Topics</h3>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {TOPIC_CATEGORIES.map(cat => {
@@ -2616,15 +2616,15 @@ function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
                   return (
                     <div key={cat.name} className="glass-card rounded-lg border p-3">
                       <div className="flex items-center gap-2 mb-2.5">
-                        <Icon className="w-3.5 h-3.5 text-brand/80 dark:text-brand/70" />
-                        <span className="text-[12px] font-semibold text-foreground/80 dark:text-foreground/70">{cat.name}</span>
+                        <Icon className="w-3.5 h-3.5 text-brand" />
+                        <span className="text-[12px] font-semibold text-foreground">{cat.name}</span>
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {cat.tags.map(tag => (
                           <button
                             key={tag}
                             onClick={() => { setQuery(tag); searchTag(tag); }}
-                            className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] text-foreground/70 dark:text-foreground/60 hover:text-brand dark:hover:text-brand bg-brand/[0.05]/[0.06] hover:bg-brand/[0.1] border border-brand/10 hover:border-brand/25 transition-all duration-200 cursor-pointer"
+                            className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs text-foreground hover:text-brand dark:hover:text-brand bg-brand/[0.05]/[0.06] hover:bg-brand/[0.1] border border-brand/10 hover:border-brand/25 transition-all duration-200 cursor-pointer"
                           >
                             <Hash className="w-2.5 h-2.5 opacity-60" />{tag}
                           </button>
@@ -2760,7 +2760,7 @@ function LiveTab({ urlQuery, updateUrl }: TabProps) {
         />
       ) : (
         <div className="space-y-2" data-testid="container-live-results">
-          <p className="text-xs text-muted-foreground/80 dark:text-muted-foreground/60 mb-3 italic">Happening now across the network. Tune in, drop a zap, keep moving.</p>
+          <p className="text-xs text-muted-foreground mb-3 italic">Happening now across the network. Tune in, drop a zap, keep moving.</p>
           {filtered.map(live => (
             <LiveEventCard key={live.id} liveEvent={live} />
           ))}
@@ -2803,7 +2803,7 @@ function EventCardRow({ ce, isPast, onShare }: {
     <ErrorBoundary
       fallback={
         <div
-          className="glass-card rounded-xl border p-3 text-xs text-muted-foreground/60"
+          className="glass-card rounded-xl border p-3 text-xs text-muted-foreground"
           data-testid={`event-card-error-${ce.id.slice(0, 8)}`}
         >
           Couldn't display this event.
@@ -3051,13 +3051,13 @@ function EventsTab({ urlQuery, updateUrl }: TabProps) {
             <AvatarFallback className="text-[10px] bg-muted">{authorFilter.name.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <div className="text-[13px] text-brand/80 font-medium">Events by</div>
-            <div className="text-sm font-medium text-foreground/90 truncate">{authorFilter.name}</div>
+            <div className="text-[13px] text-brand font-medium">Events by</div>
+            <div className="text-sm font-medium text-foreground truncate">{authorFilter.name}</div>
           </div>
           <Button
             size="sm"
             variant="ghost"
-            className="h-8 w-8 p-0 text-muted-foreground/60 hover:text-foreground"
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
             onClick={clearAuthorFilter}
             data-testid="button-clear-event-author"
           >
@@ -3126,7 +3126,7 @@ function EventsTab({ urlQuery, updateUrl }: TabProps) {
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-foreground/90 truncate">{name}</div>
+                      <div className="text-sm font-medium text-foreground truncate">{name}</div>
                       {nip05 && <div className="text-xs text-muted-foreground truncate">{nip05}</div>}
                     </div>
                   </button>
@@ -3152,7 +3152,7 @@ function EventsTab({ urlQuery, updateUrl }: TabProps) {
         />
       ) : results.length > 0 ? (
         <div className="space-y-3" data-testid="container-events-results">
-          <p className="text-[11px] text-muted-foreground/60">
+          <p className="text-xs text-muted-foreground">
             {results.length} event{results.length !== 1 ? "s" : ""}
             {upcomingEvents.length > 0 && ` · ${upcomingEvents.length} upcoming`}
             {pastEvents.length > 0 && ` · ${pastEvents.length} past`}
@@ -3172,7 +3172,7 @@ function EventsTab({ urlQuery, updateUrl }: TabProps) {
                 variant="ghost"
                 size="sm"
                 onClick={() => setExpandWindow(v => !v)}
-                className="text-[11px] text-muted-foreground/70 hover:text-brand gap-1.5"
+                className="text-xs text-muted-foreground hover:text-brand gap-1.5"
                 data-testid="button-toggle-event-window"
               >
                 {expandWindow
@@ -3191,8 +3191,8 @@ function EventsTab({ urlQuery, updateUrl }: TabProps) {
                 data-testid="button-toggle-past-events"
               >
                 <ChevronRight className={`w-3.5 h-3.5 text-muted-foreground/60 transition-transform ${showPast ? "rotate-90" : ""}`} />
-                <span className="text-[13px] font-medium text-muted-foreground/70">Past</span>
-                <span className="text-[10px] text-muted-foreground/40">({pastEvents.length})</span>
+                <span className="text-[13px] font-medium text-muted-foreground">Past</span>
+                <span className="text-xs text-muted-foreground">({pastEvents.length})</span>
               </button>
               {showPast && (
                 <div className="space-y-2 mt-1.5 pl-1">
@@ -3337,7 +3337,7 @@ function LoadingState({ message }: { message: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-12" data-testid="container-loading">
       <RelayOutpostInlineLoader className="w-6 h-6 mb-3" />
-      <p className="text-xs text-muted-foreground/80 dark:text-muted-foreground/60 font-mono tracking-wider">{message}</p>
+      <p className="text-xs text-muted-foreground font-mono tracking-wider">{message}</p>
     </div>
   );
 }
@@ -3350,12 +3350,12 @@ function EmptyState({ icon: Icon, message, hint, nudge }: {
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-14 text-center" data-testid="container-empty-results">
-      <OttoEmpty mood="looking" size={96} className="mb-2 text-foreground/70" />
+      <OttoEmpty mood="looking" size={96} className="mb-2 text-foreground" />
       <p className="text-sm font-medium mb-1">{message}</p>
       <p className="text-[13px] text-muted-foreground max-w-xs">{hint}</p>
       {nudge && (
         <div className="mt-4 px-4 py-2 rounded-md bg-primary/5 border border-primary/10 max-w-xs">
-          <p className="text-[11px] text-brand/70 italic">{nudge}</p>
+          <p className="text-xs text-brand italic">{nudge}</p>
         </div>
       )}
     </div>
@@ -3378,7 +3378,7 @@ function TrendTicker({ item, onSearchTag }: { item: TrendingHashtag; onSearchTag
       data-testid={`button-trending-${item.hashtag}`}
     >
       <Hash className="w-2.5 h-2.5 text-brand/70 group-hover:text-brand transition-colors" />
-      <span className="text-[11px] font-medium text-foreground/85 dark:text-foreground/80 group-hover:text-brand transition-colors truncate">{item.hashtag}</span>
+      <span className="text-xs font-medium text-foreground group-hover:text-brand transition-colors truncate">{item.hashtag}</span>
       {isRising && <TrendingUp className="w-2.5 h-2.5 text-emerald-800 dark:text-emerald-400/80 shrink-0" />}
     </button>
   );
@@ -3447,7 +3447,7 @@ function LiveEventCard({ liveEvent }: { liveEvent: LiveEventInfo }) {
                       <AvatarImage src={avatarUrl} alt={displayName} className="object-cover" />
                       <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[8px] font-bold">{displayName?.charAt(0)?.toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <span className="text-[9px] font-medium text-brand/80 truncate max-w-[44px] leading-tight">{displayName}</span>
+                    <span className="text-xs font-medium text-brand truncate max-w-[44px] leading-tight">{displayName}</span>
                   </div>
                 </div>
               )}
@@ -3456,13 +3456,13 @@ function LiveEventCard({ liveEvent }: { liveEvent: LiveEventInfo }) {
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-sm font-semibold truncate flex-1">{liveEvent.title}</p>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Badge variant="outline" className={`text-[10px] ${statusColor}`}>
+                  <Badge variant="outline" className={`text-xs ${statusColor}`}>
                     {liveEvent.status === "live" && !isOffline && <span className="w-1.5 h-1.5 rounded-full bg-green-400 mr-1 animate-pulse" />}
                     {isOffline && <Signal className="w-2.5 h-2.5 mr-0.5" />}
                     {statusLabel}
                   </Badge>
                   {isVerified && (
-                    <Badge variant="outline" className="text-[9px] text-success dark:text-green-400 bg-green-400/10 border-green-400/20 px-1">
+                    <Badge variant="outline" className="text-xs text-success dark:text-green-400 bg-green-400/10 border-green-400/20 px-1">
                       <Check className="w-2.5 h-2.5" />
                     </Badge>
                   )}
@@ -3472,20 +3472,20 @@ function LiveEventCard({ liveEvent }: { liveEvent: LiveEventInfo }) {
                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{liveEvent.summary}</p>
               )}
               <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                <span className="text-[10px] text-muted-foreground/70 dark:text-muted-foreground/50">{ageLabel}</span>
+                <span className="text-xs text-muted-foreground">{ageLabel}</span>
                 {liveEvent.participants != null && liveEvent.participants > 0 && (
-                  <span className="text-[11px] text-muted-foreground/80 dark:text-muted-foreground/60 flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <Eye className="w-3 h-3" /> {liveEvent.participants}
                   </span>
                 )}
                 {liveEvent.tags.length > 0 && (
-                  <span className="text-[11px] text-muted-foreground/70 dark:text-muted-foreground/60">
+                  <span className="text-xs text-muted-foreground">
                     {liveEvent.tags.slice(0, 3).map(t => `#${t}`).join(" ")}
                   </span>
                 )}
                 {liveEvent.streaming && !isOffline && (
                   <span
-                    className="text-[11px] text-brand/70 flex items-center gap-0.5 ml-auto"
+                    className="text-xs text-brand flex items-center gap-0.5 ml-auto"
                     data-testid={`button-play-${liveEvent.id.slice(0, 8)}`}
                   >
                     <Play className="w-3 h-3" /> Tune In
@@ -3562,21 +3562,21 @@ function VouchesTab({ urlQuery, updateUrl }: TabProps) {
           <ShieldCheck className="w-10 h-10 text-brand" />
         </div>
 
-        <h3 className="text-base text-foreground/90 dark:text-white/90 mb-2 font-medium">
+        <h3 className="text-base text-foreground mb-2 font-medium">
           Network vouches
         </h3>
-        <p className="text-[11px] leading-relaxed text-muted-foreground/70 dark:text-white/50 max-w-[280px] mb-4">
+        <p className="text-xs leading-relaxed text-muted-foreground max-w-[280px] mb-4">
           People vouching for each other across the Nostr network. A real trust layer built by real users is forming here.
         </p>
 
         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand/[0.08] dark:bg-brand/10 border border-brand/15 mb-5">
           <Lock className="w-3 h-3 text-brand/60 dark:text-brand/50" />
-          <span className="text-[12px] font-medium text-brand/70 dark:text-brand/60">
+          <span className="text-[12px] font-medium text-brand">
             Coming soon
           </span>
         </div>
 
-        <div className="flex items-center gap-4 text-[9px] text-muted-foreground/40 dark:text-white/25">
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <span className="w-1 h-1 rounded-full bg-emerald-500/50" />
             Vouches
