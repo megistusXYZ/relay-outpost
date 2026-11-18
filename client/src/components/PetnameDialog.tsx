@@ -101,7 +101,7 @@ export function PetnameDialog({
             data-testid="petname-name-input"
           />
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1.5">Photo</p>
+            <p className="text-[12px] font-medium text-muted-foreground/60 mb-1.5">Photo</p>
             <div className="flex items-center gap-3">
               {previewUrl ? (
                 <img src={previewUrl} alt="" className="w-12 h-12 rounded-full object-cover border border-border" data-testid="petname-photo-preview" />
@@ -140,7 +140,7 @@ export function PetnameDialog({
             </div>
           </div>
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1.5">Icon</p>
+            <p className="text-[12px] font-medium text-muted-foreground/60 mb-1.5">Icon</p>
             <div className="flex flex-wrap gap-1.5">
               {EMOJIS.map((e) => (
                 <button
@@ -160,7 +160,7 @@ export function PetnameDialog({
             </div>
           </div>
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1.5">Color</p>
+            <p className="text-[12px] font-medium text-muted-foreground/60 mb-1.5">Color</p>
             <div className="flex gap-1.5">
               {SWATCHES.map((c) => (
                 <button

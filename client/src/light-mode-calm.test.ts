@@ -77,12 +77,12 @@ describe("dark mode keeps what it inherited from the light rules", () => {
   // Some dark rules never set these; they inherited them from the light rules
   // this pass changed. A dark-screenshot pixel diff found it (card borders).
   const PINNED: Array<[string, RegExp]> = [
-    [".dark .glass-card", /border-color:\s*rgba\(120, 80, 200, 0\.15\) !important/],
+    [".dark .glass-card", /border-color:\s*rgba\(130, 137, 150, 0\.15\) !important/],
     [".dark .glass-dialog", /backdrop-filter:\s*blur\(32px\)/],
     [".dark .glass-nav-panel", /backdrop-filter:\s*blur\(16px\)/],
-    [".dark .glass-feed-header", /linear-gradient\(180deg, rgba\(80, 50, 140, 0\.06\)/],
+    [".dark .glass-feed-header", /linear-gradient\(180deg, rgba\(88, 93, 102, 0\.06\)/],
     [".dark .glass-thread", /backdrop-filter:\s*blur\(24px\)/],
-    [".dark .glass-settings-section", /border-color:\s*rgba\(100, 70, 200, 0\.16\)/],
+    [".dark .glass-settings-section", /border-color:\s*rgba\(125, 132, 145, 0\.16\)/],
   ];
   for (const [sel, value] of PINNED) {
     it(`${sel} keeps its own value`, () => {
@@ -96,12 +96,12 @@ describe("the rail in light mode is quiet unless selected", () => {
   // Owner, 2026-10-07: every rail icon sat in a lavender-glowing ring.
   const RAIL = readFileSync(path.resolve(import.meta.dirname, "components/DesktopStoriesRail.tsx"), "utf8");
   it("a destination you're not on has the neutral border and no glow in light mode", () => {
-    expect(RAIL).toMatch(/isDark \? "rgba\(168,85,247,0\.22\)" : "hsl\(var\(--border\)\)"/);
-    expect(RAIL).toMatch(/: isDark\s*\?\s*"0 0 8px rgba\(124,58,237,0\.16\)"[\s\S]{0,200}: "none"/);
+    expect(RAIL).toMatch(/isDark \? "rgba\(153,162,179,0\.22\)" : "hsl\(var\(--border\)\)"/);
+    expect(RAIL).toMatch(/: isDark\s*\?\s*"0 0 8px rgba\(133,143,162,0\.16\)"[\s\S]{0,200}: "none"/);
   });
   it("the page you're on keeps its violet ring and glow", () => {
-    expect(RAIL).toMatch(/active\s*\?\s*isDark \? "rgba\(196,181,253,0\.6\)" : "rgba\(109,40,217,0\.6\)"/);
-    expect(RAIL).toMatch(/"0 0 18px rgba\(109,40,217,0\.30\)/);
+    expect(RAIL).toMatch(/active\s*\?\s*isDark \? "rgba\(211,215,223,0\.6\)" : "rgba\(114,124,143,0\.6\)"/);
+    expect(RAIL).toMatch(/"0 0 18px rgba\(114,124,143,0\.30\)/);
   });
 });
 
@@ -112,7 +112,7 @@ describe("unread in the light rail is the count, not a ring", () => {
   const RAIL = readFileSync(path.resolve(import.meta.dirname, "components/DesktopStoriesRail.tsx"), "utf8");
   it("the unread ring and glow are dark mode's", () => {
     expect(RAIL).toMatch(/const ringBg = live && isDark\s*\n?\s*\? ringConic/);
-    expect(RAIL).toMatch(/: live && isDark\s*\n?\s*\? "0 0 14px rgba\(168,85,247,0\.4\)"/);
+    expect(RAIL).toMatch(/: live && isDark\s*\n?\s*\? "0 0 14px rgba\(153,162,179,0\.4\)"/);
   });
   it("the ring still spins only where it shows", () => {
     expect(RAIL).toMatch(/live && isDark && !reducedMotion \? "rail-ring-spin"/);
@@ -120,12 +120,15 @@ describe("unread in the light rail is the count, not a ring", () => {
 });
 
 describe("section titles are grey in light mode", () => {
-  // Violet is for actions, focus and selection (LIGHT_MODE.md). A profile's
+  // Ember is for actions; titles are ink (LIGHT_MODE.md). Before the rebrand a profile's
   // "Connect with…" and "Details" bars were violet while "Jump through time"
   // beside them was grey.
-  it("IdentitySection's title is the muted grey, violet only in dark", () => {
+  // Outpost brand (2026-11-16): one shared section title (TILE_TITLE, ink) so
+  // the card bars and "Jump through time" can't drift apart again.
+  it("IdentitySection's title is the shared section title, never Ember", () => {
     const src = readFileSync(path.resolve(import.meta.dirname, "components/identity/identity-shared.tsx"), "utf8");
-    expect(src).toMatch(/<h2 className="[^"]*\btext-muted-foreground dark:text-brand\/90\b[^"]*">\{title\}<\/h2>/);
+    expect(src).toMatch(/<h2 className=\{TILE_TITLE\}>\{title\}<\/h2>/);
+    expect(src).not.toMatch(/dark:text-brand\/90/);
   });
 });
 
@@ -133,25 +136,37 @@ describe("headings are not violet in light mode", () => {
   const read = (f: string) => readFileSync(path.resolve(import.meta.dirname, f), "utf8");
   it("Relays: Relay Health Monitor and Discover Relays match their sibling headings", () => {
     const src = read("pages/RelayDashboard.tsx");
-    for (const title of ["Relay Health Monitor", "Discover Relays"]) {
-      expect(src, title).toContain(`<h2 className="text-sm font-brand tracking-wider uppercase dark:text-brand">${title}</h2>`);
+    // Outpost brand (2026-11-16): section headings are ink sentence case, the
+    // same class as their siblings ("Manage relays"), never Ember.
+    const sibling = src.match(/<h2 className="([^"]*)">Manage relays<\/h2>/)?.[1];
+    expect(sibling).toBeTruthy();
+    expect(sibling).not.toMatch(/brand/);
+    for (const title of ["Relay health monitor", "Discover relays"]) {
+      expect(src, title).toContain(`<h2 className="${sibling}">${title}</h2>`);
     }
   });
-  it("Help: the page title is ink and its kicker grey, violet in dark", () => {
-    expect(read("pages/WtfIsThis.tsx")).toMatch(/className="[^"]*\btext-foreground dark:text-brand\/90"\s*>\s*Help &amp; Guides/);
-    expect(read("pages/WtfIsThis.tsx")).toMatch(/text-muted-foreground dark:text-brand\/30[^"]*">get started, post &amp; connect/);
+  it("Help: the page title is ink and its kicker grey, in both themes", () => {
+    // Outpost brand (2026-11-16): the title is ink in both themes and the kicker
+    // grey in both; Ember is kept for actions.
+    const help = read("pages/WtfIsThis.tsx");
+    expect(help).toMatch(/className="[^"]*\btext-foreground"\s*>\s*Help &amp; guides/);
+    expect(help).toMatch(/className="[^"]*\btext-muted-foreground\b[^"]*">Get started, post &amp; connect/);
+    expect(help).not.toMatch(/dark:text-brand\/(90|30)/);
   });
 });
 
 describe("no square icon tiles in light mode", () => {
   // Owner, 2026-10-03: no icon tiles. The Chats empty state still had one.
-  it("Chats' empty state shows a bare grey icon; the dark tile stays", () => {
+  it("Chats' empty state shows a bare icon in light; dark keeps a quiet grey disc", () => {
     const src = readFileSync(path.resolve(import.meta.dirname, "pages/Messages.tsx"), "utf8");
     const at = src.indexOf('<h2 className="text-base font-semibold text-foreground/90">Your messages</h2>');
     expect(at).toBeGreaterThan(-1);
     const tile = src.slice(src.lastIndexOf("<div", src.lastIndexOf("<MessagesIcon", at)), at);
-    expect(tile).toMatch(/dark:border dark:border-brand\/15 dark:bg-white\/\[0\.03\]/);
-    expect(tile).not.toMatch(/(^|\s)(border|bg-brand\/5|border-brand\/20)(\s|")/);
-    expect(tile).toMatch(/<MessagesIcon className="h-8 w-8 text-muted-foreground dark:text-brand\/70" \/>/);
+    // Outpost brand (2026-11-16): still no tile in light (bare icon); dark
+    // keeps a quiet disc, now grey instead of an Ember-bordered square.
+    expect(tile).toMatch(/\bdark:bg-foreground\/\[0\.05\]/);
+    expect(tile).not.toMatch(/(^|\s)(border|bg-[a-z]+(\/[\d.\[\]]+)?)(\s|")/);
+    expect(tile).not.toMatch(/brand/);
+    expect(tile).toMatch(/<MessagesIcon className="h-8 w-8 text-foreground\/70" \/>/);
   });
 });

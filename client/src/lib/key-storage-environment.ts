@@ -50,8 +50,6 @@ function detectPrivateMode(isIOS: boolean, isStandalonePWA: boolean): boolean {
   if (typeof navigator === "undefined") return false;
   let hints = 0;
 
-  // Quota under ~120MB strongly suggests private mode (Chrome/Edge/Brave clamp).
-  const nav = navigator as Navigator & { storage?: { estimate?: () => Promise<{ quota?: number }> } };
   // We can't await here; the estimate result is consumed by the async classifier.
   // This sync helper only collects synchronous hints.
 

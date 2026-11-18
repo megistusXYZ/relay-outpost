@@ -39,22 +39,22 @@ function Row({ icon, label, onClick, danger, trailing, chevron = true, testId }:
     <button
       type="button"
       onClick={onClick}
-      className={`w-full flex items-center gap-3.5 px-4 min-h-[52px] text-left transition-colors active:bg-primary/[0.06] hover:bg-primary/[0.04] dark:hover:bg-white/[0.03] ${danger ? "text-danger dark:text-red-400" : ""}`}
+      className={`w-full flex items-center gap-3.5 px-4 min-h-[54px] text-left transition-colors active:bg-foreground/[0.06] hover:bg-foreground/[0.04] ${danger ? "text-danger" : ""}`}
       data-testid={testId}
     >
-      <span className={`shrink-0 ${danger ? "" : "text-muted-foreground"}`}>{icon}</span>
-      <span className="flex-1 text-sm font-medium">{label}</span>
+      <span className={`shrink-0 ${danger ? "" : "text-foreground/70"}`}>{icon}</span>
+      <span className="flex-1 text-[15px] font-medium">{label}</span>
       {trailing}
-      {chevron && !danger && <ChevronRight className="w-4 h-4 text-muted-foreground/30 shrink-0" />}
+      {chevron && !danger && <ChevronRight className="w-4 h-4 text-foreground/30 shrink-0" />}
     </button>
   );
 }
 
 function Section({ label, children }: { label?: string; children: ReactNode }) {
   return (
-    <div className="space-y-1.5">
-      {label && <p className="px-1 text-[11px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50">{label}</p>}
-      <div className="rounded-xl border border-border/40 bg-card/40 overflow-hidden divide-y divide-border/25">
+    <div className="space-y-2">
+      {label && <p className="px-1 text-[14px] font-medium text-muted-foreground">{label}</p>}
+      <div className="rounded-[20px] border border-border/60 bg-card overflow-hidden divide-y divide-border/40">
         {children}
       </div>
     </div>
@@ -66,7 +66,7 @@ export default function Account() {
   const { pubkey, profile, loginMethod, logout } = useNostrAuth();
   const runsRelay = useOperatedRelays().length > 0;
   const relaysWaiting = useRelaysNeedYou().total;
-  const { toggleTheme, theme } = useTheme();
+  const { theme } = useTheme();
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   // Secondary account-switcher surface (the Stories-menu identity chip is the
   // primary one). Read once per mount — switching reloads the app anyway.
@@ -82,15 +82,6 @@ export default function Account() {
   useEffect(() => { if (!pubkey) navigate("/login"); }, [pubkey, navigate]);
 
   const go = useCallback((path: string) => () => navigate(path), [navigate]);
-  const toggleThemeAnimated = useCallback(() => {
-    const doc = document as Document & { startViewTransition?: (cb: () => void) => void };
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!reduce && typeof doc.startViewTransition === "function") {
-      // Guarded like OrbitMenu's toggle: a WebKit "invalid state" throw must
-      // fall back to the direct flip, never leave the theme un-toggled.
-      try { doc.startViewTransition(() => toggleTheme()); } catch { toggleTheme(); }
-    } else toggleTheme();
-  }, [toggleTheme]);
 
   if (!pubkey) return null;
 
@@ -101,7 +92,7 @@ export default function Account() {
   const npub = shortenNpub(npubFull);
   const lightningAddress = profile?.lud16 || null;
   const avatarUrl = profile?.picture;
-  const loginMethodLabel = loginMethod === "bunker" ? "NIP-46" : loginMethod === "extension" ? "NIP-07" : null;
+  const loginMethodLabel = loginMethod === "bunker" ? "Signed in with a remote signer" : loginMethod === "extension" ? "Signed in with a browser extension" : null;
   const LoginMethodIcon = loginMethod === "bunker" ? Unplug : Fingerprint;
 
   return (
@@ -117,29 +108,29 @@ export default function Account() {
           is the profile. */}
       <button
         onClick={go(`/profile/${npubFull}`)}
-        className="w-full flex items-center gap-3 rounded-xl border border-border/40 bg-card/40 p-3 mb-4 text-left transition-colors hover:bg-primary/[0.04]"
+        className="w-full flex items-center gap-3.5 rounded-[20px] border border-border/60 bg-card p-4 mb-5 text-left transition-colors hover:bg-foreground/[0.04]"
         data-testid="button-account-profile"
       >
-        <Avatar className="w-12 h-12 border border-border shrink-0">
+        <Avatar className="w-14 h-14 border border-border/60 shrink-0">
           <AvatarImage src={avatarUrl} alt={displayName || "Profile"} />
-          <AvatarFallback className="text-sm bg-muted text-muted-foreground">
+          <AvatarFallback className="text-base font-medium bg-foreground/[0.06] text-foreground">
             {(displayName || npub || "?").slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
-          {displayName && <p className="text-sm font-semibold truncate">{displayName}</p>}
-          <p className="text-xs text-muted-foreground truncate">{lightningAddress || npub}</p>
+          {displayName && <p className="text-[17px] font-semibold leading-tight truncate">{displayName}</p>}
+          <p className="text-[13px] text-muted-foreground truncate">{lightningAddress || npub}</p>
           {loginMethodLabel && (
-            <span className="mt-0.5 flex items-center gap-1">
-              <LoginMethodIcon className="w-2.5 h-2.5 text-muted-foreground/50" />
-              <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground/50">{loginMethodLabel}</span>
+            <span className="mt-1 flex items-center gap-1.5">
+              <LoginMethodIcon className="w-3 h-3 text-muted-foreground/70" />
+              <span className="text-[12px] text-muted-foreground/80">{loginMethodLabel}</span>
             </span>
           )}
         </div>
-        <ChevronRight className="w-4 h-4 text-muted-foreground/30 shrink-0" />
+        <ChevronRight className="w-4 h-4 text-foreground/30 shrink-0" />
       </button>
 
-      <div className="space-y-5">
+      <div className="space-y-6">
         {/* Row order (owner call, 2026-08-18): things you DO first — identity,
             growth, money, plans — then the administration you visit rarely
             (Trust & safety, Tools) closing the group. Invite sits second
@@ -201,7 +192,7 @@ export default function Account() {
               label={accountDisplayName(acct)}
               onClick={() => switchAccount(acct.pubkey, { toastMessage: `Switched to ${accountDisplayName(acct)}` })}
               chevron={false}
-              trailing={<span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">Switch</span>}
+              trailing={<span className="text-[13px] text-muted-foreground">Switch</span>}
               testId={`account-switch-${acct.pubkey.slice(0, 8)}`}
             />
           ))}
@@ -223,7 +214,7 @@ export default function Account() {
             icon={theme === "dark" ? <Moon className="w-5 h-5" /> : theme === "black" ? <Eclipse className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
             label="Theme"
             onClick={go("/settings?section=appearance")}
-            trailing={<span className="text-[12px] text-muted-foreground" data-testid="account-theme-value">{theme === "dark" ? "Dark" : theme === "black" ? "Black" : "Light"}</span>}
+            trailing={<span className="text-[14px] text-muted-foreground" data-testid="account-theme-value">{theme === "dark" ? "Dark" : theme === "black" ? "Black" : "Light"}</span>}
             testId="account-theme"
           />
         </Section>
@@ -233,27 +224,28 @@ export default function Account() {
             icon={<WhatsNewIcon className="w-5 h-5" />}
             label="What's new"
             onClick={go("/whats-new")}
-            trailing={hasUnseenChangelog() ? <span className="w-1.5 h-1.5 rounded-full bg-primary" aria-label="new updates" /> : undefined}
+            trailing={hasUnseenChangelog() ? <span className="w-2 h-2 rounded-full bg-brand" aria-label="new updates" /> : undefined}
             testId="account-whats-new"
           />
-          <Row icon={<WtfAlienIcon className="w-5 h-5" />} label="Help & Guides" onClick={go("/help")} testId="account-help" />
+          <Row icon={<WtfAlienIcon className="w-5 h-5" />} label="Help & guides" onClick={go("/help")} testId="account-help" />
         </Section>
 
         {confirmSignOut ? (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/[0.06] p-3 space-y-2.5" data-testid="account-signout-confirm">
-            <p className="text-[11px] font-brand uppercase tracking-[0.15em] text-danger dark:text-red-400">Sign out?</p>
+          <div className="rounded-[20px] border border-border/60 bg-card p-4 space-y-3" data-testid="account-signout-confirm">
+            <p className="text-[15px] font-medium">Sign out of this account?</p>
+            <p className="text-[13px] text-muted-foreground -mt-1.5">{loginMethod === "local" ? "This device forgets your key. Keep your saved key file or password to sign back in." : "You can sign back in any time with the same signer."}</p>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => { logout(); navigate("/"); }}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 h-10 rounded-lg bg-red-500/20 border border-red-500/40 text-red-500 dark:text-red-400 font-brand uppercase tracking-[0.15em] text-[11px] hover:bg-red-500/30 transition-colors"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 h-11 rounded-full bg-destructive text-destructive-foreground text-[15px] font-medium hover:bg-destructive/90 active:scale-[0.98] transition"
                 data-testid="button-account-confirm-signout"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <LogOut className="w-4 h-4" />
                 Sign out
               </button>
               <button
                 onClick={() => setConfirmSignOut(false)}
-                className="flex-1 inline-flex items-center justify-center h-10 rounded-lg bg-muted/40 border border-border/50 font-brand uppercase tracking-[0.15em] text-[11px] hover:bg-muted/60 transition-colors"
+                className="flex-1 inline-flex items-center justify-center h-11 rounded-full border border-foreground/25 text-[15px] font-medium hover:bg-foreground/[0.06] active:scale-[0.98] transition"
                 data-testid="button-account-cancel-signout"
               >
                 Cancel

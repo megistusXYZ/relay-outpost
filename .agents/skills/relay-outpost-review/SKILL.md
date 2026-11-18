@@ -1,9 +1,9 @@
 ---
 name: relay-outpost-review
-description: "Relay Outpost's own review overlay for code-architect's threshold mode: the twelve bars that have actually bitten this codebase (three relay outcomes, EOSE is not reachability, one word per thing, status words not pills, violet for actions, the modal-back contract, positive claims, the replaceable-event wipe rule, honest status, names and hooks without ESLint, a harness must be able to fail, just the rails). Use with code-architect on any pre-PR review in this repo; the Rise overlay is always n/a here. Carries a known-bad/known-good fixture and a scorer so the overlay can prove it catches a planted defect."
+description: "Relay Outpost's own review overlay for code-architect's threshold mode: the twelve bars that have actually bitten this codebase (three relay outcomes, EOSE is not reachability, one word per thing, status words not pills, ink first and Ember for actions, the modal-back contract, positive claims, the replaceable-event wipe rule, honest status, names and hooks without ESLint, a harness must be able to fail, just the rails). Use with code-architect on any pre-PR review in this repo; the Rise overlay is always n/a here. Carries a known-bad/known-good fixture and a scorer so the overlay can prove it catches a planted defect."
 metadata:
-  version: "1.0"
-  updated: "2026-10-12"
+  version: "1.1"
+  updated: "2026-11-17"
 ---
 
 # Relay Outpost review overlay
@@ -25,3 +25,5 @@ node .agents/skills/relay-outpost-review/eval/score-review.mjs bad .agents/skill
 Re-run it whenever a row changes. A miss is a finding about the row's wording or the fixture, never about the reviewer; fix that. Runs are recorded in `eval/runs/<date>/`. The scorer's own test: `scripts/relay-outpost-review-eval.test.ts`.
 
 **First run 2026-10-12 (cold subagents):** known-bad 7/7 planted caught plus three real defects the key had missed (promoted to planted: 10/10); known-good hardened once by the reviewers (a hard-coded tier shown as a status word, a dead import, a duplicate append) before a 0-fail pass with one flag. Record in `eval/runs/2026-10-12/RUN_RECORD.md`.
+
+**Second run 2026-11-17 (R4 and R5 reworded for ink/Ember and the 12px floor):** known-bad 11/11 including a new planted R5 (retired violet); known-good 0 fails, six flags. Record in `eval/runs/2026-11-17/RUN_RECORD.md`.

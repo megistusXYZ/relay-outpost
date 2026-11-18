@@ -65,6 +65,7 @@ describe("the sign-in banner eyebrow", () => {
   it("keeps the eyebrow at full brand strength", () => {
     // It used to be /75 and /85. A kicker this small has no room to be faint,
     // and the faintness was read as the bug even though contrast passed.
-    expect(BODY).toMatch(/tracking-\[0\.2em\] text-brand"/);
+    // Sentence case since the Outpost brand (2026-11-16); still full-strength Ember.
+    expect(BODY).toMatch(/className="[^"]*\btext-brand(?![\/\w-])[^"]*"\s*data-testid="text-banner-eyebrow"/);
   });
 });

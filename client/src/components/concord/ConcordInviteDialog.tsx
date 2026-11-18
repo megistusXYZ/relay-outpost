@@ -247,10 +247,10 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
         </DialogHeader>
         <div className="space-y-4 min-w-0">
           {groupLinks && (
-            <p className="flex items-start gap-1.5 text-[11px] text-muted-foreground/70" data-testid="invite-group-status">
+            <p className="flex items-start gap-1.5 text-xs text-muted-foreground" data-testid="invite-group-status">
               {groupLinks.length
                 ? <Globe className="w-3.5 h-3.5 mt-px shrink-0 text-brand/70" aria-hidden="true" />
-                : <Lock className="w-3.5 h-3.5 mt-px shrink-0 text-muted-foreground/60" aria-hidden="true" />}
+                : <Lock className="w-3.5 h-3.5 mt-px shrink-0 text-muted-foreground" aria-hidden="true" />}
               <span>
                 {groupLinks.length
                   ? <><span className="font-medium text-foreground/80">Public.</span> Anyone with {groupLinks.length === 1 ? "the group's live invite link" : `one of its ${groupLinks.length} live invite links`} can join.</>
@@ -261,7 +261,7 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
           {goneQuiet && (
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2" data-testid="invite-resecure-offer">
               <p className="text-xs font-medium text-foreground/90">The group is private now</p>
-              <p className="text-[11px] text-muted-foreground/70">
+              <p className="text-xs text-muted-foreground">
                 Anyone who opened one of its links, even without joining, still has its keys. Re-secure it so only the people in the group can read what's said from now on.
               </p>
               {canResecure && roster ? (
@@ -274,7 +274,7 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
                   <Button size="sm" variant="ghost" onClick={() => setGoneQuiet(false)} disabled={!!resecuring} className="h-11 md:h-8">Not now</Button>
                 </div>
               ) : (
-                <p className="text-[11px] text-muted-foreground/60">The owner, or an admin who can ban, can re-secure it.</p>
+                <p className="text-xs text-muted-foreground">The owner, or an admin who can ban, can re-secure it.</p>
               )}
             </div>
           )}
@@ -288,21 +288,21 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
               data-testid="input-invite-label"
             />
             <div className="flex items-center gap-1.5 flex-wrap" role="radiogroup" aria-label="Link stops working">
-              <span className="text-[11px] text-muted-foreground/60 mr-0.5">Stops working</span>
+              <span className="text-xs text-muted-foreground mr-0.5">Stops working</span>
               {EXPIRY_CHOICES.map((c) => (
                 <button
                   key={c.id}
                   role="radio"
                   aria-checked={expiry === c.id}
                   onClick={() => setExpiry(c.id)}
-                  className={`h-9 md:h-7 px-2.5 rounded-full text-xs border transition-colors ${expiry === c.id ? "border-primary/60 bg-primary/10 text-foreground" : "border-border/40 text-muted-foreground/70 hover:text-foreground"}`}
+                  className={`h-9 md:h-7 px-2.5 rounded-full text-xs border transition-colors ${expiry === c.id ? "border-primary/60 bg-primary/10 text-foreground" : "border-border/40 text-muted-foreground hover:text-foreground"}`}
                   data-testid={`invite-expiry-${c.id}`}
                 >
                   {c.label}
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-muted-foreground/50">Name a link to see how many people join with it.</p>
+            <p className="text-xs text-muted-foreground">Name a link to see how many people join with it.</p>
           </div>
           <Button onClick={mint} disabled={minting} className="w-full h-11 md:h-9" data-testid="button-mint-invite">
             {minting ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Creating…</> : <><Link2 className="w-4 h-4 mr-1.5" /> Create invite link</>}
@@ -316,7 +316,7 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
               <div className="mx-auto w-fit rounded-xl bg-white p-3" data-testid="concord-invite-qr">
                 <QRCodeSVG value={lastLink} size={196} marginSize={2} bgColor="#ffffff" fgColor="#000000" />
               </div>
-              <p className="text-[11px] text-center text-muted-foreground/60">Scan to join, or copy the link below</p>
+              <p className="text-xs text-center text-muted-foreground">Scan to join, or copy the link below</p>
               {typeof navigator !== "undefined" && typeof (navigator as Navigator & { share?: unknown }).share === "function" && (
                 <Button
                   variant="outline"
@@ -332,24 +332,24 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
                 className="w-full flex items-center gap-2 min-h-11 md:min-h-9 px-3 py-2 rounded-lg bg-muted/20 border border-border/30 text-left min-w-0"
                 data-testid="concord-last-link"
               >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />}
-                <span className="text-[10px] font-mono text-muted-foreground/70 truncate min-w-0 flex-1">{lastLink}</span>
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                <span className="text-xs font-mono text-muted-foreground truncate min-w-0 flex-1">{lastLink}</span>
               </button>
             </div>
           )}
 
           {activeLinks.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-[11px] font-medium text-muted-foreground/70">Active links</p>
+              <p className="text-xs font-medium text-muted-foreground">Active links</p>
               {activeLinks.map((l) => {
                 const ends = linkExpiry(l.expiresAt);
                 const joins = l.label ? linkJoins?.get(l.label) ?? 0 : null;
                 return (
                 <div key={l.linkSignerPubkey} className="flex items-center gap-1 pl-3 pr-1 py-1 rounded-lg border border-border/20 min-w-0" data-testid={`invite-link-${l.linkSignerPubkey.slice(0, 8)}`}>
-                  <Link2 className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
+                  <Link2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-medium text-foreground/90 truncate">{l.label || "Invite link"}</div>
-                    <div className="text-[10px] text-muted-foreground/50 truncate">
+                    <div className="text-xs text-muted-foreground truncate">
                       {[
                         l.createdAt > 0 ? `Made ${formatCompactTime(Math.floor(l.createdAt / 1000))}` : null,
                         joins !== null ? `${joins} joined` : null,
@@ -360,7 +360,7 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
                   {!ends?.expired && (<>
                   <button
                     onClick={() => copyLink(l)}
-                    className="flex items-center justify-center h-11 w-11 md:h-9 md:w-9 shrink-0 rounded-lg hover:bg-muted/40 text-muted-foreground/50 hover:text-foreground transition-colors"
+                    className="flex items-center justify-center h-11 w-11 md:h-9 md:w-9 shrink-0 rounded-lg hover:bg-muted/40 text-muted-foreground hover:text-foreground transition-colors"
                     title="Copy link"
                     data-testid={`button-copy-${l.linkSignerPubkey.slice(0, 8)}`}
                   >
@@ -368,14 +368,14 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
                   </button>
                   <button
                     onClick={() => setLastLink(rebuildInviteLink(l, community, window.location.origin))}
-                    className="flex items-center justify-center h-11 w-11 md:h-9 md:w-9 shrink-0 rounded-lg hover:bg-muted/40 text-muted-foreground/50 hover:text-foreground transition-colors"
+                    className="flex items-center justify-center h-11 w-11 md:h-9 md:w-9 shrink-0 rounded-lg hover:bg-muted/40 text-muted-foreground hover:text-foreground transition-colors"
                     title="Show QR code"
                     data-testid={`button-qr-${l.linkSignerPubkey.slice(0, 8)}`}
                   >
                     <QrCode className="w-4 h-4" />
                   </button>
                   </>)}
-                  <button onClick={() => revoke(l)} className="flex items-center justify-center h-11 w-11 md:h-9 md:w-9 shrink-0 rounded-lg hover:bg-destructive/10 text-muted-foreground/50 hover:text-destructive transition-colors" title="Revoke (deletes the link everywhere)" data-testid={`button-revoke-${l.linkSignerPubkey.slice(0, 8)}`}>
+                  <button onClick={() => revoke(l)} className="flex items-center justify-center h-11 w-11 md:h-9 md:w-9 shrink-0 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Revoke (deletes the link everywhere)" data-testid={`button-revoke-${l.linkSignerPubkey.slice(0, 8)}`}>
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -385,8 +385,8 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
           )}
 
           <div className="pt-3 border-t border-border/20 space-y-1.5">
-            <p className="text-[11px] font-medium text-muted-foreground/70">Invite a person</p>
-            <p className="text-[11px] text-muted-foreground/50">Sends a private invite straight to them. Unlike a link, it can't be revoked.</p>
+            <p className="text-xs font-medium text-muted-foreground">Invite a person</p>
+            <p className="text-xs text-muted-foreground">Sends a private invite straight to them. Unlike a link, it can't be revoked.</p>
             <ProfileSearchInput onSelect={setInviteRecipient} selected={inviteRecipient} placeholder="Search a name, handle, or npub…" />
             <Button onClick={invitePerson} disabled={!inviteRecipient?.pubkey || sendingInvite} className="w-full h-11 md:h-9 gap-1.5" data-testid="button-invite-npub">
               {sendingInvite ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</> : <><Send className="w-3.5 h-3.5" /> Send invite</>}
@@ -398,28 +398,28 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
               prove they used your invite, only that they're a member now. */}
           {sent.length > 0 && (
             <div className="pt-3 border-t border-border/20 space-y-1.5" data-testid="concord-sent-invites">
-              <p className="text-[11px] font-medium text-muted-foreground/70">Sent invites <span className="text-muted-foreground/40">· this device</span></p>
+              <p className="text-xs font-medium text-muted-foreground">Sent invites <span className="text-muted-foreground">· this device</span></p>
               {sent.map((s) => {
                 const joined = isInGroup(s.recipient, memberSet);
                 const label = s.name?.trim() || `${formatNpub(s.recipient).slice(0, 12)}…`;
                 return (
                   <div key={s.recipient} className="flex items-center gap-2 pl-1 pr-1 py-1 rounded-lg min-w-0" data-testid={`sent-invite-${s.recipient.slice(0, 8)}`}>
-                    <Avatar className="w-6 h-6 shrink-0"><AvatarFallback className="text-[9px] bg-muted text-muted-foreground">{label.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
+                    <Avatar className="w-6 h-6 shrink-0"><AvatarFallback className="text-xs bg-muted text-muted-foreground">{label.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-medium text-foreground/90 truncate">{label}</div>
-                      <div className="text-[10px] text-muted-foreground/50">Invited {formatCompactTime(Math.floor(s.at / 1000))}</div>
+                      <div className="text-xs text-muted-foreground">Invited {formatCompactTime(Math.floor(s.at / 1000))}</div>
                     </div>
                     {joined ? (
-                      <span className="flex items-center gap-1 text-[10px] font-medium text-success dark:text-emerald-500 shrink-0 pr-1">
+                      <span className="flex items-center gap-1 text-xs font-medium text-success dark:text-emerald-500 shrink-0 pr-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> In the group
                       </span>
                     ) : (
                       <>
-                        <span className="text-[10px] text-muted-foreground/50 shrink-0">Not yet</span>
+                        <span className="text-xs text-muted-foreground shrink-0">Not yet</span>
                         <button
                           onClick={() => reinvite(s.recipient, s.name)}
                           disabled={reinviting === s.recipient}
-                          className="flex items-center justify-center h-9 w-9 shrink-0 rounded-lg hover:bg-muted/40 text-muted-foreground/50 hover:text-foreground transition-colors disabled:opacity-50"
+                          className="flex items-center justify-center h-9 w-9 shrink-0 rounded-lg hover:bg-muted/40 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                           title="Re-invite"
                           data-testid={`button-reinvite-${s.recipient.slice(0, 8)}`}
                         >
@@ -429,7 +429,7 @@ export function ConcordInviteDialog({ open, onOpenChange, community, memberPubke
                     )}
                     <button
                       onClick={() => forgetSent(s.recipient)}
-                      className="flex items-center justify-center h-9 w-9 shrink-0 rounded-lg hover:bg-muted/40 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+                      className="flex items-center justify-center h-9 w-9 shrink-0 rounded-lg hover:bg-muted/40 text-muted-foreground hover:text-foreground transition-colors"
                       title="Remove from list"
                       data-testid={`button-forget-sent-${s.recipient.slice(0, 8)}`}
                     >

@@ -46,7 +46,7 @@ export function ArticleFeedCard({ event }: { event: Event }) {
 
   return (
     <div
-      className="mx-5 sm:mx-8 my-4 rounded-xl border border-border/50 dark:border-brand/15 bg-card/40 overflow-hidden cursor-pointer hover:border-brand/30 transition-colors"
+      className="mx-5 sm:mx-8 my-4 rounded-xl border border-border/60 bg-card overflow-hidden cursor-pointer hover:border-border transition-colors"
       onClick={open}
       data-testid={`article-card-${event.id}`}
     >
@@ -56,7 +56,7 @@ export function ArticleFeedCard({ event }: { event: Event }) {
         </div>
       )}
       <div className="p-4 space-y-2">
-        <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-brand/70">
+        <div className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground">
           <BookOpen className="w-3 h-3" /> Article
         </div>
         <h3 className="text-base font-semibold leading-snug text-foreground/90 line-clamp-2">{title}</h3>
@@ -64,10 +64,10 @@ export function ArticleFeedCard({ event }: { event: Event }) {
         <div className="flex items-center gap-2 pt-1">
           <Avatar className="w-5 h-5 ring-1 ring-border/30">
             <AvatarImage src={avatar} alt={name} />
-            <AvatarFallback className="bg-brand/10 text-brand text-[8px] font-bold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[8px] font-bold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           <span className="text-xs font-medium text-foreground/70 truncate max-w-[160px]">{name}</span>
-          <span className="text-[11px] text-muted-foreground/50">{timeAgo}</span>
+          <span className="text-[12px] text-muted-foreground">{timeAgo}</span>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { pool, eventStore, publishEvent, DEFAULT_RELAYS } from "./nostr";
+import { pool, publishEvent, DEFAULT_RELAYS } from "./nostr";
 import { signWithTimeout } from "@/lib/signer-timeout";
 import { createBlossomAuthHeader, mirrorBlob, pickMirrorTarget, type MirrorResult } from "@/lib/blossom-media";
 
@@ -81,7 +81,6 @@ function readExifOrientation(file: File): Promise<number> {
           offset += 2;
 
           if (marker === 0xFFE1) {
-            const exifLength = view.getUint16(offset, false);
             offset += 2;
 
             if (view.getUint32(offset, false) !== 0x45786966) {

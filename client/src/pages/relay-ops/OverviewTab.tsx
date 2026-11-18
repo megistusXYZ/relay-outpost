@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { acceptedKindsLine, describeKindPolicy } from "@/lib/kind-gate";
 import { checkNip86Support, listAllowedKinds, listDisallowedKinds } from "@/lib/nip86";
-import { nip19 } from "nostr-tools";
 import { fetchNip11, supportsNip, getSoftwareDisplay, type Nip11Document } from "@/lib/nip11";
 import { getAuthStatus, getSignInPolicy, onAuthChange, type AuthStatus } from "@/lib/nip42-auth";
 import { probeRelay } from "@/lib/relay-probe";
@@ -9,8 +8,6 @@ import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useCallUsage, callUsageLine } from "@/lib/call-usage";
 import { serviceHealthView, type ServiceHealthBody } from "@/lib/service-health-view";
 import { RELAY_OUTPOST_TEAM_PUBKEY } from "@shared/team-key";
-import { copyNostrId } from "@/lib/clipboard-bridge";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { OpsCard, OpsSectionHeader } from "./ops-ui";
 import { RelayHealthCard } from "./RelayHealthCard";
 import { Button } from "@/components/ui/button";
@@ -54,12 +51,8 @@ import {
   Check,
   AlertTriangle,
   UserCheck,
-  Plus,
-  Clock,
   FileText,
   X,
-  User,
-  Users,
   ExternalLink,
   Package,
   CreditCard,
@@ -75,23 +68,18 @@ import {
   subscribeWithReach,
   ProfileInfo,
   ProfileName,
-  pubkeyToNpub,
   resolveProfileBatch,
   getKindLabel,
   CHART_COLORS,
   ChartTooltip,
   KindCountEntry,
   NostrFilter,
-  MANUAL_TEAM_KEY,
-  getStoredList,
-  saveStoredList,
   getStorageTrends,
   addStorageTrend,
   StorageTrendEntry,
   getUptimeHistory,
   addUptimeEntry,
   UptimeEntry,
-  addModLogEntry,
   formatRelativeMs,
 } from "./shared";
 import type { FeedbackInbox } from "@/hooks/use-feedback-inbox";
@@ -106,10 +94,10 @@ import { tallyFeedbackStatuses, type CrashStatus } from "@/lib/nip34-feedback";
 function SummaryStat({ label, value, sub, accent }: { label: string; value: number; sub?: string; accent?: boolean }) {
   return (
     <div>
-      <div className="text-[10px] text-muted-foreground/70 uppercase tracking-wide mb-1">{label}</div>
+      <div className="text-[12px] text-muted-foreground mb-1">{label}</div>
       <div className="flex items-baseline gap-1">
         <span className={`text-xl font-semibold tabular-nums ${accent ? "text-brand" : "text-foreground"}`}>{value}</span>
-        {sub && <span className="text-[10px] text-muted-foreground/50">{sub}</span>}
+        {sub && <span className="text-[12px] text-muted-foreground">{sub}</span>}
       </div>
     </div>
   );
@@ -139,10 +127,10 @@ function FeedbackSummaryCard({ inbox, onOpenFeedback }: { inbox: FeedbackInbox; 
   return (
     <OpsCard>
       <div className="flex items-center justify-between mb-3">
-        <OpsSectionHeader icon={Inbox} label="User Feedback" />
+        <OpsSectionHeader icon={Inbox} label="Feedback from members" />
         <button
           onClick={onOpenFeedback}
-          className="text-[11px] text-brand hover:underline inline-flex items-center gap-0.5 shrink-0"
+          className="text-[12px] text-brand hover:underline inline-flex items-center gap-0.5 shrink-0"
           data-testid="button-overview-open-feedback"
         >
           Open inbox <ChevronRight className="w-3 h-3" />
@@ -155,9 +143,9 @@ function FeedbackSummaryCard({ inbox, onOpenFeedback }: { inbox: FeedbackInbox; 
       </div>
       {summary.groupCount > 0 && (
         <div className="flex items-center gap-x-3 gap-y-1.5 flex-wrap mt-3 pt-3 border-t border-border/40" data-testid="overview-crash-breakdown">
-          <Bug className="w-3 h-3 text-muted-foreground/50" />
+          <Bug className="w-3 h-3 text-muted-foreground" />
           {CRASH_BREAKDOWN.map((c) => (
-            <span key={c.key} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/70">
+            <span key={c.key} className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
               <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
               {c.label} <span className="tabular-nums font-medium text-foreground/80">{summary.crash[c.key]}</span>
             </span>
@@ -255,7 +243,7 @@ function authStatusWord(status: AuthStatus): string {
 export type OverviewPart = "summary" | "scans" | "info";
 
 export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection, part = "summary" }: { relayUrl: string; inbox?: FeedbackInbox; onOpenFeedback?: () => void; onOpenConnection?: () => void; part?: OverviewPart }) {
-  const { toast } = useToast();
+  useToast();
   const [nip11, setNip11] = useState<Nip11Document | null>(null);
   // Initialize true so the initial-scan effect waits for the first
   // loadNip11() to complete before running fetchKindCounts. Without this,
@@ -442,36 +430,12 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
   const prevLatencyStateRef = useRef<"normal" | "spike">("normal");
   const LATENCY_SPIKE_THRESHOLD = 500;
   const [storageTrends, setStorageTrends] = useState<StorageTrendEntry[]>(getStorageTrends(relayUrl));
-  const [teamProfiles, setTeamProfiles] = useState<Record<string, ProfileInfo>>({});
-  const [manualTeam, setManualTeam] = useState<string[]>(() => getStoredList(MANUAL_TEAM_KEY, relayUrl));
-  const [newTeamMember, setNewTeamMember] = useState("");
 
   const loadNip11 = useCallback(async () => {
     setLoadingNip11(true);
     const doc = await fetchNip11(relayUrl);
     setNip11(doc);
     setLoadingNip11(false);
-    const allTeamPubkeys: string[] = [];
-    if (doc) {
-      if (doc.pubkey && /^[0-9a-f]{64}$/i.test(doc.pubkey)) allTeamPubkeys.push(doc.pubkey);
-      if (doc.moderators) {
-        for (const m of doc.moderators) {
-          if (!allTeamPubkeys.includes(m)) allTeamPubkeys.push(m);
-        }
-      }
-    }
-    const stored = getStoredList(MANUAL_TEAM_KEY, relayUrl);
-    for (const pk of stored) {
-      if (!allTeamPubkeys.includes(pk)) allTeamPubkeys.push(pk);
-    }
-    if (allTeamPubkeys.length > 0) {
-      const resolved = await resolveProfileBatch(allTeamPubkeys);
-      const profiles: Record<string, ProfileInfo> = {};
-      resolved.forEach((p, k) => { profiles[k] = p; });
-      setTeamProfiles(profiles);
-    } else {
-      setTeamProfiles({});
-    }
   }, [relayUrl]);
 
   useEffect(() => {
@@ -511,8 +475,6 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
     setAuthStatus(getAuthStatus(relayUrl).status);
     setSignIn(getSignInPolicy(relayUrl));
     setUptimeHistory(getUptimeHistory(relayUrl));
-    setManualTeam(getStoredList(MANUAL_TEAM_KEY, relayUrl));
-    setNewTeamMember("");
     prevStatusRef.current = null;
     prevLatencyStateRef.current = "normal";
     return onAuthChange(() => {
@@ -924,22 +886,22 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
       >
         {/* Status opens Connection & sign-in: the whole story behind the word. */}
         <button type="button" onClick={onOpenConnection} disabled={!onOpenConnection} className="bg-background px-3 py-2 min-w-0 text-left hover:bg-black/[0.02] dark:hover:bg-white/[0.03] disabled:hover:bg-background" data-testid="ops-stat-status">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70 leading-tight">Status</p>
+          <p className="text-[12px] text-muted-foreground leading-tight">Status</p>
           <p className="mt-0.5 flex items-center gap-1.5 text-[15px] font-semibold leading-snug truncate" data-value>
             <span className={`w-2 h-2 rounded-full shrink-0 ${connectionStatus === "online" ? "bg-emerald-500" : connectionStatus === "offline" ? "bg-red-500" : "bg-amber-400 animate-pulse"}`} aria-hidden="true" />
             {connectionStatus === "checking" ? "Checking…" : connectionStatus === "online" ? "Online" : "Offline"}
           </p>
         </button>
         <div className="bg-background px-3 py-2 min-w-0" data-testid="ops-stat-latency">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70 leading-tight">Latency</p>
+          <p className="text-[12px] text-muted-foreground leading-tight">Latency</p>
           <p className="mt-0.5 text-[15px] font-semibold leading-snug tabular-nums truncate" data-value>{latencyNow != null ? `${latencyNow} ms` : "—"}</p>
         </div>
         <div className="bg-background px-3 py-2 min-w-0" data-testid="ops-stat-auth">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70 leading-tight">Sign-in</p>
+          <p className="text-[12px] text-muted-foreground leading-tight">Sign-in</p>
           <p className="mt-0.5 text-[15px] font-semibold leading-snug truncate" data-value>{authStatusWord(authStatus)}</p>
         </div>
         <div className="bg-background px-3 py-2 min-w-0" data-testid="ops-stat-software">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70 leading-tight">Software</p>
+          <p className="text-[12px] text-muted-foreground leading-tight">Software</p>
           <p className="mt-0.5 text-[15px] font-semibold leading-snug truncate" data-value title={softwareDisplay || undefined}>{softwareDisplay || "—"}</p>
         </div>
       </div>
@@ -954,12 +916,12 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
         <div className="flex flex-col gap-2 mb-3">
           <OpsSectionHeader
             icon={Activity}
-            label="Uptime & Health"
+            label="Uptime and health"
             className="mb-0"
             action={
               <>
                 <Select value={String(healthInterval)} onValueChange={(v) => setHealthInterval(Number(v))}>
-                  <SelectTrigger className="w-[70px] sm:w-24 h-7 text-[10px]">
+                  <SelectTrigger className="w-[70px] sm:w-24 h-7 text-[12px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -969,22 +931,22 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
                     <SelectItem value="900">15 min</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button variant="ghost" size="sm" className="text-[10px] h-7 sm:h-6 px-2 shrink-0" onClick={checkConnection} aria-label="Check connection now">
+                <Button variant="ghost" size="sm" className="text-[12px] h-7 sm:h-6 px-2 shrink-0" onClick={checkConnection} aria-label="Check connection now">
                   <RefreshCw className="w-3 h-3 sm:mr-1" /><span className="hidden sm:inline">Check Now</span>
                 </Button>
               </>
             }
           />
           <div className="flex items-center gap-1.5 flex-wrap">
-            <Badge variant="outline" className="text-[10px] border-border dark:border-white/10 text-muted-foreground/60">
+            <Badge variant="outline" className="text-[12px] border-border dark:border-white/10 text-muted-foreground">
               {uptimeHistory.filter(e => e.online).length}/{uptimeHistory.length} online
             </Badge>
             {(() => {
               const recent = uptimeHistory.slice(-5);
               const recentDown = recent.filter(e => !e.online).length;
-              if (recentDown >= 2) return <Badge variant="outline" className="text-[10px] border-red-400/40 dark:border-red-400/30 text-danger dark:text-red-400/70 animate-pulse">Downtime detected</Badge>;
-              if (recentDown === 1) return <Badge variant="outline" className="text-[10px] border-amber-400/30 dark:border-amber-400/20 text-amber-600 dark:text-amber-400/70">Intermittent</Badge>;
-              return recent.length > 0 ? <Badge variant="outline" className="text-[10px] border-green-400/25 dark:border-green-400/15 text-success dark:text-green-400/70">Stable</Badge> : null;
+              if (recentDown >= 2) return <Badge variant="outline" className="text-[12px] border-red-400/40 dark:border-red-400/30 text-danger dark:text-red-400/70 animate-pulse">Downtime detected</Badge>;
+              if (recentDown === 1) return <Badge variant="outline" className="text-[12px] border-amber-400/30 dark:border-amber-400/20 text-amber-600 dark:text-amber-400/70">Intermittent</Badge>;
+              return recent.length > 0 ? <Badge variant="outline" className="text-[12px] border-green-400/25 dark:border-green-400/15 text-success dark:text-green-400/70">Stable</Badge> : null;
             })()}
           </div>
         </div>
@@ -992,16 +954,16 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
           <div className="w-full h-32 sm:h-40">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={uptimeChartData} margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(168,85,247,0.08)" />
-                <XAxis dataKey="time" tick={{ fill: "rgba(168,85,247,0.5)", fontSize: 9 }} />
-                <YAxis tick={{ fill: "rgba(168,85,247,0.4)", fontSize: 9 }} width={35} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(163,172,186,0.14)" />
+                <XAxis dataKey="time" tick={{ fill: "rgba(163,172,186,0.75)", fontSize: 12 }} />
+                <YAxis tick={{ fill: "rgba(163,172,186,0.6)", fontSize: 12 }} width={35} />
                 <Tooltip content={<ChartTooltip />} />
-                <Line type="monotone" dataKey="latency" name="Latency (ms)" stroke="#a855f7" strokeWidth={2} dot={{ r: 2, fill: "#a855f7" }} />
+                <Line type="monotone" dataKey="latency" name="Latency (ms)" stroke="#FF6A3D" strokeWidth={2} dot={{ r: 2, fill: "#FF6A3D" }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         ) : (
-          <p className="text-[10px] text-muted-foreground/60">Health checks run automatically every {healthInterval}s. Data will appear after multiple checks.</p>
+          <p className="text-[12px] text-muted-foreground">Health checks run automatically every {healthInterval}s. Data will appear after multiple checks.</p>
         )}
       </OpsCard>}
 
@@ -1009,53 +971,53 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
         {part === "info" && <OpsCard className="flex flex-col lg:col-span-2">
           <OpsSectionHeader
             icon={Info}
-            label="Relay Information"
+            label="Relay information"
             action={
-              <Button variant="ghost" size="sm" className="text-[10px] h-7 sm:h-6 px-2 shrink-0" onClick={loadNip11} aria-label="Refresh relay information">
+              <Button variant="ghost" size="sm" className="text-[12px] h-7 sm:h-6 px-2 shrink-0" onClick={loadNip11} aria-label="Refresh relay information">
                 <RefreshCw className="w-3 h-3 sm:mr-1" /><span className="hidden sm:inline">Refresh</span>
               </Button>
             }
           >
-            {loadingNip11 && <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground/70" />}
+            {loadingNip11 && <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />}
           </OpsSectionHeader>
           {nip11 ? (
             <div className="space-y-2">
               {nip11.name && (
                 <div className="flex items-start gap-2">
-                  <Server className="w-3 h-3 text-muted-foreground/70 mt-0.5 shrink-0" />
+                  <Server className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
                   <div>
-                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide block">Name</span>
+                    <span className="text-[12px] text-muted-foreground block">Name</span>
                     <span className="text-xs text-foreground">{nip11.name}</span>
                   </div>
                 </div>
               )}
               {nip11.description && (
                 <div className="flex items-start gap-2">
-                  <Info className="w-3 h-3 text-muted-foreground/70 mt-0.5 shrink-0" />
+                  <Info className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
                   <div>
-                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide block">Description</span>
+                    <span className="text-[12px] text-muted-foreground block">Description</span>
                     <span className="text-xs text-muted-foreground/80">{nip11.description}</span>
                   </div>
                 </div>
               )}
               {softwareDisplay && (
                 <div className="flex items-start gap-2">
-                  <Code className="w-3 h-3 text-muted-foreground/70 mt-0.5 shrink-0" />
+                  <Code className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
                   <div>
-                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide block">Software</span>
+                    <span className="text-[12px] text-muted-foreground block">Software</span>
                     <span className="text-xs font-mono text-brand dark:text-brand/70">{softwareDisplay}</span>
                   </div>
                 </div>
               )}
               {nip11.contact && (
                 <div className="flex items-start gap-2">
-                  <Mail className="w-3 h-3 text-muted-foreground/70 mt-0.5 shrink-0" />
+                  <Mail className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
                   <div className="flex items-center gap-1">
                     <div>
-                      <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide block">Contact</span>
+                      <span className="text-[12px] text-muted-foreground block">Contact</span>
                       <span className="text-xs text-muted-foreground/80">{nip11.contact}</span>
                     </div>
-                    <button className="h-5 w-5 inline-flex items-center justify-center rounded text-muted-foreground/50 hover:text-muted-foreground/60 transition-colors" onClick={() => handleCopy(nip11.contact!, "contact")} aria-label="Copy contact">
+                    <button className="h-5 w-5 inline-flex items-center justify-center rounded text-muted-foreground hover:text-muted-foreground transition-colors" onClick={() => handleCopy(nip11.contact!, "contact")} aria-label="Copy contact">
                       {copiedField === "contact" ? <Check className="w-2 h-2 text-green-800/70 dark:text-green-400/70" /> : <Copy className="w-2 h-2" />}
                     </button>
                   </div>
@@ -1063,13 +1025,13 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
               )}
               {nip11.pubkey && !nip11.moderators?.length && (
                 <div className="flex items-start gap-2">
-                  <Shield className="w-3 h-3 text-muted-foreground/70 mt-0.5 shrink-0" />
+                  <Shield className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
                   <div className="flex items-center gap-1">
                     <div>
-                      <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide block">Operator Pubkey</span>
-                      <span className="text-xs font-mono text-muted-foreground/70 truncate max-w-[200px] block">{nip11.pubkey}</span>
+                      <span className="text-[12px] text-muted-foreground block">Operator key</span>
+                      <span className="text-xs font-mono text-muted-foreground truncate max-w-[200px] block">{nip11.pubkey}</span>
                     </div>
-                    <button className="h-5 w-5 inline-flex items-center justify-center rounded text-muted-foreground/50 hover:text-muted-foreground/60 transition-colors" onClick={() => handleCopy(nip11.pubkey!, "pubkey")} aria-label="Copy pubkey">
+                    <button className="h-5 w-5 inline-flex items-center justify-center rounded text-muted-foreground hover:text-muted-foreground transition-colors" onClick={() => handleCopy(nip11.pubkey!, "pubkey")} aria-label="Copy pubkey">
                       {copiedField === "pubkey" ? <Check className="w-2 h-2 text-green-800/70 dark:text-green-400/70" /> : <Copy className="w-2 h-2" />}
                     </button>
                   </div>
@@ -1077,12 +1039,12 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
               )}
               {nip11.supported_nips && nip11.supported_nips.length > 0 && (
                 <div className="flex items-start gap-2">
-                  <Hash className="w-3 h-3 text-muted-foreground/70 mt-0.5 shrink-0" />
+                  <Hash className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
                   <div>
-                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide block">Supported NIPs <span className="normal-case tracking-normal text-muted-foreground/50">(relay protocol capabilities)</span></span>
+                    <span className="text-[12px] text-muted-foreground block">Supported NIPs <span className="text-muted-foreground">(relay protocol capabilities)</span></span>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {nip11.supported_nips.map(nip => (
-                        <Badge key={nip} variant="outline" className="text-[10px] border-border dark:border-brand/15 text-brand dark:text-brand/70 px-1 py-0">{nip}</Badge>
+                        <Badge key={nip} variant="outline" className="text-[12px] border-border dark:border-brand/15 text-brand dark:text-brand/70 px-1 py-0">{nip}</Badge>
                       ))}
                     </div>
                   </div>
@@ -1092,7 +1054,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
                 <div className="flex items-start gap-2">
                   <Package className="w-3 h-3 text-emerald-500/70 mt-0.5 shrink-0" />
                   <div>
-                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide block">Blossom Media Servers</span>
+                    <span className="text-[12px] text-muted-foreground block">Media servers</span>
                     <div className="space-y-1 mt-1">
                       {nip11.blossom_servers.map((server) => {
                         let hostname = server;
@@ -1105,40 +1067,40 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
                         );
                       })}
                     </div>
-                    <p className="text-[10px] text-muted-foreground/50 mt-1">Uploads from this community are stored on the relay's Blossom server.</p>
+                    <p className="text-[12px] text-muted-foreground mt-1">Uploads from this community are stored on the relay's Blossom server.</p>
                   </div>
                 </div>
               )}
               <div className="flex items-start gap-2">
-                <FileText className="w-3 h-3 text-muted-foreground/70 mt-0.5 shrink-0" />
+                <FileText className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
                 <div>
-                  <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide block">Accepts</span>
+                  <span className="text-[12px] text-muted-foreground block">Accepts</span>
                   <AcceptedKinds relayUrl={relayUrl} />
                 </div>
               </div>
               {nip11.limitation && (
                 <div className="flex items-start gap-2">
-                  <Layers className="w-3 h-3 text-muted-foreground/70 mt-0.5 shrink-0" />
+                  <Layers className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
                   <div>
-                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide block">Limitations</span>
+                    <span className="text-[12px] text-muted-foreground block">Limitations</span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5 mt-1">
                       {nip11.limitation.max_message_length != null && (
-                        <span className="text-[10px] text-muted-foreground/60">Max msg: <span className="text-brand dark:text-brand/70 font-mono">{nip11.limitation.max_message_length.toLocaleString()}</span></span>
+                        <span className="text-[12px] text-muted-foreground">Max msg: <span className="text-brand dark:text-brand/70 font-mono">{nip11.limitation.max_message_length.toLocaleString()}</span></span>
                       )}
                       {nip11.limitation.max_subscriptions != null && (
-                        <span className="text-[10px] text-muted-foreground/60">Max subs: <span className="text-brand dark:text-brand/70 font-mono">{nip11.limitation.max_subscriptions}</span></span>
+                        <span className="text-[12px] text-muted-foreground">Max subs: <span className="text-brand dark:text-brand/70 font-mono">{nip11.limitation.max_subscriptions}</span></span>
                       )}
                       {nip11.limitation.max_content_length != null && (
-                        <span className="text-[10px] text-muted-foreground/60">Max content: <span className="text-brand dark:text-brand/70 font-mono">{nip11.limitation.max_content_length.toLocaleString()}</span></span>
+                        <span className="text-[12px] text-muted-foreground">Max content: <span className="text-brand dark:text-brand/70 font-mono">{nip11.limitation.max_content_length.toLocaleString()}</span></span>
                       )}
                       {nip11.limitation.max_event_tags != null && (
-                        <span className="text-[10px] text-muted-foreground/60">Max tags: <span className="text-brand dark:text-brand/70 font-mono">{nip11.limitation.max_event_tags}</span></span>
+                        <span className="text-[12px] text-muted-foreground">Max tags: <span className="text-brand dark:text-brand/70 font-mono">{nip11.limitation.max_event_tags}</span></span>
                       )}
                       {nip11.limitation.auth_required != null && (
-                        <span className="text-[10px] text-muted-foreground/60">Auth required: <span className={`font-mono ${nip11.limitation.auth_required ? "text-amber-600 dark:text-amber-400/70" : "text-success dark:text-green-400/70"}`}>{nip11.limitation.auth_required ? "Yes" : "No"}</span></span>
+                        <span className="text-[12px] text-muted-foreground">Auth required: <span className={`font-mono ${nip11.limitation.auth_required ? "text-amber-600 dark:text-amber-400/70" : "text-success dark:text-green-400/70"}`}>{nip11.limitation.auth_required ? "Yes" : "No"}</span></span>
                       )}
                       {nip11.limitation.payment_required != null && (
-                        <span className="text-[10px] text-muted-foreground/60">Payment required: <span className={`font-mono ${nip11.limitation.payment_required ? "text-amber-600 dark:text-amber-400/70" : "text-success dark:text-green-400/70"}`}>{nip11.limitation.payment_required ? "Yes" : "No"}</span></span>
+                        <span className="text-[12px] text-muted-foreground">Payment required: <span className={`font-mono ${nip11.limitation.payment_required ? "text-amber-600 dark:text-amber-400/70" : "text-success dark:text-green-400/70"}`}>{nip11.limitation.payment_required ? "Yes" : "No"}</span></span>
                       )}
                     </div>
                   </div>
@@ -1146,30 +1108,30 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
               )}
               {nip11.relay_countries && nip11.relay_countries.length > 0 && (
                 <div className="flex items-start gap-2">
-                  <Globe className="w-3 h-3 text-muted-foreground/70 mt-0.5 shrink-0" />
+                  <Globe className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
                   <div>
-                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide block">Countries</span>
-                    <span className="text-xs text-muted-foreground/70">{nip11.relay_countries.join(", ")}</span>
+                    <span className="text-[12px] text-muted-foreground block">Countries</span>
+                    <span className="text-xs text-muted-foreground">{nip11.relay_countries.join(", ")}</span>
                   </div>
                 </div>
               )}
               {nip11.language_tags && nip11.language_tags.length > 0 && (
                 <div className="flex items-start gap-2">
-                  <Languages className="w-3 h-3 text-muted-foreground/70 mt-0.5 shrink-0" />
+                  <Languages className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
                   <div>
-                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide block">Languages</span>
-                    <span className="text-xs text-muted-foreground/70">{nip11.language_tags.join(", ")}</span>
+                    <span className="text-[12px] text-muted-foreground block">Languages</span>
+                    <span className="text-xs text-muted-foreground">{nip11.language_tags.join(", ")}</span>
                   </div>
                 </div>
               )}
               {nip11.tags && nip11.tags.length > 0 && (
                 <div className="flex items-start gap-2">
-                  <Tag className="w-3 h-3 text-muted-foreground/70 mt-0.5 shrink-0" />
+                  <Tag className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
                   <div>
-                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide block">Tags</span>
+                    <span className="text-[12px] text-muted-foreground block">Tags</span>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {nip11.tags.map(tag => (
-                        <Badge key={tag} variant="outline" className="text-[10px] border-border dark:border-brand/15 text-brand dark:text-brand/70 px-1 py-0">{tag}</Badge>
+                        <Badge key={tag} variant="outline" className="text-[12px] border-border dark:border-brand/15 text-brand dark:text-brand/70 px-1 py-0">{tag}</Badge>
                       ))}
                     </div>
                   </div>
@@ -1177,32 +1139,32 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
               )}
               {nip11.posting_policy && (
                 <div className="flex items-start gap-2">
-                  <FileCheck className="w-3 h-3 text-muted-foreground/70 mt-0.5 shrink-0" />
+                  <FileCheck className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
                   <div>
-                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide block">Posting Policy</span>
+                    <span className="text-[12px] text-muted-foreground block">Posting policy</span>
                     {/^https?:\/\//i.test(nip11.posting_policy) ? (
                       <a href={nip11.posting_policy} target="_blank" rel="noopener noreferrer" className="text-xs text-brand dark:text-brand/80 hover:underline flex items-center gap-1">
                         {(() => { try { return new URL(nip11.posting_policy).hostname; } catch { return nip11.posting_policy; } })()}
                         <ExternalLink className="w-2.5 h-2.5" />
                       </a>
                     ) : (
-                      <span className="text-xs text-muted-foreground/70">{nip11.posting_policy}</span>
+                      <span className="text-xs text-muted-foreground">{nip11.posting_policy}</span>
                     )}
                   </div>
                 </div>
               )}
               {nip11.payments_url && (
                 <div className="flex items-start gap-2">
-                  <CreditCard className="w-3 h-3 text-muted-foreground/70 mt-0.5 shrink-0" />
+                  <CreditCard className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
                   <div>
-                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide block">Payments</span>
+                    <span className="text-[12px] text-muted-foreground block">Payments</span>
                     {/^https?:\/\//i.test(nip11.payments_url) ? (
                       <a href={nip11.payments_url} target="_blank" rel="noopener noreferrer" className="text-xs text-brand dark:text-brand/80 hover:underline flex items-center gap-1">
                         {(() => { try { return new URL(nip11.payments_url).hostname; } catch { return nip11.payments_url; } })()}
                         <ExternalLink className="w-2.5 h-2.5" />
                       </a>
                     ) : (
-                      <span className="text-xs text-muted-foreground/70">{nip11.payments_url}</span>
+                      <span className="text-xs text-muted-foreground">{nip11.payments_url}</span>
                     )}
                   </div>
                 </div>
@@ -1211,16 +1173,16 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
                 <div className="flex items-start gap-2">
                   <Zap className="w-3 h-3 text-amber-500/70 mt-0.5 shrink-0" />
                   <div>
-                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide block">Fees</span>
+                    <span className="text-[12px] text-muted-foreground block">Fees</span>
                     <div className="space-y-0.5 mt-0.5">
                       {nip11.fees.admission && nip11.fees.admission.length > 0 && (
-                        <span className="text-[10px] text-muted-foreground/60 block">Admission: {nip11.fees.admission.map(f => `${f.amount} ${f.unit}`).join(", ")}</span>
+                        <span className="text-[12px] text-muted-foreground block">Admission: {nip11.fees.admission.map(f => `${f.amount} ${f.unit}`).join(", ")}</span>
                       )}
                       {nip11.fees.subscription && nip11.fees.subscription.length > 0 && (
-                        <span className="text-[10px] text-muted-foreground/60 block">Subscription: {nip11.fees.subscription.map(f => `${f.amount} ${f.unit} / ${f.period}s`).join(", ")}</span>
+                        <span className="text-[12px] text-muted-foreground block">Subscription: {nip11.fees.subscription.map(f => `${f.amount} ${f.unit} / ${f.period}s`).join(", ")}</span>
                       )}
                       {nip11.fees.publication && nip11.fees.publication.length > 0 && (
-                        <span className="text-[10px] text-muted-foreground/60 block">Publication: {nip11.fees.publication.map(f => `${f.amount} ${f.unit}`).join(", ")}</span>
+                        <span className="text-[12px] text-muted-foreground block">Publication: {nip11.fees.publication.map(f => `${f.amount} ${f.unit}`).join(", ")}</span>
                       )}
                     </div>
                   </div>
@@ -1228,9 +1190,9 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
               )}
               {nip11.retention && nip11.retention.length > 0 && (
                 <div className="flex items-start gap-2">
-                  <Database className="w-3 h-3 text-muted-foreground/70 mt-0.5 shrink-0" />
+                  <Database className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
                   <div>
-                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide block">Retention Policy</span>
+                    <span className="text-[12px] text-muted-foreground block">Retention policy</span>
                     <div className="space-y-0.5 mt-0.5">
                       {nip11.retention.map((r, i) => {
                         const kindStr = r.kinds ? `Kinds ${r.kinds.join(", ")}` : "All kinds";
@@ -1238,7 +1200,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
                         const countStr = r.count ? `max ${r.count}` : undefined;
                         const detail = [timeStr, countStr].filter(Boolean).join(", ") || "stored";
                         return (
-                          <span key={i} className="text-[10px] text-muted-foreground/60 block">{kindStr}: {detail}</span>
+                          <span key={i} className="text-[12px] text-muted-foreground block">{kindStr}: {detail}</span>
                         );
                       })}
                     </div>
@@ -1248,14 +1210,14 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
             </div>
           ) : loadingNip11 ? (
             <div className="flex items-center gap-2 py-4">
-              <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground/70" />
-              <span className="text-xs text-muted-foreground/70">Fetching relay information...</span>
+              <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Fetching relay information...</span>
             </div>
           ) : (
             <div className="flex items-center gap-2 py-4">
               <AlertTriangle className="w-3 h-3 text-amber-700 dark:text-amber-400/70" />
-              <span className="text-xs text-muted-foreground/70">Could not fetch NIP-11 document</span>
-              <Button variant="ghost" size="sm" className="text-[10px] h-5" onClick={loadNip11}>Retry</Button>
+              <span className="text-xs text-muted-foreground">Could not fetch NIP-11 document</span>
+              <Button variant="ghost" size="sm" className="text-[12px] h-5" onClick={loadNip11}>Retry</Button>
             </div>
           )}
         </OpsCard>}
@@ -1281,44 +1243,44 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
           {part === "scans" && <OpsCard className="flex-1 flex flex-col">
             <OpsSectionHeader
               icon={Activity}
-              label="Event Analytics"
+              label="Post activity"
               action={
-                <Button variant="ghost" size="sm" className="text-[10px] h-6 px-2 shrink-0" onClick={fetchKindCounts} disabled={loadingCounts}>
+                <Button variant="ghost" size="sm" className="text-[12px] h-6 px-2 shrink-0" onClick={fetchKindCounts} disabled={loadingCounts}>
                   <RefreshCw className={`w-3 h-3 mr-1 ${loadingCounts ? "animate-spin" : ""}`} />Scan
                 </Button>
               }
             >
               {nip45Supported === true && (
-                <Badge variant="outline" className="text-[10px] border-green-400/25 dark:border-green-400/15 text-success dark:text-green-400/70" title="Relay supports NIP-45 COUNT — exact totals.">NIP-45 COUNT</Badge>
+                <Badge variant="outline" className="text-[12px] border-green-400/25 dark:border-green-400/15 text-success dark:text-green-400/70" title="Relay supports NIP-45 COUNT — exact totals.">NIP-45 COUNT</Badge>
               )}
               {nip45Supported === false && (
                 <>
-                  <Badge variant="outline" className="text-[10px] border-amber-400/25 dark:border-amber-400/15 text-amber-700 dark:text-amber-400/70" title="Relay didn't respond to COUNT — using a 100-event sample.">Sample fallback</Badge>
-                  <Button variant="ghost" size="sm" className="text-[10px] h-5 px-1.5 shrink-0 text-amber-700/80 dark:text-amber-400/70 hover:text-amber-700 dark:hover:text-amber-300" onClick={recheckNip45} disabled={loadingCounts} title="Re-probe NIP-45 capability">
+                  <Badge variant="outline" className="text-[12px] border-amber-400/25 dark:border-amber-400/15 text-amber-700 dark:text-amber-400/70" title="Relay didn't respond to COUNT — using a 100-event sample.">Sample fallback</Badge>
+                  <Button variant="ghost" size="sm" className="text-[12px] h-5 px-1.5 shrink-0 text-amber-700/80 dark:text-amber-400/70 hover:text-amber-700 dark:hover:text-amber-300" onClick={recheckNip45} disabled={loadingCounts} title="Re-probe NIP-45 capability">
                     Recheck
                   </Button>
                 </>
               )}
             </OpsSectionHeader>
             {!countsReached && (
-              <p className="text-[10px] text-warning dark:text-amber-400/70 mb-2">Couldn't reach this relay on the last scan — the counts below are not a measurement of what it holds.</p>
+              <p className="text-[12px] text-warning dark:text-amber-400/70 mb-2">Couldn't reach this relay on the last scan — the counts below are not a measurement of what it holds.</p>
             )}
             {nip45Supported === false && countsReached && kindCounts.length > 0 && (
-              <p className="text-[10px] text-amber-700/80 dark:text-amber-400/60 mb-2">Relay didn't respond to COUNT — counts shown are sampled estimates (up to 100 per kind). Use Recheck after a relay upgrade.</p>
+              <p className="text-[12px] text-amber-700/80 dark:text-amber-400/60 mb-2">Relay didn't respond to COUNT — counts shown are sampled estimates (up to 100 per kind). Use Recheck after a relay upgrade.</p>
             )}
             {kindCounts.length > 0 ? (
               <div className="grid grid-cols-2 gap-2">
                 {kindCounts.map((k) => (
                   <div key={k.kind} className="flex items-center justify-between rounded-md bg-muted dark:bg-white/[0.02] border border-border dark:border-white/[0.06] px-2 py-1">
-                    <span className="text-[10px] text-muted-foreground/60">{k.label}</span>
-                    <span className={`text-[10px] font-mono ${k.count > 0 ? "text-brand dark:text-brand/70" : "text-muted-foreground/50"}`}>
+                    <span className="text-[12px] text-muted-foreground">{k.label}</span>
+                    <span className={`text-[12px] font-mono ${k.count > 0 ? "text-brand dark:text-brand/70" : "text-muted-foreground"}`}>
                       {nip45Supported ? k.count.toLocaleString() : `~${k.count}`}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-[10px] text-muted-foreground/60">Click "Scan" to count events by kind. Uses NIP-45 COUNT when supported, falls back to sampling.</p>
+              <p className="text-[12px] text-muted-foreground">Click "Scan" to count events by kind. Uses NIP-45 COUNT when supported, falls back to sampling.</p>
             )}
           </OpsCard>}
 
@@ -1330,13 +1292,13 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
 
       {part === "scans" && kindChartData.length > 0 && (
         <OpsCard>
-          <OpsSectionHeader icon={Activity} label="Event Distribution" />
+          <OpsSectionHeader icon={Activity} label="Posts by type" />
           <div className="w-full h-40">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={kindChartData} margin={{ top: 5, right: 10, left: 0, bottom: 30 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(168,85,247,0.08)" />
-                <XAxis dataKey="name" tick={{ fill: "rgba(168,85,247,0.5)", fontSize: 9 }} angle={-25} textAnchor="end" interval={0} />
-                <YAxis tick={{ fill: "rgba(168,85,247,0.4)", fontSize: 10 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(163,172,186,0.14)" />
+                <XAxis dataKey="name" tick={{ fill: "rgba(163,172,186,0.75)", fontSize: 12 }} angle={-25} textAnchor="end" interval={0} />
+                <YAxis tick={{ fill: "rgba(163,172,186,0.6)", fontSize: 12 }} />
                 <Tooltip content={<ChartTooltip />} />
                 <Bar dataKey="count" name="Events Sampled" radius={[4, 4, 0, 0]}>
                   {kindChartData.map((_, idx) => (
@@ -1354,14 +1316,14 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
           <div className="flex flex-col gap-2 mb-3">
             <OpsSectionHeader
               icon={UserCheck}
-              label={<>Top Publishers {deepScanSampled === 0 && "(from sample)"}</>}
+              label={<>Top posters {deepScanSampled === 0 && "(from sample)"}</>}
               className="mb-0"
               action={
                 deepScanRunning ? (
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-[10px] h-6 px-2 text-amber-600 dark:text-amber-400"
+                    className="text-[12px] h-6 px-2 text-amber-600 dark:text-amber-400"
                     onClick={cancelDeepScan}
                     aria-label="Cancel deep scan"
                   >
@@ -1372,7 +1334,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-[10px] h-6 px-2"
+                      className="text-[12px] h-6 px-2"
                       onClick={() => runDeepScan(DEEP_SCAN_MAX_EVENTS)}
                       aria-label="Run deep scan"
                       title={`Walk back through up to ${DEEP_SCAN_MAX_EVENTS.toLocaleString()} kind:1 events to build a more accurate leaderboard.`}
@@ -1383,7 +1345,7 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-[10px] h-6 px-2 text-muted-foreground/70 hover:text-foreground"
+                      className="text-[12px] h-6 px-2 text-muted-foreground hover:text-foreground"
                       onClick={() => runDeepScan(DEEP_SCAN_DEEPER_MAX_EVENTS)}
                       aria-label="Scan deeper"
                       title={`Walk back through up to ${DEEP_SCAN_DEEPER_MAX_EVENTS.toLocaleString()} kind:1 events. Slower, but the leaderboard will reflect a much longer window.`}
@@ -1396,44 +1358,44 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
             />
             {(deepScanRunning || deepScanSampled > 0) && (
               <div className="flex items-center gap-1.5 flex-wrap">
-                <Badge variant="outline" className="text-[10px] border-border dark:border-brand/15 text-brand dark:text-brand/70">
+                <Badge variant="outline" className="text-[12px] border-border dark:border-brand/15 text-brand dark:text-brand/70">
                   {deepScanSampled.toLocaleString()} events sampled
                 </Badge>
                 {deepScanOldestTs !== null && deepScanNewestTs !== null && (
-                  <Badge variant="outline" className="text-[10px] border-border dark:border-white/10 text-muted-foreground/70">
+                  <Badge variant="outline" className="text-[12px] border-border dark:border-white/10 text-muted-foreground">
                     Window: {new Date(deepScanOldestTs * 1000).toLocaleDateString()} → {new Date(deepScanNewestTs * 1000).toLocaleDateString()}
                   </Badge>
                 )}
                 {deepScanStatus === "running" && (
-                  <Badge variant="outline" className="text-[10px] border-amber-400/25 dark:border-amber-400/15 text-amber-700 dark:text-amber-400/70">
+                  <Badge variant="outline" className="text-[12px] border-amber-400/25 dark:border-amber-400/15 text-amber-700 dark:text-amber-400/70">
                     Scanning…
                   </Badge>
                 )}
                 {deepScanStatus === "capped" && (
                   deepScanCap >= DEEP_SCAN_DEEPER_MAX_EVENTS ? (
-                    <Badge variant="outline" className="text-[10px] border-border dark:border-white/10 text-muted-foreground/70" title={`Stopped at the ${deepScanCap.toLocaleString()}-event safety cap.`}>
+                    <Badge variant="outline" className="text-[12px] border-border dark:border-white/10 text-muted-foreground" title={`Stopped at the ${deepScanCap.toLocaleString()}-event safety cap.`}>
                       Stopped at {deepScanCap.toLocaleString()}
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="text-[10px] border-border dark:border-white/10 text-muted-foreground/70" title={`Stopped at ${deepScanCap.toLocaleString()} — use Scan deeper to walk back further.`}>
+                    <Badge variant="outline" className="text-[12px] border-border dark:border-white/10 text-muted-foreground" title={`Stopped at ${deepScanCap.toLocaleString()} — use Scan deeper to walk back further.`}>
                       Stopped at {deepScanCap.toLocaleString()} — Scan deeper for more
                     </Badge>
                   )
                 )}
                 {deepScanStatus === "completed" && (
-                  <Badge variant="outline" className="text-[10px] border-green-400/25 dark:border-green-400/15 text-success dark:text-green-400/70">
+                  <Badge variant="outline" className="text-[12px] border-green-400/25 dark:border-green-400/15 text-success dark:text-green-400/70">
                     Reached end of relay store
                   </Badge>
                 )}
                 {deepScanStatus === "cancelled" && (
-                  <Badge variant="outline" className="text-[10px] border-border dark:border-white/10 text-muted-foreground/70">
+                  <Badge variant="outline" className="text-[12px] border-border dark:border-white/10 text-muted-foreground">
                     Cancelled — partial result
                   </Badge>
                 )}
               </div>
             )}
             {!deepScanRunning && leaderboardSavedAt !== null && deepScanSampled > 0 && (
-              <p className="text-[10px] text-muted-foreground/60 leading-snug">
+              <p className="text-[12px] text-muted-foreground leading-snug">
                 As of {formatRelativeMs(leaderboardSavedAt)}
                 {" · "}
                 {deepScanSampled.toLocaleString()} event{deepScanSampled === 1 ? "" : "s"} scanned
@@ -1450,10 +1412,10 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
             {topPublishers.map((pub, i) => (
               <div key={pub.pubkey} className="flex items-center justify-between rounded-md bg-muted dark:bg-white/[0.02] border border-border dark:border-white/[0.06] px-2 py-1.5">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-[10px] text-muted-foreground/60 w-4 text-right shrink-0">{i + 1}.</span>
+                  <span className="text-[12px] text-muted-foreground w-4 text-right shrink-0">{i + 1}.</span>
                   <ProfileName pubkey={pub.pubkey} profiles={topPublisherProfiles} showCopy />
                 </div>
-                <Badge variant="outline" className="text-[10px] border-border dark:border-brand/15 text-brand dark:text-brand/70 shrink-0 ml-2">{pub.count} notes</Badge>
+                <Badge variant="outline" className="text-[12px] border-border dark:border-brand/15 text-brand dark:text-brand/70 shrink-0 ml-2">{pub.count} notes</Badge>
               </div>
             ))}
           </div>
@@ -1463,20 +1425,20 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
       {part === "scans" && <OpsCard>
         <OpsSectionHeader
           icon={Layers}
-          label="Storage Growth"
+          label="Storage growth"
           action={
-            <Button variant="ghost" size="sm" className="text-[10px] h-6 px-2 shrink-0" onClick={fetchKindCounts} disabled={loadingCounts}>
+            <Button variant="ghost" size="sm" className="text-[12px] h-6 px-2 shrink-0" onClick={fetchKindCounts} disabled={loadingCounts}>
               <RefreshCw className={`w-3 h-3 mr-1 ${loadingCounts ? "animate-spin" : ""}`} />Scan
             </Button>
           }
         >
           {storageTrends.length > 0 && (
-            <Badge variant="outline" className="text-[10px] border-border dark:border-white/10 text-muted-foreground/60">
+            <Badge variant="outline" className="text-[12px] border-border dark:border-white/10 text-muted-foreground">
               {storageTrends.length} snapshot{storageTrends.length !== 1 ? "s" : ""}
             </Badge>
           )}
           {nip45Supported === false && kindCounts.length > 0 && (
-            <Badge variant="outline" className="text-[10px] border-amber-400/25 dark:border-amber-400/15 text-amber-700 dark:text-amber-400/70" title="Relay didn't respond to COUNT — totals are sampled estimates.">Estimated — sample fallback</Badge>
+            <Badge variant="outline" className="text-[12px] border-amber-400/25 dark:border-amber-400/15 text-amber-700 dark:text-amber-400/70" title="Relay didn't respond to COUNT — totals are sampled estimates.">Estimated — sample fallback</Badge>
           )}
         </OpsSectionHeader>
         {storageTrendData.length > 1 ? (
@@ -1484,31 +1446,31 @@ export function OverviewTab({ relayUrl, inbox, onOpenFeedback, onOpenConnection,
             <div className="w-full h-40">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={storageTrendData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(168,85,247,0.08)" />
-                  <XAxis dataKey="time" tick={{ fill: "rgba(168,85,247,0.5)", fontSize: 9 }} />
-                  <YAxis tick={{ fill: "rgba(168,85,247,0.4)", fontSize: 10 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(163,172,186,0.14)" />
+                  <XAxis dataKey="time" tick={{ fill: "rgba(163,172,186,0.75)", fontSize: 12 }} />
+                  <YAxis tick={{ fill: "rgba(163,172,186,0.6)", fontSize: 12 }} />
                   <Tooltip content={<ChartTooltip />} />
-                  <Line type="monotone" dataKey="events" name="Total Events" stroke="#c084fc" strokeWidth={2} dot={{ r: 2, fill: "#c084fc" }} />
+                  <Line type="monotone" dataKey="events" name="Total Events" stroke="#7C9BFF" strokeWidth={2} dot={{ r: 2, fill: "#7C9BFF" }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            <p className="text-[10px] text-muted-foreground/60 mt-1">Each data point is recorded when you scan. Run scans periodically to track growth over time.</p>
+            <p className="text-[12px] text-muted-foreground mt-1">Each data point is recorded when you scan. Run scans periodically to track growth over time.</p>
           </>
         ) : storageTrendData.length === 1 ? (
           <div className="text-center py-6">
             <div className="flex items-center justify-center mx-auto mb-2 text-muted-foreground">
               <Activity className="w-5 h-5" aria-hidden="true" />
             </div>
-            <p className="text-xs text-muted-foreground/60 font-medium">{storageTrendData[0].events.toLocaleString()} events recorded</p>
-            <p className="text-[10px] text-muted-foreground/60 mt-1">Run another scan later to start tracking growth over time.</p>
+            <p className="text-xs text-muted-foreground font-medium">{storageTrendData[0].events.toLocaleString()} events recorded</p>
+            <p className="text-[12px] text-muted-foreground mt-1">Run another scan later to start tracking growth over time.</p>
           </div>
         ) : (
           <div className="text-center py-6">
             <div className="flex items-center justify-center mx-auto mb-2 text-muted-foreground">
               <Layers className="w-5 h-5" aria-hidden="true" />
             </div>
-            <p className="text-xs text-muted-foreground/60 font-medium">No data yet</p>
-            <p className="text-[10px] text-muted-foreground/60 mt-1">Click Scan to take your first snapshot and start tracking relay growth.</p>
+            <p className="text-xs text-muted-foreground font-medium">No data yet</p>
+            <p className="text-[12px] text-muted-foreground mt-1">Click Scan to take your first snapshot and start tracking relay growth.</p>
           </div>
         )}
       </OpsCard>}
@@ -1540,7 +1502,7 @@ function AcceptedKinds({ relayUrl }: { relayUrl: string }) {
   return (
     <p className="text-xs text-foreground/80 mt-0.5" data-testid="ops-accepted-kinds">
       {line ?? "Asking…"}
-      {line && <span className="block text-[10px] text-muted-foreground/60 mt-0.5">Set in Settings › Who can post</span>}
+      {line && <span className="block text-[12px] text-muted-foreground mt-0.5">Set in Settings › Who can post</span>}
     </p>
   );
 }

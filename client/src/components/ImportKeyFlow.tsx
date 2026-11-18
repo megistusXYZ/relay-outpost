@@ -191,7 +191,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
   const titleCls = isOverlay ? "text-white" : "";
   const descCls = isOverlay ? "text-white/60" : "text-muted-foreground";
   const subtleCls = isOverlay ? "text-white/70" : "text-muted-foreground";
-  const inputCls = isOverlay ? "bg-black/30 border-white/15 text-white placeholder:text-white/50" : "bg-background/50 placeholder:text-muted-foreground/70";
+  const inputCls = isOverlay ? "bg-black/30 border-white/40 text-white placeholder:text-white/50" : "bg-background/50 placeholder:text-muted-foreground/70";
   const primaryBtnCls = isOverlay ? "bg-white text-black hover:bg-white/90" : "bg-foreground text-background hover:bg-foreground/90";
   const ghostBtnCls = isOverlay ? "text-white/60" : "text-muted-foreground";
   const eyeBtnCls = isOverlay
@@ -519,14 +519,14 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                 className={`group/wtf shrink-0 self-start sm:self-auto inline-flex items-center gap-2 rounded-full transition-all duration-300 px-2 py-1.5 sm:px-2.5 sm:py-1.5 ${isOverlay ? "border border-white/10 bg-white/[0.04] hover:bg-white/[0.09] hover:border-white/25" : "border border-border/50 bg-foreground/[0.03] hover:bg-foreground/[0.06] hover:border-border"}`}
               >
                 <span className="relative shrink-0 -rotate-[8deg] group-hover/wtf:-rotate-[14deg] group-hover/wtf:scale-110 transition-transform duration-500 ease-out">
-                  <WtfAlienIcon className={`w-6 h-6 sm:w-5 sm:h-5 transition-all duration-500 ${isOverlay ? "text-brand/80 group-hover/wtf:text-brand-strong group-hover/wtf:drop-shadow-[0_0_10px_rgba(167,139,250,0.55)]" : "text-brand/80 group-hover/wtf:text-brand-strong group-hover/wtf:drop-shadow-[0_0_10px_rgba(124,58,237,0.4)]"}`} />
-                  <span className={`absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full transition-all duration-500 ${isOverlay ? "bg-brand/70 group-hover/wtf:bg-brand group-hover/wtf:shadow-[0_0_6px_rgba(167,139,250,0.6)]" : "bg-brand/60 group-hover/wtf:bg-brand group-hover/wtf:shadow-[0_0_6px_rgba(124,58,237,0.5)]"}`} />
+                  <WtfAlienIcon className={`w-6 h-6 sm:w-5 sm:h-5 transition-all duration-500 ${isOverlay ? "text-brand/80 group-hover/wtf:text-brand-strong group-hover/wtf:drop-shadow-[0_0_10px_rgba(13,15,18,0.55)]" : "text-brand/80 group-hover/wtf:text-brand-strong group-hover/wtf:drop-shadow-[0_0_10px_rgba(13,15,18,0.4)]"}`} />
+                  <span className={`absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full transition-all duration-500 ${isOverlay ? "bg-brand/70 group-hover/wtf:bg-brand group-hover/wtf:shadow-[0_0_6px_rgba(13,15,18,0.6)]" : "bg-brand/60 group-hover/wtf:bg-brand group-hover/wtf:shadow-[0_0_6px_rgba(13,15,18,0.5)]"}`} />
                 </span>
                 <span className="hidden sm:flex flex-col leading-none transform -rotate-[2deg] pr-0.5">
                   <span className={`text-[11px] font-black tracking-tight ${isOverlay ? "text-brand" : "text-brand dark:text-brand/90"}`}>
-                    Help &amp; Guides
+                    Help &amp; guides
                   </span>
-                  <span className={`text-[7px] uppercase tracking-[0.3em] font-bold mt-0.5 ${isOverlay ? "text-brand/50" : "text-brand/40"}`}>
+                  <span className={`text-[7px] font-bold mt-0.5 ${isOverlay ? "text-brand/50" : "text-brand/40"}`}>
                     get started
                   </span>
                 </span>
@@ -543,7 +543,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
             </div>
 
             <div className="space-y-2">
-              <Label className={`text-xs font-brand uppercase tracking-widest ${subtleCls}`}>Secret key</Label>
+              <Label className={`text-xs font-medium ${subtleCls}`}>Your key</Label>
               <div className="relative">
                 {/* A password field under the account's npub, so a password
                     manager fills in a saved key here and offers to keep a
@@ -590,7 +590,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
 
             {isEncrypted && (
               <div className="space-y-2">
-                <Label className={`text-xs font-brand uppercase tracking-widest ${subtleCls}`}>Decryption passphrase</Label>
+                <Label className={`text-xs font-medium ${subtleCls}`}>Password for this key</Label>
                 <div className="relative">
                   <Input
                     type={showImport ? "text" : "password"}
@@ -624,14 +624,14 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                   ran, the flow exited, and a user who had just pasted a 162-
                   char ncryptsec plus passphrase watched it all vanish.
                   Reported as "enter clears everything instead of continuing". */}
-              <Button type="button" variant="ghost" onClick={() => { clearImportDraft(); debugAuth("draft cleared on cancel"); onBack(); }} className={`text-xs font-brand uppercase tracking-widest ${ghostBtnCls}`}>
+              <Button type="button" variant="ghost" onClick={() => { clearImportDraft(); debugAuth("draft cleared on cancel"); onBack(); }} className={`text-xs font-medium ${ghostBtnCls}`}>
                 <ArrowLeft className="w-4 h-4 mr-2" /> Back
               </Button>
               <div className="hidden sm:block sm:flex-1" />
               <Button
                 type="submit"
                 disabled={!keyInput.trim() || (isEncrypted && !importPassword) || isWorking}
-                className={`w-full sm:w-auto text-xs font-brand uppercase tracking-widest ${primaryBtnCls}`}
+                className={`w-full sm:w-auto text-xs font-medium ${primaryBtnCls}`}
                 data-testid="button-import-continue"
               >
                 {isWorking ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : null}
@@ -670,7 +670,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                 <Button
                   onClick={handleStaySignedIn}
                   disabled={isWorking}
-                  className={`w-full text-xs font-brand uppercase tracking-widest ${primaryBtnCls}`}
+                  className={`w-full text-xs font-medium ${primaryBtnCls}`}
                   data-testid="button-stay-signed-in"
                 >
                   {isWorking ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : <ArrowRightCircle className="w-4 h-4 mr-2" />}
@@ -679,7 +679,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
 
                 <div className={`flex items-center gap-3 pt-1`}>
                   <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border/60"}`} />
-                  <span className={`text-[10px] font-brand uppercase tracking-[0.18em] ${subtleCls}`}>or</span>
+                  <span className={`text-[13px] font-medium ${subtleCls}`}>or</span>
                   <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border/60"}`} />
                 </div>
 
@@ -687,11 +687,11 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                   variant="ghost"
                   onClick={() => setPassphraseMode("lock")}
                   disabled={isWorking}
-                  className={`w-full text-[11px] font-brand uppercase tracking-widest ${ghostBtnCls}`}
+                  className={`w-full text-[12px] font-medium ${ghostBtnCls}`}
                   data-testid="button-switch-to-passphrase"
                 >
                   <Lock className="w-3.5 h-3.5 mr-1.5" />
-                  Lock with a passphrase instead
+                  Lock with a password instead
                 </Button>
 
                 <div className="flex justify-start pt-1">
@@ -699,7 +699,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                     variant="ghost"
                     onClick={() => setStep("key")}
                     disabled={isWorking}
-                    className={`text-[11px] font-brand uppercase tracking-widest ${ghostBtnCls}`}
+                    className={`text-[12px] font-medium ${ghostBtnCls}`}
                     data-testid="button-back-to-key"
                   >
                     <ArrowLeft className="w-3.5 h-3.5 mr-1.5" /> Back
@@ -721,7 +721,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                     />
                     <div className="flex items-center gap-3">
                       <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border/60"}`} />
-                      <span className={`text-[10px] font-brand uppercase tracking-[0.18em] ${subtleCls}`}>or a passphrase</span>
+                      <span className={`text-[13px] font-medium ${subtleCls}`}>or a password</span>
                       <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border/60"}`} />
                     </div>
                   </div>
@@ -731,14 +731,14 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                     <Lock className={`w-5 h-5 ${isOverlay ? "text-white/70" : "text-foreground/70"}`} />
                   </div>
                   <div>
-                    <h3 className={`text-sm font-semibold ${titleCls}`} data-testid="text-import-passphrase-title">Set a passphrase for this device</h3>
+                    <h3 className={`text-sm font-semibold ${titleCls}`} data-testid="text-import-passphrase-title">Set a password for this device</h3>
                     <p className={`text-xs mt-0.5 ${descCls}`}>We'll re-encrypt your key with it. You'll be asked to enter it on every reload.</p>
                   </div>
                 </div>
 
                 <div className="space-y-3 mt-4">
                   <div className="space-y-2">
-                    <Label className={`text-xs font-brand uppercase tracking-widest ${subtleCls}`}>Passphrase</Label>
+                    <Label className={`text-xs font-medium ${subtleCls}`}>Password</Label>
                     <div className="relative">
                       <Input
                         {...deviceSecretInputProps(showNew)}
@@ -760,7 +760,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className={`text-xs font-brand uppercase tracking-widest ${subtleCls}`}>Confirm</Label>
+                    <Label className={`text-xs font-medium ${subtleCls}`}>Confirm</Label>
                     <Input
                       {...deviceSecretInputProps(showNew)}
                       value={confirmPassword}
@@ -770,7 +770,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                       data-testid="input-new-passphrase-confirm"
                     />
                     {confirmPassword && newPassword !== confirmPassword && (
-                      <p className="text-xs text-destructive">Passphrases don't match</p>
+                      <p className="text-xs text-destructive">Passwords don't match</p>
                     )}
                   </div>
                 </div>
@@ -780,7 +780,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                     type="button"
                     variant="ghost"
                     onClick={() => setStep("key")}
-                    className={`text-xs font-brand uppercase tracking-widest ${ghostBtnCls}`}
+                    className={`text-xs font-medium ${ghostBtnCls}`}
                     data-testid="button-lock-back-to-key"
                   >
                     <ArrowLeft className="w-4 h-4 mr-2" /> Back
@@ -789,7 +789,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                     type="button"
                     variant="ghost"
                     onClick={() => setPassphraseMode("stay")}
-                    className={`text-[11px] font-brand uppercase tracking-widest ${ghostBtnCls}`}
+                    className={`text-[12px] font-medium ${ghostBtnCls}`}
                     data-testid="button-switch-to-stay"
                   >
                     Stay signed in without unlocking
@@ -798,7 +798,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                   <Button
                     type="submit"
                     disabled={!passwordValid || isWorking}
-                    className={`w-full sm:w-auto text-xs font-brand uppercase tracking-widest ${primaryBtnCls}`}
+                    className={`w-full sm:w-auto text-xs font-medium ${primaryBtnCls}`}
                     data-testid="button-finish-import"
                   >
                     {isWorking ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : <KeyRound className="w-4 h-4 mr-2" />}
@@ -820,7 +820,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className={`text-sm font-semibold ${titleCls}`} data-testid="text-import-passkey-title">You're in. One last optional step.</h3>
-                <p className={`text-xs mt-0.5 ${descCls}`}>Make signing in instant on this device — your passphrase still works as a backup.</p>
+                <p className={`text-xs mt-0.5 ${descCls}`}>Make signing in instant on this device — your password still works as a backup.</p>
               </div>
             </div>
 
@@ -840,7 +840,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                   variant="ghost"
                   onClick={handlePasskeyDone}
                   disabled={isFinalizing}
-                  className={`text-xs font-brand uppercase tracking-widest ${ghostBtnCls}`}
+                  className={`text-xs font-medium ${ghostBtnCls}`}
                   data-testid="button-skip-passkey"
                 >
                   Skip for now
@@ -850,7 +850,7 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
               <Button
                 onClick={handlePasskeyDone}
                 disabled={isFinalizing}
-                className={`w-full sm:w-auto text-xs font-brand uppercase tracking-widest ${primaryBtnCls}`}
+                className={`w-full sm:w-auto text-xs font-medium ${primaryBtnCls}`}
                 data-testid="button-finish-passkey"
               >
                 {isFinalizing ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : <ArrowRightCircle className="w-4 h-4 mr-2" />}

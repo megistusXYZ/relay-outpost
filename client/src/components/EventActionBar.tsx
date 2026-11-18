@@ -198,7 +198,7 @@ export function EventActionBar({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()} className="w-52">
-            <DropdownMenuLabel className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">
+            <DropdownMenuLabel className="text-[13px] text-muted-foreground/60 font-medium">
               Add to calendar
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

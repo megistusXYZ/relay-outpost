@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useDocumentTitle } from "@/hooks/use-document-title";
@@ -51,7 +52,7 @@ import { getHolidaysForMonth, type Holiday } from "@/lib/calendar-holidays";
 import { calendarEmptyState } from "@/lib/calendar-empty-state";
 import { fetchAllSubscribedFeedEvents, getSubscribedFeeds, getLastFeedErrors, getFeedReminderSettings, getFeedReminderEnabledFeeds, FEED_REMINDER_OPTIONS, getScheduledFeedReminderIds, addScheduledFeedReminderId } from "@/lib/calendar-feeds";
 import { fetchSubscribedCreatorStreams, getSubscribedCreators } from "@/lib/creator-subscriptions";
-import { createGiftWrap, getDMRelaysForContact, publishWithFallback } from "@/lib/dm";
+import { createGiftWrap, getDMRelaysForContact } from "@/lib/dm";
 import { fetchDMRelayList } from "@/lib/outbox";
 import { CalendarGrid } from "@/components/calendar/CalendarGrid";
 import { DayDetail } from "@/components/calendar/DayDetail";
@@ -84,7 +85,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarAddIcon } from "@/components/icons/CalendarAddIcon";
+
 import { CreateEventIcon } from "@/components/icons/CreateEventIcon";
 import { SubscriptionIcon } from "@/components/icons/SubscriptionIcon";
 
@@ -773,7 +774,7 @@ export default function ContentCalendar() {
             visible; Filters is a view control, so it sits last (icon-only). */}
         <div className="sm:hidden flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
           <button
-            className="glass-tab-exempt relative shrink-0 flex items-center justify-center gap-1.5 px-2.5 min-h-[44px] rounded-lg bg-brand text-white text-[11px] font-medium whitespace-nowrap transition-colors touch-manipulation active:bg-brand"
+            className="glass-tab-exempt relative shrink-0 flex items-center justify-center gap-1.5 px-2.5 min-h-[44px] rounded-lg bg-foreground text-background text-[13px] font-medium whitespace-nowrap transition-colors touch-manipulation active:bg-foreground/90"
             onClick={() => window.dispatchEvent(new CustomEvent("open-compose-schedule"))}
             data-testid="button-schedule-post"
           >
@@ -832,7 +833,7 @@ export default function ContentCalendar() {
               >
                 <SlidersHorizontal className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
                 {!allFiltersActive && (
-                  <span className="text-[10px] text-brand font-medium">
+                  <span className="text-[12px] text-brand font-medium">
                     {activeFilters.size}/{FILTER_CONFIG.length}
                   </span>
                 )}
@@ -851,7 +852,7 @@ export default function ContentCalendar() {
                     >
                       <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${active ? f.dot : "bg-gray-300 dark:bg-gray-700"}`} />
                       <span className={active ? "text-foreground" : "text-muted-foreground/60"}>{f.label}</span>
-                      {active && <Check className="w-3.5 h-3.5 ml-auto text-brand" />}
+                      {active && <Check className="w-3.5 h-3.5 ml-auto text-foreground" />}
                     </button>
                   );
                 })}
@@ -859,7 +860,7 @@ export default function ContentCalendar() {
               {!allFiltersActive && (
                 <button
                   onClick={() => setActiveFilters(new Set(FILTER_CONFIG.map(f => f.key)))}
-                  className="w-full mt-1.5 pt-1.5 border-t border-border/50 text-[11px] text-brand hover:text-brand-strong py-1.5 transition-colors text-center"
+                  className="w-full mt-1.5 pt-1.5 border-t border-border/50 text-[13px] font-medium text-brand hover:text-brand-strong py-1.5 transition-colors text-center"
                 >
                   Show all
                 </button>
@@ -870,14 +871,14 @@ export default function ContentCalendar() {
 
         <div className="hidden sm:flex sm:items-center sm:gap-3">
           <button
-            className="glass-tab-exempt text-[11px] font-medium text-brand hover:text-brand-strong transition-colors flex items-center gap-1"
+            className="glass-tab-exempt text-[13px] font-medium text-brand hover:text-brand-strong transition-colors flex items-center gap-1"
             onClick={() => window.dispatchEvent(new CustomEvent("open-compose-schedule"))}
             data-testid="button-schedule-post-desktop"
           >
             <Send className="w-3 h-3" />
-            Schedule Post
+            Schedule post
             {pendingCount > 0 && (
-              <span className="ml-0.5 min-w-[16px] h-4 px-1 rounded-full bg-brand dark:bg-brand/15 text-brand text-[9px] font-semibold leading-4 text-center">
+              <span className="ml-0.5 min-w-[16px] h-4 px-1 rounded-full bg-foreground text-background text-[11px] font-semibold leading-4 text-center">
                 {pendingCount}
               </span>
             )}
@@ -892,14 +893,14 @@ export default function ContentCalendar() {
             onClick={() => setShowHolidayManager(true)}
           >
             <CreateEventIcon className="w-3 h-3" />
-            Create Event
+            Create event
           </button>
           <button
             className="glass-tab-exempt text-[11px] text-gray-500 dark:text-gray-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors flex items-center gap-1"
             onClick={() => setShowEventSearch(true)}
           >
             <Search className="w-3 h-3" />
-            Discover Events
+            Discover events
           </button>
           <button
             className="glass-tab-exempt text-[11px] text-gray-500 dark:text-gray-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors flex items-center gap-1"
@@ -931,7 +932,7 @@ export default function ContentCalendar() {
           {!allFiltersActive && (
             <button
               onClick={() => setActiveFilters(new Set(FILTER_CONFIG.map(f => f.key)))}
-              className="glass-tab-exempt text-[9px] text-brand hover:text-brand-strong px-1.5 py-0.5 transition-colors"
+              className="glass-tab-exempt text-[13px] font-medium text-brand hover:text-brand-strong px-1.5 py-0.5 transition-colors"
               title="Show all"
             >
               Show all
@@ -977,17 +978,17 @@ export default function ContentCalendar() {
 
       {emptyState === "loading" ? (
         <div className="flex items-center justify-center py-12">
-          <RelayOutpostInlineLoader className="w-6 h-6 text-brand" />
+          <RelayOutpostInlineLoader className="w-6 h-6 text-muted-foreground" />
         </div>
       ) : emptyState === "unreachable" ? (
         <div className="text-center py-12 px-4" data-testid="calendar-unreachable">
-          <CalendarAddIcon className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+          <OttoEmpty mood="looking" size={88} className="mx-auto mb-3 text-foreground/70" />
           <p className="text-base font-medium text-foreground mb-1">Couldn't reach your relays</p>
           <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
             Your posts and events are still there — we just couldn't ask for them right now.
           </p>
           <Button
-            className="min-h-[44px] px-5 bg-brand hover:bg-brand text-white"
+            className="min-h-[44px] px-5 rounded-full bg-foreground hover:bg-foreground/90 text-background"
             onClick={() => { void loadPublishedPosts(); void loadPosts(); }}
             data-testid="button-calendar-retry"
           >
@@ -997,14 +998,14 @@ export default function ContentCalendar() {
       ) : emptyState === "empty" ? (
         !pinsStillLoading && (
           <div className="text-center py-12 px-4" data-testid="calendar-empty-state">
-            <CalendarAddIcon className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            <OttoEmpty mood="quiet" size={88} className="mx-auto mb-3 text-foreground/70" />
             <p className="text-base font-medium text-foreground mb-1">Your week, in one place</p>
             <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
               Posts you plan, events you're going to and holidays all show up here. Nothing yet.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
               <Button
-                className="min-h-[44px] px-5 bg-brand hover:bg-brand text-white"
+                className="min-h-[44px] px-5 rounded-full bg-foreground hover:bg-foreground/90 text-background"
                 onClick={() => window.dispatchEvent(new CustomEvent("open-compose-schedule"))}
               >
                 <Send className="w-4 h-4 mr-2" />
@@ -1012,7 +1013,7 @@ export default function ContentCalendar() {
               </Button>
               <Button
                 variant="ghost"
-                className="min-h-[44px] px-5 text-brand hover:bg-brand/10"
+                className="min-h-[44px] px-5 rounded-full text-brand hover:bg-foreground/[0.05]"
                 onClick={() => setShowEventSearch(true)}
               >
                 <Search className="w-4 h-4 mr-2" />
@@ -1061,8 +1062,8 @@ export default function ContentCalendar() {
             data-testid="button-toggle-past-events"
           >
             <ChevronRight className={`w-3.5 h-3.5 text-muted-foreground/60 transition-transform ${showPast ? "rotate-90" : ""}`} />
-            <span className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider font-brand">Past</span>
-            <span className="text-[10px] text-muted-foreground/40">({pastPinnedEvents.length})</span>
+            <span className="text-[13px] font-medium text-muted-foreground/70">Past</span>
+            <span className="text-[12px] text-muted-foreground">({pastPinnedEvents.length})</span>
           </button>
           {showPast && (
             <div className="space-y-2 mt-1.5">
@@ -1094,7 +1095,7 @@ export default function ContentCalendar() {
       <Sheet open={showMonthSheet} onOpenChange={setShowMonthSheet}>
         <SheetContent side="bottom" className="max-h-[88vh] overflow-y-auto rounded-t-2xl px-3 pb-6 pt-4 sm:max-w-lg sm:mx-auto">
           <SheetHeader className="mb-2">
-            <SheetTitle className="text-xs font-brand uppercase tracking-wider text-gray-500 dark:text-gray-400 text-left">
+            <SheetTitle className="text-xs text-gray-500 dark:text-gray-400 text-left font-medium">
               Jump to a day
             </SheetTitle>
           </SheetHeader>

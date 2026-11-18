@@ -2,9 +2,9 @@
  * The banner for someone without one, or whose banner won't load (owner,
  * 2026-10-07; default-banner.test.ts): "custom for our solution, subtle and
  * comfortable, not overbearing… very good in both light and dark". Chosen from
- * drawn options: Aurora + Terrain — a soft glow in the brand's family (hue 262
- * and its neighbours) with faint map-like contours, the ground an outpost
- * stands on.
+ * drawn options: Aurora + Terrain — a soft glow in the theme's cool family (hue 220
+ * and its neighbours; the brand's Ember stays for the dot) with faint map-like
+ * contours, the ground an outpost stands on.
  *
  * Drawn here as an SVG, so it never fails to load and costs no download. The
  * shape comes from the person's key, so one person keeps one look while a
@@ -37,12 +37,12 @@ function random(seed: number): () => number {
 }
 
 const PALETTE = {
-  light: { ground: "hsl(262 22% 96%)", line: "hsl(262 32% 58%)", line2: "hsl(230 30% 62%)", glowSat: 55, glowLight: 80, glowAlpha: 0.55 },
-  dark: { ground: "hsl(258 30% 9%)", line: "hsl(262 55% 72%)", line2: "hsl(225 45% 68%)", glowSat: 45, glowLight: 32, glowAlpha: 0.5 },
+  light: { ground: "hsl(240 7% 96%)", line: "hsl(220 18% 58%)", line2: "hsl(220 25% 62%)", glowSat: 55, glowLight: 80, glowAlpha: 0.55 },
+  dark: { ground: "hsl(220 23% 8%)", line: "hsl(220 30% 72%)", line2: "hsl(220 35% 68%)", glowSat: 45, glowLight: 32, glowAlpha: 0.5 },
 };
 
 function glow(r: () => number, p: (typeof PALETTE)["light"]): string {
-  const hues = [262, 238, 285].map((h) => h + Math.floor((r() - 0.5) * 16));
+  const hues = [220, 205, 236].map((h) => h + Math.floor((r() - 0.5) * 16));
   let s = `<defs><filter id="g" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="70"/></filter></defs>`;
   s += `<g filter="url(#g)">`;
   for (const h of hues) {

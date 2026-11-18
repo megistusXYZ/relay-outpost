@@ -61,7 +61,7 @@ export function bundleToDisplay(
     subtitle = desc;
   } else if (Array.isArray(bundle.channels) && bundle.channels.length) {
     const n = bundle.channels.length;
-    subtitle = `${n} channel${n === 1 ? "" : "s"} · encrypted`;
+    subtitle = `${n} room${n === 1 ? "" : "s"} · encrypted`;
   } else {
     subtitle = "Join this encrypted group in Relay Outpost";
   }

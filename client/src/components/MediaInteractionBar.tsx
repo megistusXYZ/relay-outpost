@@ -224,7 +224,7 @@ export function MediaInteractionBar({ event, vertical, onCommentClick }: MediaIn
   const handleCopyLink = useCallback(async () => {
     try {
       await copyNostrId(`nostr:${noteId}`);
-      toast({ title: "Copied", description: "Note link copied." });
+      toast({ title: "Copied", description: "Post link copied." });
     } catch {
       toast({ title: "Error", description: "Failed to copy.", variant: "destructive" });
     }
@@ -233,7 +233,7 @@ export function MediaInteractionBar({ event, vertical, onCommentClick }: MediaIn
   const handleCopyText = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(event.content);
-      toast({ title: "Copied", description: "Note text copied." });
+      toast({ title: "Copied", description: "Post text copied." });
     } catch {
       toast({ title: "Error", description: "Failed to copy.", variant: "destructive" });
     }
@@ -242,7 +242,7 @@ export function MediaInteractionBar({ event, vertical, onCommentClick }: MediaIn
   const handleCopyNoteId = useCallback(async () => {
     try {
       await copyNostrId(noteId);
-      toast({ title: "Copied", description: "Note ID copied." });
+      toast({ title: "Copied", description: "Post ID copied." });
     } catch {
       toast({ title: "Error", description: "Failed to copy.", variant: "destructive" });
     }
@@ -418,15 +418,15 @@ export function MediaInteractionBar({ event, vertical, onCommentClick }: MediaIn
             <DropdownMenuLabel className="glass-dropdown-label">Copy</DropdownMenuLabel>
             <DropdownMenuItem className="gap-2.5 cursor-pointer" onSelect={handleCopyLink} data-testid={`menu-media-copy-link-${event.id}`}>
               <Copy className="w-3.5 h-3.5 text-brand/70" />
-              Note Link
+              Post link
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2.5 cursor-pointer" onSelect={handleCopyText} data-testid={`menu-media-copy-text-${event.id}`}>
               <Type className="w-3.5 h-3.5 text-brand/70" />
-              Note Text
+              Post text
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2.5 cursor-pointer" onSelect={handleCopyNoteId} data-testid={`menu-media-copy-id-${event.id}`}>
               <Hash className="w-3.5 h-3.5 text-brand/70" />
-              Note ID
+              Post ID
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2.5 cursor-pointer" onSelect={handleCopyNpub} data-testid={`menu-media-copy-npub-${event.id}`}>
               <User className="w-3.5 h-3.5 text-brand/70" />
@@ -445,7 +445,7 @@ export function MediaInteractionBar({ event, vertical, onCommentClick }: MediaIn
             <DropdownMenuSeparator />
             <DropdownMenuItem className="gap-2.5 cursor-pointer text-destructive" onSelect={() => setTimeout(() => setShowMuteConfirm(true), 0)} data-testid={`menu-media-mute-${event.id}`}>
               <VolumeX className="w-3.5 h-3.5" />
-              Mute Signal
+              Mute this person
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2.5 cursor-pointer text-destructive" onSelect={() => setTimeout(() => setShowReportDialog(true), 0)} data-testid={`menu-media-report-${event.id}`}>
               <Flag className="w-3.5 h-3.5" />
@@ -478,7 +478,7 @@ export function MediaInteractionBar({ event, vertical, onCommentClick }: MediaIn
       <Dialog open={showRawData} onOpenChange={setShowRawData}>
         <DialogContent className="max-w-lg sm:max-w-2xl glass-dialog-card border-brand/15 max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle className="font-brand uppercase tracking-widest text-sm flex items-center gap-2">
+            <DialogTitle className="text-sm flex items-center gap-2 font-medium">
               <FileJson className="w-4 h-4 text-brand/70" />
               Raw Telemetry
             </DialogTitle>

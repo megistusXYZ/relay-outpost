@@ -22,8 +22,9 @@ import { use$ } from "applesauce-react/hooks";
 import { Tag, MessageCircle, MapPin, ExternalLink, Flag, ShieldAlert, BadgeCheck, ChevronDown } from "lucide-react";
 import { ReportDialog } from "@/components/lazy-dialogs";
 import { ListingDescription } from "@/components/ListingDescription";
-import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
-import { getSignalTier, getSignalTierLabel } from "@/lib/graperank";
+import { getSignalTierLabel } from "@/lib/graperank";
+import { useTrustTierOf } from "@/components/TrustMark";
+import { TIER_GLYPH } from "@/components/nostr-post/trust-tier-glyph";
 import { isReportedEvent, isReportedPubkey } from "@/lib/spam-filter";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -49,7 +50,7 @@ function VoucherChip({ pubkey }: { pubkey: string }) {
     <span className="flex items-center gap-1.5 min-w-0 shrink-0">
       <Avatar className="w-4 h-4 border border-border/40">
         <AvatarImage src={who.avatarUrl} alt={who.name} />
-        <AvatarFallback className="bg-brand/10 text-brand text-[7px] font-semibold">{who.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[7px] font-semibold">{who.name.slice(0, 2).toUpperCase()}</AvatarFallback>
       </Avatar>
       <span className="text-[11px] font-medium truncate max-w-[110px]">{who.name}</span>
     </span>
@@ -113,7 +114,7 @@ function SellerVouches({ pubkey, sellerNpub }: { pubkey: string; sellerNpub: str
 
 function SoldChip() {
   return (
-    <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+    <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
       Sold
     </span>
   );
@@ -132,9 +133,9 @@ export function ListingDialog({ listing, open, onOpenChange }: { listing: Listin
   // philosophy): a chip for sellers the graph vouches for, a warning for
   // flagged ones, NOTHING for missing data — commerce must not paint
   // accusations on absence.
-  const { getAuthorInfluence, flaggedPubkeys } = useGrapeRankScores();
-  const sellerTier = getSignalTier(getAuthorInfluence(listing.pubkey));
-  const sellerFlagged = flaggedPubkeys?.has(listing.pubkey) ?? false;
+  const tierOf = useTrustTierOf();
+  const sellerTier = tierOf(listing.pubkey);
+  const sellerFlagged = sellerTier === "flagged";
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden rounded-2xl" data-testid={`listing-dialog-${listing.id}`}>
@@ -164,7 +165,7 @@ export function ListingDialog({ listing, open, onOpenChange }: { listing: Listin
           )}
           <div className="p-5 space-y-4">
             <div className="space-y-1.5">
-              <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.15em] text-brand/70">
+              <div className="flex items-center gap-2 text-[13px] text-brand/70 font-medium">
                 <Tag className="w-3 h-3" />
                 <span>Listing</span>
                 {listing.sold && <SoldChip />}
@@ -191,7 +192,7 @@ export function ListingDialog({ listing, open, onOpenChange }: { listing: Listin
               <Link href={`/profile/${seller.npub}`} className="flex items-center gap-2.5 min-w-0" data-testid="listing-seller">
                 <Avatar className="w-8 h-8 border border-border/40 shrink-0">
                   <AvatarImage src={seller.avatarUrl} alt={seller.name} />
-                  <AvatarFallback className="bg-brand/10 text-brand text-[10px] font-semibold">{seller.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                  <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[10px] font-semibold">{seller.name.slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{seller.name}</p>
@@ -199,11 +200,11 @@ export function ListingDialog({ listing, open, onOpenChange }: { listing: Listin
                     Seller
                     {sellerFlagged ? (
                       <span className="inline-flex items-center gap-1 text-destructive font-medium whitespace-nowrap truncate" data-testid="listing-seller-flagged">
-                        <ShieldAlert className="w-3 h-3 shrink-0" /> Flagged in your network
+                        <ShieldAlert className="w-3 h-3 shrink-0" /> Your network has concerns
                       </span>
                     ) : (sellerTier === "strong" || sellerTier === "moderate") ? (
                       <span className="inline-flex items-center gap-1 font-medium text-success dark:text-emerald-400 whitespace-nowrap" data-testid="listing-seller-trust">
-                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${sellerTier === "strong" ? "bg-emerald-500" : "bg-sky-500"}`} />
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${TIER_GLYPH[sellerTier].className}`} />
                         {getSignalTierLabel(sellerTier)}
                       </span>
                     ) : null}
@@ -270,7 +271,7 @@ export function ListingCard({ listing, compact = false }: { listing: Listing; co
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.15em] text-brand/70">
+          <div className="flex items-center gap-2 text-[13px] text-brand/70 font-medium">
             <Tag className="w-3 h-3 shrink-0" />
             <span>For sale</span>
             {listing.sold && <SoldChip />}
@@ -380,7 +381,7 @@ export function ProfileListingsStrip({ pubkey }: { pubkey: string }) {
   if (listings.length === 0) return null;
   return (
     <div className="mt-4" data-testid="profile-listings-strip">
-      <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.15em] text-brand/70 mb-2">
+      <div className="flex items-center gap-2 text-[13px] text-brand/70 mb-2 font-medium">
         <Tag className="w-3 h-3" />
         <span>For sale</span>
       </div>

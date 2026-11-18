@@ -6,6 +6,7 @@
  * verbatim: this extraction is pixel-parity by construction.
  */
 import { useEffect, useState, type ReactNode } from "react";
+import { TILE_TITLE } from "@/components/discover-tile-title";
 import { PersonTileMark } from "@/components/PersonAvatar";
 import { isDrawnBanner } from "@/lib/default-banner";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -16,14 +17,14 @@ export function IdentitySection({ title, actions, children, className }: { title
   // mode; a slightly brighter hairline separates them from the black in dark. No
   // glows — the Apple/Google "pop" is depth, not neon.
   return (
-    <section className={`rounded-xl border border-border/60 dark:border-white/[0.07] bg-card overflow-hidden shadow-sm shadow-black/[0.04] dark:shadow-none ${className ?? ""}`}>
+    <section className={`rounded-[20px] border border-border/60 dark:border-white/[0.07] bg-card overflow-hidden shadow-sm shadow-black/[0.04] dark:shadow-none ${className ?? ""}`}>
       {title && (
-        <div className={`px-3 bg-muted/60 dark:bg-transparent dark:bg-gradient-to-r dark:from-primary/[0.10] dark:to-primary/[0.03] border-b border-border/50 ${actions ? "flex items-center justify-between gap-2 py-0.5" : "py-1.5"}`}>
-          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-brand/90">{title}</h2>
+        <div className={`px-4 pt-1 ${actions ? "flex items-center justify-between gap-2 py-0.5" : "py-1.5"}`}>
+          <h2 className={TILE_TITLE}>{title}</h2>
           {actions && <div className="flex items-center gap-1 -mr-2">{actions}</div>}
         </div>
       )}
-      <div className="p-3">{children}</div>
+      <div className="px-4 pb-4 pt-2">{children}</div>
     </section>
   );
 }
@@ -56,7 +57,7 @@ export function IdentityBanner({ src, fallbackSrc, blurBackdropSrc, topRight, li
   const drawn = isDrawnBanner(onFallback ? fallbackSrc : src);
   return (
     <div
-      className={`relative overflow-hidden bg-gradient-to-br from-brand/25 via-primary/10 to-transparent ${
+      className={`relative overflow-hidden bg-gradient-to-br from-foreground/[0.10] via-foreground/[0.04] to-transparent ${
         variant === "hero"
           ? "h-[calc(13.5rem+env(safe-area-inset-top,0px))] rounded-none border-0"
           : "h-36 md:h-44 rounded-2xl border border-border/50"
@@ -118,7 +119,7 @@ export function IdentityHead({ avatarUrl, tile, title, lift = true, inlineBadge,
       ) : (
         <Avatar className="w-24 h-24 border-4 border-card shadow-lg">
           {avatarUrl && <AvatarImage src={avatarUrl} alt={title} />}
-          <AvatarFallback className="text-2xl bg-brand/10 text-brand font-semibold">{title.slice(0, 2).toUpperCase()}</AvatarFallback>
+          <AvatarFallback className="text-2xl bg-foreground/[0.08] text-foreground/80 font-semibold">{title.slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
       )}
       <h1 className="mt-2 text-lg font-bold leading-tight break-words inline-flex items-center gap-1 max-w-full">

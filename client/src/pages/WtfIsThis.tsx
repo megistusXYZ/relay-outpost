@@ -1,4 +1,5 @@
 import { SearchPill } from "@/components/SearchPill";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { useState, useMemo, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
@@ -6,18 +7,37 @@ import { WtfWelcomeOverlay, shouldShowWtfWelcome, markWtfWelcomeSeen } from "@/c
 import { restartMissionBriefing } from "@/components/HomeCoachmarks";
 import { MISSION_BRIEFING_REGISTRY, BRIEFING_ORDER } from "@/components/MissionBriefing";
 import {
-  Search, ChevronDown, ChevronUp, ArrowLeft, ExternalLink,
-  Zap, Shield, Users, Radio, Key, MessageCircle, Eye,
-  Rocket, Globe, Lock, BookOpen, Play, Image as ImageIcon,
-  FileText, HelpCircle, Compass, Lightbulb, TrendingUp,
-  Sparkles, Star, Heart, Award, Layers, Wifi,
-  LifeBuoy, LayoutGrid, LogOut, PlayCircle,
+  ChevronDown,
+  ChevronUp,
+  ArrowLeft,
+  ExternalLink,
+  Shield,
+  Users,
+  Radio,
+  Key,
+  MessageCircle,
+  Rocket,
+  Globe,
+  Lock,
+  BookOpen,
+  Play,
+  Image as ImageIcon,
+  FileText,
+  HelpCircle,
+  Compass,
+  Lightbulb,
+  Star,
+  Layers,
+  LifeBuoy,
+  LayoutGrid,
+  LogOut,
+  PlayCircle,
 } from "lucide-react";
 import { ShieldMatrixIcon } from "@/components/icons/ShieldMatrixIcon";
 import { OutpostIcon } from "@/components/icons/OutpostIcon";
 import { MessagesIcon } from "@/components/icons/MessagesIcon";
 import { BtcZapIcon } from "@/components/NostrPost";
-import { WtfAlienIcon } from "@/components/icons/WtfAlienIcon";
+import { OttoMark } from "@/components/OttoMark";
 import nostrOstrichGif from "@assets/219719339-5eff628c-3470-4cc3-81eb-404f8902de9f_1771392554698.gif";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -34,7 +54,6 @@ interface FAQItem {
   answer: React.ReactNode;
   searchText?: string;
   icon: React.ComponentType<{ className?: string }>;
-  iconColor?: string;
   tags: string[];
 }
 
@@ -42,7 +61,6 @@ interface GuideItem {
   title: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
-  iconColor: string;
   type: "article" | "video" | "infographic";
   tags: string[];
   comingSoon?: boolean;
@@ -54,8 +72,6 @@ interface DeepDiveItem {
   subtitle: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
-  iconColor: string;
-  gradient: string;
   type: "article" | "video" | "infographic";
   tags: string[];
   comingSoon?: boolean;
@@ -144,7 +160,6 @@ const FAQ_ITEMS: FAQItem[] = [
     answer: <>Zaps are small, optional tips in bitcoin: a way to say thanks with something real, even a fraction of a cent. The money goes straight from your wallet to theirs. Relay Outpost never holds it and never takes a cut. You connect your own wallet app once, and you approve every payment.</>,
     searchText: "what are zaps optional bitcoin tips lightning send a tip wallet",
     icon: BtcZapIcon,
-    iconColor: "text-[#F7931A]",
     tags: ["zaps & bitcoin"],
   },
   {
@@ -165,19 +180,17 @@ const FAQ_ITEMS: FAQItem[] = [
 
 const GUIDE_ITEMS: GuideItem[] = [
   {
-    title: "Your First 10 Minutes",
+    title: "Your first 10 minutes",
     description: "From a new account to your first post: your space, saving your key, finding your people.",
     icon: Rocket,
-    iconColor: "text-success dark:text-emerald-500",
     type: "article",
     tags: ["getting started"],
     href: "/help/first-10-minutes",
   },
   {
-    title: "Setting Up Your Community",
+    title: "Setting up your community",
     description: "Name a community, invite your people, and open it to the wider network when you choose.",
     icon: Radio,
-    iconColor: "text-brand",
     type: "article",
     tags: ["relays & communities"],
     href: "/help/setting-up-outpost",
@@ -186,16 +199,14 @@ const GUIDE_ITEMS: GuideItem[] = [
     title: "Set up zaps",
     description: "Connect your own wallet and send a first tip. Optional, and every bit goes to them.",
     icon: BtcZapIcon,
-    iconColor: "text-amber-500",
     type: "article",
     tags: ["zaps & bitcoin"],
     href: "/help/connecting-wallet",
   },
   {
-    title: "Using the Content Calendar",
+    title: "Using the content calendar",
     description: "Find events, say you're coming, and schedule posts for later.",
     icon: BookOpen,
-    iconColor: "text-cyan-500",
     type: "article",
     tags: ["social"],
     href: "/help/content-calendar",
@@ -204,7 +215,6 @@ const GUIDE_ITEMS: GuideItem[] = [
     title: "Private messages",
     description: "Why only the people in a chat can read it, and what the app says while it checks for new ones.",
     icon: MessageCircle,
-    iconColor: "text-pink-500",
     type: "article",
     tags: ["privacy"],
     href: "/help/encrypted-messages",
@@ -213,7 +223,6 @@ const GUIDE_ITEMS: GuideItem[] = [
     title: "Post with privacy",
     description: "Who sees your posts, what hidden details are stripped before you publish, and blurred pictures.",
     icon: Lock,
-    iconColor: "text-danger dark:text-red-500",
     type: "article",
     tags: ["privacy"],
     href: "/help/publishing-privacy",
@@ -222,7 +231,6 @@ const GUIDE_ITEMS: GuideItem[] = [
     title: "Your people",
     description: "Who you follow, who follows you, and how the app tells a friend of a friend from a stranger.",
     icon: Users,
-    iconColor: "text-brand",
     type: "article",
     tags: ["social"],
     href: "/help/managing-crew",
@@ -231,67 +239,55 @@ const GUIDE_ITEMS: GuideItem[] = [
 
 const DEEP_DIVE_ITEMS: DeepDiveItem[] = [
   {
-    title: "Why Decentralization Matters",
+    title: "Why decentralization matters",
     subtitle: "The case for owning your digital identity",
     description: "Centralized platforms own your content, your connections, and your audience. One policy change can erase years of work. Nostr returns ownership to you — permanently.",
     icon: Globe,
-    iconColor: "text-blue-700 dark:text-blue-400",
-    gradient: "from-blue-500/10 to-brand/10",
     type: "article",
     tags: ["big ideas", "getting started"],
     href: "/help/why-decentralization",
   },
   {
-    title: "How Web of Trust Replaces Algorithms",
+    title: "How Web of Trust replaces algorithms",
     subtitle: "From corporate curation to community trust",
     description: "Social media algorithms chase engagement — outrage, addiction. A Web of Trust ranks by the people you actually know and respect instead. Here's how it works and why it's better.",
     icon: Shield,
-    iconColor: "text-success dark:text-emerald-400",
-    gradient: "from-emerald-500/10 to-teal-500/10",
     type: "article",
     tags: ["web of trust", "big ideas"],
     href: "/help/wot-vs-algorithms",
   },
   {
-    title: "Relay Communities vs. Platforms",
+    title: "Relay communities vs. platforms",
     subtitle: "Why a community you own beats a group someone else runs",
     description: "Discord servers, subreddits, Facebook groups: all controlled by one company. Here a community is yours, end-to-end encrypted, and if any server disappears your identity and your people move with you.",
     icon: Rocket,
-    iconColor: "text-brand",
-    gradient: "from-brand/10 to-brand/10",
     type: "article",
     tags: ["relays & communities", "big ideas", "social"],
     href: "/help/relay-communities",
   },
   {
-    title: "Owning Your Data & Keys",
+    title: "Owning your data & keys",
     subtitle: "You own your identity. Period.",
     description: "Your key is your identity, your login, and your proof of authorship — all in one. No email, no phone number, no recovery form. Here's why that's a feature, not a bug.",
     icon: Key,
-    iconColor: "text-amber-800 dark:text-amber-400",
-    gradient: "from-amber-500/10 to-orange-500/10",
     type: "article",
     tags: ["keys & security", "big ideas", "privacy"],
     href: "/help/data-sovereignty",
   },
   {
-    title: "Where Nostr is Heading",
+    title: "Where Nostr is heading",
     subtitle: "The roadmap for the next phase of the internet",
     description: "New kinds of apps, payments, and communities are being built on Nostr every month. Here's where it's heading — and why it matters for you.",
     icon: NostrOstrichIcon,
-    iconColor: "",
-    gradient: "from-pink-500/10 to-rose-500/10",
     type: "article",
     tags: ["big ideas"],
     href: "/help/where-nostr-is-heading",
   },
   {
-    title: "Nostr vs. The Alternatives",
+    title: "Nostr vs. the alternatives",
     subtitle: "How Nostr stacks up against Bluesky, Mastodon, and Farcaster",
     description: "A fair, honest comparison of the decentralized social protocols. Where Nostr excels, where it's still catching up, and why we chose to build here.",
     icon: Layers,
-    iconColor: "text-cyan-800 dark:text-cyan-400",
-    gradient: "from-cyan-500/10 to-sky-500/10",
     type: "article",
     tags: ["vs other platforms"],
     href: "/help/nostr-vs-alternatives",
@@ -337,16 +333,16 @@ function ContentTypeBadge({ type }: { type: "article" | "video" | "infographic" 
     // Light: a neutral chip, the type's colour on its icon only (owner,
     // 2026-10-08: calm, like Activity #399). Dark: unchanged — the chip keeps
     // every class it wore, spelled out with dark:.
-    article: { icon: FileText, label: "Article", chip: "dark:text-blue-400/80 dark:bg-blue-500/8 dark:border-blue-500/15", iconColor: "text-blue-700 dark:text-blue-400/80" },
-    video: { icon: Play, label: "Video", chip: "dark:text-red-400/80 dark:bg-red-500/8 dark:border-red-500/15", iconColor: "text-red-700 dark:text-red-400/80" },
-    infographic: { icon: ImageIcon, label: "Infographic", chip: "dark:text-green-400/80 dark:bg-green-500/8 dark:border-green-500/15", iconColor: "text-success dark:text-green-400/80" },
+    article: { icon: FileText, label: "Article", chip: "", iconColor: "text-foreground/60" },
+    video: { icon: Play, label: "Video", chip: "", iconColor: "text-foreground/60" },
+    infographic: { icon: ImageIcon, label: "Infographic", chip: "", iconColor: "text-foreground/60" },
   }[type];
 
   const Icon = config.icon;
 
   return (
-    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-medium border text-muted-foreground bg-muted/40 border-border ${config.chip}`}>
-      <Icon className={`w-2.5 h-2.5 ${config.iconColor}`} />
+    <span className={`inline-flex items-center gap-1 text-[12px] font-medium text-muted-foreground ${config.chip}`}>
+      <Icon className={`w-3 h-3 ${config.iconColor}`} />
       {config.label}
     </span>
   );
@@ -358,37 +354,37 @@ function FAQAccordion({ item }: { item: FAQItem }) {
 
   return (
     <div
-      className={`rounded-lg border transition-all duration-300 ${
+      className={`rounded-[20px] border transition-colors duration-150 ${
         open
-          ? "border-brand/25 dark:border-brand/20 bg-brand/[0.02]/[0.03] shadow-[0_0_12px_rgba(139,92,246,0.06)]"
-          : "border-border/30 dark:border-border/15 bg-white/50 dark:bg-muted/10 hover:border-brand/15 dark:hover:border-brand/10"
+          ? "border-border bg-card"
+          : "border-border/60 bg-card hover:border-border"
       }`}
     >
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center gap-3 px-4 py-3 text-left cursor-pointer"
       >
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-300 ${
-          open ? "bg-brand/15 dark:bg-brand/20" : "bg-muted/30 dark:bg-muted/15"
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors duration-150 ${
+          open ? "dark:bg-foreground/[0.08]" : "dark:bg-foreground/[0.05]"
         }`}>
-          <Icon className={`w-4 h-4 transition-colors duration-300 ${
-            item.iconColor ? item.iconColor : open ? "text-brand" : "text-muted-foreground/60"
+          <Icon className={`w-4 h-4 transition-colors duration-150 ${
+            open ? "text-foreground" : "text-foreground/60"
           }`} />
         </div>
-        <span className={`flex-1 text-sm font-medium transition-colors duration-200 ${
+        <span className={`flex-1 text-[15px] font-medium transition-colors duration-150 ${
           open ? "text-foreground" : "text-foreground/80"
         }`}>
           {item.question}
         </span>
         {open ? (
-          <ChevronUp className="w-4 h-4 text-brand/60 shrink-0" />
+          <ChevronUp className="w-4 h-4 text-foreground/60 shrink-0" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
         )}
       </button>
       {open && (
         <div className="px-4 pb-4 pt-0">
-          <div className="ml-11 text-sm text-foreground/70 dark:text-muted-foreground leading-relaxed">
+          <div className="ml-11 text-[15px] text-foreground/75 leading-relaxed">
             {item.answer}
           </div>
         </div>
@@ -407,30 +403,29 @@ function GuideCard({ item }: { item: GuideItem }) {
           {/* Light: a bare icon — no square around it (owner, 2026-10-03:
               "we don't need all the square containers around the icons").
               Dark: the tile it had, unchanged. */}
-          <div className="w-10 h-10 rounded-xl dark:bg-gradient-to-br dark:from-brand/10 dark:to-brand/10 dark:border dark:border-brand/10 flex items-center justify-center shrink-0">
-            <Icon className={`w-5 h-5 ${item.iconColor}`} />
+          <div className="w-10 h-10 rounded-full dark:bg-foreground/[0.05] flex items-center justify-center shrink-0">
+            <Icon className="w-5 h-5 text-foreground/75" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-sm font-semibold text-foreground/90 truncate flex-1">{item.title}</h3>
+              <h3 className="text-[16px] font-semibold text-foreground truncate flex-1">{item.title}</h3>
               {item.comingSoon && (
-                <span className="inline-flex items-center shrink-0 px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider bg-brand/10 text-brand/70 border border-brand/15">
+                <span className="shrink-0 text-[12px] font-medium text-muted-foreground">
                   Soon
                 </span>
               )}
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{item.description}</p>
+            <p className="text-[14px] text-muted-foreground leading-snug line-clamp-2">{item.description}</p>
             <div className="flex items-center gap-2 mt-3">
               <ContentTypeBadge type={item.type} />
             </div>
           </div>
         </div>
       </div>
-      <div className="h-1 w-full bg-gradient-to-r from-brand/20 via-brand/20 to-brand/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-    </>
+          </>
   );
 
-  const className = "group relative rounded-xl border border-border/30 dark:border-border/15 bg-white/60 dark:bg-muted/10 hover:border-brand/20 dark:hover:border-brand/15 transition-all duration-300 hover:shadow-[0_4px_20px_rgba(139,92,246,0.06)] overflow-hidden";
+  const className = "group relative rounded-[20px] border border-border/60 bg-card hover:border-border transition-colors duration-150";
 
   if (item.href) {
     return <Link href={item.href} className={`block ${className}`}>{content}</Link>;
@@ -444,34 +439,32 @@ function DeepDiveCard({ item }: { item: DeepDiveItem }) {
 
   const content = (
     <>
-      <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-40 dark:opacity-30`} />
-      <div className="relative p-5 sm:p-6">
+            <div className="relative p-5 sm:p-6">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-11 h-11 rounded-xl dark:bg-black/30 dark:border dark:border-white/5 flex items-center justify-center shrink-0 dark:shadow-sm dark:backdrop-blur-sm">
-            <Icon className={`w-5.5 h-5.5 ${item.iconColor}`} />
+          <div className="w-11 h-11 rounded-full dark:bg-foreground/[0.05] flex items-center justify-center shrink-0">
+            <Icon className="w-5 h-5 text-foreground/75" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-foreground/95 truncate flex-1">{item.title}</h3>
+              <h3 className="text-[16px] font-semibold text-foreground truncate flex-1">{item.title}</h3>
               {item.comingSoon && (
-                <span className="inline-flex items-center shrink-0 px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider bg-white/60 dark:bg-black/40 text-brand/70 border border-brand/15 backdrop-blur-sm">
+                <span className="shrink-0 text-[12px] font-medium text-muted-foreground">
                   Soon
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground/50 font-medium">{item.subtitle}</p>
+            <p className="text-[13px] text-muted-foreground">{item.subtitle}</p>
           </div>
         </div>
-        <p className="text-xs text-foreground/60 dark:text-muted-foreground/70 leading-relaxed">{item.description}</p>
+        <p className="text-[14px] text-foreground/70 leading-relaxed">{item.description}</p>
         <div className="flex items-center gap-2 mt-4">
           <ContentTypeBadge type={item.type} />
         </div>
       </div>
-      <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-brand/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-    </>
+          </>
   );
 
-  const className = "group relative rounded-xl border border-border/30 dark:border-border/15 overflow-hidden transition-all duration-300 hover:border-brand/20 dark:hover:border-brand/15 hover:shadow-[0_8px_30px_rgba(139,92,246,0.08)]";
+  const className = "group relative rounded-[20px] border border-border/60 bg-card overflow-hidden hover:border-border transition-colors duration-150";
 
   if (item.href) {
     return <Link href={item.href} className={`block ${className}`}>{content}</Link>;
@@ -481,7 +474,7 @@ function DeepDiveCard({ item }: { item: DeepDiveItem }) {
 }
 
 export default function WtfIsThis() {
-  useDocumentTitle("Help & Guides — Relay Outpost");
+  useDocumentTitle("Help & guides — Relay Outpost");
   const [activeCategory, setActiveCategory] = useState<ContentCategory>("guides");
   const [catDropdownOpen, setCatDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -553,56 +546,20 @@ export default function WtfIsThis() {
 
   return (
     <div className="relative">
-      {/* Lunar-frontier backdrop — TOP section only, behind the content (scrolls with the page) */}
-      <div
-        aria-hidden
-        className="absolute inset-x-0 top-0 bottom-1/2 z-0 pointer-events-none bg-cover bg-center"
-        style={{
-          backgroundImage: "url(/images/landing/help-bg.webp)",
-          opacity: 0.07,
-          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, #000 28%, rgba(0,0,0,0.55) 60%, transparent 88%)",
-          maskImage: "linear-gradient(to bottom, transparent 0%, #000 28%, rgba(0,0,0,0.55) 60%, transparent 88%)",
-        }}
-      />
-      {/* Footprints backdrop — BOTTOM section only, meeting the lunar above. Faint, top-faded. */}
-      <div
-        aria-hidden
-        className="absolute inset-x-0 top-1/2 bottom-0 z-0 pointer-events-none bg-cover bg-bottom bg-no-repeat"
-        style={{
-          backgroundImage: "url(/images/landing/help-footprints.webp)",
-          opacity: 0.05,
-          WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 32%, rgba(0,0,0,0.18) 52%, rgba(0,0,0,0.55) 76%, #000 100%)",
-          maskImage: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 32%, rgba(0,0,0,0.18) 52%, rgba(0,0,0,0.55) 76%, #000 100%)",
-        }}
-      />
-      {/* Galaxy — very subtle, centered on the midline to bridge the two backdrops */}
-      <div
-        aria-hidden
-        className="absolute inset-x-0 top-1/4 bottom-1/4 z-0 pointer-events-none bg-cover bg-center"
-        style={{
-          backgroundImage: "url(/images/landing/galaxy-bg.webp)",
-          opacity: 0.06,
-          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 35%, #000 50%, rgba(0,0,0,0.6) 65%, transparent 100%)",
-          maskImage: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 35%, #000 50%, rgba(0,0,0,0.6) 65%, transparent 100%)",
-        }}
-      />
-    <div className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-in fade-in duration-300">
-      <div className="flex items-center gap-3 mb-1">
-        <Link href="/" className="text-muted-foreground/50 hover:text-foreground transition-colors">
+    <div className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-in fade-in duration-150">
+      <div className="flex items-center gap-1 mb-1">
+        <Link href="/" className="-ml-3 w-11 h-11 shrink-0 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors duration-150" aria-label="Back">
           <ArrowLeft className="w-4 h-4" />
         </Link>
         <div className="flex items-center gap-2">
-          <div className="relative shrink-0 -rotate-[10deg]">
-            <WtfAlienIcon className="w-9 h-9 text-brand drop-shadow-[0_0_10px_rgba(109,40,217,0.4)] dark:drop-shadow-[0_0_12px_rgba(139,92,246,0.45)]" />
-            <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-brand shadow-[0_0_6px_rgba(109,40,217,0.5)]" />
-          </div>
+          <OttoMark size={44} label="Otto" className="shrink-0 text-foreground !w-9 !h-9 sm:!w-11 sm:!h-11" />
           <div>
             <h1
-              className="text-lg sm:text-xl font-black tracking-tight leading-none text-foreground dark:text-brand/90"
+              className="text-[24px] sm:text-[30px] font-semibold tracking-[-0.025em] leading-[1.1] whitespace-nowrap text-foreground"
             >
-              Help &amp; Guides
+              Help &amp; guides
             </h1>
-            <p className="text-[10px] text-muted-foreground dark:text-brand/30 font-bold uppercase tracking-[0.2em] mt-0.5 ml-0.5">get started, post &amp; connect</p>
+            <p className="text-[14px] sm:text-[15px] text-muted-foreground mt-1">Get started, post &amp; connect</p>
           </div>
         </div>
         {pubkey && (
@@ -611,17 +568,19 @@ export default function WtfIsThis() {
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1.5 rounded-md border border-brand/25 bg-brand/[0.06] hover:bg-brand/[0.12] px-2.5 py-1.5 text-[10px] font-brand uppercase tracking-[0.15em] text-brand transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-foreground/25 hover:bg-foreground/[0.06] h-9 px-3.5 text-[13px] text-foreground whitespace-nowrap transition-colors font-medium"
                   data-testid="button-restart-mission-briefing"
                   title="Replay a tour"
+                  aria-label="Replay a tour"
                 >
                   <PlayCircle className="w-3.5 h-3.5" />
-                  Replay a tour
+                  <span className="hidden sm:inline">Replay a tour</span>
+                  <span className="sm:hidden">Tours</span>
                   <ChevronDown className="w-3 h-3 opacity-60" />
                 </button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-56 p-1.5">
-                <p className="px-2.5 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium">
+                <p className="px-2.5 py-1.5 text-[13px] text-muted-foreground font-medium">
                   Pick a tour
                 </p>
                 {replayablePages.map((p) => (
@@ -633,7 +592,7 @@ export default function WtfIsThis() {
                     className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors cursor-pointer"
                     data-testid={`button-replay-briefing-${p.pageId}`}
                   >
-                    <PlayCircle className="w-3.5 h-3.5 text-brand/70 shrink-0" />
+                    <PlayCircle className="w-3.5 h-3.5 text-foreground/60 shrink-0" />
                     <span className="truncate">{p.label}</span>
                   </button>
                 ))}
@@ -658,10 +617,10 @@ export default function WtfIsThis() {
             <button
               key={cat.value}
               onClick={() => { setActiveCategory(cat.value); setExpandedTag(null); }}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 ${
+              className={`inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors duration-150 ${
                 activeCategory === cat.value
-                  ? "bg-brand/10 text-brand border border-brand/20"
-                  : "bg-transparent text-muted-foreground/60 hover:text-foreground/70 hover:bg-muted/20 border border-transparent"
+                  ? "bg-foreground text-background border border-foreground"
+                  : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-foreground/[0.05] border border-transparent"
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -673,7 +632,7 @@ export default function WtfIsThis() {
       <div className="sm:hidden mb-3">
         <Popover open={catDropdownOpen} onOpenChange={setCatDropdownOpen}>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="w-full justify-between">
+            <Button variant="outline" size="sm" className="w-full h-10 rounded-full px-4 justify-between border-input bg-card text-[14px] font-medium">
               <span className="flex items-center gap-1.5">
                 {(() => { const active = categories.find(c => c.value === activeCategory); return active ? <><active.icon className="w-3.5 h-3.5" />{active.label}</> : "Category"; })()}
               </span>
@@ -689,11 +648,10 @@ export default function WtfIsThis() {
                   key={cat.value}
                   onClick={() => { setActiveCategory(cat.value); setExpandedTag(null); setCatDropdownOpen(false); }}
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer ${
-                    isActive ? "bg-brand/10 text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    isActive ? "bg-foreground/[0.07] text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                   }`}
                 >
-                  {isActive && <span className="w-1 h-1 rounded-full bg-brand shrink-0" />}
-                  <Icon className="w-3.5 h-3.5" />
+                                    <Icon className="w-3.5 h-3.5" />
                   {cat.label}
                 </button>
               );
@@ -711,10 +669,10 @@ export default function WtfIsThis() {
               key={tag}
               data-testid="help-tag-chip"
               onClick={() => { setExpandedTag(expandedTag === tag ? null : tag); setActiveCategory("all"); }}
-              className={`hit-area min-h-[36px] px-3 rounded-full text-xs font-medium transition-all duration-200 ${
+              className={`hit-area min-h-[36px] px-3.5 rounded-full text-[13px] font-medium first-letter:uppercase transition-colors duration-150 ${
                 expandedTag === tag
-                  ? "bg-brand/15 text-brand border border-brand/20"
-                  : "bg-card/70 text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-border"
+                  ? "bg-foreground text-background border border-foreground"
+                  : "bg-card text-muted-foreground hover:text-foreground hover:bg-foreground/[0.05] border border-border/60"
               }`}
             >
               {tag}
@@ -725,18 +683,18 @@ export default function WtfIsThis() {
 
       {!hasResults && (
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <Search className="w-8 h-8 text-muted-foreground/20 mb-3" />
-          <p className="text-sm text-muted-foreground/60">No results found</p>
-          <p className="text-xs text-muted-foreground/40 mt-1">Try a different search term or category</p>
+          <OttoEmpty mood="looking" size={72} className="mb-3 text-foreground/70" />
+          <p className="text-[15px] font-medium text-foreground">No results found</p>
+          <p className="text-[13px] text-muted-foreground mt-1">Try a different word or category</p>
         </div>
       )}
 
       {filteredFAQs.length > 0 && (
         <section className="mb-8">
-          <div className="flex items-center gap-2 mb-3">
-            <HelpCircle className="w-4 h-4 text-brand/60" />
-            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground/50">Questions</h2>
-            <div className="flex-1 h-px bg-gradient-to-r from-brand/10 to-transparent" />
+          <div className="flex items-center gap-2 mb-3.5">
+            <HelpCircle className="w-4 h-4 text-foreground/60" />
+            <h2 className="text-[15px] font-semibold text-foreground">Questions</h2>
+            <div className="flex-1 h-px bg-border/60" />
           </div>
           <div className="space-y-2">
             {filteredFAQs.map((item, i) => (
@@ -749,9 +707,9 @@ export default function WtfIsThis() {
       {filteredGuides.length > 0 && (
         <section className="mb-8">
           <div className="flex items-center gap-2 mb-3">
-            <BookOpen className="w-4 h-4 text-brand/60" />
-            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground/50">Start here</h2>
-            <div className="flex-1 h-px bg-gradient-to-r from-brand/10 to-transparent" />
+            <BookOpen className="w-4 h-4 text-foreground/60" />
+            <h2 className="text-[15px] font-semibold text-foreground">Start here</h2>
+            <div className="flex-1 h-px bg-border/60" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {filteredGuides.map((item, i) => (
@@ -764,9 +722,9 @@ export default function WtfIsThis() {
       {filteredDeepDives.length > 0 && (
         <section className="mb-8">
           <div className="flex items-center gap-2 mb-3">
-            <Lightbulb className="w-4 h-4 text-brand/60" />
-            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground/50">Go deeper</h2>
-            <div className="flex-1 h-px bg-gradient-to-r from-brand/10 to-transparent" />
+            <Lightbulb className="w-4 h-4 text-foreground/60" />
+            <h2 className="text-[15px] font-semibold text-foreground">Go deeper</h2>
+            <div className="flex-1 h-px bg-border/60" />
           </div>
           <div className="grid grid-cols-1 gap-3">
             {filteredDeepDives.map((item, i) => (
@@ -778,56 +736,56 @@ export default function WtfIsThis() {
 
       <section className="mb-8">
         <div className="flex items-center gap-2 mb-3">
-          <Star className="w-4 h-4 text-brand/60" />
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground/50">Resources</h2>
-          <div className="flex-1 h-px bg-gradient-to-r from-brand/10 to-transparent" />
+          <Star className="w-4 h-4 text-foreground/60" />
+          <h2 className="text-[15px] font-semibold text-foreground">Resources</h2>
+          <div className="flex-1 h-px bg-border/60" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <a
             href="https://nostr.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="group rounded-xl border border-border/30 dark:border-border/15 bg-white/50 dark:bg-muted/10 hover:border-brand/20 p-4 transition-all duration-300 hover:shadow-[0_4px_16px_rgba(139,92,246,0.06)]"
+            className="group rounded-[20px] border border-border/60 bg-card hover:border-border p-4 transition-colors duration-150"
           >
             <div className="flex items-center gap-2 mb-2">
-              <Globe className="w-4 h-4 text-brand/70" />
-              <span className="text-xs font-semibold text-foreground/80">nostr.com</span>
-              <ExternalLink className="w-3 h-3 text-muted-foreground/30 group-hover:text-brand/50 transition-colors ml-auto" />
+              <Globe className="w-4 h-4 text-foreground/70" />
+              <span className="text-[15px] font-semibold text-foreground">nostr.com</span>
+              <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors duration-150 ml-auto" />
             </div>
-            <p className="text-[11px] text-muted-foreground/50 leading-relaxed">Explore the open network and other apps you can use</p>
+            <p className="text-[13px] text-muted-foreground leading-snug">Explore the open network and other apps you can use</p>
           </a>
           <a
             href="https://brainstorm.nosfabrica.com/what-is-wot"
             target="_blank"
             rel="noopener noreferrer"
-            className="group rounded-xl border border-border/30 dark:border-border/15 bg-white/50 dark:bg-muted/10 hover:border-brand/20 p-4 transition-all duration-300 hover:shadow-[0_4px_16px_rgba(139,92,246,0.06)]"
+            className="group rounded-[20px] border border-border/60 bg-card hover:border-border p-4 transition-colors duration-150"
           >
             <div className="flex items-center gap-2 mb-2">
-              <ShieldMatrixIcon className="w-4 h-4 text-brand/70" />
-              <span className="text-xs font-semibold text-foreground/80">Web of Trust</span>
-              <ExternalLink className="w-3 h-3 text-muted-foreground/30 group-hover:text-brand/50 transition-colors ml-auto" />
+              <ShieldMatrixIcon className="w-4 h-4 text-foreground/70" />
+              <span className="text-[15px] font-semibold text-foreground">Web of Trust</span>
+              <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors duration-150 ml-auto" />
             </div>
-            <p className="text-[11px] text-muted-foreground/50 leading-relaxed">Learn how trust scoring keeps your feed clean</p>
+            <p className="text-[13px] text-muted-foreground leading-snug">Learn how trust scoring keeps your feed clean</p>
           </a>
           <a
             href="https://nostrcg.github.io/userguide/"
             target="_blank"
             rel="noopener noreferrer"
-            className="group rounded-xl border border-border/30 dark:border-border/15 bg-white/50 dark:bg-muted/10 hover:border-brand/20 p-4 transition-all duration-300 hover:shadow-[0_4px_16px_rgba(139,92,246,0.06)]"
+            className="group rounded-[20px] border border-border/60 bg-card hover:border-border p-4 transition-colors duration-150"
           >
             <div className="flex items-center gap-2 mb-2">
-              <BookOpen className="w-4 h-4 text-brand/70" />
-              <span className="text-xs font-semibold text-foreground/80">Nostr Guide</span>
-              <ExternalLink className="w-3 h-3 text-muted-foreground/30 group-hover:text-brand/50 transition-colors ml-auto" />
+              <BookOpen className="w-4 h-4 text-foreground/70" />
+              <span className="text-[15px] font-semibold text-foreground">Nostr guide</span>
+              <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors duration-150 ml-auto" />
             </div>
-            <p className="text-[11px] text-muted-foreground/50 leading-relaxed">A friendly, in-depth beginner's guide</p>
+            <p className="text-[13px] text-muted-foreground leading-snug">A friendly, in-depth beginner's guide</p>
           </a>
         </div>
       </section>
 
-      <div className="border-t border-black/[0.06] dark:border-white/[0.04] mt-3 pt-4 pb-2 text-center">
-        <p className="text-[10px] text-muted-foreground/30 font-medium uppercase tracking-wider">
-          Relay Outpost — The Next Phase of the Internet
+      <div className="border-t border-border/60 mt-3 pt-4 pb-2 text-center">
+        <p className="text-[13px] text-muted-foreground font-medium">
+          Relay Outpost — the next phase of the internet
         </p>
       </div>
 

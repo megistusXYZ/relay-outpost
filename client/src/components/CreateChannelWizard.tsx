@@ -145,13 +145,13 @@ export function CreateChannelWizard({
       ) : (
         <>
           <p className="text-xs text-muted-foreground/70 leading-relaxed">
-            Chat channels live on a relay that hosts them. <strong>{currentRelayLabel}</strong> doesn’t,
-            so pick a home for your channel:
+            Rooms live on a relay that hosts them. <strong>{currentRelayLabel}</strong> doesn’t,
+            so pick a home for your room:
           </p>
 
           {otherCapable.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-[10px] font-mono uppercase tracking-wider text-brand/60">Your room's relays</p>
+              <p className="text-[13px] text-brand/60 font-medium">Your room's relays</p>
               {otherCapable.map((o) => (
                 <button
                   key={o.url}
@@ -171,7 +171,7 @@ export function CreateChannelWizard({
           )}
 
           <div className="space-y-1.5">
-            <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">
+            <p className="text-[13px] text-muted-foreground font-medium">
               {otherCapable.length > 0 ? "Or join another" : "Join a relay that hosts rooms"}
             </p>
             {CHANNEL_FRIENDLY_RELAYS.map((r) => (
@@ -256,7 +256,7 @@ export function CreateChannelWizard({
       </div>
       <div className="space-y-2">
         <Label className="text-xs font-medium text-muted-foreground/80">
-          Channel image <span className="text-muted-foreground/40">(optional)</span>
+          Room image <span className="text-muted-foreground/40">(optional)</span>
         </Label>
         <input
           ref={picInputRef}
@@ -390,7 +390,7 @@ export function CreateChannelWizard({
   );
 
   const title = (
-    <span className="font-brand tracking-wider uppercase text-brand flex items-center gap-2">
+    <span className="text-brand flex items-center gap-2 font-medium">
       <Plus className="w-4 h-4" /> Create room
       {step !== "where" && <span className="text-[10px] font-mono text-muted-foreground/40 tracking-normal normal-case">{stepNum} of {totalSteps}</span>}
     </span>

@@ -122,14 +122,14 @@ function PackCard({
           <div className="flex items-center flex-wrap gap-2 mb-2">
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <Users className="w-3 h-3 text-brand/50 shrink-0" />
-              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/40 truncate">
+              <span className="text-[13px] text-muted-foreground truncate font-medium">
                 {pack.members.length} members
               </span>
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); onTuneIn(pack); }}
               disabled={isTuning || tuningPackId !== null}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border border-brand/30 text-brand hover:bg-brand/10 hover:border-brand/50 transition-all duration-200 disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold border border-brand/30 text-brand hover:bg-brand/10 hover:border-brand/50 transition-all duration-200 disabled:opacity-50 cursor-pointer"
               data-testid={`button-tunein-browse-pack-${pack.id.slice(0, 8)}`}
             >
               {isTuning ? <RelayOutpostInlineLoader className="w-3 h-3" /> : <Headphones className="w-3 h-3" />}
@@ -239,7 +239,7 @@ export function BrowsePacksDialog({
       {loading ? (
         <div className="flex flex-col items-center justify-center py-12 gap-3">
           <RelayOutpostInlineLoader />
-          <span className="text-[10px] text-muted-foreground/40 font-mono uppercase tracking-wider">Scanning for packs...</span>
+          <span className="text-[13px] text-muted-foreground font-medium">Scanning for packs...</span>
         </div>
       ) : packs.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -267,7 +267,7 @@ export function BrowsePacksDialog({
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="border-brand/20 bg-background dark:bg-[hsl(260,8%,4%)] overflow-hidden">
+        <DrawerContent className="border-brand/20 bg-background dark:bg-[hsl(220,8%,4%)] overflow-hidden">
           <DrawerHeader className="pb-2">
             <div className="flex items-center gap-2.5">
               <div className="p-1.5 rounded-md bg-brand/10">
@@ -289,7 +289,7 @@ export function BrowsePacksDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto overflow-x-hidden border-brand/20 bg-background dark:bg-[hsl(260,8%,4%)]">
+      <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto overflow-x-hidden border-brand/20 bg-background dark:bg-[hsl(220,8%,4%)]">
         <DialogHeader>
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 rounded-md bg-brand/10">

@@ -33,14 +33,14 @@ import {
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 
 const FORMAT_COLORS: Record<string, string> = {
-  "Text Note": "#8b5cf6",
-  "Reply": "#a78bfa",
-  "Repost": "#7c3aed",
-  "Reaction": "#6d28d9",
-  "Picture": "#c4b5fd",
-  "Video": "#ddd6fe",
-  "Article": "#5b21b6",
-  "Comment": "#4c1d95" };
+  "Post": "#3D6BFF",
+  "Reply": "#7C9BFF",
+  "Repost": "#A3ACBA",
+  "Reaction": "#565D69",
+  "Picture": "#C8D4F0",
+  "Video": "#2A3A6A",
+  "Article": "#FF6A3D",
+  "Comment": "#E6E8EC" };
 
 const FORMAT_KEYS = Object.keys(FORMAT_COLORS);
 
@@ -56,7 +56,7 @@ function classifyEvent(event: Event): string {
   switch (event.kind) {
     case 1: {
       const hasETag = event.tags.some((t) => t[0] === "e");
-      return hasETag ? "Reply" : "Text Note";
+      return hasETag ? "Reply" : "Post";
     }
     case 6:
       return "Repost";
@@ -71,7 +71,7 @@ function classifyEvent(event: Event): string {
     case 1111:
       return "Comment";
     default:
-      return "Text Note";
+      return "Post";
   }
 }
 
@@ -79,7 +79,7 @@ function CustomTooltipContent({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-md border border-brand/20 bg-white dark:bg-[rgba(4,4,10,0.95)] px-3 py-2 text-xs shadow-lg">
-      <p className="font-display text-brand mb-1">{label}</p>
+      <p className="font-medium text-foreground mb-1">{label}</p>
       {payload.map((entry: any, i: number) => (
         <p key={i} className="text-foreground">
           {entry.name}: <span className="text-brand font-mono">{Number(entry.value).toLocaleString()}</span>
@@ -242,7 +242,7 @@ export function ContentFormatEvolution({ relays: propRelays }: { relays?: string
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <Layers className="w-4 h-4 text-brand" />
-          <h2 className="text-sm font-display text-brand">Content Format Evolution</h2>
+          <h2 className="text-[15px] font-semibold text-foreground">Content format evolution</h2>
           <Badge variant="secondary" data-testid="badge-event-count">
             {events.length.toLocaleString()} events
           </Badge>
@@ -250,8 +250,8 @@ export function ContentFormatEvolution({ relays: propRelays }: { relays?: string
 
         <div className="flex items-end gap-3 flex-wrap">
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-              Time Range
+            <Label className="text-[13px] text-muted-foreground font-medium">
+              Time range
             </Label>
             <Select value={timeRange} onValueChange={setTimeRange} data-testid="select-time-range">
               <SelectTrigger className="w-[100px]" style={{ fontSize: "16px" }} data-testid="select-time-range-trigger">
@@ -284,7 +284,7 @@ export function ContentFormatEvolution({ relays: propRelays }: { relays?: string
         {summary && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" data-testid="summary-cards">
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Total Events</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Total events</p>
               <div className="flex items-center gap-1.5">
                 <BarChart3 className="w-3.5 h-3.5 text-brand" />
                 <p className="text-lg font-mono text-brand" data-testid="text-total-events">
@@ -294,11 +294,11 @@ export function ContentFormatEvolution({ relays: propRelays }: { relays?: string
             </div>
 
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Dominant Format</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Dominant format</p>
               <div className="flex items-center gap-1.5">
                 <div
                   className="w-3 h-3 rounded-sm"
-                  style={{ backgroundColor: FORMAT_COLORS[summary.dominantFormat] || "#8b5cf6" }}
+                  style={{ backgroundColor: FORMAT_COLORS[summary.dominantFormat] || "#3D6BFF" }}
                 />
                 <p className="text-lg font-mono text-foreground" data-testid="text-dominant-format">
                   {summary.dominantFormat}
@@ -310,7 +310,7 @@ export function ContentFormatEvolution({ relays: propRelays }: { relays?: string
             </div>
 
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Fastest Growing</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Fastest growing</p>
               <div className="flex items-center gap-1.5">
                 <TrendIcon className="w-3.5 h-3.5 text-emerald-800 dark:text-emerald-400" />
                 <p className="text-lg font-mono text-success dark:text-emerald-400" data-testid="text-fastest-growing">
@@ -323,7 +323,7 @@ export function ContentFormatEvolution({ relays: propRelays }: { relays?: string
             </div>
 
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Format Types</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Format types</p>
               <div className="flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-brand" />
                 <p className="text-lg font-mono text-foreground" data-testid="text-format-count">
@@ -350,8 +350,8 @@ export function ContentFormatEvolution({ relays: propRelays }: { relays?: string
         {!loading && dailyData.length > 0 && (
           <div className="space-y-6">
             <div data-testid="stacked-area-chart">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50 mb-2">
-                Content Format Mix Over Time
+              <p className="text-[13px] text-muted-foreground mb-2 font-medium">
+                Content format mix over time
               </p>
               <ResponsiveContainer width="100%" height={280}>
                 <AreaChart data={dailyData}>
@@ -363,21 +363,21 @@ export function ContentFormatEvolution({ relays: propRelays }: { relays?: string
                       </linearGradient>
                     ))}
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(139,92,246,0.08)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(163,172,186,0.14)" />
                   <XAxis
                     dataKey="date"
-                    tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }}
+                    tick={{ fontSize: 12, fill: "rgba(255,255,255,0.3)" }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }}
+                    tick={{ fontSize: 12, fill: "rgba(255,255,255,0.3)" }}
                     axisLine={false}
                     tickLine={false}
                     width={40}
                   />
                   <Tooltip content={<CustomTooltipContent />} />
-                  <Legend wrapperStyle={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }} />
+                  <Legend wrapperStyle={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }} />
                   {FORMAT_KEYS.map((key) => (
                     <Area
                       key={key}
@@ -396,8 +396,8 @@ export function ContentFormatEvolution({ relays: propRelays }: { relays?: string
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div data-testid="pie-chart">
-                <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50 mb-2">
-                  Overall Format Distribution
+                <p className="text-[13px] text-muted-foreground mb-2 font-medium">
+                  Overall format distribution
                 </p>
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
@@ -414,21 +414,21 @@ export function ContentFormatEvolution({ relays: propRelays }: { relays?: string
                       {overallDistribution.map((entry, i) => (
                         <Cell
                           key={i}
-                          fill={FORMAT_COLORS[entry.name] || "#8b5cf6"}
+                          fill={FORMAT_COLORS[entry.name] || "#3D6BFF"}
                           stroke="rgba(4,4,10,0.8)"
                           strokeWidth={1}
                         />
                       ))}
                     </Pie>
                     <Tooltip content={<CustomTooltipContent />} />
-                    <Legend wrapperStyle={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }} />
+                    <Legend wrapperStyle={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
 
               <div data-testid="format-stats">
-                <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50 mb-2">
-                  Format-Specific Trends
+                <p className="text-[13px] text-muted-foreground mb-2 font-medium">
+                  Trends by format
                 </p>
                 <div className="space-y-2">
                   {formatStats.map((stat) => {

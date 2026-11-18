@@ -13,7 +13,7 @@ import { useConcordEnabled } from "@/lib/concord/concord-prefs";
 import { ensureConcordUnreadWatcher } from "@/lib/concord/concord-unread";
 import { getRosterSnapshot, resolveGroupName, ROSTER_CHANGED_EVENT } from "@/lib/concord/concord-roster";
 import { getGlobalSigner } from "@/lib/nip42-auth";
-import { persistentPoolSubscribe, eventStore, fetchProfilesCached } from "@/lib/nostr";
+import { eventStore, fetchProfilesCached } from "@/lib/nostr";
 import { getDisplayName, KIND_METADATA, shortenNpub, formatNpub } from "@/lib/nostr-helpers";
 import { RECORD_RECONCILED_EVENT } from "@/components/concord/useConcordGovernance";
 

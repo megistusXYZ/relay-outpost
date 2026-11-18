@@ -247,20 +247,20 @@ export function UploadTrackDialog({ open, onOpenChange, onPublished }: UploadTra
             className="absolute inset-0 hidden h-full w-full object-cover object-top dark:block dark:opacity-[0.24]"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-background/25 via-background/60 to-background/92" />
-          <div className="absolute inset-x-0 top-0 h-44 bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(139,92,246,0.14),transparent_70%)] dark:bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(139,92,246,0.22),transparent_70%)]" />
+          <div className="absolute inset-x-0 top-0 h-44 bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(13,15,18,0.06),transparent_70%)] dark:bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(255,255,255,0.06),transparent_70%)]" />
         </div>
         <DialogHeader className="-mx-4 sm:-mx-6 px-4 sm:px-6 pb-3.5 border-b border-brand/10 dark:border-white/[0.06]">
-          <DialogTitle className="font-brand uppercase tracking-widest text-sm flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-brand/10 dark:bg-brand/15 flex items-center justify-center shadow-sm">
-              <Upload className="w-3.5 h-3.5 text-brand/70" />
+          <DialogTitle className="text-base flex items-center gap-2 font-semibold">
+            <div className="w-7 h-7 rounded-lg bg-foreground/[0.06] flex items-center justify-center">
+              <Upload className="w-3.5 h-3.5 text-foreground/70" />
             </div>
-            Upload Track
+            Upload track
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 mt-1 min-w-0 w-full">
           <div className="rounded-xl bg-brand/[0.04]/[0.06] border border-brand/15 dark:border-brand/20 p-3 sm:p-4 shadow-sm shadow-brand/5 dark:shadow-brand/10 transition-all duration-300">
-            <p className="text-[10px] text-brand/60 font-mono uppercase tracking-wider mb-2.5">Audio File</p>
+            <p className="text-[13px] text-brand/60 mb-2.5 font-medium">Audio file</p>
             {audioUrl ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -279,7 +279,7 @@ export function UploadTrackDialog({ open, onOpenChange, onPublished }: UploadTra
                   onClick={() => { setAudioUrl(""); setAudioFileName(""); }}
                   data-testid="button-remove-audio"
                 >
-                  Replace File
+                  Replace file
                 </Button>
               </div>
             ) : (
@@ -321,7 +321,7 @@ export function UploadTrackDialog({ open, onOpenChange, onPublished }: UploadTra
 
           <div className="rounded-xl border border-brand/15 dark:border-brand/10 bg-card/60 dark:bg-white/[0.03] p-3 sm:p-4 space-y-3 shadow-sm shadow-primary/5 dark:shadow-primary/10 transition-all duration-300">
             <div>
-              <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 mb-1.5 block">Title *</label>
+              <label className="text-[13px] text-muted-foreground mb-1.5 block font-medium">Title *</label>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -335,7 +335,7 @@ export function UploadTrackDialog({ open, onOpenChange, onPublished }: UploadTra
             </div>
 
             <div>
-              <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 mb-1.5 block">Artist</label>
+              <label className="text-[13px] text-muted-foreground mb-1.5 block font-medium">Artist</label>
               <Input
                 value={artist}
                 onChange={(e) => setArtist(e.target.value)}
@@ -351,7 +351,7 @@ export function UploadTrackDialog({ open, onOpenChange, onPublished }: UploadTra
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="rounded-xl border border-brand/15 dark:border-brand/10 bg-card/60 dark:bg-white/[0.03] p-3 shadow-sm shadow-primary/5 dark:shadow-primary/10 transition-all duration-300">
-              <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 mb-1.5 block">Genre</label>
+              <label className="text-[13px] text-muted-foreground mb-1.5 block font-medium">Genre</label>
               <Select value={genre} onValueChange={setGenre}>
                 <SelectTrigger className="bg-background/60 dark:bg-white/[0.04] border-brand/15 dark:border-brand/10" style={{ fontSize: 16 }} data-testid="select-track-genre">
                   <SelectValue placeholder="Select genre" />
@@ -364,7 +364,7 @@ export function UploadTrackDialog({ open, onOpenChange, onPublished }: UploadTra
               </Select>
             </div>
             <div className="rounded-xl border border-brand/15 dark:border-brand/10 bg-card/60 dark:bg-white/[0.03] p-3 shadow-sm shadow-primary/5 dark:shadow-primary/10 transition-all duration-300">
-              <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 mb-1.5 block">Cover Art</label>
+              <label className="text-[13px] text-muted-foreground mb-1.5 block font-medium">Cover art</label>
               {coverUrl ? (
                 <div className="flex items-center gap-2.5">
                   <img src={coverUrl} alt="Cover" className="w-11 h-11 rounded-lg object-cover ring-1 ring-border/20 dark:ring-primary/10 shadow-sm" data-testid="img-cover-preview" />
@@ -401,7 +401,7 @@ export function UploadTrackDialog({ open, onOpenChange, onPublished }: UploadTra
           </div>
 
           <div className="rounded-xl border border-brand/15 dark:border-brand/10 bg-card/60 dark:bg-white/[0.03] p-3 sm:p-4 shadow-sm shadow-primary/5 dark:shadow-primary/10 transition-all duration-300">
-            <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 mb-1.5 block">Description</label>
+            <label className="text-[13px] text-muted-foreground mb-1.5 block font-medium">Description</label>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}

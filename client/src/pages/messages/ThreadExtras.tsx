@@ -24,10 +24,10 @@ export function ReplyQuote({
       type="button"
       onClick={onOpen}
       disabled={!onOpen}
-      className={`mb-1.5 block w-full text-left rounded-md border-l-2 px-2 py-1 ${mine ? "border-white/50 bg-white/10" : "border-brand/60 bg-foreground/[0.04]"} ${onOpen ? "cursor-pointer" : "cursor-default"}`}
+      className={`mb-1.5 block w-full text-left rounded-md border-l-2 px-2 py-1 ${mine ? "border-white/50 bg-white/10" : "border-foreground/30 bg-foreground/[0.04]"} ${onOpen ? "cursor-pointer" : "cursor-default"}`}
       data-testid={testId}
     >
-      {author && <span className={`block text-[11px] font-medium truncate ${mine ? "text-white/90" : "text-brand"}`}>{author}</span>}
+      {author && <span className={`block text-[12px] font-semibold truncate ${mine ? "text-white/90" : "text-foreground/85"}`}>{author}</span>}
       <span className={`block text-[12px] truncate ${mine ? "text-white/70" : "text-muted-foreground"}`}>{text}</span>
     </button>
   );
@@ -55,7 +55,7 @@ export function ReactionChips({
           aria-label={`${t.emoji} ${t.count}: ${namesOf(t.people)}`}
           aria-pressed={t.mine}
           className={`relative after:content-[''] after:absolute after:-inset-y-2 after:inset-x-0 inline-flex items-center gap-1 rounded-full border px-2 h-7 text-[13px] leading-none transition-colors ${
-            t.mine ? "border-brand/50 bg-brand/15 text-foreground" : "border-border/60 bg-muted/60 text-muted-foreground hover:text-foreground"
+            t.mine ? "border-foreground/40 bg-foreground/[0.08] text-foreground" : "border-border/60 bg-muted/60 text-muted-foreground hover:text-foreground"
           }`}
           data-testid={`${testId}-${t.emoji}`}
         >
@@ -92,9 +92,9 @@ export function QuickReactions({ onPick, size, testId }: { onPick: (emoji: strin
 export function ReplyingBar({ name, text, onCancel }: { name: string; text: string; onCancel: () => void }) {
   return (
     <div className="mb-2 flex items-center gap-2 rounded-lg border border-border/50 bg-muted/40 pl-3 pr-1 py-1.5" data-testid="dm-replying-to">
-      <CornerUpLeft className="w-3.5 h-3.5 text-brand shrink-0" aria-hidden />
+      <CornerUpLeft className="w-3.5 h-3.5 text-foreground/70 shrink-0" aria-hidden />
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-medium text-brand truncate">Replying to {name}</p>
+        <p className="text-[13px] font-medium text-foreground truncate">Replying to {name}</p>
         <p className="text-[12px] text-muted-foreground truncate">{text}</p>
       </div>
       <button

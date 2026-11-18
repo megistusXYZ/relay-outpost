@@ -147,13 +147,13 @@ export function ConcordAdminDrawer({
                 <button
                   key={c.id}
                   onClick={() => setSettingsChannel(c)}
-                  className="w-full flex items-center gap-2 text-sm text-muted-foreground/80 px-1.5 min-h-11 md:min-h-9 rounded-md hover:bg-muted/30 text-left transition-colors"
+                  className="w-full flex items-center gap-2 text-sm text-muted-foreground px-1.5 min-h-11 md:min-h-9 rounded-md hover:bg-muted/30 text-left transition-colors"
                   data-testid={`space-admin-channel-${c.id.slice(0, 8)}`}
                 >
-                  <Hash className="w-3 h-3 shrink-0 text-muted-foreground/50" />
+                  <Hash className="w-3 h-3 shrink-0 text-muted-foreground" />
                   <span className="truncate text-foreground/80">{c.name}</span>
-                  {c.isPrivate && <Lock className="w-3 h-3 shrink-0 text-muted-foreground/40" />}
-                  <Settings2 className="w-3 h-3 ml-auto shrink-0 text-muted-foreground/40" />
+                  {c.isPrivate && <Lock className="w-3 h-3 shrink-0 text-muted-foreground" />}
+                  <Settings2 className="w-3 h-3 ml-auto shrink-0 text-muted-foreground" />
                 </button>
               ))}
             </div>
@@ -174,14 +174,14 @@ export function ConcordAdminDrawer({
               <p className="text-xs text-foreground/80">
                 {invitesOpenToMembers ? "Any member can invite people." : "Only admins can invite people."}
               </p>
-              <p className="text-[11px] text-muted-foreground/60">
+              <p className="text-xs text-muted-foreground">
                 This group is invite-only either way — there is no public join link.
               </p>
               {bannedCount > 0 && (
                 // Unbanning lives with the people it concerns (ConcordMembers),
                 // so this only says where. It stays undone now: the fold treats
                 // a name a later edition dropped as lifted (concord-events.ts).
-                <p className="text-[11px] text-muted-foreground/60">
+                <p className="text-xs text-muted-foreground">
                   {bannedCount} {bannedCount === 1 ? "person is" : "people are"} banned. You can lift a ban under People.
                 </p>
               )}
@@ -196,7 +196,7 @@ export function ConcordAdminDrawer({
           <SpaceAdminSection can={caps.editMetadata} title={section.label} icon={Settings2}>
             <div className="space-y-2">
               <p className="text-xs text-foreground/80 truncate">{community.name}</p>
-              {community.about && <p className="text-[11px] text-muted-foreground/60 line-clamp-2">{community.about}</p>}
+              {community.about && <p className="text-xs text-muted-foreground line-clamp-2">{community.about}</p>}
               <SpaceAdminAction icon={Pencil} onClick={() => setEditOpen(true)} testId="space-admin-edit-details">
                 Edit name, image &amp; description
               </SpaceAdminAction>
@@ -210,7 +210,7 @@ export function ConcordAdminDrawer({
         return (
           <SpaceAdminSection can={caps.dissolve && !!onDissolve} title={section.label} icon={Trash2}>
             <div className="space-y-2">
-              <p className="text-[11px] text-muted-foreground/60">
+              <p className="text-xs text-muted-foreground">
                 Ends this group chat for everyone. Nobody can undo it, including you.
               </p>
               <SpaceAdminAction tone="destructive" icon={Trash2} onClick={onDissolve} testId="space-admin-dissolve">

@@ -439,7 +439,7 @@ export function FeedPreviewPanel({ feed, isAdded, onBack, onAdd, addLabel = "Add
       )}
 
       <div className="space-y-1.5">
-        <p className="text-[11px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60 px-0.5">Latest episodes</p>
+        <p className="text-[12px] text-muted-foreground/60 px-0.5 font-medium">Latest episodes</p>
         {isLoading && (
           <div className="space-y-1.5">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -926,7 +926,7 @@ function AddFeedBody({
           </div>
           {libraryGroups.map(([cat, feeds]) => (
             <div key={cat} className="space-y-1.5">
-              <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50 px-0.5">{cat}</div>
+              <div className="text-[13px] text-muted-foreground px-0.5 font-medium">{cat}</div>
               <div className="grid grid-cols-1 gap-1.5">
                 {feeds.map((sf) => (
                   <button
@@ -1004,7 +1004,7 @@ function AddFeedBody({
         <div className="space-y-2">
           <div className="flex items-center gap-2 px-0.5">
             <Newspaper className="w-3.5 h-3.5 text-brand/70" />
-            <span className="text-[11px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">News &amp; blogs</span>
+            <span className="text-[12px] text-muted-foreground/60 font-medium">News &amp; blogs</span>
             <span className="text-[10px] text-muted-foreground/30 ml-auto">{filteredSuggested.length}</span>
           </div>
           <div className="grid grid-cols-1 gap-1.5">
@@ -1083,7 +1083,7 @@ function AddFeedBody({
         data-testid="button-toggle-manual-add"
       >
         <Rss className="w-3.5 h-3.5 text-muted-foreground/50 group-hover:text-brand/70 transition-colors" />
-        <span className="text-[11px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60 group-hover:text-muted-foreground/80 transition-colors">
+        <span className="text-[12px] text-muted-foreground/60 group-hover:text-muted-foreground/80 transition-colors font-medium">
           Add manually
         </span>
         {manualOpen
@@ -1108,7 +1108,7 @@ function AddFeedBody({
             />
           </div>
           <div>
-            <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground/60 mb-1.5 block">Feed Name <span className="text-muted-foreground/30 normal-case">(optional)</span></label>
+            <label className="text-[12px] text-muted-foreground/60 mb-1.5 block font-medium">Feed name <span className="text-muted-foreground/30 normal-case">(optional)</span></label>
             <Input
               value={mName}
               onChange={(e) => { setMName(e.target.value); setMError(""); }}
@@ -1120,7 +1120,7 @@ function AddFeedBody({
             />
           </div>
           <div>
-            <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground/60 mb-1.5 block">Category</label>
+            <label className="text-[12px] text-muted-foreground/60 mb-1.5 block font-medium">Category</label>
             <Input
               value={mCategory}
               onChange={(e) => setMCategory(e.target.value)}
@@ -1140,7 +1140,7 @@ function AddFeedBody({
           <Button
             onClick={handleManualAdd}
             disabled={!mUrl.trim() || mVerifying}
-            className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-brand uppercase tracking-widest text-xs border border-primary/40 rounded-xl transition-colors"
+            className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground text-xs border border-primary/40 rounded-xl transition-colors font-medium"
             data-testid="button-confirm-add-feed"
           >
             {mVerifying ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Plus className="w-3.5 h-3.5 mr-2" />}
@@ -1235,7 +1235,7 @@ export function AddRssFeedDialog({
     <Button
       variant="outline"
       size="sm"
-      className="font-brand uppercase tracking-widest text-xs border-brand/30 text-brand"
+      className="text-xs border-brand/30 text-brand font-medium"
       aria-label="Add feed"
       data-testid="button-add-feed"
     >
@@ -1264,7 +1264,7 @@ export function AddRssFeedDialog({
               <div className="w-7 h-7 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center">
                 <Rss className="w-3.5 h-3.5 text-brand" />
               </div>
-              <span className="text-sm font-brand uppercase tracking-widest">Add RSS Feed</span>
+              <span className="text-sm font-medium">Add RSS feed</span>
               <button
                 onClick={() => setOpen(false)}
                 className="ml-auto flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
@@ -1290,7 +1290,7 @@ export function AddRssFeedDialog({
             mirrors the shell's translucent blurred look. */}
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 rounded-lg bg-background/95 backdrop-blur-xl" data-testid="add-feed-dialog-backing" />
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-border/15 shrink-0">
-          <DialogTitle className="font-brand uppercase tracking-widest text-sm flex items-center gap-2">
+          <DialogTitle className="text-sm flex items-center gap-2 font-medium">
             <div className="w-7 h-7 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center">
               <Rss className="w-3.5 h-3.5 text-brand" />
             </div>

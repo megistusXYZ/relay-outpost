@@ -1,9 +1,9 @@
 import { PageToolbar } from "@/components/PageToolbar";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { SearchPill } from "@/components/SearchPill";
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import {
   fetchWavlakeNewTracks,
-  fetchWavlakeRandomTracks,
   fetchWavlakeTrendingTracks,
   fetchWavlakePodcasts,
   fetchPodcastIndexTrending,
@@ -67,11 +67,10 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { PageTabs } from "@/components/PageTabs";
 import { Card } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RelayOutpostLoader, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { formatDistanceToNow } from "date-fns";
 import {
-  Play, Pause, Disc3, Headphones, Clock, Shuffle, Search, X, Send,
+  Play, Pause, Disc3, Headphones, Clock, Shuffle, X, Send,
   ArrowLeft, User, Users, Music, Disc, Guitar, Mic, Zap, Cloud, Leaf, Sun,
   Flame, Star, Radio, Heart, Share2, ExternalLink, Copy, MessageCircle, Globe, ChevronRight,
   LayoutGrid, LayoutList,
@@ -96,8 +95,8 @@ function RelayOutpostBadge({ className }: { className?: string }) {
       className={className}
       data-testid="badge-relay-outpost"
     >
-      <path d="M5.64999 7.64999L2.85001 4.85001C2.54001 4.54001 2.76001 4 3.20001 4H6.79001C6.92001 4 7.05001 4.04999 7.14001 4.14999L12.14 9.14999C12.45 9.45999 12.23 10 11.79 10H8.5C6.57 10 5 11.57 5 13.5C5 15.43 6.57 17 8.5 17H10L12.15 19.15C12.46 19.46 12.24 20 11.8 20H8.51001C4.92001 20 2.01001 17.09 2.01001 13.5C2.01001 11.01 3.41001 8.84 5.48001 7.75L5.64999 7.64999Z" />
-      <path d="M18.35 16.35L21.15 19.15C21.46 19.46 21.24 20 20.8 20H17.21C17.08 20 16.95 19.95 16.86 19.85L11.86 14.85C11.55 14.54 11.77 14 12.21 14H15.5C17.43 14 19 12.43 19 10.5C19 8.57 17.43 7 15.5 7H14L11.85 4.85001C11.54 4.54001 11.76 4 12.2 4H15.49C19.08 4 21.99 6.91 21.99 10.5C21.99 12.99 20.59 15.16 18.52 16.25L18.35 16.35Z" />
+      <path d="M19.998 9.857A8.28 8.28 0 1 1 14.143 4.002A1.08 1.08 0 0 1 13.584 6.088A6.12 6.12 0 1 0 17.911 10.416A1.08 1.08 0 0 1 19.998 9.857Z" />
+      <path d="M15.53 6.91A1.56 1.56 0 1 0 18.65 6.91A1.56 1.56 0 1 0 15.53 6.91Z" />
     </svg>
   );
 }
@@ -212,14 +211,14 @@ export function ShareTrackDialog({ track, open, onOpenChange }: { track: MusicTr
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm sm:max-w-md glass-dialog-card border-border overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="font-brand uppercase tracking-widest text-sm flex items-center gap-2">
+          <DialogTitle className="text-base flex items-center gap-2 font-semibold">
             <Share2 className="w-4 h-4" />
-            Share Track
+            Share track
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="rounded-lg bg-primary/10 border border-border p-3 overflow-hidden">
-            <p className="text-[10px] text-brand/60 font-mono uppercase tracking-wider mb-1.5">Sharing</p>
+            <p className="text-[13px] text-brand/60 mb-1.5 font-medium">Sharing</p>
             <div className="flex items-center gap-3">
               {track.coverUrl && (
                 <img src={coverArt(track.coverUrl, 96)} alt={track.title} width={48} height={48} loading="lazy" className="w-12 h-12 rounded-md object-cover shrink-0" />
@@ -245,7 +244,7 @@ export function ShareTrackDialog({ track, open, onOpenChange }: { track: MusicTr
             data-testid="textarea-share-track"
           />
 
-          <p className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wider leading-relaxed">
+          <p className="text-[13px] text-muted-foreground leading-relaxed font-medium">
             This creates a public post{track.artistPubkey ? " tagging the artist" : ""}. Others can reply and zap your post.
           </p>
 
@@ -253,7 +252,7 @@ export function ShareTrackDialog({ track, open, onOpenChange }: { track: MusicTr
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="flex-1 font-brand uppercase tracking-widest text-xs border-border dark:border-white/10 text-muted-foreground"
+              className="flex-1 text-xs border-border dark:border-white/10 text-muted-foreground font-medium"
               data-testid="button-cancel-share-track"
             >
               Cancel
@@ -261,7 +260,7 @@ export function ShareTrackDialog({ track, open, onOpenChange }: { track: MusicTr
             <Button
               onClick={handleShare}
               disabled={isPublishing || !content.trim()}
-              className="flex-1 bg-primary text-primary-foreground font-brand uppercase tracking-widest text-xs border-0"
+              className="flex-1 bg-primary text-primary-foreground text-xs border-0 font-medium"
               data-testid="button-confirm-share-track"
             >
               {isPublishing ? (
@@ -365,14 +364,14 @@ export function ShareLinkDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm sm:max-w-md glass-dialog-card border-border overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="font-brand uppercase tracking-widest text-sm flex items-center gap-2">
+          <DialogTitle className="text-base flex items-center gap-2 font-semibold">
             <Share2 className="w-4 h-4" />
-            Share {kind === "artist" ? "Artist" : "Album"}
+            Share {kind === "artist" ? "artist" : "album"}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="rounded-lg bg-primary/10 border border-border p-3 overflow-hidden">
-            <p className="text-[10px] text-brand/60 font-mono uppercase tracking-wider mb-1.5">Sharing</p>
+            <p className="text-[13px] text-brand/60 mb-1.5 font-medium">Sharing</p>
             <div className="flex items-center gap-3">
               {coverUrl && (
                 <img src={coverArt(coverUrl, 96)} alt={title} width={48} height={48} loading="lazy" className="w-12 h-12 rounded-md object-cover shrink-0" />
@@ -397,7 +396,7 @@ export function ShareLinkDialog({
             data-testid="textarea-share-link"
           />
 
-          <p className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wider leading-relaxed">
+          <p className="text-[13px] text-muted-foreground leading-relaxed font-medium">
             This creates a public post{artistPubkey ? " tagging the artist" : ""}. Others can reply and zap your post.
           </p>
 
@@ -405,7 +404,7 @@ export function ShareLinkDialog({
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="flex-1 font-brand uppercase tracking-widest text-xs border-border dark:border-white/10 text-muted-foreground"
+              className="flex-1 text-xs border-border dark:border-white/10 text-muted-foreground font-medium"
               data-testid="button-cancel-share-link"
             >
               Cancel
@@ -413,7 +412,7 @@ export function ShareLinkDialog({
             <Button
               onClick={handleShare}
               disabled={isPublishing || !content.trim()}
-              className="flex-1 bg-primary text-primary-foreground font-brand uppercase tracking-widest text-xs border-0"
+              className="flex-1 bg-primary text-primary-foreground text-xs border-0 font-medium"
               data-testid="button-confirm-share-link"
             >
               {isPublishing ? (
@@ -1128,7 +1127,7 @@ function AlbumDetailView({ albumId, albumTitle, onBack, onArtistClick }: { album
             )}
           </div>
           <div className="min-w-0 pb-1">
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 mb-1">Album</p>
+            <p className="text-[11px] text-muted-foreground mb-1 font-medium">Album</p>
             <h3 className="text-lg font-bold tracking-tight truncate" data-testid="text-album-title">{albumTitle || "Unknown Album"}</h3>
             <p className="text-xs text-muted-foreground/70 mt-1">
               {tracks.length} {tracks.length === 1 ? "track" : "tracks"}
@@ -1141,7 +1140,7 @@ function AlbumDetailView({ albumId, albumTitle, onBack, onArtistClick }: { album
                 data-testid="button-play-album"
               >
                 <Play className="w-3.5 h-3.5 mr-1.5" />
-                Play All
+                Play all
               </Button>
               <ShareLinkButton
                 url={`${window.location.origin}/audio?album=${encodeURIComponent(albumId)}${albumTitle ? `&albumTitle=${encodeURIComponent(albumTitle)}` : ""}`}
@@ -1177,7 +1176,7 @@ function ArtistDetailView({ artistId, onBack, onArtistClick, onAlbumClick }: { a
   const [loading, setLoading] = useState(true);
   const [showAllTracks, setShowAllTracks] = useState(false);
   const { play } = useAudioPlayer();
-  const { toast } = useToast();
+  useToast();
 
   useEffect(() => {
     setLoading(true);
@@ -1204,7 +1203,7 @@ function ArtistDetailView({ artistId, onBack, onArtistClick, onAlbumClick }: { a
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-4">
         <p className="text-sm text-muted-foreground">Artist not found</p>
-        <Button variant="outline" size="sm" onClick={onBack} data-testid="button-back-artist">Go Back</Button>
+        <Button variant="outline" size="sm" onClick={onBack} data-testid="button-back-artist">Go back</Button>
       </div>
     );
   }
@@ -1241,7 +1240,7 @@ function ArtistDetailView({ artistId, onBack, onArtistClick, onAlbumClick }: { a
           </Avatar>
           <div className="min-w-0 text-center sm:text-left pb-1 flex-1">
             {artist.verified && (
-              <span className="text-[11px] font-medium text-brand/70 uppercase tracking-wider">Verified Artist</span>
+              <span className="text-[11px] font-medium text-brand/70">Verified artist</span>
             )}
             <h2 className="text-2xl font-bold tracking-tight truncate" data-testid="text-artist-name">{artist.name}</h2>
             {artist.bio && (
@@ -1273,7 +1272,7 @@ function ArtistDetailView({ artistId, onBack, onArtistClick, onAlbumClick }: { a
             data-testid="button-play-all"
           >
             <Play className="w-3.5 h-3.5 mr-1.5" />
-            Play All
+            Play all
           </Button>
         )}
         {tracks.length > 1 && (
@@ -1306,7 +1305,7 @@ function ArtistDetailView({ artistId, onBack, onArtistClick, onAlbumClick }: { a
               data-testid="button-nostr-profile"
             >
               <MessageCircle className="w-3.5 h-3.5 mr-1.5" />
-              Nostr Profile
+              Nostr profile
             </Button>
           </Link>
         )}
@@ -1360,7 +1359,7 @@ function ArtistDetailView({ artistId, onBack, onArtistClick, onAlbumClick }: { a
       {tracks.length > 0 ? (
         <div data-testid="container-artist-tracks">
           <div className="flex items-center justify-between px-1 mb-2">
-            <h3 className="text-sm font-semibold text-foreground/80">Top Tracks</h3>
+            <h3 className="text-sm font-semibold text-foreground/80">Top tracks</h3>
             {tracks.length > 5 && (
               <button
                 onClick={() => setShowAllTracks(!showAllTracks)}
@@ -1965,7 +1964,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
             active={view === "new" || view === "browse" || view === "artists" || view === "podcasts" ? view : "new"}
             onChange={(key) => selectTab(key as "new" | "browse" | "artists" | "podcasts")}
             tabs={[
-              { key: "new", label: "New Releases", icon: Clock, testId: "button-tab-new" },
+              { key: "new", label: "New releases", icon: Clock, testId: "button-tab-new" },
               { key: "browse", label: "Browse", icon: Disc3, testId: "button-tab-browse" },
               { key: "artists", label: "Artists", icon: Users, testId: "button-tab-artists" },
               { key: "podcasts", label: "Podcasts", icon: Radio, testId: "button-tab-podcasts" },
@@ -1977,7 +1976,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
           <div data-testid="container-search-results">
             {searchResults.length === 0 && !isSearching ? (
               <div className="flex flex-col items-center justify-center py-16 space-y-2">
-                <Search className="w-8 h-8 text-muted-foreground/50" />
+                <OttoEmpty mood="looking" size={72} className="text-foreground/70" />
                 <p className="text-sm text-muted-foreground/70">
                   {searchQuery ? `No results for "${searchQuery}"` : "Type to search"}
                 </p>
@@ -1986,7 +1985,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
               <div className="space-y-4">
                 {searchResults.filter(r => r.type === "artist").length > 0 && (
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider px-1 mb-2">Artists</p>
+                    <p className="text-xs font-semibold text-muted-foreground px-1 mb-2">Artists</p>
                     <div className="space-y-0.5">
                       {searchResults.filter(r => r.type === "artist").map(r => (
                         <SearchResultItem key={r.id} result={r} onArtistClick={handleArtistClick} onAlbumClick={handleAlbumClick} tracks={searchTracks} />
@@ -1996,7 +1995,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
                 )}
                 {searchResults.filter(r => r.type === "track").length > 0 && (
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider px-1 mb-2">Tracks</p>
+                    <p className="text-xs font-semibold text-muted-foreground px-1 mb-2">Tracks</p>
                     <div className="space-y-0.5">
                       {searchResults.filter(r => r.type === "track").map(r => (
                         <SearchResultItem key={r.id} result={r} onArtistClick={handleArtistClick} onAlbumClick={handleAlbumClick} tracks={searchTracks} />
@@ -2006,7 +2005,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
                 )}
                 {searchResults.filter(r => r.type === "album").length > 0 && (
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider px-1 mb-2">Albums</p>
+                    <p className="text-xs font-semibold text-muted-foreground px-1 mb-2">Albums</p>
                     <div className="space-y-0.5">
                       {searchResults.filter(r => r.type === "album").map(r => (
                         <SearchResultItem key={r.id} result={r} onArtistClick={handleArtistClick} onAlbumClick={handleAlbumClick} tracks={searchTracks} />
@@ -2045,7 +2044,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
               </div>
             ) : artistsList.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 space-y-2">
-                <Users className="w-8 h-8 text-muted-foreground/50" />
+                <OttoEmpty mood="looking" size={72} className="text-foreground/70" />
                 <p className="text-sm text-muted-foreground/70">No artists found</p>
               </div>
             ) : (
@@ -2145,7 +2144,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
                     ) : (
                       <>
                         <Shuffle className="w-3.5 h-3.5 mr-1.5" />
-                        Load More
+                        Load more
                       </>
                     )}
                   </Button>
@@ -2213,7 +2212,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
                     ) : (
                       <>
                         <Shuffle className="w-3.5 h-3.5 mr-1.5" />
-                        Load More
+                        Load more
                       </>
                     )}
                   </Button>
@@ -2239,7 +2238,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
                 <div className="text-center space-y-2">
                   <p className="text-sm text-muted-foreground">{error}</p>
                   <Button variant="outline" size="sm" onClick={() => fetchTracks(view)} data-testid="button-retry">
-                    Try Again
+                    Try again
                   </Button>
                 </div>
               </div>
@@ -2300,7 +2299,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
                     <div className="mb-6" data-testid="container-trending-podcasts">
                       <div className="flex items-center gap-2 mb-3">
                         <Flame className="w-4 h-4 text-orange-500/80" />
-                        <h3 className="text-sm font-semibold text-foreground/80">Trending Podcasts</h3>
+                        <h3 className="text-sm font-semibold text-foreground/80">Trending podcasts</h3>
                       </div>
                       {isLoadingTrending ? (
                         <div className="flex justify-center py-6">
@@ -2324,7 +2323,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
                 {view === "podcasts" && trendingPodcasts.length > 0 && (podcastCategoryFilter ? filteredPodcasts.length > 0 : tracks.length > 0) && (
                   <div className="flex items-center gap-2 mb-3">
                     <Headphones className="w-4 h-4 text-brand/60" />
-                    <h3 className="text-sm font-semibold text-foreground/80">Wavlake Episodes</h3>
+                    <h3 className="text-sm font-semibold text-foreground/80">Wavlake episodes</h3>
                   </div>
                 )}
 
@@ -2376,7 +2375,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
                       ) : (
                         <>
                           <Shuffle className="w-3.5 h-3.5 mr-1.5" />
-                          Load More
+                          Load more
                         </>
                       )}
                     </Button>

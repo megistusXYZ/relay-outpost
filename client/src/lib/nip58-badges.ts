@@ -1,4 +1,4 @@
-import { pool, publishEvent, filterBlockedRelays, DEFAULT_RELAYS, FAST_RELAYS } from "./nostr";
+import { pool, publishEvent, filterBlockedRelays } from "./nostr";
 import { signWithTimeout } from "@/lib/signer-timeout";
 import { getOutpostRelays, getActiveDefaultRelays } from "./outpost-relays";
 import { canReachAny, type Reached } from "./relay-reach";

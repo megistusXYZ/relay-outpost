@@ -8,7 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Bell, BellOff, Lock, MoreVertical, Pencil, Pin, PinOff, Trash2, UserCheck, UserX, Users } from "lucide-react";
+import { Bell, BellOff, Lock, MoreVertical, Pencil, Pin, PinOff, Trash2, UserCheck, UserX } from "lucide-react";
 import { isGroupRoom, roomMembers } from "@/lib/dm-room";
 import { formatConversationPreview, formatMessageTime } from "./helpers";
 import { readableLine } from "@/lib/dm-text";
@@ -57,7 +57,7 @@ export type ChatListItem =
     };
 
 /** The one timestamp style every row shares — baseline-anchored to the title. */
-const ROW_TIME_CLASS = "text-[11px] text-muted-foreground/80 shrink-0 tabular-nums";
+const ROW_TIME_CLASS = "text-[12px] text-muted-foreground shrink-0 tabular-nums";
 
 interface DmRowProps {
   item: Extract<ChatListItem, { kind: "dm" }>;
@@ -141,17 +141,10 @@ function GroupChatRow({
     // group never gets a bar however busy it is.
     <div
       className={`group relative flex items-center border-b border-border/10 ${
-        item.muted ? "opacity-60" : unread ? "bg-brand/[0.04]" : ""
+        item.muted ? "opacity-60" : ""
       }`}
       data-testid={`group-chat-${item.communityId.slice(0, 8)}`}
     >
-      {unread && (
-        <span
-          className="absolute left-0 top-0 bottom-0 w-[3px] bg-brand"
-          aria-hidden="true"
-          data-testid={`group-unread-bar-${item.communityId.slice(0, 8)}`}
-        />
-      )}
       <button
         onClick={() => onOpenGroup(item.communityId, item.teaserChannelId ?? item.firstUnreadChannelId)}
         className="flex-1 flex items-center gap-3 pl-3 pr-3 py-3 hover-elevate text-left min-w-0"
@@ -168,7 +161,7 @@ function GroupChatRow({
               against the whole row) — identical anchoring to DM rows. */}
           <div className="flex items-baseline justify-between gap-2">
             <div className="flex items-baseline gap-1 min-w-0">
-              <span className={`text-sm truncate ${unread ? "font-semibold" : "font-medium"}`}>{item.name}</span>
+              <span className={`text-[15px] truncate ${unread ? "font-semibold text-foreground" : "font-medium"}`}>{item.name}</span>
               {item.muted && (
                 <BellOff className="w-3 h-3 shrink-0 self-center text-muted-foreground/50" aria-label="Muted" data-testid={`group-muted-${item.communityId.slice(0, 8)}`} />
               )}
@@ -179,7 +172,7 @@ function GroupChatRow({
               </span>
             )}
           </div>
-          <p className={`flex items-center gap-1 text-xs mt-0.5 min-w-0 ${unread ? "text-foreground/80 font-medium" : "text-muted-foreground"}`}>
+          <p className={`flex items-center gap-1 text-[14px] mt-0.5 min-w-0 ${unread ? "text-foreground/85 font-medium" : "text-muted-foreground"}`}>
             <Lock className="w-3 h-3 shrink-0" aria-label="End-to-end encrypted" />
             <span className="truncate flex-1" data-testid={`group-teaser-${item.communityId.slice(0, 8)}`}>
               {item.teaser ?? `${item.channelCount} room${item.channelCount !== 1 ? "s" : ""} · encrypted`}
@@ -187,11 +180,11 @@ function GroupChatRow({
             {/* Calm rule: the only NUMBER a group row shows is mentions of you. */}
             {mentions > 0 && (
               <span
-                className="min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white shrink-0"
+                className="text-[13px] font-semibold text-brand tabular-nums shrink-0"
                 aria-label={`${mentions} mention${mentions === 1 ? "" : "s"}`}
                 data-testid={`group-mentions-${item.communityId.slice(0, 8)}`}
               >
-                {mentions > 9 ? "9+" : mentions}
+                @{mentions > 9 ? "9+" : mentions}
               </span>
             )}
           </p>
@@ -240,17 +233,10 @@ function DmChatRow({
     // 40px avatar does not.
     <div
       className={`group relative flex items-center border-b border-border/10 ${
-        isSelected ? "bg-brand/10 md:bg-brand/10" : unread ? "bg-brand/[0.04]" : ""
+        isSelected ? "bg-foreground/[0.06]" : ""
       }`}
       data-testid={`conversation-${item.pubkey.slice(0, 8)}`}
     >
-      {unread && (
-        <span
-          className="absolute left-0 top-0 bottom-0 w-[3px] bg-brand"
-          aria-hidden="true"
-          data-testid={`conversation-unread-bar-${item.pubkey.slice(0, 8)}`}
-        />
-      )}
       <button
         onClick={(e) => { e.stopPropagation(); onOpenProfile(item.pubkey); }}
         className="relative shrink-0 ml-3 cursor-pointer"
@@ -279,11 +265,11 @@ function DmChatRow({
         isGroupRoom(item.pubkey) ? (
           // A chat with several people shows their faces, like a group does:
           // what makes it read as a group at a glance.
-          <span className="block hover:ring-2 hover:ring-brand/40 rounded-full transition-shadow" data-testid={`conversation-facepile-${item.pubkey.slice(0, 8)}`}>
+          <span className="block hover:ring-2 hover:ring-foreground/20 rounded-full transition-shadow" data-testid={`conversation-facepile-${item.pubkey.slice(0, 8)}`}>
             <GroupAvatar members={roomMembers(item.pubkey)} name={name} myPubkey={myPubkey} size={40} />
           </span>
         ) : (
-        <Avatar className="w-10 h-10 border border-border hover:ring-2 hover:ring-brand/40 transition-shadow">
+        <Avatar className="w-10 h-10 border border-border hover:ring-2 hover:ring-foreground/20 transition-shadow">
           <AvatarImage src={picture} alt={name} />
           <AvatarFallback className="text-xs bg-muted text-muted-foreground">
             {name.slice(0, 2).toUpperCase()}
@@ -292,7 +278,7 @@ function DmChatRow({
         )
         )}
         {unread && (
-          <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-brand border-2 border-background" />
+          <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-brand border-2 border-background" data-testid={`conversation-unread-dot-${item.pubkey.slice(0, 8)}`} />
         )}
       </button>
       <button
@@ -304,7 +290,7 @@ function DmChatRow({
               against the whole row) — identical anchoring to group rows. */}
           <div className="flex items-baseline justify-between gap-2">
             <div className="flex items-center gap-1 min-w-0">
-              <span className={`text-sm truncate ${unread ? "font-semibold" : "font-medium"}`}>{name}</span>
+              <span className={`text-[15px] truncate ${unread ? "font-semibold text-foreground" : "font-medium"}`}>{name}</span>
               {pinned && <Pin className="w-3 h-3 shrink-0 text-muted-foreground/60" aria-label="Pinned" data-testid={`conversation-pinned-${item.pubkey.slice(0, 8)}`} />}
               {mutedChat && <BellOff className="w-3 h-3 shrink-0 text-muted-foreground/60" aria-label="Muted" data-testid={`conversation-muted-${item.pubkey.slice(0, 8)}`} />}
               {/* Badges vouch for a person; a several-person chat is not one. */}
@@ -319,7 +305,7 @@ function DmChatRow({
           {isRequest && profileName && !isGroupRoom(item.pubkey) && (
             <ImpersonationChip pubkey={item.pubkey} displayName={profileName} nip05={nip05} className="mt-0.5" />
           )}
-          <p className={`text-xs truncate mt-0.5 ${unread ? "text-foreground/80 font-medium" : "text-muted-foreground"}`}>
+          <p className={`text-[14px] truncate mt-0.5 ${unread ? "text-foreground/85 font-medium" : "text-muted-foreground"}`}>
             {hidePreviews ? "Message" : <ChatPreviewLine text={item.lastMessage} />}
           </p>
         </div>

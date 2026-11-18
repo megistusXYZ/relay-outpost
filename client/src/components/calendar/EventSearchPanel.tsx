@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { nip19, type Event } from "nostr-tools";
 import { searchUsers } from "@/lib/primal-cache";
 import { searchCachedProfiles } from "@/lib/nostr";
@@ -10,7 +11,6 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SearchPill } from "@/components/SearchPill";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -310,7 +310,7 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
         <div className="flex items-start gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground/90 mb-1 leading-snug">{ce.title}</p>
-            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1 sm:gap-2 text-[11px] sm:text-[10px] text-muted-foreground/50 mb-1.5">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1 sm:gap-2 text-[11px] sm:text-[12px] text-muted-foreground mb-1.5">
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3 shrink-0" />
                 {formatEventDate(ce)}
@@ -349,7 +349,7 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
               {(() => {
                 const info = getProfileInfo(ce.pubkey);
                 return (
-                  <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground/40">
+                  <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
                     <Avatar className="w-4 h-4 border border-border/30">
                       <AvatarImage src={info.avatar} alt={info.name} />
                       <AvatarFallback className="text-[6px] bg-muted">{info.name.charAt(0).toUpperCase()}</AvatarFallback>
@@ -399,9 +399,9 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
       >
         <div className="shrink-0 px-5 pt-5 pb-3 space-y-3">
           <SheetHeader className="mb-1">
-            <SheetTitle className="text-sm font-brand uppercase tracking-widest flex items-center gap-2">
+            <SheetTitle className="text-sm flex items-center gap-2 font-medium">
               <Calendar className="w-4 h-4 text-sky-400" />
-              Discover Events
+              Discover events
             </SheetTitle>
             <SheetDescription className="text-xs text-muted-foreground/50">
               Browse upcoming Nostr events, search by topic, or look up a creator by name.
@@ -417,7 +417,7 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <div className="text-[10px] uppercase tracking-wider text-sky-400/70">Events by</div>
+                <div className="text-[13px] text-sky-400/70 font-medium">Events by</div>
                 <div className="text-xs font-medium text-foreground/90 truncate">{authorFilter.name}</div>
               </div>
               <Button
@@ -490,13 +490,13 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
                         <div className="min-w-0 flex-1">
                           <div className="text-xs font-medium text-foreground/90 truncate">{name}</div>
                           {nip05 && (
-                            <div className="text-[10px] text-muted-foreground/60 truncate">{nip05}</div>
+                            <div className="text-[12px] text-muted-foreground truncate">{nip05}</div>
                           )}
                         </div>
                       </button>
                     );
                   })}
-                  <div className="px-3 py-1 text-[9px] text-muted-foreground/40 text-center font-brand uppercase tracking-wider border-t border-border/20">
+                  <div className="px-3 py-1 text-[12px] text-muted-foreground text-center border-t border-border/20 font-medium">
                     {suggestLoading ? "Searching…" : "Tap a creator to see their events"}
                   </div>
                 </div>
@@ -539,9 +539,9 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
 
           {!loading && searched && results.length === 0 && (
             <div className="text-center py-8">
-              <Calendar className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
+              <OttoEmpty mood="looking" size={72} className="mx-auto mb-2 text-foreground/70" />
               <p className="text-xs text-muted-foreground/40">No events found</p>
-              <p className="text-[10px] text-muted-foreground/30 mt-1">
+              <p className="text-[12px] text-muted-foreground mt-1">
                 Try different keywords or search all relays
               </p>
             </div>
@@ -549,7 +549,7 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
 
           {!loading && results.length > 0 && (
             <div className="space-y-2 pb-4">
-              <p className="text-[10px] text-muted-foreground/40">
+              <p className="text-[12px] text-muted-foreground">
                 {results.length} event{results.length !== 1 ? "s" : ""} found
               </p>
 
@@ -560,10 +560,10 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
                     onClick={() => setShowPast(!showPast)}
                   >
                     <ChevronRight className={`w-3.5 h-3.5 sm:w-3 sm:h-3 text-muted-foreground/40 transition-transform ${showPast ? "rotate-90" : ""}`} />
-                    <span className="text-xs sm:text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider">
+                    <span className="text-xs sm:text-[13px] font-medium text-muted-foreground">
                       Past
                     </span>
-                    <span className="text-xs sm:text-[10px] text-muted-foreground/30">
+                    <span className="text-xs sm:text-[12px] text-muted-foreground">
                       ({pastEvents.length})
                     </span>
                   </button>
@@ -579,7 +579,7 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
               {upcomingEvents.length > 0 && (
                 <div className="space-y-2">
                   {pastEvents.length > 0 && (
-                    <p className="text-xs sm:text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider px-2 pt-1">
+                    <p className="text-xs sm:text-[13px] font-medium text-muted-foreground px-2 pt-1">
                       Upcoming ({upcomingEvents.length})
                     </p>
                   )}

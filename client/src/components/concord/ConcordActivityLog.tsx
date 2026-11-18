@@ -24,14 +24,14 @@ import type { MembershipEvent } from "./useConcordGovernance";
 function ActivityRow({ pubkey, kind, t }: { pubkey: string; kind: "join" | "leave" | "ban"; t?: number }) {
   const { name } = useConcordProfile(pubkey);
   const Icon = kind === "join" ? LogIn : kind === "leave" ? LogOut : Ban;
-  const color = kind === "join" ? "text-success dark:text-emerald-500/70" : kind === "ban" ? "text-destructive/70" : "text-muted-foreground/50";
+  const color = kind === "join" ? "text-success dark:text-emerald-500/70" : kind === "ban" ? "text-destructive/70" : "text-muted-foreground";
   const verb = kind === "join" ? "joined" : kind === "leave" ? "left" : "banned";
   return (
-    <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70 px-0.5">
+    <div className="flex items-center gap-2 text-xs text-muted-foreground px-0.5">
       <Icon className={`w-3 h-3 shrink-0 ${color}`} />
       <span className="font-medium text-foreground/70 truncate">{name}</span>
       <span className="shrink-0">{verb}</span>
-      {t ? <span className="ml-auto shrink-0 text-muted-foreground/40">{formatDistanceToNow(new Date(t), { addSuffix: true })}</span> : null}
+      {t ? <span className="ml-auto shrink-0 text-muted-foreground">{formatDistanceToNow(new Date(t), { addSuffix: true })}</span> : null}
     </div>
   );
 }
@@ -40,15 +40,15 @@ const AUDIT_META: Record<AuditAction, { icon: typeof Ban; color: string; verb: s
   ban: { icon: Ban, color: "text-destructive/70", verb: "banned", hasTarget: true },
   kick: { icon: UserMinus, color: "text-amber-500/70", verb: "removed", hasTarget: true },
   unban: { icon: ShieldCheck, color: "text-success dark:text-emerald-500/70", verb: "unbanned", hasTarget: true },
-  delete_message: { icon: Trash2, color: "text-muted-foreground/60", verb: "removed a message by", hasTarget: true },
+  delete_message: { icon: Trash2, color: "text-muted-foreground", verb: "removed a message by", hasTarget: true },
   make_admin: { icon: Shield, color: "text-primary/70", verb: "made admin", hasTarget: true },
-  remove_admin: { icon: ShieldOff, color: "text-muted-foreground/60", verb: "removed admin from", hasTarget: true },
+  remove_admin: { icon: ShieldOff, color: "text-muted-foreground", verb: "removed admin from", hasTarget: true },
   grant_role: { icon: Shield, color: "text-primary/70", verb: "gave a role to", hasTarget: true },
-  revoke_role: { icon: ShieldOff, color: "text-muted-foreground/60", verb: "took a role from", hasTarget: true },
-  edit_role: { icon: Settings2, color: "text-muted-foreground/60", verb: "edited the role", hasTarget: false },
-  rename_channel: { icon: Hash, color: "text-muted-foreground/60", verb: "renamed a channel to", hasTarget: false },
+  revoke_role: { icon: ShieldOff, color: "text-muted-foreground", verb: "took a role from", hasTarget: true },
+  edit_role: { icon: Settings2, color: "text-muted-foreground", verb: "edited the role", hasTarget: false },
+  rename_channel: { icon: Hash, color: "text-muted-foreground", verb: "renamed a channel to", hasTarget: false },
   delete_channel: { icon: Trash2, color: "text-destructive/70", verb: "deleted channel", hasTarget: false },
-  edit_metadata: { icon: Settings2, color: "text-muted-foreground/60", verb: "edited the group chat", hasTarget: false },
+  edit_metadata: { icon: Settings2, color: "text-muted-foreground", verb: "edited the group chat", hasTarget: false },
   dissolve: { icon: Trash2, color: "text-destructive/70", verb: "dissolved the group chat", hasTarget: false },
 };
 
@@ -59,8 +59,8 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
   const meta = AUDIT_META[entry.action];
   const Icon = meta?.icon ?? History;
   return (
-    <div className="flex items-start gap-2 text-[11px] text-muted-foreground/70 px-0.5">
-      <Icon className={`w-3 h-3 shrink-0 mt-0.5 ${meta?.color ?? "text-muted-foreground/50"}`} />
+    <div className="flex items-start gap-2 text-xs text-muted-foreground px-0.5">
+      <Icon className={`w-3 h-3 shrink-0 mt-0.5 ${meta?.color ?? "text-muted-foreground"}`} />
       <div className="min-w-0 flex-1">
         <p className="leading-snug">
           <span className="font-medium text-foreground/70">{actorName}</span>{" "}
@@ -68,9 +68,9 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
           {meta?.hasTarget && entry.target ? <> <span className="font-medium text-foreground/70">{targetName}</span></> : null}
           {!meta?.hasTarget && entry.detail ? <> <span className="font-medium text-foreground/70">{entry.detail}</span></> : null}
         </p>
-        {entry.reason && <p className="text-muted-foreground/45 italic truncate">“{entry.reason}”</p>}
+        {entry.reason && <p className="text-muted-foreground italic truncate">“{entry.reason}”</p>}
       </div>
-      <span className="shrink-0 text-muted-foreground/40">{formatDistanceToNow(new Date(entry.t * 1000), { addSuffix: true })}</span>
+      <span className="shrink-0 text-muted-foreground">{formatDistanceToNow(new Date(entry.t * 1000), { addSuffix: true })}</span>
     </div>
   );
 }
@@ -97,7 +97,7 @@ export function ConcordActivityLog({ auditLog, events, banned, collapsible = fal
   // the viewer navigated to it deliberately.
   if (empty) {
     return collapsible ? null : (
-      <p className="text-xs text-muted-foreground/60">Nothing has happened here yet.</p>
+      <p className="text-xs text-muted-foreground">Nothing has happened here yet.</p>
     );
   }
 
@@ -105,29 +105,29 @@ export function ConcordActivityLog({ auditLog, events, banned, collapsible = fal
     <div className={collapsible ? "pt-2 border-t border-border/20" : ""}>
       {collapsible && (
         <button onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 w-full py-1.5 md:py-0 text-left" data-testid="concord-activity-toggle">
-          <History className="w-3.5 h-3.5 text-muted-foreground/50" />
-          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50">Activity</span>
-          {banned.length > 0 && <span className="text-[10px] text-destructive/70">{banned.length} banned</span>}
-          <ChevronDown className={`w-3.5 h-3.5 ml-auto text-muted-foreground/40 transition-transform ${open ? "rotate-180" : ""}`} />
+          <History className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-[12px] font-medium text-muted-foreground">Activity</span>
+          {banned.length > 0 && <span className="text-xs text-destructive/70">{banned.length} banned</span>}
+          <ChevronDown className={`w-3.5 h-3.5 ml-auto text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
         </button>
       )}
       {open && (
         <div className={collapsible ? "mt-2 space-y-2" : "space-y-2"}>
           {banned.length > 0 && (
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-destructive/60">Banned</p>
+              <p className="text-[13px] font-medium text-destructive/60">Banned</p>
               {banned.map((pk) => <ActivityRow key={pk} pubkey={pk} kind="ban" />)}
             </div>
           )}
           {auditLog.length > 0 && (
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">Moderation</p>
+              <p className="text-[13px] font-medium text-muted-foreground">Moderation</p>
               {auditLog.slice(0, 50).map((a) => <AuditRow key={a.id} entry={a} />)}
             </div>
           )}
           {events.length > 0 && (
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">Joins &amp; leaves</p>
+              <p className="text-[13px] font-medium text-muted-foreground">Joins &amp; leaves</p>
               {events.slice(0, 50).map((e, i) => <ActivityRow key={i} pubkey={e.pubkey} kind={e.action} t={e.t} />)}
             </div>
           )}

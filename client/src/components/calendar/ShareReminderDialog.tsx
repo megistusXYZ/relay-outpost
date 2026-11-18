@@ -110,7 +110,7 @@ export function ShareReminderDialog({ open, onOpenChange, holiday, selectedDay }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-sm font-brand uppercase tracking-wider">
+          <DialogTitle className="flex items-center gap-2 text-sm font-medium">
             <Send className="w-4 h-4 text-amber-800 dark:text-amber-400" />
             Share Reminder
           </DialogTitle>
@@ -137,7 +137,7 @@ export function ShareReminderDialog({ open, onOpenChange, holiday, selectedDay }
               className="h-8 text-sm"
               autoFocus
             />
-            <p className="text-[10px] text-muted-foreground/40">
+            <p className="text-[12px] text-muted-foreground">
               Enter an npub, hex pubkey, or NIP-05 identifier
             </p>
           </div>

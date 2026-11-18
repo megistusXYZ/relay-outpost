@@ -1,6 +1,6 @@
 import { startingTrendingSelector, TRENDING_CHART_CHOICES } from "@/pages/home/feed-menu";
 import { useTrustChoice, TRUST_CHOICES } from "@/lib/trust-choice";
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RelayPanel } from "@/components/RelayPanel";
@@ -71,26 +71,26 @@ import { readBlurOutside, writeBlurOutside } from "@/lib/outside-space-blur";
 
 /* ---------------------------------------------------------------------------
  * Row primitives — every setting is ONE slim, uniform row:
- * [ small violet icon | label (+ optional one-line sub) | control / chevron ]
- * Rows live inside RowSection containers separated by tiny uppercase headers.
+ * [ small ink icon | label (+ optional one-line sub) | control / chevron ]
+ * Rows live inside RowSection containers under plain sentence-case headers.
  * ------------------------------------------------------------------------- */
 
 type IconComponent = React.ComponentType<{ className?: string }>;
 
 function RowIcon({ icon: Icon }: { icon: IconComponent }) {
-  return <Icon className="w-4 h-4 shrink-0 text-brand/70" aria-hidden />;
+  return <Icon className="w-[18px] h-[18px] shrink-0 text-foreground/70" aria-hidden />;
 }
 
 function RowText({ label, sub, labelTestId }: { label: React.ReactNode; sub?: React.ReactNode; labelTestId?: string }) {
   return (
     <div className="flex-1 min-w-0 py-1.5">
-      <p className="text-[13px] font-medium text-foreground/90 leading-tight truncate" data-testid={labelTestId}>{label}</p>
-      {sub != null && <p className="text-[11px] text-muted-foreground leading-tight truncate mt-0.5">{sub}</p>}
+      <p className="text-[15px] font-medium text-foreground leading-tight truncate" data-testid={labelTestId}>{label}</p>
+      {sub != null && <p className="text-[13px] text-muted-foreground leading-snug truncate mt-0.5">{sub}</p>}
     </div>
   );
 }
 
-const ROW_CLS = "flex items-center gap-3 px-3 min-h-[48px] sm:min-h-[44px]";
+const ROW_CLS = "flex items-center gap-3.5 px-4 min-h-[54px] sm:min-h-[50px]";
 
 /** Static row: label on the left, an inline control (Switch/segment/Select) on the right. */
 function Row({ icon, label, sub, children, testId, labelTestId }: {
@@ -176,14 +176,14 @@ function Seg<T extends string>({ value, onChange, options, testIdBase, ariaLabel
   testIdBase: string; ariaLabel: string;
 }) {
   return (
-    <div className="flex rounded-md border border-border dark:border-brand/15 shrink-0" role="group" aria-label={ariaLabel}>
+    <div className="flex rounded-full border border-foreground/20 p-0.5 shrink-0" role="group" aria-label={ariaLabel}>
       {options.map((o, i) => (
         <button
           key={o.value}
           type="button"
           onClick={() => onChange(o.value)}
           aria-pressed={value === o.value}
-          className={`hit-area px-2.5 h-8 text-[11px] font-medium transition-colors cursor-pointer first:rounded-l-[5px] last:rounded-r-[5px] ${i > 0 ? "border-l border-border dark:border-brand/15" : ""} ${ value === o.value ? "bg-accent text-brand" : "text-muted-foreground/60 hover:text-foreground/80 hover:bg-foreground/[0.03]" }`}
+          className={`hit-area px-3 h-7 rounded-full text-[13px] font-medium transition-colors cursor-pointer ${ value === o.value ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground" }`}
           data-testid={`button-${testIdBase}-${o.value}`}
         >
           {o.label}
@@ -193,22 +193,22 @@ function Seg<T extends string>({ value, onChange, options, testIdBase, ariaLabel
   );
 }
 
-const SELECT_TRIGGER_CLS = "hit-area h-8 w-auto min-w-0 gap-1.5 px-2.5 text-xs border-border dark:border-brand/15 bg-transparent shrink-0";
+const SELECT_TRIGGER_CLS = "hit-area h-8 w-auto min-w-0 gap-1.5 px-3 rounded-full text-[13px] border-foreground/20 bg-transparent shrink-0";
 
-/** Bordered container of uniform rows with a tiny uppercase section header. */
+/** Bordered container of uniform rows with a plain section header. */
 function RowSection({ id, label, children, testId }: {
   id?: string; label?: string; children: React.ReactNode; testId?: string;
 }) {
   return (
     <section id={id} className="scroll-mt-24" data-testid={testId}>
       {label && (
-        <h3 className="px-1 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-brand/80 dark:text-brand/60">
+        <h3 className="px-1 mb-2 text-[14px] font-medium text-muted-foreground">
           {label}
         </h3>
       )}
-      <div className="relative rounded-md border border-border dark:border-brand/15 glass-settings-section shadow-sm dark:shadow-none overflow-hidden">
-        <div className="absolute inset-0 rounded-md opacity-25 pointer-events-none glass-settings-glow" />
-        <div className="relative divide-y divide-border/60 dark:divide-violet-500/10">
+      <div className="relative rounded-[20px] border border-border/60 glass-settings-section shadow-sm dark:shadow-none overflow-hidden">
+        <div className="absolute inset-0 rounded-[20px] opacity-25 pointer-events-none glass-settings-glow" />
+        <div className="relative divide-y divide-border/60 dark:divide-white/10">
           {children}
         </div>
       </div>
@@ -248,7 +248,7 @@ function MuteListEditor({
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium text-foreground/70 dark:text-foreground/60">{label}</p>
-        <span className="text-[10px] text-muted-foreground/50 tabular-nums">
+        <span className="text-[12px] text-muted-foreground tabular-nums">
           {values.length}/{NEWS_MUTE_CAP}
         </span>
       </div>
@@ -264,14 +264,14 @@ function MuteListEditor({
           }}
           placeholder={atCap ? "List is full" : placeholder}
           disabled={atCap}
-          className="h-9 text-sm bg-white/[0.03] border-border dark:border-brand/15"
+          className="h-9 text-sm bg-white/[0.03] border-border"
           data-testid={`input-${testIdBase}`}
         />
         <Button
           type="button"
           variant="outline"
           size="icon"
-          className="h-9 w-9 shrink-0 border-border dark:border-brand/15"
+          className="h-9 w-9 shrink-0 border-border"
           onClick={add}
           disabled={!draft.trim() || atCap}
           aria-label={`Add to ${label}`}
@@ -285,7 +285,7 @@ function MuteListEditor({
           {values.map((v) => (
             <span
               key={v}
-              className="inline-flex items-center gap-1 max-w-full rounded-full border border-border dark:border-brand/15 bg-white/[0.03] pl-2.5 pr-1 py-0.5 text-[11px] text-foreground/80"
+              className="inline-flex items-center gap-1 max-w-full rounded-full border border-border bg-white/[0.03] pl-2.5 pr-1 py-0.5 text-[12px] text-foreground/80"
             >
               <span className="truncate max-w-[220px]">{v}</span>
               <button
@@ -347,7 +347,7 @@ function NewsAlertsSection() {
             onChange={prefs.setMutedKeywords}
             testIdBase="news-muted-keyword"
           />
-          <p className="text-[10px] text-muted-foreground/50">
+          <p className="text-[12px] text-muted-foreground">
             Muted items never alert and are hidden from the combined News thread — they stay visible
             inside the source's own feed view.
           </p>
@@ -412,7 +412,7 @@ function SettingsNav({ items, active, onSelect }: { items: SettingsCategory[]; a
             data-section={i.id}
             onClick={() => onSelect(i.id)}
             data-testid={`settings-nav-mobile-${i.id}`}
-            className={`-mb-px min-h-11 shrink-0 whitespace-nowrap border-b-2 px-3 text-sm transition-colors ${active === i.id ? "border-brand font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            className={`-mb-px min-h-11 shrink-0 whitespace-nowrap border-b-2 px-3 text-sm transition-colors ${active === i.id ? "border-foreground font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
             {i.label}
           </button>
@@ -697,7 +697,7 @@ function DMRelaysExpandRow() {
     >
       {loadingDm ? (
         <div className="flex items-center gap-2 py-2">
-          <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-brand" />
+          <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-foreground/60" />
           <span className="text-xs text-muted-foreground/60">Loading DM relay list...</span>
         </div>
       ) : (
@@ -707,7 +707,7 @@ function DMRelaysExpandRow() {
               value={newDmRelay}
               onChange={(e) => setNewDmRelay(e.target.value)}
               placeholder="wss://relay.example.com"
-              className="font-mono text-xs bg-white/[0.03] border-border dark:border-brand/15 focus-visible:border-brand/40 dark:focus-visible:border-brand/30"
+              className="font-mono text-xs bg-white/[0.03] border-border focus-visible:border-foreground/30"
               data-testid="input-dm-relay"
               onKeyDown={(e) => {
                 if (e.key === "Enter") addRelay();
@@ -718,7 +718,7 @@ function DMRelaysExpandRow() {
               variant="outline"
               onClick={addRelay}
               disabled={!newDmRelay.trim()}
-              className="border-border dark:border-brand/15 bg-muted"
+              className="border-border bg-muted"
               data-testid="button-add-dm-relay"
             >
               <Plus className="w-4 h-4" />
@@ -737,11 +737,11 @@ function DMRelaysExpandRow() {
                   setLocalDMRelays(DEFAULT_DM_RELAYS);
                   toast({ title: "Recommended DM relays added" });
                 }}
-                className="w-full text-xs font-brand uppercase tracking-widest border-border dark:border-brand/15 bg-muted"
+                className="w-full h-10 rounded-full text-[14px] font-medium border-foreground/25 bg-transparent"
                 data-testid="button-use-recommended-dm-relays"
               >
                 <Satellite className="w-3.5 h-3.5 mr-2" />
-                Use Recommended Relays
+                Use recommended relays
               </Button>
             </div>
           ) : (
@@ -750,10 +750,10 @@ function DMRelaysExpandRow() {
                 <div
                   key={url}
                   className="flex items-center gap-2 rounded-md px-2.5 py-1.5"
-                  style={{ background: "rgba(140, 100, 220, 0.06)", border: "1px solid rgba(140, 100, 220, 0.15)" }}
+                  style={{ background: "hsl(var(--foreground) / 0.04)", border: "1px solid hsl(var(--border) / 0.6)" }}
                   data-testid={`dm-relay-${url}`}
                 >
-                  <Radio className="w-3 h-3 text-brand shrink-0" />
+                  <Radio className="w-3 h-3 text-foreground/60 shrink-0" />
                   <span className="flex-1 text-xs font-mono text-foreground/70 dark:text-muted-foreground/80 truncate">
                     {url}
                   </span>
@@ -772,7 +772,7 @@ function DMRelaysExpandRow() {
           <Button
             onClick={handlePublish}
             disabled={publishing}
-            className="w-full text-xs font-brand uppercase tracking-widest"
+            className="w-full h-10 rounded-full text-[14px] font-medium"
             data-testid="button-publish-dm-relays"
           >
             {publishing ? (
@@ -821,11 +821,11 @@ function ReadAloudSection() {
 // client/index.html. Values removed from this list may still arrive from an
 // old localStorage entry or NIP-78 sync from another device: the read paths
 // (currentFont/applyTypography here, FONT_MAP clamp in main.tsx) fall back to
-// Inter at render time WITHOUT writing the clamp back to storage, so the
+// Geist at render time WITHOUT writing the clamp back to storage, so the
 // user's saved choice survives for devices that still offer it.
 const FONT_OPTIONS = [
-  { value: "inter", label: "Inter", family: "'Inter', system-ui, sans-serif", desc: "Modern UI standard — used by X/Twitter", category: "sans" },
-  { value: "geist", label: "Geist", family: "'Geist', system-ui, sans-serif", desc: "Vercel's modern sans-serif", category: "sans" },
+  { value: "geist", label: "Geist", family: "'Geist', system-ui, sans-serif", desc: "The Outpost typeface", category: "sans" },
+  { value: "inter", label: "Inter", family: "'Inter', system-ui, sans-serif", desc: "Modern UI standard", category: "sans" },
   { value: "poppins", label: "Poppins", family: "'Poppins', system-ui, sans-serif", desc: "Geometric with personality", category: "sans" },
   { value: "space-grotesk", label: "Space Grotesk", family: "'Space Grotesk', system-ui, sans-serif", desc: "Techy proportional sans", category: "sans" },
   { value: "clean", label: "Nunito", family: "'Nunito', system-ui, sans-serif", desc: "Soft and easy on the eyes", category: "sans" },
@@ -837,12 +837,12 @@ const FONT_OPTIONS = [
 ] as const;
 
 // Fallback for removed/unknown stored font values (see comment above).
-const FALLBACK_FONT = FONT_OPTIONS[0]; // inter
+const FALLBACK_FONT = FONT_OPTIONS[0]; // geist
 
 const FONT_CATEGORIES = [
-  { key: "sans", label: "Modern Sans-Serif" },
+  { key: "sans", label: "Sans serif" },
   { key: "mono", label: "Monospace" },
-  { key: "serif", label: "Classic Serif" },
+  { key: "serif", label: "Serif" },
 ] as const;
 
 const SIZE_OPTIONS = [
@@ -874,7 +874,7 @@ function FontPanel({ font, onFontChange, currentFont }: {
             role="tab"
             aria-selected={activeCategory === cat.key}
             onClick={() => setActiveCategory(cat.key)}
-            className={`flex-1 py-2 text-[10px] sm:text-[11px] font-medium uppercase tracking-wider transition-colors ${FOCUS_RING} ${ activeCategory === cat.key ? "text-brand bg-accent border-b-2 border-brand" : "text-muted-foreground/60 hover:text-muted-foreground/85 hover:bg-accent" }`}
+            className={`flex-1 py-2 text-[13px] font-medium transition-colors ${FOCUS_RING} ${ activeCategory === cat.key ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground/60 hover:text-muted-foreground/85 hover:bg-accent" }`}
           >
             {cat.label}
           </button>
@@ -889,17 +889,17 @@ function FontPanel({ font, onFontChange, currentFont }: {
             onClick={() => onFontChange(opt.value)}
             className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${
               font === opt.value
-                ? "bg-accent dark:bg-brand/15"
-                : "hover:bg-accent dark:hover:bg-brand/[0.06]"
+                ? "bg-foreground/[0.07]"
+                : "hover:bg-foreground/[0.05]"
             }`}
             data-testid={`button-font-${opt.value}`}
           >
             <span className="w-10 text-center text-xl text-foreground/80 shrink-0" style={{ fontFamily: opt.family, fontWeight: 400 }}>Aa</span>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-foreground/80 truncate" style={{ fontFamily: opt.family }}>{opt.label}</p>
-              <p className="text-[10px] text-muted-foreground/65 truncate">{opt.desc}</p>
+              <p className="text-[12px] text-muted-foreground truncate">{opt.desc}</p>
             </div>
-            {font === opt.value && <Check className="w-3.5 h-3.5 text-brand shrink-0" />}
+            {font === opt.value && <Check className="w-3.5 h-3.5 text-foreground shrink-0" />}
           </button>
         ))}
       </div>
@@ -1056,12 +1056,12 @@ function DiscoverSection() {
         >
           {auto ? (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="px-2.5 py-1 rounded-full text-xs font-medium border border-brand/40 bg-brand/10 text-brand" data-testid="chip-lang-auto">
+              <span className="px-2.5 py-1 rounded-full text-xs font-medium border border-foreground bg-foreground text-background" data-testid="chip-lang-auto">
                 Auto — matches your device ({deviceLangLabels})
               </span>
               <button
                 onClick={startCustomize}
-                className="px-2.5 py-1 rounded-full text-xs font-medium border border-border dark:border-brand/10 bg-muted text-muted-foreground/70 hover:border-brand/25 transition-colors"
+                className="px-2.5 py-1 rounded-full text-xs font-medium border border-border/60 bg-transparent text-muted-foreground hover:text-foreground transition-colors"
                 data-testid="button-lang-customize"
               >
                 Customize
@@ -1076,7 +1076,7 @@ function DiscoverSection() {
                     <button
                       key={l.code}
                       onClick={() => toggleLang(l.code)}
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${on ? "border-brand/40 bg-brand/10 text-brand" : "border-border dark:border-brand/10 bg-muted text-muted-foreground/70 hover:border-brand/25"}`}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${on ? "border-foreground bg-foreground text-background" : "border-border/60 bg-transparent text-muted-foreground hover:text-foreground"}`}
                       data-testid={`chip-lang-${l.code}`}
                     >
                       {l.label}
@@ -1086,14 +1086,14 @@ function DiscoverSection() {
               </div>
               <button
                 onClick={backToAuto}
-                className="mt-2 text-[11px] text-brand/80 hover:underline"
+                className="mt-2 text-[13px] font-medium text-brand hover:underline"
                 data-testid="button-lang-auto"
               >
                 Back to Auto (match my device)
               </button>
             </>
           )}
-          <p className="text-[10px] text-muted-foreground/60 mt-1.5">Posts in other languages are hidden from Discover. Short/undetectable posts always show.</p>
+          <p className="text-[12px] text-muted-foreground mt-1.5">Posts in other languages are hidden from Discover. Short/undetectable posts always show.</p>
         </ExpandRow>
       )}
     </RowSection>
@@ -1147,7 +1147,7 @@ function SchedulerExpandRow() {
           </Button>
         </div>
         {saved && (
-          <p className="text-[10px] text-success dark:text-emerald-400/70">Active: {saved}</p>
+          <p className="text-[12px] text-success dark:text-emerald-400/70">Active: {saved}</p>
         )}
       </div>
     </ExpandRow>
@@ -1194,7 +1194,7 @@ function InstallAppRow() {
         <DialogContent className="max-w-sm" data-testid="dialog-install-help">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
-              <Smartphone className="w-4 h-4 text-brand dark:text-brand/80" />
+              <Smartphone className="w-4 h-4 text-foreground/70" />
               {steps?.title ?? "Install Relay Outpost"}
             </DialogTitle>
             <DialogDescription className="text-xs">
@@ -1305,7 +1305,7 @@ function AppSection() {
         <DialogContent className="max-w-sm" data-testid="dialog-repair-app">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
-              <LifeBuoy className="w-4 h-4 text-brand dark:text-brand/80" />
+              <LifeBuoy className="w-4 h-4 text-foreground/70" />
               Repair app
             </DialogTitle>
             <DialogDescription className="text-xs">
@@ -1359,7 +1359,7 @@ function AppearanceSection() {
   const classicSidebar = useClassicSidebar();
 
   const [font, setFont] = useState(() => {
-    try { return localStorage.getItem("relay-outpost-font") || "inter"; } catch { return "inter"; }
+    try { return localStorage.getItem("relay-outpost-font") || "geist"; } catch { return "geist"; }
   });
   const [size, setSize] = useState(() => {
     try { return localStorage.getItem("relay-outpost-font-size") || "default"; } catch { return "default"; }
@@ -1570,13 +1570,13 @@ function EngagementWeightsEditor() {
     <div className="space-y-2.5" data-testid="section-engagement-weights">
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium text-foreground/70 dark:text-foreground/60 flex items-center gap-1.5">
-          <BarChart3 className="w-3 h-3 text-brand" />
+          <BarChart3 className="w-3 h-3 text-foreground/60" />
           Ranking weights
         </p>
         {!isDefault && (
           <button
             onClick={resetToDefaults}
-            className="text-[10px] text-muted-foreground/65 hover:text-muted-foreground/90 flex items-center gap-1 transition-colors"
+            className="text-[12px] text-muted-foreground hover:text-muted-foreground/90 flex items-center gap-1 transition-colors"
             data-testid="button-reset-engagement-weights"
           >
             <RotateCcw className="w-3 h-3" />
@@ -1584,7 +1584,7 @@ function EngagementWeightsEditor() {
           </button>
         )}
       </div>
-      <p className="text-[11px] text-foreground/65 dark:text-muted-foreground/70">
+      <p className="text-[13px] text-muted-foreground">
         Control which interactions matter most when ranking posts in your feed.
       </p>
 
@@ -1592,25 +1592,25 @@ function EngagementWeightsEditor() {
         {WEIGHT_FIELDS.map(({ key, label, icon }) => (
           <div
             key={key}
-            className="flex items-center justify-between rounded-lg px-2.5 py-2 border border-border dark:border-brand/8 bg-muted"
+            className="flex items-center justify-between rounded-lg px-2.5 py-2 border border-border bg-muted"
             data-testid={`weight-row-${key}`}
           >
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-sm leading-none shrink-0">{icon}</span>
-              <span className="text-[11px] sm:text-xs text-foreground/70 dark:text-foreground/60 font-medium truncate">{label}</span>
+              <span className="text-[13px] text-foreground/80 font-medium truncate">{label}</span>
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <button
                 onClick={() => updateWeight(key, -1)}
                 disabled={weights[key] <= 0}
-                className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded-md border border-border dark:border-brand/12 text-foreground/50 hover:text-foreground/80 hover:bg-accent disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer text-sm font-medium"
+                className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded-md border border-border text-foreground/50 hover:text-foreground/80 hover:bg-accent disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer text-sm font-medium"
                 aria-label={`Decrease ${label} weight`}
                 data-testid={`button-weight-minus-${key}`}
               >
                 −
               </button>
               <span
-                className={`w-8 text-center font-mono text-xs sm:text-sm font-bold ${ weights[key] === 0 ? "text-muted-foreground/30" : weights[key] >= 5 ? "text-brand" : "text-foreground/70" }`}
+                className={`w-8 text-center font-mono text-xs sm:text-sm font-bold ${ weights[key] === 0 ? "text-muted-foreground/30" : weights[key] >= 5 ? "text-foreground" : "text-foreground/70" }`}
                 data-testid={`text-weight-value-${key}`}
               >
                 x{weights[key]}
@@ -1618,7 +1618,7 @@ function EngagementWeightsEditor() {
               <button
                 onClick={() => updateWeight(key, 1)}
                 disabled={weights[key] >= 10}
-                className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded-md border border-border dark:border-brand/12 text-foreground/50 hover:text-foreground/80 hover:bg-accent disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer text-sm font-medium"
+                className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded-md border border-border text-foreground/50 hover:text-foreground/80 hover:bg-accent disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer text-sm font-medium"
                 aria-label={`Increase ${label} weight`}
                 data-testid={`button-weight-plus-${key}`}
               >
@@ -1629,13 +1629,13 @@ function EngagementWeightsEditor() {
         ))}
       </div>
 
-      <div className="rounded-md p-3 space-y-2"
-        style={{ background: "rgba(140, 100, 220, 0.06)", border: "1px solid rgba(140, 100, 220, 0.15)" }}
+      <div className="rounded-[14px] p-3 space-y-2"
+        style={{ background: "hsl(var(--foreground) / 0.04)", border: "1px solid hsl(var(--border) / 0.6)" }}
       >
-        <p className="text-[10px] text-brand/70 dark:text-brand/50 font-mono uppercase tracking-wider font-semibold">
-          How It Works
+        <p className="text-[13px] font-medium text-foreground/80">
+          How it works
         </p>
-        <ul className="text-[11px] text-foreground/50 dark:text-muted-foreground/60 space-y-1 list-disc list-inside">
+        <ul className="text-[13px] text-muted-foreground space-y-1 list-disc list-inside">
           <li>Each weight multiplies that interaction's contribution to a post's score</li>
           <li>Higher-scored posts appear closer to the top of your feed</li>
           <li>Set a weight to x0 to ignore that input entirely</li>
@@ -1833,7 +1833,7 @@ function OutpostsEmptyStateRow() {
   return (
     <ActionRow
       icon={Compass}
-      label="No Communities joined yet"
+      label="No communities joined yet"
       sub="Community relays around a topic — browse and join"
       onClick={() => setLocation("/outposts")}
       testId="card-outposts-empty-state"
@@ -1918,12 +1918,12 @@ function MediaServersExpandRow() {
     >
       {loading ? (
         <div className="flex items-center gap-2 py-2">
-          <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-brand" />
+          <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-foreground/60" />
           <span className="text-xs text-muted-foreground/60">Fetching server list...</span>
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-[11px] text-muted-foreground/60">
+          <p className="text-[12px] text-muted-foreground">
             Uploads try your servers first, then fall back to the default host.
           </p>
           <div className="flex gap-2">
@@ -1931,7 +1931,7 @@ function MediaServersExpandRow() {
               value={newServer}
               onChange={(e) => setNewServer(e.target.value)}
               placeholder="https://blossom.example.com"
-              className="text-xs bg-white/[0.03] border-border dark:border-brand/15 focus-visible:border-brand/40 dark:focus-visible:border-brand/30"
+              className="text-xs bg-white/[0.03] border-border focus-visible:border-foreground/30"
               data-testid="input-blossom-server"
               onKeyDown={(e) => {
                 if (e.key === "Enter") addServer();
@@ -1942,7 +1942,7 @@ function MediaServersExpandRow() {
               variant="outline"
               onClick={addServer}
               disabled={!newServer.trim()}
-              className="border-border dark:border-brand/15 bg-muted"
+              className="border-border bg-muted"
               data-testid="button-add-blossom-server"
             >
               <Plus className="w-4 h-4" />
@@ -1961,11 +1961,11 @@ function MediaServersExpandRow() {
                   setBlossomServers(DEFAULT_BLOSSOM_SERVERS);
                   toast({ title: "Recommended media servers added" });
                 }}
-                className="w-full text-xs font-brand uppercase tracking-widest border-border dark:border-brand/15 bg-muted"
+                className="w-full h-10 rounded-full text-[14px] font-medium border-foreground/25 bg-transparent"
                 data-testid="button-use-recommended-blossom-servers"
               >
                 <Satellite className="w-3.5 h-3.5 mr-2" />
-                Use Recommended Servers
+                Use recommended servers
               </Button>
             </div>
           ) : (
@@ -1974,10 +1974,10 @@ function MediaServersExpandRow() {
                 <div
                   key={server}
                   className="flex items-center gap-2.5 rounded-md px-2.5 py-2"
-                  style={{ border: "1px solid rgba(140, 100, 220, 0.12)" }}
+                  style={{ border: "1px solid hsl(var(--border) / 0.6)" }}
                   data-testid={`blossom-server-${server.replace(/[^a-z0-9]/gi, "-")}`}
                 >
-                  <HardDrive className="w-3.5 h-3.5 text-brand shrink-0" />
+                  <HardDrive className="w-3.5 h-3.5 text-foreground/60 shrink-0" />
                   <span className="flex-1 min-w-0 text-xs font-mono text-foreground/80 truncate">
                     {server}
                   </span>
@@ -1999,7 +1999,7 @@ function MediaServersExpandRow() {
               onClick={handlePublish}
               disabled={publishing}
               variant="outline"
-              className="w-full text-xs font-brand uppercase tracking-widest border-border dark:border-brand/15 bg-muted"
+              className="w-full h-10 rounded-full text-[14px] font-medium border-foreground/25 bg-transparent"
               data-testid="button-publish-blossom-servers"
             >
               {publishing ? (
@@ -2007,7 +2007,7 @@ function MediaServersExpandRow() {
               ) : (
                 <ExternalLink className="w-3.5 h-3.5 mr-2" />
               )}
-              Publish Server List
+              Publish server list
             </Button>
           )}
 
@@ -2015,7 +2015,7 @@ function MediaServersExpandRow() {
           <button
             type="button"
             onClick={() => setLocation("/media-servers")}
-            className={`text-[11px] text-brand/80 hover:text-brand transition-colors ${FOCUS_RING}`}
+            className={`text-[13px] font-medium text-brand hover:text-brand-strong transition-colors ${FOCUS_RING}`}
             data-testid="link-sync-media-to-server"
           >
             Sync media to a server →
@@ -2104,11 +2104,11 @@ function MatrixBrandBlock() {
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
     >
-      <RelayOutpostIcon className={`w-5 h-5 shrink-0 transition-all duration-500 ${isMatrix ? "text-brand drop-shadow-[0_0_6px_rgba(139,92,246,0.6)]" : "text-brand/70 dark:text-brand/60"}`} />
-      <p className={`text-[11px] font-semibold tracking-wide transition-all duration-300 whitespace-nowrap ${isMatrix ? "font-mono text-brand drop-shadow-[0_0_4px_rgba(139,92,246,0.4)]" : "text-foreground/70"}`}>
+      <RelayOutpostIcon className={`w-5 h-5 shrink-0 transition-all duration-500 ${isMatrix ? "text-brand" : "text-foreground/70"}`} />
+      <p className={`text-[13px] font-medium transition-all duration-300 whitespace-nowrap ${isMatrix ? "font-mono text-brand" : "text-foreground/70"}`}>
         {displayText}
         {versionText && (
-          <span className="text-[11px] text-muted-foreground font-mono font-normal ml-1" data-testid="text-about-version">{versionText}</span>
+          <span className="text-[12px] text-muted-foreground font-normal tabular-nums ml-1" data-testid="text-about-version">{versionText}</span>
         )}
       </p>
     </div>
@@ -2201,18 +2201,18 @@ function TranslationRow() {
         <Switch checked={enabled} onCheckedChange={handleToggle} data-testid="switch-translation" />
       </Row>
       {enabled && !translationCapable() && (
-        <div className="pl-12 pr-3 pb-3 -mt-1 text-[11px] text-muted-foreground/60" data-testid="text-translation-unsupported">
+        <div className="pl-12 pr-3 pb-3 -mt-1 text-[12px] text-muted-foreground" data-testid="text-translation-unsupported">
           Not active in this browser yet — it needs built-in translation (Chrome or Edge) or a network translator. Links appear automatically once available.
         </div>
       )}
       {enabled && autoLangs.length > 0 && (
         <div className="pl-12 pr-3 pb-3 -mt-1 flex items-center gap-1.5 flex-wrap" data-testid="translation-auto-langs">
-          <span className="text-[11px] text-muted-foreground/60">Always translating:</span>
+          <span className="text-[12px] text-muted-foreground">Always translating:</span>
           {autoLangs.map((lang) => (
             <button
               key={lang}
               onClick={() => removeLang(lang)}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border/50 text-[11px] text-foreground/80 hover:border-destructive/40 hover:text-destructive"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border/50 text-[12px] text-foreground/80 hover:border-destructive/40 hover:text-destructive"
               title={`Stop auto-translating ${languageName(lang)}`}
               data-testid={`button-remove-auto-lang-${lang}`}
             >
@@ -2511,17 +2511,17 @@ export default function Settings() {
             href="https://megistus.xyz"
             target="_blank"
             rel="noopener noreferrer"
-            className="group relative flex items-center gap-2.5 px-3 py-2 rounded-2xl transition-all duration-500 ease-out hover:scale-[1.04] hover:-translate-y-0.5 active:scale-[0.97] cursor-pointer bg-transparent hover:shadow-[0_4px_24px_rgba(139,92,246,0.15),0_8px_40px_rgba(139,92,246,0.08)] dark:hover:shadow-[0_4px_24px_rgba(167,139,250,0.2),0_8px_40px_rgba(167,139,250,0.12)]"
+            className="group relative flex items-center gap-2.5 px-3 py-2 rounded-2xl transition-all duration-500 ease-out hover:scale-[1.04] hover:-translate-y-0.5 active:scale-[0.97] cursor-pointer bg-transparent hover:shadow-[0_4px_24px_rgba(0,0,0,0.15),0_8px_40px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_24px_rgba(255,255,255,0.2),0_8px_40px_rgba(255,255,255,0.12)]"
             data-testid="link-megistus"
           >
-            <div className="absolute -inset-3 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-2xl bg-brand/[0.1]/[0.15]" />
-            <div className="absolute -inset-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000 blur-3xl bg-brand/[0.06]/[0.08]" />
+            <div className="absolute -inset-3 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-2xl bg-foreground/[0.06]" />
+            <div className="absolute -inset-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000 blur-3xl bg-foreground/[0.04]" />
             <div className="relative">
-              <img src="/images/megistus-logo-white.webp" alt="Megistus" className="w-12 h-12 object-contain transition-all duration-500 group-hover:scale-[1.3] group-active:scale-[1.35] group-hover:drop-shadow-[0_0_12px_rgba(167,139,250,0.5)] hidden dark:block" />
-              <img src="/images/megistus-logo-black.webp" alt="Megistus" className="w-12 h-12 object-contain transition-all duration-500 group-hover:scale-[1.3] group-active:scale-[1.35] group-hover:drop-shadow-[0_0_12px_rgba(139,92,246,0.4)] block dark:hidden" />
+              <img src="/images/megistus-logo-white.webp" alt="Megistus" className="w-12 h-12 object-contain transition-all duration-500 group-hover:scale-[1.3] group-active:scale-[1.35] group-hover:drop-shadow-[0_0_12px_rgba(255,255,255,0.5)] hidden dark:block" />
+              <img src="/images/megistus-logo-black.webp" alt="Megistus" className="w-12 h-12 object-contain transition-all duration-500 group-hover:scale-[1.3] group-active:scale-[1.35] group-hover:drop-shadow-[0_0_12px_rgba(0,0,0,0.4)] block dark:hidden" />
             </div>
-            <div className="relative flex items-center gap-1 text-[10px] text-foreground/45 dark:text-foreground/35 transition-colors duration-300 group-hover:text-brand/70">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 pick-hammer-icon transition-all duration-500 group-hover:drop-shadow-[0_0_6px_rgba(139,92,246,0.5)] dark:group-hover:drop-shadow-[0_0_6px_rgba(167,139,250,0.6)]">
+            <div className="relative flex items-center gap-1 text-[12px] text-muted-foreground transition-colors duration-300 group-hover:text-foreground">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 pick-hammer-icon transition-all duration-500 group-hover:drop-shadow-[0_0_6px_rgba(0,0,0,0.5)] dark:group-hover:drop-shadow-[0_0_6px_rgba(255,255,255,0.6)]">
                 <g clipPath="url(#clip0_3261_13891)">
                   <path d="M7.31005 9.15001L6.38005 9.37001C5.71005 9.52001 5.19005 10.05 5.03005 10.71L4.81005 11.64C4.79005 11.74 4.64005 11.74 4.62005 11.64L4.40005 10.71C4.25005 10.04 3.72005 9.52001 3.06005 9.36001L2.13005 9.14001C2.03005 9.12001 2.03005 8.97001 2.13005 8.95001L3.06005 8.73001C3.73005 8.58001 4.25005 8.05001 4.41005 7.39001L4.63005 6.46001C4.65005 6.36001 4.80005 6.36001 4.82005 6.46001L5.04005 7.39001C5.19005 8.06001 5.72005 8.58001 6.38005 8.74001L7.31005 8.96001C7.41005 8.98001 7.41005 9.13001 7.31005 9.15001Z" stroke="currentColor" strokeWidth="1.5" strokeMiterlimit="10" />
                   <path d="M17.38 4.90993L18.73 3.55993C19.41 2.87993 20.51 2.87993 21.19 3.55993C21.87 4.23993 21.87 5.33993 21.19 6.01993L19.84 7.36993" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -2535,7 +2535,7 @@ export default function Settings() {
                 </defs>
               </svg>
               <span>Crafted by{" "}
-                <span className="text-brand dark:text-brand/60 group-hover:text-brand-strong transition-colors duration-300 font-medium">
+                <span className="text-foreground group-hover:text-brand transition-colors duration-300 font-medium">
                   Megistus
                 </span>
               </span>
@@ -2544,7 +2544,7 @@ export default function Settings() {
         </div>
         <div className="border-t border-black/[0.06] dark:border-white/[0.04] mt-3" />
 
-        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground mt-3" data-testid="section-legal-links">
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[12px] text-muted-foreground mt-3" data-testid="section-legal-links">
           <Link href="/whats-new" className="hit-area inline-flex items-center gap-1 hover:text-foreground/70 transition-colors underline decoration-dotted underline-offset-2" data-testid="link-settings-whats-new">
             What's new
             {hasUnseenChangelog() && <span className="w-1.5 h-1.5 rounded-full bg-primary" aria-label="new updates" />}

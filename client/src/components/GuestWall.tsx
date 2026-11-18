@@ -35,7 +35,7 @@ export function GuestWall({
       <div className="mt-4 flex items-center justify-center gap-2">
         <Link
           href="/login"
-          className="inline-flex items-center justify-center h-9 px-4 rounded-full bg-[hsl(262_72%_52%)] hover:bg-[hsl(262_72%_46%)] text-white text-sm font-semibold shadow-sm transition-colors"
+          className="inline-flex items-center justify-center h-9 px-4 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold shadow-sm transition-colors"
           data-testid="guest-wall-cta"
         >
           Get started

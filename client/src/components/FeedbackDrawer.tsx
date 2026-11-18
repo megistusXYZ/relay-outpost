@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { signWithTimeout } from "@/lib/signer-timeout";
@@ -250,7 +249,7 @@ export function FeedbackDrawer() {
       } else {
         // No operator key discoverable — a public note is the only way to reach them.
         if (!publicNoteOptIn) {
-          toast({ title: "Can't deliver", description: "We couldn't find this operator. Toggle 'Post publicly anyway' to send a public note, or pick another relay.", variant: "destructive" });
+          toast({ title: "Can't deliver", description: "We couldn't find this operator. Toggle 'Post publicly anyway' to send a public post, or pick another relay.", variant: "destructive" });
           setSubmitting(false);
           return;
         }
@@ -274,7 +273,7 @@ export function FeedbackDrawer() {
       }
 
       setSuccess({ nevent, relay: targetRelay, openIssuesUrl });
-      toast({ title: "Feedback sent", description: recipient.operatorPubkey ? "Delivered to the operator." : `Public note sent to ${targetRelay.replace(/^wss?:\/\//, "")}` });
+      toast({ title: "Feedback sent", description: recipient.operatorPubkey ? "Delivered to the operator." : `Public post sent to ${targetRelay.replace(/^wss?:\/\//, "")}` });
     } catch (err) {
       toast({ title: "Could not send feedback", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
     } finally {
@@ -310,7 +309,7 @@ export function FeedbackDrawer() {
         />
         <div className="relative z-10">
         <SheetHeader className="text-left">
-          <SheetTitle className="font-brand uppercase tracking-widest text-sm flex items-center gap-2">
+          <SheetTitle className="text-sm flex items-center gap-2 font-medium">
             <Inbox className="w-4 h-4 text-brand" />
             Send feedback
           </SheetTitle>
@@ -362,7 +361,7 @@ export function FeedbackDrawer() {
         ) : (
           <div className="mt-6 space-y-5">
             <div>
-              <label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/70">Send to</label>
+              <label className="text-[13px] text-muted-foreground/70 font-medium">Send to</label>
               {loadingRecipients && recipients.length === 0 ? (
                 <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground/60">
                   <RelayOutpostInlineLoader className="w-3 h-3" /> Discovering recipients…
@@ -391,7 +390,7 @@ export function FeedbackDrawer() {
                   <div className="min-w-0">
                     <p id="feedback-public-note-label" className="text-[11px] font-medium">Post publicly anyway</p>
                     <p id="feedback-public-note-desc" className="text-[10px] text-muted-foreground/70 mt-0.5 leading-relaxed">
-                      This operator has no public feedback box. Your note goes only to their relay, but could still show on your profile. Prefer Private to send it straight to them.
+                      This operator has no public feedback box. Your post goes only to their relay, but could still show on your profile. Prefer Private to send it straight to them.
                     </p>
                   </div>
                   <Switch
@@ -424,7 +423,7 @@ export function FeedbackDrawer() {
               </div>
             ) : (
             <div>
-              <label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/70">Type</label>
+              <label className="text-[13px] text-muted-foreground/70 font-medium">Type</label>
               <div className="mt-1 grid grid-cols-4 gap-1.5">
                 {TYPE_OPTIONS.map((opt) => {
                   const Icon = opt.icon;
@@ -451,7 +450,7 @@ export function FeedbackDrawer() {
             )}
 
             <div>
-              <label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/70">Title</label>
+              <label className="text-[13px] text-muted-foreground/70 font-medium">Title</label>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -463,7 +462,7 @@ export function FeedbackDrawer() {
             </div>
 
             <div>
-              <label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/70">Description (optional)</label>
+              <label className="text-[13px] text-muted-foreground/70 font-medium">Description (optional)</label>
               <Textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
@@ -486,7 +485,7 @@ export function FeedbackDrawer() {
 
             {/* Privacy choice — plain language, no protocol jargon. */}
             <div>
-              <label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/70">Visibility</label>
+              <label className="text-[13px] text-muted-foreground/70 font-medium">Visibility</label>
               <div className="mt-1 grid grid-cols-2 gap-1.5">
                 <button
                   type="button"

@@ -6,9 +6,8 @@ import {
   getSignalTier,
   getSignalTierLabel,
   getSignalTierColor,
-  getSignalTierBg,
-  formatInfluence,
-  triggerGrapeRankCalculation } from "@/lib/graperank";
+  triggerGrapeRankCalculation,
+} from "@/lib/graperank";
 import { Signal, ExternalLink, Users, Shield, ArrowUpRight} from "lucide-react";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { useToast } from "@/hooks/use-toast";
@@ -189,7 +188,7 @@ export function NetworkSignalCard({ targetPubkey, observerPubkey, isOwnProfile, 
       <div className="mt-3 rounded-lg border border-border/20 bg-card/30 p-3">
         <div className="flex items-center gap-1.5">
           <Signal className="w-3.5 h-3.5 text-muted-foreground/30" />
-          <span className="text-[11px] font-medium text-muted-foreground/40 uppercase tracking-wider">Network Signal</span>
+          <span className="text-[12px] font-medium text-muted-foreground">Network trust</span>
         </div>
         <p className="text-[11px] text-muted-foreground/50 mt-2 leading-relaxed">
           Web of Trust is disabled. Enable it in Settings to see trust scores.
@@ -209,9 +208,9 @@ export function NetworkSignalCard({ targetPubkey, observerPubkey, isOwnProfile, 
         <div className="flex items-start gap-2.5">
           <Signal className="w-4 h-4 text-brand/60 mt-0.5 shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-foreground/80">Network Signal</p>
+            <p className="text-xs font-medium text-foreground/80">Network trust</p>
             <p className="text-[11px] text-muted-foreground/70 mt-1 leading-relaxed">
-              Calculate your personalized network signal score to see trust data across profiles.
+              Calculate your personalized network trust score to see trust data across profiles.
             </p>
             <button
               onClick={handleCalculate}
@@ -233,7 +232,6 @@ export function NetworkSignalCard({ targetPubkey, observerPubkey, isOwnProfile, 
 
   if (!score) return null;
 
-  const tier = getSignalTier(score.influence);
   const showSelfInfo = isOwnProfile && selfData.lastCalculated;
 
   return (
@@ -241,7 +239,7 @@ export function NetworkSignalCard({ targetPubkey, observerPubkey, isOwnProfile, 
       <div className="flex items-center justify-between mb-2.5">
         <div className="flex items-center gap-1.5">
           <Signal className="w-3.5 h-3.5 text-brand/60" />
-          <span className="text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wider">Network Signal</span>
+          <span className="text-[12px] font-medium text-muted-foreground/70">Network trust</span>
         </div>
         {score.relationship !== "none" && (
           <RelationshipBadge relationship={score.relationship} />

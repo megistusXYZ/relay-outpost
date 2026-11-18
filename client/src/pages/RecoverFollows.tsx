@@ -142,11 +142,11 @@ function RecoverFollowsCard() {
           <div className="grid grid-cols-2 gap-3 text-center">
             <div className="rounded-lg border border-border/40 bg-muted/10 p-4">
               <div className="text-2xl font-semibold">{newestCount}</div>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground/70 mt-1">Current (newest)</div>
+              <div className="text-[12px] text-muted-foreground/70 mt-1 font-medium">Current (newest)</div>
             </div>
             <div className="rounded-lg border border-brand/30 bg-brand/[0.06] p-4">
               <div className="text-2xl font-semibold text-brand">{bestCount}</div>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground/70 mt-1">Best found{best ? ` · ${new Date(best.created_at * 1000).toLocaleDateString()}` : ""}</div>
+              <div className="text-[12px] text-muted-foreground/70 mt-1 font-medium">Best found{best ? ` · ${new Date(best.created_at * 1000).toLocaleDateString()}` : ""}</div>
             </div>
           </div>
 
@@ -225,7 +225,7 @@ function HealthRow({
       <Link href={`/profile/${npub}`} className="flex items-center gap-2.5 flex-1 min-w-0">
         <Avatar className="w-9 h-9 shrink-0">
           {avatar && <AvatarImage src={avatar} alt={name} />}
-          <AvatarFallback className="text-[10px] bg-brand/10 text-brand">
+          <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[10px]">
             {name.slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
@@ -240,7 +240,7 @@ function HealthRow({
               />
             )}
             {isNew && (
-              <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-brand/15 text-brand">New</span>
+              <span className="shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-brand/15 text-brand">New</span>
             )}
           </div>
           {verdict ? (

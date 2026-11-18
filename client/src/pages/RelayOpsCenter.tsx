@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AlertTriangle, ShieldCheck, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Megaphone, Plus, Terminal, Users, UsersRound, ScrollText, Inbox, Cable, IdCard, BarChart3, MessagesSquare, Code2, Award } from "lucide-react";
+import { AlertTriangle, ShieldCheck, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Plus, Terminal, Users, UsersRound, ScrollText, Inbox, Cable, IdCard, BarChart3, MessagesSquare, Code2, Award } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useTechnicalDetails, setTechnicalDetails } from "@/lib/technical-details";
 import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
@@ -28,7 +28,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ErrorScreen } from "@/components/ErrorScreen";
 import { TabId, getTabFromHash } from "./relay-ops/shared";
 import { SetupChecklist, setSetupFlag, useSetupChecklist } from "./relay-ops/SetupChecklist";
-import { SECTIONS, COMMUNITY_SCREENS, ADVANCED_SCREENS, sectionOf, listOf, consoleTitle, communityScreens, type ConsoleScreen } from "./relay-ops/console-nav";
+import { SECTIONS, ADVANCED_SCREENS, sectionOf, listOf, consoleTitle, communityScreens, type ConsoleScreen } from "./relay-ops/console-nav";
 import { MediaScreen } from "./relay-ops/MediaScreen";
 import { RelayTypeCard } from "./relay-ops/RelayTypeCard";
 import { canDo, UNKNOWN_CAPABILITIES, type RelayCapabilities } from "@/lib/relay-capabilities";
@@ -336,7 +336,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
       <div className="flex items-center gap-3" data-testid="ops-head">
         <Avatar className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl shrink-0 border border-black/[0.06] dark:border-white/[0.08]">
           {nip11?.icon && <AvatarImage src={nip11.icon} alt="" className="object-cover" />}
-          <AvatarFallback className="rounded-xl bg-brand/10 text-brand font-semibold text-base">{relayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+          <AvatarFallback className="rounded-xl bg-foreground/[0.08] text-foreground/80 font-semibold text-base">{relayName.slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
           {/* The name is the switcher: your other relays, and connecting another. */}
@@ -451,7 +451,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                   aria-selected={isActive}
                   onClick={() => { setContentSeed(""); setPeopleFilter(undefined); setActiveTab(s.id); }}
                   className={`relative shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-3 text-sm font-medium whitespace-nowrap transition-colors md:justify-between md:rounded-lg md:w-full ${
-                    isActive ? "text-foreground md:bg-brand/[0.09]" : "text-muted-foreground hover:text-foreground md:hover:bg-black/[0.03] dark:md:hover:bg-white/[0.04]"
+                    isActive ? "text-foreground md:bg-foreground/[0.07]" : "text-muted-foreground hover:text-foreground md:hover:bg-black/[0.03] dark:md:hover:bg-white/[0.04]"
                   }`}
                   data-testid={`ops-section-${s.id}`}
                 >
@@ -492,7 +492,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                   >
                     <ChevronLeft className="w-5 h-5" aria-hidden="true" />{backTo.label}
                   </button>
-                  <span className="text-muted-foreground/40" aria-hidden="true">/</span>
+                  <span className="text-muted-foreground" aria-hidden="true">/</span>
                   <h2 className="text-sm font-semibold ml-1.5">{consoleTitle(activeTab)}</h2>
                 </div>
               )}

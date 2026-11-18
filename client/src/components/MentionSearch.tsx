@@ -3,7 +3,6 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { AtSign } from "lucide-react";
 import { getCachedProfile, searchCachedProfiles } from "@/lib/nostr";
 import { searchUsers } from "@/lib/primal-cache";
-import { KIND_METADATA } from "@/lib/nostr-helpers";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
@@ -215,7 +214,7 @@ export function MentionSearch({ query, visible, onSelect, onClose, position = "a
         >
           <Avatar className="w-7 h-7 border border-white/10 shrink-0">
             <AvatarImage src={result.avatarUrl} alt={result.displayName} />
-            <AvatarFallback className="text-[10px] bg-brand/10 text-brand">
+            <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[10px]">
               {result.displayName.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>

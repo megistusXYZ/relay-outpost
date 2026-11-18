@@ -47,7 +47,7 @@ export function ConcordPollCard({ poll, tally, canVote, onVote }: {
 
   return (
     <div className="mt-1.5 w-full max-w-md space-y-2 rounded-xl border border-border bg-card p-3 dark:border-white/[0.08] dark:bg-white/[0.03]" data-testid="concord-poll">
-      <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
         <BarChart3 className="h-3.5 w-3.5 text-brand" />
         <span>Poll{single ? "" : " · pick any"}</span>
         {poll.endsAt !== undefined && <span className="ml-auto tabular-nums">{closed ? "Ended" : `Ends ${endsIn(poll.endsAt)}`}</span>}

@@ -5,7 +5,6 @@ import { Link } from "wouter";
 import { use$ } from "applesauce-react/hooks";
 import { eventStore, pool, fetchProfilesCached, DEFAULT_RELAYS } from "@/lib/nostr";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -239,7 +238,7 @@ export function ZapperRow({ zapper }: { zapper: ZapperInfo }) {
         <div className="flex-1 min-w-0">
           <span className="text-[11px] text-foreground/80 truncate block" data-testid={`text-zapper-name-${zapper.pubkey}`}>
             {displayName}
-            {isMe && <span className="ml-1 text-[9px] font-semibold uppercase tracking-wide text-zap dark:text-amber-400/90">You</span>}
+            {isMe && <span className="ml-1 text-[12px] font-semibold text-zap dark:text-amber-400/90">You</span>}
           </span>
           {zapper.comment && (
             <span className="text-[10px] text-muted-foreground/50 truncate block" data-testid={`text-zapper-comment-${zapper.pubkey}`}>{zapper.comment}</span>
@@ -269,7 +268,7 @@ export function ReactorAvatarRow({ pubkey }: { pubkey: string }) {
       <div className="flex items-center gap-2 py-1 px-1 rounded-md hover-elevate cursor-pointer" data-testid={`reactor-row-${pubkey}`}>
         <Avatar className="w-5 h-5 shrink-0 ring-1 ring-brand/20 border border-background">
           <AvatarImage src={avatarUrl} alt={displayName} />
-          <AvatarFallback className="bg-brand/10 text-brand font-bold text-[8px]">
+          <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 font-bold text-[8px]">
             {displayName.slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
@@ -379,11 +378,11 @@ export function TopZapperAvatars({ eventId, hasZaps }: { eventId: string; hasZap
                     className="rounded-t-2xl border-t border-amber-500/15 dark:border-amber-400/10 bg-[rgba(242,238,255,0.98)] dark:bg-[rgba(12,10,24,0.98)] px-5 pt-3 pb-8 backdrop-blur-xl"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <SheetTitle className="sr-only">Top Zap Details</SheetTitle>
+                    <SheetTitle className="sr-only">Top zap details</SheetTitle>
                     <div className="mx-auto w-10 h-1 rounded-full bg-muted-foreground/20 mb-4" />
                     <div className="flex items-center gap-1.5 mb-4">
                       <BtcZapIcon className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                      <span className="text-xs font-display uppercase tracking-wider text-zap dark:text-amber-400/90">Top Zap</span>
+                      <span className="text-xs text-zap dark:text-amber-400/90 font-medium">Top zap</span>
                     </div>
                     {detailContent}
                   </SheetContent>
@@ -408,7 +407,7 @@ export function TopZapperAvatars({ eventId, hasZaps }: { eventId: string; hasZap
                 >
                   <div className="flex items-center gap-1.5 mb-3">
                     <BtcZapIcon className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                    <span className="text-xs font-display uppercase tracking-wider text-zap dark:text-amber-400/90">Top Zap</span>
+                    <span className="text-xs text-zap dark:text-amber-400/90 font-medium">Top zap</span>
                   </div>
                   {detailContent}
                 </PopoverContent>

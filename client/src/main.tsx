@@ -167,9 +167,9 @@ window.addEventListener("error", (e) => {
     xlarge: "20px",
   };
   try {
-    const rawFont = localStorage.getItem("relay-outpost-font") || "inter";
+    const rawFont = localStorage.getItem("relay-outpost-font") || "geist";
     const rawSize = localStorage.getItem("relay-outpost-font-size") || "default";
-    const font = rawFont in FONT_MAP ? rawFont : "inter";
+    const font = rawFont in FONT_MAP ? rawFont : "geist";
     const size = rawSize in SIZE_MAP ? rawSize : "default";
     // Size clamp may write back (all legit values are in SIZE_MAP, so this
     // only fires on garbage); the font clamp intentionally never does — see
@@ -185,9 +185,9 @@ window.addEventListener("error", (e) => {
 
   window.addEventListener("nip78-settings-applied", () => {
     try {
-      const rawFont = localStorage.getItem("relay-outpost-font") || "inter";
+      const rawFont = localStorage.getItem("relay-outpost-font") || "geist";
       const rawSize = localStorage.getItem("relay-outpost-font-size") || "default";
-      const font = rawFont in FONT_MAP ? rawFont : "inter";
+      const font = rawFont in FONT_MAP ? rawFont : "geist";
       const size = rawSize in SIZE_MAP ? rawSize : "default";
       const family = FONT_MAP[font];
       const px = SIZE_MAP[size];

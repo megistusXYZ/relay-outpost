@@ -1,8 +1,9 @@
 /**
  * Status colours as tokens — Light mode Phase 2c, first slice (LIGHT_MODE.md;
  * owner, 2026-10-08). Success, warning and danger each get ONE light-mode
- * colour instead of a different Tailwind shade per screen. Info folds into
- * violet (--primary). The values LIGHT_MODE.md first sketched were fills;
+ * colour instead of a different Tailwind shade per screen. (Info folded into
+ * the old violet --primary; since the Outpost rebrand --primary is ink.) The
+ * values LIGHT_MODE.md first sketched were fills;
  * as text two of them failed (success 3.99:1, warning 3.12:1), so these are
  * the text-safe shades, measured here against the darkest light surface a
  * status line can sit on (--accent), as status-contrast.test.ts does.

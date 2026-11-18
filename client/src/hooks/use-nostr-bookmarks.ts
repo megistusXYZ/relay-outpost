@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
-import { pool, DEFAULT_RELAYS, publishEvent, eventStore, throttledPoolSubscribe, verifySignedEventKind } from "@/lib/nostr";
+import { DEFAULT_RELAYS, publishEvent, throttledPoolSubscribe, verifySignedEventKind } from "@/lib/nostr";
 import { useToast } from "@/hooks/use-toast";
 import { signWithTimeout } from "@/lib/signer-timeout";
 
@@ -14,7 +14,6 @@ interface BookmarkEntry {
 }
 
 let globalBookmarks: BookmarkEntry[] = [];
-let globalRawEvent: any = null;
 let globalLoading = true;
 let globalListeners = new Set<() => void>();
 let fetchedForPubkey: string | null = null;
@@ -97,11 +96,9 @@ async function fetchBookmarksFromRelays(pubkey: string, signer: any): Promise<vo
       }
       // Dedupe favoring private (since list shows newest first via UI)
       globalBookmarks = dedupeEntries([...privateEntries, ...publicEntries]);
-      globalRawEvent = best;
       fetchFailed = false;
     } else {
       globalBookmarks = [];
-      globalRawEvent = null;
       fetchFailed = timedOut;
     }
     globalLoading = false;
@@ -156,7 +153,6 @@ export function useNostrBookmarks() {
   useEffect(() => {
     if (!pubkey || !signer) {
       globalBookmarks = [];
-      globalRawEvent = null;
       globalLoading = false;
       fetchedForPubkey = null;
       fetchFailed = false;
@@ -235,14 +231,13 @@ export function useNostrBookmarks() {
     }
     await publishEvent(signedEvent);
 
-    globalRawEvent = signedEvent;
     globalBookmarks = deduped;
     notifyListeners();
   }, [pubkey, signer]);
 
   const addBookmark = useCallback(async (eventId: string, type: "e" | "a" = "e", isPrivate: boolean = true) => {
     if (!pubkey || !signer) {
-      toast({ title: "Sign in required", description: "Log in to bookmark notes.", variant: "destructive" });
+      toast({ title: "Sign in required", description: "Log in to bookmark posts.", variant: "destructive" });
       return;
     }
     if (bookmarkedIds.has(eventId)) return;

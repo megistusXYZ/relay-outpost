@@ -76,7 +76,6 @@ export function applyNip86Proxy(app: Express, { fetcher = safeFetch }: { fetcher
 
       let lastResponseText = "";
       let lastStatus = 0;
-      let lastContentType = "";
 
       for (const tryUrl of urlsToTry) {
         const tryHeaders = { ...headers };
@@ -101,7 +100,6 @@ export function applyNip86Proxy(app: Express, { fetcher = safeFetch }: { fetcher
           console.log(`[NIP-86 proxy] ← status=${response.status} | content-type=${response.headers.get("content-type")} | len=${responseText.length}`);
           lastResponseText = responseText;
           lastStatus = response.status;
-          lastContentType = response.headers.get("content-type") || "";
 
           if (response.status === 401 || response.status === 403) {
             try {

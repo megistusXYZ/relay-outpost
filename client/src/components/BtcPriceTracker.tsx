@@ -74,16 +74,6 @@ function parseZapAmount(zapReceipt: Event): number {
   return 0;
 }
 
-function getZapSenderPubkey(zapReceipt: Event): string | null {
-  const descTag = zapReceipt.tags.find(t => t[0] === "description");
-  if (descTag?.[1]) {
-    try {
-      const zapRequest = JSON.parse(descTag[1]);
-      return zapRequest.pubkey || null;
-    } catch {}
-  }
-  return null;
-}
 
 const zapActivityCache: { data: ZapActivity | null; pubkey: string; ts: number } = {
   data: null,
@@ -190,7 +180,6 @@ async function fetchZapActivity(pubkey: string, force?: boolean, nwcTransactions
   }
 }
 
-let sharedPriceCache: { price: number; ts: number } | null = null;
 
 // CoinGecko rate-limits (429) quickly; after a refusal go straight to the
 // fallbacks for five minutes instead of asking again on every tick. And one
@@ -429,7 +418,6 @@ export function UnifiedBtcBadge() {
       setTimeout(() => setPriceFlash(null), 800);
     }
     prevPriceRef.current = result.price;
-    sharedPriceCache = { price: result.price, ts: Date.now() };
     setData(result);
   }, []);
 
@@ -513,7 +501,7 @@ export function UnifiedBtcBadge() {
   };
 
   const badgeFlashClass = mode === "wallet" && walletFlash
-    ? "ring-1 ring-brand/50 shadow-[0_0_8px_rgba(139,92,246,0.3)]"
+    ? "ring-1 ring-brand/50"
     : "";
 
   if (!trackerEnabled) return null;
@@ -708,7 +696,7 @@ export function UnifiedBtcBadge() {
           {pubkey && (
             <div className="px-4 py-3 border-t border-white/[0.06]" data-testid="container-unified-zap-activity">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wider">Lightning Activity (90d)</p>
+                <p className="text-[12px] text-muted-foreground/60 font-medium">Lightning activity (90d)</p>
                 <button
                   onClick={() => refreshZapActivity(true)}
                   disabled={zapLoading}

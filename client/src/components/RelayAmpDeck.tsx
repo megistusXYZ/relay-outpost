@@ -36,7 +36,6 @@ export function RelayAmpDeck({ tracks }: { tracks: MusicTrack[] }) {
   const inThisList = !!currentTrack && tracks.some((t) => t.id === currentTrack.id);
   const track = currentTrack;
   const isPod = track?.source === "podcast";
-  const pct = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
 
   const onPlayPause = () => {
     if (!track && tracks.length > 0) play(tracks[0], tracks);
@@ -63,7 +62,7 @@ export function RelayAmpDeck({ tracks }: { tracks: MusicTrack[] }) {
         <div className="flex-1 min-w-0 rounded-lg bg-brand/[0.07] ring-1 ring-inset ring-brand/25 dark:bg-zinc-950 dark:ring-brand/20 px-3 py-2 flex flex-col justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-brand-strong/60 dark:text-brand/50">RelayAmp</span>
+              <span className="text-[12px] text-brand-strong/60 dark:text-brand/50 font-medium">RelayAmp</span>
               <span className={`w-1 h-1 rounded-full ${isPlaying ? "bg-brand animate-pulse" : "bg-brand/30"}`} />
             </div>
             <p className="text-[13px] font-mono text-brand-strong dark:text-brand truncate leading-tight mt-0.5" data-testid="amp-title">
@@ -140,7 +139,7 @@ export function RelayAmpDeck({ tracks }: { tracks: MusicTrack[] }) {
           <SkipForward className="w-4 h-4" />
         </button>
         {inThisList && (
-          <span className="ml-2 text-[9px] font-mono uppercase tracking-wider text-muted-foreground/40">now playing</span>
+          <span className="ml-2 text-[12px] text-muted-foreground font-medium">Now playing</span>
         )}
       </div>
     </div>

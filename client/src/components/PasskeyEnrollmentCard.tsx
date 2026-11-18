@@ -80,12 +80,12 @@ export function PasskeyEnrollmentCard({
   if (support === "no-webauthn" || support === "insecure-context") return null;
 
   const cardCls = isOverlay
-    ? "bg-brand/[0.07] border border-brand/25"
-    : "bg-primary/[0.06] border border-primary/25";
+    ? "bg-white/[0.04] border border-white/10"
+    : "bg-muted/30 border border-border/60";
   const titleCls = isOverlay ? "text-white" : "text-foreground";
   const bodyCls = isOverlay ? "text-white/75" : "text-foreground/75";
   const subtleCls = isOverlay ? "text-white/55" : "text-muted-foreground";
-  const btnCls = isOverlay ? "bg-brand/90 text-white hover:bg-brand" : "bg-primary text-primary-foreground hover:bg-primary/90";
+  const btnCls = isOverlay ? "bg-white text-black hover:bg-white/90" : "bg-foreground text-background hover:bg-foreground/90";
 
   if (enrolled) {
     return (
@@ -133,7 +133,7 @@ export function PasskeyEnrollmentCard({
     <div className={`rounded-xl p-3.5 ${cardCls}`} data-testid="panel-passkey-offer">
       <div className="flex items-start gap-3">
         <span className={`shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg ${
-          isOverlay ? "bg-brand/20 border border-brand/25 text-brand" : "bg-brand/15 border border-brand/25 text-brand"
+          isOverlay ? "bg-white/[0.08] border border-white/15 text-white/85" : "bg-foreground/[0.06] border border-border/60 text-foreground/85"
         }`}>
           <Fingerprint className="w-4.5 h-4.5" />
         </span>
@@ -168,7 +168,7 @@ export function PasskeyEnrollmentCard({
           <Button
             onClick={handleEnroll}
             disabled={working || support === null}
-            className={`w-full h-auto min-h-[44px] py-2.5 text-[11px] sm:text-xs font-brand uppercase tracking-wide leading-snug whitespace-normal text-center ${btnCls}`}
+            className={`w-full h-auto min-h-[44px] py-2.5 text-[12px] sm:text-xs leading-snug whitespace-normal text-center font-medium ${btnCls}`}
             data-testid="button-enroll-passkey"
           >
             <Fingerprint className="w-4 h-4 mr-2 shrink-0" />

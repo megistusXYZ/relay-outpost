@@ -129,7 +129,7 @@ export function SpaceOverflowMenu({
         {onSettings && (
           <DropdownMenuItem className={itemClass} onSelect={defer(onSettings)} data-testid="menu-channel-settings">
             <Settings className="w-3.5 h-3.5" />
-            Channel settings
+            Room settings
           </DropdownMenuItem>
         )}
         {onSearch && (

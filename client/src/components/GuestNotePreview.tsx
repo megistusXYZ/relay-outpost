@@ -54,7 +54,7 @@ export function GuestAuthorRow({ pubkey }: { pubkey: string }) {
     <div className="flex items-center gap-2.5">
       <Avatar className="w-9 h-9 shrink-0">
         {avatar && <AvatarImage src={avatar} alt={name} />}
-        <AvatarFallback className="text-xs bg-brand/10 text-brand">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
       </Avatar>
       <p className="text-sm font-semibold truncate">{name}</p>
     </div>

@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { timeConnection } from "@/lib/relay-probe";
 import { pool, DEFAULT_RELAYS } from "@/lib/nostr";
-import { getRelayScore, getRelayHealthData, isRelayCoolingDown, getAllRelayHealth } from "@/lib/relay-health";
+import { getRelayScore, getRelayHealthData, isRelayCoolingDown } from "@/lib/relay-health";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,6 @@ import {
   Wifi,
   WifiOff,
   Zap,
-  Globe,
   Server,
   Clock,
   Shield,
@@ -29,7 +28,7 @@ import {
   Timer,
 } from "lucide-react";
 
-const COLORS = ["#a855f7", "#9333ea", "#7e22ce", "#6b21a8", "#c084fc", "#d8b4fe", "#e9d5ff", "#581c87"];
+const COLORS = ["#3D6BFF", "#7C9BFF", "#A3ACBA", "#565D69", "#C8D4F0", "#2A3A6A", "#FF6A3D", "#E6E8EC"];
 
 interface RelayHealthData {
   url: string;
@@ -53,7 +52,7 @@ function CustomTooltipContent({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-md border border-brand/20 bg-white dark:bg-[rgba(4,4,10,0.95)] px-3 py-2 text-xs shadow-lg">
-      <p className="font-display text-brand mb-1">{label}</p>
+      <p className="font-medium text-foreground mb-1">{label}</p>
       {payload.map((entry: any, i: number) => (
         <p key={i} className="text-foreground">
           {entry.name}: <span className="text-brand font-mono">{Number(entry.value).toLocaleString()}</span>
@@ -185,10 +184,7 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
     : null;
   const avgLatency = latencies.length > 0 ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : null;
 
-  const nip04Relays = relayList.filter((r) => r.nip11?.supported_nips?.includes(4));
-  const nip42Relays = relayList.filter((r) => r.nip11?.supported_nips?.includes(42));
 
-  const allHealth = getAllRelayHealth();
   const healthyCount = allRelays.filter(url => !isRelayCoolingDown(url)).length;
   const coolingCount = allRelays.filter(url => isRelayCoolingDown(url)).length;
 
@@ -220,8 +216,8 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <Activity className="w-5 h-5 text-brand/80" />
-          <h2 className="text-base font-brand tracking-wider uppercase" data-testid="text-health-title">
-            Relay Health Monitor
+          <h2 className="text-base font-semibold" data-testid="text-health-title">
+            Relay health monitor
           </h2>
         </div>
         <Button
@@ -241,7 +237,7 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
           <Card className="glass-card border-brand/15 p-3" data-testid="card-fastest-relay">
             <div className="flex items-center gap-2 mb-1">
               <Zap className="w-3.5 h-3.5 text-brand/80" />
-              <span className="text-xs text-muted-foreground/70 uppercase tracking-wide">Fastest Relay</span>
+              <span className="text-xs text-muted-foreground font-medium">Fastest relay</span>
             </div>
             <p className="text-sm font-mono text-brand truncate" data-testid="text-fastest-relay">
               {fastestRelay ? fastestRelay.url.replace("wss://", "") : "—"}
@@ -254,7 +250,7 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
           <Card className="glass-card border-brand/15 p-3" data-testid="card-avg-latency">
             <div className="flex items-center gap-2 mb-1">
               <Clock className="w-3.5 h-3.5 text-brand/80" />
-              <span className="text-xs text-muted-foreground/70 uppercase tracking-wide">Avg Latency</span>
+              <span className="text-xs text-muted-foreground font-medium">Avg latency</span>
             </div>
             <p className="text-sm font-mono text-brand" data-testid="text-avg-latency">
               {avgLatency !== null ? `${avgLatency}ms` : "—"}
@@ -267,7 +263,7 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
           <Card className="glass-card border-brand/15 p-3" data-testid="card-relay-health-summary">
             <div className="flex items-center gap-2 mb-1">
               <Shield className="w-3.5 h-3.5 text-brand/80" />
-              <span className="text-xs text-muted-foreground/70 uppercase tracking-wide">Relay Health</span>
+              <span className="text-xs text-muted-foreground font-medium">Relay health</span>
             </div>
             <div className="flex items-center gap-2 flex-wrap" data-testid="text-relay-health-summary">
               <Badge variant="outline" className="text-[10px] border-green-400/20 text-success dark:text-green-400/60">
@@ -287,21 +283,21 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
         <Card className="glass-card border-brand/15 p-4" data-testid="card-latency-chart">
           <div className="flex items-center gap-2 mb-3">
             <Server className="w-3.5 h-3.5 text-brand/80" />
-            <span className="text-xs text-muted-foreground/70 uppercase tracking-wide">Latency Comparison (ms)</span>
+            <span className="text-xs text-muted-foreground font-medium">Latency comparison (ms)</span>
           </div>
           <div className="w-full h-52">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 40 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(168,85,247,0.08)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(163,172,186,0.14)" />
                 <XAxis
                   dataKey="name"
-                  tick={{ fill: "rgba(168,85,247,0.5)", fontSize: 10 }}
+                  tick={{ fill: "rgba(163,172,186,0.75)", fontSize: 12 }}
                   angle={-35}
                   textAnchor="end"
                   interval={0}
                   height={60}
                 />
-                <YAxis tick={{ fill: "rgba(168,85,247,0.4)", fontSize: 10 }} />
+                <YAxis tick={{ fill: "rgba(163,172,186,0.6)", fontSize: 12 }} />
                 <Tooltip content={<CustomTooltipContent />} />
                 <Bar dataKey="latency" name="Latency (ms)" radius={[4, 4, 0, 0]}>
                   {chartData.map((_, idx) => (
@@ -320,14 +316,14 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
             <table className="w-full text-xs" data-testid="table-relay-health">
               <thead>
                 <tr className="border-b border-brand/10">
-                  <th className="text-left py-2 pr-3 text-muted-foreground/60 uppercase tracking-wide font-medium">Relay</th>
-                  <th className="text-left py-2 px-3 text-muted-foreground/60 uppercase tracking-wide font-medium">Status</th>
-                  <th className="text-left py-2 px-3 text-muted-foreground/60 uppercase tracking-wide font-medium">Health</th>
-                  <th className="text-right py-2 px-3 text-muted-foreground/60 uppercase tracking-wide font-medium">Score</th>
-                  <th className="text-right py-2 px-3 text-muted-foreground/60 uppercase tracking-wide font-medium">Latency</th>
-                  <th className="text-right py-2 px-3 text-muted-foreground/60 uppercase tracking-wide font-medium">Success</th>
-                  <th className="text-right py-2 px-3 text-muted-foreground/60 uppercase tracking-wide font-medium">Throughput</th>
-                  <th className="text-left py-2 pl-3 text-muted-foreground/60 uppercase tracking-wide font-medium">Software</th>
+                  <th className="text-left py-2 pr-3 text-muted-foreground font-medium">Relay</th>
+                  <th className="text-left py-2 px-3 text-muted-foreground font-medium">Status</th>
+                  <th className="text-left py-2 px-3 text-muted-foreground font-medium">Health</th>
+                  <th className="text-right py-2 px-3 text-muted-foreground font-medium">Score</th>
+                  <th className="text-right py-2 px-3 text-muted-foreground font-medium">Latency</th>
+                  <th className="text-right py-2 px-3 text-muted-foreground font-medium">Success</th>
+                  <th className="text-right py-2 px-3 text-muted-foreground font-medium">Throughput</th>
+                  <th className="text-left py-2 pl-3 text-muted-foreground font-medium">Software</th>
                 </tr>
               </thead>
               <tbody>

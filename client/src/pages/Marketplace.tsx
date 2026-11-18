@@ -24,10 +24,13 @@ import { queryAnswered } from "@/lib/relay-reach";
 import { newCursor, pageOlder, olderNotShown, type PagerCursor } from "@/lib/catalog-pager";
 import { FAST_RELAYS, fetchProfilesCached } from "@/lib/nostr";
 import { isReportedEvent, isReportedPubkey } from "@/lib/spam-filter";
-import { getSignalTier } from "@/lib/graperank";
 import { use$ } from "applesauce-react/hooks";
 import { eventStore } from "@/lib/nostr";
 import { KIND_METADATA, getDisplayName, getAvatarUrl, formatNpub, shortenNpub } from "@/lib/nostr-helpers";
+import type { SignalTier } from "@/lib/graperank";
+import { getTrustPhrase } from "@/lib/trust-words";
+import { useTrustTierOf } from "@/components/TrustMark";
+import { TIER_GLYPH } from "@/components/nostr-post/trust-tier-glyph";
 import { formatListingPrice, pickMarketListings, rankListingCategories, filterListings, rankListingsTrustFirst, catalogMutedSellersNow, KIND_CLASSIFIED_LISTING, LISTING_RELAYS, type Listing } from "@/lib/listing";
 
 type PageState =
@@ -56,8 +59,8 @@ function SellerLine({ pubkey, tier }: { pubkey: string; tier: string }) {
       <span className="text-[11px] text-muted-foreground truncate">{name}</span>
       {trusted && (
         <span
-          className={`w-1.5 h-1.5 rounded-full shrink-0 ${tier === "strong" ? "bg-emerald-500" : "bg-sky-500"}`}
-          title={tier === "strong" ? "Highly Trusted in your network" : "Trusted in your network"}
+          className={`w-1.5 h-1.5 rounded-full shrink-0 ${tier === "strong" ? TIER_GLYPH.strong.className : TIER_GLYPH.moderate.className}`}
+          title={getTrustPhrase(tier as SignalTier)}
           data-testid="seller-trust-dot"
         />
       )}
@@ -95,6 +98,8 @@ export default function Marketplace() {
   useDocumentTitle("Marketplace");
   const { pubkey: myPubkey } = useNostrAuth();
   const { flaggedPubkeys } = useGrapeRankScores();
+  // Concerns first, from the one shared lookup (flagged sellers are also dropped from the shelf).
+  const tierOfSeller = useTrustTierOf();
   const [state, setState] = useState<PageState>({ status: "loading" });
   const [openListing, setOpenListing] = useState<Listing | null>(null);
   // Older batches, fetched as the reader reaches the end (lib/catalog-pager.ts).
@@ -113,7 +118,6 @@ export default function Marketplace() {
   // Trusted-first is the default lane: sellers the viewer's graph vouches for
   // lead the grid. "Newest" is one tap away and pure chronology.
   const [sort, setSort] = useState<"trusted" | "newest">("trusted");
-  const { getAuthorInfluence } = useGrapeRankScores();
   const chunks = useMemo(() => (state.status === "ready" ? [state.listings, ...older] : []), [state, older]);
   shownRef.current = chunks;
   const loadedCount = useMemo(() => chunks.reduce((n, c) => n + c.length, 0), [chunks]);
@@ -126,11 +130,11 @@ export default function Marketplace() {
     return chunks.flatMap((chunk) => {
       const filtered = filterListings(chunk, { query, category: category ?? undefined });
       return sort === "trusted"
-        ? rankListingsTrustFirst(filtered, (pk) => getSignalTier(getAuthorInfluence(pk)))
+        ? rankListingsTrustFirst(filtered, (pk) => tierOfSeller(pk) ?? "none")
         : filtered;
     });
-  }, [chunks, query, category, sort, getAuthorInfluence]);
-  const tierOf = (pk: string) => getSignalTier(getAuthorInfluence(pk));
+  }, [chunks, query, category, sort, tierOfSeller]);
+  const tierOf = (pk: string) => tierOfSeller(pk) ?? "none";
 
   const loadSeq = useRef(0);
   const assemble = useCallback((events: Event[]) =>

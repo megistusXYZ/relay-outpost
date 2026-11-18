@@ -38,7 +38,7 @@ export function EventRowActions({
       <Button
         size="sm"
         variant="ghost"
-        className="h-8 w-8 p-0 text-gray-400 dark:text-gray-500 hover:text-brand"
+        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
         onClick={() => onShareEvent(ce)}
         title="Share to feed"
         data-testid={`button-share-agenda-${ce.id.slice(0, 8)}`}
@@ -165,7 +165,7 @@ export function AgendaList({
           <section key={day.key} id={`agenda-day-${day.key}`} className="scroll-mt-28" data-testid={`agenda-day-${day.key}`}>
             <div className="flex items-baseline gap-2 mb-2">
               <h3
-                className={`text-[10px] font-brand uppercase tracking-wider ${
+                className={`text-[13px] font-medium ${
                   isToday ? "text-brand" : "text-gray-500 dark:text-gray-400"
                 }`}
               >
@@ -194,7 +194,7 @@ export function AgendaList({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 px-3 text-[11px] border-brand dark:border-brand/30 text-brand hover:bg-brand dark:hover:bg-brand/10"
+                    className="h-7 px-3 text-[11px] rounded-full border-foreground/25 text-foreground hover:bg-foreground/[0.06]"
                     onClick={() => openScheduleForDay(day.date)}
                     data-testid="button-schedule-empty-day"
                   >

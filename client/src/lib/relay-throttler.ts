@@ -1,7 +1,6 @@
 import type { SubCloser } from "nostr-tools/abstract-pool";
 
 const MAX_CONCURRENT_PER_RELAY = 8;
-const QUEUE_CHECK_INTERVAL = 100;
 
 interface QueuedSubscription {
   relay: string;

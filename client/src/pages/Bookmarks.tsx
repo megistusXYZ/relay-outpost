@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { useDeletedEvents, deletedByAuthor } from "@/lib/deleted-events";
 import { DeletedPost } from "@/components/DeletePostConfirm";
 import { Link } from "wouter";
@@ -13,7 +14,7 @@ import { getAvatarUrl, getDisplayName, formatNpub, shortenNpub } from "@/lib/nos
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Bookmark, BookmarkCheck, Trash2, Type, Image, Video, LinkIcon, SlidersHorizontal, ArrowUpDown, BookOpen, Newspaper, ExternalLink, Clock, Lock, Globe } from "lucide-react";
+import { Bookmark, Trash2, Type, Image, Video, LinkIcon, SlidersHorizontal, ArrowUpDown, BookOpen, Newspaper, ExternalLink, Clock, Lock, Globe } from "lucide-react";
 import { RelayOutpostLoader } from "@/components/RelayOutpostLoader";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useDocumentTitle } from "@/hooks/use-document-title";
@@ -156,7 +157,7 @@ function BookmarkedPost({
         <div className="flex items-center gap-2">
           <PrivacyToggleBadge isPrivate={isPrivate} onToggle={onTogglePrivacy} testId={`badge-privacy-missing-${eventId.slice(0, 8)}`} />
           <div>
-            <p className="text-sm text-muted-foreground">Note not found on relays</p>
+            <p className="text-sm text-muted-foreground">Post not found on relays</p>
             <p className="text-xs text-muted-foreground/80 font-mono truncate max-w-xs">{eventId.slice(0, 24)}...</p>
           </div>
         </div>
@@ -307,7 +308,7 @@ function BookmarkedRSSItem({ item, onRemove }: { item: RSSBookmarkItem; onRemove
       <div className="flex-1 min-w-0 space-y-1">
         <h3 className="text-sm font-semibold line-clamp-2">{item.title || "Untitled"}</h3>
         <div className="flex items-center gap-2 flex-wrap">
-          {item.author && <span className="text-[11px] text-muted-foreground font-mono uppercase tracking-wider truncate max-w-[120px]">{item.author}</span>}
+          {item.author && <span className="text-[12px] text-muted-foreground truncate max-w-[120px] font-medium">{item.author}</span>}
           {timeAgo && <span className="text-[11px] text-muted-foreground/80">{timeAgo}</span>}
         </div>
         <div className="flex items-center gap-1 pt-0.5">
@@ -607,10 +608,10 @@ export default function Bookmarks({ embedded = false }: { embedded?: boolean } =
           </div>
         ) : totalCount === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center" data-testid="container-bookmarks-empty">
-            <Bookmark className="w-12 h-12 text-muted-foreground/60 mb-3" />
+            <OttoEmpty mood="quiet" size={96} className="mb-2 text-foreground/70" />
             <p className="text-sm font-medium mb-1">No bookmarks yet</p>
             <p className="text-xs text-muted-foreground max-w-xs">
-              Save notes, articles, or news items by clicking the bookmark icon.
+              Save posts, articles, or news items by clicking the bookmark icon.
             </p>
             <Button variant="outline" size="sm" className="mt-4" asChild data-testid="button-browse-feed">
               <Link href="/">Browse Feed</Link>
@@ -631,7 +632,7 @@ export default function Bookmarks({ embedded = false }: { embedded?: boolean } =
                     size="sm"
                     className={`gap-1 sm:gap-1.5 text-[11px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3 transition-all duration-200 ${
                       isActive
-                        ? "bg-brand dark:bg-brand/15 text-brand border border-brand/40 dark:border-brand/30 shadow-[0_0_8px_rgba(109,40,217,0.15)] dark:shadow-[0_0_8px_rgba(168,85,247,0.2)] no-default-hover-elevate"
+                        ? "bg-brand dark:bg-brand/15 text-brand border border-brand/40 dark:border-brand/30 shadow-[0_0_8px_rgba(255,255,255,0.15)] dark:shadow-[0_0_8px_rgba(255,255,255,0.2)] no-default-hover-elevate"
                         : "text-muted-foreground/70"
                     }`}
                     onClick={() => setActiveFilter(f.key)}
@@ -676,7 +677,7 @@ export default function Bookmarks({ embedded = false }: { embedded?: boolean } =
                 {grouped.map((group) => (
                   <div key={group.label}>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground/50" data-testid={`text-date-group-${group.label}`}>
+                      <span className="text-[12px] text-muted-foreground font-medium" data-testid={`text-date-group-${group.label}`}>
                         {group.label}
                       </span>
                       <div className="flex-1 h-px bg-border/30" />

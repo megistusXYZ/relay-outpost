@@ -28,7 +28,7 @@ describe("profile pinned rail", () => {
   it("the compact identity gives the name its own row at every width; the two buttons share the row beneath", () => {
     // Beside the name they squeezed it to "Vitor Pa…" (380px rail) and "[B…"
     // (320px rail) and clipped the follower count (owner screenshots).
-    expect(layout).toMatch(/className="flex flex-wrap items-center gap-x-2\.5 gap-y-2 rounded-xl[^"]*"\s+data-testid="identity-rail-mini"/);
+    expect(layout).toMatch(/className="flex flex-wrap items-center gap-x-2\.5 gap-y-2 rounded-\[20px\][^"]*"\s+data-testid="identity-rail-mini"/);
     expect(layout).not.toContain("xl:flex-nowrap");
     expect(profile).toMatch(/className="flex w-full shrink-0 gap-2 [^"]*\[&>button\]:flex-1 \[&>button\]:min-w-0" data-testid="identity-mini-actions"/);
     expect(profile).not.toMatch(/xl:w-auto[^"]*" data-testid="identity-mini-actions"/);
@@ -64,7 +64,7 @@ describe("profile pinned rail", () => {
     // a pinned block taller than the screen has no way to be scrolled to.
     expect(layout).toMatch(/id=\{COMPANION_SLOT_ID\} className="flex flex-col gap-4 min-h-0"/);
     expect(companion).toMatch(/ref=\{spineRef\} className="relative pl-6 min-h-0 overflow-y-auto no-scrollbar/); // no visible scrollbar (owner call)
-    expect(companion).toMatch(/className="shrink-0 rounded-xl[^"]*" data-testid="companion-media"/);
+    expect(companion).toMatch(/className="shrink-0 rounded-\[20px\][^"]*" data-testid="companion-media"/);
     expect(companion).toMatch(/mediaForChapter\(media, current, 3\)/);
     expect(companion).not.toMatch(/scrollIntoView\(\{ block: "nearest"/);
   });

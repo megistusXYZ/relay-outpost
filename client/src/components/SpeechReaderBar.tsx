@@ -1,6 +1,6 @@
 import { type EdgeVoice, RECOMMENDED_VOICES } from "@/contexts/TextToSpeechContext";
 import { Play, Square } from "lucide-react";
-import { useState, useMemo, useCallback, useSyncExternalStore } from "react";
+import { useMemo, useCallback, useSyncExternalStore } from "react";
 import { registerAudioSource, unregisterAudioSource } from "@/lib/audio-coordinator";
 
 const RATE_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -121,7 +121,7 @@ export function VoiceSettingsPanel({
   return (
     <>
       <div>
-        <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground/70 mb-2">Speed</p>
+        <p className="text-[12px] text-muted-foreground/70 mb-2 font-medium">Speed</p>
         <div className="flex items-center gap-1 flex-wrap">
           {RATE_OPTIONS.map((r) => (
             <button
@@ -140,7 +140,7 @@ export function VoiceSettingsPanel({
       </div>
 
       <div>
-        <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground/70 mb-2">
+        <p className="text-[12px] text-muted-foreground/70 mb-2 font-medium">
           Voice &middot; {currentVoiceName}
         </p>
 

@@ -46,7 +46,7 @@ export function PublicBetaBadge({
             sizes="110px"
             alt="Public Beta"
             draggable={false}
-            className="w-full select-none opacity-[0.6] drop-shadow-[0_2px_12px_rgba(167,139,250,0.22)] transition-opacity duration-300 group-hover/beta:opacity-90"
+            className="w-full select-none opacity-[0.6] drop-shadow-[0_2px_12px_rgba(13,15,18,0.22)] transition-opacity duration-300 group-hover/beta:opacity-90"
           />
         </button>
         <PublicBetaDialog open={open} onOpenChange={setOpen} onNavigate={onNavigate} />
@@ -55,11 +55,11 @@ export function PublicBetaBadge({
   }
 
   const base =
-    "inline-flex items-center gap-1.5 rounded-full border font-brand uppercase leading-none transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    "inline-flex items-center gap-1.5 rounded-full border leading-none transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring font-medium";
   const tone =
     variant === "landing"
       ? "border-brand/30 bg-brand/[0.1] px-3 py-1.5 text-[10px] tracking-[0.22em] text-brand backdrop-blur-sm hover:border-brand/50 hover:bg-brand/[0.16] -rotate-[1.5deg]"
-      : "border-primary/30 bg-primary/10 px-2 py-0.5 text-[9px] tracking-[0.18em] text-primary dark:text-brand hover:bg-primary/20";
+      : "!border-0 !rounded-none bg-transparent px-0 py-0.5 text-xs text-muted-foreground hover:text-foreground";
 
   return (
     <>
@@ -71,8 +71,8 @@ export function PublicBetaBadge({
         aria-label="Public beta — what this means"
         data-testid="badge-public-beta"
       >
-        <span className={`rounded-full bg-brand/90 ${variant === "landing" ? "h-1.5 w-1.5" : "h-1 w-1"} animate-pulse`} aria-hidden />
-        Public Beta
+        {variant === "landing" && <span className="rounded-full bg-brand/90 h-1.5 w-1.5" aria-hidden />}
+        Public beta
       </button>
       <PublicBetaDialog open={open} onOpenChange={setOpen} />
     </>

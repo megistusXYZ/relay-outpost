@@ -1,17 +1,19 @@
 import { newestByAddress } from "@/lib/nip23";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { articleCountToShow } from "@/lib/article-count";
 import { DeleteArticleButton } from "@/components/articles/DeleteArticleButton";
 import { SearchPill } from "@/components/SearchPill";
 import { useEffect, useMemo, useState, useCallback, useRef, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Link, useLocation, useSearch } from "wouter";
 import { use$ } from "applesauce-react/hooks";
-import { eventStore, subscribeToFeed, DEFAULT_RELAYS, pool, publishEvent, fetchProfilesCached, throttledPoolSubscribe, verifySignedEventKind } from "@/lib/nostr";
+import { eventStore, DEFAULT_RELAYS, pool, publishEvent, fetchProfilesCached, throttledPoolSubscribe, verifySignedEventKind } from "@/lib/nostr";
 import { isVideoUrl as sharedIsVideoUrl } from "@/lib/media-frame";
 import { KIND_TEXT_NOTE, KIND_METADATA, KIND_FOLLOW_LIST, KIND_REPOST, KIND_REACTION, KIND_ZAP_REQUEST, KIND_LIVE_EVENT, LIVE_STREAM_RELAYS, getDisplayName, getAvatarUrl, getProfileContent, formatNpub, shortenNpub, parseFollowList } from "@/lib/nostr-helpers";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
 import { peekAccountHeaderExpand, clearAccountHeaderExpand } from "@/lib/account-expand";
-import { fetchUserProfileStats, fetchUserAuthoredFeed, fetchEventCounts, primalStatsCache, prefetchStatsImmediate, fetchBulkProfiles, fetchFollowersList, fetchContactListHistory, fetchMuteListHistory, type UserProfileStats } from "@/lib/primal-cache";
+import { fetchUserProfileStats, fetchUserAuthoredFeed, prefetchStatsImmediate, fetchBulkProfiles, fetchFollowersList, fetchContactListHistory, fetchMuteListHistory, type UserProfileStats } from "@/lib/primal-cache";
 import { fetchRelayLists, getUserNotesFetchRelays } from "@/lib/outbox";
 import { NostrPost } from "@/components/NostrPost";
 import { PostBoundary } from "@/components/PostBoundary";
@@ -27,18 +29,57 @@ import { QRCodeSVG } from "qrcode.react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import {
-  Copy, Check, BadgeCheck, UsersRound, FileText, Globe, ImageIcon,
-  BookOpen, Users, Radio, Pencil, X, Save, Satellite, Settings,
-  Signal, Orbit, CornerUpLeft, MessageSquare, MessageCircle, RotateCcw,
-  Eye, EyeOff, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon,
-  Music, Zap, QrCode, ScrollText, Heart, Repeat2, Filter, ChevronDown, ChevronUp, ChevronRight,
-  Upload, ShieldCheck, Search, ArrowUpDown, ExternalLink, Lock,
-  Calendar, Clock, Plus, Trash2, Play, Video, Bookmark, Terminal, BarChart3, Wrench } from "lucide-react";
+  Copy,
+  Check,
+  BadgeCheck,
+  UsersRound,
+  FileText,
+  Globe,
+  ImageIcon,
+  Users,
+  Radio,
+  Pencil,
+  X,
+  Save,
+  Satellite,
+  Settings,
+  Signal,
+  Orbit,
+  CornerUpLeft,
+  MessageCircle,
+  RotateCcw,
+  Eye,
+  EyeOff,
+  ArrowUpRight,
+  Wallet as WalletIcon,
+  Zap,
+  ScrollText,
+  Heart,
+  Repeat2,
+  Filter,
+  ChevronDown,
+  ChevronUp,
+  ChevronRight,
+  Upload,
+  ShieldCheck,
+  Search,
+  ArrowUpDown,
+  Lock,
+  Calendar,
+  Clock,
+  Plus,
+  Trash2,
+  Play,
+  Video,
+  Bookmark,
+  Terminal,
+  BarChart3,
+  Wrench,
+} from "lucide-react";
 import { format, addDays, addWeeks, addMonths, getDay } from "date-fns";
 import type { ISigner } from "applesauce-signers";
 import { RelayOutpostLoader, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
@@ -88,21 +129,20 @@ import type { Event } from "nostr-tools";
 import { useToast } from "@/hooks/use-toast";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useNWC } from "@/contexts/NWCContext";
-import { MUSIC_KINDS, MUSIC_RELAYS, parseMusicEvents, fetchWavlakeTracksByNpub, fetchPodcastFromRSS, discoverPodcastFeed, isKnownPodcaster, getSavedPodcastFeed, isPodcastDisabled, savePodcastFeed, removePodcastFeed, publishPodcastFeed, fetchNostrPodcastFeed, clearNostrPodcastCache, type MusicTrack, KIND_MUSIC_TRACK } from "@/lib/music";
+import { MUSIC_KINDS, MUSIC_RELAYS, parseMusicEvents, fetchWavlakeTracksByNpub, fetchPodcastFromRSS, discoverPodcastFeed, isKnownPodcaster, getSavedPodcastFeed, isPodcastDisabled, savePodcastFeed, removePodcastFeed, publishPodcastFeed, fetchNostrPodcastFeed, clearNostrPodcastCache, type MusicTrack } from "@/lib/music";
 import { parseLiveEvent, type LiveEventData } from "@/lib/live-events";
 import { useLiveStatus } from "@/contexts/LiveStatusContext";
-import { UploadTrackDialog } from "@/components/UploadTrackDialog";
-import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
-import type { NWCTransaction } from "@/contexts/NWCContext";
-import { uploadToNostrBuild, UploadError } from "@/lib/media-upload";
+import { uploadToNostrBuild } from "@/lib/media-upload";
 import { MediaSection } from "@/components/MediaSection";
 import { PageTabs, TabCountLine } from "@/components/PageTabs";
 import { useConnectionScores } from "@/hooks/use-graperank";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
-import { getSignalTier, getSignalTierColor, getSignalTierBg, triggerGrapeRankCalculation } from "@/lib/graperank";
+import { triggerGrapeRankCalculation } from "@/lib/graperank";
 import { copyNostrId } from "@/lib/clipboard-bridge";
 import { lazyRetry } from "@/lib/lazy-retry";
 import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
+import { LiveAvatarDot, LiveWord } from "@/components/LiveBadge";
+import { TrustMark, TrustPhrase, useTrustTierOf } from "@/components/TrustMark";
 
 const KIND_LONG_FORM = 30023;
 const KIND_RELAY_LIST = 10002;
@@ -114,7 +154,6 @@ type OutpostTab = "notes" | "replies" | "articles" | "media" | "network" | "crew
 type NetworkView = "crew" | "orbit" | "relays";
 // Operator tools that live behind the "Manage" slide-over (owner-only — never
 // shown on other users' profiles).
-const MANAGE_TABS: OutpostTab[] = ["wallet", "bookmarks", "analytics", "console", "flight_log", "shield"];
 
 // Consolidated utility sections — the standalone pages render embedded as tab
 // bodies (lazy so their bundles only load when the section opens).
@@ -238,7 +277,7 @@ export default function MyOutpost() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const search = useSearch();
-  const { pubkey, signer, profile, follows, attemptReconnect } = useNostrAuth();
+  const { pubkey, signer, follows, attemptReconnect } = useNostrAuth();
   const { livePubkeys } = useLiveStatus();
   const connectionScoresData = useConnectionScores(pubkey);
   const { recalculating, notifyRecalculating, wotEnabled, wotReady, setWotEnabled } = useGrapeRankScores();
@@ -322,7 +361,6 @@ export default function MyOutpost() {
   const [activeTab, setActiveTab] = useState<OutpostTab>(initialTab);
   const [networkView, setNetworkView] = useState<NetworkView>(initialNetworkView);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
   // Reflect the active tab in the URL so sections deep-link and old utility
   // routes can redirect here (e.g. /wallet -> /account?tab=wallet).
   const selectTab = useCallback((id: OutpostTab) => {
@@ -373,7 +411,7 @@ export default function MyOutpost() {
   const [loadingMoreArticles, setLoadingMoreArticles] = useState(false);
   const [relayList, setRelayList] = useState<RelayInfo[]>([]);
   const [relayListLoaded, setRelayListLoaded] = useState(false);
-  const [bannerIndex, setBannerIndex] = useState(() => {
+  const [bannerIndex] = useState(() => {
     const oldPref = localStorage.getItem("outpost-banner-pref");
     if (oldPref !== null) localStorage.removeItem("outpost-banner-pref");
     const saved = localStorage.getItem("outpost-banner-index");
@@ -383,43 +421,13 @@ export default function MyOutpost() {
     return isNaN(idx) || idx < 0 || idx >= DEFAULT_BANNERS.length ? -1 : idx;
   });
 
-  const [walletVisible, setWalletVisible] = useState(() => {
-    return localStorage.getItem("outpost-wallet-visible") === "true";
-  });
-  const [walletTransactions, setWalletTransactions] = useState<NWCTransaction[]>([]);
-  const [walletTxLoaded, setWalletTxLoaded] = useState(false);
-
-  const { isConnected: walletConnected, balance, balanceLoading, listTransactions, refreshBalance } = useNWC();
-
-  useEffect(() => {
-    if (!walletConnected) {
-      setWalletTransactions([]);
-      setWalletTxLoaded(false);
-      return;
-    }
-    let cancelled = false;
-    listTransactions(20).then(txs => {
-      if (!cancelled) {
-        setWalletTransactions(txs);
-        setWalletTxLoaded(true);
-      }
-    }).catch(() => {
-      if (!cancelled) setWalletTxLoaded(true);
-    });
-    return () => { cancelled = true; };
-  }, [walletConnected, listTransactions]);
+  // The wallet's history is the wallet tab's to fetch (Wallet.tsx); Account only keeps the balance fresh.
+  const { isConnected: walletConnected, refreshBalance } = useNWC();
 
   useEffect(() => {
     if (walletConnected) refreshBalance();
   }, [walletConnected, refreshBalance]);
 
-  const toggleWalletVisibility = useCallback(() => {
-    setWalletVisible(prev => {
-      const next = !prev;
-      localStorage.setItem("outpost-wallet-visible", next ? "true" : "false");
-      return next;
-    });
-  }, []);
 
   const hiddenKey = pubkey ? `relay-outpost-hidden-badges:${pubkey}` : null;
   const getHiddenSet = (): Set<string> => {
@@ -1286,7 +1294,7 @@ export default function MyOutpost() {
             : "Your profile changes were sent to relays.",
         });
       } else {
-        toast({ title: "Broadcast failed", description: "Could not publish to relays", variant: "destructive" });
+        toast({ title: "Couldn't publish", description: "Could not publish to relays", variant: "destructive" });
       }
     } catch (err) {
       if (isSignerError(err)) { await handleSignerError(err, toast, attemptReconnect); }
@@ -1302,8 +1310,6 @@ export default function MyOutpost() {
   const writeRelays = relayList.filter(r => r.mode === "write" || r.mode === "both");
   const readRelays = relayList.filter(r => r.mode === "read" || r.mode === "both");
 
-  const crewCount = profileStats?.followingCount || userFollowList.length || 0;
-  const orbitCount = profileStats?.followersCount || 0;
 
   const crewHasLive = useMemo(() => {
     if (livePubkeys.size === 0 || userFollowList.length === 0) return false;
@@ -1320,7 +1326,7 @@ export default function MyOutpost() {
   // tab labels (they overflowed the row at 375px) into a muted TabCountLine at
   // the top of each tab's content.
   const contentTabs: { id: OutpostTab; label: string; icon: typeof FileText }[] = [
-    { id: "notes", label: "Notes", icon: FileText },
+    { id: "notes", label: "Posts", icon: FileText },
     { id: "replies", label: "Replies", icon: CornerUpLeft },
     { id: "media", label: "Media", icon: ImageIcon },
     { id: "network", label: "Network", icon: Users },
@@ -1338,14 +1344,14 @@ export default function MyOutpost() {
   ];
   // Operator tools — tucked behind the "Manage" slide-over, grouped.
   const manageGroups: { label: string; items: { id: OutpostTab; label: string; icon: typeof FileText; desc: string }[] }[] = [
-    { label: "Vault", items: [
+    { label: "Wallet & saved", items: [
       { id: "wallet", label: "Wallet", icon: WalletIcon, desc: "Lightning balance & zaps" },
       { id: "bookmarks", label: "Bookmarks", icon: Bookmark, desc: "Saved posts & articles" },
     ] },
     { label: "Insights", items: [
       { id: "analytics", label: "Analytics", icon: BarChart3, desc: "Engagement & reach" },
       { id: "console", label: "Console", icon: Terminal, desc: "Raw relay queries" },
-      { id: "flight_log", label: "Flight Log", icon: ScrollText, desc: "Your activity log" },
+      { id: "flight_log", label: "History", icon: ScrollText, desc: "Your activity log" },
     ] },
     { label: "Operations", items: [
       { id: "shield", label: "Trust & safety", icon: ShieldCheck, desc: "Web of Trust & moderation" },
@@ -1359,9 +1365,9 @@ export default function MyOutpost() {
     return (
       <div className="flex flex-col items-center justify-center h-full px-4 py-16 text-center" data-testid="page-myoutpost-signin">
         <Satellite className="w-12 h-12 text-muted-foreground/30 mb-4" />
-        <h2 className="text-lg font-brand uppercase tracking-wider text-foreground/80 mb-2">No Community Established</h2>
+        <h2 className="text-[20px] font-semibold text-foreground mb-2">No community yet</h2>
         <p className="text-sm text-muted-foreground/60 max-w-sm mb-6">
-          Sign in to set up your community. Your identity, your crew, your broadcasts - all in one place.
+          Sign in to set up your community. Your identity, your people, your posts — all in one place.
         </p>
         <Button variant="default" className="gap-2 font-medium" asChild data-testid="button-signin-prompt">
           <Link href="/login">
@@ -1440,7 +1446,7 @@ export default function MyOutpost() {
                   audio-docked mode, where it's the only expand handle left. */}
               <Avatar className="w-7 h-7 shrink-0 border border-border hidden group-data-[audio=true]:flex">
                 <AvatarImage src={avatarUrl} alt={displayName} />
-                <AvatarFallback className="bg-brand/25 text-brand text-[10px] font-bold">
+                <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[10px] font-bold">
                   {displayName.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -1468,7 +1474,7 @@ export default function MyOutpost() {
               >
                 <Avatar className="w-8 h-8 shrink-0 border border-border">
                   <AvatarImage src={avatarUrl} alt={displayName} />
-                  <AvatarFallback className="bg-brand/25 text-brand text-[11px] font-bold">
+                  <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[11px] font-bold">
                     {displayName.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -1503,14 +1509,14 @@ export default function MyOutpost() {
         <div
           className={`h-36 sm:h-48 md:h-56 w-full overflow-hidden ${headerCondensed ? "hidden" : ""}`}
           style={{
-            backgroundColor: "hsl(260 20% 7%)",
+            backgroundColor: "hsl(220 20% 7%)",
             backgroundImage: activeLqip ? `url(${activeLqip})` : undefined,
             backgroundSize: "cover",
             backgroundPosition: "center" }}
         >
           <img
             src={activeBannerSrc}
-            alt="Station banner"
+            alt="Community banner"
             className={`w-full h-full object-cover transition-opacity duration-300 ${bannerLoaded ? "opacity-100" : "opacity-0"}`}
             loading="eager"
             fetchPriority="high"
@@ -1524,17 +1530,6 @@ export default function MyOutpost() {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent dark:from-background/80 dark:via-background/20 hidden dark:block" />
           <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent dark:hidden" />
-          <div
-            className="absolute bottom-0 left-0 right-0 h-px"
-            style={{
-              background: "linear-gradient(90deg, transparent 10%, rgba(140, 80, 220, 0.15) 30%, rgba(100, 60, 180, 0.22) 50%, rgba(140, 80, 220, 0.15) 70%, transparent 90%)" }}
-          />
-          <div
-            className="absolute bottom-0 left-0 right-0 h-[4px] pointer-events-none"
-            style={{
-              background: "linear-gradient(90deg, transparent 10%, rgba(140, 80, 220, 0.04) 30%, rgba(100, 60, 180, 0.07) 50%, rgba(140, 80, 220, 0.04) 70%, transparent 90%)",
-              filter: "blur(2px)" }}
-          />
         </div>
         <div className={`absolute top-3 right-3 z-20 items-center gap-2 ${headerCondensed ? "hidden" : "flex"}`}>
           {connectionScoresData.scores && connectionScoresData.scores.size > 0 && wotEnabled ? (
@@ -1552,7 +1547,7 @@ export default function MyOutpost() {
                     <BrainstormIcon className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5 drop-shadow-[0_0_4px_rgba(52,211,153,0.3)]" />
                     <div className="min-w-0">
                       <span className="text-[11px] font-bold text-white/95 block leading-snug whitespace-nowrap">
-                        WoT Service Provider
+                        Trust service provider
                       </span>
                       <p className="text-[9px] text-white/55 leading-snug">NIP-85 Declaration</p>
                       {recalculating ? (
@@ -1566,7 +1561,7 @@ export default function MyOutpost() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className={`text-[9px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 leading-none ${recalculating ? "text-brand bg-brand/10 border border-brand/20 shadow-[0_0_6px_rgba(139,92,246,0.15)]" : "text-success dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_6px_rgba(52,211,153,0.15)]"}`}>{recalculating ? "Processing" : "Active"}</span>
+                    <span className={`text-[11px] font-bold rounded-full px-2 py-0.5 leading-none ${recalculating ? "text-brand bg-brand/10 border border-brand/20 shadow-[0_0_6px_rgba(13,15,18,0.15)]" : "text-success dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_6px_rgba(52,211,153,0.15)]"}`}>{recalculating ? "Processing" : "Active"}</span>
                     {recalculating ? (
                       <a
                         href="https://brainstorm.nosfabrica.com"
@@ -1589,7 +1584,7 @@ export default function MyOutpost() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 border-t border-white/[0.06] bg-white/[0.02]">
-                  <span className="text-[8px] text-white/35 uppercase tracking-wider font-semibold shrink-0">Compatible Clients</span>
+                  <span className="text-[11px] text-white/50 font-medium shrink-0">Also works with</span>
                   <div className="flex items-center gap-2 ml-auto">
                     <a href="https://amethyst.social/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 opacity-75 hover:opacity-100 transition-opacity" title="Amethyst">
                       <img src={amethystLogo} alt="Amethyst" className="w-3.5 h-3.5 rounded-sm" />
@@ -1606,7 +1601,7 @@ export default function MyOutpost() {
               <button
                 type="button"
                 onClick={() => setShowWotInfo(true)}
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[10px] uppercase tracking-wider font-bold bg-[rgba(10,10,20,0.75)] dark:bg-[rgba(8,8,18,0.8)] backdrop-blur-xl text-white/80 hover:text-white transition-colors border border-emerald-500/25 cursor-pointer hover:border-emerald-500/40 hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-bold bg-[rgba(10,10,20,0.75)] dark:bg-[rgba(8,8,18,0.8)] backdrop-blur-xl text-white/80 hover:text-white transition-colors border border-emerald-500/25 cursor-pointer hover:border-emerald-500/40 hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
               >
                 <BrainstormIcon className="w-3.5 h-3.5 text-emerald-400 shrink-0 drop-shadow-[0_0_4px_rgba(52,211,153,0.3)]" />
                 {recalculating ? (
@@ -1617,7 +1612,7 @@ export default function MyOutpost() {
                 ) : (
                   <>
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.4)] shrink-0" />
-                    WoT Active
+                    Trust on
                     <span className="normal-case tracking-normal text-white/40 hidden sm:inline">· {formatGrapeRankTime(connectionScoresData.lastCalculated)}</span>
                   </>
                 )}
@@ -1627,10 +1622,10 @@ export default function MyOutpost() {
             <button
               type="button"
               onClick={() => setShowWotInfo(true)}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[10px] uppercase tracking-wider font-bold bg-[rgba(10,10,20,0.75)] dark:bg-[rgba(8,8,18,0.8)] backdrop-blur-xl text-white/50 hover:text-white/80 transition-colors border border-amber-500/20 cursor-pointer hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-bold bg-[rgba(10,10,20,0.75)] dark:bg-[rgba(8,8,18,0.8)] backdrop-blur-xl text-white/50 hover:text-white/80 transition-colors border border-amber-500/20 cursor-pointer hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-              WoT Paused
+              Trust paused
               <span className="normal-case tracking-normal text-amber-400">· Re-enable</span>
             </button>
           ) : wotEnabled && !wotReady ? (
@@ -1639,7 +1634,7 @@ export default function MyOutpost() {
             <button
               type="button"
               onClick={() => setShowWotInfo(true)}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[10px] uppercase tracking-wider font-bold bg-[rgba(10,10,20,0.75)] dark:bg-[rgba(8,8,18,0.8)] backdrop-blur-xl text-white/70 hover:text-white/90 transition-colors border border-brand/25 cursor-pointer hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-bold bg-[rgba(10,10,20,0.75)] dark:bg-[rgba(8,8,18,0.8)] backdrop-blur-xl text-white/70 hover:text-white/90 transition-colors border border-brand/25 cursor-pointer hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
               data-testid="badge-wot-building"
             >
               <RelayOutpostInlineLoader className="w-2.5 h-2.5" />
@@ -1649,10 +1644,10 @@ export default function MyOutpost() {
             <button
               type="button"
               onClick={() => setShowWotInfo(true)}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[10px] uppercase tracking-wider font-bold bg-[rgba(10,10,20,0.75)] dark:bg-[rgba(8,8,18,0.8)] backdrop-blur-xl text-white/50 hover:text-white/80 transition-colors border border-white/[0.08] cursor-pointer hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-bold bg-[rgba(10,10,20,0.75)] dark:bg-[rgba(8,8,18,0.8)] backdrop-blur-xl text-white/50 hover:text-white/80 transition-colors border border-white/[0.08] cursor-pointer hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
             >
               <BrainstormIcon className="w-3.5 h-3.5 text-white/50" />
-              WoT Offline
+              Trust offline
               <span className="normal-case tracking-normal text-brand">· Learn more</span>
             </button>
           )}
@@ -1661,7 +1656,7 @@ export default function MyOutpost() {
 
       <div className={`${editing ? "max-w-5xl" : "max-w-3xl"} mx-auto w-full px-3 sm:px-4`}>
         <div className={`flex-col sm:flex-row sm:items-end gap-3 -mt-12 sm:-mt-14 relative z-10 ${headerCondensed ? "hidden" : "flex"}`} data-testid="container-outpost-identity">
-          <Avatar className="w-24 h-24 sm:w-28 sm:h-28 shrink-0 border-2 border-brand/25 dark:border-brand/30 shadow-[0_0_16px_rgba(139,92,246,0.25),0_0_4px_rgba(139,92,246,0.15)] dark:shadow-[0_0_20px_rgba(139,92,246,0.3),0_0_6px_rgba(139,92,246,0.2)]" data-testid="avatar-outpost">
+          <Avatar className="w-24 h-24 sm:w-28 sm:h-28 shrink-0 border-2 border-brand/25 dark:border-brand/30 shadow-[0_0_16px_rgba(255,255,255,0.25),0_0_4px_rgba(255,255,255,0.15)] dark:shadow-[0_0_20px_rgba(255,255,255,0.3),0_0_6px_rgba(255,255,255,0.2)]" data-testid="avatar-outpost">
             <AvatarImage src={avatarUrl} alt={displayName} />
             <AvatarFallback className="bg-muted text-muted-foreground text-2xl font-bold">
               {displayName.slice(0, 2).toUpperCase()}
@@ -1878,7 +1873,7 @@ export default function MyOutpost() {
         <div className="mt-4 pb-8">
           {activeTab === "notes" && (
             <>
-              <TabCountLine count={tabCounts.notes} singular="note" plural="notes" />
+              <TabCountLine count={tabCounts.notes} singular="post" plural="posts" />
               <NotesTab notes={originalNotes} loaded={notesLoaded} repostMap={repostMapRef.current} onLoadMore={loadMoreNotes} hasMore={hasMoreNotes} loadingMore={loadingMoreNotes} />
             </>
           )}
@@ -2158,7 +2153,7 @@ export default function MyOutpost() {
                 </button>
                 {connectionScoresData.scores && connectionScoresData.scores.size > 0 && (
                   <div className="flex items-center gap-2">
-                    <span className="text-[9px] text-foreground/35 uppercase tracking-wider font-semibold shrink-0">Also on</span>
+                    <span className="text-[11px] text-foreground/50 font-medium shrink-0">Also on</span>
                     <div className="flex items-center gap-2">
                       <a href="https://amethyst.social/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity" title="Amethyst">
                         <img src={amethystLogo} alt="Amethyst" className="w-3.5 h-3.5 rounded-sm" />
@@ -2184,7 +2179,7 @@ export default function MyOutpost() {
             <div className="relative flex flex-col items-center gap-4">
               <Avatar className="w-16 h-16 border-2 border-brand/30 dark:border-brand/40 shadow-lg shadow-brand/10 dark:shadow-brand/20">
                 <AvatarImage src={avatarUrl} alt={displayName} />
-                <AvatarFallback className="bg-accent dark:bg-brand/50 text-accent-foreground dark:text-brand text-lg">
+                <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 bg-accent text-accent-foreground text-lg">
                   {(displayName || "?")[0]?.toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -2257,7 +2252,7 @@ function ProfilePreviewCard({
   const cleanWebsite = website.replace(/^https?:\/\//, "").replace(/\/$/, "");
   return (
     <div className="rounded-xl border border-brand/20 dark:border-brand/15 overflow-hidden bg-card shadow-sm" data-testid="card-profile-preview">
-      <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/50">Live preview</p>
+      <p className="px-3 pt-2 pb-1 text-[12px] font-medium text-muted-foreground">Live preview</p>
       {/* Banner */}
       <div className="relative w-full h-20 bg-gradient-to-br from-brand/20 via-brand/10 to-brand/20 dark:from-brand/10 dark:via-brand/5 dark:to-brand/10">
         {banner && <img src={banner} alt="" className="w-full h-full object-cover" data-testid="preview-banner" />}
@@ -2444,7 +2439,7 @@ function EditProfileForm({
     >
       <div className="absolute inset-0 rounded-md opacity-25 pointer-events-none glass-settings-glow" />
       <div className="relative p-4 space-y-3">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-brand/80 flex items-center gap-1.5">
+        <h3 className="text-[15px] font-semibold text-foreground flex items-center gap-1.5">
           <Settings className="w-3.5 h-3.5" />
           Profile
         </h3>
@@ -2616,7 +2611,7 @@ function EditProfileForm({
           <div className="pt-3 border-t border-brand/15 dark:border-brand/10">
             <div className="flex items-center gap-1.5 mb-1">
               <RelayOutpostIcon className="w-3.5 h-3.5 text-brand/60" />
-              <span className="text-xs font-semibold text-brand/60 uppercase tracking-wider">My Communities</span>
+              <span className="text-[13px] font-medium text-foreground/80">Your communities</span>
               <span className="text-[10px] text-muted-foreground/40 ml-auto">
                 {hiddenUrls.size > 0
                   ? `${badgeList.filter(b => !hiddenUrls.has(b.url)).length} of ${badgeList.length} shown`
@@ -2708,7 +2703,7 @@ function EditProfileForm({
         />
 
         <p className="text-[11px] text-brand/40">
-          Changes are signed by your key and broadcast to relays. Your private key never leaves your signer.
+          Changes are signed by your key and sent to relays. Your key never leaves your signer.
         </p>
       </div>
     </div>
@@ -2997,7 +2992,7 @@ function UpcomingStreamsSection({
     <div className="pt-3 border-t border-brand/15 dark:border-brand/10">
       <div className="flex items-center gap-1.5 mb-1">
         <Calendar className="w-3.5 h-3.5 text-brand/60" />
-        <span className="text-xs font-semibold text-brand/60 uppercase tracking-wider">Upcoming Streams</span>
+        <span className="text-[13px] font-medium text-foreground/80">Upcoming streams</span>
         <span className="text-[10px] text-muted-foreground/40 ml-auto">
           {plannedStreams.length > 0 ? `${plannedStreams.length} scheduled` : "none scheduled"}
         </span>
@@ -3329,16 +3324,16 @@ function NotesTab({ notes, loaded, repostMap, onLoadMore, hasMore, loadingMore }
   if (!loaded && notes.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12" data-testid="container-loading-notes">
-        <RelayOutpostLoader size="md" label="Loading broadcasts..." />
+        <RelayOutpostLoader size="md" label="Loading posts..." />
       </div>
     );
   }
   if (loaded && notes.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center" data-testid="container-no-notes">
-        <Signal className="w-8 h-8 text-foreground/30 dark:text-foreground/20 mb-2" />
-        <p className="text-sm text-foreground/60 dark:text-foreground/50 font-medium">No broadcasts yet</p>
-        <p className="text-xs text-foreground/40 dark:text-foreground/30 mt-1">Create your first post to start transmitting</p>
+        <OttoEmpty mood="quiet" size={88} className="mb-2 text-foreground/70" />
+        <p className="text-sm text-foreground/60 dark:text-foreground/50 font-medium">No posts yet</p>
+        <p className="text-xs text-foreground/40 dark:text-foreground/30 mt-1">Write your first post and it shows here</p>
       </div>
     );
   }
@@ -3367,7 +3362,7 @@ function RepliesTab({ replies, loaded, onLoadMore, hasMore, loadingMore }: { rep
   if (loaded && replies.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center" data-testid="container-no-replies">
-        <CornerUpLeft className="w-8 h-8 text-foreground/30 dark:text-foreground/20 mb-2" />
+        <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground/70" />
         <p className="text-sm text-foreground/60 dark:text-foreground/50 font-medium">No replies yet</p>
         <p className="text-xs text-foreground/40 dark:text-foreground/30 mt-1">Join conversations to see your replies here</p>
       </div>
@@ -3398,7 +3393,7 @@ function ArticlesTab({ articles, loaded, onLoadMore, hasMore, loadingMore, onDel
   if (articles.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <BookOpen className="w-8 h-8 text-foreground/30 dark:text-foreground/20 mb-2" />
+        <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground/70" />
         <p className="text-sm text-foreground/60 dark:text-foreground/50 font-medium">No articles published yet</p>
         <Button variant="outline" size="sm" className="mt-3 gap-1.5 font-medium" asChild>
           <Link href="/articles/write">
@@ -3476,16 +3471,15 @@ function ArticlesTab({ articles, loaded, onLoadMore, hasMore, loadingMore, onDel
 
 type PeopleSortMode = "a-z" | "z-a" | "newest" | "oldest" | "strong" | "weak";
 function getSortOptions(tabKey?: string, hasWot?: boolean): { value: PeopleSortMode; label: string }[] {
-  const isCrew = tabKey?.includes("crew");
   const opts: { value: PeopleSortMode; label: string }[] = [];
   if (hasWot) {
-    opts.push({ value: "strong", label: "Highly Trusted" });
-    opts.push({ value: "weak", label: "Low Trust" });
+    opts.push({ value: "strong", label: "Most trusted first" });
+    opts.push({ value: "weak", label: "Fewest ties first" });
   }
   opts.push({ value: "a-z", label: "A → Z" });
   opts.push({ value: "z-a", label: "Z → A" });
-  opts.push({ value: "newest", label: isCrew ? "Newest Following" : "Newest Followers" });
-  opts.push({ value: "oldest", label: isCrew ? "Oldest Following" : "Oldest Followers" });
+  opts.push({ value: "newest", label: "Newest first" });
+  opts.push({ value: "oldest", label: "Oldest first" });
   return opts;
 }
 
@@ -3496,6 +3490,8 @@ function getProfileName(event: Event): string {
 }
 
 function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMore, livePubkeys, followOrder, tabKey, connectionScores, totalCount }: { profiles: Event[]; loaded: boolean; emptyText: string; onLoadMore?: () => void; hasMore?: boolean; loadingMore?: boolean; livePubkeys?: Set<string>; followOrder?: string[]; tabKey?: string; connectionScores?: Map<string, number> | null; totalCount?: number }) {
+  const isMobile = useIsMobile();
+  const tierOf = useTrustTierOf();
   const { wotEnabled } = useGrapeRankScores();
   const hasWot = !!(wotEnabled && connectionScores && connectionScores.size > 0);
   const sortOptions = useMemo(() => getSortOptions(tabKey, hasWot), [tabKey, hasWot]);
@@ -3607,30 +3603,36 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
         {profiles.length > 1 && (
           <div className="flex items-center gap-1 order-last sm:order-none w-full sm:w-auto">
             <button
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-colors border cursor-pointer ${
+              type="button"
+              aria-pressed={sortMode !== "a-z" && sortMode !== "z-a"}
+              className={`hit-area inline-flex items-center gap-1 px-3 min-h-8 rounded-full text-[12px] font-medium transition-colors duration-150 border cursor-pointer ${
                 sortMode !== "a-z" && sortMode !== "z-a"
-                  ? "border-brand/30 bg-brand/10 text-brand"
-                  : "border-transparent text-foreground/40 dark:text-foreground/30 hover:text-foreground/60"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
               onClick={() => handleSortChange(hasWot ? "strong" : "newest")}
             >
               All
             </button>
             <button
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-colors border cursor-pointer ${
+              type="button"
+              aria-pressed={sortMode === "a-z"}
+              className={`hit-area inline-flex items-center gap-1 px-3 min-h-8 rounded-full text-[12px] font-medium transition-colors duration-150 border cursor-pointer ${
                 sortMode === "a-z"
-                  ? "border-brand/30 bg-brand/10 text-brand"
-                  : "border-transparent text-foreground/40 dark:text-foreground/30 hover:text-foreground/60"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
               onClick={() => handleSortChange(sortMode === "a-z" ? (hasWot ? "strong" : "newest") : "a-z")}
             >
               A → Z
             </button>
             <button
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-colors border cursor-pointer ${
+              type="button"
+              aria-pressed={sortMode === "z-a"}
+              className={`hit-area inline-flex items-center gap-1 px-3 min-h-8 rounded-full text-[12px] font-medium transition-colors duration-150 border cursor-pointer ${
                 sortMode === "z-a"
-                  ? "border-brand/30 bg-brand/10 text-brand"
-                  : "border-transparent text-foreground/40 dark:text-foreground/30 hover:text-foreground/60"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
               onClick={() => handleSortChange(sortMode === "z-a" ? (hasWot ? "strong" : "newest") : "z-a")}
             >
@@ -3647,10 +3649,13 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
             <ArrowUpDown className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{sortOptions.find(o => o.value === sortMode)?.label || "Sort"}</span>
           </button>
-          {showSortMenu && (
+          {/* On phones the sort sheet renders at the top level: <main> is its own
+              stacking layer (z-0 + transform), so inside it the sheet sat under the
+              footer and its last options couldn't be tapped. */}
+          {showSortMenu && (isMobile ? createPortal(
             <>
-              <div className="fixed inset-0 z-40 sm:bg-transparent bg-black/30" onClick={() => setShowSortMenu(false)} />
-              <div className="fixed sm:absolute left-0 right-0 bottom-0 sm:left-auto sm:right-0 sm:bottom-auto sm:top-full sm:mt-1 z-50 sm:min-w-[140px] sm:w-auto rounded-t-xl sm:rounded-t-md sm:rounded-b-md border border-border/40 dark:border-border/20 bg-card shadow-lg py-1 sm:py-1" data-testid="menu-people-sort">
+              <div className="fixed inset-0 z-[55] sm:bg-transparent bg-black/30" onClick={() => setShowSortMenu(false)} />
+              <div className="fixed sm:absolute left-0 right-0 bottom-0 sm:left-auto sm:right-0 sm:bottom-auto sm:top-full sm:mt-1 z-[60] sm:min-w-[140px] sm:w-auto rounded-t-xl sm:rounded-t-md sm:rounded-b-md border border-border/40 dark:border-border/20 bg-card shadow-lg py-1 sm:py-1" data-testid="menu-people-sort">
                 <div className="sm:hidden relative border-b border-border/20">
                   {/* Grab handle doubles as tap-to-close; the ✕ is the explicit escape. */}
                   <button
@@ -3677,7 +3682,48 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
                     onClick={() => handleSortChange(opt.value)}
                     className={`w-full text-left px-4 sm:px-3 py-2.5 sm:py-1.5 text-sm sm:text-xs transition-colors ${
                       sortMode === opt.value
-                        ? "text-brand bg-brand/5 font-medium"
+                        ? "text-foreground bg-foreground/[0.06] font-semibold"
+                        : "text-foreground hover:bg-muted/30"
+                    }`}
+                    data-testid={`sort-option-${opt.value}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </>,
+            document.body,
+          ) : (
+            <>
+              <div className="fixed inset-0 z-[55] sm:bg-transparent bg-black/30" onClick={() => setShowSortMenu(false)} />
+              <div className="fixed sm:absolute left-0 right-0 bottom-0 sm:left-auto sm:right-0 sm:bottom-auto sm:top-full sm:mt-1 z-[60] sm:min-w-[140px] sm:w-auto rounded-t-xl sm:rounded-t-md sm:rounded-b-md border border-border/40 dark:border-border/20 bg-card shadow-lg py-1 sm:py-1" data-testid="menu-people-sort">
+                <div className="sm:hidden relative border-b border-border/20">
+                  {/* Grab handle doubles as tap-to-close; the ✕ is the explicit escape. */}
+                  <button
+                    type="button"
+                    onClick={() => setShowSortMenu(false)}
+                    className="flex w-full items-center justify-center py-3"
+                    aria-label="Close sort menu"
+                    data-testid="button-close-people-sort"
+                  >
+                    <span className="w-8 h-1 rounded-full bg-muted-foreground/20" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSortMenu(false)}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground/60 active:bg-muted/40 transition-colors"
+                    aria-label="Close"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                {sortOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => handleSortChange(opt.value)}
+                    className={`w-full text-left px-4 sm:px-3 py-2.5 sm:py-1.5 text-sm sm:text-xs transition-colors ${
+                      sortMode === opt.value
+                        ? "text-foreground bg-foreground/[0.06] font-semibold"
                         : "text-foreground hover:bg-muted/30"
                     }`}
                     data-testid={`sort-option-${opt.value}`}
@@ -3687,7 +3733,7 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
                 ))}
               </div>
             </>
-          )}
+          ))}
         </div>
       </div>
       {searchQuery.trim() && processedProfiles.length === 0 ? (
@@ -3705,14 +3751,13 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
           const about = content?.about || "";
           const isLive = livePubkeys?.has(event.pubkey);
           const influence = connectionScores?.get(event.pubkey) ?? null;
-          const scorePct = influence !== null ? Math.round(influence * 100) : null;
-          const tier = influence !== null ? getSignalTier(influence) : null;
+          const tier = tierOf(event.pubkey, influence);
           let npub = "";
           try { npub = nip19.npubEncode(event.pubkey); } catch {}
 
           return (
             <Link key={event.pubkey} href={`/profile/${npub}`} className="block" data-testid={`person-${event.pubkey.slice(0, 8)}`}>
-              <div className={`rounded-md bg-white/70 dark:bg-muted/20 border hover-elevate ${isLive ? "border-red-500/30 dark:border-red-500/25 shadow-[0_1px_4px_rgba(239,68,68,0.1),0_0_8px_1px_rgba(239,68,68,0.08)] dark:shadow-[0_0_8px_1px_rgba(239,68,68,0.15),0_0_2px_rgba(239,68,68,0.2)]" : "border-brand/20 dark:border-brand/15 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_0_0_1px_rgba(168,85,247,0.06),0_0_8px_rgba(168,85,247,0.04)] dark:shadow-[0_0_8px_rgba(168,85,247,0.08),0_0_2px_rgba(168,85,247,0.15)]"}`}>
+              <div className={`rounded-[16px] bg-card border hover-elevate ${isLive ? "border-red-500/40" : "border-border/60"}`}>
                 <div className="p-3 flex items-center gap-3">
                   <div className="relative shrink-0">
                     <Avatar className={`w-10 h-10 border shrink-0 ${isLive ? "border-red-500/40 signal-ring-live" : "border-border/60 dark:border-border"}`}>
@@ -3721,24 +3766,18 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
                         {name.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    {isLive && (
-                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-1.5 py-0 rounded-full bg-red-500 text-white text-[7px] font-bold uppercase tracking-wider shadow-[0_0_4px_1px_rgba(239,68,68,0.4)] live-dot border border-red-400/50">
-                        LIVE
-                      </div>
-                    )}
+                    {isLive && <LiveAvatarDot />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className="text-sm font-medium truncate text-foreground">{name}</p>
-                      {scorePct !== null && tier && (
-                        <span className={`shrink-0 inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-full text-[11px] font-bold tabular-nums border shadow-sm dark:shadow-none ${getSignalTierBg(tier)} ${getSignalTierColor(tier)}`}>
-                          {scorePct}
-                        </span>
-                      )}
+                      {isLive && <LiveWord />}
+                      {tier && <TrustMark tier={tier} />}
                     </div>
                     {about && (
-                      <p className="text-xs text-foreground/50 dark:text-muted-foreground truncate mt-0.5">{about}</p>
+                      <p className="text-[13px] text-muted-foreground truncate mt-0.5">{about}</p>
                     )}
+                    {tier && <TrustPhrase tier={tier} bare className="block mt-0.5" />}
                   </div>
                 </div>
               </div>
@@ -3756,7 +3795,7 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
                     </span>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-danger dark:text-red-400">Live Now</span>
+                    <span className="text-[12px] font-semibold text-danger dark:text-red-400">Live now</span>
                     <span className="text-[10px] text-danger dark:text-red-400/50 font-medium">{liveCount} broadcasting</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -3782,156 +3821,6 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
   );
 }
 
-function WalletSection({ visible, onToggleVisibility, balance, balanceLoading, transactions, txLoaded }: {
-  visible: boolean;
-  onToggleVisibility: () => void;
-  balance: number | null;
-  balanceLoading: boolean;
-  transactions: NWCTransaction[];
-  txLoaded: boolean;
-}) {
-  const incomingTotal = useMemo(() => transactions.filter(t => t.type === "incoming").reduce((sum, t) => sum + t.amount, 0), [transactions]);
-  const outgoingTotal = useMemo(() => transactions.filter(t => t.type === "outgoing").reduce((sum, t) => sum + t.amount, 0), [transactions]);
-  const incomingCount = transactions.filter(t => t.type === "incoming").length;
-  const outgoingCount = transactions.filter(t => t.type === "outgoing").length;
-
-  const masked = "••••••";
-
-  const msatToSats = (msat: number) => Math.floor(msat / 1000);
-  const formatSats = (sats: number) => sats.toLocaleString();
-
-  const formatDate = (ts: number) => {
-    const d = new Date(ts * 1000);
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    const diffHrs = diffMs / (1000 * 60 * 60);
-    if (diffHrs < 1) return `${Math.max(1, Math.floor(diffMs / 60000))}m ago`;
-    if (diffHrs < 24) return `${Math.floor(diffHrs)}h ago`;
-    if (diffHrs < 48) return "Yesterday";
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  };
-
-  return (
-    <div className="mt-4 glass-card rounded-md border" data-testid="container-outpost-wallet">
-      <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-amber-500/15 text-amber-500">
-            <span className="text-sm font-bold">₿</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Lightning Wallet</span>
-            {visible && balance !== null && !balanceLoading && (
-              <Badge variant="secondary" className="text-[11px] tabular-nums">
-                {formatSats(balance)} sats
-              </Badge>
-            )}
-            {visible && balanceLoading && (
-              <RelayOutpostInlineLoader className="w-3.5 h-3.5" />
-            )}
-            {!visible && (
-              <span className="text-[11px] text-muted-foreground/50">Hidden</span>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onToggleVisibility}
-            className="gap-1.5 text-xs font-medium"
-            data-testid="button-toggle-wallet-visibility"
-          >
-            {visible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            {visible ? "Hide" : "Show"}
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs font-medium" asChild data-testid="button-open-wallet">
-            <Link href="/wallet">
-              <WalletIcon className="w-3.5 h-3.5" />
-              Manage
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      {visible && (
-        <div className="border-t border-border/30 px-3 py-2.5 space-y-3">
-          <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-md bg-muted/20 px-3 py-2" data-testid="wallet-stat-balance">
-              <p className="text-[11px] text-muted-foreground/70 uppercase tracking-wider">Balance</p>
-              <p className="text-sm font-semibold tabular-nums mt-0.5">
-                {balanceLoading ? (
-                  <RelayOutpostInlineLoader className="w-3.5 h-3.5" />
-                ) : balance !== null ? (
-                  `${formatSats(balance)} sats`
-                ) : (
-                  "—"
-                )}
-              </p>
-            </div>
-            <div className="rounded-md bg-muted/20 px-3 py-2" data-testid="wallet-stat-received">
-              <p className="text-[11px] text-muted-foreground/70 uppercase tracking-wider flex items-center gap-1">
-                <ArrowDownLeft className="w-2.5 h-2.5 text-green-500/80" />
-                Received
-              </p>
-              <p className="text-sm font-semibold tabular-nums mt-0.5">
-                {!txLoaded ? masked : `${formatSats(msatToSats(incomingTotal))} sats`}
-              </p>
-              {txLoaded && (
-                <p className="text-[11px] text-muted-foreground/60 tabular-nums">{incomingCount} zaps</p>
-              )}
-            </div>
-            <div className="rounded-md bg-muted/20 px-3 py-2" data-testid="wallet-stat-sent">
-              <p className="text-[11px] text-muted-foreground/70 uppercase tracking-wider flex items-center gap-1">
-                <ArrowUpRight className="w-2.5 h-2.5 text-orange-500/80" />
-                Sent
-              </p>
-              <p className="text-sm font-semibold tabular-nums mt-0.5">
-                {!txLoaded ? masked : `${formatSats(msatToSats(outgoingTotal))} sats`}
-              </p>
-              {txLoaded && (
-                <p className="text-[11px] text-muted-foreground/60 tabular-nums">{outgoingCount} zaps</p>
-              )}
-            </div>
-          </div>
-
-          {txLoaded && transactions.length > 0 && (
-            <div>
-              <p className="text-[11px] text-muted-foreground/50 uppercase tracking-wider mb-1.5">Recent Activity</p>
-              <div className="space-y-1 max-h-48 overflow-y-auto">
-                {transactions.slice(0, 8).map((tx, i) => (
-                  <div
-                    key={tx.payment_hash || i}
-                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-muted/10 text-xs"
-                    data-testid={`wallet-tx-${i}`}
-                  >
-                    {tx.type === "incoming" ? (
-                      <ArrowDownLeft className="w-3 h-3 text-green-500/80 shrink-0" />
-                    ) : (
-                      <ArrowUpRight className="w-3 h-3 text-orange-500/80 shrink-0" />
-                    )}
-                    <span className="truncate flex-1 text-muted-foreground">
-                      {tx.description || (tx.type === "incoming" ? "Received" : "Sent")}
-                    </span>
-                    <span className={`tabular-nums font-medium shrink-0 ${tx.type === "incoming" ? "text-success dark:text-green-500/90" : "text-orange-500/90"}`}>
-                      {tx.type === "incoming" ? "+" : "-"}{formatSats(msatToSats(tx.amount))}
-                    </span>
-                    <span className="text-[11px] text-muted-foreground/50 shrink-0 tabular-nums">
-                      {formatDate(tx.settled_at || tx.created_at)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {txLoaded && transactions.length === 0 && (
-            <p className="text-xs text-muted-foreground/60 text-center py-2">No recent transactions</p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function RelaysTab({ relayList, writeRelays, readRelays, loaded }: {
   relayList: RelayInfo[];
@@ -3942,7 +3831,7 @@ function RelaysTab({ relayList, writeRelays, readRelays, loaded }: {
   if (!loaded) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <RelayOutpostLoader size="md" label="Scanning relay stations..." />
+        <RelayOutpostLoader size="md" label="Loading relays..." />
       </div>
     );
   }
@@ -3952,7 +3841,7 @@ function RelaysTab({ relayList, writeRelays, readRelays, loaded }: {
       <div>
         <div className="flex items-center gap-1.5 mb-2">
           <Satellite className="w-3.5 h-3.5 text-green-600 dark:text-green-500/80" />
-          <span className="text-xs text-foreground/70 dark:text-muted-foreground uppercase tracking-wider font-medium">Connected App Relays</span>
+          <span className="text-[13px] text-foreground/80 font-medium">Connected app relays</span>
           <Badge variant="secondary" className="text-[10px] ml-auto">{DEFAULT_RELAYS.length} active</Badge>
         </div>
         <div className="space-y-1">
@@ -3968,7 +3857,7 @@ function RelaysTab({ relayList, writeRelays, readRelays, loaded }: {
       <div>
         <div className="flex items-center gap-1.5 mb-1">
           <Satellite className="w-3.5 h-3.5 text-brand" />
-          <span className="text-xs text-foreground/70 dark:text-muted-foreground uppercase tracking-wider font-medium">Inbox</span>
+          <span className="text-[13px] text-foreground/80 font-medium">Inbox</span>
           <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-border/40">NIP-65 read</Badge>
           <Badge variant="secondary" className="text-[10px] ml-auto">{readRelays.length}</Badge>
         </div>
@@ -3993,11 +3882,11 @@ function RelaysTab({ relayList, writeRelays, readRelays, loaded }: {
       <div>
         <div className="flex items-center gap-1.5 mb-1">
           <Signal className="w-3.5 h-3.5 text-brand" />
-          <span className="text-xs text-foreground/70 dark:text-muted-foreground uppercase tracking-wider font-medium">Outbox</span>
+          <span className="text-[13px] text-foreground/80 font-medium">Outbox</span>
           <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-border/40">NIP-65 write</Badge>
           <Badge variant="secondary" className="text-[10px] ml-auto">{writeRelays.length}</Badge>
         </div>
-        <p className="text-[11px] text-foreground/55 dark:text-muted-foreground/70 mb-2">Relays you broadcast from — other clients fetch your posts here.</p>
+        <p className="text-[11px] text-foreground/55 dark:text-muted-foreground/70 mb-2">Relays your posts go out from — other clients fetch your posts here.</p>
         {writeRelays.length > 0 ? (
           <div className="space-y-1">
             {writeRelays.map(r => (
@@ -4018,7 +3907,7 @@ function RelaysTab({ relayList, writeRelays, readRelays, loaded }: {
       <div>
         <div className="flex items-center gap-1.5 mb-1">
           <Bookmark className="w-3.5 h-3.5 text-amber-500/80" />
-          <span className="text-xs text-foreground/70 dark:text-muted-foreground uppercase tracking-wider font-medium">Favorites</span>
+          <span className="text-[13px] text-foreground/80 font-medium">Favorites</span>
           <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-border/40">kind 10065</Badge>
           <Badge variant="outline" className="text-[9px] ml-auto border-amber-500/30 text-amber-600/80 dark:text-amber-400/70">Coming soon</Badge>
         </div>
@@ -4032,7 +3921,7 @@ function RelaysTab({ relayList, writeRelays, readRelays, loaded }: {
         <Button variant="outline" size="sm" className="gap-1.5 font-medium" asChild data-testid="button-manage-relays">
           <Link href="/relays">
             <Radio className="w-3.5 h-3.5" />
-            Manage Relay Stations
+            Manage relays
           </Link>
         </Button>
       </div>
@@ -4677,14 +4566,12 @@ function FlightLogTab({ pubkey }: { pubkey: string }) {
   return (
     <div className="space-y-4" data-testid="container-flight-log">
       <div
-        className="rounded-lg p-3 sm:p-4 border border-brand/25 dark:border-brand/10 bg-brand/5 dark:bg-transparent shadow-sm dark:shadow-none"
-        style={{
-          backgroundImage: "linear-gradient(135deg, rgba(140, 80, 220, 0.08) 0%, rgba(200, 160, 60, 0.04) 100%)" }}
+        className="rounded-[16px] p-3 sm:p-4 border border-border/60 bg-card"
         data-testid="container-flight-log-stats"
       >
         <div className="flex items-center gap-2 mb-3">
           <ScrollText className="w-4 h-4 text-brand dark:text-brand/70" />
-          <span className="text-xs text-foreground/60 dark:text-muted-foreground/70 uppercase tracking-wider font-medium">This Week</span>
+          <span className="text-[13px] text-foreground/80 font-medium">This week</span>
         </div>
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3">
           {[
@@ -4748,7 +4635,7 @@ function FlightLogTab({ pubkey }: { pubkey: string }) {
                 ? <ChevronDown className="w-3.5 h-3.5 text-foreground/40 dark:text-muted-foreground/50 shrink-0" />
                 : <ChevronRight className="w-3.5 h-3.5 text-foreground/40 dark:text-muted-foreground/50 shrink-0" />
               }
-              <span className="text-xs font-medium text-foreground/55 dark:text-muted-foreground/70 uppercase tracking-wider">{group.label}</span>
+              <span className="text-[13px] font-medium text-foreground/70">{group.label}</span>
               <div className="flex-1 h-px bg-border/50 dark:bg-border/30" />
               <span className="text-[11px] tabular-nums text-foreground/45 dark:text-muted-foreground/50 bg-muted/40 dark:bg-muted/20 px-1.5 py-0.5 rounded-full">{group.entries.length}</span>
             </button>
@@ -4783,7 +4670,7 @@ function FlightLogTab({ pubkey }: { pubkey: string }) {
                             <span className="text-sm">{entry.reactionContent}</span>
                           )}
                           {entry.type === "report" && entry.reportReason && (
-                            <span className="text-[10px] text-danger dark:text-red-400/60 font-mono uppercase">{entry.reportReason}</span>
+                            <span className="text-[13px] text-danger dark:text-red-400/60 font-medium capitalize">{entry.reportReason}</span>
                           )}
                           {targetProfile && (
                             <span className="text-xs text-foreground/45 dark:text-muted-foreground/50 truncate">

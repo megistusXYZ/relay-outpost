@@ -1,8 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import type { Event } from "nostr-tools";
-import { pool, DEFAULT_RELAYS, throttledPoolSubscribe } from "@/lib/nostr";
+import { DEFAULT_RELAYS, throttledPoolSubscribe } from "@/lib/nostr";
 import { format } from "date-fns";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -30,13 +29,13 @@ import {
   Play,
   Calendar,
   ArrowUpRight,
-  ArrowDownRight,
-  Minus } from "lucide-react";
+  Minus,
+} from "lucide-react";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 
 const CHART_COLORS = {
-  primary: "#8b5cf6",
-  cumulative: "#a78bfa" };
+  primary: "#FF6A3D",
+  cumulative: "#7C9BFF" };
 
 const TIME_RANGES = [
   { label: "7d", seconds: 7 * 86400 },
@@ -54,7 +53,7 @@ function CustomTooltipContent({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-md border border-brand/20 bg-white dark:bg-[rgba(4,4,10,0.95)] px-3 py-2 text-xs shadow-lg">
-      <p className="font-display text-brand mb-1">{label}</p>
+      <p className="font-medium text-foreground mb-1">{label}</p>
       {payload.map((entry: any, i: number) => (
         <p key={i} className="text-foreground">
           {entry.name}: <span className="text-brand font-mono">{Number(entry.value).toLocaleString()}</span>
@@ -162,7 +161,7 @@ export function NetworkGrowthTimeline({ relays: propRelays }: { relays?: string[
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <Users className="w-4 h-4 text-brand" />
-          <h2 className="text-sm font-display text-brand">Network Growth Timeline</h2>
+          <h2 className="text-[15px] font-semibold text-foreground">Network growth timeline</h2>
           <Badge variant="secondary" data-testid="badge-event-count">
             {events.length.toLocaleString()} profiles
           </Badge>
@@ -170,8 +169,8 @@ export function NetworkGrowthTimeline({ relays: propRelays }: { relays?: string[
 
         <div className="flex items-end gap-3 flex-wrap">
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-              Time Range
+            <Label className="text-[13px] text-muted-foreground font-medium">
+              Time range
             </Label>
             <Select value={timeRange} onValueChange={setTimeRange} data-testid="select-time-range">
               <SelectTrigger className="w-[100px]" data-testid="select-time-range-trigger">
@@ -204,7 +203,7 @@ export function NetworkGrowthTimeline({ relays: propRelays }: { relays?: string[
         {summary && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" data-testid="summary-cards">
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Total New Accounts</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Total new accounts</p>
               <div className="flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5 text-brand" />
                 <p className="text-lg font-mono text-brand" data-testid="text-total-accounts">
@@ -214,7 +213,7 @@ export function NetworkGrowthTimeline({ relays: propRelays }: { relays?: string[
             </div>
 
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Avg per Day</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Avg per day</p>
               <div className="flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-brand" />
                 <p className="text-lg font-mono text-foreground" data-testid="text-avg-per-day">
@@ -224,7 +223,7 @@ export function NetworkGrowthTimeline({ relays: propRelays }: { relays?: string[
             </div>
 
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Peak Day</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Peak day</p>
               <div className="flex items-center gap-1.5">
                 <ArrowUpRight className="w-3.5 h-3.5 text-amber-800 dark:text-amber-400" />
                 <div>
@@ -239,7 +238,7 @@ export function NetworkGrowthTimeline({ relays: propRelays }: { relays?: string[
             </div>
 
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Growth Trend</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Growth trend</p>
               <div className="flex items-center gap-1.5">
                 <TrendIcon className={`w-3.5 h-3.5 ${trendColor}`} />
                 <p className={`text-lg font-mono ${trendColor}`} data-testid="text-growth-trend">
@@ -266,33 +265,33 @@ export function NetworkGrowthTimeline({ relays: propRelays }: { relays?: string[
         {!loading && dailyData.length > 0 && (
           <div className="space-y-4">
             <div data-testid="daily-growth-chart">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50 mb-2">
-                Daily New Profiles
+              <p className="text-[13px] text-muted-foreground mb-2 font-medium">
+                Daily new profiles
               </p>
               <ResponsiveContainer width="100%" height={220}>
                 <AreaChart data={dailyData}>
                   <defs>
                     <linearGradient id="growthGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#FF6A3D" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#FF6A3D" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(139,92,246,0.08)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(163,172,186,0.14)" />
                   <XAxis
                     dataKey="date"
-                    tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }}
+                    tick={{ fontSize: 12, fill: "rgba(255,255,255,0.3)" }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }}
+                    tick={{ fontSize: 12, fill: "rgba(255,255,255,0.3)" }}
                     axisLine={false}
                     tickLine={false}
                     width={40}
                   />
                   <Tooltip content={<CustomTooltipContent />} />
                   <Legend
-                    wrapperStyle={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}
+                    wrapperStyle={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}
                   />
                   <Area
                     type="monotone"
@@ -307,27 +306,27 @@ export function NetworkGrowthTimeline({ relays: propRelays }: { relays?: string[
             </div>
 
             <div data-testid="cumulative-growth-chart">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50 mb-2">
-                Cumulative Total
+              <p className="text-[13px] text-muted-foreground mb-2 font-medium">
+                Cumulative total
               </p>
               <ResponsiveContainer width="100%" height={180}>
                 <LineChart data={dailyData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(139,92,246,0.08)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(163,172,186,0.14)" />
                   <XAxis
                     dataKey="date"
-                    tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }}
+                    tick={{ fontSize: 12, fill: "rgba(255,255,255,0.3)" }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }}
+                    tick={{ fontSize: 12, fill: "rgba(255,255,255,0.3)" }}
                     axisLine={false}
                     tickLine={false}
                     width={50}
                   />
                   <Tooltip content={<CustomTooltipContent />} />
                   <Legend
-                    wrapperStyle={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}
+                    wrapperStyle={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}
                   />
                   <Line
                     type="monotone"

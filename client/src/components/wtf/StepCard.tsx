@@ -34,22 +34,22 @@ export function StepCard({
 }: StepProps) {
   return (
     <div className="relative">
-      <div className="absolute left-6 top-0 bottom-0 w-px bg-gradient-to-b from-brand/20 via-brand/10 to-transparent" />
+      <div className="absolute left-6 top-0 bottom-0 w-px bg-border/60" />
 
       <div className="relative pl-14">
-        <div className="absolute left-3.5 top-3 w-5 h-5 rounded-full bg-brand/15 dark:bg-brand/20 border border-brand/25 flex items-center justify-center z-10">
-          <span className="text-[9px] font-black text-brand">{number}</span>
+        <div className="absolute left-3.5 top-3 w-6 h-6 -ml-0.5 rounded-full bg-foreground text-background flex items-center justify-center z-10">
+          <span className="text-[12px] font-semibold tabular-nums">{number}</span>
         </div>
 
-        <div className="rounded-xl border border-border/30 dark:border-border/15 bg-white/60 dark:bg-muted/10 p-5 transition-all duration-300 hover:border-brand/15 dark:hover:border-brand/10">
+        <div className="rounded-[20px] border border-border/60 bg-card p-5">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-brand/10 to-brand/10 border border-brand/10 flex items-center justify-center shrink-0">
-              <Icon className="w-4.5 h-4.5 text-brand" />
+            <div className="w-9 h-9 rounded-full dark:bg-foreground/[0.05] flex items-center justify-center shrink-0">
+              <Icon className="w-4.5 h-4.5 text-foreground/75" />
             </div>
-            <h3 className="text-sm font-bold text-foreground/90">{title}</h3>
+            <h3 className="text-[16px] font-semibold text-foreground">{title}</h3>
           </div>
 
-          <div className="text-sm text-foreground/70 dark:text-muted-foreground leading-relaxed space-y-3">
+          <div className="text-[15px] text-foreground/75 leading-relaxed space-y-3">
             {description}
           </div>
 

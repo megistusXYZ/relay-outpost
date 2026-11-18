@@ -20,8 +20,20 @@ import { Link } from "wouter";
 import { nip19 } from "nostr-tools";
 import type { Event as NostrEvent, Filter as RelayFilter } from "nostr-tools";
 import {
-  ArrowDown, ArrowUp, Ban, Copy, Download, Keyboard, MessageSquare,
-  Pause, Play, ScanSearch, Search, SlidersHorizontal, Trash2, Undo2, X,
+  ArrowDown,
+  ArrowUp,
+  Ban,
+  Copy,
+  Download,
+  Keyboard,
+  MessageSquare,
+  Pause,
+  Play,
+  ScanSearch,
+  Search,
+  Trash2,
+  Undo2,
+  X,
 } from "lucide-react";
 import { pool, DEFAULT_RELAYS } from "@/lib/nostr";
 import { CommentContent } from "@/components/CommentContent";
@@ -51,7 +63,7 @@ import { RefusedNotice } from "./RefusedNotice";
 import { EventInspector, type InspectedEvent } from "./EventInspector";
 import { parsePastedEvent } from "./inspector-model";
 import { FilterPanel, ViewsMenu } from "./ContentFilterPanel";
-import { EMPTY_FILTERS, deleteView, filterChips, isEmpty, readSavedViews, removeChip, saveView, withFilters, type ContentFilters, type SavedView } from "./content-filters";
+import { EMPTY_FILTERS, deleteView, filterChips, readSavedViews, removeChip, saveView, withFilters, type ContentFilters, type SavedView } from "./content-filters";
 import { countLine, type CountState } from "./count-line";
 import { getSignInPolicy, signInAsChosen } from "@/lib/nip42-auth";
 import { scrollRootFor } from "@/lib/scroll-root";
@@ -514,7 +526,6 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
     ...filterChips(filters, nameOf),
     ...(range !== "any" ? [{ key: "time", label: range === "custom" ? "Custom time" : TIME_RANGES.find((r) => r.id === range)?.label ?? "" }] : []),
   ], [filters, nameOf, range]);
-  const rangeLabel = range === "custom" ? "Custom" : TIME_RANGES.find((r) => r.id === range)?.label ?? "Any time";
   const nowSec = Math.floor(Date.now() / 1000);
   const oldest = results.length ? results[results.length - 1].created_at : undefined;
   const scope = live ? null : scopeLine({ reached, loaded: results.length, relaySearched: askRelayToSearch, exhausted, oldest });
@@ -561,7 +572,7 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
         setSubmitted(query.trim()); if (view === "removed") setView("all");
       }} role="search">
         <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 pointer-events-none" aria-hidden="true" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
           <Input
             ref={searchRef}
             value={query}
@@ -574,7 +585,7 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
             data-testid="ops-events-search"
           />
           {query && (
-            <button type="button" onClick={() => { setQuery(""); setSubmitted(""); }} className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 inline-flex items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground" aria-label="Clear search">
+            <button type="button" onClick={() => { setQuery(""); setSubmitted(""); }} className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground" aria-label="Clear search">
               <X className="w-4 h-4" />
             </button>
           )}
@@ -617,7 +628,7 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
         {TYPE_VIEWS.filter((v) => v.id === "all" || chipCount(v.id) > 0 || view === v.id).map((v) => (
           <button key={v.id} type="button" role="tab" aria-selected={view === v.id} onClick={() => setView(v.id)} data-testid={`ops-content-view-${v.id}`}
             className={`shrink-0 h-11 sm:h-9 px-3.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors ${view === v.id ? "bg-foreground text-background" : "bg-black/[0.05] dark:bg-white/[0.06] text-foreground/80 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]"}`}>
-            {v.label}<span className="ml-1.5 tabular-nums opacity-60">{chipCount(v.id)}</span>
+            {v.label}<span className="ml-1.5 tabular-nums">{chipCount(v.id)}</span>
           </button>
         ))}
         {canSeeRemoved && (
@@ -742,7 +753,7 @@ export function ContentTab({ relayUrl, nip11, initialLive = false, initialQuery 
       {/* Many at once */}
       {selectMode && view !== "removed" && (
         <div
-          className={`${wide ? "sticky bottom-3" : "fixed inset-x-3 bottom-[calc(76px+env(safe-area-inset-bottom,0px))] z-40"} rounded-2xl border border-black/[0.08] dark:border-white/[0.1] bg-background/95 backdrop-blur shadow-lg px-3 py-2`}
+          className={`${wide ? "sticky bottom-3" : "fixed inset-x-3 bottom-[calc(92px+env(safe-area-inset-bottom,0px))] z-40"} rounded-2xl border border-black/[0.08] dark:border-white/[0.1] bg-background/95 backdrop-blur shadow-lg px-3 py-2`}
           data-testid="ops-content-actionbar"
         >
           <div className="flex items-center gap-2 flex-wrap">
@@ -828,7 +839,7 @@ function ContentRow({ event, profile, wide, nowSec, current, selectMode, checked
       <Checkbox checked={checked} aria-label={`Select ${preview}`} data-testid="ops-content-check" />
     </span>
   ) : null;
-  const base = `cursor-pointer transition-colors ${current && !selectMode ? "bg-brand/[0.07]" : checked ? "bg-brand/[0.05]" : "hover:bg-black/[0.025] dark:hover:bg-white/[0.03]"}`;
+  const base = `cursor-pointer transition-colors ${current && !selectMode ? "bg-foreground/[0.06]" : checked ? "bg-foreground/[0.04]" : "hover:bg-black/[0.025] dark:hover:bg-white/[0.03]"}`;
   if (wide) {
     return (
       <li
@@ -841,7 +852,7 @@ function ContentRow({ event, profile, wide, nowSec, current, selectMode, checked
         {box}
         <span className="tabular-nums text-muted-foreground" title={new Date(event.created_at * 1000).toLocaleString()}>{relTime(event.created_at, nowSec)}</span>
         <span className="flex items-center gap-2 min-w-0">
-          <Avatar className="w-6 h-6 shrink-0">{profile?.picture && <AvatarImage src={profile.picture} alt="" />}<AvatarFallback className="text-[10px] bg-brand/10 text-brand">{who.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
+          <Avatar className="w-6 h-6 shrink-0">{profile?.picture && <AvatarImage src={profile.picture} alt="" />}<AvatarFallback className="text-[10px] bg-foreground/[0.08] text-foreground/80">{who.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
           <span className="truncate font-medium">{who}</span>
         </span>
         <span className="truncate text-muted-foreground">{typeWord(event.kind)}</span>
@@ -852,7 +863,7 @@ function ContentRow({ event, profile, wide, nowSec, current, selectMode, checked
   return (
     <li className={`flex items-start gap-2.5 px-3 py-2.5 min-h-[56px] ${base}`} onClick={onOpen} data-testid="ops-event-row" data-event-id={event.id}>
       {box}
-      <Avatar className="w-8 h-8 shrink-0 mt-0.5">{profile?.picture && <AvatarImage src={profile.picture} alt="" />}<AvatarFallback className="text-[11px] bg-brand/10 text-brand">{who.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
+      <Avatar className="w-8 h-8 shrink-0 mt-0.5">{profile?.picture && <AvatarImage src={profile.picture} alt="" />}<AvatarFallback className="text-[11px] bg-foreground/[0.08] text-foreground/80">{who.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
       <span className="min-w-0 flex-1">
         <span className="flex items-baseline gap-1.5 text-[13px]">
           <span className="font-medium truncate">{who}</span>
@@ -885,7 +896,7 @@ function ContentDetail({ event, profile, relayName, canRemove, canBan, where, fe
   return (
     <div className="p-4 space-y-4" data-testid="ops-content-detail" data-event-id={event.id}>
       <div className="flex items-center gap-3">
-        <Avatar className="w-11 h-11 shrink-0">{profile?.picture && <AvatarImage src={profile.picture} alt="" />}<AvatarFallback className="bg-brand/10 text-brand">{who.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
+        <Avatar className="w-11 h-11 shrink-0">{profile?.picture && <AvatarImage src={profile.picture} alt="" />}<AvatarFallback className="bg-foreground/[0.08] text-foreground/80">{who.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
         <div className="min-w-0 flex-1">
           <p className="font-semibold leading-tight truncate">{who}</p>
           <p className="text-[12px] text-muted-foreground truncate font-mono">{npub.slice(0, 20)}…</p>
@@ -1015,7 +1026,7 @@ function ExportButton({ onExport, disabled, label = "Export" }: { onExport: (f: 
       <PopoverContent align="end" className="w-56 p-1.5">
         <button type="button" onClick={() => onExport("csv")} className="w-full text-left min-h-[44px] px-3 rounded-md text-sm hover:bg-muted" data-testid="ops-content-export-csv">Spreadsheet (CSV)</button>
         <button type="button" onClick={() => onExport("json")} className="w-full text-left min-h-[44px] px-3 rounded-md text-sm hover:bg-muted" data-testid="ops-content-export-json">Nostr events (JSON)</button>
-        <p className="px-3 pt-1 pb-1.5 text-[11px] text-muted-foreground">Private messages are exported without their contents.</p>
+        <p className="px-3 pt-1 pb-1.5 text-[12px] text-muted-foreground">Private messages are exported without their contents.</p>
       </PopoverContent>
     </Popover>
   );

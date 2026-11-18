@@ -26,7 +26,7 @@ import {
 } from "@/lib/outpost-relays";
 
 const PUBLISH_PRESETS: { key: RelayPreset; label: string; description: string; icon: typeof Satellite; dotColor: string }[] = [
-  { key: "all", label: "All Relays", description: "Broadcast everywhere", icon: Satellite, dotColor: "bg-brand" },
+  { key: "all", label: "All Relays", description: "Send to every relay", icon: Satellite, dotColor: "bg-brand" },
   { key: "private", label: "Private Only", description: "Private community relays", icon: Lock, dotColor: "bg-amber-400" },
   { key: "public", label: "Public Only", description: "Default & public relays", icon: Globe, dotColor: "bg-green-400" },
 ];
@@ -46,7 +46,7 @@ function getModeIconColor(preset: RelayPreset): { text: string; hover: string; g
     case "all": return {
       text: "text-brand/80 dark:text-brand/70",
       hover: "hover:text-brand hover:bg-brand/10",
-      glow: "drop-shadow-[0_0_4px_rgba(168,85,247,0.3)]",
+      glow: "drop-shadow-[0_0_4px_rgba(243,245,248,0.3)]",
     };
     case "custom": return {
       text: "text-slate-500/80 dark:text-slate-400/70",
@@ -76,8 +76,8 @@ function HubContent({
     <div className="flex flex-col gap-1">
       {hasPublishToggle && (
         <>
-          <p className="text-[9px] uppercase tracking-wider text-muted-foreground/40 font-medium px-1 pt-0.5 pb-1">
-            Publish Mode
+          <p className="text-[11px] text-muted-foreground font-medium px-1 pt-0.5 pb-1">
+            Publish mode
           </p>
           <div className="space-y-0.5">
             {PUBLISH_PRESETS.map(({ key, label, description, icon: Icon, dotColor }) => {
@@ -150,7 +150,7 @@ function HubContent({
           <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 bg-brand/10 text-brand/70 dark:text-brand/80">
             <Radio className="w-3.5 h-3.5" />
           </div>
-          <span className="text-[13px] font-medium text-foreground/80 flex-1">Relay Control</span>
+          <span className="text-[13px] font-medium text-foreground/80 flex-1">Console</span>
           <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0" />
         </button>
       )}
@@ -234,7 +234,7 @@ export function RelayHubHeaderControl() {
   const triggerIcon = (
     <RelayHubIcon className={`w-[18px] h-[18px] ${
       isAdminRoute
-        ? "drop-shadow-[0_0_4px_rgba(168,85,247,0.35)]"
+        ? "drop-shadow-[0_0_4px_rgba(243,245,248,0.35)]"
         : modeColor
           ? modeColor.glow
           : prefersReducedMotion ? "" : "relay-ops-glow-icon"
@@ -271,8 +271,8 @@ export function RelayHubHeaderControl() {
                 <RelayHubIcon className={`w-4 h-4 ${modeColor ? "" : "text-brand/80"}`} />
               </div>
               <div>
-                <span className="font-brand uppercase tracking-widest text-xs block">Relay Hub</span>
-                <span className="text-[10px] text-muted-foreground/40 block leading-tight">Manage your broadcast settings</span>
+                <span className="text-xs block font-medium">Relay hub</span>
+                <span className="text-[10px] text-muted-foreground/40 block leading-tight">Manage where your posts go</span>
               </div>
             </div>
             <HubContent {...hubProps} />

@@ -31,12 +31,12 @@ function brandFor(rawUrl: string): Brand {
   }
   const h = host.toLowerCase();
   if (h.includes("github.")) return { Icon: Github, tint: "text-foreground", label: "GitHub" };
-  if (h === "x.com" || h.includes("twitter.")) return { Icon: Twitter, tint: "text-sky-500", label: "X" };
-  if (h.includes("youtube.") || h === "youtu.be") return { Icon: Youtube, tint: "text-danger dark:text-red-500", label: "YouTube" };
-  if (h.includes("t.me") || h.includes("telegram.")) return { Icon: Send, tint: "text-sky-500", label: "Telegram" };
-  if (h.includes("fountain.fm")) return { Icon: Zap, tint: "text-amber-500", label: "Fountain" };
+  if (h === "x.com" || h.includes("twitter.")) return { Icon: Twitter, tint: "text-muted-foreground", label: "X" };
+  if (h.includes("youtube.") || h === "youtu.be") return { Icon: Youtube, tint: "text-muted-foreground", label: "YouTube" };
+  if (h.includes("t.me") || h.includes("telegram.")) return { Icon: Send, tint: "text-muted-foreground", label: "Telegram" };
+  if (h.includes("fountain.fm")) return { Icon: Zap, tint: "text-muted-foreground", label: "Fountain" };
   // Generic host: neutral chain/link glyph that matches the other Details-row icons.
-  return { Icon: LinkIcon, tint: "text-muted-foreground/60", label: null };
+  return { Icon: LinkIcon, tint: "text-muted-foreground", label: null };
 }
 
 /** Clean display text for a URL: host + first path segment, no scheme/query. */
@@ -67,7 +67,7 @@ export function DetailLink({ url }: { url: string }) {
     >
       <Icon className={`w-3.5 h-3.5 shrink-0 ${tint}`} />
       <span className="truncate">{label ?? prettyUrl(url)}</span>
-      <ExternalLink className="w-3 h-3 shrink-0 text-muted-foreground/40 group-hover/link:text-brand/60 transition-colors" />
+      <ExternalLink className="w-3 h-3 shrink-0 text-muted-foreground group-hover/link:text-foreground transition-colors" />
     </a>
   );
 }

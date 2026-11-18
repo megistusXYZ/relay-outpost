@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { MentionHighlightTextarea } from "@/components/MentionHighlightTextarea";
 import { MentionSearch, type MentionResult } from "@/components/MentionSearch";
 import { useMention } from "@/hooks/use-mention";
@@ -34,7 +33,7 @@ type Step = "picker" | "photo" | "video" | "audio" | "podcast";
 // Each type gets its own tinted icon chip (chip = soft bg, icon = matching hue)
 // so the grid reads at a glance — hues reused from the app's feed-card accents.
 const TYPES: { id: Step | "note" | "article"; label: string; icon: typeof Pencil; desc: string; chip: string; tint: string }[] = [
-  { id: "note", label: "Note", icon: Pencil, desc: "A quick post", chip: "bg-brand/10", tint: "text-brand" },
+  { id: "note", label: "Post", icon: Pencil, desc: "A few quick words", chip: "bg-brand/10", tint: "text-brand" },
   { id: "photo", label: "Photo", icon: ImageIcon, desc: "Share an image", chip: "bg-sky-500/10", tint: "text-sky-600 dark:text-sky-400" },
   { id: "video", label: "Video", icon: VideoIcon, desc: "Share a video", chip: "bg-rose-500/10", tint: "text-rose-600 dark:text-rose-400" },
   { id: "audio", label: "Audio", icon: Music, desc: "Publish a track", chip: "bg-teal-500/10", tint: "text-teal-600 dark:text-teal-400" },
@@ -226,7 +225,7 @@ export function CreateStudio() {
             className="absolute inset-0 hidden h-full w-full object-cover object-top dark:block dark:opacity-[0.24]"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-background/25 via-background/60 to-background/92" />
-          <div className="absolute inset-x-0 top-0 h-44 bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(139,92,246,0.14),transparent_70%)] dark:bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(139,92,246,0.22),transparent_70%)]" />
+          <div className="absolute inset-x-0 top-0 h-44 bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(13,15,18,0.14),transparent_70%)] dark:bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(255,255,255,0.22),transparent_70%)]" />
         </div>
         <div className="px-5 pt-5 pb-3.5 border-b border-brand/10 dark:border-white/[0.06]">
           <DialogTitle className="flex items-center gap-2.5 text-base">
@@ -249,10 +248,10 @@ export function CreateStudio() {
                 <button
                   key={t.id}
                   onClick={() => pickType(t.id)}
-                  className={`group flex h-full min-h-[104px] flex-col items-start gap-2 p-3.5 rounded-xl border bg-card/60 dark:bg-white/[0.03] shadow-[0_2px_10px_-2px_rgba(100,70,180,0.10)] dark:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.5)] hover:bg-card/90 dark:hover:bg-white/[0.06] hover:border-brand/40 hover:shadow-[0_6px_20px_-4px_rgba(124,58,237,0.22)] motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0 motion-safe:active:scale-[0.98] transition-all duration-200 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                  className={`group flex h-full min-h-[104px] flex-col items-start gap-2 p-3.5 rounded-[20px] border bg-card hover:bg-foreground/[0.03] hover:border-foreground/30 motion-safe:active:scale-[0.98] transition-[background-color,border-color,transform] duration-150 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                     t.id === "note"
-                      ? "border-brand/30 dark:border-brand/25"
-                      : "border-brand/15 dark:border-brand/10"
+                      ? "border-foreground/25"
+                      : "border-border/60"
                   }`}
                   data-testid={`create-type-${t.id}`}
                 >

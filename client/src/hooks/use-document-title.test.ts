@@ -13,6 +13,6 @@ describe("the tab's title", () => {
     expect(documentTitleFor(null, 120)).toBe("(99+) Relay Outpost | Beyond the Algorithm");
   });
   it("does not brand a title that already names the app", () => {
-    expect(documentTitleFor("Help & Guides — Relay Outpost", 0)).toBe("Help & Guides — Relay Outpost");
+    expect(documentTitleFor("Help & guides — Relay Outpost", 0)).toBe("Help & guides — Relay Outpost");
   });
 });

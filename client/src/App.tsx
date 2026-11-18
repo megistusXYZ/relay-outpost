@@ -29,7 +29,8 @@ import { SpeechReaderBar } from "@/components/SpeechReaderBar";
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { DesktopStoriesRail } from "@/components/DesktopStoriesRail";
-import { BrandMark } from "@/components/BrandMark";
+
+import { OttoMark } from "@/components/OttoMark";
 import { useClassicSidebar } from "@/lib/desktop-chrome";
 import { openOrbitMenu, SHELL_OVERLAY_EVENTS, FEEDBACK_EVENTS } from "@/lib/shell-events";
 import { DeferredShell } from "@/components/DeferredShell";
@@ -45,7 +46,7 @@ import { UnifiedBtcBadge } from "@/components/BtcPriceTracker";
 import { useTTS } from "@/contexts/TextToSpeechContext";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { formatNpub, shortenNpub, getProfileContent } from "@/lib/nostr-helpers";
+import { getProfileContent } from "@/lib/nostr-helpers";
 import { parseInviteParams } from "@/lib/invite-links";
 import { useNostrMuteList } from "@/hooks/use-nostr-mute-list";
 import { fetchProfilesCached, eventStore } from "@/lib/nostr";
@@ -54,8 +55,7 @@ import { KIND_METADATA } from "@/lib/nostr-helpers";
 import { ArrowLeft, ArrowDownLeft, ArrowUpRight, Search as SearchIcon } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { primeKeyboard } from "@/lib/keyboard-handoff";
-import { getOutpostRelays } from "@/lib/outpost-relays";
-import { RelayOutpostIcon, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
+import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { RelayHubHeaderControl } from "@/components/RelayHubPopover";
 import { Button } from "@/components/ui/button";
 import NotFound, { LinkNotOpenable } from "@/pages/not-found";
@@ -99,8 +99,6 @@ const lazyChunks = {
   Thread: () => lazyRetry(() => import("@/pages/Thread")),
   Notifications: () => lazyRetry(() => import("@/pages/Notifications")),
   Login: () => lazyRetry(() => import("@/pages/Login")),
-  Following: () => lazyRetry(() => import("@/pages/Following")),
-  Followers: () => lazyRetry(() => import("@/pages/Followers")),
   Bookmarks: () => lazyRetry(() => import("@/pages/Bookmarks")),
   ImagesFeed: () => lazyRetry(() => import("@/pages/ImagesFeed")),
   VideoFeed: () => lazyRetry(() => import("@/pages/VideoFeed")),
@@ -165,12 +163,6 @@ const Search = lazy(lazyChunks.Search);
 const Thread = lazy(lazyChunks.Thread);
 const Notifications = lazy(lazyChunks.Notifications);
 const Login = lazy(lazyChunks.Login);
-const Following = lazy(lazyChunks.Following);
-const Followers = lazy(lazyChunks.Followers);
-const Bookmarks = lazy(lazyChunks.Bookmarks);
-const ImagesFeed = lazy(lazyChunks.ImagesFeed);
-const VideoFeed = lazy(lazyChunks.VideoFeed);
-const AudioFeed = lazy(lazyChunks.AudioFeed);
 const ArticlesFeed = lazy(lazyChunks.ArticlesFeed);
 const Discover = lazy(lazyChunks.Discover);
 const Marketplace = lazy(lazyChunks.Marketplace);
@@ -198,10 +190,8 @@ const MuteList = lazy(lazyChunks.MuteList);
 const KeyBackup = lazy(lazyChunks.KeyBackup);
 const ArticleEditor = lazy(lazyChunks.ArticleEditor);
 const RSSFeed = lazy(lazyChunks.RSSFeed);
-const WalletPage = lazy(lazyChunks.WalletPage);
 const Messages = lazy(lazyChunks.Messages);
 const RelayConsole = lazy(lazyChunks.RelayConsole);
-const AnalyticsDashboard = lazy(lazyChunks.AnalyticsDashboard);
 const RelayDashboard = lazy(lazyChunks.RelayDashboard);
 const Tools = lazy(lazyChunks.Tools);
 const YourBadges = lazy(lazyChunks.YourBadges);
@@ -216,7 +206,6 @@ const ContentCalendar = lazy(lazyChunks.ContentCalendar);
 const Privacy = lazy(lazyChunks.Privacy);
 const Covenant = lazy(lazyChunks.Covenant);
 const ChildSafety = lazy(lazyChunks.ChildSafety);
-const ShieldMatrix = lazy(lazyChunks.ShieldMatrix);
 const WtfIsThis = lazy(lazyChunks.WtfIsThis);
 const Welcome = lazy(lazyChunks.Welcome);
 const FirstTenMinutes = lazy(lazyChunks.FirstTenMinutes);
@@ -619,7 +608,7 @@ function MobileSidebarTrigger() {
     >
       {/* Theme foreground on normal chrome; the on-banner white + legibility
           shadow is applied by the .header-trigger-mark rule in index.css. */}
-      <BrandMark className="header-trigger-mark w-9 h-9 text-brand/80 dark:text-white/85" />
+      <OttoMark size={36} className="header-trigger-mark text-foreground/85 dark:text-white/85" />
     </button>
   );
 }
@@ -787,7 +776,7 @@ function ZapToastIcon({ isIncoming, profilePic, profileName }: {
         {profilePic ? (
           <AvatarImage src={profilePic} alt={profileName || ""} />
         ) : null}
-        <AvatarFallback className="bg-brand/10 text-brand text-xs">
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs">
           {profileName ? profileName.slice(0, 2).toUpperCase() : "⚡"}
         </AvatarFallback>
       </Avatar>
@@ -1054,8 +1043,8 @@ const HeaderBar = memo(function HeaderBar({ scrollHidden }: { scrollHidden: bool
         style={{
           padding: bellLit ? "1.5px" : "1px",
           background: bellLit
-            ? "conic-gradient(from 0deg, #7c3aed, #a855f7 26%, rgba(168,85,247,0.35) 50%, #a855f7 72%, #7c3aed)"
-            : "rgba(150,120,255,0.18)",
+            ? "conic-gradient(from 0deg, #F3F5F8, #A3ACBA 26%, rgba(163,172,186,0.35) 50%, #A3ACBA 72%, #F3F5F8)"
+            : "hsl(var(--border))",
           WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
           WebkitMaskComposite: "xor",
           mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
@@ -1231,7 +1220,7 @@ function AppLayout() {
   // matched a horizontal swipe anywhere and ran inverted; isEdgeBackSwipe pins
   // the thresholds that made it misfire (see edge-swipe.test.ts).
   useSwipeNavigation(mainRef);
-  const { pubkey, loginMethod, isLoggingIn, isReconnecting } = useNostrAuth();
+  const { pubkey, isLoggingIn, isReconnecting } = useNostrAuth();
   useNostrMuteList();
   const [location, navigate] = useLocation();
   const iaCollapsedForLanding = useIaCollapsed();
@@ -1280,7 +1269,7 @@ function AppLayout() {
   const onWtfPage = location.startsWith("/help") || location.startsWith("/wtf");
   // Standalone info/legal pages should be readable directly (e.g. from the
   // landing footer) without the warp overlay covering them.
-  const onInfoPage = onWtfPage || location.startsWith("/privacy") || location.startsWith("/covenant") || location.startsWith("/terms");
+  const onInfoPage = onWtfPage || location.startsWith("/privacy") || location.startsWith("/covenant") || location.startsWith("/terms") || location.startsWith("/child-safety") || location === "/whats-new";
   // A Concord invite link must show ITS page to a logged-out visitor — the
   // route guard below already renders /invite in place instead of bouncing,
   // but the full-screen launch overlay (opaque, z-100) was still covering it,
@@ -1511,7 +1500,7 @@ function AppLayout() {
     // The Discover-bento lanes are all public reads — see onDiscoverPage above
     // for why each is listed. Detail pages under them are NOT: /outposts/<url>
     // still gates, /articles/<naddr> has its own guest preview.
-    const isAllowed = location === "/" || location === "/discover" || location === "/news" || location === "/articles" || location === "/outposts" || location.startsWith("/search") || location === "/login" || location.startsWith("/help") || location.startsWith("/wtf") || location === "/privacy" || location === "/covenant" || location === "/terms";
+    const isAllowed = location === "/" || location === "/discover" || location === "/news" || location === "/articles" || location === "/outposts" || location.startsWith("/search") || location === "/login" || location.startsWith("/help") || location.startsWith("/wtf") || location === "/privacy" || location === "/covenant" || location === "/terms" || location === "/child-safety" || location === "/whats-new";
     if (!isAllowed) {
       // Remember where they were headed (e.g. an invite / deep link with its
       // ?tab=…&channel=… query) so we can drop them there after they sign in or

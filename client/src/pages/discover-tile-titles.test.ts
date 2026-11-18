@@ -29,7 +29,8 @@ describe("Discover tile titles", () => {
     expect(src.match(/className=\{TILE_TITLE\}/g) ?? []).toHaveLength(2); // TileShell + the News hero
     expect(strip.match(/className=\{TILE_TITLE\}/g) ?? []).toHaveLength(1);
     expect(strip).not.toMatch(/<UserPlus /);
-    expect(shared).toMatch(/export const TILE_TITLE = "text-\[11px\] font-semibold uppercase tracking-\[0\.14em\] text-muted-foreground"/);
+    expect(shared).toMatch(/export const TILE_TITLE = "text-\[15px\] font-semibold text-foreground"/);
+    expect(shared).not.toMatch(/uppercase/);
   });
 
   it("the Live tile's chip says what is true now rather than repeating the tile's name", () => {

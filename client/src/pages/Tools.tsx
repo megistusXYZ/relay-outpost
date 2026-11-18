@@ -22,7 +22,7 @@ const TOOLS: ToolRow[] = [
   { href: "/console/dashboard", icon: BarChart3, title: "Analytics", desc: "Engagement & reach" },
   { href: "/tickets", icon: Inbox, title: "Tickets & Feedback", desc: "Send feedback, and see replies to your tickets" },
   { href: "/my-relays/console", icon: Terminal, title: "Console", desc: "Ask any relay anything" },
-  { href: "/account?tab=flight_log", icon: ScrollText, title: "Flight Log", desc: "Your activity log" },
+  { href: "/account?tab=flight_log", icon: ScrollText, title: "History", desc: "Your activity log" },
   { href: "/recover-follows", icon: Users, title: "Follow list", desc: "Health: recover, review flagged & inactive" },
   { href: "/trust-reviews", icon: ShieldCheck, title: "Trust reviews", desc: "Vouches from your network" },
   { href: "/account?tab=shield", icon: RefreshCw, title: "Recalculate trust", desc: "Refresh your web-of-trust scores" },
@@ -74,7 +74,7 @@ export default function Tools() {
 
   return (
     <div className="relative min-h-screen" data-testid="page-tools">
-      {/* Atmospheric backdrop — matches the Help & Guides page feel */}
+      {/* Atmospheric backdrop */}
       <div
         aria-hidden
         className="absolute inset-x-0 top-0 bottom-1/2 z-0 pointer-events-none bg-cover bg-center"
@@ -101,7 +101,7 @@ export default function Tools() {
         <div className="space-y-4 sm:space-y-5">
           {tools.map((t) => (
             <Link key={t.href} href={t.href}>
-              <div className="group cursor-pointer rounded-md p-4 space-y-3 border border-border dark:border-brand/15 bg-card/40 dark:bg-brand/[0.03] shadow-sm dark:shadow-none transition-all duration-300 hover:border-brand/30 hover:shadow-[0_0_20px_rgba(139,92,246,0.08)]" data-testid={`link-tool-${t.title.toLowerCase().replace(/\s+/g, "-")}`}>
+              <div className="group cursor-pointer rounded-md p-4 space-y-3 border border-border dark:border-brand/15 bg-card/40 dark:bg-brand/[0.03] shadow-sm dark:shadow-none transition-all duration-300 hover:border-brand/30 hover:shadow-[0_0_20px_rgba(255,255,255,0.08)]" data-testid={`link-tool-${t.title.toLowerCase().replace(/\s+/g, "-")}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-accent dark:bg-brand/15 border border-border flex items-center justify-center">

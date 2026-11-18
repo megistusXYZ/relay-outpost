@@ -739,8 +739,8 @@ export function TrustReviewsPanel({ pubkey, embedded = false }: { pubkey: string
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <ShieldCheck className="w-4 h-4 text-emerald-500/80 shrink-0" />
-              <h3 className="text-xs font-brand tracking-wider uppercase text-success dark:text-emerald-400/90">
-                Trust Reviews
+              <h3 className="text-xs text-success dark:text-emerald-400/90 font-medium">
+                Trust reviews
               </h3>
             </div>
             {vouchTrigger}
@@ -779,8 +779,8 @@ export function TrustReviewsPanel({ pubkey, embedded = false }: { pubkey: string
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <div className="flex items-center gap-2 min-w-0">
             <ShieldCheck className="w-4 h-4 text-emerald-500/80 shrink-0" />
-            <h3 className="text-xs font-brand tracking-wider uppercase text-success dark:text-emerald-400/90 truncate">
-              Trust Reviews
+            <h3 className="text-xs text-success dark:text-emerald-400/90 truncate font-medium">
+              Trust reviews
             </h3>
           </div>
 

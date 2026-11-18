@@ -57,7 +57,7 @@ export function CrewPanel({ communityId, myPubkey, signer, onClose }: {
   return (
     <div className="p-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Crew</h2>
+        <h2 className="text-sm font-semibold text-violet-600">Crew</h2>
         <Button variant="ghost" size="icon" onClick={close}><X className="w-4 h-4" /></Button>
       </div>
       {loading ? (

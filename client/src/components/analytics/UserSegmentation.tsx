@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
-import { pool, DEFAULT_RELAYS, throttledPoolSubscribe } from "@/lib/nostr";
+import { DEFAULT_RELAYS, throttledPoolSubscribe } from "@/lib/nostr";
 import {
   PieChart,
   Pie,
@@ -37,15 +37,14 @@ import {
   CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 
-const CHART_COLORS = ["#8b5cf6", "#a78bfa", "#7c3aed", "#6d28d9", "#c4b5fd"];
 
 type TierName = "Lurker" | "Casual" | "Active" | "Power User" | "Influencer";
 
 const TIER_CONFIG: Record<TierName, { color: string; icon: typeof Users }> = {
   Lurker: { color: "#64748b", icon: Eye },
-  Casual: { color: "#a78bfa", icon: Coffee },
-  Active: { color: "#7c3aed", icon: Star },
-  "Power User": { color: "#8b5cf6", icon: Users },
+  Casual: { color: "#7C9BFF", icon: Coffee },
+  Active: { color: "#A3ACBA", icon: Star },
+  "Power User": { color: "#3D6BFF", icon: Users },
   Influencer: { color: "#f59e0b", icon: Crown } };
 
 const TIER_ORDER: TierName[] = ["Lurker", "Casual", "Active", "Power User", "Influencer"];
@@ -108,7 +107,7 @@ function CustomTooltipContent({ active, payload }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-md border border-brand/20 bg-white dark:bg-[rgba(4,4,10,0.95)] px-3 py-2 text-xs shadow-lg">
-      <p className="font-display text-brand mb-1">{payload[0]?.name}</p>
+      <p className="font-medium text-foreground mb-1">{payload[0]?.name}</p>
       <p className="text-foreground">
         Count: <span className="text-brand font-mono">{Number(payload[0]?.value).toLocaleString()}</span>
       </p>
@@ -128,7 +127,6 @@ export function UserSegmentation({ relays: propRelays }: { relays?: string[] }) 
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState("");
   const [classifiedUsers, setClassifiedUsers] = useState<ClassifiedUser[]>([]);
-  const [activeTier, setActiveTier] = useState<TierName | null>(null);
   const [selectedUser, setSelectedUser] = useState<ClassifiedUser | null>(null);
   const [expandedTiers, setExpandedTiers] = useState<Set<TierName>>(new Set());
   const [visibleCounts, setVisibleCounts] = useState<Record<string, number>>({});
@@ -306,7 +304,7 @@ export function UserSegmentation({ relays: propRelays }: { relays?: string[] }) 
         <div className="p-4 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 flex-wrap">
             <Users className="w-4 h-4 text-brand" />
-            <h2 className="text-sm font-display text-brand">User Segmentation</h2>
+            <h2 className="text-[15px] font-semibold text-foreground">User segmentation</h2>
             <Badge variant="secondary" data-testid="badge-sample-size">
               Sample: {sampleSize}
             </Badge>
@@ -315,7 +313,7 @@ export function UserSegmentation({ relays: propRelays }: { relays?: string[] }) 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground" data-testid="label-time-range">
-                Time Range
+                Time range
               </Label>
               <Select value={timeRange} onValueChange={setTimeRange} data-testid="select-time-range">
                 <SelectTrigger data-testid="select-trigger-time-range">
@@ -370,7 +368,7 @@ export function UserSegmentation({ relays: propRelays }: { relays?: string[] }) 
           <div className="p-4 sm:p-6 space-y-4">
             <div className="flex items-center gap-2 flex-wrap">
               <Star className="w-4 h-4 text-brand" />
-              <h3 className="text-sm font-display text-brand">Tier Distribution</h3>
+              <h3 className="text-[15px] font-semibold text-foreground">Tier distribution</h3>
               <Badge variant="secondary" data-testid="badge-total-users">
                 {classifiedUsers.length} users
               </Badge>
@@ -423,7 +421,7 @@ export function UserSegmentation({ relays: propRelays }: { relays?: string[] }) 
                       className="w-3.5 h-3.5 mx-auto"
                       style={{ color: TIER_CONFIG[tier].color }}
                     />
-                    <p className="text-[9px] font-brand uppercase tracking-widest text-muted-foreground/50">
+                    <p className="text-[12px] text-muted-foreground font-medium">
                       {tier}
                     </p>
                     <p className="text-sm font-mono text-foreground">
@@ -490,7 +488,7 @@ export function UserSegmentation({ relays: propRelays }: { relays?: string[] }) 
                                   {user.profile.picture && (
                                     <AvatarImage src={user.profile.picture} alt={user.profile.displayName} />
                                   )}
-                                  <AvatarFallback className="bg-brand/10 text-brand text-[10px]">
+                                  <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[10px]">
                                     {user.profile.displayName.slice(0, 2).toUpperCase()}
                                   </AvatarFallback>
                                 </Avatar>
@@ -541,7 +539,7 @@ export function UserSegmentation({ relays: propRelays }: { relays?: string[] }) 
                 {selectedUser.profile.picture && (
                   <AvatarImage src={selectedUser.profile.picture} alt={selectedUser.profile.displayName} />
                 )}
-                <AvatarFallback className="bg-brand/10 text-brand text-sm">
+                <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-sm">
                   {selectedUser.profile.displayName.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -571,12 +569,12 @@ export function UserSegmentation({ relays: propRelays }: { relays?: string[] }) 
             )}
 
             <div className="space-y-2">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-                Event Breakdown
+              <p className="text-[13px] text-muted-foreground font-medium">
+                Event breakdown
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
-                  { kind: 1, label: "Notes" },
+                  { kind: 1, label: "Posts" },
                   { kind: 6, label: "Reposts" },
                   { kind: 7, label: "Reactions" },
                   { kind: 9735, label: "Zaps" },
@@ -586,7 +584,7 @@ export function UserSegmentation({ relays: propRelays }: { relays?: string[] }) 
                     className="p-2 rounded-lg bg-brand/5 border border-brand/10 space-y-0.5 text-center"
                     data-testid={`detail-kind-${kind}`}
                   >
-                    <p className="text-[9px] font-brand uppercase tracking-widest text-muted-foreground/50">
+                    <p className="text-[12px] text-muted-foreground font-medium">
                       {label}
                     </p>
                     <p className="text-sm font-mono text-foreground">
@@ -596,8 +594,8 @@ export function UserSegmentation({ relays: propRelays }: { relays?: string[] }) 
                 ))}
               </div>
               <div className="p-2.5 rounded-lg bg-brand/5 border border-brand/10 flex items-center justify-between gap-2">
-                <span className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-                  Total Events
+                <span className="text-[13px] text-muted-foreground font-medium">
+                  Total events
                 </span>
                 <span className="text-sm font-mono text-brand" data-testid="detail-total-events">
                   {selectedUser.eventCount}

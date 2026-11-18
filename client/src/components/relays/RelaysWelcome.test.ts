@@ -19,7 +19,7 @@ const words = html.replace(SOFTWARE, " ").replace(/<[^>]+>/g, " ").replace(/&#x2
 
 describe("the Relays welcome", () => {
   it("opens on your relay as a space of your own, not the technology", () => {
-    expect(words).toMatch(/Give your relay a home/);
+    expect(words).toMatch(/Give your Outpost a home/);
     expect(words).toMatch(/A relay is a space of your own: your people, their posts, your rules/);
   });
 

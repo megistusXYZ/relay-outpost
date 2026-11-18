@@ -68,6 +68,7 @@ authority.
 | `npm test` | all green, no tolerated failures |
 | `npm run test:ci-globals` | all green |
 | `npm run check` | **0** type errors — any new one fails CI (burned down 90 → 0 by 2026-10-07; several were real bugs) |
+| `npm run check` | also **0** unused locals: `noUnusedLocals` is on in tsconfig (burned down ~600 → 0 by 2026-11-16). An unused import, state or helper is an error, not a warning |
 | `npm run build` | green |
 
 A baseline set above the real count is a check that can't fail. The tsc gate sat

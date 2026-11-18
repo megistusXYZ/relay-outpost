@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -13,7 +13,7 @@ import { useDocumentTitle } from "@/hooks/use-document-title";
 import { getVanishTargetRelays, getVanishTargetRelaysAsync, publishVanishRequest, performFullLocalWipe, type VanishRelayResult } from "@/lib/nip62-vanish";
 import { shortenNpub, formatNpub } from "@/lib/nostr-helpers";
 import { PageToolbar } from "@/components/PageToolbar";
-import { ArrowLeft, AlertTriangle, CheckCircle2, Loader2, UserX, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, UserX, XCircle } from "lucide-react";
 
 // Local copies of Settings' section chrome — this page is a separate lazy chunk
 // and importing them from Settings.tsx would drag the whole Settings bundle in.
@@ -28,7 +28,7 @@ function GlassSection({
 }) {
   return (
     <div
-      className={`relative rounded-md border border-border dark:border-brand/15 overflow-visible glass-settings-section shadow-sm dark:shadow-none ${className || ""}`}
+      className={`relative rounded-[20px] border border-border/60 overflow-visible glass-settings-section shadow-sm dark:shadow-none ${className || ""}`}
       data-testid={testId}
     >
       <div className="absolute inset-0 rounded-md opacity-25 pointer-events-none glass-settings-glow" />
@@ -39,7 +39,7 @@ function GlassSection({
 
 function SectionHeader({ icon: Icon, label }: { icon: typeof UserX; label: string }) {
   return (
-    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-brand dark:text-brand/70 flex items-center gap-1.5">
+    <h3 className="text-[15px] font-semibold text-foreground flex items-center gap-1.5">
       <Icon className="w-3.5 h-3.5" />
       {label}
     </h3>
@@ -169,7 +169,7 @@ function AccountIdentitySection() {
     <GlassSection testId="section-account-identity" className="border-red-500/30 dark:border-red-500/20">
       <SectionHeader icon={UserX} label="Account" />
       <p className="text-xs text-foreground/50 dark:text-muted-foreground/60">
-        Your identity is a keypair, not a row in our database. You can broadcast a
+        Your identity is a keypair, not a row in our database. You can send a
         request for every relay to forget you — this client will then wipe every
         local trace of your account from this device.
       </p>
@@ -177,11 +177,11 @@ function AccountIdentitySection() {
       <div className="rounded-md border border-red-500/25 dark:border-red-500/20 bg-red-500/[0.04] dark:bg-red-500/[0.06] p-3 space-y-2.5" data-testid="container-danger-zone">
         <div className="flex items-center gap-1.5">
           <AlertTriangle className="w-3.5 h-3.5 text-red-500/80" />
-          <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-danger dark:text-red-400/80 font-semibold">
+          <span className="text-[13px] text-danger dark:text-red-400/80 font-semibold">
             Danger zone
           </span>
         </div>
-        <p className="text-[11px] text-foreground/60 dark:text-foreground/55 leading-relaxed">
+        <p className="text-[13px] text-muted-foreground leading-relaxed">
           <strong className="text-foreground/80">Vanish from relays</strong> publishes a
           NIP-62 request asking every relay you broadcast to to delete all your
           events. Compliant relays will honor it. Non-compliant relays and any
@@ -192,14 +192,14 @@ function AccountIdentitySection() {
           size="sm"
           onClick={() => setOpen(true)}
           disabled={!signer}
-          className="w-full sm:w-auto gap-1.5 text-xs font-brand uppercase tracking-widest"
+          className="w-full sm:w-auto gap-1.5 text-xs font-medium"
           data-testid="button-open-vanish"
         >
           <UserX className="w-3.5 h-3.5" />
           Vanish from relays
         </Button>
         {!signer && (
-          <p className="text-[10px] text-muted-foreground/70">
+          <p className="text-[12px] text-muted-foreground">
             Reconnect your signer to use this.
           </p>
         )}
@@ -219,7 +219,7 @@ function AccountIdentitySection() {
                   signed by your key ({npubShort}) asking every relay below to
                   delete every event you've ever published.
                 </p>
-                <ul className="list-disc list-inside space-y-1 text-[11px] text-foreground/55 dark:text-foreground/50">
+                <ul className="list-disc list-inside space-y-1 text-[13px] text-muted-foreground">
                   <li>Compliant relays will delete your history.</li>
                   <li>Non-compliant relays may keep copies anyway.</li>
                   <li>Other clients that already cached your posts may still show them.</li>
@@ -227,14 +227,14 @@ function AccountIdentitySection() {
                   <li>This cannot be undone. Back up your key first if there's any chance you'll want it back.</li>
                 </ul>
                 <div>
-                  <p className="text-[10px] font-mono uppercase tracking-wider text-brand/70 dark:text-brand/60 mb-1">
+                  <p className="text-[13px] text-foreground/80 mb-1 font-medium">
                     Target relays ({targetRelays.length})
                   </p>
-                  <div className="rounded-md border border-border dark:border-brand/10 bg-black/[0.03] dark:bg-white/[0.02] max-h-32 overflow-y-auto p-2" data-testid="list-vanish-relays">
+                  <div className="rounded-md border border-border bg-black/[0.03] dark:bg-white/[0.02] max-h-32 overflow-y-auto p-2" data-testid="list-vanish-relays">
                     {targetRelays.length === 0 ? (
-                      <p className="text-[11px] text-muted-foreground/60">No relays available. Add a relay first.</p>
+                      <p className="text-[12px] text-muted-foreground">No relays available. Add a relay first.</p>
                     ) : (
-                      <ul className="space-y-0.5 font-mono text-[10px] text-foreground/65 dark:text-foreground/55">
+                      <ul className="space-y-0.5 font-mono text-[11px] text-foreground/70">
                         {targetRelays.map((r) => {
                           const outcome = results?.find((x) => x.relay === r);
                           return (
@@ -250,7 +250,7 @@ function AccountIdentitySection() {
                               )}
                               <span className="truncate">{r}</span>
                               {outcome?.error && (
-                                <span className="text-danger dark:text-red-500/70 text-[9px] truncate">({outcome.error})</span>
+                                <span className="text-danger dark:text-red-500/70 text-[11px] truncate">({outcome.error})</span>
                               )}
                             </li>
                           );
@@ -270,7 +270,7 @@ function AccountIdentitySection() {
                   />
                   <label
                     htmlFor="vanish-ack"
-                    className="text-[11px] leading-snug text-foreground/70 cursor-pointer select-none"
+                    className="text-[13px] leading-snug text-foreground/80 cursor-pointer select-none"
                   >
                     I understand this cannot be undone. My events will be
                     requested for deletion from every relay above, and my
@@ -281,7 +281,7 @@ function AccountIdentitySection() {
                 <div>
                   <label
                     htmlFor="vanish-confirm"
-                    className={`block text-[11px] font-medium mb-1 ${acknowledged ? "text-foreground/70" : "text-foreground/40"}`}
+                    className={`block text-[13px] font-medium mb-1 ${acknowledged ? "text-foreground/70" : "text-foreground/40"}`}
                   >
                     Then type <span className="font-mono font-bold text-danger dark:text-red-400">DELETE</span> to confirm.
                   </label>
@@ -298,7 +298,7 @@ function AccountIdentitySection() {
                   />
                 </div>
                 {errorMessage && (
-                  <div className="rounded-md border border-red-500/30 bg-red-500/[0.06] p-2 text-[11px] text-danger dark:text-red-300" data-testid="text-vanish-error">
+                  <div className="rounded-md border border-red-500/30 bg-red-500/[0.06] p-2 text-[13px] text-danger dark:text-red-300" data-testid="text-vanish-error">
                     {errorMessage}
                   </div>
                 )}
@@ -319,12 +319,12 @@ function AccountIdentitySection() {
               {running ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                  Broadcasting…
+                  Sending…
                 </>
               ) : (
                 <>
                   <UserX className="w-3.5 h-3.5 mr-1.5" />
-                  Broadcast vanish
+                  Send vanish request
                 </>
               )}
             </AlertDialogAction>

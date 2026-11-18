@@ -206,7 +206,7 @@ export default function MediaServers() {
                     setBlossomServers(DEFAULT_BLOSSOM_SERVERS);
                     toast({ title: "Recommended media servers added" });
                   }}
-                  className="w-full text-xs font-brand uppercase tracking-widest border-border dark:border-brand/15 bg-muted"
+                  className="w-full text-xs border-border dark:border-brand/15 bg-muted font-medium"
                   data-testid="button-use-recommended-blossom-servers"
                 >
                   <Satellite className="w-3.5 h-3.5 mr-2" />
@@ -219,7 +219,7 @@ export default function MediaServers() {
                   <div
                     key={server}
                     className="flex items-center gap-2.5 rounded-md px-2.5 py-2"
-                    style={{ border: "1px solid rgba(140, 100, 220, 0.12)" }}
+                    style={{ border: "1px solid hsl(var(--border))" }}
                     data-testid={`blossom-server-${server.replace(/[^a-z0-9]/gi, "-")}`}
                   >
                     <HardDrive className="w-3.5 h-3.5 text-brand shrink-0" />
@@ -258,7 +258,7 @@ export default function MediaServers() {
                 onClick={handlePublish}
                 disabled={publishing}
                 variant="outline"
-                className="w-full text-xs font-brand uppercase tracking-widest border-border dark:border-brand/15 bg-muted"
+                className="w-full text-xs border-border dark:border-brand/15 bg-muted font-medium"
                 data-testid="button-publish-blossom-servers"
               >
                 {publishing ? (
@@ -277,7 +277,7 @@ export default function MediaServers() {
         <Card className="glass-card p-4 sm:p-5 space-y-3" data-testid="card-media-sync">
           <div className="flex items-center gap-2">
             <FolderSync className="w-3.5 h-3.5 text-brand shrink-0" />
-            <span className="flex-1 min-w-0 text-xs font-brand uppercase tracking-widest truncate">
+            <span className="flex-1 min-w-0 text-xs truncate font-medium">
               {sync.phase === "done" ? "Media sync" : "Syncing media"} · {hostOf(sync.server)}
             </span>
             {sync.phase !== "done" && (
@@ -348,7 +348,7 @@ export default function MediaServers() {
                   <Button
                     variant="outline"
                     onClick={retryFailed}
-                    className="flex-1 text-xs font-brand uppercase tracking-widest border-border dark:border-brand/15 bg-muted"
+                    className="flex-1 text-xs border-border dark:border-brand/15 bg-muted font-medium"
                     data-testid="button-retry-media-sync"
                   >
                     <RotateCcw className="w-3.5 h-3.5 mr-2" />
@@ -358,7 +358,7 @@ export default function MediaServers() {
                 <Button
                   variant="ghost"
                   onClick={() => setSync(null)}
-                  className="flex-1 text-xs font-brand uppercase tracking-widest"
+                  className="flex-1 text-xs font-medium"
                   data-testid="button-dismiss-media-sync"
                 >
                   Dismiss

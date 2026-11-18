@@ -1,4 +1,5 @@
 import { useCuratedLists } from "@/lib/curated-lists-source";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent } from "react";
 import { discussionSignals } from "@/lib/discussion-signals";
 import { guestCanBrowse } from "@/lib/guest-limits";
@@ -12,11 +13,10 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageTabs } from "@/components/PageTabs";
 import { searchPillClass } from "@/components/SearchPill";
-import { FOCUS_RING } from "@/lib/a11y";
 import { useBackClosable } from "@/hooks/use-back-closable";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,7 +42,6 @@ import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { useDocumentTitle } from "@/hooks/use-document-title";
-import { useKeyboardViewport } from "@/hooks/use-keyboard-viewport";
 import { formatDistanceToNow } from "date-fns";
 import {
   buildComment,
@@ -84,16 +83,12 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import {
   ExternalLink,
   Share2,
-  Plus,
   ArrowLeft,
   X,
-  Trash2,
   RefreshCw,
   ChevronRight,
   Newspaper,
   Globe,
-  Zap,
-  Send,
   AlertCircle,
   BookOpen,
   MessageSquare,
@@ -112,19 +107,12 @@ import {
   SkipForward,
   Headphones,
   Search,
-  TrendingUp,
-  Package,
-  Mic,
   ImageIcon,
   Pencil,
   Check,
-  MoreVertical,
-  ListStart,
-  ListEnd,
-  BellRing,
-  SlidersHorizontal } from "lucide-react";
+  Send,} from "lucide-react";
 import { useTTS } from "@/contexts/TextToSpeechContext";
-import { useAudioPlayer, getTrackPosition } from "@/contexts/AudioPlayerContext";
+import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import {
   type SavedFeed,
   DEFAULT_FEEDS,
@@ -273,16 +261,6 @@ function useRssReadState() {
   return { isRead, markRead, markAllRead };
 }
 
-// ---- Source favicon ---------------------------------------------------------
-function faviconHost(...urls: (string | undefined)[]): string {
-  for (const u of urls) {
-    if (!u) continue;
-    try {
-      return new URL(u).hostname;
-    } catch {}
-  }
-  return "";
-}
 
 /** A small rounded source favicon. Prefers the feed's own image, falls back to
  *  Google's favicon service derived from the link/site host; hides on error. */
@@ -532,16 +510,16 @@ function ShareToNostrDialog({ item, onClose, feedTitle, feedImage }: { item: RSS
             )}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 mb-1">
-                <Headphones className="w-3 h-3 text-brand flex-shrink-0" />
-                <p className="text-[10px] text-brand/60 font-mono uppercase tracking-wider">Podcast Episode</p>
+                <Headphones className="w-3 h-3 text-foreground/60 flex-shrink-0" />
+                <p className="text-[13px] text-muted-foreground font-medium">Podcast episode</p>
               </div>
               <p className="text-sm font-medium text-foreground/90 line-clamp-2 break-words leading-snug">{item.title}</p>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                 {feedTitle && (
-                  <span className="text-[11px] text-muted-foreground/70">{feedTitle}</span>
+                  <span className="text-[12px] text-muted-foreground">{feedTitle}</span>
                 )}
                 {durationStr && (
-                  <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1">
+                  <span className="text-[12px] text-muted-foreground flex items-center gap-1">
                     <Clock className="w-2.5 h-2.5" />
                     {durationStr}
                   </span>
@@ -550,12 +528,12 @@ function ShareToNostrDialog({ item, onClose, feedTitle, feedImage }: { item: RSS
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                 <div className="flex items-center gap-1">
                   <AudioLines className="w-3 h-3 text-green-800/70 dark:text-green-400/70" />
-                  <span className="text-[10px] text-success dark:text-green-400/60 font-mono uppercase tracking-wider">Audio</span>
+                  <span className="text-[13px] text-success dark:text-green-400/60 font-medium">Audio</span>
                 </div>
                 {imageUrl && (
                   <div className="flex items-center gap-1">
                     <ImageIcon className="w-3 h-3 text-blue-700/70 dark:text-blue-400/70" />
-                    <span className="text-[10px] text-blue-700/60 dark:text-blue-400/60 font-mono uppercase tracking-wider">Artwork</span>
+                    <span className="text-[13px] text-blue-700/60 dark:text-blue-400/60 font-medium">Artwork</span>
                   </div>
                 )}
               </div>
@@ -563,12 +541,12 @@ function ShareToNostrDialog({ item, onClose, feedTitle, feedImage }: { item: RSS
           </div>
         ) : (
           <>
-            <p className="text-[10px] text-brand/60 font-mono uppercase tracking-wider mb-1.5">Sharing Article</p>
+            <p className="text-[13px] text-muted-foreground mb-1.5 font-medium">Sharing article</p>
             <p className="text-sm font-medium text-foreground/90 line-clamp-2 break-words">{item.title}</p>
             {feedTitle && (
-              <p className="text-[11px] text-muted-foreground/60 mt-1">{feedTitle}</p>
+              <p className="text-[12px] text-muted-foreground mt-1">{feedTitle}</p>
             )}
-            <p className="text-[11px] text-muted-foreground/40 mt-1 break-all line-clamp-1">{item.link}</p>
+            <p className="text-[12px] text-muted-foreground mt-1 break-all line-clamp-1">{item.link}</p>
           </>
         )}
       </div>
@@ -577,14 +555,14 @@ function ShareToNostrDialog({ item, onClose, feedTitle, feedImage }: { item: RSS
         value={content}
         onChange={(e) => setContent(e.target.value)}
         rows={4}
-        className="text-sm resize-none bg-muted border-input focus:border-primary/30 focus:bg-muted/70 rounded-lg break-words dark:bg-white/[0.04] dark:border-white/[0.08] dark:focus:bg-white/[0.06]"
+        className="text-sm resize-none bg-muted border-input focus:border-primary focus:bg-muted/70 rounded-lg break-words dark:bg-white/[0.04] dark:focus:bg-white/[0.06]"
         style={{ fontSize: 16, wordBreak: "break-word", overflowWrap: "break-word" }}
         placeholder="Add your thoughts..."
         autoComplete="off"
         data-testid="textarea-share-content"
       />
 
-      <p className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wider leading-relaxed">
+      <p className="text-[13px] text-muted-foreground leading-relaxed font-medium">
         {isPodcast
           ? `Posts publicly to your feed with the episode artwork and playable audio, plus a Discuss link into the in-app conversation about it.`
           : "Posts publicly to your feed with a Discuss link into the in-app conversation about this article."}
@@ -594,7 +572,7 @@ function ShareToNostrDialog({ item, onClose, feedTitle, feedImage }: { item: RSS
         <Button
           variant="outline"
           onClick={onClose}
-          className="flex-1 font-brand uppercase tracking-widest text-xs border-border text-muted-foreground dark:border-white/10"
+          className="flex-1 text-xs border-border text-muted-foreground dark:border-white/10 font-medium"
           data-testid="button-cancel-share"
         >
           Cancel
@@ -602,7 +580,7 @@ function ShareToNostrDialog({ item, onClose, feedTitle, feedImage }: { item: RSS
         <Button
           onClick={handleShare}
           disabled={isPublishing || !content.trim()}
-          className="flex-1 bg-primary text-primary-foreground font-brand uppercase tracking-widest text-xs border-0"
+          className="flex-1 bg-primary text-primary-foreground text-xs border-0 font-medium"
           data-testid="button-confirm-share"
         >
           {isPublishing ? (
@@ -636,17 +614,17 @@ function HNCommentThread({ comment, depth = 0, isMobile = false }: { comment: HN
       <div className="py-2.5">
         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
           <span className="text-xs font-semibold text-foreground/80" data-testid={`text-hn-author-${comment.id}`}>{comment.by}</span>
-          <span className="text-[11px] text-muted-foreground/70">{timeAgo}</span>
+          <span className="text-[12px] text-muted-foreground">{timeAgo}</span>
         </div>
         <div
-          className="text-xs text-foreground/70 leading-relaxed break-words [&_a]:text-foreground/90 [&_a]:underline [&_a]:underline-offset-2 [&_a]:break-all [&_p]:mb-2 [&_p]:break-words [&_pre]:bg-muted/30 [&_pre]:p-2 [&_pre]:rounded [&_pre]:text-[11px] [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_code]:text-[11px] [&_code]:break-all"
+          className="text-[14px] text-foreground/75 leading-relaxed break-words [&_a]:text-foreground/90 [&_a]:underline [&_a]:underline-offset-2 [&_a]:break-all [&_p]:mb-2 [&_p]:break-words [&_pre]:bg-muted/30 [&_pre]:p-2 [&_pre]:rounded [&_pre]:text-[11px] [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_code]:text-[11px] [&_code]:break-all"
           dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comment.text, { ALLOWED_TAGS: ['a', 'p', 'i', 'b', 'em', 'strong', 'code', 'pre', 'br'], ALLOWED_ATTR: ['href', 'rel'] }) }}
           data-testid={`text-hn-comment-body-${comment.id}`}
         />
         {comment.replies && comment.replies.length > 0 && (
           <button
             onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1 mt-1.5 text-[11px] text-muted-foreground/80 font-mono uppercase tracking-wider"
+            className="flex items-center gap-1 mt-1.5 text-[12px] text-muted-foreground/80 font-medium"
             data-testid={`button-toggle-replies-${comment.id}`}
           >
             {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -686,7 +664,7 @@ function NostrCommentRow({ comment }: { comment: NostrEvent }) {
         <Link href={`/profile/${npub}`}>
           <Avatar className="w-6 h-6 shrink-0 cursor-pointer">
             {avatar && <AvatarImage src={avatar} alt={name} />}
-            <AvatarFallback className="text-[8px] bg-brand/10 text-brand">
+            <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[8px]">
               {name.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -699,12 +677,12 @@ function NostrCommentRow({ comment }: { comment: NostrEvent }) {
         {wotEnabled && scores && (
           <TrustTierGlyph tier={tier} size="w-2.5 h-2.5" title={getSignalTierLabel(tier)} />
         )}
-        <span className="text-[11px] text-muted-foreground/70 shrink-0">{timeAgo}</span>
+        <span className="text-[12px] text-muted-foreground shrink-0">{timeAgo}</span>
       </div>
       {/* Rich body — same shared renderer the feed uses: nostr: refs become
           clickable profiles, #hashtags become searchable, links/media embed.
           `compact` keeps it at the dense comment-row text size. */}
-      <div className="text-xs text-foreground/70 leading-relaxed break-words" data-testid={`text-nostr-comment-body-${comment.id}`}>
+      <div className="text-[14px] text-foreground/75 leading-relaxed break-words" data-testid={`text-nostr-comment-body-${comment.id}`}>
         <OutpostContentRenderer event={comment} compact />
       </div>
     </div>
@@ -840,7 +818,7 @@ function NostrDiscussion({ url, isMobile, onCountChange }: { url: string; isMobi
         cacheDiscussion(url, next);
         return next;
       });
-      toast({ title: "Posted to Nostr", description: "Your public note about this link is live." });
+      toast({ title: "Posted to Nostr", description: "Your public post about this link is live." });
     } catch (err) {
       // toast cast mirrors the existing share-flow call site; handleSignerError's
       // param type predates the current toast return shape (known baseline typing).
@@ -859,9 +837,9 @@ function NostrDiscussion({ url, isMobile, onCountChange }: { url: string; isMobi
         className="flex items-center gap-2 mb-3 pb-2 border-b border-border/20 flex-wrap"
         title="A public conversation about this link, powered by Nostr (an open network) — so the same discussion shows up in other apps too, not just here."
       >
-        <Globe className="w-3.5 h-3.5 text-brand/80" />
+        <Globe className="w-3.5 h-3.5 text-foreground/60" />
         <span className="text-xs font-semibold">Discussion</span>
-        <span className="text-[11px] text-muted-foreground/70">
+        <span className="text-[12px] text-muted-foreground">
           {nostrCount} {nostrCount === 1 ? "comment" : "comments"} · public
         </span>
       </div>
@@ -885,11 +863,11 @@ function NostrDiscussion({ url, isMobile, onCountChange }: { url: string; isMobi
           value={text}
           onChange={handleTextChange}
           placeholder="Share your take on this…"
-          className="w-full rounded-xl px-3.5 py-3 bg-muted/40 border border-border/50 text-sm text-foreground/90 placeholder:text-muted-foreground/50 resize-none min-h-[76px] focus-visible:ring-0 focus-visible:border-primary/45 focus-visible:bg-muted/50 transition-colors"
+          className="w-full rounded-xl px-3.5 py-3 bg-muted/40 border border-input text-sm text-foreground/90 placeholder:text-muted-foreground/50 resize-none min-h-[76px] focus-visible:ring-0 focus-visible:border-primary focus-visible:bg-muted/50 transition-colors"
           data-testid="input-nostr-comment"
         />
         <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
-          <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
+          <span className="text-[12px] text-muted-foreground flex items-center gap-1">
             <Globe className="w-3 h-3" />
             Public — and visible in any Nostr app, not just here. It stays on Nostr, not the original site.
           </span>
@@ -949,7 +927,7 @@ function NostrDiscussion({ url, isMobile, onCountChange }: { url: string; isMobi
         <div className="mt-3">
           <button
             onClick={() => setShowFiltered((v) => !v)}
-            className="flex items-center gap-1 text-[11px] text-muted-foreground/80 font-mono uppercase tracking-wider"
+            className="flex items-center gap-1 text-[12px] text-muted-foreground/80 font-medium"
             data-testid="button-nostr-show-filtered"
           >
             {showFiltered ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -1282,8 +1260,8 @@ function ArticleReaderDialog({ item, onClose, onShare, isMobile: isMobileProp, i
           <div className="flex-1 min-w-0">
             <h2 className="text-sm font-semibold truncate" data-testid="text-reader-title">{item.title || "Article"}</h2>
             <div className="flex items-center gap-2 flex-wrap">
-              {item.author && <span className="text-[11px] text-muted-foreground/80 truncate max-w-[150px]">{item.author}</span>}
-              {timeAgo && <span className="text-[11px] text-muted-foreground/60">{timeAgo}</span>}
+              {item.author && <span className="text-[12px] text-muted-foreground truncate max-w-[150px]">{item.author}</span>}
+              {timeAgo && <span className="text-[12px] text-muted-foreground">{timeAgo}</span>}
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
@@ -1337,11 +1315,11 @@ function ArticleReaderDialog({ item, onClose, onShare, isMobile: isMobileProp, i
             <div className="flex items-center gap-1 px-3 py-1.5">
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 {tts.isLoading ? (
-                  <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-brand/70 shrink-0" />
+                  <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-foreground/60 shrink-0" />
                 ) : (
-                  <AudioLines className="w-3.5 h-3.5 text-brand/70 shrink-0" />
+                  <AudioLines className="w-3.5 h-3.5 text-foreground/60 shrink-0" />
                 )}
-                <span className="text-[11px] font-medium text-foreground/80 truncate">{tts.title || "Listening..."}</span>
+                <span className="text-[13px] font-medium text-foreground truncate">{tts.title || "Listening..."}</span>
               </div>
               <div className="flex items-center shrink-0">
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={tts.skipBack} disabled={tts.isLoading} data-testid="inline-tts-back">
@@ -1354,7 +1332,7 @@ function ArticleReaderDialog({ item, onClose, onShare, isMobile: isMobileProp, i
                   <SkipForward className="w-3 h-3" />
                 </Button>
                 <button
-                  className="h-7 px-1 text-[10px] font-bold tabular-nums text-brand/70 hover:text-brand transition-colors rounded"
+                  className="h-7 px-1.5 text-[12px] font-semibold tabular-nums text-foreground/70 hover:text-foreground transition-colors rounded"
                   onClick={() => {
                     const rates = [1, 1.25, 1.5, 1.75, 2];
                     const idx = rates.indexOf(tts.rate);
@@ -1448,7 +1426,7 @@ function ArticleReaderDialog({ item, onClose, onShare, isMobile: isMobileProp, i
               </div>
               <Button
                 size="lg"
-                className="gap-2 rounded-full px-8 font-brand uppercase tracking-widest"
+                className="gap-2 rounded-full px-8 font-medium"
                 onClick={playEpisode}
                 data-testid="button-play-episode"
               >
@@ -1486,7 +1464,7 @@ function ArticleReaderDialog({ item, onClose, onShare, isMobile: isMobileProp, i
                       {(item.author || timeAgo) && (
                         <div className="flex items-center gap-2 mb-3 flex-wrap">
                           {item.author && <span className="text-xs text-muted-foreground">{item.author}</span>}
-                          {timeAgo && <span className="text-[11px] text-muted-foreground/60">{timeAgo}</span>}
+                          {timeAgo && <span className="text-[12px] text-muted-foreground">{timeAgo}</span>}
                         </div>
                       )}
                       {item.thumbnail && (
@@ -1505,7 +1483,7 @@ function ArticleReaderDialog({ item, onClose, onShare, isMobile: isMobileProp, i
                         />
                       )}
                       <div
-                        className="text-sm text-foreground/80 leading-relaxed mb-4 [&_a]:text-brand [&_a]:underline [&_a]:underline-offset-2 [&_a]:break-words"
+                        className="text-[15px] text-foreground/85 leading-relaxed mb-4 [&_a]:text-brand [&_a]:underline [&_a]:underline-offset-2 [&_a]:break-words"
                         onClick={handleEmbedClick}
                         onKeyDown={handleEmbedKeyDown}
                         dangerouslySetInnerHTML={{ __html: enrichedDescriptionHtml }}
@@ -1522,12 +1500,12 @@ function ArticleReaderDialog({ item, onClose, onShare, isMobile: isMobileProp, i
                     </>
                   )}
                   <div className="flex items-center gap-2 mt-1">
-                    <Button size="sm" className="font-brand uppercase tracking-widest text-xs gap-1.5" onClick={() => setActiveTab("comments")} data-testid="button-see-discussion-fallback">
+                    <Button size="sm" className="text-xs gap-1.5 font-medium" onClick={() => setActiveTab("comments")} data-testid="button-see-discussion-fallback">
                       <MessageSquare className="w-3.5 h-3.5" />
                       See the discussion
                     </Button>
                     <a href={item.link} target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" size="sm" className="font-brand uppercase tracking-widest text-xs" data-testid="button-open-original-fallback">
+                      <Button variant="outline" size="sm" className="text-xs font-medium" data-testid="button-open-original-fallback">
                         <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
                         Open Original
                       </Button>
@@ -1537,7 +1515,7 @@ function ArticleReaderDialog({ item, onClose, onShare, isMobile: isMobileProp, i
               ) : articleData ? (
                 <div data-testid="container-article-content">
                   {articleData.siteName && (
-                    <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-muted-foreground/70 mb-2">{articleData.siteName}</p>
+                    <p className="text-[12px] text-muted-foreground/70 mb-2 font-medium">{articleData.siteName}</p>
                   )}
                   <h1 className="text-lg sm:text-xl font-bold leading-snug mb-3" data-testid="text-article-title">
                     {articleData.title || item.title}
@@ -1548,9 +1526,9 @@ function ArticleReaderDialog({ item, onClose, onShare, isMobile: isMobileProp, i
                       <span className="text-xs text-muted-foreground">{articleData.byline || item.author}</span>
                       {timeAgo && (
                         <>
-                          <span className="text-muted-foreground/50 text-[11px]">/</span>
+                          <span className="text-muted-foreground text-[12px]">/</span>
                           <Clock className="w-3 h-3 text-muted-foreground/60" />
-                          <span className="text-[11px] text-muted-foreground/70">{timeAgo}</span>
+                          <span className="text-[12px] text-muted-foreground">{timeAgo}</span>
                         </>
                       )}
                     </div>
@@ -1580,7 +1558,7 @@ function ArticleReaderDialog({ item, onClose, onShare, isMobile: isMobileProp, i
               ) : hnData && hnData.comments.length > 0 ? (
                 <div className="mb-8" data-testid="container-hn-comments">
                   <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border/30 flex-wrap">
-                    <span className="text-[11px] font-mono uppercase tracking-[0.15em] text-muted-foreground/70">On Hacker News · read-only</span>
+                    <span className="text-[12px] text-muted-foreground/70 font-medium">On Hacker News · read-only</span>
                     <div className="flex items-center gap-1.5">
                       <ArrowUp className="w-3.5 h-3.5 text-muted-foreground/80" />
                       <span className="text-xs font-semibold">{hnData.points} points</span>
@@ -1657,7 +1635,7 @@ function PlaylistEpisodeRow({ item, index, feedImage, feedTitle, isPodcast, read
           tabIndex={0}
           onClick={(e) => { e.stopPropagation(); onMarkRead(item); isCurrent ? togglePlay() : play(track); }}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onMarkRead(item); isCurrent ? togglePlay() : play(track); } }}
-          className="shrink-0 w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center hover:bg-brand/20 transition-colors"
+          className="shrink-0 w-9 h-9 rounded-full bg-foreground text-background flex items-center justify-center hover:bg-foreground/90 transition-colors"
           aria-label={isCurrent && isPlaying ? "Pause" : "Play"}
           data-testid={`playlist-play-${index}`}
         >
@@ -1671,13 +1649,13 @@ function PlaylistEpisodeRow({ item, index, feedImage, feedTitle, isPodcast, read
         {/* Podcasts show the duration on the right; news items (no right slot)
             fold it into the meta line so it isn't lost. */}
         {(when || (!isPodcast && dur)) && (
-          <span className="block text-[11px] text-muted-foreground/60 mt-0.5">
+          <span className="block text-[12px] text-muted-foreground mt-0.5">
             {when}{when && !isPodcast && dur ? " · " : ""}{!isPodcast ? dur : ""}
           </span>
         )}
       </span>
       {isPodcast && dur && (
-        <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground/50">{dur}</span>
+        <span className="shrink-0 text-[12px] tabular-nums text-muted-foreground">{dur}</span>
       )}
     </button>
   );
@@ -2365,7 +2343,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
         >
           <p className="truncate text-[15px] font-medium text-foreground">{feed.title}</p>
           {feed.author && <p className="truncate text-xs text-muted-foreground">{feed.author}</p>}
-          <p className="text-xs text-brand/80 mt-0.5">Listen first</p>
+          <p className="text-[13px] text-muted-foreground mt-0.5">Listen first</p>
         </button>
         <Button
           variant="outline"
@@ -2656,10 +2634,10 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                     data-testid="button-select-feed-all"
                   >
                     <div className="w-5 h-5 rounded-md bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0">
-                      <Newspaper className="w-3 h-3 text-brand" />
+                      <Newspaper className="w-3 h-3 text-foreground/60" />
                     </div>
                     <span className={`truncate ${isAllMode ? "font-medium" : ""}`}>All sources</span>
-                    {isAllMode && <Check className="w-4 h-4 text-brand shrink-0 ml-auto" />}
+                    {isAllMode && <Check className="w-4 h-4 text-foreground shrink-0 ml-auto" />}
                   </button>
                   {/* Saved articles — the bookmark icon on cards/reader saves
                       here, but the collection itself lives on the Bookmarks
@@ -2671,7 +2649,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                     data-testid="button-news-saved-articles"
                   >
                     <div className="w-5 h-5 rounded-md bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0">
-                      <Bookmark className="w-3 h-3 text-brand" />
+                      <Bookmark className="w-3 h-3 text-foreground/60" />
                     </div>
                     <span className="truncate">Saved articles</span>
                     {rssBookmarks.length > 0 && (
@@ -2746,7 +2724,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                                   <span className="text-xs text-muted-foreground/70 tabular-nums shrink-0">{visibleUnreadCount}</span>
                                 )}
                                 {isActive && (
-                                  <Check className="w-4 h-4 text-brand shrink-0 ml-auto" />
+                                  <Check className="w-4 h-4 text-foreground shrink-0 ml-auto" />
                                 )}
                               </button>
                               <div className="flex items-center shrink-0 pr-1">
@@ -2755,7 +2733,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                                     e.stopPropagation();
                                     handleStartEdit(feed);
                                   }}
-                                  className="w-11 h-11 flex items-center justify-center rounded-lg text-muted-foreground/60 hover:text-brand hover:bg-muted/50 transition-colors"
+                                  className="w-11 h-11 flex items-center justify-center rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors"
                                   aria-label="Edit feed"
                                   data-testid={`button-edit-feed-mobile-${feed.url}`}
                                 >
@@ -2787,7 +2765,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                       variant="outline"
                       size="sm"
                       onClick={() => { handleResetDefaults(); setFeedPopoverOpen(false); }}
-                      className="mt-3 font-brand uppercase tracking-widest text-xs"
+                      className="mt-3 text-xs font-medium"
                       data-testid="button-reset-defaults"
                     >
                       Restore default feeds
@@ -2801,7 +2779,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
             <button
               type="button"
               onClick={() => setSourceFilter(null)}
-              className="inline-flex items-center gap-1 rounded-full border border-brand/40 bg-brand/10 text-brand text-[11px] font-mono uppercase tracking-wider pl-2.5 pr-1.5 h-10 shrink-0 hover:bg-brand/20 transition-colors max-w-[140px]"
+              className="inline-flex items-center gap-1 rounded-full border border-foreground/25 bg-foreground/[0.06] text-foreground text-[13px] pl-3 pr-1.5 h-10 shrink-0 hover:bg-foreground/10 transition-colors max-w-[140px] font-medium"
               title="Clear source filter"
               data-testid="chip-source-filter"
             >
@@ -2832,12 +2810,12 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="glass-dropdown w-56 rounded-lg p-1">
-                <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50 px-2 py-1">Filter by source</p>
+                <p className="text-[13px] text-muted-foreground px-2 py-1 font-medium">Filter by source</p>
                 <div className="max-h-48 overflow-y-auto">
                   <button
                     type="button"
                     onClick={() => setSourceFilter(null)}
-                    className={`w-full text-left px-2 py-1.5 rounded-md text-[13px] transition-colors ${!sourceFilter ? "text-brand bg-brand/10" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
+                    className={`w-full text-left px-2 py-1.5 rounded-md text-[13px] transition-colors ${!sourceFilter ? "text-foreground bg-foreground/[0.07] font-medium" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
                     data-testid="option-source-all"
                   >
                     All sources
@@ -2847,7 +2825,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                       key={a}
                       type="button"
                       onClick={() => setSourceFilter(a)}
-                      className={`w-full text-left px-2 py-1.5 rounded-md text-[13px] truncate transition-colors ${sourceFilter === a ? "text-brand bg-brand/10" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
+                      className={`w-full text-left px-2 py-1.5 rounded-md text-[13px] truncate transition-colors ${sourceFilter === a ? "text-foreground bg-foreground/[0.07] font-medium" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
                       data-testid={`option-source-${a}`}
                     >
                       {a}
@@ -3032,7 +3010,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
           {!isAllMode && isLoading && (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <RelayOutpostLoader />
-              <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
+              <p className="text-xs text-muted-foreground font-medium">
                 Fetching feed...
               </p>
             </div>
@@ -3052,7 +3030,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                   variant="outline"
                   size="sm"
                   onClick={() => refetch()}
-                  className="font-brand uppercase tracking-widest text-xs"
+                  className="text-xs font-medium"
                   data-testid="button-retry-feed"
                 >
                   <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
@@ -3065,7 +3043,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
           {feedData && !isLoading && feedData.items.length === 0 && (
             <Card className="glass-card p-6">
               <div className="flex flex-col items-center gap-3 text-center">
-                <Newspaper className="w-8 h-8 text-muted-foreground/60" />
+                <OttoEmpty mood="looking" size={72} className="text-foreground/70" />
                 <p className="text-sm font-medium">No articles found</p>
                 <p className="text-xs text-muted-foreground">This feed appears to be empty.</p>
               </div>
@@ -3081,7 +3059,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                   variant="outline"
                   size="sm"
                   onClick={() => setSourceFilter(null)}
-                  className="font-brand uppercase tracking-widest text-xs"
+                  className="text-xs font-medium"
                   data-testid="button-clear-source-filter-empty"
                 >
                   <X className="w-3.5 h-3.5 mr-1.5" />
@@ -3116,7 +3094,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                   <h1 className="text-base sm:text-lg font-bold leading-snug line-clamp-2" data-testid="text-playlist-title">
                     {activeFeed?.name || feedData?.title || "Feed"}
                   </h1>
-                  <p className="text-[11px] text-muted-foreground/60 mt-1">
+                  <p className="text-[12px] text-muted-foreground mt-1">
                     {visibleItems.length} {feedData?.isPodcast ? (visibleItems.length === 1 ? "episode" : "episodes") : (visibleItems.length === 1 ? "article" : "articles")}
                   </p>
                   {(activeFeed?.siteUrl || feedData?.link) && (
@@ -3124,7 +3102,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                       href={activeFeed?.siteUrl || feedData?.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 mt-1 text-[11px] text-muted-foreground/60 hover:text-brand"
+                      className="inline-flex items-center gap-1 mt-1 text-[12px] text-muted-foreground hover:text-foreground"
                     >
                       <ExternalLink className="w-3 h-3" /> Website
                     </a>
@@ -3158,7 +3136,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
               {/* Opaque backing against the iOS scroll-in-transform compositing bug (PRs #321/#322). */}
               <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 rounded-t-[10px] bg-background" data-testid="share-drawer-backing" />
               <DrawerHeader className="shrink-0">
-                <DrawerTitle className="font-brand uppercase tracking-widest text-sm flex items-center gap-2">
+                <DrawerTitle className="text-sm flex items-center gap-2 font-medium">
                   {shareCtx.item.audioUrl ? <Headphones className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
                   {shareCtx.item.audioUrl ? "Share Episode" : "Share"}
                 </DrawerTitle>
@@ -3172,7 +3150,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
           <Dialog open={!!shareCtx} onOpenChange={(open) => { if (!open) setShareCtx(null); }}>
             <DialogContent className="max-w-sm sm:max-w-md glass-dialog-card border-border overflow-hidden">
               <DialogHeader>
-                <DialogTitle className="font-brand uppercase tracking-widest text-sm flex items-center gap-2">
+                <DialogTitle className="text-sm flex items-center gap-2 font-medium">
                   {shareCtx.item.audioUrl ? <Headphones className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
                   {shareCtx.item.audioUrl ? "Share Episode" : "Share"}
                 </DialogTitle>

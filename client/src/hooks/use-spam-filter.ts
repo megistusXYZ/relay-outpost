@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   filterSpamEvents,
   mutePubkey,
@@ -16,7 +16,6 @@ import {
   isReportedEvent,
   isReportedPubkey,
   type SpamFilterOptions,
-  type ReportedItem,
 } from "@/lib/spam-filter";
 import type { Event } from "nostr-tools";
 

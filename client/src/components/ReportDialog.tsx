@@ -214,7 +214,7 @@ export function ReportDialog({ open, onOpenChange, event }: ReportDialogProps) {
               variant="outline"
               onClick={() => handleClose(false)}
               disabled={isSubmitting}
-              className="flex-1 text-xs font-brand uppercase tracking-widest border-brand/15"
+              className="flex-1 text-xs border-brand/15 font-medium"
               data-testid="button-report-cancel"
             >
               Cancel
@@ -222,7 +222,7 @@ export function ReportDialog({ open, onOpenChange, event }: ReportDialogProps) {
             <Button
               onClick={handleSubmit}
               disabled={!selectedReason || isSubmitting}
-              className="flex-1 text-xs font-brand uppercase tracking-widest bg-destructive/80 hover:bg-destructive"
+              className="flex-1 text-xs bg-destructive/80 hover:bg-destructive font-medium"
               data-testid="button-report-submit"
             >
               {isSubmitting ? (

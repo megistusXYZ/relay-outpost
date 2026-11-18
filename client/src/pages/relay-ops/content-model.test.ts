@@ -30,7 +30,7 @@ describe("what kind of thing a post is", () => {
   });
 
   it("names each in a word", () => {
-    expect(typeWord(1)).toBe("Note");
+    expect(typeWord(1)).toBe("Post");
     expect(typeWord(9735)).toBe("Thanks");
     expect(typeWord(1059)).toBe("Private message");
   });

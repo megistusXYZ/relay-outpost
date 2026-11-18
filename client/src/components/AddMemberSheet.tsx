@@ -196,7 +196,7 @@ export function AddMemberSheet({
     >
       <div className="space-y-3 py-2">
           <div>
-            <label className="text-[10px] font-brand tracking-wider uppercase text-muted-foreground/50 mb-1 block">
+            <label className="text-[13px] text-muted-foreground mb-1 block font-medium">
               Identifier
             </label>
             <Input
@@ -236,7 +236,7 @@ export function AddMemberSheet({
           )}
 
           <div>
-            <label className="text-[10px] font-brand tracking-wider uppercase text-muted-foreground/50 mb-1 block">
+            <label className="text-[13px] text-muted-foreground mb-1 block font-medium">
               Role <span className="normal-case text-muted-foreground/40">(optional · comma-separated)</span>
             </label>
             <Input

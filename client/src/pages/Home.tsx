@@ -5,9 +5,8 @@ import { useDeletedEvents, deletedByAuthor } from "@/lib/deleted-events";
 import { prefetchPrimalStats } from "@/hooks/use-primal-stats";
 import { prefetchTopZappers } from "@/hooks/use-top-zappers";
 import { reachAdmits } from "@/lib/trust-reach";
-import { cn } from "@/lib/utils";
 import { flushSync } from "react-dom";
-import { eventStore, pool, subscribeToFeed, subscribeToFeedPersistent, fetchProfilesCached, fetchInteractionsCached, isProfileFetchSettled, FAST_RELAYS, feedBaseRelays, getRelaysForPurpose, markFeedDataLoaded, hasFeedData, throttledPoolSubscribe, registerProfileInAllCaches } from "@/lib/nostr";
+import { eventStore, subscribeToFeed, subscribeToFeedPersistent, fetchProfilesCached, fetchInteractionsCached, isProfileFetchSettled, FAST_RELAYS, feedBaseRelays, getRelaysForPurpose, markFeedDataLoaded, hasFeedData, throttledPoolSubscribe, registerProfileInAllCaches } from "@/lib/nostr";
 import { takeFirstScreen } from "@/lib/first-screen";
 import { overallOrOurs } from "@/lib/trending-source";
 import { firstScreenRanks, firstScreenTaken, subscribeFirstScreenRanks } from "@/lib/first-screen-ingest";
@@ -15,9 +14,9 @@ import { chooseDiscoverLens } from "@/lib/discover-trust";
 import { getCachedFeedEvents, cacheFeedEvents } from "@/lib/indexeddb-cache";
 import { fetchRelayLists, getOptimalRelaysForFeed } from "@/lib/outbox";
 import { KIND_TEXT_NOTE, KIND_REPOST } from "@/lib/nostr-helpers";
-import { fetchTrendingFeed, fetchGlobalFeed, fetchFollowsFeed, requestFollowerCounts, getCachedFollowerCount, onFollowerCountUpdate, prefetchStatsImmediate, primalStatsCache, searchUsers, getLastReplyTimestamp, updateLastReplyTimestamp, getReplyParentId } from "@/lib/primal-cache";
+import { fetchTrendingFeed, fetchGlobalFeed, fetchFollowsFeed, requestFollowerCounts, getCachedFollowerCount, onFollowerCountUpdate, prefetchStatsImmediate, primalStatsCache, getLastReplyTimestamp, updateLastReplyTimestamp, getReplyParentId } from "@/lib/primal-cache";
 import { MIN_FOLLOWERS_GLOBAL, isMachineReadableContent, type ReachDepth } from "@/lib/spam-filter";
-import { NostrPost, VerifiedBadgeIcon, ParentUnresolvedContext } from "@/components/NostrPost";
+import { NostrPost, ParentUnresolvedContext } from "@/components/NostrPost";
 import { PollPost } from "@/components/PollPost";
 import { isPollEvent, KIND_POLL } from "@/lib/polls";
 import { feedKinds, mediaPageLimit } from "@/lib/feed-kinds";
@@ -26,7 +25,6 @@ import { capForGuest } from "@/lib/guest-limits";
 import { GuestWall } from "@/components/GuestWall";
 import { MEDIA_EVENT_KINDS } from "@/lib/media-frame";
 import { PrefetchPostWrapper } from "@/components/PrefetchPostWrapper";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PostBoundary } from "@/components/PostBoundary";
 import { HomeCoachmarks } from "@/components/HomeCoachmarks";
 import { PageTabs } from "@/components/PageTabs";
@@ -44,17 +42,15 @@ import { ArticleFeedCard } from "@/components/ArticleFeedCard";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useSpamFilter } from "@/hooks/use-spam-filter";
 import { useFollowsOfFollows } from "@/hooks/use-follows-of-follows";
-import { Radio, Radar, Plus, Trash2, Antenna, Lock, Hash, Users, Filter, Eye, EyeOff, Type, ChevronDown, ChevronUp, X, Search, Package, Zap, Share2, Copy, Download, ShieldCheck, Grape, Rss, Sparkles, Image as ImageIcon, Video, Vote, SlidersHorizontal } from "lucide-react";
+import { Radio, Radar, Plus, Antenna, Lock, Users, ChevronDown, Search, Package, Share2, Copy, Download, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
-import { type SignalTier, getSignalTierLabel } from "@/lib/graperank";
+import { type SignalTier } from "@/lib/graperank";
 import { BrowsePacksDialog } from "@/components/BrowsePacksDialog";
 import { SuggestedFollowsStrip } from "@/components/SuggestedFollowsStrip";
 import { PeopleToFollowStrip } from "@/components/PeopleToFollowStrip";
 import { needsFollowSuggestions } from "@/lib/discover-people";
 import { buildAnchorFollows } from "@/lib/curated-seed-follows";
 import { TuneAntennaIllustration, NoSignalIllustration, RadarSweepIllustration, StaticNoiseIllustration } from "@/components/EmptyStateIllustrations";
-import { getDisplayName, getAvatarUrl } from "@/lib/nostr-helpers";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 import { computeEngagementScore } from "@/lib/engagement";
 import { useFeedPrefs } from "@/lib/feed-prefs";
@@ -82,7 +78,7 @@ const KIND_LONG_FORM = 30023;
 // events and then thrown every one of them away, silently.
 const DISCOVER_READABLE_KINDS = new Set([KIND_TEXT_NOTE, KIND_REPOST, KIND_POLL, KIND_LONG_FORM, ...MEDIA_EVENT_KINDS]);
 import { useLocation } from "wouter";
-import { RelayOutpostLoader, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
+import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -98,7 +94,6 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
-  DrawerFooter,
 } from "@/components/ui/drawer";
 import {
   AlertDialog,
@@ -111,24 +106,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type { Event } from "nostr-tools";
-import { nip19 } from "nostr-tools";
 import { useNostrFeeds, type NostrCustomFeed } from "@/hooks/use-nostr-feeds";
-import { FeedIcon as FeedIconSvg, FEED_ICON_LIST, isValidFeedIconKey, type FeedIconKey } from "@/components/FeedIcons";
-import { Skeleton } from "@/components/ui/skeleton";
+import { FeedIcon as FeedIconSvg, isValidFeedIconKey, type FeedIconKey } from "@/components/FeedIcons";
 
 import { publicNostrEnabled, publicNostrStorageKey } from "@/lib/public-nostr";
-import { FeedMode, type ContentFilter, isReplyEvent, FeedSortMode, TopTimeWindow, TRENDING_SELECTORS, type ArchivesRange, type ArchivesMetric, SAVED_POLL_SORTS, type SavedPollSort, SAVED_POLL_SHOW_OPTIONS, type SavedPollShow, FEED_SORT_OPTIONS, TIME_WINDOW_SORT_MODES, TOP_TIME_WINDOWS, PAGE_SIZE, TRENDING_CACHE_TTL, BUILT_IN_TABS, getFeedSortKey, getTopWindowKey, isArchivesSelector, getArchivesMetric, decodePubkey, resolveDefaultFeedMode, initialFeedMode, DEFAULT_FEED_MODE, feedBodyFor } from "./home/helpers";
+import { FeedMode, type ContentFilter, isReplyEvent, FeedSortMode, TopTimeWindow, TRENDING_SELECTORS, type ArchivesRange, type ArchivesMetric, SAVED_POLL_SORTS, type SavedPollSort, SAVED_POLL_SHOW_OPTIONS, type SavedPollShow, FEED_SORT_OPTIONS, TIME_WINDOW_SORT_MODES, TOP_TIME_WINDOWS, PAGE_SIZE, TRENDING_CACHE_TTL, getFeedSortKey, getTopWindowKey, isArchivesSelector, getArchivesMetric, resolveDefaultFeedMode, initialFeedMode, DEFAULT_FEED_MODE, feedBodyFor } from "./home/helpers";
 
 /**
  * How long the network gets before the cached feed is allowed to paint.
@@ -140,7 +125,7 @@ import { FeedMode, type ContentFilter, isReplyEvent, FeedSortMode, TopTimeWindow
  */
 const CACHE_FALLBACK_DELAY_MS = 1800;
 import { fetchTopNotes } from "@/lib/nostr-archives";
-import { FeedSkeletonCard, FeedSkeletonList, ChipInput, PeopleSearch, TuneFrequencyFormContent, TuneFrequencyDialog, REACH_DEPTH_STOPS, ReachDepthSlider, FEED_FILTER_TIERS, FeedTierFilter, StrictnessPresetControl } from "./home/feed-controls";
+import { FeedSkeletonList, TuneFrequencyDialog, FeedTierFilter } from "./home/feed-controls";
 import { detectPreset, PRESET_DEFS, type StrictnessPreset } from "@/lib/trust-preset";
 import { writeExcludedTiers } from "@/lib/trust-filter";
 import { useSurfaceActive } from "@/contexts/SurfaceActiveContext";
@@ -397,14 +382,6 @@ export default function Home() {
   const rawAcknowledged = useRef(() => {
     try { return localStorage.getItem("relay-outpost-raw-acknowledged") === "true"; } catch { return false; }
   });
-  const handleRawTabClick = useCallback(() => {
-    if (rawAcknowledged.current()) {
-      setFeedMode("raw_signal");
-    } else {
-      setFeedModeState("raw_signal");
-      setShowRawGate(true);
-    }
-  }, [setFeedMode]);
   const acknowledgeRaw = useCallback((enableTrust: boolean) => {
     try { localStorage.setItem("relay-outpost-raw-acknowledged", "true"); } catch {}
     rawAcknowledged.current = () => true;
@@ -657,7 +634,7 @@ export default function Home() {
   const followingSubRef = useRef<{ close: () => void } | null>(null);
   const liveSubRef = useRef<{ close: () => void } | null>(null);
   const repostMapRef = useRef<Map<string, { pubkey: string; timestamp: number }>>(new Map());
-  const [repostVersion, setRepostVersion] = useState(0);
+  const [, setRepostVersion] = useState(0);
 
   const [cutoffTimestamp, setCutoffTimestampState] = useState(() => {
     const saved = _savedCutoffTimestamp;
@@ -786,26 +763,8 @@ export default function Home() {
   }), [followSet, pubkey]);
   const { fofSet } = useFollowsOfFollows(follows);
 
-  // Accounts-in-reach count shown next to the strictness preset (mirrors the
-  // ReachDepthSlider's own calc for the active reach depth).
-  const reachAccountCount = useMemo<number | null>(() => {
-    if (reachDepth === "off") return null;
-    if (reachDepth === "1hop") return followSet.size;
-    const fofSize = fofSet ? fofSet.size : 0;
-    if (reachDepth === "2hops") return followSet.size + fofSize;
-    let extra = 0;
-    if (grapeRankScores) {
-      grapeRankScores.forEach((score, pk) => {
-        if (reachDepth === "global" && score <= 0) return;
-        if (followSet.has(pk)) return;
-        if (fofSet?.has(pk)) return;
-        extra++;
-      });
-    }
-    return followSet.size + fofSize + extra;
-  }, [reachDepth, followSet, fofSet, grapeRankScores]);
 
-  const [followerVersion, setFollowerVersion] = useState(0);
+  const [, setFollowerVersion] = useState(0);
   useEffect(() => {
     return onFollowerCountUpdate(() => setFollowerVersion((v) => v + 1));
   }, []);
@@ -2132,33 +2091,6 @@ export default function Home() {
     });
   }, [excludedTiers, wotEnabled, wotReady, flaggedPubkeys, getAuthorTier]);
 
-  const perStopPostCounts = useMemo(() => {
-    if (feedMode !== "raw_signal" || !pubkey || !wotEnabled) return undefined;
-    const counts: Record<ReachDepth, number> = { "1hop": 0, "2hops": 0, "3hops": 0, global: 0, off: 0 };
-    const tierFilteredBase = applyTierFilter(baseFilteredEvents);
-    counts.off = tierFilteredBase.length;
-    for (const e of tierFilteredBase) {
-      if (followSet.has(e.pubkey)) {
-        counts["1hop"]++;
-        counts["2hops"]++;
-        counts["3hops"]++;
-        counts.global++;
-        continue;
-      }
-      if (fofSet.has(e.pubkey)) {
-        counts["2hops"]++;
-        counts["3hops"]++;
-        counts.global++;
-        continue;
-      }
-      const score = grapeRankScores?.get(e.pubkey);
-      if (score !== undefined) {
-        counts["3hops"]++;
-        if (score > 0) counts.global++;
-      }
-    }
-    return counts;
-  }, [feedMode, pubkey, wotEnabled, baseFilteredEvents, followSet, fofSet, grapeRankScores, applyTierFilter]);
 
   const tierFilteredFeed = useMemo(() => {
     // Following (open_comms) is exempt from tier strictness: it's a hand-picked
@@ -2420,32 +2352,8 @@ export default function Home() {
     };
   }, [feedMode, setCutoffTimestamp, setDisplayLimit]);
 
-  const visibleUnscoredCount = useMemo(() => {
-    if (feedMode !== "raw_signal" || !pubkey || effectiveReachDepth === "off") return 0;
-    const seen = new Set<string>();
-    let count = 0;
-    const windowSize = Math.max(displayLimit, PAGE_SIZE);
-    let scanned = 0;
-    for (const e of baseFilteredEvents) {
-      if (e.created_at > cutoffTimestamp) continue;
-      if (seen.has(e.pubkey)) continue;
-      seen.add(e.pubkey);
-      scanned++;
-      if (!followSet.has(e.pubkey) && !grapeRankScores?.has(e.pubkey)) count++;
-      if (scanned >= windowSize) break;
-    }
-    return count;
-  }, [feedMode, pubkey, effectiveReachDepth, baseFilteredEvents, cutoffTimestamp, displayLimit, followSet, grapeRankScores]);
 
-  const [showScoreLoadingHint, setShowScoreLoadingHint] = useState(false);
-  useEffect(() => {
-    if (tierChangeAt === 0) return;
-    if (effectiveReachDepth === "off") { setShowScoreLoadingHint(false); return; }
-    if (visibleUnscoredCount === 0) { setShowScoreLoadingHint(false); return; }
-    setShowScoreLoadingHint(true);
-    const t = setTimeout(() => setShowScoreLoadingHint(false), 4000);
-    return () => clearTimeout(t);
-  }, [tierChangeAt, visibleUnscoredCount, effectiveReachDepth]);
+
 
   const debugSnapshotRef = useRef({ baseFilteredEvents, sortedFiltered, tierFilteredFeed, displayedEvents, followSet, grapeRankScores, effectiveReachDepth });
   useEffect(() => {
@@ -3230,8 +3138,8 @@ export default function Home() {
         {activeCustomFeed && TIME_WINDOW_SORT_MODES.includes(feedSortMode) && (topWindowLoading || topFallbackAll) && (
           <div className="mb-3">
             {topWindowLoading ? (
-              <p className="text-[11px] text-brand/70 italic flex items-center gap-1.5" data-testid="text-top-window-loading">
-                <RelayOutpostInlineLoader className="text-brand/60" />
+              <p className="text-[13px] text-muted-foreground flex items-center gap-1.5" data-testid="text-top-window-loading">
+                <RelayOutpostInlineLoader className="text-foreground/50" />
                 Loading posts from the last {topTimeWindow}...
               </p>
             ) : (
@@ -3247,7 +3155,7 @@ export default function Home() {
         {feedMode === "raw_signal" && !pubkey && (
           <div className="flex items-center gap-2 mb-3">
             <span className="text-[11px] text-muted-foreground/50 italic leading-tight" data-testid="text-raw-disclaimer">
-              Unfiltered global feed · sign in to enable trust filtering
+              The wider network, unfiltered · sign in to enable trust filtering
             </span>
           </div>
         )}
@@ -3264,8 +3172,8 @@ export default function Home() {
         )}
         {feedMode === "deep_scan" && trendingLoading && trendingPosts.length > 0 && (
           <div className="mb-3">
-            <p className="text-[11px] text-brand/70 italic flex items-center gap-1.5" data-testid="text-trending-loading">
-              <RelayOutpostInlineLoader className="text-brand/60" />
+            <p className="text-[13px] text-muted-foreground flex items-center gap-1.5" data-testid="text-trending-loading">
+              <RelayOutpostInlineLoader className="text-foreground/50" />
               Loading {currentSelectorLabel}...
             </p>
           </div>
@@ -3289,7 +3197,7 @@ export default function Home() {
         )}
 
         {/* Getting-started checklist removed — the feed opens clean for new
-            users; guides live in Help & Guides only. */}
+            users; guides live in Help & guides only. */}
 
         {/* FeedErrorBoundary: a render crash inside any feed lane (post card,
             virtualizer, media mosaic) must never unmount the tabs/menu/nav
@@ -3312,35 +3220,35 @@ export default function Home() {
           </div>
         ) : showRawGate && feedMode === "raw_signal" ? (
           <div className="relative min-h-[420px] sm:min-h-[480px] rounded-xl overflow-hidden" data-testid="container-raw-gate">
-            <div className="absolute inset-0 bg-gradient-to-b from-brand/80 via-white/90 to-white dark:from-brand/40 dark:via-black/70 dark:to-black/90" />
+            <div className="absolute inset-0 bg-gradient-to-b from-foreground/10 via-background/90 to-background dark:from-white/10 dark:via-black/70 dark:to-black/90" />
             <div className="absolute inset-0 backdrop-blur-sm" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full bg-brand/10 blur-[80px] animate-pulse" style={{ animationDuration: "4s" }} />
-            <div className="absolute top-[30%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120px] h-[120px] rounded-full bg-brand/15 blur-[40px]" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full bg-foreground/5 dark:bg-white/5 blur-[80px] animate-pulse" style={{ animationDuration: "4s" }} />
+            <div className="absolute top-[30%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120px] h-[120px] rounded-full bg-foreground/10 dark:bg-white/10 blur-[40px]" />
 
             <div className="relative z-10 flex flex-col items-center justify-center text-center px-5 py-12 sm:py-16">
               <div className="relative mb-5">
-                <div className="absolute inset-0 rounded-full bg-brand/15 dark:bg-brand/20 blur-xl scale-150" />
-                <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full border border-brand/30 bg-brand/10 backdrop-blur-sm flex items-center justify-center">
-                  <Antenna className="w-7 h-7 sm:w-8 sm:h-8 text-brand" />
+                <div className="absolute inset-0 rounded-full bg-foreground/10 dark:bg-white/10 blur-xl scale-150" />
+                <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full border border-foreground/20 bg-foreground/5 dark:border-white/20 dark:bg-white/5 backdrop-blur-sm flex items-center justify-center">
+                  <Antenna className="w-7 h-7 sm:w-8 sm:h-8 text-foreground/70" />
                 </div>
               </div>
 
-              <h3 className="text-lg sm:text-xl font-bold tracking-tight text-[#1f1b4b] dark:text-white mb-2">The wider network</h3>
-              <p className="text-sm text-[#1f1b4b]/50 dark:text-white/50 max-w-[280px] leading-relaxed mb-8">
-                The global feed shows recent posts from every connected relay, with no filtering applied.
+              <h3 className="text-lg sm:text-xl font-bold tracking-tight text-foreground mb-2">The wider network</h3>
+              <p className="text-sm text-foreground/50 max-w-[280px] leading-relaxed mb-8">
+                The wider network shows recent posts from every connected relay, with no filtering applied.
               </p>
 
               <div className="flex flex-col gap-3 w-full max-w-[300px]">
                 <button
-                  className="group relative w-full py-2.5 px-4 rounded-lg bg-[#1a1040] hover:bg-[#241458] dark:bg-[#0d0a1f]/90 dark:hover:bg-[#1a1040]/90 border border-brand/20 hover:border-brand/40 text-brand hover:text-white text-[13px] font-medium transition-all duration-200 shadow-md shadow-brand/30 dark:shadow-brand/50 hover:shadow-[0_0_16px_rgba(139,92,246,0.2)] flex items-center justify-center gap-2"
+                  className="group relative w-full py-2.5 px-4 rounded-lg bg-foreground hover:bg-foreground/90 text-background text-[13px] font-medium transition-all duration-200 shadow-md shadow-black/20 hover:shadow-lg flex items-center justify-center gap-2"
                   onClick={() => acknowledgeRaw(true)}
                   data-testid="button-raw-gate-trust"
                 >
-                  <ShieldCheck className="w-4.5 h-4.5 text-brand" />
+                  <ShieldCheck className="w-4.5 h-4.5" />
                   Enter with Trust Filter (2 Hops)
                 </button>
                 <button
-                  className="w-full py-2 px-5 text-[13px] text-[#1f1b4b]/50 hover:text-[#1f1b4b]/80 dark:text-white/45 dark:hover:text-white/70 font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 underline underline-offset-2 decoration-[#1f1b4b]/15 hover:decoration-[#1f1b4b]/35 dark:decoration-white/15 dark:hover:decoration-white/35"
+                  className="w-full py-2 px-5 text-[13px] text-foreground/50 hover:text-foreground/80 dark:hover:text-white/70 font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 underline underline-offset-2 decoration-foreground/15 hover:decoration-foreground/35 dark:decoration-white/15 dark:hover:decoration-white/35"
                   onClick={() => acknowledgeRaw(false)}
                   data-testid="button-raw-gate-unfiltered"
                 >
@@ -3348,7 +3256,7 @@ export default function Home() {
                 </button>
               </div>
 
-              <p className="text-[11px] text-[#1f1b4b]/25 dark:text-white/25 mt-6 max-w-[260px] leading-relaxed">
+              <p className="text-[11px] text-foreground/25 mt-6 max-w-[260px] leading-relaxed">
                 Trust filter controls how far beyond your follows you'll see posts from. Slide it to widen or narrow your circle.
               </p>
             </div>
@@ -3358,7 +3266,7 @@ export default function Home() {
             className="glass-card rounded-lg flex flex-col items-center justify-center py-12 sm:py-16 text-center px-4"
             data-testid="container-empty-frequencies"
           >
-            <TuneAntennaIllustration className="text-brand/70 mb-3" />
+            <TuneAntennaIllustration className="text-foreground/60 mb-3" />
             <p className="text-sm font-medium mb-1">No feeds tuned yet</p>
             <p className="text-xs text-muted-foreground max-w-xs">
               Create a custom feed to filter posts by hashtags, keywords, or specific people.
@@ -3380,7 +3288,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5 border-brand/30 text-brand"
+                className="gap-1.5 rounded-full border-foreground/25 text-foreground"
                 onClick={() => {
                   if (!pubkey) { navigate("/login"); return; }
                   setBrowsePacksOpen(true);
@@ -3397,7 +3305,7 @@ export default function Home() {
             className="glass-card rounded-lg flex flex-col items-center justify-center py-12 sm:py-16 text-center px-4"
             data-testid="container-empty-following"
           >
-            <NoSignalIllustration className="text-brand/70 mb-3" />
+            <NoSignalIllustration className="text-foreground/60 mb-3" />
             {!widerNetworkOn ? (
               <>
                 {/* Your space, nobody in it yet: the way in is yours to make —
@@ -3428,7 +3336,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5 border-brand/30 text-brand"
+                className="gap-1.5 rounded-full border-foreground/25 text-foreground"
                 onClick={() => navigate("/search")}
                 data-testid="button-search-follows-empty"
               >
@@ -3438,7 +3346,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5 border-brand/30 text-brand"
+                className="gap-1.5 rounded-full border-foreground/25 text-foreground"
                 onClick={() => {
                   if (!pubkey) { navigate("/login"); return; }
                   setBrowsePacksOpen(true);
@@ -3468,7 +3376,7 @@ export default function Home() {
             className="glass-card rounded-lg flex flex-col items-center justify-center py-12 sm:py-16 text-center px-4"
             data-testid="container-empty-trending"
           >
-            <RadarSweepIllustration className="text-brand/70 mb-3" />
+            <RadarSweepIllustration className="text-foreground/60 mb-3" />
             <p className="text-sm font-medium mb-1">Deep scan returned empty</p>
             <p className="text-xs text-muted-foreground max-w-xs">
               Try a different time range or check back later.
@@ -3479,14 +3387,14 @@ export default function Home() {
             className="glass-card rounded-lg flex flex-col items-center justify-center py-12 sm:py-16 text-center px-4"
             data-testid="container-empty-tier-filtered"
           >
-            <ShieldCheck className="w-10 h-10 text-brand/40 mb-3" />
+            <ShieldCheck className="w-10 h-10 text-foreground/40 mb-3" />
             <p className="text-sm font-medium mb-1">All posts filtered out</p>
             <p className="text-xs text-muted-foreground max-w-xs mb-3">
               Your trust tier filters are hiding all {tierHiddenCount} post{tierHiddenCount !== 1 ? "s" : ""} in this feed.
             </p>
             <button
               onClick={clearTierFilters}
-              className="text-xs text-brand hover:text-brand/80 dark:hover:text-brand transition-colors"
+              className="text-[13px] font-medium text-brand hover:text-brand-strong transition-colors"
             >
               Show all posts
             </button>
@@ -3496,8 +3404,8 @@ export default function Home() {
             className="glass-card rounded-lg flex flex-col items-center justify-center py-12 sm:py-16 text-center px-4"
             data-testid="container-empty-custom"
           >
-            <StaticNoiseIllustration className="text-brand/70 mb-3" />
-            <p className="text-sm font-medium mb-1">No signals on this feed</p>
+            <StaticNoiseIllustration className="text-foreground/60 mb-3" />
+            <p className="text-sm font-medium mb-1">Nothing on this feed yet</p>
             <p className="text-xs text-muted-foreground max-w-xs">
               Try adjusting your filters or check back later.
             </p>
@@ -3507,7 +3415,7 @@ export default function Home() {
             className="glass-card rounded-lg flex flex-col items-center justify-center py-12 sm:py-16 text-center px-4"
             data-testid="container-empty-feed"
           >
-            <StaticNoiseIllustration className="text-brand/70 mb-3" />
+            <StaticNoiseIllustration className="text-foreground/60 mb-3" />
             <p className="text-sm font-medium mb-1">Your feed is filling up</p>
             <p className="text-xs text-muted-foreground max-w-xs mb-3">
               Posts from the people you follow will show up here. Give it a moment — or explore trending and find more people to follow.
@@ -3516,7 +3424,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5 border-brand/30 text-brand"
+                className="gap-1.5 rounded-full border-foreground/25 text-foreground"
                 onClick={() => setFeedMode("deep_scan")}
                 data-testid="button-empty-explore"
               >
@@ -3646,7 +3554,7 @@ export default function Home() {
       <AlertDialog open={!!deletingFeed} onOpenChange={(open) => { if (!open) setDeletingFeed(null); }}>
         <AlertDialogContent className="glass-dialog-card border-red-500/20 max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm font-brand tracking-wide">Delete "{deletingFeed?.name}"?</AlertDialogTitle>
+            <AlertDialogTitle className="text-base font-semibold">Delete "{deletingFeed?.name}"?</AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-muted-foreground/70">
               This removes the feed from your list. You can always tune or import it again.
             </AlertDialogDescription>
@@ -3674,46 +3582,46 @@ export default function Home() {
 
       {isMobile ? (
         <Drawer open={shareDialogOpen} onOpenChange={(open) => { setShareDialogOpen(open); if (!open) setSharingFeed(null); }}>
-          <DrawerContent className="glass-dialog-card border-border dark:border-brand/15">
+          <DrawerContent className="glass-dialog-card border-border">
             <DrawerHeader className="pb-2">
               <div className="flex items-center gap-2.5">
-                <div className="p-1.5 rounded-md bg-accent dark:bg-brand/10">
-                  <Share2 className="w-4 h-4 text-brand" />
+                <div className="p-1.5 rounded-md bg-accent">
+                  <Share2 className="w-4 h-4 text-foreground/75" />
                 </div>
                 <div>
                   <DrawerTitle className="text-sm font-semibold text-foreground">Share Feed</DrawerTitle>
-                  <p className="text-[11px] text-brand/60 dark:text-brand/40 mt-0.5">Let others import your feed config</p>
+                  <p className="text-[13px] text-muted-foreground mt-0.5">Let others import your feed config</p>
                 </div>
               </div>
             </DrawerHeader>
             <div className="px-4 pb-6 space-y-4">
               {feedToShare && (
                 <>
-                  <div className="rounded-lg border border-border dark:border-brand/15 bg-accent/40 dark:bg-brand/[0.03] p-3.5 space-y-2.5">
+                  <div className="rounded-lg border border-border bg-accent/40 p-3.5 space-y-2.5">
                     <div className="flex items-center gap-2">
-                      {isValidFeedIconKey(feedToShare.icon) ? <FeedIconSvg iconKey={feedToShare.icon} className="w-5 h-5 text-brand" /> : <Radio className="w-5 h-5 text-brand/70" />}
+                      {isValidFeedIconKey(feedToShare.icon) ? <FeedIconSvg iconKey={feedToShare.icon} className="w-5 h-5 text-foreground/75" /> : <Radio className="w-5 h-5 text-foreground/60" />}
                       <span className="text-sm font-semibold text-foreground truncate">{feedToShare.name}</span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
-                      {feedToShare.hashtags.map(t => <Badge key={t} variant="secondary" className="text-[11px] bg-accent text-brand border-brand/20 dark:bg-brand/10">#{t}</Badge>)}
+                      {feedToShare.hashtags.map(t => <Badge key={t} variant="secondary" className="text-[11px] bg-foreground/[0.06] text-foreground border-border/60">#{t}</Badge>)}
                       {feedToShare.includeKeywords.map(k => <Badge key={k} variant="outline" className="text-[11px] border-emerald-500/20 text-success dark:text-emerald-400">{k}</Badge>)}
                       {feedToShare.excludeKeywords.map(k => <Badge key={k} variant="outline" className="text-[11px] border-red-500/20 text-danger dark:text-red-400 line-through">{k}</Badge>)}
                       {feedToShare.authorPubkeys.length > 0 && <Badge variant="outline" className="text-[11px] border-blue-500/20 text-blue-700 dark:text-blue-400"><Users className="w-3 h-3 mr-1" />{feedToShare.authorPubkeys.length} {feedToShare.authorPubkeys.length === 1 ? "person" : "people"}</Badge>}
-                      {feedToShare.contentType !== "all" && <Badge variant="outline" className="text-[11px] border-brand/20 text-brand">{feedToShare.contentType === "text_only" ? "Text" : feedToShare.contentType === "media" ? "Media" : "Links"}</Badge>}
+                      {feedToShare.contentType !== "all" && <Badge variant="outline" className="text-[11px] border-border/60 text-foreground/80">{feedToShare.contentType === "text_only" ? "Text" : feedToShare.contentType === "media" ? "Media" : "Links"}</Badge>}
                     </div>
                   </div>
                   {typeof navigator.share === "function" && (
-                    <Button className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground dark:bg-brand dark:hover:bg-brand dark:text-white" onClick={handleNativeShare} data-testid="button-native-share">
+                    <Button className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground" onClick={handleNativeShare} data-testid="button-native-share">
                       <Share2 className="w-4 h-4" />
                       Share
                     </Button>
                   )}
                   <div className="flex gap-2">
-                    <Button variant="outline" className="flex-1 gap-2 border-border hover:bg-accent dark:border-brand/20 dark:hover:bg-brand/10" onClick={handleCopyShareLink} data-testid="button-copy-share-link">
+                    <Button variant="outline" className="flex-1 gap-2 border-border hover:bg-accent dark:hover:bg-foreground/[0.06]" onClick={handleCopyShareLink} data-testid="button-copy-share-link">
                       <Copy className="w-4 h-4" />
                       Copy Link
                     </Button>
-                    <Button variant="outline" className="flex-1 gap-2 border-border hover:bg-accent dark:border-brand/20 dark:hover:bg-brand/10" onClick={handleCopyShareCode} data-testid="button-copy-share-code">
+                    <Button variant="outline" className="flex-1 gap-2 border-border hover:bg-accent dark:hover:bg-foreground/[0.06]" onClick={handleCopyShareCode} data-testid="button-copy-share-code">
                       <Copy className="w-4 h-4" />
                       Copy Code
                     </Button>
@@ -3728,15 +3636,15 @@ export default function Home() {
         </Drawer>
       ) : (
         <Dialog open={shareDialogOpen} onOpenChange={(open) => { setShareDialogOpen(open); if (!open) setSharingFeed(null); }}>
-          <DialogContent className="glass-dialog-card sm:max-w-md border-border dark:border-brand/15">
+          <DialogContent className="glass-dialog-card sm:max-w-md border-border">
             <DialogHeader>
               <div className="flex items-center gap-2.5">
-                <div className="p-1.5 rounded-md bg-accent dark:bg-brand/10">
-                  <Share2 className="w-4 h-4 text-brand" />
+                <div className="p-1.5 rounded-md bg-accent">
+                  <Share2 className="w-4 h-4 text-foreground/75" />
                 </div>
                 <div>
                   <DialogTitle className="text-sm font-semibold">Share Feed</DialogTitle>
-                  <DialogDescription className="text-[11px] text-brand/60 dark:text-brand/40 mt-0.5">
+                  <DialogDescription className="text-[13px] text-muted-foreground mt-0.5">
                     Let others import your feed config
                   </DialogDescription>
                 </div>
@@ -3744,38 +3652,38 @@ export default function Home() {
             </DialogHeader>
             {feedToShare && (
               <div className="space-y-4 pt-1">
-                <div className="rounded-lg border border-border dark:border-brand/15 bg-accent/40 dark:bg-brand/[0.03] p-3.5 space-y-2.5">
+                <div className="rounded-lg border border-border bg-accent/40 p-3.5 space-y-2.5">
                   <div className="flex items-center gap-2">
-                    {isValidFeedIconKey(feedToShare.icon) ? <FeedIconSvg iconKey={feedToShare.icon} className="w-5 h-5 text-brand" /> : <Radio className="w-5 h-5 text-brand/70" />}
+                    {isValidFeedIconKey(feedToShare.icon) ? <FeedIconSvg iconKey={feedToShare.icon} className="w-5 h-5 text-foreground/75" /> : <Radio className="w-5 h-5 text-foreground/60" />}
                     <span className="text-sm font-semibold text-foreground truncate">{feedToShare.name}</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {feedToShare.hashtags.map(t => <Badge key={t} variant="secondary" className="text-[11px] bg-accent text-brand border-brand/20 dark:bg-brand/10">#{t}</Badge>)}
+                    {feedToShare.hashtags.map(t => <Badge key={t} variant="secondary" className="text-[11px] bg-foreground/[0.06] text-foreground border-border/60">#{t}</Badge>)}
                     {feedToShare.includeKeywords.map(k => <Badge key={k} variant="outline" className="text-[11px] border-emerald-500/20 text-success dark:text-emerald-400">{k}</Badge>)}
                     {feedToShare.excludeKeywords.map(k => <Badge key={k} variant="outline" className="text-[11px] border-red-500/20 text-danger dark:text-red-400 line-through">{k}</Badge>)}
                     {feedToShare.authorPubkeys.length > 0 && <Badge variant="outline" className="text-[11px] border-blue-500/20 text-blue-700 dark:text-blue-400"><Users className="w-3 h-3 mr-1" />{feedToShare.authorPubkeys.length} {feedToShare.authorPubkeys.length === 1 ? "person" : "people"}</Badge>}
-                    {feedToShare.contentType !== "all" && <Badge variant="outline" className="text-[11px] border-brand/20 text-brand">{feedToShare.contentType === "text_only" ? "Text" : feedToShare.contentType === "media" ? "Media" : "Links"}</Badge>}
+                    {feedToShare.contentType !== "all" && <Badge variant="outline" className="text-[11px] border-border/60 text-foreground/80">{feedToShare.contentType === "text_only" ? "Text" : feedToShare.contentType === "media" ? "Media" : "Links"}</Badge>}
                   </div>
                 </div>
                 <div className="flex gap-2">
                   {typeof navigator.share === "function" ? (
                     <>
-                      <Button className="flex-1 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground dark:bg-brand dark:hover:bg-brand dark:text-white" onClick={handleNativeShare} data-testid="button-native-share">
+                      <Button className="flex-1 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground" onClick={handleNativeShare} data-testid="button-native-share">
                         <Share2 className="w-4 h-4" />
                         Share
                       </Button>
-                      <Button variant="outline" className="gap-2 border-border hover:bg-accent dark:border-brand/20 dark:hover:bg-brand/10" onClick={handleCopyShareLink} data-testid="button-copy-share-link">
+                      <Button variant="outline" className="gap-2 border-border hover:bg-accent dark:hover:bg-foreground/[0.06]" onClick={handleCopyShareLink} data-testid="button-copy-share-link">
                         <Copy className="w-4 h-4" />
                         Copy Link
                       </Button>
                     </>
                   ) : (
                     <>
-                      <Button className="flex-1 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground dark:bg-brand dark:hover:bg-brand dark:text-white" onClick={handleCopyShareLink} data-testid="button-copy-share-link">
+                      <Button className="flex-1 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground" onClick={handleCopyShareLink} data-testid="button-copy-share-link">
                         <Share2 className="w-4 h-4" />
                         Copy Share Link
                       </Button>
-                      <Button variant="outline" className="gap-2 border-border hover:bg-accent dark:border-brand/20 dark:hover:bg-brand/10" onClick={handleCopyShareCode} data-testid="button-copy-share-code">
+                      <Button variant="outline" className="gap-2 border-border hover:bg-accent dark:hover:bg-foreground/[0.06]" onClick={handleCopyShareCode} data-testid="button-copy-share-code">
                         <Copy className="w-4 h-4" />
                         Code
                       </Button>
@@ -3793,15 +3701,15 @@ export default function Home() {
 
       {isMobile ? (
         <Drawer open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-          <DrawerContent className="glass-dialog-card border-border dark:border-brand/15">
+          <DrawerContent className="glass-dialog-card border-border">
             <DrawerHeader className="pb-2">
               <div className="flex items-center gap-2.5">
-                <div className="p-1.5 rounded-md bg-accent dark:bg-brand/10">
-                  <Download className="w-4 h-4 text-brand" />
+                <div className="p-1.5 rounded-md bg-accent">
+                  <Download className="w-4 h-4 text-foreground/75" />
                 </div>
                 <div>
                   <DrawerTitle className="text-sm font-semibold text-foreground">Import Feed</DrawerTitle>
-                  <p className="text-[11px] text-brand/60 dark:text-brand/40 mt-0.5">Paste a share link or code from another user</p>
+                  <p className="text-[13px] text-muted-foreground mt-0.5">Paste a share link or code from another user</p>
                 </div>
               </div>
             </DrawerHeader>
@@ -3810,11 +3718,11 @@ export default function Home() {
                 placeholder="Paste feed code or link..."
                 value={importText}
                 onChange={(e) => setImportText(e.target.value)}
-                className="text-base bg-accent/40 dark:bg-white/[0.03] border-border dark:border-brand/20 focus-visible:border-brand/40 placeholder:text-muted-foreground/30"
+                className="text-base bg-accent/40 dark:bg-white/[0.03] border-input focus-visible:border-primary placeholder:text-muted-foreground/30"
                 data-testid="input-import-feed"
               />
               <Button
-                className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground dark:bg-brand dark:hover:bg-brand dark:text-white"
+                className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
                 onClick={() => handleImportFeed(importText)}
                 disabled={!importText.trim() || isImporting}
                 data-testid="button-confirm-import"
@@ -3827,15 +3735,15 @@ export default function Home() {
         </Drawer>
       ) : (
         <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-          <DialogContent className="glass-dialog-card sm:max-w-md border-border dark:border-brand/15">
+          <DialogContent className="glass-dialog-card sm:max-w-md border-border">
             <DialogHeader>
               <div className="flex items-center gap-2.5">
-                <div className="p-1.5 rounded-md bg-accent dark:bg-brand/10">
-                  <Download className="w-4 h-4 text-brand" />
+                <div className="p-1.5 rounded-md bg-accent">
+                  <Download className="w-4 h-4 text-foreground/75" />
                 </div>
                 <div>
                   <DialogTitle className="text-sm font-semibold">Import Feed</DialogTitle>
-                  <DialogDescription className="text-[11px] text-brand/60 dark:text-brand/40 mt-0.5">
+                  <DialogDescription className="text-[13px] text-muted-foreground mt-0.5">
                     Paste a share link or code from another user
                   </DialogDescription>
                 </div>
@@ -3846,13 +3754,13 @@ export default function Home() {
                 placeholder="Paste feed code or link..."
                 value={importText}
                 onChange={(e) => setImportText(e.target.value)}
-                className="bg-accent/40 dark:bg-white/[0.03] border-border dark:border-brand/20 focus-visible:border-brand/40 placeholder:text-muted-foreground/30"
+                className="bg-accent/40 dark:bg-white/[0.03] border-input focus-visible:border-primary placeholder:text-muted-foreground/30"
                 data-testid="input-import-feed"
               />
             </div>
             <DialogFooter>
               <Button
-                className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground dark:bg-brand dark:hover:bg-brand dark:text-white"
+                className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
                 onClick={() => handleImportFeed(importText)}
                 disabled={!importText.trim() || isImporting}
                 data-testid="button-confirm-import"

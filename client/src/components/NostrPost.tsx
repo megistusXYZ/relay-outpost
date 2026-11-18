@@ -1,3 +1,4 @@
+import { EngagerTrustBar } from "@/components/nostr-post/EngagerTrustBar";
 import { useEffect, useMemo, useRef, useState, useCallback, memo, isValidElement, cloneElement, lazy, Suspense, type ReactNode, type ComponentProps } from "react";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { quotedImageUrls } from "@/components/nostr-post/quoted-images";
@@ -8,7 +9,7 @@ import { nip19 } from "nostr-tools";
 import { Link, useLocation } from "wouter";
 import { use$ } from "applesauce-react/hooks";
 import { useRenderedContent, type ComponentMap } from "applesauce-react/hooks";
-import { eventStore, pool, publishEvent, fetchProfiles, fetchProfilesCached, DEFAULT_RELAYS, FAST_RELAYS, getEventRelays, throttledPoolSubscribe } from "@/lib/nostr";
+import { eventStore, publishEvent, fetchProfiles, fetchProfilesCached, DEFAULT_RELAYS, getEventRelays, throttledPoolSubscribe } from "@/lib/nostr";
 import { createIdBatcher } from "@/lib/lookup-by-id";
 import type { Subscribe } from "@/lib/collect-once";
 
@@ -21,43 +22,34 @@ const subscribeById: Subscribe = (relays, filter, handlers) => throttledPoolSubs
  */
 const idLookups = createIdBatcher(subscribeById);
 import { noteShareId } from "@/lib/share-links";
-import { queryAnswered } from "@/lib/relay-reach";
 import { useAddressableEvent } from "@/hooks/use-addressable-event";
 import { articleReplyTarget, isTopLevelArticleComment } from "@/lib/article-reply";
 import { ArticleRibbon } from "@/components/ArticleRibbon";
 import { classifyParentTarget, orderedRelayCandidates, parentRelayCandidates } from "@/lib/parent-resolve";
-import { parseListing, KIND_CLASSIFIED_LISTING, LISTING_RELAYS } from "@/lib/listing";
+import { parseListing, KIND_CLASSIFIED_LISTING } from "@/lib/listing";
 import { ListingCard } from "@/components/ListingCard";
 import { getPublishTarget } from "@/lib/outpost-relays";
-import { getWriteRelays } from "@/lib/outbox";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
 import { prefetchProfileOnHover } from "@/hooks/use-prefetch-visible";
-import { ActivityIndicator } from "@/components/ActivityIndicator";
 import { Nip05Badge, Nip05VerifiedCheck } from "@/components/Nip05Badge";
 import { PostBadgeIcons } from "@/components/BadgeDisplay";
-import { useTopZappers } from "@/hooks/use-top-zappers";
 import { formatDistanceToNow } from "date-fns";
 import { formatCompactTime } from "@/lib/time";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import {
-  Bookmark,
   BookmarkCheck,
   Heart,
   MessageSquare,
   Repeat,
   Share2,
-  Send,
   Copy,
   ExternalLink,
   Quote,
   X,
-  ChevronDown,
-  ChevronUp,
   User,
   VolumeX,
   Volume2,
@@ -73,17 +65,14 @@ import {
   Search,
   Zap,
   Play,
-  ImageIcon,
   Pause,
   ArrowLeftRight,
-  ArrowUpDown,
   Users,
-  Headphones,
-  ShieldCheck,
   Trash2,
   Ban,
   MessagesSquare,
-  Radio } from "lucide-react";
+  Radio,
+} from "lucide-react";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { EventCard, EventCardSkeleton } from "@/components/EventCard";
 import { ShareEventDialog } from "@/components/ShareEventDialog";
@@ -91,10 +80,7 @@ import { parseCalendarEvent, KIND_DATE_CALENDAR_EVENT, KIND_TIME_CALENDAR_EVENT,
 import { resolveNostrEmbed, truncatePreservingNostr } from "@/components/nostr-post/embed-resolution";
 import { OutpostIcon } from "@/components/icons/OutpostIcon";
 import nostrOstrichGif from "@assets/219719339-5eff628c-3470-4cc3-81eb-404f8902de9f_1771392554698.gif";
-import { useReactionDetails } from "@/hooks/use-reaction-details";
 import { useSignalCheck } from "@/hooks/use-signal-check";
-import { useAttestations, isActiveAttestation, getAttestationStatusLabel, type Attestation } from "@/hooks/use-attestations";
-import { useMention } from "@/hooks/use-mention";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -108,27 +94,21 @@ import {
   DialogHeader,
   DialogTitle } from "@/components/ui/dialog";
 import {
-  Sheet,
-  SheetContent,
-  SheetTitle } from "@/components/ui/sheet";
-import {
   getAvatarUrl,
   getDisplayName,
   getProfileContent,
   KIND_METADATA,
-  KIND_TEXT_NOTE,
   KIND_REPOST,
   KIND_REACTION,
   KIND_LIVE_EVENT,
   formatNpub,
   shortenNpub,
   formatNoteId,
-  buildReplyTags,
   buildRepostTags,
   buildReactionTags,
   getRelayHintForEvent,
-  clientTags,
-  isProtectedEvent } from "@/lib/nostr-helpers";
+  isProtectedEvent,
+} from "@/lib/nostr-helpers";
 import { usePetnamesVersion } from "@/lib/petnames";
 import { FOCUS_RING } from "@/lib/a11y";
 import { getClientDisplay } from "@/lib/client-display";
@@ -137,42 +117,38 @@ import { useShowClientTag } from "@/hooks/use-show-client-tag";
 import { MediaRenderer, QuotedVideo } from "@/components/MediaRenderer";
 import { useTranslation, TranslateLine } from "@/components/TranslateControl";
 import { getContentWarning, getSensitiveContentSetting, isCwRevealed, markCwRevealed } from "@/lib/sensitive-content";
-import { extractMediaFromContent, getEventMediaInfo, getMediaTypeFromMime, parseImetaTags } from "@/lib/media-utils";
+import { extractMediaFromContent, getMediaTypeFromMime, parseImetaTags } from "@/lib/media-utils";
 import { normalizeNostrClientLinks } from "@/lib/nostr-client-links";
 import { useNostrBookmarks } from "@/hooks/use-nostr-bookmarks";
 import { useFeedStyle } from "@/hooks/use-feed-style";
 import { useReplyContext } from "@/hooks/use-reply-context";
 import { useLiveStatus } from "@/contexts/LiveStatusContext";
 import { usePrimalStats } from "@/hooks/use-primal-stats";
-import { primalStatsCache, fetchThreadRepliesStreaming, getCachedThread, setCachedThread } from "@/lib/primal-cache";
+import { primalStatsCache } from "@/lib/primal-cache";
 import { computeEngagementScore, formatEngagementScore, type EngagementStats } from "@/lib/engagement";
 import { copyNostrId } from "@/lib/clipboard-bridge";
 import { getEngagementWeights } from "@/lib/engagement-weights";
 import { useFeedPrefs } from "@/lib/feed-prefs";
 import { useToast } from "@/hooks/use-toast";
-import { mutePubkey, isMutedPubkey } from "@/lib/spam-filter";
+import { mutePubkey } from "@/lib/spam-filter";
 import { ConfirmAction } from "@/components/ConfirmAction";
 import { DeletePostConfirm, DeletedPost } from "@/components/DeletePostConfirm";
 import { useDeletedEvents, deletedByAuthor } from "@/lib/deleted-events";
 import { watchDeletionsFor } from "@/lib/deletion-watch-live";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
-import { useTTS, type ThreadTTSSegment } from "@/contexts/TextToSpeechContext";
+import { useTTS } from "@/contexts/TextToSpeechContext";
 import { createContext, useContext } from "react";
 import { ReplyMarginContext, contextGoesToMargin } from "@/components/nostr-post/reply-margin";
 import { quotesItsParent } from "@/lib/quote-reply";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { PostFrame } from "@/components/PostFrame";
 import { isMediaDominant } from "@/lib/media-frame";
 import { isMediaFeedEnabled } from "@/lib/media-feed-prefs";
-import { formatSats } from "@/lib/zap";
 import { useCustomEmojis, isCustomEmoji, getCustomEmojiShortcode } from "@/hooks/use-custom-emojis";
 import { useInteraction } from "@/contexts/InteractionIndexContext";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
-import { formatInfluence } from "@/lib/graperank";
-import type { SignalTier } from "@/lib/graperank";
 import type { CustomEmoji } from "@/hooks/use-custom-emojis";
 import { SmilePlus, Lock, Globe } from "lucide-react";
-import { useLazyScoreRequest, VerifiedBadgeIcon, useHoverPopover, TrustTierDot, ThreadTrustBar, AuthorHoverCard, BtcZapIcon, HoverCardTrustBadge, VouchedBySection, TrustedBySection } from "./nostr-post/author-hover";
+import { TrustTierDot, AuthorHoverCard, BtcZapIcon, HoverCardTrustBadge, VouchedBySection, TrustedBySection } from "./nostr-post/author-hover";
 import { ZapReceiptsPopover, TopZapperAvatars, ReactionDetailsPopover, formatCount } from "./nostr-post/zap-reactions";
 import { ParentPostPreview, getReplyTargetId, useReplyDock } from "./nostr-post/thread-lite";
 import { lazyNamed } from "@/lib/lazy-retry";
@@ -231,7 +207,7 @@ export function ProtectedNoteBadge({ className }: { className?: string }) {
   return (
     <span
       className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-zap dark:text-amber-300 border border-amber-500/20 shrink-0 ${className || ""}`}
-      title="Protected (NIP-70) — only the author can publish this note. Other clients shouldn't rebroadcast it."
+      title="Protected (NIP-70) — only the author can publish this post. Other clients shouldn't rebroadcast it."
       data-testid="badge-protected-note"
     >
       <Lock className="w-2.5 h-2.5" />
@@ -240,7 +216,7 @@ export function ProtectedNoteBadge({ className }: { className?: string }) {
   );
 }
 
-// Minimum engagement (replies + reposts + likes + zaps) before the Signal Check
+// Minimum engagement (replies + reposts + likes + zaps) before the "Who engaged"
 // chip earns its post real estate. Below this the chip renders NOTHING — no "?"
 // (unfetched) and no "0" (checked, nobody) resting states cluttering quiet
 // posts. statsTotal is already computed per-post, so this gate costs no extra
@@ -252,7 +228,7 @@ function SignalCheckBadge({ eventId, statsTotal = 0, size = "default" }: { event
   const [open, setOpen] = useState(false);
   const { crew, known, others, total, loading, fetched, fetch: fetchSignal, participants } = useSignalCheck(eventId);
   const { pubkey } = useNostrAuth();
-  const { scores: grScores, getAuthorTier, getAuthorInfluence, isAuthorFlagged, requestScoresBulk, wotEnabled } = useGrapeRankScores();
+  const { scores: grScores, requestScoresBulk, wotEnabled } = useGrapeRankScores();
 
   useEffect(() => {
     if (!wotEnabled || !grScores || !fetched || participants.length === 0) return;
@@ -275,7 +251,7 @@ function SignalCheckBadge({ eventId, statsTotal = 0, size = "default" }: { event
   // colours still live inside the popover with a labelled legend.
   const sizeClass = size === "compact" ? "text-[9px]" : "text-[10px]";
 
-  const tierLabel = tier === "high" ? "Strong signal" : tier === "mid" ? "Some signal" : "Weak signal";
+  const tierLabel = tier === "high" ? "Strong" : tier === "mid" ? "Some" : "Little";
 
   if (!pubkey) return null;
   // Threshold gate: quiet posts get no chip at all. A cached fetch that found
@@ -295,191 +271,68 @@ function SignalCheckBadge({ eventId, statsTotal = 0, size = "default" }: { event
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-64 p-0 border-border dark:border-brand/20 bg-popover dark:bg-[rgba(4,4,10,0.97)]"
+        className="w-64 p-0 border-border bg-popover"
         side="top"
         align="end"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-3 space-y-2.5">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-display text-brand">Signal Check</p>
+            <p className="text-[13px] font-semibold text-foreground">Who engaged</p>
             {fetched && (
-              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                tier === "high" ? "bg-emerald-500/15 text-success dark:text-emerald-400" :
-                tier === "mid" ? "bg-blue-500/15 text-blue-600 dark:text-blue-400" :
-                "bg-secondary/50 text-muted-foreground"
+              <span className={`text-[12px] font-medium ${
+                tier === "high" ? "text-success dark:text-emerald-400" :
+                tier === "mid" ? "text-foreground/80" :
+                "text-muted-foreground"
               }`}>
                 {tierLabel}
               </span>
             )}
           </div>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Who liked, reposted, or sent thanks for this post — and how they rank in your trust graph.
+          <p className="text-[12px] text-muted-foreground leading-relaxed">
+            Who liked, reposted or sent thanks for this post, and how they sit in your network.
           </p>
 
           {loading && (
             <div className="flex items-center justify-center py-4">
-              <RelayOutpostInlineLoader className="w-4 h-4 text-brand/50" />
+              <RelayOutpostInlineLoader className="w-4 h-4 text-muted-foreground" />
             </div>
           )}
 
           {!loading && fetched && total === 0 && (
-            <p className="text-[11px] text-muted-foreground/70 text-center py-3">
+            <p className="text-[12px] text-muted-foreground text-center py-3">
               No interactions found on relays
             </p>
           )}
 
           {!loading && fetched && total > 0 && (
-            <div className="space-y-1.5 pt-1 border-t border-border dark:border-brand/10">
-              <div className="flex items-center justify-between text-[11px]">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-foreground/80 font-medium">Crew</span>
-                  <span className="text-muted-foreground/70 text-[10px]">you follow</span>
+            <div className="space-y-1.5 pt-1 border-t border-border/60">
+              {/* Who they are to you, by follows. Ink shades, not tier colours:
+                  this is "do you follow them", not trust (EngagerTrustBar below). */}
+              {[
+                { label: "People you follow", count: crew, dot: "bg-foreground" },
+                { label: "Friends of friends", count: known, dot: "bg-foreground/45" },
+                { label: "Others", count: others, dot: "bg-foreground/15" },
+              ].map((row) => (
+                <div key={row.label} className="flex items-center justify-between text-[13px]">
+                  <span className="flex items-center gap-1.5 text-foreground/80">
+                    <span className={`w-2 h-2 rounded-full ${row.dot}`} aria-hidden="true" />
+                    {row.label}
+                  </span>
+                  <span className="tabular-nums font-semibold text-foreground">{row.count}</span>
                 </div>
-                <span className="text-success dark:text-emerald-400 font-mono font-bold">{crew}</span>
-              </div>
-              <div className="flex items-center justify-between text-[11px]">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-blue-500" />
-                  <span className="text-foreground/80 font-medium">Known</span>
-                  <span className="text-muted-foreground/70 text-[10px]">friends of friends</span>
-                </div>
-                <span className="text-blue-500 dark:text-blue-400 font-mono font-bold">{known}</span>
-              </div>
-              <div className="flex items-center justify-between text-[11px]">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground/30" />
-                  <span className="text-foreground/80 font-medium">Others</span>
-                  <span className="text-muted-foreground/70 text-[10px]">outside your graph</span>
-                </div>
-                <span className="text-muted-foreground font-mono font-bold">{others}</span>
-              </div>
+              ))}
 
-              <div className="pt-1.5 mt-1 border-t border-border dark:border-brand/10">
-                <div className="h-2 rounded-full overflow-hidden bg-secondary/50 flex">
-                  {crew > 0 && <div className="bg-emerald-500 h-full" style={{ width: `${(crew / total) * 100}%` }} />}
-                  {known > 0 && <div className="bg-blue-500 h-full" style={{ width: `${(known / total) * 100}%` }} />}
-                  {others > 0 && <div className="bg-muted-foreground/20 h-full" style={{ width: `${(others / total) * 100}%` }} />}
+              <div className="pt-1.5 mt-1 border-t border-border/60">
+                <div className="h-2 rounded-full overflow-hidden bg-foreground/[0.06] flex gap-px">
+                  {crew > 0 && <div className="bg-foreground h-full" style={{ width: `${(crew / total) * 100}%` }} />}
+                  {known > 0 && <div className="bg-foreground/45 h-full" style={{ width: `${(known / total) * 100}%` }} />}
+                  {others > 0 && <div className="bg-foreground/15 h-full" style={{ width: `${(others / total) * 100}%` }} />}
                 </div>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-[10px] text-muted-foreground/80">{total} engager{total !== 1 ? "s" : ""}</span>
-                  <span className="text-[10px] text-muted-foreground/70">NIP-02 follow graph</span>
-                </div>
+                <p className="text-[12px] text-muted-foreground mt-1">{total} {total === 1 ? "person" : "people"} in all</p>
               </div>
 
-              {wotEnabled && grScores && grScores.size > 0 && (() => {
-                let grStrong = 0, grModerate = 0, grLow = 0, grWeak = 0, grFlagged = 0, grUnscored = 0;
-                const allScores: number[] = [];
-                let scoredCount = 0;
-                let totalWeight = 0;
-
-                for (const p of participants) {
-                  const flagged = isAuthorFlagged(p.pubkey);
-                  const t = getAuthorTier(p.pubkey);
-                  const influence = getAuthorInfluence(p.pubkey);
-                  const score = influence ?? 0;
-                  allScores.push(score);
-                  if (influence !== null) { scoredCount++; totalWeight += score; }
-                  if (flagged) { grFlagged++; continue; }
-                  if (t === "strong") grStrong++;
-                  else if (t === "moderate") grModerate++;
-                  else if (t === "low") grLow++;
-                  else if (t === "weak") grWeak++;
-                  else grUnscored++;
-                }
-
-                const grScored = grStrong + grModerate + grLow + grWeak + grFlagged;
-                if (grScored === 0 && grUnscored === 0) return null;
-
-                const avgInfluence = scoredCount > 0 ? totalWeight / scoredCount : 0;
-                const sorted = [...allScores].sort((a, b) => b - a);
-                const topN = Math.max(1, Math.min(3, Math.ceil(total * 0.1)));
-                const topWeight = sorted.slice(0, topN).reduce((s, v) => s + v, 0);
-                const concentration = totalWeight > 0 ? topWeight / totalWeight : 0;
-
-                const grAvgColor = avgInfluence >= 0.15 ? "text-success dark:text-emerald-400"
-                  : avgInfluence >= 0.02 ? "text-blue-600 dark:text-blue-400"
-                  : avgInfluence > 0 ? "text-cyan-600 dark:text-cyan-400"
-                  : "text-slate-500 dark:text-slate-400";
-                const grConcColor = concentration > 0.85 ? "text-danger dark:text-red-400"
-                  : concentration > 0.6 ? "text-warning dark:text-amber-400"
-                  : "text-success dark:text-emerald-400";
-
-                const trustedRatio = total > 0 ? (grStrong + grModerate) / total : 0;
-                const verdict = grFlagged > 0 && grFlagged >= total * 0.2
-                  ? { label: "Suspicious", color: "text-danger dark:text-red-400 bg-red-500/10", desc: `${grFlagged} flagged engager${grFlagged > 1 ? "s" : ""}` }
-                  : total >= 10 && concentration > 0.85 && avgInfluence < 0.02
-                  ? { label: "Inorganic", color: "text-danger dark:text-red-400 bg-red-500/10", desc: "Trust concentrated in few accounts" }
-                  : trustedRatio >= 0.5
-                  ? { label: "Organic", color: "text-success dark:text-emerald-400 bg-emerald-500/10", desc: "Majority from trusted accounts" }
-                  : trustedRatio >= 0.2
-                  ? { label: "Mixed", color: "text-zap dark:text-amber-400 bg-amber-500/10", desc: "Some trusted, some unknown" }
-                  : { label: "Unverified", color: "text-slate-500 dark:text-slate-400 bg-slate-500/10", desc: "Few scored engagers" };
-
-                const grSegments = [
-                  { count: grStrong, color: "bg-emerald-500", label: "Highly Trusted" },
-                  { count: grModerate, color: "bg-blue-500", label: "Trusted" },
-                  { count: grLow, color: "bg-cyan-500", label: "Neutral" },
-                  { count: grWeak, color: "bg-red-400", label: "Low Trust" },
-                  { count: grFlagged, color: "bg-red-600", label: "Flagged" },
-                  { count: grUnscored, color: "bg-slate-500/60 dark:bg-slate-400/50", label: "Unscored" },
-                ].filter(s => s.count > 0);
-
-                const grBarTotal = grScored + grUnscored;
-
-                return (
-                  <div className="pt-2 mt-2 border-t border-border dark:border-brand/10 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-medium text-brand">GrapeRank Trust</p>
-                      <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${verdict.color}`}>
-                        {verdict.label}
-                      </span>
-                    </div>
-                    <div className="h-1.5 rounded-full overflow-hidden flex gap-px bg-slate-500/10">
-                      {grSegments.map((seg, i) => (
-                        <div
-                          key={seg.label}
-                          className={`${seg.color} transition-all duration-300 ${i === 0 ? "rounded-l-full" : ""} ${i === grSegments.length - 1 ? "rounded-r-full" : ""}`}
-                          style={{ width: `${grBarTotal > 0 ? (seg.count / grBarTotal) * 100 : 0}%`, minWidth: seg.count > 0 ? "3px" : 0 }}
-                          title={`${seg.label}: ${seg.count}`}
-                        />
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {grSegments.map((seg) => (
-                        <span key={seg.label} className="flex items-center gap-1 text-[9px] text-muted-foreground/80">
-                          <span className={`w-1.5 h-1.5 rounded-full ${seg.color}`} />
-                          {seg.label} {seg.count}
-                        </span>
-                      ))}
-                    </div>
-                    {scoredCount > 0 && (
-                      <div className="space-y-1 pt-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[9px] text-muted-foreground/80" title="Average trust score of people who engaged with this post">
-                            Avg Signal <span className={`font-mono font-bold ${grAvgColor}`}>{avgInfluence.toFixed(4)}</span>
-                          </span>
-                          {total >= 4 && (
-                            <span className="text-[9px] text-muted-foreground/80" title={`Top ${topN} account${topN > 1 ? "s" : ""} hold ${Math.round(concentration * 100)}% of total trust — ${concentration > 0.85 ? "highly concentrated" : concentration > 0.6 ? "moderately concentrated" : "broadly distributed"}`}>
-                              Top {topN} <span className={`font-mono font-bold ${grConcColor}`}>{Math.round(concentration * 100)}%</span>
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[9px] text-muted-foreground/70 leading-snug">
-                          {avgInfluence >= 0.15 ? "High average trust among engagers" : avgInfluence >= 0.02 ? "Moderate trust among engagers" : avgInfluence > 0 ? "Low trust among engagers" : "No trust data available"}
-                          {total >= 4 && (<>{" · "}{concentration > 0.85 ? "trust concentrated in few accounts" : concentration > 0.6 ? "trust somewhat concentrated" : "trust broadly distributed"}</>)}
-                        </p>
-                      </div>
-                    )}
-                    <p className="text-[9px] text-muted-foreground/70 italic">{verdict.desc}</p>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-[10px] text-muted-foreground/80">{grScored} of {total} engagers scored</span>
-                      <span className="text-[10px] text-muted-foreground/70">GrapeRank WoT</span>
-                    </div>
-                  </div>
-                );
-              })()}
+              <EngagerTrustBar participants={participants} />
             </div>
           )}
         </div>
@@ -530,7 +383,7 @@ function EngagementScoreBadge({ eventId, score, stats, size = "default" }: { eve
   const [open, setOpen] = useState(false);
   const { pubkey } = useNostrAuth();
   const { total, loading: signalLoading, fetched: signalFetched, fetch: fetchSignal, participants } = useSignalCheck(eventId);
-  const { scores: grScores, getAuthorTier, getAuthorInfluence, isAuthorFlagged, requestScoresBulk, wotEnabled } = useGrapeRankScores();
+  const { scores: grScores, requestScoresBulk, wotEnabled } = useGrapeRankScores();
 
   useEffect(() => {
     if (!wotEnabled || !grScores || !signalFetched || participants.length === 0) return;
@@ -574,24 +427,24 @@ function EngagementScoreBadge({ eventId, score, stats, size = "default" }: { eve
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-64 p-0 border-border dark:border-brand/20 bg-popover dark:bg-[rgba(4,4,10,0.97)]"
+        className="w-64 p-0 border-border bg-popover"
         side="top"
         align="end"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-3 space-y-2.5">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-display text-brand">Engagement Score</p>
-            <span className={`text-sm font-mono font-bold ${tier === "high" ? "text-brand dark:text-brand" : tier === "mid" ? "text-brand/80 dark:text-brand" : "text-muted-foreground"}`}>
+            <p className="text-[13px] font-semibold text-foreground">Engagement score</p>
+            <span className={`text-sm tabular-nums font-semibold ${tier === "high" ? "text-foreground" : tier === "mid" ? "text-foreground/80" : "text-muted-foreground"}`}>
               {score}
             </span>
           </div>
-          <p className="text-[11px] text-muted-foreground/70 leading-relaxed">
+          <p className="text-[12px] text-muted-foreground leading-relaxed">
             A weighted score measuring how much interaction this post received. {tierLabel} engagement.
           </p>
           {stats && breakdownRows.length > 0 && (
-            <div className="space-y-1 pt-1 border-t border-border dark:border-brand/10">
-              <p className="text-[9px] font-brand uppercase tracking-widest text-muted-foreground/50">Breakdown</p>
+            <div className="space-y-1 pt-1 border-t border-border/60">
+              <p className="text-[12px] text-muted-foreground font-medium">Breakdown</p>
               {breakdownRows.map((row) => (
                 <div key={row.label} className="flex items-center justify-between text-[11px]">
                   <span className="text-muted-foreground/70">
@@ -600,139 +453,24 @@ function EngagementScoreBadge({ eventId, score, stats, size = "default" }: { eve
                   </span>
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground/50 font-mono">{row.count.toLocaleString()}</span>
-                    <span className="text-brand/80 font-mono w-8 text-right">+{row.points}</span>
+                    <span className="text-foreground/80 tabular-nums w-8 text-right">+{row.points}</span>
                   </div>
                 </div>
               ))}
-              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border dark:border-brand/10">
+              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/60">
                 <span className="text-muted-foreground/70 font-medium">Total</span>
-                <span className="text-brand font-mono font-bold">{score}</span>
+                <span className="text-foreground tabular-nums font-semibold">{score}</span>
               </div>
             </div>
           )}
 
           {pubkey && signalLoading && (
             <div className="flex items-center justify-center py-2">
-              <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-brand/50" />
+              <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-muted-foreground" />
             </div>
           )}
 
-          {pubkey && signalFetched && total > 0 && (
-            <div className="space-y-1.5 pt-1 border-t border-border dark:border-brand/10">
-              {wotEnabled && grScores && grScores.size > 0 && (() => {
-                let grStrong = 0, grModerate = 0, grLow = 0, grWeak = 0, grFlagged = 0, grUnscored = 0;
-                const allScores: number[] = [];
-                let scoredCount = 0;
-                let totalWeight = 0;
-
-                for (const p of participants) {
-                  const flagged = isAuthorFlagged(p.pubkey);
-                  const t = getAuthorTier(p.pubkey);
-                  const influence = getAuthorInfluence(p.pubkey);
-                  const sc = influence ?? 0;
-                  allScores.push(sc);
-                  if (influence !== null) { scoredCount++; totalWeight += sc; }
-                  if (flagged) { grFlagged++; continue; }
-                  if (t === "strong") grStrong++;
-                  else if (t === "moderate") grModerate++;
-                  else if (t === "low") grLow++;
-                  else if (t === "weak") grWeak++;
-                  else grUnscored++;
-                }
-
-                const grScored = grStrong + grModerate + grLow + grWeak + grFlagged;
-                if (grScored === 0 && grUnscored === 0) return null;
-
-                const avgInfluence = scoredCount > 0 ? totalWeight / scoredCount : 0;
-                const sorted = [...allScores].sort((a, b) => b - a);
-                const topN = Math.max(1, Math.min(3, Math.ceil(total * 0.1)));
-                const topWeight = sorted.slice(0, topN).reduce((s, v) => s + v, 0);
-                const concentration = totalWeight > 0 ? topWeight / totalWeight : 0;
-
-                const grAvgColor = avgInfluence >= 0.15 ? "text-success dark:text-emerald-400"
-                  : avgInfluence >= 0.02 ? "text-blue-600 dark:text-blue-400"
-                  : avgInfluence > 0 ? "text-cyan-600 dark:text-cyan-400"
-                  : "text-slate-500 dark:text-slate-400";
-                const grConcColor = concentration > 0.85 ? "text-danger dark:text-red-400"
-                  : concentration > 0.6 ? "text-warning dark:text-amber-400"
-                  : "text-success dark:text-emerald-400";
-
-                const trustedRatio = total > 0 ? (grStrong + grModerate) / total : 0;
-                const verdict = grFlagged > 0 && grFlagged >= total * 0.2
-                  ? { label: "Suspicious", color: "text-danger dark:text-red-400 bg-red-500/10", desc: `${grFlagged} flagged engager${grFlagged > 1 ? "s" : ""}` }
-                  : total >= 10 && concentration > 0.85 && avgInfluence < 0.02
-                  ? { label: "Inorganic", color: "text-danger dark:text-red-400 bg-red-500/10", desc: "Trust concentrated in few accounts" }
-                  : trustedRatio >= 0.5
-                  ? { label: "Organic", color: "text-success dark:text-emerald-400 bg-emerald-500/10", desc: "Majority from trusted accounts" }
-                  : trustedRatio >= 0.2
-                  ? { label: "Mixed", color: "text-zap dark:text-amber-400 bg-amber-500/10", desc: "Some trusted, some unknown" }
-                  : { label: "Unverified", color: "text-slate-500 dark:text-slate-400 bg-slate-500/10", desc: "Few scored engagers" };
-
-                const grSegments = [
-                  { count: grStrong, color: "bg-emerald-500", label: "Highly Trusted" },
-                  { count: grModerate, color: "bg-blue-500", label: "Trusted" },
-                  { count: grLow, color: "bg-cyan-500", label: "Neutral" },
-                  { count: grWeak, color: "bg-red-400", label: "Low Trust" },
-                  { count: grFlagged, color: "bg-red-600", label: "Flagged" },
-                  { count: grUnscored, color: "bg-slate-500/60 dark:bg-slate-400/50", label: "Unscored" },
-                ].filter(s => s.count > 0);
-
-                const grBarTotal = grScored + grUnscored;
-
-                return (
-                  <div className="pt-2 mt-2 border-t border-border dark:border-brand/10 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-medium text-brand">GrapeRank Trust</p>
-                      <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${verdict.color}`}>
-                        {verdict.label}
-                      </span>
-                    </div>
-                    <div className="h-1.5 rounded-full overflow-hidden flex gap-px bg-slate-500/10">
-                      {grSegments.map((seg, i) => (
-                        <div
-                          key={seg.label}
-                          className={`${seg.color} transition-all duration-300 ${i === 0 ? "rounded-l-full" : ""} ${i === grSegments.length - 1 ? "rounded-r-full" : ""}`}
-                          style={{ width: `${grBarTotal > 0 ? (seg.count / grBarTotal) * 100 : 0}%`, minWidth: seg.count > 0 ? "3px" : 0 }}
-                          title={`${seg.label}: ${seg.count}`}
-                        />
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {grSegments.map((seg) => (
-                        <span key={seg.label} className="flex items-center gap-1 text-[9px] text-muted-foreground/80">
-                          <span className={`w-1.5 h-1.5 rounded-full ${seg.color}`} />
-                          {seg.label} {seg.count}
-                        </span>
-                      ))}
-                    </div>
-                    {scoredCount > 0 && (
-                      <div className="space-y-1 pt-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[9px] text-muted-foreground/80" title="Average trust score of people who engaged with this post">
-                            Avg Signal <span className={`font-mono font-bold ${grAvgColor}`}>{avgInfluence.toFixed(4)}</span>
-                          </span>
-                          {total >= 4 && (
-                            <span className="text-[9px] text-muted-foreground/80" title={`Top ${topN} account${topN > 1 ? "s" : ""} hold ${Math.round(concentration * 100)}% of total trust`}>
-                              Top {topN} <span className={`font-mono font-bold ${grConcColor}`}>{Math.round(concentration * 100)}%</span>
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[9px] text-muted-foreground/70 leading-snug">
-                          {avgInfluence >= 0.15 ? "High average trust among engagers" : avgInfluence >= 0.02 ? "Moderate trust among engagers" : avgInfluence > 0 ? "Low trust among engagers" : "No trust data available"}
-                          {total >= 4 && (<>{" · "}{concentration > 0.85 ? "trust concentrated in few accounts" : concentration > 0.6 ? "trust somewhat concentrated" : "trust broadly distributed"}</>)}
-                        </p>
-                      </div>
-                    )}
-                    <p className="text-[9px] text-muted-foreground/70 italic">{verdict.desc}</p>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-[10px] text-muted-foreground/80">{grScored} of {total} engagers scored</span>
-                      <span className="text-[10px] text-muted-foreground/70">GrapeRank WoT</span>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          )}
+          {pubkey && signalFetched && total > 0 && <EngagerTrustBar participants={participants} />}
         </div>
       </PopoverContent>
     </Popover>
@@ -782,7 +520,7 @@ export function MentionProfileLink({ pubkey }: { pubkey: string }) {
   const linkEl = (
     <Link
       href={`/profile/${npub}`}
-      className="text-brand dark:text-brand/90 font-medium no-underline cursor-pointer hover:text-brand/80 dark:hover:text-brand transition-colors"
+      className="text-brand font-medium no-underline cursor-pointer hover:underline"
       data-testid={`link-mention-profile-${npub.slice(0, 12)}`}
     >
       @{displayName || `${npub.slice(0, 9)}...${npub.slice(-4)}`}
@@ -802,18 +540,17 @@ export function MentionProfileLink({ pubkey }: { pubkey: string }) {
         data-testid={`hover-card-${npub.slice(0, 12)}`}
       >
         <div
-          className="relative rounded-xl overflow-hidden border border-border dark:border-brand/20"
+          className="relative rounded-xl overflow-hidden border border-border"
           style={{ background: 'var(--mention-hover-solid-bg)', boxShadow: '0 8px 24px var(--mention-hover-shadow)' }}
         >
           <div className="absolute inset-0 mention-hover-radial pointer-events-none" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-[1px] bg-gradient-to-r from-transparent via-brand/50 to-transparent pointer-events-none" />
 
           <div className="relative z-10 p-4 space-y-3">
             <div className="flex items-start gap-3">
               <Link href={`/profile/${npub}`} data-testid={`hover-avatar-${npub.slice(0, 12)}`}>
-                <Avatar className="w-12 h-12 ring-2 ring-primary/30 dark:ring-brand/30 border-2 border-border dark:border-[#0d0d2b] shrink-0 cursor-pointer">
+                <Avatar className="w-12 h-12 ring-1 ring-border border-2 border-background shrink-0 cursor-pointer">
                   <AvatarImage src={avatarUrl} alt={displayName || "Profile"} />
-                  <AvatarFallback className="bg-brand/10 text-brand dark:bg-brand/40 text-sm font-bold">
+                  <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-sm font-semibold">
                     {(displayName || "?").slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -821,20 +558,20 @@ export function MentionProfileLink({ pubkey }: { pubkey: string }) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <Link href={`/profile/${npub}`} className="no-underline min-w-0" data-testid={`hover-name-${npub.slice(0, 12)}`}>
-                    <p className="text-sm font-semibold text-foreground truncate hover:text-brand transition-colors cursor-pointer">
+                    <p className="text-sm font-semibold text-foreground truncate hover:underline cursor-pointer">
                       {displayName || shortNpub}
                     </p>
                   </Link>
                   <HoverCardTrustBadge pubkey={pubkey} />
                 </div>
                 {nip05 && (
-                  <Nip05Badge nip05={nip05} pubkey={pubkey} className="mt-0.5" textClassName="text-[11px] text-primary/70 dark:text-brand/70" iconClassName="w-3 h-3" />
+                  <Nip05Badge nip05={nip05} pubkey={pubkey} className="mt-0.5" textClassName="text-[12px] text-muted-foreground" iconClassName="w-3 h-3" />
                 )}
               </div>
             </div>
 
             {about && (
-              <p className="text-[11px] text-muted-foreground/70 leading-relaxed line-clamp-2">
+              <p className="text-[12px] text-muted-foreground leading-relaxed line-clamp-2">
                 {about}
               </p>
             )}
@@ -850,7 +587,7 @@ export function MentionProfileLink({ pubkey }: { pubkey: string }) {
                 data-testid={`button-copy-npub-${npub.slice(0, 12)}`}
               >
                 <img src={nostrOstrichGif} alt="" className="w-4 h-4 object-contain shrink-0" />
-                <span className="text-[11px] text-muted-foreground/60 font-mono truncate group-hover:text-muted-foreground/80 transition-colors">
+                <span className="text-[12px] text-muted-foreground font-mono truncate group-hover:text-muted-foreground/80 transition-colors">
                   {shortNpub}
                 </span>
                 {copied ? (
@@ -1156,12 +893,12 @@ export function EmbeddedNote({ eventId, encoded, relays, parentEventId }: { even
       <div className="flex items-center gap-2">
         <Avatar className="w-5 h-5 shrink-0 ring-1 ring-border/30">
           <AvatarImage src={avatar} alt={name} />
-          <AvatarFallback className="bg-brand/10 text-brand text-[8px] font-bold">
+          <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[8px] font-semibold">
             {name.slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
         <span className="text-[11px] font-semibold text-foreground/80 truncate max-w-[160px]">{name}</span>
-        <span className="text-[11px] text-muted-foreground/50">{timeAgo}</span>
+        <span className="text-[12px] text-muted-foreground">{timeAgo}</span>
       </div>
       {previewText && (
         // div (not p): the nested renderer can emit block-level cards (a resolved
@@ -1270,7 +1007,7 @@ function NoteRefChip({ encoded }: { encoded?: string }) {
     <a
       href={href}
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (encoded) navigate(href); }}
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[0.85em] bg-accent dark:bg-brand/10 border border-brand/20 text-brand/70 no-underline cursor-pointer hover:bg-accent/80 dark:hover:bg-brand/20 transition-colors"
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[0.85em] bg-foreground/[0.05] border border-border/60 text-brand no-underline cursor-pointer hover:bg-accent/80 dark:hover:bg-brand/20 transition-colors"
       data-testid="note-ref-chip"
     >
       <CornerDownRight className="w-3 h-3 shrink-0" />
@@ -1295,7 +1032,6 @@ export function TextWithUnresolvedNostr({ text, inlineOnly, nested }: { text: st
 
     if (token.startsWith("nostr:")) {
       const bech32 = token.slice(6);
-      let rendered = false;
       try {
         const decoded = nip19.decode(bech32);
         // Depth-guarded, shared with the top-level content renderer: addressable
@@ -1305,23 +1041,19 @@ export function TextWithUnresolvedNostr({ text, inlineOnly, nested }: { text: st
         const res = resolveNostrEmbed(decoded, { nested: !!nested });
         if (res.render === "mention") {
           parts.push(<MentionProfileLink key={`m${match.index}`} pubkey={res.pubkey} />);
-          rendered = true;
         } else if (res.render === "address-card") {
           // inlineOnly (e.g. image-feed captions) must stay caption-sized — no card.
           if (!inlineOnly) {
             parts.push(<EmbeddedAddressCard key={`a${match.index}`} kind={res.kind} pubkey={res.pubkey} identifier={res.identifier} relays={res.relays} encoded={bech32} />);
-            rendered = true;
           }
         } else if (res.render === "note-embed") {
           // inlineOnly (e.g. image-feed captions): a compact pill instead of a
           // full embedded-note card — captions must stay caption-sized.
           if (!inlineOnly) {
             parts.push(<EmbeddedNote key={`e${match.index}`} eventId={res.eventId} encoded={bech32} relays={res.relays} />);
-            rendered = true;
           }
         } else if (res.render === "note-chip") {
           parts.push(<NoteRefChip key={`c${match.index}`} encoded={bech32} />);
-          rendered = true;
         }
       } catch {}
       // NOTHING. This branch is only reached when a nostr: token matched the
@@ -1366,7 +1098,7 @@ function NostrEmbedFor({ decoded, encoded }: { decoded: unknown; encoded: string
   if (res.render === "mention") return <MentionProfileLink pubkey={res.pubkey} />;
   if (res.render === "address-card") return <EmbeddedAddressCard kind={res.kind} pubkey={res.pubkey} identifier={res.identifier} relays={res.relays} encoded={encoded} />;
   if (res.render === "note-embed") return <EmbeddedNote eventId={res.eventId} encoded={encoded} relays={res.relays} />;
-  return <span className="text-brand dark:text-brand/90">{encoded.slice(0, 16)}...</span>;
+  return <span className="text-brand">{encoded.slice(0, 16)}...</span>;
 }
 
 /**
@@ -1607,7 +1339,7 @@ export function CustomEmojiPicker({ emojis, onSelect, disabled, eventId }: {
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-64 sm:w-72 p-0 border-border dark:border-brand/20 bg-popover dark:bg-[rgba(4,4,10,0.97)]"
+        className="w-64 sm:w-72 p-0 border-border bg-popover"
         side="top"
         align="center"
         onClick={(e) => e.stopPropagation()}
@@ -1615,12 +1347,12 @@ export function CustomEmojiPicker({ emojis, onSelect, disabled, eventId }: {
         <div className="p-2 max-h-56 overflow-y-auto">
           {[...grouped.entries()].map(([packName, packEmojis]) => (
             <div key={packName} className="mb-2 last:mb-0">
-              <p className="text-[10px] font-display text-brand/70 dark:text-brand/60 px-1 mb-1 truncate">{packName}</p>
+              <p className="text-[12px] font-medium text-muted-foreground px-1 mb-1 truncate">{packName}</p>
               <div className="grid grid-cols-6 sm:grid-cols-7 gap-1">
                 {packEmojis.map((emoji) => (
                   <button
                     key={emoji.shortcode}
-                    className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg hover:bg-accent dark:hover:bg-brand/15 transition-colors cursor-pointer"
+                    className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg hover:bg-foreground/[0.06] transition-colors cursor-pointer"
                     onClick={(e) => { e.stopPropagation(); onSelect(emoji); handleOpenChange(false); }}
                     title={`:${emoji.shortcode}:`}
                     disabled={disabled}
@@ -1643,7 +1375,7 @@ export function CustomEmojiPicker({ emojis, onSelect, disabled, eventId }: {
           href="https://emojiverse.shakespeare.wtf/"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center gap-1.5 px-2 py-1.5 text-[10px] text-brand/50 dark:text-brand/40 hover:text-brand/80 dark:hover:text-brand/70 transition-colors border-t border-border dark:border-brand/10"
+          className="flex items-center justify-center gap-1.5 px-2 py-1.5 text-[12px] text-muted-foreground hover:text-foreground transition-colors border-t border-border/60"
           onClick={(e) => e.stopPropagation()}
           data-testid="link-emojiverse"
         >
@@ -1728,7 +1460,7 @@ export function RawFieldRow({ label, value, mono = true, description }: { label:
       <div className="flex-1 min-w-0">
         <span className="glass-dialog-field-label block">{label}</span>
         {description && (
-          <span className="block text-[10px] text-muted-foreground/60 mb-0.5 leading-tight">{description}</span>
+          <span className="block text-[12px] text-muted-foreground mb-0.5 leading-tight">{description}</span>
         )}
         <div className={`text-xs break-all ${mono ? "font-mono" : ""} text-foreground/80`}>
           {value.length > 300 ? value.slice(0, 300) + "..." : value}
@@ -1768,7 +1500,7 @@ export function ConsoleQuickCopyBtn({ icon: Icon, label, value }: { icon: React.
       className="glass-console-btn justify-start gap-2 w-full text-xs"
       data-testid={`button-console-${label.toLowerCase().replace(/\s/g, "-")}`}
     >
-      {copied ? <Check className="w-3.5 h-3.5 text-green-500 shrink-0" /> : <Icon className="w-3.5 h-3.5 text-brand/70 shrink-0" />}
+      {copied ? <Check className="w-3.5 h-3.5 text-green-500 shrink-0" /> : <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
       <span className="text-foreground/80 truncate">{copied ? "Copied" : label}</span>
     </Button>
   );
@@ -1819,9 +1551,9 @@ export function RawEventDialog({ open, onOpenChange, event }: { open: boolean; o
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="glass-dialog max-w-lg max-h-[85vh] overflow-y-auto" data-testid={`dialog-raw-event-${event.id}`}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-sm font-brand uppercase tracking-widest text-brand dark:text-brand/90">
-            <FileJson className="w-4 h-4 text-brand/70" />
-            Raw Telemetry
+          <DialogTitle className="flex items-center gap-2 text-base font-semibold">
+            <FileJson className="w-4 h-4 text-muted-foreground" />
+            Raw event
           </DialogTitle>
         </DialogHeader>
 
@@ -1834,14 +1566,14 @@ export function RawEventDialog({ open, onOpenChange, event }: { open: boolean; o
           <RawFieldRow label="Created At" value={`${event.created_at} (${createdDate})`} mono={false} description="Unix timestamp (seconds since Jan 1 1970) when this event was signed" />
 
           <div data-testid={`field-seen-on-relays-${event.id}`} className="glass-dialog-field">
-            <span className="glass-dialog-field-label block mb-0.5">Seen On Relays</span>
-            <span className="block text-[10px] text-muted-foreground/60 mb-1 leading-tight">Which relay servers delivered this event to your client</span>
+            <span className="glass-dialog-field-label block mb-0.5">Seen on relays</span>
+            <span className="block text-[12px] text-muted-foreground mb-1 leading-tight">Which relay servers delivered this event to your client</span>
             {seenOnRelays.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
                 {seenOnRelays.map((r) => {
                   const short = r.replace("wss://", "").replace("ws://", "").replace(/\/$/, "");
                   return (
-                    <Badge key={r} variant="outline" className="text-[10px] font-mono text-brand/70 border-brand/20" data-testid={`badge-relay-${short}`}>
+                    <Badge key={r} variant="outline" className="text-[11px] font-mono text-foreground/75 border-border/60" data-testid={`badge-relay-${short}`}>
                       {short}
                     </Badge>
                   );
@@ -1859,9 +1591,9 @@ export function RawEventDialog({ open, onOpenChange, event }: { open: boolean; o
           <RawFieldRow label="Signature" value={event.sig} description="Schnorr signature proving this event was created by the author's private key" />
         </div>
 
-        <div className="mt-4 pt-3 border-t border-border dark:border-brand/10">
-          <span className="glass-dialog-field-label block">Console Quick Copy</span>
-          <span className="block text-[10px] text-muted-foreground/60 mb-2 leading-tight">Pre-built filters and data you can paste into dev tools or other Nostr clients</span>
+        <div className="mt-4 pt-3 border-t border-border/60">
+          <span className="glass-dialog-field-label block">Copy for the console</span>
+          <span className="block text-[12px] text-muted-foreground mb-2 leading-tight">Pre-built filters and data you can paste into dev tools or other Nostr clients</span>
           <div className="grid grid-cols-2 gap-2">
             <ConsoleQuickCopyBtn icon={Filter} label="Event Filter" value={eventFilter} />
             <ConsoleQuickCopyBtn icon={User} label="Author Filter" value={authorFilter} />
@@ -1870,11 +1602,11 @@ export function RawEventDialog({ open, onOpenChange, event }: { open: boolean; o
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border dark:border-brand/10">
+        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/60">
           <Button
             variant="outline"
             size="sm"
-            className="flex-1 font-brand uppercase tracking-widest text-xs"
+            className="flex-1 text-xs font-medium"
             onClick={handleCopyFull}
             data-testid={`button-copy-full-json-${event.id}`}
           >
@@ -2022,7 +1754,7 @@ export function EmbeddedAddressCard({ kind, pubkey: authorPk, identifier, relays
     try { liveNaddr = nip19.naddrEncode({ kind, pubkey: resolved.pubkey, identifier, relays: relays ?? [] }); } catch {}
     const goLive = (e: React.MouseEvent) => { e.stopPropagation(); if (liveNaddr) navigate(`/live/${liveNaddr}`); };
     const StatusPill = (
-      <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${statusClass}`}>
+      <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold ${statusClass}`}>
         {isLive && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
         {statusLabel}
       </span>
@@ -2054,7 +1786,7 @@ export function EmbeddedAddressCard({ kind, pubkey: authorPk, identifier, relays
           </div>
           <p className="text-sm font-semibold leading-snug line-clamp-2">{streamTitle}</p>
           <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
-            <Radio className="w-3 h-3 text-brand/70 shrink-0" />
+            <Radio className="w-3 h-3 text-muted-foreground shrink-0" />
             {participants ? `${participants} watching · ` : ""}Open in Relay Outpost
           </p>
         </div>
@@ -2075,7 +1807,7 @@ export function EmbeddedAddressCard({ kind, pubkey: authorPk, identifier, relays
             <AvatarFallback className="text-[8px]">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <span className="text-xs font-medium truncate">{displayName}</span>
-          <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60 ml-auto shrink-0">{kindLabel}</span>
+          <span className="text-[13px] text-muted-foreground/60 ml-auto shrink-0 font-medium">{kindLabel}</span>
         </div>
         <p className="text-sm font-semibold leading-snug line-clamp-2 mb-1">{title}</p>
         {image && (
@@ -2122,7 +1854,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
     enabled: blurOutside, viewer: pubkey, author: event.pubkey, follows: new Set(viewerFollows || []), tierOf: tierForBlur, event,
   }), [blurOutside, pubkey, event, viewerFollows, tierForBlur]);
   const [, navigate] = useLocation();
-  const { isBookmarked: checkBookmarked, isPrivateBookmark, toggleBookmark, addBookmark, removeBookmark, setBookmarkPrivacy } = useNostrBookmarks();
+  const { isBookmarked: checkBookmarked, isPrivateBookmark, addBookmark, removeBookmark, setBookmarkPrivacy } = useNostrBookmarks();
   const { isUserLive } = useLiveStatus();
   const { enabled: ttsEnabled, startReading, isReading, sourceUrl: ttsSourceUrl, stop: stopTTS, isPaused, isLoading: ttsLoading, progress: ttsProgress, rate: ttsRate, setRate: setTTSRate, togglePause: toggleTTSPause } = useTTS();
   const [showReplyComposer, setShowReplyComposer] = useState(false);
@@ -2310,9 +2042,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
   const [hasReposted, setHasReposted] = useState(false);
   const [hasLiked, setHasLiked] = useState(false);
   const [hasReplied, setHasReplied] = useState(false);
-  const [myReactionContent, setMyReactionContent] = useState<string | null>(null);
-  const [myReactionEmojiUrl, setMyReactionEmojiUrl] = useState<string | undefined>(undefined);
-  const { emojis: customEmojis } = useCustomEmojis();
+  useCustomEmojis();
   const [reactionPopping, setReactionPopping] = useState(false);
   const reactionPopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // hasLiked only flips after the signature resolves; a second tap in that
@@ -2340,9 +2070,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
   }, [derivedInteraction.reactionCount]);
   useEffect(() => {
     setHasLiked(derivedInteraction.hasLiked);
-    setMyReactionContent(derivedInteraction.myReactionContent);
-    setMyReactionEmojiUrl(derivedInteraction.myReactionEmojiUrl);
-  }, [derivedInteraction.hasLiked, derivedInteraction.myReactionContent, derivedInteraction.myReactionEmojiUrl]);
+  }, [derivedInteraction.hasLiked]);
   useEffect(() => {
     setHasReplied(derivedInteraction.hasReplied);
   }, [derivedInteraction.hasReplied]);
@@ -2351,13 +2079,6 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
 
   const fallbackName = shortenNpub(formatNpub(event.pubkey));
   const displayName = authorProfile ? (getDisplayName(authorProfile, fallbackName) ?? fallbackName) : fallbackName;
-  const avatarUrl = getAvatarUrl(authorProfile);
-  const npubShort = shortenNpub(formatNpub(event.pubkey));
-  const lightningAddress = useMemo(() => {
-    if (!authorProfile) return null;
-    const content = getProfileContent(authorProfile);
-    return (content as any)?.lud16 || null;
-  }, [authorProfile]);
   const authorNip05 = useMemo(() => {
     if (!authorProfile) return null;
     const content = getProfileContent(authorProfile);
@@ -2520,16 +2241,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
     navigate(`/thread/${noteId}`);
   }, [navigate, noteId]);
 
-  const replyDock = useReplyDock();
-  const handleReply = () => {
-    if (!signer) {
-      toast({ title: "Sign in required", description: "Sign in to reply.", variant: "destructive" });
-      return;
-    }
-    // On a phone's thread page the docked bar is the one reply box.
-    if (replyDock) { replyDock.replyTo(event); return; }
-    setShowReplyComposer(!showReplyComposer);
-  };
+  useReplyDock();
 
   const handlePrivateReply = () => {
     if (!signer) {
@@ -2546,8 +2258,8 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
     }
     if (isProtectedEvent(event)) {
       toast({
-        title: "Protected note",
-        description: "This note is marked protected by its author (NIP-70) and can't be rebroadcast to other relays.",
+        title: "Protected post",
+        description: "This post is marked protected by its author (NIP-70) and can't be rebroadcast to other relays.",
         variant: "destructive",
       });
       return;
@@ -2607,8 +2319,6 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
       const signedEvent = await signWithTimeout(signer, eventTemplate);
       setHasLiked(true);
       setIsLiking(false);
-      setMyReactionContent(content);
-      if (emojiTag) setMyReactionEmojiUrl(emojiTag[2]);
       setReactionPopping(true);
       if (reactionPopTimerRef.current) clearTimeout(reactionPopTimerRef.current);
       reactionPopTimerRef.current = setTimeout(() => setReactionPopping(false), 350);
@@ -2623,8 +2333,6 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
       publishEvent(signedEvent, userRelays2, event.pubkey, isUserSelected2).catch((err) => {
         console.error(err);
         setHasLiked(false);
-        setMyReactionContent(null);
-        if (emojiTag) setMyReactionEmojiUrl(undefined);
         const rollback = primalStatsCache.get(event.id);
         if (rollback && rollback.likes > 0) {
           primalStatsCache.set(event.id, { ...rollback, likes: rollback.likes - 1 });
@@ -2644,17 +2352,11 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
     }
   };
 
-  const handleCustomEmojiReaction = useCallback((emoji: CustomEmoji) => {
-    const content = `:${emoji.shortcode}:`;
-    const emojiTag: [string, string, string] = ["emoji", emoji.shortcode, emoji.url];
-    handleReaction(content, emojiTag);
-  }, [handleReaction]);
 
   const handleLike = () => {
     handleReaction("+");
   };
 
-  const handleBookmark = () => toggleBookmark(event.id);
   const isBookmarkPrivate = isPrivateBookmark(event.id);
 
   const handleUndoRepost = async () => {
@@ -2698,8 +2400,8 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
     }
     if (isProtectedEvent(event)) {
       toast({
-        title: "Protected note",
-        description: "This note is marked protected by its author (NIP-70) and can't be rebroadcast to other relays.",
+        title: "Protected post",
+        description: "This post is marked protected by its author (NIP-70) and can't be rebroadcast to other relays.",
         variant: "destructive",
       });
       return;
@@ -2730,7 +2432,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
   const handleCopyText = async () => {
     try {
       await navigator.clipboard.writeText(event.content);
-      toast({ title: "Copied", description: "Note text copied." });
+      toast({ title: "Copied", description: "Post text copied." });
     } catch {
       toast({ title: "Error", description: "Failed to copy.", variant: "destructive" });
     }
@@ -2739,7 +2441,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
   const handleCopyNoteId = async () => {
     try {
       await copyNostrId(noteId);
-      toast({ title: "Copied", description: "Note ID copied." });
+      toast({ title: "Copied", description: "Post ID copied." });
     } catch {
       toast({ title: "Error", description: "Failed to copy.", variant: "destructive" });
     }
@@ -2751,7 +2453,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
     const url = `${window.location.origin}/thread/${noteShareId(event.id, event.pubkey, getEventRelays(event.id))}`;
     if (navigator.share) {
       try {
-        await navigator.share({ title: "Nostr Note", url });
+        await navigator.share({ title: "Nostr post", url });
       } catch {}
     } else {
       try {
@@ -2802,7 +2504,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
                 </span>
               </>
             )}
-            <span className="text-muted-foreground/40 select-none shrink-0">·</span>
+            <span aria-hidden="true" className="text-muted-foreground/40 select-none shrink-0">·</span>
             <span className="text-[13px] text-muted-foreground whitespace-nowrap shrink-0" data-testid={`text-time-${event.id}`}>
               {timeAgo}
             </span>
@@ -2832,14 +2534,14 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="glass-dropdown min-w-[190px]" onClick={(e) => e.stopPropagation()} onCloseAutoFocus={(e) => e.preventDefault()}>
             <DropdownMenuItem className="gap-2.5 cursor-pointer" onSelect={() => setTimeout(handlePrivateReply, 0)} data-testid={`menu-private-reply-${event.id}`}>
-              <Lock className="w-3.5 h-3.5 text-brand/70" />
+              <Lock className="w-3.5 h-3.5 text-muted-foreground" />
               Reply privately
             </DropdownMenuItem>
             {/* Share + Bookmark relocated here from the action row (user call:
                 free post real estate; the row keeps reply/repost/like/zap). */}
             <DropdownMenuItem className="gap-2.5 cursor-pointer" onSelect={handleShareNote} data-testid={`menu-share-${event.id}`}>
-              <Share2 className="w-3.5 h-3.5 text-brand/70" />
-              Share Post
+              <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
+              Share post
             </DropdownMenuItem>
             {/* Operators/mods only: feature this post on a relay they run —
                 curation happens in the feed, not in a console. */}
@@ -2849,7 +2551,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
                 onSelect={() => setTimeout(() => setFeatureDialogOpen(true), 0)}
                 data-testid={`menu-feature-${event.id}`}
               >
-                <MagicStarIcon className="w-3.5 h-3.5 text-brand/70" />
+                <MagicStarIcon className="w-3.5 h-3.5 text-muted-foreground" />
                 Add to Featured
               </DropdownMenuItem>
             )}
@@ -2864,10 +2566,10 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
                   onSelect={() => addBookmark(event.id, "e", true)}
                   data-testid={`button-bookmark-private-${event.id}`}
                 >
-                  <Lock className="w-3.5 h-3.5 text-brand/70" />
+                  <Lock className="w-3.5 h-3.5 text-muted-foreground" />
                   <div className="flex flex-col">
                     <span>Bookmark privately</span>
-                    <span className="text-[10px] text-muted-foreground/60">Only visible to you</span>
+                    <span className="text-[12px] text-muted-foreground">Only visible to you</span>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -2876,10 +2578,10 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
                   onSelect={() => addBookmark(event.id, "e", false)}
                   data-testid={`button-bookmark-public-${event.id}`}
                 >
-                  <Globe className="w-3.5 h-3.5 text-brand/70" />
+                  <Globe className="w-3.5 h-3.5 text-muted-foreground" />
                   <div className="flex flex-col">
                     <span>Bookmark publicly</span>
-                    <span className="text-[10px] text-muted-foreground/60">Visible on your profile</span>
+                    <span className="text-[12px] text-muted-foreground">Visible on your profile</span>
                   </div>
                 </DropdownMenuItem>
               </>
@@ -2891,7 +2593,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
                     onSelect={() => setBookmarkPrivacy(event.id, false)}
                     data-testid={`button-bookmark-make-public-${event.id}`}
                   >
-                    <Globe className="w-3.5 h-3.5 text-brand/70" />
+                    <Globe className="w-3.5 h-3.5 text-muted-foreground" />
                     Make bookmark public
                   </DropdownMenuItem>
                 ) : (
@@ -2900,7 +2602,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
                     onSelect={() => setBookmarkPrivacy(event.id, true)}
                     data-testid={`button-bookmark-make-private-${event.id}`}
                   >
-                    <Lock className="w-3.5 h-3.5 text-brand/70" />
+                    <Lock className="w-3.5 h-3.5 text-muted-foreground" />
                     Make bookmark private
                   </DropdownMenuItem>
                 )}
@@ -2917,26 +2619,26 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="glass-dropdown-label">Copy</DropdownMenuLabel>
             <DropdownMenuItem className="gap-2.5 cursor-pointer" onSelect={handleCopyLink} data-testid={`menu-copy-link-${event.id}`}>
-              <Copy className="w-3.5 h-3.5 text-brand/70" />
-              Note Link
+              <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+              Post link
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2.5 cursor-pointer" onSelect={handleCopyText} data-testid={`menu-copy-text-${event.id}`}>
-              <Type className="w-3.5 h-3.5 text-brand/70" />
-              Note Text
+              <Type className="w-3.5 h-3.5 text-muted-foreground" />
+              Post text
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2.5 cursor-pointer" onSelect={handleCopyNoteId} data-testid={`menu-copy-id-${event.id}`}>
-              <Hash className="w-3.5 h-3.5 text-brand/70" />
-              Note ID
+              <Hash className="w-3.5 h-3.5 text-muted-foreground" />
+              Post ID
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2.5 cursor-pointer" onSelect={handleCopyNpub} data-testid={`menu-copy-npub-${event.id}`}>
-              <User className="w-3.5 h-3.5 text-brand/70" />
+              <User className="w-3.5 h-3.5 text-muted-foreground" />
               Author npub
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="glass-dropdown-label">Inspect</DropdownMenuLabel>
             <DropdownMenuItem className="gap-2.5 cursor-pointer" onSelect={() => setTimeout(() => setShowRawData(true), 0)} data-testid={`menu-raw-data-${event.id}`}>
-              <FileJson className="w-3.5 h-3.5 text-brand/70" />
-              Raw Telemetry
+              <FileJson className="w-3.5 h-3.5 text-muted-foreground" />
+              Raw event
             </DropdownMenuItem>
             <DropdownMenuItem
               className="gap-2.5 cursor-pointer"
@@ -2949,7 +2651,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
               }, 0)}
               data-testid={`menu-inspect-console-${event.id}`}
             >
-              <Terminal className="w-3.5 h-3.5 text-brand/70" />
+              <Terminal className="w-3.5 h-3.5 text-muted-foreground" />
               Inspect raw event
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -2961,11 +2663,11 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
             )}
             <DropdownMenuItem className="gap-2.5 cursor-pointer text-destructive" onSelect={() => setTimeout(() => setShowMuteConfirm(true), 0)} data-testid={`menu-mute-${event.id}`}>
               <VolumeX className="w-3.5 h-3.5" />
-              Mute Signal
+              Mute this person
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2.5 cursor-pointer text-destructive" onSelect={() => setTimeout(() => setShowReportDialog(true), 0)} data-testid={`menu-report-${event.id}`}>
               <Flag className="w-3.5 h-3.5" />
-              Report Content
+              Report post
             </DropdownMenuItem>
             {(onModeratorRemove || onModeratorBanAuthor) && (
               <>
@@ -3027,7 +2729,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
             <CornerUpLeft className="w-3 h-3 shrink-0" />
             <span>In reply to</span>
             {!replyContextOn && replyToName && (
-              <Link href={replyToProfileUrl} data-testid={`link-margin-reply-to-${event.id}`} className="min-w-0 truncate text-brand/80 font-medium cursor-pointer">
+              <Link href={replyToProfileUrl} data-testid={`link-margin-reply-to-${event.id}`} className="min-w-0 truncate text-brand font-medium cursor-pointer">
                 @{replyToName}
               </Link>
             )}
@@ -3075,13 +2777,13 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
             <>
               <span className="text-xs sm:text-xs text-muted-foreground/80">Replying to</span>
               <Link href={replyToProfileUrl} data-testid={`link-reply-to-${event.id}`} className="flex items-center gap-1 cursor-pointer">
-                <Avatar className="w-4 h-4 shrink-0 ring-1 ring-primary/30 dark:ring-brand/30 border border-background">
+                <Avatar className="w-4 h-4 shrink-0 ring-1 ring-border border border-background">
                   <AvatarImage src={replyToAvatarUrl} alt={replyToName} />
-                  <AvatarFallback className="bg-brand/10 text-brand font-bold text-[7px]">
+                  <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 font-bold text-[7px]">
                     {replyToName.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-xs sm:text-xs text-brand/80 font-medium">
+                <span className="text-[13px] text-brand font-medium">
                   @{replyToName}
                 </span>
               </Link>
@@ -3090,7 +2792,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
             <span className="text-xs sm:text-xs text-muted-foreground/80">Reply</span>
           )}
           <button
-            className="text-xs sm:text-[11px] text-muted-foreground/70 cursor-pointer ml-auto flex items-center gap-0.5"
+            className="text-xs sm:text-[12px] text-muted-foreground cursor-pointer ml-auto flex items-center gap-0.5"
             onClick={handleShowParent}
             data-testid={`button-show-parent-${event.id}`}
           >
@@ -3191,10 +2893,10 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
                         key={r.key}
                         type="button"
                         onClick={(e) => { e.stopPropagation(); if (href) navigate(href); }}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[0.8em] bg-accent dark:bg-brand/10 border border-brand/20 text-brand/70 hover:bg-accent/80 transition-colors"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[0.8em] bg-foreground/[0.05] border border-border/60 text-brand hover:bg-accent/80 transition-colors"
                         data-testid={`quoted-ref-chip-${r.key.slice(0, 8)}`}
                       >
-                        <Quote className="w-3 h-3" /> Referenced note
+                        <Quote className="w-3 h-3" /> Referenced post
                       </button>
                     );
                   })}
@@ -3264,7 +2966,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
                     disabled={isReposting}
                     data-testid={`button-do-repost-${event.id}`}
                   >
-                    <Repeat className="w-3.5 h-3.5 text-brand/70" />
+                    <Repeat className="w-3.5 h-3.5 text-muted-foreground" />
                     Repost
                   </DropdownMenuItem>
                 )}
@@ -3273,7 +2975,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
                   onClick={handleQuote}
                   data-testid={`button-quote-repost-${event.id}`}
                 >
-                  <Quote className="w-3.5 h-3.5 text-brand/70" />
+                  <Quote className="w-3.5 h-3.5 text-muted-foreground" />
                   Quote
                 </DropdownMenuItem>
               </>
@@ -3313,25 +3015,25 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
         <div className="flex-1" />
 
         {ttsEnabled && (isReadingThis ? (
-          <div className="flex items-center gap-1 bg-accent dark:bg-brand/10 rounded-full px-1.5 py-0.5 border border-brand/20" onClick={(e) => e.stopPropagation()} data-testid={`container-inline-tts-${event.id}`}>
+          <div className="flex items-center gap-1 bg-foreground/[0.05] rounded-full px-1.5 py-0.5 border border-border/60" onClick={(e) => e.stopPropagation()} data-testid={`container-inline-tts-${event.id}`}>
             <Button
               variant="ghost"
               size="icon"
-              className="w-6 h-6 text-brand"
+              className="w-6 h-6 text-foreground"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleTTSPause(); }}
               title={isPaused ? "Resume" : "Pause"}
               data-testid={`button-tts-pause-${event.id}`}
             >
               {ttsLoading ? <RelayOutpostInlineLoader className="w-3 h-3" /> : isPaused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
             </Button>
-            <div className="w-16 sm:w-20 h-1.5 bg-brand/15 rounded-full overflow-hidden" data-testid={`progress-tts-${event.id}`}>
+            <div className="w-16 sm:w-20 h-1.5 bg-foreground/10 rounded-full overflow-hidden" data-testid={`progress-tts-${event.id}`}>
               <div
-                className="h-full bg-primary dark:bg-brand rounded-full transition-all duration-300"
+                className="h-full bg-foreground rounded-full transition-all duration-300"
                 style={{ width: `${Math.max(ttsProgress, 2)}%` }}
               />
             </div>
             <button
-              className="text-[10px] font-mono text-brand px-1 py-0.5 rounded hover:bg-accent dark:hover:bg-brand/10 transition-colors min-w-[28px] text-center"
+              className="text-[12px] font-semibold tabular-nums text-foreground/80 px-1 py-0.5 rounded hover:bg-foreground/[0.06] transition-colors min-w-[28px] text-center"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -3501,12 +3203,12 @@ export const NostrPost = memo(function NostrPost({ event, showReplies = false, r
       isReply={isReplyPost}
       sensitive={isBlurred ? { reason: contentWarning, onReveal: revealSensitive } : null}
       repostSlot={repostedBy ? (
-        <div className="flex items-center gap-1.5 px-4 pt-3 pb-1.5 text-xs text-brand/70 dark:text-brand/80" data-testid={`text-reposted-by-${event.id}`}>
+        <div className="flex items-center gap-1.5 px-4 pt-3 pb-1.5 text-[13px] text-muted-foreground" data-testid={`text-reposted-by-${event.id}`}>
           <Repeat className="w-3 h-3 shrink-0" />
           <Link href={repostNpub ? `/profile/${repostNpub}` : "#"} className="no-underline cursor-pointer truncate">
-            <span className="font-medium text-brand/90">{repostDisplayName}</span>
+            <span className="font-medium text-foreground/85">{repostDisplayName}</span>
           </Link>
-          <span className="text-brand/50 dark:text-brand/60">reposted</span>
+          <span>reposted</span>
         </div>
       ) : undefined}
       footerSlot={(inlineReplyBar || showRepliesThread) ? (

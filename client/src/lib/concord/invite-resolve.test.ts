@@ -26,11 +26,11 @@ const baseBundle: InviteBundle = {
 };
 
 describe("bundleToDisplay (pure mapping)", () => {
-  it("maps name → title, icon → photo, channels → 'N channels · encrypted'", () => {
+  it("maps name → title, icon → photo, channels → 'N rooms · encrypted'", () => {
     expect(bundleToDisplay(baseBundle)).toEqual({
       photo: "https://img.example/icon.png",
       title: "Cool Group",
-      subtitle: "2 channels · encrypted",
+      subtitle: "2 rooms · encrypted",
     });
   });
 
@@ -39,7 +39,7 @@ describe("bundleToDisplay (pure mapping)", () => {
   });
 
   it("singularizes a one-channel group", () => {
-    expect(bundleToDisplay({ ...baseBundle, channels: [baseBundle.channels[0]] }).subtitle).toBe("1 channel · encrypted");
+    expect(bundleToDisplay({ ...baseBundle, channels: [baseBundle.channels[0]] }).subtitle).toBe("1 room · encrypted");
   });
 
   it("falls back to the generic title when name is missing/blank", () => {

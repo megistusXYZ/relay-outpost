@@ -3,6 +3,7 @@
  * invite link. App.tsx captures ?inviter= into sessionStorage before anything
  * else; this reads it, fetches the inviter's public profile (kind 0) and names
  * them (lib/invite-greeting.ts). Nothing renders for a visitor with no inviter.
+ * Styled with the landing's tokens (OutpostLanding.tsx), its only home.
  */
 import { useEffect, useState } from "react";
 import { eventStore, fetchProfilesCached } from "@/lib/nostr";
@@ -41,11 +42,11 @@ export function InviteGreeting() {
   if (!inviter) return null;
   const picture = profile?.picture && /^https:\/\//.test(profile.picture) ? profile.picture : null;
   return (
-    <div className="flex items-center gap-2.5 rounded-full border border-white/15 bg-white/[0.06] py-1.5 pl-1.5 pr-4 backdrop-blur" data-testid="landing-invite-greeting">
+    <div className="in flex items-center gap-2.5 rounded-full py-1.5 pl-1.5 pr-4" style={{ border: "1px solid var(--line2)", background: "var(--inset)", color: "var(--ink)" }} data-testid="landing-invite-greeting">
       {picture
         ? <img src={picture} alt="" className="h-7 w-7 rounded-full object-cover" referrerPolicy="no-referrer" />
-        : <span className="h-7 w-7 rounded-full bg-brand/40" aria-hidden="true" />}
-      <span className="text-sm font-medium text-white/90">{inviteGreeting(profile)}</span>
+        : <span className="h-7 w-7 rounded-full" style={{ background: "var(--accent)", opacity: 0.4 }} aria-hidden="true" />}
+      <span className="text-sm font-medium">{inviteGreeting(profile)}</span>
     </div>
   );
 }

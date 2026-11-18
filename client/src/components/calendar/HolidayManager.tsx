@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,6 @@ import { signWithTimeout } from "@/lib/signer-timeout";
 import type { ISigner } from "applesauce-signers";
 import type { Event } from "nostr-tools";
 import {
-  Star,
   Plus,
   Trash2,
   Eye,
@@ -586,9 +586,9 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { resetForm(); resetEventForm(); } }}>
       <DialogContent className="sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-sm font-brand uppercase tracking-wider">
+          <DialogTitle className="flex items-center gap-2 text-sm font-medium">
             <CalendarPlus className="w-4 h-4 text-sky-400" />
-            {editingDTag ? "Edit Event" : "Create Event"}
+            {editingDTag ? "Edit event" : "Create event"}
           </DialogTitle>
         </DialogHeader>
 
@@ -599,7 +599,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
               tab === "create" ? "bg-sky-500/10 text-sky-400" : "text-muted-foreground/60 hover:text-foreground/80"
             }`}
           >
-            Create Event
+            Create event
           </button>
           <button
             onClick={() => setTab("custom")}
@@ -664,7 +664,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                       />
                     </div>
                   </div>
-                  <p className="text-[10px] text-muted-foreground/40 -mt-1 pl-1">
+                  <p className="text-[12px] text-muted-foreground -mt-1 pl-1">
                     Set an end date for multi-day events
                   </p>
 
@@ -690,7 +690,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                         />
                       </div>
                     </div>
-                    <p className="text-[10px] text-muted-foreground/40 pl-1">
+                    <p className="text-[12px] text-muted-foreground pl-1">
                       Leave times empty for an all-day event
                     </p>
                   </div>
@@ -717,7 +717,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                         className="flex-1 h-8 text-xs"
                       />
                     </div>
-                    <p className="text-[10px] text-muted-foreground/30 pl-6">
+                    <p className="text-[12px] text-muted-foreground pl-6">
                       Add a video call (Meet, Zoom, Jitsi…) or live stream (zap.stream, Twitch…) link
                     </p>
                   </div>
@@ -762,7 +762,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                         Private
                       </button>
                     </div>
-                    <p className="text-[10px] text-muted-foreground/30">
+                    <p className="text-[12px] text-muted-foreground">
                       {eventPrivate
                         ? "Only you and invited participants will see this event"
                         : "Discoverable by anyone searching for events"}
@@ -837,13 +837,13 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                             )}
                           </button>
                         ))}
-                        <div className="px-2 py-1 text-[9px] text-muted-foreground/30 text-center">
+                        <div className="px-2 py-1 text-[11px] text-muted-foreground text-center">
                           {searchingParticipants ? "Searching..." : "Select a contact"}
                         </div>
                       </div>
                     )}
                     {participantSearch.trim() && participantResults.length === 0 && !searchingParticipants && (
-                      <p className="text-[10px] text-muted-foreground/40 pl-1">No results found</p>
+                      <p className="text-[12px] text-muted-foreground pl-1">No results found</p>
                     )}
                   </div>
 
@@ -875,7 +875,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                           );
                         })}
                       </div>
-                      <p className="text-[10px] text-muted-foreground/30">
+                      <p className="text-[12px] text-muted-foreground">
                         {selectedParticipants.length > 0
                           ? "Sends a DM reminder to you and each participant"
                           : "Sends you a DM reminder before the event"}
@@ -1022,9 +1022,9 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
 
               {customHolidays.length === 0 && !showAddForm ? (
                 <div className="text-center py-8">
-                  <Star className="w-8 h-8 text-muted-foreground/15 mx-auto mb-2" />
+                  <OttoEmpty mood="quiet" size={72} className="mx-auto mb-2 text-foreground/70" />
                   <p className="text-xs text-muted-foreground/40">No date reminders yet</p>
-                  <p className="text-[10px] text-muted-foreground/30 mt-1">
+                  <p className="text-[12px] text-muted-foreground mt-1">
                     Add birthdays, anniversaries, or any date that matters to you.
                   </p>
                 </div>
@@ -1038,7 +1038,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                       <span className="text-base w-6 text-center flex-shrink-0">{h.emoji || "📌"}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-foreground/80 truncate">{h.name}</p>
-                        <p className="text-[10px] text-muted-foreground/50">
+                        <p className="text-[12px] text-muted-foreground">
                           {MONTH_NAMES[h.month]} {h.day}
                           {" · "}
                           {(h.recurrence === "weekly") ? "Weekly" :
@@ -1088,7 +1088,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
 
           {tab === "builtin" && (
             <div className="space-y-1">
-              <p className="text-[10px] text-muted-foreground/40 px-1 pb-1">
+              <p className="text-[12px] text-muted-foreground px-1 pb-1">
                 Toggle holidays on or off. Hidden holidays won't appear on your calendar.
               </p>
               {builtInHolidays.map((h) => {
@@ -1107,7 +1107,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                       <p className={`text-sm truncate ${isHidden ? "text-muted-foreground/60 line-through" : "text-foreground/80"}`}>
                         {h.name}
                       </p>
-                      <p className="text-[10px] text-muted-foreground/50">
+                      <p className="text-[12px] text-muted-foreground">
                         {MONTH_NAMES[h.month]} {h.day}
                       </p>
                     </div>

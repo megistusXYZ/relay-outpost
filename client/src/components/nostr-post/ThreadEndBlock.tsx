@@ -80,7 +80,7 @@ function PersonChip({ pubkey, guest, onSignIn }: { pubkey: string; guest: boolea
       >
         <Avatar className="w-7 h-7 shrink-0">
           {avatar && <AvatarImage src={avatar} alt={name} />}
-          <AvatarFallback className="text-[10px] bg-brand/10 text-brand">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+          <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[10px]">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <span className="text-xs font-medium truncate max-w-[8rem]">{name}</span>
       </button>
@@ -228,7 +228,7 @@ export function ThreadEndBlock({ rootEvent, ancestors, guest = false, participan
 
       {hasPeople && (
         <section>
-          <div className="flex items-center gap-1.5 mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+          <div className="flex items-center gap-1.5 mb-2 text-[12px] font-semibold text-muted-foreground/70">
             <Users className="w-3.5 h-3.5" /> People in this thread
           </div>
           <div className="flex flex-wrap gap-2">
@@ -246,7 +246,7 @@ export function ThreadEndBlock({ rootEvent, ancestors, guest = false, participan
 
       {hasMore && (
         <section>
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+          <div className="mb-2 text-[12px] font-semibold text-muted-foreground/70">
             More from {authorName}
           </div>
           <div className="flex flex-col gap-1.5">

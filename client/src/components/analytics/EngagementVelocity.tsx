@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
-import { pool, DEFAULT_RELAYS, throttledPoolSubscribe, eventStore } from "@/lib/nostr";
+import { DEFAULT_RELAYS, throttledPoolSubscribe, eventStore } from "@/lib/nostr";
 import { fetchUserZaps } from "@/lib/primal-cache";
 import { getProfileContent, getAvatarUrl } from "@/lib/nostr-helpers";
 import { use$ } from "applesauce-react/hooks";
@@ -31,7 +31,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ProfileLink } from "./ProfileLink";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 
-const CHART_COLORS = ["#8b5cf6", "#a78bfa", "#7c3aed", "#6d28d9", "#c4b5fd", "#ddd6fe"];
+const CHART_COLORS = ["#3D6BFF", "#7C9BFF", "#A3ACBA", "#565D69", "#C8D4F0", "#2A3A6A"];
 const GRAY_COLOR = "#6b7280";
 
 interface MilestoneResult {
@@ -148,7 +148,7 @@ function AnalyzedProfileHeader({ pubkey }: { pubkey: string }) {
     <div className="flex items-center gap-2" data-testid="velocity-profile-header">
       <Avatar className="w-7 h-7 shrink-0 border border-brand/20">
         <AvatarImage src={avatarUrl} alt={displayName} />
-        <AvatarFallback className="bg-brand/20 text-[10px]">
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[10px]">
           {displayName ? displayName.slice(0, 2).toUpperCase() : "??"}
         </AvatarFallback>
       </Avatar>
@@ -162,7 +162,7 @@ function CustomTooltipContent({ active, payload }: any) {
   const data = payload[0]?.payload;
   return (
     <div className="rounded-md border border-brand/20 bg-white dark:bg-[rgba(4,4,10,0.95)] px-3 py-2 text-xs shadow-lg">
-      <p className="font-display text-brand mb-1">{data?.name}</p>
+      <p className="font-medium text-foreground mb-1">{data?.name}</p>
       <p className="text-foreground">
         {data?.achieved ? (
           <>Days: <span className="text-brand font-mono">{data?.days}</span></>
@@ -440,8 +440,8 @@ export function EngagementVelocity({ pubkey: propPubkey, relays: propRelays }: E
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <Gauge className="w-4 h-4 text-brand" />
-          <h2 className="text-sm font-display text-brand" data-testid="title-engagement-velocity">
-            Engagement Velocity
+          <h2 className="text-sm font-semibold text-foreground" data-testid="title-engagement-velocity">
+            Engagement velocity
           </h2>
           <Badge variant="secondary" data-testid="badge-mode">
             {mode === "individual" ? "Individual" : "Batch"}
@@ -501,7 +501,7 @@ export function EngagementVelocity({ pubkey: propPubkey, relays: propRelays }: E
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <Label htmlFor="sample-size" className="text-xs text-muted-foreground whitespace-nowrap" data-testid="label-sample-size">
-                Sample Size
+                Sample size
               </Label>
               <Input
                 id="sample-size"
@@ -521,7 +521,7 @@ export function EngagementVelocity({ pubkey: propPubkey, relays: propRelays }: E
               data-testid="button-batch-analyze"
             >
               {loading ? <RelayOutpostInlineLoader className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              Run Batch
+              Run batch
             </Button>
           </div>
         )}
@@ -560,8 +560,8 @@ export function EngagementVelocity({ pubkey: propPubkey, relays: propRelays }: E
 
             {mode === "individual" && result && (
               <div className="p-3 rounded-lg bg-brand/5 border border-brand/10 space-y-2" data-testid="velocity-analysis">
-                <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-                  Velocity Analysis
+                <p className="text-[13px] text-muted-foreground font-medium">
+                  Velocity analysis
                 </p>
                 <p className="text-xs text-foreground/80 leading-relaxed" data-testid="text-velocity-narrative">
                   {generateVelocityAnalysis(result.milestones, result.rating)}
@@ -571,8 +571,8 @@ export function EngagementVelocity({ pubkey: propPubkey, relays: propRelays }: E
 
             {mode === "batch" && batchResults.length > 0 && (
               <div className="p-3 rounded-lg bg-brand/5 border border-brand/10 space-y-2" data-testid="batch-analysis">
-                <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-                  Batch Analysis
+                <p className="text-[13px] text-muted-foreground font-medium">
+                  Batch analysis
                 </p>
                 <p className="text-xs text-foreground/80 leading-relaxed" data-testid="text-batch-narrative">
                   {(() => {
@@ -596,18 +596,18 @@ export function EngagementVelocity({ pubkey: propPubkey, relays: propRelays }: E
                   layout="vertical"
                   margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(139,92,246,0.1)" horizontal={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(163,172,186,0.14)" horizontal={false} />
                   <XAxis
                     type="number"
-                    tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }}
+                    tick={{ fontSize: 12, fill: "rgba(255,255,255,0.4)" }}
                     axisLine={false}
                     tickLine={false}
-                    label={{ value: "Days", position: "insideBottom", offset: -2, fontSize: 10, fill: "rgba(255,255,255,0.3)" }}
+                    label={{ value: "Days", position: "insideBottom", offset: -2, fontSize: 12, fill: "rgba(255,255,255,0.3)" }}
                   />
                   <YAxis
                     type="category"
                     dataKey="name"
-                    tick={{ fontSize: 10, fill: "rgba(255,255,255,0.5)" }}
+                    tick={{ fontSize: 12, fill: "rgba(255,255,255,0.5)" }}
                     axisLine={false}
                     tickLine={false}
                     width={100}

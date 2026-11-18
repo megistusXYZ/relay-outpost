@@ -14,7 +14,7 @@ export function getTrustPhrase(tier: SignalTier): string {
   switch (tier) {
     case "strong": return "Trusted by your network";
     case "moderate": return "Known to your network";
-    case "low": return "New to your network";
+    case "low": return "Some ties to your network";
     case "weak": return "Few ties to your network";
     case "flagged": return "Your network has concerns";
     default: return "";

@@ -1,4 +1,4 @@
-import { eventStore, trackEventRelay, DEFAULT_RELAYS, throttledPoolSubscribe, registerProfileInAllCaches } from "./nostr";
+import { eventStore, trackEventRelay, throttledPoolSubscribe, registerProfileInAllCaches } from "./nostr";
 import { SEARCH_RELAYS } from "./relay-constants";
 import { replyTargetOf, THREAD_REPLY_KINDS, KIND_NIP22_COMMENT } from "./reply-target";
 import type { Event } from "nostr-tools";

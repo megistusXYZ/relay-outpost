@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import type { Event } from "nostr-tools";
-import { RefreshCw, Vote } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { fetchPollsFeed, filterPollsByShow, sortPolls, type PollShowMode, type PollSortMode } from "@/lib/polls";
 import { PollPost } from "@/components/PollPost";
 import { PostBoundary } from "@/components/PostBoundary";
@@ -83,7 +84,7 @@ export default function PollsFeed({
   if (!loading && filteredPolls.length === 0) {
     return (
       <div className="glass-card rounded-lg flex flex-col items-center justify-center py-12 sm:py-16 text-center px-4" data-testid="container-empty-polls">
-        <Vote className="w-8 h-8 text-brand/60 mb-3" />
+        <OttoEmpty mood="looking" size={72} className="mb-3 text-foreground/70" />
         <p className="text-sm font-medium mb-1">{show === "all" ? "No polls right now" : "No open polls right now"}</p>
         <p className="max-w-xs text-xs text-muted-foreground">
           Polls people start across the network show up here. Check back soon — or start one from the compose box.

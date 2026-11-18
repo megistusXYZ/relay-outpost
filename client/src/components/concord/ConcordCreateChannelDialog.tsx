@@ -129,7 +129,7 @@ export function ConcordCreateChannelDialog({ open, onOpenChange, community, onCo
               >
                 <Icon className="w-4 h-4" />
                 <span className="text-xs font-medium">{label}</span>
-                <span className="text-[9px] text-muted-foreground/50 leading-tight">{sub}</span>
+                <span className="text-xs text-muted-foreground leading-tight">{sub}</span>
               </button>
             );
           })}
@@ -146,13 +146,13 @@ export function ConcordCreateChannelDialog({ open, onOpenChange, community, onCo
         />
 
         {type === "private" && (
-          <p className="text-[11px] text-muted-foreground/55 flex items-center gap-1.5">
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
             <Lock className="w-3 h-3 shrink-0" /> The key goes to the current {roster.length} member{roster.length !== 1 ? "s" : ""}. New members get it on their next invite.
           </p>
         )}
 
         {type === "hangout" && (
-          <p className="text-[11px] text-muted-foreground/55 flex items-start gap-1.5" data-testid="concord-hangout-note">
+          <p className="text-xs text-muted-foreground flex items-start gap-1.5" data-testid="concord-hangout-note">
             <Headphones className="w-3 h-3 shrink-0 mt-0.5" />
             <span>Voice runs on Corny Chat and isn't end-to-end encrypted. Only group members get the room's link, and its messages stay encrypted.</span>
           </p>

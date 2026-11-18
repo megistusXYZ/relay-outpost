@@ -1,10 +1,9 @@
 import { useState, useCallback, useRef } from "react";
 import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
-import { pool, DEFAULT_RELAYS, throttledPoolSubscribe } from "@/lib/nostr";
+import { DEFAULT_RELAYS, throttledPoolSubscribe } from "@/lib/nostr";
 import { fetchUserZaps } from "@/lib/primal-cache";
 import { formatDistanceToNow, format } from "date-fns";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -482,7 +481,7 @@ export function UserAdoptionFunnel({ pubkey: propPubkey, relays: propRelays }: U
       <div className="p-4 sm:p-6 space-y-5">
         <div className="flex items-center gap-2 flex-wrap">
           <Target className="w-4 h-4 text-brand" />
-          <h2 className="text-sm font-display text-brand">User Adoption Funnel</h2>
+          <h2 className="text-[15px] font-semibold text-foreground">User adoption funnel</h2>
         </div>
 
         {!propPubkey && (
@@ -522,7 +521,7 @@ export function UserAdoptionFunnel({ pubkey: propPubkey, relays: propRelays }: U
             ) : (
               <>
                 <Search className="w-4 h-4 mr-2" />
-                Analyze Adoption Funnel
+                Analyze adoption funnel
               </>
             )}
           </Button>
@@ -652,7 +651,7 @@ export function UserAdoptionFunnel({ pubkey: propPubkey, relays: propRelays }: U
                       )}
                       {!completed && (
                         <p
-                          className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50 mt-0.5"
+                          className="text-[13px] text-muted-foreground mt-0.5 font-medium"
                           data-testid={`text-not-achieved-${milestone.key}`}
                         >
                           Not yet achieved
@@ -664,7 +663,7 @@ export function UserAdoptionFunnel({ pubkey: propPubkey, relays: propRelays }: U
                           data-testid={`detail-${milestone.key}`}
                         >
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-brand uppercase tracking-widest text-brand">
+                            <span className="text-[13px] text-foreground font-medium">
                               {eventSummary.label}
                             </span>
                             {milestone.event && (
@@ -734,8 +733,8 @@ export function UserAdoptionFunnel({ pubkey: propPubkey, relays: propRelays }: U
                   </div>
 
                   <div className="p-3 rounded-lg bg-brand/5 border border-brand/10 space-y-2">
-                    <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-                      Adoption Analysis
+                    <p className="text-[13px] text-muted-foreground font-medium">
+                      Adoption analysis
                     </p>
                     <p className="text-xs text-foreground/80 leading-relaxed" data-testid="text-narrative">
                       {narrative.split("**").map((part, i) =>

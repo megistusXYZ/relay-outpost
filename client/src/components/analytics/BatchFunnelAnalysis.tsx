@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import type { Event } from "nostr-tools";
-import { pool, DEFAULT_RELAYS, throttledPoolSubscribe } from "@/lib/nostr";
+import { DEFAULT_RELAYS, throttledPoolSubscribe } from "@/lib/nostr";
 import {
   BarChart,
   Bar,
@@ -23,7 +23,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 
-const CHART_COLORS = ["#8b5cf6", "#a78bfa", "#7c3aed", "#6d28d9", "#c4b5fd"];
+const CHART_COLORS = ["#3D6BFF", "#7C9BFF", "#A3ACBA", "#565D69", "#C8D4F0"];
 
 interface FunnelStage {
   name: string;
@@ -49,7 +49,7 @@ function CustomTooltipContent({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-md border border-brand/20 bg-white dark:bg-[rgba(4,4,10,0.95)] px-3 py-2 text-xs shadow-lg">
-      <p className="font-display text-brand mb-1">{label}</p>
+      <p className="font-medium text-foreground mb-1">{label}</p>
       {payload.map((entry: any, i: number) => (
         <p key={i} className="text-foreground">
           {entry.name || "Conversion"}:{" "}
@@ -292,10 +292,10 @@ export function BatchFunnelAnalysis({ relays: propRelays }: { relays?: string[] 
         <div className="flex items-center gap-2 flex-wrap">
           <Users className="w-4 h-4 text-brand" />
           <h2
-            className="text-sm font-display text-brand"
+            className="text-sm font-semibold text-foreground"
             data-testid="text-funnel-title"
           >
-            Batch Funnel Analysis
+            Batch funnel analysis
           </h2>
           {analysis.status === "done" && analysis.stages.length > 0 && (
             <Badge variant="secondary" data-testid="badge-sample-count">
@@ -313,10 +313,10 @@ export function BatchFunnelAnalysis({ relays: propRelays }: { relays?: string[] 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="space-y-1.5">
             <Label
-              className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50"
+              className="text-[13px] text-muted-foreground font-medium"
               data-testid="label-time-range"
             >
-              Time Range
+              Time range
             </Label>
             <Select
               value={timeRange}
@@ -338,7 +338,7 @@ export function BatchFunnelAnalysis({ relays: propRelays }: { relays?: string[] 
 
           <div className="space-y-1.5">
             <Label
-              className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50"
+              className="text-[13px] text-muted-foreground font-medium"
               data-testid="label-sample-size"
             >
               Sample Size: {sampleSize}
@@ -404,12 +404,12 @@ export function BatchFunnelAnalysis({ relays: propRelays }: { relays?: string[] 
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    stroke="rgba(139,92,246,0.1)"
+                    stroke="rgba(163,172,186,0.14)"
                   />
                   <XAxis
                     type="number"
                     domain={[0, 100]}
-                    tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }}
+                    tick={{ fontSize: 12, fill: "rgba(255,255,255,0.4)" }}
                     axisLine={false}
                     tickLine={false}
                     tickFormatter={(v: number) => `${v}%`}
@@ -417,7 +417,7 @@ export function BatchFunnelAnalysis({ relays: propRelays }: { relays?: string[] 
                   <YAxis
                     type="category"
                     dataKey="name"
-                    tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
+                    tick={{ fontSize: 12, fill: "rgba(255,255,255,0.6)" }}
                     axisLine={false}
                     tickLine={false}
                     width={75}
@@ -442,7 +442,7 @@ export function BatchFunnelAnalysis({ relays: propRelays }: { relays?: string[] 
                   className="p-2.5 rounded-lg bg-brand/5 border border-brand/10 space-y-0.5"
                   data-testid={`stat-stage-${i}`}
                 >
-                  <p className="text-[9px] font-brand uppercase tracking-widest text-muted-foreground/50">
+                  <p className="text-[12px] text-muted-foreground font-medium">
                     {stage.name}
                   </p>
                   <p className="text-sm font-mono text-foreground">

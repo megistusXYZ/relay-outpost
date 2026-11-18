@@ -294,7 +294,7 @@ function ResultCard({ result }: { result: ScanResult }) {
         data-testid="link-full-report"
       >
         <ExternalLink className="w-2.5 h-2.5" />
-        Full Report
+        Full report
       </a>
     </div>
   );
@@ -387,8 +387,8 @@ export function UserDiscoveryScanner({ relays: propRelays }: { relays?: string[]
       <div className="space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <Search className="w-4 h-4 text-brand" />
-          <h2 className="text-sm font-display text-brand">
-            User Discovery Scanner
+          <h2 className="text-[15px] font-semibold text-foreground">
+            user discovery scanner
           </h2>
         </div>
 
@@ -399,7 +399,7 @@ export function UserDiscoveryScanner({ relays: propRelays }: { relays?: string[]
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <Label htmlFor="scanner-size" className="text-xs text-muted-foreground whitespace-nowrap">
-              Sample Size
+              Sample size
             </Label>
             <Input
               id="scanner-size"
@@ -446,7 +446,7 @@ export function UserDiscoveryScanner({ relays: propRelays }: { relays?: string[]
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 flex-wrap" data-testid="scanner-filters">
               <div className="flex items-center gap-1.5">
                 <Filter className="w-3 h-3 text-muted-foreground/50 shrink-0" />
-                <span className="text-[10px] text-muted-foreground/50 font-brand uppercase tracking-widest shrink-0">Filters</span>
+                <span className="text-[13px] text-muted-foreground shrink-0 font-medium">Filters</span>
               </div>
 
               <Select value={stageFilter} onValueChange={setStageFilter}>
@@ -454,7 +454,7 @@ export function UserDiscoveryScanner({ relays: propRelays }: { relays?: string[]
                   <SelectValue placeholder="Stage" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Stages</SelectItem>
+                  <SelectItem value="all">All stages</SelectItem>
                   {Object.entries(STAGE_INFO).map(([key, info]) => (
                     <SelectItem key={key} value={key}>
                       <div className="flex flex-col">
@@ -471,7 +471,7 @@ export function UserDiscoveryScanner({ relays: propRelays }: { relays?: string[]
                   <SelectValue placeholder="Pace" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Paces</SelectItem>
+                  <SelectItem value="all">All paces</SelectItem>
                   {Object.entries(PACE_INFO).map(([label, desc]) => (
                     <SelectItem key={label} value={label}>
                       <div className="flex flex-col">
@@ -488,7 +488,7 @@ export function UserDiscoveryScanner({ relays: propRelays }: { relays?: string[]
                   <SelectValue placeholder="Rating" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Ratings</SelectItem>
+                  <SelectItem value="all">All ratings</SelectItem>
                   {Object.entries(RATING_INFO).map(([label, info]) => (
                     <SelectItem key={label} value={label}>
                       <div className="flex flex-col">
@@ -520,12 +520,12 @@ export function UserDiscoveryScanner({ relays: propRelays }: { relays?: string[]
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-brand/10">
-                    <th className="text-left py-2 px-2 text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">User</th>
-                    <th className="text-left py-2 px-2 text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Stage</th>
-                    <th className="text-left py-2 px-2 text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Pace</th>
-                    <th className="text-left py-2 px-2 text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Rating</th>
-                    <th className="text-center py-2 px-2 text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Milestones</th>
-                    <th className="text-center py-2 px-2 text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Span</th>
+                    <th className="text-left py-2 px-2 text-[13px] text-muted-foreground font-medium">User</th>
+                    <th className="text-left py-2 px-2 text-[13px] text-muted-foreground font-medium">Stage</th>
+                    <th className="text-left py-2 px-2 text-[13px] text-muted-foreground font-medium">Pace</th>
+                    <th className="text-left py-2 px-2 text-[13px] text-muted-foreground font-medium">Rating</th>
+                    <th className="text-center py-2 px-2 text-[13px] text-muted-foreground font-medium">Milestones</th>
+                    <th className="text-center py-2 px-2 text-[13px] text-muted-foreground font-medium">Span</th>
                     <th className="text-right py-2 px-2"></th>
                   </tr>
                 </thead>

@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { useParams } from "wouter";
-import { pool, DEFAULT_RELAYS, fetchProfilesCached, publishEvent } from "@/lib/nostr";
+import { pool, fetchProfilesCached, publishEvent } from "@/lib/nostr";
 import { clientTags } from "@/lib/nostr-helpers";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
 import { ProfileLink } from "@/components/analytics/ProfileLink";
@@ -9,10 +10,8 @@ import { PostBoundary } from "@/components/PostBoundary";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useDocumentTitle } from "@/hooks/use-document-title";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Globe, Shield, Users, Send, BookmarkPlus, BookmarkCheck,
@@ -24,8 +23,7 @@ import { LinkNotOpenable } from "@/pages/not-found";
 import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
 import {
-  getDisplayName, getAvatarUrl, getProfileContent, formatNpub, shortenNpub,
-  KIND_COMMUNITY
+  KIND_COMMUNITY,
 } from "@/lib/nostr-helpers";
 
 const COMMUNITY_RELAYS = [
@@ -35,7 +33,6 @@ const COMMUNITY_RELAYS = [
   "wss://nostr.mom",
 ];
 
-const KIND_COMMUNITY_POST_APPROVAL = 4550;
 
 interface CommunityData {
   id: string;
@@ -253,7 +250,7 @@ export default function CommunityPage() {
       <div className="max-w-2xl mx-auto p-4">
         <div className="flex items-center justify-center py-20">
           <RelayOutpostInlineLoader className="w-6 h-6" />
-          <span className="text-sm text-muted-foreground/60 ml-2">Locating community...</span>
+          <span className="text-sm text-muted-foreground ml-2">Locating community...</span>
         </div>
       </div>
     );
@@ -293,7 +290,7 @@ export default function CommunityPage() {
               />
             ) : (
               <div className="w-14 h-14 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                <Globe className="w-7 h-7 text-brand/60 drop-shadow-[0_0_3px_rgba(168,85,247,0.4)]" />
+                <Globe className="w-7 h-7 text-muted-foreground" />
               </div>
             )}
             <div className="flex-1 min-w-0">
@@ -317,7 +314,7 @@ export default function CommunityPage() {
                 <p className="text-sm text-muted-foreground mt-1">{community.description}</p>
               )}
 
-              <div className="flex items-center gap-3 mt-3 text-[11px] text-muted-foreground/50">
+              <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <FileText className="w-3 h-3" />
                   {posts.length} post{posts.length !== 1 ? "s" : ""}
@@ -348,12 +345,12 @@ export default function CommunityPage() {
 
           <div className="mt-4 pt-3 border-t border-border">
             <div className="flex items-center gap-1.5 mb-2">
-              <Crown className="w-3 h-3 text-amber-800/70 dark:text-amber-400/70" />
-              <span className="text-[10px] text-brand/60 uppercase tracking-wider font-medium">Created by</span>
+              <Crown className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-[13px] text-muted-foreground font-medium">Created by</span>
             </div>
             <ProfileLink
               pubkey={community.event.pubkey}
-              className="text-sm font-medium text-brand/80"
+              className="text-sm font-medium text-foreground"
               showAvatar={true}
               avatarSize="sm"
             />
@@ -361,8 +358,8 @@ export default function CommunityPage() {
             {community.moderators.length > 0 && (
               <div className="mt-3">
                 <div className="flex items-center gap-1.5 mb-2">
-                  <Shield className="w-3 h-3 text-brand/50" />
-                  <span className="text-[10px] text-brand/60 uppercase tracking-wider font-medium">
+                  <Shield className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-[13px] text-muted-foreground font-medium">
                     Moderators ({community.moderators.length})
                   </span>
                 </div>
@@ -371,7 +368,7 @@ export default function CommunityPage() {
                     <ProfileLink
                       key={mod}
                       pubkey={mod}
-                      className="text-xs font-medium text-brand/70"
+                      className="text-sm font-medium text-foreground"
                       showAvatar={true}
                       avatarSize="sm"
                     />
@@ -386,24 +383,24 @@ export default function CommunityPage() {
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         {community.rules && (
           <button
-            className="flex items-center gap-1 text-[11px] text-brand/70 hover:text-brand transition-colors"
+            className="flex items-center gap-1 min-h-11 text-[13px] text-brand hover:text-brand-strong transition-colors duration-150"
             onClick={() => setShowRules(!showRules)}
             data-testid="button-toggle-rules"
           >
             <ScrollText className="w-3.5 h-3.5" />
-            <span className="font-medium uppercase tracking-wider">Rules</span>
+            <span className="font-medium">Rules</span>
             {showRules ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           </button>
         )}
 
         {posts.length > 0 && (
           <button
-            className="flex items-center gap-1 text-[11px] text-brand/70 hover:text-brand transition-colors"
+            className="flex items-center gap-1 min-h-11 text-[13px] text-brand hover:text-brand-strong transition-colors duration-150"
             onClick={() => setShowMembers(!showMembers)}
             data-testid="button-toggle-members"
           >
             <Users className="w-3.5 h-3.5" />
-            <span className="font-medium uppercase tracking-wider">Active Members</span>
+            <span className="font-medium">Active members</span>
             {showMembers ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           </button>
         )}
@@ -412,7 +409,7 @@ export default function CommunityPage() {
       {showRules && community.rules && (
         <Card className="glass-card border-border mb-4" data-testid="card-rules">
           <CardContent className="p-3">
-            <p className="text-[11px] text-brand/60 uppercase tracking-wider font-medium mb-2">Community Rules</p>
+            <p className="text-[15px] text-foreground font-semibold mb-2">Community rules</p>
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{community.rules}</p>
           </CardContent>
         </Card>
@@ -421,15 +418,15 @@ export default function CommunityPage() {
       {showMembers && posts.length > 0 && (
         <Card className="glass-card border-border mb-4" data-testid="card-members">
           <CardContent className="p-3">
-            <p className="text-[11px] text-brand/60 uppercase tracking-wider font-medium mb-2">
-              Active Members ({new Set(posts.map(p => p.pubkey)).size})
+            <p className="text-[15px] text-foreground font-semibold mb-2">
+              Active members ({new Set(posts.map(p => p.pubkey)).size})
             </p>
             <div className="flex flex-wrap gap-2">
               {Array.from(new Set(posts.map(p => p.pubkey))).slice(0, 20).map(pk => (
                 <ProfileLink
                   key={pk}
                   pubkey={pk}
-                  className="text-xs font-medium text-brand/70"
+                  className="text-sm font-medium text-foreground"
                   showAvatar={true}
                   avatarSize="sm"
                 />
@@ -442,12 +439,12 @@ export default function CommunityPage() {
       {pubkey && (
         <Card className="glass-card border-border mb-4" data-testid="card-compose">
           <CardContent className="p-3">
-            <p className="text-[11px] text-brand/60 uppercase tracking-wider font-medium mb-2">Post to {community.name}</p>
+            <p className="text-[15px] text-foreground font-semibold mb-2">Post to {community.name}</p>
             <Textarea
               value={postContent}
               onChange={(e) => setPostContent(e.target.value)}
               placeholder={`Share something with ${community.name}...`}
-              className="bg-muted border-input text-sm min-h-[80px] resize-none mb-2 dark:bg-white/[0.03] dark:border-white/10"
+              className="bg-muted border-input text-sm min-h-[80px] resize-none mb-2 dark:bg-white/[0.03]"
               disabled={posting}
               data-testid="textarea-community-post"
             />
@@ -473,14 +470,14 @@ export default function CommunityPage() {
 
       {!pubkey && (
         <div className="mb-4 p-3 rounded-lg bg-primary/[0.04] border border-border text-center">
-          <p className="text-xs text-muted-foreground/60 italic">Sign in with Nostr to post and join this community</p>
+          <p className="text-xs text-muted-foreground">Sign in with Nostr to post and join this community</p>
         </div>
       )}
 
       <div className="space-y-3" data-testid="container-community-posts">
         <div className="flex items-center gap-2 mb-2">
-          <FileText className="w-3.5 h-3.5 text-brand/60" />
-          <p className="text-[11px] text-brand/60 uppercase tracking-wider font-medium">
+          <FileText className="w-4 h-4 text-muted-foreground" />
+          <p className="text-[15px] text-foreground font-semibold">
             Feed
           </p>
         </div>
@@ -488,13 +485,13 @@ export default function CommunityPage() {
         {postsLoading ? (
           <div className="flex items-center justify-center py-10">
             <RelayOutpostInlineLoader className="w-5 h-5" />
-            <span className="text-xs text-muted-foreground/60 ml-2">Loading posts...</span>
+            <span className="text-xs text-muted-foreground ml-2">Loading posts...</span>
           </div>
         ) : posts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-14 text-center">
-            <FileText className="w-10 h-10 text-muted-foreground/30 mb-3" />
+            <OttoEmpty mood="quiet" size={88} className="mb-3 text-foreground/70" />
             <p className="text-sm font-medium mb-1">No posts yet</p>
-            <p className="text-xs text-muted-foreground/60">
+            <p className="text-xs text-muted-foreground">
               {pubkey ? "Be the first to post in this community!" : "Sign in to be the first to post here."}
             </p>
           </div>

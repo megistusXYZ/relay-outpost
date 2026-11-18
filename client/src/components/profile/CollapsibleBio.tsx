@@ -38,7 +38,7 @@ export function CollapsibleBio({ text, render }: { text: string; render: (text: 
           type="button"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
-          className="-my-2 inline-flex min-h-11 items-center pr-3 text-xs font-medium text-brand hover:text-brand/80"
+          className="-my-2 inline-flex min-h-11 items-center pr-3 text-[13px] font-medium text-brand hover:text-brand-strong"
           data-testid="button-bio-more"
         >
           {expanded ? "Show less" : "Show more"}

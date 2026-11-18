@@ -44,7 +44,6 @@ import {
   getSubscribedCreators,
   subscribeCreator,
   unsubscribeCreator,
-  type SubscribedCreator,
 } from "@/lib/creator-subscriptions";
 import { eventStore, fetchProfilesCached } from "@/lib/nostr";
 import { KIND_METADATA, getDisplayName, getAvatarUrl, formatNpub, shortenNpub } from "@/lib/nostr-helpers";
@@ -64,15 +63,15 @@ function CreatorRow({ creatorPubkey, onRemove }: { creatorPubkey: string; onRemo
   const avatarUrl = profile ? getAvatarUrl(profile) : undefined;
 
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-brand dark:bg-brand/10 group">
-      <Avatar className="w-6 h-6 border border-brand/30 dark:border-brand/20">
+    <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-foreground/[0.05] group">
+      <Avatar className="w-6 h-6 border border-border/60">
         <AvatarImage src={avatarUrl} alt={displayName} />
-        <AvatarFallback className="text-[9px] bg-brand/60 dark:bg-brand/50 text-brand">
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[9px]">
           {displayName?.charAt(0)?.toUpperCase()}
         </AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-brand font-medium truncate">{displayName}</p>
+        <p className="text-[13px] text-foreground font-medium truncate">{displayName}</p>
         <p className="text-[9px] text-gray-400 dark:text-gray-500 truncate font-mono">
           {shortenNpub(formatNpub(creatorPubkey))}
         </p>
@@ -372,7 +371,7 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-sm font-brand uppercase tracking-wider">
+          <DialogTitle className="flex items-center gap-2 text-sm font-medium">
             <Rss className="w-4 h-4 text-rose-400" />
             Feed Subscriptions
             {subscribedCount > 0 && (
@@ -421,7 +420,7 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
                     {[...subcategories.entries()].map(([subName, feeds]) => (
                       <div key={subName}>
                         {subcategories.size > 1 && (
-                          <p className="text-[9px] uppercase tracking-wider text-gray-400 dark:text-gray-500 font-medium px-2 pt-2 pb-1">{subName}</p>
+                          <p className="text-[12px] text-gray-400 dark:text-gray-500 font-medium px-2 pt-2 pb-1">{subName}</p>
                         )}
                         {feeds.map((feed) => {
                           const isSubscribed = subscribedIds.has(feed.id);
@@ -460,7 +459,7 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
           {orphanedFeeds.length > 0 && (
             <div className="border-t border-gray-200 dark:border-white/10 pt-3 mt-3">
               <div className="flex items-center gap-2 px-1 mb-2">
-                <span className="text-[10px] uppercase tracking-wider text-amber-500 dark:text-amber-400 font-medium">Inactive Feeds</span>
+                <span className="text-[13px] text-amber-500 dark:text-amber-400 font-medium">Inactive feeds</span>
                 <Badge variant="outline" className="text-[8px] bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/20">
                   {orphanedFeeds.length}
                 </Badge>
@@ -499,7 +498,7 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
 
           <div className="border-t border-gray-200 dark:border-white/10 pt-3 mt-3">
             <div className="flex items-center justify-between px-1 mb-2">
-              <span className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium">Custom Feeds</span>
+              <span className="text-[13px] text-gray-500 dark:text-gray-400 font-medium">Custom feeds</span>
               {!showCustomForm && (
                 <Button
                   variant="ghost"
@@ -601,12 +600,12 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
 
           <div className="border-t border-gray-200 dark:border-white/10 pt-3 mt-3">
             <div className="flex items-center justify-between px-1 mb-2">
-              <span className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1.5">
-                <Radio className="w-3 h-3 text-brand" />
+              <span className="text-[13px] text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1.5">
+                <Radio className="w-3 h-3 text-muted-foreground" />
                 Creator Streams
               </span>
               {subscribedCreators.length > 0 && (
-                <Badge variant="outline" className="text-[8px] bg-brand dark:bg-brand/10 text-brand border-brand dark:border-brand/20">
+                <Badge variant="outline" className="text-[11px] bg-foreground/[0.06] text-foreground/80 border-border/60">
                   {subscribedCreators.length}
                 </Badge>
               )}
@@ -629,13 +628,13 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
                   />
                   {creatorSearching && (
                     <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                      <Loader2 className="w-3 h-3 animate-spin text-brand" />
+                      <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
                     </div>
                   )}
                 </div>
                 <Button
                   size="sm"
-                  className="h-7 text-xs bg-brand hover:bg-brand px-3"
+                  className="h-8 text-[13px] rounded-full bg-foreground text-background hover:bg-foreground/90 px-3.5"
                   onClick={handleAddCreator}
                   disabled={!creatorInput.trim() || creatorResolving}
                 >
@@ -657,12 +656,12 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
                     return (
                       <button
                         key={event.pubkey}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-brand/10 dark:hover:bg-brand/8 transition-colors"
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-foreground/[0.05] transition-colors"
                         onClick={() => finishAddCreator(event.pubkey)}
                       >
                         <Avatar className="w-7 h-7 shrink-0">
                           {picture ? <AvatarImage src={picture} alt={name} /> : null}
-                          <AvatarFallback className="bg-brand/20 text-brand text-[10px]">
+                          <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[10px]">
                             {name ? name[0].toUpperCase() : "?"}
                           </AvatarFallback>
                         </Avatar>
@@ -677,7 +676,7 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
                       </button>
                     );
                   })}
-                  <div className="px-3 py-1.5 text-[9px] text-gray-400 dark:text-gray-500 text-center uppercase tracking-wider">
+                  <div className="px-3 py-1.5 text-[12px] text-gray-400 dark:text-gray-500 text-center font-medium">
                     {creatorSearching ? "Searching..." : "Select a creator"}
                   </div>
                 </div>
@@ -705,7 +704,7 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
             <div className="border-t border-gray-200 dark:border-white/10 pt-3 mt-3">
               <div className="flex items-center gap-2 px-1 mb-2">
                 <Bell className="w-3.5 h-3.5 text-rose-400" />
-                <span className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium">Event Reminders</span>
+                <span className="text-[13px] text-gray-500 dark:text-gray-400 font-medium">Event reminders</span>
               </div>
 
               <div className="flex items-center gap-2 px-2 py-2 rounded-lg bg-gray-50 dark:bg-white/[0.03] mb-2">

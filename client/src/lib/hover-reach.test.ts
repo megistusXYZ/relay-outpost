@@ -106,17 +106,9 @@ const ALLOWED: Record<string, { count: number; why: string }> = {
     count: 1,
     why: "DECORATION. A relative timestamp on a live-chat line — information, not a control. Always-on would stamp every line of a fast-moving chat on the narrowest screens.",
   },
-  "client/src/pages/Search.tsx": {
-    count: 1,
-    why: "DECORATION. A '+' hint at the end of a feed row; the row itself is the control.",
-  },
   "client/src/pages/Settings.tsx": {
     count: 2,
     why: "DECORATION. Two blurred glow layers behind the Megistus logo. There is nothing to reach.",
-  },
-  "client/src/pages/WtfIsThis.tsx": {
-    count: 2,
-    why: "DECORATION. Gradient hairlines under a card.",
   },
   "client/src/pages/relay-ops/shared.tsx": {
     count: 2,

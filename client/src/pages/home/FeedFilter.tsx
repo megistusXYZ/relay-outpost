@@ -88,7 +88,7 @@ export function FeedFilter({
         <button
           type="button"
           onClick={() => { onAdvanced(); onOpenChange(false); }}
-          className="mt-2 inline-flex items-center gap-1 min-h-[32px] text-xs text-brand/80 hover:underline"
+          className="mt-2 inline-flex items-center gap-1 min-h-[32px] text-[13px] font-medium text-brand hover:underline"
           data-testid="feed-filter-advanced"
         >
           More in Trust &amp; Safety <ArrowRight className="w-3 h-3" />

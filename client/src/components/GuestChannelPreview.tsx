@@ -40,7 +40,7 @@ export function GuestChannelPreview({ relayUrl, channelId }: { relayUrl: string;
   // A guest can't opt in to explicit rooms, so a room flagged either way shows
   // nothing of itself here: no name, picture or description (lib/room-content-filter).
   const blocked = !!meta && classifyRoom(meta) !== "ok";
-  const title = blocked ? "Room unavailable" : meta?.name || "Chat channel";
+  const title = blocked ? "Room unavailable" : meta?.name || "Chat room";
   const isPrivate = !!meta && (meta.isPrivate || meta.isClosed || meta.isRestricted);
 
   const signIn = () => {
@@ -58,7 +58,7 @@ export function GuestChannelPreview({ relayUrl, channelId }: { relayUrl: string;
         </button>
         <Avatar className="w-8 h-8 shrink-0">
           {meta?.picture && !blocked && <AvatarImage src={meta.picture} alt={title} />}
-          <AvatarFallback className="text-xs bg-brand/10 text-brand">{title.slice(0, 2).toUpperCase()}</AvatarFallback>
+          <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs">{title.slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold truncate">{title}</p>
@@ -70,7 +70,7 @@ export function GuestChannelPreview({ relayUrl, channelId }: { relayUrl: string;
       <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center text-center px-8 gap-4">
         <Avatar className="w-20 h-20 shrink-0">
           {meta?.picture && !blocked && <AvatarImage src={meta.picture} alt={title} />}
-          <AvatarFallback className="text-xl bg-brand/10 text-brand">{title.slice(0, 2).toUpperCase()}</AvatarFallback>
+          <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xl">{title.slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <div className="space-y-1.5 max-w-sm">
           <h1 className="text-lg font-bold">{title}</h1>

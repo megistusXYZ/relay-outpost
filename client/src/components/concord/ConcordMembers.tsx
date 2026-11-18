@@ -8,7 +8,7 @@ import { useState, useCallback, useMemo } from "react";
 import { Link } from "wouter";
 import { nip19 } from "nostr-tools";
 import { formatDistanceToNow } from "date-fns";
-import { Crown, ShieldCheck, UserMinus, Ban, Loader2, Users, Shield, ShieldOff, History, LogIn, LogOut, ChevronDown, Hash, Trash2, Settings2 } from "lucide-react";
+import { Crown, UserMinus, Ban, Loader2, Users, Shield, ShieldOff } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { getGlobalSigner } from "@/lib/nip42-auth";
 import { publishEvent } from "@/lib/nostr";
@@ -22,7 +22,7 @@ import { ConcordActivityLog } from "./ConcordActivityLog";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import type { StoredCommunity } from "@/lib/concord/concord-keys";
-import { hasPermission, canActOn, PERM, VSK, OWNER_POSITION, type Member, type AuditEntry, type AuditAction } from "@/lib/concord/concord-events";
+import { hasPermission, canActOn, PERM, VSK, OWNER_POSITION, type Member } from "@/lib/concord/concord-events";
 import { removeMember, setAdmin, unbanMember, setMemberRoles, ADMIN_ROLE_ID } from "@/lib/concord/concord-governance";
 import { grantableRoles, rolesAfter } from "@/lib/concord/concord-roles";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -45,7 +45,6 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
   const [pending, setPending] = useState<{ target: string; ban: boolean } | null>(null);
   const [reason, setReason] = useState("");
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const [activityOpen, setActivityOpen] = useState(false);
   const [pendingUnban, setPendingUnban] = useState<string | null>(null);
   const [unbanBusy, setUnbanBusy] = useState(false);
 
@@ -195,20 +194,20 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
     <div className={inSection ? "space-y-3" : "rounded-xl border border-border/30 p-4 space-y-3"} data-testid="concord-members">
       {!inSection && (
       <div className="flex items-center gap-2">
-        <Users className="w-4 h-4 text-brand/70" />
+        <Users className="w-4 h-4 text-muted-foreground" />
         <p className="text-sm font-semibold">Members</p>
-        <span className="text-[11px] text-muted-foreground/40">{roster.length}</span>
+        <span className="text-xs text-muted-foreground">{roster.length}</span>
       </div>
       )}
 
       {roster.length === 0 ? (
-        <p className="text-xs text-muted-foreground/50 py-4 text-center">Loading roster…</p>
+        <p className="text-xs text-muted-foreground py-4 text-center">Loading roster…</p>
       ) : (
         <div className="space-y-3">
           {sections.map((s) => (
           <div key={s.label} className="space-y-0.5" data-testid={`concord-members-${s.label.toLowerCase()}`}>
-            <p className="px-2 pb-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-              {s.label} <span className="font-medium tabular-nums text-muted-foreground/50">— {s.people.length}</span>
+            <p className="px-2 pb-0.5 text-[12px] font-semibold text-muted-foreground">
+              {s.label} <span className="font-medium tabular-nums text-muted-foreground">— {s.people.length}</span>
             </p>
           {s.people.map((m) => (
             <MemberRow key={m.pubkey} member={m} isSelf={m.pubkey === pubkey}
@@ -231,7 +230,7 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
 
       {canUnban && banned.length > 0 && (
         <div className="space-y-1 pt-1" data-testid="concord-banned">
-          <p className="text-[11px] font-medium text-muted-foreground/70">Banned</p>
+          <p className="text-xs font-medium text-muted-foreground">Banned</p>
           {banned.map((pk) => <BannedRow key={pk} pubkey={pk} onUnban={() => setPendingUnban(pk)} />)}
         </div>
       )}
@@ -258,13 +257,13 @@ export function ConcordMembers({ community, onCommunityChange, showActivity = tr
             </AlertDialogDescription>
           </AlertDialogHeader>
           {progress ? (
-            <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground/70">
+            <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" /> Re-securing keys… {progress.done}/{progress.total}
             </div>
           ) : (
             <>
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-muted-foreground/70">Reason <span className="opacity-50">(optional, shown in the audit log)</span></label>
+                <label className="text-xs font-medium text-muted-foreground">Reason <span className="opacity-50">(optional, shown in the audit log)</span></label>
                 <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} maxLength={200} placeholder="Why?" className="resize-none text-xs" data-testid="input-remove-reason" />
               </div>
               <AlertDialogFooter>
@@ -331,10 +330,10 @@ function BannedRow({ pubkey, onUnban }: { pubkey: string; onUnban: () => void })
     <div className="flex items-center gap-2.5 p-2 rounded-lg" data-testid={`concord-banned-${pubkey.slice(0, 8)}`}>
       <Avatar className="w-8 h-8 border border-border/30 shrink-0 opacity-60">
         {avatar && <AvatarImage src={avatar} alt={name} />}
-        <AvatarFallback className="text-[10px] bg-muted/40 text-muted-foreground font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+        <AvatarFallback className="text-xs bg-muted/40 text-muted-foreground font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
       </Avatar>
       <p className="text-sm truncate flex-1 min-w-0 text-muted-foreground">{name}</p>
-      <button onClick={onUnban} className="h-10 md:h-7 px-3 rounded-full text-[11px] font-medium text-brand hover:bg-brand/10 transition-colors" data-testid={`concord-unban-${pubkey.slice(0, 8)}`}>
+      <button onClick={onUnban} className="h-10 md:h-7 px-3 rounded-full text-xs font-medium text-brand hover:bg-brand/10 transition-colors" data-testid={`concord-unban-${pubkey.slice(0, 8)}`}>
         Unban
       </button>
     </div>
@@ -365,7 +364,7 @@ function MemberRow({ member, isSelf, isAdmin, canModerate, canToggleAdmin, admin
       >
         <Avatar className="w-8 h-8 border border-border/30 shrink-0">
           {avatar && <AvatarImage src={avatar} alt={name} />}
-          <AvatarFallback className="text-[10px] bg-brand/10 text-brand font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+          <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium truncate flex items-center gap-1.5">
@@ -379,16 +378,16 @@ function MemberRow({ member, isSelf, isAdmin, canModerate, canToggleAdmin, admin
             <PersonBadges pubkey={member.pubkey} nip05={nip05} claimedName={claimedName} showCollision={hasProfile} />
             {/* Their first chosen badge — in the member list only, never on each message. */}
             <PostBadgeIcons pubkey={member.pubkey} linkMore={false} />
-            {isSelf && <span className="text-[9px] text-brand/60">you</span>}
+            {isSelf && <span className="text-xs text-muted-foreground">you</span>}
           </p>
-          <p className="text-[10px] text-muted-foreground/50 flex items-center gap-1 min-w-0">
-            <span className="flex items-center gap-1 shrink-0">{owner ? <><Crown className="w-2.5 h-2.5 text-amber-500/70" /> Owner</> : isAdmin ? <><Shield className="w-2.5 h-2.5 text-brand/60" /> Admin</> : "Member"}</span>
+          <p className="text-xs text-muted-foreground flex items-center gap-1 min-w-0">
+            <span className="flex items-center gap-1 shrink-0">{owner ? <><Crown className="w-3 h-3" /> Owner</> : isAdmin ? <><Shield className="w-3 h-3" /> Admin</> : "Member"}</span>
             {joined && <span className="truncate">· {joined}</span>}
           </p>
           {roles.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-0.5">
               {roles.map((r) => (
-                <span key={r.role_id} className="text-[10px] leading-4 px-1.5 rounded-full border border-border/40 text-muted-foreground"
+                <span key={r.role_id} className="text-xs leading-4 px-1.5 rounded-full border border-border/40 text-muted-foreground"
                   style={r.color ? { color: `#${r.color.toString(16).padStart(6, "0")}`, borderColor: `#${r.color.toString(16).padStart(6, "0")}55` } : undefined}>
                   {r.name}
                 </span>
@@ -401,15 +400,15 @@ function MemberRow({ member, isSelf, isAdmin, canModerate, canToggleAdmin, admin
         {rolePicker}
         {canToggleAdmin && (
           adminBusy
-            ? <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground/50 mx-1.5" />
+            ? <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground mx-1.5" />
             : isAdmin
-              ? <button onClick={() => onToggleAdmin(false)} className="p-2.5 md:p-1.5 rounded hover:bg-muted/50 text-muted-foreground/50 hover:text-foreground" title="Remove admin" data-testid={`concord-demote-${member.pubkey.slice(0, 8)}`}><ShieldOff className="w-3.5 h-3.5" /></button>
-              : <button onClick={() => onToggleAdmin(true)} className="p-2.5 md:p-1.5 rounded hover:bg-brand/10 text-muted-foreground/50 hover:text-brand" title="Make admin" data-testid={`concord-promote-${member.pubkey.slice(0, 8)}`}><Shield className="w-3.5 h-3.5" /></button>
+              ? <button onClick={() => onToggleAdmin(false)} className="p-2.5 md:p-1.5 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground" title="Remove admin" data-testid={`concord-demote-${member.pubkey.slice(0, 8)}`}><ShieldOff className="w-3.5 h-3.5" /></button>
+              : <button onClick={() => onToggleAdmin(true)} className="p-2.5 md:p-1.5 rounded hover:bg-foreground/[0.06] text-muted-foreground hover:text-foreground" title="Make admin" data-testid={`concord-promote-${member.pubkey.slice(0, 8)}`}><Shield className="w-3.5 h-3.5" /></button>
         )}
         {canModerate && (
           <>
-            <button onClick={onRemove} className="p-2.5 md:p-1.5 rounded hover:bg-muted/50 text-muted-foreground/50 hover:text-foreground" title="Remove" data-testid={`concord-remove-${member.pubkey.slice(0, 8)}`}><UserMinus className="w-3.5 h-3.5" /></button>
-            <button onClick={onBan} className="p-2.5 md:p-1.5 rounded hover:bg-destructive/10 text-muted-foreground/50 hover:text-destructive" title="Ban" data-testid={`concord-ban-${member.pubkey.slice(0, 8)}`}><Ban className="w-3.5 h-3.5" /></button>
+            <button onClick={onRemove} className="p-2.5 md:p-1.5 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground" title="Remove" data-testid={`concord-remove-${member.pubkey.slice(0, 8)}`}><UserMinus className="w-3.5 h-3.5" /></button>
+            <button onClick={onBan} className="p-2.5 md:p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive" title="Ban" data-testid={`concord-ban-${member.pubkey.slice(0, 8)}`}><Ban className="w-3.5 h-3.5" /></button>
           </>
         )}
       </div>
@@ -424,12 +423,12 @@ function MemberRolePicker({ roles, held, busy, onToggle }: {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="p-2.5 md:p-1.5 rounded hover:bg-muted/50 text-muted-foreground/50 hover:text-foreground" title="Roles" aria-label="Roles" data-testid="concord-member-roles">
+        <button className="p-2.5 md:p-1.5 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground" title="Roles" aria-label="Roles" data-testid="concord-member-roles">
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Tags className="w-3.5 h-3.5" />}
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-56 p-1.5 z-[230]" data-testid="concord-member-roles-menu">
-        <p className="px-2 py-1 text-[11px] text-muted-foreground/60">Roles</p>
+        <p className="px-2 py-1 text-xs text-muted-foreground">Roles</p>
         {roles.map((r) => {
           const on = held.includes(r.role_id);
           return (

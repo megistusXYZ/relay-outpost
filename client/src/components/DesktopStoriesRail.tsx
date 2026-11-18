@@ -9,6 +9,7 @@ import { useIaCollapsed } from "@/lib/ia-prefs";
 import { useNewsUnread } from "@/hooks/use-news-unread";
 import { isNavDestinationActive } from "@/lib/footer-nav";
 import { YouAvatarIcon } from "@/components/YouAvatarIcon";
+import { OttoMark } from "@/components/OttoMark";
 import { SidebarOutposts } from "@/components/SidebarOutposts";
 import { SearchPill } from "@/components/SearchPill";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
@@ -21,14 +22,6 @@ import { useNotifications } from "@/contexts/NotificationContext";
 import { useChatsBadge } from "@/hooks/use-chats-badge";
 import { useTheme } from "@/hooks/use-theme";
 import { formatNpub, shortenNpub } from "@/lib/nostr-helpers";
-import { queryClient } from "@/lib/queryClient";
-import { DEFAULT_FEEDS, loadCustomFeeds, loadHiddenDefaults } from "@/lib/rss-feeds";
-import { loadNewsAlertPrefs } from "@/lib/news-alert-settings";
-import {
-  computePriorityNewsUnread,
-  loadRssReadLedger,
-  type RssCachedItemLite,
-} from "@/lib/orbit-stories";
 
 // Desktop-only "Stories" rail: a slim icon-only ring rail that brings the mobile
 // OrbitMenu visual language (glowing violet unread rings) to desktop, replacing
@@ -153,7 +146,7 @@ function FlyoutSearchResults({
       )}
       {joinedMatches.length > 0 && (
         <>
-          <p className="px-2 pb-1 pt-2 text-[10px] font-brand uppercase tracking-wider text-muted-foreground/50">
+          <p className="px-2 pb-1 pt-2 text-[13px] text-muted-foreground font-medium">
             Your communities
           </p>
           {joinedMatches.map((m) => (
@@ -170,7 +163,7 @@ function FlyoutSearchResults({
         </>
       )}
       {(dirMatches.length > 0 || loading) && (
-        <p className="px-2 pb-1 pt-2 text-[10px] font-brand uppercase tracking-wider text-muted-foreground/50">
+        <p className="px-2 pb-1 pt-2 text-[13px] text-muted-foreground font-medium">
           Directory
         </p>
       )}
@@ -243,23 +236,23 @@ function RailNode({
   const live = !!destination.live;
 
   // The unread ring (dark mode only — see boxShadow).
-  const ringConic = "conic-gradient(from 0deg, #7c3aed, #a855f7 26%, rgba(168,85,247,0.3) 50%, #a855f7 72%, #7c3aed)";
+  const ringConic = "conic-gradient(from 0deg, #ff6a3d, #ff8a63 26%, rgba(255,138,99,0.3) 50%, #ff8a63 72%, #ff6a3d)";
 
   const boxShadow = active
     ? isDark
-      ? "0 0 18px rgba(168,85,247,0.55), 0 0 6px rgba(168,85,247,0.4)"
-      : "0 0 18px rgba(109,40,217,0.30), 0 0 6px rgba(109,40,217,0.18)"
+      ? "0 0 18px rgba(153,162,179,0.55), 0 0 6px rgba(153,162,179,0.4)"
+      : "0 0 18px rgba(114,124,143,0.30), 0 0 6px rgba(114,124,143,0.18)"
     // Unread glows only in dark: in light the count badge says it, and a
     // violet ring read as "the page you're on" (owner, 2026-10-07: quiet
     // unless selected).
     : live && isDark
-      ? "0 0 14px rgba(168,85,247,0.4)"
+      ? "0 0 14px rgba(153,162,179,0.4)"
       : isCreate
         ? isDark
-          ? "0 0 10px rgba(124,58,237,0.25)"
+          ? "0 0 10px rgba(133,143,162,0.25)"
           : "none"
         : isDark
-          ? "0 0 8px rgba(124,58,237,0.16)"
+          ? "0 0 8px rgba(133,143,162,0.16)"
           // Light mode is quiet unless selected (owner, 2026-10-07): no glow
           // on a destination you're not on; the active one keeps its ring.
           : "none";
@@ -267,16 +260,16 @@ function RailNode({
   const ringBg = live && isDark
     ? ringConic
     : active
-      ? isDark ? "rgba(196,181,253,0.6)" : "rgba(109,40,217,0.6)"
+      ? isDark ? "rgba(211,215,223,0.6)" : "rgba(114,124,143,0.6)"
       : isCreate
-        ? isDark ? "rgba(168,85,247,0.4)" : "hsl(var(--border))"
-        : isDark ? "rgba(168,85,247,0.22)" : "hsl(var(--border))";
+        ? isDark ? "rgba(153,162,179,0.4)" : "hsl(var(--border))"
+        : isDark ? "rgba(153,162,179,0.22)" : "hsl(var(--border))";
 
   const innerBg = active
-    ? isDark ? "hsl(262 45% 17%)" : "hsl(262 45% 92%)"
+    ? isDark ? "hsl(220 7% 17%)" : "hsl(220 7% 92%)"
     : isCreate
-      ? isDark ? "hsl(262 38% 12%)" : "hsl(var(--card))"
-      : isDark ? "hsl(258 26% 10%)" : "hsl(var(--card))";
+      ? isDark ? "hsl(220 6% 12%)" : "hsl(var(--card))"
+      : isDark ? "hsl(220 4% 10%)" : "hsl(var(--card))";
 
   const button = (
     <button
@@ -499,16 +492,11 @@ export function DesktopStoriesRail() {
         onClick={openOrbitMenu}
         aria-label="Open menu"
         title="Menu"
-        className="relative mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-brand/30 bg-[hsl(235,30%,15%)] transition-colors hover:border-brand/60 dark:bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="relative mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-border/70 bg-card text-foreground transition-colors hover:border-foreground/40 dark:border-brand/30 dark:bg-black dark:hover:border-brand/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         data-testid="rail-logo"
       >
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 drop-shadow-[0_0_3px_rgba(255,255,255,0.15)]" aria-hidden="true">
-          <g clipPath="url(#clip0_rail_brand)">
-            <path d="M5.64999 7.64999L2.85001 4.85001C2.54001 4.54001 2.76001 4 3.20001 4H6.79001C6.92001 4 7.05001 4.04999 7.14001 4.14999L12.14 9.14999C12.45 9.45999 12.23 10 11.79 10H8.5C6.57 10 5 11.57 5 13.5C5 15.43 6.57 17 8.5 17H10L12.15 19.15C12.46 19.46 12.24 20 11.8 20H8.51001C4.92001 20 2.01001 17.09 2.01001 13.5C2.01001 11.01 3.41001 8.84 5.48001 7.75L5.64999 7.64999Z" fill="white" />
-            <path d="M18.35 16.35L21.15 19.15C21.46 19.46 21.24 20 20.8 20H17.21C17.08 20 16.95 19.95 16.86 19.85L11.86 14.85C11.55 14.54 11.77 14 12.21 14H15.5C17.43 14 19 12.43 19 10.5C19 8.57 17.43 7 15.5 7H14L11.85 4.85001C11.54 4.54001 11.76 4 12.2 4H15.49C19.08 4 21.99 6.91 21.99 10.5C21.99 12.99 20.59 15.16 18.52 16.25L18.35 16.35Z" fill="white" />
-          </g>
-          <defs><clipPath id="clip0_rail_brand"><rect width="24" height="24" /></clipPath></defs>
-        </svg>
+        {/* Otto, with the app's mood (components/OttoMark): asks when something waits. */}
+        <OttoMark size={34} className="shrink-0 dark:drop-shadow-[0_0_3px_rgba(255,255,255,0.15)]" attention={unreadCount > 0 || chatsUnread > 0} />
         {/* The mark that this is a door (owner, 2026-10-10): nothing said the logo opened the hub. */}
         <ChevronDown className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border border-border/60 bg-background p-[1px] text-muted-foreground" aria-hidden="true" data-testid="rail-logo-mark" />
       </button>
@@ -551,7 +539,7 @@ export function DesktopStoriesRail() {
                 />
                 {flyoutOpen && (
                   <div
-                    className="fixed left-[4.25rem] top-0 z-[70] flex h-[100dvh] w-64 flex-col border-r border-border/50 bg-sidebar shadow-[0_10px_40px_rgba(31,27,75,0.18)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.55)]"
+                    className="fixed left-[4.25rem] top-0 z-[70] flex h-[100dvh] w-64 flex-col border-r border-border/50 bg-sidebar shadow-[0_10px_40px_rgba(47,50,55,0.18)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.55)]"
                     role="group"
                     aria-label="Communities"
                     data-testid="rail-communities-flyout"
@@ -563,7 +551,7 @@ export function DesktopStoriesRail() {
                     <button
                       type="button"
                       onClick={() => goToCommunities()}
-                      className="flex min-h-[44px] items-center justify-between gap-2 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand/80 transition-colors hover:text-brand dark:text-brand/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="flex min-h-[44px] items-center justify-between gap-2 px-4 py-3 text-[12px] font-semibold text-brand/80 transition-colors hover:text-brand dark:text-brand/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       data-testid="rail-communities-flyout-header"
                     >
                       <span>Communities</span>
@@ -671,9 +659,9 @@ export function DesktopStoriesRail() {
                 className="flex items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 data-testid="rail-identity-chip"
               >
-                <Avatar className="h-10 w-10 border border-brand/40 shadow-[0_0_12px_rgba(139,92,246,0.25)]">
+                <Avatar className="h-10 w-10 border border-brand/40 shadow-[0_0_12px_rgba(157,165,181,0.25)]">
                   <AvatarImage src={avatarUrl} alt={displayName || "You"} />
-                  <AvatarFallback className="bg-secondary text-secondary-foreground text-[11px] dark:bg-[hsl(258,30%,14%)] dark:text-brand">
+                  <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 bg-secondary text-secondary-foreground text-[11px] dark:bg-[hsl(220,5%,14%)]">
                     {displayName ? displayName.slice(0, 2).toUpperCase() : npub ? npub.slice(0, 2).toUpperCase() : "?"}
                   </AvatarFallback>
                 </Avatar>
@@ -690,7 +678,7 @@ export function DesktopStoriesRail() {
                 type="button"
                 onClick={() => setLocation("/login")}
                 aria-label="Sign in"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-brand/40 bg-brand/10 text-[10px] font-semibold uppercase tracking-wider text-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-brand/40 bg-brand/10 text-[11px] font-semibold text-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 data-testid="rail-signin"
               >
                 In

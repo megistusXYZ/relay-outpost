@@ -49,13 +49,13 @@ export function ConcordPinsButton({ pins, unavailable, cardOf, canPin, canUnpin,
         <button
           className={`flex items-center justify-center gap-1 shrink-0 rounded-full transition-colors hover:bg-muted/40 data-[state=open]:bg-brand/10 data-[state=open]:text-brand ${
             compact ? "h-10 min-w-10 px-2" : "h-7 min-w-7 px-1.5"
-          } ${count > 0 ? "text-foreground/70 hover:text-foreground" : "text-muted-foreground/50 hover:text-foreground"}`}
+          } ${count > 0 ? "text-foreground/70 hover:text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           title="Pinned messages"
           aria-label={count > 0 ? `Pinned messages: ${count}` : "Pinned messages"}
           data-testid={compact ? "concord-pins-mobile" : "concord-pins"}
         >
           <Pin className={compact ? "w-[18px] h-[18px]" : "w-4 h-4"} />
-          {count > 0 && <span className="text-[11px] font-semibold tabular-nums">{count}</span>}
+          {count > 0 && <span className="text-xs font-semibold tabular-nums">{count}</span>}
         </button>
       </PopoverTrigger>
       {/* Focus stays on the button: landing on the first Jump drew a ring
@@ -65,7 +65,7 @@ export function ConcordPinsButton({ pins, unavailable, cardOf, canPin, canUnpin,
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border/60">
           <Pin className="w-4 h-4 text-brand" />
           <p className="text-sm font-semibold">Pinned messages</p>
-          {!unavailable && <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">{spaceLine}</span>}
+          {!unavailable && <span className="ml-auto text-xs text-muted-foreground tabular-nums">{spaceLine}</span>}
         </div>
         <div className="max-h-[min(70vh,34rem)] overflow-y-auto overscroll-contain p-2 space-y-2">
           {unavailable ? (
@@ -106,17 +106,17 @@ function PinnedMessage({ pin, card, finding, onJump, onUnpin }: {
       <div className="flex items-start gap-2.5">
         <Avatar className="w-8 h-8 shrink-0 border border-border/30">
           {avatar && <AvatarImage src={avatar} alt="" />}
-          <AvatarFallback className="text-[10px] bg-brand/10 text-brand font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+          <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-1.5 min-w-0">
             <span className="min-w-0 truncate text-[13px] font-semibold" style={hasProfile ? { color: senderColor(author) } : undefined}>{name}</span>
-            <time className="shrink-0 text-[11px] text-muted-foreground/70">{formatDistanceToNow(new Date(pin.rumor.created_at * 1000), { addSuffix: true })}</time>
+            <time className="shrink-0 text-xs text-muted-foreground">{formatDistanceToNow(new Date(pin.rumor.created_at * 1000), { addSuffix: true })}</time>
           </div>
           {words && (
             <div className="mt-0.5 text-sm line-clamp-6 post-content-text reply-content-text break-words [overflow-wrap:anywhere] whitespace-pre-wrap">
               <ConcordMessageBody id={pin.id} pubkey={author} content={card.text} />
-              {card.edited && <span className="ml-1 text-[10px] text-muted-foreground/50">(edited)</span>}
+              {card.edited && <span className="ml-1 text-xs text-muted-foreground">(edited)</span>}
             </div>
           )}
           {card.media.length > 0 && (

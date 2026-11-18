@@ -21,7 +21,7 @@ const MAX_OPTIONS = 10;
 const newId = () => Math.random().toString(36).slice(2, 8);
 const blank = (): PollOption[] => [{ id: newId(), label: "" }, { id: newId(), label: "" }];
 
-const FIELD = "w-full min-w-0 h-11 md:h-10 rounded-lg border border-border bg-card px-3 text-base md:text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:border-brand/50 focus:ring-[3px] focus:ring-brand/15 dark:border-white/[0.09] dark:bg-white/[0.03]";
+const FIELD = "w-full min-w-0 h-11 md:h-10 rounded-lg border border-input bg-card px-3 text-base md:text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-brand/15 dark:bg-white/[0.03]";
 
 export function ConcordPollComposer({ open, onOpenChange, onCreate }: {
   open: boolean;

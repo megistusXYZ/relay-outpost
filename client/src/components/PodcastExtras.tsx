@@ -182,7 +182,7 @@ export function TranscriptSection({
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Search transcript"
-                    className="w-full h-8 md:h-7 pl-8 pr-8 rounded-lg bg-muted/20 border border-border/20 text-xs md:text-[11px] text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/40"
+                    className="w-full h-8 md:h-7 pl-8 pr-8 rounded-lg bg-muted/20 border border-input text-xs md:text-[11px] text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary"
                     style={{ fontSize: 16 }}
                     data-testid="input-transcript-search"
                   />
@@ -221,7 +221,7 @@ export function TranscriptSection({
                       </span>
                       <span className="min-w-0 flex-1">
                         {showSpeaker && (
-                          <span className="block text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wide">
+                          <span className="block text-[13px] font-semibold text-muted-foreground">
                             {seg.speaker}
                           </span>
                         )}

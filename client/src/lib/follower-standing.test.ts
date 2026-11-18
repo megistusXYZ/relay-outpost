@@ -33,7 +33,7 @@ describe("what a follower row says and does", () => {
   it("in words, never scores", () => {
     expect(followerTrustWords("trusted")).toBe("Trusted by your network");
     expect(followerTrustWords("known")).toBe("Known to your network");
-    expect(followerTrustWords("new")).toBe("New to your network");
+    expect(followerTrustWords("new")).toBe("Some ties to your network");
     expect(followerTrustWords("outside")).toBe("Not known to your network");
     expect(followerTrustWords("concerns")).toBe("Your network has concerns");
     expect(followerTrustWords("unknown")).toBe("");

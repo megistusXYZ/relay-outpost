@@ -15,7 +15,7 @@ describe("reading what was written", () => {
   });
   it("says what's wrong", () => {
     expect(readDraft("{kind:1}")).toEqual({ ok: false, error: "That isn't valid JSON" });
-    expect(readDraft('{"content":"hi"}')).toEqual({ ok: false, error: "Give it a kind — a number, like 1 for a note" });
+    expect(readDraft('{"content":"hi"}')).toEqual({ ok: false, error: "Give it a kind — a number, like 1 for a post" });
     expect(readDraft('{"kind":1,"content":5}')).toEqual({ ok: false, error: "content must be text" });
     expect(readDraft('{"kind":1,"tags":["t","x"]}')).toEqual({ ok: false, error: "tags must be a list of lists of text, like [[\"t\",\"nostr\"]]" });
   });

@@ -41,7 +41,7 @@ function MutedUserRow({ pubkey, onUnmute }: { pubkey: string; onUnmute: (pk: str
   return (
     <div
       className="flex items-center gap-3 rounded-md px-2.5 py-2"
-      style={{ border: "1px solid rgba(140, 100, 220, 0.12)" }}
+      style={{ border: "1px solid hsl(var(--border))" }}
       data-testid={`muted-pubkey-${pubkey.slice(0, 12)}`}
     >
       <Link href={href} className="shrink-0">
@@ -155,7 +155,7 @@ export default function MuteList() {
       ) : (
         <>
           <section className="space-y-2">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground/60">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground/60 font-medium">
               <UserX className="h-3.5 w-3.5" />
               People <span className="text-muted-foreground/40">· {mutedPubkeys.length}</span>
             </div>
@@ -171,7 +171,7 @@ export default function MuteList() {
           </section>
 
           <section className="space-y-2">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground/60">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground/60 font-medium">
               <Hash className="h-3.5 w-3.5" />
               Words <span className="text-muted-foreground/40">· {mutedKeywords.length}</span>
             </div>
@@ -183,7 +183,7 @@ export default function MuteList() {
                   <span
                     key={kw}
                     className="inline-flex items-center gap-1.5 rounded-full pl-3 pr-1.5 py-1 text-xs text-foreground/80"
-                    style={{ border: "1px solid rgba(140, 100, 220, 0.18)", background: "rgba(140, 100, 220, 0.06)" }}
+                    style={{ border: "1px solid hsl(var(--border))", background: "hsl(var(--foreground) / 0.04)" }}
                     data-testid={`muted-keyword-${kw.replace(/[^a-z0-9]/gi, "-")}`}
                   >
                     {kw}
@@ -203,7 +203,7 @@ export default function MuteList() {
 
           {mutedHashtags.length > 0 && (
             <section className="space-y-2">
-              <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
                 <Hash className="h-3.5 w-3.5" />
                 Hashtags <span className="text-muted-foreground/60">· {mutedHashtags.length}</span>
               </div>
@@ -230,7 +230,7 @@ export default function MuteList() {
 
           {mutedThreads.length > 0 && (
             <section className="space-y-2">
-              <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
                 <VolumeX className="h-3.5 w-3.5" />
                 Threads <span className="text-muted-foreground/60">· {mutedThreads.length}</span>
               </div>

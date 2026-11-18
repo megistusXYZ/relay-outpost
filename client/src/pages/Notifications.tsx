@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback, useEffect, useRef, memo, createContext, useContext } from "react";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { nip19 } from "nostr-tools";
 import { Link, useLocation } from "wouter";
 import { use$ } from "applesauce-react/hooks";
@@ -18,12 +19,11 @@ import { useToast } from "@/hooks/use-toast";
 import { ReportDialog } from "@/components/ReportDialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { PageTabs } from "@/components/PageTabs";
 import { onTabRetap } from "@/lib/tab-retap";
 import { firstUnreadSection } from "@/lib/activity-first-unread";
 import { ConcordActivityMentions } from "@/components/concord/ConcordActivityMentions";
-import { MessageSquare, Heart, Repeat, Zap, UserPlus, AtSign, CheckCheck, ChevronDown, ChevronRight, LifeBuoy, ShieldAlert, VolumeX, Flag, DoorOpen, Globe } from "lucide-react";
+import { MessageSquare, Heart, Repeat, UserPlus, AtSign, CheckCheck, ChevronDown, ChevronRight, LifeBuoy, ShieldAlert, VolumeX, Flag, DoorOpen, Globe } from "lucide-react";
 import { AdmissionQueue } from "@/components/AdmissionQueue";
 import { SweepNoticeCard } from "@/components/SweepNoticeCard";
 import { useNeedsYou } from "@/contexts/NeedsYouContext";
@@ -32,7 +32,6 @@ import { ConcordPendingInvites } from "@/components/concord/ConcordPendingInvite
 import { BadgesWaitingCard } from "@/components/BadgesWaitingCard";
 import { useIaCollapsed } from "@/lib/ia-prefs";
 import { NAV_TITLES } from "@/lib/nav-destinations";
-import { NotificationIcon } from "@/components/icons/NotificationIcon";
 import { BtcZapIcon } from "@/components/NostrPost";
 import { formatDistanceToNow, isToday, isYesterday, isThisWeek, isThisMonth, format } from "date-fns";
 import { useDocumentTitle } from "@/hooks/use-document-title";
@@ -49,7 +48,7 @@ const TYPE_CONFIG = {
   reply: { icon: MessageSquare, label: "replied to you", color: "text-blue-600 dark:text-blue-400", bgAccent: "bg-blue-500/15 dark:bg-blue-500/10", borderAccent: "border-blue-500/30 dark:border-blue-500/20", dotColor: "bg-blue-500 dark:bg-blue-400", chevDark: "dark:text-blue-400/60" },
   mention: { icon: AtSign, label: "mentioned you", color: "text-brand", bgAccent: "bg-brand/15 dark:bg-brand/10", borderAccent: "border-brand/30 dark:border-brand/20", dotColor: "bg-brand", chevDark: "dark:text-brand/60" },
   reaction: { icon: Heart, label: "reacted to your post", color: "text-red-600 dark:text-red-400", bgAccent: "bg-red-500/15 dark:bg-red-500/10", borderAccent: "border-red-500/30 dark:border-red-500/20", dotColor: "bg-red-500 dark:bg-red-400", chevDark: "dark:text-red-400/60" },
-  repost: { icon: Repeat, label: "reposted your note", color: "text-success dark:text-green-400", bgAccent: "bg-green-500/15 dark:bg-green-500/10", borderAccent: "border-green-500/30 dark:border-green-500/20", dotColor: "bg-green-500 dark:bg-green-400", chevDark: "dark:text-green-400/60" },
+  repost: { icon: Repeat, label: "reposted your post", color: "text-success dark:text-green-400", bgAccent: "bg-green-500/15 dark:bg-green-500/10", borderAccent: "border-green-500/30 dark:border-green-500/20", dotColor: "bg-green-500 dark:bg-green-400", chevDark: "dark:text-green-400/60" },
   zap: { icon: BtcZapIcon, label: "zapped you", color: "text-amber-600 dark:text-amber-400", bgAccent: "bg-amber-500/15 dark:bg-amber-500/10", borderAccent: "border-amber-500/30 dark:border-amber-500/20", dotColor: "bg-amber-500 dark:bg-amber-400", chevDark: "dark:text-amber-400/60" },
   follow: { icon: UserPlus, label: "followed you", color: "text-cyan-600 dark:text-cyan-400", bgAccent: "bg-cyan-500/15 dark:bg-cyan-500/10", borderAccent: "border-cyan-500/30 dark:border-cyan-500/20", dotColor: "bg-cyan-500 dark:bg-cyan-400", chevDark: "dark:text-cyan-400/60" },
   ticket: { icon: LifeBuoy, label: "replied to your ticket", color: "text-teal-600 dark:text-teal-400", bgAccent: "bg-teal-500/15 dark:bg-teal-500/10", borderAccent: "border-teal-500/30 dark:border-teal-500/20", dotColor: "bg-teal-500 dark:bg-teal-400", chevDark: "dark:text-teal-400/60" },
@@ -57,9 +56,9 @@ const TYPE_CONFIG = {
 
 type NotifType = keyof typeof TYPE_CONFIG;
 
-// Light mode is calm (owner, 2026-10-08; LIGHT_MODE.md: violet is for
-// actions, focus and what's new): a category keeps its colour on its small
-// icon only — headers, borders and "new" markers are neutral or violet.
+// Light mode is calm (owner, 2026-10-08; LIGHT_MODE.md: Ember is for
+// actions, links and what's new): a category keeps its colour on its small
+// icon only — headers and borders are neutral, "new" markers Ember.
 // Dark mode does not change: each of these keeps the category's dark: classes.
 const darkOnly = (cls: string) => cls.split(" ").filter((c) => c.startsWith("dark:")).join(" ");
 
@@ -181,7 +180,7 @@ const AggregatedNotificationItem = memo(function AggregatedNotificationItem({ gr
 
   const actionLabel = useMemo(() => {
     if (type === "reaction") return "reacted to your post";
-    if (type === "repost") return "reposted your note";
+    if (type === "repost") return "reposted your post";
     if (type === "zap") return "zapped you";
     return config.label;
   }, [type, config.label]);
@@ -217,7 +216,7 @@ const AggregatedNotificationItem = memo(function AggregatedNotificationItem({ gr
           ))}
           {remainingCount > 0 && (
             <div className="w-8 h-8 rounded-full bg-muted border-2 border-background flex items-center justify-center z-10">
-              <span className="text-[9px] font-bold text-muted-foreground">+{remainingCount}</span>
+              <span className="text-[11px] font-semibold text-muted-foreground">+{remainingCount}</span>
             </div>
           )}
         </div>
@@ -237,18 +236,18 @@ const AggregatedNotificationItem = memo(function AggregatedNotificationItem({ gr
           {remainingCount > 0 && (
             <span className="text-foreground/60">and {remainingCount} other{remainingCount > 1 ? "s" : ""}</span>
           )}
-          <span className="text-[11px] text-foreground/60 dark:text-muted-foreground/70">{actionLabel}</span>
+          <span className="text-[13px] text-muted-foreground">{actionLabel}</span>
           {group.hasUnread && (
             <span className={`w-1.5 h-1.5 rounded-full bg-brand ${darkOnly(config.dotColor)} shrink-0`} />
           )}
         </div>
         {repostedContent && (
-          <p className="text-[11px] text-foreground/50 dark:text-muted-foreground/60 mt-0.5 line-clamp-2 leading-relaxed">
+          <p className="text-[14px] text-foreground/75 mt-0.5 line-clamp-2 leading-relaxed">
             {repostedContent}
           </p>
         )}
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-          <span className="text-[10px] text-foreground/45 dark:text-muted-foreground/50">{timeAgo}</span>
+          <span className="text-[12px] text-muted-foreground">{timeAgo}</span>
         </div>
       </div>
     </div>
@@ -282,7 +281,7 @@ function FollowerStandingLine({ pubkey }: { pubkey: string }) {
           {shared.slice(0, 3).map((pk) => <SharedFace key={pk} pubkey={pk} />)}
         </span>
       )}
-      {text && <span className="text-[11px] text-foreground/60 dark:text-muted-foreground/75 min-w-0" data-testid="follower-standing-words">{text}</span>}
+      {text && <span className="text-[13px] text-muted-foreground min-w-0" data-testid="follower-standing-words">{text}</span>}
       {followBack && (
         <button
           type="button"
@@ -442,7 +441,7 @@ function FilteredSpamSection({ items }: { items: any[] }) {
               onReport={() => setReportEvent(notifs[0].event)}
             />
           ))}
-          <p className="px-1 pt-1 text-[10px] text-muted-foreground/50">
+          <p className="px-1 pt-1 text-[12px] text-muted-foreground">
             Filtered, never deleted — muting publishes to your mute list so every app you use honors it.
           </p>
         </div>
@@ -473,18 +472,18 @@ function FilteredSpamRow({ author, notifs, onMute, onReport }: { author: string;
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium truncate">
           {name}
-          {notifs.length > 1 && <span className="ml-1.5 text-[10px] text-muted-foreground/60">×{notifs.length}</span>}
+          {notifs.length > 1 && <span className="ml-1.5 text-[12px] text-muted-foreground">×{notifs.length}</span>}
         </p>
-        <p className="text-[11px] text-muted-foreground/60 truncate">{notificationPreview(newest.type ?? "mention", newest.event?.content, spamNames)}</p>
+        <p className="text-[14px] text-foreground/75 truncate">{notificationPreview(newest.type ?? "mention", newest.event?.content, spamNames)}</p>
       </div>
       <div className="flex items-center gap-1 shrink-0">
         {muted ? (
-          <span className="text-[11px] text-muted-foreground/60 px-2">Muted</span>
+          <span className="text-[13px] text-muted-foreground px-2">Muted</span>
         ) : (
           <Button
             size="sm"
             variant="ghost"
-            className="min-h-[36px] px-2.5 text-[11px]"
+            className="min-h-[36px] px-3 text-[13px]"
             disabled={muting}
             onClick={async () => { setMuting(true); try { await onMute(); setMuted(true); } finally { setMuting(false); } }}
             data-testid={`button-spam-mute-${author.slice(0, 8)}`}
@@ -495,7 +494,7 @@ function FilteredSpamRow({ author, notifs, onMute, onReport }: { author: string;
         <Button
           size="sm"
           variant="ghost"
-          className="min-h-[36px] px-2.5 text-[11px] text-muted-foreground hover:text-red-500"
+          className="min-h-[36px] px-3 text-[13px] text-muted-foreground hover:text-red-500"
           onClick={onReport}
           data-testid={`button-spam-report-${author.slice(0, 8)}`}
         >
@@ -711,19 +710,19 @@ const NotificationItem = memo(function NotificationItem({ notification, onRead }
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-[13px] font-medium" data-testid={`notification-author-${notification.id}`}>{displayName}</span>
-          <span className="text-[11px] text-foreground/60 dark:text-muted-foreground/70">{zapAmountLabel || externalCommentLabel || config.label}</span>
+          <span className="text-[13px] text-muted-foreground">{zapAmountLabel || externalCommentLabel || config.label}</span>
           {!notification.read && (
             <span className={`w-1.5 h-1.5 rounded-full bg-brand ${darkOnly(config.dotColor)} shrink-0`} />
           )}
         </div>
         {contentPreview && (
-          <p className="text-[11px] text-foreground/50 dark:text-muted-foreground/60 mt-0.5 line-clamp-1" data-testid={`notification-preview-${notification.id}`}>
+          <p className="text-[14px] text-foreground/75 mt-0.5 line-clamp-1" data-testid={`notification-preview-${notification.id}`}>
             {contentPreview}
           </p>
         )}
         {notification.type === "follow" && notification.fromPubkey && <FollowerStandingLine pubkey={notification.fromPubkey} />}
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-          <span className="text-[10px] text-foreground/45 dark:text-muted-foreground/50">{timeAgo}</span>
+          <span className="text-[12px] text-muted-foreground">{timeAgo}</span>
         </div>
       </div>
     </div>
@@ -782,10 +781,10 @@ const DateSubGroup = memo(function DateSubGroup({ label, bucketKey, items, onRea
         data-testid={`button-toggle-date-${typeKey}-${bucketKey}`}
       >
         <SubIcon className="w-2.5 h-2.5 text-muted-foreground/50 shrink-0 transition-transform" />
-        <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-foreground/55 dark:text-muted-foreground/60 flex-1 text-left">
+        <span className="text-[13px] text-foreground/55 dark:text-muted-foreground/60 flex-1 text-left font-medium">
           {label}
         </span>
-        <span className="text-[9px] text-muted-foreground/45 dark:text-muted-foreground/40 tabular-nums" data-testid={`text-date-count-${typeKey}-${bucketKey}`}>
+        <span className="text-[12px] text-muted-foreground tabular-nums" data-testid={`text-date-count-${typeKey}-${bucketKey}`}>
           {items.length}
         </span>
       </button>
@@ -798,7 +797,7 @@ const DateSubGroup = memo(function DateSubGroup({ label, bucketKey, items, onRea
           {hasMore && (
             <button
               type="button"
-              className="w-full px-3 py-2 text-[10px] text-brand/60 hover:text-brand/80 hover:bg-muted/10 transition-colors cursor-pointer font-medium"
+              className="w-full px-4 py-2.5 text-[13px] text-brand hover:text-brand-strong hover:bg-muted/10 transition-colors cursor-pointer font-medium"
               onClick={() => setVisibleCount(c => c + ITEMS_PER_PAGE)}
               data-testid={`button-show-more-${typeKey}-${bucketKey}`}
             >
@@ -848,31 +847,29 @@ const GroupedNotifications = memo(function GroupedNotifications({ notifications,
   const aggregatedUnread = useMemo(() => aggregateNotifications(dateBuckets.unread), [dateBuckets.unread]);
 
   return (
-    <div className="glass-card rounded-lg border overflow-hidden" data-testid={`notification-group-${type}`}>
+    <div className="glass-card rounded-[20px] border border-border/60 overflow-hidden" data-testid={`notification-group-${type}`}>
       <button
         type="button"
-        className={`flex items-center gap-2 px-3 py-2 w-full bg-muted/40 ${darkOnly(config.bgAccent)} ${collapsed ? "" : `border-b border-border ${darkOnly(config.borderAccent)}`} hover-elevate cursor-pointer`}
+        className={`flex items-center gap-2 px-4 py-3 w-full ${collapsed ? "" : "border-b border-border/50"} hover-elevate cursor-pointer`}
         onClick={() => onToggle(type)}
         data-testid={`button-toggle-group-${type}`}
       >
         <CollapseIcon className={`w-3 h-3 text-muted-foreground ${config.chevDark} shrink-0 transition-transform`} />
-        <Icon className={`w-3.5 h-3.5 ${config.color}`} />
-        <span className="text-[11px] font-mono uppercase tracking-[0.15em] text-foreground/80 dark:text-muted-foreground/90 font-semibold flex-1 text-left">
+        <Icon className={`w-4 h-4 ${config.color}`} />
+        <span className="text-[15px] text-foreground font-semibold flex-1 text-left">
           {TYPE_LABEL[type]}
         </span>
         {unreadCount > 0 && (
-          <span className={`w-4 h-4 rounded-full bg-brand/10 ${darkOnly(config.bgAccent)} border border-brand/25 ${darkOnly(config.borderAccent)} flex items-center justify-center`} data-testid={`badge-group-unread-${type}`}>
-            <span className={`text-[9px] font-bold text-brand ${darkOnly(config.color)}`}>{unreadCount}</span>
-          </span>
+          <span className="text-[13px] font-medium text-brand tabular-nums" data-testid={`badge-group-unread-${type}`}>{unreadCount} new</span>
         )}
-        <span className="text-[10px] text-muted-foreground/60 dark:text-muted-foreground/50" data-testid={`text-group-count-${type}`}>{notifications.length}</span>
+        <span className="text-[13px] text-muted-foreground tabular-nums" data-testid={`text-group-count-${type}`}>{notifications.length}</span>
       </button>
       {!collapsed && (
         <div className="divide-y divide-border/10">
           {aggregatedUnread.length > 0 && (
             <>
-              <div className="px-3 py-1.5 bg-muted/30 dark:bg-brand/5 border-b border-border dark:border-brand/10">
-                <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-brand/80 dark:text-brand/70">
+              <div className="px-4 pt-3 pb-1">
+                <span className="text-[13px] text-muted-foreground font-medium">
                   New · {dateBuckets.unread.length}
                 </span>
               </div>
@@ -883,7 +880,7 @@ const GroupedNotifications = memo(function GroupedNotifications({ notifications,
               {unreadVisible < aggregatedUnread.length && (
                 <button
                   type="button"
-                  className="w-full px-3 py-2 text-[10px] text-brand/60 hover:text-brand/80 hover:bg-muted/10 transition-colors cursor-pointer font-medium"
+                  className="w-full px-4 py-2.5 text-[13px] text-brand hover:text-brand-strong hover:bg-muted/10 transition-colors cursor-pointer font-medium"
                   onClick={() => setUnreadVisible(c => c + ITEMS_PER_PAGE)}
                   data-testid={`button-show-more-${type}-new`}
                 >
@@ -938,7 +935,7 @@ function getInitialCollapsed(notifications: any[]): Set<string> {
 }
 
 export default function Notifications() {
-  const { notifications: allNotifications, unreadCount, markAllRead, markRead, clearAll, loading, updateLastSeen } = useNotifications();
+  const { notifications: allNotifications, markRead, clearAll, loading, updateLastSeen } = useNotifications();
   // A deleted reply, mention or repost leaves Activity too; their authors' deletions are asked once.
   const deletedEvents = useDeletedEvents();
   const notifications = useMemo(() => allNotifications.filter((n: any) => !deletedByAuthor(deletedEvents, n?.event?.id, n?.event?.pubkey)), [allNotifications, deletedEvents]);
@@ -1199,7 +1196,7 @@ export default function Notifications() {
               is a person being made to wait, which outranks a decision about
               something already said. Self-hides when nothing is reported. */}
           <ReportsQueue className="mt-2" />
-          <p className="px-1 pt-4 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50" data-testid="activity-section-recent">
+          <p className="px-1 pt-4 pb-2 text-[15px] font-semibold text-foreground" data-testid="activity-section-recent">
             Recent
           </p>
         </div>
@@ -1212,28 +1209,24 @@ export default function Notifications() {
       {loading && notifications.length === 0 ? (
         <div className="glass-card rounded-lg border p-10">
           <div className="flex flex-col items-center gap-3 text-center">
-            <div className="w-12 h-12 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center animate-pulse">
-              <NotificationIcon className="w-5 h-5 text-brand/60" />
-            </div>
-            <p className="text-sm text-muted-foreground/70" data-testid="text-loading-notifications">Scanning relays for activity...</p>
-            <p className="text-[11px] text-muted-foreground/50">Fetching your notification history</p>
+            <OttoEmpty mood="looking" size={96} className="text-foreground/70" />
+            <p className="text-sm text-muted-foreground/70" data-testid="text-loading-notifications">Checking your relays for activity…</p>
+            <p className="text-[13px] text-muted-foreground">Replies, reactions, follows and mentions arrive here</p>
           </div>
         </div>
       ) : notifications.length === 0 ? (
         <div className="glass-card rounded-lg border p-10">
           <div className="flex flex-col items-center gap-3 text-center">
-            <div className="w-12 h-12 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center">
-              <NotificationIcon className="w-5 h-5 text-brand/60" />
-            </div>
-            <p className="text-sm text-muted-foreground/70" data-testid="text-no-notifications">No notifications yet</p>
-            <p className="text-[11px] text-muted-foreground/50">When people interact with your posts, you'll see it here</p>
+            <OttoEmpty mood="quiet" size={96} className="text-foreground/70" />
+            <p className="text-sm text-muted-foreground/70" data-testid="text-no-notifications">No activity yet</p>
+            <p className="text-[13px] text-muted-foreground">When people reply, react, follow or mention you, it shows here</p>
           </div>
         </div>
       ) : (
         <FollowerInfo.Provider value={followerInfo}>
         <div className="space-y-3">
           {loading && (
-            <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] text-muted-foreground/50">
+            <div className="flex items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground">
               <div className="w-2 h-2 rounded-full bg-brand/40 animate-pulse" />
               Loading older notifications...
             </div>

@@ -239,7 +239,7 @@ export function BadgeStudio({ editing, startTemplate, community, onDone, onCance
         <aside className="space-y-3" aria-label="Preview" data-testid="badge-preview">
           <p className="text-sm font-medium">How people will see it</p>
           <div className="space-y-1 rounded-lg border border-border p-3" data-testid="badge-preview-profile">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">On a profile</p>
+            <p className="text-[12px] text-muted-foreground font-medium">On a profile</p>
             <div className="flex items-center gap-3">
               <Picture src={picture} size={56} label={name} />
               <div className="min-w-0">
@@ -250,11 +250,11 @@ export function BadgeStudio({ editing, startTemplate, community, onDone, onCance
             </div>
           </div>
           <div className="space-y-1 rounded-lg border border-border p-3" data-testid="badge-preview-name">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Beside a name</p>
+            <p className="text-[12px] text-muted-foreground font-medium">Beside a name</p>
             <p className="flex items-center gap-1.5 text-sm font-medium">Sam Rivera <Picture src={picture} size={16} label={name} /></p>
           </div>
           <div className="space-y-1 rounded-lg border border-brand/20 bg-brand/[0.05] p-3" data-testid="badge-preview-received">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">When someone receives it</p>
+            <p className="text-[12px] text-muted-foreground font-medium">When someone receives it</p>
             <div className="flex items-center gap-3">
               <Picture src={picture} size={44} label={name} />
               <p className="text-sm">Sam got <span className="font-semibold">{name || "a badge"}</span> from you</p>

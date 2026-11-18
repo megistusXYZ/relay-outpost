@@ -35,7 +35,6 @@ import {
   changeRelayDescription,
   changeRelayIcon,
   changeRelayBanner,
-  changeRelayModerators,
   removeEventByAction,
   fetchRelayCapabilities,
 } from "@/lib/nip86";
@@ -44,7 +43,7 @@ import { canDo, managedAt, UNKNOWN_CAPABILITIES, type RelayCapabilities } from "
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
-import { OpsCard, OpsSubCard, OpsSectionHeader, ManagedAtNote } from "./ops-ui";
+import { OpsCard, OpsSectionHeader, ManagedAtNote } from "./ops-ui";
 import { SETUP_CHANGED_EVENT } from "./SetupChecklist";
 import { AddMemberSheet } from "@/components/AddMemberSheet";
 import { Button } from "@/components/ui/button";
@@ -62,31 +61,17 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-} from "recharts";
-import {
-  Activity,
   Shield,
   Lock,
   Unlock,
   Hash,
-  Code,
   Check,
   Trash2,
   Plus,
   Upload,
   ScrollText,
-  User,
-  Users,
   Image,
   Bookmark,
-  BarChart3,
   Newspaper,
   UserMinus,
   UserPlus,
@@ -97,10 +82,7 @@ import {
 import { uploadMedia } from "@/lib/media-upload";
 import { formatDistanceToNow } from "date-fns";
 import {
-  npubToHex,
   ProfileInfo,
-  ProfileName,
-  ChartTooltip,
   timeAgo,
   resolveProfileBatch,
   UserListToolbar,
@@ -109,7 +91,6 @@ import {
   useActivityProbe,
   applyUserListControls,
   recordDateAdded,
-  recordDateAddedMany,
   recordDateAddedHistorical,
   removeDateAdded,
   formatRelativeMs,
@@ -118,7 +99,6 @@ import {
 } from "./shared";
 
 const KIND_TOPIC = 11;
-const KIND_COMMENT = 1111;
 const KIND_APP_DATA = 30078;
 const PINNED_TOPICS_D_TAG = "relay-outpost/pinned-topics";
 const COMMUNITY_RULES_D_TAG = "relay-outpost/community-rules";
@@ -181,7 +161,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
   const canDescription = canDo(caps, "description");
   const canIcon = canDo(caps, "icon");
   const canBanner = canDo(caps, "banner");
-  const canModerators = canDo(caps, "moderators");
+  canDo(caps, "moderators");
   // Deleting a discussion is removing a post: only offered where the relay
   // lets apps do it, asked first, and written in the moderation log — the
   // same as removing any post from Posts.
@@ -233,22 +213,13 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
   const [featuredRefInput, setFeaturedRefInput] = useState("");
   const [savingFeatured, setSavingFeatured] = useState(false);
 
-  const [modInput, setModInput] = useState("");
   const [moderators, setModerators] = useState<string[]>(nip11?.moderators || []);
-  const [modProfiles, setModProfiles] = useState<Map<string, ProfileInfo>>(new Map());
 
   const [pinnedTopicIds, setPinnedTopicIds] = useState<string[]>([]);
   const [topics, setTopics] = useState<NostrEvent[]>([]);
   const [topicsLoading, setTopicsLoading] = useState(true);
   const [pinningId, setPinningId] = useState<string | null>(null);
 
-  const [metrics, setMetrics] = useState<{
-    totalTopics: number;
-    totalComments: number;
-    activeMembers: number;
-    recentActivity: { date: string; topics: number; comments: number }[];
-  } | null>(null);
-  const [metricsLoading, setMetricsLoading] = useState(true);
 
   const [horizonAdminOnly, setHorizonAdminOnly] = useState<boolean | null>(null);
   const [horizonConfigLoaded, setHorizonConfigLoaded] = useState(false);
@@ -266,27 +237,9 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
     }
   }, [nip11]);
 
-  useEffect(() => {
-    if (moderators.length > 0) {
-      resolveProfileBatch(moderators).then(setModProfiles);
-    }
-  }, [moderators]);
-
-  const modControls = useUrlListControls("comm-moderators");
-  const modAddedAt = useDateAdded(relayUrl, "moderators", moderators);
-  const modActivity = useActivityProbe(relayUrl, "moderators", moderators);
-  const modProfileCache = useMemo(() => {
-    const obj: Record<string, ProfileInfo> = {};
-    modProfiles.forEach((v, k) => { obj[k] = v; });
-    return obj;
-  }, [modProfiles]);
-  const modFiltered = useMemo(() => applyUserListControls({
-    list: moderators,
-    controls: modControls.controls,
-    profileCache: modProfileCache,
-    addedAt: modAddedAt,
-    lastActive: modActivity.lastActive,
-  }), [moderators, modControls.controls, modProfileCache, modAddedAt, modActivity.lastActive]);
+  useUrlListControls("comm-moderators");
+  useDateAdded(relayUrl, "moderators", moderators);
+  useActivityProbe(relayUrl, "moderators", moderators);
 
   useEffect(() => {
     if (!pubkey) return;
@@ -447,62 +400,6 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
     return () => { sub.close(); clearTimeout(timer); };
   }, [relayUrl]);
 
-  useEffect(() => {
-    setMetricsLoading(true);
-    const now = Math.floor(Date.now() / 1000);
-    const sevenDaysAgo = now - 7 * 86400;
-    const memberSet = new Set<string>();
-    let topicCount = 0;
-    let commentCount = 0;
-    const dailyMap = new Map<string, { topics: number; comments: number }>();
-
-    for (let i = 0; i < 7; i++) {
-      const d = new Date((sevenDaysAgo + i * 86400) * 1000);
-      dailyMap.set(d.toISOString().split("T")[0], { topics: 0, comments: 0 });
-    }
-
-    const sub = pool.subscribeMany(
-      [relayUrl],
-      { kinds: [KIND_TOPIC, KIND_COMMENT, 1], since: sevenDaysAgo, limit: 500 },
-      {
-        onevent(e: NostrEvent) {
-          memberSet.add(e.pubkey);
-          const day = new Date(e.created_at * 1000).toISOString().split("T")[0];
-          const entry = dailyMap.get(day);
-          if (e.kind === KIND_TOPIC) {
-            topicCount++;
-            if (entry) entry.topics++;
-          } else if (e.kind === KIND_COMMENT) {
-            commentCount++;
-            if (entry) entry.comments++;
-          }
-        },
-        oneose() {
-          sub.close();
-          clearTimeout(timer);
-          setMetrics({
-            totalTopics: topicCount,
-            totalComments: commentCount,
-            activeMembers: memberSet.size,
-            recentActivity: Array.from(dailyMap.entries()).map(([date, v]) => ({ date, ...v })),
-          });
-          setMetricsLoading(false);
-        },
-      },
-    );
-    const timer = setTimeout(() => {
-      sub.close();
-      setMetrics({
-        totalTopics: topicCount,
-        totalComments: commentCount,
-        activeMembers: memberSet.size,
-        recentActivity: Array.from(dailyMap.entries()).map(([date, v]) => ({ date, ...v })),
-      });
-      setMetricsLoading(false);
-    }, 10000);
-    return () => { sub.close(); clearTimeout(timer); };
-  }, [relayUrl]);
-
   const handleSaveBrand = async () => {
     if (dirtyFields.length === 0 || savingBrand) return;
     setSavingBrand(true);
@@ -620,53 +517,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
     setPinningId(null);
   };
 
-  const saveModerators = async (newList: string[]) => {
-    if (!pubkey) return;
-    // Only a relay that lists the method can store moderators; anywhere else
-    // the call fails, so the list stays ours (below) and the card says so.
-    if (canModerators) {
-      changeRelayModerators(relayUrl, newList).then(res => {
-        if (res.result) toast({ title: "Moderators updated" });
-      }).catch(() => {});
-    }
-    try {
-      const eventTemplate = {
-        kind: KIND_APP_DATA,
-        created_at: Math.floor(Date.now() / 1000),
-        tags: [["d", MODERATORS_D_TAG + "/" + relayUrl]],
-        content: JSON.stringify({ moderators: newList, relay: relayUrl }),
-      };
-      await publishRecord(eventTemplate);
-    } catch (err) {
-      toast({ title: "Couldn't save the moderator list", description: failed(err), variant: "destructive" });
-    }
-  };
 
-  const handleAddMod = () => {
-    const hex = npubToHex(modInput);
-    if (!hex) {
-      toast({ title: "That doesn't look like a profile link", variant: "destructive" });
-      return;
-    }
-    if (moderators.includes(hex)) {
-      toast({ title: "Already a moderator" });
-      return;
-    }
-    const newList = [...moderators, hex];
-    setModerators(newList);
-    setModInput("");
-    saveModerators(newList);
-    recordDateAdded(relayUrl, "moderators", hex);
-    toast({ title: "Moderator added" });
-  };
-
-  const handleRemoveMod = (pk: string) => {
-    const newList = moderators.filter(m => m !== pk);
-    setModerators(newList);
-    saveModerators(newList);
-    removeDateAdded(relayUrl, "moderators", pk);
-    toast({ title: "Moderator removed" });
-  };
 
   const handleRemoveTopic = async (topic: NostrEvent, reason: string | undefined) => {
     setPendingTopic(null);
@@ -696,7 +547,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
       {part === "details" && <OpsCard className="space-y-4" data-testid="ops-brand-form">
         <OpsSectionHeader
           icon={Image}
-          label="Community Branding"
+          label="Community branding"
           className="mb-0"
           action={
             <Button
@@ -719,7 +570,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
 
         <div className="space-y-3">
           <div className="space-y-1">
-            <label className="text-[10px] text-muted-foreground/50 uppercase tracking-wider" htmlFor="ops-brand-name">Name</label>
+            <label className="text-[13px] font-medium text-muted-foreground" htmlFor="ops-brand-name">Name</label>
             <Input
               id="ops-brand-name"
               value={brandName}
@@ -733,7 +584,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] text-muted-foreground/50 uppercase tracking-wider" htmlFor="ops-brand-description">Description</label>
+            <label className="text-[13px] font-medium text-muted-foreground" htmlFor="ops-brand-description">Description</label>
             <Textarea
               id="ops-brand-description"
               value={brandDesc}
@@ -747,7 +598,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] text-muted-foreground/50 uppercase tracking-wider font-brand">Icon</label>
+            <label className="text-[13px] font-medium text-muted-foreground">Icon</label>
             <input
               ref={iconFileRef}
               type="file"
@@ -773,7 +624,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
                   {brandIcon ? (
                     <img src={brandIcon} alt="Icon preview" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-muted-foreground/40">
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                       <Image className="w-5 h-5" />
                     </div>
                   )}
@@ -791,7 +642,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
                 </button>
                 {iconDirty && !uploadingIcon && (
                   <span
-                    className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-[10px] font-mono uppercase tracking-wider text-white shadow-sm"
+                    className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-[12px] font-medium text-white shadow-sm"
                     title="Unsaved changes"
                     data-testid="badge-icon-unsaved"
                   >
@@ -828,14 +679,14 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
               </div> : <div className="flex-1 min-w-0"><ManagedAtNote where={where} testId="ops-managed-icon" /></div>}
             </div>
             {uploadingIcon && iconUploadStatus && (
-              <p className="text-[10px] text-brand/70 animate-pulse">{iconUploadStatus}</p>
+              <p className="text-[12px] text-brand/70 animate-pulse">{iconUploadStatus}</p>
             )}
-            <p className="text-[10px] text-muted-foreground/40">Square image works best. PNG, JPG, or WebP.</p>
+            <p className="text-[12px] text-muted-foreground">Square image works best. PNG, JPG, or WebP.</p>
           </div>
 
           {canBanner ? (
           <div className="space-y-2">
-            <label className="text-[10px] text-muted-foreground/50 uppercase tracking-wider font-brand">Banner</label>
+            <label className="text-[13px] font-medium text-muted-foreground">Banner</label>
             <input
               ref={bannerFileRef}
               type="file"
@@ -860,9 +711,9 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
                 {brandBanner ? (
                   <img src={brandBanner} alt="Banner preview" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-muted-foreground/40">
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-muted-foreground">
                     <Image className="w-5 h-5" />
-                    <span className="text-[10px] uppercase tracking-wider">No banner</span>
+                    <span className="text-[13px]">No banner</span>
                   </div>
                 )}
                 <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white text-xs">
@@ -876,13 +727,13 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
                   )}
                 </div>
                 {/* Always-visible tap signifier (hover overlay above is desktop polish only). */}
-                <span aria-hidden="true" className="absolute bottom-2 right-2 flex items-center gap-1 px-2 h-6 rounded-full bg-primary text-primary-foreground text-[10px] font-medium shadow pointer-events-none transition-opacity sm:group-hover:opacity-0">
+                <span aria-hidden="true" className="absolute bottom-2 right-2 flex items-center gap-1 px-2 h-6 rounded-full bg-primary text-primary-foreground text-[12px] font-medium shadow pointer-events-none transition-opacity sm:group-hover:opacity-0">
                   <Upload className="w-3 h-3" /> Edit
                 </span>
               </button>
               {bannerDirty && !uploadingBanner && (
                 <span
-                  className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-amber-500 text-[10px] font-mono uppercase tracking-wider text-white shadow-sm"
+                  className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-amber-500 text-[12px] font-medium text-white shadow-sm"
                   title="Unsaved changes"
                   data-testid="badge-banner-unsaved"
                 >
@@ -918,13 +769,13 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
               )}
             </div>
             {uploadingBanner && bannerUploadStatus && (
-              <p className="text-[10px] text-brand/70 animate-pulse">{bannerUploadStatus}</p>
+              <p className="text-[12px] text-brand/70 animate-pulse">{bannerUploadStatus}</p>
             )}
-            <p className="text-[10px] text-muted-foreground/40">Wide image (3:1 or wider) recommended.</p>
+            <p className="text-[12px] text-muted-foreground">Wide image (3:1 or wider) recommended.</p>
           </div>
           ) : (
             <div className="space-y-2" data-testid="ops-banner-readonly">
-              <label className="text-[10px] text-muted-foreground/50 uppercase tracking-wider font-brand">Banner</label>
+              <label className="text-[13px] font-medium text-muted-foreground">Banner</label>
               {savedBanner && (
                 <div className="w-full aspect-[3/1] rounded-lg border border-border overflow-hidden bg-muted">
                   <img src={savedBanner} alt="" className="w-full h-full object-cover" />
@@ -940,11 +791,11 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
         <p className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-4 py-3 text-[13px]" data-testid="ops-records-readonly">{recordsNote}</p>
       )}
       {part === "details" && <OpsCard className="space-y-4">
-        <OpsSectionHeader icon={ScrollText} label="Community Rules" className="mb-0" />
+        <OpsSectionHeader icon={ScrollText} label="Community rules" className="mb-0" />
         {rulesLoading ? (
           <div className="flex items-center gap-2 py-4">
             <RelayOutpostInlineLoader className="w-4 h-4" />
-            <span className="text-xs text-muted-foreground/50">Loading rules...</span>
+            <span className="text-xs text-muted-foreground">Loading rules...</span>
           </div>
         ) : (
           <div className="space-y-2">
@@ -954,12 +805,12 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
               placeholder="Enter community guidelines, one per line..."
               className="text-xs min-h-[100px]"
             />
-            <p className="text-[10px] text-muted-foreground/40">
+            <p className="text-[12px] text-muted-foreground">
               These rules appear in the Community sidebar for members to see.
             </p>
             <Button size="sm" onClick={handleSaveRules} disabled={savingRules || !recordsEditable} className="text-xs">
               {savingRules ? <RelayOutpostInlineLoader className="w-3 h-3 mr-1" /> : <Check className="w-3 h-3 mr-1" />}
-              Save Rules
+              Save rules
             </Button>
           </div>
         )}
@@ -975,10 +826,10 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
               placeholder="Pin an announcement to the top of your Timeline (meetups, spaces, book launches…)"
               className="text-xs min-h-[70px]"
             />
-            <p className="text-[10px] text-muted-foreground/40">Shown as a banner at the top of the community Timeline for every member.</p>
+            <p className="text-[12px] text-muted-foreground">Shown as a banner at the top of the community Timeline for every member.</p>
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/50">Pinned items</label>
+            <label className="text-[13px] font-medium text-muted-foreground">Pinned items</label>
             <div className="flex items-center gap-2">
               <Input
                 value={featuredRefInput}
@@ -998,9 +849,9 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
                   return (
                     <div key={key} className="flex items-center gap-2 rounded-md border border-border/30 bg-background/40 px-2.5 py-1.5">
                       <Pin className="w-3 h-3 text-amber-500/70 rotate-45 shrink-0" />
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-amber-500/70 shrink-0">{kindLabel(it.kind)}</span>
-                      <span className="text-[10px] text-muted-foreground/60 truncate flex-1 font-mono">{it.id ? it.id.slice(0, 16) + "…" : it.coord}</span>
-                      <button onClick={() => handleRemoveFeatured(key)} className="text-muted-foreground/40 hover:text-red-500 transition-colors shrink-0" aria-label="Remove pin">
+                      <span className="text-[12px] font-medium text-amber-600 dark:text-amber-400/80 shrink-0">{kindLabel(it.kind)}</span>
+                      <span className="text-[12px] text-muted-foreground truncate flex-1 font-mono">{it.id ? it.id.slice(0, 16) + "…" : it.coord}</span>
+                      <button onClick={() => handleRemoveFeatured(key)} className="text-muted-foreground hover:text-red-500 transition-colors shrink-0" aria-label="Remove pin">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -1008,11 +859,11 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
                 })}
               </div>
             )}
-            <p className="text-[10px] text-muted-foreground/40">Up to {MAX_FEATURED_ITEMS}. Copy a link to any post, article or listing and paste it here.</p>
+            <p className="text-[12px] text-muted-foreground">Up to {MAX_FEATURED_ITEMS}. Copy a link to any post, article or listing and paste it here.</p>
           </div>
           <Button size="sm" onClick={handleSaveFeatured} disabled={savingFeatured || !recordsEditable} className="text-xs">
             {savingFeatured ? <RelayOutpostInlineLoader className="w-3 h-3 mr-1" /> : <Check className="w-3 h-3 mr-1" />}
-            Save Featured
+            Save pinned items
           </Button>
         </div>
       </OpsCard>}
@@ -1024,20 +875,20 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
         {!horizonConfigLoaded ? (
           <div className="flex items-center gap-2 py-2">
             <RelayOutpostInlineLoader className="w-4 h-4" />
-            <span className="text-xs text-muted-foreground/50">Loading...</span>
+            <span className="text-xs text-muted-foreground">Loading...</span>
           </div>
         ) : (
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium">Restrict Articles posting to admins</p>
-                <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                <p className="text-[12px] text-muted-foreground mt-0.5">
                   {effectiveHorizonAdminOnly
                     ? "Only operator and moderators can create articles. Members can read and comment."
                     : "Any signed-in member can publish articles."}
                 </p>
                 {horizonAdminOnly === null && (
-                  <p className="text-[10px] text-muted-foreground/40 mt-0.5 italic">
+                  <p className="text-[12px] text-muted-foreground mt-0.5 italic">
                     Default: open to all members. Toggle to restrict.
                   </p>
                 )}
@@ -1047,7 +898,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
                 variant={effectiveHorizonAdminOnly ? "default" : "outline"}
                 onClick={handleToggleHorizonAdmin}
                 disabled={savingHorizonConfig || !recordsEditable}
-                className={`h-7 text-[10px] px-3 shrink-0 ${effectiveHorizonAdminOnly ? "bg-primary hover:bg-primary/90 text-primary-foreground" : ""}`}
+                className={`h-7 text-[12px] px-3 shrink-0 ${effectiveHorizonAdminOnly ? "bg-primary hover:bg-primary/90 text-primary-foreground" : ""}`}
               >
                 {savingHorizonConfig ? (
                   <RelayOutpostInlineLoader className="w-3 h-3 mr-1" />
@@ -1069,10 +920,10 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
         {topicsLoading ? (
           <div className="flex items-center gap-2 py-4">
             <RelayOutpostInlineLoader className="w-4 h-4" />
-            <span className="text-xs text-muted-foreground/50">Loading topics...</span>
+            <span className="text-xs text-muted-foreground">Loading topics...</span>
           </div>
         ) : topics.length === 0 ? (
-          <p className="text-xs text-muted-foreground/40">No discussions yet.</p>
+          <p className="text-xs text-muted-foreground">No discussions yet.</p>
         ) : (
           <div className="space-y-1 max-h-[300px] overflow-y-auto">
             {topics.map(topic => {
@@ -1085,7 +936,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
                       {isPinned && <Bookmark className="w-3 h-3 text-amber-800 dark:text-amber-400 shrink-0 fill-amber-400" />}
                       <span className="text-xs truncate">{title}</span>
                     </div>
-                    <span className="text-[10px] text-muted-foreground/40">{timeAgo(topic.created_at)}</span>
+                    <span className="text-[12px] text-muted-foreground">{timeAgo(topic.created_at)}</span>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <Button
@@ -1093,7 +944,7 @@ export function CommunityTab({ relayUrl, nip11, part = "details" }: { relayUrl: 
                       size="sm"
                       onClick={() => handleTogglePin(topic.id)}
                       disabled={pinningId === topic.id || !recordsEditable}
-                      className={`h-6 text-[10px] px-2 ${isPinned ? "text-amber-800 dark:text-amber-400" : "text-muted-foreground/50"}`}
+                      className={`h-6 text-[12px] px-2 ${isPinned ? "text-amber-800 dark:text-amber-400" : "text-muted-foreground"}`}
                     >
                       {pinningId === topic.id ? (
                         <RelayOutpostInlineLoader className="w-3 h-3" />
@@ -1521,29 +1372,29 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
   if (!hasNip29) {
     return (
       <OpsCard className="space-y-3">
-        <OpsSectionHeader label="Group chats" className="mb-0" labelClassName="text-muted-foreground/50 dark:text-muted-foreground/50" />
+        <OpsSectionHeader label="Group chats" className="mb-0" labelClassName="text-muted-foreground dark:text-muted-foreground" />
         <p className="text-[13px] text-muted-foreground leading-relaxed" data-testid="ops-groups-unsupported">
           Your host doesn't run group chats for this community. Some hosts do — ask yours, or move to one that does.
         </p>
         {technical && <>
-        <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
-          This relay does not <span className="italic">advertise</span> NIP-29 in its NIP-11 document, so group-chat features are hidden. Detection is based on the relay returning <code className="font-mono text-[10px] px-1 py-0.5 rounded bg-muted/40 text-muted-foreground/80">29</code> in <code className="font-mono text-[10px] px-1 py-0.5 rounded bg-muted/40 text-muted-foreground/80">supported_nips</code>.
+        <p className="text-[12px] text-muted-foreground leading-relaxed">
+          This relay does not <span className="italic">advertise</span> NIP-29 in its NIP-11 document, so group-chat features are hidden. Detection is based on the relay returning <code className="font-mono text-[12px] px-1 py-0.5 rounded bg-muted/40 text-muted-foreground/80">29</code> in <code className="font-mono text-[12px] px-1 py-0.5 rounded bg-muted/40 text-muted-foreground/80">supported_nips</code>.
         </p>
         <div className="rounded-md border border-border/40 bg-muted/15 px-3 py-2.5 space-y-2">
-          <p className="text-[10px] font-brand tracking-wider uppercase text-muted-foreground/50">
+          <p className="text-[14px] font-medium text-foreground/80">
             Relays known to implement NIP-29
           </p>
-          <ul className="text-[11px] text-muted-foreground/65 leading-relaxed space-y-1">
+          <ul className="text-[12px] text-muted-foreground/65 leading-relaxed space-y-1">
             <li><span className="font-mono text-brand">Khatru29</span> — Khatru-based relay with NIP-29 built in</li>
             <li><span className="font-mono text-brand">strfry29</span> — strfry fork with NIP-29 patches</li>
             <li><span className="font-mono text-brand">Relay29</span> — fiatjaf's reference Go implementation</li>
             <li><span className="font-mono text-brand">Pyramid</span> — Khatru-based, web-of-trust + groups</li>
             <li><span className="font-mono text-brand">Haven</span> — Khatru-based personal relay with groups</li>
-            <li><span className="font-mono text-brand">Khatru</span> (framework) — add the <code className="font-mono text-[10px]">khatru/nip29</code> module</li>
+            <li><span className="font-mono text-brand">Khatru</span> (framework) — add the <code className="font-mono text-[12px]">khatru/nip29</code> module</li>
           </ul>
         </div>
-        <p className="text-[10px] text-muted-foreground/45 leading-relaxed">
-          Mainline <span className="font-mono">strfry</span> does not include NIP-29 — you'd need <span className="font-mono">strfry29</span> or a plugin. If your relay <span className="italic">does</span> support NIP-29 but you still see this notice, add <code className="font-mono text-[10px] px-1 py-0.5 rounded bg-muted/40 text-muted-foreground/80">29</code> to the <code className="font-mono text-[10px] px-1 py-0.5 rounded bg-muted/40 text-muted-foreground/80">supported_nips</code> array in your NIP-11 response and reload.
+        <p className="text-[12px] text-muted-foreground/45 leading-relaxed">
+          Mainline <span className="font-mono">strfry</span> does not include NIP-29 — you'd need <span className="font-mono">strfry29</span> or a plugin. If your relay <span className="italic">does</span> support NIP-29 but you still see this notice, add <code className="font-mono text-[12px] px-1 py-0.5 rounded bg-muted/40 text-muted-foreground/80">29</code> to the <code className="font-mono text-[12px] px-1 py-0.5 rounded bg-muted/40 text-muted-foreground/80">supported_nips</code> array in your NIP-11 response and reload.
         </p>
         </>}
       </OpsCard>
@@ -1562,17 +1413,17 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
             size="sm"
             variant="outline"
             onClick={() => setShowCreateForm(!showCreateForm)}
-            className="h-7 text-[10px] gap-1 border-primary hover:border-primary hover:bg-accent"
+            className="h-7 text-[12px] gap-1 border-primary hover:border-primary hover:bg-accent"
           >
             <Plus className="w-3 h-3" />
-            Create Group
+            Create group
           </Button>
         }
       />
 
       {showCreateForm && (
         <div className="border border-border rounded-md p-3 bg-accent space-y-2">
-          <h4 className="text-[10px] font-brand tracking-wider uppercase text-brand">New Group</h4>
+          <h4 className="text-[14px] font-medium text-foreground">New group</h4>
           {/* Name first: it's what the operator actually has in mind, and the ID
               below fills itself in from it. The old order asked for an ID — the
               one field with a relay-side rule — before anything explained it. */}
@@ -1583,28 +1434,28 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
               if (!groupIdEdited) setNewGroupId(e.target.value.trim() ? deriveGroupId(e.target.value) : "");
             }}
             placeholder="Group name"
-            className="h-7 text-base sm:text-[10px] bg-muted/20 border-border/30"
+            className="h-7 text-base sm:text-[12px] bg-muted/20 border-border/30"
             data-testid="input-new-group-name"
           />
           <Input
             value={newGroupId}
             onChange={(e) => { setGroupIdEdited(true); setNewGroupId(e.target.value); }}
             placeholder="Group ID (e.g. general, dev-chat)"
-            className="h-7 text-base sm:text-[10px] font-mono bg-muted/20 border-border/30"
+            className="h-7 text-base sm:text-[12px] font-mono bg-muted/20 border-border/30"
             data-testid="input-new-group-id"
           />
           <Input
             value={newGroupAbout}
             onChange={(e) => setNewGroupAbout(e.target.value)}
             placeholder="Description (optional)"
-            className="h-7 text-base sm:text-[10px] bg-muted/20 border-border/30"
+            className="h-7 text-base sm:text-[12px] bg-muted/20 border-border/30"
           />
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-1.5 text-[10px] text-foreground/70 cursor-pointer">
+            <label className="flex items-center gap-1.5 text-[12px] text-foreground/70 cursor-pointer">
               <input type="checkbox" checked={newGroupPrivate} onChange={(e) => setNewGroupPrivate(e.target.checked)} className="rounded" />
               Private
             </label>
-            <label className="flex items-center gap-1.5 text-[10px] text-foreground/70 cursor-pointer">
+            <label className="flex items-center gap-1.5 text-[12px] text-foreground/70 cursor-pointer">
               <input type="checkbox" checked={newGroupClosed} onChange={(e) => setNewGroupClosed(e.target.checked)} className="rounded" />
               Closed
             </label>
@@ -1616,12 +1467,12 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
               // The ID is required BY THE RELAY, so the button must require it
               // too. Enabling without one offered an action that could only fail.
               disabled={creatingGroup || !newGroupName.trim() || !newGroupId.trim()}
-              className="h-7 text-[10px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="h-7 text-[12px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {creatingGroup ? <RelayOutpostInlineLoader className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
               Create
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setShowCreateForm(false)} className="h-7 text-[10px]">
+            <Button size="sm" variant="ghost" onClick={() => setShowCreateForm(false)} className="h-7 text-[12px]">
               Cancel
             </Button>
           </div>
@@ -1631,10 +1482,10 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
       {loading ? (
         <div className="flex items-center gap-2 py-4 justify-center">
           <RelayOutpostInlineLoader className="w-4 h-4" />
-          <span className="text-xs text-muted-foreground/50">Loading groups…</span>
+          <span className="text-xs text-muted-foreground">Loading groups…</span>
         </div>
       ) : groups.length === 0 ? (
-        <p className="text-xs text-muted-foreground/40 text-center py-4">
+        <p className="text-xs text-muted-foreground text-center py-4">
           {groupsReached === false
             ? "Couldn't reach your community, so we can't list its groups."
             : "No group chats yet."}
@@ -1661,21 +1512,21 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
           <div className="flex items-center gap-2">
             <Hash className="w-3.5 h-3.5 text-brand dark:text-brand/70" />
             <span className="text-sm font-medium text-foreground/90">{selectedGroup.name || selectedGroup.id}</span>
-            {selectedGroup.isPrivate && <Badge variant="outline" className="text-[10px] border-amber-400/30 text-amber-700 dark:text-amber-400/70">Private</Badge>}
-            {selectedGroup.isClosed && <Badge variant="outline" className="text-[10px] border-red-400/30 text-danger dark:text-red-400/70">Closed</Badge>}
-            {selectedGroup.isRestricted && <Badge variant="outline" className="text-[10px] border-blue-400/30 text-blue-700 dark:text-blue-400/70">Restricted</Badge>}
+            {selectedGroup.isPrivate && <Badge variant="outline" className="text-[12px] border-amber-400/30 text-amber-700 dark:text-amber-400/70">Private</Badge>}
+            {selectedGroup.isClosed && <Badge variant="outline" className="text-[12px] border-red-400/30 text-danger dark:text-red-400/70">Closed</Badge>}
+            {selectedGroup.isRestricted && <Badge variant="outline" className="text-[12px] border-blue-400/30 text-blue-700 dark:text-blue-400/70">Restricted</Badge>}
           </div>
-          {selectedGroup.about && <p className="text-[10px] text-muted-foreground/50">{selectedGroup.about}</p>}
+          {selectedGroup.about && <p className="text-[12px] text-muted-foreground">{selectedGroup.about}</p>}
 
           {loadingDetail ? (
             <div className="flex items-center gap-2 py-3 justify-center">
               <RelayOutpostInlineLoader className="w-4 h-4" />
-              <span className="text-[10px] text-muted-foreground/50">Loading details…</span>
+              <span className="text-[12px] text-muted-foreground">Loading details…</span>
             </div>
           ) : (
             <>
               <div className="border-b border-border/20 pb-3">
-                <h4 className="text-[10px] font-brand tracking-wider uppercase text-muted-foreground/50 mb-1.5">Edit Metadata</h4>
+                <h4 className="text-[14px] font-medium text-foreground/80 mb-1.5">Edit details</h4>
                 <div className="flex flex-col gap-2">
                   <Input
                     value={selectedGroup?.name || ""}
@@ -1683,7 +1534,7 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
                       setGroups((prev) => prev.map((g) => g.id === selectedGroupId ? { ...g, name: e.target.value } : g));
                     }}
                     placeholder="Group name"
-                    className="h-7 text-base sm:text-[10px] bg-muted/20 border-border/30"
+                    className="h-7 text-base sm:text-[12px] bg-muted/20 border-border/30"
                   />
                   <Input
                     value={selectedGroup?.about || ""}
@@ -1691,52 +1542,52 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
                       setGroups((prev) => prev.map((g) => g.id === selectedGroupId ? { ...g, about: e.target.value } : g));
                     }}
                     placeholder="Description"
-                    className="h-7 text-base sm:text-[10px] bg-muted/20 border-border/30"
+                    className="h-7 text-base sm:text-[12px] bg-muted/20 border-border/30"
                   />
                   <Button
                     size="sm"
                     onClick={handleEditMetadata}
                     disabled={editingMetadata}
-                    className="h-7 text-[10px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground w-fit"
+                    className="h-7 text-[12px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground w-fit"
                   >
                     {editingMetadata ? <RelayOutpostInlineLoader className="w-3 h-3" /> : null}
-                    Save Metadata
+                    Save details
                   </Button>
                 </div>
               </div>
 
               <div className="border-b border-border/20 pb-3">
-                <h4 className="text-[10px] font-brand tracking-wider uppercase text-muted-foreground/50 mb-1.5">Roles</h4>
+                <h4 className="text-[14px] font-medium text-foreground/80 mb-1.5">Roles</h4>
                 {groupRoles.length > 0 ? (
                   <div className="flex flex-wrap gap-1 mb-2">
                     {groupRoles.map((r) => (
-                      <Badge key={r.name} variant="outline" className="text-[10px] border-brand/20 text-brand dark:text-brand/70">
+                      <Badge key={r.name} variant="outline" className="text-[12px] border-brand/20 text-brand dark:text-brand/70">
                         {r.name}{r.description ? ` — ${r.description}` : ""}
                       </Badge>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[10px] text-muted-foreground/30 mb-2">No roles set up yet</p>
+                  <p className="text-[12px] text-muted-foreground mb-2">No roles set up yet</p>
                 )}
-                <h5 className="text-[10px] text-muted-foreground/40 mb-1">Assign Role to User</h5>
+                <h5 className="text-[12px] text-muted-foreground mb-1">Assign Role to User</h5>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     value={editRolePubkey}
                     onChange={(e) => setEditRolePubkey(e.target.value)}
                     placeholder="Their profile link or key"
-                    className="flex-1 h-7 text-base sm:text-[10px] font-mono bg-muted/20 border-border/30"
+                    className="flex-1 h-7 text-base sm:text-[12px] font-mono bg-muted/20 border-border/30"
                   />
                   <Input
                     value={editRoleValue}
                     onChange={(e) => setEditRoleValue(e.target.value)}
                     placeholder="Role name(s), comma-separated"
-                    className="w-full sm:w-40 h-7 text-base sm:text-[10px] bg-muted/20 border-border/30"
+                    className="w-full sm:w-40 h-7 text-base sm:text-[12px] bg-muted/20 border-border/30"
                   />
                   <Button
                     size="sm"
                     onClick={handleAssignRole}
                     disabled={!editRolePubkey.trim() || !editRoleValue.trim() || assigningRole}
-                    className="h-7 text-[10px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground"
+                    className="h-7 text-[12px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
                     {assigningRole ? <RelayOutpostInlineLoader className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
                     Assign
@@ -1745,7 +1596,7 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
               </div>
 
               <div>
-                <h4 className="text-[10px] font-brand tracking-wider uppercase text-muted-foreground/50 mb-1.5">
+                <h4 className="text-[14px] font-medium text-foreground/80 mb-1.5">
                   Admins ({groupAdmins.length})
                 </h4>
                 <UserListToolbar
@@ -1759,29 +1610,29 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
                   onLoadActivity={adminActivity.run}
                 />
                 {groupAdmins.length === 0 ? (
-                  <p className="text-[10px] text-muted-foreground/30">
+                  <p className="text-[12px] text-muted-foreground">
                     {detailReached === false ? "Couldn't reach your community to read this." : "No admins defined"}
                   </p>
                 ) : adminFiltered.filtered.length === 0 ? (
-                  <p className="text-[10px] text-muted-foreground/60 text-center py-2">No matches.</p>
+                  <p className="text-[12px] text-muted-foreground text-center py-2">No matches.</p>
                 ) : (
                   <div className="space-y-1">
                     {adminFiltered.filtered.map((pk) => (
-                      <div key={pk} className="flex items-center gap-2 px-2 py-1 rounded text-[10px] bg-muted/20">
+                      <div key={pk} className="flex items-center gap-2 px-2 py-1 rounded text-[12px] bg-muted/20">
                         <div className="flex flex-col flex-1 min-w-0">
                           <span className="font-mono text-foreground/70 truncate">{memberProfiles[pk]?.name || pk.slice(0, 12) + "…"}</span>
-                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60">
+                          <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
                             <span title={adminAddedAt[pk] ? undefined : "We only started tracking add dates from now on."}>
                               {adminAddedAt[pk] ? `Added ${formatRelativeMs(adminAddedAt[pk])}` : "Added —"}
                             </span>
-                            <span className="text-muted-foreground/30">·</span>
+                            <span className="text-muted-foreground">·</span>
                             <span>{adminActivity.status === "loading" ? "Loading…" : adminActivity.status === "gated" ? "Activity not loaded" : formatRelativeSec(adminActivity.lastActive[pk])}</span>
                           </div>
                         </div>
                         {(adminRolesByPk[pk] || []).map((r) => (
-                          <Badge key={r} variant="outline" className="text-[10px] border-primary/20">{r}</Badge>
+                          <Badge key={r} variant="outline" className="text-[12px] border-primary/20">{r}</Badge>
                         ))}
-                        <button onClick={() => setRemoveConfirm(pk)} className="p-0.5 rounded hover:bg-red-500/10 text-muted-foreground/40 hover:text-red-500">
+                        <button onClick={() => setRemoveConfirm(pk)} className="p-0.5 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-500">
                           <UserMinus className="w-3 h-3" />
                         </button>
                       </div>
@@ -1791,7 +1642,7 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
               </div>
 
               <div>
-                <h4 className="text-[10px] font-brand tracking-wider uppercase text-muted-foreground/50 mb-1.5">
+                <h4 className="text-[14px] font-medium text-foreground/80 mb-1.5">
                   Members ({groupMembers.length})
                 </h4>
                 <UserListToolbar
@@ -1805,28 +1656,28 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
                   onLoadActivity={memberActivity.run}
                 />
                 {groupMembers.length === 0 ? (
-                  <p className="text-[10px] text-muted-foreground/30">
+                  <p className="text-[12px] text-muted-foreground">
                     {detailReached === false ? "Couldn't reach your community to read this." : "No members listed"}
                   </p>
                 ) : memberFiltered.filtered.length === 0 ? (
-                  <p className="text-[10px] text-muted-foreground/60 text-center py-2">No matches.</p>
+                  <p className="text-[12px] text-muted-foreground text-center py-2">No matches.</p>
                 ) : (
                   <div className="max-h-48 overflow-y-auto space-y-0.5">
                     {memberFiltered.filtered.map((p) => (
-                      <div key={p} className="group flex items-center gap-2 px-2 py-1 rounded text-[10px] hover:bg-muted/20">
+                      <div key={p} className="group flex items-center gap-2 px-2 py-1 rounded text-[12px] hover:bg-muted/20">
                         <div className="flex flex-col flex-1 min-w-0">
                           <span className="font-mono text-foreground/70 truncate">{memberProfiles[p]?.name || p.slice(0, 16) + "…"}</span>
-                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60">
+                          <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
                             <span title={memberAddedAt[p] ? undefined : "We only started tracking add dates from now on."}>
                               {memberAddedAt[p] ? `Added ${formatRelativeMs(memberAddedAt[p])}` : "Added —"}
                             </span>
-                            <span className="text-muted-foreground/30">·</span>
+                            <span className="text-muted-foreground">·</span>
                             <span>{memberActivity.status === "loading" ? "Loading…" : memberActivity.status === "gated" ? "Activity not loaded" : formatRelativeSec(memberActivity.lastActive[p])}</span>
                           </div>
                         </div>
                         <button
                           onClick={() => setRemoveConfirm(p)}
-                          className="touch-target p-0.5 rounded hover:bg-red-500/10 text-muted-foreground/40 hover:text-red-500 reveal-on-hover"
+                          className="touch-target p-0.5 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-500 reveal-on-hover"
                           aria-label={`Remove ${memberProfiles[p]?.name || p.slice(0, 16)}`}
                           title="Remove"
                           data-testid={`ops-remove-member-${p.slice(0, 8)}`}
@@ -1840,8 +1691,8 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
               </div>
 
               <div className="border-t border-border/20 pt-3">
-                <h4 className="text-[10px] font-brand tracking-wider uppercase text-muted-foreground/50 mb-1.5">
-                  Muted / Removed Users ({mutedUsers.length})
+                <h4 className="text-[14px] font-medium text-foreground/80 mb-1.5">
+                  Muted or removed ({mutedUsers.length})
                 </h4>
                 <UserListToolbar
                   controls={mutedControls.controls}
@@ -1854,20 +1705,20 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
                   onLoadActivity={mutedActivity.run}
                 />
                 {mutedUsers.length === 0 ? (
-                  <p className="text-[10px] text-muted-foreground/30 mb-2">No muted users</p>
+                  <p className="text-[12px] text-muted-foreground mb-2">No muted users</p>
                 ) : mutedFiltered.filtered.length === 0 ? (
-                  <p className="text-[10px] text-muted-foreground/60 text-center py-2 mb-2">No matches.</p>
+                  <p className="text-[12px] text-muted-foreground text-center py-2 mb-2">No matches.</p>
                 ) : (
                   <div className="max-h-32 overflow-y-auto space-y-0.5 mb-2">
                     {mutedFiltered.filtered.map((p) => (
-                      <div key={p} className="group flex items-center gap-2 px-2 py-1 rounded text-[10px] hover:bg-muted/20">
+                      <div key={p} className="group flex items-center gap-2 px-2 py-1 rounded text-[12px] hover:bg-muted/20">
                         <div className="flex flex-col flex-1 min-w-0">
                           <span className="font-mono text-danger dark:text-red-400/70 truncate">{memberProfiles[p]?.name || p.slice(0, 16) + "…"}</span>
-                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60">
+                          <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
                             <span title={mutedAddedAt[p] ? undefined : "We only started tracking mute dates from now on."}>
                               {mutedAddedAt[p] ? `Muted ${formatRelativeMs(mutedAddedAt[p])}` : "Muted —"}
                             </span>
-                            <span className="text-muted-foreground/30">·</span>
+                            <span className="text-muted-foreground">·</span>
                             <span>{mutedActivity.status === "loading" ? "Loading…" : mutedActivity.status === "gated" ? "Activity not loaded" : formatRelativeSec(mutedActivity.lastActive[p])}</span>
                           </div>
                         </div>
@@ -1875,7 +1726,7 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
                           size="sm"
                           variant="ghost"
                           onClick={() => handleUnmuteUser(p)}
-                          className="touch-target h-5 text-[10px] text-emerald-600/70 dark:text-emerald-400/70 reveal-on-hover px-1"
+                          className="touch-target h-5 text-[12px] text-emerald-600/70 dark:text-emerald-400/70 reveal-on-hover px-1"
                           title="Unmute"
                           data-testid={`ops-unmute-${p.slice(0, 8)}`}
                         >
@@ -1890,13 +1741,13 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
                     value={muteUserPubkey}
                     onChange={(e) => setMuteUserPubkey(e.target.value)}
                     placeholder="Profile link or key of who to mute"
-                    className="flex-1 h-7 text-base sm:text-[10px] font-mono bg-muted/20 border-border/30"
+                    className="flex-1 h-7 text-base sm:text-[12px] font-mono bg-muted/20 border-border/30"
                   />
                   <Button
                     size="sm"
                     onClick={handleMuteUser}
                     disabled={!muteUserPubkey.trim() || mutingUser}
-                    className="h-7 text-[10px] gap-1 bg-red-600 hover:bg-red-700 text-white"
+                    className="h-7 text-[12px] gap-1 bg-red-600 hover:bg-red-700 text-white"
                   >
                     {mutingUser ? <RelayOutpostInlineLoader className="w-3 h-3" /> : <UserMinus className="w-3 h-3" />}
                     Mute
@@ -1905,35 +1756,35 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
               </div>
 
               <div className="border-t border-border/20 pt-3">
-                <h4 className="text-[10px] font-brand tracking-wider uppercase text-muted-foreground/50 mb-1.5">Add User</h4>
+                <h4 className="text-[14px] font-medium text-foreground/80 mb-1.5">Add a person</h4>
                 <Button
                   size="sm"
                   onClick={() => setShowAddMemberSheet(true)}
-                  className="h-7 text-[10px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground"
+                  className="h-7 text-[12px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground"
                   data-testid="button-add-member-community"
                 >
                   <UserPlus className="w-3 h-3" />
                   Add member
                 </Button>
-                <p className="mt-1 text-[10px] text-muted-foreground/40">
+                <p className="mt-1 text-[12px] text-muted-foreground">
                   Direct add by npub, nprofile, or hex pubkey. Optional role grants moderation power.
                 </p>
               </div>
 
               <div className="border-t border-border/20 pt-3">
-                <h4 className="text-[10px] font-brand tracking-wider uppercase text-muted-foreground/50 mb-1.5">Create Invite Code</h4>
+                <h4 className="text-[14px] font-medium text-foreground/80 mb-1.5">Create an invite code</h4>
                 <div className="flex gap-2">
                   <Input
                     value={inviteCode}
                     onChange={(e) => setInviteCode(e.target.value)}
                     placeholder="Enter invite code"
-                    className="flex-1 h-7 text-base sm:text-[10px] bg-muted/20 border-border/30"
+                    className="flex-1 h-7 text-base sm:text-[12px] bg-muted/20 border-border/30"
                   />
                   <Button
                     size="sm"
                     onClick={handleCreateInvite}
                     disabled={!inviteCode.trim() || creatingInvite}
-                    className="h-7 text-[10px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground"
+                    className="h-7 text-[12px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
                     {creatingInvite ? <RelayOutpostInlineLoader className="w-3 h-3" /> : <Key className="w-3 h-3" />}
                     Create
@@ -1942,19 +1793,19 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
               </div>
 
               <div className="border-t border-border/20 pt-3">
-                <h4 className="text-[10px] font-brand tracking-wider uppercase text-muted-foreground/50 mb-1.5">Delete Event</h4>
+                <h4 className="text-[14px] font-medium text-foreground/80 mb-1.5">Delete a post</h4>
                 <div className="flex gap-2">
                   <Input
                     value={deleteEventId}
                     onChange={(e) => setDeleteEventId(e.target.value)}
                     placeholder="Link to the message"
-                    className="flex-1 h-7 text-base sm:text-[10px] font-mono bg-muted/20 border-border/30"
+                    className="flex-1 h-7 text-base sm:text-[12px] font-mono bg-muted/20 border-border/30"
                   />
                   <Button
                     size="sm"
                     onClick={handleDeleteEvent}
                     disabled={!deleteEventId.trim() || deletingEvent}
-                    className="h-7 text-[10px] gap-1 bg-red-600 hover:bg-red-700 text-white"
+                    className="h-7 text-[12px] gap-1 bg-red-600 hover:bg-red-700 text-white"
                   >
                     {deletingEvent ? <RelayOutpostInlineLoader className="w-3 h-3" /> : <Trash2 className="w-3 h-3" />}
                     Delete
@@ -1967,12 +1818,12 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
                   "End this space" last: nobody should reach it on the way to
                   something else. */}
               <div className="border-t border-border/20 pt-3">
-                <h4 className="text-[10px] font-brand tracking-wider uppercase text-muted-foreground/50 mb-1.5">Remove Group</h4>
+                <h4 className="text-[14px] font-medium text-foreground/80 mb-1.5">Remove group</h4>
                 <Button
                   size="sm"
                   onClick={() => setConfirmDeleteGroup(true)}
                   disabled={deletingGroup}
-                  className="h-7 text-[10px] gap-1 bg-red-600 hover:bg-red-700 text-white"
+                  className="h-7 text-[12px] gap-1 bg-red-600 hover:bg-red-700 text-white"
                   data-testid="button-delete-group-ops"
                 >
                   {deletingGroup ? <RelayOutpostInlineLoader className="w-3 h-3" /> : <Trash2 className="w-3 h-3" />}
@@ -1981,7 +1832,7 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
                 {/* Said plainly because it is true and this console cannot know
                     otherwise: a relay gates 9008 on the group's own admin list,
                     so being the relay's operator may not be enough. */}
-                <p className="mt-1 text-[10px] text-muted-foreground/40">
+                <p className="mt-1 text-[12px] text-muted-foreground">
                   Asks the relay to delete this room for everyone. Relays usually only accept this
                   from an admin of the room itself — if it declines, it will say why.
                 </p>
@@ -1989,28 +1840,28 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
 
               {modLog.length > 0 && (
                 <div className="border-t border-border/20 pt-3">
-                  <h4 className="text-[10px] font-brand tracking-wider uppercase text-muted-foreground/50 mb-1.5">
-                    Moderation Log ({modLog.length})
+                  <h4 className="text-[14px] font-medium text-foreground/80 mb-1.5">
+                    Moderation history ({modLog.length})
                   </h4>
                   <div className="max-h-40 overflow-y-auto space-y-1">
                     {modLog.map((e) => {
                       const targetPubkey = e.tags.find((t) => t[0] === "p")?.[1];
                       const targetEvent = e.tags.find((t) => t[0] === "e")?.[1];
                       return (
-                        <div key={e.id} className="flex items-center gap-2 px-2 py-1 rounded text-[10px] bg-muted/10 hover:bg-muted/20">
+                        <div key={e.id} className="flex items-center gap-2 px-2 py-1 rounded text-[12px] bg-muted/10 hover:bg-muted/20">
                           <span className="text-brand dark:text-brand/70 font-medium shrink-0">
                             {getModerationActionName(e.kind)}
                           </span>
                           {targetPubkey && (
-                            <span className="font-mono text-muted-foreground/50 truncate">{targetPubkey.slice(0, 12)}…</span>
+                            <span className="font-mono text-muted-foreground truncate">{targetPubkey.slice(0, 12)}…</span>
                           )}
                           {targetEvent && (
-                            <span className="font-mono text-muted-foreground/50 truncate">{targetEvent.slice(0, 12)}…</span>
+                            <span className="font-mono text-muted-foreground truncate">{targetEvent.slice(0, 12)}…</span>
                           )}
                           {e.content && (
-                            <span className="text-muted-foreground/40 truncate italic">"{e.content}"</span>
+                            <span className="text-muted-foreground truncate italic">"{e.content}"</span>
                           )}
-                          <span className="ml-auto text-muted-foreground/30 shrink-0">
+                          <span className="ml-auto text-muted-foreground shrink-0">
                             {formatDistanceToNow(e.created_at * 1000, { addSuffix: true })}
                           </span>
                         </div>
@@ -2027,8 +1878,8 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
       <AlertDialog open={!!removeConfirm} onOpenChange={() => setRemoveConfirm(null)}>
         <AlertDialogContent className="glass-dialog-card border-red-500/20 max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm font-brand tracking-wide">Remove User?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground/70">
+            <AlertDialogTitle className="text-base font-semibold">Remove this person?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground">
               This will remove the user from this group.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -2047,8 +1898,8 @@ function CommsManagementSection({ relayUrl, nip11 }: { relayUrl: string; nip11: 
       <AlertDialog open={confirmDeleteGroup} onOpenChange={(o) => { if (!o && !deletingGroup) setConfirmDeleteGroup(false); }}>
         <AlertDialogContent className="glass-dialog-card border-red-500/20 max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm font-brand tracking-wide">Remove this group?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground/70">
+            <AlertDialogTitle className="text-base font-semibold">Remove this group?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground">
               {/* A REQUEST, not an act — the same wording the space drawer uses,
                   because the relay is the arbiter in both places and pretending
                   otherwise is how a control starts lying. */}

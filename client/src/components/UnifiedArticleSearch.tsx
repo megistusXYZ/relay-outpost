@@ -86,7 +86,7 @@ function ArticleAuthorLine({ pubkey }: { pubkey: string }) {
     if (c?.display_name || c?.name) return c.display_name || c.name;
     try { return nip19.npubEncode(pubkey).slice(0, 14) + "…"; } catch { return pubkey.slice(0, 8); }
   }, [profileEvent, pubkey]);
-  return <div className="text-[11px] text-muted-foreground/60 truncate">by {name}</div>;
+  return <div className="text-[12px] text-muted-foreground truncate">by {name}</div>;
 }
 
 export function UnifiedArticleSearch({
@@ -366,7 +366,7 @@ export function UnifiedArticleSearch({
         />
         {(isSearching || query) && (
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-            {isSearching && <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-brand" />}
+            {isSearching && <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-muted-foreground" />}
             {query && (
               <button
                 type="button"
@@ -416,7 +416,7 @@ export function UnifiedArticleSearch({
           )}
           {!isAuthorOnly && hashtags.length > 0 && (
             <div>
-              <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/50 font-medium">Hashtags</div>
+              <div className="px-3 pt-2 pb-1 text-[13px] text-muted-foreground font-medium">Hashtags</div>
               {hashtags.map((h) => {
                 const idx = itemIndex();
                 const isActive = idx === activeIndex;
@@ -426,16 +426,16 @@ export function UnifiedArticleSearch({
                     onClick={() => commit({ type: "hashtag", tag: h.tag })}
                     onMouseEnter={() => setActiveIndex(idx)}
                     className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left ${
-                      isActive ? "bg-brand/15" : "hover:bg-brand/8"
+                      isActive ? "bg-foreground/[0.07]" : "hover:bg-foreground/[0.04]"
                     }`}
                     data-testid={`unified-hashtag-${h.tag}`}
                     role="option"
                     aria-selected={isActive}
                   >
-                    <Hash className="w-3.5 h-3.5 text-brand/80 shrink-0" />
+                    <Hash className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                     <span className="text-foreground/90 flex-1 truncate">{h.tag}</span>
                     {typeof h.count === "number" && h.count > 0 && (
-                      <span className="text-[10px] text-muted-foreground/60 font-mono shrink-0">{h.count}</span>
+                      <span className="text-[12px] text-muted-foreground font-mono shrink-0">{h.count}</span>
                     )}
                   </button>
                 );
@@ -445,7 +445,7 @@ export function UnifiedArticleSearch({
 
           {!isHashtagOnly && authors.length > 0 && (
             <div>
-              <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/50 font-medium">Authors</div>
+              <div className="px-3 pt-2 pb-1 text-[13px] text-muted-foreground font-medium">Authors</div>
               {authors.map((a) => {
                 const idx = itemIndex();
                 const isActive = idx === activeIndex;
@@ -456,7 +456,7 @@ export function UnifiedArticleSearch({
                     onClick={() => commit({ type: "author", pubkey: a.pubkey, displayName: a.name || undefined, picture: a.picture || undefined })}
                     onMouseEnter={() => setActiveIndex(idx)}
                     className={`w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors text-left ${
-                      isActive ? "bg-brand/15" : "hover:bg-brand/8"
+                      isActive ? "bg-foreground/[0.07]" : "hover:bg-foreground/[0.04]"
                     }`}
                     data-testid={`unified-author-${a.pubkey.slice(0, 8)}`}
                     role="option"
@@ -464,18 +464,18 @@ export function UnifiedArticleSearch({
                   >
                     <Avatar className="w-8 h-8 shrink-0">
                       {a.picture ? <AvatarImage src={a.picture} alt={a.name} /> : null}
-                      <AvatarFallback className="bg-brand/20 text-brand">
+                      <AvatarFallback className="bg-foreground/[0.08] text-foreground/80">
                         <User className="w-3.5 h-3.5" />
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-foreground/90 truncate">{a.name || fallback}</div>
                       {a.nip05 && (
-                        <div className="text-[11px] text-muted-foreground/60 truncate">{a.nip05}</div>
+                        <div className="text-[12px] text-muted-foreground truncate">{a.nip05}</div>
                       )}
                     </div>
                     {a.wot !== null && (
-                      <div className="flex items-center gap-1 text-[10px] text-success dark:text-emerald-500/80 shrink-0" title="Web of Trust score">
+                      <div className="flex items-center gap-1 text-[12px] text-success dark:text-emerald-500/80 shrink-0" title="Web of Trust score">
                         <ShieldCheck className="w-3 h-3" />
                         <span className="font-mono">{Math.round((a.wot ?? 0) * 100)}</span>
                       </div>
@@ -488,7 +488,7 @@ export function UnifiedArticleSearch({
 
           {!isHashtagOnly && !isAuthorOnly && articles.length > 0 && (
             <div>
-              <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/50 font-medium">Articles</div>
+              <div className="px-3 pt-2 pb-1 text-[13px] text-muted-foreground font-medium">Articles</div>
               {articles.map((r) => {
                 const idx = itemIndex();
                 const isActive = idx === activeIndex;
@@ -498,13 +498,13 @@ export function UnifiedArticleSearch({
                     onClick={() => commit({ type: "article", naddr: r.naddr })}
                     onMouseEnter={() => setActiveIndex(idx)}
                     className={`w-full flex items-start gap-2 px-3 py-2 text-sm transition-colors text-left ${
-                      isActive ? "bg-brand/15" : "hover:bg-brand/8"
+                      isActive ? "bg-foreground/[0.07]" : "hover:bg-foreground/[0.04]"
                     }`}
                     data-testid={`unified-article-${r.naddr.slice(0, 12)}`}
                     role="option"
                     aria-selected={isActive}
                   >
-                    <BookOpen className="w-3.5 h-3.5 text-brand/80 shrink-0 mt-0.5" />
+                    <BookOpen className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-foreground/90 line-clamp-2">{r.title}</div>
                       <ArticleAuthorLine pubkey={r.authorPubkey} />
@@ -515,7 +515,7 @@ export function UnifiedArticleSearch({
             </div>
           )}
 
-          <div className="px-3 py-1.5 text-[10px] text-muted-foreground/40 text-center font-brand uppercase tracking-wider border-t border-border/20">
+          <div className="px-3 py-1.5 text-[13px] text-muted-foreground text-center border-t border-border/20 font-medium">
             {isSearching ? "Searching Nostr…" : "Press ↑ ↓ to navigate · Enter to select"}
           </div>
           </div>

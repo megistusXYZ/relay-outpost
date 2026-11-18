@@ -5,12 +5,10 @@ import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
 import { Link } from "wouter";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { ExternalLink, Link2, Play, Pause, ChevronLeft, ChevronRight, X, Download, RotateCcw, RotateCw, ShieldAlert, Radio, Cast, MessageCircle, Maximize2, Volume2, VolumeX } from "lucide-react";
+import { ExternalLink, Link2, Play, Pause, ShieldAlert, Radio, Cast, MessageCircle, Maximize2, Volume2, VolumeX } from "lucide-react";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { VideoLightbox } from "@/components/VideoLightbox";
 import { WalledGardenFallback } from "@/components/WalledGardenFallback";
-import { registerAudioSource, unregisterAudioSource } from "@/lib/audio-coordinator";
 import { RelayOutpostIcon } from "@/components/RelayOutpostLoader";
 import { usePiP } from "@/contexts/PiPContext";
 import { usePersistentMedia } from "@/contexts/PersistentMediaContext";
@@ -18,7 +16,6 @@ import { use$ } from "applesauce-react/hooks";
 import { eventStore } from "@/lib/nostr";
 import { getAvatarUrl, getDisplayName, formatNpub, shortenNpub } from "@/lib/nostr-helpers";
 import {
-  type MediaItem,
   type ImetaData,
   extractMediaFromContent,
   parseImetaTags,
@@ -41,7 +38,7 @@ import { lazyNamed } from "@/lib/lazy-retry";
 // An invite card brings the group-chat code with it; load it only when a post links to an invite.
 const GroupInviteCard = lazy(() => lazyNamed(() => import("@/components/GroupInviteCard"), "GroupInviteCard"));
 import { detectGroupInvite } from "@/lib/concord/invite-detect";
-import { setActiveVideo, clearActiveVideo, isAutoplayMediaEnabled } from "@/lib/video-prefs";
+import { setActiveVideo, clearActiveVideo } from "@/lib/video-prefs";
 import { autoplayDecision, readAutoplayEnvironment, AUTOPLAY_VISIBILITY_THRESHOLD } from "@/lib/autoplay-policy";
 import { useAutoplayMediaSetting } from "@/lib/video-prefs";
 import { MusicLinkCard } from "@/components/MusicLinkCard";
@@ -77,6 +74,7 @@ import {
 } from "@/lib/media-ratio";
 import { getContentWarning, getSensitiveContentSetting, isCwRevealed, markCwRevealed } from "@/lib/sensitive-content";
 import { useBlossomHeal } from "@/hooks/use-blossom-heal";
+import { LiveTag } from "@/components/LiveBadge";
 
 // NostrPost imports this module, so its embed is loaded lazily (it's already
 // in the launch bundle, so this resolves at once).
@@ -103,7 +101,7 @@ function SensitiveContentOverlay({
         className="absolute inset-0 opacity-[0.07]"
         style={{
           backgroundImage:
-            "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(139,92,246,0.3) 3px, rgba(139,92,246,0.3) 4px)",
+            "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,0.12) 3px, rgba(255,255,255,0.12) 4px)",
         }}
       />
       <div className="relative flex flex-col items-center gap-3 px-6 py-4">
@@ -111,22 +109,22 @@ function SensitiveContentOverlay({
           className="w-12 h-12 rounded-full flex items-center justify-center border border-brand/30"
           style={{
             background:
-              "radial-gradient(circle at 30% 30%, rgba(139,92,246,0.25), rgba(30,10,60,0.9) 60%, rgba(5,2,15,0.95))",
+              "radial-gradient(circle at 30% 30%, rgba(60,90,160,0.25), rgba(16,22,40,0.9) 60%, rgba(5,6,10,0.95))",
           }}
         >
           <ShieldAlert className="w-5 h-5 text-brand/90" />
         </div>
         <div className="text-center">
-          <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-brand/80 mb-1">
-            Signal Flagged
+          <p className="text-[13px] font-bold text-brand/80 mb-1">
+            Flagged by your network
           </p>
           <p className="text-[11px] text-white/60 max-w-[200px] leading-relaxed">
             {reason}
           </p>
         </div>
         <div className="mt-1 px-4 py-1.5 rounded-full border border-brand/25 bg-brand/10 backdrop-blur-sm">
-          <span className="text-[10px] font-medium tracking-wider uppercase text-brand/90">
-            Tap to Reveal
+          <span className="text-[13px] font-medium text-brand/90">
+            Tap to reveal
           </span>
         </div>
       </div>
@@ -442,21 +440,21 @@ function InlineImage({
               className="absolute inset-0 opacity-[0.04] dark:opacity-[0.06]"
               style={{
                 backgroundImage:
-                  "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(139,92,246,0.3) 3px, rgba(139,92,246,0.3) 4px)",
+                  "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,0.12) 3px, rgba(255,255,255,0.12) 4px)",
               }}
             />
             <div className="relative flex flex-col items-center gap-2 sm:gap-3 group/reveal">
               <div className="relative flex items-center justify-center">
                 <div className="absolute w-[4.5rem] h-[4.5rem] sm:w-20 sm:h-20 rounded-full border border-brand/[0.08]/[0.12] group-hover/reveal:border-brand/20 transition-colors" />
                 <div
-                  className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full border border-brand/15 dark:border-brand/20 flex items-center justify-center shadow-[0_0_15px_rgba(88,28,135,0.2)] dark:shadow-[0_0_15px_rgba(88,28,135,0.3)] group-hover/reveal:shadow-[0_0_25px_rgba(88,28,135,0.4)] dark:group-hover/reveal:shadow-[0_0_25px_rgba(88,28,135,0.5)] group-hover/reveal:scale-105 transition-all overflow-hidden"
-                  style={{ background: "radial-gradient(circle at 30% 30%, rgba(99,102,241,0.25), rgba(30,10,60,0.95) 60%, rgba(5,2,15,0.98))" }}
+                  className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full border border-brand/15 dark:border-brand/20 flex items-center justify-center shadow-[0_0_15px_rgba(20,28,48,0.2)] dark:shadow-[0_0_15px_rgba(20,28,48,0.3)] group-hover/reveal:shadow-[0_0_25px_rgba(20,28,48,0.4)] dark:group-hover/reveal:shadow-[0_0_25px_rgba(20,28,48,0.5)] group-hover/reveal:scale-105 transition-all overflow-hidden"
+                  style={{ background: "radial-gradient(circle at 30% 30%, rgba(60,90,160,0.25), rgba(16,22,40,0.95) 60%, rgba(5,6,10,0.98))" }}
                 >
-                  <div className="absolute inset-0 opacity-60" style={{ backgroundImage: "radial-gradient(1px 1px at 20% 30%, rgba(167,139,250,0.7), transparent), radial-gradient(1px 1px at 70% 20%, rgba(129,140,248,0.5), transparent), radial-gradient(1px 1px at 45% 70%, rgba(192,132,252,0.6), transparent), radial-gradient(0.5px 0.5px at 80% 60%, rgba(167,139,250,0.4), transparent), radial-gradient(0.5px 0.5px at 15% 80%, rgba(129,140,248,0.3), transparent), radial-gradient(1px 1px at 60% 45%, rgba(139,92,246,0.5), transparent)" }} />
+                  <div className="absolute inset-0 opacity-60" style={{ backgroundImage: "radial-gradient(1px 1px at 20% 30%, rgba(220,226,240,0.7), transparent), radial-gradient(1px 1px at 70% 20%, rgba(160,180,255,0.5), transparent), radial-gradient(1px 1px at 45% 70%, rgba(200,212,240,0.6), transparent), radial-gradient(0.5px 0.5px at 80% 60%, rgba(220,226,240,0.4), transparent), radial-gradient(0.5px 0.5px at 15% 80%, rgba(160,180,255,0.3), transparent), radial-gradient(1px 1px at 60% 45%, rgba(160,180,255,0.5), transparent)" }} />
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-6 h-6 sm:w-7 sm:h-7 relative z-10 opacity-90 group-hover/reveal:opacity-100 transition-opacity drop-shadow-[0_0_3px_rgba(255,255,255,0.3)]">
                     <g clipPath="url(#clip0_reveal)">
-                      <path d="M5.64999 7.64999L2.85001 4.85001C2.54001 4.54001 2.76001 4 3.20001 4H6.79001C6.92001 4 7.05001 4.04999 7.14001 4.14999L12.14 9.14999C12.45 9.45999 12.23 10 11.79 10H8.5C6.57 10 5 11.57 5 13.5C5 15.43 6.57 17 8.5 17H10L12.15 19.15C12.46 19.46 12.24 20 11.8 20H8.51001C4.92001 20 2.01001 17.09 2.01001 13.5C2.01001 11.01 3.41001 8.84 5.48001 7.75L5.64999 7.64999Z" />
-                      <path d="M18.35 16.35L21.15 19.15C21.46 19.46 21.24 20 20.8 20H17.21C17.08 20 16.95 19.95 16.86 19.85L11.86 14.85C11.55 14.54 11.77 14 12.21 14H15.5C17.43 14 19 12.43 19 10.5C19 8.57 17.43 7 15.5 7H14L11.85 4.85001C11.54 4.54001 11.76 4 12.2 4H15.49C19.08 4 21.99 6.91 21.99 10.5C21.99 12.99 20.59 15.16 18.52 16.25L18.35 16.35Z" />
+                      <path d="M19.998 9.857A8.28 8.28 0 1 1 14.143 4.002A1.08 1.08 0 0 1 13.584 6.088A6.12 6.12 0 1 0 17.911 10.416A1.08 1.08 0 0 1 19.998 9.857Z" />
+                      <path d="M15.53 6.91A1.56 1.56 0 1 0 18.65 6.91A1.56 1.56 0 1 0 15.53 6.91Z" />
                     </g>
                     <defs>
                       <clipPath id="clip0_reveal">
@@ -466,8 +464,8 @@ function InlineImage({
                   </svg>
                 </div>
               </div>
-              <span className="text-[10px] sm:text-[11px] font-medium tracking-[0.15em] uppercase text-white/70 dark:text-brand/60">
-                Tap to Reveal
+              <span className="text-[13px] sm:text-[12px] font-medium text-white/70 dark:text-brand/60">
+                Tap to reveal
               </span>
             </div>
           </div>
@@ -984,10 +982,7 @@ function InlineVideo({
     >
       {isHls && streamLiveness === "verified-live" && (
         <div className="flex items-center gap-1.5 px-2 py-1.5 bg-zinc-950/95 border-b border-white/5">
-          <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-600/90 text-white text-[10px] font-semibold uppercase tracking-wide" data-testid="badge-stream-live">
-            <Radio className="w-2.5 h-2.5 animate-pulse" />
-            LIVE
-          </div>
+          <LiveTag testId="badge-stream-live" />
           {liveStreamLink && (
             <Link
               href={liveStreamLink}
@@ -1116,14 +1111,14 @@ function InlineVideo({
           <div className="relative flex items-center justify-center">
             <div className="absolute w-[4.5rem] h-[4.5rem] rounded-full border border-brand/[0.08] group-hover/play:border-brand/20 transition-colors" />
             <div
-              className="relative w-14 h-14 rounded-full border border-brand/15 flex items-center justify-center shadow-[0_0_15px_rgba(88,28,135,0.3)] group-hover/play:shadow-[0_0_25px_rgba(88,28,135,0.5)] group-hover/play:scale-105 transition-all overflow-hidden"
-              style={{ background: "radial-gradient(circle at 30% 30%, rgba(99,102,241,0.25), rgba(30,10,60,0.95) 60%, rgba(5,2,15,0.98))" }}
+              className="relative w-14 h-14 rounded-full border border-brand/15 flex items-center justify-center shadow-[0_0_15px_rgba(20,28,48,0.3)] group-hover/play:shadow-[0_0_25px_rgba(20,28,48,0.5)] group-hover/play:scale-105 transition-all overflow-hidden"
+              style={{ background: "radial-gradient(circle at 30% 30%, rgba(60,90,160,0.25), rgba(16,22,40,0.95) 60%, rgba(5,6,10,0.98))" }}
             >
-              <div className="absolute inset-0 opacity-60" style={{ backgroundImage: "radial-gradient(1px 1px at 20% 30%, rgba(167,139,250,0.7), transparent), radial-gradient(1px 1px at 70% 20%, rgba(129,140,248,0.5), transparent), radial-gradient(1px 1px at 45% 70%, rgba(192,132,252,0.6), transparent), radial-gradient(0.5px 0.5px at 80% 60%, rgba(167,139,250,0.4), transparent), radial-gradient(0.5px 0.5px at 15% 80%, rgba(129,140,248,0.3), transparent), radial-gradient(1px 1px at 60% 45%, rgba(139,92,246,0.5), transparent)" }} />
+              <div className="absolute inset-0 opacity-60" style={{ backgroundImage: "radial-gradient(1px 1px at 20% 30%, rgba(220,226,240,0.7), transparent), radial-gradient(1px 1px at 70% 20%, rgba(160,180,255,0.5), transparent), radial-gradient(1px 1px at 45% 70%, rgba(200,212,240,0.6), transparent), radial-gradient(0.5px 0.5px at 80% 60%, rgba(220,226,240,0.4), transparent), radial-gradient(0.5px 0.5px at 15% 80%, rgba(160,180,255,0.3), transparent), radial-gradient(1px 1px at 60% 45%, rgba(160,180,255,0.5), transparent)" }} />
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-6 h-6 relative z-10 opacity-90 group-hover/play:opacity-100 transition-opacity drop-shadow-[0_0_3px_rgba(255,255,255,0.3)]">
                 <g clipPath="url(#clip0_play)">
-                  <path d="M5.64999 7.64999L2.85001 4.85001C2.54001 4.54001 2.76001 4 3.20001 4H6.79001C6.92001 4 7.05001 4.04999 7.14001 4.14999L12.14 9.14999C12.45 9.45999 12.23 10 11.79 10H8.5C6.57 10 5 11.57 5 13.5C5 15.43 6.57 17 8.5 17H10L12.15 19.15C12.46 19.46 12.24 20 11.8 20H8.51001C4.92001 20 2.01001 17.09 2.01001 13.5C2.01001 11.01 3.41001 8.84 5.48001 7.75L5.64999 7.64999Z" />
-                  <path d="M18.35 16.35L21.15 19.15C21.46 19.46 21.24 20 20.8 20H17.21C17.08 20 16.95 19.95 16.86 19.85L11.86 14.85C11.55 14.54 11.77 14 12.21 14H15.5C17.43 14 19 12.43 19 10.5C19 8.57 17.43 7 15.5 7H14L11.85 4.85001C11.54 4.54001 11.76 4 12.2 4H15.49C19.08 4 21.99 6.91 21.99 10.5C21.99 12.99 20.59 15.16 18.52 16.25L18.35 16.35Z" />
+                  <path d="M19.998 9.857A8.28 8.28 0 1 1 14.143 4.002A1.08 1.08 0 0 1 13.584 6.088A6.12 6.12 0 1 0 17.911 10.416A1.08 1.08 0 0 1 19.998 9.857Z" />
+                  <path d="M15.53 6.91A1.56 1.56 0 1 0 18.65 6.91A1.56 1.56 0 1 0 15.53 6.91Z" />
                 </g>
                 <defs>
                   <clipPath id="clip0_play">
@@ -1235,11 +1230,11 @@ export function ShoshoCard({ url, host }: { url: string; host: string }) {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider">
+              <span className="flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-red-600 text-white text-[11px] font-bold">
                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                 Live
               </span>
-              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">Live on Shosho</span>
+              <span className="text-[13px] font-medium text-muted-foreground/70">Live on Shosho</span>
             </div>
             <p className="text-sm font-semibold text-foreground truncate">{stream.title?.trim() || "Watch the live stream"}</p>
             <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
@@ -1297,11 +1292,11 @@ function ZapStreamCard({ url }: { url: string }) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider">
+            <span className="flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-red-600 text-white text-[11px] font-bold">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               Live
             </span>
-            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">Live stream</span>
+            <span className="text-[13px] font-medium text-muted-foreground/70">Live stream</span>
           </div>
           <p className="text-sm font-semibold text-foreground truncate">Watch the live stream</p>
           <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
@@ -1568,7 +1563,7 @@ function OgLinkPreviewCard({
           </div>
         ) : (
           <>
-            <div className="text-[11px] text-muted-foreground/70 uppercase tracking-wider truncate">
+            <div className="text-[12px] text-muted-foreground/70 truncate font-medium">
               {domainLabel}
             </div>
             <div className={`font-medium text-foreground/90 mt-0.5 ${compact ? "text-xs line-clamp-2" : "text-sm line-clamp-2"}`}>
@@ -1670,7 +1665,7 @@ function NostrNoteEmbedInner({
         href={`/thread/${event.id}`}
         className="inline-flex items-center gap-1 text-[11px] text-brand/70"
       >
-        View full note <ExternalLink className="w-2.5 h-2.5" />
+        View full post <ExternalLink className="w-2.5 h-2.5" />
       </a>
     </div>
   );
@@ -1775,10 +1770,7 @@ function LiveStreamEventCard({ stream }: { stream: LiveEventData }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
         <div className="absolute top-3 left-3 flex items-center gap-1.5">
           {isLive ? (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-600/90 text-white text-xs font-semibold uppercase tracking-wide shadow-lg">
-              <Radio className="w-3 h-3 animate-pulse" />
-              LIVE
-            </div>
+            <LiveTag />
           ) : (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-700/80 text-zinc-300 text-xs font-semibold shadow-lg">
               {stream.status === "ended" ? "Ended" : "Planned"}

@@ -102,7 +102,7 @@ export default function KeyBackup() {
               </Button>
             )}
             <div className="space-y-2">
-              <Label className="text-[11px] font-brand uppercase tracking-widest text-muted-foreground">Password for this browser</Label>
+              <Label className="text-[12px] text-muted-foreground font-medium">Password for this browser</Label>
               <div className="relative">
                 <Input
                   {...deviceSecretInputProps(show)}

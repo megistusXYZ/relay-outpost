@@ -28,7 +28,7 @@ function MemberFace({ pubkey, size, className, style }: {
   return (
     <Avatar className={cn("shrink-0", className)} style={{ width: `${size}px`, height: `${size}px`, ...style }}>
       {avatar && <AvatarImage src={avatar} alt={name} />}
-      <AvatarFallback className="bg-brand/20 text-brand font-semibold" style={{ fontSize: `${Math.round(size * 0.4)}px` }}>
+      <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 font-semibold" style={{ fontSize: `${Math.round(size * 0.4)}px` }}>
         {name.slice(0, 2).toUpperCase()}
       </AvatarFallback>
     </Avatar>
@@ -66,7 +66,7 @@ export function GroupAvatar({
     return (
       <Avatar className={cn("border border-primary/25", className)} style={{ width: `${size}px`, height: `${size}px` }}>
         <AvatarImage src={photo} alt={name} />
-        <AvatarFallback className="bg-brand/20 text-brand font-bold" style={{ fontSize: `${Math.round(size * 0.3)}px` }}>
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 font-bold" style={{ fontSize: `${Math.round(size * 0.3)}px` }}>
           {name.slice(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>
@@ -79,7 +79,7 @@ export function GroupAvatar({
   if (faces.length === 0) {
     return (
       <Avatar className={cn("border border-primary/25", className)} style={{ width: `${size}px`, height: `${size}px` }}>
-        <AvatarFallback className="bg-brand/20 text-brand font-bold" style={{ fontSize: `${Math.round(size * 0.3)}px` }}>
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 font-bold" style={{ fontSize: `${Math.round(size * 0.3)}px` }}>
           {name.slice(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>

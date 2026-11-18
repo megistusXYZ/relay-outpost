@@ -64,7 +64,7 @@ export function RoomImagePicker({ image, picture, onChange, fallback = "?", size
       >
         <Avatar className="w-full h-full">
           {src && <AvatarImage src={src} alt="Group photo" />}
-          <AvatarFallback className="bg-brand/20 text-brand text-lg font-bold">{fallback.slice(0, 2).toUpperCase()}</AvatarFallback>
+          <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-lg font-bold">{fallback.slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <span className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity">
           {busy ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <ImagePlus className="w-5 h-5 text-white" />}
@@ -75,9 +75,9 @@ export function RoomImagePicker({ image, picture, onChange, fallback = "?", size
           {busy ? status || "Uploading…" : hasPhoto ? "Change photo" : "Upload photo"}
         </button>
         {hasPhoto && !busy && (
-          <button type="button" onClick={() => { setLocal(undefined); onChange(null); }} className="block text-[11px] text-muted-foreground/50 hover:text-destructive mt-0.5">Remove</button>
+          <button type="button" onClick={() => { setLocal(undefined); onChange(null); }} className="block text-xs text-muted-foreground hover:text-destructive mt-0.5">Remove</button>
         )}
-        {!busy && <p className="text-[11px] text-muted-foreground/50 mt-0.5">Encrypted, so only members can see it</p>}
+        {!busy && <p className="text-xs text-muted-foreground mt-0.5">Encrypted, so only members can see it</p>}
       </div>
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files?.[0])} data-testid="room-image-input" />
     </div>

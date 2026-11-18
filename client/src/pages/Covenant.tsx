@@ -15,14 +15,14 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-border/30 dark:border-border/15 bg-white/60 dark:bg-muted/10 p-5">
+    <section className="rounded-[20px] border border-border/60 bg-card p-5">
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-brand/10 to-brand/10 border border-brand/10 flex items-center justify-center shrink-0">
-          <Icon className="w-4 h-4 text-brand" />
+        <div className="w-9 h-9 rounded-full dark:bg-foreground/[0.05] flex items-center justify-center shrink-0">
+          <Icon className="w-4 h-4 text-foreground/75" />
         </div>
-        <h2 className="text-sm font-bold text-foreground/90 uppercase tracking-wider">{title}</h2>
+        <h2 className="text-[16px] font-semibold text-foreground">{title}</h2>
       </div>
-      <div className="text-[13px] text-foreground/80 dark:text-foreground/75 leading-relaxed space-y-2">
+      <div className="text-[15px] text-foreground/80 leading-relaxed space-y-2">
         {children}
       </div>
     </section>
@@ -35,44 +35,44 @@ export default function Covenant() {
 
   return (
     <div className="h-dvh overflow-y-auto">
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-in fade-in duration-300" data-testid="page-covenant">
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-in fade-in duration-150" data-testid="page-covenant">
       <div className="flex items-center gap-3 mb-1">
-        <button type="button" onClick={() => goBack("/")} className="text-muted-foreground/50 hover:text-foreground transition-colors" data-testid="link-back-covenant" aria-label="Back">
+        <button type="button" onClick={() => goBack("/")} className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-back-covenant" aria-label="Back">
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div className="flex items-center gap-2">
-          <Compass className="w-7 h-7 text-brand dark:text-brand/80" />
+          <Compass className="w-7 h-7 text-foreground/70" />
           <div>
-            <h1 className="text-lg sm:text-xl font-black uppercase tracking-[0.06em] leading-none text-brand dark:text-brand/90" style={{ fontStyle: "italic" }}>
+            <h1 className="text-[24px] sm:text-[30px] font-semibold tracking-[-0.025em] leading-[1.1] text-foreground">
               Terms
             </h1>
-            <p className="text-[10px] text-brand/40 dark:text-brand/30 font-bold uppercase tracking-[0.2em] mt-0.5 ml-0.5">
-              the short version of the deal
+            <p className="text-[14px] sm:text-[15px] text-muted-foreground mt-1">
+              The short version of the deal
             </p>
           </div>
         </div>
       </div>
 
       {/* Public-beta notice. */}
-      <div className="mt-6 rounded-xl border border-amber-500/30 dark:border-amber-500/20 bg-amber-500/[0.06] p-4 flex items-start gap-3">
-        <FlaskConical className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-        <p className="text-[13px] text-foreground/80 dark:text-foreground/75 leading-relaxed">
+      <div className="mt-6 rounded-[20px] border border-amber-500/30 dark:border-amber-500/20 bg-amber-500/[0.06] p-4 flex items-start gap-3">
+        <FlaskConical className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
+        <p className="text-[15px] text-foreground/80 leading-relaxed">
           <strong>Public beta.</strong> Relay Outpost is early software. Things may change, break, or be removed while we build. Use it with that in mind, and keep a backup of your key.
         </p>
       </div>
 
-      <div className="mt-4 mb-6 rounded-xl border border-border/30 dark:border-border/15 bg-white/50 dark:bg-muted/10 p-5">
+      <div className="mt-4 mb-6 rounded-[20px] border border-border/60 bg-card p-5">
         <p className="text-sm text-foreground/85 dark:text-foreground/80 leading-relaxed">
           These are the terms for using Relay Outpost, written plainly. They're short because Relay Outpost is a thin client onto the Nostr network — a window, not a walled platform. The one thing to take away sits right at the top: <strong>your keys are yours, and we can't recover them.</strong>
         </p>
-        <p className="text-[11px] text-muted-foreground/70 mt-3 pt-3 border-t border-border/20">
+        <p className="text-[12px] text-muted-foreground/70 mt-3 pt-3 border-t border-border/20">
           Last updated {LAST_UPDATED} · Using Relay Outpost means you accept these terms
         </p>
       </div>
 
       {/* At a glance. */}
-      <div className="mb-6 rounded-xl border border-brand/20 dark:border-brand/12 bg-brand/[0.04] p-5">
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand/80 dark:text-brand/70 mb-3">At a glance</p>
+      <div className="mb-6 rounded-[20px] border border-border/60 bg-card p-5">
+        <p className="text-[15px] font-semibold text-foreground mb-3">At a glance</p>
         <ul className="space-y-2 text-[13px] text-foreground/85 dark:text-foreground/80">
           {[
             "Your key is yours — there's no password reset, so back it up.",
@@ -81,7 +81,7 @@ export default function Covenant() {
             "Relays and other services are run by third parties, under their own rules.",
           ].map((line) => (
             <li key={line} className="flex items-start gap-2">
-              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-brand shrink-0" />
+              <span className="mt-2 w-1.5 h-1.5 rounded-full bg-foreground/50 shrink-0" />
               <span>{line}</span>
             </li>
           ))}
@@ -104,7 +104,7 @@ export default function Covenant() {
         </Section>
 
         <Section icon={Radio} title="What you publish">
-          <p>Anything you post is signed by your key and sent to your chosen relays. Once it's out, copies may persist on relays, caches, and indexers outside our control. We can't "unpublish" a note for you.</p>
+          <p>Anything you post is signed by your key and sent to your chosen relays. Once it's out, copies may persist on relays, caches, and indexers outside our control. We can't "unpublish" a post for you.</p>
           <p>You're responsible for what you publish. Don't use Relay Outpost to:</p>
           <ul className="list-disc list-inside space-y-1">
             <li>Do anything illegal under the laws that apply to you.</li>
@@ -140,11 +140,11 @@ export default function Covenant() {
         </Section>
       </div>
 
-      <div className="mt-8 flex flex-wrap gap-3 text-[11px] text-muted-foreground/70">
+      <div className="mt-8 flex flex-wrap gap-3 text-[12px] text-muted-foreground/70">
         <Link href="/privacy" className="hover:text-foreground transition-colors underline decoration-dotted" data-testid="link-to-privacy">
           Privacy
         </Link>
-        <span className="text-muted-foreground/30">·</span>
+        <span className="text-muted-foreground">·</span>
         <Link href="/settings" className="hover:text-foreground transition-colors underline decoration-dotted" data-testid="link-to-settings-covenant">
           Settings
         </Link>

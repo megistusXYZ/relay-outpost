@@ -61,7 +61,7 @@ export default function Generator() {
             className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight leading-tight"
             data-testid="text-headline"
           >
-            Inscribe the Signal.
+            Put your posts on any website.
             <br />
             <span className="text-muted-foreground">Syndicate your reality.</span>
           </h1>
@@ -82,9 +82,9 @@ export default function Generator() {
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="npub-input"
-                  className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                  className="text-xs font-medium text-muted-foreground"
                 >
-                  Enter Npub
+                  Enter npub
                 </label>
                 <Input
                   id="npub-input"
@@ -98,9 +98,9 @@ export default function Generator() {
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="relay-input"
-                  className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                  className="text-xs font-medium text-muted-foreground"
                 >
-                  Custom Relay (Optional)
+                  Custom relay (optional)
                 </label>
                 <Input
                   id="relay-input"
@@ -134,8 +134,8 @@ export default function Generator() {
                     data-testid="card-embed-code"
                   >
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Embed Code
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Embed code
                       </span>
                       <Button
                         variant="ghost"

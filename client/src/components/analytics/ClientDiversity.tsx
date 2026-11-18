@@ -44,8 +44,8 @@ import {
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 
 const CHART_COLORS = [
-  "#8b5cf6", "#a78bfa", "#7c3aed", "#6d28d9", "#c4b5fd",
-  "#ddd6fe", "#5b21b6", "#4c1d95", "#ede9fe", "#f5f3ff",
+  "#3D6BFF", "#7C9BFF", "#A3ACBA", "#565D69", "#C8D4F0",
+  "#2A3A6A", "#FF6A3D", "#E6E8EC", "#8EA4C8", "#1F2430",
 ];
 
 const TIME_RANGES = [
@@ -124,7 +124,7 @@ function CustomTooltipContent({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-md border border-brand/20 bg-white dark:bg-[rgba(4,4,10,0.95)] px-3 py-2 text-xs shadow-lg">
-      <p className="font-display text-brand mb-1">{label}</p>
+      <p className="font-medium text-foreground mb-1">{label}</p>
       {payload.map((entry: any, i: number) => (
         <p key={i} className="text-foreground">
           {entry.name}: <span className="text-brand font-mono">{Number(entry.value).toLocaleString()}</span>
@@ -542,7 +542,7 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <Smartphone className="w-4 h-4 text-brand" />
-          <h2 className="text-sm font-display text-brand">Client Diversity Scanner</h2>
+          <h2 className="text-[15px] font-semibold text-foreground">Client diversity scanner</h2>
           {hasRun && (
             <Badge variant="secondary" data-testid="badge-event-count">
               {events.length.toLocaleString()} events
@@ -559,8 +559,8 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
         <div className="space-y-3">
           <div className="flex items-end gap-3 flex-wrap">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-                Time Range
+              <Label className="text-[13px] text-muted-foreground font-medium">
+                Time range
               </Label>
               <Select value={timeRange} onValueChange={setTimeRange} data-testid="select-time-range">
                 <SelectTrigger className="w-[100px]" style={{ fontSize: "16px" }} data-testid="select-time-range-trigger">
@@ -635,8 +635,8 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <Filter className="w-3 h-3 text-muted-foreground/50" />
-              <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-                Filter by Client
+              <Label className="text-[13px] text-muted-foreground font-medium">
+                Filter by client
               </Label>
               {selectedClients.size > 0 && (
                 <button
@@ -678,7 +678,7 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
         {summary && (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3" data-testid="summary-cards">
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Clients Found</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Clients found</p>
               <div className="flex items-center gap-1.5">
                 <BarChart3 className="w-3.5 h-3.5 text-brand" />
                 <p className="text-lg font-mono text-brand" data-testid="text-unique-clients">
@@ -688,7 +688,7 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
             </div>
 
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Top Client</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Top client</p>
               <div className="flex items-center gap-1.5">
                 <Smartphone className="w-3.5 h-3.5 text-brand" />
                 <div className="min-w-0">
@@ -703,7 +703,7 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
             </div>
 
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Identification Rate</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Identification rate</p>
               <div className="flex items-center gap-1.5">
                 <HelpCircle className="w-3.5 h-3.5 text-emerald-800 dark:text-emerald-400" />
                 <div className="min-w-0">
@@ -718,7 +718,7 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
             </div>
 
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Unique Users</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Unique users</p>
               <div className="flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5 text-brand" />
                 <div className="min-w-0">
@@ -733,7 +733,7 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
             </div>
 
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Total Events</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Total events</p>
               <div className="flex items-center gap-1.5">
                 <BarChart3 className="w-3.5 h-3.5 text-brand" />
                 <p className="text-lg font-mono text-foreground" data-testid="text-total-events">
@@ -768,8 +768,8 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
         {!loading && pieData.length > 0 && (
           <div className="space-y-4">
             <div data-testid="pie-chart-market-share">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50 mb-2">
-                Client Distribution
+              <p className="text-[13px] text-muted-foreground mb-2 font-medium">
+                Client distribution
               </p>
               <ResponsiveContainer width="100%" height={280}>
                 <PieChart>
@@ -789,7 +789,7 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
                   </Pie>
                   <Tooltip content={<CustomTooltipContent />} />
                   <Legend
-                    wrapperStyle={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}
+                    wrapperStyle={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -797,8 +797,8 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
 
             {areaData.length > 1 && (
               <div data-testid="area-chart-usage-over-time">
-                <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50 mb-2">
-                  Client Usage Over Time
+                <p className="text-[13px] text-muted-foreground mb-2 font-medium">
+                  Client usage over time
                 </p>
                 <ResponsiveContainer width="100%" height={240}>
                   <AreaChart data={areaData}>
@@ -810,22 +810,22 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
                         </linearGradient>
                       ))}
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(139,92,246,0.08)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(163,172,186,0.14)" />
                     <XAxis
                       dataKey="date"
-                      tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }}
+                      tick={{ fontSize: 12, fill: "rgba(255,255,255,0.3)" }}
                       axisLine={false}
                       tickLine={false}
                     />
                     <YAxis
-                      tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }}
+                      tick={{ fontSize: 12, fill: "rgba(255,255,255,0.3)" }}
                       axisLine={false}
                       tickLine={false}
                       width={40}
                     />
                     <Tooltip content={<CustomTooltipContent />} />
                     <Legend
-                      wrapperStyle={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}
+                      wrapperStyle={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}
                     />
                     {areaKeys.map((key, i) => (
                       <Area
@@ -845,19 +845,19 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
             )}
 
             <div data-testid="client-table">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50 mb-2">
-                Client Rankings
+              <p className="text-[13px] text-muted-foreground mb-2 font-medium">
+                Client rankings
               </p>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-brand/10">
-                      <th className="text-left py-2 pr-3 text-muted-foreground/50 font-brand uppercase tracking-widest text-[9px]">#</th>
-                      <th className="text-left py-2 pr-3 text-muted-foreground/50 font-brand uppercase tracking-widest text-[9px]">Client</th>
-                      <th className="text-right py-2 pr-3 text-muted-foreground/50 font-brand uppercase tracking-widest text-[9px]">Events</th>
-                      <th className="text-right py-2 pr-3 text-muted-foreground/50 font-brand uppercase tracking-widest text-[9px]">Share</th>
-                      <th className="text-right py-2 pr-3 text-muted-foreground/50 font-brand uppercase tracking-widest text-[9px]">Users</th>
-                      <th className="text-right py-2 text-muted-foreground/50 font-brand uppercase tracking-widest text-[9px]">Relays</th>
+                      <th className="text-left py-2 pr-3 text-muted-foreground text-[12px] font-medium">#</th>
+                      <th className="text-left py-2 pr-3 text-muted-foreground text-[12px] font-medium">Client</th>
+                      <th className="text-right py-2 pr-3 text-muted-foreground text-[12px] font-medium">Events</th>
+                      <th className="text-right py-2 pr-3 text-muted-foreground text-[12px] font-medium">Share</th>
+                      <th className="text-right py-2 pr-3 text-muted-foreground text-[12px] font-medium">Users</th>
+                      <th className="text-right py-2 text-muted-foreground text-[12px] font-medium">Relays</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -895,7 +895,7 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
                                 </button>
                                 {isExpanded && userList.length > 0 && (
                                   <div className="mt-2 ml-3.5 pb-2">
-                                    <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50 mb-1.5">
+                                    <p className="text-[13px] text-muted-foreground mb-1.5 font-medium">
                                       Users ({userList.length})
                                     </p>
                                     <ClientUserList users={userList} />

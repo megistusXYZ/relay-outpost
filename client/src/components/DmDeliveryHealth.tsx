@@ -68,7 +68,7 @@ function RelayHostList({ urls, testId }: { urls: string[]; testId: string }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1.5">
+    <p className="text-[12px] font-medium text-muted-foreground/60 mb-1.5">
       {children}
     </p>
   );

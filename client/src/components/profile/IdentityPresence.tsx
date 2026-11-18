@@ -91,7 +91,7 @@ export function IdentityCounts({
   const status = activityStatus(lastActiveAt, Math.floor(Date.now() / 1000));
   if (counts.length === 0 && !status) return null;
   if (compact) {
-    const dot = <span className="text-muted-foreground/50" aria-hidden="true">·</span>;
+    const dot = <span className="text-muted-foreground" aria-hidden="true">·</span>;
     return (
       <div className="mt-1 flex items-center justify-center flex-wrap gap-x-1.5 text-[13px] leading-snug" data-testid="identity-counts">
         {counts.map((c, i) => {
@@ -109,7 +109,7 @@ export function IdentityCounts({
         {status && (
           <span className="inline-flex items-center gap-x-1.5 text-[12px] text-muted-foreground" data-testid="identity-activity">
             {counts.length > 0 && dot}
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+            <span className="w-1.5 h-1.5 rounded-full bg-success" aria-hidden="true" />
             {status}
           </span>
         )}
@@ -146,7 +146,7 @@ export function IdentityCounts({
       )}
       {status && (
         <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground" data-testid="identity-activity">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+          <span className="w-1.5 h-1.5 rounded-full bg-success" aria-hidden="true" />
           {status}
         </div>
       )}
@@ -190,13 +190,13 @@ export function IdentityPresence({
             // one, so a wrapped line never starts with a stray "·".
             <span key={t} className="inline-flex items-center gap-1.5 whitespace-nowrap tabular-nums">
               {t}
-              {i < totals.length - 1 && <span className="text-muted-foreground/30">·</span>}
+              {i < totals.length - 1 && <span className="text-muted-foreground" aria-hidden="true">·</span>}
             </span>
           ))}
           {/* Plain words in the line, not a pill (owner, 2026-10-03). */}
           {isNew && (
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-brand" data-testid="identity-new-here">
-              {totals.length > 0 && <span className="text-muted-foreground/30" aria-hidden="true">·</span>}
+              {totals.length > 0 && <span className="text-muted-foreground" aria-hidden="true">·</span>}
               <Sprout className="w-3.5 h-3.5" aria-hidden="true" /> New here
             </span>
           )}

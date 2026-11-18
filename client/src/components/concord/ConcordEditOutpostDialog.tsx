@@ -151,7 +151,7 @@ export function ConcordEditOutpostDialog({ open, onOpenChange, community, onComm
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-[11px] font-medium text-muted-foreground/70">Group photo</label>
+            <label className="text-xs font-medium text-muted-foreground">Group photo</label>
             <RoomImagePicker
               image={image ?? undefined}
               picture={icon || undefined}
@@ -160,24 +160,24 @@ export function ConcordEditOutpostDialog({ open, onOpenChange, community, onComm
             />
           </div>
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-muted-foreground/70">Name</label>
+            <label className="text-xs font-medium text-muted-foreground">Name</label>
             <Input value={name} onChange={(e) => { touch("name"); setName(e.target.value); }} onKeyDown={(e) => { if (e.key === "Enter") save(); }} data-testid="input-edit-outpost-name" />
           </div>
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-muted-foreground/70">Description <span className="opacity-50">(optional)</span></label>
+            <label className="text-xs font-medium text-muted-foreground">Description <span className="opacity-50">(optional)</span></label>
             <Textarea value={about} onChange={(e) => { touch("about"); setAbout(e.target.value); }} rows={3} maxLength={500} placeholder="What's this group chat about?" className="resize-none text-sm" data-testid="input-edit-outpost-about" />
           </div>
           <div className="flex items-center justify-between gap-3 rounded-lg border border-border/30 bg-muted/10 p-2.5">
             <div className="min-w-0">
               <p className="text-sm font-medium">Let members invite</p>
-              <p className="text-[11px] text-muted-foreground/60">Anyone can create invite links, not just admins.</p>
+              <p className="text-xs text-muted-foreground">Anyone can create invite links, not just admins.</p>
             </div>
             <Switch checked={allowMemberInvites} onCheckedChange={(v) => { touch("allowMemberInvites"); setAllowMemberInvites(v); }} data-testid="switch-member-invites" />
           </div>
           <div className="space-y-2 rounded-lg border border-border/30 bg-muted/10 p-2.5" data-testid="disappearing-setting">
             <div className="min-w-0">
               <p className="text-sm font-medium">Disappearing messages</p>
-              <p className="text-[11px] text-muted-foreground/60">New messages disappear for everyone after this long. Anyone could still have saved a copy before then.</p>
+              <p className="text-xs text-muted-foreground">New messages disappear for everyone after this long. Anyone could still have saved a copy before then.</p>
             </div>
             <div className="grid grid-cols-4 gap-1" role="radiogroup" aria-label="Disappearing messages">
               {TIMER_CHOICES.map((c) => (
@@ -196,14 +196,14 @@ export function ConcordEditOutpostDialog({ open, onOpenChange, community, onComm
               ))}
             </div>
             {expiration > 0 && !TIMER_CHOICES.some((c) => c.seconds === expiration) && (
-              <p className="text-[11px] text-muted-foreground/60">Set elsewhere to {timerSpan(expiration)}.</p>
+              <p className="text-xs text-muted-foreground">Set elsewhere to {timerSpan(expiration)}.</p>
             )}
           </div>
           <div className="flex items-center justify-between gap-3 rounded-lg border border-border/30 bg-muted/10 p-2.5" data-testid="call-service-setting">
             <div className="min-w-0">
               <p className="text-sm font-medium">Calls</p>
-              <p className="text-[11px] text-muted-foreground/60">{callLine.text}</p>
-              {callLine.canChooseOurs && <p className="mt-1 text-[11px] text-muted-foreground/60">Use Relay Outpost's for this group, so everyone meets in one call.</p>}
+              <p className="text-xs text-muted-foreground">{callLine.text}</p>
+              {callLine.canChooseOurs && <p className="mt-1 text-xs text-muted-foreground">Use Relay Outpost's for this group, so everyone meets in one call.</p>}
             </div>
             {callLine.canChooseOurs && (
               <Switch checked={useOurCalls} onCheckedChange={(v) => { touch("callService"); setUseOurCalls(v); }}
@@ -214,7 +214,7 @@ export function ConcordEditOutpostDialog({ open, onOpenChange, community, onComm
               defect, and "we don't know this group's current details" is a real
               thing that happens — to anyone who joined after a rekey, forever. */}
           {!ready && (
-            <p className="text-[11px] text-muted-foreground/60" data-testid="edit-outpost-not-ready">
+            <p className="text-xs text-muted-foreground" data-testid="edit-outpost-not-ready">
               Waiting for this group's current details. Saving before they arrive would publish over whatever they turn out to be.
             </p>
           )}

@@ -132,7 +132,7 @@ export function OutpostHero({
         <div className="flex items-start gap-4 px-1 -mt-10">
           <Avatar className="w-24 h-24 border-4 border-background shadow-lg shrink-0">
             {avatarUrl && <AvatarImage src={avatarUrl} alt={title} />}
-            <AvatarFallback className="text-2xl bg-brand/10 text-brand font-semibold">{title.slice(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-2xl font-semibold">{title.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1 pt-12">
             <h1 className="text-xl font-bold leading-tight break-words inline-flex items-center gap-1.5 max-w-full" data-testid="hero-outpost-name">

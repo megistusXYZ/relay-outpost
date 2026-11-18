@@ -357,7 +357,7 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts, team, initialFilter }: 
                         <Checkbox checked={checked.has(p.pubkey)} aria-label={`Select ${name}`} data-testid="ops-person-check" />
                       </span>
                     )}
-                    <Avatar className="w-10 h-10 shrink-0">{prof?.picture && <AvatarImage src={prof.picture} alt="" />}<AvatarFallback className="bg-brand/10 text-brand">{name.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
+                    <Avatar className="w-10 h-10 shrink-0">{prof?.picture && <AvatarImage src={prof.picture} alt="" />}<AvatarFallback className="bg-foreground/[0.08] text-foreground/80">{name.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-baseline gap-2">
                         <span className="font-medium truncate">{name}</span>
@@ -392,7 +392,7 @@ export function PeopleTab({ relayUrl, nip11, onSeePosts, team, initialFilter }: 
       )}
 
       {selectMode && (
-        <div className={`${wide ? "sticky bottom-3" : "fixed inset-x-3 bottom-[calc(76px+env(safe-area-inset-bottom,0px))] z-40"} rounded-2xl border border-black/[0.08] dark:border-white/[0.1] bg-background/95 backdrop-blur shadow-lg px-3 py-2`} data-testid="ops-people-actionbar">
+        <div className={`${wide ? "sticky bottom-3" : "fixed inset-x-3 bottom-[calc(92px+env(safe-area-inset-bottom,0px))] z-40"} rounded-2xl border border-black/[0.08] dark:border-white/[0.1] bg-background/95 backdrop-blur shadow-lg px-3 py-2`} data-testid="ops-people-actionbar">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[13px] font-medium tabular-nums" data-testid="ops-people-selected-count">{checked.size} selected</span>
             <div className="ml-auto flex items-center gap-1">
@@ -444,7 +444,7 @@ function PersonDetail({ person, profile, trust, nowSec, relayName, can, where, o
   return (
     <div className="p-4 space-y-4" data-testid="ops-person-detail" data-pubkey={person.pubkey}>
       <div className="flex items-center gap-3">
-        <Avatar className="w-14 h-14 shrink-0">{profile?.picture && <AvatarImage src={profile.picture} alt="" />}<AvatarFallback className="bg-brand/10 text-brand text-lg">{name.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
+        <Avatar className="w-14 h-14 shrink-0">{profile?.picture && <AvatarImage src={profile.picture} alt="" />}<AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-lg">{name.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
         <div className="min-w-0 flex-1">
           <p className="text-[17px] font-semibold leading-tight truncate">{name}</p>
           {profile?.nip05 && <p className="text-[13px] text-muted-foreground truncate">{profile.nip05}</p>}

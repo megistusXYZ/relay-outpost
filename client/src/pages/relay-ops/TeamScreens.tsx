@@ -191,7 +191,7 @@ export function TeamScreen({ relayUrl, nip11, team }: { relayUrl: string; nip11:
           const canSwitch = powers.offered && team.isOwner && pk !== team.owner && !acts?.byHost;
           return (
             <li key={pk} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3.5 py-2 min-h-[60px]" data-testid="ops-team-member" data-pubkey={pk}>
-              <Avatar className="w-9 h-9 shrink-0">{p?.picture && <AvatarImage src={p.picture} alt="" />}<AvatarFallback className="bg-brand/10 text-brand">{name.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
+              <Avatar className="w-9 h-9 shrink-0">{p?.picture && <AvatarImage src={p.picture} alt="" />}<AvatarFallback className="bg-foreground/[0.08] text-foreground/80">{name.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
               <span className="min-w-0 flex-1 basis-40">
                 <span className="block font-medium truncate">{name}</span>
                 <span className="block text-[13px] text-muted-foreground" data-testid="ops-team-role">{role}{acts?.byHost ? " · Set by your host" : ""}</span>
@@ -234,7 +234,7 @@ export function TeamScreen({ relayUrl, nip11, team }: { relayUrl: string; nip11:
               const name = p?.name || `${pubkeyToNpub(pk).slice(0, 14)}…`;
               return (
                 <li key={pk} className="flex items-center gap-3 px-3.5 min-h-[60px]" data-testid="ops-team-offer-person" data-pubkey={pk}>
-                  <Avatar className="w-9 h-9 shrink-0">{p?.picture && <AvatarImage src={p.picture} alt="" />}<AvatarFallback className="bg-brand/10 text-brand">{name.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
+                  <Avatar className="w-9 h-9 shrink-0">{p?.picture && <AvatarImage src={p.picture} alt="" />}<AvatarFallback className="bg-foreground/[0.08] text-foreground/80">{name.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
                   <span className="min-w-0 flex-1 font-medium truncate">{name}</span>
                   <Button variant="ghost" size="sm" className="h-10 px-3 text-[13px]" onClick={() => offer.notNow(pk)} data-testid="ops-team-offer-no">Not now</Button>
                   <Button size="sm" className="h-10 rounded-full px-4" disabled={busy || !team.canEncrypt} onClick={() => change([...team.members, pk], "Added to the team")} data-testid="ops-team-offer-add">Add</Button>
@@ -296,7 +296,7 @@ export function LogScreen({ relayUrl, nip11, team }: { relayUrl: string; nip11: 
         <ul className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] divide-y divide-black/[0.06] dark:divide-white/[0.06]" data-testid="ops-log-list">
           {team.log.map((e) => (
             <li key={e.id} className="flex items-start gap-3 px-3.5 py-3" data-testid="ops-log-entry">
-              <Avatar className="w-8 h-8 shrink-0">{profiles.get(e.author)?.picture && <AvatarImage src={profiles.get(e.author)!.picture} alt="" />}<AvatarFallback className="bg-brand/10 text-brand text-[12px]">{nameOf(e.author).slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
+              <Avatar className="w-8 h-8 shrink-0">{profiles.get(e.author)?.picture && <AvatarImage src={profiles.get(e.author)!.picture} alt="" />}<AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[12px]">{nameOf(e.author).slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
               <span className="min-w-0 flex-1">
                 <span className="block text-[14px] leading-snug"><span className="font-medium">{nameOf(e.author)}</span> · {describeLogEntry(e)}</span>
                 <span className="block text-[13px] text-muted-foreground">{e.targetPubkey ? `${nameOf(e.targetPubkey)} · ` : ""}{ago(e.at)}</span>

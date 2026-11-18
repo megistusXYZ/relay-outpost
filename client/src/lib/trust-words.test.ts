@@ -5,7 +5,7 @@ describe("trust, said as a fact about your network", () => {
   it("names the tie, never a grade", () => {
     expect(getTrustPhrase("strong")).toBe("Trusted by your network");
     expect(getTrustPhrase("moderate")).toBe("Known to your network");
-    expect(getTrustPhrase("low")).toBe("New to your network");
+    expect(getTrustPhrase("low")).toBe("Some ties to your network");
     expect(getTrustPhrase("weak")).toBe("Few ties to your network");
     expect(getTrustPhrase("flagged")).toBe("Your network has concerns");
   });

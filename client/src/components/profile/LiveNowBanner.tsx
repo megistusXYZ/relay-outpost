@@ -76,7 +76,7 @@ export function LiveBannerOverlay({ stream, placement = "bottom", contentClassNa
                 cover image. The one standing animation in the app — live is
                 the industry's pulsing idiom; motion-safe keeps it calm for
                 reduced-motion users. */}
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[12px] font-bold">
               <span className="relative flex w-2.5 h-2.5 items-center justify-center">
                 <span className="absolute inset-0 rounded-full bg-white/50 motion-safe:animate-ping" aria-hidden="true" />
                 <Radio className="relative w-2.5 h-2.5" />
@@ -84,7 +84,7 @@ export function LiveBannerOverlay({ stream, placement = "bottom", contentClassNa
               Live
             </span>
             {typeof viewers === "number" && viewers > 0 && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-white/85" data-testid="profile-live-viewers">
+              <span className="inline-flex items-center gap-1 text-[12px] font-medium text-white/85" data-testid="profile-live-viewers">
                 <Users className="w-3 h-3" />
                 {viewers.toLocaleString()}
               </span>
@@ -94,7 +94,7 @@ export function LiveBannerOverlay({ stream, placement = "bottom", contentClassNa
             {title || "Streaming now"}
           </span>
         </span>
-        <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-red-600 group-hover:bg-red-500 text-white text-xs font-semibold px-3.5 min-h-[36px] transition-colors shadow-lg shadow-black/30">
+        <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-red-600 group-hover:bg-red-500 text-white text-xs font-semibold px-3.5 min-h-[36px] transition-colors">
           <Play className="w-3.5 h-3.5" />
           Watch
         </span>

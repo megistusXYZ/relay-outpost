@@ -13,8 +13,9 @@
  * ShareEventDialog shell), because it's a list you thumb through on a phone.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { useLocation } from "wouter";
-import { Loader2, Send, Check, Users, Plus } from "lucide-react";
+import { Loader2, Send, Check, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import {
@@ -157,9 +158,9 @@ function InviteTargetList({ onOpenChange, recipientPubkey, recipientName, open }
     <>
       {targets.length === 0 ? (
         <div className="flex flex-col items-center text-center gap-2 py-5">
-          <Users className="w-8 h-8 text-muted-foreground/25" />
-          <p className="text-sm text-muted-foreground/70">No group chats yet</p>
-          <p className="text-xs text-muted-foreground/50 max-w-[16rem]">
+          <OttoEmpty mood="quiet" size={72} className="text-foreground/70" />
+          <p className="text-sm text-muted-foreground">No group chats yet</p>
+          <p className="text-xs text-muted-foreground max-w-[16rem]">
             Start one and {recipientName} gets the first invite.
           </p>
           <Button onClick={() => setCreateOpen(true)} className="mt-1 w-full h-11 md:h-9 gap-1.5" data-testid="invite-create-group">
@@ -176,7 +177,7 @@ function InviteTargetList({ onOpenChange, recipientPubkey, recipientName, open }
                 <GroupAvatar members={[]} picture={c.icon} image={c.iconImage} name={c.name} size={32} className="shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm truncate">{c.name}</p>
-                  {at && <p className="text-[11px] text-muted-foreground/50">Invited {formatCompactTime(at)}</p>}
+                  {at && <p className="text-xs text-muted-foreground">Invited {formatCompactTime(at)}</p>}
                 </div>
                 <Button
                   size="sm"
@@ -223,7 +224,7 @@ function InviteTargetList({ onOpenChange, recipientPubkey, recipientName, open }
               is its own defect, and "this group's invite setting may have
               changed since your device last heard from it" is the true one. */}
           {!pendingAllowed && (
-            <p className="text-[11px] text-muted-foreground/60" data-testid="invite-target-not-ready">
+            <p className="text-xs text-muted-foreground" data-testid="invite-target-not-ready">
               Checking whether this group still lets members invite. If it doesn't, ask an admin to send this one.
             </p>
           )}

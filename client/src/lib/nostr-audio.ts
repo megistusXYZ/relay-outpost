@@ -1,4 +1,4 @@
-import { pool, DEFAULT_RELAYS, throttledPoolSubscribe } from "./nostr";
+import { DEFAULT_RELAYS, throttledPoolSubscribe } from "./nostr";
 import {
   KIND_MUSIC_TRACK,
   KIND_WAVLAKE_TRACK,

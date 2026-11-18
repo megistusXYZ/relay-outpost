@@ -9,7 +9,7 @@ import { privateModeOnSignIn } from "@/lib/private-mode";
 import { loadReadStateFromRelay, initReadStateSync, scheduleReadStateSync, teardownReadStateSync } from "@/lib/read-state-sync";
 import { READSTATE_CHANGED_EVENT } from "@/lib/dm-read";
 import { Observable } from "rxjs";
-import { eventStore, pool, DEFAULT_RELAYS, fetchProfiles, fetchProfilesCached, throttledPoolSubscribe, startEventStorePruning, startIdleConnectionCleanup } from "@/lib/nostr";
+import { eventStore, pool, DEFAULT_RELAYS, fetchProfilesCached, throttledPoolSubscribe, startEventStorePruning, startIdleConnectionCleanup } from "@/lib/nostr";
 import { getProfileContent, KIND_METADATA, KIND_FOLLOW_LIST, parseFollowList } from "@/lib/nostr-helpers";
 import { setGlobalSigner } from "@/lib/nip42-auth";
 import { clearBrainstormAuth } from "@/lib/graperank";

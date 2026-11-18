@@ -41,11 +41,11 @@ export function ConcordReports({ communityId, roomName }: {
   const { pubkey } = useNostrAuth();
   const reports = useGroupReports(communityId);
   if (reports.length === 0) {
-    return <p className="text-xs text-muted-foreground/60">No reports. When a member reports a message, it shows up here. Only moderators see reports.</p>;
+    return <p className="text-xs text-muted-foreground">No reports. When a member reports a message, it shows up here. Only moderators see reports.</p>;
   }
   return (
     <div className="space-y-2">
-      <p className="text-[11px] text-muted-foreground/60">Remove a message from its menu in the room, or a person from People.</p>
+      <p className="text-xs text-muted-foreground">Remove a message from its menu in the room, or a person from People.</p>
       {reports.map((r) => (
         <ReportRow key={r.id} report={r} room={roomName(r.channelId)} onDone={() => { if (pubkey) dismissReport(pubkey, r.id); }} />
       ))}
@@ -58,7 +58,7 @@ function ReportRow({ report, room, onDone }: { report: GroupReport; room?: strin
   const reporter = useConcordProfile(report.reporter).name;
   return (
     <div className="rounded-lg border border-border/30 p-2.5 space-y-1.5" data-testid={`report-${report.id.slice(0, 8)}`}>
-      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/70 min-w-0">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
         <Flag className="w-3 h-3 text-amber-500 shrink-0" aria-hidden="true" />
         <span className="font-medium text-foreground/85 shrink-0">{REASON_LABEL[report.reason]}</span>
         {room && <span className="truncate">· #{room}</span>}
@@ -69,12 +69,12 @@ function ReportRow({ report, room, onDone }: { report: GroupReport; room?: strin
           <span className="font-medium">{author}:</span> {report.snippet}
         </blockquote>
       )}
-      {report.note && <p className="text-xs text-muted-foreground/80 break-words [overflow-wrap:anywhere]">“{report.note}”</p>}
+      {report.note && <p className="text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">“{report.note}”</p>}
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] text-muted-foreground/60 truncate">Reported by {reporter}</span>
+        <span className="text-xs text-muted-foreground truncate">Reported by {reporter}</span>
         <button
           onClick={onDone}
-          className="shrink-0 flex items-center gap-1 h-9 md:h-7 px-2.5 rounded-full text-[11px] text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
+          className="shrink-0 flex items-center gap-1 h-9 md:h-7 px-2.5 rounded-full text-xs text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
           data-testid={`report-done-${report.id.slice(0, 8)}`}
         >
           <Check className="w-3 h-3" /> Done

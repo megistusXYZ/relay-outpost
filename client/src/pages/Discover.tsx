@@ -167,7 +167,7 @@ function TileShell({ label, chip, onOpen, testId, children, footer, fresh }: {
   fresh?: boolean;
 }) {
   return (
-    <Card className={`glass-card overflow-hidden ${fresh ? "tile-fresh" : ""}`}>
+    <Card className={`glass-card overflow-hidden rounded-[20px] ${fresh ? "tile-fresh" : ""}`}>
       {/* ONE tile, ONE door, ONE destination: the SECTION. The per-teaser
           item doors from the first pass are gone (owner call, 2026-08-18 —
           "the article click space is way too big; a majority of the time
@@ -246,7 +246,7 @@ function FreshChip({ count }: { count: number }) {
   const shown = useCountUp(count);
   return (
     // Plain words beside the tile's label, not a pill (owner, 2026-10-03).
-    <span className="fresh-chip inline-flex items-center text-brand text-[11px] font-medium tabular-nums" data-testid="fresh-chip">
+    <span className="fresh-chip inline-flex items-center text-brand text-[13px] font-medium tabular-nums" data-testid="fresh-chip">
       {shown} new
     </span>
   );
@@ -263,7 +263,7 @@ function TileSkeleton() {
 
 /** The couldn't-reach body + its retry footer, shared by every tile. */
 function unreachableBody(what: string): ReactNode {
-  return <span className="block text-xs text-muted-foreground">Couldn't reach {what} — the content is there, we just couldn't ask.</span>;
+  return <span className="block text-[13px] text-muted-foreground">Couldn't reach {what} — the content is there, we just couldn't ask.</span>;
 }
 
 function RetryFooter({ onRetry, testId }: { onRetry: () => void; testId: string }) {
@@ -435,8 +435,8 @@ function NewsHeroTile() {
           <span className="flex items-center gap-2 mb-2">
             <span className={TILE_TITLE}>News</span>
             {unread > 0 && (
-              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-brand text-white text-[10px] font-semibold tabular-nums" data-testid="news-tile-unread">
-                {unread}
+              <span className="text-brand text-[13px] font-medium tabular-nums" data-testid="news-tile-unread">
+                {unread} new
               </span>
             )}
             <ChevronRight className="w-4 h-4 ml-auto shrink-0 text-muted-foreground/40" />
@@ -461,20 +461,20 @@ function NewsHeroTile() {
                   block-vs-webkit-box collision that made every clamp here inert. */}
               {dek && <span className="mt-2 hidden md:block"><span className="text-sm text-muted-foreground/80 line-clamp-3">{dek}</span></span>}
               {allFailed && (
-                <span className="block mt-2 text-[11px] text-muted-foreground/70" data-testid="news-hero-stale">
+                <span className="block mt-2 text-[12px] text-muted-foreground" data-testid="news-hero-stale">
                   Couldn't refresh — showing the last front page we saw.
                 </span>
               )}
             </>
           ) : noFeeds ? (
-            <span className="block text-xs text-muted-foreground">All front-page sources are hidden — open News to pick some.</span>
+            <span className="block text-[13px] text-muted-foreground">All front-page sources are hidden — open News to pick some.</span>
           ) : allFailed ? (
             unreachableBody("the news sources")
           ) : !settled ? (
             <TileSkeleton />
           ) : (
             // Someone answered and pickHero still found nothing to show.
-            <span className="block text-xs text-muted-foreground">You're caught up.</span>
+            <span className="block text-[13px] text-muted-foreground">You're caught up.</span>
           )}
         </span>
       </div>
@@ -548,15 +548,15 @@ function FeedTile({ trustKey }: { trustKey: string }) {
             const name = authorNameFor(p.pubkey);
             return (
               <span key={p.id} className="flex items-center gap-2 py-1.5 first:pt-0 last:pb-0">
-                <span className="w-[18px] h-[18px] rounded-full overflow-hidden bg-brand/15 shrink-0 flex items-center justify-center">
+                <span className="w-[18px] h-[18px] rounded-full overflow-hidden bg-foreground/[0.08] shrink-0 flex items-center justify-center">
                   {avatar ? (
                     <img src={avatar} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />
                   ) : (
-                    <span className="text-[8px] font-bold text-brand">{name.slice(0, 1).toUpperCase()}</span>
+                    <span className="text-[8px] font-semibold text-foreground/80">{name.slice(0, 1).toUpperCase()}</span>
                   )}
                 </span>
-                <span className="text-[11px] font-medium text-foreground/90 shrink-0 max-w-[88px] truncate">{name}</span>
-                <span className="text-[11px] text-muted-foreground truncate flex-1" data-testid="feed-tile-snippet">
+                <span className="text-[13px] font-medium text-foreground shrink-0 max-w-[110px] truncate">{name}</span>
+                <span className="text-[13px] text-muted-foreground truncate flex-1" data-testid="feed-tile-snippet">
                   {feedSnippet(p.content) || "Shared media"}
                 </span>
               </span>
@@ -565,7 +565,7 @@ function FeedTile({ trustKey }: { trustKey: string }) {
         </span>
       )}
       {(state.status === "empty" || (state.status === "ready" && posts.length === 0)) && (
-        <span className="block text-xs text-muted-foreground">Quiet right now — tap to look around.</span>
+        <span className="block text-[13px] text-muted-foreground">Quiet right now — tap to look around.</span>
       )}
       {state.status === "unreachable" && unreachableBody("the network")}
     </TileShell>
@@ -651,17 +651,17 @@ function CommunitiesTile({ widerNetworkOn = true }: { widerNetworkOn?: boolean }
               const meta = getOutpostMeta(r.url);
               const label = meta.name || r.label || r.url;
               return (
-                <span key={r.url} className="w-6 h-6 rounded-md overflow-hidden bg-brand/15 ring-1 ring-border/40 shrink-0 flex items-center justify-center" title={label}>
+                <span key={r.url} className="w-6 h-6 rounded-md overflow-hidden bg-foreground/[0.08] ring-1 ring-border/40 shrink-0 flex items-center justify-center" title={label}>
                   {meta.icon ? (
                     <img src={meta.icon} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />
                   ) : (
-                    <span className="text-[9px] font-bold text-brand">{label.slice(0, 1).toUpperCase()}</span>
+                    <span className="text-[9px] font-semibold text-foreground/80">{label.slice(0, 1).toUpperCase()}</span>
                   )}
                 </span>
               );
             })}
             {joined.length > 6 && (
-              <span className="text-[10px] text-muted-foreground/70 tabular-nums">+{joined.length - 6}</span>
+              <span className="text-[12px] text-muted-foreground tabular-nums">+{joined.length - 6}</span>
             )}
           </span>
           {p.newest && name ? (
@@ -671,13 +671,13 @@ function CommunitiesTile({ widerNetworkOn = true }: { widerNetworkOn?: boolean }
           ) : (
             <span className="block text-xs font-medium text-foreground/90">Quiet this week</span>
           )}
-          <span className="block text-xs text-muted-foreground">
+          <span className="block text-[13px] text-muted-foreground">
             {p.active} of {p.total} active this week
           </span>
         </>
       );
     } else {
-      body = <span className="block text-xs text-muted-foreground">Quiet this week.</span>;
+      body = <span className="block text-[13px] text-muted-foreground">Quiet this week.</span>;
     }
   } else if (!widerNetworkOn) {
     // Your space, no community yet: the public directory is the wider network,
@@ -685,7 +685,7 @@ function CommunitiesTile({ widerNetworkOn = true }: { widerNetworkOn?: boolean }
     body = (
       <>
         <span className="block text-xs font-medium text-foreground/90" data-testid="communities-tile-start">Name your community</span>
-        <span className="block text-xs text-muted-foreground">A private place for your people. You pick who's in it.</span>
+        <span className="block text-[13px] text-muted-foreground">A private place for your people. You pick who's in it.</span>
       </>
     );
   } else if (dir.loading) {
@@ -701,16 +701,16 @@ function CommunitiesTile({ widerNetworkOn = true }: { widerNetworkOn?: boolean }
           <span className="block divide-y divide-border/30 dark:divide-white/[0.05] mt-1" data-testid="communities-tile-suggestions">
             {guestMatches.map((m) => (
               <span key={m.url} className="flex items-center gap-2 py-1 first:pt-0 last:pb-0">
-                <span className="w-5 h-5 rounded-md overflow-hidden bg-brand/15 ring-1 ring-border/40 shrink-0 flex items-center justify-center">
+                <span className="w-5 h-5 rounded-md overflow-hidden bg-foreground/[0.08] ring-1 ring-border/40 shrink-0 flex items-center justify-center">
                   {m.icon ? (
                     <img src={m.icon} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />
                   ) : (
-                    <span className="text-[8px] font-bold text-brand">{m.name.slice(0, 1).toUpperCase()}</span>
+                    <span className="text-[8px] font-semibold text-foreground/80">{m.name.slice(0, 1).toUpperCase()}</span>
                   )}
                 </span>
-                <span className="text-[11px] text-foreground/85 truncate flex-1">{m.name}</span>
+                <span className="text-[13px] text-foreground truncate flex-1">{m.name}</span>
                 {typeof m.activeUserCount === "number" && m.activeUserCount > 0 && (
-                  <span className="text-[10px] text-muted-foreground/60 tabular-nums shrink-0">{m.activeUserCount} active</span>
+                  <span className="text-[12px] text-muted-foreground tabular-nums shrink-0">{m.activeUserCount} active</span>
                 )}
               </span>
             ))}
@@ -734,7 +734,7 @@ function CommunitiesTile({ widerNetworkOn = true }: { widerNetworkOn?: boolean }
     body = <TileSkeleton />;
   } else {
     // The monitors answered and the directory is genuinely empty right now.
-    body = <span className="block text-xs text-muted-foreground">Nothing to show yet.</span>;
+    body = <span className="block text-[13px] text-muted-foreground">Nothing to show yet.</span>;
   }
 
   return (
@@ -852,8 +852,8 @@ function ArticlesTile() {
                 </span>
               )}
               <span className="min-w-0 flex-1">
-                <span className="block text-[11.5px] font-medium text-foreground/90 truncate" data-testid="articles-tile-title">{a.title}</span>
-                <span className="block text-[10.5px] text-muted-foreground truncate">
+                <span className="block text-[14px] font-medium text-foreground truncate" data-testid="articles-tile-title">{a.title}</span>
+                <span className="block text-[12px] text-muted-foreground truncate">
                   {authorNameFor(a.event.pubkey)} · {formatDistanceToNow(new Date(a.publishedAt * 1000), { addSuffix: true })}
                 </span>
               </span>
@@ -862,7 +862,7 @@ function ArticlesTile() {
         </span>
       )}
       {(state.status === "empty" || (state.status === "ready" && !deciding && articles.length === 0)) && (
-        <span className="block text-xs text-muted-foreground">Nothing new — tap to browse.</span>
+        <span className="block text-[13px] text-muted-foreground">Nothing new — tap to browse.</span>
       )}
       {state.status === "unreachable" && unreachableBody("the article relays")}
     </TileShell>
@@ -995,7 +995,7 @@ function UniversalBar() {
                   <AvatarFallback className="text-[10px] bg-muted/50">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <span className="text-sm font-medium truncate">{name}</span>
-                {nip05 && <span className="ml-auto shrink-0 text-[11px] text-muted-foreground/60 truncate max-w-[45%]">{nip05}</span>}
+                {nip05 && <span className="ml-auto shrink-0 text-[12px] text-muted-foreground truncate max-w-[45%]">{nip05}</span>}
               </button>
             );
           })}
@@ -1051,7 +1051,7 @@ function ResultRow({ label, hint, onPick, testId, avatar }: {
         </Avatar>
       )}
       <span className="text-sm font-medium truncate">{label}</span>
-      {hint && <span className="ml-auto shrink-0 text-[11px] text-muted-foreground/60 truncate max-w-[45%]">{hint}</span>}
+      {hint && <span className="ml-auto shrink-0 text-[12px] text-muted-foreground truncate max-w-[45%]">{hint}</span>}
     </button>
   );
 }
@@ -1093,7 +1093,7 @@ function LiveTile() {
   // On-air whenever ANYONE is live, not just followed hosts — the facepile
   // below shows real faces either way, so the chip's claim is always backed.
   const chip = anyLive ? (
-    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-danger dark:text-red-500" data-testid="live-tile-chip">
+    <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-danger dark:text-red-500" data-testid="live-tile-chip">
       <span className="w-1.5 h-1.5 rounded-full bg-red-500 live-dot" />
       On air
     </span>
@@ -1141,7 +1141,7 @@ function LiveTile() {
       ) : trust.checked && !trust.reached ? (
         <span className="block text-xs text-muted-foreground" data-testid="live-tile-unchecked">Couldn't check who's trusted right now. Tap to see every stream.</span>
       ) : (
-        <span className="block text-xs text-muted-foreground">See who's broadcasting.</span>
+        <span className="block text-[13px] text-muted-foreground">See who's live.</span>
       )}
       {anyLive && hostPks.length > 0 && (
         <span className="mt-2 flex items-center" data-testid="live-tile-facepile">
@@ -1157,7 +1157,7 @@ function LiveTile() {
             );
           })}
           {livePubkeys.size > hostPks.length && (
-            <span className="ml-1.5 text-[10px] text-muted-foreground" data-testid="live-tile-more">
+            <span className="ml-1.5 text-[12px] text-muted-foreground" data-testid="live-tile-more">
               +{livePubkeys.size - hostPks.length}
             </span>
           )}
@@ -1208,7 +1208,7 @@ function PodcastsTile({ widerNetworkOn = true }: { widerNetworkOn?: boolean }) {
           </span>
         </span>
       )}
-      {!isLoading && !isError && !top && <span className="block text-xs text-muted-foreground">Browse trending shows.</span>}
+      {!isLoading && !isError && !top && <span className="block text-[13px] text-muted-foreground">Browse trending shows.</span>}
       {isError && unreachableBody("the podcast index")}
     </TileShell>
   );
@@ -1222,10 +1222,10 @@ function InviteTile() {
   return (
     <TileShell label="Invite" onOpen={() => setLocation("/account?invite=1")} testId="tile-invite">
       <span className="flex items-center gap-2.5">
-        <span className="w-10 h-10 rounded-md bg-brand/15 flex items-center justify-center shrink-0"><UserPlus className="w-5 h-5 text-brand" /></span>
+        <span className="w-10 h-10 rounded-full dark:bg-foreground/[0.06] flex items-center justify-center shrink-0"><UserPlus className="w-5 h-5 text-foreground/75" /></span>
         <span className="min-w-0">
           <span className="block text-xs font-medium text-foreground/90">Invite a friend</span>
-          <span className="block text-xs text-muted-foreground">Chats are better with people you know. Send them a link.</span>
+          <span className="block text-[13px] text-muted-foreground">Chats are better with people you know. Send them a link.</span>
         </span>
       </span>
     </TileShell>
@@ -1276,7 +1276,7 @@ function EventsTile() {
           <span className="block text-xs text-muted-foreground truncate">{when ?? "Upcoming"}</span>
         </>
       )}
-      {state.status === "empty" && <span className="block text-xs text-muted-foreground">Nothing scheduled — plan something.</span>}
+      {state.status === "empty" && <span className="block text-[13px] text-muted-foreground">Nothing scheduled — plan something.</span>}
       {state.status === "unreachable" && unreachableBody("the calendar relays")}
     </TileShell>
   );
@@ -1320,7 +1320,7 @@ function VideosTile() {
           <span className="block text-xs font-medium text-foreground/90 line-clamp-2 min-w-0" data-testid="videos-tile-title">{video.title}</span>
         </span>
       )}
-      {state.status === "empty" && <span className="block text-xs text-muted-foreground">Quiet right now — tap to browse.</span>}
+      {state.status === "empty" && <span className="block text-[13px] text-muted-foreground">Quiet right now — tap to browse.</span>}
       {state.status === "unreachable" && unreachableBody("the video relays")}
     </TileShell>
   );
@@ -1386,7 +1386,7 @@ function MarketplaceShelfTile() {
           ))}
         </span>
       )}
-      {state.status === "empty" && <span className="block text-xs text-muted-foreground">Quiet right now — tap to browse.</span>}
+      {state.status === "empty" && <span className="block text-[13px] text-muted-foreground">Quiet right now — tap to browse.</span>}
       {state.status === "unreachable" && unreachableBody("the marketplace relays")}
     </TileShell>
   );
@@ -1502,7 +1502,7 @@ function TopicsStrip() {
     <Card className="glass-card overflow-hidden">
       <div className="flex items-center gap-2 p-3 sm:p-4 flex-wrap" data-testid="strip-topics">
         <span className="flex items-center gap-2 mr-1">
-          <Hash className="w-4 h-4 text-brand/70 shrink-0" />
+          <Hash className="w-4 h-4 text-foreground/60 shrink-0" />
           <span className="text-sm font-semibold whitespace-nowrap">Talking about</span>
         </span>
         {risen.map((t) => (
@@ -1515,7 +1515,7 @@ function TopicsStrip() {
           >
             #{t.tag}
             {t.rising && <span className="ml-0.5 text-brand" aria-label="rising" data-testid={`topic-rising-${t.tag}`}>↑</span>}
-            <span className="ml-1 text-[10px] text-muted-foreground/60">{t.authors}</span>
+            <span className="ml-1 text-[12px] text-muted-foreground">{t.authors}</span>
           </button>
         ))}
       </div>

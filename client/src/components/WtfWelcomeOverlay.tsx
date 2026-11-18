@@ -164,9 +164,9 @@ export function WtfWelcomeOverlay({ open, onDismiss }: Props) {
         {/* Subtle starfield accents */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
           <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full opacity-40 dark:opacity-60"
-            style={{ background: "radial-gradient(circle, rgba(139,92,246,0.18) 0%, transparent 70%)" }} />
+            style={{ background: "radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 70%)" }} />
           <div className="absolute -bottom-16 -left-10 w-56 h-56 rounded-full opacity-30 dark:opacity-50"
-            style={{ background: "radial-gradient(circle, rgba(99,102,241,0.14) 0%, transparent 70%)" }} />
+            style={{ background: "radial-gradient(circle, rgba(255,255,255,0.14) 0%, transparent 70%)" }} />
           <span className="absolute top-[18%] left-[12%] w-[2px] h-[2px] rounded-full bg-brand/60 dark:bg-brand/70" />
           <span className="absolute top-[34%] right-[18%] w-[2px] h-[2px] rounded-full bg-brand/40 dark:bg-brand/50" />
           <span className="absolute bottom-[24%] left-[28%] w-[1.5px] h-[1.5px] rounded-full bg-brand/40" />
@@ -188,13 +188,13 @@ export function WtfWelcomeOverlay({ open, onDismiss }: Props) {
           {/* Identity row */}
           <div className="flex items-center justify-center gap-2 mb-5">
             <span
-              className="font-brand uppercase tracking-[0.18em] text-[13px] min-[480px]:text-sm font-bold text-foreground dark:text-white"
+              className="text-[13px] min-[480px]:text-sm font-bold text-foreground dark:text-white"
             >
               Relay
             </span>
             <RelayOutpostIcon className="w-3.5 h-3.5 text-brand" />
             <span
-              className="font-brand uppercase tracking-[0.18em] text-[13px] min-[480px]:text-sm font-bold text-foreground dark:text-white"
+              className="text-[13px] min-[480px]:text-sm font-bold text-foreground dark:text-white"
             >
               Community
             </span>
@@ -203,15 +203,15 @@ export function WtfWelcomeOverlay({ open, onDismiss }: Props) {
           {/* WTF glyph + headline */}
           <div className="flex flex-col items-center text-center mb-4">
             <div className="relative -rotate-[8deg] mb-3">
-              <WtfAlienIcon className="w-10 h-10 text-brand drop-shadow-[0_0_12px_rgba(139,92,246,0.45)]" />
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-brand shadow-[0_0_6px_rgba(139,92,246,0.6)]" />
+              <WtfAlienIcon className="w-10 h-10 text-brand drop-shadow-[0_0_12px_rgba(13,15,18,0.45)]" />
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-brand shadow-[0_0_6px_rgba(13,15,18,0.6)]" />
             </div>
             <h2
               id="wtf-welcome-headline"
               className="font-display font-semibold text-[22px] min-[480px]:text-[26px] leading-tight tracking-tight text-foreground dark:text-white"
               data-testid="text-wtf-welcome-headline"
             >
-              Welcome<span className="text-brand drop-shadow-[0_0_8px_rgba(139,92,246,0.6)]">.</span>
+              Welcome<span className="text-brand drop-shadow-[0_0_8px_rgba(13,15,18,0.6)]">.</span>
             </h2>
             <p className="mt-1.5 text-[14px] leading-snug text-muted-foreground dark:text-white/60 max-w-[40ch]">
               Plain answers about how Relay Outpost works, and what makes it different.
@@ -262,7 +262,7 @@ export function WtfWelcomeOverlay({ open, onDismiss }: Props) {
               type="button"
               onClick={handleBackToSignIn}
               data-testid="button-wtf-welcome-back-to-signin"
-              className="flex-1 inline-flex items-center justify-center gap-2 min-h-11 shrink-0 rounded-full border border-border/60 dark:border-white/15 bg-transparent text-foreground/80 dark:text-white/80 hover:bg-foreground/5 dark:hover:bg-white/10 font-brand uppercase tracking-[0.12em] text-[11px] font-bold transition-colors"
+              className="flex-1 inline-flex items-center justify-center gap-2 min-h-11 shrink-0 rounded-full border border-border/60 dark:border-white/15 bg-transparent text-foreground/80 dark:text-white/80 hover:bg-foreground/5 dark:hover:bg-white/10 text-[11px] font-bold transition-colors"
             >
               Take me back to sign in
             </button>
@@ -271,7 +271,7 @@ export function WtfWelcomeOverlay({ open, onDismiss }: Props) {
               type="button"
               onClick={onDismiss}
               data-testid="button-wtf-welcome-explore"
-              className="flex-1 inline-flex items-center justify-center gap-2 min-h-11 shrink-0 rounded-full bg-brand hover:bg-brand text-white font-brand uppercase tracking-[0.12em] text-[11px] font-bold shadow-[0_8px_24px_-8px_rgba(139,92,246,0.6)] transition-colors"
+              className="flex-1 inline-flex items-center justify-center gap-2 min-h-11 shrink-0 rounded-full bg-brand hover:bg-brand text-white text-[11px] font-bold shadow-[0_8px_24px_-8px_rgba(13,15,18,0.6)] transition-colors"
             >
               Explore the FAQ <ArrowRight className="w-3.5 h-3.5" />
             </button>

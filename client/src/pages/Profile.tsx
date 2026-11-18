@@ -1,4 +1,5 @@
 import { newestByAddress } from "@/lib/nip23";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { articleCountToShow } from "@/lib/article-count";
 import { personLook } from "@/lib/person-look";
 import { CollapsibleBio } from "@/components/profile/CollapsibleBio";
@@ -9,7 +10,7 @@ import { Link, useParams, useLocation } from "wouter";
 import { useGoBack } from "@/hooks/use-go-back";
 import { use$ } from "applesauce-react/hooks";
 import { eventStore, subscribeToFeed, fetchProfiles, fetchProfilesCached, DEFAULT_RELAYS, pool, publishEvent, throttledPoolSubscribe, verifySignedEventKind } from "@/lib/nostr";
-import { KIND_TEXT_NOTE, KIND_METADATA, KIND_FOLLOW_LIST, KIND_REPOST, KIND_GENERIC_REPOST, getDisplayName, getRealName, getAvatarUrl, getOptimizedImageUrl, getProfileContent, formatNpub, shortenNpub, parseFollowList, getMediaUrls } from "@/lib/nostr-helpers";
+import { KIND_METADATA, KIND_FOLLOW_LIST, KIND_REPOST, KIND_GENERIC_REPOST, getDisplayName, getRealName, getAvatarUrl, getProfileContent, formatNpub, shortenNpub, parseFollowList } from "@/lib/nostr-helpers";
 import { signWithTimeout } from "@/lib/signer-timeout";
 import { loadFollowBase, cacheFollowEvent } from "@/lib/follow-list";
 import { fetchUserProfileStats, fetchUserAuthoredFeed, fetchUserNotesPaginated, fetchEventCounts, primalStatsCache, prefetchStatsImmediate, fetchBulkProfiles, fetchFollowersList, type UserProfileStats } from "@/lib/primal-cache";
@@ -29,11 +30,37 @@ import { InviteToGroupDialog } from "@/components/concord/InviteToGroupDialog";
 import { useGroupChats } from "@/pages/messages/useGroupChats";
 import { invitableCommunities } from "@/lib/concord/concord-invite-targets";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import {
-  MessageCircle, Copy, Check, UsersRound, FileText,
-  UserPlus, UserMinus, Globe, VolumeX, Volume2, ImageIcon, Pencil,
-  BookOpen, Users, CornerUpLeft, Orbit, Satellite, Radio, RadioTower, Signal, Plus, Search, ArrowUpDown, Lock, ChevronDown, ShieldCheck, ArrowLeft, MoreHorizontal, Share2, Flag, Terminal, Clock, ArrowRight,
+  MessageCircle,
+  Copy,
+  Check,
+  FileText,
+  UserPlus,
+  UserMinus,
+  Globe,
+  VolumeX,
+  ImageIcon,
+  Pencil,
+  BookOpen,
+  Users,
+  CornerUpLeft,
+  Orbit,
+  Satellite,
+  Radio,
+  RadioTower,
+  Signal,
+  Plus,
+  ArrowUpDown,
+  Lock,
+  ChevronDown,
+  ShieldCheck,
+  ArrowLeft,
+  MoreHorizontal,
+  Share2,
+  Flag,
+  Terminal,
+  Clock,
+  ArrowRight,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import {
@@ -61,7 +88,7 @@ import { bannerSrcFor } from "@/lib/profile-banner";
 import { drawnBannerFor } from "@/lib/default-banner";
 import { useTheme } from "@/hooks/use-theme";
 
-const PROFILE_BANNER_LQIP = "data:image/webp;base64,UklGRjwAAABXRUJQVlA4IDAAAABQAwCdASogABEAP1Wcwlexq6cjsBgIAjAqiWkAADpwMRjAAAD+7lRLBuvfssJ2UAA=";
+const PROFILE_BANNER_LQIP = "data:image/webp;base64,UklGRj4AAABXRUJQVlA4IDIAAAAQAwCdASogABEAPrVUpE2nJKOiKAgA4BaJaQDKABhytwAA/vQnV6s5AABpHd+42UAAAA==";
 import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
 import { useToast } from "@/hooks/use-toast";
@@ -96,7 +123,7 @@ import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useGrapeRank, useConnectionScores } from "@/hooks/use-graperank";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
-import { getSignalTier, getSignalTierColor, getSignalTierBg, formatInfluence } from "@/lib/graperank";
+import { getSignalTier, formatInfluence } from "@/lib/graperank";
 import { copyNostrId } from "@/lib/clipboard-bridge";
 import { BrainstormIcon } from "@/components/icons/BrainstormIcon";
 import { TrustReviewsPanel } from "@/components/TrustReviewsPanel";
@@ -107,6 +134,8 @@ import { fetchNip11 } from "@/lib/nip11";
 import { useBadges } from "@/hooks/use-badges";
 import { ProfileBadgesSection } from "@/components/BadgeDisplay";
 import { useHeaderIdentitySlot } from "@/hooks/use-header-identity-slot";
+import { LiveAvatarDot, LiveTag, LiveWord } from "@/components/LiveBadge";
+import { TrustMark, TrustPhrase, useTrustTierOf } from "@/components/TrustMark";
 
 const KIND_LONG_FORM = 30023;
 const PROFILE_RELAYS = DEFAULT_RELAYS.slice(0, 5);
@@ -155,7 +184,7 @@ function getSignalRingClass(strength: "strong" | "fading" | "cold" | "none"): st
     case "strong": return "signal-ring-strong";
     case "fading": return "signal-ring-fading";
     case "cold": return "signal-ring-cold";
-    default: return "border-2 border-primary/20 dark:border-brand/20";
+    default: return "border-2 border-border";
   }
 }
 
@@ -188,7 +217,7 @@ function InlineProfileMention({ bech32 }: { bech32: string }) {
   const npubPath = pubkey ? `/profile/${nip19.npubEncode(pubkey)}` : null;
 
   const chip = (
-    <span className="inline-flex items-center gap-1 align-baseline rounded-full bg-brand/10 dark:bg-brand/15 border border-brand/20 dark:border-brand/15 px-1.5 py-0.5 max-w-[200px] hover:bg-brand/20 dark:hover:bg-brand/25 transition-colors cursor-pointer group">
+    <span className="inline-flex items-center gap-1 align-baseline rounded-full bg-foreground/[0.06] border border-border/60 px-1.5 py-0.5 max-w-[200px] hover:bg-foreground/[0.1] transition-colors cursor-pointer group">
       {avatarUrl ? (
         <img
           src={avatarUrl}
@@ -197,8 +226,8 @@ function InlineProfileMention({ bech32 }: { bech32: string }) {
           loading="lazy"
         />
       ) : (
-        <span className="w-3.5 h-3.5 rounded-full bg-brand/30 shrink-0 flex items-center justify-center">
-          <span className="text-[8px] text-brand font-bold">{displayName[0]?.toUpperCase()}</span>
+        <span className="w-3.5 h-3.5 rounded-full bg-foreground/[0.1] shrink-0 flex items-center justify-center">
+          <span className="text-[8px] text-foreground/80 font-semibold">{displayName[0]?.toUpperCase()}</span>
         </span>
       )}
       <span className="text-xs font-medium text-brand truncate leading-tight group-hover:text-brand/80 dark:group-hover:text-brand transition-colors">
@@ -452,7 +481,7 @@ function LiveDuration({ starts }: { starts?: number }) {
   if (!label) return null;
 
   return (
-    <span className="text-[10px] font-mono text-danger dark:text-red-400/60 tabular-nums shrink-0">
+    <span className="text-[12px] text-danger tabular-nums shrink-0">
       {label}
     </span>
   );
@@ -602,7 +631,7 @@ export default function Profile() {
   const isFollowing = pubkey ? follows.includes(pubkey) : false;
   const { wotEnabled } = useGrapeRankScores();
   const { badges: nip58Badges, refresh: refreshNip58Badges } = useBadges(pubkey);
-  const { score: grapeRankScore, loading: grapeRankLoading } = useGrapeRank(wotEnabled ? (pubkey ?? null) : null, myPubkey ?? null);
+  const { score: grapeRankScore } = useGrapeRank(wotEnabled ? (pubkey ?? null) : null, myPubkey ?? null);
   const grapeRankTier = getSignalTier(grapeRankScore?.influence ?? null);
   const connectionScoresData = useConnectionScores(wotEnabled ? (pubkey ?? null) : null, myPubkey ?? null);
 
@@ -710,7 +739,6 @@ export default function Profile() {
     setNotesLoaded(false);
     repostMapRef.current.clear();
     setRepostedEvents([]);
-    const now = Math.floor(Date.now() / 1000);
     const timeout = setTimeout(() => setNotesLoaded(true), 10000);
     const initialRelays = getUserNotesFetchRelays(pubkey);
     const notesFilter = { kinds: PROFILE_POST_KINDS, authors: [pubkey], limit: 50 };
@@ -1668,7 +1696,7 @@ export default function Profile() {
   // a muted micro-copy line at the top of each tab's content instead (only for
   // tabs that already had a count — Network never did).
   const contentTabs: { id: ProfileTab; label: string; icon: typeof FileText }[] = [
-    { id: "notes", label: "Notes", icon: FileText },
+    { id: "notes", label: "Posts", icon: FileText },
     { id: "replies", label: "Replies", icon: CornerUpLeft },
     { id: "media", label: "Media", icon: ImageIcon },
     { id: "network", label: "Network", icon: Users },
@@ -1834,10 +1862,10 @@ export default function Profile() {
       {isMobileProfile && profileLayout === "identity" && !isOwnProfile && (
         <>
           <DropdownMenuItem onClick={() => openRenameRef.current?.()} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-rename">
-            <Pencil className="w-4 h-4 text-brand/70" /> Rename for you
+            <Pencil className="w-4 h-4 text-muted-foreground" /> Rename for you
           </DropdownMenuItem>
           {wotEnabled && !!grapeRankTier && grapeRankTier !== "none" && (
-            <div className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-brand/80 capitalize" data-testid="menu-item-trust-tier">
+            <div className="px-2 py-1.5 text-[12px] font-medium text-brand/80 capitalize" data-testid="menu-item-trust-tier">
               {grapeRankTier} in your network
             </div>
           )}
@@ -1845,33 +1873,33 @@ export default function Profile() {
         </>
       )}
       <DropdownMenuItem onClick={handleZap} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-zap">
-        <BtcZapIcon className="w-4 h-4 text-brand/70" /> Send thanks
+        <BtcZapIcon className="w-4 h-4 text-muted-foreground" /> Send thanks
       </DropdownMenuItem>
       {/* The identity layout gets a dedicated button, but mobile falls back to
           the classic header — whose action row is already full at 375px. The
           overflow is the only place this fits on a phone. */}
       {canInviteToGroup && (
         <DropdownMenuItem onClick={() => setShowInviteToGroup(true)} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-invite-to-group">
-          <Users className="w-4 h-4 text-brand/70" /> Invite to a group chat
+          <Users className="w-4 h-4 text-muted-foreground" /> Invite to a group chat
         </DropdownMenuItem>
       )}
       {(hasPlannedOrLiveStreams || streamSubscribed) && (
         <DropdownMenuItem onClick={handleToggleStreamSubscription} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-stream-subscribe">
-          <RadioTower className="w-4 h-4 text-brand/70" /> {streamSubscribed ? "Unsubscribe from schedule" : "Subscribe to schedule"}
+          <RadioTower className="w-4 h-4 text-muted-foreground" /> {streamSubscribed ? "Unsubscribe from schedule" : "Subscribe to schedule"}
         </DropdownMenuItem>
       )}
       <DropdownMenuItem onClick={handleCopyNpub} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-copy-npub">
-        <Copy className="w-4 h-4 text-brand/70" /> Copy npub
+        <Copy className="w-4 h-4 text-muted-foreground" /> Copy npub
       </DropdownMenuItem>
       <DropdownMenuItem onClick={() => { setShareCopied(false); setShowShareDialog(true); }} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-share-profile">
-        <Share2 className="w-4 h-4 text-brand/70" /> Share profile
+        <Share2 className="w-4 h-4 text-muted-foreground" /> Share profile
       </DropdownMenuItem>
       <DropdownMenuItem
         onClick={() => { if (pubkey) setLocation(`/my-relays/console?filter=${encodeURIComponent(JSON.stringify({ authors: [pubkey] }))}`); }}
         className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0"
         data-testid="menu-item-query-console"
       >
-        <Terminal className="w-4 h-4 text-brand/70" /> Query this author's events
+        <Terminal className="w-4 h-4 text-muted-foreground" /> Query this author's events
       </DropdownMenuItem>
       {/* Operators/mods: feature this PERSON on a relay they run — everything
           they publish flows into the chosen Featured feed. */}
@@ -1881,20 +1909,20 @@ export default function Profile() {
           className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0"
           data-testid="menu-item-feature-person"
         >
-          <MagicStarIcon className="w-4 h-4 text-brand/70" /> Feature on your relay
+          <MagicStarIcon className="w-4 h-4 text-muted-foreground" /> Feature on your relay
         </DropdownMenuItem>
       )}
       <DropdownMenuSeparator />
       <DropdownMenuItem
         onClick={muted ? handleMute : () => setShowMuteConfirm(true)}
-        className={`gap-2.5 cursor-pointer min-h-11 sm:min-h-0 ${muted ? "" : "text-danger dark:text-red-500 focus:text-red-500"}`}
+        className={`gap-2.5 cursor-pointer min-h-11 sm:min-h-0 ${muted ? "" : "text-danger focus:text-danger"}`}
         data-testid="menu-item-mute"
       >
         <VolumeX className="w-4 h-4" /> {muted ? "Unmute" : "Mute"}
       </DropdownMenuItem>
       <DropdownMenuItem
         onClick={() => setShowReportDialog(true)}
-        className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0 text-danger dark:text-red-500 focus:text-red-500"
+        className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0 text-danger focus:text-danger"
         data-testid="menu-item-report"
       >
         <Flag className="w-4 h-4" /> Report
@@ -1999,7 +2027,7 @@ export default function Profile() {
               type="button"
               onClick={() => setShowUnfollowConfirm(true)}
               disabled={followProcessing}
-              className="flex items-center justify-center w-8 h-8 rounded-full bg-muted/70 border border-border text-muted-foreground hover:text-red-500 hover:bg-muted active:scale-95 transition-[background-color,color,transform]"
+              className="flex items-center justify-center w-8 h-8 rounded-full bg-muted/70 border border-border text-muted-foreground hover:text-danger hover:bg-muted active:scale-95 transition-[background-color,color,transform]"
               aria-label="Unfollow"
               title="Following — tap to unfollow"
               data-testid="button-follow-strip"
@@ -2088,7 +2116,7 @@ export default function Profile() {
             label: tab.label,
             icon: tab.icon,
             badge: tab.id === "network" && (crewHasLive || orbitHasLive) ? (
-              <span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_4px_1px_rgba(239,68,68,0.4)] live-dot shrink-0" data-testid="indicator-live-network" />
+              <span className="w-2 h-2 rounded-full bg-red-500 live-dot shrink-0" data-testid="indicator-live-network" />
             ) : undefined,
           }))}
         />
@@ -2097,7 +2125,7 @@ export default function Profile() {
       <div className="mt-4 pb-8">
         {activeTab === "notes" && (
           <>
-            <TabCountLine count={tabCounts.notes} singular="note" plural="notes" />
+            <TabCountLine count={tabCounts.notes} singular="post" plural="posts" />
             <NotesTab notes={guestNotes.shown} loaded={notesLoaded} repostMap={repostMapRef.current} onLoadMore={loadMoreNotes} hasMore={guestNotes.walled ? false : hasMoreNotes} loadingMore={loadingMoreNotes} isOwnProfile={!!isOwnProfile} />
             {guestNotes.walled && guestTabWall}
           </>
@@ -2227,7 +2255,7 @@ export default function Profile() {
         <DialogContent className="w-[calc(100vw-2rem)] max-w-sm max-h-[85dvh] overflow-y-auto grid-cols-[minmax(0,1fr)]" data-testid="dialog-share-profile">
           <DialogHeader className="pr-8">
             <DialogTitle className="flex items-center gap-2 text-base min-w-0">
-              <Share2 className="w-4 h-4 text-brand shrink-0" /> <span className="truncate min-w-0">Share {displayName}</span>
+              <Share2 className="w-4 h-4 text-foreground/70 shrink-0" /> <span className="truncate min-w-0">Share {displayName}</span>
             </DialogTitle>
           </DialogHeader>
           {(() => {
@@ -2237,15 +2265,15 @@ export default function Profile() {
                 <div className="mx-auto w-fit rounded-xl bg-white p-3" data-testid="share-profile-qr">
                   <QRCodeSVG value={shareUrl} size={196} marginSize={2} bgColor="#ffffff" fgColor="#000000" />
                 </div>
-                <p className="text-[11px] text-center text-muted-foreground/60">Scan to open this profile, or copy the link below</p>
+                <p className="text-[12px] text-center text-muted-foreground">Scan to open this profile, or copy the link below</p>
                 <button
                   type="button"
                   onClick={() => { navigator.clipboard?.writeText(shareUrl); setShareCopied(true); setTimeout(() => setShareCopied(false), 1500); }}
                   className="w-full flex items-center gap-2 min-h-11 md:min-h-9 px-3 py-2 rounded-lg bg-muted/20 border border-border/30 text-left min-w-0"
                   data-testid="button-share-profile-copy"
                 >
-                  {shareCopied ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />}
-                  <span className="text-[10px] font-mono text-muted-foreground/70 truncate min-w-0 flex-1">{shareUrl}</span>
+                  {shareCopied ? <Check className="w-3.5 h-3.5 text-success shrink-0" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                  <span className="text-[12px] font-mono text-muted-foreground truncate min-w-0 flex-1">{shareUrl}</span>
                 </button>
               </div>
             );
@@ -2414,7 +2442,7 @@ export default function Profile() {
         <p className="text-sm text-foreground/90 leading-snug">
           <span className="font-bold">{vouchCount}</span> {vouchCount === 1 ? "person has" : "people have"} vouched for {displayName}.
         </p>
-        <span className="text-[11px] text-brand mt-1 inline-block">See who vouched →</span>
+        <span className="text-[13px] font-medium text-brand mt-1 inline-block">See who vouched →</span>
       </button>
     ) : null;
     return (
@@ -2440,7 +2468,7 @@ export default function Profile() {
               >
                 <Avatar className="w-7 h-7 border border-border shrink-0">
                   <AvatarImage src={avatarUrl} alt={displayName} />
-                  <AvatarFallback className="bg-brand/25 text-brand text-[10px] font-bold">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                  <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[10px] font-bold">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <span className="text-sm font-bold text-foreground truncate group-data-[audio=true]:hidden" data-testid="header-identity-name">{displayName}</span>
               </button>
@@ -2621,7 +2649,7 @@ export default function Profile() {
                 it's the only expand handle left. */}
             <Avatar className={`w-7 h-7 border border-border shrink-0 ${isOwnProfile && myPubkey ? "hidden group-data-[audio=true]:flex" : ""}`}>
               <AvatarImage src={avatarUrl} alt={displayName} />
-              <AvatarFallback className="bg-brand/25 text-brand text-[10px] font-bold">
+              <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[10px] font-bold">
                 {displayName.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -2650,7 +2678,7 @@ export default function Profile() {
             >
               <Avatar className="w-8 h-8 border border-border shrink-0">
                 <AvatarImage src={avatarUrl} alt={displayName} />
-                <AvatarFallback className="bg-brand/25 text-brand text-[11px] font-bold">
+                <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[11px] font-bold">
                   {displayName.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -2660,7 +2688,7 @@ export default function Profile() {
                 </p>
                 {profileContent?.nip05 && (
                   <div className="hidden min-[420px]:block">
-                    <Nip05Badge nip05={profileContent.nip05} pubkey={pubkey!} className="text-[10px] font-mono" textClassName="text-muted-foreground truncate" iconClassName="w-3 h-3" />
+                    <Nip05Badge nip05={profileContent.nip05} pubkey={pubkey!} className="text-[12px]" textClassName="text-muted-foreground truncate" iconClassName="w-3 h-3" />
                   </div>
                 )}
               </div>
@@ -2674,7 +2702,7 @@ export default function Profile() {
         <div
           className={`relative h-36 sm:h-48 md:h-56 w-full overflow-hidden ${liveStream ? "ring-2 ring-inset ring-red-500/70" : ""}`}
           style={{
-            backgroundColor: "hsl(260 20% 7%)",
+            backgroundColor: "hsl(220 23% 7%)",
             backgroundImage: profileContent?.banner ? undefined : `url(${PROFILE_BANNER_LQIP})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
@@ -2710,19 +2738,6 @@ export default function Profile() {
             data-testid="img-profile-banner"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
-          <div
-            className="absolute bottom-0 left-0 right-0 h-px"
-            style={{
-              background: "linear-gradient(90deg, transparent 10%, rgba(140, 80, 220, 0.15) 30%, rgba(100, 60, 180, 0.22) 50%, rgba(140, 80, 220, 0.15) 70%, transparent 90%)",
-            }}
-          />
-          <div
-            className="absolute bottom-0 left-0 right-0 h-[4px] pointer-events-none"
-            style={{
-              background: "linear-gradient(90deg, transparent 10%, rgba(140, 80, 220, 0.04) 30%, rgba(100, 60, 180, 0.07) 50%, rgba(140, 80, 220, 0.04) 70%, transparent 90%)",
-              filter: "blur(2px)",
-            }}
-          />
           {/* While they are live the cover carries the broadcast: top edge (the
               identity block overlaps the bottom), whole cover = Watch, and it
               takes the HUD's place — "last signal: now" says less than LIVE. */}
@@ -2735,7 +2750,7 @@ export default function Profile() {
                 {profileStats.lastSeen && (
                   <>
                     <div className="flex flex-col items-center justify-center gap-0.5 px-2.5 py-0.5" data-testid="hud-last-signal">
-                      <span className="banner-hud-label">Last Signal</span>
+                      <span className="banner-hud-label">Last active</span>
                       <span className="banner-hud-value font-mono">{formatRelativeTime(profileStats.lastSeen)}</span>
                     </div>
                     {(profileStats.noteCount > 0 && profileStats.timeJoined || profileStats.timeJoined) && (
@@ -2772,13 +2787,13 @@ export default function Profile() {
                   </>
                 )}
               </div>
-              <span className="text-[7px] leading-none tracking-wider text-white/30 italic mt-1" data-testid="text-hud-disclaimer">Based on available relay data</span>
+              <span className="text-[12px] leading-none text-white/70 mt-1" data-testid="text-hud-disclaimer">Based on available relay data</span>
               {grapeRankScore && grapeRankTier !== "none" && (
                 <>
                   <div className="banner-hud-rule mt-1.5" />
                   <div className="flex items-center gap-2 mt-1.5" data-testid="hud-trust-signal">
-                    <BrainstormIcon className="w-3.5 h-3.5 text-emerald-800 dark:text-emerald-400 drop-shadow-[0_0_4px_rgba(52,211,153,0.3)]" />
-                    <span className="text-[9px] tracking-[0.14em] uppercase font-semibold leading-none text-brand/90">Signal</span>
+                    <BrainstormIcon className="w-3.5 h-3.5 text-emerald-800 dark:text-emerald-400" />
+                    <span className="text-[12px] font-semibold leading-none text-foreground/80">Trust</span>
                     <div className="flex items-center gap-1.5">
                       <div className="flex items-center gap-[2px]">
                         {[0, 1, 2, 3].map((i) => {
@@ -2801,7 +2816,7 @@ export default function Profile() {
                           );
                         })}
                       </div>
-                      <span className={`banner-hud-value font-mono text-[11px] font-bold ${
+                      <span className={`banner-hud-value tabular-nums text-[12px] font-bold ${
                         grapeRankTier === "strong" ? "text-success dark:text-emerald-300" :
                         grapeRankTier === "moderate" ? "text-blue-700 dark:text-blue-300" :
                         grapeRankTier === "low" ? "text-cyan-800 dark:text-cyan-300" :
@@ -2811,7 +2826,7 @@ export default function Profile() {
                       </span>
                     </div>
                   </div>
-                  <a href="https://brainstorm.nosfabrica.com" target="_blank" rel="noopener noreferrer" className="text-[7px] leading-none tracking-wider text-white/25 hover:text-white/40 transition-colors mt-0.5">Powered by Brainstorm · NIP-85</a>
+                  <a href="https://brainstorm.nosfabrica.com" target="_blank" rel="noopener noreferrer" className="text-[12px] leading-none text-white/70 hover:text-white transition-colors mt-0.5">Powered by Brainstorm · NIP-85</a>
                 </>
               )}
             </div>
@@ -2829,20 +2844,14 @@ export default function Profile() {
                 </AvatarFallback>
               </Avatar>
               {profileIsLive ? (
-                <Link href={liveHref}>
-                  <div
-                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold uppercase tracking-wider shadow-[0_0_8px_2px_rgba(239,68,68,0.4)] live-dot cursor-pointer border border-red-400/50"
-                    title="Currently streaming live"
-                    data-testid="indicator-live-badge"
-                  >
-                    LIVE
-                  </div>
+                <Link href={liveHref} className="absolute -bottom-2 left-1/2 -translate-x-1/2" title="Currently streaming live" data-testid="indicator-live-badge">
+                  <LiveTag />
                 </Link>
               ) : signalStrength !== "none" && (
                 <div
                   className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-background ${
-                    signalStrength === "strong" ? "bg-brand shadow-[0_0_6px_2px_rgba(139,92,246,0.4)]" :
-                    signalStrength === "fading" ? "bg-amber-500 shadow-[0_0_4px_1px_rgba(245,158,11,0.3)]" :
+                    signalStrength === "strong" ? "bg-emerald-500" :
+                    signalStrength === "fading" ? "bg-amber-500" :
                     "bg-slate-500/40"
                   }`}
                   title={signalStrength === "strong" ? "Active today" : signalStrength === "fading" ? "Active this week" : "Inactive"}
@@ -2856,7 +2865,7 @@ export default function Profile() {
                 <InviteFriend
                   npub={npubFull}
                   trigger={
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground/60 hover:text-foreground/80" title="Invite a friend" data-testid="button-invite-friend-profile-mobile">
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" title="Invite a friend" data-testid="button-invite-friend-profile-mobile">
                       <UserPlus className="w-3 h-3" />
                     </Button>
                   }
@@ -2893,7 +2902,7 @@ export default function Profile() {
                   <button
                     type="button"
                     onClick={() => setPetnameEditOpen(true)}
-                    className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground/70 hover:text-foreground transition-colors"
+                    className="mt-1 flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground transition-colors"
                     data-testid="profile-petname-line"
                   >
                     <Pencil className="w-3 h-3" />
@@ -2909,7 +2918,7 @@ export default function Profile() {
                   <InviteFriend
                     npub={npubFull}
                     trigger={
-                      <Button variant="ghost" size="sm" className="h-7 px-2 text-muted-foreground/60 hover:text-foreground/80" title="Invite a friend" data-testid="button-invite-friend-profile">
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-muted-foreground hover:text-foreground" title="Invite a friend" data-testid="button-invite-friend-profile">
                         <UserPlus className="w-3 h-3" />
                         <span className="text-xs">Invite</span>
                       </Button>
@@ -2940,13 +2949,13 @@ export default function Profile() {
                 className="inline-flex items-center gap-2 hover:text-foreground/80 transition-colors w-fit"
                 data-testid="link-website"
               >
-                <Globe className="w-3.5 h-3.5 shrink-0 text-muted-foreground/50" />
+                <Globe className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
                 <span className="truncate">{profileContent.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}</span>
               </a>
             )}
             {profileContent?.lud16 && (
               <span className="inline-flex items-center gap-2 w-fit" data-testid="text-lightning-address">
-                <BtcZapIcon className="w-3.5 h-3.5 shrink-0 text-amber-500/60" />
+                <BtcZapIcon className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
                 <span className="truncate">{profileContent.lud16}</span>
               </span>
             )}
@@ -2957,7 +2966,7 @@ export default function Profile() {
             >
               <img src={nostrOstrich} alt="" className="w-3.5 h-3.5 shrink-0 opacity-50" />
               <span className="truncate">{npubShort}</span>
-              {copied ? <Check className="w-3 h-3 text-green-500 shrink-0" /> : <Copy className="w-3 h-3 opacity-40 shrink-0" />}
+              {copied ? <Check className="w-3 h-3 text-success shrink-0" /> : <Copy className="w-3 h-3 text-muted-foreground shrink-0" />}
             </button>
             {outpostBadges.length > 0 && (() => {
               const hidden = (isOwnProfile && myPubkey) ? getHiddenBadgeUrls(myPubkey) : new Set<string>();
@@ -2970,7 +2979,7 @@ export default function Profile() {
                 <>
                   <div className="inline-flex items-center gap-2 min-w-0 max-w-full">
                     <Link href={`/outposts/${encodeURIComponent(first.url)}`} className="inline-flex items-center gap-2 hover:text-foreground/80 transition-colors min-w-0">
-                      <RelayOutpostIcon className="w-3.5 h-3.5 shrink-0 text-brand/60" />
+                      <RelayOutpostIcon className="w-3.5 h-3.5 shrink-0 text-foreground/60" />
                       <span className="truncate min-w-0">{firstName}</span>
                       {first.access === "private" && <Lock className="w-2.5 h-2.5 shrink-0 opacity-40" />}
                     </Link>
@@ -2979,9 +2988,9 @@ export default function Profile() {
                         onClick={() => setBadgesExpanded(!badgesExpanded)}
                         aria-expanded={badgesExpanded}
                         aria-label={`Show ${rest.length} more community${rest.length > 1 ? "s" : ""}`}
-                        className="inline-flex items-center gap-0.5 text-brand/50 hover:text-brand/80 transition-colors shrink-0"
+                        className="inline-flex items-center gap-0.5 text-muted-foreground hover:text-foreground transition-colors shrink-0"
                       >
-                        <span className="text-[10px]">+{rest.length} more</span>
+                        <span className="text-[12px]">+{rest.length} more</span>
                         <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${badgesExpanded ? "rotate-180" : ""}`} />
                       </button>
                     )}
@@ -2990,7 +2999,7 @@ export default function Profile() {
                     const displayName = (isOwnProfile && myPubkey) ? getBadgeDisplayName(myPubkey, b.url, b.name) : b.name;
                     return (
                       <Link key={b.url} href={`/outposts/${encodeURIComponent(b.url)}`} className="inline-flex items-center gap-2 hover:text-foreground/80 transition-colors w-fit min-w-0 max-w-full">
-                        <RelayOutpostIcon className="w-3.5 h-3.5 shrink-0 text-brand/60" />
+                        <RelayOutpostIcon className="w-3.5 h-3.5 shrink-0 text-foreground/60" />
                         <span className="truncate min-w-0">{displayName}</span>
                         {b.access === "private" && <Lock className="w-2.5 h-2.5 shrink-0 opacity-40" />}
                       </Link>
@@ -3021,24 +3030,24 @@ export default function Profile() {
           return (
             <Link href={liveHref}>
               <div
-                className="mt-4 rounded-xl border border-red-500/30 dark:border-red-500/25 bg-card/60 dark:bg-card/30 backdrop-blur-sm shadow-[0_0_12px_2px_rgba(239,68,68,0.1)] dark:shadow-[0_0_12px_2px_rgba(239,68,68,0.15)] cursor-pointer hover:shadow-[0_0_16px_4px_rgba(239,68,68,0.15)] dark:hover:shadow-[0_0_16px_4px_rgba(239,68,68,0.2)] transition-all duration-300"
+                className="mt-4 rounded-[20px] border border-border/60 bg-card cursor-pointer hover:border-border transition-colors duration-150"
                 data-testid="banner-live-stream"
               >
                 <div className="px-4 py-3 flex items-center gap-3">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_6px_2px_rgba(239,68,68,0.4)] live-dot shrink-0" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500 live-dot shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold uppercase tracking-wider text-danger dark:text-red-500">Live Now</span>
+                      <span className="text-[13px] font-semibold text-danger">Live now</span>
                       <LiveDuration starts={liveStream?.starts} />
                       {liveStream?.currentParticipants != null && liveStream.currentParticipants > 0 && (
-                        <span className="text-[10px] text-muted-foreground/60">{liveStream.currentParticipants} watching</span>
+                        <span className="text-[12px] text-muted-foreground">{liveStream.currentParticipants} watching</span>
                       )}
                     </div>
                     {liveStream?.title && (
                       <p className="text-sm font-medium truncate mt-0.5">{liveStream.title}</p>
                     )}
                   </div>
-                  <Radio className="w-4 h-4 text-red-500/60 shrink-0" />
+                  <Radio className="w-4 h-4 text-danger shrink-0" />
                 </div>
               </div>
             </Link>
@@ -3059,18 +3068,18 @@ function NotesTab({ notes, loaded, repostMap, onLoadMore, hasMore, loadingMore, 
   if (!loaded && notes.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12" data-testid="container-loading-notes">
-        <RelayOutpostLoader size="md" label="Loading notes..." />
+        <RelayOutpostLoader size="md" label="Loading posts..." />
       </div>
     );
   }
   if (loaded && notes.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center px-4" data-testid="container-no-notes">
-        <FileText className="w-8 h-8 text-muted-foreground/50 mb-2" />
-        <p className="text-sm text-muted-foreground">{isOwnProfile ? "You haven't posted yet" : "No recent notes"}</p>
+        <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground/70" />
+        <p className="text-sm text-muted-foreground">{isOwnProfile ? "You haven't posted yet" : "No recent posts"}</p>
         {isOwnProfile && (
           <>
-            <p className="text-xs text-muted-foreground/60 mt-1 max-w-xs">Share your first note — it goes out to everyone who follows you.</p>
+            <p className="text-[13px] text-muted-foreground mt-1 max-w-xs">Share your first post — it goes out to everyone who follows you.</p>
             <Button asChild size="sm" className="mt-4" data-testid="button-share-first-post">
               <Link href="/">Share your first post</Link>
             </Button>
@@ -3104,7 +3113,7 @@ function RepliesTab({ replies, loaded, onLoadMore, hasMore, loadingMore }: { rep
   if (loaded && replies.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center" data-testid="container-no-replies">
-        <CornerUpLeft className="w-8 h-8 text-muted-foreground/50 mb-2" />
+        <OttoEmpty mood="looking" size={72} className="mb-2 text-foreground/70" />
         <p className="text-sm text-muted-foreground">No replies found</p>
       </div>
     );
@@ -3134,7 +3143,7 @@ function ArticlesTab({ articles, loaded, onLoadMore, hasMore, loadingMore }: { a
   if (articles.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <BookOpen className="w-8 h-8 text-muted-foreground/50 mb-2" />
+        <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground/70" />
         <p className="text-sm text-muted-foreground">No articles published yet</p>
       </div>
     );
@@ -3171,22 +3180,21 @@ function ArticlesTab({ articles, loaded, onLoadMore, hasMore, loadingMore }: { a
           >
             {/* Editorial card — a "reading" object, deliberately unlike the note
                 stream: brand hairline spine, eyebrow kicker, cover as a banner. */}
-            <article className="relative overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm transition-all duration-300 hover:shadow-md hover:border-primary/30">
-              <span className="absolute inset-y-0 left-0 w-0.5 bg-primary/70 opacity-70 group-hover/article:opacity-100 transition-opacity" aria-hidden="true" />
-              <div className="flex gap-4 p-4 pl-5">
+            <article className="relative overflow-hidden rounded-[20px] border border-border/60 bg-card transition-colors duration-150 hover:border-border">
+              <div className="flex gap-4 p-4">
                 {image && (
-                  <div className="w-20 h-24 sm:w-28 sm:h-32 rounded-lg overflow-hidden shrink-0 bg-muted ring-1 ring-border/40">
-                    <img src={image} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover/article:scale-105" loading="lazy" decoding="async" />
+                  <div className="w-20 h-24 sm:w-28 sm:h-32 rounded-[12px] overflow-hidden shrink-0 bg-muted ring-1 ring-border/40">
+                    <img src={image} alt={title} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0 flex flex-col">
-                  <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.15em] text-brand/70">
+                  <div className="flex items-center gap-2 text-[13px] text-muted-foreground font-medium">
                     <BookOpen className="w-3 h-3" />
                     <span>Article</span>
                     {minutes > 0 && (
-                      <span className="flex items-center gap-1 text-muted-foreground/50">
-                        <span className="text-muted-foreground/30">·</span>
-                        <Clock className="w-2.5 h-2.5" /> {minutes} min read
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <span aria-hidden="true">·</span>
+                        <Clock className="w-3 h-3" /> {minutes} min read
                       </span>
                     )}
                   </div>
@@ -3194,18 +3202,18 @@ function ArticlesTab({ articles, loaded, onLoadMore, hasMore, loadingMore }: { a
                     {title}
                   </h3>
                   {summary && (
-                    <p className="text-xs sm:text-[13px] text-muted-foreground line-clamp-2 mt-1 leading-relaxed">{summary}</p>
+                    <p className="text-[13px] text-muted-foreground line-clamp-2 mt-1 leading-relaxed">{summary}</p>
                   )}
                   <div className="flex items-center gap-2 mt-auto pt-2.5 flex-wrap">
-                    <span className="text-[11px] text-muted-foreground/70 tabular-nums">
+                    <span className="text-[12px] text-muted-foreground tabular-nums">
                       {date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
                     </span>
                     {hashtags.slice(0, 2).map(tag => (
-                      <span key={tag} className="text-[10px] font-medium text-muted-foreground/70 border border-border/60 rounded-full px-2 py-0.5">
+                      <span key={tag} className="text-[12px] font-medium text-muted-foreground">
                         #{tag}
                       </span>
                     ))}
-                    <span className="ml-auto flex items-center gap-1 text-[11px] font-medium text-brand opacity-0 group-hover/article:opacity-100 translate-x-1 group-hover/article:translate-x-0 transition-all duration-300">
+                    <span className="ml-auto flex items-center gap-1 text-[13px] font-medium text-brand opacity-0 group-hover/article:opacity-100 transition-opacity duration-150">
                       Read <ArrowRight className="w-3 h-3" />
                     </span>
                   </div>
@@ -3224,16 +3232,15 @@ function ArticlesTab({ articles, loaded, onLoadMore, hasMore, loadingMore }: { a
 
 type PeopleSortMode = "strong" | "weak" | "a-z" | "z-a" | "newest" | "oldest";
 function getSortOptions(tabKey?: string, hasWot?: boolean): { value: PeopleSortMode; label: string }[] {
-  const isCrew = tabKey?.includes("crew");
   const opts: { value: PeopleSortMode; label: string }[] = [];
   if (hasWot) {
-    opts.push({ value: "strong", label: "Highly Trusted" });
-    opts.push({ value: "weak", label: "Low Trust" });
+    opts.push({ value: "strong", label: "Most trusted first" });
+    opts.push({ value: "weak", label: "Fewest ties first" });
   }
   opts.push({ value: "a-z", label: "A → Z" });
   opts.push({ value: "z-a", label: "Z → A" });
-  opts.push({ value: "newest", label: isCrew ? "Newest Following" : "Newest Followers" });
-  opts.push({ value: "oldest", label: isCrew ? "Oldest Following" : "Oldest Followers" });
+  opts.push({ value: "newest", label: "Newest first" });
+  opts.push({ value: "oldest", label: "Oldest first" });
   return opts;
 }
 
@@ -3244,6 +3251,7 @@ function getProfileNameLower(event: Event): string {
 }
 
 function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMore, livePubkeys, followOrder, tabKey, connectionScores, totalCount }: { profiles: Event[]; loaded: boolean; emptyText: string; onLoadMore?: () => void; hasMore?: boolean; loadingMore?: boolean; livePubkeys?: Set<string>; followOrder?: string[]; tabKey?: string; connectionScores?: Map<string, number> | null; totalCount?: number }) {
+  const tierOf = useTrustTierOf();
   const hasWot = !!(connectionScores && connectionScores.size > 0);
   const sortOptions = useMemo(() => getSortOptions(tabKey, hasWot), [tabKey, hasWot]);
   const storageKey = `people_sort_${tabKey || "default"}`;
@@ -3259,7 +3267,7 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [showSortMenu, setShowSortMenu] = useState(false);
-  const { isAuthorFlagged, wotEnabled } = useGrapeRankScores();
+  const { wotEnabled } = useGrapeRankScores();
 
   const handleSortChange = useCallback((mode: PeopleSortMode) => {
     setSortMode(mode);
@@ -3337,7 +3345,7 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
   if (loaded && profiles.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <UsersRound className="w-8 h-8 text-muted-foreground/50 mb-2" />
+        <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground/70" />
         <p className="text-sm text-muted-foreground">{emptyText}</p>
       </div>
     );
@@ -3355,30 +3363,36 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
         {profiles.length > 1 && (
           <div className="flex items-center gap-1 order-last sm:order-none w-full sm:w-auto">
             <button
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-colors border cursor-pointer ${
+              type="button"
+              aria-pressed={sortMode !== "a-z" && sortMode !== "z-a"}
+              className={`hit-area inline-flex items-center gap-1 px-3 min-h-8 rounded-full text-[13px] font-medium transition-colors duration-150 border cursor-pointer ${
                 sortMode !== "a-z" && sortMode !== "z-a"
-                  ? "border-brand/30 bg-brand/10 text-brand"
-                  : "border-transparent text-foreground/40 dark:text-foreground/30 hover:text-foreground/60"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
               onClick={() => handleSortChange(hasWot ? "strong" : "newest")}
             >
               All
             </button>
             <button
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-colors border cursor-pointer ${
+              type="button"
+              aria-pressed={sortMode === "a-z"}
+              className={`hit-area inline-flex items-center gap-1 px-3 min-h-8 rounded-full text-[13px] font-medium transition-colors duration-150 border cursor-pointer ${
                 sortMode === "a-z"
-                  ? "border-brand/30 bg-brand/10 text-brand"
-                  : "border-transparent text-foreground/40 dark:text-foreground/30 hover:text-foreground/60"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
               onClick={() => handleSortChange(sortMode === "a-z" ? (hasWot ? "strong" : "newest") : "a-z")}
             >
               A → Z
             </button>
             <button
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-colors border cursor-pointer ${
+              type="button"
+              aria-pressed={sortMode === "z-a"}
+              className={`hit-area inline-flex items-center gap-1 px-3 min-h-8 rounded-full text-[13px] font-medium transition-colors duration-150 border cursor-pointer ${
                 sortMode === "z-a"
-                  ? "border-brand/30 bg-brand/10 text-brand"
-                  : "border-transparent text-foreground/40 dark:text-foreground/30 hover:text-foreground/60"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
               onClick={() => handleSortChange(sortMode === "z-a" ? (hasWot ? "strong" : "newest") : "z-a")}
             >
@@ -3405,7 +3419,7 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
                     onClick={() => handleSortChange(opt.value)}
                     className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
                       sortMode === opt.value
-                        ? "text-brand bg-brand/5 font-medium"
+                        ? "text-foreground bg-foreground/[0.07] font-medium"
                         : "text-foreground hover:bg-muted/30"
                     }`}
                     data-testid={`sort-option-${opt.value}`}
@@ -3420,7 +3434,7 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
       </div>
       {searchQuery.trim() && processedProfiles.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 text-center">
-          <Search className="w-6 h-6 text-muted-foreground/30 mb-2" />
+          <OttoEmpty mood="looking" size={72} className="mb-2 text-foreground/70" />
           <p className="text-sm text-muted-foreground">No results for "{searchQuery}"</p>
         </div>
       ) : (() => {
@@ -3434,14 +3448,15 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
           const isLive = livePubkeys?.has(event.pubkey);
           const influence = connectionScores?.get(event.pubkey) ?? null;
           const scorePct = influence !== null ? Math.round(influence * 100) : null;
-          const tier = influence !== null ? getSignalTier(influence) : null;
-          const flagged = wotEnabled && isAuthorFlagged(event.pubkey);
+          // Concerns first: a flagged person never reads as trusted (useTrustTierOf).
+          const tier = tierOf(event.pubkey, influence);
+          const flagged = tier === "flagged";
           let npub = "";
           try { npub = nip19.npubEncode(event.pubkey); } catch {}
 
           return (
             <Link key={event.pubkey} href={`/profile/${npub}`} className="block" data-testid={`person-${event.pubkey.slice(0, 8)}`}>
-              <div className={`rounded-md bg-card/70 dark:bg-muted/20 border hover-elevate ${isLive ? "border-red-500/30 dark:border-red-500/25 shadow-[0_1px_4px_rgba(239,68,68,0.1),0_0_8px_1px_rgba(239,68,68,0.08)] dark:shadow-[0_0_8px_1px_rgba(239,68,68,0.15),0_0_2px_rgba(239,68,68,0.2)]" : flagged ? "border-red-500/25 dark:border-red-500/20" : "border-brand/20 dark:border-brand/15 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_0_0_1px_rgba(168,85,247,0.06),0_0_8px_rgba(168,85,247,0.04)] dark:shadow-[0_0_8px_rgba(168,85,247,0.08),0_0_2px_rgba(168,85,247,0.15)]"}`}>
+              <div className={`rounded-[16px] bg-card border hover-elevate ${isLive ? "border-red-500/40" : flagged ? "border-red-500/25 dark:border-red-500/20" : "border-border/60"}`}>
                 <div className="p-3 flex items-center gap-3">
                   <div className="relative shrink-0">
                     <Avatar className={`w-10 h-10 border shrink-0 ${isLive ? "border-red-500/40 signal-ring-live" : "border-border/60 dark:border-border"}`}>
@@ -3450,30 +3465,21 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
                         {name.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    {isLive && (
-                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-1.5 py-0 rounded-full bg-red-500 text-white text-[7px] font-bold uppercase tracking-wider shadow-[0_0_4px_1px_rgba(239,68,68,0.4)] live-dot border border-red-400/50">
-                        LIVE
-                      </div>
-                    )}
+                    {isLive && <LiveAvatarDot />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className="text-sm font-medium truncate text-foreground">{name}</p>
-                      {flagged && (
-                        <TrustTierGlyph tier="flagged" size="w-4 h-4" className="drop-shadow-[0_0_4px_rgba(239,68,68,0.4)]" title="Flagged" />
-                      )}
-                      {scorePct !== null && tier && (
-                        <span className={`shrink-0 inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-full text-[11px] font-bold tabular-nums border shadow-sm dark:shadow-none ${getSignalTierBg(tier)} ${getSignalTierColor(tier)}`}>
-                          {scorePct}
-                        </span>
-                      )}
+                      {isLive && <LiveWord />}
+                      {tier && <TrustMark tier={tier} />}
                       {!flagged && scorePct === null && wotEnabled && (
-                        <TrustTierGlyph tier="none" size="w-2.5 h-2.5" title="No trust signal" />
+                        <TrustTierGlyph tier="none" size="w-2.5 h-2.5" title="Your network doesn't know them yet" />
                       )}
                     </div>
                     {about && (
-                      <p className="text-xs text-foreground/50 dark:text-muted-foreground truncate mt-0.5">{about}</p>
+                      <p className="text-[13px] text-muted-foreground truncate mt-0.5">{about}</p>
                     )}
+                    {tier && <TrustPhrase tier={tier} bare className="block mt-0.5" />}
                   </div>
                 </div>
               </div>
@@ -3488,7 +3494,7 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
             </div>
             <div className="relative py-5">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full h-[2px] bg-gradient-to-r from-transparent via-brand/50 dark:via-brand/40 to-transparent" />
+                <div className="w-full h-[2px] bg-gradient-to-r from-transparent via-border to-transparent" />
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -3553,15 +3559,15 @@ function ProfileRelaysTab({ relayList, fetched }: { relayList: RelayPreference[]
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center" data-testid="container-profile-relays-loading">
           <RelayOutpostInlineLoader />
-          <p className="text-xs text-muted-foreground/60 mt-2">Looking for relay list…</p>
+          <p className="text-[13px] text-muted-foreground mt-2">Looking for relay list…</p>
         </div>
       );
     }
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center" data-testid="container-profile-relays-empty">
-        <Radio className="w-8 h-8 text-muted-foreground/50 mb-2" />
+        <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground/70" />
         <p className="text-sm text-muted-foreground">No relay list published</p>
-        <p className="text-xs text-muted-foreground/60 mt-1">This user hasn't published a NIP-65 relay list yet</p>
+        <p className="text-[13px] text-muted-foreground mt-1">This user hasn't published a NIP-65 relay list yet</p>
       </div>
     );
   }
@@ -3571,30 +3577,30 @@ function ProfileRelaysTab({ relayList, fetched }: { relayList: RelayPreference[]
       {writeRelays.length > 0 && (
         <div>
           <div className="flex items-center gap-1.5 mb-2">
-            <Signal className="w-3.5 h-3.5 text-brand" />
-            <span className="text-xs text-foreground/70 dark:text-muted-foreground uppercase tracking-wider font-medium">Transmitting To</span>
-            <Badge variant="secondary" className="text-[10px] ml-auto">{writeRelays.length}</Badge>
+            <Signal className="w-3.5 h-3.5 text-foreground/60" />
+            <span className="text-xs text-foreground/70 dark:text-muted-foreground font-medium">Posts go to</span>
+            <Badge variant="secondary" className="text-[12px] ml-auto">{writeRelays.length}</Badge>
           </div>
           <div className="space-y-1">
             {writeRelays.map(r => {
               const connected = myRelays.has(normalizeRelayUrl(r.url));
               return (
                 <div key={r.url} className="flex items-center gap-2 px-3 py-2 rounded-md glass-card border text-sm" data-testid={`relay-write-${r.url}`}>
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 dark:bg-green-500/80 shrink-0" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-success shrink-0" />
                   <span className="font-mono text-xs truncate text-foreground/80 dark:text-foreground">{r.url.replace("wss://", "")}</span>
                   {r.mode === "both" && (
-                    <Badge variant="secondary" className="text-[10px] shrink-0">read + write</Badge>
+                    <Badge variant="secondary" className="text-[12px] shrink-0">read + write</Badge>
                   )}
                   <div className="ml-auto shrink-0">
                     {connected ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-success dark:text-green-400/80 font-medium" data-testid={`badge-connected-${r.url}`}>
+                      <span className="inline-flex items-center gap-1 text-[12px] text-success font-medium" data-testid={`badge-connected-${r.url}`}>
                         <Check className="w-3 h-3" />
                         Connected
                       </span>
                     ) : myPubkey ? (
                       <button
                         onClick={(e) => { e.stopPropagation(); handleAddRelay(r.url); }}
-                        className="inline-flex items-center gap-0.5 text-[10px] text-brand font-medium px-1.5 py-0.5 rounded-md bg-brand/10 hover:bg-brand/20 transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-0.5 text-[12px] text-foreground font-medium px-2 py-0.5 rounded-full border border-foreground/25 hover:bg-foreground/[0.06] transition-colors cursor-pointer"
                         data-testid={`button-add-relay-${r.url}`}
                       >
                         <Plus className="w-3 h-3" />
@@ -3612,9 +3618,9 @@ function ProfileRelaysTab({ relayList, fetched }: { relayList: RelayPreference[]
       {readOnlyRelays.length > 0 && (
         <div>
           <div className="flex items-center gap-1.5 mb-2">
-            <Satellite className="w-3.5 h-3.5 text-brand" />
-            <span className="text-xs text-foreground/70 dark:text-muted-foreground uppercase tracking-wider font-medium">Receiving From</span>
-            <Badge variant="secondary" className="text-[10px] ml-auto">{readOnlyRelays.length}</Badge>
+            <Satellite className="w-3.5 h-3.5 text-foreground/60" />
+            <span className="text-xs text-foreground/70 dark:text-muted-foreground font-medium">Receiving from</span>
+            <Badge variant="secondary" className="text-[12px] ml-auto">{readOnlyRelays.length}</Badge>
           </div>
           <div className="space-y-1">
             {readOnlyRelays.map(r => {
@@ -3625,14 +3631,14 @@ function ProfileRelaysTab({ relayList, fetched }: { relayList: RelayPreference[]
                   <span className="font-mono text-xs truncate text-foreground/80 dark:text-foreground">{r.url.replace("wss://", "")}</span>
                   <div className="ml-auto shrink-0">
                     {connected ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-success dark:text-green-400/80 font-medium" data-testid={`badge-connected-${r.url}`}>
+                      <span className="inline-flex items-center gap-1 text-[12px] text-success font-medium" data-testid={`badge-connected-${r.url}`}>
                         <Check className="w-3 h-3" />
                         Connected
                       </span>
                     ) : myPubkey ? (
                       <button
                         onClick={(e) => { e.stopPropagation(); handleAddRelay(r.url); }}
-                        className="inline-flex items-center gap-0.5 text-[10px] text-brand font-medium px-1.5 py-0.5 rounded-md bg-brand/10 hover:bg-brand/20 transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-0.5 text-[12px] text-foreground font-medium px-2 py-0.5 rounded-full border border-foreground/25 hover:bg-foreground/[0.06] transition-colors cursor-pointer"
                         data-testid={`button-add-relay-${r.url}`}
                       >
                         <Plus className="w-3 h-3" />

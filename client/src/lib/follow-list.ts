@@ -14,7 +14,7 @@
 import type { Event } from "nostr-tools";
 import { pool, eventStore, DEFAULT_RELAYS } from "@/lib/nostr";
 import { getWriteRelays, getReadRelays } from "@/lib/outbox";
-import { KIND_FOLLOW_LIST, parseFollowList } from "@/lib/nostr-helpers";
+import { KIND_FOLLOW_LIST } from "@/lib/nostr-helpers";
 import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
 
 // Broad, history-keeping relays so an existing kind-3 is reliably found even if

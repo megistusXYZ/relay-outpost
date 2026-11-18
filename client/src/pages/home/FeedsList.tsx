@@ -107,7 +107,7 @@ export function FeedsList({
 
       {hasOwn && (
         <>
-          <p className="mt-4 mb-1 px-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">Your feeds</p>
+          <p className="mt-4 mb-1 px-2 text-[12px] font-medium text-muted-foreground/60">Your feeds</p>
           <div className="space-y-0.5">
             {liveCount > 0 && (
               <button type="button" onClick={() => after(() => navigate("/search?tab=live"))} className={ROW} data-testid="feeds-live-now">

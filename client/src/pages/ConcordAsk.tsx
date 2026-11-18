@@ -69,7 +69,7 @@ export default function ConcordAsk({ npub }: { npub: string }) {
 
   return (
     <div className="max-w-sm mx-auto px-4 py-16" data-testid="ask-form">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-brand/60 text-center">Ask to join</p>
+      <p className="text-[12px] font-medium text-brand/60 text-center">Ask to join</p>
       <p className="text-lg font-bold mt-2 text-center break-words">{groupName}</p>
       <p className="text-xs text-muted-foreground/70 mt-2 text-center">
         Your request goes privately to {creator} and the group's owner. They decide who gets in.

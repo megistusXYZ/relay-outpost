@@ -491,9 +491,9 @@ export function ProfileName({ pubkey, profiles, showCopy = false }: { pubkey: st
           <User className="w-2.5 h-2.5 text-brand/50" />
         </span>
       )}
-      <span className="text-[10px] font-medium text-foreground truncate">{profile?.name || "Unknown"}</span>
+      <span className="text-[12px] font-medium text-foreground truncate">{profile?.name || "Unknown"}</span>
       {showCopy && (
-        <button onClick={handleCopy} className="shrink-0 text-muted-foreground/60 hover:text-brand transition-colors" title="Copy npub">
+        <button onClick={handleCopy} className="shrink-0 text-muted-foreground hover:text-brand transition-colors" title="Copy npub">
           {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
         </button>
       )}
@@ -647,7 +647,7 @@ export function AudioPreviewCard({ url }: { url: string }) {
           <Music className="w-5 h-5 text-brand/70" />
         </div>
         <div className="flex-1 min-w-0 space-y-1">
-          <p className="text-[11px] font-medium text-foreground/80 truncate">{filename}</p>
+          <p className="text-[12px] font-medium text-foreground/80 truncate">{filename}</p>
           <audio src={url} controls preload="metadata" className="w-full h-7 [&::-webkit-media-controls-panel]:bg-transparent" onClick={e => e.stopPropagation()} />
         </div>
       </div>
@@ -679,12 +679,12 @@ export function AudioPreviewCard({ url }: { url: string }) {
         <div className="flex-1 min-w-0">
           <p className="text-[12px] font-medium text-foreground/90 truncate group-hover:text-brand transition-colors">{meta.title}</p>
           {meta.description && (
-            <p className="text-[10px] text-muted-foreground/70 truncate mt-0.5">{meta.description.slice(0, 100)}</p>
+            <p className="text-[12px] text-muted-foreground truncate mt-0.5">{meta.description.slice(0, 100)}</p>
           )}
           <div className="flex items-center gap-1.5 mt-1">
             <Music className="w-2.5 h-2.5 text-brand/50" />
-            <span className="text-[10px] text-brand dark:text-brand/70 uppercase tracking-wider">{meta.siteName || platformName}</span>
-            <ExternalLink className="w-2 h-2 text-muted-foreground/50 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+            <span className="text-[12px] text-foreground/70">{meta.siteName || platformName}</span>
+            <ExternalLink className="w-2 h-2 text-muted-foreground ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
         </div>
       </a>
@@ -697,11 +697,11 @@ export function AudioPreviewCard({ url }: { url: string }) {
         <Music className="w-5 h-5 text-brand/70" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] text-brand truncate group-hover:underline">{url.replace(/^https?:\/\//, "").slice(0, 60)}</p>
+        <p className="text-[12px] text-brand truncate group-hover:underline">{url.replace(/^https?:\/\//, "").slice(0, 60)}</p>
         <div className="flex items-center gap-1.5 mt-1">
           <Music className="w-2.5 h-2.5 text-brand/50" />
-          <span className="text-[10px] text-brand dark:text-brand/70 uppercase tracking-wider">{platformName}</span>
-          <ExternalLink className="w-2 h-2 text-muted-foreground/50 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+          <span className="text-[12px] text-foreground/70">{platformName}</span>
+          <ExternalLink className="w-2 h-2 text-muted-foreground ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
       </div>
     </a>
@@ -773,7 +773,7 @@ export function ReactionReferencePreview({ eventId, relayUrl, profiles }: { even
   if (failed || !ref) {
     return (
       <div className="rounded-md bg-black/[0.02] dark:bg-white/[0.015] border border-black/[0.04] dark:border-white/[0.04] px-3 py-2">
-        <span className="text-[10px] font-mono text-muted-foreground/60 truncate">{eventId.slice(0, 16)}…</span>
+        <span className="text-[12px] font-mono text-muted-foreground truncate">{eventId.slice(0, 16)}…</span>
       </div>
     );
   }
@@ -789,21 +789,21 @@ export function ReactionReferencePreview({ eventId, relayUrl, profiles }: { even
     <div className="rounded-md bg-black/[0.02] dark:bg-white/[0.015] border border-black/[0.04] dark:border-white/[0.04] overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-black/[0.04] dark:border-white/[0.04]">
         {ref.pubkey && (
-          <span className="text-[10px] text-muted-foreground/60 min-w-0">
+          <span className="text-[12px] text-muted-foreground min-w-0">
             <ProfileName pubkey={ref.pubkey} profiles={profiles} showCopy />
           </span>
         )}
         {ref.created_at && (
-          <span className="text-[10px] text-muted-foreground/50 font-mono">{timeAgo(ref.created_at)}</span>
+          <span className="text-[12px] text-muted-foreground font-mono">{timeAgo(ref.created_at)}</span>
         )}
         {ref.kind !== undefined && (
-          <Badge variant="outline" className={`text-[10px] shrink-0 ml-auto ${getKindBadgeClasses(ref.kind, ref.tags)}`}>
+          <Badge variant="outline" className={`text-[12px] shrink-0 ml-auto ${getKindBadgeClasses(ref.kind, ref.tags)}`}>
             {getKindLabel(ref.kind, ref.tags)}
           </Badge>
         )}
       </div>
       {refText && (
-        <p className="text-[11px] leading-relaxed text-foreground/80 whitespace-pre-wrap break-words px-3 py-2">{refText}</p>
+        <p className="text-[12px] leading-relaxed text-foreground/80 whitespace-pre-wrap break-words px-3 py-2">{refText}</p>
       )}
       {refMedia.length > 0 && (
         <div className={`${refMedia.length === 1 ? "flex" : "grid grid-cols-2"} gap-px`}>
@@ -827,7 +827,7 @@ export function ReactionReferencePreview({ eventId, relayUrl, profiles }: { even
           {refVideoLinkUrls.map((url, i) => (
             <div key={i} className="flex items-center gap-2.5 p-2 rounded-md bg-blue-500/5 dark:bg-blue-500/10 border border-blue-300/20 dark:border-blue-400/15">
               <Video className="w-3.5 h-3.5 text-blue-500/70 shrink-0" />
-              <a href={url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline truncate flex-1" onClick={e => e.stopPropagation()}>
+              <a href={url} target="_blank" rel="noopener noreferrer" className="text-[12px] text-blue-600 dark:text-blue-400 hover:underline truncate flex-1" onClick={e => e.stopPropagation()}>
                 {url.replace(/^https?:\/\//, "").slice(0, 60)}
               </a>
             </div>
@@ -842,7 +842,7 @@ export function ReactionReferencePreview({ eventId, relayUrl, profiles }: { even
         </div>
       )}
       {!refText && refMedia.length === 0 && refAudioUrls.length === 0 && refVideoLinkUrls.length === 0 && refLinkUrls.length === 0 && (
-        <p className="text-[10px] text-muted-foreground/60 italic px-3 py-2">No displayable content</p>
+        <p className="text-[12px] text-muted-foreground italic px-3 py-2">No displayable content</p>
       )}
     </div>
   );
@@ -850,7 +850,6 @@ export function ReactionReferencePreview({ eventId, relayUrl, profiles }: { even
 
 export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { id: string; kind: number; pubkey: string; content: string; created_at: number; tags: string[][] }; profiles: Map<string, ProfileInfo>; relayUrl?: string }) {
   const profile = profiles.get(event.pubkey);
-  const npub = pubkeyToNpub(event.pubkey);
   const media = extractMediaUrls(event);
 
   if (event.kind === 0) {
@@ -861,14 +860,14 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
           {meta.picture && <img src={meta.picture} alt="" className="w-10 h-10 rounded-full object-cover shrink-0 ring-1 ring-primary/20" />}
           <div className="min-w-0">
             <p className="text-xs font-semibold text-foreground">{meta.display_name || meta.name || "Unknown"}</p>
-            {meta.nip05 && <p className="text-[10px] text-brand dark:text-brand/70">{meta.nip05}</p>}
-            {meta.about && <p className="text-[11px] text-muted-foreground/70 mt-1 line-clamp-2">{meta.about}</p>}
-            {meta.lud16 && <p className="text-[10px] text-muted-foreground/60 mt-1 flex items-center gap-1"><Zap className="w-2.5 h-2.5" />{meta.lud16}</p>}
+            {meta.nip05 && <p className="text-[12px] text-brand dark:text-brand/70">{meta.nip05}</p>}
+            {meta.about && <p className="text-[12px] text-muted-foreground mt-1 line-clamp-2">{meta.about}</p>}
+            {meta.lud16 && <p className="text-[12px] text-muted-foreground mt-1 flex items-center gap-1"><Zap className="w-2.5 h-2.5" />{meta.lud16}</p>}
           </div>
         </div>
       );
     } catch {
-      return <p className="text-xs text-muted-foreground/60 italic">Invalid metadata JSON</p>;
+      return <p className="text-xs text-muted-foreground italic">Invalid metadata JSON</p>;
     }
   }
 
@@ -888,23 +887,23 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
         <div className="rounded-lg bg-black/[0.03] dark:bg-white/[0.02] border border-black/[0.04] dark:border-white/[0.04] overflow-hidden p-3 space-y-2">
           <div className="flex items-center gap-2">
             <RefreshCw className="w-3.5 h-3.5 text-green-500/70 shrink-0" />
-            <span className="text-[10px] text-success dark:text-green-400/70 uppercase tracking-wider font-medium">
-              {event.kind === 16 ? "Generic Repost" : "Reposted"}
+            <span className="text-[12px] text-success dark:text-green-400/70 font-medium">
+              {event.kind === 16 ? "Generic repost" : "Reposted"}
             </span>
-            <span className="text-[10px] text-muted-foreground/60 ml-auto">{timeAgo(event.created_at)}</span>
+            <span className="text-[12px] text-muted-foreground ml-auto">{timeAgo(event.created_at)}</span>
           </div>
           <div className="rounded-md bg-black/[0.02] dark:bg-white/[0.015] border border-black/[0.04] dark:border-white/[0.04] overflow-hidden">
             <div className="flex items-center gap-2 px-3 py-1.5 border-b border-black/[0.04] dark:border-white/[0.04]">
               {inner.pubkey && (
-                <span className="text-[10px] text-muted-foreground/60 min-w-0">
+                <span className="text-[12px] text-muted-foreground min-w-0">
                   <ProfileName pubkey={inner.pubkey} profiles={profiles} showCopy />
                 </span>
               )}
               {inner.created_at && (
-                <span className="text-[10px] text-muted-foreground/50 font-mono">{timeAgo(inner.created_at)}</span>
+                <span className="text-[12px] text-muted-foreground font-mono">{timeAgo(inner.created_at)}</span>
               )}
               {inner.kind !== undefined && (
-                <Badge variant="outline" className={`text-[10px] shrink-0 ml-auto ${getKindBadgeClasses(inner.kind, inner.tags)}`}>
+                <Badge variant="outline" className={`text-[12px] shrink-0 ml-auto ${getKindBadgeClasses(inner.kind, inner.tags)}`}>
                   {getKindLabel(inner.kind, inner.tags)}
                 </Badge>
               )}
@@ -915,7 +914,7 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
               </div>
             )}
             {innerText && (
-              <p className="text-[11px] leading-relaxed text-foreground/80 whitespace-pre-wrap break-words px-3 py-2">{innerText}</p>
+              <p className="text-[12px] leading-relaxed text-foreground/80 whitespace-pre-wrap break-words px-3 py-2">{innerText}</p>
             )}
             {innerMedia.length > 0 && (
               <div className={`${innerMedia.length === 1 ? "flex" : "grid grid-cols-2"} gap-px`}>
@@ -939,7 +938,7 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
                 {innerVideoLinkUrls.map((url, i) => (
                   <div key={i} className="flex items-center gap-2.5 p-2 rounded-md bg-blue-500/5 dark:bg-blue-500/10 border border-blue-300/20 dark:border-blue-400/15">
                     <Video className="w-3.5 h-3.5 text-blue-500/70 shrink-0" />
-                    <a href={url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline truncate flex-1" onClick={e => e.stopPropagation()}>
+                    <a href={url} target="_blank" rel="noopener noreferrer" className="text-[12px] text-blue-600 dark:text-blue-400 hover:underline truncate flex-1" onClick={e => e.stopPropagation()}>
                       {url.replace(/^https?:\/\//, "").slice(0, 60)}
                     </a>
                   </div>
@@ -954,7 +953,7 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
               </div>
             )}
             {!innerText && innerMedia.length === 0 && innerAudioUrls.length === 0 && innerVideoLinkUrls.length === 0 && innerLinkUrls.length === 0 && (
-              <p className="text-[10px] text-muted-foreground/60 italic px-3 py-2">No displayable content</p>
+              <p className="text-[12px] text-muted-foreground italic px-3 py-2">No displayable content</p>
             )}
           </div>
         </div>
@@ -965,10 +964,10 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
       <div className="p-2.5 rounded-lg bg-black/[0.03] dark:bg-white/[0.02] border border-black/[0.04] dark:border-white/[0.04]">
         <div className="flex items-center gap-2">
           <RefreshCw className="w-3 h-3 text-green-500/60 shrink-0" />
-          <span className="text-[11px] text-success dark:text-green-400/70 font-medium">Reposted</span>
-          <span className="text-[10px] text-muted-foreground/60 ml-auto">{timeAgo(event.created_at)}</span>
+          <span className="text-[12px] text-success dark:text-green-400/70 font-medium">Reposted</span>
+          <span className="text-[12px] text-muted-foreground ml-auto">{timeAgo(event.created_at)}</span>
         </div>
-        {event.content && <p className="text-[11px] text-muted-foreground/60 mt-1.5 line-clamp-2 break-all">{event.content.slice(0, 200)}</p>}
+        {event.content && <p className="text-[12px] text-muted-foreground mt-1.5 line-clamp-2 break-all">{event.content.slice(0, 200)}</p>}
       </div>
     );
   }
@@ -980,14 +979,14 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
       <div className="rounded-lg bg-black/[0.03] dark:bg-white/[0.02] border border-black/[0.04] dark:border-white/[0.04] overflow-hidden p-3 space-y-2">
         <div className="flex items-center gap-2">
           <span className="text-lg leading-none">{emoji}</span>
-          <span className="text-[10px] text-pink-600/60 dark:text-pink-400/50 uppercase tracking-wider font-medium">Reaction</span>
-          <span className="text-[10px] text-muted-foreground/60 ml-auto">{timeAgo(event.created_at)}</span>
+          <span className="text-[12px] text-pink-600/60 dark:text-pink-400/50 font-medium">Reaction</span>
+          <span className="text-[12px] text-muted-foreground ml-auto">{timeAgo(event.created_at)}</span>
         </div>
         {reactedTo && relayUrl ? (
           <ReactionReferencePreview eventId={reactedTo[1]} relayUrl={relayUrl} profiles={profiles} />
         ) : reactedTo ? (
           <div className="rounded-md bg-black/[0.02] dark:bg-white/[0.015] border border-black/[0.04] dark:border-white/[0.04] px-3 py-2">
-            <span className="text-[10px] font-mono text-muted-foreground/60 truncate">{(reactedTo[1] ?? "").slice(0, 16)}…</span>
+            <span className="text-[12px] font-mono text-muted-foreground truncate">{(reactedTo[1] ?? "").slice(0, 16)}…</span>
           </div>
         ) : null}
       </div>
@@ -1016,16 +1015,16 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
         <div className="p-3 space-y-2">
           <div className="flex items-center gap-2">
             <ScrollText className="w-3.5 h-3.5 text-brand/70 shrink-0" />
-            <span className="text-[10px] text-brand dark:text-brand/70 uppercase tracking-wider font-medium">Long-form Article</span>
+            <span className="text-[12px] text-foreground/70 font-medium">Long-form article</span>
           </div>
           {title && (
             <h3 className="text-sm font-semibold text-foreground/90 leading-snug">{title}</h3>
           )}
           {summary && (
-            <p className="text-[11px] text-muted-foreground/70 italic">{summary}</p>
+            <p className="text-[12px] text-muted-foreground italic">{summary}</p>
           )}
           <div className="max-h-[400px] overflow-y-auto pr-1">
-            <p className="text-[11px] leading-relaxed text-muted-foreground/60 whitespace-pre-wrap break-words">{cleanedContent}</p>
+            <p className="text-[12px] leading-relaxed text-muted-foreground whitespace-pre-wrap break-words">{cleanedContent}</p>
           </div>
         </div>
       </div>
@@ -1042,22 +1041,22 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
       <div className="rounded-lg bg-black/[0.03] dark:bg-white/[0.02] border border-black/[0.04] dark:border-white/[0.04] overflow-hidden">
         <div className="px-3 pt-3 pb-2 border-b border-black/[0.04] dark:border-white/[0.04] flex items-center gap-2">
           <BarChart3 className="w-3.5 h-3.5 text-brand/70 shrink-0" />
-          <span className="text-[10px] text-brand dark:text-brand/70 uppercase tracking-wider font-medium">Poll</span>
+          <span className="text-[12px] text-foreground/70 font-medium">Poll</span>
           {isExpired ? (
-            <span className="text-[10px] text-danger dark:text-red-500/70 uppercase tracking-wider font-medium ml-1">Expired</span>
+            <span className="text-[12px] text-danger dark:text-red-500/70 font-medium ml-1">Expired</span>
           ) : expTs ? (
-            <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1 ml-1">
+            <span className="text-[12px] text-muted-foreground flex items-center gap-1 ml-1">
               <Clock className="w-2.5 h-2.5" />
               Closes {timeAgo(expTs)}
             </span>
           ) : null}
-          <span className="text-[10px] text-muted-foreground/60 ml-auto">{timeAgo(event.created_at)}</span>
+          <span className="text-[12px] text-muted-foreground ml-auto">{timeAgo(event.created_at)}</span>
         </div>
         <div className="px-3 py-2.5">
           <div className="flex items-start gap-2.5 mb-3">
             {profile?.picture && <img src={profile.picture} alt="" className="w-7 h-7 rounded-full object-cover shrink-0 ring-1 ring-primary/20 mt-0.5" />}
             <div className="min-w-0">
-              <p className="text-[10px] font-medium text-foreground/70">
+              <p className="text-[12px] font-medium text-foreground/70">
                 <ProfileName pubkey={event.pubkey} profiles={profiles} showCopy />
               </p>
               <p className="text-[12px] font-semibold text-foreground/90 mt-1 whitespace-pre-wrap break-words leading-snug">
@@ -1069,16 +1068,16 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
             <div className="space-y-1.5 mt-2">
               {optionTags.map((tag, i) => (
                 <div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-md bg-accent dark:bg-brand/10 border border-brand/20 dark:border-brand/15">
-                  <span className="text-[10px] font-mono font-bold text-brand/70 shrink-0 w-4 text-center">{String.fromCharCode(65 + i)}</span>
-                  <span className="text-[11px] text-foreground/80">{tag[2]}</span>
+                  <span className="text-[12px] font-mono font-bold text-brand/70 shrink-0 w-4 text-center">{String.fromCharCode(65 + i)}</span>
+                  <span className="text-[12px] text-foreground/80">{tag[2]}</span>
                 </div>
               ))}
             </div>
           )}
           <div className="flex items-center gap-3 mt-3 pt-2 border-t border-black/[0.04] dark:border-white/[0.04]">
-            <span className="text-[10px] text-muted-foreground/50 font-mono">{optionTags.length} option{optionTags.length !== 1 ? "s" : ""}</span>
-            <span className="text-[10px] text-muted-foreground/40">•</span>
-            <span className="text-[10px] text-muted-foreground/50 font-mono">Kind 1068</span>
+            <span className="text-[12px] text-muted-foreground font-mono">{optionTags.length} option{optionTags.length !== 1 ? "s" : ""}</span>
+            <span className="text-[12px] text-muted-foreground">•</span>
+            <span className="text-[12px] text-muted-foreground font-mono">Kind 1068</span>
           </div>
         </div>
       </div>
@@ -1094,20 +1093,20 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
       <div className="rounded-lg bg-black/[0.03] dark:bg-white/[0.02] border border-black/[0.04] dark:border-white/[0.04] overflow-hidden">
         <div className="px-3 pt-3 pb-2 border-b border-black/[0.04] dark:border-white/[0.04] flex items-center gap-2">
           <Vote className="w-3.5 h-3.5 text-emerald-500/70 shrink-0" />
-          <span className="text-[10px] text-success dark:text-emerald-400/70 uppercase tracking-wider font-medium">Poll Vote</span>
-          <span className="text-[10px] text-muted-foreground/60 ml-auto">{timeAgo(event.created_at)}</span>
+          <span className="text-[12px] text-success dark:text-emerald-400/70 font-medium">Poll vote</span>
+          <span className="text-[12px] text-muted-foreground ml-auto">{timeAgo(event.created_at)}</span>
         </div>
         <div className="px-3 py-2.5 space-y-2">
           <div className="flex items-center gap-2">
             {profile?.picture && <img src={profile.picture} alt="" className="w-6 h-6 rounded-full object-cover shrink-0 ring-1 ring-emerald-400/20" />}
-            <span className="text-[10px] text-foreground/70">
+            <span className="text-[12px] text-foreground/70">
               <ProfileName pubkey={event.pubkey} profiles={profiles} showCopy />
             </span>
           </div>
           <div className="flex items-center gap-3 px-3 py-2 rounded-md bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-300/20 dark:border-emerald-400/15">
             <ListChecks className="w-3.5 h-3.5 text-emerald-500/60 shrink-0" />
             <div className="min-w-0">
-              <span className="text-[10px] text-success dark:text-emerald-400/50 uppercase tracking-wider font-medium">Selected Option</span>
+              <span className="text-[12px] text-success dark:text-emerald-400/50 font-medium">Selected option</span>
               <p className="text-[12px] font-mono font-semibold text-foreground/80 mt-0.5">
                 {optionIdx !== undefined && /^\d+$/.test(optionIdx) ? `Option ${String.fromCharCode(65 + Number(optionIdx))} (index ${optionIdx})` : optionIdx !== undefined ? `Response: ${optionIdx}` : "Unknown"}
               </p>
@@ -1116,12 +1115,12 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
           {pollRef?.[1] && (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-accent dark:bg-brand/10 border border-brand/15 dark:border-brand/10">
               <BarChart3 className="w-3 h-3 text-brand/50 shrink-0" />
-              <span className="text-[10px] text-brand/60 dark:text-brand/50 uppercase tracking-wider font-medium shrink-0">Poll</span>
-              <span className="text-[10px] font-mono text-foreground/60 truncate">{(pollRef[1] ?? "").length > 20 ? `${pollRef[1].slice(0, 12)}…${pollRef[1].slice(-8)}` : pollRef[1] ?? ""}</span>
+              <span className="text-[12px] text-foreground/70 font-medium shrink-0">Poll</span>
+              <span className="text-[12px] font-mono text-foreground/60 truncate">{(pollRef[1] ?? "").length > 20 ? `${pollRef[1].slice(0, 12)}…${pollRef[1].slice(-8)}` : pollRef[1] ?? ""}</span>
             </div>
           )}
           <div className="flex items-center gap-3 pt-1">
-            <span className="text-[10px] text-muted-foreground/50 font-mono">Kind 1018</span>
+            <span className="text-[12px] text-muted-foreground font-mono">Kind 1018</span>
           </div>
         </div>
       </div>
@@ -1134,7 +1133,6 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
     const parentKind = parentKTag?.[1];
     const parentKindLabel = parentKind ? (KIND_LABELS[Number(parentKind)] || `Kind ${parentKind}`) : null;
     const commentText = event.content || "";
-    const allUrls = extractAllUrls(commentText);
     const commentMedia = extractMediaUrls(event);
     const textContent = stripUrls(commentText).trim();
 
@@ -1142,13 +1140,13 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
       <div className="rounded-lg bg-black/[0.03] dark:bg-white/[0.02] border border-black/[0.04] dark:border-white/[0.04] overflow-hidden">
         <div className="px-3 pt-3 pb-2 border-b border-black/[0.04] dark:border-white/[0.04] flex items-center gap-2">
           <MessageSquare className="w-3.5 h-3.5 text-sky-500/70 shrink-0" />
-          <span className="text-[10px] text-sky-600 dark:text-sky-400/70 uppercase tracking-wider font-medium">Comment</span>
-          <span className="text-[10px] text-muted-foreground/60 ml-auto">{timeAgo(event.created_at)}</span>
+          <span className="text-[12px] text-sky-600 dark:text-sky-400/70 font-medium">Comment</span>
+          <span className="text-[12px] text-muted-foreground ml-auto">{timeAgo(event.created_at)}</span>
         </div>
         <div className="px-3 py-2.5 space-y-2">
           <div className="flex items-center gap-2">
             {profile?.picture && <img src={profile.picture} alt="" className="w-6 h-6 rounded-full object-cover shrink-0 ring-1 ring-sky-400/20" />}
-            <span className="text-[10px] text-foreground/70">
+            <span className="text-[12px] text-foreground/70">
               <ProfileName pubkey={event.pubkey} profiles={profiles} showCopy />
             </span>
           </div>
@@ -1167,16 +1165,16 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
           {parentETag?.[1] && (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-sky-500/5 dark:bg-sky-500/10 border border-sky-300/15 dark:border-sky-400/10">
               <MessageSquare className="w-3 h-3 text-sky-500/50 shrink-0" />
-              <span className="text-[10px] text-sky-600/60 dark:text-sky-400/50 uppercase tracking-wider font-medium shrink-0">
+              <span className="text-[12px] text-sky-600/60 dark:text-sky-400/50 font-medium shrink-0">
                 {parentKindLabel ? `Reply to ${parentKindLabel}` : "In reply to"}
               </span>
-              <span className="text-[10px] font-mono text-foreground/60 truncate">
+              <span className="text-[12px] font-mono text-foreground/60 truncate">
                 {(parentETag[1] ?? "").length > 20 ? `${parentETag[1].slice(0, 12)}…${parentETag[1].slice(-8)}` : parentETag[1] ?? ""}
               </span>
             </div>
           )}
           <div className="flex items-center gap-3 pt-1">
-            <span className="text-[10px] text-muted-foreground/50 font-mono">Kind 1111 · NIP-22</span>
+            <span className="text-[12px] text-muted-foreground font-mono">Kind 1111 · NIP-22</span>
           </div>
         </div>
       </div>
@@ -1192,7 +1190,7 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
       <div className="rounded-lg bg-black/[0.03] dark:bg-white/[0.02] border border-black/[0.04] dark:border-white/[0.04] overflow-hidden p-3 space-y-2">
         <div className="flex items-center gap-2">
           <Megaphone className="w-3.5 h-3.5 text-brand/70 shrink-0" />
-          <span className="text-[10px] text-brand dark:text-brand/70 uppercase tracking-wider font-medium">Relay Announcement</span>
+          <span className="text-[12px] text-foreground/70 font-medium">Relay announcement</span>
         </div>
         {announcementText && (
           <p className="text-[12px] leading-relaxed text-foreground/90 whitespace-pre-wrap break-words">{announcementText}</p>
@@ -1200,7 +1198,7 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
         {relayUrl && (
           <div className="flex items-center gap-2 rounded-md bg-accent dark:bg-brand/10 border border-brand/20 dark:border-brand/15 px-2.5 py-1.5">
             <Radio className="w-3 h-3 text-brand/60 shrink-0" />
-            <span className="text-[11px] font-mono text-brand dark:text-brand/80">{relayUrl}</span>
+            <span className="text-[12px] font-mono text-brand dark:text-brand/80">{relayUrl}</span>
           </div>
         )}
       </div>
@@ -1315,27 +1313,27 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
       <div className="rounded-lg bg-black/[0.03] dark:bg-white/[0.02] border border-black/[0.04] dark:border-white/[0.04] overflow-hidden p-3 space-y-2">
         <div className="flex items-center gap-2">
           <Users className="w-3.5 h-3.5 text-teal-500/70 shrink-0" />
-          <span className="text-[10px] text-teal-600 dark:text-teal-400/70 uppercase tracking-wider font-medium">
-            {actionDescriptions[event.kind] || `NIP-29 Kind ${event.kind}`}
+          <span className="text-[12px] text-teal-600 dark:text-teal-400/70 font-medium">
+            {actionDescriptions[event.kind] || `NIP-29 kind ${event.kind}`}
           </span>
-          <span className="text-[10px] text-muted-foreground/60 ml-auto">{timeAgo(event.created_at)}</span>
+          <span className="text-[12px] text-muted-foreground ml-auto">{timeAgo(event.created_at)}</span>
         </div>
         {event.content && (
-          <p className="text-[11px] leading-relaxed text-foreground/80 whitespace-pre-wrap break-words">{event.content}</p>
+          <p className="text-[12px] leading-relaxed text-foreground/80 whitespace-pre-wrap break-words">{event.content}</p>
         )}
         {details.length > 0 && (
           <div className="space-y-1">
             {details.map((d, i) => (
               <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-teal-500/5 dark:bg-teal-500/10 border border-teal-300/15 dark:border-teal-400/10">
                 {d.icon || <Info className="w-3 h-3 text-teal-500/50 shrink-0" />}
-                <span className="text-[10px] text-teal-600/70 dark:text-teal-400/50 uppercase tracking-wider font-medium shrink-0">{d.label}</span>
-                <span className="text-[11px] font-mono text-foreground/70 truncate">{d.value}</span>
+                <span className="text-[12px] text-teal-600/70 dark:text-teal-400/50 font-medium shrink-0">{d.label}</span>
+                <span className="text-[12px] font-mono text-foreground/70 truncate">{d.value}</span>
               </div>
             ))}
           </div>
         )}
         {details.length === 0 && !event.content && (
-          <p className="text-[10px] text-muted-foreground/50 italic">No additional details in event</p>
+          <p className="text-[12px] text-muted-foreground italic">No additional details in event</p>
         )}
       </div>
     );
@@ -1377,7 +1375,7 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
           {videoLinkUrls.map((url, i) => (
             <div key={i} className="flex items-center gap-2.5 p-2.5 rounded-md bg-blue-500/5 dark:bg-blue-500/10 border border-blue-300/20 dark:border-blue-400/15">
               <Video className="w-4 h-4 text-blue-500/70 shrink-0" />
-              <a href={url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline truncate flex-1" onClick={e => e.stopPropagation()}>
+              <a href={url} target="_blank" rel="noopener noreferrer" className="text-[12px] text-blue-600 dark:text-blue-400 hover:underline truncate flex-1" onClick={e => e.stopPropagation()}>
                 {url.replace(/^https?:\/\//, "").slice(0, 60)}
               </a>
             </div>
@@ -1393,22 +1391,22 @@ export function RenderedEventPreview({ event, profiles, relayUrl }: { event: { i
       )}
       {hasNoVisualContent && meaningfulTags.length > 0 && (
         <div className="p-3 space-y-1">
-          <span className="text-[10px] text-muted-foreground/40 uppercase tracking-wider font-medium">Event Tags</span>
+          <span className="text-[12px] text-muted-foreground font-medium">Tags</span>
           <div className="space-y-0.5">
             {meaningfulTags.slice(0, 8).map((t, i) => (
               <div key={i} className="flex items-baseline gap-1.5">
-                <span className="text-[10px] font-mono text-brand/60 shrink-0">{t[0]}</span>
-                <span className="text-[10px] font-mono text-foreground/60 truncate">{t.slice(1).join(" · ")}</span>
+                <span className="text-[12px] font-mono text-brand/60 shrink-0">{t[0]}</span>
+                <span className="text-[12px] font-mono text-foreground/60 truncate">{t.slice(1).join(" · ")}</span>
               </div>
             ))}
             {meaningfulTags.length > 8 && (
-              <span className="text-[10px] text-muted-foreground/40">+{meaningfulTags.length - 8} more tags</span>
+              <span className="text-[12px] text-muted-foreground">+{meaningfulTags.length - 8} more tags</span>
             )}
           </div>
         </div>
       )}
       {hasNoVisualContent && meaningfulTags.length === 0 && (
-        <p className="text-[11px] text-muted-foreground/60 italic p-3">No displayable content</p>
+        <p className="text-[12px] text-muted-foreground italic p-3">No displayable content</p>
       )}
     </div>
   );
@@ -1574,7 +1572,7 @@ export const TABS: { id: TabId; label: string; icon: React.ComponentType<{ class
   { id: "community", label: "Relay Settings", icon: Users },
 ];
 
-export const CHART_COLORS = ["#a855f7", "#9333ea", "#7e22ce", "#6b21a8", "#c084fc", "#d8b4fe"];
+export const CHART_COLORS = ["#3D6BFF", "#7C9BFF", "#A3ACBA", "#565D69", "#C8D4F0", "#2A3A6A"];
 
 export function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number | null }>; label?: string }) {
   if (!active || !payload?.length) return null;
@@ -1983,7 +1981,6 @@ export function useActivityProbe(
   useEffect(() => {
     if (pubkeys.length === 0) { setStatus("idle"); return; }
     const cache = loadActivityCache(relayUrl);
-    const haveAll = pubkeys.every(pk => pk in cache.lastActive);
     let optedIn = false;
     try { optedIn = localStorage.getItem(optInKey) === "1"; } catch {}
     const allowProbe = pubkeys.length <= ACTIVITY_AUTO_LIMIT || optedIn;
@@ -2128,13 +2125,13 @@ export function UserListToolbar({
   return (
     <div className={`flex flex-wrap items-center gap-1.5 mb-2 ${className || ""}`}>
       <div className="relative flex-1 min-w-[140px]">
-        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/50 pointer-events-none" />
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
         <input
           type="text"
           value={controls.query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name or address"
-          className="w-full h-7 pl-7 pr-7 text-[11px] rounded-md bg-black/[0.04] dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] focus:outline-none focus:border-primary/40"
+          className="w-full h-7 pl-7 pr-7 text-[12px] rounded-md bg-black/[0.04] dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] focus:outline-none focus:border-primary/40"
           autoCapitalize="off"
           autoCorrect="off"
           autoComplete="off"
@@ -2142,7 +2139,7 @@ export function UserListToolbar({
         {controls.query && (
           <button
             onClick={() => setQuery("")}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-muted-foreground/60 hover:text-foreground"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-muted-foreground hover:text-foreground"
             title="Clear search"
           >
             <X className="w-3 h-3" />
@@ -2152,7 +2149,7 @@ export function UserListToolbar({
       <select
         value={controls.sort}
         onChange={(e) => setSort(e.target.value as UserListSort)}
-        className="h-7 text-[10px] px-1.5 rounded-md bg-black/[0.04] dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] focus:outline-none"
+        className="h-7 text-[12px] px-1.5 rounded-md bg-black/[0.04] dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] focus:outline-none"
         title="Sort"
       >
         <option value="name-asc">Name A→Z</option>
@@ -2165,7 +2162,7 @@ export function UserListToolbar({
       <select
         value={controls.filter}
         onChange={(e) => setFilter(e.target.value as UserListFilter)}
-        className="h-7 text-[10px] px-1.5 rounded-md bg-black/[0.04] dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] focus:outline-none"
+        className="h-7 text-[12px] px-1.5 rounded-md bg-black/[0.04] dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] focus:outline-none"
         title="Filter"
       >
         <option value="all">All</option>
@@ -2177,14 +2174,14 @@ export function UserListToolbar({
       {activityStatus === "gated" && (
         <button
           onClick={onLoadActivity}
-          className="h-7 text-[10px] px-2 rounded-md bg-accent hover:bg-accent border border-brand/30 text-brand"
+          className="h-7 text-[12px] px-2 rounded-md bg-accent hover:bg-accent border border-brand/30 text-brand"
           title="Probe relay for last-active timestamps"
         >
           Load activity
         </button>
       )}
       {activityStatus === "loading" && (
-        <span className="text-[10px] text-muted-foreground/60">Loading activity…</span>
+        <span className="text-[12px] text-muted-foreground">Loading activity…</span>
       )}
       {activityStatus === "unreachable" && (
         // Offer the retry rather than leaving every row reading "Relay
@@ -2192,13 +2189,13 @@ export function UserListToolbar({
         // is usually back within seconds.
         <button
           onClick={onLoadActivity}
-          className="h-7 text-[10px] px-2 rounded-md bg-accent hover:bg-accent border border-amber-400/30 text-amber-700 dark:text-amber-400/80"
+          className="h-7 text-[12px] px-2 rounded-md bg-accent hover:bg-accent border border-amber-400/30 text-amber-700 dark:text-amber-400/80"
           title="We couldn't reach the relay to read activity"
         >
           Couldn't reach relay — retry
         </button>
       )}
-      <span className="text-[10px] text-muted-foreground/60 ml-auto">
+      <span className="text-[12px] text-muted-foreground ml-auto">
         {showCounter ? `Showing ${matched} of ${total}` : `${total}`}
       </span>
     </div>

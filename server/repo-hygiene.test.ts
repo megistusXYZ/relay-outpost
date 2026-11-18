@@ -74,7 +74,12 @@ describe("the detector", () => {
 
 describe("the public repo", () => {
   it("has no machine- or infrastructure-specific details in any tracked text file", () => {
-    const tracked = execFileSync("git", ["ls-files", "-z"], { cwd: ROOT, encoding: "utf8" }).split("\0").filter(Boolean);
+    const ls = (...args: string[]) =>
+      execFileSync("git", ["ls-files", "-z", ...args], { cwd: ROOT, encoding: "utf8" }).split("\0").filter(Boolean);
+    // A file deleted in the working tree but not yet staged has nothing left to
+    // leak, and reading it would fail; the commit that lands removes it anyway.
+    const deleted = new Set(ls("--deleted"));
+    const tracked = ls().filter((p) => !deleted.has(p));
     const files = tracked.filter(isScannable).map((p) => ({ path: p, text: readFileSync(path.join(ROOT, p), "utf8") }));
     expect(files.length).toBeGreaterThan(500);
     const found = findPersonalDetails(files);

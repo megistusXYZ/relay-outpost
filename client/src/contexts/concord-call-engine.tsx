@@ -28,7 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { effectiveTime } from "@/lib/concord/concord-events";
 import { roomVoiceKeys, callerFrameKey, type VoiceKeys } from "@/lib/concord/concord-voice";
 import { callRoster, matchCallers } from "@/lib/concord/concord-presence";
-import { planCallerKeys, startPresenceHeartbeat, callerLabel, callKeysForRoom, type CallerLabel, type KeyState } from "@/lib/concord/concord-call";
+import { planCallerKeys, startPresenceHeartbeat, callerLabel, callKeysForRoom, type KeyState } from "@/lib/concord/concord-call";
 import { publishCallPresence, subscribeCallPresence } from "@/lib/concord/concord-stream";
 import type { JoinedCall } from "@/lib/concord/concord-call-e2ee";
 

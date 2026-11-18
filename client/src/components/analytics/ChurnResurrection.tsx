@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import type { Event } from "nostr-tools";
-import { nip19 } from "nostr-tools";
-import { pool, DEFAULT_RELAYS, throttledPoolSubscribe } from "@/lib/nostr";
+import { DEFAULT_RELAYS, throttledPoolSubscribe } from "@/lib/nostr";
 import {
   BarChart,
   Bar,
@@ -36,13 +35,13 @@ import {
   SelectValue } from "@/components/ui/select";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 
-const CHART_COLORS = ["#8b5cf6", "#a78bfa", "#7c3aed", "#6d28d9", "#c4b5fd"];
+const CHART_COLORS = ["#3D6BFF", "#7C9BFF", "#A3ACBA", "#565D69", "#C8D4F0"];
 const CHURN_COLOR = "#ef4444";
 const RESURRECTION_COLOR = "#22c55e";
 
 const KIND_LABELS: Record<number, string> = {
   0: "Profile",
-  1: "Text Note",
+  1: "Post",
   6: "Repost",
   7: "Reaction",
   20: "Picture",
@@ -56,14 +55,6 @@ function getKindLabel(kind: number): string {
   return KIND_LABELS[kind] || `Kind ${kind}`;
 }
 
-function shortenNpub(pubkey: string): string {
-  try {
-    const npub = nip19.npubEncode(pubkey);
-    return npub.slice(0, 12) + "..." + npub.slice(-6);
-  } catch {
-    return pubkey.slice(0, 8) + "..." + pubkey.slice(-6);
-  }
-}
 
 interface UserClassification {
   pubkey: string;
@@ -87,7 +78,7 @@ function CustomTooltipContent({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-md border border-brand/20 bg-white dark:bg-[rgba(4,4,10,0.95)] px-3 py-2 text-xs shadow-lg">
-      <p className="font-display text-brand mb-1">{label || payload[0]?.name}</p>
+      <p className="font-medium text-foreground mb-1">{label || payload[0]?.name}</p>
       {payload.map((entry: any, i: number) => (
         <p key={i} className="text-foreground">
           {entry.name || "Count"}: <span className="text-brand font-mono">{Number(entry.value).toLocaleString()}</span>
@@ -101,7 +92,7 @@ function PieTooltipContent({ active, payload }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-md border border-brand/20 bg-white dark:bg-[rgba(4,4,10,0.95)] px-3 py-2 text-xs shadow-lg">
-      <p className="font-display text-brand mb-1">{payload[0]?.name}</p>
+      <p className="font-medium text-foreground mb-1">{payload[0]?.name}</p>
       <p className="text-foreground">
         Count: <span className="text-brand font-mono">{Number(payload[0]?.value).toLocaleString()}</span>
       </p>
@@ -336,13 +327,13 @@ export function ChurnResurrection({ relays: propRelays }: { relays?: string[] })
         <div className="p-4 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 flex-wrap">
             <Users className="w-4 h-4 text-brand" />
-            <h2 className="text-sm font-display text-brand">Churn & Resurrection Detector</h2>
+            <h2 className="text-[15px] font-semibold text-foreground">Churn & resurrection detector</h2>
           </div>
 
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-                Analysis Window
+              <Label className="text-[13px] text-muted-foreground font-medium">
+                Analysis window
               </Label>
               <Select value={analysisWindow} onValueChange={setAnalysisWindow} data-testid="select-analysis-window">
                 <SelectTrigger className="w-[120px]" data-testid="trigger-analysis-window">
@@ -357,8 +348,8 @@ export function ChurnResurrection({ relays: propRelays }: { relays?: string[] })
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-                Inactivity Threshold
+              <Label className="text-[13px] text-muted-foreground font-medium">
+                Inactivity threshold
               </Label>
               <Select value={inactivityThreshold} onValueChange={setInactivityThreshold} data-testid="select-inactivity-threshold">
                 <SelectTrigger className="w-[120px]" data-testid="trigger-inactivity-threshold">
@@ -404,7 +395,7 @@ export function ChurnResurrection({ relays: propRelays }: { relays?: string[] })
               <div className="p-4 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <UserMinus className="w-3.5 h-3.5 text-red-700 dark:text-red-400" />
-                  <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Churned</p>
+                  <p className="text-[13px] text-muted-foreground font-medium">Churned</p>
                 </div>
                 <p className="text-xl font-mono text-danger dark:text-red-400" data-testid="text-churned-count">
                   {stats.churnedCount}
@@ -416,7 +407,7 @@ export function ChurnResurrection({ relays: propRelays }: { relays?: string[] })
               <div className="p-4 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <UserPlus className="w-3.5 h-3.5 text-green-800 dark:text-green-400" />
-                  <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Resurrected</p>
+                  <p className="text-[13px] text-muted-foreground font-medium">Resurrected</p>
                 </div>
                 <p className="text-xl font-mono text-success dark:text-green-400" data-testid="text-resurrected-count">
                   {stats.resurrectedCount}
@@ -428,7 +419,7 @@ export function ChurnResurrection({ relays: propRelays }: { relays?: string[] })
               <div className="p-4 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <TrendingDown className="w-3.5 h-3.5 text-brand" />
-                  <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Churn Rate</p>
+                  <p className="text-[13px] text-muted-foreground font-medium">Churn rate</p>
                 </div>
                 <p className="text-xl font-mono text-brand" data-testid="text-churn-rate">
                   {stats.churnRate}%
@@ -440,7 +431,7 @@ export function ChurnResurrection({ relays: propRelays }: { relays?: string[] })
               <div className="p-4 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <TrendingUp className="w-3.5 h-3.5 text-brand" />
-                  <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Active</p>
+                  <p className="text-[13px] text-muted-foreground font-medium">Active</p>
                 </div>
                 <p className="text-xl font-mono text-foreground" data-testid="text-active-count">
                   {stats.activeCount}
@@ -453,26 +444,26 @@ export function ChurnResurrection({ relays: propRelays }: { relays?: string[] })
             <Card className="glass-card overflow-visible" data-testid="chart-weekly">
               <div className="p-4 sm:p-6 space-y-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-sm font-display text-brand">Churn vs Resurrection by Week</h3>
+                  <h3 className="text-[15px] font-semibold text-foreground">Churn vs resurrection by week</h3>
                 </div>
                 <ResponsiveContainer width="100%" height={240}>
                   <BarChart data={weeklyData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(139,92,246,0.1)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(163,172,186,0.14)" />
                     <XAxis
                       dataKey="week"
-                      tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }}
+                      tick={{ fontSize: 12, fill: "rgba(255,255,255,0.4)" }}
                       axisLine={false}
                       tickLine={false}
                     />
                     <YAxis
-                      tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }}
+                      tick={{ fontSize: 12, fill: "rgba(255,255,255,0.4)" }}
                       axisLine={false}
                       tickLine={false}
                       allowDecimals={false}
                     />
                     <Tooltip content={<CustomTooltipContent />} />
                     <Legend
-                      wrapperStyle={{ fontSize: 11 }}
+                      wrapperStyle={{ fontSize: 12 }}
                     />
                     <Bar dataKey="churned" name="Churned" fill={CHURN_COLOR} radius={[3, 3, 0, 0]} />
                     <Bar dataKey="resurrected" name="Resurrected" fill={RESURRECTION_COLOR} radius={[3, 3, 0, 0]} />
@@ -486,7 +477,7 @@ export function ChurnResurrection({ relays: propRelays }: { relays?: string[] })
             <Card className="glass-card overflow-visible" data-testid="chart-triggers">
               <div className="p-4 sm:p-6 space-y-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-sm font-display text-brand">Resurrection Triggers</h3>
+                  <h3 className="text-[15px] font-semibold text-foreground">Resurrection triggers</h3>
                   <Badge variant="secondary" data-testid="badge-trigger-count">
                     {triggerData.length} types
                   </Badge>
@@ -538,7 +529,7 @@ export function ChurnResurrection({ relays: propRelays }: { relays?: string[] })
               <div className="p-4 sm:p-6 space-y-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   <UserMinus className="w-3.5 h-3.5 text-red-700 dark:text-red-400" />
-                  <h3 className="text-sm font-display text-brand">Recently Churned</h3>
+                  <h3 className="text-[15px] font-semibold text-foreground">Recently churned</h3>
                   <Badge variant="secondary" data-testid="badge-churned-count">
                     {stats.churnedCount}
                   </Badge>
@@ -569,7 +560,7 @@ export function ChurnResurrection({ relays: propRelays }: { relays?: string[] })
               <div className="p-4 sm:p-6 space-y-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   <UserPlus className="w-3.5 h-3.5 text-green-800 dark:text-green-400" />
-                  <h3 className="text-sm font-display text-brand">Recently Resurrected</h3>
+                  <h3 className="text-[15px] font-semibold text-foreground">Recently resurrected</h3>
                   <Badge variant="secondary" data-testid="badge-resurrected-count">
                     {stats.resurrectedCount}
                   </Badge>

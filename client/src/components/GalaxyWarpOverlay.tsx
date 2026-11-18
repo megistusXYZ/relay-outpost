@@ -1,17 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState, useCallback, lazy, Suspense } from "react";
-import { Rocket, Radio, ShieldCheck, Lock, ArrowLeft, Eye, EyeOff, UserPlus, ChevronDown, HelpCircle } from "lucide-react";
+import { Rocket, ShieldCheck, Lock, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { lazyNamed } from "@/lib/lazy-retry";
 // The sign-in options (every signer, key import, account creation) load when
 // the sign-in screen is shown — not for every visitor who is only browsing
 // (guest-first-load.test.ts).
 const LoginOptions = lazy(() => lazyNamed(() => import("@/components/LoginOptions"), "LoginOptions"));
-import { LandingMarketing } from "@/components/landing/LandingMarketing";
-import { RotatingTagline } from "@/components/landing/RotatingTagline";
-import { InviteGreeting } from "@/components/landing/InviteGreeting";
-import { LookAroundLink } from "@/components/landing/LookAroundLink";
-import { PublicBetaBadge } from "@/components/PublicBetaBadge";
-import { AmbientVideo } from "@/components/landing/HeroAmbientVideo";
-import { loadSignupDraft } from "@/lib/account-draft";
+import { OutpostLanding } from "@/components/landing/OutpostLanding";
 import { trackSignupEvent } from "@/lib/signup-telemetry";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
@@ -57,23 +51,23 @@ interface Dust {
 }
 
 const CLASSIC_STAR_COLORS = [
-  "rgba(180,180,255,",
-  "rgba(200,200,255,",
-  "rgba(160,140,255,",
-  "rgba(220,200,255,",
-  "rgba(140,160,255,",
-  "rgba(255,220,240,",
+  "rgba(200,212,240,",
+  "rgba(220,226,240,",
+  "rgba(160,180,255,",
+  "rgba(243,245,248,",
+  "rgba(140,170,255,",
+  "rgba(235,238,245,",
 ];
 
 const NEBULA_PALETTES = [
-  { r: 30, g: 15, b: 60 },
-  { r: 20, g: 10, b: 50 },
-  { r: 15, g: 20, b: 45 },
-  { r: 40, g: 15, b: 50 },
-  { r: 10, g: 15, b: 40 },
-  { r: 25, g: 10, b: 35 },
-  { r: 12, g: 18, b: 35 },
-  { r: 35, g: 12, b: 45 },
+  { r: 16, g: 22, b: 40 },
+  { r: 14, g: 18, b: 32 },
+  { r: 15, g: 24, b: 48 },
+  { r: 20, g: 24, b: 32 },
+  { r: 10, g: 16, b: 36 },
+  { r: 18, g: 22, b: 30 },
+  { r: 12, g: 20, b: 42 },
+  { r: 22, g: 26, b: 36 },
 ];
 
 function createClassicStar(w: number, h: number, maxZ: number): ClassicStar {
@@ -155,7 +149,6 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
   const [warping, setWarping] = useState(false);
   const [collapsePhase, setCollapsePhase] = useState<"idle" | "in" | "out">("idle");
   const collapsedInRef = useRef(false);
-  const [charging, setCharging] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
   const [visible, setVisible] = useState(mode !== "hidden");
   const [showBetaGate, setShowBetaGate] = useState(false);
@@ -168,15 +161,14 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
   const warpToCockpitFiredRef = useRef(false);
   const starfieldPausedRef = useRef(false);
   const starfieldKickRef = useRef<() => void>(() => {});
-  const pastHeroRef = useRef(false);
 
   modeRef.current = mode;
 
-  // Pause the starfield canvas when the tab is hidden or the landing is
-  // scrolled past the hero — no point spending rAF/GPU on an off-screen
-  // backdrop. Reads modeRef so the callback stays stable (no effect churn).
+  // Pause the starfield canvas when the tab is hidden or the visitor landing
+  // covers it (OutpostLanding is its own page; the canvas draws the warp
+  // after the launch). Reads modeRef so the callback stays stable.
   const recomputeStarfieldPaused = useCallback(() => {
-    const next = (typeof document !== "undefined" && document.hidden) || (modeRef.current === "full" && pastHeroRef.current);
+    const next = (typeof document !== "undefined" && document.hidden) || modeRef.current === "full";
     if (next === starfieldPausedRef.current) return;
     starfieldPausedRef.current = next;
     if (!next) starfieldKickRef.current();
@@ -346,8 +338,8 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
 
       if (isWarp) {
         const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.6);
-        gradient.addColorStop(0, "rgba(80,40,160,0.04)");
-        gradient.addColorStop(0.5, "rgba(40,20,120,0.02)");
+        gradient.addColorStop(0, "rgba(60,90,160,0.04)");
+        gradient.addColorStop(0.5, "rgba(30,50,120,0.02)");
         gradient.addColorStop(1, "transparent");
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, w, h);
@@ -430,7 +422,7 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
         const warpDustSize = isWarp ? d.size * (1 + speed * 0.3) : d.size;
         ctx.beginPath();
         ctx.arc(d.x, d.y, warpDustSize, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(120, 100, 160, ${dustAlpha.toFixed(4)})`;
+        ctx.fillStyle = `rgba(140, 150, 170, ${dustAlpha.toFixed(4)})`;
         ctx.fill();
       }
 
@@ -459,7 +451,7 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
           ctx.beginPath();
           ctx.moveTo(trailEndX, trailEndY);
           ctx.lineTo(star.x, star.y);
-          ctx.strokeStyle = `rgba(180, 175, 200, ${(alpha * 0.4).toFixed(4)})`;
+          ctx.strokeStyle = `rgba(190, 196, 210, ${(alpha * 0.4).toFixed(4)})`;
           ctx.lineWidth = star.size * 0.6;
           ctx.stroke();
         }
@@ -572,11 +564,10 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
     }
     // Reduced motion: no tactile charge, just go.
     if (prefersReducedMotion()) { onLaunch(); return; }
-    // Tactile launch: a light haptic on mobile + a brief "charge" burst on the
-    // button, then the warp kicks in ~160ms later so the press is felt.
+    // Tactile launch: a light haptic on mobile, then straight on (the old
+    // "charge" burst on the button is gone, so there's nothing to wait for).
     try { navigator.vibrate?.(15); } catch {}
-    setCharging(true);
-    window.setTimeout(() => { setCharging(false); onLaunch(); }, 160);
+    onLaunch();
   }, [warping, onLaunch, hasBetaAccess]);
 
   const handleBetaSubmit = useCallback(async () => {
@@ -610,11 +601,6 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
     }
   }, [betaCode, betaVerifying, onLaunch]);
 
-  const landingSectionsRef = useRef<HTMLDivElement>(null);
-  const scrollToSections = useCallback(() => {
-    landingSectionsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
-
   if (!visible && mode === "hidden") return null;
 
   const isFull = mode === "full";
@@ -631,7 +617,7 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
     >
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 w-full h-full"
+        className={`absolute inset-0 w-full h-full ${isFull && !warping ? "invisible" : ""}`}
         style={{ background: "black" }}
       />
       {/* Black-hole transition at the warp apex — a violet event horizon closes
@@ -641,9 +627,6 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
         <div aria-hidden className="pointer-events-none absolute inset-0 z-[120] overflow-hidden">
           <div className={`blackhole-layer ${collapsePhase === "in" ? "is-closing" : "is-opening"}`} />
         </div>
-      )}
-      {isFull && !warping && (
-        <div className="hero-intro-glow absolute inset-0 z-0 pointer-events-none" aria-hidden />
       )}
       {isDimmed && (
         <div className="absolute inset-0 bg-black/60" />
@@ -667,147 +650,11 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
         <div
           className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden"
           data-testid="landing-scroll"
-          onScroll={(e) => {
-            const el = e.currentTarget;
-            pastHeroRef.current = el.scrollTop > el.clientHeight * 0.85;
-            recomputeStarfieldPaused();
-          }}
+          onScroll={() => recomputeStarfieldPaused()}
         >
-        <div className="relative flex min-h-[100dvh] flex-col items-center justify-center px-6 py-16">
-          <AmbientVideo side="right" src="/videos/hero-ambient.mp4" mobileSrc="/videos/hero-ambient-mobile.mp4" poster="/images/landing/hero-ambient-poster.webp" mobilePoster="/images/landing/hero-ambient-mobile-poster.webp" />
-          {/* Public-beta stamp — small badge in the top-left, clickable to the brief. */}
-          <div className="absolute left-3 top-3 z-20 w-[64px] sm:left-6 sm:top-6 sm:w-[92px]">
-            <PublicBetaBadge variant="landing-stamp" />
-          </div>
-          <div className="relative z-10 flex flex-col items-center gap-5 sm:gap-7 md:gap-8 animate-in fade-in-0 slide-in-from-bottom-4 duration-700">
-            <div className="flex items-center rounded-md overflow-hidden brand-flicker">
-              <div className="flex items-center bg-black/80 pl-3 pr-1.5 sm:pl-4 sm:pr-2 h-10 sm:h-12 border-2 border-r-0 border-white/60 rounded-l-md">
-                <span className="font-brand font-bold text-base sm:text-lg tracking-[0.2em] text-white uppercase leading-none">Relay</span>
-              </div>
-              <div className="flex items-center justify-center h-10 sm:h-12 bg-black/80 border-y-2 border-white/60">
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 sm:w-9 sm:h-9">
-                  <g clipPath="url(#clip0_warp)">
-                    <path d="M5.64999 7.64999L2.85001 4.85001C2.54001 4.54001 2.76001 4 3.20001 4H6.79001C6.92001 4 7.05001 4.04999 7.14001 4.14999L12.14 9.14999C12.45 9.45999 12.23 10 11.79 10H8.5C6.57 10 5 11.57 5 13.5C5 15.43 6.57 17 8.5 17H10L12.15 19.15C12.46 19.46 12.24 20 11.8 20H8.51001C4.92001 20 2.01001 17.09 2.01001 13.5C2.01001 11.01 3.41001 8.84 5.48001 7.75L5.64999 7.64999Z" fill="white" />
-                    <path d="M18.35 16.35L21.15 19.15C21.46 19.46 21.24 20 20.8 20H17.21C17.08 20 16.95 19.95 16.86 19.85L11.86 14.85C11.55 14.54 11.77 14 12.21 14H15.5C17.43 14 19 12.43 19 10.5C19 8.57 17.43 7 15.5 7H14L11.85 4.85001C11.54 4.54001 11.76 4 12.2 4H15.49C19.08 4 21.99 6.91 21.99 10.5C21.99 12.99 20.59 15.16 18.52 16.25L18.35 16.35Z" fill="white" />
-                  </g>
-                  <defs><clipPath id="clip0_warp"><rect width="24" height="24" /></clipPath></defs>
-                </svg>
-              </div>
-              <div className="flex items-center bg-black/80 pl-1.5 pr-3 sm:pl-2 sm:pr-4 h-10 sm:h-12 border-2 border-l-0 border-white/60 rounded-r-md">
-                <span className="font-brand font-bold text-base sm:text-lg tracking-[0.2em] text-white uppercase leading-none">Outpost</span>
-              </div>
-            </div>
-
-            {/* Hero statement group: a de-emphasized rotating eyebrow, the
-                primary tagline (the focal line), and one concise subline.
-                Grouped tightly so the parent gap separates it cleanly from the
-                logo above and the CTAs below. */}
-            <div className="flex flex-col items-center gap-3 sm:gap-4">
-              <div className="flex items-center gap-2.5">
-                <div className="h-px w-5 sm:w-8 bg-gradient-to-r from-transparent to-white/15" />
-                <p className="text-[9px] sm:text-[10px] font-brand uppercase tracking-[0.3em] text-white/40">
-                  <RotatingTagline />
-                </p>
-                <div className="h-px w-5 sm:w-8 bg-gradient-to-l from-transparent to-white/15" />
-              </div>
-
-              {/* Arrived from a friend's invite: say who, before anything else. */}
-              <InviteGreeting />
-
-              <h1 className="max-w-xl text-balance text-center font-brand text-2xl sm:text-3xl md:text-[2.5rem] font-semibold leading-[1.1] tracking-tight text-white">
-                One outpost for everything you{" "}
-                <span className="text-brand drop-shadow-[0_0_18px_rgba(139,92,246,0.5)]">say.</span>
-              </h1>
-
-              <p className="max-w-md text-center text-sm sm:text-base leading-relaxed text-white/70">
-                Post, chat, connect — one account.
-              </p>
-            </div>
-
-            <div className="mt-1 flex flex-col items-center gap-3 sm:mt-2 sm:flex-row sm:gap-3">
-              <button
-                onClick={handleLaunch}
-                className={`group relative flex items-center gap-2.5 sm:gap-3 px-7 sm:px-9 py-3 sm:py-3.5 rounded-md bg-brand hover:bg-brand active:scale-[0.97] transition-all duration-300 cursor-pointer ${charging ? "scale-[1.05] shadow-[0_0_0_2px_rgba(196,181,253,0.95),0_0_44px_4px_rgba(124,58,237,1)]" : "shadow-[0_0_0_1px_rgba(167,139,250,0.45),0_10px_34px_-8px_rgba(124,58,237,0.7)] hover:shadow-[0_0_0_1px_rgba(196,181,253,0.65),0_12px_42px_-8px_rgba(124,58,237,0.9)]"}`}
-                data-testid="button-engage-warp"
-              >
-                <Rocket className="w-4 h-4 sm:w-5 sm:h-5 text-white -rotate-45 relative z-10" />
-                <span className="font-brand font-semibold text-sm sm:text-base tracking-[0.25em] sm:tracking-[0.3em] uppercase text-white relative z-10">
-                  Get Started
-                </span>
-              </button>
-
-              <button
-                onClick={scrollToSections}
-                className="group flex items-center gap-2 px-5 sm:px-6 py-3 sm:py-3.5 rounded-md border border-white/15 bg-white/[0.02] text-white/70 hover:border-white/30 hover:bg-white/[0.06] hover:text-white transition-all duration-300 cursor-pointer"
-                data-testid="button-what-is-this"
-              >
-                <HelpCircle className="w-4 h-4" />
-                <span className="font-brand text-sm sm:text-base tracking-[0.2em] uppercase">What is this?</span>
-              </button>
-            </div>
-
-            <p className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.25em] sm:tracking-[0.3em] text-white/45">
-              No email or phone number required
-            </p>
-
-            {/* See what's here before signing up: Discover and News are open to
-                read (lib/guest-limits.ts guestCanBrowse); the overlay stands
-                aside on those pages. */}
-            <LookAroundLink />
-
-            {/* Resume signup chip — surfaces only if the user previously
-                started creating an account and the page got reset (mobile
-                eviction, accidental reload, etc.). Tapping it warps into
-                the cockpit so CreateAccountFlow can hydrate the draft. */}
-            {(() => {
-              const draft = loadSignupDraft();
-              if (!draft) return null;
-              const draftName = draft.displayName?.trim();
-              const hasResumableContent = Boolean(
-                draftName || draft.username?.trim() || draft.bio?.trim() ||
-                draft.picture || draft.banner || draft.nip05?.trim() ||
-                draft.website?.trim() || draft.rss?.trim() ||
-                draft.lud16?.trim() || draft.account?.secretKeyHex,
-              );
-              if (!hasResumableContent) return null;
-              // Fire `resume_chip_shown` exactly once per page load. The
-              // helper itself dedups, but render functions can run many
-              // times — keeping the call here (instead of useEffect) is
-              // the simplest way to capture "the chip was eligible to be
-              // seen at all this session".
-              trackSignupEvent("resume_chip_shown");
-              return (
-                <button
-                  onClick={() => {
-                    trackSignupEvent("resume_chip_tapped");
-                    handleLaunch();
-                  }}
-                  data-testid="button-resume-signup"
-                  className="group mt-3 flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-brand/30 bg-brand/[0.08] hover:border-brand/50 hover:bg-brand/[0.14] active:scale-[0.97] transition-all"
-                >
-                  <UserPlus className="w-3 h-3 text-brand/80 group-hover:text-brand-strong transition-colors" />
-                  <span className="font-brand text-[10px] sm:text-[11px] tracking-[0.2em] uppercase text-brand/80 group-hover:text-brand-strong transition-colors">
-                    Resume signup{draftName ? ` as ${draftName}` : ""}
-                  </span>
-                </button>
-              );
-            })()}
-          </div>
-
-          <button
-            onClick={scrollToSections}
-            className="absolute bottom-6 flex flex-col items-center gap-1 text-white/60 hover:text-white transition-colors cursor-pointer"
-            data-testid="button-scroll-cue"
-            aria-label="See what Relay Outpost unlocks"
-          >
-            <span className="text-[10px] font-mono uppercase tracking-[0.3em]">Discover</span>
-            <ChevronDown className="w-4 h-4 animate-bounce" />
-          </button>
-        </div>
-
-        <div ref={landingSectionsRef}>
-          <LandingMarketing onLaunch={handleLaunch} />
-        </div>
+          {/* The visitor landing is its own page (OutpostLanding); the
+              starfield behind it is covered and paused until the launch. */}
+          <OutpostLanding onLaunch={handleLaunch} />
         </div>
       )}
       {isFull && BETA_GATE_ENABLED && showBetaGate && !warping && (
@@ -816,12 +663,12 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
             <div
               className="relative rounded-lg border border-brand/30 overflow-hidden"
               style={{
-                background: "linear-gradient(135deg, hsl(260 30% 6% / 0.95) 0%, hsl(270 25% 10% / 0.95) 50%, hsl(240 20% 6% / 0.95) 100%)",
+                background: "linear-gradient(135deg, hsl(220 23% 6% / 0.95) 0%, hsl(220 20% 10% / 0.95) 50%, hsl(220 23% 5% / 0.95) 100%)",
                 backdropFilter: "blur(20px)" }}
             >
               <div className="absolute inset-0 pointer-events-none opacity-30"
                 style={{
-                  background: "radial-gradient(ellipse at 50% 0%, hsl(270 60% 30% / 0.5) 0%, transparent 60%), radial-gradient(ellipse at 50% 100%, hsl(220 50% 20% / 0.3) 0%, transparent 50%)" }}
+                  background: "radial-gradient(ellipse at 50% 0%, hsl(220 40% 25% / 0.45) 0%, transparent 60%), radial-gradient(ellipse at 50% 100%, hsl(220 50% 20% / 0.3) 0%, transparent 50%)" }}
               />
               <div className="absolute inset-0 pointer-events-none opacity-[0.02]"
                 style={{
@@ -843,11 +690,11 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
                 </div>
 
                 <div className="text-center">
-                  <h2 className="font-brand font-bold text-sm sm:text-base tracking-[0.15em] uppercase text-white/90">
-                    Beta Access
+                  <h2 className="font-bold text-sm sm:text-base text-white/90">
+                    Beta access
                   </h2>
                   <p className="text-[11px] sm:text-xs text-white/70 mt-1.5 leading-relaxed max-w-[260px] mx-auto">
-                    This station is in closed beta. Enter your access code to proceed.
+                    This app is in closed beta. Enter your access code to proceed.
                   </p>
                 </div>
 
@@ -865,7 +712,7 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
                       }}
                       placeholder="Enter access code"
                       autoFocus
-                      className="w-full px-4 py-3 pr-10 rounded-md bg-white/[0.05] border border-white/15 text-white/90 text-sm font-mono tracking-wider placeholder:text-white/20 focus:outline-none focus:border-brand/50 focus:bg-white/[0.08] transition-all"
+                      className="w-full px-4 py-3 pr-10 rounded-md bg-white/[0.05] border border-white/40 text-white/90 text-sm font-mono tracking-wider placeholder:text-white/20 focus:outline-none focus:border-primary focus:bg-white/[0.08] transition-all"
                       data-testid="input-beta-code"
                     />
                     <button
@@ -901,13 +748,13 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
                     ) : (
                       <ShieldCheck className="w-4 h-4 text-brand/70 group-hover:text-brand-strong transition-colors relative z-10" />
                     )}
-                    <span className="font-brand font-semibold text-xs sm:text-sm tracking-[0.2em] uppercase text-brand/80 group-hover:text-brand-strong transition-colors relative z-10">
+                    <span className="font-semibold text-xs sm:text-sm text-brand/80 group-hover:text-brand-strong transition-colors relative z-10">
                       {betaVerifying ? "Verifying" : "Authenticate"}
                     </span>
                   </button>
                 </div>
 
-                <p className="text-[9px] font-mono uppercase tracking-[0.25em] text-white/15 text-center">
+                <p className="text-[12px] text-white/15 text-center font-medium">
                   Closed beta v1.0
                 </p>
               </div>
@@ -918,7 +765,7 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
       {warping && !isCockpit && (
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <div className="animate-pulse">
-            <p className="font-brand text-sm tracking-[0.5em] uppercase text-white/60">
+            <p className="text-sm text-white/60 font-medium">
               Engaging...
             </p>
           </div>
@@ -927,35 +774,6 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
       {isCockpit && !warping && (
         <div className="absolute inset-0 z-10 flex flex-col items-center overflow-y-auto" data-testid="cockpit-login-panel">
           <div className="w-full max-w-md md:max-w-5xl px-4 sm:px-6 py-6 sm:py-8 space-y-5 sm:space-y-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
-            <div className="flex flex-col items-center space-y-2.5 sm:space-y-3">
-              <div className="flex items-center rounded-md overflow-hidden brand-flicker">
-                <div className="flex items-center bg-black/80 pl-2.5 pr-1 sm:pl-3 sm:pr-1.5 h-9 sm:h-10 border-2 border-r-0 border-white/50 rounded-l-md">
-                  <span className="font-brand font-bold text-xs sm:text-sm tracking-[0.2em] text-white uppercase leading-none">Relay</span>
-                </div>
-                <div className="flex items-center justify-center h-9 sm:h-10 bg-black/80 border-y-2 border-white/50">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 sm:w-7 sm:h-7">
-                    <g clipPath="url(#clip0_cockpit)">
-                      <path d="M5.64999 7.64999L2.85001 4.85001C2.54001 4.54001 2.76001 4 3.20001 4H6.79001C6.92001 4 7.05001 4.04999 7.14001 4.14999L12.14 9.14999C12.45 9.45999 12.23 10 11.79 10H8.5C6.57 10 5 11.57 5 13.5C5 15.43 6.57 17 8.5 17H10L12.15 19.15C12.46 19.46 12.24 20 11.8 20H8.51001C4.92001 20 2.01001 17.09 2.01001 13.5C2.01001 11.01 3.41001 8.84 5.48001 7.75L5.64999 7.64999Z" fill="white" />
-                      <path d="M18.35 16.35L21.15 19.15C21.46 19.46 21.24 20 20.8 20H17.21C17.08 20 16.95 19.95 16.86 19.85L11.86 14.85C11.55 14.54 11.77 14 12.21 14H15.5C17.43 14 19 12.43 19 10.5C19 8.57 17.43 7 15.5 7H14L11.85 4.85001C11.54 4.54001 11.76 4 12.2 4H15.49C19.08 4 21.99 6.91 21.99 10.5C21.99 12.99 20.59 15.16 18.52 16.25L18.35 16.35Z" fill="white" />
-                    </g>
-                    <defs><clipPath id="clip0_cockpit"><rect width="24" height="24" /></clipPath></defs>
-                  </svg>
-                </div>
-                <div className="flex items-center bg-black/80 pl-1 pr-2.5 sm:pl-1.5 sm:pr-3 h-9 sm:h-10 border-2 border-l-0 border-white/50 rounded-r-md">
-                  <span className="font-brand font-bold text-xs sm:text-sm tracking-[0.2em] text-white uppercase leading-none">Outpost</span>
-                </div>
-              </div>
-
-              <p className="text-[11px] sm:text-xs font-brand uppercase tracking-[0.25em] sm:tracking-[0.3em] text-white/70">
-                Sign in
-              </p>
-              <div className="flex items-center justify-center gap-2">
-                <div className="h-px w-6 sm:w-8 bg-white/10" />
-                <Radio className="w-3 h-3 text-white/20" />
-                <div className="h-px w-6 sm:w-8 bg-white/10" />
-              </div>
-            </div>
-
             <Suspense fallback={<div className="min-h-[280px]" aria-busy="true" />}>
               <LoginOptions
                 variant="overlay"
@@ -968,7 +786,7 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
       {isCockpit && warping && (
         <div className="absolute inset-0 flex items-center justify-center z-20">
           <div className="animate-pulse">
-            <p className="font-brand text-sm tracking-[0.5em] uppercase text-white/60">
+            <p className="text-sm text-white/60 font-medium">
               Engaging...
             </p>
           </div>
@@ -980,16 +798,16 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
             <div className="flex items-center gap-2">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white/45 sm:w-6 sm:h-6">
                 <g clipPath="url(#clip0_dim)">
-                  <path d="M5.64999 7.64999L2.85001 4.85001C2.54001 4.54001 2.76001 4 3.20001 4H6.79001C6.92001 4 7.05001 4.04999 7.14001 4.14999L12.14 9.14999C12.45 9.45999 12.23 10 11.79 10H8.5C6.57 10 5 11.57 5 13.5C5 15.43 6.57 17 8.5 17H10L12.15 19.15C12.46 19.46 12.24 20 11.8 20H8.51001C4.92001 20 2.01001 17.09 2.01001 13.5C2.01001 11.01 3.41001 8.84 5.48001 7.75L5.64999 7.64999Z" fill="currentColor" />
-                  <path d="M18.35 16.35L21.15 19.15C21.46 19.46 21.24 20 20.8 20H17.21C17.08 20 16.95 19.95 16.86 19.85L11.86 14.85C11.55 14.54 11.77 14 12.21 14H15.5C17.43 14 19 12.43 19 10.5C19 8.57 17.43 7 15.5 7H14L11.85 4.85001C11.54 4.54001 11.76 4 12.2 4H15.49C19.08 4 21.99 6.91 21.99 10.5C21.99 12.99 20.59 15.16 18.52 16.25L18.35 16.35Z" fill="currentColor" />
+                  <path d="M19.998 9.857A8.28 8.28 0 1 1 14.143 4.002A1.08 1.08 0 0 1 13.584 6.088A6.12 6.12 0 1 0 17.911 10.416A1.08 1.08 0 0 1 19.998 9.857Z" fill="currentColor" />
+                  <path d="M15.53 6.91A1.56 1.56 0 1 0 18.65 6.91A1.56 1.56 0 1 0 15.53 6.91Z" fill="currentColor" />
                 </g>
                 <defs><clipPath id="clip0_dim"><rect width="24" height="24" /></clipPath></defs>
               </svg>
-              <span className="font-brand text-[11px] sm:text-xs tracking-[0.25em] sm:tracking-[0.3em] uppercase text-white/55">
-                Station Offline
+              <span className="text-[12px] sm:text-xs sm:tracking-[0.3em] text-white/55 font-medium">
+                Offline
               </span>
             </div>
-            <p className="text-[11px] sm:text-xs font-mono uppercase tracking-[0.2em] text-white/55 max-w-[220px] sm:max-w-[240px] text-center leading-relaxed">
+            <p className="text-[12px] sm:text-xs text-white/55 max-w-[220px] sm:max-w-[240px] text-center leading-relaxed font-medium">
               Sign in to continue
             </p>
             <button
@@ -998,8 +816,8 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
               data-testid="button-dimmed-sign-in"
             >
               <Rocket className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white/70 -rotate-45" />
-              <span className="font-brand text-[11px] sm:text-xs tracking-[0.2em] uppercase text-white/70">
-                Sign In
+              <span className="text-[12px] sm:text-xs text-white/70 font-medium">
+                Sign in
               </span>
             </button>
           </div>

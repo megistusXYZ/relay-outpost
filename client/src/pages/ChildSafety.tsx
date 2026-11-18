@@ -31,14 +31,14 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-border/30 dark:border-border/15 bg-white/60 dark:bg-muted/10 p-5">
+    <section className="rounded-[20px] border border-border/60 bg-card p-5">
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-brand/10 to-brand/10 border border-brand/10 flex items-center justify-center shrink-0">
-          <Icon className="w-4 h-4 text-brand" />
+        <div className="w-9 h-9 rounded-full dark:bg-foreground/[0.05] flex items-center justify-center shrink-0">
+          <Icon className="w-4 h-4 text-foreground/75" />
         </div>
-        <h2 className="text-sm font-bold text-foreground/90 uppercase tracking-wider">{title}</h2>
+        <h2 className="text-[16px] font-semibold text-foreground">{title}</h2>
       </div>
-      <div className="text-[13px] text-foreground/80 dark:text-foreground/75 leading-relaxed space-y-2">
+      <div className="text-[15px] text-foreground/80 leading-relaxed space-y-2">
         {children}
       </div>
     </section>
@@ -46,37 +46,37 @@ function Section({
 }
 
 export default function ChildSafety() {
-  useDocumentTitle("Child Safety Standards — Relay Outpost");
+  useDocumentTitle("Child safety standards — Relay Outpost");
   const goBack = useGoBack();
 
   return (
     <div className="h-dvh overflow-y-auto">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-in fade-in duration-300" data-testid="page-child-safety">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-in fade-in duration-150" data-testid="page-child-safety">
         <div className="flex items-center gap-3 mb-1">
-          <button type="button" onClick={() => goBack("/")} className="text-muted-foreground/50 hover:text-foreground transition-colors" data-testid="link-back-child-safety" aria-label="Back">
+          <button type="button" onClick={() => goBack("/")} className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-back-child-safety" aria-label="Back">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div className="flex items-center gap-2">
-            <ShieldAlert className="w-7 h-7 text-brand dark:text-brand/80" />
+            <ShieldAlert className="w-7 h-7 text-foreground/75" />
             <div>
-              <h1 className="text-lg sm:text-xl font-black uppercase tracking-[0.06em] leading-none text-brand dark:text-brand/90" style={{ fontStyle: "italic" }}>
-                Child Safety Standards
+              <h1 className="text-[24px] sm:text-[30px] font-semibold tracking-[-0.025em] leading-[1.1] text-foreground">
+                Child safety standards
               </h1>
-              <p className="text-[10px] text-brand/40 dark:text-brand/30 font-bold uppercase tracking-[0.2em] mt-0.5 ml-0.5">
-                zero tolerance, clearly stated
+              <p className="text-[14px] sm:text-[15px] text-muted-foreground mt-1">
+                Zero tolerance, clearly stated
               </p>
             </div>
           </div>
         </div>
 
-        <div className="mt-6 mb-6 rounded-xl border border-border/30 dark:border-border/15 bg-white/50 dark:bg-muted/10 p-5">
+        <div className="mt-6 mb-6 rounded-[20px] border border-border/60 bg-card p-5">
           <p className="text-sm text-foreground/85 dark:text-foreground/80 leading-relaxed">
             Relay Outpost has <strong>zero tolerance for child sexual abuse and exploitation (CSAE)</strong>.
             Content that sexualizes, exploits, or endangers minors is prohibited by our{" "}
             <a href="/terms" className="text-brand hover:underline">Terms</a> and has no home in this app.
             This page explains the standards we hold, how to report violations, and exactly what happens when you do.
           </p>
-          <p className="text-[11px] text-muted-foreground/70 mt-3 pt-3 border-t border-border/20">
+          <p className="text-[12px] text-muted-foreground/70 mt-3 pt-3 border-t border-border/20">
             Last updated {LAST_UPDATED}
           </p>
         </div>
@@ -140,7 +140,7 @@ export default function ChildSafety() {
 
           <Section icon={Mail} title="Contact">
             <p>
-              Users can reach the team through the in-app report and feedback channels above. Relay
+              Users can reach the team through the in-app report and feedback tools above. Relay
               operators, app stores, and authorities are provided a designated child-safety contact
               through the channels those parties require (for example, the app-store console and the
               contact details published on our store listings).

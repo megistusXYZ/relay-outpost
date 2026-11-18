@@ -7,12 +7,11 @@ import { fetchDMRelayList, hasDMRelayList, getDMRelaysForContact, getDMRelayList
 // Single source of truth lives in outbox.ts; re-export for existing import sites
 // (HolidayManager, ContentCalendar) that import it from here.
 export { getDMRelaysForContact };
-import { signWithTimeout, withSignerTimeout, SIGNER_CRYPTO_TIMEOUT } from "@/lib/signer-timeout";
+import { withSignerTimeout, SIGNER_CRYPTO_TIMEOUT } from "@/lib/signer-timeout";
 
 const KIND_GIFT_WRAP = 1059;
 const KIND_SEAL = 13;
 const KIND_RUMOR = 14;
-const KIND_FILE_MESSAGE = 15;
 const SIGNER_TIMEOUT = SIGNER_CRYPTO_TIMEOUT;
 
 // NIP-17: randomize created_at "up to two days in the PAST" — never the future

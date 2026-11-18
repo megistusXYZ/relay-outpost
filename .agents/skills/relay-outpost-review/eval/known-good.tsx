@@ -53,17 +53,17 @@ export function MembersPanel({ communityId, myPubkey, signer, onClose }: {
         <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close"><X className="w-4 h-4" /></Button>
       </div>
       {state === "loading" ? (
-        <p className="text-sm text-muted-foreground/60">Loading…</p>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       ) : state === "unreachable" ? (
-        <p className="text-sm text-muted-foreground/60">Couldn't reach this community's relay. Try again in a moment.</p>
+        <p className="text-sm text-muted-foreground">Couldn't reach this community's relay. Try again in a moment.</p>
       ) : members.length === 0 ? (
-        <p className="text-sm text-muted-foreground/60">No members yet. Invite a friend.</p>
+        <p className="text-sm text-muted-foreground">No members yet. Invite a friend.</p>
       ) : (
         <ul className="space-y-2">
           {members.map((m) => (
             <li key={m.pubkey} className="flex items-center gap-2">
               <span className="text-sm">{m.name}</span>
-              {m.tier && <span className={`text-xs ${m.tier === "strong" ? "text-success" : "text-muted-foreground/60"}`}>{getTrustPhrase(m.tier)}</span>}
+              {m.tier && <span className={`text-xs ${m.tier === "strong" ? "text-success" : "text-muted-foreground"}`}>{getTrustPhrase(m.tier)}</span>}
               <Button size="sm" variant="ghost" onClick={() => follow(m.pubkey)} aria-label={`Follow ${m.name}`}><UserPlus className="w-3.5 h-3.5" /></Button>
             </li>
           ))}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { useBackClosable } from "@/hooks/use-back-closable";
 import { createPortal } from "react-dom";
-import { X, Download, ChevronLeft, ChevronRight, Heart, MessageCircle, ArrowUpRight } from "lucide-react";
+import { X, Download, ChevronLeft, ChevronRight, Heart, ArrowUpRight } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";

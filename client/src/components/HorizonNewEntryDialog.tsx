@@ -137,8 +137,8 @@ export function HorizonNewEntryDialog({ open, onOpenChange, relayUrl }: HorizonN
         <div className="px-5 pt-5 pb-3 space-y-1">
           <div className="flex items-center gap-2">
             <HorizonIcon className="w-4 h-4 text-brand" />
-            <DialogTitle className="text-sm font-brand tracking-wider uppercase text-brand">
-              New Article
+            <DialogTitle className="text-sm text-brand font-medium">
+              New article
             </DialogTitle>
           </div>
           <p className="text-[11px] text-muted-foreground/50">

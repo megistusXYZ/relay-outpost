@@ -2,8 +2,9 @@ import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Send, X, ImagePlus, Film, FileText, ShieldCheck, Music, Radio, ChevronDown, Archive, Trash2, RotateCcw, Image, Images, Video, BarChart3, Plus, Minus } from "lucide-react";
+import { Send, X, ImagePlus, Film, FileText, ShieldCheck, Music, ChevronDown, Archive, Trash2, RotateCcw, Image, Images, BarChart3, Plus, Minus } from "lucide-react";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
+import { OttoMark } from "@/components/OttoMark";
 import { publishEvent, wasAuthRequiredRecently } from "@/lib/nostr";
 import { KIND_TEXT_NOTE, clientTags, extractHashtags } from "@/lib/nostr-helpers";
 import { markHasPosted } from "@/lib/adoption-flags";
@@ -105,14 +106,6 @@ function buildMediaImetaTags(
 
 let mediaIdCounter = 0;
 
-function RelayOutpostIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      <path d="M5.64999 7.64999L2.85001 4.85001C2.54001 4.54001 2.76001 4 3.20001 4H6.79001C6.92001 4 7.05001 4.04999 7.14001 4.14999L12.14 9.14999C12.45 9.45999 12.23 10 11.79 10H8.5C6.57 10 5 11.57 5 13.5C5 15.43 6.57 17 8.5 17H10L12.15 19.15C12.46 19.46 12.24 20 11.8 20H8.51001C4.92001 20 2.01001 17.09 2.01001 13.5C2.01001 11.01 3.41001 8.84 5.48001 7.75L5.64999 7.64999Z" fill="currentColor" />
-      <path d="M18.35 16.35L21.15 19.15C21.46 19.46 21.24 20 20.8 20H17.21C17.08 20 16.95 19.95 16.86 19.85L11.86 14.85C11.55 14.54 11.77 14 12.21 14H15.5C17.43 14 19 12.43 19 10.5C19 8.57 17.43 7 15.5 7H14L11.85 4.85001C11.54 4.54001 11.76 4 12.2 4H15.49C19.08 4 21.99 6.91 21.99 10.5C21.99 12.99 20.59 15.16 18.52 16.25L18.35 16.35Z" fill="currentColor" />
-    </svg>
-  );
-}
 
 export function CreatePostFAB() {
   // The post being held before it leaves (lib/post-hold.ts). The page closing sends it at once.
@@ -398,7 +391,7 @@ export function CreatePostFAB() {
         .catch(() => {});
       const desc = result.metadataStripped
         ? "Media attached. Location and device data were removed."
-        : "Media attached to your note.";
+        : "Media attached to your post.";
       toast({ title: "Uploaded", description: desc });
     } catch (err) {
       console.error("Upload error:", err);
@@ -698,7 +691,7 @@ export function CreatePostFAB() {
         setIsOpen(false);
         clearMentionTags();
         clearEmojiTags();
-        toast({ title: "Published", description: "Your picture post has been broadcast." });
+        toast({ title: "Published", description: "Your picture post went out to your relays." });
         setIsPublishing(false);
         return;
       }
@@ -897,7 +890,7 @@ export function CreatePostFAB() {
       } else {
         const msg = err instanceof Error && err.message.includes("No relays")
           ? "No relays available. If using Private Only mode, make sure you have a private relay configured."
-          : "Something went wrong while sending your note.";
+          : "Something went wrong while sending your post.";
         toast({
           title: "Failed to publish",
           description: msg,
@@ -1116,14 +1109,6 @@ export function CreatePostFAB() {
             data-testid="container-create-post"
           >
             <div className={`absolute inset-0 pointer-events-none overflow-hidden ${isMobile ? "" : "rounded-xl"}`}>
-              <div
-                className="absolute -top-20 -right-20 w-48 h-48 rounded-full opacity-[0.07]"
-                style={{ background: "radial-gradient(circle, rgba(140, 100, 220, 0.8), transparent 70%)" }}
-              />
-              <div
-                className="absolute -bottom-16 -left-16 w-40 h-40 rounded-full opacity-[0.05]"
-                style={{ background: "radial-gradient(circle, rgba(100, 60, 200, 0.7), transparent 70%)" }}
-              />
             </div>
 
             <input
@@ -1338,7 +1323,7 @@ export function CreatePostFAB() {
                     </div>
                     {!editingPost && (
                       <div className="flex items-center gap-1.5 px-0.5">
-                        <span className="text-[9px] uppercase tracking-wide text-muted-foreground/40 shrink-0">Publish via</span>
+                        <span className="text-[12px] text-muted-foreground shrink-0 font-medium">Publish via</span>
                         <button
                           type="button"
                           onClick={() => chooseBackend("server")}
@@ -1383,7 +1368,7 @@ export function CreatePostFAB() {
               <div className="relative z-10 mx-4 sm:mx-3 px-3 py-2.5 rounded-lg bg-green-500/[0.06] border border-green-500/15 space-y-1.5" data-testid="container-shield-info">
                 <div className="flex items-center gap-1.5 text-xs font-medium text-success dark:text-green-400">
                   <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                  Signal Protection Active
+                  Photo privacy is on
                 </div>
                 <p className="text-[11px] leading-relaxed text-muted-foreground">
                   Images are scrubbed before leaving your device. GPS, device info, timestamps, and camera data are stripped automatically.
@@ -1437,7 +1422,7 @@ export function CreatePostFAB() {
             {showDrafts && (
               <div className="relative z-10 mx-3 sm:mx-3 mt-1 rounded-lg bg-accent/40 border border-border dark:bg-brand/[0.04] dark:border-brand/15 overflow-hidden" data-testid="container-drafts-panel">
                 <div className="flex items-center justify-between px-3 py-2 border-b border-border dark:border-brand/10">
-                  <span className="text-[11px] font-medium text-brand/80 uppercase tracking-wider">Saved Drafts</span>
+                  <span className="text-[12px] font-medium text-brand/80">Saved drafts</span>
                   <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground/40 hover:text-muted-foreground" onClick={() => setShowDrafts(false)} aria-label="Close drafts" title="Close drafts">
                     <X className="w-3 h-3" />
                   </Button>
@@ -1567,7 +1552,7 @@ export function CreatePostFAB() {
                   className="shrink-0 rounded-full mt-0.5"
                   style={{
                     padding: "1.5px",
-                    background: "conic-gradient(from 0deg, rgba(140, 80, 220, 0.25), rgba(60, 30, 120, 0.08), rgba(100, 60, 180, 0.18), rgba(40, 20, 80, 0.05), rgba(140, 80, 220, 0.25))" }}
+                    background: "hsl(var(--border))" }}
                 >
                   <Avatar className="w-9 h-9 border-[2px] border-background">
                     <AvatarImage src={profile?.picture} alt="You" />
@@ -1604,7 +1589,7 @@ export function CreatePostFAB() {
                       >
                         <Images className="w-3.5 h-3.5" />
                         Post as picture
-                        {isPictureMode && <span className="text-[9px] uppercase tracking-wide opacity-70">on</span>}
+                        {isPictureMode && <span className="text-[12px] opacity-70 font-medium">on</span>}
                       </button>
                       {isPictureMode && (
                         <div className="rounded-lg border border-border dark:border-brand/20 bg-accent/40 dark:bg-brand/[0.03] p-2.5 space-y-1.5">
@@ -1674,7 +1659,7 @@ export function CreatePostFAB() {
                     <div className="mt-3 space-y-2 rounded-lg border border-border dark:border-brand/20 bg-accent/40 dark:bg-brand/[0.03] p-3" data-testid="container-poll-options">
                       <div className="flex items-center gap-1.5 mb-2">
                         <BarChart3 className="w-3.5 h-3.5 text-brand/60" />
-                        <span className="text-[11px] font-medium text-brand/80 uppercase tracking-wider">Poll Options</span>
+                        <span className="text-[12px] font-medium text-brand/80">Poll options</span>
                       </div>
                       {pollOptions.map((opt, i) => (
                         <div key={i} className="flex items-center gap-2">
@@ -1688,7 +1673,7 @@ export function CreatePostFAB() {
                               setPollOptions(next);
                             }}
                             placeholder={`Option ${i + 1}`}
-                            className="flex-1 bg-transparent border border-border/30 rounded-md px-2.5 py-1.5 text-sm outline-none focus:border-brand/40 placeholder:text-muted-foreground/30 transition-colors"
+                            className="flex-1 bg-transparent border border-input rounded-md px-2.5 py-1.5 text-sm outline-none focus:border-primary placeholder:text-muted-foreground/30 transition-colors"
                             style={{ fontSize: 16 }}
                             maxLength={80}
                             data-testid={`input-poll-option-${i}`}
@@ -1882,13 +1867,13 @@ export function CreatePostFAB() {
           size="icon"
           aria-label="New post"
           title="New post"
-          className={`fixed z-40 rounded-full bg-foreground text-background shadow-lg hidden md:flex transition-all duration-300 ${
+          className={`fixed z-40 h-12 w-12 rounded-full bg-foreground text-background shadow-lg hidden md:flex transition-all duration-300 ${
             outpostCompose?.activeTab === "horizon" && !outpostCompose?.canPostHorizon ? "opacity-0 pointer-events-none" : ""
           }`}
           style={{ bottom: "1.5rem", right: "1.5rem" }}
           data-testid="button-fab-compose"
         >
-          <RelayOutpostIcon className="w-5 h-5" />
+          <OttoMark size={32} className="!size-8" />
         </Button>
       )}
 

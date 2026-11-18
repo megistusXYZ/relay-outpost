@@ -4,12 +4,11 @@
  * tiles or fills (owner, 2026-10-03: "we don't need all the square
  * containers around the icons"), theme colours only — light and dark alike.
  */
+import { OttoMark } from "@/components/OttoMark";
 
 type IconProps = { className?: string };
 const base = { width: 24, height: 24, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
 
-const R_LEFT = "M5.64999 7.64999L2.85001 4.85001C2.54001 4.54001 2.76001 4 3.20001 4H6.79001C6.92001 4 7.05001 4.04999 7.14001 4.14999L12.14 9.14999C12.45 9.45999 12.23 10 11.79 10H8.5C6.57 10 5 11.57 5 13.5C5 15.43 6.57 17 8.5 17H10L12.15 19.15C12.46 19.46 12.24 20 11.8 20H8.51001C4.92001 20 2.01001 17.09 2.01001 13.5C2.01001 11.01 3.41001 8.84 5.48001 7.75L5.64999 7.64999Z";
-const R_RIGHT = "M18.35 16.35L21.15 19.15C21.46 19.46 21.24 20 20.8 20H17.21C17.08 20 16.95 19.95 16.86 19.85L11.86 14.85C11.55 14.54 11.77 14 12.21 14H15.5C17.43 14 19 12.43 19 10.5C19 8.57 17.43 7 15.5 7H14L11.85 4.85001C11.54 4.54001 11.76 4 12.2 4H15.49C19.08 4 21.99 6.91 21.99 10.5C21.99 12.99 20.59 15.16 18.52 16.25L18.35 16.35Z";
 
 /**
  * The hero: the R mark, lit — a sheen across it from the top, a soft brand
@@ -35,21 +34,11 @@ export function HomeRing({ size = 132 }: { size?: number }) {
         className="absolute rounded-full border border-white/70 dark:border-white/[0.08] bg-[radial-gradient(circle_at_50%_25%,hsl(0_0%_100%/0.9),hsl(0_0%_100%/0.55)_60%)] dark:bg-[radial-gradient(circle_at_50%_25%,hsl(var(--brand)/0.20),hsl(0_0%_100%/0.02)_70%)] shadow-[0_22px_44px_-20px_hsl(var(--brand)/0.65),inset_0_1px_0_hsl(0_0%_100%/0.9)] dark:shadow-[0_22px_44px_-18px_hsl(var(--brand)/0.55),0_8px_20px_-10px_rgba(0,0,0,0.6),inset_0_1px_0_hsl(0_0%_100%/0.12)]"
         style={{ width: Math.round(size * 0.66), height: Math.round(size * 0.66) }}
       />
-      <svg
-        viewBox="0 0 24 24"
-        className="relative [filter:drop-shadow(0_0_16px_hsl(var(--brand)/0.55))_drop-shadow(0_10px_16px_rgba(0,0,0,0.35))]"
-        style={{ width: mark, height: mark }}
-      >
-        <defs>
-          <linearGradient id="relays-hero-sheen" x1="12" y1="3" x2="12" y2="21" gradientUnits="userSpaceOnUse">
-            <stop offset="0" stopColor="hsl(var(--brand))" stopOpacity="1" style={{ stopColor: "color-mix(in srgb, hsl(var(--brand)) 45%, white)" }} />
-            <stop offset="0.55" stopColor="hsl(var(--brand))" />
-            <stop offset="1" stopColor="hsl(var(--brand))" style={{ stopColor: "color-mix(in srgb, hsl(var(--brand)) 80%, black)" }} />
-          </linearGradient>
-        </defs>
-        <path d={R_LEFT} fill="url(#relays-hero-sheen)" />
-        <path d={R_RIGHT} fill="url(#relays-hero-sheen)" />
-      </svg>
+      {/* Otto, with the app's mood (components/OttoMark) */}
+      <OttoMark
+        size={mark}
+        className="relative text-foreground [filter:drop-shadow(0_0_16px_hsl(var(--brand)/0.45))_drop-shadow(0_10px_16px_rgba(0,0,0,0.35))]"
+      />
     </div>
   );
 }
