@@ -152,6 +152,8 @@ html.theming::view-transition-new(root) { animation: ol-reveal 0.7s cubic-bezier
   .outpost-landing .in, .outpost-landing .rv, .outpost-landing .word, .outpost-landing .inks > span, .outpost-landing .hero-bg, .outpost-landing .frow, .outpost-landing .blink, .outpost-landing .float, .outpost-landing .pulse-dot, .outpost-landing .otto-cycle .m { animation: none !important; }
   .outpost-landing .otto .dot, .outpost-landing .otto .look { animation: none !important; transition: none; }
   .outpost-landing .btn, .outpost-landing .tap, .outpost-landing .frow h3, .outpost-landing .frow .ico, .outpost-landing .cta-glow, .outpost-landing .cta-dots { transition: none; }
+  .outpost-landing .seam-landed .seam-stop { animation: none; }
+  .outpost-landing .seam-fly { display: none; }
   .outpost-landing .btn:hover, .outpost-landing .btn:active { transform: none; }
 }
 
@@ -159,6 +161,25 @@ html.theming::view-transition-new(root) { animation: ol-reveal 0.7s cubic-bezier
    clear until the page scrolls, the next section has no rule above it, and the
    glow fades out at the top and bottom so nothing reads as a box. */
 .outpost-landing .hero-fit { min-height: calc(100vh - 65px); min-height: calc(100svh - 65px); }
+
+/* The seam under the hero (owner, 2026-11-18). The hero's warm glow carries across it: one soft
+   ellipse centred on the seam line, faded out above and below, so there is no band and no edge.
+   OutpostLanding.tsx sets --seam-glow from the person's scroll (the ground quiets as you go on),
+   frosts and sharpens the "Private…" line, and moves .seam-fly, the dot on its way to the full
+   stop. Nothing here runs on a timer. */
+.outpost-landing .seam-glow { position: absolute; z-index: 0; left: 0; right: 0; top: -280px; height: 820px; overflow: hidden; pointer-events: none; opacity: var(--seam-glow, 1); -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 34%, #000 50%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 34%, #000 50%, transparent 100%); }
+/* One wide, soft wash rather than a second blob: an ellipse far wider than the window, with a slow fall-off. */
+.outpost-landing .seam-glow > i { position: absolute; left: 50%; top: 280px; width: max(1500px, 170vw); height: 640px; translate: -50% -50%; opacity: calc(var(--glow) * 0.8); background: radial-gradient(closest-side, var(--accent) 0%, color-mix(in srgb, var(--accent) 80%, transparent) 20%, color-mix(in srgb, var(--accent) 50%, transparent) 42%, color-mix(in srgb, var(--accent) 22%, transparent) 64%, color-mix(in srgb, var(--accent) 6%, transparent) 84%, transparent 100%); }
+/* A fine grain over both glows (the hero's and this one): a wide, faint gradient drops in visible
+   steps in 8-bit colour without it. Far too faint to read as texture. */
+.outpost-landing { --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 1.4 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.outpost-landing .seam-glow::after, .outpost-landing .hero-bg::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.06; mix-blend-mode: soft-light; background-image: var(--grain); }
+/* Behind the words (the content sits at 1): where its path crosses the first line it is light behind ink, not a stray mark. */
+.outpost-landing .seam-fly { position: absolute; z-index: 0; left: 0; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); opacity: 0; pointer-events: none; will-change: translate; }
+/* While the dot is travelling it stands in for the full stop; when it arrives, the full stop pops once. */
+.outpost-landing .seam-flying .seam-stop { opacity: 0; }
+.outpost-landing .seam-landed .seam-stop { animation: ol-land 0.45s cubic-bezier(0.3, 1.5, 0.5, 1); }
+@keyframes ol-land { from { scale: 1.9; } to { scale: 1; } }
 .outpost-landing .hero-bg { -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 58%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 58%, transparent 100%); }
 .outpost-landing .ol-header { background: transparent; border-bottom: 1px solid transparent; transition: background-color 0.25s ease, border-color 0.25s ease; }
 .outpost-landing .ol-header.scrolled { background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); border-bottom-color: var(--line); }
