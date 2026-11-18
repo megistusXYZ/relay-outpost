@@ -193,6 +193,11 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
   const closingRef = useRef<HTMLElement>(null);
+  // The seam under the hero: the section, its "Private…" line, the full stop, and the dot that travels to it.
+  const seamRef = useRef<HTMLElement>(null);
+  const privRef = useRef<HTMLSpanElement>(null);
+  const stopRef = useRef<HTMLSpanElement>(null);
+  const flyRef = useRef<HTMLSpanElement>(null);
   const [asleep, setAsleep] = useState(false);
 
   // Relay comes alive, and only for a reason (owner, 2026-11-18): the small mark
@@ -267,6 +272,73 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
     scroller.addEventListener("scroll", onScroll, { passive: true });
     return () => scroller.removeEventListener("scroll", onScroll);
   }, [gaze]);
+  // The seam under the hero (owner, 2026-11-18). Three things, all driven by the person's own
+  // scroll and nothing else: the warm glow carries through and quiets as you go on; "Private…"
+  // comes out of a blur; and the Ember dot rides down from the hero to land as the sentence's
+  // full stop. At the top of the page the hero is exactly as it was. Reduced motion never
+  // starts this: the glow stays, the line is sharp and the full stop is in its place.
+  useEffect(() => {
+    const root = rootRef.current, scroller = root?.parentElement, sec = seamRef.current, priv = privRef.current, stop = stopRef.current, fly = flyRef.current;
+    if (!root || !scroller || !sec || !priv || !stop || !fly || reducedMotion()) return;
+    const heroContent = root.querySelector<HTMLElement>("[data-hero-content]");
+    const clamp = (v: number) => Math.max(0, Math.min(1, v));
+    let raf = 0, landed = false;
+    const update = () => {
+      raf = 0;
+      // Read everything first, then write.
+      const vh = scroller.clientHeight, top = scroller.scrollTop;
+      const view = scroller.getBoundingClientRect(), s = sec.getBoundingClientRect(), p = priv.getBoundingClientRect(), d = stop.getBoundingClientRect();
+      const h = heroContent?.getBoundingClientRect();
+      const secTop = s.top - view.top, lineTop = p.top - view.top;
+      // The ground quiets: full warmth until the section's top is a third of the way up the window.
+      const warmth = 1 - 0.85 * clamp((0.34 * vh - secTop) / (0.9 * vh));
+      // "Private…" sharpens between the window's bottom edge and where you read it.
+      const sharp = clamp((vh - lineTop) / (0.36 * vh));
+      // The dot travels while the page goes from its top to the line sitting at half the window's height.
+      const t = clamp(top / Math.max(160, top + lineTop - 0.5 * vh));
+      sec.style.setProperty("--seam-glow", warmth.toFixed(3));
+      // No filter at all once it is sharp: a zero blur still costs a layer and softens the letters.
+      // Lite, when the person chose it, draws no blur: the line only comes up in strength.
+      priv.style.filter = sharp < 1 && !choseLite() ? `blur(${((1 - sharp) * 9).toFixed(2)}px)` : "";
+      priv.style.opacity = sharp < 1 ? (0.35 + 0.65 * sharp).toFixed(3) : "";
+      if (h && t > 0 && t < 1) {
+        const size = d.width;
+        // From just under the hero's words (in the glow, clear of the small print) to the full stop,
+        // on a curve that comes in from the right along the line the words sit on.
+        const sx = view.left + view.width / 2 - size / 2 - s.left, sy = h.bottom + 22 - s.top;
+        const ex = d.left - s.left, ey = d.top - s.top;
+        const room = Math.max(0, Math.min(70, s.width - 20 - size - ex));
+        const u = 1 - t;
+        const x = u * u * sx + 2 * t * u * (ex + room) + t * t * ex;
+        const y = u * u * sy + 2 * t * u * ey + t * t * ey;
+        // It starts as a soft spark of the glow, behind the words, and draws in to a sharp full stop.
+        const draw = t * t;
+        fly.style.width = fly.style.height = `${size}px`;
+        fly.style.translate = `${x.toFixed(1)}px ${y.toFixed(1)}px`;
+        fly.style.scale = (3.4 - 2.4 * draw).toFixed(3);
+        fly.style.filter = draw < 0.97 ? `blur(${((1 - draw) * size * 0.45).toFixed(2)}px)` : "";
+        fly.style.opacity = (clamp(t / 0.08) * (0.6 + 0.4 * draw)).toFixed(3);
+        sec.classList.add("seam-flying");
+        sec.classList.remove("seam-landed");
+        landed = false;
+      } else {
+        fly.style.opacity = "0";
+        sec.classList.remove("seam-flying");
+        if (t >= 1 && !landed) { landed = true; sec.classList.add("seam-landed"); } // the full stop pops once as the dot arrives
+        if (t <= 0) { landed = false; sec.classList.remove("seam-landed"); }
+      }
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
+    update();
+    document.fonts?.ready.then(onScroll).catch(() => {});
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      scroller.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
   // At rest: one small glance every 8 to 12 seconds, when nothing else has its attention.
   useEffect(() => {
     let t = 0;
@@ -398,7 +470,7 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
           <div className="drift2" style={{ position: "absolute", left: "50%", top: "4%", width: 1100, height: 460, marginLeft: -760, borderRadius: "50%", background: "var(--cool)", opacity: "var(--glow2)", filter: "blur(130px)" }} />
           <HeroDoodles />
         </div>
-        <div style={{ position: "relative", zIndex: 2, maxWidth: 920, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 28 }}>
+        <div data-hero-content style={{ position: "relative", zIndex: 2, maxWidth: 920, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 28 }}>
           <DecodeHeadline text={HEADLINE} onLetter={onLetter} />
           <InviteGreeting />
           <div className="in" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: 20, marginTop: 8, animationDelay: ".44s" }}>
@@ -415,11 +487,16 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
         </div>
       </section>
 
-      <section style={{ position: "relative", zIndex: 3, background: "var(--bg)", padding: "clamp(72px, 11vw, 120px) clamp(16px, 5vw, 24px)" }}>
-        <div style={{ maxWidth: 1120, margin: "0 auto", display: "flex", flexDirection: "column", gap: "clamp(36px, 6vw, 64px)" }}>
+      {/* Sits under the hero's words (2) and over its backdrop (0), so the glow it shares with the hero never tints them. */}
+      <section ref={seamRef} className="seam" data-testid="landing-seam" style={{ position: "relative", zIndex: 1, background: "var(--bg)", padding: "clamp(72px, 11vw, 120px) clamp(16px, 5vw, 24px)" }}>
+        {/* The hero's warmth, carried across the seam: it reaches up over the hero's last stretch and down behind the headline. */}
+        <div className="seam-glow" aria-hidden="true"><i /></div>
+        {/* The dot on its way to the end of the sentence (placed by the scroll handler above). */}
+        <span ref={flyRef} className="seam-fly" aria-hidden="true" data-testid="seam-dot-flying" />
+        <div style={{ position: "relative", zIndex: 1, maxWidth: 1120, margin: "0 auto", display: "flex", flexDirection: "column", gap: "clamp(36px, 6vw, 64px)" }}>
           <h2 className="inks" style={{ margin: 0, maxWidth: 900, fontSize: "clamp(26px, 6.6vw, 64px)", lineHeight: 1.06, fontWeight: 600, letterSpacing: "-0.04em", textWrap: "balance" } as CSSProperties}>
             <span style={{ display: "block" }}>Public when you want it.</span>{" "}
-            <span style={{ display: "block" }}>Private when you don’t<span aria-hidden="true" style={dot} /></span>
+            <span ref={privRef} data-testid="seam-private-line" style={{ display: "block" }}>Private when you don’t<span ref={stopRef} className="seam-stop" aria-hidden="true" data-testid="seam-dot" style={dot} /></span>
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
             <ul className="flist" style={{ margin: 0, padding: 0, listStyle: "none", borderBottom: "1px solid var(--line)" }}>

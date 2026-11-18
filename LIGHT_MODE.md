@@ -20,11 +20,13 @@ one ink, one accent and a small set of status colours. Read this before touching
 6. **Quiet surfaces.** Cards are neutral (`bg-card`, `border-border`), 20px corners and 16px
    for a card inside a card. No glows. No icon tiles in light mode; a quiet grey disc
    (`dark:bg-foreground/[0.05]`) is allowed in dark only.
-7. **Motion is colour only, 150ms**, and stops under `prefers-reduced-motion`. Two things
-   move, and only these: a button presses down a little when you press it (`.press`, 97% for
-   0.1s), and Relay, the mark, changes its face when something real happens
+7. **Motion is colour only, 150ms**, and stops under `prefers-reduced-motion`. In the app two
+   things move, and only these: a button presses down a little when you press it (`.press`,
+   97% for 0.1s), and Relay, the mark, changes its face when something real happens
    (`components/OttoMark.tsx`, `lib/mark-signals.ts`). Relay never loops and never moves for
-   decoration; under reduced motion its face still changes and nothing moves.
+   decoration; under reduced motion its face still changes and nothing moves. The landing has
+   its own choreography, all of it driven by the visitor's scroll and none of it on a timer
+   (`components/landing/`).
 8. **The old violet is retired.** Hue 230–305 with real saturation fails CI. People's own
    identity colours (name colours, badge art, music cards) are the exception, by allowlist.
 
