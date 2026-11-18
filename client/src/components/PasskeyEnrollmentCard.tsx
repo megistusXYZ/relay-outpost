@@ -13,7 +13,6 @@ import {
 } from "@/lib/passkey";
 
 interface Props {
-  variant?: "page" | "overlay";
   /** Raw secret key bytes — never persisted by this component. */
   secretKey: Uint8Array;
   pubkey: string;
@@ -24,7 +23,6 @@ interface Props {
 }
 
 export function PasskeyEnrollmentCard({
-  variant = "page",
   secretKey,
   pubkey,
   npub,
@@ -32,7 +30,6 @@ export function PasskeyEnrollmentCard({
   enrolled,
   onEnrolled,
 }: Props) {
-  const isOverlay = variant === "overlay";
   const { toast } = useToast();
   const [support, setSupport] = useState<PasskeySupportLevel | null>(null);
   const [working, setWorking] = useState(false);
@@ -79,21 +76,17 @@ export function PasskeyEnrollmentCard({
   // Don't render if there's no chance of working.
   if (support === "no-webauthn" || support === "insecure-context") return null;
 
-  const cardCls = isOverlay
-    ? "bg-white/[0.04] border border-white/10"
-    : "bg-muted/30 border border-border/60";
-  const titleCls = isOverlay ? "text-white" : "text-foreground";
-  const bodyCls = isOverlay ? "text-white/75" : "text-foreground/75";
-  const subtleCls = isOverlay ? "text-white/55" : "text-muted-foreground";
-  const btnCls = isOverlay ? "bg-white text-black hover:bg-white/90" : "bg-foreground text-background hover:bg-foreground/90";
+  const cardCls = "bg-muted/30 border border-border/60";
+  const titleCls = "text-foreground";
+  const bodyCls = "text-foreground/75";
+  const subtleCls = "text-muted-foreground";
+  const btnCls = "bg-foreground text-background hover:bg-foreground/90";
 
   if (enrolled) {
     return (
       <div className={`rounded-xl p-3.5 ${cardCls}`} data-testid="panel-passkey-enrolled">
         <div className="flex items-start gap-3">
-          <span className={`shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg ${
-            isOverlay ? "bg-emerald-500/15 border border-emerald-400/25 text-emerald-200" : "bg-emerald-500/10 border border-emerald-500/25 text-success dark:text-emerald-700"
-          }`}>
+          <span className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-success dark:text-emerald-700">
             <Check className="w-4.5 h-4.5" />
           </span>
           <div className="space-y-1 min-w-0 flex-1">
@@ -113,9 +106,7 @@ export function PasskeyEnrollmentCard({
     return (
       <div className={`rounded-xl p-3.5 ${cardCls}`} data-testid="panel-passkey-unsupported">
         <div className="flex items-start gap-3">
-          <span className={`shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg ${
-            isOverlay ? "bg-white/5 border border-white/10 text-white/60" : "bg-foreground/5 border border-border/40 text-foreground/60"
-          }`}>
+          <span className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg bg-foreground/5 border border-border/40 text-foreground/60">
             <Fingerprint className="w-4.5 h-4.5" />
           </span>
           <div className="space-y-1 min-w-0 flex-1">
@@ -132,9 +123,7 @@ export function PasskeyEnrollmentCard({
   return (
     <div className={`rounded-xl p-3.5 ${cardCls}`} data-testid="panel-passkey-offer">
       <div className="flex items-start gap-3">
-        <span className={`shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg ${
-          isOverlay ? "bg-white/[0.08] border border-white/15 text-white/85" : "bg-foreground/[0.06] border border-border/60 text-foreground/85"
-        }`}>
+        <span className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg bg-foreground/[0.06] border border-border/60 text-foreground/85">
           <Fingerprint className="w-4.5 h-4.5" />
         </span>
         <div className="space-y-2.5 min-w-0 flex-1">
@@ -143,9 +132,7 @@ export function PasskeyEnrollmentCard({
               <p className={`text-[13px] font-semibold ${titleCls}`}>
                 Make sign-in instant
               </p>
-              <span className={`text-[10px] font-brand uppercase tracking-[0.14em] font-bold px-1.5 py-0.5 rounded ${
-                isOverlay ? "bg-white/10 text-white/70" : "bg-foreground/10 text-foreground/70"
-              }`}>
+              <span className="text-[10px] font-brand uppercase tracking-[0.14em] font-bold px-1.5 py-0.5 rounded bg-foreground/10 text-foreground/70">
                 Recommended
               </span>
             </div>
@@ -156,11 +143,11 @@ export function PasskeyEnrollmentCard({
 
           <ul className={`text-[11.5px] space-y-1.5 ${bodyCls}`}>
             <li className="flex items-start gap-2">
-              <ShieldCheck className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${isOverlay ? "text-emerald-300" : "text-emerald-600"}`} />
+              <ShieldCheck className="w-3.5 h-3.5 mt-0.5 shrink-0 text-emerald-600" />
               <span>Syncs to your other Apple / Google devices automatically</span>
             </li>
             <li className="flex items-start gap-2">
-              <RelayOutpostIcon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${isOverlay ? "text-brand" : "text-brand"}`} />
+              <RelayOutpostIcon className="w-3.5 h-3.5 mt-0.5 shrink-0 text-brand" />
               <span>Your key file is the way back if this device is lost</span>
             </li>
           </ul>

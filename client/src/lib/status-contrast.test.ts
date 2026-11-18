@@ -75,26 +75,6 @@ const DARK_SURFACES: Record<string, { count: number; why: string }> = {
     count: 1,
     why: "DARK-SURFACE. The lightbox is black regardless of theme.",
   },
-  "client/src/components/UnlockScreen.tsx": {
-    count: 4,
-    why: "DARK-SURFACE. The `isOverlay ? bright : dark` ternary — the light branch is already written (text-emerald-700 / text-amber-600).",
-  },
-  "client/src/components/ImportKeyFlow.tsx": {
-    count: 4,
-    why: "DARK-SURFACE. Same isOverlay ternary; the else-branch already carries the light-mode shade.",
-  },
-  "client/src/components/LoginOptions.tsx": {
-    count: 2,
-    why: "DARK-SURFACE. Same isOverlay ternary; the else-branch uses text-destructive and text-amber-600.",
-  },
-  "client/src/components/CreateAccountFlow.tsx": {
-    count: 1,
-    why: "DARK-SURFACE. Same isOverlay ternary; the else-branch already carries text-emerald-700.",
-  },
-  "client/src/components/PasskeyEnrollmentCard.tsx": {
-    count: 1,
-    why: "DARK-SURFACE. Same isOverlay ternary; the else-branch already carries text-emerald-600.",
-  },
 };
 
 // ---- colour maths, so the thresholds are measured rather than remembered ----

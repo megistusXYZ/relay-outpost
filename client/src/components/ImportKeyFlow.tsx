@@ -60,14 +60,13 @@ function setPasskeyNudgePending(on: boolean) {
 }
 
 interface Props {
-  variant?: "page" | "overlay";
   onBack: () => void;
   onComplete: () => void;
 }
 
 type Step = "key" | "passphrase" | "passkey";
 
-export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
+export function ImportKeyFlow({ onBack, onComplete }: Props) {
   const { loginWithLocalKey } = useNostrAuth();
   const { toast } = useToast();
   const [step, setStep] = useState<Step>("key");
@@ -185,18 +184,13 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
       } catch {}
     };
   }, []);
-
-  const isOverlay = variant === "overlay";
-  const cardCls = isOverlay ? "border-white/10 bg-black/40 backdrop-blur-lg" : "border-border/60 bg-card/50";
-  const titleCls = isOverlay ? "text-white" : "";
-  const descCls = isOverlay ? "text-white/60" : "text-muted-foreground";
-  const subtleCls = isOverlay ? "text-white/70" : "text-muted-foreground";
-  const inputCls = isOverlay ? "bg-black/30 border-white/40 text-white placeholder:text-white/50" : "bg-background/50 placeholder:text-muted-foreground/70";
-  const primaryBtnCls = isOverlay ? "bg-white text-black hover:bg-white/90" : "bg-foreground text-background hover:bg-foreground/90";
-  const ghostBtnCls = isOverlay ? "text-white/60" : "text-muted-foreground";
-  const eyeBtnCls = isOverlay
-    ? "text-white/85 hover:text-white bg-black/40 hover:bg-black/60 border border-white/15"
-    : "text-foreground/80 hover:text-foreground bg-background/80 hover:bg-background border border-border/60";
+  const cardCls = "border-border/60 bg-card/50";
+  const descCls = "text-muted-foreground";
+  const subtleCls = "text-muted-foreground";
+  const inputCls = "bg-background/50 placeholder:text-muted-foreground/70";
+  const primaryBtnCls = "bg-foreground text-background hover:bg-foreground/90";
+  const ghostBtnCls = "text-muted-foreground";
+  const eyeBtnCls = "text-foreground/80 hover:text-foreground bg-background/80 hover:bg-background border border-border/60";
 
   const isEncrypted = useMemo(() => keyInput.trim().startsWith("ncryptsec1"), [keyInput]);
 
@@ -502,11 +496,11 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
           <form onSubmit={(e) => { e.preventDefault(); if (!isWorking && keyInput.trim() && (!isEncrypted || importPassword)) handleKeyContinue(); }} className="space-y-5 sm:space-y-6">
             <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-3">
               <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className={`flex items-center justify-center w-10 h-10 rounded-md shrink-0 ${isOverlay ? "bg-white/5 border border-white/10" : "bg-foreground/5 border border-border/40"}`}>
-                  <KeyRound className={`w-5 h-5 ${isOverlay ? "text-white/70" : "text-foreground/70"}`} />
+                <div className="flex items-center justify-center w-10 h-10 rounded-md shrink-0 bg-foreground/5 border border-border/40">
+                  <KeyRound className="w-5 h-5 text-foreground/70" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className={`text-sm font-semibold ${titleCls}`} data-testid="text-import-title">Use your existing key</h3>
+                  <h3 className="text-sm font-semibold" data-testid="text-import-title">Use your existing key</h3>
                   <p className={`text-xs mt-0.5 ${descCls}`}>Paste your account key — it looks like <code>nsec1…</code> (or a long string of letters and numbers).</p>
                 </div>
               </div>
@@ -516,26 +510,26 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                 rel="noopener noreferrer"
                 aria-label="WTF is this? — open the FAQ in a new tab"
                 data-testid="link-import-wtf"
-                className={`group/wtf shrink-0 self-start sm:self-auto inline-flex items-center gap-2 rounded-full transition-all duration-300 px-2 py-1.5 sm:px-2.5 sm:py-1.5 ${isOverlay ? "border border-white/10 bg-white/[0.04] hover:bg-white/[0.09] hover:border-white/25" : "border border-border/50 bg-foreground/[0.03] hover:bg-foreground/[0.06] hover:border-border"}`}
+                className="group/wtf shrink-0 self-start sm:self-auto inline-flex items-center gap-2 rounded-full transition-all duration-300 px-2 py-1.5 sm:px-2.5 sm:py-1.5 border border-border/50 bg-foreground/[0.03] hover:bg-foreground/[0.06] hover:border-border"
               >
                 <span className="relative shrink-0 -rotate-[8deg] group-hover/wtf:-rotate-[14deg] group-hover/wtf:scale-110 transition-transform duration-500 ease-out">
-                  <WtfAlienIcon className={`w-6 h-6 sm:w-5 sm:h-5 transition-all duration-500 ${isOverlay ? "text-brand/80 group-hover/wtf:text-brand-strong group-hover/wtf:drop-shadow-[0_0_10px_rgba(13,15,18,0.55)]" : "text-brand/80 group-hover/wtf:text-brand-strong group-hover/wtf:drop-shadow-[0_0_10px_rgba(13,15,18,0.4)]"}`} />
-                  <span className={`absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full transition-all duration-500 ${isOverlay ? "bg-brand/70 group-hover/wtf:bg-brand group-hover/wtf:shadow-[0_0_6px_rgba(13,15,18,0.6)]" : "bg-brand/60 group-hover/wtf:bg-brand group-hover/wtf:shadow-[0_0_6px_rgba(13,15,18,0.5)]"}`} />
+                  <WtfAlienIcon className="w-6 h-6 sm:w-5 sm:h-5 transition-all duration-500 text-brand/80 group-hover/wtf:text-brand-strong group-hover/wtf:drop-shadow-[0_0_10px_rgba(13,15,18,0.4)]" />
+                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full transition-all duration-500 bg-brand/60 group-hover/wtf:bg-brand group-hover/wtf:shadow-[0_0_6px_rgba(13,15,18,0.5)]" />
                 </span>
                 <span className="hidden sm:flex flex-col leading-none transform -rotate-[2deg] pr-0.5">
-                  <span className={`text-[11px] font-black tracking-tight ${isOverlay ? "text-brand" : "text-brand dark:text-brand/90"}`}>
+                  <span className="text-[11px] font-black tracking-tight text-brand dark:text-brand/90">
                     Help &amp; guides
                   </span>
-                  <span className={`text-[7px] font-bold mt-0.5 ${isOverlay ? "text-brand/50" : "text-brand/40"}`}>
+                  <span className="text-[7px] font-bold mt-0.5 text-brand/40">
                     get started
                   </span>
                 </span>
               </a>
             </div>
 
-            <div className={`rounded-md p-3 ${isOverlay ? "bg-amber-500/5 border border-amber-500/20" : "bg-amber-500/5 border border-amber-500/30"}`}>
+            <div className="rounded-md p-3 bg-amber-500/5 border border-amber-500/30">
               <div className="flex items-start gap-2">
-                <ShieldAlert className={`w-4 h-4 mt-0.5 shrink-0 ${isOverlay ? "text-amber-300" : "text-amber-600"}`} />
+                <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
                 <p className={`text-xs leading-relaxed ${descCls}`}>
                   This key unlocks your whole account. Pasting it here is fine — or sign in with a browser extension or signer app instead.
                 </p>
@@ -649,18 +643,18 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
             {passphraseMode === "stay" ? (
               <>
                 <div className="flex items-center gap-3">
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-md ${isOverlay ? "bg-emerald-500/10 border border-emerald-400/25" : "bg-emerald-500/10 border border-emerald-500/25"}`}>
-                    <KeyRound className={`w-5 h-5 ${isOverlay ? "text-emerald-300" : "text-emerald-700"}`} />
+                  <div className="flex items-center justify-center w-10 h-10 rounded-md bg-emerald-500/10 border border-emerald-500/25">
+                    <KeyRound className="w-5 h-5 text-emerald-700" />
                   </div>
                   <div>
-                    <h3 className={`text-sm font-semibold ${titleCls}`} data-testid="text-import-stay-title">Stay signed in on this device</h3>
+                    <h3 className="text-sm font-semibold" data-testid="text-import-stay-title">Stay signed in on this device</h3>
                     <p className={`text-xs mt-0.5 ${descCls}`}>Your key is saved on this device. Reload, restart, or reopen — you're still in.</p>
                   </div>
                 </div>
 
-                <div className={`rounded-md p-3 ${isOverlay ? "bg-amber-500/5 border border-amber-500/20" : "bg-amber-500/5 border border-amber-500/30"}`}>
+                <div className="rounded-md p-3 bg-amber-500/5 border border-amber-500/30">
                   <div className="flex items-start gap-2">
-                    <ShieldAlert className={`w-4 h-4 mt-0.5 shrink-0 ${isOverlay ? "text-amber-300" : "text-amber-600"}`} />
+                    <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
                     <p className={`text-xs leading-relaxed ${descCls}`}>
                       Your key lives in this browser profile. Anyone with access to this device can use this account. Sign out from the menu to remove it.
                     </p>
@@ -677,10 +671,10 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                   {isWorking ? "Signing in…" : "Stay signed in & continue"}
                 </Button>
 
-                <div className={`flex items-center gap-3 pt-1`}>
-                  <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border/60"}`} />
+                <div className="flex items-center gap-3 pt-1">
+                  <div className="flex-1 h-px bg-border/60" />
                   <span className={`text-[13px] font-medium ${subtleCls}`}>or</span>
-                  <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border/60"}`} />
+                  <div className="flex-1 h-px bg-border/60" />
                 </div>
 
                 <Button
@@ -711,7 +705,6 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                 {canOfferPasskey && decryptedSecret && (
                   <div className="space-y-3 mb-4" data-testid="import-passkey-first">
                     <PasskeyEnrollmentCard
-                      variant={variant}
                       secretKey={decryptedSecret}
                       pubkey={pubkeyFromSecret(decryptedSecret).pubkey}
                       npub={pubkeyFromSecret(decryptedSecret).npub}
@@ -720,18 +713,18 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
                       onEnrolled={(blob) => void handlePasskeyFirst(blob)}
                     />
                     <div className="flex items-center gap-3">
-                      <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border/60"}`} />
+                      <div className="flex-1 h-px bg-border/60" />
                       <span className={`text-[13px] font-medium ${subtleCls}`}>or a password</span>
-                      <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border/60"}`} />
+                      <div className="flex-1 h-px bg-border/60" />
                     </div>
                   </div>
                 )}
                 <div className="flex items-center gap-3">
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-md ${isOverlay ? "bg-white/5 border border-white/10" : "bg-foreground/5 border border-border/40"}`}>
-                    <Lock className={`w-5 h-5 ${isOverlay ? "text-white/70" : "text-foreground/70"}`} />
+                  <div className="flex items-center justify-center w-10 h-10 rounded-md bg-foreground/5 border border-border/40">
+                    <Lock className="w-5 h-5 text-foreground/70" />
                   </div>
                   <div>
-                    <h3 className={`text-sm font-semibold ${titleCls}`} data-testid="text-import-passphrase-title">Set a password for this device</h3>
+                    <h3 className="text-sm font-semibold" data-testid="text-import-passphrase-title">Set a password for this device</h3>
                     <p className={`text-xs mt-0.5 ${descCls}`}>We'll re-encrypt your key with it. You'll be asked to enter it on every reload.</p>
                   </div>
                 </div>
@@ -815,17 +808,16 @@ export function ImportKeyFlow({ variant = "page", onBack, onComplete }: Props) {
         <Card className={cardCls}>
           <CardContent className="p-4 sm:p-5 space-y-4 sm:space-y-5" data-testid="card-import-step-passkey">
             <div className="flex items-center gap-3">
-              <div className={`flex items-center justify-center w-10 h-10 rounded-md shrink-0 ${isOverlay ? "bg-emerald-500/10 border border-emerald-400/25" : "bg-emerald-500/10 border border-emerald-500/25"}`}>
-                <KeyRound className={`w-5 h-5 ${isOverlay ? "text-emerald-300" : "text-emerald-700"}`} />
+              <div className="flex items-center justify-center w-10 h-10 rounded-md shrink-0 bg-emerald-500/10 border border-emerald-500/25">
+                <KeyRound className="w-5 h-5 text-emerald-700" />
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className={`text-sm font-semibold ${titleCls}`} data-testid="text-import-passkey-title">You're in. One last optional step.</h3>
+                <h3 className="text-sm font-semibold" data-testid="text-import-passkey-title">You're in. One last optional step.</h3>
                 <p className={`text-xs mt-0.5 ${descCls}`}>Make signing in instant on this device — your password still works as a backup.</p>
               </div>
             </div>
 
             <PasskeyEnrollmentCard
-              variant={variant}
               secretKey={decryptedSecret}
               pubkey={savedAccount.pubkey}
               npub={savedAccount.npub}
