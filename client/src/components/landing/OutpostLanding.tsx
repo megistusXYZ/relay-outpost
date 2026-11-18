@@ -583,9 +583,19 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
               </nav>
             </div>
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: "8px 32px", borderTop: "1px solid var(--line)", paddingTop: 24, fontSize: 14 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "8px 32px", borderTop: "1px solid var(--line)", paddingTop: 24, fontSize: 14 }}>
             <span>MIT licensed. No ads, no trackers.</span>
             <span>Built on an open network no company owns.</span>
+          </div>
+          {/* The maker's mark (owner, 2026-11-18): the Megistus logo on its own, signing off the page
+              between two fading hairlines, just above the large "Outpost." It rises in with the scroll
+              like the sections above, sits a little soft, and comes to full strength when pointed at.
+              Black on light, white on dark (outpost-landing.css). */}
+          <div className="megistus-row rv" data-testid="landing-megistus-row">
+            <a href="https://megistus.xyz" target="_blank" rel="noopener noreferrer" className="megistus" title="Megistus" data-testid="landing-megistus">
+              <img className="megistus-on-light" src="/images/megistus-mark-black.webp" alt="Megistus" width={83} height={44} loading="lazy" decoding="async" />
+              <img className="megistus-on-dark" src="/images/megistus-mark-white.webp" alt="Megistus" width={83} height={44} loading="lazy" decoding="async" />
+            </a>
           </div>
         </div>
         <div aria-hidden="true" style={{ maxWidth: 1120, margin: "clamp(32px, 5vw, 64px) auto 0", display: "flex", alignItems: "baseline", justifyContent: "center", fontSize: "clamp(80px, 20.5vw, 296px)", lineHeight: 0.78, fontWeight: 600, letterSpacing: "-0.06em", whiteSpace: "nowrap", userSelect: "none", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + clamp(40px, 6vw, 72px))" }}>
