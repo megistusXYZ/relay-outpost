@@ -381,7 +381,7 @@ export function VouchedBySection({ pubkey }: { pubkey: string }) {
     <div className="space-y-0.5" data-testid={`vouched-by-${pubkey.slice(0, 8)}`}>
       <div className="flex items-center gap-1.5">
         <ShieldCheck className="w-3 h-3 text-emerald-500/70 shrink-0" />
-        <span className="text-[9px] text-success dark:text-emerald-400/60">
+        <span className="text-xs text-success">
           {label}
         </span>
         <div className="flex -space-x-1.5">
@@ -394,12 +394,12 @@ export function VouchedBySection({ pubkey }: { pubkey: string }) {
             </Avatar>
           ))}
         </div>
-        <span className="text-[9px] text-muted-foreground/50 truncate max-w-[140px]">
+        <span className="text-xs text-muted-foreground truncate max-w-[140px]">
           {text}
         </span>
       </div>
       {topContent && (
-        <p className="text-[8px] text-success dark:text-emerald-400/40 italic truncate ml-[18px]">
+        <p className="text-xs text-success italic truncate ml-[18px]">
           &ldquo;{topContent.slice(0, 80)}{topContent.length > 80 ? "..." : ""}&rdquo;
         </p>
       )}
@@ -467,7 +467,7 @@ export function TrustedBySection({ pubkey }: { pubkey: string }) {
 
   return (
     <div className="flex items-center gap-1.5 mt-1" data-testid={`trusted-by-${pubkey.slice(0, 8)}`}>
-      <span className="text-[9px] text-brand/60 dark:text-brand/50">
+      <span className="text-xs text-brand">
         Trusted by
       </span>
       <div className="flex -space-x-1.5">
@@ -480,7 +480,7 @@ export function TrustedBySection({ pubkey }: { pubkey: string }) {
           </Avatar>
         ))}
       </div>
-      <span className="text-[9px] text-muted-foreground/50 truncate max-w-[140px]">
+      <span className="text-xs text-muted-foreground truncate max-w-[140px]">
         {text}
       </span>
     </div>
@@ -595,13 +595,13 @@ export function AuthorHoverCard({ pubkey, children, profile: externalProfile }: 
                   <PostBadgeIcons pubkey={pubkey} />
                 </div>
                 {nip05 && (
-                  <Nip05Badge nip05={nip05} pubkey={pubkey} className="mt-0.5" textClassName="text-[11px] text-brand/70" iconClassName="w-3 h-3" />
+                  <Nip05Badge nip05={nip05} pubkey={pubkey} className="mt-0.5" textClassName="text-xs text-brand" iconClassName="w-3 h-3" />
                 )}
                 <ActivityIndicator pubkey={pubkey} />
               </div>
             </div>
             {about && (
-              <p className="text-[11px] text-muted-foreground/70 leading-relaxed line-clamp-2">{about}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{about}</p>
             )}
             <VouchedBySection pubkey={pubkey} />
             <TrustedBySection pubkey={pubkey} />
@@ -612,7 +612,7 @@ export function AuthorHoverCard({ pubkey, children, profile: externalProfile }: 
                 className="flex items-center gap-2 group w-full text-left cursor-pointer hover:bg-muted/50 rounded-md px-1 -mx-1 py-0.5 transition-colors"
               >
                 <img src={nostrOstrichGif} alt="" className="w-4 h-4 object-contain shrink-0" />
-                <span className="text-[11px] text-muted-foreground/60 font-mono truncate group-hover:text-muted-foreground/80 transition-colors">
+                <span className="text-xs text-muted-foreground font-mono truncate transition-colors">
                   {shortNpub}
                 </span>
                 {copied ? (
@@ -628,7 +628,7 @@ export function AuthorHoverCard({ pubkey, children, profile: externalProfile }: 
                   className="flex items-center gap-2 group w-full text-left cursor-pointer hover:bg-muted/50 rounded-md px-1 -mx-1 py-0.5 transition-colors"
                 >
                   <BtcZapIcon className="w-4 h-4 text-amber-800/70 dark:text-amber-400/70 shrink-0" />
-                  <span className="text-[11px] text-zap dark:text-amber-300/60 truncate group-hover:text-amber-600/80 dark:group-hover:text-amber-300/80 transition-colors">
+                  <span className="text-xs text-zap truncate transition-colors">
                     {lud16}
                   </span>
                   <Zap className="w-3 h-3 text-amber-500/30 dark:text-amber-400/25 ml-auto shrink-0 group-hover:text-amber-500/60 dark:group-hover:text-amber-400/60 transition-colors" />

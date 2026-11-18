@@ -546,12 +546,12 @@ export function ReplyComposer({
         <div className="bg-background border-t border-border/60 shadow-[0_-10px_28px_-14px_rgba(0,0,0,0.25)]" style={vpRect ? {} : { paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
             <CornerUpLeft className="w-3 h-3 text-muted-foreground shrink-0" />
-            <span className="text-xs text-muted-foreground/70 truncate">
+            <span className="text-xs text-muted-foreground truncate">
               Replying to <span className="text-foreground font-medium">@{replyToName}</span>
             </span>
             <button
               onClick={onClose}
-              className="ml-auto p-1 text-muted-foreground/60 cursor-pointer"
+              className="ml-auto p-1 text-muted-foreground cursor-pointer"
               data-testid={`button-cancel-reply-${replyTo.id}`}
             >
               <X className="w-4 h-4" />
@@ -578,7 +578,7 @@ export function ReplyComposer({
               <MentionHighlightTextarea
                 ref={textareaRef}
                 placeholder="Write a reply..."
-                className="w-full min-h-[44px] bg-muted/20 border-border/30 rounded-2xl resize-none focus-visible:ring-1 focus-visible:ring-primary/30 text-foreground/90 px-4 py-2.5"
+                className="w-full min-h-[44px] bg-muted/20 border-border/30 rounded-2xl resize-none focus-visible:ring-1 focus-visible:ring-primary/30 text-foreground px-4 py-2.5"
                 style={{ fontSize: "16px", maxHeight: `${replyMaxH}px`, overflowY: "hidden" }}
                 value={content}
                 onChange={handleTextChange}
@@ -637,7 +637,7 @@ export function ReplyComposer({
           <MentionHighlightTextarea
             ref={textareaRef}
             placeholder="Write a reply..."
-            className="w-full min-h-[60px] max-h-[200px] bg-background/40 border-border/40 resize-none focus-visible:ring-0 text-sm text-foreground/90 overflow-y-auto"
+            className="w-full min-h-[60px] max-h-[200px] bg-background/40 border-border/40 resize-none focus-visible:ring-0 text-sm text-foreground overflow-y-auto"
             value={content}
             onChange={handleTextChange}
             onKeyDown={handleKeyDown}
@@ -714,12 +714,12 @@ export function QuotePreviewCard({ quotedEvent, compact }: { quotedEvent: Event;
                 {authorName.slice(0, 1).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="text-xs font-medium text-foreground/80 truncate">{authorName}</span>
+            <span className="text-xs font-medium text-foreground truncate">{authorName}</span>
           </div>
           {displayText ? (
             <p className={`text-xs text-muted-foreground leading-relaxed ${compact ? "line-clamp-2" : "line-clamp-3"}`}>{displayText}</p>
           ) : mediaThumbnail ? (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground/70">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
               {isVideo ? <Play className="w-3 h-3" /> : <ImageIcon className="w-3 h-3" />}
               <span>{isVideo ? "Video" : "Photo"}</span>
             </div>
@@ -876,12 +876,12 @@ export function QuoteComposer({
         <div className="bg-background border-t border-border/50" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border/30">
             <Quote className="w-3 h-3 text-muted-foreground/60 shrink-0" />
-            <span className="text-xs text-muted-foreground/70 truncate">
+            <span className="text-xs text-muted-foreground truncate">
               Quote post
             </span>
             <button
               onClick={onClose}
-              className="ml-auto p-1 text-muted-foreground/60 cursor-pointer"
+              className="ml-auto p-1 text-muted-foreground cursor-pointer"
               data-testid={`button-cancel-quote-${quotedEvent.id}`}
             >
               <X className="w-4 h-4" />
@@ -902,7 +902,7 @@ export function QuoteComposer({
             <Textarea
               ref={textareaRef}
               placeholder="Add your thoughts..."
-              className="flex-1 min-h-[42px] bg-muted/30 border-border/40 resize-none focus-visible:ring-0 text-foreground/90"
+              className="flex-1 min-h-[42px] bg-muted/30 border-border/40 resize-none focus-visible:ring-0 text-foreground"
               style={{ fontSize: "16px", maxHeight: `${quoteMaxH}px`, overflowY: "hidden" }}
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -942,7 +942,7 @@ export function QuoteComposer({
         <div className="flex-1 flex flex-col gap-2">
           <Textarea
             placeholder="Add your thoughts..."
-            className="min-h-[60px] bg-background/40 border-border/40 resize-none focus-visible:ring-0 text-sm text-foreground/90"
+            className="min-h-[60px] bg-background/40 border-border/40 resize-none focus-visible:ring-0 text-sm text-foreground"
             style={{ fontSize: 16 }}
             value={content}
             onChange={(e) => setContent(e.target.value)}
@@ -1375,13 +1375,13 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
             <Link href={profileUrl} className="shrink min-w-0">
-              <span className="text-sm sm:text-xs font-semibold text-foreground/90 cursor-pointer truncate block max-w-[120px] sm:max-w-[160px]" data-testid={`text-thread-author-${event.id}`}>
+              <span className="text-sm sm:text-xs font-semibold text-foreground cursor-pointer truncate block max-w-[120px] sm:max-w-[160px]" data-testid={`text-thread-author-${event.id}`}>
                 {displayName}
               </span>
             </Link>
             {commentTrustVisible && <TrustTierDot pubkey={event.pubkey} />}
             {isOP && (
-              <Badge variant="secondary" className="text-[11px] px-1.5 py-0 h-4 bg-transparent text-foreground/80 border-border/60 shrink-0" data-testid={`badge-op-${event.id}`}>
+              <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4 bg-transparent text-foreground border-border/60 shrink-0" data-testid={`badge-op-${event.id}`}>
                 OP
               </Badge>
             )}
@@ -1395,7 +1395,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
                 title={`Replying to @${replyToName}`}
                 className={`items-center gap-0.5 truncate min-w-0 shrink cursor-pointer text-[12px] ${
                   showParentCue
-                    ? "flex text-muted-foreground/70 hover:text-foreground/80 font-medium rounded-full px-1 py-0.5 transition-colors"
+                    ? "flex text-muted-foreground font-medium rounded-full px-1 py-0.5 transition-colors"
                     : "hidden sm:flex text-brand font-medium bg-foreground/[0.05] rounded-full px-2 py-0.5"
                 }`}
                 data-testid={`button-parent-cue-${event.id}`}
@@ -1413,7 +1413,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
             <Button
               variant="ghost"
               size="icon"
-              className="w-7 h-7 -mr-1 shrink-0 text-muted-foreground/60 hover:text-foreground/70 transition-opacity [@media(hover:hover)]:opacity-0 group-hover/reply:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+              className="w-7 h-7 -mr-1 shrink-0 text-muted-foreground transition-opacity [@media(hover:hover)]:opacity-0 group-hover/reply:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
               onClick={(e) => e.stopPropagation()}
               data-testid={`button-thread-menu-${event.id}`}
               aria-label="More"
@@ -1744,7 +1744,7 @@ export function ContinueThreadRow({ node }: { node: ThreadNode }) {
     >
       <span className="font-medium">Continue thread</span>
       <ArrowRight className="w-3 h-3 shrink-0" />
-      <span className="text-muted-foreground/60">
+      <span className="text-muted-foreground">
         {hiddenCount} more {hiddenCount === 1 ? "reply" : "replies"}
       </span>
     </button>
@@ -1935,7 +1935,7 @@ export function InlineThreadReplyBar({
             {initials}
           </AvatarFallback>
         </Avatar>
-        <span className="flex-1 text-sm text-muted-foreground/70 truncate">
+        <span className="flex-1 text-sm text-muted-foreground truncate">
           Write a reply...
         </span>
         <span
@@ -1960,7 +1960,7 @@ export function InlineThreadReplyBar({
           {(profile?.display_name || profile?.name || "?").slice(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>
-      <span className="text-xs text-muted-foreground/50">Write a reply...</span>
+      <span className="text-xs text-muted-foreground">Write a reply...</span>
     </div>
   );
 }
@@ -2260,7 +2260,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
           <Button
             variant="ghost"
             size="icon"
-            className="text-muted-foreground/70"
+            className="text-muted-foreground"
             onClick={onClose}
             data-testid={`button-close-thread-loading-${rootId}`}
           >
@@ -2278,7 +2278,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
       return (
         <>
           {replyBox}
-          <p className="mt-4 text-center text-sm text-muted-foreground/50 py-6" data-testid={`replies-empty-${rootId}`}>No replies yet</p>
+          <p className="mt-4 text-center text-sm text-muted-foreground py-6" data-testid={`replies-empty-${rootId}`}>No replies yet</p>
         </>
       );
     }
@@ -2294,7 +2294,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
             <Button
               variant="ghost"
               size="icon"
-              className="text-muted-foreground/70"
+              className="text-muted-foreground"
               onClick={(e) => { e.stopPropagation(); setCollapsed((c) => !c); }}
               data-testid={`button-collapse-thread-empty-${rootId}`}
             >
@@ -2303,7 +2303,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
             <Button
               variant="ghost"
               size="icon"
-              className="text-muted-foreground/70"
+              className="text-muted-foreground"
               onClick={(e) => { e.stopPropagation(); onClose(); }}
               data-testid={`button-close-thread-empty-${rootId}`}
             >
@@ -2313,7 +2313,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
         </div>
         {!collapsed && (
           <>
-            <p className="text-xs text-muted-foreground/50 text-center py-3">No replies yet</p>
+            <p className="text-xs text-muted-foreground text-center py-3">No replies yet</p>
             {rootEvent && <InlineThreadReplyBar replyTo={rootEvent} />}
           </>
         )}
@@ -2332,10 +2332,10 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
       >
         <div className="flex items-center gap-2">
           <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-xs font-medium text-foreground/70">
+          <span className="text-xs font-medium text-foreground">
             {threadTree.length} {threadTree.length === 1 ? "reply" : "replies"}
             {allReplies.length > threadTree.length && (
-              <span className="text-muted-foreground/50 ml-1">
+              <span className="text-muted-foreground ml-1">
                 ({allReplies.length} total)
               </span>
             )}
@@ -2348,7 +2348,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
               <button
                 type="button"
                 onClick={() => setShowOutside(true)}
-                className="ml-2 text-muted-foreground/70 underline decoration-dotted underline-offset-2 min-h-[44px] -my-3"
+                className="ml-2 text-muted-foreground underline decoration-dotted underline-offset-2 min-h-[44px] -my-3"
                 data-testid="button-show-outside-replies"
               >
                 {outsideCount} from outside your space
@@ -2361,7 +2361,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
             <Button
               variant="ghost"
               size="sm"
-              className={`h-6 px-1.5 text-[12px] gap-1 ${isReadingThread ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              className={`h-6 px-1.5 text-[12px] gap-1 ${isReadingThread ? "text-foreground" : "text-muted-foreground"}`}
               onClick={handleReadThread}
               title={isReadingThread ? "Stop reading thread" : "Read thread aloud"}
               data-testid={`button-read-thread-${rootId}`}
@@ -2385,7 +2385,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-muted-foreground/70"
+                className="text-muted-foreground"
                 onClick={(e) => { e.stopPropagation(); setCollapsed((c) => !c); }}
                 data-testid={`button-collapse-thread-${rootId}`}
               >
@@ -2394,7 +2394,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-muted-foreground/70"
+                className="text-muted-foreground"
                 onClick={(e) => { e.stopPropagation(); onClose(); }}
                 data-testid={`button-close-thread-${rootId}`}
               >
@@ -2410,7 +2410,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
           <div className="p-3 sm:p-4 space-y-3">
             {filteredThreadTree.length === 0 && excludedTiers.size > 0 ? (
               <div className="text-center py-4">
-                <p className="text-xs text-muted-foreground/50">All replies filtered out</p>
+                <p className="text-xs text-muted-foreground">All replies filtered out</p>
                 <button
                   onClick={() => setExcludedTiers(new Set())}
                   className="text-[13px] font-medium text-brand hover:text-brand-strong transition-colors mt-1 cursor-pointer"

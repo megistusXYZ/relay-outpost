@@ -106,7 +106,7 @@ export function ParentPostPreview({ event, variant = "card" }: { event: Event; v
           </Avatar>
         </Link>
         <Link href={profileUrl} data-testid={`link-parent-name-${event.id}`} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-          <span className="text-[13px] font-semibold text-foreground/85 cursor-pointer truncate max-w-[180px]">{name}</span>
+          <span className="text-[13px] font-semibold text-foreground cursor-pointer truncate max-w-[180px]">{name}</span>
         </Link>
         <span className={`text-[12px] text-muted-foreground`}>{timeAgo}</span>
       </div>
@@ -117,11 +117,11 @@ export function ParentPostPreview({ event, variant = "card" }: { event: Event; v
           as="p"
           lines={LINES.context}
           expandable={false}
-          className="text-[14px] text-foreground/80 leading-relaxed whitespace-pre-wrap break-words"
+          className="text-[14px] text-foreground leading-relaxed whitespace-pre-wrap break-words"
           testId={`text-parent-content-${event.id}`}
         >
           {refOnly ? (
-            <span className="italic text-muted-foreground/70">Shared a post</span>
+            <span className="italic text-muted-foreground">Shared a post</span>
           ) : (
             <ParsedPreviewText text={contentText} />
           )}
