@@ -193,3 +193,24 @@ html.theming::view-transition-new(root) { animation: ol-reveal 0.7s cubic-bezier
 .outpost-landing .dc-g { position: absolute; transform: translateX(-50%); display: flex; align-items: center; color: var(--ink2); opacity: 0.55; font-weight: 500; letter-spacing: normal; white-space: pre; }
 .outpost-landing .dc-dot { transition: opacity 0.5s ease, transform 0.5s ease; }
 .outpost-landing .dc-root.decoding .dc-dot { opacity: 0; transform: scale(0.4); }
+
+/* The maker's mark in the footer (owner, 2026-11-18): the Megistus logo alone, on a centred row
+   of its own between two hairlines that fade out at their ends (the footer's own line colour).
+   Soft at rest; pointed at or focused, the mark comes to full strength, lifts a touch, and the
+   hairlines firm up. Black on light, white on dark. The marks are the logo files trimmed to the
+   drawing (megistus-mark-*), so 44px is all mark. */
+.outpost-landing .megistus-row { display: flex; align-items: center; justify-content: center; gap: clamp(16px, 3vw, 28px); }
+.outpost-landing .megistus-row::before, .outpost-landing .megistus-row::after { content: ""; flex: 0 1 clamp(56px, 16vw, 168px); height: 1px; opacity: 0.7; transition: opacity 0.25s ease; }
+.outpost-landing .megistus-row::before { background: linear-gradient(to left, var(--line2), transparent); }
+.outpost-landing .megistus-row::after { background: linear-gradient(to right, var(--line2), transparent); }
+.outpost-landing .megistus-row:has(.megistus:hover)::before, .outpost-landing .megistus-row:has(.megistus:hover)::after,
+.outpost-landing .megistus-row:has(.megistus:focus)::before, .outpost-landing .megistus-row:has(.megistus:focus)::after { opacity: 1; }
+.outpost-landing .megistus { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 2px 6px; border-radius: 12px; opacity: 0.72; transition: opacity 0.25s ease; }
+.outpost-landing .megistus:hover, .outpost-landing .megistus:focus { opacity: 1; }
+.outpost-landing .megistus img { display: block; height: 44px; width: auto; transition: translate 0.25s ease; }
+.outpost-landing .megistus:hover img, .outpost-landing .megistus:focus-visible img { translate: 0 -2px; }
+.outpost-landing .megistus .megistus-on-dark { display: none; }
+.dark .outpost-landing .megistus .megistus-on-light { display: none; }
+.dark .outpost-landing .megistus .megistus-on-dark { display: block; }
+.outpost-landing .megistus:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+@media (prefers-reduced-motion: reduce) { .outpost-landing .megistus, .outpost-landing .megistus img, .outpost-landing .megistus-row::before, .outpost-landing .megistus-row::after { transition: none; } .outpost-landing .megistus:hover img, .outpost-landing .megistus:focus-visible img { translate: none; } }
