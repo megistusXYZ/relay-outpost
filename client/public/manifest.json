@@ -7,8 +7,8 @@
   "scope": "/",
   "display": "standalone",
   "lang": "en",
-  "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
+  "background_color": "#0A0C10",
+  "theme_color": "#0A0C10",
   "orientation": "any",
   "categories": ["social", "news", "communication"],
   "icons": [

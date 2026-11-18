@@ -11,8 +11,8 @@
          alongside the page's code. Signed-in visitors see their own feed. -->
     <script>(function(){try{if(location.pathname!=='/'||localStorage.getItem('relay-outpost-pubkey'))return;window.__roFirstScreen=fetch('/api/first-screen').then(function(r){return r.ok?r.json():null}).catch(function(){return null})}catch(e){}})()</script>
     <script>(function(){try{var s=window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches;var i=window.navigator&&window.navigator.standalone===true;if(s||i){var m=document.querySelector('meta[name=viewport]');if(m){m.setAttribute('content','width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content');document.documentElement.classList.add('pwa-standalone');}}}catch(e){}})();</script>
-    <title>Relay Outpost — One outpost for everything you say.</title>
-    <meta name="description" content="All your communications in one account — post, chat, and connect without another username and password. Everything you make is yours." />
+    <title>Relay Outpost: the next phase of the internet</title>
+    <meta name="description" content="Post, chat, go live and bring your people together, all in one place that belongs to you. Free and open source. No email or phone number." />
     <meta name="keywords" content="social platform, online community, creator platform, community app, private messaging, content creators, own your account, Nostr" />
 
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
@@ -20,8 +20,8 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
 
-    <meta name="theme-color" content="#09090b" />
-    <script>try{var th=localStorage.getItem('relay-outpost-theme');if(th==='light')document.querySelector('meta[name=theme-color]').setAttribute('content','#ffffff');else if(th==='black')document.querySelector('meta[name=theme-color]').setAttribute('content','#050408')}catch(e){}</script>
+    <meta name="theme-color" content="#0A0C10" />
+    <script>try{var th=localStorage.getItem('relay-outpost-theme');if(th==='light')document.querySelector('meta[name=theme-color]').setAttribute('content','#F7F7F8');else if(th==='black')document.querySelector('meta[name=theme-color]').setAttribute('content','#040507')}catch(e){}</script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Relay Outpost" />
@@ -44,48 +44,76 @@
     <link rel="apple-touch-startup-image" href="/splash/splash-440x956@3x.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
     <meta name="mobile-web-app-capable" content="yes" />
 
-    <meta property="og:title" content="Relay Outpost — One outpost for everything you say." />
-    <meta property="og:description" content="All your communications in one account — post, chat, and connect without another username and password. Everything you make is yours." />
+    <meta property="og:title" content="Relay Outpost: the next phase of the internet" />
+    <meta property="og:description" content="Post, chat, go live and bring your people together, all in one place that belongs to you. Free and open source. No email or phone number." />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Relay Outpost" />
     <meta property="og:image" content="/og-image.png" />
     <meta property="og:image:width" content="1155" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Relay Outpost — one outpost for everything you say." />
+    <meta property="og:image:alt" content="Relay Outpost: the next phase of the internet" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Relay Outpost — One outpost for everything you say." />
-    <meta name="twitter:description" content="All your communications in one account — post, chat, and connect without another username and password. Everything you make is yours." />
+    <meta name="twitter:title" content="Relay Outpost: the next phase of the internet" />
+    <meta name="twitter:description" content="Post, chat, go live and bring your people together, all in one place that belongs to you. Free and open source. No email or phone number." />
     <meta name="twitter:image" content="/og-image.png" />
-    <meta name="twitter:image:alt" content="Relay Outpost — own your account and run your own community." />
+    <meta name="twitter:image:alt" content="Relay Outpost: the next phase of the internet" />
 
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "Relay Outpost",
-      "alternateName": "Relay Outpost — One outpost for everything you say.",
-      "description": "All your communications in one account — post, chat, and connect without another username and password. Everything you make is yours, and it works everywhere. No email or phone number required.",
-      "url": "https://relayop.xyz",
-      "applicationCategory": "SocialNetworkingApplication",
-      "operatingSystem": "Web",
-      "browserRequirements": "Requires a modern browser with WebSocket support",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      },
-      "featureList": [
-        "No algorithm decides who sees your posts",
-        "Publish posts and long-form articles",
-        "Go live with streaming",
-        "Private, encrypted messaging",
-        "Receive voluntary support directly from your audience",
-        "Content calendar and scheduling",
-        "Built-in moderation and insights",
-        "Works on any device — install as an app"
-      ],
-      "screenshot": "https://relayop.xyz/og-image.png"
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "Outpost",
+          "alternateName": ["Relay Outpost", "Relay Op"],
+          "description": "Post, chat, go live and bring your people together, all in one place that belongs to you. No email, no algorithm, no middlemen.",
+          "url": "https://relayop.xyz",
+          "applicationCategory": "SocialNetworkingApplication",
+          "operatingSystem": "Web",
+          "browserRequirements": "Requires a modern browser with WebSocket support",
+          "license": "https://opensource.org/licenses/MIT",
+          "codeRepository": "https://github.com/megistusXYZ/relay-outpost",
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+          "featureList": [
+            "An account that is a key you hold, with no email or phone number",
+            "Posts, long articles and live streams",
+            "Choose exactly who each post reaches",
+            "Scheduling and a content calendar",
+            "Private, encrypted messages and community rooms",
+            "Tips straight from your audience",
+            "Trust and safety levels you set yourself",
+            "Works in any modern browser and installs as an app",
+            "Open source and self-hostable"
+          ],
+          "screenshot": "https://relayop.xyz/og-image.png"
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What if I lose my key?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Your key file is the only way in, so keep a copy somewhere safe, such as a password manager. Outpost cannot reset it for you, which is also why nobody can take your account away." }
+            },
+            {
+              "@type": "Question",
+              "name": "What does Outpost cost?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Outpost is free and open source under the MIT licence." }
+            },
+            {
+              "@type": "Question",
+              "name": "Can my family or company run its own?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Yes. Outpost is open source and can be hosted on your own server with Docker." }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I leave?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Yes. Your account, your people and your posts work in other apps on the same open network. Nothing is locked to Outpost." }
+            }
+          ]
+        }
+      ]
     }
     </script>
 
@@ -121,26 +149,28 @@
            to the light or black canvas before paint. */
         background:#0a0a0a;
         --ro-mark:#ffffff;
-        --ro-glow:rgba(139,92,246,.42);
-        --ro-glow2:rgba(99,102,241,.34);
-        --ro-ring:rgba(139,92,246,.38);
+        --ro-ember:#FF6A3D;
+        --ro-glow:rgba(255,106,61,.30);
+        --ro-glow2:rgba(61,107,255,.24);
+        --ro-ring:rgba(255,106,61,.32);
         --ro-dot:rgba(255,255,255,.14);
-        --ro-dot-on:#a78bfa;
-        --ro-trace:#c4b5fd;
-        --ro-note:rgba(255,255,255,.42);
+        --ro-dot-on:#FF6A3D;
+        --ro-trace:#FFD6C8;
+        --ro-note:rgba(255,255,255,.5);
         transition:opacity .22s ease;
         opacity:1;
       }
       html.ro-splash-light #ro-splash{
-        background:#f8f7fc;
-        --ro-mark:#7c3aed;
-        --ro-glow:rgba(124,58,237,.22);
-        --ro-glow2:rgba(99,102,241,.16);
-        --ro-ring:rgba(124,58,237,.28);
-        --ro-dot:rgba(124,58,237,.16);
-        --ro-dot-on:#7c3aed;
-        --ro-trace:#ffffff;
-        --ro-note:rgba(60,50,90,.5);
+        background:#f7f7f8;
+        --ro-mark:#0d0f12;
+        --ro-ember:#FF5B2E;
+        --ro-glow:rgba(255,91,46,.18);
+        --ro-glow2:rgba(61,107,255,.12);
+        --ro-ring:rgba(255,91,46,.26);
+        --ro-dot:rgba(13,15,18,.14);
+        --ro-dot-on:#FF5B2E;
+        --ro-trace:#FF5B2E;
+        --ro-note:rgba(13,15,18,.55);
       }
       html.ro-splash-black #ro-splash{background:#050408;}
       #ro-splash.ro-splash-hide{opacity:0;pointer-events:none;}
@@ -148,7 +178,7 @@
          browser-white ever shows before the splash or the app paints. Removed
          with the splash, so the app's own theme styles take over after. */
       html.ro-booting,html.ro-booting body{background:#0a0a0a;margin:0}
-      html.ro-booting.ro-splash-light,html.ro-booting.ro-splash-light body{background:#f8f7fc}
+      html.ro-booting.ro-splash-light,html.ro-booting.ro-splash-light body{background:#f7f7f8}
       html.ro-booting.ro-splash-black,html.ro-booting.ro-splash-black body{background:#050408}
       /* First frame = the iOS launch image (client/public/splash/*.png): the
          same 54px mark on the same 132px glow, still. So the hand-off from the
@@ -183,10 +213,19 @@
         overflow:visible;
       }
       /* A light traces the loop of the mark while the app loads. */
-      .ro-splash-trace{fill:none;stroke:var(--ro-trace);stroke-width:.9;stroke-linecap:round;stroke-linejoin:round;opacity:0;transition:opacity .3s ease;}
+      .ro-splash-trace{fill:none;stroke:var(--ro-trace);stroke-width:9;stroke-linecap:round;stroke-linejoin:round;opacity:0;transition:opacity .3s ease;}
+      .ro-splash-dot{fill:var(--ro-ember);transform-box:fill-box;transform-origin:center;}
+      .ro-splash-eyes{transform-box:fill-box;transform-origin:center;}
       .ro-splash-waiting .ro-splash-trace{opacity:1;animation:roSplashTrace 1.15s cubic-bezier(.45,0,.25,1) infinite;}
-      .ro-splash-stuck .ro-splash-trace{opacity:0;animation:none;}
+      .ro-splash-waiting .ro-splash-dot{animation:roSplashTick 1.15s ease-in-out infinite;}
+      .ro-splash-waiting .ro-splash-eyes{animation:roSplashGlance 3.2s ease-in-out infinite,roSplashBlink 4.4s infinite;}
+      .ro-splash-stuck .ro-splash-trace,.ro-splash-stuck .ro-splash-dot,.ro-splash-stuck .ro-splash-eyes{animation:none;opacity:1;}
+      .ro-splash-stuck .ro-splash-trace{opacity:0;}
       @keyframes roSplashTrace{from{stroke-dashoffset:0}to{stroke-dashoffset:-100}}
+      @keyframes roSplashTick{0%,100%{transform:scale(1)}50%{transform:scale(1.35)}}
+      @keyframes roSplashGlance{0%,18%,100%{translate:0 0}30%,46%{translate:-4px -1.5px}58%,74%{translate:4px -1.5px}86%{translate:0 1px}}
+      @keyframes roSplashBlink{0%,92%,100%{transform:scaleY(1)}95.5%{transform:scaleY(.08)}}
+      @media (prefers-reduced-motion:reduce){.ro-splash-waiting .ro-splash-dot,.ro-splash-waiting .ro-splash-eyes,.ro-splash-waiting .ro-splash-glow,.ro-splash-waiting .ro-splash-glow-2{animation:none}}
       @keyframes roSplashGlow{
         0%,100%{opacity:1;transform:scale(1);}
         50%{opacity:.7;transform:scale(1.08);}
@@ -214,8 +253,8 @@
         100%{transform:rotate(var(--a,0deg)) translateY(-66px) scale(1);}
       }
       .ro-splash-status,.ro-splash-retry-note{
-        font-family:'Space Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
-        font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ro-note);
+        font-family:'Geist',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+        font-size:13px;letter-spacing:0;color:var(--ro-note);
       }
       .ro-splash-status{
         position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 112px);
@@ -265,11 +304,11 @@
         <div class="ro-splash-glow"></div>
         <div class="ro-splash-glow ro-splash-glow-2"></div>
         <div class="ro-splash-ring" id="ro-splash-ring"></div>
-        <svg class="ro-splash-mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M5.64999 7.64999L2.85001 4.85001C2.54001 4.54001 2.76001 4 3.20001 4H6.79001C6.92001 4 7.05001 4.04999 7.14001 4.14999L12.14 9.14999C12.45 9.45999 12.23 10 11.79 10H8.5C6.57 10 5 11.57 5 13.5C5 15.43 6.57 17 8.5 17H10L12.15 19.15C12.46 19.46 12.24 20 11.8 20H8.51001C4.92001 20 2.01001 17.09 2.01001 13.5C2.01001 11.01 3.41001 8.84 5.48001 7.75L5.64999 7.64999Z" />
-          <path d="M18.35 16.35L21.15 19.15C21.46 19.46 21.24 20 20.8 20H17.21C17.08 20 16.95 19.95 16.86 19.85L11.86 14.85C11.55 14.54 11.77 14 12.21 14H15.5C17.43 14 19 12.43 19 10.5C19 8.57 17.43 7 15.5 7H14L11.85 4.85001C11.54 4.54001 11.76 4 12.2 4H15.49C19.08 4 21.99 6.91 21.99 10.5C21.99 12.99 20.59 15.16 18.52 16.25L18.35 16.35Z" />
-          <path class="ro-splash-trace" pathLength="100" stroke-dasharray="18 82" d="M5.64999 7.64999L2.85001 4.85001C2.54001 4.54001 2.76001 4 3.20001 4H6.79001C6.92001 4 7.05001 4.04999 7.14001 4.14999L12.14 9.14999C12.45 9.45999 12.23 10 11.79 10H8.5C6.57 10 5 11.57 5 13.5C5 15.43 6.57 17 8.5 17H10L12.15 19.15C12.46 19.46 12.24 20 11.8 20H8.51001C4.92001 20 2.01001 17.09 2.01001 13.5C2.01001 11.01 3.41001 8.84 5.48001 7.75L5.64999 7.64999Z" />
-          <path class="ro-splash-trace" pathLength="100" stroke-dasharray="18 82" d="M18.35 16.35L21.15 19.15C21.46 19.46 21.24 20 20.8 20H17.21C17.08 20 16.95 19.95 16.86 19.85L11.86 14.85C11.55 14.54 11.77 14 12.21 14H15.5C17.43 14 19 12.43 19 10.5C19 8.57 17.43 7 15.5 7H14L11.85 4.85001C11.54 4.54001 11.76 4 12.2 4H15.49C19.08 4 21.99 6.91 21.99 10.5C21.99 12.99 20.59 15.16 18.52 16.25L18.35 16.35Z" />
+        <svg class="ro-splash-mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true">
+          <path d="M78.98 42.24 A30 30 0 1 1 57.76 21.02" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" />
+          <path class="ro-splash-trace" pathLength="100" stroke-dasharray="16 84" d="M78.98 42.24 A30 30 0 1 1 57.76 21.02" />
+          <circle class="ro-splash-dot" cx="71.2" cy="28.8" r="6.5" />
+          <g class="ro-splash-eyes"><ellipse cx="42" cy="51" rx="3.6" ry="5.2" fill="currentColor" /><ellipse cx="58" cy="51" rx="3.6" ry="5.2" fill="currentColor" /></g>
         </svg>
       </div>
       <div class="ro-splash-status" id="ro-splash-status"></div>
