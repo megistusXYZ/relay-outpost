@@ -228,7 +228,7 @@ export function ThreadEndBlock({ rootEvent, ancestors, guest = false, participan
 
       {hasPeople && (
         <section>
-          <div className="flex items-center gap-1.5 mb-2 text-[12px] font-semibold text-muted-foreground/70">
+          <div className="flex items-center gap-1.5 mb-2 text-[12px] font-semibold text-muted-foreground">
             <Users className="w-3.5 h-3.5" /> People in this thread
           </div>
           <div className="flex flex-wrap gap-2">
@@ -237,7 +237,7 @@ export function ThreadEndBlock({ rootEvent, ancestors, guest = false, participan
             ))}
           </div>
           {participants.length > PEOPLE_CAP && !showAll && (
-            <button onClick={() => setShowAll(true)} className="mt-2 text-[11px] text-brand hover:underline" data-testid="thread-people-all">
+            <button onClick={() => setShowAll(true)} className="mt-2 text-xs text-brand hover:underline" data-testid="thread-people-all">
               See all {participants.length}
             </button>
           )}
@@ -246,7 +246,7 @@ export function ThreadEndBlock({ rootEvent, ancestors, guest = false, participan
 
       {hasMore && (
         <section>
-          <div className="mb-2 text-[12px] font-semibold text-muted-foreground/70">
+          <div className="mb-2 text-[12px] font-semibold text-muted-foreground">
             More from {authorName}
           </div>
           <div className="flex flex-col gap-1.5">
@@ -257,8 +257,8 @@ export function ThreadEndBlock({ rootEvent, ancestors, guest = false, participan
                 className="text-left rounded-lg border border-border/40 bg-card/60 hover:bg-muted/30 px-3 py-2 transition-colors"
                 data-testid={`thread-more-${n.id.slice(0, 8)}`}
               >
-                <p className="text-sm text-foreground/90 line-clamp-2">{n.content.replace(/\s+/g, " ").trim() || "(media post)"}</p>
-                <p className="text-[10px] text-muted-foreground/60 mt-0.5">{relTime(n.created_at)}</p>
+                <p className="text-sm text-foreground line-clamp-2">{n.content.replace(/\s+/g, " ").trim() || "(media post)"}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{relTime(n.created_at)}</p>
               </button>
             ))}
           </div>

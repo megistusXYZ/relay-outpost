@@ -197,7 +197,7 @@ function NostrEntityText({ text }: { text: string }) {
               key={i}
               href={`/profile/${part.npub}`}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              className="text-brand hover:text-brand dark:hover:text-brand-strong no-underline"
+              className="text-brand dark:hover:text-brand-strong no-underline"
               data-testid={`link-mention-${part.pubkey.slice(0, 8)}`}
             >
               @<MentionName pubkey={part.pubkey} />
@@ -210,7 +210,7 @@ function NostrEntityText({ text }: { text: string }) {
               key={i}
               href={`/thread/${part.encoded}`}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              className="text-brand hover:text-brand dark:hover:text-brand-strong no-underline"
+              className="text-brand dark:hover:text-brand-strong no-underline"
               data-testid={`link-noteref-${part.id.slice(0, 8)}`}
             >
               {part.encoded.slice(0, 10)}...{part.encoded.slice(-4)}
@@ -284,7 +284,7 @@ function AncestorPost({ event, isLast, isRoot }: { event: Event; isLast: boolean
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); navigate(`/thread/${noteId}`); }}
-          className="flex items-center gap-1.5 mx-4 mb-1 min-h-[44px] text-xs font-medium text-brand/80 hover:text-brand-strong transition-colors"
+          className="flex items-center gap-1.5 mx-4 mb-1 min-h-[44px] text-xs font-medium text-brand hover:text-brand-strong transition-colors"
           data-testid={`button-root-marker-${event.id}`}
         >
           <MessageCircle className="w-3.5 h-3.5 shrink-0" />
@@ -316,18 +316,18 @@ function AncestorPost({ event, isLast, isRoot }: { event: Event; isLast: boolean
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
               className="no-underline"
             >
-              <span className="text-sm font-semibold text-foreground/90 cursor-pointer truncate max-w-[200px] block">{displayName}</span>
+              <span className="text-sm font-semibold text-foreground cursor-pointer truncate max-w-[200px] block">{displayName}</span>
             </Link>
-            <span className="text-xs text-muted-foreground/60">{timeAgo}</span>
+            <span className="text-xs text-muted-foreground">{timeAgo}</span>
           </div>
           {previewText && (
-            <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap break-words mt-1.5 line-clamp-6">
+            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words mt-1.5 line-clamp-6">
               <NostrEntityText text={previewText} />
             </p>
           )}
           {engagementSummary && (
             <p
-              className="text-xs text-muted-foreground/70 mt-2"
+              className="text-xs text-muted-foreground mt-2"
               data-testid={`ancestor-engagement-${event.id}`}
             >
               {engagementSummary}
@@ -407,7 +407,7 @@ function NotificationBanner({ ntype, byPubkey, sats, emoji }: { ntype: string; b
 
   const nameEl = profileLink
     ? <Link href={profileLink} className="font-medium text-foreground/90 no-underline hover:underline">{displayName}</Link>
-    : <span className="font-medium text-foreground/90">{displayName}</span>;
+    : <span className="font-medium text-foreground">{displayName}</span>;
 
   return (
     <div className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg mb-3 border ${bgColor} ${borderColor} animate-in fade-in slide-in-from-top-2 duration-300`} data-testid="notification-banner">
@@ -425,7 +425,7 @@ function NotificationBanner({ ntype, byPubkey, sats, emoji }: { ntype: string; b
         </Avatar>
       )}
       <span className={`${color}`}>{icon}</span>
-      <span className="text-[13px] text-foreground/80">
+      <span className="text-[13px] text-foreground">
         {nameEl}
         {" "}{label}
       </span>

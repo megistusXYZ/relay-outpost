@@ -206,7 +206,7 @@ function useBadgeMode() {
 export function ProtectedNoteBadge({ className }: { className?: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-zap dark:text-amber-300 border border-amber-500/20 shrink-0 ${className || ""}`}
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-zap dark:text-amber-300 border border-amber-500/20 shrink-0 ${className || ""}`}
       title="Protected (NIP-70) — only the author can publish this post. Other clients shouldn't rebroadcast it."
       data-testid="badge-protected-note"
     >
@@ -249,7 +249,7 @@ function SignalCheckBadge({ eventId, statsTotal = 0, size = "default" }: { event
   // Demoted to a plain muted number (no pill/border): the signal check is
   // SECONDARY context — the amber zap total is the row's hero. Trust-signal
   // colours still live inside the popover with a labelled legend.
-  const sizeClass = size === "compact" ? "text-[9px]" : "text-[10px]";
+  const sizeClass = "text-xs";
 
   const tierLabel = tier === "high" ? "Strong" : tier === "mid" ? "Some" : "Little";
 
@@ -262,7 +262,7 @@ function SignalCheckBadge({ eventId, statsTotal = 0, size = "default" }: { event
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
-          className={`hit-area inline-flex items-center gap-0.5 font-mono cursor-pointer text-muted-foreground/55 hover:text-muted-foreground transition-colors ${sizeClass}`}
+          className={`hit-area inline-flex items-center gap-0.5 font-mono cursor-pointer text-muted-foreground transition-colors ${sizeClass}`}
           data-testid={`badge-signal-check-${eventId}`}
           onClick={(e) => e.stopPropagation()}
         >
@@ -282,7 +282,7 @@ function SignalCheckBadge({ eventId, statsTotal = 0, size = "default" }: { event
             {fetched && (
               <span className={`text-[12px] font-medium ${
                 tier === "high" ? "text-success dark:text-emerald-400" :
-                tier === "mid" ? "text-foreground/80" :
+                tier === "mid" ? "text-foreground" :
                 "text-muted-foreground"
               }`}>
                 {tierLabel}
@@ -315,7 +315,7 @@ function SignalCheckBadge({ eventId, statsTotal = 0, size = "default" }: { event
                 { label: "Others", count: others, dot: "bg-foreground/15" },
               ].map((row) => (
                 <div key={row.label} className="flex items-center justify-between text-[13px]">
-                  <span className="flex items-center gap-1.5 text-foreground/80">
+                  <span className="flex items-center gap-1.5 text-foreground">
                     <span className={`w-2 h-2 rounded-full ${row.dot}`} aria-hidden="true" />
                     {row.label}
                   </span>
@@ -365,7 +365,7 @@ export function PostBadgeToggle({ eventId, score, stats, size = "default" }: { e
       )}
       {canToggle && (
         <button
-          className="hit-area w-5 h-5 flex items-center justify-center rounded text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors cursor-pointer"
+          className="hit-area w-5 h-5 flex items-center justify-center rounded text-muted-foreground transition-colors cursor-pointer"
           onClick={(e) => { e.stopPropagation(); toggle(); }}
           title={showSignal ? "Switch to engagement score" : "Switch to trust check"}
           data-testid={`button-badge-toggle-${eventId}`}
@@ -402,7 +402,7 @@ function EngagementScoreBadge({ eventId, score, stats, size = "default" }: { eve
   const tier = score >= 100 ? "high" : score >= 25 ? "mid" : "low";
   // Demoted to a plain muted number (secondary to the amber zap total); score
   // colours stay inside the popover.
-  const sizeClass = size === "compact" ? "text-[9px]" : "text-[10px]";
+  const sizeClass = "text-xs";
 
   const tierLabel = tier === "high" ? "High" : tier === "mid" ? "Medium" : "Low";
 
@@ -419,7 +419,7 @@ function EngagementScoreBadge({ eventId, score, stats, size = "default" }: { eve
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
-          className={`hit-area inline-flex items-center gap-0.5 font-mono cursor-pointer text-muted-foreground/55 hover:text-muted-foreground transition-colors ${sizeClass}`}
+          className={`hit-area inline-flex items-center gap-0.5 font-mono cursor-pointer text-muted-foreground transition-colors ${sizeClass}`}
           data-testid="badge-engagement-score"
           onClick={(e) => e.stopPropagation()}
         >
@@ -446,19 +446,19 @@ function EngagementScoreBadge({ eventId, score, stats, size = "default" }: { eve
             <div className="space-y-1 pt-1 border-t border-border/60">
               <p className="text-[12px] text-muted-foreground font-medium">Breakdown</p>
               {breakdownRows.map((row) => (
-                <div key={row.label} className="flex items-center justify-between text-[11px]">
-                  <span className="text-muted-foreground/70">
+                <div key={row.label} className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">
                     {row.label}
-                    {row.weight > 0 && <span className="text-muted-foreground/30 ml-1">x{row.weight}</span>}
+                    {row.weight > 0 && <span className="text-muted-foreground ml-1">x{row.weight}</span>}
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground/50 font-mono">{row.count.toLocaleString()}</span>
-                    <span className="text-foreground/80 tabular-nums w-8 text-right">+{row.points}</span>
+                    <span className="text-muted-foreground font-mono">{row.count.toLocaleString()}</span>
+                    <span className="text-foreground tabular-nums w-8 text-right">+{row.points}</span>
                   </div>
                 </div>
               ))}
-              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/60">
-                <span className="text-muted-foreground/70 font-medium">Total</span>
+              <div className="flex items-center justify-between text-xs pt-1 border-t border-border/60">
+                <span className="text-muted-foreground font-medium">Total</span>
                 <span className="text-foreground tabular-nums font-semibold">{score}</span>
               </div>
             </div>
@@ -587,7 +587,7 @@ export function MentionProfileLink({ pubkey }: { pubkey: string }) {
                 data-testid={`button-copy-npub-${npub.slice(0, 12)}`}
               >
                 <img src={nostrOstrichGif} alt="" className="w-4 h-4 object-contain shrink-0" />
-                <span className="text-[12px] text-muted-foreground font-mono truncate group-hover:text-muted-foreground/80 transition-colors">
+                <span className="text-[12px] text-muted-foreground font-mono truncate transition-colors">
                   {shortNpub}
                 </span>
                 {copied ? (
@@ -605,7 +605,7 @@ export function MentionProfileLink({ pubkey }: { pubkey: string }) {
                   data-testid={`button-zap-${npub.slice(0, 12)}`}
                 >
                   <BtcZapIcon className="w-4 h-4 text-amber-800/70 dark:text-amber-400/70 shrink-0" />
-                  <span className="text-[11px] text-zap dark:text-amber-300/60 truncate group-hover:text-amber-600/80 dark:group-hover:text-amber-300/80 transition-colors">
+                  <span className="text-xs text-zap truncate transition-colors">
                     {lud16}
                   </span>
                   <Zap className="w-3 h-3 text-amber-500/30 dark:text-amber-400/25 ml-auto shrink-0 group-hover:text-amber-500/60 dark:group-hover:text-amber-400/60 transition-colors" />
@@ -814,7 +814,7 @@ export function EmbeddedNote({ eventId, encoded, relays, parentEventId }: { even
     return (
       <div className="my-2 rounded-lg border border-border dark:border-border/20 bg-muted/40 dark:bg-muted/10 p-3 flex items-center gap-2 min-h-[84px]" data-testid={`embedded-note-loading-${eventId.slice(0, 8)}`}>
         <RelayOutpostInlineLoader className="w-4 h-4" />
-        <span className="text-xs text-muted-foreground/60 dark:text-muted-foreground/60">Loading referenced post...</span>
+        <span className="text-xs text-muted-foreground">Loading referenced post...</span>
       </div>
     );
   }
@@ -834,7 +834,7 @@ export function EmbeddedNote({ eventId, encoded, relays, parentEventId }: { even
         data-testid={`embedded-note-unreached-${eventId.slice(0, 8)}`}
       >
         <CornerDownRight className="w-3.5 h-3.5 text-muted-foreground/50 dark:text-muted-foreground/50 shrink-0" />
-        <span className="text-xs text-muted-foreground/60 dark:text-muted-foreground/60">Quoted post didn't load — tap to retry</span>
+        <span className="text-xs text-muted-foreground">Quoted post didn't load — tap to retry</span>
       </button>
     );
   }
@@ -847,7 +847,7 @@ export function EmbeddedNote({ eventId, encoded, relays, parentEventId }: { even
         data-testid={`embedded-note-fallback-${eventId.slice(0, 8)}`}
       >
         <CornerDownRight className="w-3.5 h-3.5 text-muted-foreground/50 dark:text-muted-foreground/50" />
-        <span className="text-xs text-muted-foreground/60 dark:text-muted-foreground/60">Referenced post not found — tap to view thread</span>
+        <span className="text-xs text-muted-foreground">Referenced post not found — tap to view thread</span>
       </div>
     );
   }
@@ -897,7 +897,7 @@ export function EmbeddedNote({ eventId, encoded, relays, parentEventId }: { even
             {name.slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
-        <span className="text-[11px] font-semibold text-foreground/80 truncate max-w-[160px]">{name}</span>
+        <span className="text-xs font-semibold text-foreground truncate max-w-[160px]">{name}</span>
         <span className="text-[12px] text-muted-foreground">{timeAgo}</span>
       </div>
       {previewText && (
@@ -910,7 +910,7 @@ export function EmbeddedNote({ eventId, encoded, relays, parentEventId }: { even
         <ClampedText
           lines={LINES.context}
           expandable={false}
-          className="text-xs text-foreground/75 leading-relaxed whitespace-pre-wrap break-words"
+          className="text-xs text-foreground leading-relaxed whitespace-pre-wrap break-words"
           testId={`embedded-note-text-${eventId.slice(0, 8)}`}
         >
           <TextWithUnresolvedNostr text={previewText} nested />
@@ -1462,14 +1462,14 @@ export function RawFieldRow({ label, value, mono = true, description }: { label:
         {description && (
           <span className="block text-[12px] text-muted-foreground mb-0.5 leading-tight">{description}</span>
         )}
-        <div className={`text-xs break-all ${mono ? "font-mono" : ""} text-foreground/80`}>
+        <div className={`text-xs break-all ${mono ? "font-mono" : ""} text-foreground`}>
           {value.length > 300 ? value.slice(0, 300) + "..." : value}
         </div>
       </div>
       <Button
         variant="ghost"
         size="icon"
-        className="w-7 h-7 shrink-0 mt-2 text-muted-foreground/70 visibility-hidden group-hover:visibility-visible"
+        className="w-7 h-7 shrink-0 mt-2 text-muted-foreground visibility-hidden group-hover:visibility-visible"
         style={{ visibility: copied ? "visible" : undefined }}
         onClick={handleCopy}
         data-testid={`button-copy-${label.toLowerCase().replace(/\s/g, "-")}`}
@@ -1501,7 +1501,7 @@ export function ConsoleQuickCopyBtn({ icon: Icon, label, value }: { icon: React.
       data-testid={`button-console-${label.toLowerCase().replace(/\s/g, "-")}`}
     >
       {copied ? <Check className="w-3.5 h-3.5 text-green-500 shrink-0" /> : <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-      <span className="text-foreground/80 truncate">{copied ? "Copied" : label}</span>
+      <span className="text-foreground truncate">{copied ? "Copied" : label}</span>
     </Button>
   );
 }
@@ -1573,14 +1573,14 @@ export function RawEventDialog({ open, onOpenChange, event }: { open: boolean; o
                 {seenOnRelays.map((r) => {
                   const short = r.replace("wss://", "").replace("ws://", "").replace(/\/$/, "");
                   return (
-                    <Badge key={r} variant="outline" className="text-[11px] font-mono text-foreground/75 border-border/60" data-testid={`badge-relay-${short}`}>
+                    <Badge key={r} variant="outline" className="text-xs font-mono text-foreground border-border/60" data-testid={`badge-relay-${short}`}>
                       {short}
                     </Badge>
                   );
                 })}
               </div>
             ) : (
-              <span className="text-xs text-muted-foreground/50 italic">Not yet tracked — relay data appears for newly loaded events</span>
+              <span className="text-xs text-muted-foreground italic">Not yet tracked — relay data appears for newly loaded events</span>
             )}
           </div>
 
@@ -1697,7 +1697,7 @@ export function EmbeddedAddressCard({ kind, pubkey: authorPk, identifier, relays
         data-testid={`address-card-unreached-${kind}`}
       >
         <FileJson className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
-        <span className="text-xs text-muted-foreground/80 truncate flex-1">{kindLabel} didn't load — tap to retry</span>
+        <span className="text-xs text-muted-foreground truncate flex-1">{kindLabel} didn't load — tap to retry</span>
       </button>
     );
   }
@@ -1707,9 +1707,9 @@ export function EmbeddedAddressCard({ kind, pubkey: authorPk, identifier, relays
     return (
       <div className="mt-2 rounded-lg border border-border/30 bg-background/20 p-2.5 flex items-center gap-2" data-testid={`address-card-unavailable-${kind}`}>
         <FileJson className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
-        <span className="text-xs text-muted-foreground/80 truncate flex-1">{kindLabel} · content unavailable</span>
+        <span className="text-xs text-muted-foreground truncate flex-1">{kindLabel} · content unavailable</span>
         {njump && (
-          <a href={njump} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-[11px] text-brand shrink-0 whitespace-nowrap">View on Nostr →</a>
+          <a href={njump} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-xs text-brand shrink-0 whitespace-nowrap">View on Nostr →</a>
         )}
       </div>
     );
@@ -1754,7 +1754,7 @@ export function EmbeddedAddressCard({ kind, pubkey: authorPk, identifier, relays
     try { liveNaddr = nip19.naddrEncode({ kind, pubkey: resolved.pubkey, identifier, relays: relays ?? [] }); } catch {}
     const goLive = (e: React.MouseEvent) => { e.stopPropagation(); if (liveNaddr) navigate(`/live/${liveNaddr}`); };
     const StatusPill = (
-      <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold ${statusClass}`}>
+      <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-bold ${statusClass}`}>
         {isLive && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
         {statusLabel}
       </span>
@@ -1807,14 +1807,14 @@ export function EmbeddedAddressCard({ kind, pubkey: authorPk, identifier, relays
             <AvatarFallback className="text-[8px]">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <span className="text-xs font-medium truncate">{displayName}</span>
-          <span className="text-[13px] text-muted-foreground/60 ml-auto shrink-0 font-medium">{kindLabel}</span>
+          <span className="text-[13px] text-muted-foreground ml-auto shrink-0 font-medium">{kindLabel}</span>
         </div>
         <p className="text-sm font-semibold leading-snug line-clamp-2 mb-1">{title}</p>
         {image && (
           <img src={image} alt="" loading="lazy" className="w-full max-h-40 object-cover rounded-md mb-1.5" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
         )}
         {previewText && (
-          <p className="text-xs text-muted-foreground/85 whitespace-pre-wrap break-words leading-relaxed line-clamp-3">{previewText}</p>
+          <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words leading-relaxed line-clamp-3">{previewText}</p>
         )}
       </div>
     </div>
@@ -2523,7 +2523,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
               // Disclosure cues so the caret can't read as a downvote: smaller +
               // quieter than an action icon, labeled "Post menu", and it flips
               // 180° while the menu is open (votes never rotate; menus do).
-              className="hit-area w-7 h-7 shrink-0 text-muted-foreground/40 hover:text-muted-foreground/70 [&_svg]:size-3"
+              className="hit-area w-7 h-7 shrink-0 text-muted-foreground [&_svg]:size-3"
               onClick={(e) => e.stopPropagation()}
               aria-label="Post menu"
               title="Post menu"
@@ -2725,7 +2725,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
           {/* The reply-context setting holds here too. Off: the margin names
               who is being answered and offers the context on a tap — the same
               choice the card gives, in the same words. On: the note shows. */}
-          <div className="flex items-center gap-1.5 mb-1.5 text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-1.5 mb-1.5 text-xs text-muted-foreground">
             <CornerUpLeft className="w-3 h-3 shrink-0" />
             <span>In reply to</span>
             {!replyContextOn && replyToName && (
@@ -2735,7 +2735,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
             )}
             {!replyContextOn && (
               <button
-                className="ml-auto shrink-0 flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
+                className="ml-auto shrink-0 flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
                 onClick={handleShowParent}
                 data-testid={`button-margin-show-parent-${event.id}`}
               >
@@ -2749,7 +2749,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
           ) : parentNotFound ? null : parentUnreached ? (
             <button
               onClick={(e) => { e.stopPropagation(); retryParentFetch(); }}
-              className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/40 dark:bg-muted/20 border border-border dark:border-border/20 text-[11px] text-muted-foreground cursor-pointer w-full text-left"
+              className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/40 dark:bg-muted/20 border border-border dark:border-border/20 text-xs text-muted-foreground cursor-pointer w-full text-left"
               data-testid={`parent-retry-${event.id}`}
             >
               Context didn't load — tap to retry
@@ -2757,7 +2757,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
           ) : (
             <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/40 dark:bg-muted/20 border border-border dark:border-border/20" data-testid={`parent-loading-${event.id}`}>
               <RelayOutpostInlineLoader />
-              <span className="text-[11px] text-muted-foreground">Loading…</span>
+              <span className="text-xs text-muted-foreground">Loading…</span>
             </div>
           )}
         </div>,
@@ -2775,7 +2775,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
           <CornerUpLeft className="w-3 h-3 text-muted-foreground/70 shrink-0" />
           {replyToName ? (
             <>
-              <span className="text-xs sm:text-xs text-muted-foreground/80">Replying to</span>
+              <span className="text-xs text-muted-foreground">Replying to</span>
               <Link href={replyToProfileUrl} data-testid={`link-reply-to-${event.id}`} className="flex items-center gap-1 cursor-pointer">
                 <Avatar className="w-4 h-4 shrink-0 ring-1 ring-border border border-background">
                   <AvatarImage src={replyToAvatarUrl} alt={replyToName} />
@@ -2789,7 +2789,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
               </Link>
             </>
           ) : (
-            <span className="text-xs sm:text-xs text-muted-foreground/80">Reply</span>
+            <span className="text-xs text-muted-foreground">Reply</span>
           )}
           <button
             className="text-xs sm:text-[12px] text-muted-foreground cursor-pointer ml-auto flex items-center gap-0.5"
@@ -2821,7 +2821,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
             // old failure notice, a tap target is actionable.
             <button
               onClick={(e) => { e.stopPropagation(); retryParentFetch(); }}
-              className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/40 dark:bg-muted/20 border border-border dark:border-border/20 text-[11px] text-muted-foreground/80 cursor-pointer w-full text-left"
+              className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/40 dark:bg-muted/20 border border-border dark:border-border/20 text-xs text-muted-foreground cursor-pointer w-full text-left"
               data-testid={`parent-retry-${event.id}`}
             >
               <CornerUpLeft className="w-3 h-3 shrink-0" />
@@ -2830,7 +2830,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
           ) : (
             <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/40 dark:bg-muted/20 border border-border dark:border-border/20" data-testid={`parent-loading-${event.id}`}>
               <RelayOutpostInlineLoader />
-              <span className="text-[11px] text-muted-foreground/80">Loading parent post...</span>
+              <span className="text-xs text-muted-foreground">Loading parent post...</span>
             </div>
           )}
         </div>
@@ -2920,7 +2920,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
           <MessageSquare className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${hasReplied ? "fill-current" : ""}`} />
         </Button>
         <button
-          className={`text-[11px] sm:text-xs -ml-0.5 sm:-ml-1 mr-0.5 sm:mr-1 shrink-0 cursor-pointer rounded ${FOCUS_RING} ${threadExpanded ? "text-foreground" : hasReplied ? "stat-glow-replies" : "text-muted-foreground"}`}
+          className={`text-xs -ml-0.5 sm:-ml-1 mr-0.5 sm:mr-1 shrink-0 cursor-pointer rounded ${FOCUS_RING} ${threadExpanded ? "text-foreground" : hasReplied ? "stat-glow-replies" : "text-muted-foreground"}`}
           onClick={onToggleThread}
           data-testid={`text-reply-count-${event.id}`}
         >
@@ -2942,7 +2942,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
             {isProtectedEvent(event) ? (
               <DropdownMenuItem
                 disabled
-                className="gap-2 text-muted-foreground/60"
+                className="gap-2 text-muted-foreground"
                 data-testid={`button-protected-blocked-${event.id}`}
               >
                 <Lock className="w-3.5 h-3.5" />
@@ -2982,7 +2982,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
             )}
           </DropdownMenuContent>
         </DropdownMenu>
-        <span className={`text-[11px] sm:text-xs -ml-0.5 sm:-ml-1 mr-0.5 sm:mr-1 min-w-[1ch] shrink-0 transition-opacity duration-200 ${repostCount > 0 ? "opacity-100" : "opacity-0"} ${boosted ? "stat-glow-reposts" : "text-muted-foreground"}`} data-testid={`text-repost-count-${event.id}`}>
+        <span className={`text-xs -ml-0.5 sm:-ml-1 mr-0.5 sm:mr-1 min-w-[1ch] shrink-0 transition-opacity duration-200 ${repostCount > 0 ? "opacity-100" : "opacity-0"} ${boosted ? "stat-glow-reposts" : "text-muted-foreground"}`} data-testid={`text-repost-count-${event.id}`}>
           {formatCount(repostCount || 0)}
         </span>
 
@@ -3006,7 +3006,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
           eventId={event.id}
           likeCount={likeCount}
           trigger={
-            <span className={`text-[11px] sm:text-xs -ml-0.5 sm:-ml-1 mr-0.5 sm:mr-1 min-w-[1ch] shrink-0 transition-opacity duration-200 cursor-pointer ${likeCount > 0 ? "opacity-100" : "opacity-0 pointer-events-none"} ${hasLiked ? "stat-glow-likes" : "text-muted-foreground"}`} data-testid={`text-like-count-${event.id}`}>
+            <span className={`text-xs -ml-0.5 sm:-ml-1 mr-0.5 sm:mr-1 min-w-[1ch] shrink-0 transition-opacity duration-200 cursor-pointer ${likeCount > 0 ? "opacity-100" : "opacity-0 pointer-events-none"} ${hasLiked ? "stat-glow-likes" : "text-muted-foreground"}`} data-testid={`text-like-count-${event.id}`}>
               {formatCount(likeCount || 0)}
             </span>
           }
@@ -3033,7 +3033,7 @@ function PostBody({ event, compact = false, onToggleThread, threadExpanded, onMo
               />
             </div>
             <button
-              className="text-[12px] font-semibold tabular-nums text-foreground/80 px-1 py-0.5 rounded hover:bg-foreground/[0.06] transition-colors min-w-[28px] text-center"
+              className="text-[12px] font-semibold tabular-nums text-foreground px-1 py-0.5 rounded hover:bg-foreground/[0.06] transition-colors min-w-[28px] text-center"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -3206,7 +3206,7 @@ export const NostrPost = memo(function NostrPost({ event, showReplies = false, r
         <div className="flex items-center gap-1.5 px-4 pt-3 pb-1.5 text-[13px] text-muted-foreground" data-testid={`text-reposted-by-${event.id}`}>
           <Repeat className="w-3 h-3 shrink-0" />
           <Link href={repostNpub ? `/profile/${repostNpub}` : "#"} className="no-underline cursor-pointer truncate">
-            <span className="font-medium text-foreground/85">{repostDisplayName}</span>
+            <span className="font-medium text-foreground">{repostDisplayName}</span>
           </Link>
           <span>reposted</span>
         </div>

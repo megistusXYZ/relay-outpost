@@ -1578,19 +1578,13 @@ html[data-perf="lite"] .space-bg-nebula {
   .dark .stat-glow-likes   { color: hsl(340 58% 68%); }
   .dark .stat-glow-zaps    { color: hsl(40 78% 62%); }
 
+  /* The top zap under a post: the amount in the zap colour, the note as a secondary word,
+     both at full strength and without a glow. */
   .zap-leader-amount {
-    color: hsl(35 35% 42%);
-  }
-  .dark .zap-leader-amount {
-    color: hsl(40 50% 58%);
-    text-shadow: 0 0 10px hsla(40, 80%, 50%, 0.15);
+    color: hsl(var(--zap));
   }
   .zap-leader-message {
-    color: hsl(220 6% 52%);
-  }
-  .dark .zap-leader-message {
-    color: hsl(220 8% 56%);
-    text-shadow: 0 0 12px hsla(220, 6%, 60%, 0.12);
+    color: hsl(var(--muted-foreground));
   }
 
   .glass-inner {
@@ -1810,7 +1804,7 @@ html[data-perf="lite"] .space-bg-nebula {
   .glass-dropdown [role="menuitem"] {
     border-radius: 0.375rem;
     transition: background 150ms ease;
-    color: rgba(47, 50, 55, 0.85);
+    color: hsl(var(--foreground));
   }
 
   .dark .glass-dropdown [role="menuitem"] {
@@ -1825,17 +1819,13 @@ html[data-perf="lite"] .space-bg-nebula {
     background: rgba(150, 157, 170, 0.10);
   }
 
+  /* A group's name in a menu ("Copy", "Inspect"): a quiet word, readable (12px, full-strength
+     secondary colour), sentence case as written. */
   .glass-dropdown .glass-dropdown-label {
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 500;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: rgba(102, 107, 118, 0.55);
+    color: hsl(var(--muted-foreground));
     padding: 6px 8px 2px;
-  }
-
-  .dark .glass-dropdown .glass-dropdown-label {
-    color: rgba(189, 193, 201, 0.5);
   }
 
   .glass-dialog {
@@ -1845,7 +1835,7 @@ html[data-perf="lite"] .space-bg-nebula {
       0 0 0 1px rgba(47, 50, 55, 0.04) inset,
       0 0 40px -8px rgba(47, 50, 55, 0.08),
       0 16px 64px -16px rgba(47, 50, 55, 0.15);
-    color: rgba(47, 50, 55, 0.88);
+    color: hsl(var(--foreground));
   }
 
   .dark .glass-dialog {
@@ -1880,16 +1870,10 @@ html[data-perf="lite"] .space-bg-nebula {
   }
 
   .glass-dialog-field-label {
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 500;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: rgba(47, 50, 55, 0.45);
+    color: hsl(var(--muted-foreground));
     margin-bottom: 2px;
-  }
-
-  .dark .glass-dialog-field-label {
-    color: rgba(189, 193, 201, 0.5);
   }
 
   .glass-console-btn {
@@ -2190,7 +2174,8 @@ html[data-perf="lite"] .space-bg-nebula {
     /* Reader Font Style setting (Settings → Text). --font-body is set on
        <html> at boot (main.tsx) and defaults to Geist, the brand face. */
     font-family: var(--font-body, 'Geist', 'Inter', sans-serif);
-    color: rgba(38, 39, 42, 0.82);
+    /* Full ink: the most-read words in the app (LIGHT_MODE.md rule 5, no faded words). */
+    color: hsl(var(--foreground));
   }
 
   /* Clean feed style: post body sized by the reader Text Size control (default
@@ -2229,12 +2214,9 @@ html[data-perf="lite"] .space-bg-nebula {
     }
   }
 
-  .glass-inner .post-content-text {
-    color: rgba(36, 37, 39, 0.85);
-  }
-
+  .glass-inner .post-content-text,
   .dark .post-content-text {
-    color: rgba(235, 230, 225, 0.82);
+    color: hsl(var(--foreground));
   }
 
   /* Boost-contrast accessibility setting (Settings → Accessibility → Contrast
@@ -2243,9 +2225,8 @@ html[data-perf="lite"] .space-bg-nebula {
      the app. Light mode darkens toward the page ink; dark mode brightens toward
      white. Dark rules follow the light ones so equal-specificity ties resolve
      to the dark value inside .dark. */
-  :root[data-contrast="high"] .post-content-text { color: rgba(28, 29, 30, 0.92); }
+  /* The body is already full ink at the default contrast; High keeps it, Maximum goes to pure black or white. */
   :root[data-contrast="maximum"] .post-content-text { color: rgba(16, 17, 18, 1); }
-  .dark[data-contrast="high"] .post-content-text { color: rgba(244, 241, 238, 0.94); }
   .dark[data-contrast="maximum"] .post-content-text { color: rgba(255, 255, 255, 1); }
 
   /* Solid (opaque) bottom dock — a translucent + backdrop-blur dock let page

@@ -151,8 +151,8 @@ export function ZapReceiptsPopover({ eventId, zapAmount, zapCount, size = "defau
 
   const displayText = zapAmount > 0 ? formatSats(zapAmount) : String(zapCount);
   const textClass = size === "compact"
-    ? "text-[11px] -ml-0.5 mr-0.5 text-muted-foreground"
-    : "text-[11px] sm:text-xs -ml-0.5 sm:-ml-1 mr-0.5 sm:mr-1 text-muted-foreground";
+    ? "text-xs -ml-0.5 mr-0.5 text-muted-foreground"
+    : "text-xs -ml-0.5 sm:-ml-1 mr-0.5 sm:mr-1 text-muted-foreground";
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
@@ -173,8 +173,8 @@ export function ZapReceiptsPopover({ eventId, zapAmount, zapCount, size = "defau
       >
         <div className="p-3 space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-display text-zap dark:text-amber-400/90">Thanks received</p>
-            <span className="text-xs font-mono text-zap dark:text-amber-400/70">
+            <p className="text-xs font-display text-zap">Thanks received</p>
+            <span className="text-xs font-mono text-zap">
               {zapAmount > 0 ? `${zapAmount.toLocaleString()} sats` : `${zapCount} ${zapCount === 1 ? "person" : "people"}`}
             </span>
           </div>
@@ -186,7 +186,7 @@ export function ZapReceiptsPopover({ eventId, zapAmount, zapCount, size = "defau
           )}
 
           {!loading && fetched && zappers.length === 0 && (
-            <p className="text-[11px] text-muted-foreground/50 text-center py-3">
+            <p className="text-xs text-muted-foreground text-center py-3">
               No thanks recorded on relays yet
             </p>
           )}
@@ -200,9 +200,9 @@ export function ZapReceiptsPopover({ eventId, zapAmount, zapCount, size = "defau
           )}
 
           {!loading && zappers.length > 0 && (
-            <div className="flex items-center justify-between pt-1.5 border-t border-amber-500/10 text-[11px]">
-              <span className="text-muted-foreground/50">{zappers.length} zapper{zappers.length !== 1 ? "s" : ""}</span>
-              <span className="text-zap dark:text-amber-400/70 font-mono">{zappers.reduce((s, z) => s + z.amount, 0).toLocaleString()} sats total</span>
+            <div className="flex items-center justify-between pt-1.5 border-t border-amber-500/10 text-xs">
+              <span className="text-muted-foreground">{zappers.length} zapper{zappers.length !== 1 ? "s" : ""}</span>
+              <span className="text-zap font-mono">{zappers.reduce((s, z) => s + z.amount, 0).toLocaleString()} sats total</span>
             </div>
           )}
         </div>
@@ -236,15 +236,15 @@ export function ZapperRow({ zapper }: { zapper: ZapperInfo }) {
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <span className="text-[11px] text-foreground/80 truncate block" data-testid={`text-zapper-name-${zapper.pubkey}`}>
+          <span className="text-xs text-foreground truncate block" data-testid={`text-zapper-name-${zapper.pubkey}`}>
             {displayName}
-            {isMe && <span className="ml-1 text-[12px] font-semibold text-zap dark:text-amber-400/90">You</span>}
+            {isMe && <span className="ml-1 text-[12px] font-semibold text-zap">You</span>}
           </span>
           {zapper.comment && (
-            <span className="text-[10px] text-muted-foreground/50 truncate block" data-testid={`text-zapper-comment-${zapper.pubkey}`}>{zapper.comment}</span>
+            <span className="text-xs text-muted-foreground truncate block" data-testid={`text-zapper-comment-${zapper.pubkey}`}>{zapper.comment}</span>
           )}
         </div>
-        <span className="text-[11px] font-mono text-zap dark:text-amber-400 shrink-0" data-testid={`text-zapper-amount-${zapper.pubkey}`}>{formatSats(zapper.amount)}</span>
+        <span className="text-xs font-mono text-zap dark:text-amber-400 shrink-0" data-testid={`text-zapper-amount-${zapper.pubkey}`}>{formatSats(zapper.amount)}</span>
       </div>
     </Link>
   );
@@ -272,7 +272,7 @@ export function ReactorAvatarRow({ pubkey }: { pubkey: string }) {
             {displayName.slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
-        <span className="text-[11px] text-foreground/80 truncate" data-testid={`text-reactor-name-${pubkey}`}>{displayName}</span>
+        <span className="text-xs text-foreground truncate" data-testid={`text-reactor-name-${pubkey}`}>{displayName}</span>
       </div>
     </Link>
   );
@@ -311,11 +311,11 @@ export function TopZapDetailContent({ pubkey, amount, message, emoji }: { pubkey
       </div>
       {message && (
         <div className="rounded-lg bg-amber-500/5 dark:bg-amber-400/5 border border-amber-500/10 dark:border-amber-400/10 px-3.5 py-3">
-          <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap break-words">{message}</p>
+          <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap break-words">{message}</p>
         </div>
       )}
       {!message && (
-        <p className="text-xs text-muted-foreground/60 italic">No message attached to this zap</p>
+        <p className="text-xs text-muted-foreground italic">No message attached to this zap</p>
       )}
     </div>
   );
@@ -348,9 +348,9 @@ export function TopZapperAvatars({ eventId, hasZaps }: { eventId: string; hasZap
     <>
       {leader.emoji && <span className="text-[13px] shrink-0">{leader.emoji}</span>}
       <BtcZapIcon className="w-3 h-3 zap-leader-amount shrink-0" />
-      <span className="text-[11px] sm:text-xs font-medium zap-leader-amount shrink-0">{formatCount(leader.amount)}</span>
+      <span className="text-xs font-medium zap-leader-amount shrink-0">{formatCount(leader.amount)}</span>
       {leaderLabel && (
-        <span className="text-[10px] sm:text-[11px] zap-leader-message truncate max-w-[80px] sm:max-w-[140px]">
+        <span className="text-xs zap-leader-message truncate max-w-[80px] sm:max-w-[140px]">
           {leaderLabel}
         </span>
       )}
@@ -382,7 +382,7 @@ export function TopZapperAvatars({ eventId, hasZaps }: { eventId: string; hasZap
                     <div className="mx-auto w-10 h-1 rounded-full bg-muted-foreground/20 mb-4" />
                     <div className="flex items-center gap-1.5 mb-4">
                       <BtcZapIcon className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                      <span className="text-xs text-zap dark:text-amber-400/90 font-medium">Top zap</span>
+                      <span className="text-xs text-zap font-medium">Top zap</span>
                     </div>
                     {detailContent}
                   </SheetContent>
@@ -407,7 +407,7 @@ export function TopZapperAvatars({ eventId, hasZaps }: { eventId: string; hasZap
                 >
                   <div className="flex items-center gap-1.5 mb-3">
                     <BtcZapIcon className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                    <span className="text-xs text-zap dark:text-amber-400/90 font-medium">Top zap</span>
+                    <span className="text-xs text-zap font-medium">Top zap</span>
                   </div>
                   {detailContent}
                 </PopoverContent>
@@ -503,12 +503,12 @@ export function TopZapperAvatar({ pubkey, size = "small" }: { pubkey: string; si
                   <HoverCardTrustBadge pubkey={pubkey} />
                 </div>
                 {nip05 && (
-                  <Nip05Badge nip05={nip05} pubkey={pubkey} className="mt-0.5" textClassName="text-[11px] text-zap dark:text-amber-400/60" iconClassName="w-3 h-3" />
+                  <Nip05Badge nip05={nip05} pubkey={pubkey} className="mt-0.5" textClassName="text-xs text-zap" iconClassName="w-3 h-3" />
                 )}
               </div>
             </div>
             {about && (
-              <p className="text-[11px] text-muted-foreground/60 leading-relaxed line-clamp-2">{about}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{about}</p>
             )}
             <VouchedBySection pubkey={pubkey} />
             <TrustedBySection pubkey={pubkey} />
@@ -553,8 +553,8 @@ export function ReactionDetailsPopover({ eventId, likeCount, trigger }: { eventI
       >
         <div className="p-3 space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-display text-brand dark:text-brand/90">Reactions</p>
-            <span className="text-xs font-mono text-brand dark:text-brand/70">
+            <p className="text-xs font-display text-brand">Reactions</p>
+            <span className="text-xs font-mono text-brand">
               {likeCount} total
             </span>
           </div>
@@ -566,7 +566,7 @@ export function ReactionDetailsPopover({ eventId, likeCount, trigger }: { eventI
           )}
 
           {!loading && fetched && groups.length === 0 && (
-            <p className="text-[11px] text-muted-foreground/50 text-center py-3">
+            <p className="text-xs text-muted-foreground text-center py-3">
               No reactions found on relays
             </p>
           )}
@@ -581,14 +581,14 @@ export function ReactionDetailsPopover({ eventId, likeCount, trigger }: { eventI
                     ) : (
                       <span className="text-base">{group.displayEmoji}</span>
                     )}
-                    <span className="text-[11px] font-mono text-brand/70">{group.count}</span>
+                    <span className="text-xs font-mono text-brand">{group.count}</span>
                   </div>
                   <div className="space-y-0">
                     {group.reactors.slice(0, 8).map((reactor) => (
                       <ReactorAvatarRow key={reactor.pubkey} pubkey={reactor.pubkey} />
                     ))}
                     {group.reactors.length > 8 && (
-                      <span className="text-[10px] text-muted-foreground/50 px-1">+{group.reactors.length - 8} more</span>
+                      <span className="text-xs text-muted-foreground px-1">+{group.reactors.length - 8} more</span>
                     )}
                   </div>
                 </div>
@@ -597,8 +597,8 @@ export function ReactionDetailsPopover({ eventId, likeCount, trigger }: { eventI
           )}
 
           {!loading && groups.length > 0 && (
-            <div className="flex items-center justify-between pt-1.5 border-t border-brand/10 text-[11px]">
-              <span className="text-muted-foreground/50">{totalReactors} reactor{totalReactors !== 1 ? "s" : ""}</span>
+            <div className="flex items-center justify-between pt-1.5 border-t border-brand/10 text-xs">
+              <span className="text-muted-foreground">{totalReactors} reactor{totalReactors !== 1 ? "s" : ""}</span>
             </div>
           )}
         </div>
