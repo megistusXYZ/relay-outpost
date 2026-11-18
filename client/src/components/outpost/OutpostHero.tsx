@@ -146,7 +146,7 @@ export function OutpostHero({
       )}
 
       {description && (
-        <p className="mt-3 px-4 lg:px-1 text-sm text-foreground/85 leading-relaxed line-clamp-3 max-w-2xl text-center lg:text-left mx-auto lg:mx-0" data-testid="hero-outpost-description">{description}</p>
+        <p className="mt-3 px-4 lg:px-1 text-sm text-foreground leading-relaxed line-clamp-3 max-w-2xl text-center lg:text-left mx-auto lg:mx-0" data-testid="hero-outpost-description">{description}</p>
       )}
 
       {memberPubkeys.length >= 4 && (

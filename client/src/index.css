@@ -1674,6 +1674,16 @@ html[data-perf="lite"] .space-bg-nebula {
     color: #e4e6eb;
   }
 
+  /* The quiet line under a message (its time, "You replied privately"): the secondary colour
+     at full strength. Own bubbles are dark in both themes, so theirs is a light grey (6:1 on the
+     bubble) rather than a faded white. */
+  .bubble-meta {
+    color: hsl(var(--muted-foreground));
+  }
+  .glass-bubble-own .bubble-meta {
+    color: #c6cad1;
+  }
+
   .glass-bubble-other {
     background: hsl(var(--muted));
     backdrop-filter: blur(12px);

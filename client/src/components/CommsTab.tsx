@@ -217,7 +217,7 @@ const chatContentComponents: ComponentMap = {
         </a>
       );
     }
-    return <span className="text-brand/90">{node.encoded.slice(0, 16)}...</span>;
+    return <span className="text-brand">{node.encoded.slice(0, 16)}...</span>;
   } };
 
 function ChatContentRenderer({ content, tags, eventId, pubkey }: { content: string; tags: string[][]; eventId: string; pubkey: string }) {
@@ -324,17 +324,17 @@ function JoinRequestRow({
       </Avatar>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium text-foreground/80 truncate">{name}</span>
+          <span className="text-xs font-medium text-foreground truncate">{name}</span>
           {/* The doorman moment. This row is the single most valuable place in
               the app for affirmative identity evidence — it is the one screen
               where someone is deciding whether a stranger is who they claim. */}
           <PersonBadges pubkey={req.pubkey} nip05={content?.nip05} claimedName={content?.display_name || content?.name} showCollision={!!profile} />
           <WotDot pubkey={req.pubkey} />
         </div>
-        <span className="text-[9px] text-muted-foreground/30 font-mono truncate block">
+        <span className="text-xs text-muted-foreground font-mono truncate block">
           {shortenNpub(formatNpub(req.pubkey))}
         </span>
-        <span className="text-[9px] text-muted-foreground/40">
+        <span className="text-xs text-muted-foreground">
           {formatDistanceToNow(req.createdAt * 1000, { addSuffix: true })}
         </span>
       </div>
@@ -344,7 +344,7 @@ function JoinRequestRow({
           variant="ghost"
           onClick={() => onApprove(req.pubkey)}
           disabled={approving}
-          className="h-6 text-[10px] text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 gap-0.5 px-2"
+          className="h-6 text-xs text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 gap-0.5 px-2"
         >
           {approving ? <RelayOutpostInlineLoader className="w-3 h-3" /> : <Check className="w-3 h-3" />}
           Let in
@@ -353,7 +353,7 @@ function JoinRequestRow({
           size="sm"
           variant="ghost"
           onClick={() => onDismiss(req.pubkey)}
-          className="h-6 text-[10px] text-muted-foreground/50 hover:text-red-500 gap-0.5 px-1.5"
+          className="h-6 text-xs text-muted-foreground hover:text-red-500 gap-0.5 px-1.5"
           aria-label="Dismiss this request"
           title="Dismiss"
         >
@@ -398,11 +398,11 @@ function MemberRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             {/* The same colour this person's name wears in the room. */}
-            <span className="text-[13px] font-medium text-foreground/85 truncate" style={profile ? { color: senderColor(memberPubkey) } : undefined}>{name}</span>
+            <span className="text-[13px] font-medium text-foreground truncate" style={profile ? { color: senderColor(memberPubkey) } : undefined}>{name}</span>
             <PersonBadges pubkey={memberPubkey} nip05={content?.nip05} claimedName={content?.display_name || content?.name} showCollision={!!profile} />
             <WotDot pubkey={memberPubkey} />
             {isAdmin && (
-              <span className="text-[8px] text-brand/60 flex items-center gap-0.5">
+              <span className="text-xs text-brand flex items-center gap-0.5">
                 <Shield className="w-2.5 h-2.5" />
                 Admin
               </span>
@@ -415,7 +415,7 @@ function MemberRow({
           size="sm"
           variant="ghost"
           onClick={() => onRemove(memberPubkey)}
-          className="h-6 text-[10px] text-muted-foreground/40 hover:text-red-500 gap-0.5 px-1.5"
+          className="h-6 text-xs text-muted-foreground hover:text-red-500 gap-0.5 px-1.5"
         >
           <UserMinus className="w-3 h-3" />
         </Button>
@@ -434,7 +434,7 @@ function ReplyPreviewAuthor({ pubkey }: { pubkey?: string }) {
   const profile = use$(() => pubkey ? eventStore.replaceable(KIND_METADATA, pubkey) : undefined, [pubkey]);
   const name = pubkey ? (profile ? getDisplayName(profile) : shortenNpub(formatNpub(pubkey))) : null;
   return (
-    <span className="text-[9px] font-medium text-brand/70 flex items-center gap-1">
+    <span className="text-xs font-medium text-brand flex items-center gap-1">
       <Reply className="w-2.5 h-2.5 shrink-0" />
       {name || "Unknown"}
     </span>
@@ -447,7 +447,7 @@ function GroupMemberName({ pubkey }: { pubkey: string }) {
   const profile = use$(() => eventStore.replaceable(KIND_METADATA, pubkey), [pubkey]);
   useEffect(() => { if (!profile) fetchProfilesCached([pubkey]); }, [profile, pubkey]);
   const name = profile ? getDisplayName(profile) : shortenNpub(formatNpub(pubkey));
-  return <span className="font-medium text-muted-foreground/70">{name}</span>;
+  return <span className="font-medium text-muted-foreground">{name}</span>;
 }
 
 // "Alice joined", "Alice and Bob joined", "Alice, Bob and Carol joined",
@@ -485,9 +485,9 @@ function ChatSystemGroupLine({ joins, leaves }: { joins: string[]; leaves: strin
   if (joins.length === 0 && leaves.length === 0) return null;
   return (
     <div className="flex items-center justify-center my-1.5 px-6" data-testid="chat-system-group">
-      <span className="text-[10px] leading-snug text-center text-muted-foreground/45">
+      <span className="text-xs leading-snug text-center text-muted-foreground">
         {joins.length > 0 && <MembershipPhrase pubkeys={joins} verb="joined" />}
-        {joins.length > 0 && leaves.length > 0 && <span className="mx-1 text-muted-foreground/30">·</span>}
+        {joins.length > 0 && leaves.length > 0 && <span className="mx-1 text-muted-foreground">·</span>}
         {leaves.length > 0 && <MembershipPhrase pubkeys={leaves} verb="left" />}
       </span>
     </div>
@@ -605,7 +605,7 @@ function ChatMessageBubble({
     return (
       <div className={`flex ${isMine ? "justify-end" : "justify-start"} px-2 sm:px-3 mt-0.5`}>
         <div className={`${!isMine ? "ml-[34px]" : ""} rounded-2xl px-3 py-1.5 border border-border/30 bg-muted/20 opacity-60`}>
-          <p className="text-[11px] text-muted-foreground/60 italic flex items-center gap-1">
+          <p className="text-xs text-muted-foreground italic flex items-center gap-1">
             <Trash2 className="w-2.5 h-2.5" />
             Message deleted by moderator
           </p>
@@ -638,7 +638,7 @@ function ChatMessageBubble({
       {isMod && onPin && (
         <button
           onClick={(e) => { e.stopPropagation(); onPin(isPinnedMsg ? null : msg.id); }}
-          className={`p-1.5 sm:p-1 rounded-md hover:bg-brand/10 ${isPinnedMsg ? "text-brand" : "text-muted-foreground/50 hover:text-brand"}`}
+          className={`p-1.5 sm:p-1 rounded-md hover:bg-brand/10 ${isPinnedMsg ? "text-brand" : "text-muted-foreground/50"}`}
           title={isPinnedMsg ? "Unpin message" : "Pin message"}
         >
           <Pin className={`w-4 h-4 sm:w-3.5 sm:h-3.5 ${isPinnedMsg ? "fill-current" : ""}`} />
@@ -730,7 +730,7 @@ function ChatMessageBubble({
             <Link
               href={`/profile/${npub}`}
               onClick={(e) => e.stopPropagation()}
-              className={`block min-w-0 truncate -my-1 py-1 rounded no-underline text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${profile ? "hover:opacity-80" : "text-muted-foreground hover:text-foreground/70"}`}
+              className={`block min-w-0 truncate -my-1 py-1 rounded no-underline text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${profile ? "hover:opacity-80" : "text-muted-foreground hover:text-foreground/70"}`}
               // Slack-style deterministic sender hue (curated AA palette, see
               // lib/sender-color.ts) — resolved names only; a raw-npub fallback
               // stays muted/neutral, never colored.
@@ -742,7 +742,7 @@ function ChatMessageBubble({
             <PersonBadges pubkey={msg.pubkey} nip05={content?.nip05} claimedName={content?.display_name || content?.name} showCollision={!!profile} />
             <WotDot pubkey={msg.pubkey} />
             {isRemovedUser && (
-              <span className="text-[8px] text-danger dark:text-red-400/50 flex items-center gap-0.5">
+              <span className="text-xs text-danger dark:text-red-400/50 flex items-center gap-0.5">
                 <UserMinus className="w-2 h-2" />
                 removed
               </span>
@@ -760,7 +760,7 @@ function ChatMessageBubble({
             return (
               <div className="mb-1 rounded-md border-l-2 border-brand/60 bg-black/[0.06] dark:bg-white/[0.07] px-2 py-1">
                 <ReplyPreviewAuthor pubkey={replyToDeleted ? undefined : repliedMsg?.pubkey} />
-                <p className="text-[10px] opacity-70 truncate mt-0.5 leading-snug">
+                <p className="text-xs opacity-70 truncate mt-0.5 leading-snug">
                   {replyToDeleted
                     ? "Message deleted by moderator"
                     : repliedMsg?.content
@@ -774,7 +774,7 @@ function ChatMessageBubble({
             <ChatContentRenderer content={msg.content} tags={msg.tags} eventId={msg.id} pubkey={msg.pubkey} />
           </div>
           {isClusterEnd && (
-            <div className={`flex items-center gap-1 mt-0.5 text-[9px] opacity-50 ${isMine ? "justify-end" : "justify-start"}`}>
+            <div className={`flex items-center gap-1 mt-0.5 text-xs opacity-50 ${isMine ? "justify-end" : "justify-start"}`}>
               <span>{formatDistanceToNow(msg.createdAt * 1000, { addSuffix: true })}</span>
               {isMine && (delivered ? <Check className="w-3 h-3" /> : <Clock className="w-2.5 h-2.5" />)}
             </div>
@@ -837,7 +837,7 @@ function ChatMessageBubble({
               {customEmojis && customEmojis.length > 0 && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowCustomPicker((v) => !v); }}
-                  className="p-2 sm:p-1 rounded hover:bg-muted/50 text-muted-foreground/70 hover:text-muted-foreground transition-colors"
+                  className="p-2 sm:p-1 rounded hover:bg-muted/50 text-muted-foreground transition-colors"
                   title="Custom stickers"
                 >
                   <Plus className="w-4 h-4 sm:w-3 sm:h-3" />
@@ -943,7 +943,7 @@ function GroupCard({
               </AvatarFallback>
             </Avatar>
           ) : (
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+            <div className="w-10 h-10 rounded-full dark:bg-foreground/[0.05] flex items-center justify-center shrink-0 mt-0.5">
               <Hash className="w-4 h-4 text-brand/70" />
             </div>
           )}
@@ -957,7 +957,7 @@ function GroupCard({
               {group.isClosed && <Shield className="w-3 h-3 text-red-600/60 dark:text-red-400/60 shrink-0" />}
             </div>
             {group.about && (
-              <p className="text-[11px] text-muted-foreground/50 truncate mt-0.5">{group.about}</p>
+              <p className="text-xs text-muted-foreground truncate mt-0.5">{group.about}</p>
             )}
             {/* mt-auto is what puts every card's meta row on the same line,
                 whether or not the room above it had a description. */}
@@ -966,22 +966,22 @@ function GroupCard({
                 High and Maximum contrast presets entirely. */}
             <div className="flex items-center gap-2 mt-auto pt-1">
               {isPending && !isJoined && (
-                <span className="text-[11px] text-amber-700/80 dark:text-amber-400/80 flex items-center gap-0.5">
+                <span className="text-xs text-warning flex items-center gap-0.5">
                   <Clock className="w-2.5 h-2.5" />
                   Pending
                 </span>
               )}
               {isJoined && !isPending && (
-                <span className="text-[11px] text-success dark:text-emerald-400/80 flex items-center gap-0.5">
+                <span className="text-xs text-success flex items-center gap-0.5">
                   <Eye className="w-2.5 h-2.5" />
                   Joined
                 </span>
               )}
               {group.id === "_" && (
-                <span className="text-[11px] text-brand/70">General</span>
+                <span className="text-xs text-brand">General</span>
               )}
               {activityLabel && (
-                <span className={`text-[11px] flex items-center gap-0.5 ${isRecentlyActive ? "text-success dark:text-emerald-400/80" : "text-muted-foreground/50"}`}>
+                <span className={`text-xs flex items-center gap-0.5 ${isRecentlyActive ? "text-success" : "text-muted-foreground"}`}>
                   <Clock className="w-2.5 h-2.5" />
                   {activityLabel}
                 </span>
@@ -1012,7 +1012,7 @@ function GroupCard({
                   size="sm"
                   variant="ghost"
                   onClick={(e) => { e.stopPropagation(); onLeave(); }}
-                  className="h-11 md:h-7 text-[10px] text-red-700/80 dark:text-red-400/80 hover:text-red-500 gap-1 px-2"
+                  className="h-11 md:h-7 text-xs text-red-700/80 dark:text-red-400/80 hover:text-red-500 gap-1 px-2"
                 >
                   <LogOut className="w-3 h-3" />
                   Leave
@@ -1029,7 +1029,7 @@ function GroupCard({
                   variant="ghost"
                   onClick={(e) => { e.stopPropagation(); onJoin(); }}
                   disabled={joining}
-                  className="h-11 md:h-7 text-[10px] text-emerald-700/80 dark:text-emerald-400/80 gap-1 px-2"
+                  className="h-11 md:h-7 text-xs text-brand hover:text-brand-strong gap-1 px-2"
                 >
                   <LogIn className="w-3 h-3" />
                   {joining ? "Joining…" : "Join"}
@@ -2038,8 +2038,8 @@ function ChatRoomView({
     <>
       {admins.length > 0 && (
         <div className="mb-1">
-          <p className="px-2 pb-0.5 text-[12px] font-semibold text-muted-foreground/80">
-            Admins <span className="font-medium tabular-nums text-muted-foreground/50">— {admins.length}</span>
+          <p className="px-2 pb-0.5 text-[12px] font-semibold text-muted-foreground">
+            Admins <span className="font-medium tabular-nums text-muted-foreground">— {admins.length}</span>
           </p>
           {admins.map((a) => (
             <MemberRow
@@ -2053,8 +2053,8 @@ function ChatRoomView({
       )}
       {members.filter((m) => !admins.some((a) => a.pubkey === m)).length > 0 && (
         <div>
-          <p className="px-2 pb-0.5 text-[12px] font-semibold text-muted-foreground/80">
-            Members <span className="font-medium tabular-nums text-muted-foreground/50">— {members.filter((m) => !admins.some((a) => a.pubkey === m)).length}</span>
+          <p className="px-2 pb-0.5 text-[12px] font-semibold text-muted-foreground">
+            Members <span className="font-medium tabular-nums text-muted-foreground">— {members.filter((m) => !admins.some((a) => a.pubkey === m)).length}</span>
           </p>
           {members
             .filter((m) => !admins.some((a) => a.pubkey === m))
@@ -2072,7 +2072,7 @@ function ChatRoomView({
       {members.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-8 text-center">
           <Users className="w-6 h-6 text-muted-foreground/20" />
-          <p className="text-xs text-muted-foreground/50">
+          <p className="text-xs text-muted-foreground">
             {rosterReached === false
               ? "Couldn't load who's here. Try again in a moment."
               : "No members yet"}
@@ -2087,9 +2087,9 @@ function ChatRoomView({
     <div className="space-y-2 text-sm" data-testid="comms-about">
       <p className="font-semibold break-words">{group.name || group.id}</p>
       {group.about
-        ? <p className="leading-relaxed whitespace-pre-wrap break-words text-foreground/80">{group.about}</p>
-        : <p className="text-xs text-muted-foreground/50">No description yet.</p>}
-      <p className="text-[11px] text-muted-foreground/60">
+        ? <p className="leading-relaxed whitespace-pre-wrap break-words text-foreground">{group.about}</p>
+        : <p className="text-xs text-muted-foreground">No description yet.</p>}
+      <p className="text-xs text-muted-foreground">
         {group.isPrivate ? "Private room" : "Public room"}{group.isRestricted ? " · only members can post" : ""}
       </p>
     </div>
@@ -2131,7 +2131,7 @@ function ChatRoomView({
     <div className="flex h-full min-h-0">
     <div className="flex min-w-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 px-3 py-2.5 border-b border-border/40 bg-muted/20 dark:bg-white/[0.02] shrink-0">
-        <button onClick={onBack} className="p-2 rounded-md hover:bg-muted/60 text-muted-foreground/70 hover:text-foreground shrink-0" aria-label="Back">
+        <button onClick={onBack} className="p-2 rounded-md hover:bg-muted/60 text-muted-foreground hover:text-foreground shrink-0" aria-label="Back">
           <ArrowLeft className="w-[18px] h-[18px]" />
         </button>
         {group.picture ? (
@@ -2145,11 +2145,11 @@ function ChatRoomView({
           </div>
         )}
         <div className="flex-1 min-w-0 basis-0">
-          <span className="text-sm font-semibold text-foreground/90 truncate block leading-tight">
+          <span className="text-sm font-semibold text-foreground truncate block leading-tight">
             {group.name || group.id}
           </span>
           {group.isPrivate && (
-            <span className="text-[10px] text-muted-foreground/50">Private</span>
+            <span className="text-xs text-muted-foreground">Private</span>
           )}
         </div>
         <div className="flex items-center gap-0.5 ml-auto shrink-0">
@@ -2178,17 +2178,17 @@ function ChatRoomView({
           <button
             // Desktop with the layout: shows or hides the Members + About side.
             onClick={() => { fetchProfilesCached(members); if (onToggleInfo && !isMobile) onToggleInfo(); else setShowMembersPanel(true); }}
-            className="p-2 rounded-md hover:bg-muted/60 text-muted-foreground/70 hover:text-foreground flex items-center gap-1"
+            className="p-2 rounded-md hover:bg-muted/60 text-muted-foreground hover:text-foreground flex items-center gap-1"
             title="Members"
             aria-label="Members"
             data-testid="comms-toggle-members"
           >
             <Users className="w-[18px] h-[18px]" />
-            {members.length > 0 && <span className="text-[11px] font-medium">{members.length}</span>}
+            {members.length > 0 && <span className="text-xs font-medium">{members.length}</span>}
           </button>
           <button
             onClick={() => { setInviteCopied(false); setLinkCopied(false); setInviteRecipient(null); setShowInvitePanel(true); }}
-            className="p-2 rounded-md hover:bg-muted/60 text-muted-foreground/70 hover:text-foreground"
+            className="p-2 rounded-md hover:bg-muted/60 text-muted-foreground hover:text-foreground"
             title="Invite people"
             aria-label="Invite people"
             data-testid="button-invite-chat"
@@ -2227,14 +2227,14 @@ function ChatRoomView({
               {/* The waiting count rides the door it belongs to. It used to sit
                   on the ⋯ glyph, where a floating "2" named nothing. */}
               {isMod && !group.isOpen && filteredRequests.length > 0 && (
-                <span className="min-w-4 h-4 px-1 rounded-full bg-amber-500 text-white text-[9px] inline-flex items-center justify-center font-bold">
+                <span className="min-w-4 h-4 px-1 rounded-full bg-amber-500 text-white text-xs inline-flex items-center justify-center font-bold">
                   {filteredRequests.length}
                 </span>
               )}
             </Button>
           )}
           <SpaceOverflowMenu
-            triggerClassName="p-2 rounded-md hover:bg-muted/60 text-muted-foreground/70 hover:text-foreground"
+            triggerClassName="p-2 rounded-md hover:bg-muted/60 text-muted-foreground hover:text-foreground"
             triggerIconClassName="w-[18px] h-[18px]"
             triggerTestId="nip29-space-menu"
             // Manage is its own labelled button now, so the ⋯ carries only what
@@ -2251,12 +2251,12 @@ function ChatRoomView({
               Leave
             </Button>
           ) : isPendingJoin ? (
-            <span className="h-8 flex items-center text-xs text-amber-600/70 dark:text-amber-400/70 gap-1.5 px-1.5">
+            <span className="h-8 flex items-center text-xs text-warning gap-1.5 px-1.5">
               <Clock className="w-3.5 h-3.5" />
               Requested
             </span>
           ) : (
-            <Button size="sm" variant="ghost" onClick={handleJoin} disabled={joining} className="h-8 px-3 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 gap-1.5">
+            <Button size="sm" variant="ghost" onClick={handleJoin} disabled={joining} className="h-8 px-3 text-xs font-medium text-brand hover:text-brand-strong hover:bg-brand/10 gap-1.5">
               <LogIn className="w-3.5 h-3.5" />
               {joining ? "Joining…" : "Join"}
             </Button>
@@ -2273,12 +2273,12 @@ function ChatRoomView({
             <span className="text-[13px] font-semibold text-brand shrink-0">Pinned</span>
             <button
               onClick={() => document.querySelector(`[data-testid="chat-msg-${pinnedMessageId}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
-              className="text-[11px] text-muted-foreground/70 truncate flex-1 text-left hover:text-foreground transition-colors"
+              className="text-xs text-muted-foreground truncate flex-1 text-left hover:text-foreground transition-colors"
             >
               {pinnedMsg.content || "(media)"}
             </button>
             {isMod && (
-              <button onClick={() => handlePin(null)} className="text-[10px] text-muted-foreground/50 hover:text-red-500 shrink-0 px-1" title="Unpin">Unpin</button>
+              <button onClick={() => handlePin(null)} className="text-xs text-muted-foreground hover:text-red-500 shrink-0 px-1" title="Unpin">Unpin</button>
             )}
           </div>
         );
@@ -2292,13 +2292,13 @@ function ChatRoomView({
         {loading && messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[120px] gap-3">
             <RelayOutpostInlineLoader className="w-6 h-6" />
-            <p className="text-xs text-muted-foreground/50">Loading messages…</p>
+            <p className="text-xs text-muted-foreground">Loading messages…</p>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[120px] gap-2">
-            <OttoEmpty mood="quiet" size={72} className="text-foreground/70" />
-            <p className="text-xs text-muted-foreground/50">No messages yet</p>
-            <p className="text-[10px] text-muted-foreground/30">Be the first to say something</p>
+            <OttoEmpty mood="quiet" size={72} className="text-foreground" />
+            <p className="text-xs text-muted-foreground">No messages yet</p>
+            <p className="text-xs text-muted-foreground">Be the first to say something</p>
           </div>
         ) : (
           displayRows.map((row) => {
@@ -2314,7 +2314,7 @@ function ChatRoomView({
                   aria-label={`${n} ${n === 1 ? "message" : "messages"} hidden by your trust filter — tap to show`}
                 >
                   <div className="flex-1 h-px bg-border" />
-                  <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap group-hover/trust:text-foreground/70">
+                  <span className="text-xs font-medium text-muted-foreground whitespace-nowrap group-hover/trust:text-foreground/70">
                     {n} {n === 1 ? "message" : "messages"} hidden by your trust filter — tap to show
                   </span>
                   <div className="flex-1 h-px bg-border" />
@@ -2387,7 +2387,7 @@ function ChatRoomView({
               <div className="flex items-center gap-2 mb-1.5 rounded-md border-l-2 border-brand bg-brand/[0.06] px-2.5 py-1.5">
                 <div className="flex-1 min-w-0">
                   <ReplyPreviewAuthor pubkey={deletedIds.has(replyTo) ? undefined : repliedMsg?.pubkey} />
-                  <p className="text-[10px] text-muted-foreground/60 truncate mt-0.5 leading-snug">
+                  <p className="text-xs text-muted-foreground truncate mt-0.5 leading-snug">
                     {deletedIds.has(replyTo)
                       ? "Message deleted by moderator"
                       : repliedMsg?.content
@@ -2491,7 +2491,7 @@ function ChatRoomView({
         // member. Saying "requires membership" here — with a Join button — told
         // people already in the room that they weren't.
         <div className="border-t border-border/30 px-3 py-3 text-center">
-          <p className="text-xs text-muted-foreground/50">
+          <p className="text-xs text-muted-foreground">
             Can't reach this group's relay, so we can't check your membership. Try again in a moment.
           </p>
         </div>
@@ -2501,12 +2501,12 @@ function ChatRoomView({
         <div className="border-t border-border/30 px-3 py-3 text-center">
           {isPendingJoin ? (
             <>
-              <p className="text-xs text-amber-600/70 dark:text-amber-400/70 mb-1">Join request pending</p>
-              <p className="text-[10px] text-muted-foreground/40">An admin will review your request</p>
+              <p className="text-xs text-warning mb-1">Join request pending</p>
+              <p className="text-xs text-muted-foreground">An admin will review your request</p>
             </>
           ) : (
             <>
-              <p className="text-xs text-muted-foreground/50 mb-2">This group requires membership to post</p>
+              <p className="text-xs text-muted-foreground mb-2">This group requires membership to post</p>
               <Button size="sm" onClick={handleJoin} disabled={joining} className="gap-1 text-xs bg-primary hover:bg-primary/90 text-primary-foreground">
                 <LogIn className="w-3 h-3" />
                 {joining ? "Joining…" : "Join Group"}
@@ -2518,7 +2518,7 @@ function ChatRoomView({
 
       {!pubkey && (
         <div className="border-t border-border/30 px-3 py-3 text-center">
-          <p className="text-xs text-muted-foreground/50">Sign in to participate in this chat</p>
+          <p className="text-xs text-muted-foreground">Sign in to participate in this chat</p>
         </div>
       )}
     </div>
@@ -2600,10 +2600,10 @@ function ChatRoomView({
         contentClassName="border-amber-500/20"
         title={
           <>
-            <UserPlus className="w-4 h-4 text-amber-500" />
+            <UserPlus className="w-4 h-4 text-warning" />
             Join Requests
             {filteredRequests.length > 0 && (
-              <span className="text-[10px] bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full">
+              <span className="text-xs bg-amber-500/20 text-warning px-1.5 py-0.5 rounded-full">
                 {filteredRequests.length}
               </span>
             )}
@@ -2625,8 +2625,8 @@ function ChatRoomView({
         <div className="space-y-0.5 -mx-2 px-2">
           {filteredRequests.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-8 text-center">
-              <UserPlus className="w-6 h-6 text-muted-foreground/20" />
-              <p className="text-xs text-muted-foreground/50">No pending requests</p>
+              <UserPlus className="w-6 h-6 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">No pending requests</p>
             </div>
           ) : (
             filteredRequests.map((req) => (
@@ -2653,7 +2653,7 @@ function ChatRoomView({
             <Users className="w-4 h-4 text-brand" />
             Members
             {members.length > 0 && (
-              <span className="text-[10px] bg-brand/20 text-brand px-1.5 py-0.5 rounded-full">
+              <span className="text-xs bg-brand/20 text-brand px-1.5 py-0.5 rounded-full">
                 {members.length}
               </span>
             )}
@@ -2771,8 +2771,8 @@ function ChatRoomView({
               <p className="text-[13px] text-muted-foreground font-medium">Invite code · auto-approves joins</p>
               {inviteCode ? (
                 <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/20 border border-border/30">
-                  <code className="flex-1 text-xs font-mono text-foreground/90 select-all truncate">{inviteCode}</code>
-                  <Button size="sm" variant="ghost" onClick={handleCopyInvite} className="h-7 px-2 gap-1 text-[10px] shrink-0">
+                  <code className="flex-1 text-xs font-mono text-foreground select-all truncate">{inviteCode}</code>
+                  <Button size="sm" variant="ghost" onClick={handleCopyInvite} className="h-7 px-2 gap-1 text-xs shrink-0">
                     {inviteCopied ? <><Check className="w-3 h-3 text-emerald-500" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
                   </Button>
                 </div>
@@ -2789,12 +2789,12 @@ function ChatRoomView({
             <p className="text-[13px] text-muted-foreground font-medium">Invite link</p>
             <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/20 border border-border/30">
               <Link2 className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
-              <span className="flex-1 text-[11px] font-mono text-foreground/70 truncate">{buildChannelInviteLink(relayUrl, group.id, inviteCode || undefined, pubkey ? formatNpub(pubkey) : undefined)}</span>
-              <Button size="sm" variant="ghost" onClick={handleCopyLink} className="h-7 px-2 gap-1 text-[10px] shrink-0" data-testid="button-copy-invite-link">
+              <span className="flex-1 text-xs font-mono text-foreground truncate">{buildChannelInviteLink(relayUrl, group.id, inviteCode || undefined, pubkey ? formatNpub(pubkey) : undefined)}</span>
+              <Button size="sm" variant="ghost" onClick={handleCopyLink} className="h-7 px-2 gap-1 text-xs shrink-0" data-testid="button-copy-invite-link">
                 {linkCopied ? <><Check className="w-3 h-3 text-emerald-500" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
               </Button>
             </div>
-            <p className="text-[10px] text-muted-foreground/40">Anyone with the link can open the room and tap Join.</p>
+            <p className="text-xs text-muted-foreground">Anyone with the link can open the room and tap Join.</p>
           </div>
 
           {/* Send a private invite DM */}
@@ -2839,7 +2839,7 @@ function ChatRoomView({
       >
         <div className="space-y-3 py-2">
           <div>
-            <Label className="text-[12px] text-muted-foreground/60 mb-1.5 block font-medium">Name</Label>
+            <Label className="text-[12px] text-muted-foreground mb-1.5 block font-medium">Name</Label>
             <input
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
@@ -2849,7 +2849,7 @@ function ChatRoomView({
             />
           </div>
           <div>
-            <Label className="text-[12px] text-muted-foreground/60 mb-1.5 block font-medium">Description</Label>
+            <Label className="text-[12px] text-muted-foreground mb-1.5 block font-medium">Description</Label>
             <Textarea
               value={editAbout}
               onChange={(e) => setEditAbout(e.target.value)}
@@ -2864,19 +2864,19 @@ function ChatRoomView({
               different decision from a rename and must not ride a form button
               that people press to fix a typo. */}
           <div className="pt-1 border-t border-border/20">
-            <Label className="text-[12px] text-muted-foreground/60 mb-2 block font-medium">Who can get in</Label>
+            <Label className="text-[12px] text-muted-foreground mb-2 block font-medium">Who can get in</Label>
             {door.join === "unknown" || door.read === "unknown" ? (
               // Never offer a switch whose current position we cannot read —
               // the first click would be a guess published as an instruction.
-              <p className="text-[11px] text-muted-foreground/60">
+              <p className="text-xs text-muted-foreground">
                 We couldn't read this room's access settings, so they can't be changed from here.
               </p>
             ) : (
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-xs text-foreground/90">Let people in one at a time</p>
-                    <p className="text-[11px] text-muted-foreground/60">
+                    <p className="text-xs text-foreground">Let people in one at a time</p>
+                    <p className="text-xs text-muted-foreground">
                       {door.join === "closed" ? "People ask, and a moderator lets them in." : "Anyone can join without asking."}
                     </p>
                   </div>
@@ -2889,8 +2889,8 @@ function ChatRoomView({
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-xs text-foreground/90">Members only</p>
-                    <p className="text-[11px] text-muted-foreground/60">
+                    <p className="text-xs text-foreground">Members only</p>
+                    <p className="text-xs text-muted-foreground">
                       {door.read === "private" ? "Only members can read what's posted." : "Anyone can read what's posted."}
                     </p>
                   </div>
@@ -2901,15 +2901,15 @@ function ChatRoomView({
                     data-testid="switch-group-private"
                   />
                 </div>
-                <p className="text-[10px] text-muted-foreground/50">
+                <p className="text-xs text-muted-foreground">
                   The relay enforces this and may decline. Changes apply immediately.
                 </p>
               </div>
             )}
           </div>
           <div>
-            <Label className="text-[12px] text-muted-foreground/60 mb-1.5 block font-medium">Image</Label>
-            <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground/70 hover:text-foreground transition-colors">
+            <Label className="text-[12px] text-muted-foreground mb-1.5 block font-medium">Image</Label>
+            <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors">
               <span className="inline-flex items-center gap-1.5 px-3 h-9 rounded-lg bg-white/[0.03] border border-border/30">
                 <ImagePlus className="w-3.5 h-3.5" />
                 {editPicture ? editPicture.name.slice(0, 24) : "Choose image"}
@@ -2936,7 +2936,7 @@ function ChatRoomView({
           </div>
         }
       >
-        <div className="py-2 text-xs text-muted-foreground/60">
+        <div className="py-2 text-xs text-muted-foreground">
           Members will lose access. The relay processes the deletion (kind 9008); if it
           declines, the room may persist.
         </div>
@@ -3011,7 +3011,7 @@ function RoomList({
         <>
           <div className="flex items-center gap-1.5 pt-1">
             <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-            <span className="text-[13px] font-medium text-amber-600 dark:text-amber-400">Pinned</span>
+            <span className="text-[13px] font-medium text-warning">Pinned</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {pinnedVisible.map(renderCard)}
@@ -3027,7 +3027,7 @@ function RoomList({
       {hasMore && (
         <button
           onClick={onShowMore}
-          className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-lg border border-border/30 text-[11px] text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/20 transition-colors"
+          className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-lg border border-border/30 text-xs text-muted-foreground hover:bg-muted/20 transition-colors"
         >
           <ChevronDown className="w-3.5 h-3.5" />
           Show more ({remainingCount} remaining)
@@ -3694,12 +3694,12 @@ export function CommsTab({
                 <Lock className="w-6 h-6 text-amber-500/60" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-sm font-brand tracking-wide text-foreground/70">This relay didn't accept your sign-in</h3>
-                <p className="text-[10px] text-muted-foreground/50 leading-relaxed max-w-xs">
+                <h3 className="text-sm font-brand tracking-wide text-foreground">This relay didn't accept your sign-in</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
                   It's up, but it won't show us its rooms until it recognises your account. It said:
-                  {" "}<span className="text-foreground/60">“{relayRefused}”</span>
+                  {" "}<span className="text-foreground">“{relayRefused}”</span>
                 </p>
-                <p className="text-[10px] text-muted-foreground/40 leading-relaxed max-w-xs pt-1">
+                <p className="text-xs text-muted-foreground leading-relaxed max-w-xs pt-1">
                   Ask the relay's operator to add you, or sign in with an account it knows.
                 </p>
               </div>
@@ -3726,8 +3726,8 @@ export function CommsTab({
                 <WifiOff className="w-6 h-6 text-amber-500/60" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-sm font-brand tracking-wide text-foreground/70">Couldn't reach this relay</h3>
-                <p className="text-[10px] text-muted-foreground/50 leading-relaxed max-w-xs">
+                <h3 className="text-sm font-brand tracking-wide text-foreground">Couldn't reach this relay</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
                   It didn't answer, so we don't know what rooms it has. Its chat may be fine — try again in a moment.
                 </p>
               </div>
@@ -3752,11 +3752,11 @@ export function CommsTab({
           <Card className="glass-card p-6">
             <div className="flex flex-col items-center gap-3 text-center">
               <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-amber-500/60" />
+                <AlertCircle className="w-6 h-6 text-warning" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-sm font-brand tracking-wide text-foreground/70">This community doesn't have chat yet</h3>
-                <p className="text-[10px] text-muted-foreground/50 leading-relaxed max-w-xs">
+                <h3 className="text-sm font-brand tracking-wide text-foreground">This community doesn't have chat yet</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
                   Chat needs a relay running NIP-29. You can still start a room — on a relay that supports it.
                 </p>
               </div>
@@ -3765,7 +3765,7 @@ export function CommsTab({
                   size="sm"
                   variant="ghost"
                   onClick={() => setShowCreateChannel(true)}
-                  className="mt-1 text-[10px] text-brand gap-1"
+                  className="mt-1 text-xs text-brand gap-1"
                   data-testid="button-find-channel-relay"
                 >
                   <Plus className="w-3 h-3" />
@@ -3784,11 +3784,11 @@ export function CommsTab({
         <Card className="glass-card p-6">
           <div className="flex flex-col items-center gap-3 text-center">
             <div className="w-12 h-12 rounded-full bg-muted/30 flex items-center justify-center">
-              <MessageSquare className="w-6 h-6 text-muted-foreground/30" />
+              <MessageSquare className="w-6 h-6 text-muted-foreground" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-sm font-brand tracking-wide text-foreground/70">No rooms yet</h3>
-              <p className="text-[10px] text-muted-foreground/50 leading-relaxed max-w-xs">
+              <h3 className="text-sm font-brand tracking-wide text-foreground">No rooms yet</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
                 This community doesn't have any group chat rooms yet.
                 {pubkey ? " Be the first — create a room!" : " Rooms may be created by the community operator in the future."}
               </p>
@@ -3798,7 +3798,7 @@ export function CommsTab({
                 size="sm"
                 variant="ghost"
                 onClick={() => setShowCreateChannel(true)}
-                className="mt-1 text-[10px] text-brand gap-1"
+                className="mt-1 text-xs text-brand gap-1"
               >
                 <Plus className="w-3 h-3" />
                 Create room
@@ -3839,7 +3839,7 @@ export function CommsTab({
         })}
         <button
           onClick={() => setSelectedGroup(null)}
-          className="flex items-center gap-1.5 w-full px-2.5 min-h-11 md:min-h-0 md:py-1.5 rounded-lg text-xs text-muted-foreground/60 hover:text-foreground hover:bg-muted/30 transition-colors"
+          className="flex items-center gap-1.5 w-full px-2.5 min-h-11 md:min-h-0 md:py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
           data-testid="comms-side-all-rooms"
         >
           All rooms
@@ -3931,8 +3931,8 @@ export function CommsTab({
       <Card className="glass-card p-6">
         <div className="flex flex-col items-center justify-center min-h-[160px] gap-3 text-center">
           <RelayOutpostInlineLoader className="w-6 h-6" />
-          <p className="text-sm text-muted-foreground/60">Opening room…</p>
-          <p className="text-[10px] text-muted-foreground/40">
+          <p className="text-sm text-muted-foreground">Opening room…</p>
+          <p className="text-xs text-muted-foreground">
             Resolving access. You may need to tap Join once it opens.
           </p>
         </div>
@@ -3957,7 +3957,7 @@ export function CommsTab({
           {loading && <RelayOutpostInlineLoader className="w-3.5 h-3.5" />}
         </div>
         {screened.shown.length > 0 && (
-          <span className="text-[10px] text-muted-foreground/40">
+          <span className="text-xs text-muted-foreground">
             {filteredAndSorted.length === screened.shown.length
               ? `${screened.shown.length} rooms`
               : `${filteredAndSorted.length} of ${screened.shown.length} rooms`}
@@ -3967,7 +3967,7 @@ export function CommsTab({
 
       {/* What the list left out, said plainly rather than looking complete. */}
       {screened.hidden > 0 && (
-        <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground" data-testid="comms-rooms-hidden">
+        <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground" data-testid="comms-rooms-hidden">
           <RoomsHiddenIcon className="w-3.5 h-3.5 shrink-0" />
           <span>
             {screened.hidden} {screened.hidden === 1 ? "room" : "rooms"} hidden{showExplicit ? "" : " for explicit content"}
@@ -4028,7 +4028,7 @@ export function CommsTab({
                 // field's own `text-base sm:text-xs` no-zoom idiom, so there is
                 // no band with a 44px control beside a 12px font.
                 aria-label="Clear search"
-                className="absolute right-1 sm:right-2.5 top-1/2 -translate-y-1/2 w-11 h-11 sm:w-auto sm:h-auto flex items-center justify-center sm:p-0.5 rounded hover:bg-muted/50 text-muted-foreground/50 hover:text-muted-foreground"
+                className="absolute right-1 sm:right-2.5 top-1/2 -translate-y-1/2 w-11 h-11 sm:w-auto sm:h-auto flex items-center justify-center sm:p-0.5 rounded hover:bg-muted/50 text-muted-foreground"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -4045,7 +4045,7 @@ export function CommsTab({
                 <button
                   key={filter}
                   onClick={() => setActiveFilter(isActive ? "all" : filter)}
-                  className={`px-3.5 min-h-11 md:min-h-0 md:px-2.5 md:py-1 rounded-full text-[11px] md:text-[10px] font-medium transition-colors border ${ isActive ? "bg-accent text-accent-foreground dark:text-brand border-brand/20" : "bg-muted/20 text-muted-foreground/70 border-border/30 hover:bg-muted/40" }`}
+                  className={`px-3.5 min-h-11 md:min-h-0 md:px-2.5 md:py-1 rounded-full text-xs font-medium transition-colors border ${ isActive ? "bg-accent text-accent-foreground dark:text-brand border-brand/20" : "bg-muted/20 text-muted-foreground border-border/30 hover:bg-muted/40" }`}
                 >
                   {label}
                 </button>
@@ -4058,21 +4058,21 @@ export function CommsTab({
       {loading && groups.length === 0 ? (
         <div className="flex flex-col items-center justify-center min-h-[120px] gap-3">
           <RelayOutpostInlineLoader className="w-6 h-6" />
-          <p className="text-xs text-muted-foreground/50">Discovering chat rooms…</p>
+          <p className="text-xs text-muted-foreground">Discovering chat rooms…</p>
         </div>
       ) : filteredAndSorted.length === 0 ? (
         <Card className="glass-card p-6">
           <div className="flex flex-col items-center gap-2 text-center">
             <Search className="w-8 h-8 text-muted-foreground/20" />
-            <p className="text-sm text-muted-foreground/50">No rooms match your search</p>
-            <p className="text-[10px] text-muted-foreground/30">
+            <p className="text-sm text-muted-foreground">No rooms match your search</p>
+            <p className="text-xs text-muted-foreground">
               Try a different search term or filter
             </p>
             <Button
               size="sm"
               variant="ghost"
               onClick={() => { setSearchQuery(""); setActiveFilter("all"); }}
-              className="mt-1 text-[10px] text-brand"
+              className="mt-1 text-xs text-brand"
             >
               Clear filters
             </Button>
