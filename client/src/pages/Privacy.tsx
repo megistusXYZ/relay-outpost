@@ -3,7 +3,7 @@ import { ArrowLeft, ShieldCheck, Key, Radio, Database, Eye, FileText, FlaskConic
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useGoBack } from "@/hooks/use-go-back";
 
-const LAST_UPDATED = "June 15, 2026";
+const LAST_UPDATED = "November 18, 2026";
 
 function Section({
   icon: Icon,
@@ -77,7 +77,7 @@ export default function Privacy() {
           {[
             "Your key never reaches our servers.",
             "Relay Outpost doesn't show ads or track your activity.",
-            "Direct messages are end-to-end encrypted.",
+            "Private messages are end-to-end encrypted.",
             "What you post to Nostr is public by design.",
           ].map((line) => (
             <li key={line} className="flex items-start gap-2">
@@ -92,7 +92,7 @@ export default function Privacy() {
         <Section icon={Eye} title="What we don't do">
           <ul className="list-disc list-inside space-y-1.5">
             <li>We don't hold your key. Depending on how you signed in, it lives in this browser (encrypted by a password for this browser only you know), in a separate signer extension, or on a remote signer you've connected — never on our servers.</li>
-            <li>We don't read or store the contents of your direct messages. End-to-end encrypted messages pass through relays, not us.</li>
+            <li>We don't read or store the contents of your private messages. End-to-end encrypted messages pass through relays, not us.</li>
             <li>We don't build profiles of you across the relays you visit.</li>
             <li>We don't sell or share personal data with advertisers or data brokers. There are no ads.</li>
             <li>We don't run third-party analytics or tracking scripts on the client.</li>
@@ -107,13 +107,16 @@ export default function Privacy() {
             <li><strong>Media uploads.</strong> Images, audio, and video you upload go to the media host you've configured, signed with your key. We don't keep a copy.</li>
             <li><strong>Text-to-speech.</strong> If you have a post read aloud, the text is sent to a speech backend and played back. We don't retain the audio.</li>
             <li><strong>Discovery & relay health.</strong> Trending feeds come from posts that were already published openly on the wider network; relay checks use only public relay URLs.</li>
+            <li><strong>Scheduled posts.</strong> If you schedule a post, it is kept on our server until it's sent: the signed post, its relays, the time and a short preview. It is signed but not encrypted there. In the composer you can choose to keep it on this device instead: it then stays in your browser and sends only while the app is open.</li>
+            <li><strong>Notifications while the app is closed.</strong> If you turn these on, our server keeps your device's push address and what should ring it: the key your private messages are sealed to, the relays to watch, and your call rooms. It doesn't see who sent a message or what it says. The entry is deleted when you turn notifications off.</li>
+            <li><strong>Trust.</strong> When you set up trust for your network, the app asks a trust service (Brainstorm) how the people around you are connected. That sends your public key and reads your public follow list; the requests pass through our server.</li>
           </ul>
         </Section>
 
         <Section icon={Radio} title="Data on Nostr itself">
           <p>Nostr is a public, open network. Anything you publish — posts, reactions, your follow list, your profile — is signed by your key and sent to the relays you chose. From there it can be stored, copied, and read by anyone who can reach those relays.</p>
           <p>Relays are run by independent operators. Each one decides what it stores, for how long, and with whom. Choosing your relays is choosing the neighborhood your posts travel through.</p>
-          <p>Direct messages are end-to-end encrypted, but metadata like who you messaged and when can still be visible to relays.</p>
+          <p>Private messages are end-to-end encrypted, but metadata like who you messaged and when can still be visible to relays.</p>
         </Section>
 
         <Section icon={Key} title="Your controls">
@@ -130,7 +133,7 @@ export default function Privacy() {
         </Section>
 
         <Section icon={ShieldCheck} title="Contact">
-          <p>Privacy questions? Reach the Relay Outpost team over Nostr, or via the contact link in the app footer.</p>
+          <p>Privacy questions? Reach the Relay Outpost team over Nostr, or through Send feedback in the app.</p>
         </Section>
       </div>
 
