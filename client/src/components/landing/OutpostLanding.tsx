@@ -6,14 +6,14 @@
  * Create account). The stylesheet is outpost-landing.css, scoped to
  * .outpost-landing; the page's own theme toggle sets the app's theme.
  *
- * Behaviour carried over from the site's script: the headline rolls through
- * twelve languages (a mouse over it returns to English), the demo card has
- * three tabs, Otto's eyes follow the pointer and the card tilts under it,
+ * Less is more (owner, 2026-11-18): the hero is the headline, one button and
+ * the small print. The headline is English only and decodes once with a
+ * subtle matrix flicker (DecodeHeadline); Otto's eyes follow the pointer,
  * the marks doze after 25 s idle, and the theme switch sweeps out from the
  * toggle where view transitions exist. All of it stands down for
  * prefers-reduced-motion.
  */
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent } from "react";
 import { useLocation } from "wouter";
 import { useTheme } from "@/hooks/use-theme";
 import { InviteGreeting } from "@/components/landing/InviteGreeting";
@@ -21,24 +21,9 @@ import { loadSignupDraft } from "@/lib/account-draft";
 import { trackSignupEvent } from "@/lib/signup-telemetry";
 import "./outpost-landing.css";
 
-const PHRASES: Array<[string, string]> = [
-  ["The next phase of the internet", "en"],
-  ["La próxima fase de internet", "es"],
-  ["La prochaine phase d’internet", "fr"],
-  ["Die nächste Phase des Internets", "de"],
-  ["A próxima fase da internet", "pt"],
-  ["La prossima fase di internet", "it"],
-  ["Следующая фаза интернета", "ru"],
-  ["インターネットの次の段階", "ja"],
-  ["互联网的下一个阶段", "zh"],
-  ["인터넷의 다음 단계", "ko"],
-  ["इंटरनेट का अगला चरण", "hi"],
-  ["المرحلة التالية من الإنترنت", "ar"],
-];
-const NO_TRACKING = new Set(["ja", "zh", "ko", "hi", "ar"]);
-const EASE = "cubic-bezier(.2,.8,.2,1)";
-
-const TABS: Array<[string, string]> = [["New post", "Goes where you choose"], ["Chats", "Encrypted"], ["Live", "On air"]];
+const HEADLINE = "The next phase of the internet";
+// Half-width katakana and digits: the "matrix" a letter flickers through before it settles.
+const GLYPHS = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎ0123456789";
 
 function reducedMotion(): boolean {
   try { return !!window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; }
@@ -116,13 +101,6 @@ function HeroDoodles() {
 }
 
 const btnStyle: CSSProperties = { display: "inline-flex", alignItems: "center", height: 54, padding: "0 28px", borderRadius: 999, background: "var(--btn)", color: "var(--btnink)", fontSize: 17, fontWeight: 500 };
-const chatRow: CSSProperties = { display: "flex", alignItems: "center", gap: 12, minHeight: 56, borderTop: "1px solid var(--line)" };
-const avatar = (round: boolean): CSSProperties => ({ flex: "none", width: 38, height: 38, borderRadius: round ? "50%" : 12, background: "var(--inset)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 600 });
-const panelStyle = (on: boolean): CSSProperties => ({ display: on ? "flex" : "none", flexDirection: "column", gap: 12, minHeight: "clamp(252px, 40vw, 292px)" });
-const footLine: CSSProperties = { display: "flex", alignItems: "center", gap: 10, marginTop: "auto", paddingTop: 12, fontSize: 14, color: "var(--ink2)" };
-const emberDot: CSSProperties = { width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", flex: "none" };
-const pillOn: CSSProperties = { fontSize: 13, padding: "6px 12px", borderRadius: 999, background: "var(--btn)", color: "var(--btnink)", border: "1px solid var(--btn)" };
-const pillOff: CSSProperties = { fontSize: 13, padding: "6px 12px", borderRadius: 999, border: "1px solid var(--line2)" };
 const navCol: CSSProperties = { display: "flex", flexDirection: "column", minWidth: 140 };
 const navHead: CSSProperties = { fontSize: 14, fontWeight: 600, color: "var(--ink)", paddingBottom: 8 };
 const navLink: CSSProperties = { display: "inline-flex", alignItems: "center", minHeight: 40, alignSelf: "flex-start", background: "none", border: 0, padding: 0, color: "inherit", cursor: "pointer", font: "inherit" };
@@ -130,16 +108,93 @@ const pillarRow: CSSProperties = { position: "relative", display: "grid", gridTe
 const pillarHead: CSSProperties = { margin: 0, fontSize: "clamp(28px, 3.4vw, 42px)", lineHeight: 1.08, fontWeight: 600, letterSpacing: "-0.035em" };
 const pillarText = { margin: 0, fontSize: 19, color: "var(--ink2)", textWrap: "pretty" } as CSSProperties;
 
+/**
+ * The headline, decoded once (owner, 2026-11-18: "some type of matrix subtle
+ * transition"). This is its entrance: no fade runs over it. Each letter stays
+ * in the flow in its final glyph, transparent, with a flickering katakana/digit
+ * glyph drawn over it, so nothing shifts; letters settle left to right in about
+ * a second, then the warm dot appears.
+ * Screen readers get the sentence from aria-label. Reduced motion: no decode.
+ */
+function DecodeHeadline({ text }: { text: string }) {
+  const rootRef = useRef<HTMLSpanElement>(null);
+  const layerRef = useRef<HTMLSpanElement>(null);
+  // Layout effect: start scrambled before the first paint, so the sentence never flashes first.
+  // The letters only turn transparent (their kerning and places never change); the flickering
+  // glyphs live in a separate layer, each centred over its letter's measured box.
+  useLayoutEffect(() => {
+    const root = rootRef.current, layer = layerRef.current;
+    if (!root || !layer || reducedMotion()) return;
+    const cells = [...root.querySelectorAll<HTMLElement>(".dc")];
+    const pick = () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+    const box = layer.getBoundingClientRect();
+    const glyphs = cells.map((c) => {
+      const r = c.getBoundingClientRect();
+      const g = document.createElement("span");
+      g.className = "dc-g";
+      g.style.left = `${r.left - box.left + r.width / 2}px`;
+      g.style.top = `${r.top - box.top}px`;
+      g.style.height = `${r.height}px`;
+      g.textContent = pick();
+      layer.appendChild(g);
+      c.classList.add("scr");
+      return g;
+    });
+    // About 1.2 s in all: a short hold, then letters settle left to right with a little jitter.
+    const t0 = performance.now() + 160;
+    const settleAt = cells.map((_, i) => t0 + i * 34 + Math.random() * 180);
+    root.classList.add("decoding");
+    let raf = 0, last = 0;
+    const frame = (now: number) => {
+      const swap = now - last > 60;
+      if (swap) last = now;
+      let left = 0;
+      cells.forEach((c, i) => {
+        if (!c.classList.contains("scr")) return;
+        if (now >= settleAt[i]) { c.classList.remove("scr"); glyphs[i].remove(); }
+        else { left++; if (swap) glyphs[i].textContent = pick(); }
+      });
+      if (left) raf = requestAnimationFrame(frame);
+      else root.classList.remove("decoding");
+    };
+    raf = requestAnimationFrame(frame);
+    return () => { cancelAnimationFrame(raf); cells.forEach((c) => c.classList.remove("scr")); glyphs.forEach((g) => g.remove()); root.classList.remove("decoding"); };
+  }, [text]);
+  const words = text.split(" ");
+  return (
+    <h1 aria-label={text} style={{ position: "relative", margin: 0, fontSize: "clamp(42px, 9vw, 92px)", lineHeight: 1.04, fontWeight: 600, textWrap: "balance" } as CSSProperties}>
+      <span ref={rootRef} className="dc-root" aria-hidden="true" lang="en" style={{ letterSpacing: "-0.045em" }}>
+        {words.map((w, wi) => (
+          <Fragment key={wi}>
+            <span style={{ whiteSpace: "nowrap" }}>
+              {[...w].map((ch, ci) => <span key={ci} className="dc">{ch}</span>)}
+              {wi === words.length - 1 && <span className="dc-dot" style={dot} />}
+            </span>
+            {wi < words.length - 1 ? " " : null}
+          </Fragment>
+        ))}
+      </span>
+      <span ref={layerRef} className="dc-layer" aria-hidden="true" />
+    </h1>
+  );
+}
+
 export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
   const [, navigate] = useLocation();
   const { isDark, setTheme } = useTheme();
   const rootRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef<HTMLElement>(null);
-  const headlineRef = useRef<HTMLSpanElement>(null);
-  const [tab, setTab] = useState(0);
   const [asleep, setAsleep] = useState(false);
+  const topRef = useRef<HTMLDivElement>(null);
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const el = topRef.current;
+    if (!el || typeof IntersectionObserver !== "function") return;
+    const io = new IntersectionObserver(([e]) => setScrolled(!e.isIntersecting));
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   const go = useCallback((path: string) => (e: MouseEvent) => { e.preventDefault(); navigate(path); }, [navigate]);
   const toTop = useCallback((e: MouseEvent) => {
@@ -159,68 +214,14 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
     document.startViewTransition(apply).finished.finally(() => html.classList.remove("theming"));
   }, [isDark, setTheme]);
 
-  // The headline rolls through twelve languages; a mouse over it comes home to English.
-  useEffect(() => {
-    const hd = headlineRef.current;
-    if (!hd || reducedMotion()) return;
-    const h1 = hd.parentElement;
-    let i = 0;
-    let t1: number | undefined, t2: number | undefined, t3: number | undefined;
-    const show = (o: string, tr: string, f: string, transition: string) => {
-      hd.style.transition = transition; hd.style.opacity = o; hd.style.transform = tr; hd.style.filter = f;
-    };
-    const set = (k: number) => {
-      const [text, lang] = PHRASES[k];
-      const inner = hd.firstElementChild as HTMLElement | null;
-      if (inner) inner.textContent = text;
-      hd.lang = lang;
-      hd.dir = lang === "ar" ? "rtl" : "ltr";
-      hd.style.letterSpacing = NO_TRACKING.has(lang) ? "normal" : "-0.045em";
-    };
-    const roll = (k: number, then?: () => void) => {
-      window.clearTimeout(t2); window.clearTimeout(t3);
-      show("0", "translateY(-0.28em)", "blur(6px)", "opacity .5s ease-in, transform .5s ease-in, filter .5s ease-in");
-      t2 = window.setTimeout(() => {
-        set(k);
-        show("0", "translateY(0.28em)", "blur(6px)", "none");
-        t3 = window.setTimeout(() => {
-          show("1", "none", "blur(0px)", `opacity .85s ${EASE}, transform .85s ${EASE}, filter .85s ease`);
-          then?.();
-        }, 60);
-      }, 520);
-    };
-    const rot = () => {
-      window.clearTimeout(t1);
-      t1 = window.setTimeout(() => { i = (i + 1) % PHRASES.length; roll(i, rot); }, i === 0 ? 4600 : 3600);
-    };
-    const enter = (e: globalThis.PointerEvent) => { if (e.pointerType !== "mouse") return; window.clearTimeout(t1); if (i !== 0) roll(0); };
-    const leave = (e: globalThis.PointerEvent) => { if (e.pointerType !== "mouse") return; if (i !== 0) roll(i, rot); else rot(); };
-    rot();
-    h1?.addEventListener("pointerenter", enter);
-    h1?.addEventListener("pointerleave", leave);
-    return () => {
-      window.clearTimeout(t1); window.clearTimeout(t2); window.clearTimeout(t3);
-      h1?.removeEventListener("pointerenter", enter);
-      h1?.removeEventListener("pointerleave", leave);
-    };
-  }, []);
-
-  // Otto's eyes follow the pointer; the card tilts and the dot grids light up under it.
+  // Otto's eyes follow the pointer and the dot grids light up under it.
   const onPointerMove = useCallback((e: PointerEvent<HTMLDivElement>) => {
     if (e.pointerType !== "mouse" || reducedMotion()) return;
     const root = rootRef.current;
     if (!root) return;
     const set = (k: string, v: string) => root.style.setProperty(k, v);
-    const clamp = (v: number) => Math.max(-1, Math.min(1, v));
     set("--ex", ((e.clientX / window.innerWidth - 0.5) * 7).toFixed(2));
     set("--ey", ((e.clientY / window.innerHeight - 0.5) * 6).toFixed(2));
-    const card = cardRef.current?.getBoundingClientRect();
-    if (card) {
-      set("--cx", `${(e.clientX - card.left).toFixed(0)}px`);
-      set("--cy", `${(e.clientY - card.top).toFixed(0)}px`);
-      set("--tx", (clamp((e.clientX - card.left - card.width / 2) / card.width) * 3).toFixed(2));
-      set("--ty", (clamp((e.clientY - card.top - card.height / 2) / card.height) * -2.5).toFixed(2));
-    }
     const closing = closingRef.current?.getBoundingClientRect();
     if (closing) {
       set("--qx", `${(e.clientX - closing.left).toFixed(0)}px`);
@@ -261,7 +262,10 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
 
   return (
     <div ref={rootRef} className={`outpost-landing${asleep ? " asleep" : ""}`} onPointerMove={onPointerMove} data-testid="outpost-landing">
-      <header style={{ position: "sticky", top: 0, zIndex: 20, background: "var(--glass)", WebkitBackdropFilter: "saturate(180%) blur(20px)", backdropFilter: "saturate(180%) blur(20px)", borderBottom: "1px solid var(--line)" }}>
+      {/* At the top of the page the header is clear, so the hero has no edge above it;
+          its glass and hairline come in once the page scrolls (owner, 2026-11-18). */}
+      <div ref={topRef} aria-hidden="true" style={{ height: 1, marginBottom: -1 }} />
+      <header className={`ol-header${scrolled ? " scrolled" : ""}`} style={{ position: "sticky", top: 0, zIndex: 20 }}>
         <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 clamp(16px, 5vw, 24px)", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <a href="#top" onClick={toTop} style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 44, fontSize: 19, fontWeight: 600, letterSpacing: "-0.02em" }}>
             <Otto size={34} mood="cycle" /> Outpost
@@ -277,20 +281,14 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
         </div>
       </header>
 
-      <section id="top" ref={heroRef} style={{ position: "relative", padding: "clamp(64px, 9vw, 104px) clamp(16px, 5vw, 24px) clamp(64px, 10vw, 128px)", textAlign: "center", overflow: "hidden" }}>
+      <section id="top" ref={heroRef} className="hero-fit" style={{ position: "relative", padding: "clamp(48px, 8vw, 88px) clamp(16px, 5vw, 24px)", textAlign: "center", overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "center" }}>
         <div className="hero-bg" aria-hidden="true" style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none" }}>
-          <div className="drift" style={{ position: "absolute", left: "50%", top: "56%", width: 900, height: 520, marginLeft: -450, borderRadius: "50%", background: "var(--accent)", opacity: "var(--glow)", filter: "blur(120px)" }} />
+          <div className="drift" style={{ position: "absolute", left: "50%", top: "38%", width: 900, height: 520, marginLeft: -450, borderRadius: "50%", background: "var(--accent)", opacity: "var(--glow)", filter: "blur(120px)" }} />
           <div className="drift2" style={{ position: "absolute", left: "50%", top: "4%", width: 1100, height: 460, marginLeft: -760, borderRadius: "50%", background: "var(--cool)", opacity: "var(--glow2)", filter: "blur(130px)" }} />
           <HeroDoodles />
         </div>
         <div style={{ position: "relative", zIndex: 2, maxWidth: 920, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 28 }}>
-          <h1 className="in" aria-label="The next phase of the internet" style={{ margin: 0, display: "grid", justifyItems: "center", fontSize: "clamp(33px, 7.2vw, 88px)", lineHeight: 1.04, fontWeight: 600, textWrap: "balance" } as CSSProperties}>
-            <span aria-hidden="true" style={{ gridArea: "1 / 1", visibility: "hidden", letterSpacing: "-0.045em", whiteSpace: "pre-line" }}>Die nächste Phase des Internets</span>
-            <span ref={headlineRef} aria-hidden="true" lang="en" dir="ltr" style={{ gridArea: "1 / 1", alignSelf: "center", whiteSpace: "pre-line", wordBreak: "auto-phrase", letterSpacing: "-0.045em" } as unknown as CSSProperties}>
-              <span style={{ whiteSpace: "pre-line" }}>The next phase of the internet</span><span aria-hidden="true" style={dot} />
-            </span>
-          </h1>
-          <p className="in" style={{ margin: 0, maxWidth: 640, fontSize: "clamp(18px, 2.1vw, 23px)", lineHeight: 1.42, color: "var(--ink2)", textWrap: "pretty", animationDelay: ".34s" } as CSSProperties}>Post, chat, go live and bring your people together, all in one place that belongs to you.</p>
+          <DecodeHeadline text={HEADLINE} />
           <InviteGreeting />
           <div className="in" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: 20, marginTop: 8, animationDelay: ".44s" }}>
             <button type="button" className="btn" onClick={onLaunch} style={btnStyle} data-testid="button-engage-warp">Create your space</button>
@@ -303,88 +301,10 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
               Resume signup{draftName ? ` as ${draftName}` : ""}
             </button>
           )}
-          <a href="/discover" onClick={go("/discover")} className="quiet-link in" style={{ animationDelay: ".58s" }} data-testid="link-look-around">Look around first</a>
-        </div>
-
-        <div className="in" style={{ position: "relative", zIndex: 1, maxWidth: 560, margin: "clamp(48px, 8vw, 88px) auto 0", animationDelay: ".62s" }}>
-          <div className="hero-card" style={{ position: "relative" }}>
-            <div ref={cardRef} className="tilt" style={{ position: "relative", textAlign: "left", background: "var(--cardglass)", WebkitBackdropFilter: "blur(28px) saturate(170%)", backdropFilter: "blur(28px) saturate(170%)", border: "1px solid var(--line)", borderRadius: 28, boxShadow: "var(--shadow), inset 0 1px 0 var(--hi)", padding: "clamp(16px, 4.5vw, 22px)", display: "flex", flexDirection: "column", gap: 14 }}>
-              <div className="edge" aria-hidden="true" style={{ position: "absolute", inset: -1, borderRadius: 29, padding: 1.5, pointerEvents: "none", background: "radial-gradient(220px circle at var(--cx, 50%) var(--cy, -300px), var(--accent), transparent 70%)", WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)", WebkitMaskComposite: "xor", mask: "linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0)" }} />
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, minHeight: 36 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 15, fontWeight: 600 }}><span>{TABS[tab][0]}</span></div>
-                <span style={{ fontSize: 13, color: "var(--ink2)" }}>{TABS[tab][1]}</span>
-              </div>
-
-              <div style={panelStyle(tab === 0)}>
-                <div style={{ background: "var(--inset)", borderRadius: 18, padding: "16px 18px", fontSize: 16, lineHeight: 1.4 }}>Doors open at ten on Saturday. Bring a laptop and one idea you have been putting off.</div>
-                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 13, color: "var(--ink2)", width: 62 }}>Goes to</span>
-                  <span style={pillOff}>Everyone</span>
-                  <span style={pillOn}>Your people</span>
-                  <span style={pillOff}>One community</span>
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 13, color: "var(--ink2)", width: 62 }}>When</span>
-                  <span style={pillOff}>Now</span>
-                  <span style={pillOn}>Friday 9:00</span>
-                </div>
-                <div style={footLine}><span aria-hidden="true" style={emberDot} /><span>No ranking system decides who sees it.</span></div>
-              </div>
-
-              <div style={panelStyle(tab === 1)}>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <div style={chatRow}>
-                    <span aria-hidden="true" style={avatar(true)}>D</span>
-                    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-                      <span style={{ fontSize: 15, fontWeight: 600 }}>Dana</span>
-                      <span style={{ fontSize: 13, color: "var(--ink2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Sent you the slides</span>
-                    </div>
-                    <span style={{ flex: "none", fontSize: 13, color: "var(--ink2)" }}>9:12</span>
-                  </div>
-                  <div style={chatRow}>
-                    <span aria-hidden="true" style={avatar(false)}>F</span>
-                    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-                      <span style={{ fontSize: 15, fontWeight: 600 }}>Family</span>
-                      <span style={{ fontSize: 13, color: "var(--ink2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Group chat · Sunday lunch is at ours</span>
-                    </div>
-                    <span style={{ flex: "none", fontSize: 13, color: "var(--ink2)" }}>8:40</span>
-                  </div>
-                  <div style={chatRow}>
-                    <span aria-hidden="true" style={avatar(true)}>M</span>
-                    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-                      <span style={{ fontSize: 15, fontWeight: 600 }}>Marco</span>
-                      <span style={{ fontSize: 13, color: "var(--ink2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>See you Saturday</span>
-                    </div>
-                    <span style={{ flex: "none", fontSize: 13, color: "var(--ink2)" }}>Mon</span>
-                  </div>
-                </div>
-                <div style={footLine}><span aria-hidden="true" style={emberDot} /><span>Encrypted. The servers that carry them cannot read them.</span></div>
-              </div>
-
-              <div style={panelStyle(tab === 2)}>
-                <div style={{ position: "relative", height: 150, borderRadius: 18, background: "#0A0C10", color: "#F3F5F8", padding: "14px 16px", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                  <span style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 999, background: "rgba(255,255,255,0.14)" }}><span className="pulse-dot" aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: "#FF6A3D" }} />Live</span>
-                  <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em" }}>Saturday workshop, from the room</span>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14 }}>
-                  <span><strong style={{ fontWeight: 600 }}>Dana</strong> <span style={{ color: "var(--ink2)" }}>This is great, thank you</span></span>
-                  <span><strong style={{ fontWeight: 600 }}>Marco</strong> <span style={{ color: "var(--ink2)" }}>Sent a tip</span></span>
-                </div>
-                <div style={footLine}><span aria-hidden="true" style={emberDot} /><span>Stream to your followers, with chat built in.</span></div>
-              </div>
-
-              <div role="group" aria-label="What Outpost does" style={{ display: "flex", flexWrap: "wrap", gap: 8, borderTop: "1px solid var(--line)", paddingTop: 14 }}>
-                {(["Post", "Chats", "Live"] as const).map((name, i) => (
-                  <button key={name} type="button" className="tap pill" aria-pressed={tab === i} onClick={() => setTab(i)} data-testid={`landing-tab-${i}`}
-                    style={{ height: 44, padding: "0 16px", borderRadius: 999, fontSize: 15, cursor: "pointer" }}>{name}</button>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
-      <section style={{ position: "relative", zIndex: 3, background: "var(--bg)", borderTop: "1px solid var(--line)", padding: "clamp(72px, 11vw, 120px) clamp(16px, 5vw, 24px)" }}>
+      <section style={{ position: "relative", zIndex: 3, background: "var(--bg)", padding: "clamp(72px, 11vw, 120px) clamp(16px, 5vw, 24px)" }}>
         <div style={{ maxWidth: 1120, margin: "0 auto", display: "flex", flexDirection: "column", gap: "clamp(36px, 6vw, 64px)" }}>
           <h2 className="inks" style={{ margin: 0, maxWidth: 900, fontSize: "clamp(26px, 6.6vw, 64px)", lineHeight: 1.06, fontWeight: 600, letterSpacing: "-0.04em", textWrap: "balance" } as CSSProperties}>
             <span style={{ display: "block" }}>Public when you want it.</span>{" "}
@@ -427,7 +347,7 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
             </ul>
             <p className="rv" style={{ margin: 0, display: "flex", alignItems: "center", gap: 12, color: "var(--ink2)" }}>
               <svg viewBox="0 0 100 100" width="28" height="28" aria-hidden="true" style={{ flex: "none" }}><path d="M78.98 42.24 A30 30 0 1 1 57.76 21.02" style={{ fill: "none", stroke: "currentColor", strokeWidth: 9, strokeLinecap: "round" }} /><circle cx="71.2" cy="28.8" r="6.5" style={{ fill: "var(--accent)" }} /><ellipse cx="42" cy="51" rx="3.6" ry="5.2" style={INK} /><ellipse cx="58" cy="51" rx="3.6" ry="5.2" style={INK} /></svg>
-              <span>And Otto, an assistant that works only for you, arrives in 2027.</span>
+              <span>And Relay, an assistant that works only for you, arrives in 2027.</span>
             </p>
           </div>
         </div>
@@ -439,7 +359,7 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
           <div className="cta-dots" style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle, var(--ink) 1px, transparent 1.6px)", backgroundSize: "28px 28px", WebkitMaskImage: "radial-gradient(320px circle at var(--qx, 50%) var(--qy, -400px), #000, transparent)", maskImage: "radial-gradient(320px circle at var(--qx, 50%) var(--qy, -400px), #000, transparent)" }} />
         </div>
         <div className="rv" style={{ position: "relative", maxWidth: 760, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 28 }}>
-          <Otto size={132} mood="here" className="float" label="Otto, pleased" />
+          <Otto size={132} mood="here" className="float" label="Relay, pleased" />
           <h2 style={{ margin: 0, fontSize: "clamp(40px, 6vw, 76px)", lineHeight: 1.02, fontWeight: 600, letterSpacing: "-0.045em", textWrap: "balance" } as CSSProperties}>Start with a space that’s yours<span aria-hidden="true" style={dot} /></h2>
           <button type="button" className="btn" onClick={onLaunch} style={{ ...btnStyle, marginTop: 8 }} data-testid="landing-closing-cta">Create your space</button>
         </div>
@@ -452,7 +372,7 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
               <a href="#top" onClick={toTop} style={{ display: "inline-flex", alignItems: "center", gap: 10, minHeight: 44, alignSelf: "flex-start", color: "var(--ink)", fontSize: 19, fontWeight: 600, letterSpacing: "-0.02em" }}>
                 <Otto size={30} mood="cycle" /> Outpost
               </a>
-              <p style={{ margin: 0, textWrap: "pretty" } as CSSProperties}>One place to post, chat, go live and gather your people. It belongs to you.</p>
+              <p style={{ margin: 0, textWrap: "pretty" } as CSSProperties}>The next phase of the internet.</p>
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "32px clamp(32px, 6vw, 72px)" }}>
               <nav aria-label="Outpost" style={navCol}>
@@ -477,7 +397,7 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: "8px 32px", borderTop: "1px solid var(--line)", paddingTop: 24, fontSize: 14 }}>
             <span>MIT licensed. No ads, no trackers.</span>
-            <span>Built on Nostr, an open network no company owns.</span>
+            <span>Built on an open network no company owns.</span>
           </div>
         </div>
         <div aria-hidden="true" style={{ maxWidth: 1120, margin: "clamp(32px, 5vw, 64px) auto 0", display: "flex", alignItems: "baseline", justifyContent: "center", fontSize: "clamp(80px, 20.5vw, 296px)", lineHeight: 0.78, fontWeight: 600, letterSpacing: "-0.06em", whiteSpace: "nowrap", userSelect: "none", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + clamp(40px, 6vw, 72px))" }}>

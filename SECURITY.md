@@ -34,5 +34,5 @@ deviate from the documented setup.
 
 ## Supported versions
 
-This project is pre-1.x in practice; security fixes target the latest `main`. Please run a
+Security fixes land on the latest `main` and ship with the next release. Please check against a
 recent build before reporting.

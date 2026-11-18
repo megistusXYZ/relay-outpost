@@ -552,7 +552,7 @@ export default function WtfIsThis() {
           <ArrowLeft className="w-4 h-4" />
         </Link>
         <div className="flex items-center gap-2">
-          <OttoMark size={44} label="Otto" className="shrink-0 text-foreground !w-9 !h-9 sm:!w-11 sm:!h-11" />
+          <OttoMark size={44} label="Relay" className="shrink-0 text-foreground !w-9 !h-9 sm:!w-11 sm:!h-11" />
           <div>
             <h1
               className="text-[24px] sm:text-[30px] font-semibold tracking-[-0.025em] leading-[1.1] whitespace-nowrap text-foreground"

@@ -11,12 +11,10 @@
  * It was also the only `bg-clip-text` in the codebase, so nothing was built on
  * the idiom and removing it cost no consistency.
  *
- * The eyebrow is the same screen's other complaint and a different lesson: it
- * MEASURED fine all along (4.61:1 on dark, 5.40:1 on light) and still read
- * washed out, because 0.4em of tracking at 11px puts almost half a character of
- * air between letters and the word stops being a word. Contrast is not the only
- * way text becomes hard to read, and a contrast test alone would have called it
- * healthy. 0.4em was the sole use in the app; 0.2em is the house value.
+ * The eyebrow above it was the same screen's other lesson (0.4em of tracking at
+ * 11px measured fine and still stopped reading as a word). The eyebrow itself
+ * is gone since 2026-11-18, when the chooser became the heading, two buttons
+ * and one "Other ways to sign in" link; the tracking rule stays.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -49,7 +47,7 @@ describe("the sign-in banner headline", () => {
   });
 });
 
-describe("the sign-in banner eyebrow", () => {
+describe("the sign-in chooser is the heading, two buttons and one link (owner, 2026-11-18)", () => {
   it("is not spaced so wide it stops reading as a word", () => {
     // 0.4em at 11px was the single widest tracking in the app. Anything at or
     // beyond it here is the same mistake returning.
@@ -58,14 +56,25 @@ describe("the sign-in banner eyebrow", () => {
       .filter((em) => em >= 0.35);
     expect(
       wide,
-      `Tracking of ${wide.join(", ")}em in the sign-in banner — at 11px this reads as spaced-out texture rather than a word.`,
+      `Tracking of ${wide.join(", ")}em in the sign-in chooser — at small sizes this reads as spaced-out texture rather than a word.`,
     ).toEqual([]);
   });
 
-  it("keeps the eyebrow at full brand strength", () => {
-    // It used to be /75 and /85. A kicker this small has no room to be faint,
-    // and the faintness was read as the bug even though contrast passed.
-    // Sentence case since the Outpost brand (2026-11-16); still full-strength Ember.
-    expect(BODY).toMatch(/className="[^"]*\btext-brand(?![\/\w-])[^"]*"\s*data-testid="text-banner-eyebrow"/);
+  it("has no eyebrow, pitch or reassurance row above and below the buttons", () => {
+    // "Less is more": the "Welcome" label, the explainer under the buttons and
+    // the "Yours alone · Help & guides" row were removed on purpose.
+    expect(BODY).not.toContain("text-banner-eyebrow");
+    expect(BODY).not.toContain("text-existing-account-gloss");
+    expect(BODY).not.toMatch(/Yours alone/);
+  });
+
+  it("keeps the other sign-in methods behind one link that says whether it is open", () => {
+    expect(BODY).toMatch(/aria-expanded=\{moreOpen\}[\s\S]{0,300}data-testid="button-other-signin"/);
+    expect(BODY).toMatch(/\{moreOpen && \([\s\S]{0,400}data-testid="container-signin-options"/);
+  });
+
+  it("the check can fail: the old eyebrow would be caught", () => {
+    const old = BODY + '<p className="text-brand" data-testid="text-banner-eyebrow">Welcome</p>';
+    expect(old).toContain("text-banner-eyebrow");
   });
 });

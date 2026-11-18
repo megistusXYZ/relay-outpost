@@ -40,6 +40,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.22.0",
+    date: "2026-11-17",
+    title: "A calmer look, plainer words",
+    changes: [
+      { type: "new", text: "A calmer new look: ink, one warm colour for anything you can act on, and Relay, who shows you when the app is busy." },
+      { type: "new", text: "Trust is said in words about your network, like Trusted, Known or Some ties, and never as a score on a person." },
+      { type: "improved", text: "Live streams are easy to spot: one clear Live tag on pictures, a dot on faces, and the word beside a name." },
+      { type: "improved", text: "Everything reads more easily, from chats and communities to signing in: no tiny text, and the same care in light and dark." },
+      { type: "improved", text: "Running a community? The console and its charts are clearer, and people your network has concerns about stand out." },
+    ],
+  },
+  {
     version: "1.21.0",
     date: "2026-10-23",
     title: "At home on every screen",

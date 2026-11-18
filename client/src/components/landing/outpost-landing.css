@@ -60,8 +60,6 @@
 .outpost-landing .btn:hover { transform: scale(1.035); opacity: 1; }
 .outpost-landing .btn:active { transform: scale(0.97); }
 .outpost-landing .tap { transition: background-color 0.25s, color 0.25s, border-color 0.25s, transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
-.outpost-landing .quiet-link { display: inline-flex; min-height: 44px; align-items: center; padding: 0 12px; font-size: 14px; color: var(--ink2); text-decoration: underline; text-decoration-color: var(--line2); text-underline-offset: 4px; }
-.outpost-landing .quiet-link:hover { color: var(--ink); opacity: 1; }
 
 @keyframes ol-rise { from { opacity: 0; transform: translateY(22px) scale(0.985); } to { opacity: 1; transform: none; } }
 .outpost-landing .in { animation: ol-rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
@@ -104,10 +102,8 @@
 /* Hero backdrop and card */
 @keyframes ol-drift { from { transform: translate(-50px, 14px) scale(1); } to { transform: translate(70px, -24px) scale(1.14); } }
 @keyframes ol-bgOut { to { opacity: 0.25; transform: translateY(90px); } }
-@keyframes ol-cardOut { to { transform: translateY(-36px) scale(0.94); opacity: 0.4; } }
 .outpost-landing .drift { animation: ol-drift 22s ease-in-out infinite alternate; }
 .outpost-landing .drift2 { animation: ol-drift 28s ease-in-out infinite alternate-reverse; }
-.outpost-landing .tilt { transform: perspective(1400px) rotateX(calc(var(--ty, 0) * 1deg)) rotateY(calc(var(--tx, 0) * 1deg)); transition: transform 0.3s ease-out; }
 @keyframes ol-pdot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 .outpost-landing .pulse-dot { animation: ol-pdot 1.4s ease-in-out infinite; }
 @keyframes ol-word { from { opacity: 0; transform: translateY(0.45em); filter: blur(12px); } to { opacity: 1; transform: none; filter: blur(0); } }
@@ -145,7 +141,6 @@
   .outpost-landing .inks > span { animation: ol-ink linear both; animation-timeline: view(); animation-range: entry 0% cover 16%; }
   .outpost-landing .inks > span:nth-child(2) { animation-range: cover 11% cover 26%; }
   .outpost-landing .hero-bg { animation: ol-bgOut linear both; animation-timeline: scroll(nearest); animation-range: 0 900px; }
-  .outpost-landing .hero-card { animation: ol-cardOut linear both; animation-timeline: view(); animation-range: exit 10% exit 100%; }
 }
 
 /* The theme switch sweeps out from the toggle (view transition). */
@@ -155,9 +150,26 @@ html.theming::view-transition-new(root) { animation: ol-reveal 0.7s cubic-bezier
 
 @media (prefers-reduced-motion: reduce) {
   .outpost-landing .doodle { animation: none !important; opacity: 0.4; transform: rotate(var(--tilt, 0deg)); }
-  .outpost-landing .in, .outpost-landing .rv, .outpost-landing .word, .outpost-landing .inks > span, .outpost-landing .hero-card, .outpost-landing .hero-bg, .outpost-landing .frow, .outpost-landing .blink, .outpost-landing .float, .outpost-landing .pulse-dot, .outpost-landing .otto-cycle .m { animation: none !important; }
+  .outpost-landing .in, .outpost-landing .rv, .outpost-landing .word, .outpost-landing .inks > span, .outpost-landing .hero-bg, .outpost-landing .frow, .outpost-landing .blink, .outpost-landing .float, .outpost-landing .pulse-dot, .outpost-landing .otto-cycle .m { animation: none !important; }
   .outpost-landing .otto-cycle .m-here { opacity: 1; }
   .outpost-landing .otto .dot, .outpost-landing .otto .look { animation: none !important; transition: none; }
-  .outpost-landing .tilt { transform: none; transition: none; }
   .outpost-landing .btn, .outpost-landing .tap, .outpost-landing .frow h3, .outpost-landing .frow .ico, .outpost-landing .cta-glow, .outpost-landing .cta-dots { transition: none; }
 }
+
+/* The hero fills the screen and has no edges (owner, 2026-11-18): the header is
+   clear until the page scrolls, the next section has no rule above it, and the
+   glow fades out at the top and bottom so nothing reads as a box. */
+.outpost-landing .hero-fit { min-height: calc(100vh - 65px); min-height: calc(100svh - 65px); }
+.outpost-landing .hero-bg { -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 58%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 58%, transparent 100%); }
+.outpost-landing .ol-header { background: transparent; border-bottom: 1px solid transparent; transition: background-color 0.25s ease, border-color 0.25s ease; }
+.outpost-landing .ol-header.scrolled { background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); border-bottom-color: var(--line); }
+@media (prefers-reduced-motion: reduce) { .outpost-landing .ol-header { transition: none; } }
+
+/* The headline decodes once: each letter keeps its place and kerning (only its
+   colour goes transparent) while a katakana/digit glyph flickers over it in a
+   separate layer; the dot waits for the last letter. */
+.outpost-landing .dc.scr { color: transparent; }
+.outpost-landing .dc-layer { position: absolute; inset: 0; pointer-events: none; }
+.outpost-landing .dc-g { position: absolute; transform: translateX(-50%); display: flex; align-items: center; color: var(--ink2); opacity: 0.55; font-weight: 500; letter-spacing: normal; white-space: pre; }
+.outpost-landing .dc-dot { transition: opacity 0.5s ease, transform 0.5s ease; }
+.outpost-landing .dc-root.decoding .dc-dot { opacity: 0; transform: scale(0.4); }

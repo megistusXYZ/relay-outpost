@@ -1,3 +1,4 @@
+import { ensureFont, ensureAppFonts } from "@/lib/own-fonts";
 import { createRoot } from "react-dom/client";
 import { installAppHistory } from "@/lib/app-history";
 import { ensureModalBackListener } from "@/lib/modal-history";
@@ -178,10 +179,13 @@ window.addEventListener("error", (e) => {
     const family = FONT_MAP[font];
     const px = SIZE_MAP[size];
     document.documentElement.style.setProperty("--font-body", family);
+    ensureFont(family);
     document.documentElement.style.setProperty("--post-text-size", POST_SIZE_MAP[size] || "15px");
     document.documentElement.style.fontSize = px;
     document.body.style.fontFamily = `var(--font-body)`;
   } catch {}
+  // The mono and article-heading faces, once the first screen is up.
+  try { (window.requestIdleCallback || ((cb: () => void) => window.setTimeout(cb, 1200)))(() => ensureAppFonts()); } catch {}
 
   window.addEventListener("nip78-settings-applied", () => {
     try {
@@ -192,6 +196,7 @@ window.addEventListener("error", (e) => {
       const family = FONT_MAP[font];
       const px = SIZE_MAP[size];
       document.documentElement.style.setProperty("--font-body", family);
+      ensureFont(family);
       document.documentElement.style.setProperty("--post-text-size", POST_SIZE_MAP[size] || "15px");
       document.documentElement.style.fontSize = px;
       document.body.style.fontFamily = `var(--font-body)`;

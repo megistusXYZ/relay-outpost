@@ -1,6 +1,7 @@
 import { startingTrendingSelector, TRENDING_CHART_CHOICES } from "@/pages/home/feed-menu";
 import { useTrustChoice, TRUST_CHOICES } from "@/lib/trust-choice";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { ensureFont } from "@/lib/own-fonts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RelayPanel } from "@/components/RelayPanel";
@@ -859,6 +860,8 @@ function FontPanel({ font, onFontChange, currentFont }: {
   onFontChange: (value: string) => void;
   currentFont: typeof FONT_OPTIONS[number];
 }) {
+  // Each option is drawn in its own face, so the picker needs them all (from our own files).
+  useEffect(() => { FONT_OPTIONS.forEach((o) => ensureFont(o.family)); }, []);
   const [activeCategory, setActiveCategory] = useState<string>(currentFont.category);
 
   useEffect(() => {
@@ -911,6 +914,7 @@ function applyTypography(font: string, size: string) {
   const fontOpt = FONT_OPTIONS.find(f => f.value === font) || FALLBACK_FONT;
   const sizeOpt = SIZE_OPTIONS.find(s => s.value === size) || SIZE_OPTIONS[1];
   document.documentElement.style.setProperty("--font-body", fontOpt.family);
+  ensureFont(fontOpt.family);
   document.documentElement.style.setProperty("--post-text-size", sizeOpt.post);
   document.documentElement.style.fontSize = sizeOpt.px;
   document.body.style.fontFamily = `var(--font-body)`;

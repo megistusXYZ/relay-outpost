@@ -51,6 +51,7 @@ const RETIRED: Array<[string, RegExp]> = [
   ["channel for a room (say room)", /\bchannels?\b/i],
   ["Outpost as a thing (the wordmark is allowed)", /(?<!Relay )\bOutposts?\b(?! for everything)/],
   ["note (say post)", /\bnotes?\b/i],
+  ["Otto (the assistant is called Relay; owner, 2026-11-18)", /\bOtto\b/],
 ];
 
 /** Where a retired word is allowed, and why. Keep this list short and named. */

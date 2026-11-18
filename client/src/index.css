@@ -1,7 +1,11 @@
-/* Fonts load via the async (non-render-blocking) <link> in index.html with
-   display=swap — these same families (Oxanium, Space Grotesk/Mono, Inter,
-   Nunito, JetBrains Mono, Lora) are included there. A CSS @import here would be
-   render-blocking and delay first paint, so it's intentionally omitted. */
+/* Geist, the default face, from our own file (no font CDN; see lib/own-fonts.ts). */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/Geist-Variable.woff2") format("woff2");
+}
 
 @tailwind base;
 @tailwind components;
@@ -4780,4 +4784,13 @@ html[data-perf="lite"] .fresh-chip {
 img[src*="messages-empty-bg"],
 img[src*="create-bg"] {
   display: none !important;
+}
+
+/* Sign-in surfaces (the overlay behind "Create your space" and /login): the
+   page background in the visitor's theme with the landing's soft warm glow.
+   No starfield, cockpit photo or scanlines (owner, 2026-11-18). */
+.signin-surface {
+  background-image:
+    radial-gradient(60% 46% at 50% 34%, hsl(var(--brand) / 0.07), transparent 72%),
+    radial-gradient(70% 40% at 24% 6%, hsl(220 60% 60% / 0.05), transparent 70%);
 }

@@ -1,61 +1,56 @@
 /**
- * The sign-in backdrop must not be painted in a theme it was not drawn for.
+ * The sign-in screens are a plain page in the visitor's theme (owner,
+ * 2026-11-18): "if users click in light mode make these screens light mode, if
+ * they are dark mode make them dark mode", and "simplified to match the new
+ * brand". That covers /login and the sign-in screen behind the landing's
+ * "Create your space".
  *
- * `/login` laid a flat `bg-black/50` over the whole viewport in BOTH themes. A
- * reader who had chosen light mode — arriving from the light Help pages, which
- * is exactly the route this was reported on — got 50% black over a light canvas
- * and landed on neither: a muddy off-white with the cockpit photo ghosting
- * through, the eyebrow and the "takes 30 seconds" line washed to nearly nothing.
- *
- * The cause is worth stating precisely, because it is not "this page is
- * dark-only". LoginOptions picks light values throughout (`text-brand/85`,
- * `from-foreground … dark:from-white`) — the CONTENT was theme-aware and the
- * BACKDROP never was. That mismatch is the defect, and it is the thing this
- * guards: a full-bleed dark layer on a surface whose content already adapts.
- *
- * Source-reading, because jsdom cannot evaluate the `dark:` variant any more
- * than it can a media query — a render test would report the same computed
- * style before and after the fix. Both themes were checked in a real browser.
+ * History this replaces: /login used to lay a black scrim, white scanlines and
+ * a cockpit photo over both themes (2026-08), then kept them for dark only.
+ * The overlay behind the landing was always a black starfield with the same
+ * photo, whatever the theme. Both are gone; the browser check
+ * (landing-links-e2e) measures what is painted, and this is its source backstop.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const LOGIN = readFileSync(join(process.cwd(), "client", "src", "pages", "Login.tsx"), "utf8");
-
-/** Strip comments — this file explains the bug using the very string it forbids. */
-function code(src: string): string {
+const read = (p: string) => readFileSync(join(process.cwd(), "client", "src", p), "utf8");
+/** Strip comments: the prose in these files names what it forbids. */
+const code = (src: string) => {
   const blank = (m: string) => m.replace(/[^\n]/g, " ");
   return src.replace(/\/\*[\s\S]*?\*\//g, blank).replace(/(?<!:)\/\/[^\n]*/g, blank);
-}
+};
+const login = code(read("pages/Login.tsx"));
+const overlay = code(read("components/GalaxyWarpOverlay.tsx"));
+const css = read("index.css");
 
-describe("the /login cockpit backdrop", () => {
-  const src = code(LOGIN);
+const spaceArt = (src: string) => [/cockpit-bg/, /Scanline/i, /scanline/].filter((re) => re.test(src)).map(String);
 
-  it("never paints a black scrim outside dark mode", () => {
-    // Every bg-black/NN here must carry a dark: prefix. Without one it is
-    // applied in light mode too, which is the bug that was reported.
-    const scrims = [...src.matchAll(/(?<![\w-])((?:[a-z-]+:)*)bg-black\/\d+/g)];
-    const unguarded = scrims.filter((m) => !m[1].includes("dark:")).map((m) => m[0]);
-    expect(
-      unguarded,
-      `A full-bleed black scrim with no dark: prefix covers the light theme too:\n${unguarded.join("\n")}`,
-    ).toEqual([]);
-    // And the dark one must still exist — "fixed" by deleting the treatment
-    // would be a different regression, not a fix.
-    expect(scrims.length, "the dark-mode scrim disappeared entirely").toBeGreaterThan(0);
+describe("the sign-in screens are a plain page in the visitor's theme", () => {
+  it("/login has no cockpit photo, scanlines or scrim", () => {
+    expect(spaceArt(login)).toEqual([]);
+    expect(login).not.toMatch(/bg-black\/\d+/);
+    expect(login).toContain("signin-surface");
   });
 
-  it("keeps the white scanline texture out of light mode", () => {
-    // The lines are rgba(255,255,255,.08). On a light canvas they are either
-    // invisible or a haze that lifts the page for no reason.
-    expect(src).toMatch(/hidden dark:block/);
+  it("the screen behind \"Create your space\" covers the starfield with the page background, and has no photo", () => {
+    expect(spaceArt(overlay)).toEqual([]);
+    expect(overlay).toMatch(/\(isCockpit \|\| isWarpingToCockpit\) && \([\s\S]{0,160}bg-background signin-surface/);
+    // …and it hands LoginOptions the theme-aware look, not the white-on-black one.
+    expect(overlay).not.toMatch(/<LoginOptions[\s\S]{0,80}variant="overlay"/);
   });
 
-  it("still shows the cockpit in light, rather than hiding the page's identity", () => {
-    // The fix is "stop painting a dark scrim", not "remove the artwork". The
-    // image stays, fainter, so /login is still recognisably itself in light.
-    expect(src).toMatch(/opacity-\[0\.0\d\] dark:opacity-\d+/);
-    expect(src).toContain("cockpit-bg.webp");
+  it("the shared surface is built from theme tokens, so it cannot be dark in light mode", () => {
+    const rule = css.slice(css.indexOf(".signin-surface {"));
+    const body = rule.slice(0, rule.indexOf("}"));
+    expect(body).toContain("hsl(var(--brand)");
+    expect(body).not.toMatch(/#0|black|rgba\(0, 0, 0/);
+  });
+
+  it("the check can fail: the old photo and scrim would be caught", () => {
+    const old = login + '<div className="absolute inset-0 dark:bg-black/50" /><div style={{ backgroundImage: "url(/images/landing/cockpit-bg.webp)" }} />';
+    expect(spaceArt(old)).not.toEqual([]);
+    expect(old).toMatch(/bg-black\/\d+/);
   });
 });

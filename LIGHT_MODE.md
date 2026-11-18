@@ -78,7 +78,7 @@ Each one fails CI. When one fails, fix the screen rather than the guard.
 | `client/src/light-mode-calm.test.ts` | loud light-mode treatments coming back |
 | `client/src/live-badge.test.ts` | hand-rolled live pills instead of `LiveBadge` |
 | `client/src/trust-no-numbers.test.ts`, `client/src/post-trust-bars.test.ts` | trust shown as a number or a verdict |
-| `client/src/pages/login-backdrop.test.ts`, `client/src/components/login-banner.test.ts` | the sign-in screen's dark-only backdrop and its gradient headline |
+| `client/src/pages/login-backdrop.test.ts`, `client/src/components/login-banner.test.ts` | space art or a dark scrim behind sign-in; a gradient headline; the old eyebrow and extra rows on the chooser |
 
 Source guards catch the patterns we already know. New screens are checked the other way
 round: a browser check opens the page in both themes and measures every word on it for size
@@ -101,8 +101,9 @@ When a ternary already names a light shade, the other branch is the dark case, a
 finished.
 
 **A dark layer under content that already adapts reads as broken.** The sign-in screen laid
-`bg-black/50` over both themes while its content picked light values throughout. The
-backdrop is now dark-only.
+`bg-black/50` over both themes while its content picked light values throughout. Since
+2026-11-18 both sign-in screens are a plain page in the visitor's theme (`.signin-surface`):
+no starfield, cockpit photo, scanlines or scrim in either theme.
 
 **Contrast is not the only way text becomes unreadable.** The sign-in headline passed at
 15:1 and was `bg-clip-text text-transparent`, so in forced-colours mode it disappeared. An
