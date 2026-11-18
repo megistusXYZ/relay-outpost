@@ -26,7 +26,6 @@ class InteractionIndexStore {
   private index: InteractionIndex = createInteractionIndex();
   private viewer: string | null = null;
   private started = false;
-  private sub: { unsubscribe(): void } | null = null;
 
   // Per-target subscribers (useSyncExternalStore) + cached derived snapshots so
   // getSnapshot returns a stable reference until the target actually changes.
@@ -42,7 +41,7 @@ class InteractionIndexStore {
     if (this.started) return;
     this.started = true;
     this.seed();
-    this.sub = eventStore.insert$.subscribe((e: Event) => this.ingest(e));
+    eventStore.insert$.subscribe((e: Event) => this.ingest(e));
   }
 
   /** Point the index at the logged-in viewer; rebuilds viewer-dependent state. */

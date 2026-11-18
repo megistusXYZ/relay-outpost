@@ -17,7 +17,6 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
-  Image as ImageIcon,
   Link as LinkIcon,
   Bell,
   Mail,
@@ -27,8 +26,8 @@ import { getKindLabel, formatScheduledTime, type ScheduledPostWithDecrypted } fr
 const STATUS_COLORS: Record<string, { dot: string; badge: string; text: string }> = {
   pending: {
     dot: "bg-brand",
-    badge: "bg-brand/10 text-brand border-brand/20",
-    text: "text-brand",
+    badge: "bg-foreground/[0.06] text-foreground/80 border-border/60",
+    text: "text-foreground/80",
   },
   publishing: {
     dot: "bg-blue-500",
@@ -149,7 +148,7 @@ function ContentRenderer({ content, expanded }: { content: string; expanded: boo
               </div>
             ))}
             {mediaParts.length > 2 && (
-              <span className="inline-flex items-center text-[10px] text-brand/70 px-1">
+              <span className="inline-flex items-center text-[12px] text-muted-foreground px-1">
                 +{mediaParts.length - 2} more
               </span>
             )}
@@ -212,10 +211,10 @@ function ContentRenderer({ content, expanded }: { content: string; expanded: boo
             href={part.value}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/30 bg-card/60 hover:bg-card hover:border-brand/30 transition-colors group min-w-0"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/30 bg-card/60 hover:bg-card hover:border-border transition-colors group min-w-0"
           >
-            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/50 group-hover:text-brand flex-shrink-0" />
-            <span className="text-xs text-brand/80 group-hover:text-brand-strong truncate">
+            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/50 group-hover:text-foreground flex-shrink-0" />
+            <span className="text-[13px] text-brand group-hover:text-brand-strong truncate">
               {getDomain(part.value)}
             </span>
           </a>
@@ -262,14 +261,14 @@ export function ScheduledPostCard({ post, onCancel, onReschedule, onRetry }: Sch
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              <Badge variant="outline" className={`text-[9px] uppercase tracking-wider ${colors.badge}`}>
+              <Badge variant="outline" className={`text-[12px] font-medium capitalize ${colors.badge}`}>
                 {post.status}
               </Badge>
-              <Badge variant="outline" className="text-[9px] uppercase tracking-wider">
+              <Badge variant="outline" className="text-[12px] font-medium">
                 {getKindLabel(post.kind)}
               </Badge>
               {(post as any).backend === "device" && (
-                <Badge variant="outline" className="text-[9px] uppercase tracking-wider border-emerald-500/40 text-success dark:text-emerald-400" title="Stored only on this device; publishes when the app is open.">
+                <Badge variant="outline" className="text-[12px] border-emerald-500/40 text-success dark:text-emerald-400 font-medium" title="Stored only on this device; publishes when the app is open.">
                   On device
                 </Badge>
               )}
@@ -277,7 +276,7 @@ export function ScheduledPostCard({ post, onCancel, onReschedule, onRetry }: Sch
 
             {isGiftWrap ? (
               <div className="flex items-center gap-2 mb-1.5">
-                <Mail className="w-3.5 h-3.5 text-brand/70 flex-shrink-0" />
+                <Mail className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                 <p className="text-sm text-foreground/80 leading-relaxed">
                   {fullContent}
                 </p>
@@ -294,7 +293,7 @@ export function ScheduledPostCard({ post, onCancel, onReschedule, onRetry }: Sch
               <p className="text-sm text-muted-foreground/50 italic mb-1.5">Encrypted content</p>
             )}
 
-            <div className="flex items-center gap-2 text-[10px] text-muted-foreground/50 flex-wrap">
+            <div className="flex items-center gap-2 text-[12px] text-muted-foreground flex-wrap">
               <div className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {post.status === "published" && post.publishedAt ? (
@@ -319,7 +318,7 @@ export function ScheduledPostCard({ post, onCancel, onReschedule, onRetry }: Sch
                   <span>·</span>
                   <button
                     onClick={() => setExpanded(!expanded)}
-                    className="inline-flex items-center gap-0.5 text-brand/70 hover:text-brand-strong transition-colors"
+                    className="inline-flex items-center gap-0.5 text-brand hover:text-brand-strong transition-colors"
                   >
                     {expanded ? (
                       <>
@@ -393,7 +392,7 @@ export function ScheduledPostCard({ post, onCancel, onReschedule, onRetry }: Sch
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 w-7 p-0 text-muted-foreground/50 hover:text-brand"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                 onClick={() => {
                   window.dispatchEvent(new CustomEvent("edit-scheduled-post", { detail: post }));
                 }}

@@ -2,11 +2,11 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
 import { Link } from "wouter";
-import { pool, DEFAULT_RELAYS, eventStore, sortByLatency, throttledPoolSubscribe, fetchProfilesCached } from "@/lib/nostr";
+import { DEFAULT_RELAYS, eventStore, sortByLatency, throttledPoolSubscribe, fetchProfilesCached } from "@/lib/nostr";
 import { TrustTierDot } from "@/components/NostrPost";
 import { fetchRelayLists, getRelayList } from "@/lib/outbox";
 import { fetchUserProfileStats, type UserProfileStats } from "@/lib/primal-cache";
-import { getDisplayName, getAvatarUrl, getProfileContent, formatNpub, shortenNpub as shortenNpubHelper } from "@/lib/nostr-helpers";
+import { getProfileContent } from "@/lib/nostr-helpers";
 import { formatSats } from "@/lib/zap";
 import { formatDistanceToNow, format } from "date-fns";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -69,7 +69,6 @@ import {
   Zap,
   TrendingUp,
   ArrowUpRight,
-  ArrowDownRight,
   UserCircle,
   Target,
   Globe,
@@ -77,7 +76,8 @@ import {
   Repeat2,
   Heart,
   ShieldCheck,
-  FileText } from "lucide-react";
+  FileText,
+} from "lucide-react";
 import {
   PieChart,
   Pie,
@@ -130,7 +130,7 @@ const ENGAGEMENT_KINDS = {
 
 const KIND_LABELS: Record<number, string> = {
   0: "Profile",
-  1: "Text Note",
+  1: "Post",
   3: "Follows",
   4: "DM",
   6: "Repost",
@@ -159,9 +159,10 @@ function getKindLabel(kind: number): string {
   return KIND_LABELS[kind] || `Kind ${kind}`;
 }
 
+// Series on the theme's cool blues and greys; Ember leads (design canvas, 2026-11-16).
 const CHART_COLORS = [
-  "#8b5cf6", "#a78bfa", "#7c3aed", "#6d28d9", "#c4b5fd",
-  "#ddd6fe", "#5b21b6", "#4c1d95", "#ede9fe", "#f5f3ff",
+  "#3D6BFF", "#7C9BFF", "#A3ACBA", "#565D69", "#C8D4F0",
+  "#2A3A6A", "#FF6A3D", "#E6E8EC", "#8EA4C8", "#1F2430",
 ];
 
 const WOT_TIER_RANK: Record<SignalTier, number> = {
@@ -188,7 +189,7 @@ const ENGAGEMENT_GROUPS = [
     options: [
       { label: "Zaps", kind: ENGAGEMENT_KINDS.ZAP },
       { label: "Reactions", kind: ENGAGEMENT_KINDS.REACTION },
-      { label: "Notes & Replies", kind: ENGAGEMENT_KINDS.REPLY },
+      { label: "Posts & replies", kind: ENGAGEMENT_KINDS.REPLY },
       { label: "Reposts", kind: ENGAGEMENT_KINDS.REPOST },
     ] },
   {
@@ -204,7 +205,6 @@ const ENGAGEMENT_GROUPS = [
     ] },
 ];
 
-const ENGAGEMENT_OPTIONS = ENGAGEMENT_GROUPS.flatMap((g) => g.options);
 
 const TIME_PRESETS = [
   { label: "1h", seconds: 3600 },
@@ -215,12 +215,12 @@ const TIME_PRESETS = [
 ];
 
 const GROUPING_OPTIONS = [
-  { value: "kind" as const, label: "By Event Kind", icon: Layers },
-  { value: "author" as const, label: "By Author", icon: Users },
-  { value: "hour" as const, label: "By Hour", icon: Clock },
-  { value: "day" as const, label: "By Day", icon: Calendar },
-  { value: "hashtag" as const, label: "By Hashtag", icon: Hash },
-  { value: "contentType" as const, label: "By Content Type", icon: Activity },
+  { value: "kind" as const, label: "By event kind", icon: Layers },
+  { value: "author" as const, label: "By author", icon: Users },
+  { value: "hour" as const, label: "By hour", icon: Clock },
+  { value: "day" as const, label: "By day", icon: Calendar },
+  { value: "hashtag" as const, label: "By hashtag", icon: Hash },
+  { value: "contentType" as const, label: "By content type", icon: Activity },
 ];
 
 const CHART_TYPES = [
@@ -408,7 +408,7 @@ function aggregateByContentType(events: Event[]): AggregatedData[] {
     else if (e.kind === 10003) contentType = "Bookmark";
     else if (e.kind === 1) {
       const hasETag = e.tags.some((t) => t[0] === "e");
-      contentType = hasETag ? "Reply" : "Note";
+      contentType = hasETag ? "Reply" : "Post";
     }
     types.set(contentType, (types.get(contentType) || 0) + 1);
   }
@@ -450,11 +450,11 @@ function saveSavedReports(reports: SavedReport[]) {
 function CustomTooltipContent({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-md border border-brand/20 bg-white dark:bg-[rgba(4,4,10,0.95)] px-3 py-2 text-xs shadow-lg">
-      <p className="font-display text-brand mb-1">{label || payload[0]?.name}</p>
+    <div className="rounded-lg border border-border bg-popover px-3 py-2 text-xs shadow-lg">
+      <p className="font-medium text-foreground mb-1">{label || payload[0]?.name}</p>
       {payload.map((entry: any, i: number) => (
         <p key={i} className="text-foreground">
-          {entry.name || "Count"}: <span className="text-brand font-mono">{Number(entry.value).toLocaleString()}</span>
+          {entry.name || "Count"}: <span className="font-semibold tabular-nums">{Number(entry.value).toLocaleString()}</span>
         </p>
       ))}
     </div>
@@ -539,28 +539,28 @@ function ZapRevenueSummary({
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <Zap className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-          <h2 className="text-sm font-display text-brand">Zap Revenue Summary</h2>
+          <h2 className="text-[15px] font-semibold text-foreground">Zap revenue</h2>
           <Badge variant="secondary" data-testid="badge-zap-count">
             {zapData.zapCount.toLocaleString()} zaps
           </Badge>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-            <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Total Sats</p>
-            <p className="text-lg font-mono text-amber-600 dark:text-amber-400" data-testid="text-total-sats">
+          <div className="space-y-1 p-3 rounded-lg bg-foreground/[0.03] border border-border/60">
+            <p className="text-[13px] text-muted-foreground font-medium">Total sats</p>
+            <p className="text-lg font-semibold tabular-nums text-amber-600 dark:text-amber-400" data-testid="text-total-sats">
               {formatSats(zapData.totalSats)}
             </p>
           </div>
-          <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-            <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Avg per Zap</p>
-            <p className="text-lg font-mono text-brand" data-testid="text-avg-zap">
+          <div className="space-y-1 p-3 rounded-lg bg-foreground/[0.03] border border-border/60">
+            <p className="text-[13px] text-muted-foreground font-medium">Avg per Zap</p>
+            <p className="text-lg font-semibold tabular-nums text-foreground" data-testid="text-avg-zap">
               {formatSats(zapData.avgZap)}
             </p>
           </div>
-          <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10 col-span-2 sm:col-span-1">
-            <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Zap Count</p>
-            <p className="text-lg font-mono text-foreground" data-testid="text-zap-total-count">
+          <div className="space-y-1 p-3 rounded-lg bg-foreground/[0.03] border border-border/60 col-span-2 sm:col-span-1">
+            <p className="text-[13px] text-muted-foreground font-medium">Zap count</p>
+            <p className="text-lg font-semibold tabular-nums text-foreground" data-testid="text-zap-total-count">
               {zapData.zapCount.toLocaleString()}
             </p>
           </div>
@@ -568,7 +568,7 @@ function ZapRevenueSummary({
 
         {zapData.trend.length > 1 && (
           <div data-testid="zap-trend-chart">
-            <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50 mb-2">Daily Trend</p>
+            <p className="text-[13px] text-muted-foreground mb-2 font-medium">Daily trend</p>
             <ResponsiveContainer width="100%" height={120}>
               <AreaChart data={zapData.trend}>
                 <defs>
@@ -577,7 +577,7 @@ function ZapRevenueSummary({
                     <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="name" tick={{ fontSize: 9, fill: "currentColor", className: "text-muted-foreground/40" }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 12, fill: "currentColor", className: "text-muted-foreground" }} axisLine={false} tickLine={false} />
                 <YAxis hide />
                 <Tooltip content={<CustomTooltipContent />} />
                 <Area type="monotone" dataKey="value" stroke="#f59e0b" fill="url(#zapGradient)" strokeWidth={1.5} />
@@ -588,14 +588,14 @@ function ZapRevenueSummary({
 
         {zapData.topZappers.length > 0 && (
           <div data-testid="top-zappers">
-            <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50 mb-2">Top Zappers</p>
+            <p className="text-[13px] text-muted-foreground mb-2 font-medium">Top zappers</p>
             <div className="space-y-1.5">
               {zapData.topZappers.map((zapper, i) => (
                 <div key={zapper.pubkey} className="flex items-center gap-2 text-xs">
-                  <span className="text-muted-foreground/40 w-4 text-right font-mono">{i + 1}</span>
+                  <span className="text-muted-foreground w-4 text-right font-mono">{i + 1}</span>
                   <ProfileLink pubkey={zapper.pubkey} className="text-foreground flex-1" />
                   <span className="font-mono text-amber-600 dark:text-amber-400">{formatSats(zapper.sats)}</span>
-                  <span className="text-muted-foreground/40">sats</span>
+                  <span className="text-muted-foreground">sats</span>
                 </div>
               ))}
             </div>
@@ -670,23 +670,23 @@ function ContactDetailPanel({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="glass-dialog-card border-brand/20 max-w-md max-h-[85vh] overflow-y-auto" data-testid="contact-detail-panel">
+      <DialogContent className="glass-dialog-card border-border max-w-md max-h-[85vh] overflow-y-auto" data-testid="contact-detail-panel">
         <DialogHeader>
-          <DialogTitle className="text-sm font-display text-brand">Contact Detail</DialogTitle>
+          <DialogTitle className="text-[15px] font-semibold">Contact</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <Avatar className="w-14 h-14 border-2 border-brand/30">
+            <Avatar className="w-14 h-14 border border-border/60">
               {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
-              <AvatarFallback className="bg-brand/10 text-brand text-sm">
+              <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-sm">
                 {displayName.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0 space-y-0.5">
               <ProfileLink pubkey={lookupPubkey} displayName={displayName !== shortenNpub(lookupPubkey) ? displayName : undefined} className="text-sm font-medium text-foreground" data-testid="contact-name" />
-              {nip05 && <p className="text-xs text-brand/70 font-mono truncate" data-testid="contact-nip05">{nip05}</p>}
-              <p className="text-[10px] text-muted-foreground/50 font-mono truncate">{npub.slice(0, 20)}...</p>
+              {nip05 && <p className="text-xs text-muted-foreground truncate" data-testid="contact-nip05">{nip05}</p>}
+              <p className="text-[12px] text-muted-foreground font-mono truncate">{npub.slice(0, 20)}...</p>
             </div>
           </div>
 
@@ -697,27 +697,27 @@ function ContactDetailPanel({
           )}
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="p-2.5 rounded-lg bg-brand/5 border border-brand/10 space-y-0.5">
-              <p className="text-[9px] font-brand uppercase tracking-widest text-muted-foreground/50">Followers</p>
-              <p className="text-sm font-mono text-foreground" data-testid="contact-followers">
+            <div className="p-2.5 rounded-lg bg-foreground/[0.03] border border-border/60 space-y-0.5">
+              <p className="text-[12px] text-muted-foreground font-medium">Followers</p>
+              <p className="text-sm font-semibold tabular-nums text-foreground" data-testid="contact-followers">
                 {loadingStats ? "..." : primalStats ? primalStats.followersCount.toLocaleString() : "-"}
               </p>
             </div>
-            <div className="p-2.5 rounded-lg bg-brand/5 border border-brand/10 space-y-0.5">
-              <p className="text-[9px] font-brand uppercase tracking-widest text-muted-foreground/50">Following</p>
-              <p className="text-sm font-mono text-foreground" data-testid="contact-following">
+            <div className="p-2.5 rounded-lg bg-foreground/[0.03] border border-border/60 space-y-0.5">
+              <p className="text-[12px] text-muted-foreground font-medium">Following</p>
+              <p className="text-sm font-semibold tabular-nums text-foreground" data-testid="contact-following">
                 {loadingStats ? "..." : primalStats ? primalStats.followingCount.toLocaleString() : "-"}
               </p>
             </div>
-            <div className="p-2.5 rounded-lg bg-brand/5 border border-brand/10 space-y-0.5">
-              <p className="text-[9px] font-brand uppercase tracking-widest text-muted-foreground/50">Notes</p>
-              <p className="text-sm font-mono text-foreground" data-testid="contact-notes">
+            <div className="p-2.5 rounded-lg bg-foreground/[0.03] border border-border/60 space-y-0.5">
+              <p className="text-[12px] text-muted-foreground font-medium">Posts</p>
+              <p className="text-sm font-semibold tabular-nums text-foreground" data-testid="contact-notes">
                 {loadingStats ? "..." : primalStats ? primalStats.noteCount.toLocaleString() : "-"}
               </p>
             </div>
-            <div className="p-2.5 rounded-lg bg-brand/5 border border-brand/10 space-y-0.5">
-              <p className="text-[9px] font-brand uppercase tracking-widest text-muted-foreground/50">Replies</p>
-              <p className="text-sm font-mono text-foreground" data-testid="contact-replies">
+            <div className="p-2.5 rounded-lg bg-foreground/[0.03] border border-border/60 space-y-0.5">
+              <p className="text-[12px] text-muted-foreground font-medium">Replies</p>
+              <p className="text-sm font-semibold tabular-nums text-foreground" data-testid="contact-replies">
                 {loadingStats ? "..." : primalStats ? primalStats.replyCount.toLocaleString() : "-"}
               </p>
             </div>
@@ -725,20 +725,20 @@ function ContactDetailPanel({
 
           {interactionSummary && (
             <div className="space-y-2">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Activity in Report</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Activity in report</p>
               <div className="grid grid-cols-2 gap-2">
-                <div className="p-2 rounded-lg bg-brand/5 border border-brand/10">
-                  <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Events</p>
-                  <p className="text-sm font-mono text-brand">{interactionSummary.totalEvents.toLocaleString()}</p>
+                <div className="p-2 rounded-lg bg-foreground/[0.03] border border-border/60">
+                  <p className="text-[12px] text-muted-foreground font-medium">Events</p>
+                  <p className="text-sm font-semibold tabular-nums text-foreground">{interactionSummary.totalEvents.toLocaleString()}</p>
                 </div>
-                <div className="p-2 rounded-lg bg-brand/5 border border-brand/10">
-                  <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Mentions</p>
-                  <p className="text-sm font-mono text-brand">{interactionSummary.mentionCount.toLocaleString()}</p>
+                <div className="p-2 rounded-lg bg-foreground/[0.03] border border-border/60">
+                  <p className="text-[12px] text-muted-foreground font-medium">Mentions</p>
+                  <p className="text-sm font-semibold tabular-nums text-foreground">{interactionSummary.mentionCount.toLocaleString()}</p>
                 </div>
               </div>
               {interactionSummary.kindBreakdown.length > 0 && (
                 <div className="space-y-1">
-                  <p className="text-[9px] text-muted-foreground/40 uppercase tracking-wider">Event Types</p>
+                  <p className="text-[12px] text-muted-foreground font-medium">Event types</p>
                   {interactionSummary.kindBreakdown.map((kb) => (
                     <div key={kb.kind} className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground">{kb.label}</span>
@@ -767,7 +767,7 @@ function ContactDetailPanel({
             )}
           </div>
 
-          <div className="pt-2 border-t border-brand/10">
+          <div className="pt-2 border-t border-border/60">
             <Button
               variant="outline"
               className="w-full gap-2"
@@ -777,7 +777,7 @@ function ContactDetailPanel({
               data-testid="button-view-profile"
             >
               <UserCircle className="w-4 h-4" />
-              View Full Profile
+              View full profile
             </Button>
           </div>
         </div>
@@ -796,7 +796,7 @@ function ChartRenderer({
 }) {
   if (!data.length) {
     return (
-      <div className="flex items-center justify-center h-64 text-muted-foreground/50 text-sm" data-testid="chart-empty">
+      <div className="flex items-center justify-center h-64 text-muted-foreground text-sm" data-testid="chart-empty">
         No data to display
       </div>
     );
@@ -827,7 +827,7 @@ function ChartRenderer({
               nameKey="name"
               label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
               labelLine={false}
-              fontSize={10}
+              fontSize={12}
             >
               {chartData.map((_, i) => (
                 <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
@@ -835,7 +835,7 @@ function ChartRenderer({
             </Pie>
             <Tooltip content={<CustomTooltipContent />} />
             <Legend
-              wrapperStyle={{ fontSize: 11, fontFamily: "var(--font-body)" }}
+              wrapperStyle={{ fontSize: 12, fontFamily: "var(--font-body)" }}
             />
           </PieChart>
         </ResponsiveContainer>
@@ -848,9 +848,9 @@ function ChartRenderer({
       <div data-testid="chart-bar" className="w-full h-72">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(140,100,220,0.1)" />
-            <XAxis dataKey="name" tick={{ fontSize: 10, fill: "currentColor", className: "text-muted-foreground/50" }} angle={-35} textAnchor="end" height={60} />
-            <YAxis tick={{ fontSize: 10, fill: "currentColor", className: "text-muted-foreground/50" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="name" tick={{ fontSize: 12, fill: "currentColor", className: "text-muted-foreground" }} angle={-35} textAnchor="end" height={60} />
+            <YAxis tick={{ fontSize: 12, fill: "currentColor", className: "text-muted-foreground" }} />
             <Tooltip content={<CustomTooltipContent />} />
             <Bar dataKey="value" radius={[4, 4, 0, 0]}>
               {chartData.map((_, i) => (
@@ -868,11 +868,11 @@ function ChartRenderer({
       <div data-testid="chart-line" className="w-full h-72">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(140,100,220,0.1)" />
-            <XAxis dataKey="name" tick={{ fontSize: 10, fill: "currentColor", className: "text-muted-foreground/50" }} angle={-35} textAnchor="end" height={60} />
-            <YAxis tick={{ fontSize: 10, fill: "currentColor", className: "text-muted-foreground/50" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="name" tick={{ fontSize: 12, fill: "currentColor", className: "text-muted-foreground" }} angle={-35} textAnchor="end" height={60} />
+            <YAxis tick={{ fontSize: 12, fill: "currentColor", className: "text-muted-foreground" }} />
             <Tooltip content={<CustomTooltipContent />} />
-            <Line type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={2} dot={{ fill: "#a78bfa", r: 3 }} />
+            <Line type="monotone" dataKey="value" stroke="#FF6A3D" strokeWidth={2} dot={{ fill: "#FF8A61", r: 3 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -883,17 +883,17 @@ function ChartRenderer({
     <div data-testid="chart-area" className="w-full h-72">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(140,100,220,0.1)" />
-          <XAxis dataKey="name" tick={{ fontSize: 10, fill: "currentColor", className: "text-muted-foreground/50" }} angle={-35} textAnchor="end" height={60} />
-          <YAxis tick={{ fontSize: 10, fill: "currentColor", className: "text-muted-foreground/50" }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+          <XAxis dataKey="name" tick={{ fontSize: 12, fill: "currentColor", className: "text-muted-foreground" }} angle={-35} textAnchor="end" height={60} />
+          <YAxis tick={{ fontSize: 12, fill: "currentColor", className: "text-muted-foreground" }} />
           <Tooltip content={<CustomTooltipContent />} />
           <defs>
             <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
-              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+              <stop offset="5%" stopColor="#FF6A3D" stopOpacity={0.4} />
+              <stop offset="95%" stopColor="#FF6A3D" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <Area type="monotone" dataKey="value" stroke="#8b5cf6" fill="url(#areaGrad)" strokeWidth={2} />
+          <Area type="monotone" dataKey="value" stroke="#FF6A3D" fill="url(#areaGrad)" strokeWidth={2} />
         </AreaChart>
       </ResponsiveContainer>
     </div>
@@ -945,7 +945,7 @@ function SortableTable({
 
   const SortHeader = ({ col, children }: { col: string; children: string }) => (
     <th
-      className="px-3 py-2 text-left text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50 cursor-pointer select-none"
+      className="px-3 py-2 text-left text-[13px] text-muted-foreground cursor-pointer select-none font-medium"
       onClick={() => toggleSort(col)}
       data-testid={`sort-header-${col}`}
     >
@@ -961,10 +961,10 @@ function SortableTable({
       case "kind":
         return sorted.map((row, i) => (
           <tr key={i} className={i % 2 === 0 ? "opacity-100" : "opacity-80"} data-testid={`table-row-${i}`}>
-            <td className="px-3 py-2 text-xs font-mono text-brand">{String(row.metadata?.kind ?? "")}</td>
+            <td className="px-3 py-2 text-xs tabular-nums text-muted-foreground">{String(row.metadata?.kind ?? "")}</td>
             <td className="px-3 py-2 text-xs">{row.label}</td>
-            <td className="px-3 py-2 text-xs font-mono">{row.value.toLocaleString()}</td>
-            <td className="px-3 py-2 text-xs font-mono text-muted-foreground">{row.metadata?.percent as string}%</td>
+            <td className="px-3 py-2 text-xs tabular-nums">{row.value.toLocaleString()}</td>
+            <td className="px-3 py-2 text-xs tabular-nums text-muted-foreground">{row.metadata?.percent as string}%</td>
           </tr>
         ));
       case "author":
@@ -981,7 +981,7 @@ function SortableTable({
               <td className="px-3 py-2 text-xs">
                 <ProfileLink pubkey={pubkey} displayName={profile?.displayName} className="text-foreground font-medium" fallbackClassName="text-brand font-mono" />
               </td>
-              <td className="px-3 py-2 text-xs font-mono">{row.value.toLocaleString()}</td>
+              <td className="px-3 py-2 text-xs tabular-nums">{row.value.toLocaleString()}</td>
               <td className="px-3 py-2 text-xs truncate max-w-[200px]">{row.metadata?.kindsUsed as string}</td>
               <td className="px-3 py-2 text-xs text-muted-foreground">
                 {row.metadata?.lastActive ? formatDistanceToNow(new Date((row.metadata.lastActive as number) * 1000), { addSuffix: true }) : "-"}
@@ -993,24 +993,24 @@ function SortableTable({
       case "day":
         return sorted.map((row, i) => (
           <tr key={i} className={i % 2 === 0 ? "opacity-100" : "opacity-80"} data-testid={`table-row-${i}`}>
-            <td className="px-3 py-2 text-xs font-mono text-brand">{row.label}</td>
-            <td className="px-3 py-2 text-xs font-mono">{row.value.toLocaleString()}</td>
+            <td className="px-3 py-2 text-xs text-foreground">{row.label}</td>
+            <td className="px-3 py-2 text-xs tabular-nums">{row.value.toLocaleString()}</td>
             <td className="px-3 py-2 text-xs">{row.metadata?.topKind as string}</td>
           </tr>
         ));
       case "hashtag":
         return sorted.map((row, i) => (
           <tr key={i} className={i % 2 === 0 ? "opacity-100" : "opacity-80"} data-testid={`table-row-${i}`}>
-            <td className="px-3 py-2 text-xs font-mono text-brand">{row.label}</td>
-            <td className="px-3 py-2 text-xs font-mono">{row.value.toLocaleString()}</td>
+            <td className="px-3 py-2 text-xs text-foreground">{row.label}</td>
+            <td className="px-3 py-2 text-xs tabular-nums">{row.value.toLocaleString()}</td>
             <td className="px-3 py-2 text-xs">{row.metadata?.topKind as string}</td>
           </tr>
         ));
       case "contentType":
         return sorted.map((row, i) => (
           <tr key={i} className={i % 2 === 0 ? "opacity-100" : "opacity-80"} data-testid={`table-row-${i}`}>
-            <td className="px-3 py-2 text-xs text-brand">{row.label}</td>
-            <td className="px-3 py-2 text-xs font-mono">{row.value.toLocaleString()}</td>
+            <td className="px-3 py-2 text-xs text-foreground">{row.label}</td>
+            <td className="px-3 py-2 text-xs tabular-nums">{row.value.toLocaleString()}</td>
             <td className="px-3 py-2 text-xs text-muted-foreground">{row.metadata?.avgEngagement as string}</td>
           </tr>
         ));
@@ -1025,33 +1025,33 @@ function SortableTable({
             <SortHeader col="kind">Kind</SortHeader>
             <SortHeader col="label">Label</SortHeader>
             <SortHeader col="value">Count</SortHeader>
-            <SortHeader col="percent">% of Total</SortHeader>
+            <SortHeader col="percent">% of total</SortHeader>
           </tr>
         );
       case "author":
         return (
           <tr>
             <SortHeader col="label">Author</SortHeader>
-            <SortHeader col="value">Event Count</SortHeader>
-            <SortHeader col="kinds">Kinds Used</SortHeader>
-            <SortHeader col="lastActive">Last Active</SortHeader>
+            <SortHeader col="value">Event count</SortHeader>
+            <SortHeader col="kinds">Kinds used</SortHeader>
+            <SortHeader col="lastActive">Last active</SortHeader>
           </tr>
         );
       case "hour":
       case "day":
         return (
           <tr>
-            <SortHeader col="label">Time Period</SortHeader>
-            <SortHeader col="value">Event Count</SortHeader>
-            <SortHeader col="topKind">Top Kind</SortHeader>
+            <SortHeader col="label">Time period</SortHeader>
+            <SortHeader col="value">Event count</SortHeader>
+            <SortHeader col="topKind">Top kind</SortHeader>
           </tr>
         );
       case "hashtag":
         return (
           <tr>
             <SortHeader col="label">Hashtag</SortHeader>
-            <SortHeader col="value">Mention Count</SortHeader>
-            <SortHeader col="topKind">Top Kind</SortHeader>
+            <SortHeader col="value">Mention count</SortHeader>
+            <SortHeader col="topKind">Top kind</SortHeader>
           </tr>
         );
       case "contentType":
@@ -1059,13 +1059,12 @@ function SortableTable({
           <tr>
             <SortHeader col="label">Type</SortHeader>
             <SortHeader col="value">Count</SortHeader>
-            <SortHeader col="avg">Avg Engagement</SortHeader>
+            <SortHeader col="avg">Avg engagement</SortHeader>
           </tr>
         );
     }
   };
 
-  const paginatedSorted = useMemo(() => sorted.slice(0, visibleCount), [sorted, visibleCount]);
   const hasMore = sorted.length > visibleCount;
 
   const renderPaginatedRows = () => {
@@ -1078,12 +1077,12 @@ function SortableTable({
     <div className="overflow-x-auto -mx-3 sm:mx-0 rounded-md" data-testid="results-table">
       <div className="min-w-[360px]">
         <table className="w-full">
-          <thead className="border-b border-brand/20">{renderHeaders()}</thead>
+          <thead className="border-b border-border/60">{renderHeaders()}</thead>
           <tbody>{renderPaginatedRows()}</tbody>
         </table>
       </div>
-      <div className="px-3 py-2 flex items-center justify-between flex-wrap gap-2 border-t border-brand/10">
-        <span className="text-[10px] text-muted-foreground/50 font-brand uppercase tracking-widest">
+      <div className="px-3 py-2 flex items-center justify-between flex-wrap gap-2 border-t border-border/60">
+        <span className="text-[13px] text-muted-foreground font-medium">
           Showing {Math.min(visibleCount, data.length).toLocaleString()} of {data.length.toLocaleString()} rows | {totalEvents.toLocaleString()} total events
         </span>
         {hasMore && (
@@ -1156,7 +1155,7 @@ function getRenderedSnippet(event: Event, profileMap?: Map<string, { displayName
     if (!innerText) {
       const eTag = event.tags.find(t => t[0] === "e" && t[1]);
       if (eTag) {
-        try { innerText = `Reposted ${nip19.noteEncode(eTag[1]).slice(0, 16)}…`; } catch { innerText = "Reposted a note"; }
+        try { innerText = `Reposted ${nip19.noteEncode(eTag[1]).slice(0, 16)}…`; } catch { innerText = "Reposted a post"; }
       } else innerText = "Repost";
     }
     const truncated = innerText.length > 200 ? innerText.slice(0, 200) + "..." : innerText;
@@ -1166,7 +1165,7 @@ function getRenderedSnippet(event: Event, profileMap?: Map<string, { displayName
   if (event.kind === 7) {
     const emoji = event.content || "❤️";
     const eTag = event.tags.find(t => t[0] === "e" && t[1]);
-    const text = eTag ? `Reacted ${emoji} to a note` : `Reaction: ${emoji}`;
+    const text = eTag ? `Reacted ${emoji} to a post` : `Reaction: ${emoji}`;
     return { text, icon: "reaction" };
   }
 
@@ -1246,35 +1245,35 @@ function EventFeed({ events, profileMap }: { events: Event[]; profileMap?: Map<s
 
   return (
     <Collapsible open={feedOpen} onOpenChange={setFeedOpen}>
-      <div className="border-t border-brand/10 pt-3">
+      <div className="border-t border-border/60 pt-3">
         <CollapsibleTrigger asChild>
           <button className="flex items-center gap-2 w-full text-left" data-testid="toggle-event-feed">
-            <Radio className="w-3.5 h-3.5 text-brand" />
-            <span className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-              Event Feed
+            <Radio className="w-3.5 h-3.5 text-foreground/70" />
+            <span className="text-[13px] text-muted-foreground font-medium">
+              Event feed
             </span>
-            <Badge variant="secondary" className="text-[9px]">{events.length.toLocaleString()}</Badge>
+            <Badge variant="secondary" className="text-[12px]">{events.length.toLocaleString()}</Badge>
             {feedOpen && (
-              <span className="text-[9px] text-muted-foreground/30">
+              <span className="text-[12px] text-muted-foreground">
                 Newest first · {Math.min(visibleCount, filteredEvents.length)} of {filteredEvents.length.toLocaleString()}
                 {feedTierFilter !== "all" && ` (filtered from ${events.length.toLocaleString()})`}
               </span>
             )}
             <div className="flex-1" />
-            {feedOpen ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground/40" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/40" />}
+            {feedOpen ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
           {globalWotEnabled && wotScores && wotScores.size > 0 && (
             <div className="mt-2 flex items-center gap-1.5 flex-wrap" data-testid="feed-tier-filter">
-              <ShieldCheck className="w-3 h-3 text-muted-foreground/40" />
+              <ShieldCheck className="w-3 h-3 text-muted-foreground" />
               {FEED_TIER_OPTIONS.map((opt) => (
                 <button
                   key={opt.tier}
                   onClick={(e) => { e.stopPropagation(); setFeedTierFilter(opt.tier); }}
-                  className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                  className={`px-2 py-0.5 rounded text-[12px] font-medium transition-colors ${
                     feedTierFilter === opt.tier
-                      ? "bg-brand dark:bg-brand/20 text-foreground border border-brand/40 dark:border-brand/30"
+                      ? "bg-foreground text-background border border-foreground"
                       : "bg-secondary/50 text-foreground/70 border border-transparent hover:bg-secondary"
                   }`}
                   data-testid={`feed-tier-${opt.tier}`}
@@ -1306,7 +1305,7 @@ function EventFeed({ events, profileMap }: { events: Event[]; profileMap?: Map<s
                   </div>
                   <div className="flex-1 min-w-0 space-y-0.5">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <Badge variant="secondary" className={`text-[9px] px-1.5 py-0 ${
+                      <Badge variant="secondary" className={`text-[12px] px-1.5 py-0 ${
                         event.kind === 6 ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
                         event.kind === 7 ? "bg-pink-500/10 text-pink-500 border-pink-500/20" :
                         event.kind === 9735 ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : ""
@@ -1316,20 +1315,20 @@ function EventFeed({ events, profileMap }: { events: Event[]; profileMap?: Map<s
                         {snippet?.icon === "zap" && <Zap className="w-2.5 h-2.5 mr-0.5 inline" />}
                         {kindLabel}
                       </Badge>
-                      <span className="text-[10px] text-muted-foreground/40">
+                      <span className="text-[12px] text-muted-foreground">
                         {formatDistanceToNow(new Date(event.created_at * 1000), { addSuffix: true })}
                       </span>
                     </div>
                     {threadUrl ? (
                       <Link
                         href={threadUrl}
-                        className="block text-[11px] text-muted-foreground/70 leading-relaxed break-words line-clamp-3 hover:text-foreground/80 transition-colors cursor-pointer"
+                        className="block text-[12px] text-muted-foreground leading-relaxed break-words line-clamp-3 hover:text-foreground/80 transition-colors cursor-pointer"
                       >
                         {snippet?.text || "View event"}
                         <ExternalLink className="w-2.5 h-2.5 ml-1 inline opacity-0 group-hover:opacity-50 transition-opacity" />
                       </Link>
                     ) : snippet?.text ? (
-                      <p className="text-[11px] text-muted-foreground/70 leading-relaxed break-words line-clamp-3">
+                      <p className="text-[12px] text-muted-foreground leading-relaxed break-words line-clamp-3">
                         {snippet.text}
                       </p>
                     ) : null}
@@ -1338,7 +1337,7 @@ function EventFeed({ events, profileMap }: { events: Event[]; profileMap?: Map<s
               );
             })}
             {filteredEvents.length === 0 && events.length > 0 && (
-              <p className="text-xs text-muted-foreground/50 text-center py-4">
+              <p className="text-xs text-muted-foreground text-center py-4">
                 No events match the selected trust tier
               </p>
             )}
@@ -1398,23 +1397,23 @@ function OnlineUserCard({ pubkey, activity, score }: { pubkey: string; activity:
   let npubStr = "";
   try { npubStr = nip19.npubEncode(pubkey); } catch {}
 
-  const meta = ACTIVITY_META[activity] || { label: activity, color: "text-muted-foreground/50", icon: "•" };
+  const meta = ACTIVITY_META[activity] || { label: activity, color: "text-muted-foreground", icon: "•" };
 
   return (
     <Link href={npubStr ? `/profile/${npubStr}` : "#"} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-      <div className="group flex flex-col items-center gap-0.5 p-2 sm:p-2.5 rounded-xl border border-black/[0.06] dark:border-white/[0.04] bg-black/[0.02] dark:bg-white/[0.02] hover:border-brand/20 hover:bg-brand/[0.04] transition-all duration-200 cursor-pointer min-w-0">
+      <div className="group flex flex-col items-center gap-0.5 p-2 sm:p-2.5 rounded-xl border border-black/[0.06] dark:border-white/[0.04] bg-black/[0.02] dark:bg-white/[0.02] hover:border-border/60 hover:bg-brand/[0.04] transition-all duration-200 cursor-pointer min-w-0">
         <div className="relative mb-0.5">
           <Avatar className="w-9 h-9 sm:w-10 sm:h-10 ring-1 ring-black/[0.06] dark:ring-white/[0.06] group-hover:ring-brand/20 transition-all">
             {picture ? <AvatarImage src={picture} alt={name} /> : null}
-            <AvatarFallback className="bg-brand/10 text-brand text-[10px] font-bold">
+            <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[12px] font-bold">
               {name.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <TrustTierDot pubkey={pubkey} />
         </div>
-        <span className="text-[10px] text-foreground/90 truncate w-full text-center leading-tight font-medium">{name}</span>
-        <span className="text-[9px] text-muted-foreground/50 tabular-nums leading-none">{formatInfluence(score)}</span>
-        <span className={`text-[8px] ${meta.color} flex items-center gap-0.5 leading-none`}>
+        <span className="text-[12px] text-foreground/90 truncate w-full text-center leading-tight font-medium">{name}</span>
+        <span className="text-[12px] text-muted-foreground tabular-nums leading-none">{formatInfluence(score)}</span>
+        <span className={`text-[12px] ${meta.color} flex items-center gap-0.5 leading-none`}>
           <span className="text-[7px]">{meta.icon}</span>
           {meta.label}
         </span>
@@ -1507,7 +1506,7 @@ function OnlineWotDialog({ open, onOpenChange, onlineCount }: { open: boolean; o
     moderate: "border-blue-500/40 dark:border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10",
     low: "border-yellow-500/40 dark:border-yellow-500/30 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/10",
     weak: "border-orange-500/40 dark:border-orange-500/30 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10",
-    none: "border-muted-foreground/25 dark:border-muted-foreground/20 text-muted-foreground/70 dark:text-muted-foreground/60 hover:bg-muted/20",
+    none: "border-muted-foreground/25 dark:border-muted-foreground/20 text-muted-foreground dark:text-muted-foreground hover:bg-muted/20",
   };
 
   const TIER_BUTTON_ACTIVE: Record<string, string> = {
@@ -1527,9 +1526,9 @@ function OnlineWotDialog({ open, onOpenChange, onlineCount }: { open: boolean; o
               <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-cyan-500/10">
                 <Users className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400" />
               </div>
-              <span className="font-display">Active Today</span>
+              <span className="font-medium">Active today</span>
               <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-              <Badge variant="outline" className="text-[10px] border-green-500/30 dark:border-green-500/20 text-success dark:text-green-400/80 font-mono tabular-nums">
+              <Badge variant="outline" className="text-[12px] border-green-500/30 dark:border-green-500/20 text-success dark:text-green-400/80 font-mono tabular-nums">
                 {onlineCount.toLocaleString()} online
               </Badge>
             </DialogTitle>
@@ -1539,10 +1538,10 @@ function OnlineWotDialog({ open, onOpenChange, onlineCount }: { open: boolean; o
             <div className="flex flex-wrap gap-1.5 mt-3" role="group" aria-label="Filter by relationship" data-testid="container-relation-filters">
               <button
                 type="button"
-                className={`h-6 text-[10px] px-2.5 rounded-full border transition-all duration-150 ${
+                className={`h-6 text-[12px] px-2.5 rounded-full border transition-all duration-150 ${
                   relationFilter === "all"
                     ? "bg-cyan-500/15 border-cyan-500/50 dark:border-cyan-500/40 text-cyan-700 dark:text-cyan-300"
-                    : "border-black/[0.08] dark:border-white/[0.08] text-muted-foreground/70 dark:text-muted-foreground/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+                    : "border-black/[0.08] dark:border-white/[0.08] text-muted-foreground dark:text-muted-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
                 }`}
                 onClick={() => setRelationFilter("all")}
                 aria-pressed={relationFilter === "all"}
@@ -1553,10 +1552,10 @@ function OnlineWotDialog({ open, onOpenChange, onlineCount }: { open: boolean; o
               {hasFollowing && (
                 <button
                   type="button"
-                  className={`h-6 text-[10px] px-2.5 rounded-full border transition-all duration-150 inline-flex items-center gap-1.5 ${
+                  className={`h-6 text-[12px] px-2.5 rounded-full border transition-all duration-150 inline-flex items-center gap-1.5 ${
                     relationFilter === "following"
                       ? "bg-cyan-500/15 border-cyan-500/50 dark:border-cyan-500/40 text-cyan-700 dark:text-cyan-300"
-                      : "border-black/[0.08] dark:border-white/[0.08] text-muted-foreground/70 dark:text-muted-foreground/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+                      : "border-black/[0.08] dark:border-white/[0.08] text-muted-foreground dark:text-muted-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
                   }`}
                   onClick={() => setRelationFilter("following")}
                   aria-pressed={relationFilter === "following"}
@@ -1564,16 +1563,16 @@ function OnlineWotDialog({ open, onOpenChange, onlineCount }: { open: boolean; o
                   data-testid="button-relation-following"
                 >
                   Following
-                  <span className="font-mono tabular-nums text-[9px] opacity-70">{followingOnlineCount}</span>
+                  <span className="font-mono tabular-nums text-[12px] opacity-70">{followingOnlineCount}</span>
                 </button>
               )}
               {hasFollowers && (
                 <button
                   type="button"
-                  className={`h-6 text-[10px] px-2.5 rounded-full border transition-all duration-150 inline-flex items-center gap-1.5 ${
+                  className={`h-6 text-[12px] px-2.5 rounded-full border transition-all duration-150 inline-flex items-center gap-1.5 ${
                     relationFilter === "followers"
                       ? "bg-cyan-500/15 border-cyan-500/50 dark:border-cyan-500/40 text-cyan-700 dark:text-cyan-300"
-                      : "border-black/[0.08] dark:border-white/[0.08] text-muted-foreground/70 dark:text-muted-foreground/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+                      : "border-black/[0.08] dark:border-white/[0.08] text-muted-foreground dark:text-muted-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
                   }`}
                   onClick={() => setRelationFilter("followers")}
                   aria-pressed={relationFilter === "followers"}
@@ -1581,7 +1580,7 @@ function OnlineWotDialog({ open, onOpenChange, onlineCount }: { open: boolean; o
                   data-testid="button-relation-followers"
                 >
                   Followers
-                  <span className="font-mono tabular-nums text-[9px] opacity-70">{followersOnlineCount}</span>
+                  <span className="font-mono tabular-nums text-[12px] opacity-70">{followersOnlineCount}</span>
                 </button>
               )}
             </div>
@@ -1591,10 +1590,10 @@ function OnlineWotDialog({ open, onOpenChange, onlineCount }: { open: boolean; o
             <div className="flex flex-wrap gap-1.5 mt-3">
               <button
                 type="button"
-                className={`h-6 text-[10px] px-2.5 rounded-full border transition-all duration-150 ${
+                className={`h-6 text-[12px] px-2.5 rounded-full border transition-all duration-150 ${
                   tierFilter === "all"
-                    ? "bg-brand/15 border-brand/50 dark:border-brand/40 text-brand"
-                    : "border-black/[0.08] dark:border-white/[0.08] text-muted-foreground/70 dark:text-muted-foreground/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+                    ? "bg-foreground border-foreground text-background"
+                    : "border-black/[0.08] dark:border-white/[0.08] text-muted-foreground dark:text-muted-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
                 }`}
                 onClick={() => setTierFilter("all")}
               >
@@ -1604,7 +1603,7 @@ function OnlineWotDialog({ open, onOpenChange, onlineCount }: { open: boolean; o
                 <button
                   key={tier}
                   type="button"
-                  className={`h-6 text-[10px] px-2.5 rounded-full border transition-all duration-150 ${
+                  className={`h-6 text-[12px] px-2.5 rounded-full border transition-all duration-150 ${
                     tierFilter === tier
                       ? TIER_BUTTON_ACTIVE[tier]
                       : TIER_BUTTON_STYLES[tier]
@@ -1621,12 +1620,12 @@ function OnlineWotDialog({ open, onOpenChange, onlineCount }: { open: boolean; o
         {fetchingActive ? (
           <div className="flex flex-col items-center justify-center py-14 gap-3">
             <RelayOutpostInlineLoader className="w-6 h-6" />
-            <p className="text-xs text-muted-foreground/50">Loading active users from Archives...</p>
+            <p className="text-xs text-muted-foreground">Loading active users from Archives...</p>
           </div>
         ) : (
           <div className="overflow-y-auto flex-1 min-h-0 px-3 sm:px-4">
             {filteredAndSorted.length === 0 ? (
-              <p className="text-xs text-muted-foreground/50 text-center py-10">
+              <p className="text-xs text-muted-foreground text-center py-10">
                 {activeUsers.length === 0 ? "No active users found" : "No users match this trust tier"}
               </p>
             ) : (
@@ -1637,7 +1636,7 @@ function OnlineWotDialog({ open, onOpenChange, onlineCount }: { open: boolean; o
               </div>
             )}
             {filteredAndSorted.length > 120 && (
-              <p className="text-[10px] text-muted-foreground/30 text-center pb-2">
+              <p className="text-[12px] text-muted-foreground text-center pb-2">
                 Showing 120 of {filteredAndSorted.length} active users
               </p>
             )}
@@ -1645,7 +1644,7 @@ function OnlineWotDialog({ open, onOpenChange, onlineCount }: { open: boolean; o
         )}
 
         <div className="px-4 sm:px-5 py-2.5 border-t border-black/[0.06] dark:border-white/[0.06] bg-black/[0.01] dark:bg-white/[0.01]">
-          <p className="text-[9px] text-muted-foreground/35 text-center tracking-wide">
+          <p className="text-[12px] text-muted-foreground text-center tracking-wide">
             Powered by Archives &middot; Filtered by Brainstorm Web of Trust
           </p>
         </div>
@@ -1708,8 +1707,8 @@ function NetworkPulse({ pubkey }: { pubkey?: string }) {
       <Card className="glass-card overflow-hidden" data-testid="network-pulse">
         <div className="p-3 sm:p-4">
           <div className="flex items-center gap-2">
-            <Globe className="w-3.5 h-3.5 text-muted-foreground/40" />
-            <span className="text-xs text-muted-foreground/50">Network Pulse temporarily unavailable</span>
+            <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Network Pulse temporarily unavailable</span>
           </div>
         </div>
       </Card>
@@ -1734,10 +1733,10 @@ function NetworkPulse({ pubkey }: { pubkey?: string }) {
     <Card className="glass-card overflow-hidden" data-testid="network-pulse">
       <div className="p-3 sm:p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <Globe className="w-3.5 h-3.5 text-brand" />
-          <h3 className="text-xs font-display text-muted-foreground">Network Pulse</h3>
+          <Globe className="w-3.5 h-3.5 text-foreground/70" />
+          <h3 className="text-[15px] font-semibold text-foreground">Network pulse</h3>
           <a href="https://nostrarchives.com" target="_blank" rel="noopener noreferrer">
-            <Badge variant="secondary" className="text-[9px] cursor-pointer hover:bg-brand/20 hover:text-brand transition-colors gap-1"><span className="opacity-50 font-normal">powered by</span> Archives</Badge>
+            <Badge variant="secondary" className="text-[12px] cursor-pointer hover:bg-brand/20 hover:text-brand transition-colors gap-1"><span className="font-normal">powered by</span> Archives</Badge>
           </a>
         </div>
 
@@ -1758,84 +1757,84 @@ function NetworkPulse({ pubkey }: { pubkey?: string }) {
                       title="Click to see active users today filtered by trust"
                     >
                       <div className="flex items-center gap-1.5">
-                        <Users className="w-3 h-3 text-cyan-600/70 dark:text-cyan-400/70" />
+                        <Users className="w-3 h-3 text-foreground/70" />
                         <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                        <p className="text-[9px] sm:text-[10px] text-cyan-600/70 dark:text-cyan-400/70 font-brand uppercase tracking-widest">Online Now</p>
+                        <p className="text-[12px] sm:text-[13px] text-muted-foreground font-medium">Online now</p>
                       </div>
-                      <p className="text-xl sm:text-2xl font-mono font-bold text-foreground">{formatBigNumber(liveMetrics.online)}</p>
-                      <p className="text-[9px] text-muted-foreground/40">click to view by WoT</p>
+                      <p className="text-xl sm:text-2xl font-semibold tabular-nums text-foreground">{formatBigNumber(liveMetrics.online)}</p>
+                      <p className="text-[12px] text-muted-foreground">click to view by trust</p>
                     </button>
                     <div className="rounded-lg border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.06] to-amber-500/[0.02] p-2.5 sm:p-3 space-y-1">
                       <div className="flex items-center gap-1.5">
-                        <Zap className="w-3 h-3 text-amber-600/70 dark:text-amber-400/70" />
+                        <Zap className="w-3 h-3 text-foreground/70" />
                         <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                        <p className="text-[9px] sm:text-[10px] text-amber-600/70 dark:text-amber-400/70 font-brand uppercase tracking-widest">Live Sats</p>
+                        <p className="text-[12px] sm:text-[13px] text-muted-foreground font-medium">Live sats</p>
                       </div>
-                      <p className="text-xl sm:text-2xl font-mono font-bold text-foreground">{formatBigNumber(liveMetrics.sats)}</p>
-                      <p className="text-[9px] text-muted-foreground/40">live from archives</p>
+                      <p className="text-xl sm:text-2xl font-semibold tabular-nums text-foreground">{formatBigNumber(liveMetrics.sats)}</p>
+                      <p className="text-[12px] text-muted-foreground">live from archives</p>
                     </div>
                     <div className="rounded-lg border border-blue-500/20 bg-gradient-to-br from-blue-500/[0.06] to-blue-500/[0.02] p-2.5 sm:p-3 space-y-1">
                       <div className="flex items-center gap-1.5">
-                        <FileText className="w-3 h-3 text-blue-600/70 dark:text-blue-400/70" />
+                        <FileText className="w-3 h-3 text-foreground/70" />
                         <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-                        <p className="text-[9px] sm:text-[10px] text-blue-600/70 dark:text-blue-400/70 font-brand uppercase tracking-widest">Live Notes</p>
+                        <p className="text-[12px] sm:text-[13px] text-muted-foreground font-medium">Live posts</p>
                       </div>
-                      <p className="text-xl sm:text-2xl font-mono font-bold text-foreground">{formatBigNumber(liveMetrics.notes)}</p>
-                      <p className="text-[9px] text-muted-foreground/40">live from archives</p>
+                      <p className="text-xl sm:text-2xl font-semibold tabular-nums text-foreground">{formatBigNumber(liveMetrics.notes)}</p>
+                      <p className="text-[12px] text-muted-foreground">live from archives</p>
                     </div>
                   </div>
                 )}
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <p className="text-[9px] text-muted-foreground/50 font-brand uppercase tracking-widest">All-time totals · powered by Archives</p>
+                    <p className="text-[12px] text-muted-foreground font-medium">All-time totals · powered by Archives</p>
                     {statsFetchedAt && (
-                      <p className="text-[9px] text-muted-foreground/40">
+                      <p className="text-[12px] text-muted-foreground">
                         updated {statsFetchedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </p>
                     )}
                   </div>
                   <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.04] p-2.5 sm:p-3 space-y-1">
+                    <div className="rounded-lg border border-border/60 bg-foreground/[0.03] p-2.5 sm:p-3 space-y-1">
                       <div className="flex items-center gap-1.5">
-                        <Users className="w-3 h-3 text-emerald-600/70 dark:text-emerald-400/70" />
-                        <p className="text-[9px] sm:text-[10px] text-success dark:text-emerald-400/70 font-brand uppercase tracking-widest">Unique Pubkeys</p>
+                        <Users className="w-3 h-3 text-foreground/70" />
+                        <p className="text-[12px] sm:text-[13px] text-muted-foreground font-medium">Unique pubkeys</p>
                       </div>
-                      <p className="text-xl sm:text-2xl font-mono font-bold text-foreground">{formatBigNumber(uniquePubkeys)}</p>
+                      <p className="text-xl sm:text-2xl font-semibold tabular-nums text-foreground">{formatBigNumber(uniquePubkeys)}</p>
                     </div>
-                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.04] p-2.5 sm:p-3 space-y-1">
+                    <div className="rounded-lg border border-border/60 bg-foreground/[0.03] p-2.5 sm:p-3 space-y-1">
                       <div className="flex items-center gap-1.5">
-                        <Zap className="w-3 h-3 text-amber-600/70 dark:text-amber-400/70" />
-                        <p className="text-[9px] sm:text-[10px] text-amber-600/70 dark:text-amber-400/70 font-brand uppercase tracking-widest">Zap Events</p>
+                        <Zap className="w-3 h-3 text-foreground/70" />
+                        <p className="text-[12px] sm:text-[13px] text-muted-foreground font-medium">Zap events</p>
                       </div>
-                      <p className="text-xl sm:text-2xl font-mono font-bold text-foreground">{formatBigNumber(totalZaps)}</p>
+                      <p className="text-xl sm:text-2xl font-semibold tabular-nums text-foreground">{formatBigNumber(totalZaps)}</p>
                     </div>
-                    <div className="rounded-lg border border-blue-500/20 bg-blue-500/[0.04] p-2.5 sm:p-3 space-y-1">
+                    <div className="rounded-lg border border-border/60 bg-foreground/[0.03] p-2.5 sm:p-3 space-y-1">
                       <div className="flex items-center gap-1.5">
-                        <FileText className="w-3 h-3 text-blue-600/70 dark:text-blue-400/70" />
-                        <p className="text-[9px] sm:text-[10px] text-blue-600/70 dark:text-blue-400/70 font-brand uppercase tracking-widest">Total Notes</p>
+                        <FileText className="w-3 h-3 text-foreground/70" />
+                        <p className="text-[12px] sm:text-[13px] text-muted-foreground font-medium">Total posts</p>
                       </div>
-                      <p className="text-xl sm:text-2xl font-mono font-bold text-foreground">{formatBigNumber(totalNotes)}</p>
+                      <p className="text-xl sm:text-2xl font-semibold tabular-nums text-foreground">{formatBigNumber(totalNotes)}</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="space-y-0.5">
-                    <p className="text-[10px] text-muted-foreground/50 font-brand uppercase tracking-widest">Total Events</p>
-                    <p className="text-lg font-mono font-semibold text-foreground">{formatBigNumber(stats.total_events)}</p>
+                    <p className="text-[13px] text-muted-foreground font-medium">Total events</p>
+                    <p className="text-lg font-semibold tabular-nums text-foreground">{formatBigNumber(stats.total_events)}</p>
                   </div>
                   <div className="space-y-0.5">
-                    <p className="text-[10px] text-muted-foreground/50 font-brand uppercase tracking-widest">Reactions</p>
-                    <p className="text-lg font-mono font-semibold text-foreground">{formatBigNumber(stats.events_by_kind?.find(k => k.kind === 7)?.count)}</p>
+                    <p className="text-[13px] text-muted-foreground font-medium">Reactions</p>
+                    <p className="text-lg font-semibold tabular-nums text-foreground">{formatBigNumber(stats.events_by_kind?.find(k => k.kind === 7)?.count)}</p>
                   </div>
                   <div className="space-y-0.5">
-                    <p className="text-[10px] text-muted-foreground/50 font-brand uppercase tracking-widest">Reposts</p>
-                    <p className="text-lg font-mono font-semibold text-foreground">{formatBigNumber(stats.events_by_kind?.find(k => k.kind === 6)?.count)}</p>
+                    <p className="text-[13px] text-muted-foreground font-medium">Reposts</p>
+                    <p className="text-lg font-semibold tabular-nums text-foreground">{formatBigNumber(stats.events_by_kind?.find(k => k.kind === 6)?.count)}</p>
                   </div>
                   <div className="space-y-0.5">
-                    <p className="text-[10px] text-muted-foreground/50 font-brand uppercase tracking-widest">Ingestion Rate</p>
-                    <p className="text-lg font-mono font-semibold text-brand">
+                    <p className="text-[13px] text-muted-foreground font-medium">Ingestion rate</p>
+                    <p className="text-lg font-semibold tabular-nums text-foreground">
                       {ingestionRate != null ? `${formatBigNumber(Math.round(ingestionRate))}/min` : "—"}
                     </p>
                   </div>
@@ -1852,13 +1851,13 @@ function NetworkPulse({ pubkey }: { pubkey?: string }) {
                   }))}>
                     <defs>
                       <linearGradient id="pulseGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#FF6A3D" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#FF6A3D" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <XAxis dataKey="date" tick={{ fontSize: 9 }} stroke="#666" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#666" />
                     <Tooltip content={<CustomTooltipContent />} />
-                    <Area type="monotone" dataKey="events" stroke="#8b5cf6" fill="url(#pulseGradient)" strokeWidth={1.5} />
+                    <Area type="monotone" dataKey="events" stroke="#FF6A3D" fill="url(#pulseGradient)" strokeWidth={1.5} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -1868,23 +1867,23 @@ function NetworkPulse({ pubkey }: { pubkey?: string }) {
               <div className="border-t border-border/20 pt-2">
                 <div className="flex items-center gap-2 mb-2">
                   <Zap className="w-3 h-3 text-yellow-500" />
-                  <span className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Your Zap Economy</span>
+                  <span className="text-[13px] text-muted-foreground font-medium">Your zap economy</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="space-y-0.5">
-                    <p className="text-[10px] text-muted-foreground/50">Received</p>
-                    <p className="text-sm font-mono font-semibold text-success dark:text-green-400">{formatBigNumber(zapStats.total_received)} sats</p>
+                    <p className="text-[12px] text-muted-foreground">Received</p>
+                    <p className="text-sm font-semibold tabular-nums text-success dark:text-green-400">{formatBigNumber(zapStats.total_received)} sats</p>
                   </div>
                   <div className="space-y-0.5">
-                    <p className="text-[10px] text-muted-foreground/50">Sent</p>
-                    <p className="text-sm font-mono font-semibold text-orange-600 dark:text-orange-400">{formatBigNumber(zapStats.total_sent)} sats</p>
+                    <p className="text-[12px] text-muted-foreground">Sent</p>
+                    <p className="text-sm font-semibold tabular-nums text-orange-600 dark:text-orange-400">{formatBigNumber(zapStats.total_sent)} sats</p>
                   </div>
                   <div className="space-y-0.5">
-                    <p className="text-[10px] text-muted-foreground/50">Zaps In</p>
+                    <p className="text-[12px] text-muted-foreground">Zaps in</p>
                     <p className="text-sm font-mono">{formatBigNumber(zapStats.zap_count_received)}</p>
                   </div>
                   <div className="space-y-0.5">
-                    <p className="text-[10px] text-muted-foreground/50">Zaps Out</p>
+                    <p className="text-[12px] text-muted-foreground">Zaps out</p>
                     <p className="text-sm font-mono">{formatBigNumber(zapStats.zap_count_sent)}</p>
                   </div>
                 </div>
@@ -2509,28 +2508,28 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
       <Card className="glass-card overflow-hidden min-w-0" data-testid="report-builder">
         <div className="p-3 sm:p-6 space-y-4 sm:space-y-5">
           <div className="flex items-center gap-2 flex-wrap">
-            <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand shrink-0" />
-            <h2 className="text-xs sm:text-sm font-display text-muted-foreground">Report Builder</h2>
+            <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground/70 shrink-0" />
+            <h2 className="text-[15px] font-semibold text-foreground">Report builder</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-                  Data Source
+                <Label className="text-[13px] text-muted-foreground font-medium">
+                  Data source
                 </Label>
                 <div className="space-y-2">
                   {ENGAGEMENT_GROUPS.map((group) => (
                     <div key={group.label}>
-                      <p className="text-[9px] font-brand uppercase tracking-widest text-muted-foreground/30 mb-1">{group.label}</p>
+                      <p className="text-[12px] text-muted-foreground mb-1 font-medium">{group.label}</p>
                       <div className="flex flex-wrap gap-1.5">
                         {group.options.map((opt) => (
                           <button
                             key={opt.kind}
                             onClick={() => toggleEngagementType(opt.kind)}
-                            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                            className={`px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors ${
                               selectedEngagementTypes.includes(opt.kind)
-                                ? "bg-brand dark:bg-brand/20 text-foreground border border-brand/40 dark:border-brand/30"
+                                ? "bg-foreground text-background border border-foreground"
                                 : "bg-secondary/50 text-foreground/70 dark:text-foreground/70 border border-transparent hover:bg-secondary"
                             }`}
                             data-testid={`toggle-engagement-${opt.label.toLowerCase().replace(/\s+/g, "-")}`}
@@ -2546,11 +2545,11 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-                    Time Range
+                  <Label className="text-[13px] text-muted-foreground font-medium">
+                    Time range
                   </Label>
                   <div className="flex items-center gap-2">
-                    <Label className="text-[10px] text-muted-foreground/50">Custom</Label>
+                    <Label className="text-[12px] text-muted-foreground">Custom</Label>
                     <Switch
                       checked={useCustomTime}
                       onCheckedChange={setUseCustomTime}
@@ -2566,7 +2565,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                         onClick={() => setTimePreset(preset.seconds)}
                         className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                           timePreset === preset.seconds
-                            ? "bg-brand dark:bg-brand/20 text-foreground border border-brand/40 dark:border-brand/30"
+                            ? "bg-foreground text-background border border-foreground"
                             : "bg-secondary/50 text-foreground/70 dark:text-foreground/70 border border-transparent hover:bg-secondary"
                         }`}
                         data-testid={`button-time-${preset.label}`}
@@ -2578,7 +2577,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                 ) : (
                   <div className="flex gap-2 flex-wrap">
                     <div className="space-y-1 flex-1 min-w-[140px]">
-                      <Label className="text-[10px] text-muted-foreground/50">Start</Label>
+                      <Label className="text-[12px] text-muted-foreground">Start</Label>
                       <Input
                         type="datetime-local"
                         value={customSince}
@@ -2589,7 +2588,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                       />
                     </div>
                     <div className="space-y-1 flex-1 min-w-[140px]">
-                      <Label className="text-[10px] text-muted-foreground/50">End</Label>
+                      <Label className="text-[12px] text-muted-foreground">End</Label>
                       <Input
                         type="datetime-local"
                         value={customUntil}
@@ -2604,7 +2603,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
+                <Label className="text-[13px] text-muted-foreground font-medium">
                   Grouping
                 </Label>
                 <Select value={groupBy} onValueChange={(v) => setGroupBy(v as ReportConfig["groupBy"])}>
@@ -2615,7 +2614,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                     {GROUPING_OPTIONS.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value} data-testid={`option-group-${opt.value}`}>
                         <span className="flex items-center gap-2">
-                          <opt.icon className="w-3.5 h-3.5 text-brand" />
+                          <opt.icon className="w-3.5 h-3.5 text-foreground/70" />
                           {opt.label}
                         </span>
                       </SelectItem>
@@ -2627,8 +2626,8 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-                  Chart Type
+                <Label className="text-[13px] text-muted-foreground font-medium">
+                  Chart type
                 </Label>
                 <div className="flex flex-wrap gap-1.5">
                   {CHART_TYPES.map((ct) => (
@@ -2637,7 +2636,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                       onClick={() => setChartType(ct.value)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                         chartType === ct.value
-                          ? "bg-brand dark:bg-brand/20 text-foreground border border-brand/40 dark:border-brand/30"
+                          ? "bg-foreground text-background border border-foreground"
                           : "bg-secondary/50 text-foreground/70 dark:text-foreground/70 border border-transparent hover:bg-secondary"
                       }`}
                       data-testid={`button-chart-${ct.value}`}
@@ -2651,12 +2650,12 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
 
               <div className="space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
+                  <Label className="text-[13px] text-muted-foreground font-medium">
                     Relays
                   </Label>
                   <Badge variant="secondary">{selectedRelays.length} selected</Badge>
                   {userRelayUrls.size > 0 && (
-                    <Badge variant="outline" className="text-[9px] border-cyan-500/30 text-cyan-600 dark:text-cyan-400">
+                    <Badge variant="outline" className="text-[12px] border-cyan-500/30 text-cyan-600 dark:text-cyan-400">
                       +{userRelayUrls.size} from user
                     </Badge>
                   )}
@@ -2673,7 +2672,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 px-2 text-[10px] shrink-0"
+                    className="h-7 px-2 text-[12px] shrink-0"
                     onClick={addCustomRelay}
                     disabled={!customRelayInput.trim()}
                     data-testid="button-add-relay"
@@ -2691,21 +2690,21 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                           onClick={() => toggleRelay(relay)}
                           className={`flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-mono text-left transition-colors ${
                             selectedRelays.includes(relay)
-                              ? isUserRelay ? "bg-cyan-500/10 text-foreground" : "bg-brand/10 text-foreground"
-                              : "text-muted-foreground/50"
+                              ? isUserRelay ? "bg-cyan-500/10 text-foreground" : "bg-foreground/[0.06] text-foreground"
+                              : "text-muted-foreground"
                           }`}
                           data-testid={`relay-toggle-${relay.replace(/[^a-z0-9]/gi, "-")}`}
                         >
                           <div className={`w-2 h-2 rounded-full shrink-0 ${selectedRelays.includes(relay) ? isUserRelay ? "bg-cyan-500" : "bg-green-500" : "bg-muted-foreground/30"}`} />
                           <span className="truncate">{relay}</span>
                           {isUserRelay && (
-                            <span className="text-[9px] text-cyan-600 dark:text-cyan-400 shrink-0 ml-auto">user</span>
+                            <span className="text-[12px] text-cyan-600 dark:text-cyan-400 shrink-0 ml-auto">user</span>
                           )}
                         </button>
                         {isCustom && !isUserRelay && (
                           <button
                             onClick={() => removeCustomRelay(relay)}
-                            className="p-1 text-muted-foreground/40 hover:text-red-600 dark:hover:text-red-400 transition-colors shrink-0"
+                            className="p-1 text-muted-foreground hover:text-red-600 dark:hover:text-red-400 transition-colors shrink-0"
                             data-testid={`button-remove-relay-${relay.replace(/[^a-z0-9]/gi, "-")}`}
                           >
                             <X className="w-3 h-3" />
@@ -2719,12 +2718,12 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-                    WoT Filter
+                  <Label className="text-[13px] text-muted-foreground font-medium">
+                    Trust filter
                   </Label>
                   <div className="flex items-center gap-2">
                     {!globalWotEnabled && (
-                      <span className="text-[9px] text-amber-600 dark:text-amber-400">WoT disabled in settings</span>
+                      <span className="text-[12px] text-amber-600 dark:text-amber-400">Trust filter is off in settings</span>
                     )}
                     <Switch
                       checked={wotFilterEnabled}
@@ -2741,9 +2740,9 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                         <button
                           key={opt.tier}
                           onClick={() => setWotMinTier(opt.tier)}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors ${
                             wotMinTier === opt.tier
-                              ? "bg-brand dark:bg-brand/20 text-foreground border border-brand/40 dark:border-brand/30"
+                              ? "bg-foreground text-background border border-foreground"
                               : "bg-secondary/50 text-foreground/70 dark:text-foreground/70 border border-transparent hover:bg-secondary"
                           }`}
                           data-testid={`wot-tier-${opt.tier}`}
@@ -2760,11 +2759,11 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                       return (
                         <div className="space-y-0.5">
                           {wotFilteredCount > 0 && (
-                            <p className="text-[10px] text-muted-foreground/60">
-                              {wotFilteredCount.toLocaleString()} events filtered out by WoT
+                            <p className="text-[12px] text-muted-foreground">
+                              {wotFilteredCount.toLocaleString()} events hidden by the trust filter
                             </p>
                           )}
-                          <p className="text-[10px] text-muted-foreground/40">
+                          <p className="text-[12px] text-muted-foreground">
                             {scored}/{uniqueAuthors.size} authors scored
                             {scored < uniqueAuthors.size && " (scores loading...)"}
                           </p>
@@ -2777,10 +2776,10 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
+                  <Label className="text-[13px] text-muted-foreground font-medium">
                     Limit
                   </Label>
-                  <span className="text-xs font-mono text-brand" data-testid="text-limit-value">
+                  <span className="text-[13px] font-medium tabular-nums text-foreground" data-testid="text-limit-value">
                     {limit.toLocaleString()}
                   </span>
                 </div>
@@ -2811,14 +2810,14 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
               ) : (
                 <>
                   <Play className="w-4 h-4" />
-                  Run Report
+                  Run report
                 </>
               )}
             </Button>
             {hasResults && (
               <Button variant="outline" onClick={saveReport} className="gap-2" data-testid="button-save-report">
                 <Save className="w-4 h-4" />
-                Save Report
+                Save report
               </Button>
             )}
           </div>
@@ -2830,18 +2829,18 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2 flex-wrap">
                 {chartTypeIcon(chartType)}
-                <h2 className="text-sm font-display text-muted-foreground">Results</h2>
+                <h2 className="text-[15px] font-semibold text-foreground">Results</h2>
                 <Badge variant="secondary" data-testid="badge-event-count">
                   {rawEvents.length.toLocaleString()} events
                 </Badge>
                 {wotFilterEnabled && wotFilteredCount > 0 && (
                   <Badge variant="outline" className="gap-1 text-success dark:text-emerald-400 border-emerald-400/40 dark:border-emerald-500/30" data-testid="badge-wot-filter">
                     <ShieldCheck className="w-3 h-3" />
-                    WoT: {getSignalTierLabel(wotMinTier)}+
+                    {getSignalTierLabel(wotMinTier)} and up
                   </Badge>
                 )}
               </div>
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
+              <p className="text-[13px] text-muted-foreground font-medium">
                 {GROUPING_OPTIONS.find((g) => g.value === groupBy)?.label}
               </p>
             </div>
@@ -2850,7 +2849,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
               <div className="flex flex-col items-center justify-center h-48 gap-3" data-testid="loading-state">
                 <RelayOutpostInlineLoader className="w-8 h-8 text-brand" />
                 <p className="text-sm text-muted-foreground">
-                  Fetching events... <span className="text-brand font-mono">{eventCount.toLocaleString()}</span>
+                  Fetching events… <span className="font-semibold tabular-nums text-foreground">{eventCount.toLocaleString()}</span>
                 </p>
               </div>
             ) : (
@@ -2870,16 +2869,16 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
           className="flex items-center gap-2 w-full text-left group"
           data-testid="button-toggle-individual-section"
         >
-          <UserCircle className="w-4 h-4 text-brand" />
-          <h2 className="text-xs font-display text-muted-foreground uppercase tracking-widest">Individual Analysis</h2>
-          <span className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[9px] font-brand uppercase tracking-wider text-amber-700 dark:text-amber-300" title="Experimental — these analytics may be incomplete or inaccurate while we refine them.">Experimental</span>
-          <div className="flex-1 h-px bg-brand/10" />
+          <UserCircle className="w-4 h-4 text-foreground/70" />
+          <h2 className="text-[15px] font-semibold text-foreground">Individual analysis</h2>
+          <span className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[12px] text-muted-foreground font-medium" title="Experimental — these analytics may be incomplete or inaccurate while we refine them.">Experimental</span>
+          <div className="flex-1 h-px bg-border/60" />
           {individualOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
         </button>
         {urlPubkey && individualOpen && (
-          <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-brand/10 border border-brand/20">
-            <UserCircle className="w-3.5 h-3.5 text-brand shrink-0" />
-            <span className="text-xs text-brand">Analyzing:</span>
+          <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-foreground/[0.05] border border-border/60">
+            <UserCircle className="w-3.5 h-3.5 text-foreground/70 shrink-0" />
+            <span className="text-xs text-muted-foreground">Analyzing:</span>
             <ProfileLink pubkey={urlPubkey} className="text-xs text-foreground" fallbackClassName="text-xs font-mono text-foreground" />
           </div>
         )}
@@ -2890,14 +2889,14 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                 <CollapsibleTrigger asChild>
                   <button className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 text-left" data-testid="button-toggle-adoption">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Target className="w-4 h-4 text-brand" />
-                      <h2 className="text-sm font-display text-muted-foreground">User Adoption Funnel</h2>
+                      <Target className="w-4 h-4 text-foreground/70" />
+                      <h2 className="text-[15px] font-semibold text-foreground">User adoption funnel</h2>
                     </div>
                     {adoptionOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-brand/10 pt-4">
+                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-border/60 pt-4">
                     <UserAdoptionFunnel pubkey={urlPubkey || undefined} relays={selectedRelays} />
                   </div>
                 </CollapsibleContent>
@@ -2909,14 +2908,14 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                 <CollapsibleTrigger asChild>
                   <button className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 text-left" data-testid="button-toggle-heatmap">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Calendar className="w-4 h-4 text-brand" />
-                      <h2 className="text-sm font-display text-muted-foreground">Activity Heatmap</h2>
+                      <Calendar className="w-4 h-4 text-foreground/70" />
+                      <h2 className="text-[15px] font-semibold text-foreground">Activity heatmap</h2>
                     </div>
                     {heatmapOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-brand/10 pt-4">
+                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-border/60 pt-4">
                     <ActivityHeatmap pubkey={urlPubkey || undefined} relays={selectedRelays} />
                   </div>
                 </CollapsibleContent>
@@ -2928,14 +2927,14 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                 <CollapsibleTrigger asChild>
                   <button className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 text-left" data-testid="button-toggle-velocity">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Activity className="w-4 h-4 text-brand" />
-                      <h2 className="text-sm font-display text-muted-foreground">Engagement Velocity</h2>
+                      <Activity className="w-4 h-4 text-foreground/70" />
+                      <h2 className="text-[15px] font-semibold text-foreground">Engagement velocity</h2>
                     </div>
                     {velocityOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-brand/10 pt-4">
+                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-border/60 pt-4">
                     <EngagementVelocity pubkey={urlPubkey || undefined} relays={selectedRelays} />
                   </div>
                 </CollapsibleContent>
@@ -2947,14 +2946,14 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                 <CollapsibleTrigger asChild>
                   <button className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 text-left" data-testid="button-toggle-discovery">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Users className="w-4 h-4 text-brand" />
-                      <h2 className="text-sm font-display text-muted-foreground">User Discovery Scanner</h2>
+                      <Users className="w-4 h-4 text-foreground/70" />
+                      <h2 className="text-[15px] font-semibold text-foreground">User discovery scanner</h2>
                     </div>
                     {discoveryScannerOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-brand/10 pt-4">
+                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-border/60 pt-4">
                     <UserDiscoveryScanner relays={selectedRelays} />
                   </div>
                 </CollapsibleContent>
@@ -2969,10 +2968,10 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
           className="flex items-center gap-2 w-full text-left group"
           data-testid="button-toggle-cohort-section"
         >
-          <Users className="w-4 h-4 text-brand" />
-          <h2 className="text-xs font-display text-muted-foreground uppercase tracking-widest">Cohort Analysis</h2>
-          <span className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[9px] font-brand uppercase tracking-wider text-amber-700 dark:text-amber-300" title="Experimental — these analytics may be incomplete or inaccurate while we refine them.">Experimental</span>
-          <div className="flex-1 h-px bg-brand/10" />
+          <Users className="w-4 h-4 text-foreground/70" />
+          <h2 className="text-[15px] font-semibold text-foreground">Cohort analysis</h2>
+          <span className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[12px] text-muted-foreground font-medium" title="Experimental — these analytics may be incomplete or inaccurate while we refine them.">Experimental</span>
+          <div className="flex-1 h-px bg-border/60" />
           {cohortGroupOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
         </button>
         {cohortGroupOpen && (
@@ -2985,18 +2984,18 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                     data-testid="button-toggle-cohort"
                   >
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Users className="w-4 h-4 text-brand" />
-                      <h2 className="text-sm font-display text-muted-foreground">Retention Cohorts</h2>
+                      <Users className="w-4 h-4 text-foreground/70" />
+                      <h2 className="text-[15px] font-semibold text-foreground">Retention cohorts</h2>
                     </div>
                     {cohortOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-4 border-t border-brand/10 pt-4">
+                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-4 border-t border-border/60 pt-4">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-                    Cohort Time Range
+                  <Label className="text-[13px] text-muted-foreground font-medium">
+                    Cohort time range
                   </Label>
                   <Select value={String(cohortTimeRange)} onValueChange={(v) => setCohortTimeRange(Number(v))}>
                     <SelectTrigger className="text-sm sm:text-xs" style={{ fontSize: "16px" }} data-testid="select-cohort-range">
@@ -3010,8 +3009,8 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-                    Tracking Window
+                  <Label className="text-[13px] text-muted-foreground font-medium">
+                    Tracking window
                   </Label>
                   <Select value={String(cohortWindow)} onValueChange={(v) => setCohortWindow(Number(v))}>
                     <SelectTrigger className="text-sm sm:text-xs" style={{ fontSize: "16px" }} data-testid="select-cohort-window">
@@ -3027,7 +3026,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
+                  <Label className="text-[13px] text-muted-foreground font-medium">
                     Metric
                   </Label>
                   <Select value={cohortMetric} onValueChange={setCohortMetric}>
@@ -3035,10 +3034,10 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="any">Any Activity</SelectItem>
-                      <SelectItem value="posts">Posts Created</SelectItem>
-                      <SelectItem value="replies">Replies Made</SelectItem>
-                      <SelectItem value="zaps">Zaps Sent</SelectItem>
+                      <SelectItem value="any">Any activity</SelectItem>
+                      <SelectItem value="posts">Posts created</SelectItem>
+                      <SelectItem value="replies">Replies made</SelectItem>
+                      <SelectItem value="zaps">Zaps sent</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -3058,7 +3057,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                 ) : (
                   <>
                     <Play className="w-4 h-4" />
-                    Run Cohort Analysis
+                    Run cohort analysis
                   </>
                 )}
               </Button>
@@ -3076,11 +3075,11 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                           return point;
                         })}
                       >
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(140,100,220,0.1)" />
-                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: "currentColor", className: "text-muted-foreground/50" }} />
-                        <YAxis tick={{ fontSize: 10, fill: "currentColor", className: "text-muted-foreground/50" }} unit="%" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="name" tick={{ fontSize: 12, fill: "currentColor", className: "text-muted-foreground" }} />
+                        <YAxis tick={{ fontSize: 12, fill: "currentColor", className: "text-muted-foreground" }} unit="%" />
                         <Tooltip content={<CustomTooltipContent />} />
-                        <Legend wrapperStyle={{ fontSize: 10 }} />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
                         {cohortData.map((c, i) => (
                           <Line
                             key={c.label}
@@ -3097,13 +3096,13 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
 
                   <div className="overflow-x-auto" data-testid="cohort-table">
                     <table className="w-full">
-                      <thead className="border-b border-brand/20">
+                      <thead className="border-b border-border/60">
                         <tr>
-                          <th className="px-3 py-2 text-left text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
+                          <th className="px-3 py-2 text-left text-[13px] text-muted-foreground font-medium">
                             Cohort
                           </th>
                           {cohortWindows.map((w) => (
-                            <th key={w} className="px-3 py-2 text-left text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
+                            <th key={w} className="px-3 py-2 text-left text-[13px] text-muted-foreground font-medium">
                               {w}
                             </th>
                           ))}
@@ -3112,7 +3111,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                       <tbody>
                         {cohortData.map((row, i) => (
                           <tr key={row.label} className={i % 2 === 0 ? "opacity-100" : "opacity-80"} data-testid={`cohort-row-${i}`}>
-                            <td className="px-3 py-2 text-xs font-mono text-brand">{row.label}</td>
+                            <td className="px-3 py-2 text-xs text-foreground">{row.label}</td>
                             {row.windows.map((val, wi) => (
                               <td key={wi} className="px-3 py-2 text-xs font-mono">
                                 {val}%
@@ -3127,7 +3126,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
               )}
 
               {!cohortLoading && cohortData.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground/50 text-sm" data-testid="cohort-empty">
+                <div className="text-center py-8 text-muted-foreground text-sm" data-testid="cohort-empty">
                   Run cohort analysis to see retention data
                 </div>
               )}
@@ -3141,14 +3140,14 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                 <CollapsibleTrigger asChild>
                   <button className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 text-left" data-testid="button-toggle-batch-funnel">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <TrendingUp className="w-4 h-4 text-brand" />
-                      <h2 className="text-sm font-display text-muted-foreground">Batch Funnel Analysis</h2>
+                      <TrendingUp className="w-4 h-4 text-foreground/70" />
+                      <h2 className="text-[15px] font-semibold text-foreground">Batch funnel analysis</h2>
                     </div>
                     {batchFunnelOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-brand/10 pt-4">
+                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-border/60 pt-4">
                     <BatchFunnelAnalysis relays={selectedRelays} />
                   </div>
                 </CollapsibleContent>
@@ -3160,14 +3159,14 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                 <CollapsibleTrigger asChild>
                   <button className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 text-left" data-testid="button-toggle-segmentation">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Layers className="w-4 h-4 text-brand" />
-                      <h2 className="text-sm font-display text-muted-foreground">User Segmentation</h2>
+                      <Layers className="w-4 h-4 text-foreground/70" />
+                      <h2 className="text-[15px] font-semibold text-foreground">User segmentation</h2>
                     </div>
                     {segmentationOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-brand/10 pt-4">
+                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-border/60 pt-4">
                     <UserSegmentation relays={selectedRelays} />
                   </div>
                 </CollapsibleContent>
@@ -3179,14 +3178,14 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                 <CollapsibleTrigger asChild>
                   <button className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 text-left" data-testid="button-toggle-churn">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Radio className="w-4 h-4 text-brand" />
-                      <h2 className="text-sm font-display text-muted-foreground">Churn & Resurrection</h2>
+                      <Radio className="w-4 h-4 text-foreground/70" />
+                      <h2 className="text-[15px] font-semibold text-foreground">Churn & resurrection</h2>
                     </div>
                     {churnOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-brand/10 pt-4">
+                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-border/60 pt-4">
                     <ChurnResurrection relays={selectedRelays} />
                   </div>
                 </CollapsibleContent>
@@ -3201,10 +3200,10 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
           className="flex items-center gap-2 w-full text-left group"
           data-testid="button-toggle-global-section"
         >
-          <Globe className="w-4 h-4 text-brand" />
-          <h2 className="text-xs font-display text-muted-foreground uppercase tracking-widest">Global / Network</h2>
-          <span className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[9px] font-brand uppercase tracking-wider text-amber-700 dark:text-amber-300" title="Experimental — these analytics may be incomplete or inaccurate while we refine them.">Experimental</span>
-          <div className="flex-1 h-px bg-brand/10" />
+          <Globe className="w-4 h-4 text-foreground/70" />
+          <h2 className="text-[15px] font-semibold text-foreground">Global network</h2>
+          <span className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[12px] text-muted-foreground font-medium" title="Experimental — these analytics may be incomplete or inaccurate while we refine them.">Experimental</span>
+          <div className="flex-1 h-px bg-border/60" />
           {globalOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
         </button>
         {globalOpen && (
@@ -3214,14 +3213,14 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                 <CollapsibleTrigger asChild>
                   <button className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 text-left" data-testid="button-toggle-network-growth">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Users className="w-4 h-4 text-brand" />
-                      <h2 className="text-sm font-display text-muted-foreground">Network Growth Timeline</h2>
+                      <Users className="w-4 h-4 text-foreground/70" />
+                      <h2 className="text-[15px] font-semibold text-foreground">Network growth timeline</h2>
                     </div>
                     {networkGrowthOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-brand/10 pt-4">
+                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-border/60 pt-4">
                     <NetworkGrowthTimeline relays={selectedRelays} />
                   </div>
                 </CollapsibleContent>
@@ -3233,14 +3232,14 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                 <CollapsibleTrigger asChild>
                   <button className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 text-left" data-testid="button-toggle-hashtag-trends">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Hash className="w-4 h-4 text-brand" />
-                      <h2 className="text-sm font-display text-muted-foreground">Hashtag Trends</h2>
+                      <Hash className="w-4 h-4 text-foreground/70" />
+                      <h2 className="text-[15px] font-semibold text-foreground">Hashtag trends</h2>
                     </div>
                     {hashtagTrendsOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-brand/10 pt-4">
+                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-border/60 pt-4">
                     <HashtagTrends relays={selectedRelays} />
                   </div>
                 </CollapsibleContent>
@@ -3253,13 +3252,13 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                   <button className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 text-left" data-testid="button-toggle-zap-economy">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Zap className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                      <h2 className="text-sm font-display text-muted-foreground">Zap Economy</h2>
+                      <h2 className="text-[15px] font-semibold text-foreground">Zap economy</h2>
                     </div>
                     {zapEconomyOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-brand/10 pt-4">
+                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-border/60 pt-4">
                     <ZapEconomy relays={selectedRelays} />
                   </div>
                 </CollapsibleContent>
@@ -3271,14 +3270,14 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                 <CollapsibleTrigger asChild>
                   <button className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 text-left" data-testid="button-toggle-content-format">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Layers className="w-4 h-4 text-brand" />
-                      <h2 className="text-sm font-display text-muted-foreground">Content Format Evolution</h2>
+                      <Layers className="w-4 h-4 text-foreground/70" />
+                      <h2 className="text-[15px] font-semibold text-foreground">Content format evolution</h2>
                     </div>
                     {contentFormatOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-brand/10 pt-4">
+                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-border/60 pt-4">
                     <ContentFormatEvolution relays={selectedRelays} />
                   </div>
                 </CollapsibleContent>
@@ -3290,14 +3289,14 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                 <CollapsibleTrigger asChild>
                   <button className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 text-left" data-testid="button-toggle-client-diversity">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Globe className="w-4 h-4 text-brand" />
-                      <h2 className="text-sm font-display text-muted-foreground">Client Diversity</h2>
+                      <Globe className="w-4 h-4 text-foreground/70" />
+                      <h2 className="text-[15px] font-semibold text-foreground">Client diversity</h2>
                     </div>
                     {clientDiversityOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-brand/10 pt-4">
+                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-border/60 pt-4">
                     <ClientDiversity relays={selectedRelays} />
                   </div>
                 </CollapsibleContent>
@@ -3314,8 +3313,8 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
               data-testid="button-toggle-saved"
             >
               <div className="flex items-center gap-2 flex-wrap">
-                <Save className="w-4 h-4 text-brand" />
-                <h2 className="text-sm font-display text-muted-foreground">Saved Reports</h2>
+                <Save className="w-4 h-4 text-foreground/70" />
+                <h2 className="text-[15px] font-semibold text-foreground">Saved reports</h2>
                 {savedReports.length > 0 && (
                   <Badge variant="secondary">{savedReports.length}</Badge>
                 )}
@@ -3324,9 +3323,9 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-brand/10 pt-4">
+            <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-border/60 pt-4">
               {savedReports.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground/50 text-sm" data-testid="saved-empty">
+                <div className="text-center py-8 text-muted-foreground text-sm" data-testid="saved-empty">
                   No saved reports yet. Run a report and save it.
                 </div>
               ) : (
@@ -3334,16 +3333,16 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                   {savedReports.map((report) => (
                     <Card
                       key={report.id}
-                      className="border border-brand/10 bg-secondary/20 p-3 space-y-2"
+                      className="border border-border/60 bg-secondary/20 p-3 space-y-2"
                       data-testid={`saved-report-${report.id}`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             {chartTypeIcon(report.chartType)}
-                            <span className="text-xs font-display text-brand truncate">{report.title}</span>
+                            <span className="text-[13px] font-medium text-foreground truncate">{report.title}</span>
                           </div>
-                          <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                          <p className="text-[12px] text-muted-foreground mt-0.5">
                             {formatDistanceToNow(new Date(report.lastRunAt), { addSuffix: true })}
                           </p>
                         </div>
@@ -3387,18 +3386,18 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
           </CollapsibleContent>
         </Card>
       </Collapsible>
-      <Card className="glass-card px-3 sm:px-4 py-2.5 sm:py-3 overflow-hidden opacity-60" data-testid="analytics-disclaimer-bottom">
+      <Card className="rounded-[16px] border border-border/60 bg-card px-3 sm:px-4 py-2.5 sm:py-3 overflow-hidden" data-testid="analytics-disclaimer-bottom">
         <div className="flex gap-2.5 sm:gap-3">
           <div className="shrink-0 mt-0.5">
-            <Radio className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand/40" />
+            <Radio className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-semibold text-foreground/60 tracking-wide font-mono uppercase">Signal Intelligence Disclosure</p>
-            <p className="text-[10px] leading-relaxed text-muted-foreground">
+            <p className="text-[13px] font-semibold text-foreground">How these trust numbers are made</p>
+            <p className="text-[12px] leading-relaxed text-muted-foreground">
               Analytics show activity from your connected sources. Some data may be incomplete due to server availability or filtering. This is a snapshot, not the full picture.
             </p>
-            <p className="text-[10px] leading-relaxed text-muted-foreground/70 italic">
-              Your signal, your ownership — what you put out there is yours.
+            <p className="text-[12px] leading-relaxed text-muted-foreground italic">
+              Your data, your ownership — what you put out there is yours.
             </p>
           </div>
         </div>

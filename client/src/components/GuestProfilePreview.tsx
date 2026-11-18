@@ -86,7 +86,7 @@ export function GuestProfilePreview({ npub }: { npub: string }) {
         <div className="flex items-start gap-3 p-4 border-b border-border/30">
           <Avatar className="w-14 h-14 shrink-0">
             {avatar && <AvatarImage src={avatar} alt={name} />}
-            <AvatarFallback className="text-base bg-brand/10 text-brand">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-base">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
             <p className="text-base font-semibold truncate">{name}</p>

@@ -100,7 +100,7 @@ export function SpaceAdminDrawer({
           <div className="flex items-center gap-2.5">
             <Avatar className="w-9 h-9 shrink-0 border border-border/40">
               <AvatarImage src={spaceAvatar} alt="" />
-              <AvatarFallback className="bg-brand/10 text-brand text-[11px] font-semibold">
+              <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[11px] font-semibold">
                 {spaceName.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>

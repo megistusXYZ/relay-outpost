@@ -4,7 +4,7 @@ import { nip19 } from "nostr-tools";
 import { Link, useLocation } from "wouter";
 import { useFarRow } from "@/lib/far-rows";
 import { use$ } from "applesauce-react/hooks";
-import { eventStore, pool, publishEvent, fetchProfilesCached, FAST_RELAYS, throttledPoolSubscribe } from "@/lib/nostr";
+import { eventStore, publishEvent, fetchProfilesCached, FAST_RELAYS, throttledPoolSubscribe } from "@/lib/nostr";
 import { getPublishTarget } from "@/lib/outpost-relays";
 import { prefetchProfileOnHover } from "@/hooks/use-prefetch-visible";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -15,7 +15,7 @@ import { BarChart3, Clock, CheckCircle2, Users, AlertCircle, MessageSquare, Shie
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { signWithTimeout } from "@/lib/signer-timeout";
-import { getAvatarUrl, getDisplayName, getProfileContent, KIND_METADATA, formatNpub, formatNoteId, clientTags } from "@/lib/nostr-helpers";
+import { getAvatarUrl, getDisplayName, getProfileContent, KIND_METADATA, formatNoteId, clientTags } from "@/lib/nostr-helpers";
 import { TrustTierDot, AuthorHoverCard } from "./nostr-post/author-hover";
 import { PostBadgeIcons } from "@/components/BadgeDisplay";
 import { Nip05VerifiedCheck } from "@/components/Nip05Badge";
@@ -25,7 +25,7 @@ import { lazyNamed } from "@/lib/lazy-retry";
 // The comment box loads with the thread module when comments are opened, not with every feed.
 const InlineThreadReplyBarLazy = lazy(() => lazyNamed(() => import("./nostr-post/thread"), "InlineThreadReplyBar"));
 import { TextWithUnresolvedNostr } from "@/components/NostrPost";
-import { KIND_POLL, KIND_POLL_RESPONSE } from "@/lib/polls";
+import { KIND_POLL_RESPONSE } from "@/lib/polls";
 import { extractMediaFromContent } from "@/lib/media-utils";
 import { ImageLightbox } from "@/components/ImageLightbox";
 
@@ -53,11 +53,6 @@ function getPollExpiration(event: Event): number | null {
   return null;
 }
 
-function isPollExpired(event: Event): boolean {
-  const expiration = getPollExpiration(event);
-  if (!expiration) return false;
-  return Math.floor(Date.now() / 1000) > expiration;
-}
 
 function formatCountdown(secondsLeft: number): string {
   if (secondsLeft <= 0) return "Closed";
@@ -216,7 +211,6 @@ export const PollPost = memo(function PollPost({ event }: PollPostProps) {
   const [replies, setReplies] = useState<Event[]>([]);
   const [repliesLoading, setRepliesLoading] = useState(false);
   const repliesFetchedRef = useRef(false);
-  const prevPubkeyRef = useRef(pubkey);
   const grapeRankScores = useGrapeRankScores();
 
   const authorProfile = use$(() => eventStore.replaceable(KIND_METADATA, event.pubkey), [event.pubkey]);
@@ -444,7 +438,7 @@ export const PollPost = memo(function PollPost({ event }: PollPostProps) {
       setRepliesLoading(true);
       const relays = FAST_RELAYS.slice(0, 4);
       const collected: Event[] = [];
-      const sub = throttledPoolSubscribe(relays, { kinds: [1], "#e": [event.id], limit: 30 }, {
+      throttledPoolSubscribe(relays, { kinds: [1], "#e": [event.id], limit: 30 }, {
         onevent(r: Event) {
           collected.push(r);
         },
@@ -482,7 +476,7 @@ export const PollPost = memo(function PollPost({ event }: PollPostProps) {
               <Link href={profileUrl} data-testid={`link-poll-avatar-${event.id}`} onMouseEnter={() => prefetchProfileOnHover(event.pubkey)}>
                 <Avatar className="w-9 h-9 shrink-0 ring-2 ring-primary/30 border-2 border-background cursor-pointer">
                   <AvatarImage src={avatarUrl} alt={displayName} />
-                  <AvatarFallback className="bg-brand/10 text-brand font-bold text-xs">
+                  <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 font-bold text-xs">
                     {displayName.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>

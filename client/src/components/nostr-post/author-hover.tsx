@@ -13,23 +13,21 @@ import { PostBadgeIcons } from "@/components/BadgeDisplay";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
-import { Copy, Check, ShieldCheck, Zap } from "lucide-react";
+import { Copy, Check, ShieldCheck, Zap, AlertTriangle } from "lucide-react";
 import {
-  getAvatarUrl,
   getDisplayName,
   getProfileContent,
   KIND_METADATA,
-  formatNpub,
-  shortenNpub,
 } from "@/lib/nostr-helpers";
 import { useAttestations, isActiveAttestation, getAttestationStatusLabel, type Attestation } from "@/hooks/use-attestations";
 import { useToast } from "@/hooks/use-toast";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
-import { formatInfluence, getActiveThresholds, getReplyTier } from "@/lib/graperank";
+import { getReplyTier } from "@/lib/graperank";
 import type { SignalTier } from "@/lib/graperank";
+import { getTrustPhrase } from "@/lib/trust-words";
 import { copyNostrId } from "@/lib/clipboard-bridge";
-import { TrustTierGlyph } from "@/components/nostr-post/trust-tier-glyph";
+import { TIER_GLYPH, TrustTierGlyph } from "@/components/nostr-post/trust-tier-glyph";
 import { RelayOutpostIcon } from "@/components/RelayOutpostLoader";
 import nostrOstrichGif from "@assets/219719339-5eff628c-3470-4cc3-81eb-404f8902de9f_1771392554698.gif";
 import { ZapDialog } from "@/components/lazy-dialogs";
@@ -80,7 +78,7 @@ export function useHoverPopover(openDelay = 300, closeDelay = 150) {
 export function TrustTierDot({ pubkey }: { pubkey: string }) {
   const { pubkey: myPubkey } = useNostrAuth();
   const isSelf = !!myPubkey && myPubkey === pubkey;
-  const { getAuthorTier, getAuthorInfluence, isAuthorFlagged, scores, wotEnabled, wotReady } = useGrapeRankScores();
+  const { getAuthorTier, isAuthorFlagged, scores, wotEnabled, wotReady } = useGrapeRankScores();
   const tier = isSelf ? "strong" : getAuthorTier(pubkey);
   useLazyScoreRequest(isSelf ? "" : pubkey, tier);
   const hover = useHoverPopover();
@@ -93,7 +91,7 @@ export function TrustTierDot({ pubkey }: { pubkey: string }) {
   if (isSelf) {
     return (
       <span className="inline-flex items-center justify-center shrink-0">
-        <RelayOutpostIcon className="w-4 h-4 text-brand/70 drop-shadow-[0_0_3px_rgba(147,51,234,0.25)]" />
+        <RelayOutpostIcon className="w-4 h-4 text-brand/70" />
       </span>
     );
   }
@@ -104,133 +102,12 @@ export function TrustTierDot({ pubkey }: { pubkey: string }) {
 
   if (!scoreLookedUp && !flagged) return null;
 
-  if (flagged) {
-    return (
-      <Popover open={hover.open} onOpenChange={hover.setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            className="inline-flex items-center justify-center shrink-0 cursor-pointer"
-            onClick={(e) => e.stopPropagation()}
-            onMouseEnter={hover.handleEnter}
-            onMouseLeave={hover.handleLeave}
-            aria-label="Trust level: Flagged"
-          >
-            <TrustTierGlyph tier="flagged" size="w-4 h-4" decorative className="drop-shadow-[0_0_4px_rgba(239,68,68,0.4)]" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-44 p-2.5 border-red-500/25 bg-[rgba(242,238,255,0.98)] dark:bg-[rgba(4,4,10,0.97)] shadow-[0_4px_20px_rgba(239,68,68,0.08)]"
-          side="bottom"
-          align="start"
-          sideOffset={6}
-          onClick={(e) => e.stopPropagation()}
-          onMouseEnter={hover.handleEnter}
-          onMouseLeave={hover.handleLeave}
-        >
-          <div className="flex items-center gap-1.5">
-            <TrustTierGlyph tier="flagged" size="w-3.5 h-3.5" decorative />
-            <span className="text-[11px] font-semibold text-danger dark:text-red-400">Flagged</span>
-          </div>
-          <p className="text-[10px] text-muted-foreground/60 leading-snug mt-1">Reported by 2+ trusted users in your network</p>
-        </PopoverContent>
-      </Popover>
-    );
-  }
-
-  if (tier === "none") {
-    return (
-      <Popover open={hover.open} onOpenChange={hover.setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            className="inline-flex items-center justify-center shrink-0 cursor-pointer"
-            onClick={(e) => e.stopPropagation()}
-            onMouseEnter={hover.handleEnter}
-            onMouseLeave={hover.handleLeave}
-            aria-label="Trust info"
-          >
-            <TrustTierGlyph tier="none" size="w-2.5 h-2.5" decorative />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-44 p-2.5 border-border/40 bg-[rgba(242,238,255,0.98)] dark:bg-[rgba(4,4,10,0.97)] shadow-[0_4px_20px_rgba(0,0,0,0.06)]"
-          side="bottom"
-          align="start"
-          sideOffset={6}
-          onClick={(e) => e.stopPropagation()}
-          onMouseEnter={hover.handleEnter}
-          onMouseLeave={hover.handleLeave}
-        >
-          <div className="flex items-center gap-1.5">
-            <TrustTierGlyph tier="none" size="w-2.5 h-2.5" decorative />
-            <span className="text-[11px] font-semibold text-muted-foreground/70">No Signal</span>
-          </div>
-          <p className="text-[10px] text-muted-foreground/60 leading-snug mt-1">Not yet verified by your trust network</p>
-          <p className="text-[8px] text-muted-foreground/35 mt-1">GrapeRank Web of Trust</p>
-        </PopoverContent>
-      </Popover>
-    );
-  }
-
-  if (tier === "weak") {
-    const wt = getActiveThresholds();
-    const weakRange = `${Math.round(wt.weak * 100)}%–${Math.round(wt.low * 100) - 1}%`;
-    return (
-      <Popover open={hover.open} onOpenChange={hover.setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            className="inline-flex items-center justify-center shrink-0 cursor-pointer"
-            onClick={(e) => e.stopPropagation()}
-            onMouseEnter={hover.handleEnter}
-            onMouseLeave={hover.handleLeave}
-            aria-label="Trust level: Low Trust"
-          >
-            <TrustTierGlyph tier="weak" size="w-2 h-2" decorative />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-44 p-2.5 border-amber-500/20 bg-[rgba(242,238,255,0.98)] dark:bg-[rgba(4,4,10,0.97)] shadow-[0_4px_20px_rgba(245,158,11,0.06)]"
-          side="bottom"
-          align="start"
-          sideOffset={6}
-          onClick={(e) => e.stopPropagation()}
-          onMouseEnter={hover.handleEnter}
-          onMouseLeave={hover.handleLeave}
-        >
-          <div className="flex items-center gap-1.5">
-            <TrustTierGlyph tier="weak" size="w-2 h-2" decorative />
-            <span className="text-[11px] font-semibold text-zap dark:text-amber-400">Low Trust</span>
-            <span className="text-[10px] font-mono text-muted-foreground/50 ml-auto">{weakRange}</span>
-          </div>
-          <p className="text-[10px] text-muted-foreground/60 leading-snug mt-1">Minimal trust score in your network</p>
-        </PopoverContent>
-      </Popover>
-    );
-  }
-
-  const influence = getAuthorInfluence(pubkey);
-  const label = tier === "strong" ? "Highly Trusted"
-    : tier === "moderate" ? "Trusted"
-    : "Neutral";
-  const tierThresholds = getActiveThresholds();
-  const desc = tier === "strong" ? `Top-tier trust · ${Math.round(tierThresholds.strong * 100)}%+ influence`
-    : tier === "moderate" ? `Recognized by your trusted connections · ${Math.round(tierThresholds.moderate * 100)}%–${Math.round(tierThresholds.strong * 100) - 1}%`
-    : `Some presence in your trust graph · ${Math.round(tierThresholds.low * 100)}%–${Math.round(tierThresholds.moderate * 100) - 1}%`;
-  const labelColor = tier === "strong"
-    ? "text-success dark:text-emerald-400"
-    : tier === "moderate"
-    ? "text-blue-700 dark:text-blue-400"
-    : "text-cyan-700 dark:text-cyan-400";
-  const borderColor = tier === "strong"
-    ? "border-emerald-500/25 shadow-[0_4px_20px_rgba(16,185,129,0.08)]"
-    : tier === "moderate"
-    ? "border-blue-500/25 shadow-[0_4px_20px_rgba(59,130,246,0.08)]"
-    : "border-cyan-500/20 shadow-[0_4px_20px_rgba(34,211,238,0.06)]";
-  const scoreColor = tier === "strong"
-    ? "text-success dark:text-emerald-400"
-    : tier === "moderate"
-    ? "text-blue-600 dark:text-blue-400"
-    : "text-cyan-600 dark:text-cyan-400";
-
+  // One pop-up for every tier: a phrase about the reader's network and what
+  // it means, never a number (owner, 2026-10-03: "Highly Trusted 100%" read
+  // as a verdict on a person). The percentage stays in the profile's trust panel.
+  const shown: SignalTier = flagged ? "flagged" : tier;
+  const phrase = shown === "none" ? "Not in your network yet" : getTrustPhrase(shown);
+  const glyphSize = shown === "flagged" ? "w-4 h-4" : shown === "none" ? "w-2.5 h-2.5" : "w-2 h-2";
   return (
     <Popover open={hover.open} onOpenChange={hover.setOpen}>
       <PopoverTrigger asChild>
@@ -239,13 +116,13 @@ export function TrustTierDot({ pubkey }: { pubkey: string }) {
           onClick={(e) => e.stopPropagation()}
           onMouseEnter={hover.handleEnter}
           onMouseLeave={hover.handleLeave}
-          aria-label={`Trust level: ${label}`}
+          aria-label={`Trust: ${phrase}`}
         >
-          <TrustTierGlyph tier={tier} size="w-2 h-2" decorative />
+          <TrustTierGlyph tier={shown} size={glyphSize} decorative />
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className={`w-48 p-2.5 bg-[rgba(242,238,255,0.98)] dark:bg-[rgba(4,4,10,0.97)] ${borderColor}`}
+        className="w-60 p-3 rounded-[16px] border-border/60"
         side="bottom"
         align="start"
         sideOffset={6}
@@ -254,16 +131,25 @@ export function TrustTierDot({ pubkey }: { pubkey: string }) {
         onMouseLeave={hover.handleLeave}
       >
         <div className="flex items-center gap-1.5">
-          <TrustTierGlyph tier={tier} size="w-2 h-2" decorative />
-          <span className={`text-[11px] font-semibold ${labelColor}`}>{label}</span>
-          <span className={`text-[10px] font-mono ml-auto ${scoreColor}`}>{formatInfluence(influence)}</span>
+          <TrustTierGlyph tier={shown} size="w-3 h-3" decorative />
+          <span className={`text-[13px] font-semibold ${shown === "flagged" ? "text-danger" : "text-foreground"}`}>{phrase}</span>
         </div>
-        <p className="text-[10px] text-muted-foreground/60 leading-snug mt-1">{desc}</p>
-        <p className="text-[8px] text-muted-foreground/35 mt-1">GrapeRank Web of Trust</p>
+        <p className="text-[13px] text-muted-foreground leading-snug mt-1">{TRUST_MEANING[shown]}</p>
+        <p className="text-[12px] text-muted-foreground mt-1.5">From your Web of Trust</p>
       </PopoverContent>
     </Popover>
   );
 }
+
+/** What each phrase means, in the reader's terms. */
+const TRUST_MEANING: Record<SignalTier, string> = {
+  strong: "People you trust follow them, directly or through people they trust.",
+  moderate: "People you trust know them.",
+  low: "They have a little presence in your network so far.",
+  weak: "Hardly anyone in your network follows them yet.",
+  flagged: "Two or more people you trust have reported them.",
+  none: "Nobody in your network follows them yet.",
+};
 
 export function ThreadTrustBar({ replies, excludedTiers, onFilterChange }: {
   replies: Event[];
@@ -328,13 +214,13 @@ export function ThreadTrustBar({ replies, excludedTiers, onFilterChange }: {
     // flagged-specific and concentration warnings below.
     const noSignalRatio = (unverified + unknown + flagged) / total;
     if (flagged > 0 && flagged >= total * 0.2) {
-      warning = `${flagged} flagged account${flagged > 1 ? "s" : ""} active — reported by 2+ trusted users`;
+      warning = `${flagged} ${flagged === 1 ? "person" : "people"} your network has concerns about ${flagged === 1 ? "is" : "are"} replying`;
     } else if (total >= 10 && scoredCount >= 3 && concentration > 0.85 && median < 0.02) {
-      warning = "High volume from low-scored accounts — trust weight concentrated in few participants";
+      warning = "Lots of replies from accounts with few ties; the trust sits with a few of them";
     } else if (noSignalRatio > 0.6) {
-      warning = `${Math.round(noSignalRatio * 100)}% of participants carry little or no trust`;
+      warning = `${Math.round(noSignalRatio * 100)}% of the people replying have few or no ties to your network`;
     } else if (total >= 5 && avgInfluence < 0.01 && scoredCount >= total * 0.5) {
-      warning = `Low avg influence (${avgInfluence.toFixed(4)}) despite ${scoredCount} scored accounts`;
+      warning = "Most people replying are known to few in your network";
     }
 
     return {
@@ -355,16 +241,18 @@ export function ThreadTrustBar({ replies, excludedTiers, onFilterChange }: {
   const { strong, moderate, low, weak, unverified, unknown, flagged, total,
     avgInfluence, median, concentration, topN, scoredCount, warning } = analysis;
 
+  // Colours from TIER_GLYPH, the one trust colour map, so this bar, its
+  // legend and the dot beside each author agree; red is for concerns only.
   const segments = [
-    { count: strong, color: "bg-emerald-500", label: "Highly Trusted", tierId: "strong" },
-    { count: moderate, color: "bg-blue-500", label: "Trusted", tierId: "moderate" },
-    { count: low, color: "bg-cyan-500", label: "Neutral", tierId: "low" },
-    { count: weak, color: "bg-red-400", label: "Low Trust", tierId: "weak" },
+    { count: strong, bar: TIER_GLYPH.strong.className, glyph: "strong" as const, label: "Trusted", tierId: "strong" },
+    { count: moderate, bar: TIER_GLYPH.moderate.className, glyph: "moderate" as const, label: "Known", tierId: "moderate" },
+    { count: low, bar: TIER_GLYPH.low.className, glyph: "low" as const, label: "Some ties", tierId: "low" },
+    { count: weak, bar: TIER_GLYPH.weak.className, glyph: "weak" as const, label: "Few ties", tierId: "weak" },
     // Genuinely scored low vs. simply no data — kept distinct so filtering out
     // low-trust accounts never silently buries content we just lack a score for.
-    { count: unverified, color: "bg-slate-500/60 dark:bg-slate-400/50", label: "Unverified", tierId: "unverified" },
-    { count: unknown, color: "bg-slate-400/25 dark:bg-slate-500/25", label: "No data", tierId: "unknown" },
-    { count: flagged, color: "bg-red-600", label: "Flagged", tierId: "flagged" },
+    { count: unverified, bar: "bg-foreground/30", glyph: "none" as const, label: "Unverified", tierId: "unverified" },
+    { count: unknown, bar: "bg-foreground/[0.12]", glyph: null, label: "No data", tierId: "unknown" },
+    { count: flagged, bar: "bg-danger", glyph: "flagged" as const, label: "Concerns", tierId: "flagged" },
   ].filter(s => s.count > 0);
 
   const hasActiveFilter = excludedTiers.size > 0;
@@ -373,76 +261,66 @@ export function ThreadTrustBar({ replies, excludedTiers, onFilterChange }: {
     ? segments.reduce((sum, seg) => sum + (excludedTiers.has(seg.tierId) ? 0 : seg.count), 0)
     : total;
 
-  const avgColor = avgInfluence >= 0.15 ? "text-success dark:text-emerald-400"
-    : avgInfluence >= 0.02 ? "text-blue-600 dark:text-blue-400"
-    : avgInfluence > 0 ? "text-cyan-600 dark:text-cyan-400"
-    : "text-slate-500 dark:text-slate-400";
-
-  const concColor = concentration > 0.85 ? "text-danger dark:text-red-400"
-    : concentration > 0.6 ? "text-warning dark:text-amber-400"
-    : "text-success dark:text-emerald-400";
+  // The spread in words; the raw figures stay in the tooltip.
+  const level = avgInfluence >= 0.15 ? "Mostly people your network trusts" : avgInfluence >= 0.02 ? "Some people your network trusts" : avgInfluence > 0 ? "Few people your network trusts" : "No one your network knows yet";
+  const spread = total < 4 ? null : concentration > 0.85 ? "the trust sits with a few accounts" : concentration > 0.6 ? "the trust is somewhat concentrated" : "the trust is spread widely";
+  const figures = `Average ${avgInfluence.toFixed(4)} · median ${median.toFixed(4)}${total >= 4 ? ` · top ${topN} hold ${Math.round(concentration * 100)}%` : ""}`;
 
   return (
-    <div className="px-4 py-2.5 sm:py-3 border-b border-border/20 space-y-2" data-testid="thread-trust-bar">
-      <div className="flex items-center gap-2">
-        <div className="flex-1 h-2.5 rounded-full overflow-hidden flex gap-px bg-slate-500/15 dark:bg-slate-400/10">
-          {segments.map((seg, i) => {
-            const excluded = excludedTiers.has(seg.tierId);
-            return (
-              <div
-                key={seg.label}
-                className={`${seg.color} transition-all duration-300 ${i === 0 ? "rounded-l-full" : ""} ${i === segments.length - 1 ? "rounded-r-full" : ""} ${excluded ? "opacity-20" : ""}`}
-                style={{ width: `${(seg.count / total) * 100}%`, minWidth: seg.count > 0 ? "4px" : 0 }}
-                title={`${seg.label}: ${seg.count}`}
-              />
-            );
-          })}
+    <div className="px-4 py-3 border-b border-border/60 space-y-2" data-testid="thread-trust-bar">
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-2 rounded-full overflow-hidden flex gap-px bg-foreground/[0.06]" role="img" aria-label={segments.map((s) => `${s.label} ${s.count}`).join(", ")}>
+          {segments.map((seg) => (
+            <div
+              key={seg.label}
+              className={`h-full ${seg.bar} ${excludedTiers.has(seg.tierId) ? "opacity-20" : ""}`}
+              style={{ width: `${(seg.count / total) * 100}%`, minWidth: "4px" }}
+              title={`${seg.label}: ${seg.count}`}
+            />
+          ))}
         </div>
-        <span className="text-[10px] sm:text-[11px] text-muted-foreground/80 dark:text-muted-foreground/70 shrink-0 tabular-nums font-medium">
-          {hasActiveFilter ? `${filteredCount}/${total}` : total} reply authors
+        <span className="text-[12px] text-muted-foreground shrink-0 tabular-nums">
+          {hasActiveFilter ? `${filteredCount} of ${total}` : total} {total === 1 ? "person" : "people"} replied
         </span>
       </div>
-      <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+      <div className="flex items-center gap-x-3 gap-y-1 flex-wrap">
         {segments.map((seg) => {
           const excluded = excludedTiers.has(seg.tierId);
           return (
             <button
               key={seg.label}
+              type="button"
+              aria-pressed={!excluded}
+              title={excluded ? `Show ${seg.label}` : `Hide ${seg.label}`}
               onClick={() => toggleTier(seg.tierId)}
-              className={`flex items-center gap-1 text-[10px] sm:text-[11px] transition-all duration-200 cursor-pointer rounded px-1 -mx-1 py-0.5 hover:bg-white/[0.04] ${excluded ? "opacity-35 line-through decoration-1" : "text-foreground/70 dark:text-foreground/60"}`}
+              className={`hit-area inline-flex items-center gap-1.5 text-[12px] rounded-full px-1.5 -mx-1.5 py-0.5 hover:bg-foreground/[0.05] transition-colors duration-150 cursor-pointer ${excluded ? "text-muted-foreground line-through decoration-1" : "text-foreground/80"}`}
             >
-              <span className={`w-2 h-2 rounded-full transition-opacity duration-200 ${seg.color} ${excluded ? "opacity-40" : ""}`} />
-              <span className="font-medium">{seg.label}</span> <span className="tabular-nums">{seg.count}</span>
+              {seg.glyph
+                ? <TrustTierGlyph tier={seg.glyph} size={seg.glyph === "flagged" ? "w-3 h-3" : "w-2 h-2"} decorative className={excluded ? "opacity-40" : undefined} />
+                : <span className={`w-2 h-2 rounded-full ${seg.bar} ${excluded ? "opacity-40" : ""}`} aria-hidden="true" />}
+              {seg.label} <span className="tabular-nums">{seg.count}</span>
             </button>
           );
         })}
         {hasActiveFilter && (
           <button
+            type="button"
             onClick={() => onFilterChange(new Set())}
-            className="text-[10px] sm:text-[11px] text-brand/70 hover:text-brand-strong transition-colors ml-1 cursor-pointer"
+            className="hit-area text-[12px] font-medium text-brand hover:text-brand-strong transition-colors duration-150 cursor-pointer"
           >
             Show all
           </button>
         )}
       </div>
       {scoredCount > 0 && (
-        <div className="flex items-center gap-3 sm:gap-4 pt-0.5">
-          <span className="text-[10px] sm:text-[11px] text-muted-foreground/70 dark:text-muted-foreground/60">
-            Avg <span className={`font-mono font-bold ${avgColor}`}>{avgInfluence.toFixed(4)}</span>
-          </span>
-          <span className="text-[10px] sm:text-[11px] text-muted-foreground/70 dark:text-muted-foreground/60">
-            Med <span className={`font-mono font-bold ${avgColor}`}>{median.toFixed(4)}</span>
-          </span>
-          {total >= 4 && (
-            <span className="text-[10px] sm:text-[11px] text-muted-foreground/70 dark:text-muted-foreground/60" title={`Top ${topN} account${topN > 1 ? "s" : ""} hold ${Math.round(concentration * 100)}% of total trust weight`}>
-              Top {topN} hold <span className={`font-mono font-bold ${concColor}`}>{Math.round(concentration * 100)}%</span> weight
-            </span>
-          )}
-        </div>
+        <p className="text-[12px] text-muted-foreground" title={figures}>
+          {level}{spread ? `; ${spread}` : ""}.
+        </p>
       )}
       {warning && (
-        <p className="text-[11px] sm:text-xs text-zap dark:text-amber-400 italic font-medium">
-          ⚠ {warning}
+        <p className="flex items-start gap-1.5 text-[12px] font-medium text-amber-700 dark:text-amber-400">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" aria-hidden="true" />
+          {warning}
         </p>
       )}
     </div>
@@ -596,7 +474,7 @@ export function TrustedBySection({ pubkey }: { pubkey: string }) {
         {trustedProfiles.slice(0, 3).map((p) => (
           <Avatar key={p.pubkey} className="w-3.5 h-3.5 ring-1 ring-brand/20 border border-background">
             <AvatarImage src={p.avatar} alt={`${p.name}'s avatar`} />
-            <AvatarFallback className="bg-brand/30 text-brand text-[6px]">
+            <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[6px]">
               {p.name.slice(0, 1).toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -610,40 +488,18 @@ export function TrustedBySection({ pubkey }: { pubkey: string }) {
 }
 
 export function HoverCardTrustBadge({ pubkey }: { pubkey: string }) {
-  const { getAuthorTier, getAuthorInfluence, isAuthorFlagged, scores, wotEnabled } = useGrapeRankScores();
+  const { getAuthorTier, isAuthorFlagged, scores, wotEnabled } = useGrapeRankScores();
   const tier = getAuthorTier(pubkey);
   useLazyScoreRequest(pubkey, tier);
   if (!wotEnabled || !scores) return null;
-  const scoreLookedUp = scores.has(pubkey);
   const flagged = isAuthorFlagged(pubkey);
-  if (flagged) {
-    return (
-      <span className="text-[9px] font-medium px-1.5 py-0 rounded-full border shrink-0 bg-red-500/15 text-danger dark:text-red-400 border-red-500/30 inline-flex items-center gap-0.5">
-        <TrustTierGlyph tier="flagged" size="w-2.5 h-2.5" decorative /> Flagged
-      </span>
-    );
-  }
-  if (!scoreLookedUp) return null;
-  if (tier === "none") {
-    return (
-      <span className="text-[9px] font-medium px-1.5 py-0 rounded-full border shrink-0 inline-flex items-center gap-0.5 bg-muted/30 text-muted-foreground/50 border-border/30">
-        <TrustTierGlyph tier="none" size="w-2 h-2" decorative /> No Signal
-      </span>
-    );
-  }
-  const influence = getAuthorInfluence(pubkey);
-  const badgeStyle = tier === "strong"
-    ? "bg-emerald-500/15 text-success dark:text-emerald-400 border-emerald-500/30"
-    : tier === "moderate"
-    ? "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30"
-    : tier === "low"
-    ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-400 border-cyan-500/30"
-    : "bg-amber-500/15 text-zap dark:text-amber-400 border-amber-500/30";
-  const label = tier === "strong" ? "Highly Trusted" : tier === "moderate" ? "Trusted" : tier === "low" ? "Neutral" : "Low Trust";
+  if (!flagged && !scores.has(pubkey)) return null;
+  // Trust as a word about the reader's network, never a number (trust-words.ts).
+  const shown: SignalTier = flagged ? "flagged" : tier;
+  const phrase = shown === "none" ? "Not in your network yet" : getTrustPhrase(shown);
   return (
-    <span className={`text-[9px] font-medium px-1.5 py-0 rounded-full border shrink-0 inline-flex items-center gap-0.5 ${badgeStyle}`}>
-      {tier === "weak" && <TrustTierGlyph tier="weak" size="w-2 h-2" decorative />}
-      {label} · {formatInfluence(influence)}
+    <span className={`text-[12px] inline-flex items-center gap-1 shrink-0 ${shown === "flagged" ? "font-medium text-danger" : "text-muted-foreground"}`} data-testid="hover-trust-phrase">
+      <TrustTierGlyph tier={shown} size={shown === "flagged" ? "w-3 h-3" : "w-2.5 h-2.5"} decorative /> {phrase}
     </span>
   );
 }
@@ -671,7 +527,6 @@ export function AuthorHoverCard({ pubkey, children, profile: externalProfile }: 
   usePetnamesVersion();
   const npubShort = npub ? `${npub.slice(0, 9)}...${npub.slice(-4)}` : "?";
   const displayName = profile ? (getDisplayName(profile, npubShort) ?? npubShort) : npubShort;
-  const avatarUrl = getAvatarUrl(profile);
   const nip05 = (profileContent as Record<string, string | undefined>)?.nip05 || null;
   const about = (profileContent as Record<string, string | undefined>)?.about || null;
   const lud16 = (profileContent as Record<string, string | undefined>)?.lud16 || null;

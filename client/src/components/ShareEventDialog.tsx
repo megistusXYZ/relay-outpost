@@ -95,7 +95,7 @@ function ShareEventForm({ ce, onClose }: { ce: CalendarEventData; onClose: () =>
             <img src={ce.image} alt={`${ce.title || "Event"} image`} className="w-full h-full object-cover max-h-32" loading="lazy" decoding="async" />
           </div>
         )}
-        <p className="text-[10px] text-brand/60 font-mono uppercase tracking-wider mb-1.5">Sharing Event</p>
+        <p className="text-[13px] text-brand/60 mb-1.5 font-medium">Sharing event</p>
         <p className="text-sm font-medium text-foreground/90 line-clamp-2 break-words">{ce.title}</p>
         <p className="text-[11px] text-muted-foreground/60 mt-1 flex items-center gap-1.5">
           <Clock className="w-3 h-3 shrink-0" />
@@ -120,7 +120,7 @@ function ShareEventForm({ ce, onClose }: { ce: CalendarEventData; onClose: () =>
         data-testid="textarea-share-event-content"
       />
 
-      <p className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wider leading-relaxed">
+      <p className="text-[13px] text-muted-foreground leading-relaxed font-medium">
         This creates a public post with the event attached. Others can reply and zap your post.
       </p>
 
@@ -128,7 +128,7 @@ function ShareEventForm({ ce, onClose }: { ce: CalendarEventData; onClose: () =>
         <Button
           variant="outline"
           onClick={onClose}
-          className="flex-1 font-brand uppercase tracking-widest text-xs border-white/10 text-muted-foreground"
+          className="flex-1 text-xs border-white/10 text-muted-foreground font-medium"
           data-testid="button-cancel-share-event"
         >
           Cancel
@@ -136,7 +136,7 @@ function ShareEventForm({ ce, onClose }: { ce: CalendarEventData; onClose: () =>
         <Button
           onClick={handleShare}
           disabled={isPublishing || !content.trim()}
-          className="flex-1 bg-brand text-white font-brand uppercase tracking-widest text-xs border-0"
+          className="flex-1 bg-brand text-white text-xs border-0 font-medium"
           data-testid="button-confirm-share-event"
         >
           {isPublishing ? (
@@ -161,7 +161,7 @@ export function ShareEventDialog({ ce, onClose }: { ce: CalendarEventData; onClo
       <Drawer open onOpenChange={(open) => { if (!open) onClose(); }}>
         <DrawerContent>
           <DrawerHeader>
-            <DrawerTitle className="font-brand uppercase tracking-widest text-sm flex items-center gap-2">
+            <DrawerTitle className="text-sm flex items-center gap-2 font-medium">
               <Share2 className="w-4 h-4" />
               Share
             </DrawerTitle>
@@ -178,7 +178,7 @@ export function ShareEventDialog({ ce, onClose }: { ce: CalendarEventData; onClo
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="max-w-sm sm:max-w-md glass-dialog-card border-brand/15 overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="font-brand uppercase tracking-widest text-sm flex items-center gap-2">
+          <DialogTitle className="text-sm flex items-center gap-2 font-medium">
             <Share2 className="w-4 h-4" />
             Share
           </DialogTitle>

@@ -107,7 +107,7 @@ export function GroupInviteCard({ invite, compact = false }: { invite: GroupInvi
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1 text-[10px] font-semibold text-brand uppercase tracking-wider">
+        <div className="flex items-center gap-1 text-[13px] font-semibold text-brand">
           <Users className="w-3 h-3 shrink-0" />
           Group invite
         </div>

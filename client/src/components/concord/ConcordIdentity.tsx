@@ -47,7 +47,7 @@ export function ConcordIdentity({ pubkey, size = 28, showName = true, className 
     <div className={`flex items-center gap-2 min-w-0 ${className}`}>
       <Avatar className="shrink-0 border border-border/30" style={{ width: px, height: px }}>
         {avatar && <AvatarImage src={avatar} alt={name} />}
-        <AvatarFallback className="text-[10px] bg-brand/10 text-brand font-semibold">
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs font-semibold">
           {name.slice(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>

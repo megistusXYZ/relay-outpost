@@ -11,11 +11,11 @@ export function ManageCountBadge({ communityId }: { communityId: string }) {
   if (!n) return null;
   return (
     <span
-      className="min-w-[16px] h-4 px-1 rounded-full bg-amber-500 text-[9px] font-semibold leading-4 text-black text-center tabular-nums"
+      className="text-xs font-semibold text-brand tabular-nums"
       aria-label={`${n} waiting for you`}
       data-testid="manage-count"
     >
-      {n > 9 ? "9+" : n}
+      {n > 9 ? "9+" : n} new
     </span>
   );
 }

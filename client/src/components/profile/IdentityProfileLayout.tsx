@@ -86,8 +86,8 @@ function CirclesAndCommunities({ circleSlot, communitiesSlot }: { circleSlot?: R
 
   const active = view === "circle" ? circleSlot : communitiesSlot;
   return (
-    <section className="rounded-xl border border-border/60 dark:border-white/[0.07] bg-card overflow-hidden shadow-sm shadow-black/[0.04] dark:shadow-none">
-      <div className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-primary/[0.10] to-primary/[0.03] border-b border-border/50" role="tablist" aria-label="Circle or communities">
+    <section className="rounded-[20px] border border-border/60 bg-card overflow-hidden">
+      <div className="flex items-center gap-1 px-3 py-2 border-b border-border/50" role="tablist" aria-label="Circle or communities">
         {(["circle", "communities"] as const).map((key) => (
           <button
             key={key}
@@ -95,8 +95,8 @@ function CirclesAndCommunities({ circleSlot, communitiesSlot }: { circleSlot?: R
             role="tab"
             aria-selected={view === key}
             onClick={() => setView(key)}
-            className={`text-[11px] font-semibold uppercase tracking-wider rounded px-1.5 py-0.5 transition-colors ${
-              view === key ? "text-brand/90" : "text-muted-foreground/50 hover:text-muted-foreground"
+            className={`text-[13px] font-medium rounded-full px-2.5 py-1 transition-colors ${
+              view === key ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
             }`}
             data-testid={`profile-people-tab-${key}`}
           >
@@ -225,7 +225,7 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
               over the banner without its top being cropped. */}
           {/* Phones: no card — the cover is the frame; the name and one line
               of counts sit right under the lifted avatar, then the actions. */}
-          <div ref={identityCardRef} className="lg:rounded-xl lg:border lg:border-border/60 lg:dark:border-white/[0.07] lg:bg-card lg:p-3 lg:shadow-sm lg:shadow-black/[0.04] lg:dark:shadow-none">
+          <div ref={identityCardRef} className="lg:rounded-[20px] lg:border lg:border-border/60 lg:bg-card lg:p-3">
             {/* The -mt-14 lifts the avatar over the COVER IMAGE — the classic
                 profile idiom. While live, the cover's bottom edge carries the
                 broadcast's title and Watch button, and the lift would land the
@@ -241,7 +241,7 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
               inlineBadge={isMobile && data.nip05 ? <Nip05Badge nip05={data.nip05} pubkey={data.pubkey} showText={false} iconClassName="w-4 h-4" /> : undefined}
             >
               {!isMobile && data.nip05 && (
-                <Nip05Badge nip05={data.nip05} pubkey={data.pubkey} className="mt-0.5" textClassName="text-[11px] text-muted-foreground" iconClassName="w-3 h-3" />
+                <Nip05Badge nip05={data.nip05} pubkey={data.pubkey} className="mt-0.5" textClassName="text-[12px] text-muted-foreground" iconClassName="w-3 h-3" />
               )}
               {/* Counts under the name, as on every social app: important, not
                   the loudest thing on the page, and on a phone's first screen. */}
@@ -250,7 +250,7 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
                 <button
                   type="button"
                   onClick={() => setPetnameOpen(true)}
-                  className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground/70 hover:text-foreground transition-colors"
+                  className="mt-1 flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground transition-colors"
                   data-testid="profile-petname-line"
                 >
                   <Pencil className="w-3 h-3" />
@@ -262,7 +262,7 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
               {showTrust && !isMobile && (
                 <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1">
                   <TrustTierGlyph tier={data.grapeRankTier as never} size="w-3 h-3" />
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-brand/90 capitalize">{data.grapeRankTier} in your network</span>
+                  <span className="text-[13px] font-medium text-brand/90 capitalize">{data.grapeRankTier} in your network</span>
                 </div>
               )}
             </IdentityHead>
@@ -319,12 +319,12 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
                       <button
                         type="button"
                         onClick={onZapLud16}
-                        className="group flex items-center gap-2 min-w-0 w-full text-left rounded-md -mx-1 px-1 py-0.5 hover:bg-orange-500/5 transition-colors"
+                        className="group flex items-center gap-2 min-w-0 w-full text-left rounded-md -mx-1 px-1 py-0.5 hover:bg-foreground/[0.05] transition-colors"
                         title={`Zap ${data.lud16}`}
                         data-testid="identity-lud16-zap"
                       >
                         <BtcZapIcon className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-                        <span className="text-muted-foreground group-hover:text-orange-500 truncate transition-colors">{data.lud16}</span>
+                        <span className="text-muted-foreground group-hover:text-foreground truncate transition-colors">{data.lud16}</span>
                       </button>
                     ) : (
                       <div className="flex items-center gap-2 min-w-0">
@@ -335,7 +335,7 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
                   )}
                   {joined && (
                     <div className="flex items-center gap-2 min-w-0">
-                      <CalendarDays className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+                      <CalendarDays className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                       <span className="text-muted-foreground">Joined {joined}</span>
                     </div>
                   )}
@@ -358,7 +358,7 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
           <div className="hidden lg:flex flex-col gap-4 sticky top-4 max-h-[calc(100dvh-6rem)]" data-testid="identity-rail-pinned">
             {pinned && (
               <div
-                className="flex flex-wrap items-center gap-x-2.5 gap-y-2 rounded-xl border border-border/60 dark:border-white/[0.07] bg-card p-2.5 shrink-0 shadow-sm shadow-black/[0.04] dark:shadow-none motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200"
+                className="flex flex-wrap items-center gap-x-2.5 gap-y-2 rounded-[20px] border border-border/60 bg-card p-2.5 shrink-0 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200"
                 data-testid="identity-rail-mini"
               >
                 <Avatar className="w-10 h-10 shrink-0 border border-border">
@@ -368,7 +368,7 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold leading-tight truncate" title={data.displayName}>{data.displayName}</div>
                   {typeof data.followers === "number" && (
-                    <div className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
+                    <div className="text-[12px] text-muted-foreground tabular-nums whitespace-nowrap">
                       {new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(data.followers)} followers
                     </div>
                   )}

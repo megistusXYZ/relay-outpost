@@ -178,17 +178,17 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
 
 
   if (!isConcordEnabled()) {
-    return <div className="max-w-2xl mx-auto px-4 py-16 text-center text-sm text-muted-foreground/60">Group chats aren't enabled.</div>;
+    return <div className="max-w-2xl mx-auto px-4 py-16 text-center text-sm text-muted-foreground">Group chats aren't enabled.</div>;
   }
   if (community === undefined) {
-    return <div className="max-w-2xl mx-auto px-4 py-16 text-center text-sm text-muted-foreground/50">Opening…</div>;
+    return <div className="max-w-2xl mx-auto px-4 py-16 text-center text-sm text-muted-foreground">Opening…</div>;
   }
   if (community === null) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center space-y-3">
-        <Lock className="w-10 h-10 text-muted-foreground/30 mx-auto" />
-        <p className="text-sm text-muted-foreground/70">You don't have the keys for this group chat on this device.</p>
-        <p className="text-[11px] text-muted-foreground/40">Sign in on the device that created it, or accept an invite.</p>
+        <Lock className="w-10 h-10 text-muted-foreground mx-auto" />
+        <p className="text-sm text-muted-foreground">You don't have the keys for this group chat on this device.</p>
+        <p className="text-xs text-muted-foreground">Sign in on the device that created it, or accept an invite.</p>
         <button onClick={() => goBack("/messages")} className="text-xs text-brand hover:underline">Back to chats</button>
       </div>
     );
@@ -203,14 +203,14 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
       <button onClick={isMobile ? () => setGroupSheetNonce((n) => n + 1) : () => setExpanded((v) => !v)} className="flex items-center gap-2 min-w-0 flex-1 text-left" data-testid="concord-identity-name">
         <GroupAvatar members={rosterPks} picture={community.icon} image={community.iconImage} name={displayName} myPubkey={pubkey} size={28} className="shrink-0" />
         <span className="text-sm font-bold truncate">{displayName}</span>
-        <span className="shrink-0 inline-flex" title="End-to-end encrypted" aria-label="End-to-end encrypted"><Lock className="w-3 h-3 text-muted-foreground/50" /></span>
+        <span className="shrink-0 inline-flex" title="End-to-end encrypted" aria-label="End-to-end encrypted"><Lock className="w-3 h-3 text-muted-foreground" /></span>
       </button>
       {canInvite && (
-        <button onClick={() => setInviteOpen(true)} className="flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground/60 hover:text-brand hover:bg-brand/10 shrink-0" title="Invite" data-testid="button-concord-invite">
+        <button onClick={() => setInviteOpen(true)} className="flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] shrink-0" title="Invite" data-testid="button-concord-invite">
           <Link2 className="w-4 h-4" />
         </button>
       )}
-      <button onClick={isMobile ? () => setGroupSheetNonce((n) => n + 1) : () => setExpanded((v) => !v)} aria-label="Group details" className="flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 shrink-0">
+      <button onClick={isMobile ? () => setGroupSheetNonce((n) => n + 1) : () => setExpanded((v) => !v)} aria-label="Group details" className="flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/40 shrink-0">
         <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
       </button>
     </div>
@@ -230,7 +230,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
         <GroupAvatar members={rosterPks} picture={community.icon} image={community.iconImage} name={displayName} myPubkey={pubkey} size={44} className="shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="text-[15px] font-semibold leading-snug break-words line-clamp-2">{displayName}</p>
-          <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground/70" title="End-to-end encrypted group chat on Nostr — no relay required.">
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground" title="End-to-end encrypted group chat on Nostr — no relay required.">
             <Lock className="w-3 h-3 shrink-0" aria-hidden="true" /> End-to-end encrypted
           </p>
         </div>
@@ -259,7 +259,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
             </button>
           )}
           {canInvite && (
-            <button onClick={() => setInviteOpen(true)} className="flex min-h-11 md:min-h-9 items-center justify-center gap-1.5 rounded-lg border border-brand/25 dark:border-brand/20 bg-brand/5 dark:bg-white/[0.03] px-3 text-xs font-medium text-brand hover:bg-brand/10 transition-colors" data-testid="button-about-invite">
+            <button onClick={() => setInviteOpen(true)} className="flex min-h-11 md:min-h-9 items-center justify-center gap-1.5 rounded-full border border-foreground/80 px-4 text-sm font-medium text-foreground hover:bg-foreground/[0.04] transition-colors duration-150" data-testid="button-about-invite">
               <Link2 className="w-3.5 h-3.5" /> Invite
             </button>
           )}
@@ -267,24 +267,24 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
       )}
       {/* The group's id and its relays are for the curious and for support, not
           for reading: behind a disclosure, not in the way. */}
-      <details className="group/details text-[11px] text-muted-foreground/60" data-testid="concord-about-details">
-        <summary className="cursor-pointer select-none py-2 md:py-0 font-medium text-foreground/70 uppercase tracking-wider text-[10px] list-none flex items-center gap-1">
+      <details className="group/details text-xs text-muted-foreground" data-testid="concord-about-details">
+        <summary className="cursor-pointer select-none py-2 md:py-0 font-medium text-foreground/70 text-[13px] list-none flex items-center gap-1">
           <ChevronDown className="w-3 h-3 transition-transform group-open/details:rotate-180" aria-hidden="true" /> Details
         </summary>
         <div className="mt-2 space-y-3">
-      <div className="space-y-1.5 text-[11px] text-muted-foreground/60">
-        <p className="font-medium text-foreground/70 uppercase tracking-wider text-[10px]">Group id</p>
+      <div className="space-y-1.5 text-xs text-muted-foreground">
+        <p className="font-medium text-foreground/70 text-[13px]">Group id</p>
         <button
           onClick={() => { navigator.clipboard?.writeText(community.community_id); setCopied(true); toast({ title: "Copied" }); setTimeout(() => setCopied(false), 1500); }}
-          className="flex items-center gap-1.5 font-mono text-[10px] break-all text-left hover:text-foreground/80"
+          className="flex items-center gap-1.5 font-mono text-xs break-all text-left hover:text-foreground"
         >
-          {copied ? <Check className="w-3 h-3 text-emerald-500 shrink-0" /> : <Copy className="w-3 h-3 shrink-0" />}
+          {copied ? <Check className="w-3 h-3 text-success shrink-0" /> : <Copy className="w-3 h-3 shrink-0" />}
           {community.community_id}
         </button>
       </div>
-      <div className="space-y-1 text-[11px] text-muted-foreground/60">
-        <p className="font-medium text-foreground/70 uppercase tracking-wider text-[10px]">Relays</p>
-        {community.relays.map((r) => <p key={r} className="font-mono text-[10px]">{r.replace(/^wss?:\/\//, "")}</p>)}
+      <div className="space-y-1 text-xs text-muted-foreground">
+        <p className="font-medium text-foreground/70 text-[13px]">Relays</p>
+        {community.relays.map((r) => <p key={r} className="font-mono text-xs">{r.replace(/^wss?:\/\//, "")}</p>)}
       </div>
         </div>
       </details>
@@ -340,7 +340,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
           <>
             <GroupAvatar members={rosterPks} picture={community.icon} image={community.iconImage} name={displayName} myPubkey={pubkey} size={24} className="shrink-0" />
             <span className="min-w-0 flex-1 truncate text-sm font-semibold">{displayName}</span>
-            <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground/50" aria-hidden="true" />
+            <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           </>
         }
         onManage={hasAnyCapability(concordCapabilities(myMember)) ? () => setAdminOpen(true) : undefined}
@@ -357,6 +357,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
   const oneRoom = drawerChannels.length <= 1;
   const fit = fitPanes(oneRoom ? { ...layout, collapsed: { ...layout.collapsed, rooms: true } } : layout, panesWidth || Number.POSITIVE_INFINITY);
 
+  const roomCount = community.channels.length;
   return (
     <div className="flex flex-col h-[calc(100svh-4.25rem-7rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] md:h-[calc(100dvh-5rem)]" data-testid="page-concord-outpost">
       {/* Identity in the top bar */}
@@ -404,7 +405,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
           <GroupAvatar members={rosterPks} picture={community.icon} image={community.iconImage} name={displayName} myPubkey={pubkey} size={56} className="shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="text-lg font-bold">{displayName}</p>
-            <p className="text-[11px] text-muted-foreground/50 flex items-center gap-1"><Lock className="w-3 h-3 shrink-0" aria-hidden="true" /> {community.channels.length} channel{community.channels.length !== 1 ? "s" : ""} · encrypted</p>
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><Lock className="w-3 h-3 shrink-0" aria-hidden="true" /> {roomCount} room{roomCount !== 1 ? "s" : ""} · encrypted</p>
           </div>
         </div>
       )}
@@ -461,7 +462,7 @@ export default function ConcordOutpost({ communityId }: { communityId: string })
                   testId="concord-resize-info"
                 />
               </div>
-              <aside style={{ width: fit.info }} className="glass-card flex flex-col shrink-0 gap-1 rounded-xl border border-brand/15 dark:border-brand/10 overflow-hidden py-1.5" data-testid="concord-members-panel">
+              <aside style={{ width: fit.info }} className="glass-card flex flex-col shrink-0 gap-1 rounded-[20px] border border-border overflow-hidden py-1.5" data-testid="concord-members-panel">
                 {infoSections("pane")}
               </aside>
             </>

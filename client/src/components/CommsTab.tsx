@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { notifyNeedsYouChanged } from "@/contexts/NeedsYouContext";
 import type { Event as NostrEvent } from "nostr-tools";
 import { nip19 } from "nostr-tools";
@@ -59,8 +60,6 @@ import {
   ChevronDown,
   Clock,
   Plus,
-  Globe,
-  LockKeyhole,
   Users,
   UserPlus,
   Copy,
@@ -69,7 +68,11 @@ import {
   AlertCircle,
   Settings,
   Link2,
-  Pin, WifiOff, RefreshCw, PanelLeft } from "lucide-react";
+  Pin,
+  WifiOff,
+  RefreshCw,
+  PanelLeft,
+} from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { joinDoor, readDoor } from "@/lib/nip29-door";
 import { Label } from "@/components/ui/label";
@@ -295,34 +298,6 @@ function WotDot({ pubkey }: { pubkey: string }) {
   return <TrustTierGlyph tier={effectiveTier} size="w-2 h-2" title={getSignalTierLabel(effectiveTier)} />;
 }
 
-function ChatAuthorLine({ pubkey, createdAt }: { pubkey: string; createdAt: number }) {
-  const profile = use$(() => eventStore.replaceable(KIND_METADATA, pubkey), [pubkey]);
-  const name = profile ? getDisplayName(profile) : shortenNpub(formatNpub(pubkey));
-  const avatar = profile ? getAvatarUrl(profile) : undefined;
-  const content = profile ? getProfileContent(profile) : undefined;
-
-  return (
-    <div className="flex items-center gap-2 min-w-0">
-      <Avatar className="w-6 h-6 shrink-0">
-        {avatar && <AvatarImage src={avatar} alt={name} />}
-        <AvatarFallback className="text-[8px] bg-brand/10 text-brand">
-          {name.slice(0, 2).toUpperCase()}
-        </AvatarFallback>
-      </Avatar>
-      <span className="text-[11px] font-medium text-foreground/80 truncate">{name}</span>
-      {/* Two different axes, deliberately side by side: PersonBadges is
-          domain-attested (NIP-05) plus impersonation collision; WotDot is
-          web-of-trust. Same pairing Communities.tsx:501-510 already uses. The
-          badge is the AFFIRMATIVE half decision 9b asks for — the fake is
-          caught by contrast with a real check, never by an accusation. */}
-      <PersonBadges pubkey={pubkey} nip05={content?.nip05} claimedName={content?.display_name || content?.name} showCollision={!!profile} />
-      <WotDot pubkey={pubkey} />
-      <span className="text-[9px] text-muted-foreground/40 shrink-0">
-        {formatDistanceToNow(createdAt * 1000, { addSuffix: true })}
-      </span>
-    </div>
-  );
-}
 
 function JoinRequestRow({
   req,
@@ -343,7 +318,7 @@ function JoinRequestRow({
     <div className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/60 dark:hover:bg-white/[0.04] transition-colors">
       <Avatar className="w-8 h-8 shrink-0">
         {avatar && <AvatarImage src={avatar} alt={name} />}
-        <AvatarFallback className="text-[9px] bg-brand/10 text-brand">
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[9px]">
           {name.slice(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>
@@ -416,7 +391,7 @@ function MemberRow({
       >
         <Avatar className="w-7 h-7 shrink-0">
           {avatar && <AvatarImage src={avatar} alt={name} />}
-          <AvatarFallback className="text-[8px] bg-brand/10 text-brand">
+          <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[8px]">
             {name.slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
@@ -736,7 +711,7 @@ function ChatMessageBubble({
           >
             <Avatar className="w-7 h-7 mb-0.5 border border-border/50">
               {avatar && <AvatarImage src={avatar} alt={name} />}
-              <AvatarFallback className="text-[9px] bg-brand/10 text-brand">
+              <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[9px]">
                 {name.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -963,7 +938,7 @@ function GroupCard({
           {group.picture ? (
             <Avatar className="w-10 h-10 shrink-0 mt-0.5">
               <AvatarImage src={group.picture} alt={group.name || group.id} />
-              <AvatarFallback className="bg-brand/10 text-brand text-xs">
+              <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs">
                 <Hash className="w-4 h-4" />
               </AvatarFallback>
             </Avatar>
@@ -974,7 +949,7 @@ function GroupCard({
           )}
           <div className="flex-1 min-w-0 flex flex-col h-full">
             <div className="flex items-center gap-1.5">
-              {unread && <span className="w-2 h-2 rounded-full bg-primary shrink-0 shadow-[0_0_6px_rgba(139,92,246,0.6)]" aria-label="Unread messages" data-testid={`channel-unread-${group.id}`} />}
+              {unread && <span className="w-2 h-2 rounded-full bg-brand shrink-0" aria-label="Unread messages" data-testid={`channel-unread-${group.id}`} />}
               <span className={`text-sm truncate ${unread ? "font-semibold text-foreground" : "font-medium text-foreground/90"}`}>
                 {group.name || group.id}
               </span>
@@ -1267,7 +1242,7 @@ function ChatRoomView({
   // You made this room on this device, but the relay does not list you yet (or
   // never will). Worth SAYING — the alternative is controls that vanished with
   // no explanation.
-  const createdHereButNotListed = useMemo(
+  useMemo(
     () => !isMod && loadCreatedGroups().has(createdGroupKey(relayUrl, group.id)),
     [isMod, relayUrl, group.id],
   );
@@ -2063,7 +2038,7 @@ function ChatRoomView({
     <>
       {admins.length > 0 && (
         <div className="mb-1">
-          <p className="px-2 pb-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+          <p className="px-2 pb-0.5 text-[12px] font-semibold text-muted-foreground/80">
             Admins <span className="font-medium tabular-nums text-muted-foreground/50">— {admins.length}</span>
           </p>
           {admins.map((a) => (
@@ -2078,7 +2053,7 @@ function ChatRoomView({
       )}
       {members.filter((m) => !admins.some((a) => a.pubkey === m)).length > 0 && (
         <div>
-          <p className="px-2 pb-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+          <p className="px-2 pb-0.5 text-[12px] font-semibold text-muted-foreground/80">
             Members <span className="font-medium tabular-nums text-muted-foreground/50">— {members.filter((m) => !admins.some((a) => a.pubkey === m)).length}</span>
           </p>
           {members
@@ -2295,7 +2270,7 @@ function ChatRoomView({
         return (
           <div className="flex items-center gap-2 px-3 py-1.5 border-b border-brand/15 bg-brand/[0.05] shrink-0" data-testid="pinned-banner">
             <Pin className="w-3 h-3 text-brand fill-current shrink-0" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-brand shrink-0">Pinned</span>
+            <span className="text-[13px] font-semibold text-brand shrink-0">Pinned</span>
             <button
               onClick={() => document.querySelector(`[data-testid="chat-msg-${pinnedMessageId}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
               className="text-[11px] text-muted-foreground/70 truncate flex-1 text-left hover:text-foreground transition-colors"
@@ -2321,7 +2296,7 @@ function ChatRoomView({
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[120px] gap-2">
-            <MessageSquare className="w-8 h-8 text-muted-foreground/20" />
+            <OttoEmpty mood="quiet" size={72} className="text-foreground/70" />
             <p className="text-xs text-muted-foreground/50">No messages yet</p>
             <p className="text-[10px] text-muted-foreground/30">Be the first to say something</p>
           </div>
@@ -2793,7 +2768,7 @@ function ChatRoomView({
               open is a harmless no-op. */}
           {isOwner && !group.isOpen && (
             <div className="space-y-1.5">
-              <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">Invite code · auto-approves joins</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Invite code · auto-approves joins</p>
               {inviteCode ? (
                 <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/20 border border-border/30">
                   <code className="flex-1 text-xs font-mono text-foreground/90 select-all truncate">{inviteCode}</code>
@@ -2811,7 +2786,7 @@ function ChatRoomView({
 
           {/* Shareable link */}
           <div className="space-y-1.5">
-            <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">Invite link</p>
+            <p className="text-[13px] text-muted-foreground font-medium">Invite link</p>
             <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/20 border border-border/30">
               <Link2 className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
               <span className="flex-1 text-[11px] font-mono text-foreground/70 truncate">{buildChannelInviteLink(relayUrl, group.id, inviteCode || undefined, pubkey ? formatNpub(pubkey) : undefined)}</span>
@@ -2825,7 +2800,7 @@ function ChatRoomView({
           {/* Send a private invite DM */}
           {pubkey && (
             <div className="space-y-1.5">
-              <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">Send to a person · private DM</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Send to a person · private DM</p>
               <ProfileSearchInput
                 onSelect={(r) => setInviteRecipient(r)}
                 selected={inviteRecipient}
@@ -2864,7 +2839,7 @@ function ChatRoomView({
       >
         <div className="space-y-3 py-2">
           <div>
-            <Label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground/60 mb-1.5 block">Name</Label>
+            <Label className="text-[12px] text-muted-foreground/60 mb-1.5 block font-medium">Name</Label>
             <input
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
@@ -2874,7 +2849,7 @@ function ChatRoomView({
             />
           </div>
           <div>
-            <Label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground/60 mb-1.5 block">Description</Label>
+            <Label className="text-[12px] text-muted-foreground/60 mb-1.5 block font-medium">Description</Label>
             <Textarea
               value={editAbout}
               onChange={(e) => setEditAbout(e.target.value)}
@@ -2889,7 +2864,7 @@ function ChatRoomView({
               different decision from a rename and must not ride a form button
               that people press to fix a typo. */}
           <div className="pt-1 border-t border-border/20">
-            <Label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground/60 mb-2 block">Who can get in</Label>
+            <Label className="text-[12px] text-muted-foreground/60 mb-2 block font-medium">Who can get in</Label>
             {door.join === "unknown" || door.read === "unknown" ? (
               // Never offer a switch whose current position we cannot read —
               // the first click would be a guess published as an instruction.
@@ -2933,7 +2908,7 @@ function ChatRoomView({
             )}
           </div>
           <div>
-            <Label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground/60 mb-1.5 block">Image</Label>
+            <Label className="text-[12px] text-muted-foreground/60 mb-1.5 block font-medium">Image</Label>
             <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground/70 hover:text-foreground transition-colors">
               <span className="inline-flex items-center gap-1.5 px-3 h-9 rounded-lg bg-white/[0.03] border border-border/30">
                 <ImagePlus className="w-3.5 h-3.5" />
@@ -2963,7 +2938,7 @@ function ChatRoomView({
       >
         <div className="py-2 text-xs text-muted-foreground/60">
           Members will lose access. The relay processes the deletion (kind 9008); if it
-          declines, the channel may persist.
+          declines, the room may persist.
         </div>
       </ResponsiveFormPanel>
     </div>
@@ -3036,7 +3011,7 @@ function RoomList({
         <>
           <div className="flex items-center gap-1.5 pt-1">
             <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-            <span className="text-[10px] font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400">Pinned</span>
+            <span className="text-[13px] font-medium text-amber-600 dark:text-amber-400">Pinned</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {pinnedVisible.map(renderCard)}
@@ -3150,14 +3125,8 @@ export function CommsTab({
 
   const [pendingGroupIds, setPendingGroupIds] = useState<Set<string>>(new Set());
   const [showCreateChannel, setShowCreateChannel] = useState(false);
-  const [newChannelName, setNewChannelName] = useState("");
-  const [newChannelAbout, setNewChannelAbout] = useState("");
-  const [newChannelClosed, setNewChannelClosed] = useState(false);
-  const [creatingChannel, setCreatingChannel] = useState(false);
-  const [creatingQuietRoom, setCreatingQuietRoom] = useState(false);
-  const [newChannelPicture, setNewChannelPicture] = useState<File | null>(null);
-  const [newChannelPicturePreview, setNewChannelPicturePreview] = useState<string | null>(null);
-  const channelPicInputRef = useRef<HTMLInputElement>(null);
+  useState<File | null>(null);
+  useState<string | null>(null);
   const [autoOpenAddMemberForGroup, setAutoOpenAddMemberForGroup] = useState<string | null>(null);
 
   const hasNip29 = mayHostNip29(supportedNips);
@@ -3165,17 +3134,6 @@ export function CommsTab({
   useEffect(() => {
     if (createChannelOpen) setShowCreateChannel(true);
   }, [createChannelOpen]);
-
-  const resetCreateForm = useCallback(() => {
-    setNewChannelName("");
-    setNewChannelAbout("");
-    setNewChannelClosed(false);
-    setNewChannelPicture(null);
-    if (newChannelPicturePreview) URL.revokeObjectURL(newChannelPicturePreview);
-    setNewChannelPicturePreview(null);
-    setShowCreateChannel(false);
-    onCreateChannelClose?.();
-  }, [onCreateChannelClose, newChannelPicturePreview]);
 
   const createGroupFlow = useCallback(async (opts: {
     name: string;
@@ -3276,41 +3234,7 @@ export function CommsTab({
     }
   }, [relayUrl, pubkey, toast, hasNip29]);
 
-  const handleCreateChannel = useCallback(async () => {
-    if (!newChannelName.trim() || !pubkey) return;
-    setCreatingChannel(true);
-    try {
-      const ok = await createGroupFlow({
-        name: newChannelName,
-        about: newChannelAbout,
-        isClosed: newChannelClosed,
-        picture: newChannelPicture,
-      });
-      if (ok) resetCreateForm();
-    } finally {
-      setCreatingChannel(false);
-    }
-  }, [newChannelName, newChannelAbout, newChannelClosed, newChannelPicture, pubkey, createGroupFlow, resetCreateForm]);
 
-  const handleCreateQuietRoom = useCallback(async () => {
-    if (!pubkey) return;
-    setCreatingQuietRoom(true);
-    try {
-      const stamp = Date.now().toString(36).slice(-4);
-      const ok = await createGroupFlow({
-        name: `Quiet room ${stamp}`,
-        about: "Private friends-only room",
-        isPrivate: true,
-        isClosed: true,
-        autoOpenAddMember: true,
-        successTitle: "Quiet room created",
-        successDescription: "Hidden from public discovery. Add a friend to invite them.",
-      });
-      if (ok) resetCreateForm();
-    } finally {
-      setCreatingQuietRoom(false);
-    }
-  }, [pubkey, createGroupFlow, resetCreateForm]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<RoomFilter>("all");
@@ -3833,7 +3757,7 @@ export function CommsTab({
               <div className="space-y-1">
                 <h3 className="text-sm font-brand tracking-wide text-foreground/70">This community doesn't have chat yet</h3>
                 <p className="text-[10px] text-muted-foreground/50 leading-relaxed max-w-xs">
-                  Chat needs a relay running NIP-29. You can still start a channel — on a relay that supports it.
+                  Chat needs a relay running NIP-29. You can still start a room — on a relay that supports it.
                 </p>
               </div>
               {pubkey && (
@@ -3845,7 +3769,7 @@ export function CommsTab({
                   data-testid="button-find-channel-relay"
                 >
                   <Plus className="w-3 h-3" />
-                  Find a channel relay
+                  Find a relay for rooms
                 </Button>
               )}
             </div>
@@ -4029,7 +3953,7 @@ export function CommsTab({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="text-xs font-brand tracking-wider uppercase text-brand">Rooms</h2>
+          <h2 className="text-xs text-brand font-medium">Rooms</h2>
           {loading && <RelayOutpostInlineLoader className="w-3.5 h-3.5" />}
         </div>
         {screened.shown.length > 0 && (

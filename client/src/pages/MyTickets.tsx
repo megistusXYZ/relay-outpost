@@ -56,7 +56,7 @@ function PersonChip({ pubkey, fallbackLabel }: { pubkey: string; fallbackLabel?:
     <div className="flex items-center gap-1.5 min-w-0">
       <Avatar className="w-5 h-5 border border-border/40">
         {avatar && <AvatarImage src={avatar} alt={name || ""} />}
-        <AvatarFallback className="text-[8px] bg-brand/10 text-brand">
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[8px]">
           {(name || "?").slice(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>
@@ -160,7 +160,7 @@ export default function MyTickets() {
       <div className="max-w-2xl mx-auto px-4 py-10">
         <Card className="glass-card p-6 text-center">
           <Inbox className="w-9 h-9 mx-auto text-brand/60 mb-3" />
-          <h2 className="text-base font-brand uppercase tracking-widest mb-1">Your tickets</h2>
+          <h2 className="text-base mb-1 font-medium">Your tickets</h2>
           <p className="text-sm text-muted-foreground/70">Sign in to see the feedback you've sent and any replies.</p>
         </Card>
       </div>

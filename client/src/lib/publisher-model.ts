@@ -27,7 +27,7 @@ export function readDraft(text: string): ReadDraft {
   if (Array.isArray(v) && v[0] === "EVENT") v = v[v.length - 1];
   if (!v || typeof v !== "object" || Array.isArray(v)) return { ok: false, error: "An event is an object, like {\"kind\":1,\"content\":\"hi\"}" };
   const e = v as Record<string, unknown>;
-  if (!Number.isInteger(e.kind) || (e.kind as number) < 0) return { ok: false, error: "Give it a kind — a number, like 1 for a note" };
+  if (!Number.isInteger(e.kind) || (e.kind as number) < 0) return { ok: false, error: "Give it a kind — a number, like 1 for a post" };
   if (e.content !== undefined && typeof e.content !== "string") return { ok: false, error: "content must be text" };
   const tags = e.tags ?? [];
   if (!Array.isArray(tags) || !tags.every((t) => Array.isArray(t) && t.every((x) => typeof x === "string"))) {

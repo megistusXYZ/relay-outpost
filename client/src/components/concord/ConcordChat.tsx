@@ -5,6 +5,7 @@
  * one signer.signEvent for the seal.
  */
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { useBackClosable } from "@/hooks/use-back-closable";
 import { createPortal } from "react-dom";
 import { Hash, Lock, Plus, Send, ImagePlus, Loader2, X, ChevronDown, Users, BellOff, MessageSquare, ArrowLeft, Link2, Shield, Headphones, PanelLeft, Pin, BarChart3 } from "lucide-react";
@@ -51,7 +52,7 @@ import { canInviteToCommunity, rosterPubkeys } from "@/lib/concord/concord-invit
 import { useMention } from "@/hooks/use-mention";
 import { MentionSearch, type MentionResult } from "@/components/MentionSearch";
 import { ConcordMessageBody, ConcordContentPreview, ConcordChannelNavProvider } from "./ConcordMessageBody";
-import { buildChatTimeline, firstUnreadIndex, moderationSystemEvents, chatRowMeta, chatClockTime, type SystemAction } from "@/lib/concord/concord-activity";
+import { buildChatTimeline, firstUnreadIndex, chatRowMeta, chatClockTime, type SystemAction } from "@/lib/concord/concord-activity";
 import { groupThreads, type ThreadMeta } from "@/lib/concord/concord-threads";
 import { readMessageShape, threadReplyRef, type RootRef } from "@/lib/concord/concord-replies";
 import { disappearingTimer, stampExpiration, isExpired, expiresAt, timerLines, timerNoticeText, timerSpan } from "@/lib/concord/concord-disappearing";
@@ -1157,7 +1158,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
 
 
   const addRoomButton = canManageChannels ? (
-    <button onClick={() => setCreateOpen(true)} className="flex items-center justify-center w-6 h-6 shrink-0 rounded-md text-muted-foreground/50 hover:text-brand hover:bg-brand/10 transition-colors" title="New room" aria-label="New room" data-testid="concord-add-channel">
+    <button onClick={() => setCreateOpen(true)} className="flex items-center justify-center w-6 h-6 shrink-0 rounded-md text-muted-foreground hover:text-brand hover:bg-brand/10 transition-colors" title="New room" aria-label="New room" data-testid="concord-add-channel">
       <Plus className="w-3.5 h-3.5" />
     </button>
   ) : null;
@@ -1177,7 +1178,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
       >
         {layout ? groupHeader : (
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/20 shrink-0">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">Rooms</span>
+          <span className="text-[13px] font-medium text-muted-foreground">Rooms</span>
           {addRoomButton}
         </div>
         )}
@@ -1206,7 +1207,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           ))}
           {/* Findable, not just a 24px "+" in the header. */}
           {canManageChannels && (
-            <button onClick={() => setCreateOpen(true)} className="flex items-center gap-1.5 w-full px-2.5 py-1.5 rounded-lg text-sm text-brand/80 hover:text-brand hover:bg-brand/10 transition-colors" data-testid="concord-add-channel-row">
+            <button onClick={() => setCreateOpen(true)} className="flex items-center gap-1.5 w-full px-2.5 py-1.5 rounded-lg text-sm text-brand hover:text-brand-strong hover:bg-foreground/[0.04] transition-colors" data-testid="concord-add-channel-row">
               <Plus className="w-3.5 h-3.5 shrink-0" /> New room
             </button>
           )}
@@ -1242,22 +1243,22 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           !embedded && <div className="min-w-0 flex-1 h-10" aria-hidden="true" />
         ) : (
         <button onClick={() => setChannelSheetOpen(true)} className="flex items-center gap-1.5 min-w-0 flex-1 h-10 px-2 rounded-lg text-left active:bg-muted/30 transition-colors" data-testid="concord-channel-picker">
-          {activeHangout ? <Headphones className="w-4 h-4 shrink-0 text-muted-foreground/50" /> : activeChannel?.isPrivate ? <Lock className="w-4 h-4 shrink-0 text-muted-foreground/50" /> : <Hash className="w-4 h-4 shrink-0 text-muted-foreground/50" />}
+          {activeHangout ? <Headphones className="w-4 h-4 shrink-0 text-muted-foreground" /> : activeChannel?.isPrivate ? <Lock className="w-4 h-4 shrink-0 text-muted-foreground" /> : <Hash className="w-4 h-4 shrink-0 text-muted-foreground" />}
           <span className="text-sm font-semibold truncate">{activeChannel?.name}</span>{timer > 0 && <DisappearingBadge seconds={timer} />}
-          <ChevronDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground/50" />
+          <ChevronDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
           {otherChannelMentions > 0 ? (
-            <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shrink-0" aria-label={`${otherChannelMentions} mention${otherChannelMentions === 1 ? "" : "s"} in other channels`} data-testid="concord-picker-mentions">
+            <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shrink-0" aria-label={`${otherChannelMentions} mention${otherChannelMentions === 1 ? "" : "s"} in other rooms`} data-testid="concord-picker-mentions">
               {otherChannelMentions > 9 ? "9+" : otherChannelMentions}
             </span>
           ) : otherChannelsUnread ? (
-            <span className="w-2 h-2 rounded-full bg-primary shrink-0 shadow-[0_0_6px_rgba(139,92,246,0.6)]" aria-label="Unread messages in other channels" data-testid="concord-picker-unread" />
+            <span className="w-2 h-2 rounded-full bg-brand shrink-0" aria-label="Unread messages in other rooms" data-testid="concord-picker-unread" />
           ) : null}
         </button>
         )}
         <ConcordPinsButton {...pinsProps} canUnpin={canPin && !groupDeleted} compact />
         {!groupDeleted && <ConcordCallButton community={community} channel={activeChannel} title={callTitle} compact />}
         {(onOverview || groupSheetExtras) && (
-          <button onClick={groupSheetExtras ? () => setChannelSheetOpen(true) : onOverview} className="flex items-center justify-center w-10 h-10 rounded-full text-muted-foreground/60 hover:text-foreground active:bg-muted/40 transition-colors" title="Members & about" data-testid="concord-chat-overview">
+          <button onClick={groupSheetExtras ? () => setChannelSheetOpen(true) : onOverview} className="flex items-center justify-center w-10 h-10 rounded-full text-muted-foreground hover:text-foreground active:bg-muted/40 transition-colors" title="Members & about" data-testid="concord-chat-overview">
             <Users className="w-[18px] h-[18px]" />
           </button>
         )}
@@ -1278,7 +1279,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           </button>
         )}
         <SpaceOverflowMenu
-          triggerClassName={`${hasAnyCapability(caps) ? "" : "ml-auto "}flex items-center justify-center w-11 h-11 rounded-full text-muted-foreground/60 hover:text-foreground active:bg-muted/40 transition-colors`}
+          triggerClassName={`${hasAnyCapability(caps) ? "" : "ml-auto "}flex items-center justify-center w-11 h-11 rounded-full text-muted-foreground hover:text-foreground active:bg-muted/40 transition-colors`}
           triggerIconClassName="w-[18px] h-[18px]"
           triggerTestId="concord-channel-settings-mobile"
           onManage={undefined}
@@ -1316,14 +1317,14 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
               <button
                 type="button"
                 onClick={() => setChannelSheetOpen(false)}
-                className="absolute right-1.5 top-1.5 flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground active:bg-muted/40 transition-colors"
+                className="absolute right-1.5 top-1.5 flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:text-foreground active:bg-muted/40 transition-colors"
                 aria-label="Close"
                 data-testid="concord-channel-sheet-close"
               >
                 <X className="w-5 h-5" />
               </button>
               {/* As the Group sheet each section carries its own title. */}
-              {!groupSheetExtras && <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50 px-2 mb-1.5">Rooms</p>}
+              {!groupSheetExtras && <p className="text-[13px] font-medium text-muted-foreground px-2 mb-1.5">Rooms</p>}
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-[max(env(safe-area-inset-bottom,0px),0.75rem)]">
               {!single && (
@@ -1381,7 +1382,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           <button
             onClick={onToggleRooms}
             className={`-ml-1.5 flex items-center justify-center w-7 h-7 shrink-0 rounded-full transition-colors ${
-              roomsCollapsed ? "text-muted-foreground/50 hover:text-foreground hover:bg-muted/40" : "text-brand bg-brand/10 hover:bg-brand/15"
+              roomsCollapsed ? "text-muted-foreground hover:text-foreground hover:bg-muted/40" : "text-background bg-foreground hover:bg-foreground/90"
             }`}
             title={roomsCollapsed ? "Show rooms" : "Hide rooms"}
             aria-label={roomsCollapsed ? "Show rooms" : "Hide rooms"}
@@ -1393,7 +1394,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
         )}
         {!single && (
           <>
-            {activeHangout ? <Headphones className="w-4 h-4 text-muted-foreground/50 shrink-0" /> : activeChannel?.isPrivate ? <Lock className="w-4 h-4 text-muted-foreground/50 shrink-0" /> : <Hash className="w-4 h-4 text-muted-foreground/50 shrink-0" />}
+            {activeHangout ? <Headphones className="w-4 h-4 text-muted-foreground shrink-0" /> : activeChannel?.isPrivate ? <Lock className="w-4 h-4 text-muted-foreground shrink-0" /> : <Hash className="w-4 h-4 text-muted-foreground shrink-0" />}
             <span className="text-sm font-semibold truncate">{activeChannel?.name}</span>{timer > 0 && <DisappearingBadge seconds={timer} />}
           </>
         )}
@@ -1405,8 +1406,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
               onClick={onToggleMembers}
               className={`flex items-center justify-center w-7 h-7 rounded-full transition-colors ${
                 membersCollapsed
-                  ? "text-muted-foreground/50 hover:text-foreground hover:bg-muted/40"
-                  : "text-brand bg-brand/10 hover:bg-brand/15"
+                  ? "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                  : "text-background bg-foreground hover:bg-foreground/90"
               }`}
               title={membersCollapsed ? "Show members" : "Hide members"}
               aria-label={membersCollapsed ? "Show members" : "Hide members"}
@@ -1428,7 +1429,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             </button>
           )}
           <SpaceOverflowMenu
-            triggerClassName="flex items-center justify-center w-7 h-7 rounded-full text-muted-foreground/50 hover:text-foreground hover:bg-muted/40 transition-colors"
+            triggerClassName="flex items-center justify-center w-7 h-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
             triggerIconClassName="w-4 h-4"
             triggerTestId="concord-channel-settings"
             onManage={undefined}
@@ -1527,8 +1528,8 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
         <div className="flex items-center gap-2.5 px-3 md:px-4 py-2 border-b border-border/20 shrink-0 bg-primary/5" data-testid="concord-hangout-bar">
           <Headphones className="w-4 h-4 text-brand shrink-0" aria-hidden="true" />
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-foreground/90">Voice hangout</p>
-            <p className="text-[11px] text-muted-foreground/60 truncate">Runs on Corny Chat · voice isn't end-to-end encrypted</p>
+            <p className="text-xs font-medium text-foreground/90">Voice call</p>
+            <p className="text-xs text-muted-foreground truncate">Runs on Corny Chat · voice isn't end-to-end encrypted</p>
           </div>
           <button
             onClick={() => setVoiceOpen(true)}
@@ -1556,9 +1557,9 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
         <div className="flex flex-col justify-end gap-3 min-h-full w-full max-w-[46rem] mx-auto">
         {timeline.length === 0 ? (
           <div className="flex flex-col items-center justify-center flex-1 text-center gap-2">
-            <Hash className="w-8 h-8 text-muted-foreground/20" />
-            <p className="text-sm text-muted-foreground/50">No messages yet</p>
-            <p className="text-[11px] text-muted-foreground/35">Encrypted end-to-end. Say hello.</p>
+            <OttoEmpty mood="quiet" size={72} className="text-foreground/70" />
+            <p className="text-sm text-muted-foreground">No messages yet</p>
+            <p className="text-xs text-muted-foreground">Encrypted end-to-end. Say hello.</p>
             {/* "Say hello" to an empty room is a dead end. This retires itself
                 the moment anyone speaks — which is exactly when it stops being
                 the thing to do next. */}
@@ -1596,7 +1597,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           )}
           {item.kind === "call" ? (
             <div className="flex justify-center my-1" data-testid="concord-call-line">
-              <span className="text-[11px] text-muted-foreground/60">{item.text}</span>
+              <span className="text-xs text-muted-foreground">{item.text}</span>
             </div>
           ) : item.kind === "sys" ? (
             <SystemLine pubkey={item.pubkey} action={item.action} timer={item.timer} />
@@ -1661,26 +1662,26 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
           </div>
         )}
         {replyingTo && (
-          <div className="flex items-center gap-2 mx-3 mt-2.5 pl-2.5 pr-1 py-1.5 rounded-lg bg-brand/[0.06] text-xs" data-testid="concord-replying-to">
-            <div className="w-0.5 self-stretch bg-brand rounded-full" />
+          <div className="flex items-center gap-2 mx-3 mt-2.5 pl-2.5 pr-1 py-1.5 rounded-lg bg-muted text-xs" data-testid="concord-replying-to">
+            <div className="w-0.5 self-stretch bg-foreground/30 rounded-full" />
             <div className="min-w-0 flex-1">
               <ReplyingToLabel pubkey={replyingTo.pubkey} />
-              <p className="text-muted-foreground/60 truncate"><ConcordContentPreview content={replyingTo.content} fallback={replyingTo.media?.length ? "Attachment" : undefined} /></p>
+              <p className="text-muted-foreground truncate"><ConcordContentPreview content={replyingTo.content} fallback={replyingTo.media?.length ? "Attachment" : undefined} /></p>
             </div>
-            <button onClick={() => setReplyingTo(null)} className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground/50 hover:bg-muted/40" data-testid="concord-cancel-reply"><X className="w-3.5 h-3.5" /></button>
+            <button onClick={() => setReplyingTo(null)} className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted/40" data-testid="concord-cancel-reply"><X className="w-3.5 h-3.5" /></button>
           </div>
         )}
         {(staged || uploading) && (
           <div className="flex items-center gap-2 px-3 pt-2.5">
             {uploading ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground/60 rounded-lg border border-border/30 bg-muted/20 px-3 py-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground rounded-lg border border-border/30 bg-muted/20 px-3 py-2">
                 <Loader2 className="w-4 h-4 animate-spin" /> Encrypting & uploading…
               </div>
             ) : staged && (
               <div className="relative">
                 {staged.mime.startsWith("image/") && !staged.key
                   ? <img src={staged.url} alt="" className="h-16 w-16 object-cover rounded-lg border border-border/30" />
-                  : <div className="h-16 px-3 flex items-center rounded-lg border border-border/30 bg-muted/20 text-xs text-muted-foreground/70 max-w-[160px]"><span className="truncate">{staged.name ?? staged.mime}</span></div>}
+                  : <div className="h-16 px-3 flex items-center rounded-lg border border-border/30 bg-muted/20 text-xs text-muted-foreground max-w-[160px]"><span className="truncate">{staged.name ?? staged.mime}</span></div>}
                 <button onClick={() => setStaged(null)} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-foreground/80 text-background flex items-center justify-center" data-testid="concord-remove-staged"><X className="w-3 h-3" /></button>
               </div>
             )}
@@ -1733,7 +1734,7 @@ export function ConcordChat({ community, onCommunityChange, onOverview, onInvite
             // never gets to give anything back. On a 350px phone that pushed
             // Send 21px past the content box (clipped by the panel) and crushed
             // the only shrinkable sibling, the emoji trigger, from 32px to 18.
-            className="flex-1 min-w-0 h-full px-2 bg-transparent text-base md:text-sm placeholder:text-muted-foreground/70 focus:outline-none"
+            className="flex-1 min-w-0 h-full px-2 bg-transparent text-base md:text-sm placeholder:text-muted-foreground focus:outline-none"
             data-testid="concord-composer"
           />
           <ComposeEmojiPicker hideStickers onInsert={(t) => setDraft((d) => d + t)} onGifSelect={(url) => setStaged({ url, mime: "image/gif" })} />
@@ -1846,10 +1847,10 @@ function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messa
       data-testid="concord-thread-panel"
     >
       <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border/20 shrink-0">
-        <MessageSquare className="w-4 h-4 text-muted-foreground/50 shrink-0" />
+        <MessageSquare className="w-4 h-4 text-muted-foreground shrink-0" />
         <span className="text-sm font-medium flex-1 min-w-0 truncate">Thread</span>
-        <span className="text-[11px] text-muted-foreground/50 tabular-nums shrink-0">{replies.length === 1 ? "1 reply" : `${replies.length} replies`}</span>
-        <button onClick={onClose} className="flex items-center justify-center w-9 h-9 md:w-7 md:h-7 shrink-0 rounded-full text-muted-foreground/50 hover:text-foreground hover:bg-muted/40 transition-colors" aria-label="Close thread" data-testid="concord-thread-close">
+        <span className="text-xs text-muted-foreground tabular-nums shrink-0">{replies.length === 1 ? "1 reply" : `${replies.length} replies`}</span>
+        <button onClick={onClose} className="flex items-center justify-center w-9 h-9 md:w-7 md:h-7 shrink-0 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors" aria-label="Close thread" data-testid="concord-thread-close">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -1857,23 +1858,23 @@ function ConcordThreadPanel({ root, replies, myPubkey, reactionsByMessage, messa
         {row(root)}
         <div className="flex items-center gap-2 select-none">
           <div className="flex-1 h-px bg-border/40" />
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">{replies.length === 1 ? "1 reply" : `${replies.length} replies`}</span>
+          <span className="text-[13px] font-medium text-muted-foreground">{replies.length === 1 ? "1 reply" : `${replies.length} replies`}</span>
           <div className="flex-1 h-px bg-border/40" />
         </div>
         {replies.map((m) => <div key={m.id}>{row(m)}</div>)}
       </div>
       <div className={`border-t border-border/20 shrink-0 p-2.5 ${embedded ? "pb-2.5" : "pb-[max(env(safe-area-inset-bottom,0px),0.625rem)]"} md:pb-2.5`}>
         {readOnly ? (
-          <p className="py-1.5 text-center text-xs text-muted-foreground/70" data-testid="concord-thread-deleted">The owner deleted this group.</p>
+          <p className="py-1.5 text-center text-xs text-muted-foreground" data-testid="concord-thread-deleted">The owner deleted this group.</p>
         ) : (<>
         {answering && (
           <div className="flex items-center gap-2 pb-2 text-xs" data-testid="concord-thread-replying-to">
             <div className="w-0.5 self-stretch bg-primary/50 rounded-full" />
             <div className="min-w-0 flex-1">
               <ReplyingToLabel pubkey={answering.pubkey} />
-              <p className="text-muted-foreground/60 truncate"><ConcordContentPreview content={answering.content} fallback={answering.media?.length ? "Attachment" : undefined} /></p>
+              <p className="text-muted-foreground truncate"><ConcordContentPreview content={answering.content} fallback={answering.media?.length ? "Attachment" : undefined} /></p>
             </div>
-            <button onClick={onCancelReplyTo} aria-label="Reply to the thread instead" className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground/50 hover:bg-muted/40" data-testid="concord-thread-cancel-reply"><X className="w-3.5 h-3.5" /></button>
+            <button onClick={onCancelReplyTo} aria-label="Reply to the thread instead" className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted/40" data-testid="concord-thread-cancel-reply"><X className="w-3.5 h-3.5" /></button>
           </div>
         )}
         <div className="flex items-center gap-1.5">
@@ -1923,7 +1924,7 @@ function ChannelRowSignal({ muted, mentions, unread, onUnmute, testId, active }:
         aria-label="Muted room — unmute"
         onClick={(e) => { e.stopPropagation(); onUnmute(); }}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onUnmute(); } }}
-        className={`flex items-center justify-center w-5 h-5 -mr-1 rounded shrink-0 transition-colors ${active ? "opacity-70 hover:opacity-100" : "text-muted-foreground/50 hover:text-foreground"}`}
+        className={`flex items-center justify-center w-5 h-5 -mr-1 rounded shrink-0 transition-colors ${active ? "opacity-70 hover:opacity-100" : "text-muted-foreground hover:text-foreground"}`}
         data-testid={`${testId}-muted`}
       >
         <BellOff className="w-3.5 h-3.5" />
@@ -1933,17 +1934,17 @@ function ChannelRowSignal({ muted, mentions, unread, onUnmute, testId, active }:
   if (mentions > 0) {
     return (
       <span
-        className={`min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold shrink-0 ${active ? "bg-primary-foreground text-primary dark:bg-brand dark:text-primary-foreground" : "bg-brand text-primary-foreground"}`}
+        className={`text-xs font-semibold tabular-nums shrink-0 ${active ? "text-background" : "text-brand"}`}
         aria-label={`${mentions} mention${mentions === 1 ? "" : "s"}`}
         data-testid={`${testId}-mentions`}
       >
-        {mentions > 9 ? "9+" : mentions}
+        @{mentions > 9 ? "9+" : mentions}
       </span>
     );
   }
   if (unread) {
     return (
-      <span className={`w-2 h-2 rounded-full shrink-0 ${active ? "bg-primary-foreground dark:bg-brand" : "bg-brand shadow-[0_0_6px_hsl(var(--brand)/0.55)]"}`} aria-label="Unread messages" data-testid={testId} />
+      <span className={`w-2 h-2 rounded-full shrink-0 ${active ? "bg-background" : "bg-brand"}`} aria-label="Unread messages" data-testid={testId} />
     );
   }
   return null;
@@ -1961,7 +1962,7 @@ function ChannelRowSignal({ muted, mentions, unread, onUnmute, testId, active }:
 /** "Replying to <name>" label — resolves the target's profile name. */
 function ReplyingToLabel({ pubkey }: { pubkey: string }) {
   const { name } = useConcordProfile(pubkey);
-  return <p className="font-medium text-brand/70">Replying to {name}</p>;
+  return <p className="font-medium text-muted-foreground">Replying to {name}</p>;
 }
 
 /** A single name for the typing line. */
@@ -1973,7 +1974,7 @@ function TypingName({ pubkey }: { pubkey: string }) {
 /** "X is typing…" — one name, or "Several people are typing…" for many. */
 function TypingIndicator({ pubkeys }: { pubkeys: string[] }) {
   return (
-    <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1">
+    <p className="text-xs text-muted-foreground flex items-center gap-1">
       {pubkeys.length === 1 ? <><TypingName pubkey={pubkeys[0]} /> is typing…</> : "Several people are typing…"}
     </p>
   );
@@ -1992,8 +1993,8 @@ function SystemLine({ pubkey, action, timer }: { pubkey: string; action: SystemA
     : "was banned by an admin";
   return (
     <div className="flex justify-center my-1" data-testid="concord-system-line">
-      <span className="text-[11px] text-muted-foreground/45">
-        <span className="font-medium text-muted-foreground/60">{name}</span> {suffix}
+      <span className="text-xs text-muted-foreground">
+        <span className="font-medium text-muted-foreground">{name}</span> {suffix}
       </span>
     </div>
   );
@@ -2013,7 +2014,7 @@ function QuotedParent({ parent, replyPubkey, mine }: { parent?: ChatMsg; replyPu
       <span aria-hidden className="absolute left-[13px] top-[9px] h-[11px] w-[21px] rounded-tl-md border-l-2 border-t-2 border-border dark:border-white/15" />
       <Avatar className="w-4 h-4 shrink-0">
         {avatar && <AvatarImage src={avatar} alt="" />}
-        <AvatarFallback className="text-[7px] bg-brand/10 text-brand font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
       </Avatar>
       {/* Capped, not shrink-0: a long unbroken display name is another thing
           that can push this row past the screen, and the reply line is the one
@@ -2045,7 +2046,7 @@ function ThreadFace({ pubkey }: { pubkey: string }) {
   return (
     <Avatar className="w-5 h-5 border border-background">
       {avatar && <AvatarImage src={avatar} alt="" />}
-      <AvatarFallback className="text-[8px] bg-brand/10 text-brand font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+      <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
     </Avatar>
   );
 }
@@ -2094,7 +2095,7 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
     // The whole turn tints on hover, bleeding into the column's padding
     // (-mx-2/px-2). A message that mentions me holds a brand tint and a left
     // rule, drawn as an inset shadow so it moves nothing.
-    <div className={`group relative -mx-2 px-2 py-0.5 rounded-lg transition-colors ${highlight ? "bg-brand/[0.07] shadow-[inset_2px_0_0_hsl(var(--brand)/0.7)] hover:bg-brand/[0.1]" : "hover:bg-foreground/[0.03] dark:hover:bg-white/[0.035]"}`} data-testid="concord-message" data-msg-id={msgId}>
+    <div className={`group relative -mx-2 px-2 py-0.5 rounded-lg transition-colors ${highlight ? "bg-foreground/[0.05] hover:bg-foreground/[0.07]" : "hover:bg-foreground/[0.03] dark:hover:bg-white/[0.035]"}`} data-testid="concord-message" data-msg-id={msgId}>
       {replyTo && <QuotedParent parent={parent} replyPubkey={replyTo.pubkey} mine={!!myPubkey && (parent?.pubkey ?? replyTo.pubkey) === myPubkey} />}
       <div className="flex items-start gap-2.5">
       {grouped ? (
@@ -2103,15 +2104,15 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
         // avatar column but reads as one continued turn.
         <div className="w-7 shrink-0 flex justify-end pt-0.5" aria-hidden={!showTime}>
           {showTime && (
-            <span className="text-[9px] leading-none tabular-nums text-transparent group-hover:text-muted-foreground/45 transition-colors" data-testid="concord-message-time-grouped">{chatClockTime(t!)}</span>
+            <span className="text-xs leading-none tabular-nums text-transparent group-hover:text-muted-foreground transition-colors" data-testid="concord-message-time-grouped">{chatClockTime(t!)}</span>
           )}
         </div>
       ) : (
         <AuthorHoverCard pubkey={pubkey}>
           <Link href={authorNpub ? `/profile/${authorNpub}` : "#"} onClick={(e: React.MouseEvent) => e.stopPropagation()} className="shrink-0" aria-label={`View ${name}'s profile`}>
-            <Avatar className="w-7 h-7 shrink-0 border border-border/30 cursor-pointer hover:ring-2 hover:ring-brand/40 transition-shadow">
+            <Avatar className="w-7 h-7 shrink-0 border border-border/30 cursor-pointer hover:ring-2 hover:ring-foreground/20 transition-shadow">
               {avatar && <AvatarImage src={avatar} alt={name} />}
-              <AvatarFallback className="text-[10px] bg-brand/10 text-brand font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+              <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
           </Link>
         </AuthorHoverCard>
@@ -2131,21 +2132,21 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
               >{name}</span>
             </Link>
           </AuthorHoverCard>
-          {mine && <span className="text-[9px] text-brand/60 font-normal shrink-0">you</span>}
-          {showTime && <time className="text-[10px] font-normal text-muted-foreground/40 tabular-nums shrink-0" data-testid="concord-message-time">{chatClockTime(t!)}</time>}
+          {mine && <span className="text-xs text-muted-foreground font-normal shrink-0">you</span>}
+          {showTime && <time className="text-xs font-normal text-muted-foreground tabular-nums shrink-0" data-testid="concord-message-time">{chatClockTime(t!)}</time>}
           {pinned && !deleted && <PinnedMark />}
         </div>
         )}
         {grouped && pinned && !deleted && <PinnedMark />}
         {deleted ? (
-          <p className="text-sm italic text-muted-foreground/40">{removedByModerator ? "Removed by a moderator" : "This message was deleted"}</p>
+          <p className="text-sm italic text-muted-foreground">{removedByModerator ? "Removed by a moderator" : "This message was deleted"}</p>
         ) : editing ? (
           <div className="flex items-center gap-1.5 mt-0.5">
             <input autoFocus value={editText} onChange={(e) => setEditText(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") onSaveEdit(editText); if (e.key === "Escape") onCancelEdit(); }}
-              className="flex-1 h-8 px-2.5 rounded-lg bg-card border border-border text-sm focus:outline-none focus:border-brand/50 focus:ring-[3px] focus:ring-brand/15" data-testid="concord-edit-input" />
-            <button onClick={() => onSaveEdit(editText)} className="text-[11px] text-brand hover:underline" data-testid="concord-edit-save">Save</button>
-            <button onClick={onCancelEdit} className="text-[11px] text-muted-foreground/60 hover:underline">Cancel</button>
+              className="flex-1 h-8 px-2.5 rounded-lg bg-card border border-border text-sm focus:outline-none focus:border-ring focus:ring-[3px] focus:ring-ring/20" data-testid="concord-edit-input" />
+            <button onClick={() => onSaveEdit(editText)} className="text-xs text-brand hover:underline" data-testid="concord-edit-save">Save</button>
+            <button onClick={onCancelEdit} className="text-xs text-muted-foreground hover:underline">Cancel</button>
           </div>
         ) : (
           <>
@@ -2167,7 +2168,7 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
                 expanded={textExpanded}
                 onExpandedChange={setTextExpanded}
               >
-                <ConcordMessageBody id={msgId} pubkey={pubkey} content={cutText} />{edited && <span className="ml-1 text-[10px] text-muted-foreground/40">(edited)</span>}
+                <ConcordMessageBody id={msgId} pubkey={pubkey} content={cutText} />{edited && <span className="ml-1 text-xs text-muted-foreground">(edited)</span>}
               </ClampedText>
             )}
             {media && media.length > 0 && (
@@ -2181,7 +2182,7 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
         {thread && thread.count > 0 && onOpenThread && (
           <button
             onClick={onOpenThread}
-            className="flex items-center gap-1.5 mt-1.5 h-7 pl-1 pr-2.5 rounded-full text-[11px] font-medium text-brand hover:bg-brand/10 transition-colors"
+            className="flex items-center gap-1.5 mt-1.5 h-7 pl-1 pr-2.5 rounded-full text-xs font-medium text-brand hover:bg-brand/10 transition-colors"
             data-testid="concord-thread-chip"
           >
             <ThreadFacepile pubkeys={thread.repliers} />
@@ -2220,7 +2221,7 @@ function ConcordMessageRow({ msgId, pubkey, content, media, mine, removable, rem
 /** On a pinned message in the room, so what the header's pin list holds is visible where it was said. */
 function PinnedMark() {
   return (
-    <span className="inline-flex items-center gap-0.5 shrink-0 text-[10px] font-medium text-brand/80" data-testid="concord-pinned-mark">
+    <span className="inline-flex items-center gap-0.5 shrink-0 text-xs font-medium text-muted-foreground" data-testid="concord-pinned-mark">
       <Pin className="w-3 h-3" /> Pinned
     </span>
   );
@@ -2230,7 +2231,7 @@ function PinnedMark() {
 function DisappearingBadge({ seconds }: { seconds: number }) {
   const label = `Messages disappear after ${timerSpan(seconds)}`;
   return (
-    <span className="flex items-center gap-1 shrink-0 text-[11px] text-muted-foreground/60" title={label} aria-label={label} data-testid="concord-disappearing-badge">
+    <span className="flex items-center gap-1 shrink-0 text-xs text-muted-foreground" title={label} aria-label={label} data-testid="concord-disappearing-badge">
       <TimerIcon className="w-3.5 h-3.5" />
       <span className="hidden md:inline">{timerSpan(seconds)}</span>
     </span>

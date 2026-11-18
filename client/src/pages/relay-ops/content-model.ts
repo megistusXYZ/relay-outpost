@@ -31,7 +31,7 @@ const LIST_KINDS = [3, 10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 1
 
 export const TYPE_VIEWS: ReadonlyArray<{ id: TypeViewId; label: string; word: string; kinds?: number[] }> = [
   { id: "all", label: "All", word: "Post" },
-  { id: "notes", label: "Notes", word: "Note", kinds: [1, 1111] },
+  { id: "notes", label: "Posts", word: "Post", kinds: [1, 1111] },
   { id: "articles", label: "Articles", word: "Article", kinds: [30023] },
   { id: "media", label: "Media", word: "Media", kinds: [20, 21, 22, 1063, 34235, 34236] },
   { id: "reactions", label: "Reactions", word: "Reaction", kinds: [7] },

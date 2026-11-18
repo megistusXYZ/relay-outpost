@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useBackClosable } from "@/hooks/use-back-closable";
 import { createPortal } from "react-dom";
-import { X, Download, Play, Pause, Volume2, VolumeX, Maximize, PictureInPicture2, Radio } from "lucide-react";
+import { X, Download, Play, Pause, Volume2, VolumeX, Maximize, PictureInPicture2 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -14,6 +14,7 @@ import { loadHls } from "@/lib/load-hls";
 import { needsProxy, proxyUrl } from "@/lib/live-events";
 import { useStreamLiveness } from "@/hooks/use-stream-liveness";
 import { setVideoMuted } from "@/lib/video-prefs";
+import { LiveTag } from "@/components/LiveBadge";
 
 export interface VideoLightboxAuthorInfo {
   avatarUrl?: string;
@@ -467,10 +468,7 @@ export function VideoLightbox({
         </button>
 
         {isHls && streamLiveness === "verified-live" && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-600/90 text-white text-xs font-semibold uppercase tracking-wide" data-testid="badge-lightbox-live">
-            <Radio className="w-3 h-3 animate-pulse" />
-            LIVE
-          </div>
+          <LiveTag testId="badge-lightbox-live" />
         )}
 
         <button

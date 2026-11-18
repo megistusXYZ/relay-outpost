@@ -1,4 +1,5 @@
 import { useWiderNetwork } from "@/lib/network-mode";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { WiderNetworkDoor } from "@/components/wider-network/WiderNetworkDoor";
 import React, { useEffect, useState, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import { SEARCH_RELAYS } from "@/lib/relay-constants";
@@ -23,11 +24,11 @@ import { signWithTimeout } from "@/lib/signer-timeout";
 import { loadFollowBase, cacheFollowEvent } from "@/lib/follow-list";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { GuestWall } from "@/components/GuestWall";
-import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
-import { fetchAlbumTracks, fetchWavlakeArtist, getArtistTracks, type MusicTrack } from "@/lib/music";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
-import { getSignalTier, getSignalTierColor, getSignalTierRingColor, type SignalTier } from "@/lib/graperank";
+import { getSignalTier, getSignalTierRingColor, type SignalTier } from "@/lib/graperank";
 import { getTrustPhrase, getTrustMark } from "@/lib/trust-words";
+import { TrustMark, TrustPhrase, useTrustTierOf } from "@/components/TrustMark";
+import { TrustTierGlyph } from "@/components/nostr-post/trust-tier-glyph";
 import { isMutedPubkey, isReportedPubkey, isReportedEvent } from "@/lib/spam-filter";
 import { useSpamFilter } from "@/hooks/use-spam-filter";
 import { useNostrMuteList } from "@/hooks/use-nostr-mute-list";
@@ -38,18 +39,44 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Segment } from "@/components/Segment";
 import {
-  Search as SearchIcon, Users, FileText, Hash, X,
-  Radio, Globe, Rss, Zap, TrendingUp,
-  Signal, Activity, Eye, Bookmark, Check,
-  Play, Coffee, Palette, Code2, Compass,
-  Newspaper, Trophy, Shield, ShieldCheck, AlertTriangle, Brain, FlaskConical, BookOpen, Heart, Lock,
-  ChevronDown, ChevronUp, Clock, MessageCircle,
-  Calendar as CalendarIcon, ChevronRight, User as UserIcon,
-  Music, Disc, ExternalLink, Image as ImageIcon, Video, Film
+  Search as SearchIcon,
+  Users,
+  FileText,
+  Hash,
+  X,
+  Radio,
+  Globe,
+  Zap,
+  TrendingUp,
+  Signal,
+  Activity,
+  Eye,
+  Bookmark,
+  Check,
+  Play,
+  Coffee,
+  Palette,
+  Code2,
+  Compass,
+  ShieldCheck,
+  Brain,
+  BookOpen,
+  Heart,
+  Lock,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  MessageCircle,
+  Calendar as CalendarIcon,
+  ChevronRight,
+  User as UserIcon,
+  Music,
+  Image as ImageIcon,
+  Video,
+  Film,
 } from "lucide-react";
 import {
   searchCalendarEvents,
@@ -63,14 +90,11 @@ import { ShareEventDialog } from "@/components/ShareEventDialog";
 import { searchUsers as searchUsersNip50 } from "@/lib/primal-cache";
 import { searchCachedProfiles } from "@/lib/nostr";
 import { BtcZapIcon } from "@/components/nostr-post/author-hover";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DesktopOptionsPopover } from "@/components/DesktopOptionsPopover";
 import { PageTabs } from "@/components/PageTabs";
 import { ActivityIndicator, activityCache } from "@/components/ActivityIndicator";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
-import { ALL_NEWS_FEEDS, getAllSavedFeedUrls, addFeedToLibrary, loadCustomFeeds, type SavedFeed } from "@/lib/rss-feeds";
-import { useCuratedLists } from "@/lib/curated-lists-source";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useStreamLiveness } from "@/hooks/use-stream-liveness";
 import { useToast } from "@/hooks/use-toast";
@@ -81,13 +105,6 @@ import {
   queryWithTimeout,
   getSessionCache, setSessionCache,
 } from "@/lib/follow-packs";
-import {
-  KIND_ATTESTATION,
-  getTag, parseStatus, parseValidity, parseTimestamp, parseType,
-  isActiveAttestation, getAttestationStatusLabel, getAttestationStatusColor,
-  type Attestation,
-} from "@/hooks/use-attestations";
-import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
 
 class ProfileCardErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -140,28 +157,7 @@ const LIVE_EVENT_RELAYS = [
   "wss://nos.lol",
 ];
 
-function isAllowedLiveEvent(live: LiveEventInfo): boolean {
-  const url = live.streaming?.toLowerCase() || "";
-  if (url.includes("zap.stream")) return true;
-  if (url.includes("primal.net") || url.includes("primal.tv")) return true;
-  const tags = live.tags.map(t => t.toLowerCase());
-  if (tags.includes("zap.stream") || tags.includes("zapstream")) return true;
-  if (tags.includes("primal")) return true;
-  return false;
-}
 
-interface CommunityInfo {
-  id: string;
-  name: string;
-  description: string;
-  image?: string;
-  moderators: string[];
-  creatorPubkey: string;
-  rules?: string;
-  event: Event;
-  lastActivity?: number;
-  postCount?: number;
-}
 
 interface LiveEventInfo {
   id: string;
@@ -431,7 +427,7 @@ function MediaTab({ mediaType, urlQuery, updateUrl }: TabProps & { mediaType: Me
       {isMobile ? (
         <Sheet open={sortSheetOpen} onOpenChange={setSortSheetOpen}>
           <SheetContent side="bottom" className="rounded-t-2xl pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]" data-testid="media-sort-sheet">
-            <SheetTitle className="text-sm font-brand uppercase tracking-widest mb-4">
+            <SheetTitle className="text-sm mb-4 font-medium">
               {mediaType === "videos" ? "Videos" : "Photos"} options
             </SheetTitle>
             {sortOptionsBody}
@@ -515,54 +511,7 @@ function TabSearchBar({ query, setQuery, onSubmit, onClear, loading, placeholder
   );
 }
 
-/**
- * Trust on a card, said once and without a number: a small mark beside the
- * name and a phrase about the reader's network on the status line. Both hide
- * until the reader's own calculation exists, and inside a tier section (the
- * heading already says it).
- */
-function TrustMark({ tier, className }: { tier: SignalTier; className?: string }) {
-  const { wotEnabled, wotReady } = useGrapeRankScores();
-  if (!wotEnabled || !wotReady) return null;
-  const mark = getTrustMark(tier);
-  if (!mark) return null;
-  const phrase = getTrustPhrase(tier);
-  if (mark === "warning") {
-    return <AlertTriangle className={`w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400 ${className ?? ""}`} aria-label={phrase} data-testid="trust-mark" data-mark={mark} />;
-  }
-  return mark === "filled"
-    ? <ShieldCheck className={`w-3.5 h-3.5 shrink-0 text-brand fill-brand/20 ${className ?? ""}`} aria-label={phrase} data-testid="trust-mark" data-mark={mark} />
-    : <Shield className={`w-3.5 h-3.5 shrink-0 text-brand/70 ${className ?? ""}`} aria-label={phrase} data-testid="trust-mark" data-mark={mark} />;
-}
-
-function TrustPhrase({ tier }: { tier: SignalTier }) {
-  const { wotEnabled, wotReady } = useGrapeRankScores();
-  if (!wotEnabled || !wotReady) return null;
-  const phrase = getTrustPhrase(tier);
-  if (!phrase) return null;
-  const warn = tier === "flagged";
-  return (
-    <span className={`text-[10px] truncate ${warn ? "text-amber-700 dark:text-amber-400/90" : "text-muted-foreground/60"}`} data-testid="trust-phrase">
-      <span className="text-muted-foreground/30 mx-1" aria-hidden="true">·</span>{phrase}
-    </span>
-  );
-}
-
 type TabProps = { urlQuery: string; updateUrl: (u: { tab?: SearchTab; q?: string | null; type?: MediaType | null; replace?: boolean }) => void };
-
-const PEOPLE_TOPIC_CHIPS = [
-  { label: "Bitcoin", query: "bitcoin" },
-  { label: "Nostr", query: "nostr" },
-  { label: "Lightning", query: "lightning" },
-  { label: "Pleb", query: "pleb plebs" },
-  { label: "Dev", query: "developer programming" },
-  { label: "Privacy", query: "privacy cypherpunk" },
-  { label: "Art", query: "art artist creative" },
-  { label: "Music", query: "music musician" },
-  { label: "Security", query: "security infosec" },
-  { label: "AI", query: "artificial intelligence machine learning" },
-  { label: "Open Source", query: "open source foss" },
-];
 
 function detectNostrIdentifier(input: string): { type: "npub" | "hex" | "nprofile" | "nip05"; pubkey: string | null } | null {
   const trimmed = input.trim();
@@ -668,6 +617,7 @@ async function resolveNip05ToPubkey(identifier: string): Promise<Nip05ResolveRes
 }
 
 function PeopleTab({ urlQuery, updateUrl }: TabProps) {
+  const tierOf = useTrustTierOf();
   const { pubkey, follows } = useNostrAuth();
   const { scores, loading: scoresLoading, wotEnabled, wotReady, requestScoresBulk, injectScores, followedByPubkeys, flaggedPubkeys } = useGrapeRankScores();
   const [query, setQuery] = useState(urlQuery);
@@ -680,10 +630,6 @@ function PeopleTab({ urlQuery, updateUrl }: TabProps) {
   const [trendingProfiles, setTrendingProfiles] = useState<Event[]>([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
   const trendingLoadedRef = useRef(false);
-  const [activeTopic, setActiveTopic] = useState<string | null>(null);
-  const [topicProfiles, setTopicProfiles] = useState<{ event: Event; tier: SignalTier; influence: number | null }[]>([]);
-  const [topicLoading, setTopicLoading] = useState(false);
-  const topicRequestRef = useRef(0);
   const searchRequestRef = useRef(0);
   const [, setPeopleLocation] = useLocation();
   // Lightweight people typeahead (mirrors the EventsTab creator suggester):
@@ -1017,34 +963,6 @@ function PeopleTab({ urlQuery, updateUrl }: TabProps) {
     updateUrl({ q: null });
   };
 
-  const handleTopicSelect = useCallback(async (chip: typeof PEOPLE_TOPIC_CHIPS[0]) => {
-    if (activeTopic === chip.label) {
-      setActiveTopic(null);
-      setTopicProfiles([]);
-      return;
-    }
-    const requestId = ++topicRequestRef.current;
-    setActiveTopic(chip.label);
-    setTopicLoading(true);
-    setTopicProfiles([]);
-    try {
-      const { events, wotScores } = await discoverByTopic(chip.query, 20);
-      if (topicRequestRef.current !== requestId) return;
-      if (wotScores.size > 0) injectScores(wotScores);
-      const profiles = events
-        .filter(e => !followSet.has(e.pubkey) && e.pubkey !== pubkey)
-        .map(e => {
-          const inf = wotScores.get(e.pubkey) ?? scores?.get(e.pubkey) ?? null;
-          const tier: SignalTier = flaggedPubkeys?.has(e.pubkey) ? "flagged" : getSignalTier(inf);
-          return { event: e, tier, influence: inf };
-        });
-      setTopicProfiles(profiles);
-    } catch {
-      if (topicRequestRef.current === requestId) setTopicProfiles([]);
-    } finally {
-      if (topicRequestRef.current === requestId) setTopicLoading(false);
-    }
-  }, [activeTopic, followSet, pubkey, scores, flaggedPubkeys, injectScores]);
 
   const prevUrlQueryRef = useRef("");
   useEffect(() => {
@@ -1309,7 +1227,7 @@ function PeopleTab({ urlQuery, updateUrl }: TabProps) {
                 </button>
               );
             })}
-            <div className="px-3 py-1.5 text-[10px] text-muted-foreground/40 text-center font-brand uppercase tracking-wider border-t border-border/20">
+            <div className="px-3 py-1.5 text-[13px] text-muted-foreground text-center border-t border-border/20 font-medium">
               {peopleSuggestLoading ? "Searching…" : "Tap a person to open their profile"}
             </div>
           </div>
@@ -1322,7 +1240,7 @@ function PeopleTab({ urlQuery, updateUrl }: TabProps) {
         ) : !directMatch && searchProfilesWithTier.length === 0 ? (
           backendFailed ? (
             <div className="flex flex-col items-center justify-center py-14 text-center" data-testid="container-backend-failed">
-              <Users className="w-10 h-10 text-muted-foreground/60 dark:text-muted-foreground/50 mb-3" />
+              <OttoEmpty mood="looking" size={88} className="mb-3 text-foreground/70" />
               <p className="text-sm font-medium mb-1">Search backends unreachable</p>
               <p className="text-xs text-muted-foreground/80 dark:text-muted-foreground/70 max-w-xs mb-3">
                 We couldn't reach the search sources. Check your connection and try again.
@@ -1342,9 +1260,9 @@ function PeopleTab({ urlQuery, updateUrl }: TabProps) {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-14 text-center" data-testid="container-empty-results">
-              <Users className="w-10 h-10 text-muted-foreground/60 dark:text-muted-foreground/50 mb-3" />
+              <OttoEmpty mood="looking" size={88} className="mb-3 text-foreground/70" />
               <p className="text-sm font-medium mb-1">No people found</p>
-              <p className="text-xs text-muted-foreground/80 dark:text-muted-foreground/70 max-w-xs">
+              <p className="text-[13px] text-muted-foreground max-w-xs">
                 Try different search terms or check the spelling.
               </p>
               {nip05Failure && (
@@ -1362,10 +1280,10 @@ function PeopleTab({ urlQuery, updateUrl }: TabProps) {
             {directMatch && (
               <div data-testid="direct-match-section">
                 <div className="flex items-center gap-1.5 mb-2">
-                  <Signal className="w-3 h-3 text-emerald-800 dark:text-emerald-400" />
-                  <span className="text-[10px] font-semibold text-success dark:text-emerald-400/80 uppercase tracking-wider">Direct match</span>
+                  <Signal className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-[14px] font-semibold text-foreground">Direct match</span>
                 </div>
-                <div className="rounded-lg border border-emerald-500/20 dark:border-emerald-500/15 bg-emerald-500/[0.03] dark:bg-emerald-500/[0.04] p-1.5">
+                <div className="rounded-[16px] border border-border/60 bg-card p-1.5">
                   <ProfileCardErrorBoundary>
                     <ProfileCard
                       profile={directMatch.event}
@@ -1390,44 +1308,20 @@ function PeopleTab({ urlQuery, updateUrl }: TabProps) {
         <div data-testid="container-people-discovery">
           {/* "Explore by Topic" chips removed — discovery leads straight with
               the trusted-people list; topic search still works via the box. */}
-          {activeTopic ? (
-            topicLoading ? (
-              <LoadingState message={`Finding trusted ${activeTopic} voices...`} />
-            ) : topicProfiles.length === 0 ? (
-              <EmptyState icon={Users} message={`No profiles found for ${activeTopic}`} hint="Try a different topic." />
-            ) : (
-              <div className="space-y-6">
-                <p className="text-[11px] text-muted-foreground/50">
-                  Top trusted voices in {activeTopic} — {topicProfiles.length} profile{topicProfiles.length !== 1 ? "s" : ""}
-                </p>
-                {topicProfiles.map(({ event: profile, tier, influence }) => (
-                  <div key={profile.pubkey} className="relative">
-                    <ProfileCardErrorBoundary>
-                      <ProfileCard profile={profile} tier={tier} isFollowed={followSet.has(profile.pubkey)} followsYou={followedByPubkeys?.has(profile.pubkey) ?? false} />
-                    </ProfileCardErrorBoundary>
-                    <div className="absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 z-30">
-                      <QuickFollowButton targetPubkey={profile.pubkey} isFollowed={followSet.has(profile.pubkey)} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )
-          ) : (scoresLoading || trendingLoading) ? (
+          {(scoresLoading || trendingLoading) ? (
             <PeopleDiscoverySkeleton />
           ) : wotEnabled && groupedByTier && tieredCount > 0 ? (
             <div className="space-y-6">
-              <p className="text-[11px] text-muted-foreground/50">People your network trusts that you haven't followed yet</p>
+              <p className="text-[13px] text-muted-foreground">People your network trusts that you haven't followed yet</p>
               {(["strong", "moderate", "low", "weak", "flagged"] as const).map(tierKey => {
                 const items = groupedByTier[tierKey];
                 if (!items || items.length === 0) return null;
                 const tierLabel = getTrustPhrase(tierKey);
-                const tierColor = getSignalTierColor(tierKey);
                 return (
                   <TierSection
                     key={tierKey}
                     tierKey={tierKey}
                     tierLabel={tierLabel}
-                    tierColor={tierColor}
                     profiles={items}
                     followSet={followSet}
                     followedByPubkeys={followedByPubkeys}
@@ -1441,13 +1335,13 @@ function PeopleTab({ urlQuery, updateUrl }: TabProps) {
             // zero tiered rows. Never a caption over blank space.
             <div className="space-y-4">
               {wotEnabled && !wotReady && (
-                <p className="text-[11px] text-muted-foreground/50" data-testid="text-wot-building">
+                <p className="text-[13px] text-muted-foreground" data-testid="text-wot-building">
                   Building your trust network — personalized suggestions arrive when it's ready. Meanwhile, here's who's active:
                 </p>
               )}
               <div className="flex items-center gap-2 mb-2">
                 <Activity className="w-4 h-4 text-brand" />
-                <h3 className="text-sm font-semibold">Active Now</h3>
+                <h3 className="text-sm font-semibold">Active now</h3>
               </div>
               {discoveryProfiles.length === 0 ? (
                 <div className="space-y-4">
@@ -1460,7 +1354,7 @@ function PeopleTab({ urlQuery, updateUrl }: TabProps) {
                 <div className="space-y-6">
                   {discoveryProfiles.slice(0, 20).map(profile => {
                     const influence = wotReady ? (scores?.get(profile.pubkey) ?? null) : null;
-                    const tier = wotReady ? getSignalTier(influence) : "none";
+                    const tier = wotReady ? (tierOf(profile.pubkey, influence) ?? "none") : "none";
                     return (
                       <ProfileCardErrorBoundary key={profile.pubkey}>
                         <ProfileCard profile={profile} tier={tier} isFollowed={followSet.has(profile.pubkey)} followsYou={followedByPubkeys?.has(profile.pubkey) ?? false} />
@@ -1495,10 +1389,9 @@ function PeopleDiscoverySkeleton() {
   );
 }
 
-function TierSection({ tierKey, tierLabel, tierColor, profiles, followSet, followedByPubkeys }: {
+function TierSection({ tierKey, tierLabel, profiles, followSet, followedByPubkeys }: {
   tierKey: string;
   tierLabel: string;
-  tierColor: string;
   profiles: { event: Event; influence: number }[];
   followSet: Set<string>;
   followedByPubkeys: Set<string> | null;
@@ -1508,28 +1401,19 @@ function TierSection({ tierKey, tierLabel, tierColor, profiles, followSet, follo
   const [showAll, setShowAll] = useState(false);
   const visibleProfiles = showAll ? profiles : profiles.slice(0, displayCount);
 
-  const dotColor = tierKey === "strong"
-    ? "bg-emerald-500"
-    : tierKey === "moderate"
-    ? "bg-blue-500"
-    : tierKey === "low"
-    ? "bg-cyan-400"
-    : tierKey === "flagged"
-    ? "bg-red-500"
-    : "bg-amber-400";
-
   return (
     <section data-testid={`section-tier-${tierKey}`}>
       <button
+        type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 w-full text-left mb-2 group"
+        aria-expanded={expanded}
+        className="flex items-center gap-2 w-full min-h-11 text-left mb-1 group"
       >
-        <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
-        <span className={`text-[13px] font-semibold ${tierColor}`} data-testid={`heading-tier-${tierKey}`}>{tierLabel}</span>
-        <span className="text-[12px] text-muted-foreground/50 tabular-nums">{profiles.length}</span>
-        <span className="ml-auto text-[10px] text-muted-foreground/40 group-hover:text-muted-foreground/60 transition-colors">
-          {expanded ? "▲" : "▼"}
-        </span>
+        {/* The glyph carries the tier's colour (TIER_GLYPH); the heading stays ink. */}
+        <TrustTierGlyph tier={tierKey as SignalTier} size={tierKey === "flagged" ? "w-3.5 h-3.5" : "w-2.5 h-2.5"} decorative />
+        <span className="text-[14px] font-semibold text-foreground" data-testid={`heading-tier-${tierKey}`}>{tierLabel}</span>
+        <span className="text-[13px] text-muted-foreground tabular-nums">{profiles.length}</span>
+        <ChevronDown className={`ml-auto w-4 h-4 text-muted-foreground group-hover:text-foreground transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} aria-hidden="true" />
       </button>
       {expanded && (
         <div className="space-y-6">
@@ -1544,7 +1428,7 @@ function TierSection({ tierKey, tierLabel, tierColor, profiles, followSet, follo
           {!showAll && profiles.length > displayCount && (
             <button
               onClick={() => setShowAll(true)}
-              className="w-full text-center py-2 text-[11px] text-brand/70 hover:text-brand font-mono uppercase tracking-wider transition-colors"
+              className="w-full text-center py-2 text-[12px] text-brand/70 hover:text-brand transition-colors font-medium"
             >
               Show {profiles.length - displayCount} more
             </button>
@@ -1573,7 +1457,7 @@ function PeopleSearchResults({ profiles, followSet, followedByPubkeys }: {
 
   return (
     <div className="space-y-6" data-testid="container-people-results">
-      <p className="text-[11px] text-muted-foreground/50 mb-2">{profiles.length} result{profiles.length !== 1 ? "s" : ""}</p>
+      <p className="text-[13px] text-muted-foreground mb-2">{profiles.length} result{profiles.length !== 1 ? "s" : ""}</p>
       {visible.map(({ event: profile, tier, influence }) => (
         <ProfileCardErrorBoundary key={profile.pubkey}>
           <ProfileCard profile={profile} tier={tier} isFollowed={followSet.has(profile.pubkey)} followsYou={followedByPubkeys?.has(profile.pubkey) ?? false} />
@@ -1582,7 +1466,7 @@ function PeopleSearchResults({ profiles, followSet, followedByPubkeys }: {
       {hasMore && (
         <Button
           variant="ghost"
-          className="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground"
+          className="w-full min-h-11 text-[13px] text-muted-foreground hover:text-foreground"
           onClick={() => setVisibleCount(c => c + RESULTS_PAGE_SIZE)}
         >
           Show more ({profiles.length - visibleCount} remaining)
@@ -1616,17 +1500,16 @@ function ProfileCard({ profile, tier, isFollowed, followsYou, grouped = false }:
   return (
     <Link key={profile.pubkey} href={`/profile/${npub}`}>
       <Card className="glass-card cursor-pointer group/card overflow-hidden relative" data-testid={`card-user-${profile.pubkey.slice(0, 8)}`}>
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-[1px] bg-gradient-to-r from-transparent via-brand/40 to-transparent pointer-events-none" />
         <CardContent className="relative z-10 p-3 sm:p-4 flex items-start gap-3">
           <div className="relative shrink-0">
-            <Avatar className={`w-12 h-12 ring-2 ${ringColor} border-2 border-primary/20 dark:border-[#0d0d2b]`}>
+            <Avatar className={`w-12 h-12 ring-2 ${ringColor} border-2 border-background`}>
               <AvatarImage src={content?.picture} alt={content?.display_name || content?.name || "User"} />
-              <AvatarFallback className="text-xs bg-brand/15 dark:bg-brand/40 text-brand font-bold">
+              <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs font-bold">
                 {(content?.display_name || content?.name || "?").slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             {hasLightning && (
-              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-amber-500/90 flex items-center justify-center shadow-sm ring-2 ring-primary/20 dark:ring-[#0d0d2b]">
+              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-amber-500 flex items-center justify-center ring-2 ring-background">
                 <Zap className="w-2.5 h-2.5 text-white fill-white" />
               </span>
             )}
@@ -1637,21 +1520,21 @@ function ProfileCard({ profile, tier, isFollowed, followsYou, grouped = false }:
               {!grouped && <TrustMark tier={tier} />}
               <ActivityIndicator pubkey={profile.pubkey} />
               {relationship === "mutual" && (
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-brand/15 text-brand border border-brand/20">Mutual</span>
+                <span className="text-[12px] font-medium text-brand">Mutual</span>
               )}
               {relationship === "follows-you" && (
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-brand/15 text-brand border border-brand/20">Follows you</span>
+                <span className="text-[12px] font-medium text-brand">Follows you</span>
               )}
               {relationship === "following" && (
-                <span className="text-[11px] text-muted-foreground">Following</span>
+                <span className="text-[12px] text-muted-foreground">Following</span>
               )}
             </div>
             <div className="flex items-center gap-1.5 mt-0.5">
               {nip05Display && (
-                <Nip05Badge nip05={nip05!} pubkey={profile.pubkey} className="truncate max-w-[160px]" textClassName="text-[11px] text-success dark:text-emerald-400/80" iconClassName="w-3 h-3" />
+                <Nip05Badge nip05={nip05!} pubkey={profile.pubkey} className="truncate max-w-[160px]" textClassName="text-[12px] text-success" iconClassName="w-3 h-3" />
               )}
               {!nip05Display && (
-                <span className="text-[11px] text-muted-foreground truncate">{shortenNpub(npub)}</span>
+                <span className="text-[12px] text-muted-foreground truncate">{shortenNpub(npub)}</span>
               )}
               {!grouped && <TrustPhrase tier={tier} />}
             </div>
@@ -2059,18 +1942,18 @@ function PostsTab(_props: TabProps) {
             ) : !searched ? (
               <EmptyState icon={SearchIcon} message="Search across posts" hint="Type a keyword and press Enter to search across the network." />
             ) : trustRanking ? (
-              <LoadingState message="Ranking by your web of trust…" />
+              <LoadingState message="Putting people your network trusts first…" />
             ) : displayedResults.length === 0 ? (
               trustGated && moderatedResults.length > 0 ? (
                 <div className="flex flex-col items-center justify-center py-14 text-center" data-testid="posts-search-no-trusted">
-                  <ShieldCheck className="w-10 h-10 text-muted-foreground/60 dark:text-muted-foreground/50 mb-3" />
-                  <p className="text-sm font-medium mb-1">No posts from your web of trust</p>
-                  <p className="text-xs text-muted-foreground/80 dark:text-muted-foreground/70 max-w-xs">
-                    {moderatedResults.length} match{moderatedResults.length === 1 ? "" : "es"} are from people outside your trusted network.
+                  <ShieldCheck className="w-10 h-10 text-muted-foreground mb-3" />
+                  <p className="text-sm font-medium mb-1">No posts from people your network trusts</p>
+                  <p className="text-[13px] text-muted-foreground max-w-xs">
+                    {moderatedResults.length} match{moderatedResults.length === 1 ? "" : "es"} are from people your network doesn't know yet.
                   </p>
                   <button
                     onClick={() => setTrustedFirst(false)}
-                    className="mt-4 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium bg-accent text-accent-foreground dark:text-brand hover:bg-accent/80 transition-colors"
+                    className="mt-4 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium border border-foreground/25 text-foreground hover:bg-foreground/[0.06] transition-colors min-h-9"
                     data-testid="posts-search-show-everyone"
                   >
                     Show everyone
@@ -2082,19 +1965,20 @@ function PostsTab(_props: TabProps) {
             ) : (
               <>
                 <div className="flex items-center justify-between gap-2 mb-3 flex-wrap" data-testid="posts-search-results-header">
-                  <span className="text-[11px] text-muted-foreground/50">
+                  <span className="text-[13px] text-muted-foreground">
                     {displayedResults.length}{searchHasMore ? "+" : ""} result{displayedResults.length === 1 ? "" : "s"}
                   </span>
                   {wotEnabled && (
-                    <div className="flex items-center gap-0.5 bg-secondary/30 rounded-full p-0.5 border border-border/30">
+                    <div className="flex items-center gap-0.5 rounded-full p-0.5 border border-border/60" role="group" aria-label="Order">
                       {([["trusted", "Trusted first"], ["relevance", "Everyone"]] as const).map(([k, lbl]) => {
                         const on = (k === "trusted") === trustedFirst;
                         return (
                           <button
                             key={k}
                             onClick={() => setTrustedFirst(k === "trusted")}
-                            className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                              on ? "bg-accent text-accent-foreground dark:text-brand" : "text-muted-foreground/50 hover:text-muted-foreground/80"
+                            aria-pressed={on}
+                            className={`flex items-center gap-1 rounded-full px-3 min-h-8 text-[13px] font-medium transition-colors duration-150 ${
+                              on ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
                             }`}
                             data-testid={`posts-search-rank-${k}`}
                           >
@@ -2300,20 +2184,19 @@ function MobileTrustedVoices({ voices, followSet }: {
         const content = (() => { try { return getProfileContent(profile); } catch { return null; } })();
         const npub = formatNpub(profile.pubkey);
         const ringColor = getSignalTierRingColor(tier);
-        const scoreBg = tier === "strong" ? "bg-emerald-500" : tier === "moderate" ? "bg-blue-500" : tier === "low" ? "bg-cyan-400" : "bg-amber-400";
         return (
-          <div key={profile.pubkey} className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 border border-primary/10 bg-primary/[0.03] active:bg-primary/[0.08] transition-colors">
+          <div key={profile.pubkey} className="flex items-center gap-2.5 rounded-[16px] px-2.5 py-2 border border-border/60 bg-card active:bg-foreground/[0.05] transition-colors">
             <Link href={`/profile/${npub}`} className="flex items-center gap-2.5 flex-1 min-w-0">
               <div className="relative shrink-0">
-                <Avatar className={`w-9 h-9 ring-2 ${ringColor} border border-primary/20 dark:border-[#0d0d2b]`}>
+                <Avatar className={`w-9 h-9 ring-2 ${ringColor} border border-background`}>
                   <AvatarImage src={content?.picture} alt={content?.display_name || content?.name || "User"} />
-                  <AvatarFallback className="text-[9px] bg-brand/15 dark:bg-brand/40 text-brand font-bold">
+                  <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[12px] font-bold">
                     {(content?.display_name || content?.name || "?").slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                {influence !== null && influence >= 0 && (
-                  <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center shadow-sm ring-1 ring-primary/20 dark:ring-[#0d0d2b] text-[7px] font-bold text-white ${scoreBg}`}>
-                    {Math.round(influence * 100)}
+                {getTrustMark(tier) && (
+                  <span className="absolute -bottom-0.5 -right-0.5 bg-background rounded-full p-0.5">
+                    <TrustMark tier={tier} className="w-3 h-3" />
                   </span>
                 )}
               </div>
@@ -2322,7 +2205,7 @@ function MobileTrustedVoices({ voices, followSet }: {
                   {content?.display_name || content?.name || shortenNpub(npub)}
                 </p>
                 {content?.nip05 && (
-                  <p className="text-[10px] text-success dark:text-emerald-500/70 truncate leading-tight mt-0.5">
+                  <p className="text-[12px] text-success truncate leading-tight mt-0.5">
                     {content.nip05.startsWith("_@") ? content.nip05.slice(2) : content.nip05}
                   </p>
                 )}
@@ -2337,19 +2220,19 @@ function MobileTrustedVoices({ voices, followSet }: {
       {!expanded && remaining > 0 && (
         <button
           onClick={() => setExpanded(true)}
-          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-primary/15 bg-primary/[0.04] active:bg-primary/[0.1] transition-colors cursor-pointer"
+          className="w-full flex items-center justify-center gap-1.5 min-h-11 rounded-full border border-border/60 active:bg-foreground/[0.05] transition-colors cursor-pointer"
         >
-          <ChevronDown className="w-3.5 h-3.5 text-brand/60" />
-          <span className="text-[11px] font-medium text-brand/70">Show {remaining} more</span>
+          <ChevronDown className="w-3.5 h-3.5 text-brand" />
+          <span className="text-[13px] font-medium text-brand">Show {remaining} more</span>
         </button>
       )}
       {expanded && voices.length > MOBILE_TRUSTED_INITIAL && (
         <button
           onClick={() => setExpanded(false)}
-          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-primary/15 bg-primary/[0.04] active:bg-primary/[0.1] transition-colors cursor-pointer"
+          className="w-full flex items-center justify-center gap-1.5 min-h-11 rounded-full border border-border/60 active:bg-foreground/[0.05] transition-colors cursor-pointer"
         >
-          <ChevronUp className="w-3.5 h-3.5 text-brand/60" />
-          <span className="text-[11px] font-medium text-brand/70">Show less</span>
+          <ChevronUp className="w-3.5 h-3.5 text-brand" />
+          <span className="text-[13px] font-medium text-brand">Show less</span>
         </button>
       )}
     </div>
@@ -2358,7 +2241,7 @@ function MobileTrustedVoices({ voices, followSet }: {
 
 function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
   const { pubkey, follows } = useNostrAuth();
-  const { scores, injectScores, followedByPubkeys, flaggedPubkeys } = useGrapeRankScores();
+  const { scores, injectScores, flaggedPubkeys } = useGrapeRankScores();
   const followSet = useMemo(() => new Set(follows || []), [follows]);
   // Moderation: hashtag feeds are the spam magnet — run every rendered post
   // through the shared spam/mute/report filter. `filter` identity bumps on any
@@ -2595,7 +2478,7 @@ function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
         ) : (
           <div className="space-y-4" data-testid="container-hashtag-results">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <p className="text-[11px] text-muted-foreground/50 uppercase tracking-wider">
+              <p className="text-[12px] text-muted-foreground font-medium">
                 #{activeTag}
               </p>
               <div className="flex items-center gap-1.5 shrink-0">
@@ -2609,7 +2492,7 @@ function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
             </p>
             {relatedTags.length > 0 && (
               <div>
-                <p className="text-[11px] text-muted-foreground/50 mb-2 uppercase tracking-wider">Related</p>
+                <p className="text-[12px] text-muted-foreground mb-2 font-medium">Related</p>
                 <div className="flex flex-wrap gap-1.5">
                   {relatedTags.map(tag => (
                     <button
@@ -2633,8 +2516,8 @@ function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
               <div>
                 <div className="flex items-center gap-2 mb-2.5">
                   <Brain className="w-3.5 h-3.5 text-brand" />
-                  <span className="text-[11px] font-semibold text-foreground/70 uppercase tracking-wider">Trusted Voices</span>
-                  <span className="text-[10px] text-muted-foreground/40 font-mono">{trustedVoices.length}</span>
+                  <span className="text-[12px] font-semibold text-foreground/70">Trusted voices</span>
+                  <span className="text-[13px] text-muted-foreground tabular-nums">{trustedVoices.length}</span>
                 </div>
                 <div className="hidden sm:flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
                   {trustedVoices.map(({ event: profile, tier, influence }) => {
@@ -2646,21 +2529,19 @@ function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
                         <Link href={`/profile/${npub}`}>
                           <div className="flex flex-col items-center gap-1 cursor-pointer">
                             <div className="relative">
-                              <Avatar className={`w-11 h-11 ring-2 ${ringColor} border-2 border-primary/20 dark:border-[#0d0d2b]`}>
+                              <Avatar className={`w-11 h-11 ring-2 ${ringColor} border-2 border-background`}>
                                 <AvatarImage src={content?.picture} alt={content?.display_name || content?.name || "User"} />
-                                <AvatarFallback className="text-[10px] bg-brand/15 dark:bg-brand/40 text-brand font-bold">
+                                <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[10px] font-bold">
                                   {(content?.display_name || content?.name || "?").slice(0, 2).toUpperCase()}
                                 </AvatarFallback>
                               </Avatar>
-                              {influence !== null && influence >= 0 && (
-                                <span className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center shadow-sm ring-1 ring-primary/20 dark:ring-[#0d0d2b] text-[8px] font-bold text-white ${
-                                  tier === "strong" ? "bg-emerald-500" : tier === "moderate" ? "bg-blue-500" : tier === "low" ? "bg-cyan-400" : "bg-amber-400"
-                                }`}>
-                                  {Math.round(influence * 100)}
+                              {getTrustMark(tier) && (
+                                <span className="absolute -bottom-0.5 -right-0.5 bg-background rounded-full p-0.5">
+                                  <TrustMark tier={tier} className="w-3 h-3" />
                                 </span>
                               )}
                             </div>
-                            <span className="text-[10px] text-foreground/70 group-hover:text-brand transition-colors truncate w-full text-center leading-tight">
+                            <span className="text-[12px] text-foreground/80 group-hover:text-brand transition-colors truncate w-full text-center leading-tight">
                               {content?.display_name || content?.name || shortenNpub(npub)}
                             </span>
                           </div>
@@ -2675,13 +2556,13 @@ function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
             )}
             {trustedVoicesLoading && trustedVoices.length === 0 && (
               <div className="flex items-center gap-2 py-2">
-                <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                <span className="text-[11px] text-muted-foreground/50">Finding trusted voices...</span>
+                <RelayOutpostInlineLoader className="w-4 h-4 text-muted-foreground" />
+                <span className="text-[13px] text-muted-foreground">Finding people your network trusts…</span>
               </div>
             )}
             {tagPosts.length > 0 ? (
               <div className="space-y-3">
-                <p className="text-[11px] text-muted-foreground/50">
+                <p className="text-[13px] text-muted-foreground">
                   {visibleTagPosts.length} post{visibleTagPosts.length !== 1 ? "s" : ""} mentioning #{activeTag}
                 </p>
                 {/* Virtualized: a spammed hashtag can return a wall of
@@ -2706,7 +2587,7 @@ function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
         <div className="space-y-6" data-testid="container-hashtags-discovery">
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <Activity className="w-4 h-4 text-brand drop-shadow-[0_0_4px_rgba(168,85,247,0.5)]" />
+              <Activity className="w-4 h-4 text-brand drop-shadow-[0_0_4px_rgba(13,15,18,0.5)]" />
               <h3 className="text-sm font-semibold">Trending</h3>
               <span className="text-[10px] font-mono text-muted-foreground/70 dark:text-muted-foreground/60">24H</span>
             </div>
@@ -2736,7 +2617,7 @@ function HashtagsTab({ urlQuery, updateUrl }: TabProps) {
                     <div key={cat.name} className="glass-card rounded-lg border p-3">
                       <div className="flex items-center gap-2 mb-2.5">
                         <Icon className="w-3.5 h-3.5 text-brand/80 dark:text-brand/70" />
-                        <span className="text-[11px] font-semibold text-foreground/80 dark:text-foreground/70 uppercase tracking-wider">{cat.name}</span>
+                        <span className="text-[12px] font-semibold text-foreground/80 dark:text-foreground/70">{cat.name}</span>
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {cat.tags.map(tag => (
@@ -2890,114 +2771,6 @@ function LiveTab({ urlQuery, updateUrl }: TabProps) {
 }
 
 
-function RssTab({ urlQuery, updateUrl }: TabProps) {
-  const [query, setQuery] = useState(urlQuery);
-  const [searchResults, setSearchResults] = useState<SavedFeed[]>([]);
-  const [searched, setSearched] = useState(!!urlQuery);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    setQuery(urlQuery);
-    if (urlQuery) setSearched(true);
-  }, [urlQuery]);
-
-  const curated = useCuratedLists();
-  const executeSearch = useCallback(async (q_?: string, fromUrl = false) => {
-    const searchQuery = q_ ?? query;
-    if (!searchQuery.trim()) return;
-    setLoading(true);
-    setSearched(true);
-    if (!fromUrl) updateUrl({ q: searchQuery.trim() });
-
-    const q = searchQuery.trim().toLowerCase();
-    const allAvailable = [...ALL_NEWS_FEEDS, ...curated.suggestedFeeds, ...loadCustomFeeds()];
-    const seen = new Set<string>();
-    const matched: SavedFeed[] = [];
-    for (const f of allAvailable) {
-      if (!seen.has(f.url) && (f.name.toLowerCase().includes(q) || f.category.toLowerCase().includes(q))) {
-        seen.add(f.url);
-        matched.push(f);
-      }
-    }
-
-    if (q.length >= 2) {
-      try {
-        const piRes = await fetch(`/api/podcastindex/search?q=${encodeURIComponent(q)}`);
-        if (piRes.ok) {
-          const piData = await piRes.json();
-          const piFeeds: SavedFeed[] = (piData.feeds || [])
-            .filter((f: any) => f.url && f.title)
-            .map((f: any) => ({
-              name: f.title,
-              url: f.url,
-              category: (f.categories && f.categories.length > 0) ? f.categories[0] : "Podcast",
-              feedImage: f.image || undefined,
-            }));
-          for (const pf of piFeeds) {
-            if (!seen.has(pf.url)) {
-              seen.add(pf.url);
-              matched.push(pf);
-            }
-          }
-        }
-      } catch {}
-    }
-
-    setSearchResults(matched);
-    setLoading(false);
-  }, [query, updateUrl, curated.suggestedFeeds]);
-
-  const handleClear = () => {
-    setQuery("");
-    setSearched(false);
-    setSearchResults([]);
-    updateUrl({ q: null });
-  };
-
-  const prevUrlQueryRef = useRef("");
-  useEffect(() => {
-    if (urlQuery !== prevUrlQueryRef.current) {
-      if (urlQuery) {
-        executeSearch(urlQuery, true);
-      } else {
-        setQuery("");
-        setSearched(false);
-        setSearchResults([]);
-      }
-    }
-    prevUrlQueryRef.current = urlQuery;
-  }, [urlQuery]);
-
-  return (
-    <div>
-      <TabSearchBar
-        query={query}
-        setQuery={setQuery}
-        onSubmit={executeSearch}
-        onClear={handleClear}
-        loading={loading}
-        placeholder="Search feeds by name or category..."
-      />
-
-      {searched ? (
-        loading ? (
-          <LoadingState message="Searching feeds..." />
-        ) : searchResults.length === 0 ? (
-          <EmptyState icon={Rss} message="No feeds found" hint="Try searching by feed name or category like Bitcoin, Tech, or Science." />
-        ) : (
-          <div className="space-y-2" data-testid="container-rss-results">
-            <p className="text-xs text-muted-foreground/80 dark:text-muted-foreground/60 mb-3 italic">News and podcasts from across the web. Click to add and read.</p>
-            {searchResults.map(feed => (
-              <RssResultCard key={feed.url} feed={feed} />
-            ))}
-          </div>
-        )
-      ) : (
-        <FeedDiscoverySection />
-      )}
-    </div>
-  );
-}
 
 
 function tryDecodeEventAuthor(input: string): string | null {
@@ -3043,7 +2816,7 @@ function EventCardRow({ ce, isPast, onShare }: {
 }
 
 function EventsTab({ urlQuery, updateUrl }: TabProps) {
-  const { pubkey } = useNostrAuth();
+  useNostrAuth();
   const [query, setQuery] = useState(urlQuery);
   const [results, setResults] = useState<CalendarEventData[]>([]);
   const [searched, setSearched] = useState(false);
@@ -3215,7 +2988,7 @@ function EventsTab({ urlQuery, updateUrl }: TabProps) {
 
   const isDiscoveryMode = !authorFilter && !query.trim();
 
-  const { pastEvents, upcomingEvents, hiddenByWindow, windowLabel } = useMemo(() => {
+  const { pastEvents, upcomingEvents, hiddenByWindow } = useMemo(() => {
     const now = Date.now();
     const past: CalendarEventData[] = [];
     const upcoming: CalendarEventData[] = [];
@@ -3278,7 +3051,7 @@ function EventsTab({ urlQuery, updateUrl }: TabProps) {
             <AvatarFallback className="text-[10px] bg-muted">{authorFilter.name.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] uppercase tracking-wider text-brand/80 font-brand">Events by</div>
+            <div className="text-[13px] text-brand/80 font-medium">Events by</div>
             <div className="text-sm font-medium text-foreground/90 truncate">{authorFilter.name}</div>
           </div>
           <Button
@@ -3359,7 +3132,7 @@ function EventsTab({ urlQuery, updateUrl }: TabProps) {
                   </button>
                 );
               })}
-              <div className="px-3 py-1.5 text-[10px] text-muted-foreground/40 text-center font-brand uppercase tracking-wider border-t border-border/20">
+              <div className="px-3 py-1.5 text-[13px] text-muted-foreground text-center border-t border-border/20 font-medium">
                 {suggestLoading ? "Searching…" : "Tap a creator to see their events"}
               </div>
             </div>
@@ -3418,7 +3191,7 @@ function EventsTab({ urlQuery, updateUrl }: TabProps) {
                 data-testid="button-toggle-past-events"
               >
                 <ChevronRight className={`w-3.5 h-3.5 text-muted-foreground/60 transition-transform ${showPast ? "rotate-90" : ""}`} />
-                <span className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider font-brand">Past</span>
+                <span className="text-[13px] font-medium text-muted-foreground/70">Past</span>
                 <span className="text-[10px] text-muted-foreground/40">({pastEvents.length})</span>
               </button>
               {showPast && (
@@ -3577,9 +3350,9 @@ function EmptyState({ icon: Icon, message, hint, nudge }: {
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-14 text-center" data-testid="container-empty-results">
-      <Icon className="w-10 h-10 text-muted-foreground/60 dark:text-muted-foreground/50 mb-3" />
+      <OttoEmpty mood="looking" size={96} className="mb-2 text-foreground/70" />
       <p className="text-sm font-medium mb-1">{message}</p>
-      <p className="text-xs text-muted-foreground/80 dark:text-muted-foreground/70 max-w-xs">{hint}</p>
+      <p className="text-[13px] text-muted-foreground max-w-xs">{hint}</p>
       {nudge && (
         <div className="mt-4 px-4 py-2 rounded-md bg-primary/5 border border-primary/10 max-w-xs">
           <p className="text-[11px] text-brand/70 italic">{nudge}</p>
@@ -3641,7 +3414,7 @@ function LiveEventCard({ liveEvent }: { liveEvent: LiveEventInfo }) {
     ? "text-amber-800 dark:text-amber-400 bg-amber-400/10 border-amber-400/20"
     : "text-muted-foreground bg-muted/50 border-border";
 
-  const statusLabel = isOffline ? "Signal Lost" : liveEvent.status === "live" ? "LIVE" : liveEvent.status === "planned" ? "Scheduled" : "Ended";
+  const statusLabel = isOffline ? "Offline" : liveEvent.status === "live" ? "Live" : liveEvent.status === "planned" ? "Scheduled" : "Ended";
 
   const age = liveEvent.starts
     ? Math.floor((Date.now() / 1000) - liveEvent.starts)
@@ -3667,12 +3440,12 @@ function LiveEventCard({ liveEvent }: { liveEvent: LiveEventInfo }) {
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center gap-1.5 bg-gradient-to-br from-[#0e0a1a] via-[#0c0818] to-[#080610] relative overflow-hidden">
-                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(139,92,246,0.15)_0%,transparent_70%)]" />
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(13,15,18,0.15)_0%,transparent_70%)]" />
                   <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(1px 1px at 10px 8px, white, transparent), radial-gradient(1px 1px at 30px 5px, white, transparent), radial-gradient(1px 1px at 50px 12px, white, transparent)' }} />
                   <div className="relative z-10 flex items-center gap-1.5">
                     <Avatar className="w-6 h-6 border border-brand/30 shadow-sm shadow-brand/20">
                       <AvatarImage src={avatarUrl} alt={displayName} className="object-cover" />
-                      <AvatarFallback className="text-[8px] font-bold bg-gradient-to-br from-brand/80 to-brand/60 text-brand">{displayName?.charAt(0)?.toUpperCase()}</AvatarFallback>
+                      <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[8px] font-bold">{displayName?.charAt(0)?.toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <span className="text-[9px] font-medium text-brand/80 truncate max-w-[44px] leading-tight">{displayName}</span>
                   </div>
@@ -3727,369 +3500,11 @@ function LiveEventCard({ liveEvent }: { liveEvent: LiveEventInfo }) {
   );
 }
 
-
-function RssResultCard({ feed }: { feed: SavedFeed }) {
-  const [, setLocation] = useLocation();
-  const { toast } = useToast();
-  const savedUrls = useMemo(() => getAllSavedFeedUrls(), []);
-  const alreadySaved = savedUrls.has(feed.url);
-
-  const handleClick = () => {
-    if (!alreadySaved) {
-      addFeedToLibrary(feed);
-      toast({ title: "Feed added", description: `${feed.name} saved to your News Feeds.` });
-    }
-    setLocation(`/rss?feed=${encodeURIComponent(feed.url)}`);
-  };
-
-  return (
-    <div
-      onClick={handleClick}
-      className="flex items-center gap-3 p-2.5 rounded-xl border glass-card transition-all cursor-pointer group"
-    >
-      <FeedIcon feed={feed} />
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium truncate text-foreground/90 dark:text-foreground/85 group-hover:text-foreground transition-colors">{feed.name}</p>
-        <p className="text-[10px] text-muted-foreground/70 dark:text-muted-foreground/50 font-mono truncate">{feed.category}</p>
-      </div>
-      {alreadySaved ? (
-        <span className="flex items-center gap-1 text-[10px] text-success dark:text-green-400/70 font-mono shrink-0">
-          <Check className="w-3 h-3" /> Saved
-        </span>
-      ) : (
-        <span className="text-[10px] text-brand/70 dark:text-brand/60 font-mono shrink-0">+ Add</span>
-      )}
-    </div>
-  );
-}
-
-
-function FeedIcon({ feed, size = 32 }: { feed: SavedFeed; size?: number }) {
-  const [failed, setFailed] = useState(false);
-  const iconSize = Math.round(size * 0.44);
-
-  if (feed.feedImage && !failed) {
-    return (
-      <img
-        src={`/api/rss/image-proxy?url=${encodeURIComponent(feed.feedImage)}`}
-        alt={`${feed.name || "Feed"} icon`}
-        loading="lazy"
-        className="rounded-lg shrink-0 object-cover"
-        style={{ width: size, height: size }}
-        onError={() => setFailed(true)}
-      />
-    );
-  }
-
-  let domain = "";
-  try {
-    domain = new URL(feed.siteUrl || feed.url).hostname;
-  } catch {}
-
-  if (domain && !failed) {
-    return (
-      <img
-        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=${size * 2}`}
-        alt={`${domain} favicon`}
-        loading="lazy"
-        className="rounded-lg shrink-0 object-contain"
-        style={{ width: size, height: size }}
-        onError={() => setFailed(true)}
-      />
-    );
-  }
-
-  return (
-    <div className="rounded-lg bg-orange-500/[0.08] border border-orange-400/15 flex items-center justify-center shrink-0 group-hover:bg-orange-500/[0.12] transition-colors" style={{ width: size, height: size }}>
-      <Rss style={{ width: iconSize, height: iconSize }} className="text-orange-800/60 dark:text-orange-400/60" />
-    </div>
-  );
-}
-
-const RSS_FEED_CATEGORIES: { name: string; icon: typeof Zap; categories: string[] }[] = [
-  { name: "News", icon: Newspaper, categories: ["News"] },
-  { name: "Bitcoin & Nostr", icon: Zap, categories: ["Bitcoin", "Nostr"] },
-  { name: "Tech & Dev", icon: Code2, categories: ["Tech", "Dev", "Open Source"] },
-  { name: "AI", icon: Brain, categories: ["AI"] },
-  { name: "Science", icon: FlaskConical, categories: ["Science"] },
-  { name: "Privacy & Security", icon: Shield, categories: ["Privacy"] },
-  { name: "Sports", icon: Trophy, categories: ["Sports"] },
-  { name: "Health & Wellness", icon: Heart, categories: ["Health"] },
-  { name: "Ideas & Culture", icon: BookOpen, categories: ["Ideas", "Culture", "Consciousness", "Music"] },
-];
-
-function getFeedDomain(feed: SavedFeed): string {
-  try {
-    return new URL(feed.siteUrl || feed.url).hostname.replace(/^www\./, "");
-  } catch {
-    return "";
-  }
-}
-
-function DiscoveryFeedCard({ feed, onAdd, onNavigate }: { feed: SavedFeed; onAdd: (feed: SavedFeed) => void; onNavigate: (url: string) => void }) {
-  const [imgFailed, setImgFailed] = useState(false);
-  const domain = useMemo(() => getFeedDomain(feed), [feed]);
-
-  const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : null;
-  const imageUrl = feed.feedImage
-    ? `/api/rss/image-proxy?url=${encodeURIComponent(feed.feedImage)}`
-    : faviconUrl;
-
-  return (
-    <div
-      onClick={() => {
-        onAdd(feed);
-        onNavigate(`/rss?feed=${encodeURIComponent(feed.url)}`);
-      }}
-      className="flex items-center gap-2.5 p-2 rounded-lg border glass-card transition-all cursor-pointer group"
-    >
-      <div className="w-8 h-8 rounded-md shrink-0 overflow-hidden bg-muted/40 dark:bg-white/[0.05] border border-border/20 dark:border-border/10 flex items-center justify-center">
-        {imageUrl && !imgFailed ? (
-          <img
-            src={imageUrl}
-            alt="Feed icon"
-            loading="lazy"
-            className="w-full h-full object-cover"
-            onError={() => setImgFailed(true)}
-          />
-        ) : (
-          <Rss className="w-3.5 h-3.5 text-orange-800/60 dark:text-orange-400/60" />
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[12px] font-medium text-foreground/85 dark:text-foreground/80 group-hover:text-foreground truncate leading-tight">{feed.name}</p>
-        <p className="text-[10px] text-muted-foreground/60 dark:text-muted-foreground/45 truncate leading-tight mt-0.5">{domain}</p>
-      </div>
-      <span className="text-[10px] text-orange-800/60 dark:text-orange-400/50 font-mono shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">+</span>
-    </div>
-  );
-}
-
-function FeedDiscoverySection() {
-  const { toast } = useToast();
-  const curated = useCuratedLists();
-  const [, setLocation] = useLocation();
-  const [savedUrls, setSavedUrls] = useState<Set<string>>(() => getAllSavedFeedUrls());
-  const [expandedCat, setExpandedCat] = useState<string | null>(null);
-
-  const allFeeds = useMemo(() => {
-    const seen = new Set<string>();
-    const feeds: SavedFeed[] = [];
-    for (const f of [...ALL_NEWS_FEEDS, ...curated.suggestedFeeds]) {
-      if (!seen.has(f.url)) {
-        seen.add(f.url);
-        feeds.push(f);
-      }
-    }
-    return feeds;
-  }, [curated.suggestedFeeds]);
-
-  const groupedFeeds = useMemo(() => {
-    return RSS_FEED_CATEGORIES.map(cat => ({
-      ...cat,
-      feeds: allFeeds.filter(f => cat.categories.includes(f.category) && !savedUrls.has(f.url)),
-    })).filter(g => g.feeds.length > 0);
-  }, [allFeeds, savedUrls]);
-
-  const handleSave = useCallback((feed: SavedFeed) => {
-    const added = addFeedToLibrary(feed);
-    if (added) {
-      setSavedUrls(getAllSavedFeedUrls());
-      toast({ title: "Feed saved", description: `${feed.name} added to your News Feeds.` });
-    }
-  }, [toast]);
-
-  const PREVIEW_COUNT = 4;
-
-  return (
-    <section data-testid="section-feed-discovery">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Rss className="w-4 h-4 text-orange-800 dark:text-orange-400 drop-shadow-[0_0_3px_rgba(251,146,60,0.4)]" />
-          <h2 className="text-sm font-brand tracking-wider uppercase">Discover Feeds</h2>
-        </div>
-        <Link href="/rss" className="text-[10px] text-brand/80 hover:text-brand font-mono uppercase tracking-wider transition-colors">
-          View all
-        </Link>
-      </div>
-      {groupedFeeds.length === 0 ? (
-        <EmptyState icon={Rss} message="You've added all available feeds" hint="Search above to discover more from Podcast Index, or visit your News Feeds page." />
-      ) : (
-      <div className="space-y-4">
-        {groupedFeeds.map(group => {
-          const Icon = group.icon;
-          const isExpanded = expandedCat === group.name;
-          const visibleFeeds = isExpanded ? group.feeds : group.feeds.slice(0, PREVIEW_COUNT);
-          const hasMore = group.feeds.length > PREVIEW_COUNT;
-          return (
-            <div key={group.name}>
-              <div className="flex items-center gap-2 mb-2">
-                <Icon className="w-3.5 h-3.5 text-orange-800/80 dark:text-orange-400/70" />
-                <span className="text-[11px] font-semibold text-foreground/80 dark:text-foreground/70 uppercase tracking-wider">{group.name}</span>
-                <span className="text-[10px] font-mono text-muted-foreground/60 dark:text-muted-foreground/45">{group.feeds.length}</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {visibleFeeds.map(feed => (
-                  <DiscoveryFeedCard key={feed.url} feed={feed} onAdd={handleSave} onNavigate={setLocation} />
-                ))}
-              </div>
-              {hasMore && (
-                <button
-                  onClick={() => setExpandedCat(isExpanded ? null : group.name)}
-                  className="mt-1.5 text-[10px] font-mono text-orange-800/70 dark:text-orange-400/70 hover:text-orange-800 dark:hover:text-orange-400 transition-colors cursor-pointer pl-5"
-                >
-                  {isExpanded ? "Show less" : `+ ${group.feeds.length - PREVIEW_COUNT} more`}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      )}
-    </section>
-  );
-}
-
-const VOUCH_KIND_METADATA = 0;
-const VOUCH_RELAYS = [
-  "wss://relay.damus.io",
-  "wss://relay.primal.net",
-  "wss://nos.lol",
-  ...PROFILE_DIRECTORIES,
-];
-
-interface VouchEntry {
-  attestation: Attestation;
-  attesterName: string;
-  attesterAvatar: string;
-  subjectName: string;
-  subjectAvatar: string;
-}
-
 function VouchesTab({ urlQuery, updateUrl }: TabProps) {
-  const { scores, requestScoresBulk } = useGrapeRankScores();
-  const [vouches, setVouches] = useState<VouchEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const fetchedRef = useRef(false);
+  // The vouches tab is hidden for the public beta and shows a placeholder;
+  // it fetches nothing until the feature ships.
 
-  useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
 
-    const cached = getSessionCache<VouchEntry[]>("search_vouches_v1");
-    if (cached) {
-      setVouches(cached);
-      setLoading(false);
-      return;
-    }
-
-    (async () => {
-      try {
-        const events = await Promise.race([
-          pool.querySync(VOUCH_RELAYS, {
-            kinds: [KIND_ATTESTATION],
-            limit: 100,
-          }),
-          new Promise<any[]>((resolve) => setTimeout(() => resolve([]), 12000)),
-        ]);
-
-        if (!events || events.length === 0) {
-          setLoading(false);
-          return;
-        }
-
-        const entries: VouchEntry[] = [];
-        const allPubkeys = new Set<string>();
-        const seen = new Set<string>();
-
-        for (const ev of events) {
-          if (seen.has(ev.id)) continue;
-          seen.add(ev.id);
-
-          const pTag = ev.tags.find((t: string[]) => t[0] === "p");
-          if (!pTag?.[1]) continue;
-          const subjectPk = pTag[1];
-          if (ev.pubkey === subjectPk) continue;
-
-          allPubkeys.add(ev.pubkey);
-          allPubkeys.add(subjectPk);
-
-          const status = parseStatus(getTag(ev.tags, "s"));
-          const validity = parseValidity(getTag(ev.tags, "v"));
-          const validFrom = parseTimestamp(getTag(ev.tags, "valid_from"));
-          const validTo = parseTimestamp(getTag(ev.tags, "valid_to"));
-
-          const att: Attestation = {
-            attesterPubkey: ev.pubkey,
-            subjectPubkey: subjectPk,
-            content: ev.content || "",
-            createdAt: ev.created_at,
-            eventId: ev.id,
-            kind: KIND_ATTESTATION,
-            status,
-            validity,
-            validFrom,
-            validTo,
-            type: parseType(ev.tags),
-          };
-
-          entries.push({
-            attestation: att,
-            attesterName: ev.pubkey.slice(0, 8),
-            attesterAvatar: "",
-            subjectName: subjectPk.slice(0, 8),
-            subjectAvatar: "",
-          });
-        }
-
-        const pkArray = Array.from(allPubkeys);
-        if (pkArray.length > 0) {
-          fetchProfilesCached(pkArray);
-          if (requestScoresBulk) requestScoresBulk(pkArray);
-        }
-
-        await new Promise(r => setTimeout(r, 600));
-
-        for (const entry of entries) {
-          try {
-            const attProfile = eventStore.getReplaceable(VOUCH_KIND_METADATA, entry.attestation.attesterPubkey);
-            if (attProfile) {
-              const p = JSON.parse(attProfile.content);
-              entry.attesterName = p.display_name || p.name || entry.attestation.attesterPubkey.slice(0, 8);
-              entry.attesterAvatar = p.picture || "";
-            }
-          } catch {}
-          try {
-            const subProfile = eventStore.getReplaceable(VOUCH_KIND_METADATA, entry.attestation.subjectPubkey);
-            if (subProfile) {
-              const p = JSON.parse(subProfile.content);
-              entry.subjectName = p.display_name || p.name || entry.attestation.subjectPubkey.slice(0, 8);
-              entry.subjectAvatar = p.picture || "";
-            }
-          } catch {}
-        }
-
-        entries.sort((a, b) => b.attestation.createdAt - a.attestation.createdAt);
-
-        setVouches(entries);
-        setSessionCache("search_vouches_v1", entries);
-      } catch {
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [requestScoresBulk]);
-
-  const timeAgo = useCallback((ts: number) => {
-    const diff = Math.floor(Date.now() / 1000) - ts;
-    if (diff < 60) return "just now";
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
-    return new Date(ts * 1000).toLocaleDateString();
-  }, []);
-
-  const previewVouches = vouches.slice(0, 3);
 
   return (
     <section className="relative min-h-[420px]">
@@ -4147,8 +3562,8 @@ function VouchesTab({ urlQuery, updateUrl }: TabProps) {
           <ShieldCheck className="w-10 h-10 text-brand" />
         </div>
 
-        <h3 className="text-base font-brand tracking-wider uppercase text-foreground/90 dark:text-white/90 mb-2">
-          Network Vouches
+        <h3 className="text-base text-foreground/90 dark:text-white/90 mb-2 font-medium">
+          Network vouches
         </h3>
         <p className="text-[11px] leading-relaxed text-muted-foreground/70 dark:text-white/50 max-w-[280px] mb-4">
           People vouching for each other across the Nostr network. A real trust layer built by real users is forming here.
@@ -4156,8 +3571,8 @@ function VouchesTab({ urlQuery, updateUrl }: TabProps) {
 
         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand/[0.08] dark:bg-brand/10 border border-brand/15 mb-5">
           <Lock className="w-3 h-3 text-brand/60 dark:text-brand/50" />
-          <span className="text-[9px] font-medium text-brand/70 dark:text-brand/60 tracking-wide uppercase">
-            Coming Soon
+          <span className="text-[12px] font-medium text-brand/70 dark:text-brand/60">
+            Coming soon
           </span>
         </div>
 
@@ -4177,418 +3592,5 @@ function VouchesTab({ urlQuery, updateUrl }: TabProps) {
         </div>
       </div>
     </section>
-  );
-}
-
-function AudioTab({ urlQuery, updateUrl }: TabProps) {
-  const [, setLocation] = useLocation();
-  const { play } = useAudioPlayer();
-  const { toast } = useToast();
-  const [loadingAlbumId, setLoadingAlbumId] = useState<string | null>(null);
-  const [loadingArtistId, setLoadingArtistId] = useState<string | null>(null);
-  const [query, setQuery] = useState(urlQuery);
-  const [searched, setSearched] = useState(!!urlQuery);
-  const [loading, setLoading] = useState(false);
-  const [searchResults, setSearchResults] = useState<import("@/lib/music").WavlakeSearchResult[]>([]);
-  const [artists, setArtists] = useState<import("@/lib/music").UniqueArtistInfo[]>([]);
-  const [artistsLoading, setArtistsLoading] = useState(true);
-  const artistsLoadedRef = useRef(false);
-  const searchReqRef = useRef(0);
-  const lastExecutedRef = useRef<string>("");
-
-  useEffect(() => {
-    setQuery(urlQuery);
-    if (urlQuery) {
-      setSearched(true);
-    } else {
-      setSearched(false);
-      setSearchResults([]);
-      setLoading(false);
-      lastExecutedRef.current = "";
-      ++searchReqRef.current;
-    }
-  }, [urlQuery]);
-
-  useEffect(() => {
-    if (artistsLoadedRef.current) return;
-    artistsLoadedRef.current = true;
-
-    const cached = getSessionCache<import("@/lib/music").UniqueArtistInfo[]>("search_audio_artists_v1");
-    if (cached && cached.length > 0) {
-      setArtists(cached);
-      setArtistsLoading(false);
-      return;
-    }
-    (async () => {
-      try {
-        const [{ fetchPopularArtists, extractUniqueArtists }, { fetchNostrMusicTracks }] = await Promise.all([
-          import("@/lib/music"),
-          import("@/lib/nostr-audio"),
-        ]);
-        const settled = await Promise.allSettled([
-          fetchPopularArtists(),
-          fetchNostrMusicTracks(50).then((t) => extractUniqueArtists(t)),
-        ]);
-        const all: import("@/lib/music").UniqueArtistInfo[] = [];
-        for (const r of settled) if (r.status === "fulfilled") all.push(...r.value);
-        const seen = new Set<string>();
-        const deduped: import("@/lib/music").UniqueArtistInfo[] = [];
-        for (const a of all) if (!seen.has(a.id)) { seen.add(a.id); deduped.push(a); }
-        deduped.sort((x, y) => x.name.localeCompare(y.name));
-        setArtists(deduped);
-        setSessionCache("search_audio_artists_v1", deduped);
-      } catch {
-        setArtists([]);
-      } finally {
-        setArtistsLoading(false);
-      }
-    })();
-  }, []);
-
-  const executeSearch = useCallback(async (q?: string) => {
-    const term = (q ?? query).trim();
-    if (!term) return;
-    if (lastExecutedRef.current === term) return;
-    lastExecutedRef.current = term;
-    const reqId = ++searchReqRef.current;
-    setLoading(true);
-    setSearched(true);
-    updateUrl({ q: term });
-    try {
-      const { searchWavlake } = await import("@/lib/music");
-      const results = await searchWavlake(term);
-      if (searchReqRef.current !== reqId) return;
-      setSearchResults(results);
-    } catch {
-      if (searchReqRef.current === reqId) setSearchResults([]);
-    } finally {
-      if (searchReqRef.current === reqId) setLoading(false);
-    }
-  }, [query, updateUrl]);
-
-  useEffect(() => {
-    if (urlQuery && lastExecutedRef.current !== urlQuery) {
-      executeSearch(urlQuery);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlQuery]);
-
-  const handleClear = () => {
-    ++searchReqRef.current;
-    lastExecutedRef.current = "";
-    setQuery("");
-    setSearched(false);
-    setSearchResults([]);
-    setLoading(false);
-    updateUrl({ q: null });
-  };
-
-  const openArtist = useCallback((artistId: string) => {
-    setLocation(`/audio?artist=${encodeURIComponent(artistId)}`);
-  }, [setLocation]);
-
-  const openAlbum = useCallback((albumId: string, title?: string) => {
-    const params = new URLSearchParams();
-    params.set("album", albumId);
-    if (title) params.set("albumTitle", title);
-    setLocation(`/audio?${params.toString()}`);
-  }, [setLocation]);
-
-  const playAlbum = useCallback(async (albumId: string, albumTitle?: string) => {
-    if (loadingAlbumId) return;
-    setLoadingAlbumId(albumId);
-    try {
-      const tracks = await fetchAlbumTracks(albumId);
-      if (tracks.length === 0) {
-        toast({ title: "Couldn't load album", description: "No playable tracks found for this album.", variant: "destructive" });
-        return;
-      }
-      play(tracks[0], tracks);
-      toast({ title: "Playing album", description: `${albumTitle || "Album"} · ${tracks.length} ${tracks.length === 1 ? "track" : "tracks"} queued.` });
-    } catch {
-      toast({ title: "Couldn't load album", description: "Try again in a moment.", variant: "destructive" });
-    } finally {
-      setLoadingAlbumId(null);
-    }
-  }, [loadingAlbumId, play, toast]);
-
-  const playArtist = useCallback(async (artistId: string, artistName?: string) => {
-    if (loadingArtistId) return;
-    setLoadingArtistId(artistId);
-    try {
-      const artist = await fetchWavlakeArtist(artistId);
-      const tracks = artist ? getArtistTracks(artist) : [];
-      if (tracks.length === 0) {
-        toast({ title: "Couldn't load artist", description: "No playable tracks found for this artist.", variant: "destructive" });
-        return;
-      }
-      play(tracks[0], tracks);
-      toast({ title: "Playing artist", description: `${artistName || artist?.name || "Artist"} · ${tracks.length} ${tracks.length === 1 ? "track" : "tracks"} queued.` });
-    } catch {
-      toast({ title: "Couldn't load artist", description: "Try again in a moment.", variant: "destructive" });
-    } finally {
-      setLoadingArtistId(null);
-    }
-  }, [loadingArtistId, play, toast]);
-
-  const playTrackResult = useCallback((r: import("@/lib/music").WavlakeSearchResult) => {
-    if (!r.liveUrl) return;
-    const track: MusicTrack = {
-      id: r.id,
-      title: r.title || r.name || "Untitled Track",
-      artist: r.artist || "Unknown Artist",
-      artistPubkey: "",
-      audioUrl: r.liveUrl,
-      coverUrl: r.artworkUrl || "",
-      description: "",
-      genre: "",
-      duration: r.duration || 0,
-      createdAt: Math.floor(Date.now() / 1000),
-      wavlakeUrl: r.id ? `https://wavlake.com/track/${r.id}` : undefined,
-      albumTitle: r.albumTitle || undefined,
-      artistAvatarUrl: r.avatarUrl || undefined,
-    };
-    play(track, [track]);
-  }, [play]);
-
-  const groupedResults = useMemo(() => {
-    const out = {
-      artists: [] as typeof searchResults,
-      albums: [] as typeof searchResults,
-      tracks: [] as typeof searchResults,
-    };
-    for (const r of searchResults) {
-      if (r.type === "artist") out.artists.push(r);
-      else if (r.type === "album") out.albums.push(r);
-      else if (r.type === "track" && r.liveUrl) out.tracks.push(r);
-    }
-    return out;
-  }, [searchResults]);
-
-  return (
-    <div data-testid="container-audio-tab">
-      <TabSearchBar
-        query={query}
-        setQuery={setQuery}
-        onSubmit={() => executeSearch()}
-        onClear={handleClear}
-        loading={loading}
-        placeholder="Search artists, albums, songs..."
-      />
-
-      {searched ? (
-        <div className="space-y-4">
-          {loading && searchResults.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/70">
-              <RelayOutpostInlineLoader className="w-5 h-5" />
-              <span className="text-xs">Searching Wavlake…</span>
-            </div>
-          ) : searchResults.length === 0 ? (
-            <div className="text-center py-12 text-sm text-muted-foreground/70" data-testid="text-audio-empty">
-              No matches on Wavlake for that one. Try a different spelling.
-            </div>
-          ) : (
-            <>
-              {groupedResults.artists.length > 0 && (
-                <section>
-                  <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground/60 mb-2">Artists</h2>
-                  <div className="space-y-1">
-                    {groupedResults.artists.map(r => (
-                      <div
-                        key={`a-${r.id}`}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer hover:bg-muted/30 transition-colors border border-transparent hover:border-border/30"
-                        onClick={() => openArtist(r.id)}
-                        data-testid={`audio-artist-${r.id}`}
-                      >
-                        <Avatar className="w-11 h-11 border border-border/30 shrink-0">
-                          <AvatarImage src={r.avatarUrl} alt={r.name || ""} />
-                          <AvatarFallback className="text-xs bg-muted"><UserIcon className="w-4 h-4" /></AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground/90 truncate">{r.name}</p>
-                          <p className="text-xs text-muted-foreground/70">Artist</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); playArtist(r.id, r.name); }}
-                          disabled={loadingArtistId === r.id}
-                          className="shrink-0 p-1.5 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-wait"
-                          title="Play artist"
-                          aria-label={`Play artist ${r.name || ""}`}
-                          data-testid={`audio-artist-play-${r.id}`}
-                        >
-                          {loadingArtistId === r.id ? (
-                            <RelayOutpostInlineLoader className="w-3.5 h-3.5" />
-                          ) : (
-                            <Play className="w-3.5 h-3.5" fill="currentColor" />
-                          )}
-                        </button>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {groupedResults.albums.length > 0 && (
-                <section>
-                  <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground/60 mb-2">Albums</h2>
-                  <div className="space-y-1">
-                    {groupedResults.albums.map(r => (
-                      <div
-                        key={`al-${r.id}`}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer hover:bg-muted/30 transition-colors border border-transparent hover:border-border/30"
-                        onClick={() => openAlbum(r.id, r.name || r.title)}
-                        data-testid={`audio-album-${r.id}`}
-                      >
-                        <div className="w-11 h-11 rounded-md overflow-hidden shrink-0 bg-muted/30">
-                          {r.artworkUrl ? (
-                            <img src={r.artworkUrl} alt={r.name || ""} className="w-full h-full object-cover" loading="lazy" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center"><Disc className="w-5 h-5 text-muted-foreground/50" /></div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground/90 truncate">{r.name || r.title}</p>
-                          <p className="text-xs text-muted-foreground/70 truncate">{r.artist ? `${r.artist} · ` : ""}Album</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); playAlbum(r.id, r.name || r.title); }}
-                          disabled={loadingAlbumId === r.id}
-                          className="shrink-0 p-1.5 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-wait"
-                          title="Play album"
-                          aria-label={`Play album ${r.name || r.title || ""}`}
-                          data-testid={`audio-album-play-${r.id}`}
-                        >
-                          {loadingAlbumId === r.id ? (
-                            <RelayOutpostInlineLoader className="w-3.5 h-3.5" />
-                          ) : (
-                            <Play className="w-3.5 h-3.5" fill="currentColor" />
-                          )}
-                        </button>
-                        <a
-                          href={`https://wavlake.com/album/${r.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="shrink-0 p-1.5 rounded-md text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
-                          title="Open on Wavlake"
-                          data-testid={`audio-album-external-${r.id}`}
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {groupedResults.tracks.length > 0 && (
-                <section>
-                  <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground/60 mb-2">Songs</h2>
-                  <div className="space-y-1">
-                    {groupedResults.tracks.map(r => {
-                      return (
-                        <div
-                          key={`t-${r.id}`}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer hover:bg-muted/30 transition-colors border border-transparent hover:border-border/30"
-                          onClick={() => playTrackResult(r)}
-                          data-testid={`audio-track-${r.id}`}
-                        >
-                          <div className="w-11 h-11 rounded-md overflow-hidden shrink-0 relative bg-muted/30">
-                            {r.artworkUrl ? (
-                              <img src={r.artworkUrl} alt={r.title || ""} className="w-full h-full object-cover" loading="lazy" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center"><Music className="w-5 h-5 text-muted-foreground/50" /></div>
-                            )}
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity">
-                              <Play className="w-4 h-4 text-white" />
-                            </div>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground/90 truncate">{r.title || r.name}</p>
-                            <p className="text-xs text-muted-foreground/70 truncate">
-                              {r.artist}{r.albumTitle ? ` · ${r.albumTitle}` : ""}
-                            </p>
-                          </div>
-                          <a
-                            href={`https://wavlake.com/track/${r.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="shrink-0 p-1.5 rounded-md text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
-                            title="Open on Wavlake"
-                            data-testid={`audio-track-external-${r.id}`}
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-              )}
-
-              {groupedResults.artists.length === 0 && groupedResults.albums.length === 0 && groupedResults.tracks.length === 0 && (
-                <div className="text-center py-12 text-sm text-muted-foreground/70" data-testid="text-audio-empty-grouped">
-                  No matching artists, albums, or songs on Wavlake. Try a different spelling.
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      ) : (
-        <div data-testid="container-audio-artists">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground/60">Artists</h2>
-            <Link href="/audio">
-              <a className="text-[11px] text-brand hover:underline" data-testid="link-open-audio-page">Open Audio page →</a>
-            </Link>
-          </div>
-          {artistsLoading ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/70">
-              <RelayOutpostInlineLoader className="w-5 h-5" />
-              <span className="text-xs">Tuning in…</span>
-            </div>
-          ) : artists.length === 0 ? (
-            <div className="text-center py-12 text-sm text-muted-foreground/70">
-              The dial is quiet. Try searching above.
-            </div>
-          ) : (
-            <div className="space-y-0.5">
-              {artists.map(a => (
-                <div
-                  key={a.id}
-                  className="flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer hover:bg-muted/30 transition-colors"
-                  onClick={() => openArtist(a.id)}
-                  data-testid={`audio-tab-artist-${a.id}`}
-                >
-                  <Avatar className="w-9 h-9 border border-border/30 shrink-0">
-                    <AvatarImage src={a.avatarUrl} alt={a.name} />
-                    <AvatarFallback className="text-xs bg-muted">{a.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-sm text-foreground/90 truncate">{a.name}</p>
-                      {a.hasV4V && (
-                        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/90 text-white whitespace-nowrap inline-flex items-center gap-0.5 shrink-0">
-                          <Zap className="w-2.5 h-2.5" />V4V
-                        </span>
-                      )}
-                    </div>
-                    {a.genres.length > 0 && (
-                      <p className="text-[11px] text-muted-foreground/60 truncate">{a.genres.slice(0, 3).join(", ")}</p>
-                    )}
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
   );
 }

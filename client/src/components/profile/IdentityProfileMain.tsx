@@ -280,7 +280,7 @@ export function IdentityProfileMain({
             <h2 className={TILE_TITLE}>
               Media
             </h2>
-            <button onClick={() => selectFilter("media")} className="text-[11px] text-brand hover:underline" data-testid="identity-montage-all">See all</button>
+            <button onClick={() => selectFilter("media")} className="text-[13px] text-brand hover:underline" data-testid="identity-montage-all">See all</button>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
             {montageMedia.map((url, i) => {
@@ -384,7 +384,7 @@ export function IdentityProfileMain({
       ) : (
       <div ref={streamRef} className="flex flex-col gap-3">
         {stream.length === 0 && notesLoaded ? (
-          <p className="text-center text-sm text-muted-foreground/60 py-10 rounded-xl border border-border/60 bg-card">
+          <p className="text-center text-sm text-muted-foreground py-10 rounded-[20px] border border-border/60 bg-card">
             {filter === "replies" ? "No replies yet." : filter === "posts" ? "No posts yet." : "Nothing here yet."}
           </p>
         ) : (() => {
@@ -400,7 +400,7 @@ export function IdentityProfileMain({
               <Fragment key={event.id}>
                 {showChapter && (
                   <div className="flex items-center gap-2.5 pt-2 first:pt-0 scroll-mt-4" data-testid="identity-chapter" data-chapter-heading={chapter}>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/55">{chapter}</span>
+                    <span className="text-[12px] font-semibold text-muted-foreground">{chapter}</span>
                     <div className="flex-1 h-px bg-border/40" />
                   </div>
                 )}
@@ -448,13 +448,13 @@ function ArticleStreamRow({ event }: { event: Event }) {
       data-testid={`identity-article-${event.id.slice(0, 12)}`}
     >
       <span className="min-w-0 flex-1">
-        <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-brand/80 mb-1">
+        <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground mb-1">
           <BookOpen className="w-3 h-3" />
           Article
         </span>
         <span className="block text-base font-semibold leading-snug line-clamp-2">{title}</span>
         {summary && <span className="mt-1 block text-sm text-muted-foreground line-clamp-2">{summary}</span>}
-        <span className="mt-1.5 block text-[11px] text-muted-foreground/70">
+        <span className="mt-1.5 block text-[12px] text-muted-foreground">
           {new Date(publishedAt * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
         </span>
       </span>

@@ -3,7 +3,6 @@ import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import {
   computeOutpostHealth,
   getHealthColor,
-  getHealthBg,
   getHealthDotColor,
   getHealthBarColor,
   type OutpostHealth,
@@ -44,22 +43,22 @@ function HealthBar({ score, label }: { score: number; label: string }) {
   const barColor = getHealthBarColor(label as OutpostHealth["label"]);
   return (
     <div className="flex items-center gap-2 w-full">
-      <div className="flex-1 h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.06] overflow-hidden">
+      <div className="flex-1 h-1.5 rounded-full bg-foreground/[0.06] overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+          className={`h-full rounded-full ${barColor}`}
           style={{ width: `${score}%` }}
         />
       </div>
-      <span className="text-[10px] tabular-nums text-muted-foreground/60 w-7 text-right">{score}</span>
+      <span className="text-[12px] tabular-nums text-muted-foreground w-7 text-right">{score}</span>
     </div>
   );
 }
 
 function BreakdownRow({ label, value, suffix = "%" }: { label: string; value: number; suffix?: string }) {
   return (
-    <div className="flex items-center justify-between text-[10px]">
-      <span className="text-muted-foreground/60">{label}</span>
-      <span className="tabular-nums text-muted-foreground/80">{value}{suffix}</span>
+    <div className="flex items-center justify-between gap-3 text-[13px]">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="tabular-nums text-foreground">{value}{suffix}</span>
     </div>
   );
 }
@@ -80,8 +79,8 @@ export function OutpostHealthBadge({ relayUrl, members, lastActivityTs, compact 
 
   if (!health && !loading && members.length > 0 && scores && scores.size > 0) {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-border/20 bg-muted/20 text-[9px] text-muted-foreground/50">
-        <Activity className="w-2.5 h-2.5" />
+      <span className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground">
+        <Activity className="w-3.5 h-3.5" />
         Awaiting data
       </span>
     );
@@ -89,8 +88,9 @@ export function OutpostHealthBadge({ relayUrl, members, lastActivityTs, compact 
 
   if (!health) return null;
 
+  // The community's health as a status word with its dot (status words, not
+  // pills); the score and how it's made are in the pop-up.
   const colorClass = getHealthColor(health.label);
-  const bgClass = getHealthBg(health.label);
   const dotColor = getHealthDotColor(health.label);
 
   if (compact) {
@@ -98,10 +98,10 @@ export function OutpostHealthBadge({ relayUrl, members, lastActivityTs, compact 
       <Popover>
         <PopoverTrigger asChild>
           <button
-            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[9px] font-medium transition-colors hover:opacity-80 ${bgClass} ${colorClass}`}
+            className={`hit-area inline-flex items-center gap-1.5 text-[12px] font-semibold underline-offset-4 hover:underline ${colorClass}`}
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
-            {health.score}
+            <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} aria-hidden="true" />
+            {health.label}
           </button>
         </PopoverTrigger>
         <PopoverContent
@@ -119,11 +119,10 @@ export function OutpostHealthBadge({ relayUrl, members, lastActivityTs, compact 
     <Popover>
       <PopoverTrigger asChild>
         <button
-          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[10px] font-medium transition-colors hover:opacity-80 ${bgClass} ${colorClass}`}
+          className={`hit-area inline-flex items-center gap-1.5 min-h-9 text-[13px] font-semibold underline-offset-4 hover:underline ${colorClass}`}
         >
-          <Activity className="w-3 h-3" />
+          <span className={`w-2 h-2 rounded-full ${dotColor}`} aria-hidden="true" />
           <span>{health.label}</span>
-          <span className="text-[9px] opacity-70 tabular-nums">{health.score}</span>
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -143,20 +142,20 @@ function HealthPopoverContent({ health }: { health: OutpostHealth }) {
     <>
       <div className="flex items-center gap-2">
         <Activity className={`w-3.5 h-3.5 ${colorClass}`} />
-        <span className={`text-xs font-semibold ${colorClass}`}>{health.label}</span>
+        <span className={`text-[13px] font-semibold ${colorClass}`}>{health.label}</span>
       </div>
       <HealthBar score={health.score} label={health.label} />
-      <div className="h-px bg-border/30" />
+      <div className="h-px bg-border/60" />
       <div className="space-y-1">
         <BreakdownRow label="Trusted members" value={health.breakdown.trustedPct} />
-        <BreakdownRow label="Low trust members" value={health.breakdown.lowTrustPct} />
-        <BreakdownRow label="Flagged members" value={health.breakdown.flaggedPct} />
-        <BreakdownRow label="WoT coverage" value={health.breakdown.scoredPct} />
+        <BreakdownRow label="Members with few ties" value={health.breakdown.lowTrustPct} />
+        <BreakdownRow label="Members your network has concerns about" value={health.breakdown.flaggedPct} />
+        <BreakdownRow label="Members your network knows" value={health.breakdown.scoredPct} />
         <BreakdownRow label="Community size" value={health.breakdown.memberBonus} />
         <BreakdownRow label="Recent activity" value={health.breakdown.activityBonus} />
       </div>
-      <p className="text-[9px] text-muted-foreground/40 leading-relaxed">
-        Based on GrapeRank Web of Trust data for active community members.
+      <p className="text-[12px] text-muted-foreground leading-relaxed">
+        Worked out from how your network sees the people who post here.
       </p>
     </>
   );

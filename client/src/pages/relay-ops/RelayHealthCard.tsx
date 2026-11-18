@@ -37,14 +37,14 @@ export function RelayHealthCard({ relayUrl }: { relayUrl: string }) {
         <dl className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2" data-testid="ops-relay-health-counts">
           {view.counts.map((c) => (
             <div key={c.label} className="min-w-0">
-              <dt className="text-[11px] uppercase tracking-wide text-muted-foreground leading-tight">{c.label}</dt>
+              <dt className="text-[12px] text-muted-foreground leading-tight">{c.label}</dt>
               <dd className="text-[15px] font-semibold tabular-nums">{c.value}</dd>
             </div>
           ))}
         </dl>
       )}
       {view.trust && <p className="mt-3 text-[13px] text-muted-foreground" data-testid="ops-relay-health-trust">{view.trust}</p>}
-      {view.software && <p className="mt-2 text-[11px] text-muted-foreground">{view.software}</p>}
+      {view.software && <p className="mt-2 text-[12px] text-muted-foreground">{view.software}</p>}
     </OpsCard>
   );
 }

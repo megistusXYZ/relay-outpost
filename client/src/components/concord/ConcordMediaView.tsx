@@ -55,7 +55,7 @@ function MediaFile({ media }: { media: ConcordMedia }) {
 
   if (failed) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-border/30 bg-muted/20 px-3 py-2 text-xs text-muted-foreground/60 max-w-full sm:max-w-[280px]">
+      <div className="flex items-center gap-2 rounded-lg border border-border/30 bg-muted/20 px-3 py-2 text-xs text-muted-foreground max-w-full sm:max-w-[280px]">
         <FileWarning className="w-4 h-4 shrink-0" /> Couldn't load attachment
       </div>
     );
@@ -63,7 +63,7 @@ function MediaFile({ media }: { media: ConcordMedia }) {
   if (!url) {
     return (
       <div className="flex items-center justify-center rounded-lg border border-border/20 bg-muted/20 max-w-full sm:max-w-[280px]" style={{ aspectRatio: ratio ?? "4 / 3", width: 240 }}>
-        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/40" />
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
       </div>
     );
   }

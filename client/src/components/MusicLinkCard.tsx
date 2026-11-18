@@ -186,7 +186,7 @@ export function MusicLinkCard({ url, service, compact = false }: MusicLinkCardPr
         <Icon />
       </div>
       <div className="flex-1 min-w-0">
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider" style={{ color: meta.hex }}>
+        <span className="inline-flex items-center gap-1 text-[13px] font-bold" style={{ color: meta.hex }}>
           <Music className="w-2.5 h-2.5" />
           {kind}
         </span>

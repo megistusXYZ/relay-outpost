@@ -24,7 +24,7 @@ import { host, TranscriptList } from "./WireConsole";
 
 const pretty = (o: unknown) => JSON.stringify(o, null, 2);
 const TEMPLATES: { label: string; value: object }[] = [
-  { label: "Note", value: { kind: 1, content: "", tags: [] } },
+  { label: "Post", value: { kind: 1, content: "", tags: [] } },
   { label: "Reaction", value: { kind: 7, content: "+", tags: [["e", ""], ["p", ""]] } },
   { label: "Article", value: { kind: 30023, content: "", tags: [["d", ""], ["title", ""]] } },
 ];

@@ -175,7 +175,7 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost, onOpenMemberInbox 
       <li key={reportKey(r)} className="px-3.5 py-3 space-y-2" data-testid="ops-inbox-report" data-key={reportKey(r)}>
         <div className="flex items-start gap-3">
           <Link href={profileHref(r.targetPubkey)} className="shrink-0" data-testid="ops-inbox-report-author-avatar">
-            <Avatar className="w-9 h-9">{who?.picture && <AvatarImage src={who.picture} alt="" />}<AvatarFallback className="bg-brand/10 text-brand text-[12px]">{whoName.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
+            <Avatar className="w-9 h-9">{who?.picture && <AvatarImage src={who.picture} alt="" />}<AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[12px]">{whoName.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
           </Link>
           <div className="min-w-0 flex-1">
             <p className="text-[14px] leading-snug">
@@ -233,7 +233,7 @@ export function InboxTab({ relayUrl, nip11, inbox, onSeePost, onOpenMemberInbox 
   const chip = (id: InboxView, label: string, n?: number) => (
     <button key={id} type="button" role="tab" aria-selected={view === id} onClick={() => setView(id)} data-testid={`ops-inbox-view-${id}`}
       className={`shrink-0 h-11 sm:h-9 px-3.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors ${view === id ? "bg-foreground text-background" : "bg-black/[0.05] dark:bg-white/[0.06] text-foreground/80 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]"}`}>
-      {label}{n ? <span className="ml-1.5 tabular-nums opacity-60">{n}</span> : null}
+      {label}{n ? <span className="ml-1.5 tabular-nums">{n}</span> : null}
     </button>
   );
 

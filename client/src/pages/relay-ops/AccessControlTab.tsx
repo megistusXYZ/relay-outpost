@@ -18,7 +18,6 @@ import {
   listBannedPubkeys,
   extractAddedAtMap,
   fetchNip86History,
-  type PubkeyEntry,
   type Nip86SupportStatus,
 } from "@/lib/nip86";
 import { canDo, managedAt } from "@/lib/relay-capabilities";
@@ -44,25 +43,17 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   RefreshCw,
-  Globe,
   Copy,
   Check,
   X,
   Search,
   Plus,
   User,
-  Zap,
-  AlertTriangle,
   Trash2,
   UserCheck,
   UserX,
   Download,
   Upload,
-  Clock,
-  ScrollText,
-  Users,
-  ChevronDown,
-  ChevronUp,
   ShieldCheck,
 } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
@@ -73,13 +64,8 @@ import {
   ADMIN_ALLOWLIST_KEY,
   ADMIN_BLOCKLIST_KEY,
   ADMIN_READONLY_KEY,
-  clearModLog,
-  formatTimestamp,
-  getModLog,
   getStoredList,
-  MANUAL_TEAM_KEY,
   ModAction,
-  ModerationLogEntry,
   npubToHex,
   profileCacheGlobal,
   ProfileInfo,
@@ -97,9 +83,6 @@ import {
   removeDateAdded,
   formatRelativeMs,
   formatRelativeSec,
-  type UserListControls,
-  type UserListSort,
-  type UserListFilter,
   type ActivityStatus,
 } from "./shared";
 
@@ -155,27 +138,27 @@ function PubkeyRow({ hex, type, profile, onRemove, addedAt, lastActiveSec, activ
       )}
       <Avatar className="w-8 h-8 sm:w-6 sm:h-6 shrink-0">
         {profile?.picture ? <AvatarImage src={profile.picture} alt={profile.name || ""} /> : null}
-        <AvatarFallback className="bg-brand/20 text-brand text-[10px]">
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[12px]">
           <User className="w-3 h-3" />
         </AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
-        <span className="text-xs sm:text-[11px] text-foreground block truncate">
+        <span className="text-[13px] text-foreground block truncate">
           {profile?.name || `${npub.slice(0, 16)}...${npub.slice(-6)}`}
         </span>
-        {profile?.nip05 && <span className="text-[10px] sm:text-[10px] text-muted-foreground/70 truncate block">{profile.nip05}</span>}
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground/60 leading-tight">
+        {profile?.nip05 && <span className="text-[12px] text-muted-foreground truncate block">{profile.nip05}</span>}
+        <div className="flex items-center gap-2 text-[12px] text-muted-foreground leading-tight">
           <span title={addedAt ? undefined : "We only started tracking add dates from now on."}>{addedLabel}</span>
-          <span className="text-muted-foreground/30">·</span>
+          <span className="text-muted-foreground" aria-hidden="true">·</span>
           <span>{activityLabel}</span>
           {copies && copies > 1 && (<>
-            <span className="text-muted-foreground/30">·</span>
+            <span className="text-muted-foreground" aria-hidden="true">·</span>
             <span className="text-amber-700 dark:text-amber-400" data-testid="ops-access-copies">listed {copies} times</span>
           </>)}
         </div>
       </div>
       {!selecting && <>
-      <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-5 sm:w-5 shrink-0 text-muted-foreground/60 hover:text-muted-foreground" onClick={copyNpub} title={technical ? "Copy npub" : "Copy their key"}>
+      <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-5 sm:w-5 shrink-0 text-muted-foreground hover:text-muted-foreground" onClick={copyNpub} title={technical ? "Copy npub" : "Copy their key"}>
         {copied ? <Check className="w-3 h-3 sm:w-2.5 sm:h-2.5 text-green-800 dark:text-green-400" /> : <Copy className="w-3 h-3 sm:w-2.5 sm:h-2.5" />}
       </Button>
       <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-5 sm:w-5 shrink-0 text-red-600 dark:text-red-400/70 hover:text-red-700 dark:hover:text-red-400" onClick={() => onRemove(hex, type)} aria-label={type === "block" ? "Lift ban" : "Remove from list"} data-testid={`ops-access-remove-${type}`}>
@@ -330,7 +313,7 @@ function PubkeySearchInput({ type, inputValue, setInput, buttonLabel, buttonClas
           >
             <Avatar className="w-8 h-8 sm:w-6 sm:h-6 shrink-0">
               {picture ? <AvatarImage src={picture} alt={name} /> : null}
-              <AvatarFallback className="bg-brand/20 text-brand text-[10px]">
+              <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[12px]">
                 <User className="w-3 h-3" />
               </AvatarFallback>
             </Avatar>
@@ -338,12 +321,12 @@ function PubkeySearchInput({ type, inputValue, setInput, buttonLabel, buttonClas
               <div className="text-sm sm:text-xs font-medium text-foreground/90 truncate">
                 {name || `${event.pubkey.slice(0, 12)}...`}
               </div>
-              {nip05 && <div className="text-xs sm:text-[10px] text-muted-foreground/70 truncate">{nip05}</div>}
+              {nip05 && <div className="text-[12px] text-muted-foreground truncate">{nip05}</div>}
             </div>
           </div>
         );
       })}
-      <div className="px-3 py-1.5 sm:py-1 text-[10px] sm:text-[10px] text-muted-foreground/50 text-center">
+      <div className="px-3 py-1.5 sm:py-1 text-[12px] text-muted-foreground text-center">
         {searching ? "Searching..." : "Select a profile"}
       </div>
     </div>,
@@ -354,7 +337,7 @@ function PubkeySearchInput({ type, inputValue, setInput, buttonLabel, buttonClas
     <div ref={containerRef}>
       <div className="flex gap-2 mb-3" ref={inputAreaRef}>
         <div className="relative flex-1">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/60 pointer-events-none" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
           <Input
             placeholder={technical ? "Search name, npub, or hex pubkey" : "Find someone, or paste their profile link"}
             value={inputValue}
@@ -447,9 +430,9 @@ function PubkeyListSection({ type, icon, label, labelClass, description, borderC
           </>
         }
       >
-        <Badge variant="outline" className={`text-[10px] ${badgeClass}`}>{list.length}</Badge>
+        <Badge variant="outline" className={`text-[12px] ${badgeClass}`}>{list.length}</Badge>
       </OpsSectionHeader>
-      <p className="text-[10px] text-muted-foreground/60 mb-2">{description}</p>
+      <p className="text-[12px] text-muted-foreground mb-2">{description}</p>
       <PubkeySearchInput
         type={type}
         inputValue={inputValue}
@@ -471,7 +454,7 @@ function PubkeyListSection({ type, icon, label, labelClass, description, borderC
         onLoadActivity={runActivity}
       />
       {copiedPeople > 0 && (
-        <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-amber-700 dark:text-amber-400" data-testid={`ops-access-copies-note-${type}`}>
+        <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-amber-700 dark:text-amber-400" data-testid={`ops-access-copies-note-${type}`}>
           <span>
             The relay lists {copiedPeople} {copiedPeople === 1 ? "person" : "people"} more than once ({relayList!.extraRows} extra {relayList!.extraRows === 1 ? "copy" : "copies"}) — it adds a copy each time someone is added again.
           </span>
@@ -516,9 +499,9 @@ function PubkeyListSection({ type, icon, label, labelClass, description, borderC
       </AlertDialog>
       <div className="space-y-1 max-h-60 overflow-y-auto">
         {list.length === 0 ? (
-          <p className="text-[10px] text-muted-foreground/60 text-center py-3">No entries.</p>
+          <p className="text-[12px] text-muted-foreground text-center py-3">No entries.</p>
         ) : filtered.length === 0 ? (
-          <p className="text-[10px] text-muted-foreground/60 text-center py-3">No matches for the current search/filter.</p>
+          <p className="text-[12px] text-muted-foreground text-center py-3">No matches for the current search/filter.</p>
         ) : filtered.map(hex => (
           <PubkeyRow
             key={hex}
@@ -581,8 +564,6 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
   const [newReadonly, setNewReadonly] = useState("");
   const [newBlock, setNewBlock] = useState("");
   const [profileCache, setProfileCache] = useState<Record<string, ProfileInfo>>({});
-  const [modLog, setModLog] = useState<ModerationLogEntry[]>(getModLog(relayUrl));
-  const [modLogFilter, setModLogFilter] = useState<"all" | "deletes" | "access" | "health">("all");
 
   const [nip86Status, setNip86Status] = useState<Nip86SupportStatus | null>(null);
   const [nip86Syncing, setNip86Syncing] = useState(false);
@@ -593,7 +574,6 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
     setAllowlist(getStoredList(ADMIN_ALLOWLIST_KEY, relayUrl));
     setReadonlyList(getStoredList(ADMIN_READONLY_KEY, relayUrl));
     setBlocklist(getStoredList(ADMIN_BLOCKLIST_KEY, relayUrl));
-    setModLog(getModLog(relayUrl));
     setNip86Status(null);
     setNip86Error(null);
     setNip86LastSync(null);
@@ -761,7 +741,6 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
     clearMap[type]("");
     const actionMap: Record<AccessLevel, ModAction> = { allow: "add_allowlist", readonly: "add_readonly", block: "add_blocklist" };
     addModLogEntry(relayUrl, { action: actionMap[type], targetPubkey: hex });
-    setModLog(getModLog(relayUrl));
     const labels: Record<AccessLevel, string> = { allow: "allowlist", readonly: "read-only list", block: "blocklist" };
     if (!syncedToRelay && (type === "allow" || type === "block")) {
       // This used to be a plain success toast. An operator banning someone
@@ -825,7 +804,6 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
     for (const hex of gone) removeDateAdded(relayUrl, type, hex);
     const actionMap: Record<AccessLevel, ModAction> = { allow: "remove_allowlist", readonly: "remove_readonly", block: "remove_blocklist" };
     for (const hex of gone) addModLogEntry(relayUrl, { action: actionMap[type], targetPubkey: hex });
-    setModLog(getModLog(relayUrl));
     if (remote) setRelayCopies((c) => {
       const key = type === "allow" ? "allow" : "block";
       const cur = c[key];
@@ -901,7 +879,6 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
     removeDateAdded(relayUrl, type, hex);
     const actionMap: Record<AccessLevel, ModAction> = { allow: "remove_allowlist", readonly: "remove_readonly", block: "remove_blocklist" };
     addModLogEntry(relayUrl, { action: actionMap[type], targetPubkey: hex });
-    setModLog(getModLog(relayUrl));
     const labels: Record<AccessLevel, string> = { allow: "allowlist", readonly: "read-only list", block: "blocklist" };
     if (syncedToRelay) {
       toast({ title: `Removed from ${labels[type]}`, description: `${hex.slice(0, 8)}... removed (your host has it).` });
@@ -975,7 +952,6 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
     recordDateAddedMany(relayUrl, job.type, done);
     if (done.length) {
       addModLogEntry(relayUrl, { action: job.type === "allow" ? "import_allowlist" : "import_blocklist", count: done.length });
-      setModLog(getModLog(relayUrl));
     }
     const what = job.type === "allow" ? "the allow list" : "the ban list";
     toast({
@@ -1019,9 +995,9 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
   const [wotBusy, setWotBusy] = useState<null | "building" | "applying">(null);
   const [wotProgress, setWotProgress] = useState<{ done: number; total: number } | null>(null);
   const WOT_TIERS: { tier: "strong" | "moderate" | "low" | "weak"; label: string }[] = [
-    { tier: "strong", label: "Highly trusted" },
-    { tier: "moderate", label: "Trusted" },
-    { tier: "low", label: "Neutral" },
+    { tier: "strong", label: "Trusted" },
+    { tier: "moderate", label: "Known" },
+    { tier: "low", label: "Some ties" },
     { tier: "weak", label: "Any score" },
   ];
   const WOT_CAP = 500;
@@ -1105,19 +1081,12 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
       recordDateAddedMany(relayUrl, "block", flagged);
       addModLogEntry(relayUrl, { action: "import_blocklist", count: banned, note: "Flagged by web of trust" });
     }
-    setModLog(getModLog(relayUrl));
     setWotBusy(null);
     setWotProgress(null);
     setWotPreview(null);
-    toast({ title: "Web of Trust applied", description: `${allowed} allowed${banned ? `, ${banned} banned` : ""}${failed ? `, ${failed} failed` : ""}.` });
+    toast({ title: "Trust allowlist applied", description: `${allowed} allowed${banned ? `, ${banned} banned` : ""}${failed ? `, ${failed} failed` : ""}.` });
   }, [wotPreview, relayUrl, wotTier, toast]);
 
-  const modActionCount = useMemo(() => {
-    const deletes = modLog.filter(e => e.action === "delete_event" || e.action === "bulk_delete").length;
-    const blocks = modLog.filter(e => e.action === "block_author" || e.action === "add_blocklist").length;
-    const healthIssues = modLog.filter(e => e.action === "relay_offline" || e.action === "relay_latency_spike").length;
-    return { deletes, blocks, healthIssues, total: modLog.length };
-  }, [modLog]);
 
   return (
     <div className="space-y-4">
@@ -1158,55 +1127,56 @@ export function AccessControlTab({ relayUrl, nip11, part = "rules", only, onOpen
       </div>
 
       {nip86Status === "supported" && operatorPubkey && !hasPostingGate && (
-        <Card className="glass-card border-brand/25 dark:border-brand/15 p-3 sm:p-4">
+        <Card className="rounded-[20px] border border-border/60 bg-card p-3 sm:p-4">
           <div className="flex items-start gap-2.5">
-            <ShieldCheck className="w-4 h-4 text-brand mt-0.5 shrink-0" />
+            <ShieldCheck className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground/90">Web of Trust access</p>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground/60">
+              <p className="text-[15px] font-semibold text-foreground">Allow by trust</p>
+              <p className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground">
                 Build your allowlist from the people your network trusts (Brainstorm). A snapshot you can refresh — not a live filter.
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                <span className="mr-1 text-[10px] uppercase tracking-wide text-muted-foreground/50">Minimum tier</span>
+                <span className="mr-1 text-[12px] text-muted-foreground">Minimum tier</span>
                 {WOT_TIERS.map(({ tier, label }) => (
                   <button
                     key={tier}
                     type="button"
                     onClick={() => { setWotTier(tier); setWotPreview(null); }}
-                    className={`inline-flex items-center justify-center rounded-full border px-3 min-h-[40px] sm:min-h-0 sm:px-2.5 sm:py-1 text-[11px] font-medium transition-colors ${tier === wotTier ? "border-brand/40 bg-brand/15 text-brand" : "border-border/50 text-muted-foreground/70 hover:border-brand/30 hover:text-foreground"}`}
+                    aria-pressed={tier === wotTier}
+                    className={`inline-flex items-center justify-center rounded-full border px-3 min-h-[40px] sm:min-h-9 text-[13px] font-medium transition-colors duration-150 ${tier === wotTier ? "border-foreground bg-foreground text-background" : "border-border/60 text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground"}`}
                     data-testid={`wot-tier-${tier}`}
                   >
                     {label}
                   </button>
                 ))}
               </div>
-              <label className="mt-1 flex w-fit items-center gap-2 cursor-pointer min-h-[44px] sm:min-h-0 sm:mt-2.5 text-[11px] text-muted-foreground/75">
+              <label className="mt-1 flex w-fit items-center gap-2 cursor-pointer min-h-[44px] sm:min-h-9 sm:mt-2.5 text-[13px] text-muted-foreground">
                 <input type="checkbox" checked={wotBanFlagged} onChange={(e) => { setWotBanFlagged(e.target.checked); setWotPreview(null); }} className="accent-brand w-4 h-4" data-testid="wot-ban-flagged" />
-                Also ban flagged accounts
+                Also ban people your network has concerns about
               </label>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Button size="sm" className="h-7 text-xs" onClick={buildWot} disabled={wotBusy !== null} data-testid="wot-build">
-                  {wotBusy === "building" ? (<><RelayOutpostInlineLoader className="w-3 h-3 mr-1.5" /> Reading…</>) : (<><ShieldCheck className="w-3 h-3 mr-1.5" /> Build from Web of Trust</>)}
+                <Button size="sm" className="h-9 rounded-full px-4 text-[13px]" onClick={buildWot} disabled={wotBusy !== null} data-testid="wot-build">
+                  {wotBusy === "building" ? (<><RelayOutpostInlineLoader className="w-3 h-3 mr-1.5" /> Reading…</>) : (<><ShieldCheck className="w-3.5 h-3.5 mr-1.5" /> Build from your network</>)}
                 </Button>
                 {wotPreview && wotBusy !== "applying" && (wotPreview.trusted.length + wotPreview.flagged.length) > 0 && (
-                  <Button size="sm" className="h-7 text-xs bg-brand hover:bg-brand text-white" onClick={applyWot} data-testid="wot-apply">
+                  <Button size="sm" className="h-9 rounded-full px-4 text-[13px]" onClick={applyWot} data-testid="wot-apply">
                     Apply — allow {Math.min(wotPreview.trusted.length, WOT_CAP)}{wotPreview.flagged.length ? `, ban ${Math.min(wotPreview.flagged.length, WOT_CAP)}` : ""}
                   </Button>
                 )}
                 {wotBusy === "applying" && wotProgress && (
-                  <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/70">
+                  <span className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground">
                     <RelayOutpostInlineLoader className="w-3 h-3" /> Applying {wotProgress.done}/{wotProgress.total}…
                   </span>
                 )}
               </div>
               {wotPreview && wotBusy === null && (
-                <p className="mt-2 text-[11px] text-muted-foreground/55" data-testid="wot-preview">
+                <p className="mt-2 text-[13px] text-muted-foreground" data-testid="wot-preview">
                   {wotPreview.trusted.length + wotPreview.flagged.length === 0
                     ? "Everyone at this tier is already on your list."
                     : <>
                         {wotPreview.trusted.length} new trusted account{wotPreview.trusted.length === 1 ? "" : "s"} to allow
                         {wotPreview.alreadyAllowed ? ` · ${wotPreview.alreadyAllowed} already on your list` : ""}
-                        {wotPreview.flagged.length ? ` · ${wotPreview.flagged.length} flagged to ban` : ""}
+                        {wotPreview.flagged.length ? ` · ${wotPreview.flagged.length} your network has concerns about, to ban` : ""}
                         {(wotPreview.trusted.length > WOT_CAP || wotPreview.flagged.length > WOT_CAP) ? ` · applying the first ${WOT_CAP}; build again for the rest` : ""}.
                       </>}
                 </p>

@@ -2,14 +2,13 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { ArrowRight, X, ChevronRight, Sparkles } from "lucide-react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
-import { isOnboardingComplete } from "@/lib/local-account";
 import { useSidebar } from "@/components/ui/sidebar";
 import { TOURS, TOUR_ORDER, playableSteps, fillStepCount, stepCounter, nextTour, toursDone, type TourStep } from "@/lib/tours";
 
 /**
  * The quick tour (owner, 2026-10-10: "Mission briefing" before). The words
  * and the steps live in lib/tours.ts; this is the panel that plays them,
- * replayed from Help & Guides. It never starts on its own.
+ * replayed from Help & guides. It never starts on its own.
  */
 export type BriefingStep = TourStep;
 
@@ -121,7 +120,7 @@ export function MissionBriefing({ pageId, steps: stepsInput, startDelayMs = 600 
   }, [stepsInput, active, isMobile]);
 
   // Briefings NEVER auto-start for new users (too distracting) — they run only
-  // when explicitly requested: the Help & Guides page calls
+  // when explicitly requested: the Help & guides page calls
   // restartMissionBriefing(pageId), which sets the force flag / fires the
   // restart event handled below.
   useEffect(() => {
@@ -276,7 +275,7 @@ export function MissionBriefing({ pageId, steps: stepsInput, startDelayMs = 600 
       <button
         type="button"
         onClick={() => setOpenMobile(false)}
-        className="fixed bottom-4 right-4 z-[80] inline-flex items-center gap-2 rounded-full bg-card/95 backdrop-blur border border-brand/40 px-3.5 py-2 shadow-lg text-xs font-brand uppercase tracking-[0.15em] text-foreground"
+        className="fixed bottom-4 right-4 z-[80] inline-flex items-center gap-2 rounded-full bg-card/95 backdrop-blur border border-brand/40 px-3.5 py-2 shadow-lg text-xs text-foreground font-medium"
         data-testid="button-mission-briefing-resume"
         aria-label="Resume the tour"
       >
@@ -315,7 +314,7 @@ export function MissionBriefing({ pageId, steps: stepsInput, startDelayMs = 600 
     >
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-brand uppercase tracking-[0.2em] text-brand" data-testid="text-mission-briefing-counter">
+          <p className="text-[13px] text-brand font-medium" data-testid="text-mission-briefing-counter">
             {stepCounter(stepIndex, steps.length)}
           </p>
           <p className="text-sm font-semibold leading-tight mt-1" data-testid="text-mission-briefing-title">{currentStep.title}</p>
@@ -353,7 +352,7 @@ export function MissionBriefing({ pageId, steps: stepsInput, startDelayMs = 600 
             <button
               type="button"
               onClick={showLater}
-              className="text-[10px] font-brand uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground px-2 py-1.5 rounded-md focus:outline-none focus-visible:ring-1 focus-visible:ring-brand"
+              className="text-[11px] text-muted-foreground hover:text-foreground px-2 py-1.5 rounded-md focus:outline-none focus-visible:ring-1 focus-visible:ring-brand font-medium"
               data-testid="button-mission-briefing-later"
             >
               Show me later
@@ -362,7 +361,7 @@ export function MissionBriefing({ pageId, steps: stepsInput, startDelayMs = 600 
               ref={nextBtnRef}
               type="button"
               onClick={next}
-              className="text-xs font-brand uppercase tracking-[0.15em] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-brand text-white hover:bg-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-brand text-white hover:bg-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-brand font-medium"
               data-testid="button-mission-briefing-next"
             >
               Next
@@ -373,14 +372,14 @@ export function MissionBriefing({ pageId, steps: stepsInput, startDelayMs = 600 
       ) : nextBriefing ? (
         <div className="pt-1 space-y-3" data-testid="mission-briefing-handoff">
           <p
-            className="text-[10px] font-brand uppercase tracking-[0.15em] text-muted-foreground/70"
+            className="text-[13px] text-muted-foreground/70 font-medium"
             data-testid="text-mission-briefing-progress"
           >
             {completedTours} of {BRIEFING_ORDER.length} tours done
           </p>
           <div className="h-px bg-gradient-to-r from-brand/25 via-brand/10 to-transparent" aria-hidden="true" />
           <div>
-            <p className="text-[10px] font-brand uppercase tracking-[0.2em] text-brand">
+            <p className="text-[13px] text-brand font-medium">
               Next tour
             </p>
             <p className="text-sm font-semibold leading-tight mt-1" data-testid="text-mission-briefing-nextup">
@@ -391,7 +390,7 @@ export function MissionBriefing({ pageId, steps: stepsInput, startDelayMs = 600 
             <button
               type="button"
               onClick={dismiss}
-              className="text-[10px] font-brand uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground px-2 py-1.5 rounded-md focus:outline-none focus-visible:ring-1 focus-visible:ring-brand"
+              className="text-[11px] text-muted-foreground hover:text-foreground px-2 py-1.5 rounded-md focus:outline-none focus-visible:ring-1 focus-visible:ring-brand font-medium"
               data-testid="button-mission-briefing-finish"
             >
               Finish
@@ -400,7 +399,7 @@ export function MissionBriefing({ pageId, steps: stepsInput, startDelayMs = 600 
               ref={nextBtnRef}
               type="button"
               onClick={() => beginNextTour(nextBriefing.pageId, nextBriefing.path)}
-              className="text-xs font-brand uppercase tracking-[0.15em] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-brand text-white hover:bg-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-brand text-white hover:bg-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-brand font-medium"
               data-testid="button-mission-briefing-next-tour"
             >
               Begin
@@ -413,11 +412,11 @@ export function MissionBriefing({ pageId, steps: stepsInput, startDelayMs = 600 
           <div className="flex items-start gap-2">
             <Sparkles className="w-4 h-4 text-brand shrink-0 mt-0.5" />
             <div className="min-w-0">
-              <p className="text-[10px] font-brand uppercase tracking-[0.2em] text-brand">
+              <p className="text-[13px] text-brand font-medium">
                 That's the tour
               </p>
               <p className="text-xs text-muted-foreground leading-relaxed mt-1" data-testid="text-mission-briefing-complete">
-                You've seen every part of the app. Replay any of it from Help & Guides.
+                You've seen every part of the app. Replay any of it from Help & guides.
               </p>
             </div>
           </div>
@@ -426,7 +425,7 @@ export function MissionBriefing({ pageId, steps: stepsInput, startDelayMs = 600 
               ref={nextBtnRef}
               type="button"
               onClick={dismiss}
-              className="text-xs font-brand uppercase tracking-[0.15em] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-brand text-white hover:bg-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-brand text-white hover:bg-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-brand font-medium"
               data-testid="button-mission-briefing-finish"
             >
               Finish

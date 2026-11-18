@@ -86,14 +86,14 @@ export function ConcordChannelSettingsDialog({ open, onOpenChange, community, ch
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-muted-foreground/70">Name</label>
+            <label className="text-xs font-medium text-muted-foreground">Name</label>
             <Input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") run({ name: name.trim() }); }} data-testid="input-channel-name" />
           </div>
           {/* Say WHY it is disabled. A dead Save with no reason is its own
               defect, and "we don't know this room's current details" really
               happens — permanently, to anyone who joined after a rekey. */}
           {!ready && (
-            <p className="text-[11px] text-muted-foreground/60" data-testid="channel-settings-not-ready">
+            <p className="text-xs text-muted-foreground" data-testid="channel-settings-not-ready">
               Waiting for this channel's current details. Saving before they arrive would publish over whatever they turn out to be.
             </p>
           )}
@@ -113,7 +113,7 @@ export function ConcordChannelSettingsDialog({ open, onOpenChange, community, ch
               </button>
             ) : (
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground/70">Delete #{channel?.name}? Its messages become unreadable. This can't be undone.</p>
+                <p className="text-xs text-muted-foreground">Delete #{channel?.name}? Its messages become unreadable. This can't be undone.</p>
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)} disabled={busy} className="text-xs">Cancel</Button>
                   <Button size="sm" onClick={() => run({ delete: true })} disabled={busy || !ready} className="text-xs bg-destructive hover:bg-destructive/90" data-testid="button-confirm-delete-channel">
@@ -122,7 +122,7 @@ export function ConcordChannelSettingsDialog({ open, onOpenChange, community, ch
                 </div>
               </div>
             )}
-            {!canDelete && <p className="text-[10px] text-muted-foreground/40 mt-1">A group chat needs at least one room.</p>}
+            {!canDelete && <p className="text-xs text-muted-foreground mt-1">A group chat needs at least one room.</p>}
           </div>
         </div>
       </DialogContent>

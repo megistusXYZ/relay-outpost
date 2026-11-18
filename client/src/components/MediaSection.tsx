@@ -1,8 +1,9 @@
 import { profileShows } from "@/lib/profile-audio";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { useState, useRef, useCallback, useEffect, useMemo, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ImageIcon, Film, Music, Upload, ArrowUpRight, Radio, Play, Pause, Square, ExternalLink, Calendar, Mic, ChevronDown, BookOpen, ListPlus, Disc3 } from "lucide-react";
+import { ImageIcon, Film, Music, Upload, ArrowUpRight, Radio, Play, Pause, Square, Calendar, Mic, ChevronDown, BookOpen, ListPlus, Disc3 } from "lucide-react";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
@@ -27,6 +28,7 @@ import { format } from "date-fns";
 import type Hls from "hls.js";
 import { loadHls } from "@/lib/load-hls";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
+import { LiveWord } from "@/components/LiveBadge";
 
 // Extension fallback only — the declared type wins, see isVideoMedia.
 const isVideo = isVideoUrl;
@@ -183,21 +185,21 @@ export function MediaSection({
 
   return (
     <div data-testid="container-media-section">
-      <div className="flex items-center gap-1 mb-4 p-1 rounded-xl bg-muted/8 dark:bg-black/20 border border-border/15 dark:border-brand/15 backdrop-blur-sm w-fit shadow-sm shadow-primary/5 dark:shadow-brand/10" data-testid="media-sub-tabs">
+      <div className="flex items-center gap-1 mb-4 p-1 rounded-xl bg-muted/8 dark:bg-black/20 border border-border/15 backdrop-blur-sm w-fit shadow-sm shadow-primary/5" data-testid="media-sub-tabs">
         {subTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeSubTab === tab.id;
           return (
             <button
               key={tab.id}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 cursor-pointer ${ isActive ? "bg-accent text-accent-foreground dark:bg-gradient-to-r dark:from-brand/25 dark:to-brand/20 dark:text-brand shadow-sm shadow-primary/10 dark:shadow-brand/20 border border-brand/20 dark:border-brand/25" : "text-muted-foreground hover:text-foreground hover:bg-muted/15 dark:hover:bg-white/5 border border-transparent" }`}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-colors duration-150 cursor-pointer ${ isActive ? "bg-foreground text-background border border-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/15 dark:hover:bg-white/5 border border-transparent" }`}
               onClick={() => setActiveSubTab(tab.id)}
               data-testid={`button-media-subtab-${tab.id}`}
             >
-              <Icon className={`w-3.5 h-3.5 ${isActive ? "text-brand" : ""}`} />
+              <Icon className={`w-3.5 h-3.5 ${isActive ? "text-background" : ""}`} />
               <span className="hidden sm:inline">{tab.label}</span>
               {tab.count > 0 && (
-                <Badge variant="secondary" className={`text-[9px] px-1 py-0 min-w-[18px] justify-center ${isActive ? "bg-brand/10 dark:bg-brand/15 text-brand border-brand/15" : ""}`}>
+                <Badge variant="secondary" className={`text-[11px] px-1 py-0 min-w-[18px] justify-center ${isActive ? "bg-background/20 text-background border-transparent" : ""}`}>
                   {tab.count}
                 </Badge>
               )}
@@ -290,7 +292,7 @@ function ImagesSubTab({ urls, loaded, isOwnProfile, mediaMeta, mediaAuthor }: { 
   if (urls.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center" data-testid="container-no-images">
-        <ImageIcon className="w-8 h-8 text-muted-foreground/50 mb-2" />
+        <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground/70" />
         <p className="text-sm text-muted-foreground">No photos yet</p>
         {isOwnProfile && (
           <>
@@ -311,10 +313,10 @@ function ImagesSubTab({ urls, loaded, isOwnProfile, mediaMeta, mediaAuthor }: { 
     <>
       {isOwnProfile && (
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">{urls.length} image{urls.length !== 1 ? "s" : ""}</span>
+          <span className="text-[13px] text-muted-foreground/60 font-medium">{urls.length} image{urls.length !== 1 ? "s" : ""}</span>
           <div className="flex items-center gap-2">
             {isUploading && uploadStatus && (
-              <span className="text-[10px] text-brand/60 flex items-center gap-1"><RelayOutpostInlineLoader className="w-2.5 h-2.5" />{uploadStatus}</span>
+              <span className="text-[12px] text-muted-foreground flex items-center gap-1"><RelayOutpostInlineLoader className="w-2.5 h-2.5" />{uploadStatus}</span>
             )}
             <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => mediaInputRef.current?.click()} disabled={isUploading} data-testid="button-upload-image">
               {isUploading ? <RelayOutpostInlineLoader className="w-3 h-3" /> : <Upload className="w-3 h-3" />}
@@ -372,7 +374,7 @@ function VideosSubTab({ urls, loaded, isOwnProfile, orientationMap, mediaMeta }:
       {isOwnProfile && <UploadVideoDialog open={uploadOpen} onOpenChange={setUploadOpen} />}
       {urls.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center" data-testid="container-no-videos">
-          <Film className="w-8 h-8 text-muted-foreground/50 mb-2" />
+          <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground/70" />
           <p className="text-sm text-muted-foreground">No videos yet</p>
           {isOwnProfile && (
             <>
@@ -389,7 +391,7 @@ function VideosSubTab({ urls, loaded, isOwnProfile, orientationMap, mediaMeta }:
         <>
           {isOwnProfile && (
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">{urls.length} video{urls.length !== 1 ? "s" : ""}</span>
+              <span className="text-[13px] text-muted-foreground/60 font-medium">{urls.length} video{urls.length !== 1 ? "s" : ""}</span>
               <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setUploadOpen(true)} data-testid="button-upload-video">
                 <Upload className="w-3 h-3" />
                 Upload
@@ -575,7 +577,7 @@ function LiveStreamCard({ stream }: { stream: LiveEventData }) {
 
   return (
     <div
-      className={`rounded-xl border bg-card/40 dark:bg-card/20 backdrop-blur-sm shadow-sm transition-all duration-300 hover:shadow-md ${ isLive ? "border-red-500/30 dark:border-red-500/25 shadow-red-500/10 dark:shadow-red-500/15" : playing ? "border-brand/30 dark:border-brand/25 shadow-primary/10 dark:shadow-brand/15 ring-1 ring-primary/20 dark:ring-brand/20" : "border-border/30 dark:border-brand/10 shadow-primary/5 dark:shadow-primary/10" }`}
+      className={`rounded-xl border bg-card/40 dark:bg-card/20 backdrop-blur-sm shadow-sm transition-all duration-300 hover:shadow-md ${ isLive ? "border-red-500/30 dark:border-red-500/25 shadow-red-500/10 dark:shadow-red-500/15" : playing ? "border-brand/30 dark:border-brand/25 shadow-primary/10 dark:shadow-brand/15 ring-1 ring-primary/20 dark:ring-brand/20" : "border-border/30 shadow-primary/5 dark:shadow-primary/10" }`}
       data-testid={`live-stream-card-${stream.dTag}`}
     >
       <div className="p-3 flex items-center gap-3">
@@ -588,19 +590,17 @@ function LiveStreamCard({ stream }: { stream: LiveEventData }) {
             onError={() => setImgError(true)}
           />
         ) : (
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-brand/5 dark:bg-brand/10 shrink-0 flex items-center justify-center ring-1 ring-border/20 dark:ring-primary/10">
-            <Radio className="w-5 h-5 text-brand/40" />
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-foreground/[0.05] shrink-0 flex items-center justify-center ring-1 ring-border/20 dark:ring-primary/10">
+            <Radio className="w-5 h-5 text-muted-foreground" />
           </div>
         )}
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             {isLive ? (
-              <Badge className="bg-red-500 text-white text-[9px] px-1.5 py-0 font-bold uppercase tracking-wider border-none shadow-[0_0_6px_1px_rgba(239,68,68,0.3)] live-dot">
-                LIVE
-              </Badge>
+              <LiveWord />
             ) : playing ? (
-              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 bg-brand/10 text-brand dark:bg-brand/15 border border-brand/20">
+              <Badge variant="secondary" className="text-[11px] px-1.5 py-0 bg-transparent text-foreground/80 border border-border/60">
                 Playing
               </Badge>
             ) : hasRecording ? (
@@ -632,7 +632,7 @@ function LiveStreamCard({ stream }: { stream: LiveEventData }) {
         <div className="flex items-center gap-1.5 shrink-0">
           {playableUrl && (playsInline || !liveDetailUrl ? (
             <button
-              className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${ loading ? "text-brand/70" : playing ? "text-red-500 bg-red-500/10" : isLive ? "text-red-500/70 hover:text-red-500 hover:bg-red-500/10" : "text-brand/70 hover:text-brand hover:bg-brand/10" }`}
+              className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${ loading ? "text-brand/70" : playing ? "text-red-500 bg-red-500/10" : isLive ? "text-red-500/70 hover:text-red-500 hover:bg-red-500/10" : "text-brand/70 hover:text-foreground hover:bg-foreground/[0.06]" }`}
               onClick={toggleStream}
               disabled={loading}
               title={playing ? "Stop" : "Play"}
@@ -653,7 +653,7 @@ function LiveStreamCard({ stream }: { stream: LiveEventData }) {
             // embeds (owner rule: watching happens through Relay Outpost).
             <Link
               href={liveDetailUrl}
-              className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${ isLive ? "text-red-500/70 hover:text-red-500 hover:bg-red-500/10" : "text-brand/70 hover:text-brand hover:bg-brand/10" }`}
+              className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${ isLive ? "text-red-500/70 hover:text-red-500 hover:bg-red-500/10" : "text-brand/70 hover:text-foreground hover:bg-foreground/[0.06]" }`}
               title="Watch on the Live page"
               data-testid={`button-stream-toggle-${stream.dTag}`}
             >
@@ -663,7 +663,7 @@ function LiveStreamCard({ stream }: { stream: LiveEventData }) {
           {liveDetailUrl && (
             <Link
               href={liveDetailUrl}
-              className={`shrink-0 rounded-full flex items-center justify-center transition-colors ${ playableUrl ? "w-7 h-7 text-muted-foreground/40 hover:text-foreground hover:bg-muted/30" : "w-9 h-9 text-brand/70 hover:text-brand hover:bg-brand/10" }`}
+              className={`shrink-0 rounded-full flex items-center justify-center transition-colors ${ playableUrl ? "w-7 h-7 text-muted-foreground/40 hover:text-foreground hover:bg-muted/30" : "w-9 h-9 text-brand/70 hover:text-foreground hover:bg-foreground/[0.06]" }`}
               onClick={(e) => e.stopPropagation()}
               title="Open on the Live page"
               data-testid={`button-stream-live-page-${stream.dTag}`}
@@ -711,10 +711,10 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
       const signedEvent = await signWithTimeout(signer, { kind: 1, created_at: Math.floor(Date.now() / 1000), tags, content: noteContent });
       const { relays: userRelays2, userSelected: isUserSelected2 } = getPublishTarget();
       await publishEvent(signedEvent, userRelays2, undefined, isUserSelected2);
-      toast({ title: "Shared!", description: "Your track has been shared as a note." });
+      toast({ title: "Shared!", description: "Your track has been shared as a post." });
     } catch (err) {
       console.error("Failed to share track:", err);
-      toast({ title: "Share failed", description: "Could not publish note.", variant: "destructive" });
+      toast({ title: "Share failed", description: "Could not publish post.", variant: "destructive" });
     } finally {
       setSharingTrackId(null);
     }
@@ -780,11 +780,11 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
   if (!hasAnyContent && !connectedPodcastFeed) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center" data-testid="container-no-audio">
-        <Music className="w-8 h-8 text-muted-foreground/50 mb-2" />
+        <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground/70" />
         <p className="text-sm text-muted-foreground">No audio published yet</p>
         {isOwnProfile && (
           <>
-            <p className="text-xs text-muted-foreground/60 mt-1">Upload your first track to start broadcasting</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">Upload your first track and it shows here</p>
             <Button variant="outline" size="sm" className="mt-3 gap-1.5 font-medium" onClick={() => setUploadOpen(true)} data-testid="button-upload-first-track">
               <Upload className="w-3.5 h-3.5" />
               Upload Your First Track
@@ -796,8 +796,8 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
               <div className="mt-6 pt-5 border-t border-border/20 w-full max-w-xs mx-auto">
                 <p className="text-xs text-muted-foreground/50 mb-2">Or connect an existing podcast</p>
                 {connectedPodcastFeed ? (
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border/20 dark:border-brand/10 bg-card/30 dark:bg-card/15">
-                    <Mic className="w-3.5 h-3.5 text-brand/60 shrink-0" />
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border/20 bg-card/30 dark:bg-card/15">
+                    <Mic className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                     <span className="text-[11px] text-muted-foreground/70 truncate flex-1">{connectedPodcastFeed}</span>
                     {onDisconnectPodcast && (
                       <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] text-red-700/70 dark:text-red-400/70 hover:text-red-700 dark:hover:text-red-400" onClick={onDisconnectPodcast}>
@@ -817,7 +817,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
                       placeholder="Paste your podcast RSS feed URL..."
                       value={podcastFeedInput}
                       onChange={(e) => setPodcastFeedInput(e.target.value)}
-                      className="flex-1 h-8 px-3 text-xs rounded-lg border border-border/30 dark:border-brand/15 bg-background/50 dark:bg-black/20 placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-ring dark:focus:ring-brand/30"
+                      className="flex-1 h-8 px-3 text-xs rounded-lg border border-input bg-background/50 dark:bg-black/20 placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-ring dark:focus:ring-brand/30"
                       style={{ fontSize: 16 }}
                       data-testid="input-podcast-feed-url-empty"
                     />
@@ -867,8 +867,8 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
             {track.coverUrl ? (
               <img src={track.coverUrl} alt={track.title} className="w-full h-full object-cover" loading="lazy" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-brand/5 dark:bg-brand/10">
-                {isPodcast ? <Mic className="w-4 h-4 text-brand/40" /> : <Music className="w-4 h-4 text-brand/40" />}
+              <div className="w-full h-full flex items-center justify-center bg-foreground/[0.05]">
+                {isPodcast ? <Mic className="w-4 h-4 text-muted-foreground" /> : <Music className="w-4 h-4 text-muted-foreground" />}
               </div>
             )}
             <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/cover:opacity-100 transition-opacity duration-200" data-testid={`overlay-play-${track.id}`}>
@@ -915,7 +915,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
                 {Math.floor(track.duration / 60)}:{String(Math.floor(track.duration % 60)).padStart(2, "0")}
               </span>
             )}
-            <div className="w-7 h-7 rounded-full flex items-center justify-center bg-brand/10 text-brand dark:bg-brand/15" data-testid={`button-play-${isPodcast ? "podcast" : "track"}-${track.id}`}>
+            <div className="w-7 h-7 rounded-full flex items-center justify-center bg-foreground text-background" data-testid={`button-play-${isPodcast ? "podcast" : "track"}-${track.id}`}>
               {isCurrent && isPlaying ? (
                 <Pause className="w-3.5 h-3.5" />
               ) : (
@@ -938,14 +938,14 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
       <div
         key={track.id}
         onClick={() => isCurrent ? togglePlay() : play(track, musicTracks)}
-        className={`group/mrow flex items-center gap-2.5 px-2.5 py-1.5 cursor-pointer transition-colors ${isCurrent ? "bg-brand/[0.06] dark:bg-brand/10" : "hover:bg-muted/40"}`}
+        className={`group/mrow flex items-center gap-2.5 px-2.5 py-1.5 cursor-pointer transition-colors ${isCurrent ? "bg-foreground/[0.06]" : "hover:bg-muted/40"}`}
         data-testid={`audio-track-${track.id}`}
       >
         <div className="relative w-8 h-8 rounded overflow-hidden shrink-0 bg-muted/30 ring-1 ring-border/20 dark:ring-primary/10">
           {track.coverUrl ? (
             <img src={getOptimizedImageUrl(track.coverUrl, 64) || track.coverUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-brand/5 dark:bg-brand/10"><Music className="w-3.5 h-3.5 text-brand/40" /></div>
+            <div className="w-full h-full flex items-center justify-center bg-foreground/[0.05]"><Music className="w-3.5 h-3.5 text-muted-foreground" /></div>
           )}
           <div className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 group-hover/mrow:opacity-100 transition-opacity">
             {isCurrent && isPlaying ? <Pause className="w-3.5 h-3.5 text-white" /> : <Play className="w-3.5 h-3.5 text-white ml-0.5" />}
@@ -961,13 +961,13 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <p className={`text-[13px] font-medium truncate ${isCurrent ? "text-brand" : ""}`}>{track.title}</p>
+          <p className={`text-[13px] font-medium truncate ${isCurrent ? "text-foreground font-semibold" : ""}`}>{track.title}</p>
           <p className="text-[11px] text-muted-foreground truncate">{track.artist}</p>
         </div>
         {dur && <span className="text-[11px] tabular-nums font-mono text-muted-foreground/60 shrink-0">{dur}</span>}
         <button
           onClick={(e) => { e.stopPropagation(); addToQueue(track); toast({ title: "Added to queue", description: track.title }); }}
-          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/40 hover:text-brand hover:bg-brand/10 opacity-0 group-hover/mrow:opacity-100 transition-all"
+          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-foreground/[0.06] opacity-0 group-hover/mrow:opacity-100 transition-all"
           aria-label="Add to queue" title="Add to queue" data-testid={`button-queue-${track.id}`}
         >
           <ListPlus className="w-3.5 h-3.5" />
@@ -989,21 +989,21 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
   return (
     <div className="space-y-3" data-testid="container-audio-tracks">
       {audioTabs.length > 0 && (
-        <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/8 dark:bg-black/20 border border-border/15 dark:border-brand/15 backdrop-blur-sm w-fit shadow-sm shadow-primary/5 dark:shadow-brand/10" data-testid="audio-sub-tabs">
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/8 dark:bg-black/20 border border-border/15 backdrop-blur-sm w-fit shadow-sm shadow-primary/5" data-testid="audio-sub-tabs">
           {audioTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeAudioTab === tab.id;
             return (
               <button
                 key={tab.id}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 cursor-pointer ${ isActive ? "bg-accent text-accent-foreground dark:bg-gradient-to-r dark:from-brand/25 dark:to-brand/20 dark:text-brand shadow-sm shadow-primary/10 dark:shadow-brand/20 border border-brand/20 dark:border-brand/25" : "text-muted-foreground hover:text-foreground hover:bg-muted/15 dark:hover:bg-white/5 border border-transparent" }`}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-colors duration-150 cursor-pointer ${ isActive ? "bg-foreground text-background border border-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/15 dark:hover:bg-white/5 border border-transparent" }`}
                 onClick={() => setActiveAudioTab(tab.id)}
                 data-testid={`button-audio-tab-${tab.id}`}
               >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? "text-brand" : ""}`} />
+                <Icon className={`w-3.5 h-3.5 ${isActive ? "text-background" : ""}`} />
                 {tab.label}
                 {tab.count > 0 && (
-                  <Badge variant="secondary" className={`text-[9px] px-1 py-0 min-w-[18px] justify-center ${isActive ? "bg-brand/10 dark:bg-brand/15 text-brand border-brand/15" : ""}`}>
+                  <Badge variant="secondary" className={`text-[11px] px-1 py-0 min-w-[18px] justify-center ${isActive ? "bg-background/20 text-background border-transparent" : ""}`}>
                     {tab.count}
                   </Badge>
                 )}
@@ -1019,7 +1019,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
             <div className="mb-3" data-testid="container-live-streams">
               <div className="flex items-center gap-2 mb-2">
                 <Radio className="w-3.5 h-3.5 text-red-500 live-dot" />
-                <span className="text-[10px] font-mono uppercase tracking-wider text-danger dark:text-red-500/80 font-bold">Live Now</span>
+                <span className="text-[13px] text-danger dark:text-red-500/80 font-bold">Live now</span>
               </div>
               <div className="space-y-2">
                 {liveNow.map((stream) => (
@@ -1032,7 +1032,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
             <div className="mb-3" data-testid="container-coming-up-shows">
               <div className="flex items-center gap-2 mb-2">
                 <Radio className="w-3.5 h-3.5 text-muted-foreground/50" />
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">Coming up</span>
+                <span className="text-[13px] text-muted-foreground/60 font-medium">Coming up</span>
               </div>
               <div className="space-y-2">
                 {comingUp.map((stream) => (
@@ -1045,7 +1045,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
             <div data-testid="container-previous-shows">
               <div className="flex items-center gap-2 mb-2">
                 <Radio className="w-3.5 h-3.5 text-muted-foreground/50" />
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">Previous Shows</span>
+                <span className="text-[13px] text-muted-foreground/60 font-medium">Previous shows</span>
                 <span className="text-[10px] text-muted-foreground/40">({previousShows.length})</span>
               </div>
               <div className="space-y-2">
@@ -1063,13 +1063,13 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
           {isOwnProfile && (
             <div className="mb-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">{musicCount} song{musicCount !== 1 ? "s" : ""}</span>
+                <span className="text-[13px] text-muted-foreground/60 font-medium">{musicCount} song{musicCount !== 1 ? "s" : ""}</span>
                 <div className="flex items-center gap-2">
                   {onConnectPodcast && !connectedPodcastFeed && (
                     <Button
                       variant="outline"
                       size="sm"
-                      className="gap-1.5 text-xs border-brand/30 dark:border-brand/25 text-brand bg-brand/5 dark:bg-brand/10 hover:bg-brand/10 dark:hover:bg-brand/20 shadow-[0_0_8px_rgba(168,85,247,0.15)] dark:shadow-[0_0_10px_rgba(168,85,247,0.2)] hover:shadow-[0_0_12px_rgba(168,85,247,0.25)] dark:hover:shadow-[0_0_14px_rgba(168,85,247,0.3)] transition-all"
+                      className="gap-1.5 text-[13px] rounded-full border-foreground/25 text-foreground bg-transparent hover:bg-foreground/[0.06] transition-all"
                       onClick={() => setPodcastConnectOpen(true)}
                       data-testid="button-connect-podcast"
                     >
@@ -1092,7 +1092,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
                     placeholder="Paste your podcast RSS feed URL..."
                     value={podcastFeedInput}
                     onChange={(e) => setPodcastFeedInput(e.target.value)}
-                    className="flex-1 h-8 px-3 text-xs rounded-lg border border-border/30 dark:border-brand/15 bg-background/50 dark:bg-black/20 placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-ring dark:focus:ring-brand/30"
+                    className="flex-1 h-8 px-3 text-xs rounded-lg border border-input bg-background/50 dark:bg-black/20 placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-ring dark:focus:ring-brand/30"
                     data-testid="input-podcast-feed-url"
                   />
                   <Button
@@ -1134,7 +1134,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
                     {album && (
                       <div className="flex items-center gap-2 px-2.5 py-1.5 bg-muted/25 dark:bg-white/[0.02]">
                         <Disc3 className="w-3 h-3 text-muted-foreground/50 shrink-0" />
-                        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60 truncate">{album}</span>
+                        <span className="text-[13px] text-muted-foreground/60 truncate font-medium">{album}</span>
                         <span className="text-[10px] text-muted-foreground/40 ml-auto tabular-nums">{albumTracks.length}</span>
                       </div>
                     )}
@@ -1159,8 +1159,8 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
         <div className="space-y-2" data-testid="container-podcast-episodes">
           {podcastTracks.length > 0 && (
             <div className="flex items-center gap-2 mb-1">
-              <Mic className="w-3.5 h-3.5 text-brand/60" />
-              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">
+              <Mic className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-[13px] text-muted-foreground/60 font-medium">
                 {podcastTracks[0]?.albumTitle || podcastTracks[0]?.artist || "Podcast"}
               </span>
               <span className="text-[10px] text-muted-foreground/40">({podcastCount} episode{podcastCount !== 1 ? "s" : ""})</span>
@@ -1197,8 +1197,8 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
 
       {isOwnProfile && onConnectPodcast && connectedPodcastFeed && (
         <div className="mt-3">
-          <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border/20 dark:border-brand/10 bg-card/30 dark:bg-card/15">
-            <Mic className="w-3.5 h-3.5 text-brand/60 shrink-0" />
+          <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border/20 bg-card/30 dark:bg-card/15">
+            <Mic className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
             <span className="text-[11px] text-muted-foreground/70 truncate flex-1" data-testid="text-connected-podcast-feed">{connectedPodcastFeed}</span>
             <Button
               variant="ghost"

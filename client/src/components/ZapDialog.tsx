@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
@@ -82,7 +81,7 @@ type ZapStep = "amount" | "loading" | "invoice" | "success" | "error";
 export function ZapDialog({ open, onOpenChange, event, pubkey: directPubkey, recipientName }: ZapDialogProps) {
   const { signer } = useNostrAuth();
   const { toast } = useToast();
-  const { isConnected: nwcConnected, payInvoice: nwcPayInvoice, isProcessing: nwcProcessing, refreshBalance } = useNWC();
+  const { isConnected: nwcConnected, payInvoice: nwcPayInvoice, refreshBalance } = useNWC();
   const isMobile = useIsMobile();
 
   const [zapPresets, setZapPresets] = useState(() => getZapPresets());
@@ -358,18 +357,18 @@ export function ZapDialog({ open, onOpenChange, event, pubkey: directPubkey, rec
                           min={1}
                           inputMode="numeric"
                           enterKeyHint="done"
-                          className="bg-foreground/[0.03] border-foreground/[0.08] text-foreground/80 placeholder:text-foreground/25 focus-visible:ring-amber-500/30 focus-visible:border-amber-500/20"
+                          className="bg-foreground/[0.03] border-input text-foreground/80 placeholder:text-foreground/25 focus-visible:ring-amber-500/30 focus-visible:border-zap"
                           style={{ fontSize: 16 }}
                           data-testid="input-zap-custom"
                         />
                       </div>
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground/60 font-mono uppercase tracking-wider">
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground/60 font-medium">
                         <BtcZapIcon className="w-3.5 h-3.5 text-amber-500/40" />
                         sats
                       </span>
                     </div>
                     <div>
-                      <label className="text-[11px] uppercase tracking-wider text-muted-foreground/50 mb-1.5 flex items-center gap-1">
+                      <label className="text-[12px] text-muted-foreground mb-1.5 flex items-center gap-1 font-medium">
                         <MessageCircle className="w-3 h-3" />
                         Message (optional)
                       </label>
@@ -380,7 +379,7 @@ export function ZapDialog({ open, onOpenChange, event, pubkey: directPubkey, rec
                           placeholder="Add a note to your zap..."
                           maxLength={280}
                           rows={2}
-                          className="w-full rounded-lg border border-foreground/[0.08] bg-foreground/[0.03] px-3 py-2 pr-9 text-sm placeholder:text-foreground/25 focus:outline-none focus:ring-1 focus:ring-amber-500/30 focus:border-amber-500/20 resize-none transition-all"
+                          className="w-full rounded-lg border border-input bg-foreground/[0.03] px-3 py-2 pr-9 text-sm placeholder:text-foreground/25 focus:outline-none focus:ring-1 focus:ring-amber-500/30 focus:border-zap resize-none transition-all"
                           style={{ fontSize: 16 }}
                           data-testid="input-zap-message"
                         />
@@ -455,7 +454,7 @@ export function ZapDialog({ open, onOpenChange, event, pubkey: directPubkey, rec
                     {nwcConnected && (
                       <div className="flex items-center justify-center gap-1.5 py-1">
                         <div className="w-1.5 h-1.5 rounded-full bg-green-400/80 animate-pulse" />
-                        <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/50">
+                        <span className="text-[13px] text-muted-foreground font-medium">
                           NWC auto-pay
                         </span>
                       </div>
@@ -463,7 +462,7 @@ export function ZapDialog({ open, onOpenChange, event, pubkey: directPubkey, rec
                     {lightningAddr && (
                       <button
                         onClick={() => setShowLnQR(true)}
-                        className="w-full flex items-center justify-center gap-1.5 py-2 border-t border-foreground/[0.06] text-[11px] uppercase tracking-wider text-muted-foreground/50 hover:text-muted-foreground/70 transition-colors cursor-pointer"
+                        className="w-full flex items-center justify-center gap-1.5 py-2 border-t border-foreground/[0.06] text-[12px] text-muted-foreground hover:text-muted-foreground/70 transition-colors cursor-pointer font-medium"
                         data-testid="button-toggle-ln-qr"
                       >
                         <QrCode className="w-3 h-3" />
@@ -475,7 +474,7 @@ export function ZapDialog({ open, onOpenChange, event, pubkey: directPubkey, rec
                   <div className="flex flex-col items-center gap-4 animate-in fade-in duration-200" data-testid="container-ln-qr-overlay">
                     <button
                       onClick={() => setShowLnQR(false)}
-                      className="self-start flex items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground/50 hover:text-muted-foreground/70 transition-colors cursor-pointer"
+                      className="self-start flex items-center gap-1 text-[12px] text-muted-foreground hover:text-muted-foreground/70 transition-colors cursor-pointer font-medium"
                       data-testid="button-ln-qr-back"
                     >
                       <ChevronDown className="w-3 h-3 rotate-90" />

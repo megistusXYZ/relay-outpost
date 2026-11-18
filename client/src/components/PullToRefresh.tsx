@@ -130,8 +130,8 @@ export function PullToRefresh({ onRefresh, children, disabled, scrollContainerSe
           {isRefreshing ? (
             <>
               <RelayOutpostInlineLoader className="w-4 h-4 text-brand" />
-              <span className="text-[11px] text-brand/70 font-mono tracking-wider uppercase">
-                Refreshing signal...
+              <span className="text-[12px] text-brand/70 font-medium">
+                Refreshing…
               </span>
             </>
           ) : (
@@ -155,7 +155,7 @@ export function PullToRefresh({ onRefresh, children, disabled, scrollContainerSe
                   <polyline points="6 9 12 15 18 9" />
                 </svg>
               </div>
-              <span className={`text-[11px] font-mono tracking-wider uppercase transition-colors duration-200 ${pastThreshold ? "text-brand/70" : "text-muted-foreground/50"}`}>
+              <span className={`text-[12px] transition-colors duration-200 font-medium ${pastThreshold ? "text-brand/70" : "text-muted-foreground/50"}`}>
                 {pastThreshold ? "Release to refresh" : "Pull to refresh"}
               </span>
             </>

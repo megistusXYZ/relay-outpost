@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { useLocation, useRoute } from "wouter";
 import { MissionBriefing, CHATS_BRIEFING } from "@/components/MissionBriefing";
@@ -8,7 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { PersonBadges } from "@/components/PersonBadges";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
-import { eventStore, pool, DEFAULT_RELAYS, PROFILE_RELAYS, throttledPoolSubscribe, persistentPoolSubscribe, publishEvent, fetchProfilesCached, searchCachedProfiles, getCachedProfile, filterBlockedRelays, subscriptionAuthAcrossRelays } from "@/lib/nostr";
+import { eventStore, pool, PROFILE_RELAYS, throttledPoolSubscribe, persistentPoolSubscribe, publishEvent, fetchProfilesCached, searchCachedProfiles, getCachedProfile, filterBlockedRelays, subscriptionAuthAcrossRelays } from "@/lib/nostr";
 import { queryAnswered } from "@/lib/relay-reach";
 import { recordRecentDestination } from "@/lib/recent-destinations";
 import { insertSorted } from "@/lib/message-list";
@@ -16,13 +17,12 @@ import { getProfileContent, KIND_METADATA } from "@/lib/nostr-helpers";
 import { searchUsers } from "@/lib/primal-cache";
 import { readDmLastRead, writeDmLastRead } from "@/lib/dm-read";
 import { displayNameWith, usePetnamesVersion } from "@/lib/petnames";
-import { fetchRelayLists, getWriteRelays, getReadRelays, getDMRelayListCached, fetchDMRelayList, getLocalDMRelays, hasDMRelayList, getDMRelaysForContact, getMyDMReceiveRelays, wasDMRelayListConfirmedEmpty, publishDMRelayList, DM_FALLBACK_RELAYS, ensureOwnDMRelayList, wasOwnDMInboxAutopublished } from "@/lib/outbox";
+import { fetchRelayLists, fetchDMRelayList, hasDMRelayList, getDMRelaysForContact, getMyDMReceiveRelays, wasDMRelayListConfirmedEmpty, DM_FALLBACK_RELAYS, ensureOwnDMRelayList, wasOwnDMInboxAutopublished } from "@/lib/outbox";
 import { createGiftWrap, createGiftWrapForSelf, createRoomGiftWraps, expirationTags } from "@/lib/dm";
 import { DM_PREFS_EVENT, expirationFor, isMutedChat, isPinned, readDmPrefs, setMutedChat, setPinned, setTimer, timerLabel, timerOf, writeDmPrefs, type DmPrefs } from "@/lib/dm-prefs";
 import { AddPeopleDialog, NameChatDialog, TimerDialog } from "./messages/ThreadDialogs";
 import * as dmCache from "@/lib/dm-cache";
 import { useToast } from "@/hooks/use-toast";
-import { signWithTimeout, withSignerTimeout, SIGNER_CRYPTO_TIMEOUT } from "@/lib/signer-timeout";
 import { RelayOutpostLoader, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { MessagesIcon } from "@/components/icons/MessagesIcon";
@@ -60,7 +60,6 @@ import {
   pinEvent,
   isEventPinned,
   savePrivateEvent,
-  KIND_DATE_CALENDAR_EVENT,
   KIND_TIME_CALENDAR_EVENT,
   type CalendarEventData,
 } from "@/lib/calendar-events";
@@ -75,8 +74,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle } from "@/components/ui/alert-dialog";
 import type { Event } from "nostr-tools";
-import { nip19, generateSecretKey, getPublicKey, finalizeEvent, getEventHash, verifyEvent } from "nostr-tools";
-import { v2 as nip44v2 } from "nostr-tools/nip44";
+import { nip19 } from "nostr-tools";
 import { unwrapGiftWrap, seedProcessedWraps, isWrapProcessed, roomKeyOfUnwrapped, REACTION_STORED } from "@/lib/gift-wrap";
 import { MIN_QUERY, searchMessages, type MessageSearch } from "@/lib/dm-search";
 import { KIND_REACTION, reactionTags, replySnippet, replyTag, tallyReactions, type ReactionRow } from "@/lib/dm-thread";
@@ -151,7 +149,7 @@ const nowSec = () => Math.floor(Date.now() / 1000);
 /** The message a search result is taking the reader to (see openMessageHit). */
 const pendingJump: { id: string | null } = { id: null };
 
-const NIP44_REQUIRED_MSG = "Your Nostr extension does not support NIP-44 encryption, which is required for private messages. Please use a compatible extension (Alby, nos2x, Nostore).";
+const NIP44_REQUIRED_MSG = "The browser extension you signed in with can't encrypt private messages. Sign in with one that can, such as Alby, nos2x or Nostore.";
 
 const DM_PRIMARY_LS_KEY_PREFIX = "relay-outpost-dm-primary-";
 
@@ -330,11 +328,6 @@ function removeHiddenConvoPubkey(pubkey: string) {
   localStorage.setItem(HIDDEN_CONVOS_KEY, JSON.stringify(Array.from(set)));
 }
 
-function removeHiddenMessageId(id: string) {
-  const set = getHiddenMessageIds();
-  set.delete(id);
-  localStorage.setItem(HIDDEN_MESSAGES_KEY, JSON.stringify(Array.from(set)));
-}
 
 function clearAllHiddenMessageIds() {
   localStorage.setItem(HIDDEN_MESSAGES_KEY, JSON.stringify([]));
@@ -475,11 +468,11 @@ function CalendarInviteCard({ invite, userPubkey }: { invite: CalendarInvitePayl
     <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 space-y-1.5">
       <div className="flex items-center gap-1.5">
         <CalendarPlus className="w-3.5 h-3.5 text-amber-800/80 dark:text-amber-400/80" />
-        <span className="text-[11px] font-medium text-amber-800/90 dark:text-amber-300/90">Event Invitation</span>
+        <span className="text-[12px] font-medium text-amber-800/90 dark:text-amber-300/90">Event invitation</span>
         {invite.private && <Lock className="w-3 h-3 text-amber-800/50 dark:text-amber-400/50" />}
       </div>
       <p className="text-xs font-medium text-foreground/90">{invite.title}</p>
-      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground/70">
+      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[12px] text-muted-foreground">
         <span className="flex items-center gap-1">
           📅 {dateDisplay}
         </span>
@@ -497,14 +490,14 @@ function CalendarInviteCard({ invite, userPubkey }: { invite: CalendarInvitePayl
         )}
       </div>
       {pinned ? (
-        <div className="flex items-center gap-1.5 text-[10px] text-success dark:text-emerald-400/80 pt-0.5">
+        <div className="flex items-center gap-1.5 text-[12px] text-success dark:text-emerald-400/80 pt-0.5">
           <CalendarCheck className="w-3 h-3" />
           Added to your calendar
         </div>
       ) : (
         <button
           onClick={handleAddToCalendar}
-          className="flex items-center gap-1.5 px-2.5 py-1 mt-0.5 text-[10px] rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+          className="flex items-center gap-1.5 px-2.5 py-1 mt-0.5 text-[12px] rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
         >
           <CalendarPlus className="w-3 h-3" />
           Add to Calendar
@@ -675,7 +668,7 @@ function DMMessageContent({ content, userPubkey, fileMetadata, isMine }: { conte
     <div className="space-y-2">
       {fileMetadata && fileIsEncrypted && !resolvedFileUrl && (
         <div
-          className={`flex items-center gap-2 rounded-lg px-3 py-6 text-xs ${isMine ? "text-[#f0eef8]/80" : "text-muted-foreground"} ${fileError ? "" : "animate-pulse"} bg-black/10 dark:bg-white/5 max-w-[15rem] sm:max-w-[20rem]`}
+          className={`flex items-center gap-2 rounded-lg px-3 py-6 text-xs ${isMine ? "text-[#f2f3f4]/80" : "text-muted-foreground"} ${fileError ? "" : "animate-pulse"} bg-black/10 dark:bg-white/5 max-w-[15rem] sm:max-w-[20rem]`}
           data-testid="dm-media-encrypted-status"
         >
           {fileError ? (
@@ -739,10 +732,10 @@ function DMMessageContent({ content, userPubkey, fileMetadata, isMine }: { conte
         <ClampedText
           as="p"
           lines={LINES.chat}
-          className={`${isMine ? "text-[#f0eef8]" : ""} ${isEmojiOnly ? "whitespace-pre-wrap break-words text-4xl leading-tight" : "reply-content-text whitespace-pre-wrap break-words"}`}
+          className={`${isMine ? "text-[#f2f3f4]" : ""} ${isEmojiOnly ? "whitespace-pre-wrap break-words text-4xl leading-tight" : "reply-content-text whitespace-pre-wrap break-words"}`}
           testId="dm-message-text"
           toggleTestId="button-dm-message-more"
-          toggleClassName={`mt-1 text-xs font-medium ${isMine ? "text-[#f0eef8]/85" : "text-brand/80"}`}
+          toggleClassName={`mt-1 text-xs font-medium ${isMine ? "text-white/85" : "text-brand"}`}
           expanded={expanded}
           onExpandedChange={setExpanded}
         >
@@ -756,7 +749,7 @@ function DMMessageContent({ content, userPubkey, fileMetadata, isMine }: { conte
                   rel="noopener noreferrer"
                   className={`underline underline-offset-2 break-all ${
                     isMine
-                      ? "text-[#c9b8ff] hover:text-[#ddd0ff]"
+                      ? "text-[#d6dae1] hover:text-[#e4e6eb]"
                       : "text-brand hover:text-brand/80"
                   }`}
                   data-testid={`dm-link-${i}`}
@@ -827,12 +820,9 @@ type MessageRenderItem =
   | { type: "unread"; key: string }
   | { type: "message"; msg: DecodedMessage; showTimestamp: boolean; isClusterStart: boolean; isMine: boolean };
 
-const KIND_SEAL = 13;
-const KIND_RUMOR = 14;
 const KIND_FILE_MESSAGE = 15;
 
 
-const SIGNER_TIMEOUT = SIGNER_CRYPTO_TIMEOUT;
 
 const DM_DEBUG = import.meta.env.DEV || localStorage.getItem("dmDebug") === "1";
 
@@ -867,14 +857,7 @@ async function publishWithFallback(relays: string[], event: Event, label?: strin
 }
 
 
-function randomTimeOffset(): number {
-  return -Math.floor(Math.random() * 172800);
-}
 
-// NIP-17 p-tags SHOULD carry a relay-url hint: ["p", pubkey, relayUrl].
-function pTag(pubkey: string, relayHint?: string): string[] {
-  return relayHint ? ["p", pubkey, relayHint] : ["p", pubkey];
-}
 
 function msgContentKey(from: string, timestamp: number, content: string): string {
   return `${from}:${timestamp}:${content}`;
@@ -2260,7 +2243,7 @@ export default function Messages() {
   const sendMessage = useCallback(() => {
     if (!pubkey || !signer || !selectedPubkey || (!newMessage.trim() && pendingMedia.length === 0)) return;
     if (!signer.nip44) {
-      toast({ title: "NIP-44 Required", description: NIP44_REQUIRED_MSG, variant: "destructive" });
+      toast({ title: "Can't send private messages", description: NIP44_REQUIRED_MSG, variant: "destructive" });
       return;
     }
     const mediaText = pendingMedia.map((p) => (p.kind === "gif" ? p.url : `:${p.shortcode}:`)).join("\n");
@@ -2345,7 +2328,7 @@ export default function Messages() {
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (!pubkey || !signer || !selectedPubkey) return;
     if (!signer.nip44) {
-      toast({ title: "NIP-44 Required", description: NIP44_REQUIRED_MSG, variant: "destructive" });
+      toast({ title: "Can't send private messages", description: NIP44_REQUIRED_MSG, variant: "destructive" });
       return;
     }
 
@@ -3228,7 +3211,7 @@ export default function Messages() {
         which is what let the list slide under the fixed top bar and left a ghost
         gap above the bottom nav. Only the inner lists scroll. */}
     <div className="flex h-[calc(100svh-4.25rem-7rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] md:h-[calc(100dvh-5rem)]" data-testid="page-messages">
-      {/* The quick tour for the page a new account lands on; replayed from Help & Guides. */}
+      {/* The quick tour for the page a new account lands on; replayed from Help & guides. */}
       <MissionBriefing pageId="chats" steps={CHATS_BRIEFING} />
       <div className={`flex flex-col w-full md:w-[320px] md:shrink-0 md:border-r md:border-foreground/15 dark:md:border-white/15 ${selectedPubkey ? "hidden md:flex" : "flex"}`}>
         <ChatList
@@ -3374,31 +3357,31 @@ export default function Messages() {
                 {/* Who is in a several-person chat, and a one-to-one chat's
                     name when the other app gave it one (NIP-17 `subject`). */}
                 {selectedIsGroup ? (
-                  <p className="text-[11px] text-muted-foreground truncate" data-testid="text-thread-members">
+                  <p className="text-[12px] text-muted-foreground truncate" data-testid="text-thread-members">
                     {threadMemberNames.length + 1} people · {selectedSubject ? threadMemberNames.join(", ") : "you and them"}
                   </p>
                 ) : selectedSubject ? (
-                  <p className="text-[11px] text-muted-foreground truncate" data-testid="text-thread-subject">{selectedSubject}</p>
+                  <p className="text-[12px] text-muted-foreground truncate" data-testid="text-thread-subject">{selectedSubject}</p>
                 ) : null}
               </div>
             </button>
             {isDeletedPreview && (
-              <span className="text-[10px] bg-muted text-muted-foreground rounded-full px-2 py-0.5 shrink-0">Deleted</span>
+              <span className="text-[12px] text-muted-foreground shrink-0">Deleted</span>
             )}
             {threadTimer > 0 && (
               <button
                 type="button"
                 onClick={() => setShowTimer(true)}
-                className="flex items-center gap-1 min-h-[32px] px-2 rounded-full border border-brand/25 bg-brand/10 text-[11px] text-brand shrink-0"
+                className="flex items-center gap-1 min-h-[32px] px-2.5 rounded-full border border-border/60 text-[12px] text-foreground/80 shrink-0"
                 title="Your messages here disappear. Tap to change."
                 data-testid="chip-thread-timer"
               >
                 <Timer className="w-3 h-3" /> {timerLabel(threadTimer)}
               </button>
             )}
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground/60 shrink-0" data-testid="text-encryption-status">
-              <ShieldCheck className="w-3 h-3 text-green-500/70" />
-              <span>NIP-17</span>
+            <div className="flex items-center gap-1 text-[12px] text-muted-foreground shrink-0" data-testid="text-encryption-status" title="End-to-end encrypted private messages (NIP-17)">
+              <ShieldCheck className="w-3.5 h-3.5 text-success" />
+              <span>Encrypted</span>
             </div>
             {/* The chat's own menu. Naming it, a timer for your messages and
                 adding people work for any chat; Mute and Report act on a
@@ -3488,10 +3471,10 @@ export default function Messages() {
           {otherChatAlert && (
             <button
               onClick={() => { setOtherChatAlert(null); navigateToConversation(otherChatAlert); }}
-              className="flex items-center gap-2.5 mx-3 mt-2 px-3 min-h-11 rounded-xl border border-brand/25 bg-brand/10 text-left"
+              className="flex items-center gap-2.5 mx-3 mt-2 px-3 min-h-11 rounded-[16px] border border-border/60 bg-card text-left"
               data-testid="other-chat-alert"
             >
-              <MessageCircle className="w-4 h-4 shrink-0 text-brand" />
+              <MessageCircle className="w-4 h-4 shrink-0 text-foreground/70" />
               <span className="min-w-0 flex-1 text-xs">
                 <span className="font-medium text-foreground">{alertName}</span>
                 <span className="text-muted-foreground"> sent you a message</span>
@@ -3534,7 +3517,7 @@ export default function Messages() {
               </div>
             ) : visibleMessages.length === 0 ? (
               <div className="text-center py-12">
-                <MessagesIcon className="w-8 h-8 mx-auto text-muted-foreground/50 mb-2" />
+                <OttoEmpty mood="quiet" size={72} className="mx-auto mb-2 text-foreground/70" />
                 <p className="text-sm text-muted-foreground">No messages yet</p>
                 <p className="text-xs text-muted-foreground/80">Send the first message to start the conversation</p>
                 {/* An old chat may simply not be loaded yet: offer to look. */}
@@ -3558,9 +3541,9 @@ export default function Messages() {
               {!isDeletedPreview && (
                 <div className="flex justify-center pb-3" data-testid="thread-older">
                   {historyStatus === "done" ? (
-                    <span className="text-[11px] text-muted-foreground/60">This is the beginning of the chat.</span>
+                    <span className="text-[12px] text-muted-foreground">This is the beginning of the chat.</span>
                   ) : historyStatus === "loading" ? (
-                    <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                    <span className="text-[12px] text-muted-foreground flex items-center gap-1.5">
                       <RelayOutpostInlineLoader className="w-3 h-3" />
                       {historyOpening > 0 ? `Opening ${historyOpening} message${historyOpening === 1 ? "" : "s"}…` : "Looking further back…"}
                     </span>
@@ -3630,7 +3613,7 @@ export default function Messages() {
                           // Whoever WROTE it: in a several-person chat that is
                           // not always the same person.
                           onClick={() => setLocation(`/profile/${nip19.npubEncode(msg.from)}`)}
-                          className={`shrink-0 ${beside} cursor-pointer hover:ring-2 hover:ring-brand/50 rounded-full transition-all`}
+                          className={`shrink-0 ${beside} cursor-pointer hover:ring-2 hover:ring-foreground/20 rounded-full transition-all`}
                           aria-label={`Open ${nameOf(msg.from)}'s profile`}
                         >
                           <PersonAvatar pubkey={msg.from} name={nameOf(msg.from)} picture={profiles.get(msg.from)?.picture} alt={nameOf(msg.from)} className="w-6 h-6 md:w-7 md:h-7 border border-border/60" fallbackClassName="text-[9px] bg-muted text-muted-foreground" />
@@ -3658,11 +3641,11 @@ export default function Messages() {
                         );
                       })()}
                       {selectedIsGroup && !isMine && isClusterStart && (
-                        <p className="text-[11px] font-medium text-brand mb-0.5 truncate" data-testid={`message-sender-${msg.id}`}>{nameOf(msg.from)}</p>
+                        <p className="text-[12px] font-semibold text-foreground/80 mb-0.5 truncate" data-testid={`message-sender-${msg.id}`}>{nameOf(msg.from)}</p>
                       )}
                       {msg.quotedNoteId && (
                         <div className="mb-1.5">
-                          <p className={`text-[11px] mb-1 flex items-center gap-1 ${isMine ? "text-[#c9b8ff]" : "text-muted-foreground/70"}`}>
+                          <p className={`text-[11px] mb-1 flex items-center gap-1 ${isMine ? "text-white/70" : "text-muted-foreground"}`}>
                             <Lock className="w-2.5 h-2.5 shrink-0" />
                             {isMine ? "You replied privately" : "Replied privately to your post"}
                           </p>
@@ -3671,7 +3654,7 @@ export default function Messages() {
                       )}
                       <DMMessageContent content={msg.content} userPubkey={pubkey} fileMetadata={msg.fileMetadata} isMine={isMine} />
                       {showTimestamp && (
-                        <p className="text-[10px] mt-1 opacity-40 flex items-center gap-1">
+                        <p className="text-[11px] mt-1 opacity-60 flex items-center gap-1">
                           {formatFullTime(msg.timestamp)}
                           {isMine && (
                             msgStatus[msg.id] === "sending" ? (
@@ -3810,7 +3793,7 @@ export default function Messages() {
             <div className="p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-3 shrink-0">
               <div className="w-full md:max-w-[46rem] md:mx-auto">
               {uploading && (
-                <div className="flex items-center gap-2 px-2 pb-2 text-[11px] text-muted-foreground/70">
+                <div className="flex items-center gap-2 px-2 pb-2 text-[12px] text-muted-foreground">
                   <RelayOutpostInlineLoader className="w-3 h-3" />
                   <span>{uploadStatus || "Uploading..."}</span>
                 </div>
@@ -3858,7 +3841,7 @@ export default function Messages() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="shrink-0 h-11 w-11 md:h-9 md:w-9 rounded-full text-muted-foreground hover:text-brand hover:bg-transparent"
+                  className="shrink-0 h-11 w-11 md:h-9 md:w-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-transparent"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
                   data-testid="button-attach-media"
@@ -3934,11 +3917,11 @@ export default function Messages() {
               className="absolute inset-0 hidden h-full w-full object-cover object-center dark:block dark:opacity-[0.22]"
             />
             <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background/95" />
-            <div className="absolute inset-x-0 top-0 h-56 dark:bg-[radial-gradient(ellipse_70%_100%_at_50%_0%,rgba(139,92,246,0.18),transparent_70%)]" />
+            <div className="absolute inset-x-0 top-0 h-56 dark:bg-[radial-gradient(ellipse_70%_100%_at_50%_0%,rgba(255,255,255,0.06),transparent_70%)]" />
           </div>
-          <div className="glass-card w-full max-w-md rounded-2xl border border-brand/15 dark:border-brand/10 px-8 py-10 text-center shadow-sm">
-            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl dark:border dark:border-brand/15 dark:bg-white/[0.03]">
-              <MessagesIcon className="h-8 w-8 text-muted-foreground dark:text-brand/70" />
+          <div className="glass-card w-full max-w-md rounded-[20px] border border-border/60 px-8 py-10 text-center shadow-sm">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full dark:bg-foreground/[0.05]">
+              <MessagesIcon className="h-8 w-8 text-foreground/70" />
             </div>
             <h2 className="text-base font-semibold text-foreground/90">Your messages</h2>
             <p className="mx-auto mt-1.5 max-w-[18rem] text-sm text-muted-foreground/70">

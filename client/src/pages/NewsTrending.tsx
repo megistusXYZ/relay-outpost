@@ -187,7 +187,7 @@ export function NewsTrending({ embedded = false }: { embedded?: boolean }) {
           )}
           <div className="p-4">
             <span className="flex items-center gap-2 mb-1.5">
-              <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 text-brand text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5"><Newspaper className="w-3 h-3" />Top story</span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 text-brand text-[11px] font-semibold px-2 py-0.5"><Newspaper className="w-3 h-3" />Top story</span>
               <CorroborationBadge count={hero.outletCount} />
               <NetworkBadge network={hero.network} />
             </span>

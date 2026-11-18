@@ -6,18 +6,18 @@ import { Card } from "@/components/ui/card";
 /**
  * Shared visual scaffold for the relay operator console.
  *
- * Every operator tab used to hand-roll the same "icon + uppercase brand label"
+ * Every operator tab used to hand-roll the same "icon + brand label font-medium"
  * header and its own card wrapper (padding drifted between p-3 / p-3 sm:p-4 /
  * p-4 / p-6; the accent flip-flopped between two different violets).
  * These primitives are the single source of truth so every tab reads as one
  * system: one glass surface, one border, one padding scale, one accent.
  */
 
-/** Canonical accent for section headers (violet in light, purple-300 in dark). */
+/** Section headers are ink, not accent: Ember is kept for actions (Outpost brand, 2026-11-16). */
 export const OPS_LABEL_ACCENT =
-  "text-primary dark:text-brand/80";
+  "text-foreground";
 export const OPS_ICON_ACCENT =
-  "text-primary dark:text-brand/80";
+  "text-foreground/70";
 
 /**
  * Operator card. Frosted `.glass-card` surface (reacts to Performance Full/Lite),
@@ -108,7 +108,7 @@ export function OpsSectionHeader({
       const Icon = icon as React.ElementType;
       iconNode = (
         <Icon
-          className={cn("w-3.5 h-3.5 shrink-0", OPS_ICON_ACCENT, iconClassName)}
+          className={cn("w-4 h-4 shrink-0", OPS_ICON_ACCENT, iconClassName)}
         />
       );
     }
@@ -119,7 +119,7 @@ export function OpsSectionHeader({
         {iconNode}
         <span
           className={cn(
-            "text-[11px] sm:text-xs font-brand tracking-wider uppercase",
+            "text-[15px] font-semibold",
             OPS_LABEL_ACCENT,
             labelClassName,
           )}

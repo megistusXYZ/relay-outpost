@@ -89,7 +89,7 @@ function AdmissionRow({
       <Link href={profileUrl}>
         <Avatar className="w-9 h-9 shrink-0 border border-border/40">
           <AvatarImage src={avatarUrl} alt="" />
-          <AvatarFallback className="bg-brand/10 text-brand text-[10px] font-semibold">
+          <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[10px] font-semibold">
             {name.slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
@@ -185,7 +185,7 @@ export function AdmissionQueue({ className = "", relayUrl }: {
           saying we could not reach the relay is the confident empty this whole
           change exists to remove. */}
       {queue.length > 0 && (
-        <p className="px-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50">
+        <p className="px-1 text-[11px] font-medium text-muted-foreground">
           {/* "account", not "person". It is what we actually know: a key that has
               asked to come in. The row below may carry a warning saying this might
               not be who they claim — a heading that has already called them a

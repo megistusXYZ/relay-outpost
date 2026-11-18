@@ -94,7 +94,7 @@ function PersonFace({ pubkey, size = "w-9 h-9" }: { pubkey: string; size?: strin
   return (
     <Avatar className={`${size} shrink-0`}>
       {picture && <AvatarImage src={picture} alt="" />}
-      <AvatarFallback className="bg-brand/10 text-brand text-[12px]">{(name || "?").slice(0, 1).toUpperCase()}</AvatarFallback>
+      <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[12px]">{(name || "?").slice(0, 1).toUpperCase()}</AvatarFallback>
     </Avatar>
   );
 }
@@ -492,7 +492,7 @@ function TicketDetail({ issue, me, relayName, untied, trust, reply, setReply, po
               <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 ${mine ? "bg-brand/[0.12] rounded-br-sm" : "bg-black/[0.04] dark:bg-white/[0.06] rounded-bl-sm"}`}>
                 {!mine && <p className="text-[12px] font-medium mb-0.5"><PersonName pubkey={item.event.pubkey} /></p>}
                 <p className="text-[14px] whitespace-pre-wrap">{item.event.content}</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5 text-right">{ago(item.at)}</p>
+                <p className="text-[12px] text-muted-foreground mt-0.5 text-right">{ago(item.at)}</p>
               </div>
             </div>
           );

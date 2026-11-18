@@ -1,9 +1,7 @@
 import type { Express } from "express";
 import { pipeUpstream } from "./stream-proxy";
 import type { Server } from "http";
-import { z } from "zod";
 import dns from "dns/promises";
-import crypto from "crypto";
 import RSSParser from "rss-parser";
 import { db } from "./db";
 import { SERVER_APP_VERSION } from "./version";
@@ -93,7 +91,6 @@ const ogCache = new TTLCache<OgData>(500, 60 * 60 * 1000);
 // for long. The data is usually fetchable on the next try.
 const ogNegativeCache = new TTLCache<true>(500, 90 * 1000);
 
-import type { Response } from "express";
 import { PROFILE_DIRECTORIES, LIST_DIRECTORIES } from "@shared/profile-directories";
 
 function parseOgHtml(html: string, targetUrl: string, resolvedUrl?: string): OgData {

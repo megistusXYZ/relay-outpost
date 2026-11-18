@@ -492,10 +492,6 @@ const LABELS: Record<ChatFilter, string> = {
   communities: "Communities",
 };
 
-/** An outpost row carries no unread state at all — see the ChatEntry union. */
-function unreadCount(entries: ChatEntry[]): number {
-  return entries.filter((e) => (e.kind === "dm" ? e.conv.unread : e.kind === "group" ? e.group.unread : false)).length;
-}
 
 /**
  * The chips to offer — derived from what is actually there, never a fixed set.

@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
-import type { Editor } from "@tiptap/core";
 import { Node, mergeAttributes } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import LinkExtension from "@tiptap/extension-link";
@@ -133,9 +132,7 @@ import {
   BookOpen,
   Upload,
   Eye,
-  EyeOff,
   Save,
-  Radio,
   FileText,
   Trash2,
   Clock,
@@ -149,7 +146,8 @@ import {
   ChevronDown,
   Plus,
   Calendar,
-  MessageSquareOff } from "lucide-react";
+  MessageSquareOff,
+} from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -483,7 +481,7 @@ function SectionPicker({
   return (
     <div className="rounded-xl bg-card/40 dark:bg-card/20 backdrop-blur-sm border border-border/30 dark:border-primary/10 px-3 py-2 shadow-sm shadow-primary/5 dark:shadow-primary/10 transition-all duration-300 hover:shadow-md hover:shadow-primary/8 dark:hover:shadow-primary/15 hover:border-border/50 dark:hover:border-primary/20">
       <div className="flex items-center gap-2">
-        <FolderOpen className="w-4 h-4 text-brand/50 shrink-0" />
+        <FolderOpen className="w-4 h-4 text-muted-foreground shrink-0" />
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <button
@@ -518,7 +516,7 @@ function SectionPicker({
                   key={s}
                   className={`w-full text-left text-xs px-2 py-1.5 rounded-md transition-colors cursor-pointer ${
                     value === s
-                      ? "bg-brand/15 text-brand"
+                      ? "bg-foreground text-background"
                       : "text-muted-foreground/70 hover:bg-muted/20 hover:text-foreground/80"
                   }`}
                   onClick={() => {
@@ -538,7 +536,7 @@ function SectionPicker({
               ))}
               {customInput.trim() && !filteredSections.some((s) => s.toLowerCase() === customInput.trim().toLowerCase()) && (
                 <button
-                  className="w-full text-left text-xs px-2 py-1.5 rounded-md text-brand/70 hover:bg-brand/10 transition-colors cursor-pointer"
+                  className="w-full text-left text-[13px] px-2 py-1.5 rounded-md text-brand hover:bg-foreground/[0.05] transition-colors cursor-pointer"
                   onClick={() => {
                     onChange(customInput.trim());
                     setCustomInput("");
@@ -636,13 +634,13 @@ function BannerUploadZone({
       >
         {isUploading ? (
           <>
-            <RelayOutpostInlineLoader className="w-7 h-7 text-brand" />
+            <RelayOutpostInlineLoader className="w-7 h-7 text-muted-foreground" />
             <span className="text-xs text-muted-foreground font-medium">Uploading banner...</span>
           </>
         ) : (
           <>
             <div className="w-10 h-10 rounded-full bg-primary/8 dark:bg-primary/12 flex items-center justify-center group-hover/upload:bg-primary/15 dark:group-hover/upload:bg-primary/20 transition-colors duration-300">
-              <Upload className="w-5 h-5 text-brand/50 group-hover/upload:text-brand/80 transition-colors duration-300" />
+              <Upload className="w-5 h-5 text-muted-foreground group-hover/upload:text-foreground transition-colors duration-300" />
             </div>
             <span className="text-xs text-muted-foreground/70 font-medium">Tap to upload banner image</span>
             <span className="text-[10px] text-muted-foreground/40 hidden sm:block">or drag and drop</span>
@@ -690,7 +688,7 @@ function DraftsDropdown({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64 max-h-[300px] overflow-y-auto">
-        <p className="text-[10px] text-muted-foreground/60 px-2 py-1 font-mono uppercase tracking-wider">Saved Drafts</p>
+        <p className="text-[13px] text-muted-foreground/60 px-2 py-1 font-medium">Saved drafts</p>
         <DropdownMenuSeparator />
         {drafts.map((draft) => (
           <DropdownMenuItem
@@ -701,7 +699,7 @@ function DraftsDropdown({
           >
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium truncate">{draft.title || "Untitled"}</p>
-              <p className="text-[10px] text-muted-foreground/60 flex items-center gap-1 mt-0.5">
+              <p className="text-[12px] text-muted-foreground flex items-center gap-1 mt-0.5">
                 <Clock className="w-2.5 h-2.5" />
                 {formatDistanceToNow(draft.savedAt, { addSuffix: true })}
               </p>
@@ -747,8 +745,8 @@ function ArticlePreview({
   return (
     <div className="rounded-xl border border-border/30 dark:border-primary/10 bg-card/40 dark:bg-card/20 backdrop-blur-sm overflow-hidden shadow-sm shadow-primary/5 dark:shadow-primary/10 transition-all duration-300" data-testid="article-preview-panel">
       <div className="px-3 py-2 border-b border-border/20 dark:border-primary/8 flex items-center gap-2 bg-muted/10 dark:bg-muted/5">
-        <Eye className="w-3.5 h-3.5 text-brand/60" />
-        <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground/60">Preview</span>
+        <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-[12px] text-muted-foreground/60 font-medium">Preview</span>
       </div>
 
       <div className="p-4 sm:p-6 max-h-[70vh] overflow-y-auto">
@@ -766,7 +764,7 @@ function ArticlePreview({
           <p className="text-sm text-muted-foreground mb-3" data-testid="preview-summary">{summary}</p>
         )}
 
-        <div className="flex items-center gap-3 text-[11px] text-muted-foreground/60 mb-4 flex-wrap">
+        <div className="flex items-center gap-3 text-[12px] text-muted-foreground mb-4 flex-wrap">
           <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {readTime} min read</span>
           <span>{wordCount} words</span>
           <span>Just now</span>
@@ -1646,7 +1644,7 @@ export default function ArticleEditor() {
     <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4" data-testid="page-article-editor">
       {draftBanner && (
         <div className="mb-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 flex items-center gap-2 flex-wrap" data-testid="draft-restore-banner">
-          <FileText className="w-3.5 h-3.5 text-brand/60 shrink-0" />
+          <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
           <span className="text-xs text-foreground/80 flex-1">
             Draft from {formatDistanceToNow(draftBanner.savedAt, { addSuffix: true })}
             {draftBanner.title && <> — "{draftBanner.title}"</>}
@@ -1654,7 +1652,7 @@ export default function ArticleEditor() {
           <Button
             size="sm"
             variant="ghost"
-            className="h-7 text-xs text-brand"
+            className="h-7 text-[13px] text-brand"
             onClick={() => loadDraft(draftBanner)}
             data-testid="button-restore-draft"
           >
@@ -1673,14 +1671,14 @@ export default function ArticleEditor() {
       )}
 
       {editNaddr && (
-        <div className="mb-4 rounded-md border border-brand/25 bg-brand/5 px-3 py-2 text-xs text-foreground/80" data-testid="editing-article-banner">
+        <div className="mb-4 rounded-[14px] border border-border/60 bg-foreground/[0.04] px-3 py-2 text-[13px] text-foreground/80" data-testid="editing-article-banner">
           {editLoading ? "Loading your article…" : <>Editing <strong>{editing?.title || "this article"}</strong>. Changes save to the same link, and readers see the new version.</>}
         </div>
       )}
       <div className="flex items-center justify-between gap-2 mb-5 flex-wrap">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-primary/10 dark:bg-primary/15 flex items-center justify-center shadow-sm">
-            <BookOpen className="w-4 h-4 text-brand/70" />
+            <BookOpen className="w-4 h-4 text-muted-foreground" />
           </div>
           <h1 className="text-lg font-bold" data-testid="heading-write-article">{editNaddr ? "Edit article" : "Write Article"}</h1>
         </div>
@@ -1715,7 +1713,7 @@ export default function ArticleEditor() {
           <div className="flex items-center rounded-lg border border-border/30 dark:border-primary/15 overflow-hidden bg-muted/10 dark:bg-muted/5 shadow-sm">
             <button
               className={`px-2.5 sm:px-3 py-1.5 text-xs font-medium transition-all duration-200 cursor-pointer ${
-                !showPreview ? "bg-brand/15 dark:bg-brand/20 text-brand shadow-sm" : "text-muted-foreground hover:text-foreground"
+                !showPreview ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
               onClick={() => setShowPreview(false)}
               data-testid="button-edit-mode"
@@ -1724,7 +1722,7 @@ export default function ArticleEditor() {
             </button>
             <button
               className={`px-2.5 sm:px-3 py-1.5 text-xs font-medium transition-all duration-200 cursor-pointer ${
-                showPreview ? "bg-brand/15 dark:bg-brand/20 text-brand shadow-sm" : "text-muted-foreground hover:text-foreground"
+                showPreview ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
               onClick={() => setShowPreview(true)}
               data-testid="button-preview-mode"
@@ -1752,7 +1750,7 @@ export default function ArticleEditor() {
                 <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
                 <span className="hidden sm:inline truncate">Posting to defaults</span>
                 <span className="opacity-40 hidden sm:inline">·</span>
-                <span className="text-brand/80">Manage</span>
+                <span className="text-brand">Manage</span>
               </button>
             ) : (() => {
               const ms = getRelayModeStyle(relayPref.preset);
@@ -1790,7 +1788,7 @@ export default function ArticleEditor() {
             {!editNaddr && <Button
               variant="ghost"
               size="sm"
-              className={`shrink-0 h-9 w-9 p-0 ${showSchedule ? "text-brand" : "text-muted-foreground/40 hover:text-foreground"}`}
+              className={`shrink-0 h-9 w-9 p-0 ${showSchedule ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               onClick={() => setShowSchedule(!showSchedule)}
               title="Schedule for later"
               data-testid="button-toggle-schedule-article"
@@ -1802,7 +1800,7 @@ export default function ArticleEditor() {
               <Button
                 onClick={handleScheduleArticle}
                 disabled={isPublishing || !title.trim() || !scheduleDateTime}
-                className="bg-brand hover:bg-brand"
+                className="rounded-full bg-foreground text-background hover:bg-foreground/90"
                 data-testid="button-schedule-article"
               >
                 {isPublishing ? (
@@ -1830,8 +1828,8 @@ export default function ArticleEditor() {
 
           {showSchedule && (
             <div className="px-4 pb-2">
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-brand/5 border border-brand/15">
-                <Clock className="w-3.5 h-3.5 text-brand shrink-0" />
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-foreground/[0.04] border border-border/60">
+                <Clock className="w-3.5 h-3.5 text-foreground/70 shrink-0" />
                 <input
                   type="datetime-local"
                   value={scheduleDateTime}
@@ -1859,7 +1857,7 @@ export default function ArticleEditor() {
           <AlertDialog open={!!pendingImport} onOpenChange={(o) => { if (!o) setPendingImport(null); }}>
             <AlertDialogContent className="glass-dialog-card max-w-sm">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-sm font-brand tracking-wide">Replace current content?</AlertDialogTitle>
+                <AlertDialogTitle className="text-base font-semibold">Replace current content?</AlertDialogTitle>
                 <AlertDialogDescription className="text-xs text-muted-foreground/70">
                   Importing this Markdown file will replace what's in the editor. Empty title, summary, banner, and tags will be filled in from the file.
                 </AlertDialogDescription>
@@ -1920,7 +1918,7 @@ export default function ArticleEditor() {
                     <Badge
                       key={tag}
                       variant="secondary"
-                      className="gap-1 px-2.5 py-1 text-xs bg-brand/10 text-brand border border-brand/20 dark:border-brand/25 hover:bg-brand/15 dark:hover:bg-brand/20 transition-all duration-200 shadow-sm shadow-primary/5 dark:shadow-primary/15 animate-in fade-in slide-in-from-bottom-1 duration-200"
+                      className="gap-1 px-2.5 py-1 text-xs bg-foreground/[0.06] text-foreground border border-border/60 hover:bg-foreground/10 transition-all duration-200 shadow-sm shadow-primary/5 dark:shadow-primary/15 animate-in fade-in slide-in-from-bottom-1 duration-200"
                     >
                       #{tag}
                       <button onClick={() => removeHashtag(tag)} className="ml-0.5 rounded-full hover:bg-primary/20 dark:hover:bg-primary/30 p-0.5 transition-colors cursor-pointer" data-testid={`button-remove-tag-${tag}`}>
@@ -1931,7 +1929,7 @@ export default function ArticleEditor() {
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <Hash className="w-4 h-4 text-brand/40 shrink-0" />
+                <Hash className="w-4 h-4 text-muted-foreground shrink-0" />
                 <Input
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
@@ -2095,7 +2093,7 @@ export default function ArticleEditor() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between px-3 py-2 text-[11px] text-muted-foreground/50 rounded-lg bg-card/30 dark:bg-card/10 border border-border/20 dark:border-primary/8" data-testid="editor-stats">
+          <div className="flex items-center justify-between px-3 py-2 text-[12px] text-muted-foreground rounded-lg bg-card/30 dark:bg-card/10 border border-border/20 dark:border-primary/8" data-testid="editor-stats">
             <span className="font-mono tracking-wide">{wordCount} words · {readTime} min read</span>
             {hasUnsavedChanges && <span className="text-amber-500/70 font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500/70 animate-pulse" />Unsaved changes</span>}
             {currentDraftId && !hasUnsavedChanges && <span className="text-success dark:text-green-500/70 font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500/70" />Draft saved</span>}

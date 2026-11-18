@@ -41,7 +41,7 @@ function CollapsibleSection({
         )}
         <span className="flex items-center gap-1.5">
           {icon}
-          <span className={`text-[10px] font-brand uppercase tracking-wider ${colorClass}`}>
+          <span className={`text-[13px] font-medium ${colorClass}`}>
             {label}
           </span>
         </span>
@@ -130,7 +130,7 @@ export function DayDetail({
     <Card className="glass-card">
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-brand uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          <h3 className="text-xs text-gray-500 dark:text-gray-400 font-medium">
             {selectedDay.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
           </h3>
           <Button
@@ -152,7 +152,7 @@ export function DayDetail({
             {isFutureDay && (
               <Button
                 size="sm"
-                className="mt-3 h-8 px-4 text-xs bg-brand hover:bg-brand text-white"
+                className="mt-3 h-9 px-4 rounded-full text-[13px] bg-foreground hover:bg-foreground/90 text-background"
                 onClick={openScheduleForDay}
               >
                 <Send className="w-3 h-3 mr-1.5" />
@@ -166,7 +166,7 @@ export function DayDetail({
               <Button
                 size="sm"
                 variant="outline"
-                className="w-full h-8 text-xs border-brand dark:border-brand/30 text-brand hover:bg-brand dark:hover:bg-brand/10 hover:text-brand-strong"
+                className="w-full h-8 text-xs rounded-full border-foreground/25 text-foreground hover:bg-foreground/[0.06]"
                 onClick={openScheduleForDay}
               >
                 <CalendarPlus className="w-3 h-3 mr-1.5" />
@@ -184,10 +184,10 @@ export function DayDetail({
 
             {scheduledItems.length > 0 && (
               <CollapsibleSection
-                icon={<Clock className="w-3 h-3 text-brand" />}
+                icon={<Clock className="w-3 h-3 text-muted-foreground" />}
                 label="Scheduled"
                 count={scheduledItems.length}
-                colorClass="text-brand"
+                colorClass="text-foreground/80"
               >
                 {scheduledItems.map((item) => (
                   <ScheduledPostCard
@@ -234,7 +234,7 @@ export function DayDetail({
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 w-7 p-0 text-gray-400 dark:text-gray-500 hover:text-brand"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                               onClick={() => onShareEvent(ce)}
                               title="Share to feed"
                               data-testid={`button-share-day-event-${ce.id.slice(0, 8)}`}
@@ -301,10 +301,10 @@ export function DayDetail({
 
             {creatorStreamItems.length > 0 && (
               <CollapsibleSection
-                icon={<Radio className="w-3 h-3 text-brand" />}
+                icon={<Radio className="w-3 h-3 text-muted-foreground" />}
                 label="Creator Streams"
                 count={creatorStreamItems.length}
-                colorClass="text-brand"
+                colorClass="text-foreground/80"
               >
                 {creatorStreamItems.map((item) => (
                   <CreatorStreamCard key={item.id} item={item} />

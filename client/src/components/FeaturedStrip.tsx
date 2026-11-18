@@ -139,7 +139,7 @@ export function FeaturedStrip({ relayUrl, operatorPubkey }: { relayUrl: string; 
         className="w-full flex items-center gap-2 px-3 py-2 text-left"
       >
         <Pin className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 rotate-45 shrink-0" />
-        <span className="text-[11px] font-brand tracking-wider uppercase text-amber-700 dark:text-amber-300">Featured</span>
+        <span className="text-[12px] text-amber-700 dark:text-amber-300 font-medium">Featured</span>
         <span className="text-[10px] text-muted-foreground/40 ml-auto">{collapsed ? "show" : "hide"}</span>
       </button>
 
@@ -170,7 +170,7 @@ export function FeaturedStrip({ relayUrl, operatorPubkey }: { relayUrl: string; 
                 <Icon className="w-3.5 h-3.5 text-amber-600/70 dark:text-amber-400/70 mt-0.5 shrink-0" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] font-medium uppercase tracking-wide text-amber-600/70 dark:text-amber-400/60">{kindLabel(it.kind)}</span>
+                    <span className="text-[12px] font-medium text-amber-600/70 dark:text-amber-400/60">{kindLabel(it.kind)}</span>
                     {authorName && <span className="text-[10px] text-muted-foreground/50 truncate">· {authorName}</span>}
                   </div>
                   <p className="text-xs text-foreground/80 line-clamp-2 leading-snug break-words">{title || "Pinned item"}</p>

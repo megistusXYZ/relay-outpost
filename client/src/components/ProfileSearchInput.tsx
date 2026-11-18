@@ -7,7 +7,6 @@ import { User, Search, Zap, X } from "lucide-react";
 import { searchUsers } from "@/lib/primal-cache";
 import { searchCachedProfiles, eventStore, fetchProfilesCached } from "@/lib/nostr";
 import { getProfileContent } from "@/lib/nostr-helpers";
-import { getLightningAddress } from "@/lib/zap";
 import { use$ } from "applesauce-react/hooks";
 import { KIND_METADATA } from "@/lib/nostr-helpers";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
@@ -51,7 +50,7 @@ function ProfileResult({ event, onSelect }: { event: Event; onSelect: (r: Select
     >
       <Avatar className="w-9 h-9 shrink-0">
         {picture ? <AvatarImage src={picture} alt={name} /> : null}
-        <AvatarFallback className="bg-brand/20 text-brand">
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80">
           <User className="w-4 h-4" />
         </AvatarFallback>
       </Avatar>
@@ -116,7 +115,7 @@ function SelectedRecipientCard({ recipient, onClear }: { recipient: SelectedReci
       ) : (
         <Avatar className="w-9 h-9 shrink-0">
           {picture ? <AvatarImage src={picture} alt={name} /> : null}
-          <AvatarFallback className="bg-brand/20 text-brand">
+          <AvatarFallback className="bg-foreground/[0.08] text-foreground/80">
             <User className="w-4 h-4" />
           </AvatarFallback>
         </Avatar>
@@ -306,7 +305,7 @@ export function ProfileSearchInput({ onSelect, selected, placeholder }: ProfileS
           {results.map((event) => (
             <ProfileResult key={event.pubkey} event={event} onSelect={handleSelect} />
           ))}
-          <div className="px-3 py-1.5 text-[10px] text-muted-foreground/40 text-center font-brand uppercase tracking-wider">
+          <div className="px-3 py-1.5 text-[13px] text-muted-foreground text-center font-medium">
             {isSearching ? "Searching..." : "Select a contact"}
           </div>
         </div>

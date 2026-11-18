@@ -1,5 +1,5 @@
 /**
- * Help & Guides speaks to people, not developers (owner, 2026-10-10): a
+ * Help & guides speaks to people, not developers (owner, 2026-10-10): a
  * newcomer reads about their key, their space, their communities and their
  * money in the words the app itself uses, never in protocol words, old
  * names, or the find-and-replace scars the rename left behind ("Community
@@ -70,7 +70,7 @@ export function helpOffenders(file: string): string[] {
   return out;
 }
 
-describe("Help & Guides speaks plainly", () => {
+describe("Help & guides speaks plainly", () => {
   it("the Help page and its guest overlay", () => {
     expect(["pages/WtfIsThis.tsx", "components/WtfWelcomeOverlay.tsx"].flatMap(helpOffenders)).toEqual([]);
   });
@@ -79,7 +79,7 @@ describe("Help & Guides speaks plainly", () => {
   });
 });
 
-describe("Help & Guides describes today's app", () => {
+describe("Help & guides describes today's app", () => {
   const help = readFileSync(join(SRC, "pages/WtfIsThis.tsx"), "utf8");
   // Shipped 2026-10-10: a newcomer's first questions are about these.
   for (const [what, re] of [

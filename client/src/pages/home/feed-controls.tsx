@@ -1,20 +1,14 @@
 import { useEffect, useRef, useState, useCallback, useMemo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { use$ } from "applesauce-react/hooks";
 import type { NostrEvent } from "nostr-tools";
-import { eventStore, fetchProfilesCached, FAST_RELAYS } from "@/lib/nostr";
-import { fetchTrendingFeed, searchUsers, primalStatsCache } from "@/lib/primal-cache";
-import { MIN_FOLLOWERS_GLOBAL, type ReachDepth } from "@/lib/spam-filter";
-import { VerifiedBadgeIcon } from "@/components/NostrPost";
+import { eventStore, fetchProfilesCached } from "@/lib/nostr";
+import { searchUsers } from "@/lib/primal-cache";
+import { type ReachDepth } from "@/lib/spam-filter";
 import { TrustTierGlyph } from "@/components/nostr-post/trust-tier-glyph";
-import { useNostrAuth } from "@/contexts/NostrAuthContext";
-import { Radio, Plus, Settings2, Trash2, Lock, Hash, Users, Filter, Eye, EyeOff, Type, X, Search, Grape, Rss, ChevronDown, ChevronUp, Antenna, ShieldCheck, RotateCcw } from "lucide-react";
-import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
-import { type SignalTier, getSignalTierLabel, getSignalTierShortLabel } from "@/lib/graperank";
-import { getDisplayName, getAvatarUrl } from "@/lib/nostr-helpers";
+import { Radio, Settings2, Lock, Hash, Users, Eye, EyeOff, Type, X, Search, ChevronDown, ChevronUp, Antenna, ShieldCheck, RotateCcw } from "lucide-react";
+import { type SignalTier, getSignalTierLabel } from "@/lib/graperank";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -31,22 +25,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useToast } from "@/hooks/use-toast";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue } from "@/components/ui/select";
-import { nip19 } from "nostr-tools";
-import { useNostrFeeds, type NostrCustomFeed } from "@/hooks/use-nostr-feeds";
+import { type NostrCustomFeed } from "@/hooks/use-nostr-feeds";
 import { FeedIcon as FeedIconSvg, FEED_ICON_LIST, isValidFeedIconKey, type FeedIconKey } from "@/components/FeedIcons";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrustTierDot } from "@/components/NostrPost";
-import { Nip05Badge } from "@/components/Nip05Badge";
-import { BrowsePacksDialog } from "@/components/BrowsePacksDialog";
-import type { FeedMode, FeedSortMode, TopTimeWindow } from "./helpers";
-import { TRENDING_SELECTORS, FEED_SORT_OPTIONS, TIME_WINDOW_SORT_MODES, TOP_TIME_WINDOWS, BUILT_IN_TABS, decodePubkey } from "./helpers";
+import { decodePubkey } from "./helpers";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { Link } from "wouter";
 import { PRESET_DEFS, type StrictnessPreset } from "@/lib/trust-preset";
@@ -116,19 +104,19 @@ export function ChipInput({
 
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs text-brand dark:text-brand/70 flex items-center gap-1.5">
+      <Label className="text-[13px] font-medium text-foreground/80 flex items-center gap-1.5">
         <Icon className="w-3 h-3" />
         {label}
       </Label>
       <div
-        className="flex flex-wrap gap-1.5 min-h-[38px] p-2 rounded-md border text-sm bg-accent/40 dark:bg-white/[0.03] border-border dark:border-brand/20 focus-within:border-brand/40 cursor-text transition-colors"
+        className="flex flex-wrap gap-1.5 min-h-[38px] p-2 rounded-md border text-sm bg-accent/40 dark:bg-white/[0.03] border-border focus-within:border-foreground/30 cursor-text transition-colors"
         onClick={() => inputRef.current?.focus()}
         data-testid={`container-${testId}`}
       >
         {(chips || []).map((chip, i) => (
           <span
             key={`${chip}-${i}`}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent dark:bg-brand/15 text-brand text-xs border border-brand/20"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-foreground/[0.06] text-foreground text-[13px] border border-border/60"
           >
             {prefix}{chip}
             <button
@@ -241,9 +229,9 @@ export function PeopleSearch({
   const resultsContent = results.length > 0 && query.trim() ? (
     <div
       className={cn(
-        "rounded-md border border-border dark:border-brand/20 bg-background dark:bg-[hsl(260,8%,6%)] overflow-y-auto",
+        "rounded-md border border-border bg-background dark:bg-[hsl(220,8%,6%)] overflow-y-auto",
         showAbove
-          ? "mb-1 max-h-[35vh] shadow-[0_-4px_20px_rgba(109,40,217,0.15)]"
+          ? "mb-1 max-h-[35vh] shadow-[0_-4px_20px_rgba(13,15,18,0.15)]"
           : "mt-1 max-h-[180px]"
       )}
       data-testid="container-people-results"
@@ -258,7 +246,7 @@ export function PeopleSearch({
             disabled={isSelected}
             className={cn(
               "w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors",
-              isSelected ? "opacity-40 cursor-default" : "hover:bg-accent dark:hover:bg-brand/10 cursor-pointer"
+              isSelected ? "opacity-40 cursor-default" : "hover:bg-accent dark:hover:bg-foreground/[0.06] cursor-pointer"
             )}
             onClick={() => {
               if (!isSelected) {
@@ -274,13 +262,13 @@ export function PeopleSearch({
           >
             <Avatar className="w-7 h-7 shrink-0">
               <AvatarImage src={profile.picture} />
-              <AvatarFallback className="text-[10px] bg-brand/15 dark:bg-brand/20">{(profile.display_name || profile.name || "?")[0]}</AvatarFallback>
+              <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[10px]">{(profile.display_name || profile.name || "?")[0]}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium truncate">{profile.display_name || profile.name || event.pubkey.slice(0, 12) + "..."}</p>
               {profile.nip05 && <p className="text-[10px] text-muted-foreground/50 truncate">{profile.nip05}</p>}
             </div>
-            {isSelected && <span className="text-[10px] text-brand shrink-0">Added</span>}
+            {isSelected && <span className="text-[12px] text-muted-foreground shrink-0">Added</span>}
           </button>
         );
       })}
@@ -289,7 +277,7 @@ export function PeopleSearch({
 
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs text-brand dark:text-brand/70 flex items-center gap-1.5">
+      <Label className="text-[13px] font-medium text-foreground/80 flex items-center gap-1.5">
         <Users className="w-3 h-3" />
         People
       </Label>
@@ -299,11 +287,11 @@ export function PeopleSearch({
           {(selectedPubkeys || []).map((person, i) => (
             <span
               key={person.pubkey}
-              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-accent dark:bg-brand/15 text-brand text-xs border border-brand/20"
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-foreground/[0.06] text-foreground text-[13px] border border-border/60"
             >
               <Avatar className="w-4 h-4">
                 <AvatarImage src={person.picture} />
-                <AvatarFallback className="text-[8px] bg-brand/15 dark:bg-brand/20">{(person.name || "?")[0]}</AvatarFallback>
+                <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[8px]">{(person.name || "?")[0]}</AvatarFallback>
               </Avatar>
               {person.name || person.pubkey.slice(0, 8) + "..."}
               <button
@@ -330,13 +318,13 @@ export function PeopleSearch({
             onChange={(e) => setQuery(e.target.value)}
             onFocus={handleFocus}
             placeholder="Search by name or paste npub..."
-            className="pl-8 text-sm bg-accent/40 dark:bg-white/[0.03] border-border dark:border-brand/20 focus-visible:border-brand/40 placeholder:text-muted-foreground/30"
+            className="pl-8 text-sm bg-accent/40 dark:bg-white/[0.03] border-input focus-visible:border-primary placeholder:text-muted-foreground/30"
             autoCapitalize="off"
             autoCorrect="off"
             autoComplete="off"
             data-testid="input-people-search"
           />
-          {searching && <RelayOutpostInlineLoader className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-brand" />}
+          {searching && <RelayOutpostInlineLoader className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground/60" />}
         </div>
 
         {!showAbove && resultsContent}
@@ -362,12 +350,12 @@ export function TuneFrequencyFormContent({
   contentType: string; setContentType: (v: string) => void;
   icon: FeedIconKey | undefined; setIcon: (v: FeedIconKey | undefined) => void;
 }) {
-  const inputClass = "text-sm bg-accent/40 dark:bg-white/[0.03] border-border dark:border-brand/20 focus-visible:border-primary/40 dark:focus-visible:border-brand/40 placeholder:text-muted-foreground/30";
+  const inputClass = "text-sm bg-accent/40 dark:bg-white/[0.03] border-input focus-visible:border-primary placeholder:text-muted-foreground/30";
 
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor="feed-name" className="text-xs text-brand dark:text-brand/70 flex items-center gap-1.5">
+        <Label htmlFor="feed-name" className="text-[13px] font-medium text-foreground/80 flex items-center gap-1.5">
           <Radio className="w-3 h-3" />
           Feed Name
         </Label>
@@ -386,7 +374,7 @@ export function TuneFrequencyFormContent({
       </div>
 
       <div className="space-y-1.5">
-        <Label className="text-xs text-brand dark:text-brand/70 flex items-center gap-1.5">
+        <Label className="text-[13px] font-medium text-foreground/80 flex items-center gap-1.5">
           <Antenna className="w-3 h-3" />
           Icon
         </Label>
@@ -399,8 +387,8 @@ export function TuneFrequencyFormContent({
               className={cn(
                 "p-1.5 rounded-md border transition-all",
                 icon === key
-                  ? "border-primary/50 bg-accent text-primary dark:border-brand/50 dark:bg-brand/15 dark:text-brand shadow-[0_0_8px_rgba(139,92,246,0.2)]"
-                  : "border-border bg-card text-muted-foreground/60 hover:border-primary/25 hover:bg-accent dark:border-brand/10 dark:bg-white/[0.02] dark:hover:border-brand/25 dark:hover:bg-brand/5"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-card text-muted-foreground/60 hover:border-primary/25 hover:bg-accent dark:bg-white/[0.02] dark:hover:border-border dark:hover:bg-foreground/[0.05]"
               )}
               data-testid={`icon-pick-${key}`}
             >
@@ -410,7 +398,7 @@ export function TuneFrequencyFormContent({
         </div>
       </div>
 
-      <div className="h-px bg-gradient-to-r from-transparent via-brand/15 to-transparent" />
+      <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
       <PeopleSearch
         selectedPubkeys={selectedPeople}
@@ -430,7 +418,7 @@ export function TuneFrequencyFormContent({
       />
 
       <div className="space-y-1.5">
-        <Label className="text-xs text-brand dark:text-brand/70 flex items-center gap-1.5">
+        <Label className="text-[13px] font-medium text-foreground/80 flex items-center gap-1.5">
           <Type className="w-3 h-3" />
           Content Type
         </Label>
@@ -439,7 +427,7 @@ export function TuneFrequencyFormContent({
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="z-[300]">
-            <SelectItem value="all">All Notes</SelectItem>
+            <SelectItem value="all">All posts</SelectItem>
             <SelectItem value="text_only">Text Only</SelectItem>
             <SelectItem value="media">Media (Photos/Videos)</SelectItem>
             <SelectItem value="links">Links Only</SelectItem>
@@ -447,7 +435,7 @@ export function TuneFrequencyFormContent({
         </Select>
       </div>
 
-      <div className="h-px bg-gradient-to-r from-transparent via-brand/15 to-transparent" />
+      <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
       <ChipInput
         chips={includeKeywords}
@@ -555,26 +543,26 @@ export function TuneFrequencyDialog({
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange} dismissible={false}>
-        <DrawerContent className="border-border dark:border-brand/20 bg-background dark:bg-[hsl(260,8%,4%)]" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+        <DrawerContent className="border-border bg-background dark:bg-[hsl(220,8%,4%)]" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
           <DrawerHeader className="pb-2">
             <div className="flex items-center gap-2.5">
-              <div className="p-1.5 rounded-md bg-accent dark:bg-brand/10">
-                <Settings2 className="w-4 h-4 text-brand" />
+              <div className="p-1.5 rounded-md bg-accent">
+                <Settings2 className="w-4 h-4 text-foreground/75" />
               </div>
               <div>
                 <DrawerTitle className="text-sm font-semibold text-foreground">{titleText}</DrawerTitle>
-                <p className="text-[11px] text-brand/60 dark:text-brand/40 mt-0.5">Configure your signal filters</p>
+                <p className="text-[13px] text-muted-foreground mt-0.5">Configure your feed filters</p>
               </div>
             </div>
           </DrawerHeader>
           <div className="px-4 pb-3 overflow-y-auto max-h-[65vh]">
             <TuneFrequencyFormContent {...formProps} />
           </div>
-          <DrawerFooter className="flex-row gap-2 pt-3 border-t border-border dark:border-brand/10">
-            <Button variant="outline" className="flex-1 border-border dark:border-brand/20 text-muted-foreground" onClick={() => onOpenChange(false)} data-testid="button-cancel-feed">
+          <DrawerFooter className="flex-row gap-2 pt-3 border-t border-border">
+            <Button variant="outline" className="flex-1 border-border text-muted-foreground" onClick={() => onOpenChange(false)} data-testid="button-cancel-feed">
               Cancel
             </Button>
-            <Button className="flex-1 bg-primary text-primary-foreground dark:bg-brand dark:text-white" onClick={handleSave} disabled={isSaving} data-testid="button-save-feed">
+            <Button className="flex-1 bg-primary text-primary-foreground" onClick={handleSave} disabled={isSaving} data-testid="button-save-feed">
               <Lock className="w-3.5 h-3.5 mr-1.5" />
               {saveLabel}
             </Button>
@@ -586,16 +574,16 @@ export function TuneFrequencyDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto border-border dark:border-brand/20 bg-background dark:bg-[hsl(260,8%,4%)]">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto border-border bg-background dark:bg-[hsl(220,8%,4%)]">
         <DialogHeader>
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-md bg-accent dark:bg-brand/10">
-              <Settings2 className="w-4 h-4 text-brand" />
+            <div className="p-1.5 rounded-md bg-accent">
+              <Settings2 className="w-4 h-4 text-foreground/75" />
             </div>
             <div>
               <DialogTitle className="text-sm font-semibold">{titleText}</DialogTitle>
-              <DialogDescription className="text-[11px] text-brand/60 dark:text-brand/40 mt-0.5">
-                Configure your signal filters
+              <DialogDescription className="text-[13px] text-muted-foreground mt-0.5">
+                Configure your feed filters
               </DialogDescription>
             </div>
           </div>
@@ -603,11 +591,11 @@ export function TuneFrequencyDialog({
         <div className="py-1">
           <TuneFrequencyFormContent {...formProps} />
         </div>
-        <DialogFooter className="gap-2 border-t border-border dark:border-brand/10 pt-4">
-          <Button variant="outline" className="border-border dark:border-brand/20 text-muted-foreground" onClick={() => onOpenChange(false)} data-testid="button-cancel-feed">
+        <DialogFooter className="gap-2 border-t border-border pt-4">
+          <Button variant="outline" className="border-border text-muted-foreground" onClick={() => onOpenChange(false)} data-testid="button-cancel-feed">
             Cancel
           </Button>
-          <Button className="bg-primary text-primary-foreground dark:bg-brand dark:text-white" onClick={handleSave} disabled={isSaving} data-testid="button-save-feed">
+          <Button className="bg-primary text-primary-foreground" onClick={handleSave} disabled={isSaving} data-testid="button-save-feed">
             <Lock className="w-3.5 h-3.5 mr-1.5" />
             {saveLabel}
           </Button>
@@ -623,11 +611,6 @@ export const REACH_DEPTH_STOPS: { value: ReachDepth; label: string; shortLabel: 
   { value: "off", label: "Everyone", shortLabel: "Everyone", description: "No trust filter — full firehose" },
 ];
 
-function abbreviateCount(n: number): string {
-  if (n >= 10000) return `${(n / 1000).toFixed(0)}k`;
-  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`;
-  return n.toString();
-}
 
 export function ReachDepthSlider({
   depth,
@@ -654,8 +637,6 @@ export function ReachDepthSlider({
     if (vals.length < 2) return false;
     return vals.every(v => v === vals[0]);
   }, [perStopPostCounts]);
-  const activeIndex = REACH_DEPTH_STOPS.findIndex(s => s.value === depth);
-  const activeStop = REACH_DEPTH_STOPS[activeIndex] ?? REACH_DEPTH_STOPS[4];
 
   const reachCount = useMemo(() => {
     if (depth === "off") return null;
@@ -685,20 +666,11 @@ export function ReachDepthSlider({
     return follows.size + fofSize + extra;
   }, [depth, follows, followsOfFollows, grapeRankScores]);
 
-  const depthDescription = depth === "off"
-    ? "No trust filter · you'll see everything"
-    : depth === "1hop"
-    ? "Only people you follow"
-    : depth === "2hops"
-    ? "You + friends of friends"
-    : depth === "3hops"
-    ? "Friends of friends, plus anyone we already know a little"
-    : "2 hops + anyone with positive trust";
 
   return (
     <div className="mb-3 space-y-2" data-testid="container-reach-depth">
       <div className="flex items-center gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 text-brand/70">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 text-foreground/60">
           <g clipPath="url(#reach-icon)">
             <path d="M15.0301 10.7697L20.6901 6.97973C21.2601 6.59973 21.4101 5.81973 21.0301 5.25973L19.2101 2.54971C18.8301 1.97971 18.0501 1.82971 17.4901 2.20971L11.8301 5.99972L15.0301 10.7697Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             <path d="M12.1739 6.47981L7.39624 9.67969L9.95614 13.5018L14.7338 10.302L12.1739 6.47981Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -712,15 +684,15 @@ export function ReachDepthSlider({
             </clipPath>
           </defs>
         </svg>
-        <span className="text-[11px] font-medium text-foreground/70 dark:text-foreground/60 tracking-wide uppercase">
-          Trust Reach
+        <span className="text-[12px] font-medium text-foreground/70 dark:text-foreground/60">
+          Trust reach
         </span>
       </div>
 
       <div
         role="tablist"
         aria-label="Trust reach"
-        className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-accent/50 dark:bg-brand/[0.06] border border-border dark:border-brand/10"
+        className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-accent/50 border border-border"
       >
         {REACH_DEPTH_STOPS.map((stop) => {
           const isActive = stop.value === depth;
@@ -732,20 +704,20 @@ export function ReachDepthSlider({
               onClick={() => onChange(stop.value)}
               className={cn(
                 "flex items-center justify-center py-1.5 px-1 rounded-md transition-all duration-150",
-                "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring dark:focus-visible:ring-brand/50",
+                "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 isActive
-                  ? "bg-accent border border-primary/20 dark:border-transparent dark:bg-brand/15 dark:shadow-[inset_0_0_0_1px_rgba(192,132,252,0.3)]"
-                  : "hover:bg-accent/60 dark:hover:bg-brand/[0.05]"
+                  ? "bg-foreground border border-foreground"
+                  : "hover:bg-foreground/[0.06]"
               )}
               data-testid={`button-reach-${stop.value}`}
               title={stop.description}
             >
               <span
                 className={cn(
-                  "text-[11px] leading-none font-medium transition-colors duration-150",
+                  "text-[12px] leading-none font-medium transition-colors duration-150",
                   isActive
-                    ? "text-accent-foreground dark:text-brand"
-                    : "text-muted-foreground/60"
+                    ? "text-background"
+                    : "text-muted-foreground"
                 )}
               >
                 {stop.label}
@@ -757,14 +729,14 @@ export function ReachDepthSlider({
 
       {reachCount !== null && (
         <div className="flex items-center justify-end gap-2">
-          <span className="text-[10px] text-brand/60 dark:text-brand/50 font-medium shrink-0 tabular-nums" data-testid="text-reach-count">
+          <span className="text-[12px] text-muted-foreground font-medium shrink-0 tabular-nums" data-testid="text-reach-count">
             {reachCount.toLocaleString()} accounts
           </span>
         </div>
       )}
 
       {loadingScores && (
-        <div className="flex items-center gap-1.5 text-[10px] text-brand/70 dark:text-brand/60" data-testid="text-reach-loading-scores">
+        <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground" data-testid="text-reach-loading-scores">
           <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeOpacity="0.25" />
             <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -814,8 +786,8 @@ export function StrictnessPresetControl({
     <div className="mb-3 space-y-2" data-testid="container-strictness-preset">
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex items-center gap-1.5 shrink-0">
-          <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-brand/70" />
-          <span className="text-[11px] font-medium text-foreground/70 dark:text-foreground/60 tracking-wide uppercase">
+          <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-foreground/60" />
+          <span className="text-[12px] font-medium text-foreground/70 dark:text-foreground/60">
             How careful?
           </span>
         </div>
@@ -823,7 +795,7 @@ export function StrictnessPresetControl({
         <div
           role="radiogroup"
           aria-label="Feed strictness"
-          className="flex items-center gap-1 p-1 rounded-lg bg-accent/50 dark:bg-brand/[0.06] border border-border dark:border-brand/10"
+          className="flex items-center gap-1 p-1 rounded-lg bg-accent/50 border border-border"
         >
           {PRESET_ORDER.map((name) => {
             const def = PRESET_DEFS[name];
@@ -838,17 +810,17 @@ export function StrictnessPresetControl({
                 onClick={() => onSelect(name)}
                 className={cn(
                   "min-h-[40px] sm:min-h-0 flex items-center justify-center py-1.5 px-3 rounded-md transition-all duration-150",
-                  "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring dark:focus-visible:ring-brand/50",
+                  "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                   selected
-                    ? "bg-accent border border-primary/20 dark:border-transparent dark:bg-brand/15 dark:shadow-[inset_0_0_0_1px_rgba(192,132,252,0.3)]"
-                    : "hover:bg-accent/60 dark:hover:bg-brand/[0.05]"
+                    ? "bg-foreground border border-foreground"
+                    : "hover:bg-foreground/[0.06]"
                 )}
                 data-testid={`button-preset-${name}`}
               >
                 <span
                   className={cn(
-                    "text-[11px] leading-none font-medium transition-colors duration-150",
-                    selected ? "text-accent-foreground dark:text-brand" : "text-muted-foreground/60"
+                    "text-[12px] leading-none font-medium transition-colors duration-150",
+                    selected ? "text-background" : "text-muted-foreground"
                   )}
                 >
                   {def.label}
@@ -858,7 +830,7 @@ export function StrictnessPresetControl({
           })}
           {isCustom && (
             <span
-              className="min-h-[40px] sm:min-h-0 flex items-center justify-center py-1.5 px-3 rounded-md bg-accent border border-brand/20 dark:border-transparent dark:bg-brand/15 dark:shadow-[inset_0_0_0_1px_rgba(192,132,252,0.3)] text-[11px] leading-none font-medium text-accent-foreground dark:text-brand cursor-default select-none"
+              className="min-h-[40px] sm:min-h-0 flex items-center justify-center py-1.5 px-3 rounded-md bg-foreground border border-foreground text-background text-[12px] leading-none font-medium cursor-default select-none"
               aria-current="true"
               data-testid="indicator-preset-custom"
             >
@@ -868,7 +840,7 @@ export function StrictnessPresetControl({
         </div>
 
         {reachCount !== null && reachCount !== undefined && (
-          <span className="text-[10px] text-brand/60 dark:text-brand/50 font-medium shrink-0 tabular-nums" data-testid="text-reach-count">
+          <span className="text-[12px] text-muted-foreground font-medium shrink-0 tabular-nums" data-testid="text-reach-count">
             {reachCount.toLocaleString()} accounts
           </span>
         )}
@@ -880,7 +852,7 @@ export function StrictnessPresetControl({
           onClick={onToggleCustomize}
           aria-expanded={customizeOpen}
           aria-controls="strictness-customize-panel"
-          className="inline-flex items-center gap-1 min-h-[40px] sm:min-h-0 py-1 text-[11px] font-medium text-brand/70 hover:text-brand transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
+          className="inline-flex items-center gap-1 min-h-[40px] sm:min-h-0 py-1 text-[13px] font-medium text-brand hover:text-brand-strong transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
           data-testid="button-trust-customize"
         >
           {customizeOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -889,7 +861,7 @@ export function StrictnessPresetControl({
 
         <Link
           href="/shield-matrix"
-          className="inline-flex items-center min-h-[40px] sm:min-h-0 py-1 text-[11px] font-medium text-brand/70 hover:text-brand hover:underline transition-colors"
+          className="inline-flex items-center min-h-[40px] sm:min-h-0 py-1 text-[13px] font-medium text-brand hover:text-brand-strong hover:underline transition-colors"
           data-testid="link-adjust-trust-safety"
         >
           Adjust in Trust &amp; Safety&nbsp;&rarr;
@@ -897,7 +869,7 @@ export function StrictnessPresetControl({
       </div>
 
       {loadingScores && (
-        <div className="flex items-center gap-1.5 text-[10px] text-brand/70 dark:text-brand/60" data-testid="text-reach-loading-scores">
+        <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground" data-testid="text-reach-loading-scores">
           <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeOpacity="0.25" />
             <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -927,7 +899,7 @@ export function FeedTierFilter({ excludedTiers, onToggle, onClear }: {
 
   return (
     <div className="flex items-center gap-1 sm:gap-1.5 mb-2 -mt-1 px-1.5 py-1 rounded-md bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.04] dark:border-white/[0.06]">
-      <ShieldCheck className={`w-3.5 h-3.5 shrink-0 ${hasFilters ? "text-brand/70 dark:text-brand/60" : "text-brand/40 dark:text-brand/30"}`} />
+      <ShieldCheck className={`w-3.5 h-3.5 shrink-0 ${hasFilters ? "text-foreground/70" : "text-foreground/40"}`} />
       <div className="flex items-center gap-0.5 flex-nowrap min-w-0">
         {FEED_FILTER_TIERS.map(tier => {
           const excluded = excludedTiers.has(tier);
@@ -947,7 +919,7 @@ export function FeedTierFilter({ excludedTiers, onToggle, onClear }: {
               }`}
             >
               <TrustTierGlyph tier={tier} size="w-2 h-2" decorative className={excluded ? "opacity-25" : ""} />
-              <span className="sm:hidden">{getSignalTierShortLabel(tier)}</span>
+              <span className="sm:hidden">{getSignalTierLabel(tier)}</span>
               <span className="hidden sm:inline">{fullLabel}</span>
             </button>
           );
@@ -958,7 +930,7 @@ export function FeedTierFilter({ excludedTiers, onToggle, onClear }: {
           onClick={onClear}
           title="Reset filters"
           aria-label="Reset filters"
-          className="flex items-center gap-1 ml-auto shrink-0 text-[10px] font-medium text-brand/70 hover:text-brand transition-colors"
+          className="flex items-center gap-1 ml-auto shrink-0 text-[12px] font-medium text-brand hover:text-brand-strong transition-colors"
         >
           <RotateCcw className="w-3 h-3 sm:hidden" />
           <span className="hidden sm:inline">Reset</span>

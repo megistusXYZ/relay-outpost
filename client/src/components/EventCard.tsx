@@ -184,7 +184,7 @@ export function EventCard({ ce, variant = "list", dimmed = false, actions, onOpe
               single truncated line, so profile resolution can't change height. */}
           <div className="flex items-center gap-1.5 mb-2 h-4">
             <CalendarDays className="w-3.5 h-3.5 text-brand/70 shrink-0" />
-            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">Event</span>
+            <span className="text-[13px] text-muted-foreground/60 font-medium">Event</span>
             <span className="ml-auto flex items-center gap-1.5 min-w-0">
               <Avatar className="w-4 h-4 shrink-0">
                 {host.avatar && <AvatarImage src={host.avatar} alt={host.name} />}
@@ -285,7 +285,7 @@ export function EventCardSkeleton({ variant = "list" }: { variant?: "list" | "em
         <div className="animate-pulse">
           <div className="flex items-center gap-1.5 mb-2 h-4">
             <CalendarDays className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0" />
-            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/40">Event</span>
+            <span className="text-[13px] text-muted-foreground font-medium">Event</span>
             <div className="ml-auto h-3 w-20 rounded bg-muted/40" />
           </div>
           <div className="flex items-start gap-3">

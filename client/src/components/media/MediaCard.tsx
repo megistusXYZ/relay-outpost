@@ -43,7 +43,7 @@ function BylineRow({ item }: { item: MediaItemModel }) {
       {b && (b.mono ? (
         <>
           {b.avatar && <img src={b.avatar} alt="" className="w-4 h-4 rounded-sm object-cover shrink-0" loading="lazy" />}
-          <span className="text-[11px] text-muted-foreground font-mono uppercase tracking-wider truncate max-w-[140px]">{b.name}</span>
+          <span className="text-[12px] text-muted-foreground truncate max-w-[140px] font-medium">{b.name}</span>
         </>
       ) : (
         <>
@@ -141,7 +141,7 @@ export function MediaHero({ item, badge, placeholder }: { item: MediaItemModel; 
             </>
           ) : placeholder}
           {badge && (
-            <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-primary/90 text-primary-foreground text-[10px] font-brand uppercase tracking-widest px-2.5 py-1 shadow-sm">
+            <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-primary/90 text-primary-foreground text-[11px] px-2.5 py-1 shadow-sm font-medium">
               {badge}
             </span>
           )}

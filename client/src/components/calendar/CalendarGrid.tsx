@@ -116,7 +116,7 @@ export function CalendarGrid({
             <ChevronLeft className="w-4 h-4" />
           </Button>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-brand uppercase tracking-wider text-gray-900 dark:text-gray-100">{monthLabel}</span>
+            <span className="text-sm text-gray-900 dark:text-gray-100 font-medium">{monthLabel}</span>
             <Button variant="ghost" size="sm" className="min-h-[36px] text-[10px] px-2.5 text-gray-500 dark:text-gray-400" onClick={onGoToToday}>
               Today
             </Button>
@@ -126,7 +126,7 @@ export function CalendarGrid({
               <Button
                 variant="ghost"
                 size="sm"
-                className="min-h-[44px] min-w-[44px] p-0 text-gray-400 dark:text-gray-500 hover:text-brand"
+                className="min-h-[44px] min-w-[44px] p-0 text-muted-foreground hover:text-foreground"
                 onClick={onRefresh}
                 disabled={refreshing}
                 title="Refresh feeds"
@@ -142,7 +142,7 @@ export function CalendarGrid({
 
         <div className="grid grid-cols-7 gap-px mb-1">
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-            <div key={d} className="text-center text-[9px] uppercase tracking-wider text-gray-500 dark:text-gray-400 py-1 font-medium">
+            <div key={d} className="text-center text-[12px] text-gray-500 dark:text-gray-400 py-1 font-medium">
               {d}
             </div>
           ))}
@@ -150,7 +150,7 @@ export function CalendarGrid({
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <RelayOutpostInlineLoader className="w-6 h-6 text-brand" />
+            <RelayOutpostInlineLoader className="w-6 h-6 text-muted-foreground" />
           </div>
         ) : (
           <div className="grid grid-cols-7 gap-px">
@@ -173,7 +173,7 @@ export function CalendarGrid({
                       : "opacity-40"
                     }
                     ${isSelected
-                      ? "bg-brand dark:bg-brand/10 ring-1 ring-brand dark:ring-brand/40"
+                      ? "bg-foreground/[0.08] ring-1 ring-foreground/40"
                       : ""
                     }
                     ${isToday && !isSelected
@@ -184,7 +184,7 @@ export function CalendarGrid({
                 >
                   <span
                     className={`
-                      text-[11px] font-medium
+                      text-[12px] font-medium
                       ${isToday
                         ? "text-brand font-bold"
                         : isCurrentMonth

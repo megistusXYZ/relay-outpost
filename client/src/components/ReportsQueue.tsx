@@ -84,7 +84,7 @@ function ReportRow({
       <Link href={profileUrl} className="shrink-0">
         <Avatar className="w-8 h-8 border border-border/40">
           <AvatarImage src={avatarUrl} alt="" />
-          <AvatarFallback className="bg-brand/10 text-brand text-[11px] font-semibold">
+          <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[11px] font-semibold">
             {name.slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
@@ -174,7 +174,7 @@ export function ReportsQueue({ className = "", relayUrl }: {
   return (
     <div className={`space-y-2 ${className}`} data-testid="reports-queue">
       {queue.length > 0 && (
-        <p className="flex items-center gap-1.5 px-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50">
+        <p className="flex items-center gap-1.5 px-1 text-[11px] font-medium text-muted-foreground">
           <Flag className="w-3 h-3" />
           {/* "message" vs "account" is a real distinction the rows already carry —
               one is a post to review, the other is a member to decide about. */}

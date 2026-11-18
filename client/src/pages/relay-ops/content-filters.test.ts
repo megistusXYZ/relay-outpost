@@ -31,7 +31,7 @@ describe("chips show what you're looking at", () => {
   const f = { ...EMPTY_FILTERS, kinds: [1, 7], people: [BOB], hashtags: ["bitcoin"] };
 
   it("one chip per kind of filter, in words", () => {
-    expect(filterChips(f, nameOf).map((c) => c.label)).toEqual(["Kind: Note, Reaction", "From: Bob", "#bitcoin"]);
+    expect(filterChips(f, nameOf).map((c) => c.label)).toEqual(["Kind: Post, Reaction", "From: Bob", "#bitcoin"]);
   });
 
   it("removing a chip removes that filter", () => {

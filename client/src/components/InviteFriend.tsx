@@ -103,7 +103,7 @@ export function InviteFriend({
                 "linear-gradient(to bottom, transparent 0%, transparent 30%, rgba(0,0,0,0.35) 58%, rgba(0,0,0,0.8) 82%, #000 100%)",
             }}
           />
-          <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(139,92,246,0.10),transparent_70%)] dark:bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(139,92,246,0.18),transparent_70%)]" />
+          <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(13,15,18,0.06),transparent_70%)] dark:bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(255,255,255,0.06),transparent_70%)]" />
         </div>
         <DialogHeader className="text-center sm:text-center">
           {/* Centered, icon-free header — the chip read as clutter next to the

@@ -1,4 +1,5 @@
 import { curatedNow } from "@/lib/curated-lists-source";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useKeyboardViewport } from "@/hooks/use-keyboard-viewport";
 import { MissionBriefing, LIVE_STREAMS_BRIEFING } from "@/components/MissionBriefing";
@@ -33,9 +34,24 @@ import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
 import { formatDistanceToNow, format, isToday, isTomorrow, isThisWeek } from "date-fns";
 import {
-  Radio, Users, Send, Zap, Eye, Clock, Calendar,
-  Satellite, Signal, Volume2, ExternalLink, RefreshCw, Copy, Check, Share2,
-  Maximize2, PictureInPicture2, ChevronDown, History,
+  Radio,
+  Users,
+  Send,
+  Zap,
+  Eye,
+  Clock,
+  Calendar,
+  Satellite,
+  Signal,
+  ExternalLink,
+  RefreshCw,
+  Copy,
+  Check,
+  Share2,
+  Maximize2,
+  PictureInPicture2,
+  ChevronDown,
+  History,
 } from "lucide-react";
 import { usePiP, supportsNativeHls } from "@/contexts/PiPContext";
 import { useLiveMiniPlayer } from "@/contexts/LiveMiniPlayerContext";
@@ -48,6 +64,7 @@ import { classifyUrl, resolveEmbedId, isEmbedType } from "@/lib/media-utils";
 import { InlineEmbedPlayer } from "@/components/InlineEmbedPlayer";
 import { copyNostrId } from "@/lib/clipboard-bridge";
 import { useBatchStreamLiveness, useStreamLiveness, type StreamLiveness } from "@/hooks/use-stream-liveness";
+import { LiveTag } from "@/components/LiveBadge";
 
 function buildATag(event: Event): string | null {
   const dTag = event.tags.find(t => t[0] === "d")?.[1];
@@ -58,10 +75,7 @@ function buildATag(event: Event): string | null {
 function StatusBadge({ status }: { status: string }) {
   if (status === "live") {
     return (
-      <Badge data-testid="badge-status-live" className="bg-red-600/90 text-white border-red-500/50 gap-1 animate-pulse">
-        <Signal className="w-3 h-3" />
-        LIVE
-      </Badge>
+      <LiveTag testId="badge-status-live" />
     );
   }
   if (status === "planned") {
@@ -84,7 +98,6 @@ function StreamCard({ stream, onClick, liveness }: { stream: LiveEventData; onCl
   // publishing platform account that authored the kind-30311 event.
   const hostPubkey = useMemo(() => getStreamHost(stream), [stream]);
   const profile = use$(() => eventStore.replaceable(KIND_METADATA, hostPubkey), [hostPubkey]);
-  const profileContent = profile ? getProfileContent(profile) : null;
   const displayName = profile ? getDisplayName(profile) : shortenNpub(formatNpub(hostPubkey));
   const avatarUrl = profile ? getAvatarUrl(profile) : undefined;
   const [imgError, setImgError] = useState(false);
@@ -96,7 +109,7 @@ function StreamCard({ stream, onClick, liveness }: { stream: LiveEventData; onCl
     <button
       onClick={onClick}
       data-testid={`card-stream-${stream.id}`}
-      className="group relative overflow-hidden rounded-xl border border-border dark:border-white/[0.06] bg-card dark:bg-gradient-to-br dark:from-[#0c0c14] dark:to-[#080810] backdrop-blur-sm dark:backdrop-blur-none hover:border-brand/30 dark:hover:border-brand/20 hover:shadow-[0_4px_20px_rgba(76,29,149,0.08)] dark:hover:shadow-[0_0_20px_rgba(139,92,246,0.08)] transition-all duration-300 text-left w-full"
+      className="group relative overflow-hidden rounded-xl border border-border dark:border-white/[0.06] bg-card dark:bg-gradient-to-br dark:from-[#0c0c14] dark:to-[#080810] backdrop-blur-sm dark:backdrop-blur-none hover:border-brand/30 dark:hover:border-brand/20 hover:shadow-[0_4px_20px_rgba(13,15,18,0.08)] dark:hover:shadow-[0_0_20px_rgba(255,255,255,0.08)] transition-all duration-300 text-left w-full"
     >
       <div className="relative aspect-video overflow-hidden rounded-t-xl bg-brand/50 dark:bg-black/50">
         {proxiedImage && !imgError ? (
@@ -108,14 +121,14 @@ function StreamCard({ stream, onClick, liveness }: { stream: LiveEventData; onCl
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-brand/60 via-brand/40 to-brand/30 dark:from-[#0e0a1a] dark:via-[#0c0818] dark:to-[#080610] relative overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(139,92,246,0.08)_0%,transparent_70%)] dark:bg-[radial-gradient(ellipse_at_center,rgba(139,92,246,0.15)_0%,transparent_70%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(13,15,18,0.08)_0%,transparent_70%)] dark:bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.15)_0%,transparent_70%)]" />
             <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(1px 1px at 20px 30px, white, transparent), radial-gradient(1px 1px at 40px 70px, white, transparent), radial-gradient(1px 1px at 80px 20px, white, transparent), radial-gradient(1px 1px at 90px 80px, white, transparent), radial-gradient(1px 1px at 150px 50px, white, transparent), radial-gradient(1px 1px at 170px 90px, white, transparent)' }} />
             <div className="relative z-10 flex flex-col items-center gap-2.5">
               <div className="relative">
                 <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-brand/30 to-brand/20 dark:from-brand/40 dark:to-brand/30 blur-sm group-hover:from-brand/40 group-hover:to-brand/30 dark:group-hover:from-brand/50 dark:group-hover:to-brand/40 transition-all duration-500" />
                 <Avatar className="w-16 h-16 relative border-2 border-brand/40 dark:border-brand/30 shadow-lg shadow-brand/10 dark:shadow-brand/20 group-hover:border-brand/60 dark:group-hover:border-brand/50 transition-all duration-500">
                   <AvatarImage src={avatarUrl} alt={displayName} className="object-cover" />
-                  <AvatarFallback className="text-lg font-bold bg-gradient-to-br from-brand/80 to-brand/60 text-brand">{displayName?.charAt(0)?.toUpperCase()}</AvatarFallback>
+                  <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-lg font-bold">{displayName?.charAt(0)?.toUpperCase()}</AvatarFallback>
                 </Avatar>
               </div>
               <span className="text-sm font-semibold text-brand/70 dark:text-brand/80 tracking-wide group-hover:text-brand-strong transition-colors duration-300 px-3 text-center leading-snug">{displayName}</span>
@@ -126,7 +139,7 @@ function StreamCard({ stream, onClick, liveness }: { stream: LiveEventData; onCl
           {liveness === "offline" ? (
             <Badge className="bg-zinc-700/80 text-zinc-300 border-zinc-600/50 gap-1">
               <Signal className="w-3 h-3" />
-              Signal Lost
+              Stream offline
             </Badge>
           ) : (
             <StatusBadge status={stream.status} />
@@ -165,10 +178,10 @@ function StreamCard({ stream, onClick, liveness }: { stream: LiveEventData; onCl
         >
           <Avatar className="w-6 h-6 border border-brand/30 dark:border-brand/20 ring-1 ring-brand/20 dark:ring-brand/10">
             <AvatarImage src={avatarUrl} alt={displayName} />
-            <AvatarFallback className="text-[9px] font-medium bg-brand/60 dark:bg-brand/50 text-brand">{displayName?.charAt(0)?.toUpperCase()}</AvatarFallback>
+            <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[9px] font-medium">{displayName?.charAt(0)?.toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <span className="text-[10px] text-muted-foreground dark:text-white/30 uppercase tracking-wider font-medium leading-none">Hosted by</span>
+            <span className="text-[13px] text-muted-foreground dark:text-white/30 font-medium leading-none">Hosted by</span>
             <p className="text-xs font-medium text-foreground dark:text-white/70 truncate group-hover/host:text-brand transition-colors leading-tight">{displayName}</p>
           </div>
         </Link>
@@ -238,11 +251,11 @@ function PastBroadcastRow({ stream, onClick }: { stream: LiveEventData; onClick:
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 p-3 rounded-md bg-card dark:bg-muted/20 border border-border dark:border-brand/15 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_0_0_1px_rgba(168,85,247,0.06),0_0_8px_rgba(168,85,247,0.04)] dark:shadow-[0_0_8px_rgba(168,85,247,0.08),0_0_2px_rgba(168,85,247,0.15)] hover-elevate hover:border-brand/30 transition-all text-left group"
+      className="w-full flex items-center gap-3 p-3 rounded-md bg-card dark:bg-muted/20 border border-border dark:border-brand/15 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_0_0_1px_rgba(255,255,255,0.06),0_0_8px_rgba(255,255,255,0.04)] dark:shadow-[0_0_8px_rgba(255,255,255,0.08),0_0_2px_rgba(255,255,255,0.15)] hover-elevate hover:border-brand/30 transition-all text-left group"
     >
       <div className="w-14 shrink-0 flex flex-col items-center justify-center text-center">
         <span className="text-lg font-bold text-foreground/80 leading-none">{format(airedDate, "d")}</span>
-        <span className="text-[10px] uppercase text-muted-foreground/50 font-medium">{format(airedDate, "MMM")}</span>
+        <span className="text-[13px] text-muted-foreground font-medium">{format(airedDate, "MMM")}</span>
         <span className="text-[10px] text-muted-foreground/40 mt-0.5">{format(airedDate, "h:mm a")}</span>
       </div>
       <div className="w-px h-10 bg-border dark:bg-brand/15 shrink-0" />
@@ -299,7 +312,7 @@ function CollapsibleDateGroup({
       >
         <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground/30 transition-transform ${open ? "" : "-rotate-90"}`} />
         {icon}
-        <h3 className={`text-[11px] font-medium uppercase tracking-wider ${labelColor || "text-muted-foreground/40"}`}>{label}</h3>
+        <h3 className={`text-[13px] font-medium ${labelColor || "text-muted-foreground"}`}>{label}</h3>
         <span className="text-[10px] text-muted-foreground/25">{count}</span>
       </button>
       {open && (
@@ -367,7 +380,7 @@ function UpcomingScheduleRow({ stream, onClick }: { stream: LiveEventData; onCli
     >
       <div className="w-14 shrink-0 flex flex-col items-center justify-center text-center">
         <span className="text-lg font-bold text-foreground/80 leading-none">{format(scheduledDate, "d")}</span>
-        <span className="text-[10px] uppercase text-muted-foreground/50 font-medium">{format(scheduledDate, "MMM")}</span>
+        <span className="text-[13px] text-muted-foreground font-medium">{format(scheduledDate, "MMM")}</span>
         <span className="text-[10px] text-amber-600/70 dark:text-amber-400/70 mt-0.5">{format(scheduledDate, "h:mm a")}</span>
       </div>
       <div className="w-px h-10 bg-amber-300/20 dark:bg-amber-500/15 shrink-0" />
@@ -522,14 +535,14 @@ function ShareStreamDialog({ stream, open, onOpenChange }: { stream: LiveEventDa
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm sm:max-w-md glass-dialog-card border-border overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="font-brand uppercase tracking-widest text-sm flex items-center gap-2">
+          <DialogTitle className="text-base flex items-center gap-2 font-semibold">
             <Share2 className="w-4 h-4" />
-            Share Stream
+            Share stream
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="rounded-lg bg-primary/10 border border-border p-3 overflow-hidden">
-            <p className="text-[10px] text-brand/60 font-mono uppercase tracking-wider mb-1.5">Sharing</p>
+            <p className="text-[13px] text-brand/60 mb-1.5 font-medium">Sharing</p>
             <p className="text-sm font-medium text-foreground dark:text-white/80 line-clamp-2">{stream.title}</p>
             {streamerName && (
               <p className="text-xs text-muted-foreground dark:text-white/40 mt-1">by {streamerName}</p>
@@ -547,7 +560,7 @@ function ShareStreamDialog({ stream, open, onOpenChange }: { stream: LiveEventDa
             data-testid="textarea-share-stream"
           />
 
-          <p className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wider leading-relaxed">
+          <p className="text-[13px] text-muted-foreground leading-relaxed font-medium">
             This creates a public post tagging the streamer. Others can reply and zap your post.
           </p>
 
@@ -555,7 +568,7 @@ function ShareStreamDialog({ stream, open, onOpenChange }: { stream: LiveEventDa
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="flex-1 font-brand uppercase tracking-widest text-xs border-border dark:border-white/10 text-muted-foreground"
+              className="flex-1 text-xs border-border dark:border-white/10 text-muted-foreground font-medium"
               data-testid="button-cancel-share-stream"
             >
               Cancel
@@ -563,7 +576,7 @@ function ShareStreamDialog({ stream, open, onOpenChange }: { stream: LiveEventDa
             <Button
               onClick={handleShare}
               disabled={isPublishing || !content.trim()}
-              className="flex-1 bg-primary text-primary-foreground font-brand uppercase tracking-widest text-xs border-0"
+              className="flex-1 bg-primary text-primary-foreground text-xs border-0 font-medium"
               data-testid="button-confirm-share-stream"
             >
               {isPublishing ? (
@@ -654,7 +667,7 @@ function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, i
   // iOS (real native HLS) keeps the native path; everything else that
   // hls.js supports — Android Chrome included — gets hls.js.
   const preferNativeHls = supportsNativeHls;
-  const { enterPiP, pipSupported, notifyUnmount, isPiP, pipVideoSrc } = usePiP();
+  const { notifyUnmount } = usePiP();
 
   const isUrlHls = url.endsWith(".m3u8") || url.includes("m3u8");
   // Platform embeds go through the shared media pipeline (classifyUrl →
@@ -827,7 +840,7 @@ function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, i
               {isPlanned ? (
                 <>
                   <Calendar className="w-10 h-10 mx-auto text-white/70" />
-                  <p className="text-sm font-medium text-white/80">Upcoming Stream</p>
+                  <p className="text-sm font-medium text-white/80">Upcoming stream</p>
                   <p className="text-xs text-white/50">This stream hasn't started yet</p>
                 </>
               ) : (
@@ -843,7 +856,7 @@ function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, i
             {isPlanned ? (
               <>
                 <Calendar className="w-16 h-16 mx-auto opacity-30" />
-                <p className="text-sm">Upcoming Stream</p>
+                <p className="text-sm">Upcoming stream</p>
                 <p className="text-xs opacity-60">This stream hasn't started yet</p>
               </>
             ) : (
@@ -929,7 +942,7 @@ function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, i
                 data-testid="button-pip-stream"
               >
                 <PictureInPicture2 className="w-3.5 h-3.5" />
-                Pop Out
+                Pop out
               </button>
             ) : (
               <button
@@ -1009,7 +1022,7 @@ function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, i
                 data-testid="button-pip-stream"
               >
                 <PictureInPicture2 className="w-3.5 h-3.5" />
-                Pop Out
+                Pop out
               </button>
             ) : (
               <button
@@ -1081,7 +1094,7 @@ function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, i
               data-testid="button-pip-stream"
             >
               <PictureInPicture2 className="w-3.5 h-3.5" />
-              Pop Out
+              Pop out
             </button>
           ) : (
             <button
@@ -1564,7 +1577,7 @@ function StreamDetail({ stream }: { stream: LiveEventData }) {
             {!mobileChatActive && (
               <div className="px-2.5 py-1.5 border-b border-border dark:border-white/[0.06] flex items-center gap-2 bg-muted dark:bg-[#0c0c14]/60 shrink-0">
                 <Radio className="w-3 h-3 text-brand/60" />
-                <span className="text-[11px] font-medium text-foreground dark:text-white/60">Live Chat</span>
+                <span className="text-[11px] font-medium text-foreground dark:text-white/60">Live chat</span>
                 <span className="text-[9px] text-muted-foreground dark:text-white/20 ml-auto">{chatMessages.length}</span>
               </div>
             )}
@@ -1618,7 +1631,7 @@ function StreamDetail({ stream }: { stream: LiveEventData }) {
                     onFocus={() => isMobileChat && setChatFocused(true)}
                     onBlur={handleChatBlur}
                     placeholder="Send a message..."
-                    className={`flex-1 bg-muted dark:bg-white/[0.04] border-border dark:border-white/[0.06] text-foreground dark:text-white/80 placeholder:text-muted-foreground dark:placeholder:text-white/20 focus-visible:ring-ring dark:focus-visible:ring-brand/30 rounded-md ${mobileChatActive ? "h-10 text-base" : "h-8 text-base sm:text-[11px]"}`}
+                    className={`flex-1 bg-muted dark:bg-white/[0.04] border-input text-foreground dark:text-white/80 placeholder:text-muted-foreground dark:placeholder:text-white/20 focus-visible:ring-ring dark:focus-visible:ring-brand/30 rounded-md ${mobileChatActive ? "h-10 text-base" : "h-8 text-base sm:text-[11px]"}`}
                     // Never disabled while sending: a disabled box loses focus,
                     // which dropped the keyboard and left chat mode after every
                     // message. The send button waits instead (sendChat guards).
@@ -1691,7 +1704,7 @@ function StreamDetail({ stream }: { stream: LiveEventData }) {
               <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
                 <Avatar className="w-8 h-8 border border-border dark:border-white/10">
                   <AvatarImage src={avatarUrl} alt={displayName} />
-                  <AvatarFallback className="text-xs bg-muted dark:bg-brand/50">{displayName?.charAt(0)?.toUpperCase()}</AvatarFallback>
+                  <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs bg-muted">{displayName?.charAt(0)?.toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div>
                   <p className="text-sm font-medium text-foreground dark:text-white/80">{displayName}</p>
@@ -1781,7 +1794,7 @@ function ParticipantBadge({ pubkey, role }: { pubkey: string; role: string }) {
           <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border ${roleColor} bg-muted dark:bg-white/[0.02] hover:bg-accent dark:hover:bg-white/[0.05] transition-colors cursor-pointer`}>
             <Avatar className="w-4 h-4 border border-border dark:border-white/5">
               <AvatarImage src={avatarUrl} alt={displayName} />
-              <AvatarFallback className="text-[6px] bg-muted dark:bg-brand/50">{displayName?.charAt(0)?.toUpperCase()}</AvatarFallback>
+              <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[6px] bg-muted">{displayName?.charAt(0)?.toUpperCase()}</AvatarFallback>
             </Avatar>
             <span className="text-[10px] font-medium">{displayName}</span>
             <span className="text-[8px] opacity-60">{role}</span>
@@ -1797,7 +1810,7 @@ function ParticipantBadge({ pubkey, role }: { pubkey: string; role: string }) {
       >
         <div className="relative rounded-xl overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-[#1a0533] via-[#0d0d2b] to-[#0a0a1a] opacity-95" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(139,92,246,0.15),_transparent_60%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(13,15,18,0.15),_transparent_60%)]" />
           <div className="absolute inset-0 border border-brand/20 rounded-xl" />
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-[1px] bg-gradient-to-r from-transparent via-brand/50 to-transparent" />
 
@@ -1806,7 +1819,7 @@ function ParticipantBadge({ pubkey, role }: { pubkey: string; role: string }) {
               <Link href={`/profile/${npub}`}>
                 <Avatar className="w-12 h-12 ring-2 ring-brand/30 border-2 border-[#0d0d2b] shrink-0 cursor-pointer">
                   <AvatarImage src={avatarUrl} alt={displayName || "Profile"} />
-                  <AvatarFallback className="bg-brand/40 text-brand text-sm font-bold">
+                  <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-sm font-bold">
                     {(displayName || "?").slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -1957,7 +1970,7 @@ function FeedStreamByline({ post }: { post: FeedStreamPost }) {
     <Link href={`/profile/${posterNpub}`} className="mt-1.5 flex items-center gap-2 group/host w-fit" data-testid="feed-stream-host">
       <Avatar className="w-6 h-6 border border-border/40">
         <AvatarImage src={avatarUrl} alt={displayName} />
-        <AvatarFallback className="text-[9px] font-semibold bg-brand/10 text-brand">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[9px] font-semibold">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
       </Avatar>
       <span className="text-xs text-muted-foreground group-hover/host:text-foreground transition-colors truncate">{displayName}</span>
       <span className="text-[11px] text-muted-foreground/50 shrink-0">
@@ -1987,11 +2000,11 @@ function ChannelCard({ post, liveness, onOpen }: { post: FeedStreamPost; livenes
       </div>
       <span className="shrink-0 mt-0.5">
         {liveness === "verified-live" ? (
-          <Badge className="bg-red-600/80 text-white text-[10px] animate-pulse">LIVE</Badge>
+          <LiveTag />
         ) : offline ? (
           <Badge className="bg-zinc-700/80 text-zinc-300 border-zinc-600/50 gap-1 text-[10px]">
             <Signal className="w-3 h-3" />
-            Signal Lost
+            Stream offline
           </Badge>
         ) : (
           <Badge variant="secondary" className="text-[10px] text-muted-foreground/70">Checking…</Badge>
@@ -2067,10 +2080,10 @@ function FeedStreamPostDetail({ nevent }: { nevent: string }) {
           <div className="flex items-center gap-2">
             <h1 className="text-base font-semibold leading-snug" data-testid="feed-stream-title">{post.title}</h1>
             {liveness === "verified-live" && (
-              <Badge className="bg-red-600/80 text-white text-[10px] animate-pulse shrink-0">LIVE</Badge>
+              <LiveTag />
             )}
             {liveness === "offline" && (
-              <Badge className="bg-zinc-700/80 text-zinc-300 border-zinc-600/50 text-[10px] shrink-0">Signal Lost</Badge>
+              <Badge className="bg-zinc-700/80 text-zinc-300 border-zinc-600/50 text-[10px] shrink-0">Offline</Badge>
             )}
           </div>
           <FeedStreamByline post={post} />
@@ -2147,7 +2160,7 @@ export default function LiveStreams() {
 
     // `since` bounds the page the same way LiveStatusContext bounds itself
     // (its comment records why: a bare `limit` let 34 ended events crowd a
-    // 50-slot page). A week still feeds Past broadcasts their replays.
+    // 50-slot page). A week still feeds Past streams their replays.
     const since = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
     const sub = throttledPoolSubscribe(LIVE_STREAM_RELAYS, { kinds: [KIND_LIVE_EVENT], limit: 100, since }, {
       onevent(event: Event) {
@@ -2284,7 +2297,7 @@ export default function LiveStreams() {
       const now = Math.floor(Date.now() / 1000);
       list = list.filter(s => isShowableLive(s, getStreamLiveness(s), now));
     } else {
-      // Past broadcasts list only what a viewer can actually WATCH: a
+      // Past streams list only what a viewer can actually WATCH: a
       // declared recording (hasReplay). An ended event without one is a tap
       // into an error card — invisible beats disappointing.
       list = list.filter(s => effectiveStatus(s) === filterTab && (filterTab !== "ended" || hasReplay(s)));
@@ -2348,9 +2361,9 @@ export default function LiveStreams() {
     // probe verified live RIGHT NOW, not directory size.
     { key: "channels", label: "Channels", shortLabel: "Channels", count: liveChannelCount },
     { key: "planned", label: "Upcoming", shortLabel: "Upcoming", count: plannedCount },
-    // "Past broadcasts" wrapped to two lines at 375px and broke the tab row's
+    // "Past streams" wrapped to two lines at 375px and broke the tab row's
     // baseline — phones get the short word, sm+ keeps the full label.
-    { key: "ended", label: "Past broadcasts", shortLabel: "Past", count: endedCount },
+    { key: "ended", label: "Past streams", shortLabel: "Past", count: endedCount },
   ];
 
   return (
@@ -2386,10 +2399,10 @@ export default function LiveStreams() {
           </div>
         ) : rankedChannels.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/30 space-y-3">
-            <Radio className="w-12 h-12 opacity-30" />
+            <OttoEmpty mood="quiet" size={96} className="text-foreground/70" />
             <p className="text-sm">No channels yet</p>
             <p className="text-xs text-muted-foreground/50 max-w-sm text-center">
-              Channels are live streams people post as notes. Follow someone who
+              Channels are live streams people share as posts. Follow someone who
               shares them and their lineup appears here.
             </p>
           </div>
@@ -2411,21 +2424,15 @@ export default function LiveStreams() {
         </div>
       ) : filteredStreams.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/30 space-y-3">
-          {filterTab === "ended" ? (
-            <History className="w-12 h-12 opacity-30" />
-          ) : filterTab === "planned" ? (
-            <Calendar className="w-12 h-12 opacity-30" />
-          ) : (
-            <Satellite className="w-12 h-12 opacity-30" />
-          )}
+          <OttoEmpty mood="looking" size={96} className="text-foreground/70" />
           <p className="text-sm">
             {filterTab === "live" ? "No live streams right now" :
              filterTab === "planned" ? "No upcoming streams scheduled" :
-             filterTab === "ended" ? "No past broadcasts found" :
+             filterTab === "ended" ? "No past streams found" :
              "No streams found"}
           </p>
           <p className="text-[11px] text-muted-foreground/20">
-            {filterTab === "live" ? "Streams from Nostr relays will appear here when broadcasters go live" :
+            {filterTab === "live" ? "Streams from Nostr relays will appear here when people go live" :
              filterTab === "planned" ? "Scheduled streams will show up here with date and time" :
              filterTab === "ended" ? "Previously aired streams will be listed here" :
              "Streams from Nostr relays will appear here"}

@@ -5,32 +5,18 @@ import { useLocation } from "wouter";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { Radio, UserPlus } from "lucide-react";
 import { LoginOptions } from "@/components/LoginOptions";
+import { OttoMark } from "@/components/OttoMark";
 import { isAddAccountPending, clearAddAccountPending } from "@/lib/account-registry";
 import { isNewAccount } from "@/lib/local-account";
 import { isWelcomed } from "@/lib/welcome";
 
 function BrandLogo({ className }: { className?: string }) {
+  // Outpost look (owner, 2026-11-18): the Otto mark and the name in ink, like
+  // the rail and the Classic sidebar — no boxed wordmark, no flicker or glow.
   return (
-    <div className={`flex items-center rounded-md overflow-hidden brand-flicker ${className || ""}`}>
-      <div className="flex items-center bg-black pl-4 pr-2 h-12 border-2 border-r-0 border-white rounded-l-md">
-        <span className="font-brand font-bold text-lg tracking-[0.2em] text-white uppercase leading-none">Relay</span>
-      </div>
-      <div className="flex items-center justify-center h-12 bg-black border-y-2 border-white">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
-          <g clipPath="url(#clip0_login)">
-            <path d="M5.64999 7.64999L2.85001 4.85001C2.54001 4.54001 2.76001 4 3.20001 4H6.79001C6.92001 4 7.05001 4.04999 7.14001 4.14999L12.14 9.14999C12.45 9.45999 12.23 10 11.79 10H8.5C6.57 10 5 11.57 5 13.5C5 15.43 6.57 17 8.5 17H10L12.15 19.15C12.46 19.46 12.24 20 11.8 20H8.51001C4.92001 20 2.01001 17.09 2.01001 13.5C2.01001 11.01 3.41001 8.84 5.48001 7.75L5.64999 7.64999Z" fill="white" />
-            <path d="M18.35 16.35L21.15 19.15C21.46 19.46 21.24 20 20.8 20H17.21C17.08 20 16.95 19.95 16.86 19.85L11.86 14.85C11.55 14.54 11.77 14 12.21 14H15.5C17.43 14 19 12.43 19 10.5C19 8.57 17.43 7 15.5 7H14L11.85 4.85001C11.54 4.54001 11.76 4 12.2 4H15.49C19.08 4 21.99 6.91 21.99 10.5C21.99 12.99 20.59 15.16 18.52 16.25L18.35 16.35Z" fill="white" />
-          </g>
-          <defs>
-            <clipPath id="clip0_login">
-              <rect width="24" height="24" />
-            </clipPath>
-          </defs>
-        </svg>
-      </div>
-      <div className="flex items-center bg-black pl-2 pr-4 h-12 border-2 border-l-0 border-white rounded-r-md">
-        <span className="font-brand font-bold text-lg tracking-[0.2em] text-white uppercase leading-none">Outpost</span>
-      </div>
+    <div className={`flex items-center gap-3 ${className || ""}`} data-testid="login-brand">
+      <OttoMark size={44} className="shrink-0" />
+      <span className="text-[22px] font-semibold leading-none tracking-[-0.01em] text-foreground">Relay Outpost</span>
     </div>
   );
 }
@@ -224,10 +210,10 @@ export default function Login() {
 
         {addMode && (
           <div
-            className="rounded-lg border border-brand/25 bg-brand/[0.07] px-4 py-3 flex items-start gap-2.5"
+            className="rounded-2xl border border-border bg-card px-4 py-3 flex items-start gap-2.5"
             data-testid="login-add-account-banner"
           >
-            <UserPlus className="w-4 h-4 mt-0.5 shrink-0 text-brand" />
+            <UserPlus className="w-4 h-4 mt-0.5 shrink-0 text-foreground" />
             <div className="space-y-0.5 text-left">
               <p className="text-sm text-foreground font-medium">Adding another account</p>
               <p className="text-xs text-muted-foreground leading-relaxed">
@@ -246,7 +232,7 @@ export default function Login() {
               Sign in to continue to <span className="font-medium text-brand">{pendingIntent}</span>.
             </p>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Signer in another browser or app? Sign in here with a QR code or your secret key —
+              Signer in another browser or app? Sign in here with a QR code or your key —
               or open this link in the browser where your signer lives.
             </p>
           </div>

@@ -144,9 +144,9 @@ export function ActivityIndicator({ pubkey, className }: { pubkey: string; class
   const hasNotes = data.noteCount > 0;
   if (!hasLastSeen && !hasNotes) return null;
 
-  let dotColor = "bg-slate-400";
+  let dotColor = "bg-foreground/30";
   let activityLabel = "";
-  let textColor = "text-muted-foreground/40";
+  let textColor = "text-muted-foreground";
 
   if (hasLastSeen) {
     const now = Math.floor(Date.now() / 1000);
@@ -154,26 +154,26 @@ export function ActivityIndicator({ pubkey, className }: { pubkey: string; class
     const isActive = diff < 86400;
     const isFading = diff < 604800;
 
-    dotColor = isActive ? "bg-emerald-400" : isFading ? "bg-amber-400" : "bg-slate-400";
+    dotColor = isActive ? "bg-success" : isFading ? "bg-amber-500 dark:bg-amber-400" : "bg-foreground/30";
     activityLabel = `${isActive ? "Active" : isFading ? "Seen" : "Last seen"} ${formatLastSeen(data.lastSeen!)}`;
     textColor = isActive
-      ? "text-success dark:text-emerald-400/70"
+      ? "text-success"
       : isFading
-      ? "text-amber-600/60 dark:text-amber-400/50"
-      : "text-muted-foreground/40";
+      ? "text-amber-700 dark:text-amber-400"
+      : "text-muted-foreground";
   }
 
   const notesStat = hasNotes
-    ? `${data.noteCount >= 1000 ? `${(data.noteCount / 1000).toFixed(1)}k` : data.noteCount} notes`
+    ? `${data.noteCount >= 1000 ? `${(data.noteCount / 1000).toFixed(1)}k` : data.noteCount} posts`
     : null;
 
   return (
     <div ref={containerRef} className={`flex items-center gap-1.5 ${className ?? "mt-0.5"}`}>
       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`} />
-      <span className={`text-[10px] whitespace-nowrap truncate ${textColor}`}>
+      <span className={`text-[12px] whitespace-nowrap truncate ${textColor}`}>
         {activityLabel}
-        {activityLabel && notesStat && <span className="text-muted-foreground/30 mx-0.5">·</span>}
-        {notesStat && <span className="text-muted-foreground/40">{notesStat}</span>}
+        {activityLabel && notesStat && <span className="text-muted-foreground mx-0.5" aria-hidden="true">·</span>}
+        {notesStat && <span className="text-muted-foreground">{notesStat}</span>}
       </span>
     </div>
   );

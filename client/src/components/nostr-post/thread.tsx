@@ -7,16 +7,15 @@ import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
 import { Link, useLocation } from "wouter";
 import { use$ } from "applesauce-react/hooks";
-import { useRenderedContent, type ComponentMap } from "applesauce-react/hooks";
-import { eventStore, pool, publishEvent, fetchProfiles, fetchProfilesCached, DEFAULT_RELAYS, FAST_RELAYS, getEventRelays } from "@/lib/nostr";
-import { replyTargetOf, threadRootOf, KIND_NIP22_COMMENT } from "@/lib/reply-target";
+import { useRenderedContent } from "applesauce-react/hooks";
+import { eventStore, publishEvent, fetchProfiles, FAST_RELAYS, getEventRelays } from "@/lib/nostr";
+import { KIND_NIP22_COMMENT } from "@/lib/reply-target";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
 import { getPublishTarget } from "@/lib/outpost-relays";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,12 +24,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Heart,
   MessageSquare,
@@ -45,15 +38,12 @@ import {
   VolumeX,
   CornerUpLeft,
   FileJson,
-  Check,
   Orbit,
-  MoreHorizontal, Trash2,
+  MoreHorizontal,
+  Trash2,
   Type,
   Hash,
   Flag,
-  Terminal,
-  Filter,
-  Search,
   Play,
   ImageIcon,
   ArrowUpDown,
@@ -85,7 +75,7 @@ import {
 import { MediaRenderer } from "@/components/MediaRenderer";
 import { extractMediaFromContent, getEventMediaInfo } from "@/lib/media-utils";
 import { primalStatsCache, fetchThreadRepliesStreaming, getCachedThread, setCachedThread } from "@/lib/primal-cache";
-import { computeEngagementScore, type EngagementStats } from "@/lib/engagement";
+import { computeEngagementScore } from "@/lib/engagement";
 import { useToast } from "@/hooks/use-toast";
 import { mutePubkey, isMutedPubkey } from "@/lib/spam-filter";
 import { useWiderNetwork } from "@/lib/network-mode";
@@ -122,25 +112,14 @@ import { MentionSearch } from "@/components/MentionSearch";
 import { MentionHighlightTextarea } from "@/components/MentionHighlightTextarea";
 import { ComposeEmojiPicker, useEmojiTags } from "@/components/ComposeEmojiPicker";
 import { readReplyDraft, saveReplyDraft, clearReplyDraft } from "@/lib/reply-drafts";
-import { prefetchProfileOnHover } from "@/hooks/use-prefetch-visible";
 import { AuthorHoverCard, TrustTierDot, ThreadTrustBar, BtcZapIcon } from "./author-hover";
 import { ZapReceiptsPopover, TopZapperAvatars, ReactionDetailsPopover, formatCount } from "./zap-reactions";
 import {
   contentComponents,
-  REACTIONS,
-  closeAllReactionBars,
-  dismissReactionBar,
-  startReactionHoverDwell,
-  cancelReactionHoverDwell,
-  toggleMobileReactionBar,
-  getReactionDisplay,
-  CustomEmojiPicker,
-  getEventEmojiMap,
   emojifyChildren,
   PostBadgeToggle,
-  ParsedPreviewText,
   RawEventDialog,
-} from "../NostrPost";
+  getEventEmojiMap,} from "../NostrPost";
 import { normalizeNostrClientLinks } from "@/lib/nostr-client-links";
 import { ReplyDockContext, getReplyTargetId, getRootEventId, useReplyDock } from "./thread-lite";
 export { ParentPostPreview } from "./thread-lite";
@@ -311,8 +290,8 @@ export function ReplyDock({ root, children }: { root: Event; children: ReactNode
         >
           {target && (
             <div className="flex items-center gap-2 pl-4 text-[13px] text-muted-foreground" data-testid="thread-reply-dock-target">
-              <CornerUpLeft className="w-3.5 h-3.5 shrink-0 text-brand/70" aria-hidden="true" />
-              <span className="truncate">Replying to <span className="text-brand font-medium">{targetName}</span></span>
+              <CornerUpLeft className="w-3.5 h-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="truncate">Replying to <span className="text-foreground font-medium">{targetName}</span></span>
               <button
                 type="button"
                 onClick={() => setTarget(null)}
@@ -339,7 +318,7 @@ export function ReplyDock({ root, children }: { root: Event; children: ReactNode
           >
             <Avatar className="w-8 h-8 border border-border/40 shrink-0">
               <AvatarImage src={profile?.picture} alt="" />
-              <AvatarFallback className="text-[10px] bg-muted text-muted-foreground">{initials}</AvatarFallback>
+              <AvatarFallback className="text-[10px] bg-foreground/[0.08] text-foreground/80">{initials}</AvatarFallback>
             </Avatar>
             <span className={`flex-1 min-w-0 min-h-[40px] flex items-center rounded-full bg-black/[0.04] dark:bg-white/[0.06] px-4 text-[15px] ${draftText ? "text-foreground" : "text-muted-foreground"}`}>
               <span className="truncate" data-testid="thread-reply-dock-draft">{draftText || "Write a reply…"}</span>
@@ -564,11 +543,11 @@ export function ReplyComposer({
             80% see-through with a blur phones don't always paint, so the
             page (Share this conversation, the footer's icons) showed through
             the text you were typing (owner, 2026-10-07). */}
-        <div className="bg-background border-t border-brand/15 dark:border-brand/20 shadow-[0_-10px_28px_-14px_rgba(139,92,246,0.22)]" style={vpRect ? {} : { paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-brand/10 dark:border-white/[0.06]">
-            <CornerUpLeft className="w-3 h-3 text-brand/60 shrink-0" />
+        <div className="bg-background border-t border-border/60 shadow-[0_-10px_28px_-14px_rgba(0,0,0,0.25)]" style={vpRect ? {} : { paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
+            <CornerUpLeft className="w-3 h-3 text-muted-foreground shrink-0" />
             <span className="text-xs text-muted-foreground/70 truncate">
-              Replying to <span className="text-brand/90 font-medium">@{replyToName}</span>
+              Replying to <span className="text-foreground font-medium">@{replyToName}</span>
             </span>
             <button
               onClick={onClose}
@@ -610,7 +589,7 @@ export function ReplyComposer({
                 data-testid={`input-reply-${replyTo.id}`}
               />
               {gifUrl && (
-                <div className="relative mt-2 w-fit self-start rounded-lg overflow-hidden bg-brand/[0.06] border border-brand/15">
+                <div className="relative mt-2 w-fit self-start rounded-lg overflow-hidden bg-foreground/[0.04] border border-border/60">
                   <img src={gifUrl} alt="GIF" className="max-w-[140px] max-h-[110px] object-cover block" loading="lazy" decoding="async" />
                   <button
                     type="button"
@@ -675,7 +654,7 @@ export function ReplyComposer({
             position="above"
           />
           {gifUrl && (
-            <div className="relative mt-2 w-fit self-start rounded-lg overflow-hidden bg-brand/[0.06] border border-brand/15">
+            <div className="relative mt-2 w-fit self-start rounded-lg overflow-hidden bg-foreground/[0.04] border border-border/60">
               <img src={gifUrl} alt="GIF" className="max-w-[160px] max-h-[120px] object-cover block" loading="lazy" decoding="async" />
               <button
                 type="button"
@@ -1036,9 +1015,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
   const { hasQuoted } = useViewerInteraction(event.id);
   const boosted = hasReposted || hasQuoted;
   const [hasLiked, setHasLiked] = useState(false);
-  const [myReactionContent, setMyReactionContent] = useState<string | null>(null);
-  const [myReactionEmojiUrl, setMyReactionEmojiUrl] = useState<string | undefined>(undefined);
-  const { emojis: customEmojis } = useCustomEmojis();
+  useCustomEmojis();
   const [reactionPopping, setReactionPopping] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [showMuteConfirm, setShowMuteConfirm] = useState(false);
@@ -1056,7 +1033,6 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
     if (!c) return null;
     return { name: c.display_name || c.name, nip05: c.nip05 };
   }, [authorProfile]);
-  const avatarUrl = getAvatarUrl(authorProfile);
   // Normalized first: a link to another Nostr client stays in the text as a
   // nostr: reference (shown natively) instead of being stripped with the URLs.
   const { text: textContent, media: replyMediaItems } = useMemo(() => extractMediaFromContent(normalizeNostrClientLinks(event.content)), [event.content]);
@@ -1085,20 +1061,12 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
       ));
     };
     const checkLiked = () => {
-      if (!myPubkey) { setHasLiked(false); setMyReactionContent(null); setMyReactionEmojiUrl(undefined); return; }
+      if (!myPubkey) { setHasLiked(false); return; }
       const all = eventStore.getByFilters({ kinds: [KIND_REACTION] });
       const myReaction = [...all].find(
         (e) => e.pubkey === myPubkey && e.tags.some((t) => t[0] === "e" && t[1] === event.id)
       );
       setHasLiked(!!myReaction);
-      if (myReaction) {
-        setMyReactionContent(myReaction.content);
-        const emojiTag = myReaction.tags.find((t: string[]) => t[0] === "emoji" && t[2]);
-        setMyReactionEmojiUrl(emojiTag?.[2]);
-      } else {
-        setMyReactionContent(null);
-        setMyReactionEmojiUrl(undefined);
-      }
     };
     checkReposted();
     checkLiked();
@@ -1309,8 +1277,6 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
       const signedEvent = await signWithTimeout(signer, eventTemplate);
       setHasLiked(true);
       setIsLiking(false);
-      setMyReactionContent(content);
-      if (emojiTag) setMyReactionEmojiUrl(emojiTag[2]);
       setReactionPopping(true);
       setTimeout(() => setReactionPopping(false), 350);
       const existing = primalStatsCache.get(event.id);
@@ -1325,8 +1291,6 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
       publishEvent(signedEvent, userRelays2, event.pubkey, isUserSelected2).catch((err) => {
         console.error(err);
         setHasLiked(false);
-        setMyReactionContent(null);
-        if (emojiTag) setMyReactionEmojiUrl(undefined);
         const rollback = primalStatsCache.get(event.id);
         if (rollback && rollback.likes > 0) {
           primalStatsCache.set(event.id, { ...rollback, likes: rollback.likes - 1 });
@@ -1346,11 +1310,6 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
     }
   };
 
-  const handleCustomEmojiReaction = useCallback((emoji: CustomEmoji) => {
-    const content = `:${emoji.shortcode}:`;
-    const emojiTag: [string, string, string] = ["emoji", emoji.shortcode, emoji.url];
-    handleReaction(content, emojiTag);
-  }, [handleReaction]);
 
   const handleLike = () => {
     handleReaction("+");
@@ -1384,7 +1343,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
   const handleCopyText = async () => {
     try {
       await navigator.clipboard.writeText(event.content);
-      toast({ title: "Copied", description: "Note text copied." });
+      toast({ title: "Copied", description: "Post text copied." });
     } catch {
       toast({ title: "Error", description: "Failed to copy.", variant: "destructive" });
     }
@@ -1393,7 +1352,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
   const handleCopyNoteId = async () => {
     try {
       await copyNostrId(noteId);
-      toast({ title: "Copied", description: "Note ID copied." });
+      toast({ title: "Copied", description: "Post ID copied." });
     } catch {
       toast({ title: "Error", description: "Failed to copy.", variant: "destructive" });
     }
@@ -1410,7 +1369,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
       <div className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2.5 sm:py-2.5 overflow-hidden ${isBubbles ? "glass-header rounded-t-xl" : ""}`} onClick={(e) => e.stopPropagation()}>
         <AuthorHoverCard pubkey={event.pubkey} profile={authorProfile}>
           <Link href={profileUrl} data-testid={`link-thread-avatar-${event.id}`}>
-            <PersonAvatar pubkey={event.pubkey} profile={authorProfile} alt={displayName} className={`w-7 h-7 sm:w-6 sm:h-6 shrink-0 ring-1 ${isOP ? "ring-brand/40" : "ring-primary/20"} border border-background cursor-pointer`} fallbackClassName="bg-brand/10 text-brand font-bold text-xs sm:text-[11px]" />
+            <PersonAvatar pubkey={event.pubkey} profile={authorProfile} alt={displayName} className={`w-7 h-7 sm:w-6 sm:h-6 shrink-0 ring-1 ${isOP ? "ring-foreground/40" : "ring-border"} border border-background cursor-pointer`} fallbackClassName="bg-foreground/[0.08] text-foreground/80 font-bold text-xs sm:text-[11px]" />
           </Link>
         </AuthorHoverCard>
         <div className="flex-1 min-w-0">
@@ -1422,7 +1381,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
             </Link>
             {commentTrustVisible && <TrustTierDot pubkey={event.pubkey} />}
             {isOP && (
-              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 bg-brand/15 text-brand border-brand/20 shrink-0" data-testid={`badge-op-${event.id}`}>
+              <Badge variant="secondary" className="text-[11px] px-1.5 py-0 h-4 bg-transparent text-foreground/80 border-border/60 shrink-0" data-testid={`badge-op-${event.id}`}>
                 OP
               </Badge>
             )}
@@ -1434,10 +1393,10 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
                 type="button"
                 onClick={handleParentCueClick}
                 title={`Replying to @${replyToName}`}
-                className={`items-center gap-0.5 truncate min-w-0 shrink cursor-pointer text-[11px] ${
+                className={`items-center gap-0.5 truncate min-w-0 shrink cursor-pointer text-[12px] ${
                   showParentCue
                     ? "flex text-muted-foreground/70 hover:text-foreground/80 font-medium rounded-full px-1 py-0.5 transition-colors"
-                    : "hidden sm:flex text-brand font-medium bg-brand/10 rounded-full px-1.5 py-0.5"
+                    : "hidden sm:flex text-brand font-medium bg-foreground/[0.05] rounded-full px-2 py-0.5"
                 }`}
                 data-testid={`button-parent-cue-${event.id}`}
               >
@@ -1445,9 +1404,9 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
                 <span className="truncate">@{replyToName}</span>
               </button>
             )}
-            <span className="text-[11px] text-muted-foreground/70 shrink-0 whitespace-nowrap hidden sm:inline">{timeAgo}</span>
+            <span className="text-[12px] text-muted-foreground shrink-0 whitespace-nowrap hidden sm:inline">{timeAgo}</span>
           </div>
-          <span className="text-[11px] text-muted-foreground/60 block sm:hidden mt-0.5">{timeAgo}</span>
+          <span className="text-[12px] text-muted-foreground block sm:hidden mt-0.5">{timeAgo}</span>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -1467,26 +1426,26 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
                 Share + Bookmark live on the OP post, not on every passing reply. */}
             <DropdownMenuLabel className="glass-dropdown-label">Copy</DropdownMenuLabel>
             <DropdownMenuItem className="gap-2.5 cursor-pointer" onSelect={handleCopyLink} data-testid={`menu-thread-copy-link-${event.id}`}>
-              <Copy className="w-3.5 h-3.5 text-brand/70" />
-              Note Link
+              <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+              Post link
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2.5 cursor-pointer" onSelect={handleCopyText} data-testid={`menu-thread-copy-text-${event.id}`}>
-              <Type className="w-3.5 h-3.5 text-brand/70" />
-              Note Text
+              <Type className="w-3.5 h-3.5 text-muted-foreground" />
+              Post text
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2.5 cursor-pointer" onSelect={handleCopyNoteId} data-testid={`menu-thread-copy-id-${event.id}`}>
-              <Hash className="w-3.5 h-3.5 text-brand/70" />
-              Note ID
+              <Hash className="w-3.5 h-3.5 text-muted-foreground" />
+              Post ID
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2.5 cursor-pointer" onSelect={handleCopyNpub} data-testid={`menu-thread-copy-npub-${event.id}`}>
-              <User className="w-3.5 h-3.5 text-brand/70" />
+              <User className="w-3.5 h-3.5 text-muted-foreground" />
               Author npub
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="glass-dropdown-label">Inspect</DropdownMenuLabel>
             <DropdownMenuItem className="gap-2.5 cursor-pointer" onSelect={() => setTimeout(() => setShowRawData(true), 0)} data-testid={`menu-thread-raw-data-${event.id}`}>
-              <FileJson className="w-3.5 h-3.5 text-brand/70" />
-              Raw Telemetry
+              <FileJson className="w-3.5 h-3.5 text-muted-foreground" />
+              Raw event
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             {isOwnReply && signer && (
@@ -1497,11 +1456,11 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
             )}
             <DropdownMenuItem className="gap-2.5 cursor-pointer text-destructive" onSelect={() => setTimeout(() => setShowMuteConfirm(true), 0)} data-testid={`menu-thread-mute-${event.id}`}>
               <VolumeX className="w-3.5 h-3.5" />
-              Mute Signal
+              Mute this person
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2.5 cursor-pointer text-destructive" onSelect={() => setTimeout(() => setShowReportDialog(true), 0)} data-testid={`menu-thread-report-${event.id}`}>
               <Flag className="w-3.5 h-3.5" />
-              Report Content
+              Report post
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -1528,7 +1487,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
             className={`post-content-text reply-content-text leading-relaxed whitespace-pre-wrap break-words ${isBubbles ? `rounded-lg px-2.5 py-1.5 ${isShortReply ? "w-fit max-w-[85%]" : ""} ${isOwnReply ? "glass-bubble-reply-own" : "glass-bubble-reply"}` : ""}`}
             testId={`text-thread-content-${event.id}`}
             toggleTestId={`button-toggle-reply-expand-${event.id}`}
-            toggleClassName="text-[11px] text-brand/80 mt-1 cursor-pointer font-medium tracking-wide"
+            toggleClassName="text-[13px] text-brand mt-1 cursor-pointer font-medium"
             expanded={replyExpanded}
             onExpandedChange={setReplyExpanded}
           >
@@ -1551,7 +1510,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
         >
           <MessageSquare className="w-3 h-3" />
         </Button>
-        <span className="text-[11px] -ml-0.5 mr-0.5 text-muted-foreground" data-testid={`text-thread-reply-count-${event.id}`}>
+        <span className="text-[12px] -ml-0.5 mr-0.5 text-muted-foreground" data-testid={`text-thread-reply-count-${event.id}`}>
           {formatCount(replyCount || childCount || 0)}
         </span>
 
@@ -1583,7 +1542,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
                 disabled={isReposting}
                 data-testid={`button-thread-do-repost-${event.id}`}
               >
-                <Repeat className="w-3.5 h-3.5 text-brand/70" />
+                <Repeat className="w-3.5 h-3.5 text-muted-foreground" />
                 Repost
               </DropdownMenuItem>
             )}
@@ -1592,13 +1551,13 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
               onClick={handleQuote}
               data-testid={`button-thread-quote-${event.id}`}
             >
-              <Quote className="w-3.5 h-3.5 text-brand/70" />
+              <Quote className="w-3.5 h-3.5 text-muted-foreground" />
               Quote
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         {repostCount > 0 && (
-          <span className={`text-[11px] -ml-0.5 mr-0.5 ${boosted ? "stat-glow-reposts" : "text-muted-foreground"}`} data-testid={`text-thread-repost-count-${event.id}`}>
+          <span className={`text-[12px] -ml-0.5 mr-0.5 ${boosted ? "stat-glow-reposts" : "text-muted-foreground"}`} data-testid={`text-thread-repost-count-${event.id}`}>
             {formatCount(repostCount)}
           </span>
         )}
@@ -1623,7 +1582,7 @@ export function ThreadReplyItem({ event, childCount = 0, opPubkey, showParentCue
             eventId={event.id}
             likeCount={likeCount}
             trigger={
-              <span className={`text-[11px] -ml-0.5 mr-0.5 cursor-pointer ${hasLiked ? "stat-glow-likes" : "text-muted-foreground"}`} data-testid={`text-thread-like-count-${event.id}`}>
+              <span className={`text-[12px] -ml-0.5 mr-0.5 cursor-pointer ${hasLiked ? "stat-glow-likes" : "text-muted-foreground"}`} data-testid={`text-thread-like-count-${event.id}`}>
                 {formatCount(likeCount)}
               </span>
             }
@@ -1729,7 +1688,7 @@ export function CollapsedAvatarPreview({ pubkey }: { pubkey: string }) {
   return (
     <Avatar className="w-5 h-5 border-2 border-background shrink-0">
       <AvatarImage src={getAvatarUrl(profile)} alt="" />
-      <AvatarFallback className="text-[7px] bg-brand/10 text-brand font-bold">
+      <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[7px] font-bold">
         {(profile ? (getDisplayName(profile, "") || "") : "").slice(0, 1).toUpperCase() || "?"}
       </AvatarFallback>
     </Avatar>
@@ -1741,7 +1700,7 @@ export function CollapsedThreadPreview({ node, totalDescendants, onExpand }: { n
 
   return (
     <button
-      className="flex items-center gap-2 text-xs text-brand/70 py-2 px-2.5 rounded-lg hover:bg-brand/5 cursor-pointer mt-1 transition-colors w-full"
+      className="flex items-center gap-2 text-[13px] font-medium text-brand py-2 px-2.5 rounded-lg hover:bg-foreground/[0.04] cursor-pointer mt-1 transition-colors w-full"
       onClick={onExpand}
       data-testid={`button-expand-replies-${node.event.id}`}
     >
@@ -1779,7 +1738,7 @@ export function ContinueThreadRow({ node }: { node: ThreadNode }) {
 
   return (
     <button
-      className="flex items-center gap-1.5 text-xs text-brand/70 hover:text-brand py-2 px-2.5 rounded-lg hover:bg-brand/5 cursor-pointer mt-1 transition-colors w-full text-left"
+      className="flex items-center gap-1.5 text-[13px] font-medium text-brand hover:text-brand-strong py-2 px-2.5 rounded-lg hover:bg-foreground/[0.04] cursor-pointer mt-1 transition-colors w-full text-left"
       onClick={(e) => { e.stopPropagation(); navigate(url); }}
       data-testid={`button-continue-thread-${node.event.id}`}
     >
@@ -1826,7 +1785,7 @@ export function ThreadSiblingGroup({
       ))}
       {!showAll && overflow.length > 0 && (
         <button
-          className="flex items-center gap-1.5 text-xs text-brand/70 hover:text-brand py-2 px-2.5 rounded-lg hover:bg-brand/5 cursor-pointer transition-colors w-full text-left"
+          className="flex items-center gap-1.5 text-[13px] font-medium text-brand hover:text-brand-strong py-2 px-2.5 rounded-lg hover:bg-foreground/[0.04] cursor-pointer transition-colors w-full text-left"
           onClick={(e) => { e.stopPropagation(); setShowAll(true); }}
           data-testid={`button-show-more-siblings-${groupKey}`}
         >
@@ -1900,7 +1859,7 @@ export function ThreadReplyNode({ node, depth, opPubkey, indentCap = DESKTOP_THR
         )}
         <div className="flex-1 min-w-0">
           <div
-            className={`relative rounded-lg transition-colors duration-700 ${justSent ? "bg-brand/[0.08] ring-1 ring-brand/25" : ""}`}
+            className={`relative rounded-lg transition-colors duration-700 ${justSent ? "bg-foreground/[0.06] ring-1 ring-border" : ""}`}
             data-testid={`button-select-reply-${node.event.id}`}
           >
             <PostBoundary id={node.event.id}>
@@ -1972,7 +1931,7 @@ export function InlineThreadReplyBar({
       >
         <Avatar className="w-8 h-8 border border-border/40 shrink-0">
           <AvatarImage src={profile?.picture} alt="You" />
-          <AvatarFallback className="text-[10px] bg-muted text-muted-foreground">
+          <AvatarFallback className="text-[10px] bg-foreground/[0.08] text-foreground/80">
             {initials}
           </AvatarFallback>
         </Avatar>
@@ -1981,7 +1940,7 @@ export function InlineThreadReplyBar({
         </span>
         <span
           aria-hidden="true"
-          className="shrink-0 rounded-full bg-brand/15 text-brand text-xs font-semibold px-3.5 py-1.5 transition-colors group-hover:bg-brand/25"
+          className="shrink-0 rounded-full bg-foreground text-background text-[13px] font-medium px-4 py-1.5 transition-colors group-hover:bg-foreground/90"
         >
           Reply
         </span>
@@ -1997,7 +1956,7 @@ export function InlineThreadReplyBar({
     >
       <Avatar className="w-6 h-6 border border-border/40 shrink-0">
         <AvatarImage src={profile?.picture} alt="You" />
-        <AvatarFallback className="text-[9px] bg-muted text-muted-foreground">
+        <AvatarFallback className="text-[9px] bg-foreground/[0.08] text-foreground/80">
           {(profile?.display_name || profile?.name || "?").slice(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>
@@ -2372,7 +2331,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
         data-testid={`button-toggle-thread-${rootId}`}
       >
         <div className="flex items-center gap-2">
-          <MessageSquare className="w-3.5 h-3.5 text-brand/50" />
+          <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
           <span className="text-xs font-medium text-foreground/70">
             {threadTree.length} {threadTree.length === 1 ? "reply" : "replies"}
             {allReplies.length > threadTree.length && (
@@ -2381,7 +2340,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
               </span>
             )}
             {excludedTiers.size > 0 && filteredNodeCount !== allReplies.length && (
-              <span className="text-brand/60 ml-1">
+              <span className="text-muted-foreground ml-1">
                 (showing {filteredNodeCount})
               </span>
             )}
@@ -2402,7 +2361,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
             <Button
               variant="ghost"
               size="sm"
-              className={`h-6 px-1.5 text-[10px] gap-1 ${isReadingThread ? "text-brand" : "text-muted-foreground/70 hover:text-foreground/80"}`}
+              className={`h-6 px-1.5 text-[12px] gap-1 ${isReadingThread ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               onClick={handleReadThread}
               title={isReadingThread ? "Stop reading thread" : "Read thread aloud"}
               data-testid={`button-read-thread-${rootId}`}
@@ -2414,7 +2373,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 px-1.5 text-[10px] text-muted-foreground/70 hover:text-foreground/80 gap-1"
+            className="h-6 px-1.5 text-[12px] text-muted-foreground hover:text-foreground gap-1"
             onClick={(e) => { e.stopPropagation(); setSortOrder((s) => s === "oldest" ? "newest" : "oldest"); }}
             data-testid={`button-sort-thread-${rootId}`}
           >
@@ -2454,7 +2413,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
                 <p className="text-xs text-muted-foreground/50">All replies filtered out</p>
                 <button
                   onClick={() => setExcludedTiers(new Set())}
-                  className="text-[11px] text-brand/70 hover:text-brand-strong transition-colors mt-1 cursor-pointer"
+                  className="text-[13px] font-medium text-brand hover:text-brand-strong transition-colors mt-1 cursor-pointer"
                 >
                   Show all replies
                 </button>
@@ -2472,7 +2431,7 @@ export function ReplyThread({ rootId, rootEvent, onClose, showFloatingCollapse =
           {!bare && rootEvent && <InlineThreadReplyBar replyTo={rootEvent} />}
           {!bare && (
             <div
-              className="flex items-center justify-center gap-1.5 px-4 py-2 border-t border-border/10 cursor-pointer text-xs text-muted-foreground/60 hover:text-brand/70 transition-colors"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 border-t border-border/10 cursor-pointer text-[13px] text-muted-foreground hover:text-foreground transition-colors"
               onClick={collapseAndScroll}
               data-testid={`button-collapse-thread-bottom-${rootId}`}
             >

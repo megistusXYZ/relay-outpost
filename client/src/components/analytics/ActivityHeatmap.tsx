@@ -1,14 +1,27 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import type { Event } from "nostr-tools";
 import { nip19 } from "nostr-tools";
-import { pool, DEFAULT_RELAYS, throttledPoolSubscribe, eventStore } from "@/lib/nostr";
+import { DEFAULT_RELAYS, throttledPoolSubscribe, eventStore } from "@/lib/nostr";
 import { getProfileContent, getAvatarUrl } from "@/lib/nostr-helpers";
 import { format, subDays, startOfWeek, addDays, differenceInDays, parseISO, startOfDay, endOfDay } from "date-fns";
 import {
-  CalendarDays, Flame, Activity, Search, X,
-  MessageSquare, Repeat2, Heart, Zap, FileText, Image,
-  Video, Bookmark, ChevronDown, ChevronUp, Calendar,
-  ArrowLeft, Eye, Send, Clock
+  CalendarDays,
+  Flame,
+  Activity,
+  Search,
+  X,
+  MessageSquare,
+  Repeat2,
+  Heart,
+  Zap,
+  FileText,
+  Image,
+  ChevronDown,
+  ChevronUp,
+  ArrowLeft,
+  Eye,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +53,7 @@ const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const KIND_LABELS: Record<number, string> = {
   0: "Profile Update",
-  1: "Text Note",
+  1: "Post",
   4: "DM",
   6: "Repost",
   7: "Reaction",
@@ -51,37 +64,11 @@ const KIND_LABELS: Record<number, string> = {
   10003: "Bookmark",
   30023: "Long-form Article" };
 
-const KIND_ICONS: Record<number, typeof MessageSquare> = {
-  1: FileText,
-  4: Send,
-  6: Repeat2,
-  7: Heart,
-  20: Image,
-  21: Video,
-  9735: Zap,
-  10003: Bookmark,
-  30023: FileText };
-
 function getKindLabel(kind: number): string {
   return KIND_LABELS[kind] || `Kind ${kind}`;
 }
 
-function getKindIcon(kind: number) {
-  return KIND_ICONS[kind] || FileText;
-}
 
-function getKindColor(kind: number): string {
-  switch (kind) {
-    case 1: return "text-blue-700 dark:text-blue-400";
-    case 4: return "text-success dark:text-green-400";
-    case 6: return "text-success dark:text-emerald-400";
-    case 7: return "text-pink-400";
-    case 9735: return "text-amber-800 dark:text-amber-400";
-    case 20: case 21: return "text-cyan-800 dark:text-cyan-400";
-    case 30023: return "text-brand";
-    default: return "text-muted-foreground";
-  }
-}
 
 function getHeatmapColor(count: number, max: number): string {
   if (count === 0 || max === 0) return "bg-brand/5 border border-brand/10";
@@ -156,7 +143,7 @@ function ProfileAvatar({ pubkey }: { pubkey: string }) {
   return (
     <Avatar className="w-5 h-5 shrink-0">
       <AvatarImage src={avatarUrl} alt={displayName} />
-      <AvatarFallback className="bg-brand/20 text-[8px]">
+      <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[8px]">
         {displayName ? displayName.slice(0, 1).toUpperCase() : "?"}
       </AvatarFallback>
     </Avatar>
@@ -173,15 +160,12 @@ function TargetProfileHeader({ pubkey }: { pubkey: string }) {
       displayName: content?.display_name || content?.name || "" };
   }, [profile]);
 
-  const npub = useMemo(() => {
-    try { return nip19.npubEncode(pubkey); } catch { return ""; }
-  }, [pubkey]);
 
   return (
     <div className="flex items-center gap-2">
       <Avatar className="w-8 h-8 shrink-0 border border-brand/20">
         <AvatarImage src={avatarUrl} alt={displayName} />
-        <AvatarFallback className="bg-brand/20 text-xs">
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs">
           {displayName ? displayName.slice(0, 2).toUpperCase() : "??"}
         </AvatarFallback>
       </Avatar>
@@ -206,7 +190,7 @@ function categorizeEvent(event: Event): EventCategory {
 }
 
 const CATEGORY_META: Record<EventCategory, { label: string; icon: typeof FileText; color: string }> = {
-  notes: { label: "Notes", icon: FileText, color: "text-blue-700 dark:text-blue-400" },
+  notes: { label: "Posts", icon: FileText, color: "text-blue-700 dark:text-blue-400" },
   replies: { label: "Replies", icon: MessageSquare, color: "text-sky-400" },
   reposts: { label: "Reposts", icon: Repeat2, color: "text-success dark:text-emerald-400" },
   reactions: { label: "Reactions", icon: Heart, color: "text-pink-400" },
@@ -415,7 +399,7 @@ function DayDrilldown({ date, events, onClose }: DayDrilldownProps) {
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
-            <h3 className="text-sm font-display text-brand" data-testid="drilldown-date">{displayDate}</h3>
+            <h3 className="text-sm font-semibold text-foreground" data-testid="drilldown-date">{displayDate}</h3>
             <p className="text-[10px] text-muted-foreground/50 flex items-center gap-1">
               {events.length} events{totalZapSats > 0 && <><span className="mx-0.5">·</span><Zap className="w-2.5 h-2.5 text-amber-800 dark:text-amber-400 inline" /> {totalZapSats.toLocaleString()} sats</>}
             </p>
@@ -737,7 +721,7 @@ export function ActivityHeatmap({ pubkey: propPubkey, relays: propRelays }: Acti
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <CalendarDays className="w-4 h-4 text-brand" />
-            <h2 className="text-sm font-display text-brand">Activity Heatmap</h2>
+            <h2 className="text-[15px] font-semibold text-foreground">Activity heatmap</h2>
           </div>
           {activePubkey && events.length > 0 && (
             <div className="flex items-center gap-1">
@@ -761,7 +745,7 @@ export function ActivityHeatmap({ pubkey: propPubkey, relays: propRelays }: Acti
 
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="flex-1 space-y-1">
-            <Label htmlFor="heatmap-pubkey" className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
+            <Label htmlFor="heatmap-pubkey" className="text-[13px] text-muted-foreground font-medium">
               Pubkey / npub
             </Label>
             <div className="flex gap-2">
@@ -785,8 +769,8 @@ export function ActivityHeatmap({ pubkey: propPubkey, relays: propRelays }: Acti
             </div>
           </div>
           <div className="space-y-1">
-            <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-              Time Range
+            <Label className="text-[13px] text-muted-foreground font-medium">
+              Time range
             </Label>
             <Select value={isCustom ? "-1" : String(days)} onValueChange={handleRangeChange}>
               <SelectTrigger data-testid="select-heatmap-range" className="w-[100px]" style={{ fontSize: "16px" }}>
@@ -806,7 +790,7 @@ export function ActivityHeatmap({ pubkey: propPubkey, relays: propRelays }: Acti
         {isCustom && (
           <div className="flex flex-col sm:flex-row gap-2 items-end" data-testid="custom-range-inputs">
             <div className="flex-1 space-y-1">
-              <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">From</Label>
+              <Label className="text-[13px] text-muted-foreground font-medium">From</Label>
               <Input
                 type="date"
                 value={customRange.from}
@@ -817,7 +801,7 @@ export function ActivityHeatmap({ pubkey: propPubkey, relays: propRelays }: Acti
               />
             </div>
             <div className="flex-1 space-y-1">
-              <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">To</Label>
+              <Label className="text-[13px] text-muted-foreground font-medium">To</Label>
               <Input
                 type="date"
                 value={customRange.to}
@@ -858,7 +842,7 @@ export function ActivityHeatmap({ pubkey: propPubkey, relays: propRelays }: Acti
                 }`}
                 data-testid="stat-card-active-days"
               >
-                <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Active Days</p>
+                <p className="text-[13px] text-muted-foreground font-medium">Active days</p>
                 <p className="text-lg font-mono text-brand" data-testid="stat-active-days">
                   {stats.totalActiveDays}
                 </p>
@@ -874,7 +858,7 @@ export function ActivityHeatmap({ pubkey: propPubkey, relays: propRelays }: Acti
               >
                 <div className="flex items-center gap-1">
                   <Flame className="w-3 h-3 text-orange-800 dark:text-orange-400" />
-                  <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Longest Streak</p>
+                  <p className="text-[13px] text-muted-foreground font-medium">Longest streak</p>
                 </div>
                 <p className="text-lg font-mono text-orange-800 dark:text-orange-400" data-testid="stat-longest-streak">
                   {stats.longestStreak}d
@@ -891,7 +875,7 @@ export function ActivityHeatmap({ pubkey: propPubkey, relays: propRelays }: Acti
               >
                 <div className="flex items-center gap-1">
                   <Flame className="w-3 h-3 text-amber-800 dark:text-amber-400" />
-                  <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Current Streak</p>
+                  <p className="text-[13px] text-muted-foreground font-medium">Current streak</p>
                 </div>
                 <p className="text-lg font-mono text-amber-800 dark:text-amber-400" data-testid="stat-current-streak">
                   {stats.currentStreak}d
@@ -900,14 +884,14 @@ export function ActivityHeatmap({ pubkey: propPubkey, relays: propRelays }: Acti
               <div className="space-y-1 p-3 rounded-lg bg-brand/10 border border-brand/10">
                 <div className="flex items-center gap-1">
                   <Activity className="w-3 h-3 text-brand" />
-                  <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Avg/Day</p>
+                  <p className="text-[13px] text-muted-foreground font-medium">Avg/day</p>
                 </div>
                 <p className="text-lg font-mono text-brand" data-testid="stat-avg-per-day">
                   {stats.avgPerActiveDay}
                 </p>
               </div>
               <div className="space-y-1 p-3 rounded-lg bg-brand/10 border border-brand/10 col-span-2 sm:col-span-1">
-                <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Total Events</p>
+                <p className="text-[13px] text-muted-foreground font-medium">Total events</p>
                 <p className="text-lg font-mono text-foreground" data-testid="stat-total-events">
                   {stats.totalEvents.toLocaleString()}
                 </p>
@@ -917,7 +901,7 @@ export function ActivityHeatmap({ pubkey: propPubkey, relays: propRelays }: Acti
             {statView && statDaysList.length > 0 && (
               <div className="border border-brand/20 rounded-lg bg-white/90 dark:bg-[rgba(4,4,10,0.4)] p-3 space-y-2" data-testid="stat-drilldown">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-display text-brand">
+                  <h4 className="text-xs font-semibold text-foreground">
                     {statView === "active-days" ? "All Active Days" : statView === "longest-streak" ? "Longest Streak Days" : "Current Streak Days"}
                     <span className="text-muted-foreground/50 ml-1">({statDaysList.length})</span>
                   </h4>
@@ -1045,7 +1029,7 @@ export function ActivityHeatmap({ pubkey: propPubkey, relays: propRelays }: Acti
                     <div key={bucket.label} className="border border-brand/10 rounded-lg p-3 hover:border-brand/20 transition-colors" data-testid={`summary-bucket-${bucket.start}`}>
                       <div className="flex items-center justify-between mb-2">
                         <div>
-                          <h4 className="text-xs font-display text-brand">{bucket.label}</h4>
+                          <h4 className="text-xs font-semibold text-foreground">{bucket.label}</h4>
                           <p className="text-[10px] text-muted-foreground/50 flex items-center gap-1">
                             {bucket.events.length} events{zapSats > 0 && <><span className="mx-0.5">·</span><Zap className="w-2.5 h-2.5 text-amber-800 dark:text-amber-400 inline" /> {zapSats.toLocaleString()} sats</>}
                           </p>
@@ -1082,7 +1066,7 @@ export function ActivityHeatmap({ pubkey: propPubkey, relays: propRelays }: Acti
 
         {!loading && activePubkey && events.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 gap-2" data-testid="heatmap-empty">
-            <CalendarDays className="w-8 h-8 text-muted-foreground/20" />
+            <OttoEmpty mood="looking" size={72} className="text-foreground/70" />
             <p className="text-sm text-muted-foreground/50">No events found for this pubkey in the selected range.</p>
           </div>
         )}

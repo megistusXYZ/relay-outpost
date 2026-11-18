@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { setContrastLevel } from "@/hooks/use-contrast";
 import { setPerfMode } from "@/hooks/use-perf-mode";
 

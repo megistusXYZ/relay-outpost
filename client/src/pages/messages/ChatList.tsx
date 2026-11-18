@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from "react";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { useIaCollapsed } from "@/lib/ia-prefs";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SearchPill } from "@/components/SearchPill";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Nip05Badge } from "@/components/Nip05Badge";
@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { ChatListSkeleton } from "./ChatListSkeleton";
-import { MessagesIcon } from "@/components/icons/MessagesIcon";
+
 import { ConcordPendingInvites } from "@/components/concord/ConcordPendingInvites";
 import {
   ArrowLeft,
@@ -26,13 +26,11 @@ import {
   Pin as PinOff,
   Plus,
   RefreshCw,
-  Search,
   ShieldCheck,
   Undo2,
   Users, MoreHorizontal, } from "lucide-react";
 import { nip19 } from "nostr-tools";
 import type { ISigner } from "applesauce-signers";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -105,8 +103,8 @@ function RequestsRow({ total, unread, onOpen }: { total: number; unread: number;
         </span>
       </span>
       {unread > 0 && (
-        <span className="shrink-0 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand text-white text-[11px] font-semibold" data-testid="requests-unread-count">
-          {unread > 99 ? "99+" : unread}
+        <span className="shrink-0 text-[13px] font-medium text-brand tabular-nums" data-testid="requests-unread-count">
+          {unread > 99 ? "99+" : unread} new
         </span>
       )}
       <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground/40" />
@@ -830,7 +828,7 @@ export function ChatList({
                         ) : (
                           <Avatar className="w-10 h-10 shrink-0 border border-primary/20">
                             <AvatarImage src={o.icon || undefined} alt="" />
-                            <AvatarFallback className="bg-brand/10 text-[11px] text-brand">
+                            <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[11px]">
                               {o.label.slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
@@ -901,14 +899,14 @@ export function ChatList({
                             title={`${row.name} — room in ${o.label}`}
                             data-testid={`chat-room-${row.groupId.slice(0, 32)}`}
                           >
-                            <Icon className="w-3 h-3 shrink-0 text-brand/70" />
+                            <Icon className="w-3 h-3 shrink-0 text-foreground/60" />
                             <span className={`truncate text-sm ${row.unread ? "font-semibold text-foreground" : "text-foreground/90"}`}>{row.name}</span>
                             {row.unread && (
                               <span className="w-2 h-2 shrink-0 rounded-full bg-brand" data-testid={`chat-room-unread-${row.groupId.slice(0, 32)}`} />
                             )}
                           </button>
                           {typeof row.lastActivity === "number" && (
-                            <span className="shrink-0 text-[11px] text-muted-foreground/70 tabular-nums pr-1">
+                            <span className="shrink-0 text-[12px] text-muted-foreground tabular-nums pr-1">
                               {formatMessageTime(row.lastActivity)}
                             </span>
                           )}
@@ -1062,7 +1060,7 @@ export function ChatList({
           <button
             onClick={decryptPending}
             disabled={decrypting}
-            className="w-full flex items-center justify-center gap-2 rounded-md border border-brand/30 bg-brand/10 hover:bg-brand/15 px-3 py-2 text-xs font-medium text-brand transition-colors disabled:opacity-60"
+            className="w-full flex items-center justify-center gap-2 rounded-full border border-foreground/25 hover:bg-foreground/[0.06] px-4 h-10 text-[14px] font-medium text-foreground transition-colors disabled:opacity-60"
             data-testid="button-decrypt-pending"
           >
             <Lock className={`w-3.5 h-3.5 ${decrypting ? "animate-pulse" : ""}`} />
@@ -1122,7 +1120,9 @@ export function ChatList({
             // Search results would surface names straight through the blur —
             // the one bypass that defeats the whole shield. Disabled, and says
             // why, until revealed.
-            placeholder={privateMasked ? "Private mode" : "Search chats or people…"}
+            // "Search" fits the box at rest on every width; once focused the box grows
+            // and says what it finds (the full hint clipped on phones and iPads).
+            placeholder={privateMasked ? "Private mode" : searchFocused ? "Chats or people…" : "Search"}
             disabled={privateMasked}
             value={privateMasked ? "" : searchFilter}
             // One value, two readers: the list filters its rows on it, and
@@ -1170,10 +1170,10 @@ export function ChatList({
               the search pill, and the 2.2s confirmation must never push the New
               button off-screen on a phone. */}
           {refreshResult === "up-to-date" && (
-            <span className="text-[11px] text-muted-foreground min-w-0 truncate" data-testid="text-refresh-done">Up to date</span>
+            <span className="text-[12px] text-muted-foreground min-w-0 truncate" data-testid="text-refresh-done">Up to date</span>
           )}
           {refreshResult === "unreachable" && (
-            <span className="text-[11px] text-amber-600 dark:text-amber-500 min-w-0 truncate" data-testid="text-refresh-unreachable">Couldn't reach — try again</span>
+            <span className="text-[12px] text-warning min-w-0 truncate" data-testid="text-refresh-unreachable">Couldn't reach — try again</span>
           )}
           {/* ONE menu for the utilities (owner call, 2026-10-01: the rail was
               "too much and clutter"). The private-mode eye, refresh, the
@@ -1193,7 +1193,7 @@ export function ChatList({
                 data-testid="button-chat-home-menu"
               >
                 {privateMasked
-                  ? <Eye className="w-4 h-4 text-brand" />
+                  ? <Eye className="w-4 h-4 text-foreground" />
                   : <MoreHorizontal className="w-4 h-4 text-muted-foreground/70" />}
               </Button>
             </DropdownMenuTrigger>
@@ -1206,7 +1206,7 @@ export function ChatList({
                   disabled={item.key === "refresh" && refreshing}
                   data-testid={`menu-chat-home-${item.key}`}
                 >
-                  {item.key === "private" && (privateMasked ? <Eye className="w-4 h-4 text-brand" /> : <EyeOff className="w-4 h-4" />)}
+                  {item.key === "private" && (privateMasked ? <Eye className="w-4 h-4 text-foreground" /> : <EyeOff className="w-4 h-4" />)}
                   {item.key === "refresh" && (
                     refreshResult === "up-to-date"
                       ? <Check className="w-4 h-4 text-emerald-500" data-testid="icon-refresh-done" />
@@ -1232,7 +1232,7 @@ export function ChatList({
           {isMobile ? (
             <Button
               size="sm"
-              className="h-9 gap-1.5 px-3 shrink-0 bg-[hsl(262_72%_52%)] hover:bg-[hsl(262_72%_46%)] text-white shadow-sm"
+              className="h-9 gap-1.5 px-3 shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
               onClick={() => setCreateOpen(true)}
               data-testid="button-new-chat"
             >
@@ -1242,7 +1242,7 @@ export function ChatList({
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="sm" className="h-9 gap-1.5 px-3 shrink-0 bg-[hsl(262_72%_52%)] hover:bg-[hsl(262_72%_46%)] text-white shadow-sm" data-testid="button-new-chat">
+                <Button size="sm" className="h-9 gap-1.5 px-3 shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm" data-testid="button-new-chat">
                   <Plus className="w-4 h-4" />
                   New
                 </Button>
@@ -1267,7 +1267,7 @@ export function ChatList({
           the list's own section style — not a floating box over the rows. */}
       {showPeopleResults && (
         <div className="border-b border-border/20 shrink-0 max-h-[320px] overflow-y-auto" data-testid="container-user-search-results">
-          <div className="px-3 pt-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50" data-testid="chat-section-people-results">People</div>
+          <div className="px-3 pt-3 pb-1 text-[12px] font-medium text-muted-foreground" data-testid="chat-section-people-results">People</div>
           {keyQuery && (
             <button
               type="button"
@@ -1278,7 +1278,7 @@ export function ChatList({
               <span className="w-8 h-8 rounded-full border border-border bg-muted flex items-center justify-center shrink-0"><Plus className="w-4 h-4 text-muted-foreground" /></span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium">Start a chat</span>
-                <span className="block text-[11px] text-muted-foreground/50 font-mono truncate">{searchQuery.slice(0, 24)}…</span>
+                <span className="block text-[12px] text-muted-foreground font-mono truncate">{searchQuery.slice(0, 24)}…</span>
               </span>
             </button>
           )}
@@ -1301,7 +1301,7 @@ export function ChatList({
                 {result.nip05 ? (
                   <Nip05Badge nip05={result.nip05} pubkey={result.pubkey} className="truncate" textClassName="text-[11px] text-primary/60" iconClassName="w-3 h-3" />
                 ) : (
-                  <div className="text-[11px] text-muted-foreground/50 font-mono truncate">
+                  <div className="text-[12px] text-muted-foreground font-mono truncate">
                     {nip19.npubEncode(result.pubkey).slice(0, 20)}...
                   </div>
                 )}
@@ -1321,7 +1321,7 @@ export function ChatList({
           what this device has opened, and says how many messages that was. */}
       {!privateMasked && messageSearch && (messageSearch.hits.length > 0 || searchQuery.length >= 2) && (
         <div className="border-b border-border/20 shrink-0 max-h-[360px] overflow-y-auto" data-testid="container-message-search-results">
-          <div className="px-3 pt-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50" data-testid="chat-section-message-results">Messages</div>
+          <div className="px-3 pt-3 pb-1 text-[12px] font-medium text-muted-foreground" data-testid="chat-section-message-results">Messages</div>
           {messageSearch.hits.map((hit) => (
             <button
               key={hit.id}
@@ -1332,7 +1332,7 @@ export function ChatList({
             >
               <span className="flex items-baseline gap-2">
                 <span className="text-sm font-medium truncate flex-1">{hit.chat}</span>
-                <span className="text-[11px] text-muted-foreground/60 shrink-0">{formatMessageTime(hit.timestamp)}</span>
+                <span className="text-[12px] text-muted-foreground shrink-0">{formatMessageTime(hit.timestamp)}</span>
               </span>
               <span className="block text-[12px] text-muted-foreground line-clamp-2 break-words">
                 <span className="text-muted-foreground/70">{hit.author}: </span>
@@ -1340,7 +1340,7 @@ export function ChatList({
               </span>
             </button>
           ))}
-          <p className="px-3 py-2 text-[11px] text-muted-foreground/60" data-testid="message-search-reach">
+          <p className="px-3 py-2 text-[12px] text-muted-foreground" data-testid="message-search-reach">
             {messageSearch.hits.length === 0 ? "No messages match. " : messageSearch.more > 0 ? `${messageSearch.more} more match. Type more to narrow it down. ` : ""}
             Searched {messageSearch.searched.toLocaleString()} message{messageSearch.searched === 1 ? "" : "s"} loaded on this device.
           </p>
@@ -1432,9 +1432,9 @@ export function ChatList({
           <RefreshCw
             className={`w-4 h-4 mb-3 transition-transform duration-150 ${
               refreshing
-                ? "animate-spin text-brand"
+                ? "animate-spin text-foreground"
                 : pullArmed(pullPx)
-                  ? "rotate-180 text-brand"
+                  ? "rotate-180 text-foreground"
                   : "text-muted-foreground/70"
             }`}
           />
@@ -1482,7 +1482,7 @@ export function ChatList({
                           </Avatar>
                           <div className="min-w-0 flex-1">
                             <span className="text-sm truncate block">{name}</span>
-                            <span className="text-[10px] text-muted-foreground/60">Tap to preview</span>
+                            <span className="text-[12px] text-muted-foreground">Tap to preview</span>
                           </div>
                         </button>
                         <Button
@@ -1537,10 +1537,10 @@ export function ChatList({
           </div>
         ) : pubkey && signer && !signer.nip44 ? (
           <div className="text-center py-12 px-4">
-            <ShieldCheck className="w-10 h-10 mx-auto text-amber-500/60 mb-3" />
-            <p className="text-sm font-medium text-foreground mb-1">NIP-44 Encryption Required</p>
-            <p className="text-xs text-muted-foreground/80 max-w-[300px] mx-auto leading-relaxed">
-              Private messages use NIP-17 gift wrap encryption for maximum privacy. Your current Nostr extension does not support NIP-44 encryption. Please use a compatible extension such as Alby, nos2x, or Nostore.
+            <ShieldCheck className="w-10 h-10 mx-auto text-warning mb-3" />
+            <p className="text-[15px] font-semibold text-foreground mb-1">This sign-in can't send private messages</p>
+            <p className="text-[13px] text-muted-foreground max-w-[300px] mx-auto leading-relaxed">
+              Private messages are end-to-end encrypted, and the browser extension you signed in with can't do that encryption. Sign in with one that can, such as Alby, nos2x or Nostore.
             </p>
           </div>
         ) : loading && entries.length === 0 ? (
@@ -1586,7 +1586,7 @@ export function ChatList({
               <div className="text-center py-12 px-4">
                 {dmTab === "primary" ? (
                   <>
-                    <MessagesIcon className="w-10 h-10 mx-auto text-muted-foreground/50 mb-3" />
+                    <OttoEmpty mood="quiet" size={88} className="mx-auto mb-2 text-foreground/70" />
                     {/* Three stories for an empty list, never one confident one:
                         still asking, nobody answered, or answered and empty
                         (pages/messages/refresh-outcome.ts). */}
@@ -1634,7 +1634,7 @@ export function ChatList({
                   </>
                 ) : (
                   <>
-                    <Users className="w-10 h-10 mx-auto text-muted-foreground/50 mb-3" />
+                    <OttoEmpty mood="looking" size={88} className="mx-auto mb-3 text-foreground/70" />
                     <p className="text-sm text-muted-foreground mb-1">
                       {searchFilter ? "No matches" : "No message requests"}
                     </p>
@@ -1667,7 +1667,7 @@ export function ChatList({
                       category — the same word twice. Under All it is what
                       separates places from conversations, so it stays. */}
                   {activeFilter === "all" && (
-                    <div className="px-3 pt-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50" data-testid="chat-section-communities">
+                    <div className="px-3 pt-3 pb-1 text-[12px] font-medium text-muted-foreground" data-testid="chat-section-communities">
                       Communities
                     </div>
                   )}
@@ -1695,7 +1695,7 @@ export function ChatList({
               {showFlaggedRequests ? "Hide" : "Show"} {flaggedRequestCount} from {flaggedRequestCount === 1 ? "a sender" : "senders"} your network flagged
             </button>
             {!showFlaggedRequests && (
-              <p className="text-[11px] text-muted-foreground/60">People you trust have reported {flaggedRequestCount === 1 ? "this account" : "these accounts"}.</p>
+              <p className="text-[12px] text-muted-foreground">People you trust have reported {flaggedRequestCount === 1 ? "this account" : "these accounts"}.</p>
             )}
           </div>
         )}
@@ -1705,7 +1705,7 @@ export function ChatList({
         {olderMessages && !privateMasked && !showDeleted && (
           <div className="px-3 py-4 flex flex-col items-center gap-1 text-center" data-testid="chats-older">
             {olderMessages.status === "done" ? (
-              <p className="text-[11px] text-muted-foreground/60" data-testid="chats-older-done">That's all your messages.</p>
+              <p className="text-[12px] text-muted-foreground" data-testid="chats-older-done">That's all your messages.</p>
             ) : olderMessages.status === "loading" ? (
               <p className="text-xs text-muted-foreground" data-testid="chats-older-loading">
                 {olderMessages.opening > 0 ? `Opening ${olderMessages.opening} message${olderMessages.opening === 1 ? "" : "s"}…` : "Looking further back…"}
@@ -1720,7 +1720,7 @@ export function ChatList({
                 >
                   {olderMessages.status === "unreached" ? "Try again" : "Load older messages"}
                 </button>
-                <p className="text-[11px] text-muted-foreground/60" data-testid="chats-older-note">
+                <p className="text-[12px] text-muted-foreground" data-testid="chats-older-note">
                   {olderMessages.status === "unreached"
                     ? "Your relays didn't answer, so nothing older could be checked."
                     : olderMessages.backTo
@@ -1751,7 +1751,7 @@ export function ChatList({
                 (DETAILS · CIRCLE · CONNECT WITH …): small, tracked, accent ink.
                 It was reading as a page title in plain white, which made a
                 sheet of five equal choices look like a screen of its own. */}
-            <DrawerTitle className="text-[11px] font-brand font-semibold uppercase tracking-widest text-brand/90 mb-3">Start something new</DrawerTitle>
+            <DrawerTitle className="text-[17px] font-semibold text-foreground mb-3">Start something new</DrawerTitle>
             <div className="flex flex-col gap-2">
               {createActions.map(({ key, testId, Icon, label, desc, run }) => (
                 <button
@@ -1765,9 +1765,8 @@ export function ChatList({
                       --primary is 0 0% 95% — near-white, which is right for a
                       solid button (the white Follow) and wrong for an accent:
                       bare text-primary rendered these five icons as grey discs
-                      with white glyphs and no brand colour anywhere in the
-                      sheet. The explicit purple is the app's dark accent idiom. */}
-                  <span className="flex items-center justify-center w-9 h-9 shrink-0 rounded-full bg-brand/10 text-brand dark:bg-brand/15">
+                      with white glyphs. Outpost brand (2026-11-16): grey discs, ink glyphs. */}
+                  <span className="flex items-center justify-center w-9 h-9 shrink-0 rounded-full bg-foreground/[0.06] text-foreground">
                     <Icon className="w-4 h-4" />
                   </span>
                   <span className="min-w-0">

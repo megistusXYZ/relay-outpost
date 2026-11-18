@@ -116,11 +116,11 @@ export function KeyBackupActions({ material, relays, isOverlay = false, onSaved,
 
   return (
     <div className="space-y-2.5" data-testid={`${testIdPrefix}-actions`}>
-      <Button onClick={saveFile} variant="outline" className={`w-full text-xs font-brand uppercase tracking-widest transition-all ${fileSaved ? done : outline}`} data-testid={`${testIdPrefix}-save-file`}>
+      <Button onClick={saveFile} variant="outline" className={`w-full text-xs transition-all font-medium ${fileSaved ? done : outline}`} data-testid={`${testIdPrefix}-save-file`}>
         {fileSaved ? <Check className="w-4 h-4 mr-2" /> : <Download className="w-4 h-4 mr-2" />}
         {fileSaved ? "Key file saved — save again" : "Save key file"}
       </Button>
-      <Button onClick={saveToManager} disabled={managerWorking} variant="outline" className={`w-full text-xs font-brand uppercase tracking-widest transition-all ${managerSaved ? done : outline}`} data-testid={`${testIdPrefix}-save-manager`}>
+      <Button onClick={saveToManager} disabled={managerWorking} variant="outline" className={`w-full text-xs transition-all font-medium ${managerSaved ? done : outline}`} data-testid={`${testIdPrefix}-save-manager`}>
         {managerWorking ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : managerSaved ? <Check className="w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />}
         {managerWorking ? "Saving…" : managerSaved ? "Saved to password manager" : "Save to password manager"}
       </Button>
@@ -144,7 +144,7 @@ export function KeyBackupActions({ material, relays, isOverlay = false, onSaved,
               autoCapitalize="off"
               autoCorrect="off"
               spellCheck={false}
-              className={`flex-1 min-w-0 h-9 rounded-md border px-2 text-xs bg-transparent ${isOverlay ? "border-white/15 text-white placeholder:text-white/40" : "border-border/50"}`}
+              className={`flex-1 min-w-0 h-9 rounded-md border px-2 text-xs bg-transparent ${isOverlay ? "border-white/40 text-white placeholder:text-white/40" : "border-input"}`}
               style={{ fontSize: 16 }}
               data-testid={`${testIdPrefix}-manager-paste`}
             />
@@ -163,7 +163,7 @@ export function KeyBackupActions({ material, relays, isOverlay = false, onSaved,
           <input ref={fileRef} type="file" accept=".txt,text/plain" className="sr-only" onChange={(e) => void onFile(e.target.files?.[0])} data-testid={`${testIdPrefix}-check-file`} />
           <form onSubmit={(e) => e.preventDefault()} className="flex flex-col sm:flex-row sm:items-center gap-2">
             <CredentialUsername npub={material.npub} testId={`${testIdPrefix}-check-username`} />
-            <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} className={`h-8 text-[11px] font-brand uppercase tracking-[0.12em] font-bold ${outline}`} data-testid={`${testIdPrefix}-check-open`}>
+            <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} className={`h-8 text-[12px] font-bold ${outline}`} data-testid={`${testIdPrefix}-check-open`}>
               <FileText className="w-3.5 h-3.5 mr-1.5" /> Open the file
             </Button>
             <span className={`text-[11px] ${quiet}`}>or paste the key:</span>
@@ -173,7 +173,7 @@ export function KeyBackupActions({ material, relays, isOverlay = false, onSaved,
               onChange={(e) => { setPasted(e.target.value); if (e.target.value.trim()) runCheck(e.target.value); else setCheck("idle"); }}
               placeholder="nsec1…"
               autoComplete="off"
-              className={`flex-1 min-w-0 h-8 rounded-md border px-2 text-xs bg-transparent ${isOverlay ? "border-white/15 text-white placeholder:text-white/40" : "border-border/50"}`}
+              className={`flex-1 min-w-0 h-8 rounded-md border px-2 text-xs bg-transparent ${isOverlay ? "border-white/40 text-white placeholder:text-white/40" : "border-input"}`}
               style={{ fontSize: 16 }}
               data-testid={`${testIdPrefix}-check-paste`}
             />

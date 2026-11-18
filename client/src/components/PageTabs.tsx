@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 /**
  * PageTabs — the ONE shared segmented tab switcher for top-of-page content
  * switchers, styled exactly like the Home feed's mode switcher (the design
- * reference). It reuses the same CSS (`glass-feed-tabs`, `feed-tab-active`,
- * `feed-tab-glow` in index.css) rather than duplicating styles.
+ * reference). It reuses the same CSS (`glass-feed-tabs`, `feed-tab-active` in
+ * index.css; the selected tab is a filled ink pill) rather than duplicating styles.
  *
  * Layout modes:
  * - equalWidth (default): segments are flex-1 and truncate — the row is always
@@ -78,7 +78,7 @@ export function PageTabs({
       role="tablist"
       aria-label={ariaLabel}
       className={cn(
-        "glass-feed-tabs flex items-center gap-0.5 sm:gap-1 p-1 rounded-lg overflow-x-auto no-scrollbar min-h-10",
+        "glass-feed-tabs flex items-center gap-0.5 sm:gap-1 p-1 rounded-full overflow-x-auto no-scrollbar min-h-10",
         className,
       )}
       data-testid={testId}
@@ -101,9 +101,9 @@ export function PageTabs({
               sizing === "content"
                 ? (tab.flexible ? "flex-auto min-w-[3.75rem]" : "flex-auto shrink-0")
                 : fill ? "flex-1 min-w-0" : "shrink-0",
-              sizing === "content" ? "gap-1 text-xs sm:text-sm px-1.5 sm:px-3" : "gap-1 text-xs sm:text-sm px-2 sm:px-3",
+              sizing === "content" ? "gap-1 rounded-full text-[13px] sm:text-sm font-medium px-1.5 sm:px-3" : "gap-1 rounded-full text-[13px] sm:text-sm font-medium px-2 sm:px-3",
               isActive
-                ? "feed-tab-active feed-tab-glow text-white no-default-hover-elevate"
+                ? "feed-tab-active no-default-hover-elevate"
                 : tab.dimmed
                   ? "opacity-50"
                   : "text-foreground/70 dark:text-inherit",
@@ -123,7 +123,7 @@ export function PageTabs({
               <span
                 className={cn(
                   "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] leading-none tabular-nums",
-                  isActive ? "bg-white/15 text-white/90" : "bg-muted/60 text-muted-foreground",
+                  isActive ? "bg-background/20 text-background/85" : "bg-muted/60 text-muted-foreground",
                 )}
               >
                 {tab.count}
@@ -146,7 +146,7 @@ export function PageTabs({
 export function TabCountLine({ count, singular, plural }: { count?: number; singular: string; plural: string }) {
   if (!count || count <= 0) return null;
   return (
-    <p className="text-[11px] text-muted-foreground/50 tabular-nums mb-2 px-1" data-testid="tab-count-line">
+    <p className="text-[12px] text-muted-foreground tabular-nums mb-2 px-1" data-testid="tab-count-line">
       {count.toLocaleString()} {count === 1 ? singular : plural}
     </p>
   );

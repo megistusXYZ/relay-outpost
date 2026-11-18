@@ -125,7 +125,7 @@ export const FEED_SORT_OPTIONS: { value: FeedSortMode; label: string; desc?: str
   { value: "recently_active", label: "Recently Active", desc: "Latest replies first", group: "chronological" },
   { value: "oldest", label: "Oldest", desc: "Oldest posts first", group: "chronological" },
   { value: "hottest", label: "Hot", desc: "Popular + fresh right now", group: "engagement" },
-  { value: "top", label: "Top Signal", desc: "Most total engagement", group: "engagement" },
+  { value: "top", label: "Top", desc: "Most total engagement", group: "engagement" },
   { value: "most_discussed", label: "Most Discussed", desc: "Most replies", group: "engagement" },
   { value: "zap_ranked", label: "Most Zapped", group: "zaps" },
 ];
@@ -147,7 +147,6 @@ export function getTopWindowKey(feedId: string): string {
   return `relay-outpost-feed-topwindow-${feedId}`;
 }
 
-let _savedCutoffTimestamp: number | null = null;
 export const PAGE_SIZE = 30;
 export const TRENDING_CACHE_TTL = 3 * 60 * 1000;
 

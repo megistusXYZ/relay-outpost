@@ -16,16 +16,16 @@ export function MediaFrame({
 }) {
   return (
     <div
-      className={`overflow-hidden rounded-xl border border-brand/15 dark:border-brand/10 bg-gradient-to-br from-brand/[0.05] to-brand/[0.03] ${className}`}
+      className={`overflow-hidden rounded-[16px] border border-border/60 bg-foreground/[0.03] ${className}`}
     >
       {children ?? (
         <div className="aspect-[16/9] w-full flex items-center justify-center">
           {variant === "video" ? (
-            <div className="w-12 h-12 rounded-full bg-brand/10 border border-brand/15 flex items-center justify-center">
-              <Play className="w-5 h-5 text-brand/40 ml-0.5" />
+            <div className="w-12 h-12 rounded-full bg-foreground/[0.06] border border-border/60 flex items-center justify-center">
+              <Play className="w-5 h-5 text-foreground/70 ml-0.5" />
             </div>
           ) : (
-            <ImageIcon className="w-8 h-8 text-brand/25" />
+            <ImageIcon className="w-8 h-8 text-foreground/70" />
           )}
         </div>
       )}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { use$ } from "applesauce-react/hooks";
-import { eventStore, pool, subscribeToFeed, subscribeToFeedPersistent, fetchProfilesCached, DEFAULT_RELAYS, getRelaysForPurpose, hasFeedData, markFeedDataLoaded, throttledPoolSubscribe } from "@/lib/nostr";
-import { KIND_TEXT_NOTE, KIND_METADATA } from "@/lib/nostr-helpers";
+import { eventStore, subscribeToFeed, subscribeToFeedPersistent, fetchProfilesCached, DEFAULT_RELAYS, getRelaysForPurpose, hasFeedData, markFeedDataLoaded, throttledPoolSubscribe } from "@/lib/nostr";
+import { KIND_TEXT_NOTE } from "@/lib/nostr-helpers";
 import { KIND_PICTURE } from "@/lib/media-frame";
 import { primalStatsCache } from "@/lib/primal-cache";
 import { prefetchStatsImmediate } from "@/lib/primal-cache";
@@ -23,12 +23,12 @@ import { getAvatarUrl, getDisplayName, formatNpub, shortenNpub } from "@/lib/nos
 import { RelayOutpostLoader, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { formatDistanceToNow } from "date-fns";
-import { LayoutGrid, LayoutList, Columns2, Columns3, Columns4, ImageIcon, Clock, TrendingUp, Flame, ExternalLink, ChevronDown, MessageCircle } from "lucide-react";
+import { LayoutGrid, LayoutList, Columns2, Columns3, Columns4, Clock, Flame, ExternalLink, ChevronDown, MessageCircle } from "lucide-react";
 import { usePrimalStats } from "@/hooks/use-primal-stats";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MediaInteractionBar } from "@/components/MediaInteractionBar";
-import { BtcZapIcon, TextWithUnresolvedNostr } from "@/components/NostrPost";
+import { TextWithUnresolvedNostr } from "@/components/NostrPost";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Event } from "nostr-tools";
 

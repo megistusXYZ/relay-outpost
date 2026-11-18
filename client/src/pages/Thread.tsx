@@ -5,7 +5,7 @@ import { useGoBack } from "@/hooks/use-go-back";
 import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
 import { eventStore, pool, fetchProfiles, DEFAULT_RELAYS, throttledPoolSubscribe } from "@/lib/nostr";
-import { KIND_METADATA, KIND_TEXT_NOTE, getAvatarUrl, getDisplayName, getProfileContent } from "@/lib/nostr-helpers";
+import { KIND_METADATA, getAvatarUrl, getDisplayName, getProfileContent } from "@/lib/nostr-helpers";
 import { NostrPost } from "@/components/NostrPost";
 import { PostBoundary } from "@/components/PostBoundary";
 import { PollPost } from "@/components/PollPost";
@@ -300,7 +300,7 @@ function AncestorPost({ event, isLast, isRoot }: { event: Event; isLast: boolean
           <Link href={`/profile/${npub}`} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
             <Avatar className="w-9 h-9 ring-1 ring-brand/20 border border-background cursor-pointer">
               {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
-              <AvatarFallback className="bg-brand/10 text-brand text-xs font-bold">
+              <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs font-bold">
                 {displayName.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -381,7 +381,7 @@ function NotificationBanner({ ntype, byPubkey, sats, emoji }: { ntype: string; b
       case "repost":
         return {
           icon: <Repeat className="w-4 h-4" />,
-          label: "reposted this note",
+          label: "reposted this post",
           color: "text-success dark:text-green-400",
           bgColor: "bg-green-500/10 dark:bg-green-500/8",
           borderColor: "border-green-500/25 dark:border-green-500/15",
@@ -559,7 +559,6 @@ function EventNotFound({
 
 export default function Thread() {
   const [, params] = useRoute("/thread/:noteId");
-  const [, navigate] = useLocation();
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [ancestors, setAncestors] = useState<Event[]>([]);
@@ -727,7 +726,7 @@ export default function Thread() {
       data-testid="thread-page"
     >
       <div className="flex items-center gap-2 mb-4">
-        <h1 className="text-lg font-brand tracking-wider uppercase" data-testid="text-thread-title">Thread</h1>
+        <h1 className="text-lg font-medium" data-testid="text-thread-title">Thread</h1>
       </div>
 
       {loading && (

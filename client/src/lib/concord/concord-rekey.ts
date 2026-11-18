@@ -7,12 +7,11 @@
  * The blob layout, locator matching, chunk-completeness, and removal detection
  * are pure and unit-tested; the pairwise NIP-44 (signer) I/O is not.
  */
-import { v2 as nip44v2 } from "nostr-tools/nip44";
-import { getPublicKey, type Event } from "nostr-tools";
+import { type Event } from "nostr-tools";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import type { ISigner } from "applesauce-signers";
-import { computeLocator, epochKeyCommitment, epochKeyCommitmentLegacy, channelRekeyAddress, baseRekeyAddress, u64BE, concatBytes, randomBytes32, groupKey, LABEL_CONTROL_SIGNER, type GroupKey } from "./concord-crypto";
-import { KIND_REKEY, buildJoinLeaveRumor, hasPermission, canActOn, PERM, OWNER_POSITION, type RumorTemplate, type Member } from "./concord-events";
+import { computeLocator, epochKeyCommitment, epochKeyCommitmentLegacy, channelRekeyAddress, baseRekeyAddress, u64BE, concatBytes, randomBytes32, groupKey, LABEL_CONTROL_SIGNER } from "./concord-crypto";
+import { KIND_REKEY, hasPermission, canActOn, PERM, OWNER_POSITION, type RumorTemplate, type Member } from "./concord-events";
 import type { StoredChannel, StoredCommunity } from "./concord-keys";
 import { controlPlaneKey, publishToPlane } from "./concord-stream";
 import { KIND_SEAL_PLAIN, KIND_SEAL_ENC } from "./concord-crypto";

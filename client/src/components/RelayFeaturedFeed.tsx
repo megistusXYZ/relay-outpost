@@ -90,7 +90,7 @@ function FeaturedPersonBlock({ pubkey, relayUrl, relayHint }: { pubkey: string; 
         )}
         <div className="min-w-0">
           <p className="text-sm font-medium truncate">{name}</p>
-          <p className="text-[10px] font-mono uppercase tracking-wider text-brand/60">Featured creator</p>
+          <p className="text-[13px] text-brand/60 font-medium">Featured creator</p>
         </div>
       </div>
       {events === null ? (
@@ -230,7 +230,7 @@ export function RelayFeaturedFeed({
         <div className="mb-3">
           <div className="flex items-center gap-2">
             <MagicStarIcon className="w-3.5 h-3.5 text-brand/70" />
-            <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-brand/70">Featured</span>
+            <span className="text-[13px] text-brand/70 font-medium">Featured</span>
           </div>
           {active.description && (
             <p className="text-sm text-muted-foreground mt-1">{active.description}</p>

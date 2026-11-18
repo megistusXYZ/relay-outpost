@@ -285,7 +285,7 @@ export function AuthorPicker({ value, onChange }: AuthorPickerProps) {
           >
             <Avatar className="w-4 h-4 shrink-0">
               {chip.avatarUrl && <AvatarImage src={chip.avatarUrl} alt={chip.displayName} />}
-              <AvatarFallback className="text-[8px] bg-brand/10 text-brand">
+              <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[8px]">
                 {chip.displayName.slice(0, 1).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -348,7 +348,7 @@ export function AuthorPicker({ value, onChange }: AuthorPickerProps) {
             >
               <Avatar className="w-7 h-7 border border-white/10 shrink-0">
                 <AvatarImage src={result.avatarUrl} alt={result.displayName} />
-                <AvatarFallback className="text-[10px] bg-brand/10 text-brand">
+                <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[10px]">
                   {result.displayName.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>

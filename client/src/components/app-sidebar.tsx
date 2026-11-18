@@ -23,9 +23,8 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
-import { Rss, Search, LogOut, Unplug, Fingerprint, PanelLeftClose, Plus, ChevronsUpDown, GalleryVerticalEnd } from "lucide-react";
+import { Rss, Search, Unplug, Fingerprint, PanelLeftClose, Plus, ChevronsUpDown, GalleryVerticalEnd } from "lucide-react";
 import { openCreateStudio } from "@/lib/shell-events";
 import { AccountIcon } from "@/components/icons/AccountIcon";
 import { SidebarOutposts } from "@/components/SidebarOutposts";
@@ -33,13 +32,11 @@ import { SidebarWallet } from "@/components/SidebarWallet";
 import { CalendarAddIcon } from "@/components/icons/CalendarAddIcon";
 import { MessagesIcon } from "@/components/icons/MessagesIcon";
 import { NotificationIcon } from "@/components/icons/NotificationIcon";
-import { useNWC } from "@/contexts/NWCContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useChatsBadge } from "@/hooks/use-chats-badge";
-import { hasSeenList } from "@/lib/concord/community-list-memory";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { PublicBetaBadge } from "@/components/PublicBetaBadge";
-import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
+import { OttoMark } from "@/components/OttoMark";
 
 // "You are an operator" signal. A bright center dot with two rings that
 // pulse outward on a staggered loop — quiet, but visible in both light
@@ -66,21 +63,10 @@ function OperatorRadarIndicator() {
 }
 
 export function AppSidebar() {
-  const { toggleSidebar, setOpenMobile, setOpen, isMobile } = useSidebar();
+  const { toggleSidebar, setOpenMobile, isMobile } = useSidebar();
   const [location, setLocation] = useLocation();
   const search = useSearch();
-  const { pubkey, profile, isLoggingIn, isReconnecting, loginMethod, logout } = useNostrAuth();
-  // Sign-out option: take this account's private group chats off the device too.
-  const [wipeChats, setWipeChats] = useState(false);
-  const { wotEnabled } = useGrapeRankScores();
-  const { isConnected: walletConnected, balance: walletBalance } = useNWC();
-  const [balanceHidden, setBalanceHidden] = useState(() => localStorage.getItem("walletBalanceHidden") === "true");
-
-  useEffect(() => {
-    const sync = () => setBalanceHidden(localStorage.getItem("walletBalanceHidden") === "true");
-    window.addEventListener("balance-visibility-changed", sync);
-    return () => window.removeEventListener("balance-visibility-changed", sync);
-  }, []);
+  const { pubkey, profile, isLoggingIn, isReconnecting, loginMethod } = useNostrAuth();
   const { unreadCount } = useNotifications();
   // Chats badge, the same everywhere (lib/chats-badge); empty while private mode masks the chats.
   const chatsUnread = useChatsBadge(pubkey).total;
@@ -108,7 +94,6 @@ export function AppSidebar() {
       window.removeEventListener("storage", sync);
     };
   }, [pubkey]);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   // Track the FULL location (pathname + query). wouter's `location` is
   // pathname-only, so query-only hops (Media ⇄ News ⇄ Search all live under
   // /search) wouldn't otherwise register as a route change.
@@ -205,17 +190,17 @@ export function AppSidebar() {
             if (isSearch) primeKeyboard();
             closeMobileNav();
           }}>
-            <item.icon className={isActive ? "nav-icon-glow" : ""} />
+            <item.icon className={isActive ? "text-foreground" : ""} />
             <span>{item.title}</span>
             {isSearch && (
-              <kbd className="ml-auto hidden sm:inline-flex items-center gap-0.5 rounded border border-brand/20 dark:border-brand/15 bg-brand/[0.08] px-1.5 py-0.5 text-[10px] font-mono text-brand/60 dark:text-brand/50" data-testid="badge-search-shortcut">
+              <kbd className="ml-auto hidden sm:inline-flex items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-mono text-muted-foreground" data-testid="badge-search-shortcut">
                 {isMac ? "⌘" : "Ctrl+"}K
               </kbd>
             )}
             {item.badge && (
-              <Badge variant="secondary" className="ml-auto text-[10px] min-w-[16px] h-[16px] flex items-center justify-center rounded-full bg-brand/20 text-brand border-brand/20" data-testid="badge-notifications-unread">
-                {item.badge > 99 ? "99+" : item.badge}
-              </Badge>
+              <span className="ml-auto text-xs font-semibold tabular-nums text-brand" data-testid="badge-notifications-unread">
+                {item.badge > 99 ? "99+" : item.badge} new
+              </span>
             )}
           </Link>
         </SidebarMenuButton>
@@ -235,20 +220,20 @@ export function AppSidebar() {
         {displayName && (
           <span className="text-xs font-medium truncate leading-tight" data-testid="text-sidebar-display-name">{displayName}</span>
         )}
-        <span className="text-[10px] text-muted-foreground truncate leading-tight" data-testid="text-sidebar-subtitle">{lightningAddress || npub}</span>
+        <span className="text-xs text-muted-foreground truncate leading-tight" data-testid="text-sidebar-subtitle">{lightningAddress || npub}</span>
         {isReconnecting ? (
           <span className="flex items-center gap-1 mt-0.5">
             <RelayOutpostInlineLoader className="w-2.5 h-2.5" />
-            <span className="text-[9px] font-mono uppercase tracking-wider text-yellow-800/70 dark:text-yellow-400/70" data-testid="text-sidebar-reconnecting">Reconnecting</span>
+            <span className="text-[12px] text-warning font-medium" data-testid="text-sidebar-reconnecting">Reconnecting</span>
           </span>
         ) : loginMethodLabel ? (
           <span className="flex items-center gap-1 mt-0.5">
-            <LoginMethodIcon className="w-2.5 h-2.5 text-muted-foreground/50" />
-            <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground/50" data-testid="text-sidebar-login-method">{loginMethodLabel}</span>
+            <LoginMethodIcon className="w-3 h-3 text-muted-foreground" />
+            <span className="text-[12px] text-muted-foreground font-medium" data-testid="text-sidebar-login-method">{loginMethodLabel}</span>
           </span>
         ) : null}
       </div>
-      <ChevronsUpDown className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
+      <ChevronsUpDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
     </>
   );
 
@@ -257,33 +242,16 @@ export function AppSidebar() {
       <SidebarHeader className="px-4 py-4">
         <div className="flex items-center justify-between gap-2">
           <Link href="/" className="flex items-center" data-testid="link-sidebar-brand" onClick={closeMobileNav}>
-            <div className="relative flex items-center rounded-md brand-flicker brand-glow" data-testid="container-brand-pill">
-              <div className="flex items-center bg-[hsl(235,30%,15%)] dark:bg-black pl-2.5 pr-1.5 h-9 border-2 border-r-0 border-brand/40 dark:border-white/40 rounded-l-md">
-                <span className="font-brand font-bold text-sm tracking-[0.15em] text-white uppercase leading-none drop-shadow-[0_0_2px_rgba(255,255,255,0.12)]">Relay</span>
-              </div>
-              <div className="flex items-center justify-center h-9 bg-[hsl(235,30%,15%)] dark:bg-black border-y-2 border-brand/40 dark:border-white/40">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 drop-shadow-[0_0_3px_rgba(255,255,255,0.15)]">
-                  <g clipPath="url(#clip0_brand)">
-                    <path d="M5.64999 7.64999L2.85001 4.85001C2.54001 4.54001 2.76001 4 3.20001 4H6.79001C6.92001 4 7.05001 4.04999 7.14001 4.14999L12.14 9.14999C12.45 9.45999 12.23 10 11.79 10H8.5C6.57 10 5 11.57 5 13.5C5 15.43 6.57 17 8.5 17H10L12.15 19.15C12.46 19.46 12.24 20 11.8 20H8.51001C4.92001 20 2.01001 17.09 2.01001 13.5C2.01001 11.01 3.41001 8.84 5.48001 7.75L5.64999 7.64999Z" fill="white" />
-                    <path d="M18.35 16.35L21.15 19.15C21.46 19.46 21.24 20 20.8 20H17.21C17.08 20 16.95 19.95 16.86 19.85L11.86 14.85C11.55 14.54 11.77 14 12.21 14H15.5C17.43 14 19 12.43 19 10.5C19 8.57 17.43 7 15.5 7H14L11.85 4.85001C11.54 4.54001 11.76 4 12.2 4H15.49C19.08 4 21.99 6.91 21.99 10.5C21.99 12.99 20.59 15.16 18.52 16.25L18.35 16.35Z" fill="white" />
-                  </g>
-                  <defs>
-                    <clipPath id="clip0_brand">
-                      <rect width="24" height="24" />
-                    </clipPath>
-                  </defs>
-                </svg>
-              </div>
-              <div className="flex items-center bg-[hsl(235,30%,15%)] dark:bg-black pl-1.5 pr-2.5 h-9 border-2 border-l-0 border-brand/40 dark:border-white/40 rounded-r-md">
-                <span className="font-brand font-bold text-sm tracking-[0.15em] text-white uppercase leading-none drop-shadow-[0_0_2px_rgba(255,255,255,0.12)]">Outpost</span>
-              </div>
+            <div className="flex items-center gap-2" data-testid="container-brand-pill">
+              <OttoMark size={28} className="shrink-0" />
+              <span className="text-[15px] font-semibold leading-none text-foreground">Relay Outpost</span>
             </div>
           </Link>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => toggleSidebar()}
-            className="text-muted-foreground/70 hover:text-muted-foreground"
+            className="text-muted-foreground hover:text-foreground"
             data-testid="button-sidebar-collapse"
           >
             <PanelLeftClose className="w-4 h-4" />
@@ -358,9 +326,9 @@ export function AppSidebar() {
                             <item.icon className="w-3.5 h-3.5" />
                             <span className="flex-1">{item.title}</span>
                             {item.badge && (
-                              <Badge variant="secondary" className="ml-auto text-[10px] min-w-[16px] h-[16px] flex items-center justify-center rounded-full bg-brand/20 text-brand border-brand/20" data-testid="badge-notifications-unread">
-                                {item.badge > 99 ? "99+" : item.badge}
-                              </Badge>
+                              <span className="ml-auto text-xs font-semibold tabular-nums text-brand" data-testid="badge-notifications-unread">
+                                {item.badge > 99 ? "99+" : item.badge} new
+                              </span>
                             )}
                           </Link>
                         </SidebarMenuSubButton>
@@ -394,39 +362,6 @@ export function AppSidebar() {
         <div className="space-y-1">
           {pubkey ? (
             <>
-              {showLogoutConfirm ? (
-                <div className="rounded-lg border border-primary/30 dark:border-white/20 bg-primary/10 dark:bg-black/40 p-3 space-y-2.5" data-testid="container-logout-confirm">
-                  <p className="text-[11px] font-brand uppercase tracking-[0.15em] text-brand dark:text-white/70">Sign out?</p>
-                  {/* Offered only once this device has seen the account's
-                      encrypted group list, the backup that brings them back. */}
-                  {hasSeenList(pubkey) && (
-                    <label className="flex items-start gap-2 text-[11px] text-foreground/75 dark:text-white/70 cursor-pointer">
-                      <input type="checkbox" checked={wipeChats} onChange={(e) => setWipeChats(e.target.checked)} className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-primary" data-testid="sidebar-signout-wipe-chats" />
-                      <span>
-                        Also remove my private group chats from this device
-                        <span className="block text-[10px] text-muted-foreground/60">They come back when you sign in again, from your encrypted backup.</span>
-                      </span>
-                    </label>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={async () => { setShowLogoutConfirm(false); if (wipeChats && pubkey) { const { wipeConcordDevice } = await import("@/lib/concord/concord-keys"); await wipeConcordDevice(pubkey); } logout(); }}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 h-8 rounded-md bg-red-500/20 border border-red-500/40 text-red-500 dark:text-red-400 font-brand uppercase tracking-[0.15em] text-[10px] transition-all duration-200 hover:bg-red-500/30 hover:border-red-500/50 cursor-pointer"
-                      data-testid="button-confirm-logout"
-                    >
-                      <LogOut className="w-3 h-3" />
-                      Sign Out
-                    </button>
-                    <button
-                      onClick={() => setShowLogoutConfirm(false)}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 h-8 rounded-md bg-accent dark:bg-white/[0.03] border border-primary/40 dark:border-white/30 text-accent-foreground dark:text-white/70 font-brand uppercase tracking-[0.15em] text-[10px] transition-all duration-200 hover:bg-accent/80 dark:hover:bg-white/[0.07] hover:border-primary/50 dark:hover:border-white/50 cursor-pointer"
-                      data-testid="button-cancel-logout"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
                 // All breakpoints: the account switcher routes to the dedicated
                 // /account/menu page (grouped iOS-Settings-style rows) instead of
                 // opening a cramped floating dropdown. Same trigger (avatar + name
@@ -439,20 +374,19 @@ export function AppSidebar() {
                 >
                   {accountButtonInner}
                 </button>
-              )}
             </>
         ) : (
           <button
             onClick={() => setLocation("/login")}
             disabled={isLoggingIn}
-            className="w-full inline-flex items-center justify-center gap-2 px-3 h-8 rounded-md bg-white/[0.03] border border-white/30 text-white font-brand uppercase tracking-[0.2em] text-[11px] transition-all duration-200 hover:bg-white/[0.07] hover:border-white/50 disabled:opacity-50 disabled:pointer-events-none"
+            className="w-full inline-flex items-center justify-center gap-2 px-3 h-10 rounded-full bg-foreground text-background text-sm transition-colors duration-150 hover:bg-foreground/90 disabled:opacity-50 disabled:pointer-events-none font-medium"
             data-testid="button-sidebar-login"
           >
             {isLoggingIn ? (
               <RelayOutpostInlineLoader className="w-4 h-4" />
             ) : (
               <>
-                Sign In
+                Sign in
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" className="shrink-0 opacity-70">
                   <g clipPath="url(#clip0_login_sat)">
                     <path d="M7.26 6.94L6.2 7.18C5.44 7.35 4.85 7.95 4.67 8.71L4.42 9.77C4.4 9.88 4.23 9.88 4.21 9.77L3.97 8.71C3.8 7.95 3.2 7.36 2.44 7.18L1.38 6.93C1.27 6.91 1.27 6.74 1.38 6.72L2.44 6.48C3.2 6.31 3.79 5.71 3.97 4.95L4.22 3.89C4.24 3.78 4.41 3.78 4.43 3.89L4.67 4.95C4.84 5.71 5.44 6.3 6.2 6.48L7.26 6.73C7.37 6.75 7.37 6.92 7.26 6.94Z" stroke="currentColor" strokeWidth="1.5" strokeMiterlimit="10" />
@@ -469,7 +403,6 @@ export function AppSidebar() {
                     </clipPath>
                   </defs>
                 </svg>
-                Sign in
               </>
             )}
           </button>

@@ -32,8 +32,8 @@ function highlightHashtags(parts: (string | JSX.Element)[]): (string | JSX.Eleme
         <mark
           key={`h-${hashStart}-${m[1]}`}
           style={{
-            color: "rgb(129, 140, 248)",
-            background: "rgba(99, 102, 241, 0.15)",
+            color: "hsl(var(--brand))",
+            background: "hsl(var(--brand) / 0.12)",
             borderRadius: "3px",
             padding: "0 2px",
             margin: "0 -2px",
@@ -67,8 +67,8 @@ function highlightMentions(text: string, pattern: RegExp): (string | JSX.Element
       <mark
         key={`m-${match.index}`}
         style={{
-          color: "rgb(192, 132, 252)",
-          background: "rgba(168, 85, 247, 0.15)",
+          color: "hsl(var(--brand))",
+          background: "hsl(var(--brand) / 0.12)",
           borderRadius: "3px",
           padding: "0 2px",
           margin: "0 -2px",

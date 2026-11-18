@@ -1,11 +1,11 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { use$ } from "applesauce-react/hooks";
-import { eventStore, pool, DEFAULT_RELAYS, FAST_RELAYS, fetchProfiles, publishEvent, throttledPoolSubscribe } from "@/lib/nostr";
+import { eventStore, FAST_RELAYS, fetchProfiles, publishEvent, throttledPoolSubscribe } from "@/lib/nostr";
 import { getPublishTarget } from "@/lib/outpost-relays";
 import { KIND_LONG_FORM, decodeNaddr, parseArticle, estimateReadingTime } from "@/lib/nip23";
 import { fetchPrimalArticles } from "@/lib/primal-cache";
-import { getAvatarUrl, getDisplayName, getRealName, formatNpub, shortenNpub, getProfileContent, clientTags } from "@/lib/nostr-helpers";
+import { getAvatarUrl, getDisplayName, getRealName, formatNpub, shortenNpub, clientTags } from "@/lib/nostr-helpers";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
 import { createShareMention } from "@/lib/share-mention";
 import { RelayOutpostLoader, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
@@ -30,7 +30,6 @@ import {
   Hash,
   Share2,
   Copy,
-  ExternalLink,
   AudioLines,
   Send,
   Bookmark,
@@ -42,7 +41,8 @@ import {
   SkipBack,
   SkipForward,
   Pencil,
-  X } from "lucide-react";
+  X,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -141,32 +141,32 @@ function ShareArticleToNostrDialog({ article, onClose }: { article: ArticleData;
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg bg-brand/[0.06] border border-brand/15 p-3 overflow-hidden">
+      <div className="rounded-[14px] bg-foreground/[0.04] border border-border/60 p-3 overflow-hidden">
         {article.image && (
           <div className="rounded-md overflow-hidden mb-2 max-h-32 bg-muted/20">
             <img src={article.image} alt="" className="w-full h-full object-cover max-h-32" loading="lazy" decoding="async" />
           </div>
         )}
-        <p className="text-[10px] text-brand/60 font-mono uppercase tracking-wider mb-1.5">Sharing Article</p>
+        <p className="text-[13px] text-muted-foreground mb-1.5 font-medium">Sharing article</p>
         <p className="text-sm font-medium text-foreground/90 line-clamp-2 break-words">{article.title}</p>
         {article.summary && (
-          <p className="text-[11px] text-muted-foreground/60 mt-1 line-clamp-2 break-words">{article.summary}</p>
+          <p className="text-[12px] text-muted-foreground mt-1 line-clamp-2 break-words">{article.summary}</p>
         )}
-        <p className="text-[11px] text-muted-foreground/50 mt-1.5 break-all line-clamp-1">{articleUrl}</p>
+        <p className="text-[12px] text-muted-foreground mt-1.5 break-all line-clamp-1">{articleUrl}</p>
       </div>
 
       <Textarea
         value={content}
         onChange={(e) => { userEditedRef.current = true; setContent(e.target.value); }}
         rows={5}
-        className="text-sm resize-none bg-white/[0.04] border-white/[0.08] focus:border-brand/30 focus:bg-white/[0.06] rounded-lg break-words"
+        className="text-sm resize-none bg-white/[0.04] border-white/[0.08] focus:border-foreground/30 focus:bg-white/[0.06] rounded-lg break-words"
         style={{ fontSize: 16, wordBreak: "break-word", overflowWrap: "break-word" }}
         placeholder="Add your thoughts..."
         autoComplete="off"
         data-testid="textarea-share-article-content"
       />
 
-      <p className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wider leading-relaxed">
+      <p className="text-[13px] text-muted-foreground leading-relaxed font-medium">
         This creates a public post with the article link. Others can reply and zap your post.
       </p>
 
@@ -174,7 +174,7 @@ function ShareArticleToNostrDialog({ article, onClose }: { article: ArticleData;
         <Button
           variant="outline"
           onClick={onClose}
-          className="flex-1 font-brand uppercase tracking-widest text-xs border-white/10 text-muted-foreground"
+          className="flex-1 text-xs border-white/10 text-muted-foreground font-medium"
           data-testid="button-cancel-share-article"
         >
           Cancel
@@ -182,7 +182,7 @@ function ShareArticleToNostrDialog({ article, onClose }: { article: ArticleData;
         <Button
           onClick={handleShare}
           disabled={isPublishing || !content.trim()}
-          className="flex-1 bg-brand text-white font-brand uppercase tracking-widest text-xs border-0"
+          className="flex-1 rounded-full bg-foreground text-background text-[13px] border-0 font-medium hover:bg-foreground/90"
           data-testid="button-confirm-share-article"
         >
           {isPublishing ? (
@@ -321,8 +321,8 @@ function ArticleComments({ articleEvent }: { articleEvent: Event }) {
   return (
     <div className="border-t border-border/20 pt-5 mb-6" data-testid="container-article-comments">
       <div className="flex items-center gap-2 mb-4">
-        <MessageSquare className="w-4 h-4 text-brand/70" />
-        <h3 className="text-sm font-brand uppercase tracking-widest text-foreground/80">
+        <MessageSquare className="w-4 h-4 text-muted-foreground" />
+        <h3 className="text-sm text-foreground/80 font-medium">
           Comments {comments.length > 0 && <span className="text-muted-foreground/60 ml-1">({comments.length})</span>}
         </h3>
       </div>
@@ -333,7 +333,7 @@ function ArticleComments({ articleEvent }: { articleEvent: Event }) {
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
             rows={3}
-            className="text-sm resize-none bg-white/[0.04] border-white/[0.08] focus:border-brand/30 focus:bg-white/[0.06] rounded-lg"
+            className="text-sm resize-none bg-white/[0.04] border-white/[0.08] focus:border-foreground/30 focus:bg-white/[0.06] rounded-lg"
             style={{ fontSize: 16 }}
             placeholder="Add a comment..."
             data-testid="textarea-article-reply"
@@ -343,7 +343,7 @@ function ArticleComments({ articleEvent }: { articleEvent: Event }) {
               onClick={handleReply}
               disabled={isPublishing || !replyText.trim()}
               size="sm"
-              className="bg-brand text-white font-brand uppercase tracking-widest text-xs border-0"
+              className="rounded-full bg-foreground text-background text-[13px] border-0 font-medium hover:bg-foreground/90"
               data-testid="button-post-article-reply"
             >
               {isPublishing ? (
@@ -387,15 +387,15 @@ function ArticleComments({ articleEvent }: { articleEvent: Event }) {
               >
                 <div className="flex items-start gap-2.5">
                   <Link href={commentProfileUrl}>
-                    <Avatar className="w-7 h-7 ring-1 ring-brand/15 border border-background shrink-0">
+                    <Avatar className="w-7 h-7 ring-1 ring-border border border-background shrink-0">
                       <AvatarImage src={avatar} alt={name} />
-                      <AvatarFallback className="text-[10px] bg-brand/10 text-brand">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[10px]">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                   </Link>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <Link href={commentProfileUrl} className="text-xs font-medium text-foreground/80 hover:text-foreground transition-colors">{name}</Link>
-                      <span className="text-[10px] text-muted-foreground/50">
+                      <span className="text-[12px] text-muted-foreground">
                         {formatDistanceToNow(new Date(comment.created_at * 1000), { addSuffix: true })}
                       </span>
                     </div>
@@ -588,7 +588,7 @@ export default function ArticleDetail() {
         </div>
       )}
 
-      <h1 className="hidden sm:block text-2xl sm:text-3xl font-brand font-bold mb-3 leading-tight tracking-tight text-foreground" data-testid="heading-article-title">
+      <h1 className="hidden sm:block text-2xl sm:text-3xl font-semibold mb-3 leading-tight tracking-tight text-foreground" data-testid="heading-article-title">
         {article.title}
       </h1>
 
@@ -600,20 +600,20 @@ export default function ArticleDetail() {
 
       <div className="hidden sm:flex flex-col sm:flex-row sm:items-center gap-3 mb-6 pb-6 border-b border-border/20">
         <Link href={profileUrl} className="flex items-center gap-2.5 shrink-0">
-          <Avatar className="w-9 h-9 ring-1 ring-brand/20 border border-background">
+          <Avatar className="w-9 h-9 ring-1 ring-border border border-background">
             <AvatarImage src={avatarUrl} alt={displayName} />
-            <AvatarFallback className="text-xs bg-brand/10 text-brand">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
             <span className="text-sm font-medium text-foreground/90" data-testid="text-author-name">{displayName}</span>
-            <span className="text-[11px] text-muted-foreground/60">{timeAgo}</span>
+            <span className="text-[12px] text-muted-foreground">{timeAgo}</span>
           </div>
         </Link>
         <div className="flex items-center gap-2 sm:gap-3 sm:ml-auto flex-wrap">
-          <span className="text-[11px] text-muted-foreground/50 flex items-center gap-1">
+          <span className="text-[12px] text-muted-foreground flex items-center gap-1">
             <Calendar className="w-3 h-3" /> {publishDate}
           </span>
-          <span className="text-[11px] text-muted-foreground/50 flex items-center gap-1">
+          <span className="text-[12px] text-muted-foreground flex items-center gap-1">
             <Clock className="w-3 h-3" /> {readTime} min read
           </span>
           <Button
@@ -682,7 +682,7 @@ export default function ArticleDetail() {
         <div className="hidden sm:flex items-center gap-1.5 flex-wrap mb-6">
           {article.hashtags.map((tag) => (
             <Link key={tag} href={`/articles?tag=${encodeURIComponent(tag)}`} data-testid={`link-hashtag-${tag}`}>
-              <Badge variant="secondary" className="text-[11px] cursor-pointer">
+              <Badge variant="secondary" className="text-[12px] cursor-pointer">
                 <Hash className="w-2.5 h-2.5 mr-0.5" />{tag}
               </Badge>
             </Link>
@@ -710,9 +710,9 @@ export default function ArticleDetail() {
       <div className="hidden sm:block border-t border-border/20 pt-5 mb-6">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <Link href={profileUrl} className="flex items-center gap-2">
-            <Avatar className="w-7 h-7 ring-1 ring-brand/20 border border-background">
+            <Avatar className="w-7 h-7 ring-1 ring-border border border-background">
               <AvatarImage src={avatarUrl} alt={displayName} />
-              <AvatarFallback className="text-[10px] bg-brand/10 text-brand">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+              <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[10px]">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <span className="text-xs text-muted-foreground/70">Written by <span className="text-foreground/80 font-medium">{displayName}</span></span>
           </Link>
@@ -741,7 +741,7 @@ export default function ArticleDetail() {
           <Drawer open={showShareDialog} onOpenChange={(open) => { if (!open) setShowShareDialog(false); }}>
             <DrawerContent>
               <DrawerHeader>
-                <DrawerTitle className="font-brand uppercase tracking-widest text-sm flex items-center gap-2">
+                <DrawerTitle className="text-sm flex items-center gap-2 font-medium">
                   <Share2 className="w-4 h-4" />
                   Share
                 </DrawerTitle>
@@ -753,9 +753,9 @@ export default function ArticleDetail() {
           </Drawer>
         ) : (
           <Dialog open={showShareDialog} onOpenChange={(open) => { if (!open) setShowShareDialog(false); }}>
-            <DialogContent className="max-w-sm sm:max-w-md glass-dialog-card border-brand/15 overflow-hidden">
+            <DialogContent className="max-w-sm sm:max-w-md glass-dialog-card border-border/60 overflow-hidden">
               <DialogHeader>
-                <DialogTitle className="font-brand uppercase tracking-widest text-sm flex items-center gap-2">
+                <DialogTitle className="text-sm flex items-center gap-2 font-medium">
                   <Share2 className="w-4 h-4" />
                   Share
                 </DialogTitle>
@@ -784,8 +784,8 @@ export default function ArticleDetail() {
             <div className="flex-1 min-w-0">
               <h2 className="text-sm font-semibold truncate">{article.title}</h2>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] text-muted-foreground/80 truncate max-w-[150px]">{displayName}</span>
-                <span className="text-[11px] text-muted-foreground/60">{timeAgo}</span>
+                <span className="text-[12px] text-muted-foreground truncate max-w-[150px]">{displayName}</span>
+                <span className="text-[12px] text-muted-foreground">{timeAgo}</span>
               </div>
             </div>
             <div className="flex items-center gap-1 shrink-0">
@@ -842,11 +842,11 @@ export default function ArticleDetail() {
               <div className="flex items-center gap-1 px-3 py-1.5">
                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
                   {tts.isLoading ? (
-                    <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-brand/70 shrink-0" />
+                    <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                   ) : (
-                    <AudioLines className="w-3.5 h-3.5 text-brand/70 shrink-0" />
+                    <AudioLines className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                   )}
-                  <span className="text-[11px] font-medium text-foreground/80 truncate">{tts.title || "Listening..."}</span>
+                  <span className="text-[13px] font-medium text-foreground truncate">{tts.title || "Listening..."}</span>
                 </div>
                 <div className="flex items-center shrink-0">
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={tts.skipBack} disabled={tts.isLoading} data-testid="inline-tts-back-article">
@@ -859,7 +859,7 @@ export default function ArticleDetail() {
                     <SkipForward className="w-3 h-3" />
                   </Button>
                   <button
-                    className="h-7 px-1 text-[10px] font-bold tabular-nums text-brand/70 hover:text-brand transition-colors rounded"
+                    className="h-7 px-1.5 text-[12px] font-semibold tabular-nums text-foreground/70 hover:text-foreground transition-colors rounded"
                     onClick={() => {
                       const rates = [1, 1.25, 1.5, 1.75, 2];
                       const idx = rates.indexOf(tts.rate);
@@ -899,7 +899,7 @@ export default function ArticleDetail() {
   return (
     <div className="max-w-3xl mx-auto px-3 sm:px-6 py-4 sm:py-6" data-testid="page-article-detail">
       <div className="flex items-center gap-2 mb-5">
-        <span className="text-xs font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Articles</span>
+        <span className="text-xs text-muted-foreground/60 font-medium">Articles</span>
       </div>
 
       {tts.isReading && (
@@ -907,11 +907,11 @@ export default function ArticleDetail() {
           <div className="flex items-center gap-1 px-3 py-1.5">
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
               {tts.isLoading ? (
-                <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-brand/70 shrink-0" />
+                <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
               ) : (
-                <AudioLines className="w-3.5 h-3.5 text-brand/70 shrink-0" />
+                <AudioLines className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
               )}
-              <span className="text-[11px] font-medium text-foreground/80 truncate">{tts.title || "Listening..."}</span>
+              <span className="text-[13px] font-medium text-foreground truncate">{tts.title || "Listening..."}</span>
             </div>
             <div className="flex items-center shrink-0">
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={tts.skipBack} disabled={tts.isLoading} data-testid="inline-tts-back-article-desktop">
@@ -924,7 +924,7 @@ export default function ArticleDetail() {
                 <SkipForward className="w-3 h-3" />
               </Button>
               <button
-                className="h-7 px-1 text-[10px] font-bold tabular-nums text-brand/70 hover:text-brand transition-colors rounded"
+                className="h-7 px-1.5 text-[12px] font-semibold tabular-nums text-foreground/70 hover:text-foreground transition-colors rounded"
                 onClick={() => {
                   const rates = [1, 1.25, 1.5, 1.75, 2];
                   const idx = rates.indexOf(tts.rate);

@@ -7,7 +7,6 @@ import { getProfileContent, getAvatarUrl } from "@/lib/nostr-helpers";
 import { ProfileLink } from "./ProfileLink";
 import { formatSats } from "@/lib/zap";
 import { format } from "date-fns";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -42,7 +41,7 @@ import {
   X } from "lucide-react";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 
-const CHART_COLORS = ["#8b5cf6", "#a78bfa", "#7c3aed", "#6d28d9", "#c4b5fd"];
+const CHART_COLORS = ["#3D6BFF", "#7C9BFF", "#A3ACBA", "#565D69", "#C8D4F0"];
 
 const TIME_RANGES = [
   { label: "24h", seconds: 86400 },
@@ -102,7 +101,7 @@ function CustomTooltipContent({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-md border border-brand/20 bg-white dark:bg-[rgba(4,4,10,0.95)] px-3 py-2 text-xs shadow-lg">
-      <p className="font-display text-brand mb-1">{label}</p>
+      <p className="font-medium text-foreground mb-1">{label}</p>
       {payload.map((entry: any, i: number) => (
         <p key={i} className="text-foreground">
           {entry.name}: <span className="text-brand font-mono">{Number(entry.value).toLocaleString()}</span>
@@ -126,7 +125,7 @@ function RecipientAvatar({ pubkey }: { pubkey: string }) {
   return (
     <Avatar className="w-5 h-5 shrink-0">
       <AvatarImage src={avatarUrl} />
-      <AvatarFallback className="bg-brand/20 text-[8px]">{initial}</AvatarFallback>
+      <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[8px]">{initial}</AvatarFallback>
     </Avatar>
   );
 }
@@ -311,7 +310,7 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <Zap className="w-4 h-4 text-amber-800 dark:text-amber-400" />
-          <h2 className="text-sm font-display text-brand">Zap Economy</h2>
+          <h2 className="text-[15px] font-semibold text-foreground">Zap economy</h2>
           <Badge variant="secondary" data-testid="badge-zap-count">
             {events.length.toLocaleString()} zaps
           </Badge>
@@ -319,8 +318,8 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
 
         <div className="flex items-end gap-3 flex-wrap">
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-              Time Range
+            <Label className="text-[13px] text-muted-foreground font-medium">
+              Time range
             </Label>
             <Select value={timeRange} onValueChange={setTimeRange} data-testid="select-time-range">
               <SelectTrigger className="w-[100px]" style={{ fontSize: "16px" }} data-testid="select-time-range-trigger">
@@ -353,7 +352,7 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
         {summary && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3" data-testid="summary-cards">
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Total Volume</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Total volume</p>
               <div className="flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5 text-amber-800 dark:text-amber-400" />
                 <p className="text-lg font-mono text-amber-800 dark:text-amber-400" data-testid="text-total-volume">
@@ -363,7 +362,7 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
             </div>
 
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Total Zaps</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Total zaps</p>
               <div className="flex items-center gap-1.5">
                 <ArrowUpRight className="w-3.5 h-3.5 text-brand" />
                 <p className="text-lg font-mono text-foreground" data-testid="text-total-zaps">
@@ -373,7 +372,7 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
             </div>
 
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Median Zap</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Median zap</p>
               <div className="flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5 text-brand" />
                 <p className="text-lg font-mono text-brand" data-testid="text-median-zap">
@@ -383,7 +382,7 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
             </div>
 
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Average Zap</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Average zap</p>
               <div className="flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5 text-brand" />
                 <p className="text-lg font-mono text-brand" data-testid="text-average-zap">
@@ -402,7 +401,7 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
               }`}
               data-testid="card-unique-zappers"
             >
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Unique Zappers</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Unique zappers</p>
               <div className="flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5 text-brand" />
                 <p className="text-lg font-mono text-foreground flex-1" data-testid="text-unique-zappers">
@@ -426,7 +425,7 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
               }`}
               data-testid="card-unique-recipients"
             >
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Unique Recipients</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Unique recipients</p>
               <div className="flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5 text-brand" />
                 <p className="text-lg font-mono text-foreground flex-1" data-testid="text-unique-recipients">
@@ -445,8 +444,8 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
         {drilldown && (
           <div className="p-3 rounded-lg bg-brand/5 border border-brand/10" data-testid={`drilldown-${drilldown}`}>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-                {drilldown === "zappers" ? "All Zappers" : "All Recipients"} — sorted by total sats
+              <p className="text-[13px] text-muted-foreground font-medium">
+                {drilldown === "zappers" ? "All zappers" : "All recipients"} — sorted by total sats
               </p>
               <button
                 type="button"
@@ -483,7 +482,7 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
 
         {velocity && (
           <div className="p-3 rounded-lg bg-brand/5 border border-brand/10" data-testid="zap-velocity">
-            <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50 mb-2">Zap Velocity</p>
+            <p className="text-[13px] text-muted-foreground mb-2 font-medium">Zap velocity</p>
             <div className="flex items-center gap-2">
               <TrendIcon className={`w-4 h-4 ${trendColor}`} />
               <span className={`text-sm font-mono ${trendColor}`} data-testid="text-velocity-trend">{trendLabel}</span>
@@ -493,13 +492,13 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
             </div>
             <div className="grid grid-cols-2 gap-3 mt-2">
               <div className="space-y-0.5">
-                <p className="text-[9px] font-brand uppercase tracking-widest text-muted-foreground/50">First Half</p>
+                <p className="text-[12px] text-muted-foreground font-medium">First half</p>
                 <p className="text-xs font-mono text-foreground" data-testid="text-velocity-first-half">
                   {formatSats(velocity.firstHalfTotal)} sats ({velocity.firstHalfCount} zaps)
                 </p>
               </div>
               <div className="space-y-0.5">
-                <p className="text-[9px] font-brand uppercase tracking-widest text-muted-foreground/50">Second Half</p>
+                <p className="text-[12px] text-muted-foreground font-medium">Second half</p>
                 <p className="text-xs font-mono text-foreground" data-testid="text-velocity-second-half">
                   {formatSats(velocity.secondHalfTotal)} sats ({velocity.secondHalfCount} zaps)
                 </p>
@@ -523,26 +522,26 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
 
         {!loading && distributionData.length > 0 && (
           <div data-testid="zap-distribution-chart">
-            <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50 mb-2">
-              Zap Distribution
+            <p className="text-[13px] text-muted-foreground mb-2 font-medium">
+              Zap distribution
             </p>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={distributionData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(139,92,246,0.08)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(163,172,186,0.14)" />
                 <XAxis
                   dataKey="range"
-                  tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }}
+                  tick={{ fontSize: 12, fill: "rgba(255,255,255,0.3)" }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }}
+                  tick={{ fontSize: 12, fill: "rgba(255,255,255,0.3)" }}
                   axisLine={false}
                   tickLine={false}
                   width={40}
                 />
                 <Tooltip content={<CustomTooltipContent />} />
-                <Legend wrapperStyle={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }} />
+                <Legend wrapperStyle={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }} />
                 <Bar
                   dataKey="count"
                   name="Zaps"
@@ -556,26 +555,26 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
 
         {!loading && dailyVolumeData.length > 1 && (
           <div data-testid="zap-flow-chart">
-            <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50 mb-2">
-              Daily Zap Volume (sats)
+            <p className="text-[13px] text-muted-foreground mb-2 font-medium">
+              Daily zap volume (sats)
             </p>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={dailyVolumeData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(139,92,246,0.08)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(163,172,186,0.14)" />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }}
+                  tick={{ fontSize: 12, fill: "rgba(255,255,255,0.3)" }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }}
+                  tick={{ fontSize: 12, fill: "rgba(255,255,255,0.3)" }}
                   axisLine={false}
                   tickLine={false}
                   width={50}
                 />
                 <Tooltip content={<CustomTooltipContent />} />
-                <Legend wrapperStyle={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }} />
+                <Legend wrapperStyle={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }} />
                 <Line
                   type="monotone"
                   dataKey="sats"
@@ -591,8 +590,8 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
 
         {!loading && topRecipients.length > 0 && (
           <div data-testid="top-recipients">
-            <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50 mb-2">
-              Top Recipients
+            <p className="text-[13px] text-muted-foreground mb-2 font-medium">
+              Top recipients
             </p>
             <div className="space-y-1.5">
               {topRecipients.map((r, i) => (

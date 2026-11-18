@@ -86,7 +86,7 @@ import {
 // the device (see orbit-stories.ts). Replaces the old slide-out drawer; the
 // desktop sidebar is untouched.
 //
-// Theme-aware: soft light surfaces with violet-alpha hairlines in light mode,
+// Theme-aware: soft light surfaces with ink-alpha hairlines in light mode,
 // the deep violet void (+ starfield) in dark. The dark values keep their
 // original literals; light values map to the Synthesis tokens.
 //
@@ -200,7 +200,7 @@ function Starfield({ width, height }: { width: number; height: number }) {
           cx={s.x}
           cy={s.y}
           r={s.r}
-          fill={s.violet ? "#a855f7" : "#ffffff"}
+          fill={s.violet ? "#A3ACBA" : "#ffffff"}
           opacity={s.o}
         />
       ))}
@@ -982,20 +982,19 @@ export function OrbitMenu() {
   );
 
   // ——— Theme-dependent visuals ———
-  // Dark keeps its original literals (deep violet void + neon rings); light
-  // maps to the Synthesis system — soft near-white canvas, violet-alpha
-  // hairlines, deeper violet ring stops so they stay legible on white.
-  const overlayBg = isDark ? "hsl(258 32% 5%)" : "hsl(262 20% 97%)";
-  const dropdownBg = isDark ? "hsl(258 28% 8%)" : "#ffffff";
+  // Dark is the Galaxy ground with pale rings; light is Space White with
+  // ink-alpha hairlines and ink ring stops (theme tokens, no violet).
+  const overlayBg = isDark ? "hsl(220 23% 5%)" : "hsl(240 7% 97%)";
+  const dropdownBg = isDark ? "hsl(220 20% 8%)" : "#ffffff";
   const dropdownShadow = isDark
-    ? "0 10px 32px rgba(0,0,0,0.6), 0 0 16px rgba(124,58,237,0.2)"
-    : "0 10px 32px rgba(31,27,75,0.14), 0 0 16px rgba(109,40,217,0.08)";
+    ? "0 10px 32px rgba(0,0,0,0.6), 0 0 16px rgba(243,245,248,0.2)"
+    : "0 10px 32px rgba(13,15,18,0.14), 0 0 16px rgba(13,15,18,0.08)";
   const cardShadow = isDark
-    ? "0 4px 18px rgba(0,0,0,0.35), 0 0 10px rgba(124,58,237,0.12)"
-    : "0 4px 18px rgba(31,27,75,0.08), 0 0 10px rgba(109,40,217,0.06)";
+    ? "0 4px 18px rgba(0,0,0,0.35), 0 0 10px rgba(243,245,248,0.12)"
+    : "0 4px 18px rgba(13,15,18,0.08), 0 0 10px rgba(13,15,18,0.06)";
   const ringConic = isDark
-    ? "conic-gradient(from 0deg, #7c3aed, #a855f7 26%, rgba(168,85,247,0.3) 50%, #a855f7 72%, #7c3aed)"
-    : "conic-gradient(from 0deg, #5b21b6, #7c3aed 26%, rgba(109,40,217,0.3) 50%, #7c3aed 72%, #5b21b6)";
+    ? "conic-gradient(from 0deg, #F3F5F8, #A3ACBA 26%, rgba(163,172,186,0.3) 50%, #A3ACBA 72%, #F3F5F8)"
+    : "conic-gradient(from 0deg, #0D0F12, #565D69 26%, rgba(86,93,105,0.3) 50%, #565D69 72%, #0D0F12)";
 
   // ——— Account switcher actions ———
   // Switching does a deliberate full reload (see account-registry.ts): a
@@ -1050,16 +1049,16 @@ export function OrbitMenu() {
     "flex min-h-[48px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-foreground/75 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring active:bg-primary/10 dark:text-white/70 dark:active:bg-white/[0.12] sm:min-h-0 sm:flex-none sm:basis-auto sm:px-2 sm:py-1.5";
   // The name under each icon (owner, 2026-10-10, from the first-use review):
   // a row of look-alike round icons is where the bug got clicked for the moon.
-  const dockLabelClass = "text-[10px] leading-none font-medium uppercase tracking-[0.08em] text-foreground/60 dark:text-white/55";
+  const dockLabelClass = "text-[13px] leading-none font-medium text-foreground/60 dark:text-white/55";
   // Signed-in adds equal flexing so 7–8 items share the mobile row evenly;
   // signed-out items stay content-sized (only 3, the dock hugs them).
   const dockItemFlexClass = "flex-1 basis-0";
   const rowClass =
     "flex min-h-11 w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-colors border-primary/15 bg-white/70 active:bg-primary/[0.06] dark:border-brand/10 dark:bg-white/[0.03] dark:active:bg-white/[0.08]";
   const microLabelClass =
-    "mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/80 dark:text-brand/70";
+    "mb-2 text-[13px] font-semibold text-primary/80 dark:text-brand/70";
   const avatarFallbackClass =
-    "bg-secondary text-secondary-foreground dark:bg-[hsl(258,30%,14%)] dark:text-brand";
+    "bg-secondary text-secondary-foreground dark:bg-[hsl(220,18%,14%)] dark:text-brand";
 
   // The overlay's entrance animations are TIME-BASED CSS animations, not
   // framer-motion: framer drives values via requestAnimationFrame, and iOS
@@ -1286,7 +1285,7 @@ export function OrbitMenu() {
                   {recentPeople.length > 0 && (
                     <div className="px-3 pb-1 pt-2" data-testid="orbit-recent-people">
                       <div className="flex items-center justify-between pb-1.5">
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand/80 dark:text-brand/70">
+                        <span className="text-[13px] font-semibold text-brand/80 dark:text-brand/70">
                           Recent people
                         </span>
                         {/* Clear-all, mirroring the Recent searches header — the
@@ -1330,7 +1329,7 @@ export function OrbitMenu() {
                                 type="button"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => dismissRecentPerson(p.pubkey)}
-                                className="absolute -right-1 -top-0.5 flex h-6 w-6 items-center justify-center rounded-full border bg-white text-muted-foreground/60 active:text-foreground border-brand/20 dark:border-brand/25 dark:bg-[hsl(258,28%,10%)] dark:text-white/40 dark:active:text-white/80"
+                                className="absolute -right-1 -top-0.5 flex h-6 w-6 items-center justify-center rounded-full border bg-white text-muted-foreground/60 active:text-foreground border-border/60 dark:border-white/15 dark:bg-[hsl(220,20%,10%)] dark:text-white/40 dark:active:text-white/80"
                                 aria-label={`Remove ${label} from recent people`}
                                 data-testid={`orbit-recent-person-dismiss-${p.pubkey.slice(0, 8)}`}
                               >
@@ -1345,7 +1344,7 @@ export function OrbitMenu() {
                   {recentSearches.length > 0 && (
                     <>
                       <div className={`flex items-center justify-between px-3 pb-0.5 pt-2 ${recentPeople.length > 0 ? "border-t border-brand/10 dark:border-brand/15" : ""}`}>
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand/80 dark:text-brand/70">
+                        <span className="text-[13px] font-semibold text-brand/80 dark:text-brand/70">
                           Recent
                         </span>
                         <button
@@ -1424,19 +1423,19 @@ export function OrbitMenu() {
                       style={{
                         boxShadow: active
                           ? isDark
-                            ? "0 0 18px rgba(168,85,247,0.55), 0 0 6px rgba(168,85,247,0.4)"
-                            : "0 0 18px rgba(109,40,217,0.30), 0 0 6px rgba(109,40,217,0.18)"
+                            ? "0 0 18px rgba(243,245,248,0.55), 0 0 6px rgba(243,245,248,0.4)"
+                            : "0 0 18px rgba(13,15,18,0.30), 0 0 6px rgba(13,15,18,0.18)"
                           : entry.live
                             ? isDark
-                              ? "0 0 14px rgba(168,85,247,0.4)"
-                              : "0 0 14px rgba(109,40,217,0.22)"
+                              ? "0 0 14px rgba(243,245,248,0.4)"
+                              : "0 0 14px rgba(13,15,18,0.22)"
                             : isCreate
                               ? isDark
-                                ? "0 0 10px rgba(124,58,237,0.25)"
-                                : "0 0 10px rgba(109,40,217,0.12)"
+                                ? "0 0 10px rgba(243,245,248,0.25)"
+                                : "0 0 10px rgba(13,15,18,0.12)"
                               : isDark
-                                ? "0 0 8px rgba(124,58,237,0.16)"
-                                : "0 0 8px rgba(109,40,217,0.08)",
+                                ? "0 0 8px rgba(243,245,248,0.16)"
+                                : "0 0 8px rgba(13,15,18,0.08)",
                       }}
                     >
                       <span
@@ -1447,15 +1446,15 @@ export function OrbitMenu() {
                             ? ringConic
                             : active
                               ? isDark
-                                ? "rgba(196,181,253,0.6)"
-                                : "rgba(109,40,217,0.6)"
+                                ? "rgba(243,245,248,0.6)"
+                                : "rgba(13,15,18,0.6)"
                               : isCreate
                                 ? isDark
-                                  ? "rgba(168,85,247,0.4)"
-                                  : "rgba(109,40,217,0.42)"
+                                  ? "rgba(243,245,248,0.4)"
+                                  : "rgba(13,15,18,0.42)"
                                 : isDark
-                                  ? "rgba(168,85,247,0.22)"
-                                  : "rgba(109,40,217,0.26)",
+                                  ? "rgba(243,245,248,0.22)"
+                                  : "rgba(13,15,18,0.26)",
                         }}
                         data-testid={entry.live ? `${entry.testId}-ring-live` : `${entry.testId}-ring-quiet`}
                       />
@@ -1464,14 +1463,14 @@ export function OrbitMenu() {
                         style={{
                           background: active
                             ? isDark
-                              ? "hsl(262 45% 17%)"
-                              : "hsl(262 45% 92%)"
+                              ? "hsl(220 16% 18%)"
+                              : "hsl(220 10% 90%)"
                             : isCreate
                               ? isDark
-                                ? "hsl(262 38% 12%)"
-                                : "hsl(262 40% 96%)"
+                                ? "hsl(220 18% 13%)"
+                                : "hsl(220 8% 95%)"
                               : isDark
-                                ? "hsl(258 26% 10%)"
+                                ? "hsl(220 20% 10%)"
                                 : "#ffffff",
                         }}
                       >
@@ -1579,7 +1578,7 @@ export function OrbitMenu() {
                             </span>
                           )}
                         </span>
-                        <span className="shrink-0 text-[9px] uppercase tracking-[0.14em] text-muted-foreground/70 dark:text-white/40">
+                        <span className="shrink-0 text-[12px] text-muted-foreground/70 dark:text-white/40 font-medium">
                           {r.typeLabel}
                         </span>
                       </button>
@@ -1641,7 +1640,7 @@ export function OrbitMenu() {
                   closes the panel before the overlay. */}
               {pubkey && accountPanelOpen && (
                 <div
-                  className="orbit-enter-panel w-[min(92vw,24rem)] rounded-2xl border p-1.5 border-brand/25 bg-white/95 shadow-[0_8px_28px_rgba(31,27,75,0.14),0_0_14px_rgba(109,40,217,0.08)] dark:border-brand/20 dark:bg-[hsl(258,28%,9%)]/95 dark:shadow-[0_8px_28px_rgba(0,0,0,0.5),0_0_14px_rgba(124,58,237,0.15)]"
+                  className="orbit-enter-panel w-[min(92vw,24rem)] rounded-2xl border p-1.5 border-border/60 bg-white/95 shadow-[0_8px_28px_rgba(13,15,18,0.14),0_0_14px_rgba(13,15,18,0.08)] dark:border-white/10 dark:bg-[hsl(220,20%,9%)]/95 dark:shadow-[0_8px_28px_rgba(0,0,0,0.5),0_0_14px_rgba(243,245,248,0.15)]"
                   role="group"
                   aria-label="Switch account"
                   data-testid="orbit-account-panel"
@@ -1818,7 +1817,7 @@ export function OrbitMenu() {
                         }
                         setAccountPanelOpen((v) => !v);
                       }}
-                      className="flex items-center gap-1 self-stretch rounded-full px-1 text-[10px] uppercase tracking-[0.14em] text-brand/70 transition-colors active:bg-brand/10 dark:text-brand/80 dark:active:bg-white/[0.12]"
+                      className="flex items-center gap-1 self-stretch rounded-full px-1 text-[11px] text-brand/70 transition-colors active:bg-brand/10 dark:text-brand/80 dark:active:bg-white/[0.12] font-medium"
                       aria-label={accountPanelOpen ? "Close account switcher" : "Switch account"}
                       aria-expanded={accountPanelOpen}
                       data-testid="orbit-identity-account-toggle"
@@ -1933,8 +1932,8 @@ export function OrbitMenu() {
                       type="button"
                       onClick={() => go("/whats-new")}
                       className={`${dockItemClass} ${dockItemFlexClass}`}
-                      aria-label="What's New"
-                      title="What's New"
+                      aria-label="What's new"
+                      title="What's new"
                       data-testid="orbit-chip-whats-new"
                     >
                       <WhatsNewIcon className="h-5 w-5" />
@@ -1964,7 +1963,7 @@ export function OrbitMenu() {
                   <button
                     type="button"
                     onClick={() => go("/login")}
-                    className="inline-flex h-11 items-center rounded-full border px-5 text-[12px] font-semibold uppercase tracking-[0.14em] border-brand/50 bg-brand/15 text-brand active:bg-brand/25 dark:bg-brand/20 dark:active:bg-brand/30"
+                    className="inline-flex h-11 items-center rounded-full border px-5 text-[12px] font-semibold border-brand/50 bg-brand/15 text-brand active:bg-brand/25 dark:bg-brand/20 dark:active:bg-brand/30"
                     data-testid="orbit-chip-signin"
                   >
                     Sign in

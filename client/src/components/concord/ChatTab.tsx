@@ -105,7 +105,7 @@ export function ChatTab({ relayUrl, outpostName, isOwner, createChannelOpen, onC
             {adding ? <Loader2 className="w-4 h-4 animate-spin text-brand shrink-0" /> : <Lock className="w-4 h-4 text-brand shrink-0" aria-hidden="true" />}
             <span className="min-w-0">
               <span className="block text-xs font-semibold text-foreground/90">Add encrypted rooms</span>
-              <span className="block text-[11px] text-muted-foreground/60">Only people you invite can read them — not even the server can.</span>
+              <span className="block text-xs text-muted-foreground">Only people you invite can read them — not even the server can.</span>
             </span>
           </button>
         )}
@@ -181,10 +181,10 @@ export function ChatTab({ relayUrl, outpostName, isOwner, createChannelOpen, onC
             aria-expanded={legacyOpen}
             data-testid="button-toggle-legacy-rooms"
           >
-            <span className="text-xs font-medium text-muted-foreground/70">
+            <span className="text-xs font-medium text-muted-foreground">
               {legacyOpen ? "Hide rooms" : "Show rooms"}
             </span>
-            <ChevronDown className={`w-4 h-4 ml-auto text-muted-foreground/40 transition-transform ${legacyOpen ? "rotate-180" : ""}`} />
+            <ChevronDown className={`w-4 h-4 ml-auto text-muted-foreground transition-transform ${legacyOpen ? "rotate-180" : ""}`} />
           </button>
           {legacyOpen && (
             <div className="border-t border-border/20 p-3">
@@ -216,11 +216,11 @@ export function ChatTab({ relayUrl, outpostName, isOwner, createChannelOpen, onC
  *  label opts itself OUT of the High and Maximum contrast presets entirely. */
 function SectionHeader({ icon, label, badge }: { icon: ReactNode; label: string; badge?: string }) {
   return (
-    <div className="flex items-center gap-1.5 px-0.5 text-muted-foreground/50">
-      <span className="text-muted-foreground/50">{icon}</span>
-      <span className="text-[11px] font-semibold uppercase tracking-wider">{label}</span>
+    <div className="flex items-center gap-1.5 px-0.5 text-muted-foreground">
+      <span className="text-muted-foreground">{icon}</span>
+      <span className="text-[12px] font-semibold">{label}</span>
       {badge && (
-        <span className="text-[10px] font-medium text-muted-foreground/40 border border-border/40 rounded px-1 py-px">
+        <span className="text-xs font-medium text-muted-foreground border border-border/40 rounded px-1 py-px">
           {badge}
         </span>
       )}

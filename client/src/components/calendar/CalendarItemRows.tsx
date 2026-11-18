@@ -74,7 +74,7 @@ export function PublishedPostCard({ item }: { item: CalendarItemPublished }) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <Badge variant="outline" className="text-[9px] uppercase tracking-wider text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600">
+            <Badge variant="outline" className="text-[12px] text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 font-medium">
               {getKindLabel(item.kind)}
             </Badge>
           </div>
@@ -115,7 +115,7 @@ export function PublishedPostCard({ item }: { item: CalendarItemPublished }) {
             <span className="text-[10px] text-gray-500 dark:text-gray-400">
               {item.date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
             </span>
-            <span className="text-[10px] text-brand group-hover:text-brand-strong flex items-center gap-1 transition-colors">
+            <span className="text-[12px] font-medium text-brand group-hover:text-brand-strong flex items-center gap-1 transition-colors">
               View <ExternalLink className="w-3 h-3" />
             </span>
           </div>
@@ -146,11 +146,11 @@ export function CreatorStreamCard({ item }: { item: CalendarItemCreatorStream })
       className="block glass-card border rounded-lg p-3 transition-all group"
     >
       <div className="flex items-start gap-3">
-        <Radio className="w-4 h-4 text-brand flex-shrink-0 mt-0.5" />
+        <Radio className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <Badge variant="outline" className="text-[9px] uppercase tracking-wider bg-brand dark:bg-brand/10 text-brand border-brand dark:border-brand/20">
-              {item.status === "live" ? "Live Stream" : "Planned Stream"}
+            <Badge variant="outline" className="text-[12px] bg-foreground/[0.06] text-foreground/80 border-border/60 font-medium">
+              {item.status === "live" ? "Live stream" : "Planned stream"}
             </Badge>
           </div>
           <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">{item.title}</p>
@@ -158,9 +158,9 @@ export function CreatorStreamCard({ item }: { item: CalendarItemCreatorStream })
             <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-1.5">{item.summary.slice(0, 200)}</p>
           )}
           <div className="flex items-center gap-2 mb-1.5">
-            <Avatar className="w-5 h-5 border border-brand/30 dark:border-brand/20">
+            <Avatar className="w-5 h-5 border border-border/60">
               <AvatarImage src={avatarUrl} alt={displayName} />
-              <AvatarFallback className="text-[8px] bg-brand/60 dark:bg-brand/50 text-brand">{displayName?.charAt(0)?.toUpperCase()}</AvatarFallback>
+              <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[8px]">{displayName?.charAt(0)?.toUpperCase()}</AvatarFallback>
             </Avatar>
             <span className="text-xs text-gray-600 dark:text-gray-400">{displayName}</span>
           </div>
@@ -176,7 +176,7 @@ export function CreatorStreamCard({ item }: { item: CalendarItemCreatorStream })
           {item.hashtags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1.5">
               {item.hashtags.slice(0, 5).map((tag) => (
-                <Badge key={tag} variant="outline" className="text-[8px] px-1.5 py-0 text-brand border-brand">
+                <Badge key={tag} variant="outline" className="text-[11px] px-1.5 py-0 text-foreground/75 border-border/60">
                   #{tag}
                 </Badge>
               ))}
@@ -200,7 +200,7 @@ export function FeedEventCard({ item }: { item: CalendarItemSubscribed }) {
         <span className="text-base flex-shrink-0 mt-0.5">{item.feedEmoji}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <Badge variant="outline" className="text-[9px] uppercase tracking-wider bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/20">
+            <Badge variant="outline" className="text-[12px] bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/20 font-medium">
               {item.feedName}
             </Badge>
           </div>
@@ -255,11 +255,11 @@ export function HolidayRow({ holiday, onShare }: { holiday: Holiday; onShare?: (
         )}
       </div>
       <div className="flex flex-col items-end gap-1 flex-shrink-0">
-        <Badge variant="outline" className="text-[8px] uppercase tracking-wider bg-amber-100 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-500/30">
+        <Badge variant="outline" className="text-[12px] bg-amber-100 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-500/30 font-medium">
           {holiday.isBuiltIn ? "Holiday" : "Reminder"}
         </Badge>
         {!holiday.isBuiltIn && holiday.recurrence && holiday.recurrence !== "once" && (
-          <span className="text-[8px] text-amber-500/60 dark:text-amber-400/50 uppercase tracking-wider">
+          <span className="text-[12px] text-amber-500/60 dark:text-amber-400/50 font-medium capitalize">
             {holiday.recurrence}
           </span>
         )}

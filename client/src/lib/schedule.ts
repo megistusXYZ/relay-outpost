@@ -172,7 +172,7 @@ export async function updateScheduledPost(
 
 export function getKindLabel(kind: number): string {
   switch (kind) {
-    case 1: return "Note";
+    case 1: return "Post";
     case 1059: return "DM Reminder";
     case 1068: return "Poll";
     case 30023: return "Article";

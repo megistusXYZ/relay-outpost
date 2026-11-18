@@ -208,7 +208,7 @@ export function SidebarOutposts({
                 <button
                   type="button"
                   onClick={toggleOpsSection}
-                  className="flex items-center gap-1.5 w-full px-2 py-1 rounded text-[11px] font-mono font-semibold uppercase tracking-[0.12em] text-success dark:text-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-200 transition-colors"
+                  className="flex items-center gap-1.5 w-full px-2 py-1 rounded text-[11px] font-semibold text-success dark:text-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-200 transition-colors"
                   data-testid="button-sidebar-ops-toggle"
                   aria-label="Toggle relays you run"
                 >
@@ -247,7 +247,7 @@ export function SidebarOutposts({
               <button
                 type="button"
                 onClick={toggleSection}
-                className="flex items-center gap-1.5 w-full px-2 py-1 rounded text-[11px] font-mono font-semibold uppercase tracking-[0.12em] text-brand hover:text-brand-strong transition-colors"
+                className="flex items-center gap-1.5 w-full px-2 py-1 rounded text-[11px] font-semibold text-brand hover:text-brand-strong transition-colors"
                 data-testid="button-sidebar-communities-toggle"
                 aria-label="Toggle joined communities"
               >
@@ -340,7 +340,7 @@ export function SidebarOutposts({
                           <span className="w-1.5 h-1.5 rounded-full bg-brand/50 shrink-0" />
                           <span className="flex-1 truncate">{name}</span>
                           {relayPins.length === 0 && o.access === "private" && (
-                            <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground/40">prv</span>
+                            <span className="text-[12px] text-muted-foreground font-medium">prv</span>
                           )}
                         </Link>
                       </SidebarMenuButton>

@@ -233,10 +233,10 @@ export default function ConcordInviteAccept({ naddr }: { naddr: string }) {
   const expired = lookup.status === "expired";
   return (
     <Wrap>
-      <p className="text-[11px] font-medium uppercase tracking-wider text-brand/60">You're invited to join</p>
+      <p className="text-[12px] font-medium text-brand/60">You're invited to join</p>
       <Avatar className="w-16 h-16 mx-auto border border-primary/30 mt-3">
         <AvatarImage src={photo ?? bundle.icon} />
-        <AvatarFallback className="bg-brand/25 text-brand text-xl font-bold">{bundle.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xl font-bold">{bundle.name.slice(0, 2).toUpperCase()}</AvatarFallback>
       </Avatar>
       <p className="text-lg font-bold mt-3">{bundle.name}</p>
       <p className="text-xs text-muted-foreground/60 mt-1 flex items-center justify-center gap-1.5">

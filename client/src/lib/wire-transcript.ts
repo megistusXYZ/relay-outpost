@@ -58,7 +58,7 @@ function ago(sec: number, nowSec: number): string {
   return `${Math.round(d / 86400)} d ago`;
 }
 
-/** A filter, in words: "Notes and Reactions · from 2 people · since 3 h ago · up to 50". */
+/** A filter, in words: "Posts and Reactions · from 2 people · since 3 h ago · up to 50". */
 export function describeFilter(f: Record<string, unknown>, nowSec: number): string {
   const arr = (k: string) => (Array.isArray(f[k]) ? (f[k] as unknown[]) : []);
   const parts: string[] = [];

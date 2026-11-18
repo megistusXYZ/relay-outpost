@@ -1,15 +1,15 @@
 /**
  * Cohesive, theme-aware SVG illustrations for the /wtf guides.
- * 16:9 viewBox; primary line-work uses currentColor (violet via the root class)
- * so it reads in both light and dark; a few fixed accents (amber=Bitcoin,
- * emerald=trust, rose=danger, indigo=secondary) carry meaning.
+ * 16:9 viewBox; primary line-work uses currentColor (the brand colour via the
+ * root class) so it reads in both light and dark; a few fixed accents
+ * (amber=Bitcoin, emerald=trust, rose=danger, cool blue=secondary) carry meaning.
  *
  * Heroes = one per guide. Concept diagrams = reusable across steps.
  */
 import type { ReactNode } from "react";
 
 const ROOT = "block w-full h-auto text-brand";
-const INDIGO = "#6366f1";
+const INDIGO = "#3D6BFF"; // the theme's cool blue (design canvas, 2026-11-16)
 const AMBER = "#f59e0b";
 const EMERALD = "#10b981";
 const ROSE = "#fb7185";

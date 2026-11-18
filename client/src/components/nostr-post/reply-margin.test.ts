@@ -60,7 +60,9 @@ describe("margin notes wiring", () => {
     // ParentPostPreview lives in thread-lite.tsx (a feed's first load).
     const lite = await read("./thread-lite.tsx");
     expect(lite).toMatch(/variant === "note"\s*\? "rounded-lg bg-card border border-border\/60/);
-    expect(lite).toMatch(/variant === "note" \? "text-muted-foreground" : "text-muted-foreground\/60"/);
+    // Outpost brand (2026-11-16): the time line is readable in every variant now, not only "note".
+    expect(lite).toMatch(/`text-\[12px\] text-muted-foreground`/);
+    expect(lite).not.toMatch(/text-muted-foreground\/60/);
   });
 
   it("the profile stream gives each row a slot level with its post, clipped to the row, only when there is a margin", async () => {

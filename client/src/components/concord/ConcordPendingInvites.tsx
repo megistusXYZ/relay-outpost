@@ -95,20 +95,20 @@ function InviteCard({ invite, busy, onAccept, onDismiss }: {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-primary/25 bg-primary/[0.04] p-3" data-testid={`concord-invite-${invite.bundle.community_id.slice(0, 8)}`}>
       <Avatar className="w-10 h-10 border border-primary/30 shrink-0">
-        <AvatarFallback className="bg-brand/25 text-brand text-xs font-bold">{initials}</AvatarFallback>
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs font-bold">{initials}</AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold truncate flex items-center gap-1.5">
           {invite.bundle.name ?? "Group chat"}
-          <span className="inline-flex shrink-0" title="End-to-end encrypted" aria-label="End-to-end encrypted"><Lock className="w-3 h-3 text-muted-foreground/50" /></span>
+          <span className="inline-flex shrink-0" title="End-to-end encrypted" aria-label="End-to-end encrypted"><Lock className="w-3 h-3 text-muted-foreground" /></span>
         </p>
-        <p className="text-[11px] text-muted-foreground/60 truncate"><span className="font-medium text-foreground/60">{fromName}</span> invited you</p>
+        <p className="text-xs text-muted-foreground truncate"><span className="font-medium text-muted-foreground">{fromName}</span> invited you</p>
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
         <button onClick={onAccept} disabled={busy} className="flex items-center gap-1 h-9 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50" data-testid="concord-invite-accept">
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Join
         </button>
-        <button onClick={onDismiss} disabled={busy} className="flex items-center justify-center w-9 h-9 rounded-full text-muted-foreground/50 hover:text-foreground hover:bg-muted/40 disabled:opacity-50" title="Dismiss" data-testid="concord-invite-dismiss">
+        <button onClick={onDismiss} disabled={busy} className="flex items-center justify-center w-9 h-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/40 disabled:opacity-50" title="Dismiss" data-testid="concord-invite-dismiss">
           <X className="w-4 h-4" />
         </button>
       </div>

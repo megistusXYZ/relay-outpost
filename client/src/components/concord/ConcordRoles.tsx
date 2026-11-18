@@ -69,11 +69,11 @@ export function ConcordRoles({ community }: { community: StoredCommunity }) {
 
   return (
     <div className="space-y-2" data-testid="concord-roles">
-      <p className="text-[11px] text-muted-foreground/60">
+      <p className="text-xs text-muted-foreground">
         Roles rank from the top down. People can only change roles below their own.
       </p>
       {roles.length === 0 ? (
-        <p className="text-xs text-muted-foreground/60 py-2">No roles yet.</p>
+        <p className="text-xs text-muted-foreground py-2">No roles yet.</p>
       ) : (
         <div className="space-y-1">
           {roles.map((r) => (
@@ -81,12 +81,12 @@ export function ConcordRoles({ community }: { community: StoredCommunity }) {
               <span className="w-2.5 h-2.5 rounded-full shrink-0 border border-border/40" style={{ background: hexColor(r.color) ?? "transparent" }} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium truncate" style={hexColor(r.color) ? { color: hexColor(r.color) } : undefined}>{r.name || "Unnamed role"}</p>
-                <p className="text-[11px] text-muted-foreground/60 truncate">
+                <p className="text-xs text-muted-foreground truncate">
                   {holders(r.role_id) === 1 ? "1 person" : `${holders(r.role_id)} people`} · {rolePermissionWords(r.permissions)}
                 </p>
               </div>
               {editable.has(r.role_id) && (
-                <button onClick={() => setEditing({ role: r })} className="shrink-0 h-9 md:h-7 px-2.5 rounded-full text-[11px] text-primary hover:bg-primary/10 transition-colors" data-testid="concord-role-edit">
+                <button onClick={() => setEditing({ role: r })} className="shrink-0 h-9 md:h-7 px-2.5 rounded-full text-xs text-primary hover:bg-primary/10 transition-colors" data-testid="concord-role-edit">
                   Edit
                 </button>
               )}
@@ -141,11 +141,11 @@ function ConcordRoleDialog({ open, onOpenChange, initial, isNew, saving, onSave 
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-muted-foreground/70">Name</label>
+            <label className="text-xs font-medium text-muted-foreground">Name</label>
             <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={64} placeholder="Moderator, Supporter…" data-testid="input-role-name" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[11px] font-medium text-muted-foreground/70">Color</label>
+            <label className="text-xs font-medium text-muted-foreground">Color</label>
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Role color">
               {ROLE_COLORS.map((c) => (
                 <button
@@ -162,20 +162,20 @@ function ConcordRoleDialog({ open, onOpenChange, initial, isNew, saving, onSave 
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-[11px] font-medium text-muted-foreground/70">What people with this role can do</label>
+            <label className="text-xs font-medium text-muted-foreground">What people with this role can do</label>
             <div className="space-y-1">
               {ROLE_PERMISSION_CHOICES.map((c) => (
                 <div key={String(c.bit)} className="flex items-center justify-between gap-3 rounded-lg px-1 py-1.5">
                   <div className="min-w-0">
                     <p className="text-sm">{c.label}</p>
-                    <p className="text-[11px] text-muted-foreground/60">{c.detail}</p>
+                    <p className="text-xs text-muted-foreground">{c.detail}</p>
                   </div>
                   <Switch checked={chosen.has(c.bit)} onCheckedChange={(on) => toggle(c.bit, on)} aria-label={c.label} />
                 </div>
               ))}
             </div>
             {staff && (
-              <p className="text-[11px] text-muted-foreground/60">
+              <p className="text-xs text-muted-foreground">
                 People with this role help run the group, so they'll get the key that lets them change its settings.
               </p>
             )}

@@ -17,7 +17,7 @@ export function Segment<T extends string>({
 }) {
   return (
     <div>
-      {label && <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1.5">{label}</p>}
+      {label && <p className="text-[13px] font-medium text-muted-foreground mb-1.5">{label}</p>}
       <div className={`grid ${cols === 4 ? "grid-cols-4" : cols === 2 ? "grid-cols-2" : "grid-cols-3"} gap-1.5`}>
         {options.map((o) => {
           const active = value === o.value;
@@ -26,7 +26,7 @@ export function Segment<T extends string>({
               key={o.value}
               type="button"
               onClick={() => onChange(o.value)}
-              className={`rounded-lg px-2 py-2 text-sm font-medium border transition-all min-h-[44px] ${ active ? "border-brand/40 bg-accent dark:bg-brand/15 text-foreground" : "border-border dark:border-brand/10 bg-muted text-muted-foreground/80 hover:border-brand/25" }`}
+              className={`rounded-full px-2 py-2 text-sm font-medium border transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${ active ? "border-foreground bg-foreground text-background" : "border-border/60 bg-transparent text-muted-foreground hover:text-foreground hover:bg-foreground/[0.05]" }`}
               aria-pressed={active}
               data-testid={`${testPrefix}-${o.value}`}
             >

@@ -32,7 +32,7 @@ describe("finding a kind", () => {
 
 describe("a kind in plain words", () => {
   it("the everyday name for the kinds people meet", () => {
-    expect(plainKindName(1)).toBe("Note");
+    expect(plainKindName(1)).toBe("Post");
     expect(plainKindName(7)).toBe("Reaction");
     expect(plainKindName(9735)).toBe("Thanks");
     expect(plainKindName(30023)).toBe("Article");

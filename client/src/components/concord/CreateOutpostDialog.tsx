@@ -94,10 +94,10 @@ export function CreateOutpostDialog({ open, onOpenChange, onCreated }: {
             className="absolute inset-0 hidden h-full w-full object-cover object-top dark:block dark:opacity-[0.24]"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-background/25 via-background/60 to-background/92" />
-          <div className="absolute inset-x-0 top-0 h-44 bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(139,92,246,0.14),transparent_70%)] dark:bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(139,92,246,0.22),transparent_70%)]" />
+          <div className="absolute inset-x-0 top-0 h-44 bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(13,15,18,0.06),transparent_70%)] dark:bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(255,255,255,0.06),transparent_70%)]" />
         </div>
         <DialogHeader className="-mx-4 sm:-mx-6 px-4 sm:px-6 pb-3.5 border-b border-brand/10 dark:border-white/[0.06]">
-          <DialogTitle className="flex items-center gap-2 text-sm font-brand uppercase tracking-widest">
+          <DialogTitle className="flex items-center gap-2 text-sm font-medium">
             <div className="w-7 h-7 rounded-lg bg-brand/10 dark:bg-brand/15 flex items-center justify-center shadow-sm">
               <Lock className="w-3.5 h-3.5 text-brand/70" />
             </div>
@@ -105,19 +105,19 @@ export function CreateOutpostDialog({ open, onOpenChange, onCreated }: {
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <p className="text-xs text-muted-foreground/60">
+          <p className="text-xs text-muted-foreground">
             An end-to-end-encrypted group chat on Nostr — no relay to run. You own the keys; members join by invite.
           </p>
           <div className="space-y-1.5">
-            <label className="text-[11px] font-medium text-muted-foreground/70">Group photo <span className="opacity-50">(optional)</span></label>
+            <label className="text-xs font-medium text-muted-foreground">Group photo <span className="opacity-50">(optional)</span></label>
             <RoomImagePicker image={image ?? undefined} onChange={setImage} fallback={name || "?"} />
           </div>
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-muted-foreground/70">Name</label>
+            <label className="text-xs font-medium text-muted-foreground">Name</label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. My Community" autoFocus onKeyDown={(e) => { if (e.key === "Enter") create(); }} data-testid="input-concord-name" />
           </div>
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-muted-foreground/70">Description <span className="opacity-50">(optional)</span></label>
+            <label className="text-xs font-medium text-muted-foreground">Description <span className="opacity-50">(optional)</span></label>
             <Textarea value={about} onChange={(e) => setAbout(e.target.value)} rows={3} maxLength={500} placeholder="What's this group chat about?" className="resize-none text-sm" data-testid="input-concord-about" />
           </div>
           <Button onClick={create} disabled={!name.trim() || busy} className="w-full" data-testid="button-concord-create">

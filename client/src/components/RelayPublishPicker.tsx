@@ -34,7 +34,7 @@ interface RelayPublishPickerProps {
 const PRESETS: { key: RelayPreset; label: string; icon: React.ReactNode; activeClasses: string; checkBg: string; checkIcon: string; iconActive: string }[] = [
   {
     key: "all", label: "All Relays", icon: <Satellite className="w-3.5 h-3.5" />,
-    activeClasses: "border-primary/40 bg-primary/10 text-primary dark:text-brand shadow-[0_0_12px_-3px_rgba(168,85,247,0.25)]",
+    activeClasses: "border-primary/40 bg-primary/10 text-primary dark:text-brand shadow-[0_0_12px_-3px_rgba(255,255,255,0.25)]",
     checkBg: "bg-primary/20 dark:bg-brand/20", checkIcon: "text-primary dark:text-brand", iconActive: "text-primary dark:text-brand",
   },
   {
@@ -240,11 +240,11 @@ function PickerBody({
         <div className="flex flex-col gap-0.5 min-w-0">
           <div className="flex items-center gap-1.5">
             <div className={`w-1.5 h-1.5 rounded-full ${resolvedUrls.size > 0 ? "bg-green-400/80" : "bg-muted-foreground/30"}`} />
-            <span className="text-[11px] sm:text-xs text-muted-foreground/70 truncate">
+            <span className="text-[12px] text-muted-foreground truncate">
               {hasOutposts && outpostsSelectedCount > 0 ? (
                 <>
                   <span className="font-medium text-brand">{outpostsSelectedCount}</span>{" "}
-                  Outpost{outpostsSelectedCount !== 1 ? "s" : ""}
+                  {outpostsSelectedCount !== 1 ? "communities" : "community"}
                   {defaultsSelectedCount > 0 && (
                     <>
                       <span className="text-muted-foreground/40 mx-1">·</span>
@@ -385,8 +385,8 @@ export function RelayPublishPicker({ open, onOpenChange, onPreferenceChange }: R
         <Radio className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand/80" />
       </div>
       <div>
-        <span className="font-brand uppercase tracking-widest text-xs sm:text-sm block">Publish To</span>
-        <span className="text-[10px] text-muted-foreground/40 block leading-tight">Choose your broadcast targets</span>
+        <span className="text-xs sm:text-sm block font-medium">Publish to</span>
+        <span className="text-[10px] text-muted-foreground/40 block leading-tight">Choose where this post goes</span>
       </div>
     </div>
   );
@@ -479,7 +479,7 @@ function CollapsibleRelayGroup({
         <ChevronDown
           className={`w-3 h-3 text-muted-foreground/40 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`}
         />
-        <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground/50 font-medium">
+        <span className="text-[12px] sm:text-[13px] text-muted-foreground font-medium">
           {label}
         </span>
         <span className="text-[9px] sm:text-[10px] text-muted-foreground/35 font-medium">·</span>

@@ -148,7 +148,7 @@ const BY_KIND = new Map(KIND_CATALOG.map((k) => [k.kind, k]));
 
 /** The everyday name for the kinds people meet; the catalogue's name for the rest. */
 const PLAIN: Record<number, string> = {
-  0: "Profile", 1: "Note", 3: "Follow list", 4: "Old-style DM", 5: "Deletion", 6: "Repost", 7: "Reaction",
+  0: "Profile", 1: "Post", 3: "Follow list", 4: "Old-style DM", 5: "Deletion", 6: "Repost", 7: "Reaction",
   14: "Private message", 16: "Repost", 20: "Picture", 21: "Video", 22: "Short video", 1059: "Sealed message",
   1111: "Comment", 1311: "Live chat", 1984: "Report", 9734: "Thanks request", 9735: "Thanks", 10000: "Mute list",
   10002: "Relay list", 30023: "Article", 30311: "Live stream",

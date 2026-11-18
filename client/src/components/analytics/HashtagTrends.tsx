@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import type { Event } from "nostr-tools";
 import { DEFAULT_RELAYS, throttledPoolSubscribe } from "@/lib/nostr";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -23,14 +22,14 @@ import {
   Hash,
   Play,
   TrendingUp,
-  TrendingDown,
   Minus,
   ArrowUpRight,
   ArrowDownRight,
-  Flame } from "lucide-react";
+  Flame,
+} from "lucide-react";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 
-const CHART_COLORS = ["#8b5cf6", "#a78bfa", "#7c3aed", "#6d28d9", "#c4b5fd"];
+const CHART_COLORS = ["#3D6BFF", "#7C9BFF", "#A3ACBA", "#565D69", "#C8D4F0"];
 
 const TIME_RANGES = [
   { label: "24h", seconds: 86400 },
@@ -52,7 +51,7 @@ function CustomTooltipContent({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-md border border-brand/20 bg-white dark:bg-[rgba(4,4,10,0.95)] px-3 py-2 text-xs shadow-lg">
-      <p className="font-display text-brand mb-1">{label}</p>
+      <p className="font-medium text-foreground mb-1">{label}</p>
       {payload.map((entry: any, i: number) => (
         <p key={i} className="text-foreground">
           {entry.name}: <span className="text-brand font-mono">{Number(entry.value).toLocaleString()}</span>
@@ -185,7 +184,7 @@ export function HashtagTrends({ relays: propRelays }: { relays?: string[] }) {
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <Hash className="w-4 h-4 text-brand" />
-          <h2 className="text-sm font-display text-brand">Hashtag Trends</h2>
+          <h2 className="text-[15px] font-semibold text-foreground">Hashtag trends</h2>
           <Badge variant="secondary" data-testid="badge-hashtag-count">
             {hashtagData.length.toLocaleString()} tags
           </Badge>
@@ -193,8 +192,8 @@ export function HashtagTrends({ relays: propRelays }: { relays?: string[] }) {
 
         <div className="flex items-end gap-3 flex-wrap">
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">
-              Time Range
+            <Label className="text-[13px] text-muted-foreground font-medium">
+              Time range
             </Label>
             <Select value={timeRange} onValueChange={setTimeRange} data-testid="select-time-range">
               <SelectTrigger className="w-[100px]" style={{ fontSize: "16px" }} data-testid="select-time-range-trigger">
@@ -227,7 +226,7 @@ export function HashtagTrends({ relays: propRelays }: { relays?: string[] }) {
         {summary && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" data-testid="summary-cards">
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Unique Hashtags</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Unique hashtags</p>
               <div className="flex items-center gap-1.5">
                 <Hash className="w-3.5 h-3.5 text-brand" />
                 <p className="text-lg font-mono text-brand" data-testid="text-total-unique">
@@ -237,7 +236,7 @@ export function HashtagTrends({ relays: propRelays }: { relays?: string[] }) {
             </div>
 
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Most Popular</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Most popular</p>
               <div className="flex items-center gap-1.5">
                 <TrendingUp className="w-3.5 h-3.5 text-amber-800 dark:text-amber-400" />
                 <div>
@@ -252,7 +251,7 @@ export function HashtagTrends({ relays: propRelays }: { relays?: string[] }) {
             </div>
 
             <div className="space-y-1 p-3 rounded-lg bg-brand/5 border border-brand/10">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Fastest Growing</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Fastest growing</p>
               <div className="flex items-center gap-1.5">
                 <Flame className="w-3.5 h-3.5 text-orange-800 dark:text-orange-400" />
                 <div>
@@ -292,22 +291,22 @@ export function HashtagTrends({ relays: propRelays }: { relays?: string[] }) {
         {!loading && chartData.length > 0 && (
           <div className="space-y-4">
             <div data-testid="hashtag-bar-chart">
-              <p className="text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50 mb-2">
-                Top Hashtags (Current vs Previous Period)
+              <p className="text-[13px] text-muted-foreground mb-2 font-medium">
+                Top hashtags (this period vs the last)
               </p>
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 10, top: 5, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(139,92,246,0.08)" horizontal={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(163,172,186,0.14)" horizontal={false} />
                   <XAxis
                     type="number"
-                    tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }}
+                    tick={{ fontSize: 12, fill: "rgba(255,255,255,0.3)" }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
                     type="category"
                     dataKey="name"
-                    tick={{ fontSize: 9, fill: "rgba(255,255,255,0.5)" }}
+                    tick={{ fontSize: 12, fill: "rgba(255,255,255,0.5)" }}
                     axisLine={false}
                     tickLine={false}
                     width={80}
@@ -323,11 +322,11 @@ export function HashtagTrends({ relays: propRelays }: { relays?: string[] }) {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-brand/10">
-                    <th className="text-left py-2 px-2 text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Rank</th>
-                    <th className="text-left py-2 px-2 text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Hashtag</th>
-                    <th className="text-right py-2 px-2 text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Count</th>
-                    <th className="text-right py-2 px-2 text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Trend</th>
-                    <th className="text-right py-2 px-2 text-[10px] font-brand uppercase tracking-widest text-muted-foreground/50">Score</th>
+                    <th className="text-left py-2 px-2 text-[13px] text-muted-foreground font-medium">Rank</th>
+                    <th className="text-left py-2 px-2 text-[13px] text-muted-foreground font-medium">Hashtag</th>
+                    <th className="text-right py-2 px-2 text-[13px] text-muted-foreground font-medium">Count</th>
+                    <th className="text-right py-2 px-2 text-[13px] text-muted-foreground font-medium">Trend</th>
+                    <th className="text-right py-2 px-2 text-[13px] text-muted-foreground font-medium">Score</th>
                   </tr>
                 </thead>
                 <tbody>

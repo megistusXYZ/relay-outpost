@@ -50,7 +50,7 @@ export interface KnownClient {
 // Unknown-but-tagged clients get NO icon in the badge (plain "via Name" text —
 // never a generic placeholder glyph).
 export const KNOWN_CLIENTS: KnownClient[] = [
-  { key: "relay-outpost", label: "Relay Outpost", color: "#8b5cf6", aliases: ["relay-outpost"] },
+  { key: "relay-outpost", label: "Relay Outpost", color: "#FF6A3D", aliases: ["relay-outpost"] },
   { key: "amethyst", label: "Amethyst", color: "#9333ea", aliases: [] },
   { key: "damus", label: "Damus", color: "#7c5cff", aliases: ["damus ios"] },
   { key: "primal", label: "Primal", color: "#ca079c", aliases: ["primal web app", "primal ios", "primal android"] },

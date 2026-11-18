@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ArrowRight, AtSign, BadgeCheck, Camera, Check, CheckCircle2, ChevronDown, Code2, Copy, Dice5, Eye, EyeOff, FileText, Info, KeyRound, Link2, Lock, Mic, PlayCircle, QrCode, Rss, ShieldAlert, Shuffle, User, Upload, UserCircle2, X, Youtube } from "lucide-react";
+import { ArrowLeft, ArrowRight, AtSign, BadgeCheck, Camera, Check, CheckCircle2, ChevronDown, Code2, Copy, Dice5, Eye, EyeOff, FileText, Info, KeyRound, Link2, Lock, Mic, PlayCircle, Rss, Shuffle, User, Upload, X, Youtube } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BitcoinIcon } from "@/components/FeedIcons";
 import { savePodcastFeed, KIND_PODCAST_RSS, PODCAST_D_TAG } from "@/lib/music";
@@ -17,8 +17,6 @@ import { resumeStep } from "@/lib/login-mode";
 import { DEFAULT_RELAYS } from "@/lib/relay-constants";
 import { floorRelayList, floorDmRelayList, FLOOR_RELAYS } from "@/lib/signup-relays";
 import { writeBlurOutside } from "@/lib/outside-space-blur";
-import { getPreferredLanguages } from "@/lib/language";
-import { classifyStorageEnvironment, classifyStorageEnvironmentAsync, type StorageEnvironment } from "@/lib/key-storage-environment";
 import { generatePassphraseSuggestion } from "@/lib/passphrase-suggest";
 import { deviceSecretInputProps } from "@/lib/credential-fields";
 import { PasskeyEnrollmentCard } from "@/components/PasskeyEnrollmentCard";
@@ -39,7 +37,6 @@ import { trackSignupEvent } from "@/lib/signup-telemetry";
 import { friendlyName, seededRandom, newSeed, avatarDataUrl, SIGNUP_BANNERS, nextBanner, randomBannerIndex, signupMetadata } from "@/lib/signup-identity";
 import { uploadChosen, withTimeout, type ChosenUploads } from "@/lib/signup-identity-upload";
 import { finalizeEvent, nip19 } from "nostr-tools";
-import { QRCodeSVG } from "qrcode.react";
 import { RelayOutpostInlineLoader, RelayOutpostIcon } from "@/components/RelayOutpostLoader";
 import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
 
@@ -96,7 +93,7 @@ function FieldInfo({ title, body, testId, isOverlay }: { title: string; body: Re
         <button
           type="button"
           aria-label={`What is ${title}?`}
-          className={`shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full transition-all ${isOverlay ? "text-brand/70 bg-white/[0.06] hover:bg-brand/20 hover:text-brand-strong focus-visible:bg-brand/20 focus-visible:text-brand-strong" : "text-brand/70 bg-brand/[0.08] hover:bg-brand/20 hover:text-brand focus-visible:bg-brand/20"} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40`}
+          className={`shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full transition-all ${isOverlay ? "text-white/60 bg-white/[0.06] hover:bg-white/15 hover:text-white focus-visible:bg-white/15 focus-visible:text-white" : "text-foreground/60 bg-foreground/[0.06] hover:bg-foreground/10 hover:text-foreground focus-visible:bg-foreground/10"} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30`}
           data-testid={testId}
         >
           <Info className="w-3.5 h-3.5" />
@@ -105,10 +102,10 @@ function FieldInfo({ title, body, testId, isOverlay }: { title: string; body: Re
       <PopoverContent
         side="top"
         align="start"
-        className="z-[110] w-72 max-w-[calc(100vw-2rem)] p-3.5 field-info-overlay border-brand/30 text-white/90"
+        className="z-[110] w-72 max-w-[calc(100vw-2rem)] p-3.5 field-info-overlay border-white/15 text-white/90"
       >
         <div className="space-y-1.5">
-          <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-brand">{title}</p>
+          <p className="text-[13px] text-brand font-medium">{title}</p>
           <div className="text-xs leading-relaxed text-white/90 [&_strong]:font-semibold [&_strong]:text-white">
             {body}
           </div>
@@ -166,14 +163,6 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
   const [copiedNpub, setCopiedNpub] = useState(false);
   const [showNsec, setShowNsec] = useState(false);
   const [copiedNsec, setCopiedNsec] = useState(false);
-  const [storageEnv, setStorageEnv] = useState<StorageEnvironment>(() => classifyStorageEnvironment());
-  useEffect(() => {
-    let cancelled = false;
-    classifyStorageEnvironmentAsync()
-      .then((env) => { if (!cancelled) setStorageEnv(env); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
 
   // Hydrate signup draft on mount. Mobile browsers (especially iOS PWAs)
   // routinely evict the page from memory when the file picker opens or the
@@ -281,7 +270,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
   const titleCls = isOverlay ? "text-white" : "";
   const descCls = isOverlay ? "text-white/60" : "text-muted-foreground";
   const subtleCls = isOverlay ? "text-white/70" : "text-muted-foreground";
-  const inputCls = isOverlay ? "bg-black/30 border-white/15 text-white placeholder:text-white/50" : "bg-background/50 placeholder:text-muted-foreground/70";
+  const inputCls = isOverlay ? "bg-black/30 border-white/40 text-white placeholder:text-white/50" : "bg-background/50 placeholder:text-muted-foreground/70";
   const primaryBtnCls = isOverlay ? "bg-white text-black hover:bg-white/90" : "bg-foreground text-background hover:bg-foreground/90";
   const ghostBtnCls = isOverlay ? "text-white/60" : "text-muted-foreground";
 
@@ -874,16 +863,16 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
           : avatarUploading
           ? "Uploading avatar…"
           : "";
-        const fieldInputCls = `${inputCls} h-11 transition-shadow focus-visible:ring-2 ${isOverlay ? "focus-visible:ring-brand/40 focus-visible:shadow-[0_0_0_4px_rgba(139,92,246,0.08)]" : "focus-visible:ring-brand/30 focus-visible:shadow-[0_0_0_4px_rgba(139,92,246,0.06)]"}`;
+        const fieldInputCls = `${inputCls} h-11 transition-shadow focus-visible:ring-2 ${isOverlay ? "focus-visible:ring-white/30 focus-visible:border-white/30" : "focus-visible:ring-foreground/25 focus-visible:border-foreground/30"}`;
         const optionalBadge = (
-          <span className={`text-[8px] font-mono uppercase tracking-wider px-1 py-px rounded-sm leading-none ${isOverlay ? "text-white/55 bg-white/[0.04] border border-white/10" : "text-foreground/65 bg-foreground/[0.04] border border-border/40"}`}>Optional</span>
+          <span className={`text-[11px] px-1 py-px rounded-sm leading-none font-medium ${isOverlay ? "text-white/55 bg-white/[0.04] border border-white/10" : "text-foreground/65 bg-foreground/[0.04] border border-border/40"}`}>Optional</span>
         );
         const labelBase = `text-xs font-brand uppercase tracking-widest flex items-center gap-1.5 ${subtleCls}`;
         return (
         <Card className={`${cardCls} relative overflow-hidden`}>
-          {/* Soft brand glow accents */}
-          <div aria-hidden className={`pointer-events-none absolute -top-24 -left-16 w-64 h-64 rounded-full blur-3xl ${isOverlay ? "bg-brand/10" : "bg-brand/[0.06]"}`} />
-          <div aria-hidden className={`pointer-events-none absolute -bottom-24 -right-16 w-64 h-64 rounded-full blur-3xl ${isOverlay ? "bg-brand/[0.07]" : "bg-brand/[0.04]"}`} />
+          {/* Soft light accents (neutral: the theme keeps chrome off the brand colour) */}
+          <div aria-hidden className={`pointer-events-none absolute -top-24 -left-16 w-64 h-64 rounded-full blur-3xl ${isOverlay ? "bg-white/[0.04]" : "bg-foreground/[0.03]"}`} />
+          <div aria-hidden className={`pointer-events-none absolute -bottom-24 -right-16 w-64 h-64 rounded-full blur-3xl ${isOverlay ? "bg-white/[0.03]" : "bg-foreground/[0.02]"}`} />
 
           <CardContent className="relative p-5 sm:p-6 space-y-6">
             {/* Banner + avatar (above-the-fold) */}
@@ -932,7 +921,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                   <>
                     <button
                       type="button"
-                      className="absolute top-2 right-2 z-10 flex items-center gap-1.5 bg-black/55 hover:bg-black/75 text-white rounded-full pl-2.5 pr-3 py-1 min-h-8 backdrop-blur-sm shadow-md text-xs font-brand uppercase tracking-widest transition-colors"
+                      className="absolute top-2 right-2 z-10 flex items-center gap-1.5 bg-black/55 hover:bg-black/75 text-white rounded-full pl-2.5 pr-3 py-1 min-h-8 backdrop-blur-sm shadow-md text-xs transition-colors font-medium"
                       onClick={(e) => { e.stopPropagation(); setBannerLoaded(false); setBannerIndex((i) => nextBanner(i)); }}
                       data-testid="button-next-banner"
                       aria-label="Show another banner"
@@ -945,7 +934,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                       data-testid="banner-upload-pill"
                     >
                       <Upload className="w-3 h-3 text-white" />
-                      <span className="text-[10px] sm:text-xs font-brand uppercase tracking-widest text-white">Upload</span>
+                      <span className="text-[13px] sm:text-xs text-white font-medium">Upload</span>
                     </div>
                   </>
                 )}
@@ -953,7 +942,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                   <>
                     <button
                       type="button"
-                      className="absolute bottom-2 right-2 z-10 flex items-center gap-1.5 bg-black/55 hover:bg-black/75 text-white rounded-full pl-2.5 pr-3 py-1 backdrop-blur-sm shadow-md text-xs font-brand uppercase tracking-widest transition-colors"
+                      className="absolute bottom-2 right-2 z-10 flex items-center gap-1.5 bg-black/55 hover:bg-black/75 text-white rounded-full pl-2.5 pr-3 py-1 backdrop-blur-sm shadow-md text-xs transition-colors font-medium"
                       onClick={(e) => { e.stopPropagation(); bannerInputRef.current?.click(); }}
                       data-testid="button-replace-banner"
                     >
@@ -973,7 +962,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                 )}
                 {bannerUploading && bannerStatus && (
                   <div className="absolute top-2 left-2 z-10">
-                    <span className="text-xs font-mono uppercase tracking-wider text-white/90 bg-black/55 backdrop-blur-sm rounded-full px-2.5 py-1 flex items-center gap-1.5">
+                    <span className="text-xs text-white/90 bg-black/55 backdrop-blur-sm rounded-full px-2.5 py-1 flex items-center gap-1.5 font-medium">
                       <RelayOutpostInlineLoader className="w-3 h-3 text-white" />
                       {bannerStatus}
                     </span>
@@ -988,7 +977,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                   <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} data-testid="input-upload-avatar" />
                   <div className="relative shrink-0 self-start">
                     {avatarUploading && (
-                      <div aria-hidden className={`absolute inset-0 rounded-full blur-md animate-pulse ${isOverlay ? "bg-brand/40" : "bg-brand/25"}`} />
+                      <div aria-hidden className={`absolute inset-0 rounded-full blur-md animate-pulse ${isOverlay ? "bg-white/30" : "bg-foreground/20"}`} />
                     )}
                     <div
                       className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-[3px] cursor-pointer group/avatar overflow-hidden shadow-xl transition-transform hover:scale-[1.03] ${isOverlay ? "border-white/20 bg-[radial-gradient(circle_at_30%_25%,#2a3550_0%,#0f1626_55%,#05080f_100%)]" : "border-background bg-muted"}`}
@@ -1112,9 +1101,9 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
             <div
               className={`rounded-xl border-2 sm:border ${
                 isOverlay
-                  ? "border-brand/40 sm:border-white/10 bg-brand/[0.06] sm:bg-white/[0.02]"
-                  : "border-primary/40 sm:border-border/40 bg-primary/[0.05] sm:bg-muted/20"
-              } shadow-[0_0_24px_-8px_rgba(139,92,246,0.45)] sm:shadow-none`}
+                  ? "border-white/15 sm:border-white/10 bg-white/[0.04] sm:bg-white/[0.02]"
+                  : "border-border/60 sm:border-border/40 bg-muted/30 sm:bg-muted/20"
+              }`}
             >
               <button
                 type="button"
@@ -1128,11 +1117,10 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                 <span
                   className={`relative shrink-0 inline-flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto rounded-full sm:rounded-none ${
                     isOverlay
-                      ? "bg-brand/25 sm:bg-transparent ring-1 ring-brand/40 sm:ring-0"
-                      : "bg-primary/15 sm:bg-transparent ring-1 ring-primary/35 sm:ring-0"
+                      ? "bg-white/[0.08] sm:bg-transparent ring-1 ring-white/15 sm:ring-0"
+                      : "bg-foreground/[0.06] sm:bg-transparent ring-1 ring-border/60 sm:ring-0"
                   }`}
                 >
-                  <span aria-hidden className="absolute inset-0 rounded-full blur-md bg-brand/30 sm:hidden" />
                   <RelayOutpostIcon className={`relative w-5 h-5 sm:w-4 sm:h-4 ${isOverlay ? "text-brand sm:text-brand/80" : "text-brand sm:text-brand/80"}`} />
                 </span>
                 <div className="flex-1 min-w-0">
@@ -1241,7 +1229,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                     />
                     {featuredLinkInfo.type ? (
                       <div
-                        className={`inline-flex items-center gap-1.5 mt-0.5 text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full ${ isOverlay ? "bg-brand/15 border border-brand/30 text-brand" : "bg-brand/10 border border-brand/30 text-brand" }`}
+                        className={`inline-flex items-center gap-1.5 mt-0.5 text-[11px] px-2 py-0.5 rounded-full font-medium ${ isOverlay ? "bg-white/[0.06] border border-white/15 text-white/80" : "bg-foreground/[0.05] border border-border/60 text-foreground/80" }`}
                         data-testid="text-featured-link-type"
                       >
                         {featuredLinkInfo.type === "rss" && <Rss className="w-3 h-3" />}
@@ -1326,13 +1314,13 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
             {/* Footer */}
             <div className="space-y-2 pt-1">
               {continueBlockedReason && (
-                <div className={`flex items-center justify-end gap-1.5 text-xs font-mono uppercase tracking-wider ${subtleCls}`} data-testid="text-continue-blocked-reason">
+                <div className={`flex items-center justify-end gap-1.5 text-xs font-medium ${subtleCls}`} data-testid="text-continue-blocked-reason">
                   {(avatarUploading || bannerUploading) && <RelayOutpostInlineLoader className="w-3 h-3" />}
                   <span>{continueBlockedReason}</span>
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <Button variant="ghost" onClick={handleBack} className={`text-xs font-brand uppercase tracking-widest ${ghostBtnCls}`} data-testid="button-create-back">
+                <Button variant="ghost" onClick={handleBack} className={`text-xs font-medium ${ghostBtnCls}`} data-testid="button-create-back">
                   <ArrowLeft className="w-4 h-4 mr-2" /> Back
                 </Button>
                 <div className="flex-1" />
@@ -1342,7 +1330,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                   className={`group/cta relative text-xs font-brand uppercase tracking-widest h-11 px-5 shadow-lg transition-all hover:shadow-xl disabled:shadow-none ${
                     isOverlay
                       ? "bg-gradient-to-r from-white to-white/90 text-black hover:from-white hover:to-white shadow-white/20"
-                      : "bg-gradient-to-r from-brand to-brand text-white hover:from-brand hover:to-brand shadow-brand/25"
+                      : "bg-foreground text-background hover:bg-foreground/90 shadow-black/20"
                   }`}
                   data-testid="button-create-step1-continue"
                 >
@@ -1420,11 +1408,11 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                     <div className={`px-3 py-3 space-y-3 border-t ${isOverlay ? "border-white/10 bg-black/20" : "border-border/40 bg-foreground/[0.02]"}`}>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-2">
-                          <Label className={`text-xs font-brand uppercase tracking-widest ${subtleCls}`}>Password for this browser</Label>
+                          <Label className={`text-xs font-medium ${subtleCls}`}>Password for this browser</Label>
                           <button
                             type="button"
                             onClick={handleSuggestPassphrase}
-                            className={`inline-flex items-center gap-1 text-[10px] font-brand uppercase tracking-[0.14em] font-bold px-2 py-1 rounded-md transition-colors ${isOverlay ? "text-brand hover:text-white hover:bg-brand/20 border border-brand/20" : "text-brand hover:text-brand/80 hover:bg-brand/10 border border-brand/25"}`}
+                            className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-md transition-colors ${isOverlay ? "text-white/85 hover:text-white hover:bg-white/10 border border-white/20" : "text-foreground/85 hover:text-foreground hover:bg-foreground/[0.06] border border-border/60"}`}
                             data-testid="button-suggest-passphrase"
                           >
                             <Dice5 className="w-3 h-3" /> Suggest 6 random words
@@ -1457,12 +1445,12 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                                 style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
                               />
                             </div>
-                            <span className={`text-xs font-mono uppercase tracking-wider ${subtleCls}`}>{passwordStrength.label}</span>
+                            <span className={`text-xs font-medium ${subtleCls}`}>{passwordStrength.label}</span>
                           </div>
                         )}
                       </div>
                       <div className="space-y-2">
-                        <Label className={`text-xs font-brand uppercase tracking-widest ${subtleCls}`}>Confirm password</Label>
+                        <Label className={`text-xs font-medium ${subtleCls}`}>Confirm password</Label>
                         <Input
                           {...deviceSecretInputProps(showPassword)}
                           value={confirmPassword}
@@ -1478,7 +1466,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                       <Button
                         onClick={handleEncryptAndSave}
                         disabled={!passwordValid || isWorking}
-                        className={`w-full text-xs font-brand uppercase tracking-widest ${primaryBtnCls}`}
+                        className={`w-full text-xs font-medium ${primaryBtnCls}`}
                         data-testid="button-encrypt-key"
                       >
                         {isWorking ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : <KeyRound className="w-4 h-4 mr-2" />}
@@ -1489,7 +1477,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                 </div>
 
                 <div className="flex items-center gap-2 pt-1">
-                  <Button variant="ghost" onClick={() => setStep(1)} className={`text-xs font-brand uppercase tracking-widest ${ghostBtnCls}`} data-testid="button-step2-back">
+                  <Button variant="ghost" onClick={() => setStep(1)} className={`text-xs font-medium ${ghostBtnCls}`} data-testid="button-step2-back">
                     <ArrowLeft className="w-4 h-4 mr-2" /> Back
                   </Button>
                 </div>
@@ -1535,9 +1523,9 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                   {showSecureAdvanced && (
                     <div className={`px-3 py-3 space-y-3 border-t ${isOverlay ? "border-white/10 bg-black/20" : "border-border/40 bg-foreground/[0.02]"}`}>
                       <div className="space-y-1.5">
-                        <p className={`text-[10px] font-brand uppercase tracking-[0.18em] font-bold ${subtleCls}`}>Your address</p>
+                        <p className={`text-[13px] font-bold ${subtleCls}`}>Your address</p>
                         <code className={`block text-[11px] break-all font-mono ${isOverlay ? "text-white/80" : "text-foreground/80"}`} data-testid="text-new-npub">{account.npub}</code>
-                        <Button size="sm" variant="outline" onClick={handleCopyNpub} className={`h-8 text-[11px] font-brand uppercase tracking-[0.12em] font-bold ${isOverlay ? "border-white/15 text-white/85 hover:bg-white/10" : ""}`} data-testid="button-copy-npub">
+                        <Button size="sm" variant="outline" onClick={handleCopyNpub} className={`h-8 text-[13px] font-medium ${isOverlay ? "border-white/15 text-white/85 hover:bg-white/10" : ""}`} data-testid="button-copy-npub">
                           {copiedNpub ? <Check className="w-3.5 h-3.5 mr-1.5" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
                           {copiedNpub ? "Copied" : "Copy"}
                         </Button>
@@ -1561,7 +1549,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                           <code className={`block text-xs break-all font-mono p-2 rounded select-all ${isOverlay ? "bg-black/40 text-white/80" : "bg-background text-foreground/80"}`} data-testid="text-step3-nsec">
                             {showNsec ? account.nsec : "•".repeat(24)}
                           </code>
-                          <Button size="sm" variant="outline" onClick={handleCopyNsec} className={`w-full text-xs font-brand uppercase tracking-widest ${isOverlay ? "border-white/20 text-white/80" : ""}`} data-testid="button-copy-nsec-step3">
+                          <Button size="sm" variant="outline" onClick={handleCopyNsec} className={`w-full text-xs font-medium ${isOverlay ? "border-white/20 text-white/80" : ""}`} data-testid="button-copy-nsec-step3">
                             {copiedNsec ? <Check className="w-3.5 h-3.5 mr-1.5" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
                             {copiedNsec ? "Copied" : "Copy the key"}
                           </Button>
@@ -1593,11 +1581,11 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                 )}
 
                 <div className="flex items-center gap-2 pt-1">
-                  <Button variant="ghost" onClick={() => setStep(1)} className={`text-xs font-brand uppercase tracking-widest ${ghostBtnCls}`} data-testid="button-step2-back">
+                  <Button variant="ghost" onClick={() => setStep(1)} className={`text-xs font-medium ${ghostBtnCls}`} data-testid="button-step2-back">
                     <ArrowLeft className="w-4 h-4 mr-2" /> Back
                   </Button>
                   <div className="flex-1" />
-                  <Button onClick={handleFinish} disabled={!canFinishSignup({ saved: keySaved, skipped: keySkipped }) || isWorking} className={`text-xs font-brand uppercase tracking-widest ${primaryBtnCls}`} data-testid="button-finish-create">
+                  <Button onClick={handleFinish} disabled={!canFinishSignup({ saved: keySaved, skipped: keySkipped }) || isWorking} className={`text-xs font-medium ${primaryBtnCls}`} data-testid="button-finish-create">
                     {isWorking ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : null}
                     {isWorking ? "Signing in…" : "Finish"}
                   </Button>

@@ -9,7 +9,6 @@ const RATE_KEY = "relay-outpost-audio-rate";
 const MAX_TRACK_POSITIONS = 200;
 const POSITION_EXPIRY = 30 * 24 * 60 * 60 * 1000;
 
-const VALID_RATES = [0.8, 1, 1.25, 1.5, 1.75, 2];
 
 function loadPlaybackRate(): number {
   try {

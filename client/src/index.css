@@ -38,37 +38,40 @@ textarea:focus {
 }
 
 :root {
-  --font-display: 'Space Grotesk', sans-serif;
-  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Geist', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Geist', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'Space Mono', 'JetBrains Mono', 'Courier New', monospace;
   /* Body default is a clean proportional sans for readability; Settings can
      override --font-body per user pick (incl. the Space Mono "Station Default"). */
   --font-body: var(--font-sans);
-  --font-brand: 'Oxanium', 'Space Grotesk', sans-serif;
+  --font-brand: 'Geist', 'Inter', system-ui, sans-serif;
 
   --bottom-nav-height: 4rem;
   --mini-player-height: 5.5rem;
 
-  --mention-hover-solid-bg: #f5f2ff;
-  --mention-hover-shadow: rgba(120, 80, 200, 0.18);
+  --mention-hover-solid-bg: #f1f1f4;
+  --mention-hover-shadow: rgba(13, 15, 18, 0.14);
 
-  /* ── LIGHT THEME — "Synthesis" enterprise system (one violet hue, neutral text,
-     faint violet warmth canvas). Discipline: violet is RESERVED for primary actions,
-     the focus ring, and active/selected states; everything else is a near-neutral
-     violet-tinted gray. ONE brand hue (262) replaces the old purple/violet/indigo/
-     fuchsia drift. #1f1b4b (sidebar-primary) is kept ONLY as the deep selected/pressed
+  /* ── LIGHT THEME — the Outpost system (2026-11-16): Space White canvas, ink
+     primary, neutral greys, and ONE brand hue, Ember (15), kept for the dot,
+     small accents and active/selected states; everything else is near-neutral.
+     It replaced the violet "Synthesis" palette and the purple/indigo/fuchsia
+     drift before it. #2f3237 (sidebar-primary) is kept ONLY as the deep selected/pressed
      fill — no longer a wash. Canvas is near-white (98%), cards pure white to lift off it.
      Components should map to these tokens, not raw Tailwind color families. */
-  --background: 262 16% 98%;        /* faint violet near-white canvas */
-  --foreground: 262 25% 12%;        /* body / heading text — ~14:1 on white */
+  /* Outpost theme (replaces the violet "Synthesis" palette described above):
+     cool neutral greys, ink for fills, and one Ember accent (--brand). Notes on
+     individual tokens below that mention violet predate this palette. */
+  --background: 240 7% 97%;        /* Space White: the near-white canvas */
+  --foreground: 216 16% 6%;        /* body / heading text — ~14:1 on white */
 
   --card: 0 0% 100%;                /* surfaces lift off the canvas via pure white + border */
-  --card-foreground: 262 25% 12%;
+  --card-foreground: 216 16% 6%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 262 25% 12%;
+  --popover-foreground: 216 16% 6%;
 
-  --primary: 262 60% 44%;           /* primary actions: violet (white text ~5.3:1) */
+  --primary: 216 16% 6%;           /* primary actions: ink (white text) */
 
   /* ------------------------------------------------------------------
    * --brand: the ACCENT hue. Not the same job as --primary.
@@ -83,22 +86,21 @@ textarea:focus {
    * --brand changes nothing there — the sweep is a provable no-op in light
    * and repairs dark only.
    * ------------------------------------------------------------------ */
-  --brand: 262 60% 44%;
+  --brand: 15 84% 39%;
   /* The hover/emphasis step. Both themes move toward MORE contrast, which is
    * what 199 hand-rolled hover pairs were already doing in opposite directions:
-   * light went violet-600 → violet-700 (darker on white), dark went violet-400
-   * → violet-300 (lighter on black). One token per step says that once instead
-   * of 199 times. 10.7:1 on white. */
-  --brand-strong: 262 65% 36%;
+   * light went one step darker on white, dark one step lighter on black. One
+   * token per step says that once instead of 199 times. 10.7:1 on white. */
+  --brand-strong: 15 86% 31%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 262 28% 93%;         /* tonal/secondary fill */
-  --secondary-foreground: 262 35% 28%;
+  --secondary: 240 5% 94%;         /* tonal/secondary fill */
+  --secondary-foreground: 216 12% 20%;
 
-  --muted: 262 18% 95%;             /* muted surface (skeletons, recessed) */
-  --muted-foreground: 258 11% 42%;  /* captions, timestamps, metadata — ~5:1 on white */
+  --muted: 240 5% 95%;             /* muted surface (skeletons, recessed) */
+  --muted-foreground: 218 10% 37%;  /* captions, timestamps, metadata — ~5:1 on white */
 
-  --accent: 262 45% 93%;            /* hover / soft-selected tint (visible but calm) */
+  --accent: 240 6% 92%;            /* hover / soft-selected tint (visible but calm) */
   /* Status, one colour each (LIGHT_MODE.md Phase 2c; status-tokens.test.ts):
      text-safe on every light surface, --accent included. Info is violet. */
   --success: 145 63% 28%;
@@ -107,30 +109,30 @@ textarea:focus {
   /* Money (zaps, sats, thanks): amber is its identity — one shade, readable
      as text (status-tokens.test.ts). Icons may stay brighter (3:1). */
   --zap: 38 92% 28%;
-  --accent-foreground: 262 45% 30%;
+  --accent-foreground: 216 16% 12%;
 
   --destructive: 0 65% 50%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 262 16% 90%;            /* default hairline */
-  --input: 262 14% 84%;             /* form-field border (a touch stronger) */
-  --ring: 262 70% 55%;              /* focus ring — bright violet, pops on white */
+  --border: 220 9% 89%;            /* default hairline */
+  --input: 220 9% 56%;             /* control border + switch off track: 3:1 on every light ground (input-border-contrast.test.ts) */
+  --ring: 14 88% 46%;              /* focus ring — Ember, pops on white */
 
-  --radius: 0.375rem;
+  --radius: 0.75rem;
 
-  --sidebar: 262 18% 97%;
-  --sidebar-foreground: 258 14% 30%;
-  --sidebar-primary: 245 47% 20%;          /* #1f1b4b — selected nav fill (kept) */
+  --sidebar: 240 6% 96%;
+  --sidebar-foreground: 218 10% 30%;
+  --sidebar-primary: 216 16% 10%;          /* #2f3237 — selected nav fill (kept) */
   --sidebar-primary-foreground: 0 0% 98%;
-  --sidebar-accent: 262 48% 94%;           /* hover / soft-selected in sidebar (violet tint) */
-  --sidebar-accent-foreground: 262 45% 32%;
-  --sidebar-border: 262 16% 90%;
-  --sidebar-ring: 262 70% 55%;
+  --sidebar-accent: 240 6% 92%;           /* hover / soft-selected in sidebar (violet tint) */
+  --sidebar-accent-foreground: 216 16% 14%;
+  --sidebar-border: 220 9% 89%;
+  --sidebar-ring: 14 88% 46%;
 
   /* ── GROUP-CHAT SENDER PALETTE (see lib/sender-color.ts) ──────────────────
      Deterministic per-sender name colors for group chats (NIP-29 + Concord).
-     Curated 13-hue set: no red (~350–15deg, reads as error) and no violet-
-     primary band (262 +/- ~25deg, reads as selected). Every value passes WCAG
+     Curated 13-hue set: no red (~350–15deg, reads as error, and is also the
+     brand's Ember band) and no band that reads as selected. Every value passes WCAG
      AA (>= 4.5:1, small bold text) against the canvas AND card backgrounds of
      its theme — verified by sender-color.test.ts, which parses THIS file.
      Keep the count in sync with SENDER_PALETTE_SIZE. */
@@ -150,63 +152,63 @@ textarea:focus {
 }
 
 .dark {
-  --mention-hover-solid-bg: #0d0820;
+  --mention-hover-solid-bg: #10141b;
   --mention-hover-shadow: rgba(0, 0, 0, 0.5);
 
   /* Surfaces sit at the brand violet hue (262) with a whisper more saturation
      than before — leans "spaceship violet" instead of flat grey, still neutral
      enough not to distract. Lightness unchanged, so contrast is identical. */
-  --background: 262 11% 7%;
-  --foreground: 0 0% 96%;
+  --background: 220 23% 5%;
+  --foreground: 216 26% 96%;
 
-  --card: 262 9% 9%;
+  --card: 220 22% 9%;
   /* Status in dark: the shades dark mode already used (-400). Dark mode does
      not change: converted sites keep their own dark: shade anyway. */
   --success: 158 64% 52%;
   --warning: 43 96% 56%;
   --danger: 0 91% 71%;
   --zap: 40 78% 62%;
-  --card-foreground: 0 0% 96%;
+  --card-foreground: 216 26% 96%;
 
-  --popover: 262 9% 9%;
-  --popover-foreground: 0 0% 92%;
+  --popover: 220 22% 9%;
+  --popover-foreground: 216 20% 92%;
 
-  --primary: 0 0% 95%;
-  --primary-foreground: 0 0% 5%;
-  /* On the locked palette's hue 262, at a lightness chosen to match what the
-   * app had already drifted to: 7.5:1 on --background, within 0.1 of the
-   * purple-400 that 188 sites picked by hand. Consolidating six shades into
-   * this one should read as no change at all. */
-  --brand: 262 90% 76%;
+  --primary: 216 26% 96%;
+  --primary-foreground: 220 23% 5%;
+  /* Ember (hue 15), light enough to read on the dark canvas: the one brand
+   * colour, for the dot, small accents and active states. Six violet shades
+   * were consolidated into one token here before the rebrand; the token is
+   * what changed colour. */
+  --brand: 15 100% 69%;
   /* Lighter than --brand here, darker than it in light — same intent, opposite
    * direction, because "stronger" means "further from the background". 10.0:1
    * on --background, within 0.3 of the violet-300 it replaces. */
-  --brand-strong: 262 95% 84%;
+  --brand-strong: 15 100% 78%;
 
-  --secondary: 262 8% 10%;
-  --secondary-foreground: 0 0% 92%;
+  --secondary: 220 18% 11%;
+  --secondary-foreground: 216 20% 92%;
 
-  --muted: 262 8% 10%;
-  --muted-foreground: 0 0% 70%;
+  --muted: 220 18% 11%;
+  --muted-foreground: 217 14% 68%;
 
-  --accent: 262 9% 13%;
-  --accent-foreground: 0 0% 90%;
+  --accent: 220 16% 14%;
+  --accent-foreground: 216 20% 90%;
 
   --destructive: 0 50% 35%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 262 8% 12%;
-  --input: 262 8% 12%;
-  --ring: 265 20% 50%;
+  --border: 220 14% 14%;
+  --input: 220 14% 42%;            /* 3:1 on every dark ground */
+  --ring: 13 100% 62%;
 
-  --sidebar: 260 12% 3%;
-  --sidebar-foreground: 230 15% 80%;
-  --sidebar-primary: 0 0% 90%;
-  --sidebar-primary-foreground: 260 12% 3%;
-  --sidebar-accent: 265 20% 10%;
-  --sidebar-accent-foreground: 230 20% 90%;
-  --sidebar-border: 260 10% 8%;
-  --sidebar-ring: 265 35% 45%;
+  --sidebar: 220 26% 4%;
+  --sidebar-foreground: 217 14% 78%;
+  --sidebar-primary: 216 26% 92%;
+  --sidebar-primary-foreground: 220 26% 4%;
+  --sidebar-accent: 220 16% 12%;
+  --sidebar-accent-foreground: 216 20% 90%;
+  --sidebar-border: 220 14% 10%;
+  --sidebar-ring: 13 100% 62%;
 
   /* Group-chat sender palette — dark variants (same hues, lifted lightness so
      each passes WCAG AA against the dark canvas/card; see :root block). */
@@ -233,17 +235,17 @@ textarea:focus {
  * (contrast only improves as the canvas darkens). Borders are LIFTED, not
  * lowered: hairlines that read at L12% on an L7% canvas vanish on L2%. */
 .dark[data-theme="black"] {
-  --background: 262 14% 2%;
-  --card: 262 10% 4%;
-  --popover: 262 10% 4%;
-  --secondary: 262 9% 5%;
-  --muted: 262 9% 5%;
-  --accent: 262 10% 8%;
-  --border: 262 10% 15%;
-  --input: 262 10% 15%;
-  --sidebar: 260 14% 1%;
-  --sidebar-border: 260 10% 10%;
-  --mention-hover-solid-bg: #070412;
+  --background: 220 30% 2%;
+  --card: 220 22% 5%;
+  --popover: 220 22% 5%;
+  --secondary: 220 18% 6%;
+  --muted: 220 18% 6%;
+  --accent: 220 16% 9%;
+  --border: 220 14% 16%;
+  --input: 220 14% 40%;            /* 3:1 on every black ground */
+  --sidebar: 220 30% 1%;
+  --sidebar-border: 220 14% 11%;
+  --mention-hover-solid-bg: #080a0e;
 }
 
 /* ---- Accessibility: contrast levels (see use-contrast.ts) ------------------
@@ -252,21 +254,21 @@ textarea:focus {
  * dark mode). Maximum also enforces a larger minimum body font size. The
  * attribute is set on <html> by the contrast hook. */
 :root[data-contrast="high"] {
-  --foreground: 235 30% 8%;
-  --muted-foreground: 240 16% 30%;
-  --card-foreground: 235 30% 8%;
-  --secondary-foreground: 240 24% 16%;
-  --accent-foreground: 240 24% 16%;
-  --sidebar-foreground: 235 24% 18%;
+  --foreground: 216 20% 5%;
+  --muted-foreground: 218 12% 28%;
+  --card-foreground: 216 20% 5%;
+  --secondary-foreground: 216 16% 14%;
+  --accent-foreground: 216 16% 14%;
+  --sidebar-foreground: 216 16% 16%;
 }
 :root[data-contrast="maximum"] {
-  --foreground: 235 40% 4%;
-  --muted-foreground: 240 24% 20%;
-  --card-foreground: 235 40% 4%;
-  --secondary-foreground: 240 30% 10%;
-  --accent-foreground: 240 30% 10%;
-  --sidebar-foreground: 235 30% 10%;
-  --border: 250 25% 70%;
+  --foreground: 216 30% 3%;
+  --muted-foreground: 218 16% 18%;
+  --card-foreground: 216 30% 3%;
+  --secondary-foreground: 216 20% 8%;
+  --accent-foreground: 216 20% 8%;
+  --sidebar-foreground: 216 20% 9%;
+  --border: 220 12% 66%;
 }
 .dark[data-contrast="high"] {
   --foreground: 0 0% 96%;
@@ -274,7 +276,7 @@ textarea:focus {
   --card-foreground: 0 0% 96%;
   --secondary-foreground: 0 0% 97%;
   --accent-foreground: 0 0% 96%;
-  --sidebar-foreground: 230 18% 90%;
+  --sidebar-foreground: 216 18% 90%;
 }
 .dark[data-contrast="maximum"] {
   --foreground: 0 0% 100%;
@@ -283,7 +285,7 @@ textarea:focus {
   --secondary-foreground: 0 0% 100%;
   --accent-foreground: 0 0% 100%;
   --sidebar-foreground: 0 0% 96%;
-  --border: 260 6% 22%;
+  --border: 220 8% 24%;
 }
 :root[data-contrast="maximum"] body {
   font-size: 16px;
@@ -445,19 +447,16 @@ textarea:focus {
   }
 
   .dark body {
-    background-color: hsl(260 9% 7%);
+    background-color: hsl(220 23% 5%);
     background-image:
-      radial-gradient(ellipse 90% 70% at 12% 15%, rgba(20, 5, 50, 0.18) 0%, transparent 55%),
-      radial-gradient(ellipse 70% 55% at 88% 80%, rgba(40, 8, 35, 0.10) 0%, transparent 50%),
-      radial-gradient(ellipse 50% 45% at 50% 40%, rgba(8, 15, 45, 0.08) 0%, transparent 55%),
-      radial-gradient(ellipse 60% 40% at 75% 20%, rgba(10, 20, 50, 0.06) 0%, transparent 50%),
-      radial-gradient(ellipse 40% 50% at 25% 70%, rgba(30, 5, 45, 0.06) 0%, transparent 50%);
+      radial-gradient(ellipse 90% 70% at 12% 8%, rgba(61, 107, 255, 0.07) 0%, transparent 55%),
+      radial-gradient(ellipse 70% 55% at 88% 92%, rgba(255, 106, 61, 0.05) 0%, transparent 50%);
   }
 
   /* Black: same nebula gradients (they read even better on a deeper canvas) —
      only the base drops to near-black, matching the token overlay above. */
   .dark[data-theme="black"] body {
-    background-color: hsl(262 14% 2%);
+    background-color: hsl(220 30% 2%);
   }
 
   /* Remove the ~300ms tap delay + double-tap-zoom on interactive controls so
@@ -472,15 +471,15 @@ textarea:focus {
   }
 
   html {
-    background-color: hsl(245 25% 96%);
+    background-color: hsl(220 4% 96%);
   }
 
   html.dark {
-    background-color: hsl(260 9% 7%);
+    background-color: hsl(220 23% 5%);
   }
 
   html.dark[data-theme="black"] {
-    background-color: hsl(262 14% 2%);
+    background-color: hsl(220 30% 2%);
   }
 
   html, body {
@@ -496,8 +495,8 @@ textarea:focus {
   }
 
   ::selection {
-    background: rgba(120, 80, 200, 0.2);
-    color: hsl(260 15% 13%);
+    background: rgba(130, 137, 150, 0.2);
+    color: hsl(220 15% 13%);
   }
 
   /* Theme swap = one clean crossfade of the whole screen via the View
@@ -685,12 +684,12 @@ html[data-welcome-cover] .app-shell {
 .dark .space-bg-nebula {
   display: block;
   background:
-    radial-gradient(ellipse 45% 35% at 20% 25%, rgba(40, 10, 80, 0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 45% 35% at 20% 25%, rgba(39, 43, 51, 0.12) 0%, transparent 70%),
     radial-gradient(ellipse 35% 40% at 80% 70%, rgba(60, 15, 50, 0.08) 0%, transparent 65%),
     radial-gradient(ellipse 50% 30% at 65% 15%, rgba(12, 25, 70, 0.10) 0%, transparent 60%),
-    radial-gradient(ellipse 30% 35% at 35% 80%, rgba(25, 15, 60, 0.08) 0%, transparent 55%),
-    radial-gradient(ellipse 25% 25% at 90% 30%, rgba(100, 20, 100, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse 20% 30% at 10% 60%, rgba(15, 10, 50, 0.08) 0%, transparent 50%);
+    radial-gradient(ellipse 30% 35% at 35% 80%, rgba(34, 36, 41, 0.08) 0%, transparent 55%),
+    radial-gradient(ellipse 25% 25% at 90% 30%, rgba(54, 58, 66, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 20% 30% at 10% 60%, rgba(27, 29, 33, 0.08) 0%, transparent 50%);
   animation: nebulaShift 45s ease-in-out infinite alternate;
 }
 
@@ -705,7 +704,7 @@ html[data-welcome-cover] .app-shell {
 .dark .space-bg-nebula-glow {
   display: block;
   background:
-    radial-gradient(ellipse 60% 50% at 30% 30%, rgba(50, 25, 100, 0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 30% 30%, rgba(56, 60, 68, 0.04) 0%, transparent 70%),
     radial-gradient(ellipse 40% 60% at 70% 65%, rgba(80, 20, 60, 0.03) 0%, transparent 65%);
   animation: nebulaShift 60s ease-in-out infinite alternate-reverse;
 }
@@ -732,17 +731,17 @@ html[data-welcome-cover] .app-shell {
     radial-gradient(1.3px 1.3px at 42% 55%, rgba(180, 190, 255, 0.5) 0%, transparent 100%),
     radial-gradient(0.8px 0.8px at 48% 5%, rgba(255, 255, 255, 0.35) 0%, transparent 100%),
     radial-gradient(1px 1px at 52% 72%, rgba(200, 210, 255, 0.4) 0%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 58% 28%, rgba(220, 200, 255, 0.55) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 58% 28%, rgba(223, 226, 232, 0.55) 0%, transparent 100%),
     radial-gradient(0.8px 0.8px at 63% 92%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
     radial-gradient(1px 1px at 68% 48%, rgba(180, 200, 255, 0.4) 0%, transparent 100%),
     radial-gradient(1.8px 1.8px at 72% 15%, rgba(255, 220, 200, 0.5) 0%, transparent 100%),
     radial-gradient(0.8px 0.8px at 78% 65%, rgba(200, 220, 255, 0.35) 0%, transparent 100%),
     radial-gradient(1.2px 1.2px at 82% 82%, rgba(255, 255, 255, 0.45) 0%, transparent 100%),
     radial-gradient(1px 1px at 88% 38%, rgba(180, 200, 255, 0.4) 0%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 92% 58%, rgba(220, 210, 255, 0.5) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 92% 58%, rgba(229, 231, 236, 0.5) 0%, transparent 100%),
     radial-gradient(0.8px 0.8px at 96% 8%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
     radial-gradient(1px 1px at 15% 50%, rgba(255, 255, 255, 0.25) 0%, transparent 100%),
-    radial-gradient(0.8px 0.8px at 45% 42%, rgba(200, 200, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 45% 42%, rgba(223, 226, 232, 0.3) 0%, transparent 100%),
     radial-gradient(1px 1px at 75% 30%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
     radial-gradient(1.3px 1.3px at 55% 85%, rgba(180, 190, 255, 0.45) 0%, transparent 100%),
     radial-gradient(0.8px 0.8px at 85% 10%, rgba(255, 255, 255, 0.25) 0%, transparent 100%),
@@ -769,17 +768,17 @@ html[data-welcome-cover] .app-shell {
     radial-gradient(0.5px 0.5px at 7% 12%, rgba(255, 255, 255, 0.4) 0%, transparent 100%),
     radial-gradient(0.5px 0.5px at 14% 34%, rgba(200, 210, 255, 0.3) 0%, transparent 100%),
     radial-gradient(0.5px 0.5px at 21% 67%, rgba(255, 255, 255, 0.25) 0%, transparent 100%),
-    radial-gradient(0.5px 0.5px at 29% 89%, rgba(200, 200, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 29% 89%, rgba(223, 226, 232, 0.3) 0%, transparent 100%),
     radial-gradient(0.5px 0.5px at 36% 23%, rgba(255, 255, 255, 0.35) 0%, transparent 100%),
-    radial-gradient(0.5px 0.5px at 43% 56%, rgba(220, 220, 255, 0.25) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 43% 56%, rgba(235, 237, 240, 0.25) 0%, transparent 100%),
     radial-gradient(0.5px 0.5px at 51% 78%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
     radial-gradient(0.5px 0.5px at 57% 11%, rgba(200, 210, 255, 0.3) 0%, transparent 100%),
     radial-gradient(0.5px 0.5px at 64% 44%, rgba(255, 255, 255, 0.25) 0%, transparent 100%),
     radial-gradient(0.5px 0.5px at 71% 91%, rgba(220, 230, 255, 0.3) 0%, transparent 100%),
     radial-gradient(0.5px 0.5px at 79% 33%, rgba(255, 255, 255, 0.35) 0%, transparent 100%),
-    radial-gradient(0.5px 0.5px at 86% 66%, rgba(200, 200, 255, 0.25) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 86% 66%, rgba(223, 226, 232, 0.25) 0%, transparent 100%),
     radial-gradient(0.5px 0.5px at 93% 19%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
-    radial-gradient(0.5px 0.5px at 4% 55%, rgba(220, 210, 255, 0.25) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 4% 55%, rgba(229, 231, 236, 0.25) 0%, transparent 100%),
     radial-gradient(0.5px 0.5px at 47% 3%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
     radial-gradient(0.5px 0.5px at 67% 97%, rgba(200, 220, 255, 0.25) 0%, transparent 100%);
   animation: starTwinkle 18s ease-in-out infinite alternate-reverse;
@@ -836,8 +835,8 @@ html[data-welcome-cover] .app-shell {
   display: block;
   background:
     radial-gradient(ellipse 110% 110% at 50% 50%, transparent 35%, rgba(0, 0, 0, 0.55) 100%),
-    radial-gradient(ellipse 80% 40% at 50% 100%, rgba(10, 5, 30, 0.4) 0%, transparent 70%),
-    radial-gradient(ellipse 80% 40% at 50% 0%, rgba(10, 5, 30, 0.3) 0%, transparent 70%);
+    radial-gradient(ellipse 80% 40% at 50% 100%, rgba(16, 17, 20, 0.4) 0%, transparent 70%),
+    radial-gradient(ellipse 80% 40% at 50% 0%, rgba(16, 17, 20, 0.3) 0%, transparent 70%);
 }
 
 #root::before,
@@ -1065,11 +1064,11 @@ html[data-perf="lite"] .space-bg-nebula {
       radial-gradient(1.8px 1.8px at 28% 12%, rgba(255, 240, 220, 0.6) 0%, transparent 100%),
       radial-gradient(1.3px 1.3px at 42% 55%, rgba(180, 190, 255, 0.5) 0%, transparent 100%),
       radial-gradient(1px 1px at 52% 72%, rgba(200, 210, 255, 0.4) 0%, transparent 100%),
-      radial-gradient(1.5px 1.5px at 58% 28%, rgba(220, 200, 255, 0.55) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 58% 28%, rgba(223, 226, 232, 0.55) 0%, transparent 100%),
       radial-gradient(1px 1px at 68% 48%, rgba(180, 200, 255, 0.4) 0%, transparent 100%),
       radial-gradient(1.8px 1.8px at 72% 15%, rgba(255, 220, 200, 0.5) 0%, transparent 100%),
       radial-gradient(1.2px 1.2px at 82% 82%, rgba(255, 255, 255, 0.45) 0%, transparent 100%),
-      radial-gradient(1.5px 1.5px at 92% 58%, rgba(220, 210, 255, 0.5) 0%, transparent 100%);
+      radial-gradient(1.5px 1.5px at 92% 58%, rgba(229, 231, 236, 0.5) 0%, transparent 100%);
   }
 
   .dark .space-bg-stars-deep {
@@ -1103,9 +1102,9 @@ html[data-perf="lite"] .space-bg-nebula {
   background: linear-gradient(
     to bottom,
     transparent 0%,
-    rgba(140, 100, 220, 0.12) 15%,
-    rgba(140, 100, 220, 0.06) 50%,
-    rgba(140, 100, 220, 0.12) 85%,
+    rgba(150, 157, 170, 0.12) 15%,
+    rgba(150, 157, 170, 0.06) 50%,
+    rgba(150, 157, 170, 0.12) 85%,
     transparent 100%
   );
 }
@@ -1114,9 +1113,9 @@ html[data-perf="lite"] .space-bg-nebula {
   background: linear-gradient(
     to bottom,
     transparent 0%,
-    rgba(90, 60, 180, 0.08) 15%,
-    rgba(90, 60, 180, 0.04) 50%,
-    rgba(90, 60, 180, 0.08) 85%,
+    rgba(110, 117, 130, 0.08) 15%,
+    rgba(110, 117, 130, 0.04) 50%,
+    rgba(110, 117, 130, 0.08) 85%,
     transparent 100%
   );
 }
@@ -1134,16 +1133,16 @@ html[data-perf="lite"] .space-bg-nebula {
   pointer-events: none;
   will-change: transform, opacity;
   background:
-    radial-gradient(ellipse 90% 45% at 25% 15%, rgba(140, 100, 220, 0.05) 0%, transparent 70%),
-    radial-gradient(ellipse 70% 60% at 85% 70%, rgba(160, 80, 200, 0.03) 0%, transparent 60%);
+    radial-gradient(ellipse 90% 45% at 25% 15%, rgba(150, 157, 170, 0.05) 0%, transparent 70%),
+    radial-gradient(ellipse 70% 60% at 85% 70%, rgba(130, 137, 150, 0.03) 0%, transparent 60%);
 }
 
 .dark .sidebar-galaxy [data-sidebar="sidebar"]::before {
   background:
-    radial-gradient(ellipse 90% 45% at 25% 15%, rgba(25, 8, 60, 0.28) 0%, transparent 70%),
-    radial-gradient(ellipse 70% 60% at 85% 70%, rgba(40, 5, 50, 0.16) 0%, transparent 60%),
+    radial-gradient(ellipse 90% 45% at 25% 15%, rgba(30, 33, 38, 0.28) 0%, transparent 70%),
+    radial-gradient(ellipse 70% 60% at 85% 70%, rgba(24, 26, 31, 0.16) 0%, transparent 60%),
     radial-gradient(ellipse 55% 35% at 15% 80%, rgba(8, 15, 50, 0.14) 0%, transparent 50%),
-    radial-gradient(ellipse 40% 30% at 60% 45%, rgba(15, 5, 35, 0.12) 0%, transparent 55%);
+    radial-gradient(ellipse 40% 30% at 60% 45%, rgba(18, 19, 22, 0.12) 0%, transparent 55%);
   animation: sidebarNebula 40s ease-in-out infinite alternate;
 }
 
@@ -1155,14 +1154,14 @@ html[data-perf="lite"] .space-bg-nebula {
   pointer-events: none;
   will-change: opacity;
   background-image:
-    radial-gradient(0.8px 0.8px at 12% 8%, rgba(140, 100, 220, 0.15) 0%, transparent 100%),
-    radial-gradient(0.6px 0.6px at 38% 22%, rgba(120, 80, 200, 0.10) 0%, transparent 100%),
-    radial-gradient(0.8px 0.8px at 52% 38%, rgba(140, 100, 220, 0.12) 0%, transparent 100%),
-    radial-gradient(0.5px 0.5px at 72% 12%, rgba(120, 80, 200, 0.08) 0%, transparent 100%),
-    radial-gradient(0.7px 0.7px at 82% 52%, rgba(140, 100, 220, 0.10) 0%, transparent 100%),
-    radial-gradient(0.5px 0.5px at 18% 62%, rgba(180, 140, 255, 0.08) 0%, transparent 100%),
-    radial-gradient(0.8px 0.8px at 62% 72%, rgba(140, 100, 220, 0.12) 0%, transparent 100%),
-    radial-gradient(0.5px 0.5px at 42% 88%, rgba(120, 80, 200, 0.06) 0%, transparent 100%);
+    radial-gradient(0.8px 0.8px at 12% 8%, rgba(150, 157, 170, 0.15) 0%, transparent 100%),
+    radial-gradient(0.6px 0.6px at 38% 22%, rgba(130, 137, 150, 0.10) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 52% 38%, rgba(150, 157, 170, 0.12) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 72% 12%, rgba(130, 137, 150, 0.08) 0%, transparent 100%),
+    radial-gradient(0.7px 0.7px at 82% 52%, rgba(150, 157, 170, 0.10) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 18% 62%, rgba(188, 194, 207, 0.08) 0%, transparent 100%),
+    radial-gradient(0.8px 0.8px at 62% 72%, rgba(150, 157, 170, 0.12) 0%, transparent 100%),
+    radial-gradient(0.5px 0.5px at 42% 88%, rgba(130, 137, 150, 0.06) 0%, transparent 100%);
 }
 
 .dark .sidebar-galaxy [data-sidebar="sidebar"]::after {
@@ -1175,12 +1174,12 @@ html[data-perf="lite"] .space-bg-nebula {
     radial-gradient(0.6px 0.6px at 18% 62%, rgba(255, 230, 210, 0.22) 0%, transparent 100%),
     radial-gradient(1.2px 1.2px at 62% 72%, rgba(200, 210, 255, 0.35) 0%, transparent 100%),
     radial-gradient(0.5px 0.5px at 42% 88%, rgba(255, 255, 255, 0.15) 0%, transparent 100%),
-    radial-gradient(0.7px 0.7px at 92% 32%, rgba(180, 180, 255, 0.25) 0%, transparent 100%),
+    radial-gradient(0.7px 0.7px at 92% 32%, rgba(212, 216, 224, 0.25) 0%, transparent 100%),
     radial-gradient(0.8px 0.8px at 8% 42%, rgba(255, 255, 255, 0.20) 0%, transparent 100%),
     radial-gradient(0.6px 0.6px at 58% 4%, rgba(160, 180, 255, 0.22) 0%, transparent 100%),
     radial-gradient(1px 1px at 78% 82%, rgba(255, 200, 180, 0.25) 0%, transparent 100%),
     radial-gradient(0.4px 0.4px at 28% 48%, rgba(255, 255, 255, 0.12) 0%, transparent 100%),
-    radial-gradient(0.4px 0.4px at 88% 68%, rgba(200, 190, 255, 0.15) 0%, transparent 100%),
+    radial-gradient(0.4px 0.4px at 88% 68%, rgba(217, 221, 228, 0.15) 0%, transparent 100%),
     radial-gradient(0.4px 0.4px at 48% 28%, rgba(255, 255, 255, 0.12) 0%, transparent 100%),
     radial-gradient(0.4px 0.4px at 68% 58%, rgba(180, 200, 255, 0.12) 0%, transparent 100%);
   animation: sidebarStarTwinkle 12s ease-in-out infinite alternate;
@@ -1207,7 +1206,7 @@ html[data-perf="lite"] .space-bg-nebula {
 /* Landing hero: a purple glow blooms behind the hero on load, then eases back to
    a faint halo so the starfield reads through — calm → cosmic. */
 .hero-intro-glow {
-  background: radial-gradient(ellipse 72% 56% at 50% 38%, rgba(139, 92, 246, 0.42) 0%, rgba(124, 58, 237, 0.16) 34%, transparent 68%);
+  background: radial-gradient(ellipse 72% 56% at 50% 38%, rgba(157, 165, 181, 0.42) 0%, rgba(133, 143, 162, 0.16) 34%, transparent 68%);
   animation: heroGlowIntro 1.8s ease-out forwards;
   will-change: opacity, transform;
 }
@@ -1353,23 +1352,23 @@ html[data-perf="lite"] .space-bg-nebula {
   .glass-dialog-card {
     background: hsl(var(--card)) !important;
     border-color: hsl(var(--border)) !important;
-    box-shadow: 0 10px 30px -8px rgba(24, 20, 38, 0.18), 0 2px 6px rgba(24, 20, 38, 0.06);
+    box-shadow: 0 10px 30px -8px rgba(28, 29, 30, 0.18), 0 2px 6px rgba(28, 29, 30, 0.06);
   }
   .dark .glass-dialog-card {
-    background: linear-gradient(135deg, rgb(20, 17, 34) 0%, rgb(14, 12, 26) 50%, rgb(17, 14, 30) 100%) !important;
+    background: linear-gradient(135deg, rgb(24, 25, 27) 0%, rgb(18, 19, 20) 50%, rgb(21, 22, 23) 100%) !important;
     backdrop-filter: blur(32px) saturate(1.5);
     -webkit-backdrop-filter: blur(32px) saturate(1.5);
     box-shadow:
-      0 0 0 1px rgba(140, 100, 220, 0.06) inset,
+      0 0 0 1px rgba(150, 157, 170, 0.06) inset,
       0 1px 2px rgba(0, 0, 0, 0.4),
       0 4px 16px -4px rgba(0, 0, 0, 0.5),
-      0 0 1px rgba(140, 100, 220, 0.15);
+      0 0 1px rgba(150, 157, 170, 0.15);
   }
 
   .glass-card {
     background: hsl(var(--card)) !important;
     border-color: hsl(var(--border)) !important;
-    box-shadow: 0 1px 2px rgba(24, 20, 38, 0.05), 0 1px 3px rgba(24, 20, 38, 0.04);
+    box-shadow: 0 1px 2px rgba(28, 29, 30, 0.05), 0 1px 3px rgba(28, 29, 30, 0.04);
     transition: box-shadow 0.25s ease, border-color 0.25s ease;
   }
 
@@ -1499,33 +1498,33 @@ html[data-perf="lite"] .space-bg-nebula {
      utility, so there is no `md:glass-card` to reach for. */
   @media (hover: hover) and (pointer: fine) {
     .glass-card:hover {
-      border-color: rgba(120, 80, 220, 0.25) !important;
+      border-color: rgba(139, 146, 161, 0.25) !important;
       box-shadow:
-        0 0 0 1px rgba(120, 80, 200, 0.08) inset,
-        0 4px 12px rgba(100, 70, 180, 0.12),
-        0 8px 24px -6px rgba(100, 70, 180, 0.10),
+        0 0 0 1px rgba(130, 137, 150, 0.08) inset,
+        0 4px 12px rgba(116, 122, 134, 0.12),
+        0 8px 24px -6px rgba(116, 122, 134, 0.10),
         inset 0 1px 0 rgba(255, 255, 255, 0.6);
     }
   }
 
   .dark .glass-card {
-    background: rgba(8, 6, 18, 0.82) !important;
+    background: rgba(11, 12, 13, 0.82) !important;
     backdrop-filter: blur(32px) saturate(1.5);
     -webkit-backdrop-filter: blur(32px) saturate(1.5);
     box-shadow:
-      0 0 0 1px rgba(140, 100, 220, 0.06) inset,
+      0 0 0 1px rgba(150, 157, 170, 0.06) inset,
       0 1px 2px rgba(0, 0, 0, 0.4),
       0 4px 16px -4px rgba(0, 0, 0, 0.5),
-      0 0 1px rgba(140, 100, 220, 0.15);
+      0 0 1px rgba(150, 157, 170, 0.15);
   }
 
   @media (hover: hover) and (pointer: fine) {
     .dark .glass-card:hover {
       box-shadow:
-        0 0 0 1px rgba(140, 100, 220, 0.08) inset,
+        0 0 0 1px rgba(150, 157, 170, 0.08) inset,
         0 2px 4px rgba(0, 0, 0, 0.45),
         0 8px 24px -6px rgba(0, 0, 0, 0.55),
-        0 0 12px -2px rgba(120, 80, 200, 0.08);
+        0 0 12px -2px rgba(130, 137, 150, 0.08);
     }
   }
 
@@ -1535,8 +1534,8 @@ html[data-perf="lite"] .space-bg-nebula {
     background: hsl(var(--background) / 0.85);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(31, 27, 75, 0.08);
-    color: rgba(31, 27, 75, 0.88);
+    border-bottom: 1px solid rgba(47, 50, 55, 0.08);
+    color: rgba(47, 50, 55, 0.88);
   }
   .dark .glass-header {
     background: rgba(255, 255, 255, 0.02);
@@ -1549,11 +1548,11 @@ html[data-perf="lite"] .space-bg-nebula {
   .glass-footer {
     position: relative;
     z-index: 2;
-    background: linear-gradient(135deg, rgba(245, 243, 255, 0.5) 0%, rgba(240, 236, 252, 0.45) 50%, rgba(243, 240, 255, 0.48) 100%);
+    background: linear-gradient(135deg, rgba(248, 249, 250, 0.5) 0%, rgba(243, 244, 245, 0.45) 50%, rgba(246, 247, 249, 0.48) 100%);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border-top: 1px solid rgba(31, 27, 75, 0.08);
-    color: rgba(31, 27, 75, 0.60);
+    border-top: 1px solid rgba(47, 50, 55, 0.08);
+    color: rgba(47, 50, 55, 0.60);
   }
   .dark .glass-footer {
     background: rgba(255, 255, 255, 0.012);
@@ -1566,11 +1565,11 @@ html[data-perf="lite"] .space-bg-nebula {
   /* Engagement "active" colors — applied ONLY when the viewer has acted (liked /
      reposted / etc.). Flat, steady, slightly desaturated for a calm, professional
      feel: no animated pulse, no neon glow. Resting stats stay neutral gray. */
-  .stat-glow-replies { color: hsl(270 50% 50%); }
+  .stat-glow-replies { color: hsl(220 8% 50%); }
   .stat-glow-reposts { color: hsl(160 52% 36%); }
   .stat-glow-likes   { color: hsl(340 62% 50%); }
   .stat-glow-zaps    { color: hsl(var(--zap)); } /* was 38 75% 44%: 3.2:1 on white */
-  .dark .stat-glow-replies { color: hsl(270 48% 72%); }
+  .dark .stat-glow-replies { color: hsl(220 8% 72%); }
   .dark .stat-glow-reposts { color: hsl(160 45% 58%); }
   .dark .stat-glow-likes   { color: hsl(340 58% 68%); }
   .dark .stat-glow-zaps    { color: hsl(40 78% 62%); }
@@ -1583,11 +1582,11 @@ html[data-perf="lite"] .space-bg-nebula {
     text-shadow: 0 0 10px hsla(40, 80%, 50%, 0.15);
   }
   .zap-leader-message {
-    color: hsl(260 6% 52%);
+    color: hsl(220 6% 52%);
   }
   .dark .zap-leader-message {
-    color: hsl(260 8% 56%);
-    text-shadow: 0 0 12px hsla(260, 40%, 60%, 0.12);
+    color: hsl(220 8% 56%);
+    text-shadow: 0 0 12px hsla(220, 6%, 60%, 0.12);
   }
 
   .glass-inner {
@@ -1596,23 +1595,23 @@ html[data-perf="lite"] .space-bg-nebula {
     background: hsl(var(--muted));
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(24, 20, 38, 0.18);
+    border: 1px solid rgba(28, 29, 30, 0.18);
     box-shadow:
-      0 2px 10px -3px rgba(24, 20, 38, 0.12),
-      0 0 16px -4px rgba(24, 20, 38, 0.08),
+      0 2px 10px -3px rgba(28, 29, 30, 0.12),
+      0 0 16px -4px rgba(28, 29, 30, 0.08),
       inset 0 1px 0 rgba(255, 255, 255, 0.5);
-    color: rgba(30, 25, 50, 0.88);
+    color: rgba(36, 37, 39, 0.88);
     border-radius: 0.75rem;
   }
   .dark .glass-inner {
-    background: rgba(12, 10, 24, 0.35);
+    background: rgba(16, 17, 18, 0.35);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
-    border: 1px solid rgba(140, 100, 220, 0.06);
+    border: 1px solid rgba(150, 157, 170, 0.06);
     box-shadow:
       0 3px 12px -2px rgba(0, 0, 0, 0.35),
       0 1px 4px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(160, 120, 240, 0.05);
+      inset 0 1px 0 rgba(170, 177, 190, 0.05);
     color: inherit;
   }
 
@@ -1654,16 +1653,16 @@ html[data-perf="lite"] .space-bg-nebula {
   }
 
   .glass-bubble-own {
-    background: linear-gradient(135deg, #2d1b6b, #1f1b4b);
-    border: 1px solid rgba(100, 70, 180, 0.30);
-    color: #f0eef8;
+    background: linear-gradient(135deg, #3d4149, #2f3237);
+    border: 1px solid rgba(116, 122, 134, 0.30);
+    color: #f2f3f4;
     box-shadow:
-      0 0 0 1px rgba(120, 80, 200, 0.10) inset,
-      0 2px 8px -2px rgba(31, 27, 75, 0.35),
-      0 4px 16px -6px rgba(31, 27, 75, 0.25);
+      0 0 0 1px rgba(130, 137, 150, 0.10) inset,
+      0 2px 8px -2px rgba(47, 50, 55, 0.35),
+      0 4px 16px -6px rgba(47, 50, 55, 0.25);
   }
 
-  /* Own DM/chat bubble is a dark-violet gradient (#2d1b6b→#1f1b4b in light mode),
+  /* Own DM/chat bubble is a graphite gradient (#3d4149→#2f3237 in light mode),
      but links / @mention chips / naddr chips render with `text-primary` (dark
      violet) → ~1.6:1 and near-invisible. Recolor them to a light violet readable
      on the dark bubble. Scoped to own bubbles only; received bubbles keep
@@ -1671,45 +1670,45 @@ html[data-perf="lite"] .space-bg-nebula {
      mode and translucent violet in dark mode — light links read well on both). */
   .glass-bubble-own a,
   .glass-bubble-own a span {
-    color: #c9b8ff;
+    color: #d6dae1;
   }
   .glass-bubble-own a:hover {
-    color: #ddd0ff;
+    color: #e4e6eb;
   }
 
   .glass-bubble-other {
     background: hsl(var(--muted));
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(24, 20, 38, 0.20);
-    color: #3b2d6b;
+    border: 1px solid rgba(28, 29, 30, 0.20);
+    color: #474a51;
     box-shadow:
-      0 0 0 1px rgba(24, 20, 38, 0.06) inset,
-      0 2px 8px -2px rgba(31, 27, 75, 0.12),
-      0 4px 16px -6px rgba(31, 27, 75, 0.08);
+      0 0 0 1px rgba(28, 29, 30, 0.06) inset,
+      0 2px 8px -2px rgba(47, 50, 55, 0.12),
+      0 4px 16px -6px rgba(47, 50, 55, 0.08);
   }
 
   .dark .glass-bubble-own {
-    background: linear-gradient(135deg, rgba(110, 60, 180, 0.28), rgba(80, 40, 160, 0.20));
+    background: linear-gradient(135deg, rgba(110, 117, 130, 0.28), rgba(90, 97, 110, 0.20));
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(160, 110, 240, 0.22);
+    border: 1px solid rgba(165, 172, 185, 0.22);
     color: inherit;
     box-shadow:
-      0 0 0 1px rgba(160, 110, 240, 0.08) inset,
-      0 0 16px -2px rgba(120, 70, 200, 0.15) inset,
-      0 0 12px -4px rgba(140, 90, 220, 0.10),
+      0 0 0 1px rgba(165, 172, 185, 0.08) inset,
+      0 0 16px -2px rgba(125, 132, 145, 0.15) inset,
+      0 0 12px -4px rgba(145, 152, 165, 0.10),
       0 2px 12px -4px rgba(0, 0, 0, 0.4);
   }
 
   .dark .glass-bubble-other {
-    background: linear-gradient(135deg, rgba(15, 12, 30, 0.65), rgba(25, 20, 45, 0.50));
+    background: linear-gradient(135deg, rgba(20, 21, 22, 0.65), rgba(30, 32, 34, 0.50));
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(80, 70, 120, 0.15);
+    border: 1px solid rgba(91, 94, 99, 0.15);
     color: inherit;
     box-shadow:
-      0 0 0 1px rgba(80, 70, 120, 0.05) inset,
+      0 0 0 1px rgba(91, 94, 99, 0.05) inset,
       0 0 10px -2px rgba(0, 0, 0, 0.5) inset,
       0 1px 8px -3px rgba(0, 0, 0, 0.35);
   }
@@ -1731,83 +1730,83 @@ html[data-perf="lite"] .space-bg-nebula {
       -webkit-backdrop-filter: none;
     }
     .glass-bubble-other {
-      background: linear-gradient(135deg, rgba(245, 240, 255, 0.99), rgba(234, 227, 250, 0.98));
+      background: linear-gradient(135deg, rgba(246, 247, 249, 0.99), rgba(237, 238, 240, 0.98));
     }
     .dark .glass-bubble-own {
-      background: linear-gradient(135deg, rgba(74, 46, 134, 0.96), rgba(56, 34, 108, 0.96));
+      background: linear-gradient(135deg, rgba(83, 88, 97, 0.96), rgba(65, 69, 77, 0.96));
     }
     .dark .glass-bubble-other {
-      background: linear-gradient(135deg, rgba(24, 20, 44, 0.97), rgba(32, 26, 54, 0.96));
+      background: linear-gradient(135deg, rgba(30, 31, 34, 0.97), rgba(38, 39, 42, 0.96));
     }
   }
 
   .glass-bubble-reply {
-    background: linear-gradient(135deg, rgba(31, 27, 75, 0.06) 0%, rgba(80, 60, 160, 0.04) 50%, rgba(31, 27, 75, 0.05) 100%);
-    border: 1px solid rgba(31, 27, 75, 0.10);
-    color: rgba(31, 27, 75, 0.85);
+    background: linear-gradient(135deg, rgba(47, 50, 55, 0.06) 0%, rgba(102, 107, 118, 0.04) 50%, rgba(47, 50, 55, 0.05) 100%);
+    border: 1px solid rgba(47, 50, 55, 0.10);
+    color: rgba(47, 50, 55, 0.85);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.45),
-      0 2px 4px -1px rgba(31, 27, 75, 0.08),
-      0 4px 12px -4px rgba(31, 27, 75, 0.06);
+      0 2px 4px -1px rgba(47, 50, 55, 0.08),
+      0 4px 12px -4px rgba(47, 50, 55, 0.06);
   }
 
   .glass-bubble-reply-own {
-    background: linear-gradient(135deg, rgba(31, 27, 75, 0.09) 0%, rgba(100, 70, 200, 0.06) 50%, rgba(31, 27, 75, 0.08) 100%);
-    border: 1px solid rgba(31, 27, 75, 0.14);
-    color: rgba(31, 27, 75, 0.90);
+    background: linear-gradient(135deg, rgba(47, 50, 55, 0.09) 0%, rgba(125, 132, 145, 0.06) 50%, rgba(47, 50, 55, 0.08) 100%);
+    border: 1px solid rgba(47, 50, 55, 0.14);
+    color: rgba(47, 50, 55, 0.90);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.4),
-      0 2px 4px -1px rgba(31, 27, 75, 0.10),
-      0 4px 12px -4px rgba(31, 27, 75, 0.08);
+      0 2px 4px -1px rgba(47, 50, 55, 0.10),
+      0 4px 12px -4px rgba(47, 50, 55, 0.08);
   }
 
   .dark .glass-bubble-reply {
-    background: linear-gradient(135deg, rgba(18, 12, 32, 0.75) 0%, rgba(12, 10, 28, 0.68) 50%, rgba(15, 11, 30, 0.72) 100%);
-    border: 1px solid rgba(140, 100, 220, 0.12);
+    background: linear-gradient(135deg, rgba(20, 21, 24, 0.75) 0%, rgba(18, 19, 20, 0.68) 50%, rgba(19, 20, 22, 0.72) 100%);
+    border: 1px solid rgba(150, 157, 170, 0.12);
     color: inherit;
     box-shadow:
-      0 2px 10px -3px rgba(100, 70, 180, 0.14),
-      0 0 16px -4px rgba(130, 90, 210, 0.10),
-      inset 0 1px 0 rgba(160, 120, 240, 0.10);
+      0 2px 10px -3px rgba(116, 122, 134, 0.14),
+      0 0 16px -4px rgba(140, 147, 160, 0.10),
+      inset 0 1px 0 rgba(170, 177, 190, 0.10);
   }
 
   .dark .glass-bubble-reply-own {
-    background: linear-gradient(135deg, rgba(22, 14, 38, 0.78) 0%, rgba(16, 12, 32, 0.70) 50%, rgba(20, 14, 35, 0.74) 100%);
-    border: 1px solid rgba(140, 100, 220, 0.15);
+    background: linear-gradient(135deg, rgba(24, 25, 28, 0.78) 0%, rgba(20, 21, 24, 0.70) 50%, rgba(23, 24, 26, 0.74) 100%);
+    border: 1px solid rgba(150, 157, 170, 0.15);
     color: inherit;
     box-shadow:
-      0 2px 10px -3px rgba(100, 70, 180, 0.16),
-      0 0 16px -4px rgba(130, 90, 210, 0.12),
-      inset 0 1px 0 rgba(160, 120, 240, 0.12);
+      0 2px 10px -3px rgba(116, 122, 134, 0.16),
+      0 0 16px -4px rgba(140, 147, 160, 0.12),
+      inset 0 1px 0 rgba(170, 177, 190, 0.12);
   }
 
   [data-radix-popper-content-wrapper] .glass-dropdown {
     background: rgba(250, 248, 255, 0.95);
     backdrop-filter: blur(24px) saturate(1.3);
     -webkit-backdrop-filter: blur(24px) saturate(1.3);
-    border-color: rgba(100, 70, 200, 0.15);
+    border-color: rgba(125, 132, 145, 0.15);
     box-shadow:
-      0 0 0 1px rgba(100, 70, 200, 0.06) inset,
-      0 4px 16px -4px rgba(31, 27, 75, 0.12),
-      0 8px 32px -8px rgba(31, 27, 75, 0.08);
+      0 0 0 1px rgba(125, 132, 145, 0.06) inset,
+      0 4px 16px -4px rgba(47, 50, 55, 0.12),
+      0 8px 32px -8px rgba(47, 50, 55, 0.08);
   }
 
   .dark [data-radix-popper-content-wrapper] .glass-dropdown,
   [data-radix-popper-content-wrapper] .dark .glass-dropdown {
-    background: rgba(6, 4, 16, 0.88);
+    background: rgba(9, 10, 11, 0.88);
     backdrop-filter: blur(24px) saturate(1.4);
     -webkit-backdrop-filter: blur(24px) saturate(1.4);
-    border-color: rgba(140, 100, 220, 0.18);
+    border-color: rgba(150, 157, 170, 0.18);
     box-shadow:
-      0 0 0 1px rgba(140, 100, 220, 0.06) inset,
-      0 0 20px -4px rgba(120, 70, 200, 0.12),
+      0 0 0 1px rgba(150, 157, 170, 0.06) inset,
+      0 0 20px -4px rgba(125, 132, 145, 0.12),
       0 8px 32px -8px rgba(0, 0, 0, 0.7);
   }
 
   .glass-dropdown [role="menuitem"] {
     border-radius: 0.375rem;
     transition: background 150ms ease;
-    color: rgba(31, 27, 75, 0.85);
+    color: rgba(47, 50, 55, 0.85);
   }
 
   .dark .glass-dropdown [role="menuitem"] {
@@ -1815,11 +1814,11 @@ html[data-perf="lite"] .space-bg-nebula {
   }
 
   .glass-dropdown [role="separator"] {
-    background: rgba(100, 70, 200, 0.12);
+    background: rgba(125, 132, 145, 0.12);
   }
 
   .dark .glass-dropdown [role="separator"] {
-    background: rgba(140, 100, 220, 0.10);
+    background: rgba(150, 157, 170, 0.10);
   }
 
   .glass-dropdown .glass-dropdown-label {
@@ -1827,53 +1826,53 @@ html[data-perf="lite"] .space-bg-nebula {
     font-weight: 500;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: rgba(80, 60, 160, 0.55);
+    color: rgba(102, 107, 118, 0.55);
     padding: 6px 8px 2px;
   }
 
   .dark .glass-dropdown .glass-dropdown-label {
-    color: rgba(180, 160, 230, 0.5);
+    color: rgba(189, 193, 201, 0.5);
   }
 
   .glass-dialog {
     background: hsl(var(--card));
-    border: 1px solid rgba(31, 27, 75, 0.12);
+    border: 1px solid rgba(47, 50, 55, 0.12);
     box-shadow:
-      0 0 0 1px rgba(31, 27, 75, 0.04) inset,
-      0 0 40px -8px rgba(31, 27, 75, 0.08),
-      0 16px 64px -16px rgba(31, 27, 75, 0.15);
-    color: rgba(31, 27, 75, 0.88);
+      0 0 0 1px rgba(47, 50, 55, 0.04) inset,
+      0 0 40px -8px rgba(47, 50, 55, 0.08),
+      0 16px 64px -16px rgba(47, 50, 55, 0.15);
+    color: rgba(47, 50, 55, 0.88);
   }
 
   .dark .glass-dialog {
-    background: rgba(6, 4, 16, 0.92);
-    border: 1px solid rgba(140, 100, 220, 0.15);
+    background: rgba(9, 10, 11, 0.92);
+    border: 1px solid rgba(150, 157, 170, 0.15);
     box-shadow:
-      0 0 0 1px rgba(140, 100, 220, 0.05) inset,
-      0 0 40px -8px rgba(120, 70, 200, 0.15),
+      0 0 0 1px rgba(150, 157, 170, 0.05) inset,
+      0 0 40px -8px rgba(125, 132, 145, 0.15),
       0 16px 64px -16px rgba(0, 0, 0, 0.8);
     color: inherit;
   }
 
   .glass-dialog-field {
-    background: rgba(31, 27, 75, 0.04);
-    border: 1px solid rgba(31, 27, 75, 0.10);
+    background: rgba(47, 50, 55, 0.04);
+    border: 1px solid rgba(47, 50, 55, 0.10);
     border-radius: 0.5rem;
     padding: 0.5rem 0.625rem;
     transition: border-color 200ms ease;
   }
 
   .glass-dialog-field:hover {
-    border-color: rgba(31, 27, 75, 0.20);
+    border-color: rgba(47, 50, 55, 0.20);
   }
 
   .dark .glass-dialog-field {
-    background: rgba(20, 14, 40, 0.6);
-    border: 1px solid rgba(140, 100, 220, 0.08);
+    background: rgba(25, 26, 29, 0.6);
+    border: 1px solid rgba(150, 157, 170, 0.08);
   }
 
   .dark .glass-dialog-field:hover {
-    border-color: rgba(140, 100, 220, 0.18);
+    border-color: rgba(150, 157, 170, 0.18);
   }
 
   .glass-dialog-field-label {
@@ -1881,164 +1880,116 @@ html[data-perf="lite"] .space-bg-nebula {
     font-weight: 500;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: rgba(31, 27, 75, 0.45);
+    color: rgba(47, 50, 55, 0.45);
     margin-bottom: 2px;
   }
 
   .dark .glass-dialog-field-label {
-    color: rgba(180, 160, 230, 0.5);
+    color: rgba(189, 193, 201, 0.5);
   }
 
   .glass-console-btn {
-    background: rgba(140, 100, 220, 0.08);
-    border: 1px solid rgba(140, 100, 220, 0.12);
+    background: rgba(150, 157, 170, 0.08);
+    border: 1px solid rgba(150, 157, 170, 0.12);
   }
 
   .glass-nav-panel {
     background: hsl(var(--card));
-    border: 1px solid rgba(24, 20, 38, 0.15);
+    border: 1px solid rgba(28, 29, 30, 0.15);
     box-shadow:
-      0 0 0 1px rgba(24, 20, 38, 0.05) inset,
-      0 0 16px -4px rgba(24, 20, 38, 0.08),
-      0 2px 12px -6px rgba(24, 20, 38, 0.10);
+      0 0 0 1px rgba(28, 29, 30, 0.05) inset,
+      0 2px 12px -6px rgba(28, 29, 30, 0.10);
   }
 
   .dark .glass-nav-panel {
-    background: rgba(6, 4, 16, 0.5);
-    border-color: rgba(140, 100, 220, 0.10);
+    background: rgba(9, 10, 11, 0.5);
+    border-color: rgba(150, 157, 170, 0.10);
     box-shadow:
-      0 0 0 1px rgba(140, 100, 220, 0.04) inset,
-      0 0 16px -4px rgba(100, 60, 180, 0.06),
+      0 0 0 1px rgba(150, 157, 170, 0.04) inset,
       0 2px 12px -6px rgba(0, 0, 0, 0.5);
   }
 
-  .nav-icon-glow {
-    color: hsl(270 80% 75%);
-    filter: drop-shadow(0 0 4px hsla(270, 80%, 65%, 0.55));
-  }
 
   .nav-item-active[data-active="true"] {
-    background: #1f1b4b !important;
-    border: 1px solid #1f1b4b !important;
+    background: #2f3237 !important;
+    border: 1px solid #2f3237 !important;
     color: white !important;
-    box-shadow: 0 2px 8px -2px rgba(31, 27, 75, 0.35);
+    box-shadow: 0 2px 8px -2px rgba(47, 50, 55, 0.35);
   }
 
+  /* The shared tab bar (PageTabs, plus the Calendar action row and two
+     glass buttons that borrow the surface). Outpost brand, 2026-11-16: a calm
+     card-coloured bar; the selected tab is a filled ink pill in both themes —
+     the same selection the Settings switches and chips use. No glow. */
   .glass-feed-tabs {
-    /* Calmer light bar: a barely-there violet tint on near-white (was a saturated
-       lavender gradient), softer border + shadow — matches the enterprise light
-       palette. The .dark variant below is unchanged. */
-    background: linear-gradient(135deg, rgba(247, 244, 251, 0.9) 0%, rgba(243, 239, 249, 0.85) 100%);
-    backdrop-filter: blur(20px) saturate(1.15);
-    -webkit-backdrop-filter: blur(20px) saturate(1.15);
-    border: 1px solid rgba(120, 90, 200, 0.1);
-    box-shadow:
-      0 0 0 1px rgba(120, 90, 200, 0.03) inset,
-      0 2px 16px -8px rgba(80, 60, 180, 0.06);
-  }
-
-  .dark .glass-feed-tabs {
-    background: rgba(4, 4, 12, 0.6);
-    border-color: rgba(140, 100, 220, 0.12);
-    box-shadow:
-      0 0 0 1px rgba(140, 100, 220, 0.04) inset,
-      0 0 20px -4px rgba(100, 60, 180, 0.08),
-      0 4px 24px -8px rgba(0, 0, 0, 0.6);
+    background: hsl(var(--card) / 0.85);
+    backdrop-filter: blur(20px) saturate(1.1);
+    -webkit-backdrop-filter: blur(20px) saturate(1.1);
+    border: 1px solid hsl(var(--border) / 0.6);
+    box-shadow: none;
   }
 
   /* .glass-tab-exempt opts a button out of the tab-hover treatment — used by
      action rows (Calendar) that share the glass container but keep their own
      per-action colors. */
   .glass-feed-tabs button:not(.feed-tab-active):not(.glass-tab-exempt):hover {
-    background: rgba(31, 27, 75, 0.08) !important;
-    color: #1f1b4b !important;
-    border-color: rgba(31, 27, 75, 0.20) !important;
-  }
-  .dark .glass-feed-tabs button:not(.feed-tab-active):not(.glass-tab-exempt):hover {
-    background: rgba(140, 100, 220, 0.12) !important;
-    color: rgba(255, 255, 255, 0.9) !important;
-    border-color: rgba(140, 100, 220, 0.20) !important;
+    background: hsl(var(--foreground) / 0.06) !important;
+    color: hsl(var(--foreground)) !important;
   }
 
   .feed-tab-active {
-    background: #1f1b4b !important;
-    border: 1px solid #1f1b4b !important;
-    color: white !important;
-    box-shadow:
-      0 2px 8px -2px rgba(31, 27, 75, 0.4),
-      0 0 4px rgba(31, 27, 75, 0.15) inset;
-  }
-  .dark .feed-tab-active {
-    background: linear-gradient(135deg, rgba(120, 70, 200, 0.25), rgba(90, 50, 170, 0.18)) !important;
-    border: 1px solid rgba(160, 110, 240, 0.25) !important;
-    color: white !important;
-    box-shadow:
-      0 0 12px -2px rgba(140, 90, 220, 0.2),
-      0 0 4px rgba(160, 110, 240, 0.15) inset;
-  }
-
-  .feed-tab-glow {
-    position: relative;
-    overflow: hidden;
-  }
-  .feed-tab-glow::after {
-    content: "";
-    position: absolute;
-    bottom: 1px;
-    left: 15%;
-    right: 15%;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, rgba(160, 120, 240, 0.5), transparent);
-    border-radius: 1px;
-    pointer-events: none;
+    background: hsl(var(--foreground)) !important;
+    border: 1px solid hsl(var(--foreground)) !important;
+    color: hsl(var(--background)) !important;
+    box-shadow: none;
   }
 
   .glass-feed-header {
     background: none;
-    border-bottom: 1px solid rgba(24, 20, 38, 0.06);
+    border-bottom: 1px solid rgba(28, 29, 30, 0.06);
   }
 
   .glass-thread {
     background: hsl(var(--card));
-    border: 1px solid rgba(31, 27, 75, 0.12);
+    border: 1px solid rgba(47, 50, 55, 0.12);
     box-shadow:
-      0 0 0 1px rgba(31, 27, 75, 0.04) inset,
-      0 4px 16px -4px rgba(31, 27, 75, 0.08),
-      0 8px 32px -8px rgba(31, 27, 75, 0.06),
+      0 0 0 1px rgba(47, 50, 55, 0.04) inset,
+      0 4px 16px -4px rgba(47, 50, 55, 0.08),
+      0 8px 32px -8px rgba(47, 50, 55, 0.06),
       inset 0 1px 0 rgba(255, 255, 255, 0.5);
   }
 
   .dark .glass-thread {
     background: rgba(2, 2, 6, 0.85);
-    border-color: rgba(140, 100, 220, 0.06);
+    border-color: rgba(150, 157, 170, 0.06);
     box-shadow:
-      0 0 0 1px rgba(140, 100, 220, 0.02) inset,
+      0 0 0 1px rgba(150, 157, 170, 0.02) inset,
       0 8px 32px -8px rgba(0, 0, 0, 0.7),
-      0 0 40px -8px rgba(80, 50, 140, 0.03);
+      0 0 40px -8px rgba(88, 93, 102, 0.03);
   }
 
   .glass-thread-header {
     background: hsl(var(--muted) / 0.6);
-    border-bottom: 1px solid rgba(31, 27, 75, 0.08);
+    border-bottom: 1px solid rgba(47, 50, 55, 0.08);
     box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.3);
   }
 
   .dark .glass-thread-header {
-    background: linear-gradient(135deg, rgba(80, 50, 140, 0.04) 0%, rgba(120, 80, 180, 0.02) 100%);
-    border-bottom-color: rgba(140, 100, 220, 0.05);
+    background: linear-gradient(135deg, rgba(88, 93, 102, 0.04) 0%, rgba(122, 127, 138, 0.02) 100%);
+    border-bottom-color: rgba(150, 157, 170, 0.05);
   }
 
   .thread-reply-item {
     position: relative;
     z-index: 0;
-    background: linear-gradient(135deg, rgba(250, 248, 255, 0.94) 0%, rgba(245, 242, 255, 0.90) 50%, rgba(248, 246, 255, 0.92) 100%);
+    background: linear-gradient(135deg, rgba(250, 248, 255, 0.94) 0%, rgba(247, 248, 250, 0.90) 50%, rgba(250, 250, 251, 0.92) 100%);
     backdrop-filter: blur(24px) saturate(1.2);
     -webkit-backdrop-filter: blur(24px) saturate(1.2);
-    border: 1px solid rgba(31, 27, 75, 0.12);
+    border: 1px solid rgba(47, 50, 55, 0.12);
     box-shadow:
-      0 0 0 1px rgba(31, 27, 75, 0.05) inset,
-      0 2px 8px rgba(31, 27, 75, 0.06),
-      0 4px 16px -4px rgba(31, 27, 75, 0.05),
+      0 0 0 1px rgba(47, 50, 55, 0.05) inset,
+      0 2px 8px rgba(47, 50, 55, 0.06),
+      0 4px 16px -4px rgba(47, 50, 55, 0.05),
       inset 0 1px 0 rgba(255, 255, 255, 0.55);
     transition: box-shadow 0.25s ease, border-color 0.25s ease;
   }
@@ -2050,67 +2001,67 @@ html[data-perf="lite"] .space-bg-nebula {
   }
 
   .thread-reply-item:hover {
-    border-color: rgba(31, 27, 75, 0.20);
+    border-color: rgba(47, 50, 55, 0.20);
     box-shadow:
-      0 0 0 1px rgba(31, 27, 75, 0.07) inset,
-      0 4px 12px rgba(31, 27, 75, 0.10),
-      0 8px 24px -6px rgba(31, 27, 75, 0.08),
+      0 0 0 1px rgba(47, 50, 55, 0.07) inset,
+      0 4px 12px rgba(47, 50, 55, 0.10),
+      0 8px 24px -6px rgba(47, 50, 55, 0.08),
       inset 0 1px 0 rgba(255, 255, 255, 0.55);
   }
 
   .dark .thread-reply-item {
-    background: rgba(8, 6, 18, 0.72);
-    border-color: rgba(140, 100, 220, 0.10);
+    background: rgba(11, 12, 13, 0.72);
+    border-color: rgba(150, 157, 170, 0.10);
     box-shadow:
-      0 0 0 1px rgba(140, 100, 220, 0.04) inset,
+      0 0 0 1px rgba(150, 157, 170, 0.04) inset,
       0 1px 2px rgba(0, 0, 0, 0.3),
       0 2px 8px -2px rgba(0, 0, 0, 0.35);
   }
 
   .dark .thread-reply-item:hover {
-    border-color: rgba(140, 100, 220, 0.15);
+    border-color: rgba(150, 157, 170, 0.15);
     box-shadow:
-      0 0 0 1px rgba(140, 100, 220, 0.06) inset,
+      0 0 0 1px rgba(150, 157, 170, 0.06) inset,
       0 1px 3px rgba(0, 0, 0, 0.35),
       0 4px 12px -3px rgba(0, 0, 0, 0.4);
   }
 
   .thread-reply-item-op {
-    background: linear-gradient(135deg, rgba(240, 235, 255, 0.95) 0%, rgba(235, 232, 255, 0.92) 50%, rgba(242, 238, 255, 0.93) 100%);
-    border: 1px solid rgba(31, 27, 75, 0.18);
+    background: linear-gradient(135deg, rgba(243, 244, 247, 0.95) 0%, rgba(242, 243, 245, 0.92) 50%, rgba(245, 246, 248, 0.93) 100%);
+    border: 1px solid rgba(47, 50, 55, 0.18);
     box-shadow:
-      0 0 0 1px rgba(31, 27, 75, 0.06) inset,
-      0 0 12px -4px rgba(31, 27, 75, 0.10),
-      0 2px 8px rgba(31, 27, 75, 0.06),
-      0 4px 16px -4px rgba(31, 27, 75, 0.05),
+      0 0 0 1px rgba(47, 50, 55, 0.06) inset,
+      0 0 12px -4px rgba(47, 50, 55, 0.10),
+      0 2px 8px rgba(47, 50, 55, 0.06),
+      0 4px 16px -4px rgba(47, 50, 55, 0.05),
       inset 0 1px 0 rgba(255, 255, 255, 0.5);
   }
 
   .thread-reply-item-op:hover {
-    border-color: rgba(31, 27, 75, 0.26);
+    border-color: rgba(47, 50, 55, 0.26);
     box-shadow:
-      0 0 0 1px rgba(31, 27, 75, 0.10) inset,
-      0 0 16px -4px rgba(31, 27, 75, 0.14),
-      0 4px 12px rgba(31, 27, 75, 0.10),
-      0 8px 24px -6px rgba(31, 27, 75, 0.08),
+      0 0 0 1px rgba(47, 50, 55, 0.10) inset,
+      0 0 16px -4px rgba(47, 50, 55, 0.14),
+      0 4px 12px rgba(47, 50, 55, 0.10),
+      0 8px 24px -6px rgba(47, 50, 55, 0.08),
       inset 0 1px 0 rgba(255, 255, 255, 0.5);
   }
 
   .dark .thread-reply-item-op {
-    background: linear-gradient(135deg, rgba(120, 80, 200, 0.12) 0%, rgba(80, 50, 160, 0.08) 50%, rgba(140, 90, 220, 0.10) 100%);
-    border-color: rgba(140, 100, 220, 0.22);
+    background: linear-gradient(135deg, rgba(130, 137, 150, 0.12) 0%, rgba(96, 102, 114, 0.08) 50%, rgba(145, 152, 165, 0.10) 100%);
+    border-color: rgba(150, 157, 170, 0.22);
     box-shadow:
-      0 0 0 1px rgba(140, 100, 220, 0.08) inset,
-      0 0 12px -4px rgba(140, 100, 220, 0.15),
+      0 0 0 1px rgba(150, 157, 170, 0.08) inset,
+      0 0 12px -4px rgba(150, 157, 170, 0.15),
       0 1px 2px rgba(0, 0, 0, 0.3),
       0 2px 8px -2px rgba(0, 0, 0, 0.35);
   }
 
   .dark .thread-reply-item-op:hover {
-    border-color: rgba(140, 100, 220, 0.30);
+    border-color: rgba(150, 157, 170, 0.30);
     box-shadow:
-      0 0 0 1px rgba(140, 100, 220, 0.12) inset,
-      0 0 16px -4px rgba(140, 100, 220, 0.20),
+      0 0 0 1px rgba(150, 157, 170, 0.12) inset,
+      0 0 16px -4px rgba(150, 157, 170, 0.20),
       0 1px 3px rgba(0, 0, 0, 0.35),
       0 4px 12px -3px rgba(0, 0, 0, 0.4);
   }
@@ -2122,17 +2073,17 @@ html[data-perf="lite"] .space-bg-nebula {
     z-index: 0;
     background: transparent;
     border: none;
-    border-bottom: 1px solid rgba(31, 27, 75, 0.08);
+    border-bottom: 1px solid rgba(47, 50, 55, 0.08);
     border-radius: 0;
   }
   .dark .thread-reply-flat {
-    border-bottom-color: rgba(140, 100, 220, 0.10);
+    border-bottom-color: rgba(150, 157, 170, 0.10);
   }
   .thread-reply-flat-op {
-    background: rgba(124, 58, 237, 0.035);
+    background: rgba(133, 143, 162, 0.035);
   }
   .dark .thread-reply-flat-op {
-    background: rgba(140, 100, 220, 0.05);
+    background: rgba(150, 157, 170, 0.05);
   }
 
   .thread-connector {
@@ -2146,7 +2097,7 @@ html[data-perf="lite"] .space-bg-nebula {
     top: 0;
     bottom: 0;
     width: 1px;
-    background: linear-gradient(180deg, rgba(120, 80, 180, 0.18), rgba(80, 50, 140, 0.03));
+    background: linear-gradient(180deg, rgba(122, 127, 138, 0.18), rgba(88, 93, 102, 0.03));
   }
 
   .thread-connector-dot {
@@ -2156,8 +2107,8 @@ html[data-perf="lite"] .space-bg-nebula {
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    border: 1.5px solid rgba(140, 100, 220, 0.25);
-    background: rgba(140, 100, 220, 0.08);
+    border: 1.5px solid rgba(150, 157, 170, 0.25);
+    background: rgba(150, 157, 170, 0.08);
   }
 
   /* Thread rails: slim collapse-line handles, rendered only within the
@@ -2180,17 +2131,17 @@ html[data-perf="lite"] .space-bg-nebula {
     width: 2px;
     margin: 0 auto;
     height: 100%;
-    background: hsl(262 55% 52% / 0.34);
+    background: hsl(220 9% 52% / 0.34);
     border-radius: 1px;
     transition: background 0.2s ease, width 0.2s ease, opacity 0.2s ease;
   }
 
-  .reddit-thread-line-t0 { background: hsl(262 55% 52% / 0.34); }
-  .reddit-thread-line-t1 { background: hsl(262 55% 52% / 0.23); }
-  .reddit-thread-line-t2 { background: hsl(262 55% 52% / 0.14); }
+  .reddit-thread-line-t0 { background: hsl(220 9% 52% / 0.34); }
+  .reddit-thread-line-t1 { background: hsl(220 9% 52% / 0.23); }
+  .reddit-thread-line-t2 { background: hsl(220 9% 52% / 0.14); }
 
   .reddit-thread-line-btn:hover .reddit-thread-line {
-    background: hsl(262 60% 48% / 0.55);
+    background: hsl(220 10% 48% / 0.55);
     width: 3px;
   }
 
@@ -2211,18 +2162,18 @@ html[data-perf="lite"] .space-bg-nebula {
   }
 
   .dark .reddit-thread-line,
-  .dark .reddit-thread-line-t0 { background: hsl(262 75% 74% / 0.38); }
-  .dark .reddit-thread-line-t1 { background: hsl(262 75% 74% / 0.26); }
-  .dark .reddit-thread-line-t2 { background: hsl(262 75% 74% / 0.16); }
+  .dark .reddit-thread-line-t0 { background: hsl(220 12% 74% / 0.38); }
+  .dark .reddit-thread-line-t1 { background: hsl(220 12% 74% / 0.26); }
+  .dark .reddit-thread-line-t2 { background: hsl(220 12% 74% / 0.16); }
 
   .dark .reddit-thread-line-btn:hover .reddit-thread-line {
-    background: hsl(262 85% 78% / 0.60);
+    background: hsl(220 14% 78% / 0.60);
   }
 
   /* "↳ @parent" cue tap target: briefly wash the parent reply in violet so
      the eye lands on it after the scroll. */
   @keyframes thread-parent-flash {
-    0% { box-shadow: inset 0 0 0 999px hsl(262 65% 58% / 0.18); }
+    0% { box-shadow: inset 0 0 0 999px hsl(220 10% 58% / 0.18); }
     100% { box-shadow: inset 0 0 0 999px transparent; }
   }
 
@@ -2233,10 +2184,9 @@ html[data-perf="lite"] .space-bg-nebula {
 
   .post-content-text {
     /* Reader Font Style setting (Settings → Text). --font-body is set on
-       <html> at boot (main.tsx) and defaults to Inter, so the untouched
-       default renders identically to the old hardcoded 'Inter'. */
-    font-family: var(--font-body, 'Inter', sans-serif);
-    color: rgba(40, 30, 50, 0.82);
+       <html> at boot (main.tsx) and defaults to Geist, the brand face. */
+    font-family: var(--font-body, 'Geist', 'Inter', sans-serif);
+    color: rgba(38, 39, 42, 0.82);
   }
 
   /* Clean feed style: post body sized by the reader Text Size control (default
@@ -2259,7 +2209,7 @@ html[data-perf="lite"] .space-bg-nebula {
      color pairing, so layering the page-background contrast tokens would fight
      the bubble fill. */
   .reply-content-text {
-    font-family: var(--font-body, 'Inter', sans-serif);
+    font-family: var(--font-body, 'Geist', 'Inter', sans-serif);
     font-size: calc(var(--post-text-size, 15px) - 1px);
   }
 
@@ -2276,7 +2226,7 @@ html[data-perf="lite"] .space-bg-nebula {
   }
 
   .glass-inner .post-content-text {
-    color: rgba(30, 25, 50, 0.85);
+    color: rgba(36, 37, 39, 0.85);
   }
 
   .dark .post-content-text {
@@ -2289,8 +2239,8 @@ html[data-perf="lite"] .space-bg-nebula {
      the app. Light mode darkens toward the page ink; dark mode brightens toward
      white. Dark rules follow the light ones so equal-specificity ties resolve
      to the dark value inside .dark. */
-  :root[data-contrast="high"] .post-content-text { color: rgba(28, 20, 38, 0.92); }
-  :root[data-contrast="maximum"] .post-content-text { color: rgba(16, 10, 24, 1); }
+  :root[data-contrast="high"] .post-content-text { color: rgba(28, 29, 30, 0.92); }
+  :root[data-contrast="maximum"] .post-content-text { color: rgba(16, 17, 18, 1); }
   .dark[data-contrast="high"] .post-content-text { color: rgba(244, 241, 238, 0.94); }
   .dark[data-contrast="maximum"] .post-content-text { color: rgba(255, 255, 255, 1); }
 
@@ -2303,29 +2253,56 @@ html[data-perf="lite"] .space-bg-nebula {
       linear-gradient(
         180deg,
         rgba(255, 255, 255, 0.55) 0%,
-        rgba(247, 245, 255, 0.85) 100%
+        rgba(249, 250, 251, 0.85) 100%
       ),
-      hsl(250 36% 98%);
-    border-top: 1px solid rgba(140, 100, 220, 0.14);
+      hsl(220 6% 98%);
+    border-top: 1px solid rgba(150, 157, 170, 0.14);
     box-shadow:
-      0 -1px 0 rgba(140, 100, 220, 0.05),
-      0 -6px 20px -6px rgba(140, 100, 220, 0.12);
+      0 -1px 0 rgba(150, 157, 170, 0.05),
+      0 -6px 20px -6px rgba(150, 157, 170, 0.12);
   }
 
   .dark .mobile-nav-dock {
     background:
       linear-gradient(
         180deg,
-        rgba(12, 10, 20, 0.6) 0%,
+        rgba(14, 15, 16, 0.6) 0%,
         rgba(4, 4, 10, 0.92) 100%
       ),
-      hsl(260 10% 4%);
-    border-top: 1px solid rgba(140, 100, 220, 0.08);
+      hsl(220 10% 4%);
+    border-top: 1px solid rgba(150, 157, 170, 0.08);
     box-shadow:
-      0 0 0 1px rgba(140, 100, 220, 0.04) inset,
+      0 0 0 1px rgba(150, 157, 170, 0.04) inset,
       0 -1px 0 rgba(255, 255, 255, 0.02),
       0 -8px 28px -6px rgba(0, 0, 0, 0.85);
   }
+
+  /* The collapsed IA's floating pill (design canvas "App-Home", 2026-11-16):
+     glass over the page, four named places, the active one in ink. */
+  .mobile-nav-pill {
+    background: rgba(255, 255, 255, 0.82);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    border: 1px solid rgba(13, 15, 18, 0.09);
+    box-shadow: 0 20px 40px -20px rgba(13, 15, 18, 0.3);
+  }
+  .dark .mobile-nav-pill {
+    background: rgba(20, 24, 32, 0.86);
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.7);
+  }
+  /* Lite strips every backdrop blur (html[data-perf="lite"] above), and the
+     frosted fill alone let list text read through the tab labels (iOS
+     Simulator, 2026-11-17). Without the blur the pill is solid. */
+  html[data-perf="lite"] .mobile-nav-pill { background: hsl(var(--card)); }
+  .mobile-nav-pill-item {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    height: 56px; margin: 6px 4px; border-radius: 28px;
+    color: hsl(var(--muted-foreground)); font-weight: 500; text-decoration: none;
+    transition: color 0.2s ease, background-color 0.2s ease;
+  }
+  .mobile-nav-pill-item.is-active { color: hsl(var(--foreground)); font-weight: 600; }
+  .mobile-nav-pill-item:active { background: hsl(var(--foreground) / 0.06); }
 
   .mobile-nav-inner {
     padding: 6px 4px 4px;
@@ -2339,7 +2316,7 @@ html[data-perf="lite"] .space-bg-nebula {
     left: 10%;
     right: 10%;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(160, 120, 240, 0.15), transparent);
+    background: linear-gradient(90deg, transparent, rgba(170, 177, 190, 0.15), transparent);
   }
 
   .mobile-nav-item {
@@ -2353,7 +2330,7 @@ html[data-perf="lite"] .space-bg-nebula {
     position: relative;
     transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
     border-radius: 12px;
-    color: rgba(100, 70, 160, 0.6);
+    color: rgba(108, 113, 122, 0.6);
     background: none;
     border: none;
     cursor: pointer;
@@ -2362,16 +2339,16 @@ html[data-perf="lite"] .space-bg-nebula {
   }
 
   .dark .mobile-nav-item {
-    color: rgba(180, 160, 240, 0.7);
+    color: rgba(194, 198, 206, 0.7);
   }
 
   .mobile-nav-active {
-    color: rgba(100, 60, 180, 0.95);
+    color: rgba(110, 117, 130, 0.95);
     transform: translateY(-2px);
   }
 
   .dark .mobile-nav-active {
-    color: rgba(220, 200, 255, 0.95);
+    color: rgba(223, 226, 232, 0.95);
   }
 
   .mobile-nav-active-beam {
@@ -2382,29 +2359,29 @@ html[data-perf="lite"] .space-bg-nebula {
     width: 24px;
     height: 3px;
     border-radius: 0 0 4px 4px;
-    background: linear-gradient(90deg, transparent, rgba(160, 120, 240, 0.6), transparent);
+    background: linear-gradient(90deg, transparent, rgba(170, 177, 190, 0.6), transparent);
     box-shadow:
-      0 0 8px 2px rgba(140, 100, 220, 0.2),
-      0 0 20px 4px rgba(120, 80, 200, 0.08);
+      0 0 8px 2px rgba(150, 157, 170, 0.2),
+      0 0 20px 4px rgba(130, 137, 150, 0.08);
   }
 
   .mobile-nav-icon-glow {
     filter:
-      drop-shadow(0 0 6px rgba(170, 130, 255, 0.5))
-      drop-shadow(0 0 16px rgba(140, 100, 220, 0.25));
+      drop-shadow(0 0 6px rgba(182, 189, 203, 0.5))
+      drop-shadow(0 0 16px rgba(150, 157, 170, 0.25));
     animation: mobile-nav-glow-pulse 2.5s ease-in-out infinite;
   }
 
   @keyframes mobile-nav-glow-pulse {
     0%, 100% {
       filter:
-        drop-shadow(0 0 6px rgba(170, 130, 255, 0.5))
-        drop-shadow(0 0 16px rgba(140, 100, 220, 0.25));
+        drop-shadow(0 0 6px rgba(182, 189, 203, 0.5))
+        drop-shadow(0 0 16px rgba(150, 157, 170, 0.25));
     }
     50% {
       filter:
-        drop-shadow(0 0 10px rgba(180, 140, 255, 0.7))
-        drop-shadow(0 0 24px rgba(150, 110, 240, 0.35));
+        drop-shadow(0 0 10px rgba(188, 194, 207, 0.7))
+        drop-shadow(0 0 24px rgba(165, 172, 185, 0.35));
     }
   }
 
@@ -2416,8 +2393,8 @@ html[data-perf="lite"] .space-bg-nebula {
     width: 3px;
     height: 3px;
     border-radius: 50%;
-    background: rgba(160, 130, 240, 0.6);
-    box-shadow: 0 0 6px 1px rgba(140, 100, 220, 0.25);
+    background: rgba(176, 182, 194, 0.6);
+    box-shadow: 0 0 6px 1px rgba(150, 157, 170, 0.25);
   }
 
   .mobile-nav-center-wrapper {
@@ -2430,9 +2407,9 @@ html[data-perf="lite"] .space-bg-nebula {
   }
 
   .mobile-nav-center {
-    --center-logo-start: #1f1b4b;
-    --center-logo-mid: #4c1d95;
-    --center-logo-end: #7c3aed;
+    --center-logo-start: #2f3237;
+    --center-logo-mid: #4f5663;
+    --center-logo-end: #858fa2;
     position: absolute;
     bottom: 22px;
     left: 50%;
@@ -2443,15 +2420,15 @@ html[data-perf="lite"] .space-bg-nebula {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(245, 240, 255, 0.95));
-    border: 1.5px solid rgba(31, 27, 75, 0.18);
-    color: #1f1b4b;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(246, 247, 249, 0.95));
+    border: 1.5px solid rgba(47, 50, 55, 0.18);
+    color: #2f3237;
     box-shadow:
       0 0 0 3px rgba(250, 248, 255, 0.9),
-      0 0 12px 3px rgba(76, 29, 149, 0.14),
-      0 0 24px 6px rgba(124, 58, 237, 0.08),
-      0 0 40px 10px rgba(124, 58, 237, 0.04),
-      0 4px 12px -2px rgba(31, 27, 75, 0.15);
+      0 0 12px 3px rgba(79, 86, 99, 0.14),
+      0 0 24px 6px rgba(133, 143, 162, 0.08),
+      0 0 40px 10px rgba(133, 143, 162, 0.04),
+      0 4px 12px -2px rgba(47, 50, 55, 0.15);
     transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
     cursor: pointer;
     text-decoration: none;
@@ -2463,35 +2440,35 @@ html[data-perf="lite"] .space-bg-nebula {
     0%, 100% {
       box-shadow:
         0 0 0 3px rgba(250, 248, 255, 0.9),
-        0 0 12px 3px rgba(76, 29, 149, 0.14),
-        0 0 24px 6px rgba(124, 58, 237, 0.08),
-        0 0 40px 10px rgba(124, 58, 237, 0.04),
-        0 4px 12px -2px rgba(31, 27, 75, 0.15);
-      border-color: rgba(31, 27, 75, 0.18);
+        0 0 12px 3px rgba(79, 86, 99, 0.14),
+        0 0 24px 6px rgba(133, 143, 162, 0.08),
+        0 0 40px 10px rgba(133, 143, 162, 0.04),
+        0 4px 12px -2px rgba(47, 50, 55, 0.15);
+      border-color: rgba(47, 50, 55, 0.18);
     }
     50% {
       box-shadow:
-        0 0 0 3px rgba(245, 240, 255, 0.95),
-        0 0 16px 4px rgba(76, 29, 149, 0.22),
-        0 0 30px 8px rgba(124, 58, 237, 0.12),
-        0 0 48px 14px rgba(124, 58, 237, 0.06),
-        0 4px 14px -2px rgba(31, 27, 75, 0.18);
-      border-color: rgba(76, 29, 149, 0.28);
+        0 0 0 3px rgba(246, 247, 249, 0.95),
+        0 0 16px 4px rgba(79, 86, 99, 0.22),
+        0 0 30px 8px rgba(133, 143, 162, 0.12),
+        0 0 48px 14px rgba(133, 143, 162, 0.06),
+        0 4px 14px -2px rgba(47, 50, 55, 0.18);
+      border-color: rgba(79, 86, 99, 0.28);
     }
   }
 
   .dark .mobile-nav-center {
-    --center-logo-start: #c4b5fd;
-    --center-logo-mid: #a78bfa;
-    --center-logo-end: #8b5cf6;
+    --center-logo-start: #d3d7df;
+    --center-logo-mid: #bac0cb;
+    --center-logo-end: #9da5b5;
     background: rgba(4, 4, 10, 0.95);
-    border-color: rgba(140, 100, 220, 0.25);
+    border-color: rgba(150, 157, 170, 0.25);
     color: rgba(255, 255, 255, 0.85);
     box-shadow:
       0 0 0 3px rgba(2, 2, 6, 0.9),
-      0 0 10px 2px rgba(130, 80, 220, 0.18),
-      0 0 22px 5px rgba(110, 60, 200, 0.10),
-      0 0 40px 8px rgba(90, 50, 180, 0.06),
+      0 0 10px 2px rgba(139, 146, 161, 0.18),
+      0 0 22px 5px rgba(119, 126, 141, 0.10),
+      0 0 40px 8px rgba(105, 112, 125, 0.06),
       0 4px 12px -2px rgba(0, 0, 0, 0.7);
     animation: center-btn-glow-dark 4s ease-in-out infinite;
   }
@@ -2500,20 +2477,20 @@ html[data-perf="lite"] .space-bg-nebula {
     0%, 100% {
       box-shadow:
         0 0 0 3px rgba(2, 2, 6, 0.9),
-        0 0 10px 2px rgba(130, 80, 220, 0.18),
-        0 0 22px 5px rgba(110, 60, 200, 0.10),
-        0 0 40px 8px rgba(90, 50, 180, 0.06),
+        0 0 10px 2px rgba(139, 146, 161, 0.18),
+        0 0 22px 5px rgba(119, 126, 141, 0.10),
+        0 0 40px 8px rgba(105, 112, 125, 0.06),
         0 4px 12px -2px rgba(0, 0, 0, 0.7);
-      border-color: rgba(140, 100, 220, 0.25);
+      border-color: rgba(150, 157, 170, 0.25);
     }
     50% {
       box-shadow:
         0 0 0 3px rgba(2, 2, 6, 0.9),
-        0 0 14px 3px rgba(140, 90, 230, 0.25),
-        0 0 28px 7px rgba(120, 70, 210, 0.14),
-        0 0 48px 12px rgba(100, 55, 190, 0.08),
+        0 0 14px 3px rgba(149, 156, 171, 0.25),
+        0 0 28px 7px rgba(129, 136, 151, 0.14),
+        0 0 48px 12px rgba(112, 119, 133, 0.08),
         0 4px 12px -2px rgba(0, 0, 0, 0.7);
-      border-color: rgba(160, 120, 240, 0.35);
+      border-color: rgba(170, 177, 190, 0.35);
     }
   }
 
@@ -2523,11 +2500,11 @@ html[data-perf="lite"] .space-bg-nebula {
 
   .mobile-nav-center-active {
     color: white;
-    border-color: rgba(160, 120, 240, 0.35);
+    border-color: rgba(170, 177, 190, 0.35);
     box-shadow:
       0 0 0 3px rgba(2, 2, 6, 0.9),
-      0 0 16px 3px rgba(140, 100, 220, 0.15),
-      0 0 32px 6px rgba(100, 70, 180, 0.08),
+      0 0 16px 3px rgba(150, 157, 170, 0.15),
+      0 0 32px 6px rgba(116, 122, 134, 0.08),
       0 4px 12px -2px rgba(0, 0, 0, 0.7);
   }
 
@@ -2538,7 +2515,7 @@ html[data-perf="lite"] .space-bg-nebula {
      always video. */
   body.shorts-open .mobile-nav-dock {
     z-index: 70;
-    background: rgba(18, 14, 34, 0.55);
+    background: rgba(22, 23, 26, 0.55);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     border-top-color: rgba(255, 255, 255, 0.08);
@@ -2582,7 +2559,7 @@ html[data-perf="lite"] .space-bg-nebula {
   }
 
   .ig-feed-card {
-    border-bottom: 1px solid rgba(140, 100, 220, 0.08);
+    border-bottom: 1px solid rgba(150, 157, 170, 0.08);
   }
 
   .dark .ig-feed-card {
@@ -2596,7 +2573,7 @@ html[data-perf="lite"] .space-bg-nebula {
 }
 
 .dark .glass-settings-section {
-  background: linear-gradient(135deg, hsl(240 15% 4%) 0%, hsl(260 20% 7%) 40%, hsl(220 25% 5%) 100%);
+  background: linear-gradient(135deg, hsl(240 15% 4%) 0%, hsl(220 3% 7%) 40%, hsl(220 25% 5%) 100%);
   backdrop-filter: none;
 }
 
@@ -2605,7 +2582,7 @@ html[data-perf="lite"] .space-bg-nebula {
 }
 
 .dark .glass-settings-glow {
-  background: radial-gradient(ellipse at 80% 20%, hsl(220 50% 18% / 0.3) 0%, transparent 60%), radial-gradient(ellipse at 20% 80%, hsl(270 40% 15% / 0.2) 0%, transparent 50%);
+  background: radial-gradient(ellipse at 80% 20%, hsl(220 50% 18% / 0.3) 0%, transparent 60%), radial-gradient(ellipse at 20% 80%, hsl(220 6% 15% / 0.2) 0%, transparent 50%);
 }
 
 .glass-settings-header {
@@ -2615,7 +2592,7 @@ html[data-perf="lite"] .space-bg-nebula {
 }
 
 .dark .glass-settings-header {
-  background: linear-gradient(135deg, hsl(260 25% 8%) 0%, hsl(240 20% 5%) 50%, hsl(280 20% 10%) 100%);
+  background: linear-gradient(135deg, hsl(220 4% 8%) 0%, hsl(220 3% 5%) 50%, hsl(220 3% 10%) 100%);
   backdrop-filter: none;
 }
 
@@ -2624,7 +2601,7 @@ html[data-perf="lite"] .space-bg-nebula {
 }
 
 .dark .glass-settings-header-glow {
-  background: radial-gradient(ellipse at 30% 50%, hsl(270 60% 25% / 0.2) 0%, transparent 60%), radial-gradient(ellipse at 80% 30%, hsl(220 50% 20% / 0.15) 0%, transparent 50%);
+  background: radial-gradient(ellipse at 30% 50%, hsl(220 10% 25% / 0.2) 0%, transparent 60%), radial-gradient(ellipse at 80% 30%, hsl(220 50% 20% / 0.15) 0%, transparent 50%);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2653,11 +2630,11 @@ html[data-perf="lite"] .space-bg-nebula {
 }
 
 .warp-teleport-light {
-  background: radial-gradient(circle at 50% 100%, rgba(31, 27, 75, 0.06) 0%, transparent 60%);
+  background: radial-gradient(circle at 50% 100%, rgba(47, 50, 55, 0.06) 0%, transparent 60%);
 }
 
 .warp-teleport-dark {
-  background: radial-gradient(circle at 50% 100%, rgba(139, 92, 246, 0.08) 0%, transparent 60%);
+  background: radial-gradient(circle at 50% 100%, rgba(157, 165, 181, 0.08) 0%, transparent 60%);
 }
 
 .warp-teleport-streak {
@@ -2677,23 +2654,23 @@ html[data-perf="lite"] .space-bg-nebula {
 .warp-teleport-light .warp-teleport-streak {
   background: linear-gradient(
     to top,
-    rgba(31, 27, 75, 0.5),
-    rgba(124, 58, 237, 0.6),
-    rgba(167, 139, 250, 0.3),
+    rgba(47, 50, 55, 0.5),
+    rgba(133, 143, 162, 0.6),
+    rgba(186, 192, 203, 0.3),
     transparent
   );
-  box-shadow: 0 0 4px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 0 4px rgba(133, 143, 162, 0.3);
 }
 
 .warp-teleport-dark .warp-teleport-streak {
   background: linear-gradient(
     to top,
-    rgba(139, 92, 246, 0.7),
-    rgba(196, 167, 255, 0.5),
+    rgba(157, 165, 181, 0.7),
+    rgba(204, 209, 218, 0.5),
     rgba(255, 255, 255, 0.2),
     transparent
   );
-  box-shadow: 0 0 6px rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 6px rgba(157, 165, 181, 0.4);
 }
 
 @keyframes warpStreakShoot {
@@ -2743,24 +2720,24 @@ html[data-perf="lite"] .space-bg-nebula {
 .scroll-to-top-btn {
   width: 38px;
   height: 38px;
-  background: rgba(31, 27, 75, 0.88);
+  background: rgba(47, 50, 55, 0.88);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(99, 80, 180, 0.25);
-  color: rgba(220, 210, 255, 0.9);
+  border: 1px solid rgba(122, 127, 138, 0.25);
+  color: rgba(229, 231, 236, 0.9);
   box-shadow:
-    0 2px 10px rgba(31, 27, 75, 0.25),
-    0 0 0 1px rgba(99, 80, 180, 0.1) inset;
+    0 2px 10px rgba(47, 50, 55, 0.25),
+    0 0 0 1px rgba(122, 127, 138, 0.1) inset;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .scroll-to-top-btn:hover {
-  background: rgba(31, 27, 75, 0.95);
-  border-color: rgba(124, 100, 220, 0.4);
+  background: rgba(47, 50, 55, 0.95);
+  border-color: rgba(150, 157, 170, 0.4);
   box-shadow:
-    0 6px 20px rgba(31, 27, 75, 0.35),
-    0 0 14px rgba(124, 100, 220, 0.12) inset,
-    0 0 30px rgba(124, 58, 237, 0.08);
+    0 6px 20px rgba(47, 50, 55, 0.35),
+    0 0 14px rgba(150, 157, 170, 0.12) inset,
+    0 0 30px rgba(133, 143, 162, 0.08);
   transform: translateY(-2px) scale(1.05);
 }
 
@@ -2781,23 +2758,23 @@ html[data-perf="lite"] .space-bg-nebula {
 }
 
 .dark .scroll-to-top-btn {
-  background: rgba(15, 12, 35, 0.85);
+  background: rgba(22, 23, 25, 0.85);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  color: rgba(196, 167, 255, 0.9);
+  border: 1px solid rgba(157, 165, 181, 0.2);
+  color: rgba(204, 209, 218, 0.9);
   box-shadow:
     0 2px 10px rgba(0, 0, 0, 0.3),
-    0 0 12px rgba(139, 92, 246, 0.06) inset;
+    0 0 12px rgba(157, 165, 181, 0.06) inset;
 }
 
 .dark .scroll-to-top-btn:hover {
-  background: rgba(20, 16, 45, 0.9);
-  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(28, 30, 33, 0.9);
+  border-color: rgba(157, 165, 181, 0.4);
   box-shadow:
     0 6px 20px rgba(0, 0, 0, 0.4),
-    0 0 18px rgba(139, 92, 246, 0.12) inset,
-    0 0 30px rgba(139, 92, 246, 0.06);
+    0 0 18px rgba(157, 165, 181, 0.12) inset,
+    0 0 30px rgba(157, 165, 181, 0.06);
   transform: translateY(-2px) scale(1.05);
 }
 
@@ -2882,8 +2859,8 @@ html[data-perf="lite"] .space-bg-nebula {
 }
 
 .sidebar-theme-toggle:hover {
-  background: rgba(124, 58, 237, 0.06);
-  border-color: rgba(76, 29, 149, 0.12);
+  background: rgba(133, 143, 162, 0.06);
+  border-color: rgba(79, 86, 99, 0.12);
 }
 
 .dark .sidebar-theme-toggle {
@@ -2891,8 +2868,8 @@ html[data-perf="lite"] .space-bg-nebula {
 }
 
 .dark .sidebar-theme-toggle:hover {
-  background: rgba(140, 100, 220, 0.08);
-  border-color: rgba(140, 100, 220, 0.15);
+  background: rgba(150, 157, 170, 0.08);
+  border-color: rgba(150, 157, 170, 0.15);
 }
 
 .outpost-galaxy-dust {
@@ -2913,37 +2890,37 @@ html[data-perf="lite"] .space-bg-nebula {
 
 .outpost-galaxy-dust::before {
   background:
-    radial-gradient(1.8px 1.8px at 6% 15%, rgba(76, 29, 149, 0.45) 0%, transparent 100%),
-    radial-gradient(1.4px 1.4px at 18% 45%, rgba(124, 58, 237, 0.38) 0%, transparent 100%),
-    radial-gradient(1.2px 1.2px at 28% 72%, rgba(100, 50, 200, 0.32) 0%, transparent 100%),
-    radial-gradient(2px 2px at 42% 22%, rgba(76, 29, 149, 0.40) 0%, transparent 100%),
-    radial-gradient(1.3px 1.3px at 55% 58%, rgba(139, 92, 246, 0.35) 0%, transparent 100%),
-    radial-gradient(1.6px 1.6px at 68% 35%, rgba(76, 29, 149, 0.38) 0%, transparent 100%),
-    radial-gradient(1.1px 1.1px at 78% 78%, rgba(124, 58, 237, 0.30) 0%, transparent 100%),
-    radial-gradient(1.8px 1.8px at 88% 12%, rgba(100, 50, 200, 0.35) 0%, transparent 100%),
-    radial-gradient(1px 1px at 35% 88%, rgba(139, 92, 246, 0.28) 0%, transparent 100%),
-    radial-gradient(1.4px 1.4px at 62% 8%, rgba(76, 29, 149, 0.32) 0%, transparent 100%),
-    radial-gradient(1.2px 1.2px at 92% 52%, rgba(124, 58, 237, 0.30) 0%, transparent 100%),
-    radial-gradient(0.9px 0.9px at 15% 62%, rgba(139, 92, 246, 0.25) 0%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 48% 42%, rgba(76, 29, 149, 0.32) 0%, transparent 100%),
-    radial-gradient(1.1px 1.1px at 82% 28%, rgba(100, 50, 200, 0.28) 0%, transparent 100%);
+    radial-gradient(1.8px 1.8px at 6% 15%, rgba(79, 86, 99, 0.45) 0%, transparent 100%),
+    radial-gradient(1.4px 1.4px at 18% 45%, rgba(133, 143, 162, 0.38) 0%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 28% 72%, rgba(113, 121, 137, 0.32) 0%, transparent 100%),
+    radial-gradient(2px 2px at 42% 22%, rgba(79, 86, 99, 0.40) 0%, transparent 100%),
+    radial-gradient(1.3px 1.3px at 55% 58%, rgba(157, 165, 181, 0.35) 0%, transparent 100%),
+    radial-gradient(1.6px 1.6px at 68% 35%, rgba(79, 86, 99, 0.38) 0%, transparent 100%),
+    radial-gradient(1.1px 1.1px at 78% 78%, rgba(133, 143, 162, 0.30) 0%, transparent 100%),
+    radial-gradient(1.8px 1.8px at 88% 12%, rgba(113, 121, 137, 0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 35% 88%, rgba(157, 165, 181, 0.28) 0%, transparent 100%),
+    radial-gradient(1.4px 1.4px at 62% 8%, rgba(79, 86, 99, 0.32) 0%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 92% 52%, rgba(133, 143, 162, 0.30) 0%, transparent 100%),
+    radial-gradient(0.9px 0.9px at 15% 62%, rgba(157, 165, 181, 0.25) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 48% 42%, rgba(79, 86, 99, 0.32) 0%, transparent 100%),
+    radial-gradient(1.1px 1.1px at 82% 28%, rgba(113, 121, 137, 0.28) 0%, transparent 100%);
   animation: outpost-dust-a 90s linear infinite;
 }
 
 .outpost-galaxy-dust::after {
   background:
-    radial-gradient(1.4px 1.4px at 10% 28%, rgba(124, 58, 237, 0.38) 0%, transparent 100%),
-    radial-gradient(1.3px 1.3px at 25% 55%, rgba(76, 29, 149, 0.32) 0%, transparent 100%),
-    radial-gradient(1.7px 1.7px at 38% 82%, rgba(139, 92, 246, 0.40) 0%, transparent 100%),
-    radial-gradient(1.1px 1.1px at 52% 18%, rgba(100, 50, 200, 0.30) 0%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 65% 48%, rgba(76, 29, 149, 0.35) 0%, transparent 100%),
-    radial-gradient(1.2px 1.2px at 75% 68%, rgba(124, 58, 237, 0.32) 0%, transparent 100%),
-    radial-gradient(1.8px 1.8px at 85% 38%, rgba(139, 92, 246, 0.38) 0%, transparent 100%),
-    radial-gradient(1px 1px at 95% 85%, rgba(76, 29, 149, 0.28) 0%, transparent 100%),
-    radial-gradient(1.3px 1.3px at 22% 92%, rgba(100, 50, 200, 0.30) 0%, transparent 100%),
-    radial-gradient(1.4px 1.4px at 45% 5%, rgba(124, 58, 237, 0.32) 0%, transparent 100%),
-    radial-gradient(1.1px 1.1px at 72% 15%, rgba(139, 92, 246, 0.28) 0%, transparent 100%),
-    radial-gradient(0.9px 0.9px at 58% 72%, rgba(76, 29, 149, 0.25) 0%, transparent 100%);
+    radial-gradient(1.4px 1.4px at 10% 28%, rgba(133, 143, 162, 0.38) 0%, transparent 100%),
+    radial-gradient(1.3px 1.3px at 25% 55%, rgba(79, 86, 99, 0.32) 0%, transparent 100%),
+    radial-gradient(1.7px 1.7px at 38% 82%, rgba(157, 165, 181, 0.40) 0%, transparent 100%),
+    radial-gradient(1.1px 1.1px at 52% 18%, rgba(113, 121, 137, 0.30) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 65% 48%, rgba(79, 86, 99, 0.35) 0%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 75% 68%, rgba(133, 143, 162, 0.32) 0%, transparent 100%),
+    radial-gradient(1.8px 1.8px at 85% 38%, rgba(157, 165, 181, 0.38) 0%, transparent 100%),
+    radial-gradient(1px 1px at 95% 85%, rgba(79, 86, 99, 0.28) 0%, transparent 100%),
+    radial-gradient(1.3px 1.3px at 22% 92%, rgba(113, 121, 137, 0.30) 0%, transparent 100%),
+    radial-gradient(1.4px 1.4px at 45% 5%, rgba(133, 143, 162, 0.32) 0%, transparent 100%),
+    radial-gradient(1.1px 1.1px at 72% 15%, rgba(157, 165, 181, 0.28) 0%, transparent 100%),
+    radial-gradient(0.9px 0.9px at 58% 72%, rgba(79, 86, 99, 0.25) 0%, transparent 100%);
   animation: outpost-dust-b 110s linear infinite;
 }
 
@@ -2977,8 +2954,8 @@ html[data-perf="lite"] .space-bg-nebula {
 
 .profile-banner-bg {
   background-image:
-    radial-gradient(circle at 20% 30%, rgba(139, 92, 246, 0.18), transparent 55%),
-    radial-gradient(circle at 80% 70%, rgba(217, 70, 239, 0.14), transparent 55%),
+    radial-gradient(circle at 20% 30%, rgba(157, 165, 181, 0.18), transparent 55%),
+    radial-gradient(circle at 80% 70%, rgba(141, 150, 168, 0.14), transparent 55%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
   background-size: 200% 200%, 200% 200%, 100% 100%;
   background-position: 0% 50%, 100% 50%, 0 0;
@@ -2987,8 +2964,8 @@ html[data-perf="lite"] .space-bg-nebula {
 
 .profile-banner-bg-light {
   background-image:
-    radial-gradient(circle at 20% 30%, rgba(139, 92, 246, 0.12), transparent 55%),
-    radial-gradient(circle at 80% 70%, rgba(217, 70, 239, 0.10), transparent 55%),
+    radial-gradient(circle at 20% 30%, rgba(157, 165, 181, 0.12), transparent 55%),
+    radial-gradient(circle at 80% 70%, rgba(141, 150, 168, 0.10), transparent 55%),
     linear-gradient(135deg, rgba(0, 0, 0, 0.03), rgba(0, 0, 0, 0.01));
   background-size: 200% 200%, 200% 200%, 100% 100%;
   background-position: 0% 50%, 100% 50%, 0 0;
@@ -3013,38 +2990,38 @@ html[data-perf="lite"] .space-bg-nebula {
 
 .outpost-icon-glow {
   background: rgba(255, 255, 255, 0.7) !important;
-  border: 1px solid rgba(76, 29, 149, 0.15) !important;
+  border: 1px solid rgba(79, 86, 99, 0.15) !important;
   box-shadow:
-    0 0 6px 1px rgba(124, 58, 237, 0.12),
-    0 0 14px 3px rgba(76, 29, 149, 0.06),
-    0 2px 4px -1px rgba(31, 27, 75, 0.08);
+    0 0 6px 1px rgba(133, 143, 162, 0.12),
+    0 0 14px 3px rgba(79, 86, 99, 0.06),
+    0 2px 4px -1px rgba(47, 50, 55, 0.08);
   transition: all 0.3s ease;
 }
 
 .outpost-icon-glow:hover {
-  background: rgba(245, 240, 255, 0.9) !important;
-  border-color: rgba(76, 29, 149, 0.25) !important;
+  background: rgba(246, 247, 249, 0.9) !important;
+  border-color: rgba(79, 86, 99, 0.25) !important;
   box-shadow:
-    0 0 10px 2px rgba(124, 58, 237, 0.20),
-    0 0 20px 5px rgba(76, 29, 149, 0.10),
-    0 2px 6px -1px rgba(31, 27, 75, 0.10);
+    0 0 10px 2px rgba(133, 143, 162, 0.20),
+    0 0 20px 5px rgba(79, 86, 99, 0.10),
+    0 2px 6px -1px rgba(47, 50, 55, 0.10);
 }
 
 .dark .outpost-icon-glow {
-  background: rgba(10, 8, 24, 0.5) !important;
-  border: 1px solid rgba(140, 100, 220, 0.15) !important;
+  background: rgba(15, 16, 17, 0.5) !important;
+  border: 1px solid rgba(150, 157, 170, 0.15) !important;
   box-shadow:
-    0 0 6px 1px rgba(130, 80, 220, 0.10),
-    0 0 14px 3px rgba(100, 60, 200, 0.05),
+    0 0 6px 1px rgba(139, 146, 161, 0.10),
+    0 0 14px 3px rgba(119, 126, 141, 0.05),
     0 2px 4px -1px rgba(0, 0, 0, 0.2);
 }
 
 .dark .outpost-icon-glow:hover {
-  background: rgba(20, 16, 40, 0.7) !important;
-  border-color: rgba(140, 100, 220, 0.25) !important;
+  background: rgba(26, 27, 30, 0.7) !important;
+  border-color: rgba(150, 157, 170, 0.25) !important;
   box-shadow:
-    0 0 10px 2px rgba(140, 90, 230, 0.16),
-    0 0 20px 5px rgba(100, 60, 200, 0.08),
+    0 0 10px 2px rgba(149, 156, 171, 0.16),
+    0 0 20px 5px rgba(119, 126, 141, 0.08),
     0 2px 6px -1px rgba(0, 0, 0, 0.3);
 }
 
@@ -3087,10 +3064,10 @@ html[data-perf="lite"] .space-bg-nebula {
   );
   backdrop-filter: blur(20px) saturate(1.2);
   -webkit-backdrop-filter: blur(20px) saturate(1.2);
-  border-top: 1px solid rgba(140, 100, 220, 0.1);
+  border-top: 1px solid rgba(150, 157, 170, 0.1);
   box-shadow:
-    0 -4px 20px rgba(140, 100, 220, 0.06),
-    0 -1px 8px rgba(140, 100, 220, 0.03);
+    0 -4px 20px rgba(150, 157, 170, 0.06),
+    0 -1px 8px rgba(150, 157, 170, 0.03);
 }
 
 .dark .mini-player-glass {
@@ -3099,44 +3076,44 @@ html[data-perf="lite"] .space-bg-nebula {
     rgba(4, 4, 10, 0.88) 0%,
     rgba(2, 2, 6, 0.96) 100%
   );
-  border-top-color: rgba(140, 100, 220, 0.08);
+  border-top-color: rgba(150, 157, 170, 0.08);
   box-shadow:
     0 -4px 20px rgba(0, 0, 0, 0.5),
-    0 -1px 8px rgba(80, 50, 140, 0.04);
+    0 -1px 8px rgba(88, 93, 102, 0.04);
 }
 
 .mini-player-glass.rounded-xl {
   border-top: none;
   box-shadow:
-    0 4px 24px rgba(140, 100, 220, 0.08),
-    0 1px 8px rgba(140, 100, 220, 0.04);
+    0 4px 24px rgba(150, 157, 170, 0.08),
+    0 1px 8px rgba(150, 157, 170, 0.04);
 }
 
 .dark .mini-player-glass.rounded-xl {
   border-top: none;
   box-shadow:
     0 4px 24px rgba(0, 0, 0, 0.6),
-    0 1px 8px rgba(80, 50, 140, 0.06);
+    0 1px 8px rgba(88, 93, 102, 0.06);
 }
 
 .media-dropdown-glass {
   position: relative;
   background:
-    radial-gradient(ellipse 120% 80% at 20% 10%, rgba(167, 139, 250, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 80% 100% at 90% 80%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse 120% 80% at 20% 10%, rgba(186, 192, 203, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 100% at 90% 80%, rgba(157, 165, 181, 0.06) 0%, transparent 50%),
     linear-gradient(
       168deg,
       rgba(252, 250, 255, 0.93) 0%,
-      rgba(245, 241, 255, 0.96) 50%,
-      rgba(240, 235, 255, 0.94) 100%
+      rgba(247, 248, 249, 0.96) 50%,
+      rgba(243, 244, 247, 0.94) 100%
     );
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
   box-shadow:
-    0 8px 32px rgba(120, 80, 200, 0.10),
-    0 2px 12px rgba(120, 80, 200, 0.06),
+    0 8px 32px rgba(130, 137, 150, 0.10),
+    0 2px 12px rgba(130, 137, 150, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    inset 0 -1px 0 rgba(139, 92, 246, 0.04);
+    inset 0 -1px 0 rgba(157, 165, 181, 0.04);
 }
 
 .media-dropdown-glass::before {
@@ -3146,14 +3123,14 @@ html[data-perf="lite"] .space-bg-nebula {
   border-radius: inherit;
   pointer-events: none;
   background-image:
-    radial-gradient(1px 1px at 15% 20%, rgba(139, 92, 246, 0.18), transparent),
-    radial-gradient(1px 1px at 45% 65%, rgba(167, 139, 250, 0.14), transparent),
-    radial-gradient(1px 1px at 70% 15%, rgba(139, 92, 246, 0.12), transparent),
-    radial-gradient(1px 1px at 85% 45%, rgba(167, 139, 250, 0.16), transparent),
-    radial-gradient(1px 1px at 30% 80%, rgba(124, 58, 237, 0.10), transparent),
-    radial-gradient(1.5px 1.5px at 55% 35%, rgba(139, 92, 246, 0.12), transparent),
-    radial-gradient(1px 1px at 90% 75%, rgba(167, 139, 250, 0.10), transparent),
-    radial-gradient(1px 1px at 10% 55%, rgba(124, 58, 237, 0.08), transparent);
+    radial-gradient(1px 1px at 15% 20%, rgba(157, 165, 181, 0.18), transparent),
+    radial-gradient(1px 1px at 45% 65%, rgba(186, 192, 203, 0.14), transparent),
+    radial-gradient(1px 1px at 70% 15%, rgba(157, 165, 181, 0.12), transparent),
+    radial-gradient(1px 1px at 85% 45%, rgba(186, 192, 203, 0.16), transparent),
+    radial-gradient(1px 1px at 30% 80%, rgba(133, 143, 162, 0.10), transparent),
+    radial-gradient(1.5px 1.5px at 55% 35%, rgba(157, 165, 181, 0.12), transparent),
+    radial-gradient(1px 1px at 90% 75%, rgba(186, 192, 203, 0.10), transparent),
+    radial-gradient(1px 1px at 10% 55%, rgba(133, 143, 162, 0.08), transparent);
   z-index: 0;
   opacity: 0.7;
 }
@@ -3165,32 +3142,32 @@ html[data-perf="lite"] .space-bg-nebula {
 
 .dark .media-dropdown-glass {
   background:
-    radial-gradient(ellipse 130% 80% at 15% 5%, rgba(139, 92, 246, 0.12) 0%, transparent 55%),
-    radial-gradient(ellipse 90% 110% at 85% 90%, rgba(124, 58, 237, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse 60% 50% at 50% 50%, rgba(88, 28, 135, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 130% 80% at 15% 5%, rgba(157, 165, 181, 0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 90% 110% at 85% 90%, rgba(133, 143, 162, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 50% at 50% 50%, rgba(73, 79, 90, 0.06) 0%, transparent 70%),
     linear-gradient(
       168deg,
-      rgba(12, 8, 28, 0.94) 0%,
-      rgba(8, 5, 20, 0.96) 50%,
-      rgba(6, 3, 16, 0.95) 100%
+      rgba(16, 17, 20, 0.94) 0%,
+      rgba(11, 12, 14, 0.96) 50%,
+      rgba(8, 9, 11, 0.95) 100%
     );
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.5),
-    0 2px 12px rgba(100, 60, 180, 0.08),
-    inset 0 1px 0 rgba(167, 139, 250, 0.08),
-    inset 0 -1px 0 rgba(139, 92, 246, 0.03);
+    0 2px 12px rgba(110, 117, 130, 0.08),
+    inset 0 1px 0 rgba(186, 192, 203, 0.08),
+    inset 0 -1px 0 rgba(157, 165, 181, 0.03);
 }
 
 .dark .media-dropdown-glass::before {
   background-image:
-    radial-gradient(1px 1px at 12% 18%, rgba(196, 181, 253, 0.35), transparent),
-    radial-gradient(1px 1px at 42% 62%, rgba(167, 139, 250, 0.25), transparent),
-    radial-gradient(1.5px 1.5px at 68% 12%, rgba(196, 181, 253, 0.30), transparent),
-    radial-gradient(1px 1px at 88% 42%, rgba(139, 92, 246, 0.28), transparent),
-    radial-gradient(1px 1px at 28% 78%, rgba(167, 139, 250, 0.22), transparent),
-    radial-gradient(1px 1px at 52% 32%, rgba(196, 181, 253, 0.20), transparent),
-    radial-gradient(1.5px 1.5px at 92% 72%, rgba(139, 92, 246, 0.25), transparent),
-    radial-gradient(1px 1px at 8% 52%, rgba(167, 139, 250, 0.18), transparent),
+    radial-gradient(1px 1px at 12% 18%, rgba(211, 215, 223, 0.35), transparent),
+    radial-gradient(1px 1px at 42% 62%, rgba(186, 192, 203, 0.25), transparent),
+    radial-gradient(1.5px 1.5px at 68% 12%, rgba(211, 215, 223, 0.30), transparent),
+    radial-gradient(1px 1px at 88% 42%, rgba(157, 165, 181, 0.28), transparent),
+    radial-gradient(1px 1px at 28% 78%, rgba(186, 192, 203, 0.22), transparent),
+    radial-gradient(1px 1px at 52% 32%, rgba(211, 215, 223, 0.20), transparent),
+    radial-gradient(1.5px 1.5px at 92% 72%, rgba(157, 165, 181, 0.25), transparent),
+    radial-gradient(1px 1px at 8% 52%, rgba(186, 192, 203, 0.18), transparent),
     radial-gradient(0.5px 0.5px at 35% 45%, rgba(255, 255, 255, 0.15), transparent),
     radial-gradient(0.5px 0.5px at 75% 25%, rgba(255, 255, 255, 0.12), transparent),
     radial-gradient(0.5px 0.5px at 60% 85%, rgba(255, 255, 255, 0.10), transparent);
@@ -3209,14 +3186,14 @@ html[data-perf="lite"] .space-bg-nebula {
   border-radius: inherit;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 60% 120% at 0% 50%, rgba(139, 92, 246, 0.06) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 100% at 100% 50%, rgba(167, 139, 250, 0.04) 0%, transparent 60%);
+    radial-gradient(ellipse 60% 120% at 0% 50%, rgba(157, 165, 181, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 100% at 100% 50%, rgba(186, 192, 203, 0.04) 0%, transparent 60%);
 }
 
 .dark .media-compact-strip::after {
   background:
-    radial-gradient(ellipse 60% 120% at 0% 50%, rgba(139, 92, 246, 0.10) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 100% at 100% 50%, rgba(167, 139, 250, 0.06) 0%, transparent 60%);
+    radial-gradient(ellipse 60% 120% at 0% 50%, rgba(157, 165, 181, 0.10) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 100% at 100% 50%, rgba(186, 192, 203, 0.06) 0%, transparent 60%);
 }
 
 @media (min-width: 768px) {
@@ -3240,15 +3217,15 @@ html[data-perf="lite"] .space-bg-nebula {
 .thread-reply-glass {
   background: linear-gradient(
     180deg,
-    rgba(240, 236, 255, 0.88) 0%,
-    rgba(238, 234, 255, 0.95) 100%
+    rgba(244, 245, 247, 0.88) 0%,
+    rgba(243, 244, 246, 0.95) 100%
   );
   backdrop-filter: blur(20px) saturate(1.2);
   -webkit-backdrop-filter: blur(20px) saturate(1.2);
-  border-top: 1px solid rgba(100, 70, 200, 0.14);
+  border-top: 1px solid rgba(125, 132, 145, 0.14);
   box-shadow:
-    0 -4px 20px rgba(100, 70, 200, 0.06),
-    0 -1px 8px rgba(100, 70, 200, 0.04);
+    0 -4px 20px rgba(125, 132, 145, 0.06),
+    0 -1px 8px rgba(125, 132, 145, 0.04);
 }
 
 .dark .thread-reply-glass {
@@ -3257,43 +3234,43 @@ html[data-perf="lite"] .space-bg-nebula {
     rgba(4, 4, 10, 0.88) 0%,
     rgba(2, 2, 6, 0.96) 100%
   );
-  border-top-color: rgba(140, 100, 220, 0.08);
+  border-top-color: rgba(150, 157, 170, 0.08);
   box-shadow:
     0 -4px 20px rgba(0, 0, 0, 0.5),
-    0 -1px 8px rgba(80, 50, 140, 0.04);
+    0 -1px 8px rgba(88, 93, 102, 0.04);
 }
 
 .thread-reply-glass-desktop {
   background: linear-gradient(
     180deg,
-    rgba(240, 236, 255, 0.90) 0%,
-    rgba(238, 234, 255, 0.96) 100%
+    rgba(244, 245, 247, 0.90) 0%,
+    rgba(243, 244, 246, 0.96) 100%
   );
   backdrop-filter: blur(24px) saturate(1.3);
   -webkit-backdrop-filter: blur(24px) saturate(1.3);
-  border-top: 1px solid rgba(100, 70, 200, 0.14);
+  border-top: 1px solid rgba(125, 132, 145, 0.14);
   box-shadow:
-    0 -6px 32px rgba(100, 70, 200, 0.06),
-    0 -2px 12px rgba(100, 70, 200, 0.04);
+    0 -6px 32px rgba(125, 132, 145, 0.06),
+    0 -2px 12px rgba(125, 132, 145, 0.04);
 }
 
 .dark .thread-reply-glass-desktop {
   background: linear-gradient(
     180deg,
-    rgba(6, 4, 14, 0.92) 0%,
+    rgba(8, 9, 10, 0.92) 0%,
     rgba(3, 2, 8, 0.97) 100%
   );
   box-shadow:
     0 -6px 32px rgba(0, 0, 0, 0.5),
-    0 -2px 12px rgba(80, 50, 140, 0.06),
-    inset 0 1px 0 rgba(140, 100, 220, 0.05);
+    0 -2px 12px rgba(88, 93, 102, 0.06),
+    inset 0 1px 0 rgba(150, 157, 170, 0.05);
 }
 
 .mention-hover-card {
-  filter: drop-shadow(0 0 16px rgba(139, 92, 246, 0.12)) drop-shadow(0 6px 16px rgba(80, 50, 140, 0.15));
+  filter: drop-shadow(0 0 16px rgba(157, 165, 181, 0.12)) drop-shadow(0 6px 16px rgba(88, 93, 102, 0.15));
 }
 .dark .mention-hover-card {
-  filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.15)) drop-shadow(0 8px 24px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0 0 20px rgba(157, 165, 181, 0.15)) drop-shadow(0 8px 24px rgba(0, 0, 0, 0.5));
 }
 
 @keyframes radarPing {
@@ -3307,41 +3284,41 @@ html[data-perf="lite"] .space-bg-nebula {
 }
 
 .radar-scope {
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.03) 0%, rgba(139, 92, 246, 0.06) 40%, rgba(139, 92, 246, 0.02) 100%);
+  background: radial-gradient(circle, rgba(157, 165, 181, 0.03) 0%, rgba(157, 165, 181, 0.06) 40%, rgba(157, 165, 181, 0.02) 100%);
   box-shadow:
-    inset 0 0 30px rgba(139, 92, 246, 0.06),
-    0 0 20px rgba(139, 92, 246, 0.04);
+    inset 0 0 30px rgba(157, 165, 181, 0.06),
+    0 0 20px rgba(157, 165, 181, 0.04);
   overflow: hidden;
 }
 
 .dark .radar-scope {
-  background: radial-gradient(circle, rgba(168, 85, 247, 0.06) 0%, rgba(10, 5, 25, 0.7) 40%, rgba(5, 2, 15, 0.85) 100%);
+  background: radial-gradient(circle, rgba(153, 162, 179, 0.06) 0%, rgba(13, 14, 17, 0.7) 40%, rgba(7, 8, 10, 0.85) 100%);
   box-shadow:
-    inset 0 0 40px rgba(139, 92, 246, 0.08),
-    0 0 40px rgba(139, 92, 246, 0.06);
+    inset 0 0 40px rgba(157, 165, 181, 0.08),
+    0 0 40px rgba(157, 165, 181, 0.06);
 }
 
 .radar-scope-grid {
   background:
-    linear-gradient(0deg, transparent 49.5%, rgba(139, 92, 246, 0.06) 49.5%, rgba(139, 92, 246, 0.06) 50.5%, transparent 50.5%),
-    linear-gradient(90deg, transparent 49.5%, rgba(139, 92, 246, 0.06) 49.5%, rgba(139, 92, 246, 0.06) 50.5%, transparent 50.5%);
+    linear-gradient(0deg, transparent 49.5%, rgba(157, 165, 181, 0.06) 49.5%, rgba(157, 165, 181, 0.06) 50.5%, transparent 50.5%),
+    linear-gradient(90deg, transparent 49.5%, rgba(157, 165, 181, 0.06) 49.5%, rgba(157, 165, 181, 0.06) 50.5%, transparent 50.5%);
 }
 
 .dark .radar-scope-grid {
   background:
-    linear-gradient(0deg, transparent 49.5%, rgba(168, 85, 247, 0.08) 49.5%, rgba(168, 85, 247, 0.08) 50.5%, transparent 50.5%),
-    linear-gradient(90deg, transparent 49.5%, rgba(168, 85, 247, 0.08) 49.5%, rgba(168, 85, 247, 0.08) 50.5%, transparent 50.5%);
+    linear-gradient(0deg, transparent 49.5%, rgba(153, 162, 179, 0.08) 49.5%, rgba(153, 162, 179, 0.08) 50.5%, transparent 50.5%),
+    linear-gradient(90deg, transparent 49.5%, rgba(153, 162, 179, 0.08) 49.5%, rgba(153, 162, 179, 0.08) 50.5%, transparent 50.5%);
 }
 
 .radar-ring {
   position: absolute;
   border-radius: 50%;
-  border: 1px solid rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(157, 165, 181, 0.12);
   animation: radarPing 2.5s ease-out infinite;
 }
 
 .dark .radar-ring {
-  border-color: rgba(168, 85, 247, 0.2);
+  border-color: rgba(153, 162, 179, 0.2);
 }
 
 .radar-sweep-line {
@@ -3351,13 +3328,13 @@ html[data-perf="lite"] .space-bg-nebula {
   width: 50%;
   height: 2px;
   transform-origin: 0% 50%;
-  background: linear-gradient(90deg, rgba(139, 92, 246, 0.8), rgba(139, 92, 246, 0.3), transparent);
+  background: linear-gradient(90deg, rgba(157, 165, 181, 0.8), rgba(157, 165, 181, 0.3), transparent);
   animation: radarSweep 2s linear infinite;
   border-radius: 1px;
 }
 
 .dark .radar-sweep-line {
-  background: linear-gradient(90deg, rgba(168, 85, 247, 0.9), rgba(139, 92, 246, 0.4), transparent);
+  background: linear-gradient(90deg, rgba(153, 162, 179, 0.9), rgba(157, 165, 181, 0.4), transparent);
 }
 
 .radar-sweep-line::before {
@@ -3367,12 +3344,12 @@ html[data-perf="lite"] .space-bg-nebula {
   left: -2px;
   width: 105%;
   height: 60px;
-  background: conic-gradient(from -15deg, transparent, rgba(139, 92, 246, 0.08) 20deg, transparent 40deg);
+  background: conic-gradient(from -15deg, transparent, rgba(157, 165, 181, 0.08) 20deg, transparent 40deg);
   transform-origin: 2px 50%;
 }
 
 .dark .radar-sweep-line::before {
-  background: conic-gradient(from -15deg, transparent, rgba(168, 85, 247, 0.15) 20deg, transparent 40deg);
+  background: conic-gradient(from -15deg, transparent, rgba(153, 162, 179, 0.15) 20deg, transparent 40deg);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3487,9 +3464,9 @@ html[data-perf="lite"] .space-bg-nebula {
 .article-prose {
   overflow-wrap: break-word;
   word-break: break-word;
-  /* Reader Font Style setting; defaults to Inter (see .post-content-text).
+  /* Reader Font Style setting; defaults to Geist (see .post-content-text).
      Headings below intentionally stay Space Grotesk — a design choice. */
-  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-family: var(--font-body, 'Geist', 'Inter', system-ui, sans-serif);
   line-height: 1.8;
   color: hsl(var(--foreground) / 0.85);
   font-size: 0.938rem;
@@ -3516,15 +3493,15 @@ html[data-perf="lite"] .space-bg-nebula {
   margin-bottom: 1.25em;
 }
 .article-prose a {
-  color: hsl(270 70% 70%);
+  color: hsl(220 11% 70%);
   text-decoration: underline;
   text-underline-offset: 3px;
-  text-decoration-color: hsl(270 70% 70% / 0.3);
+  text-decoration-color: hsl(220 11% 70% / 0.3);
   transition: text-decoration-color 0.15s;
   word-break: break-all;
 }
 .article-prose a:hover {
-  text-decoration-color: hsl(270 70% 70% / 0.8);
+  text-decoration-color: hsl(220 11% 70% / 0.8);
 }
 .article-prose strong {
   color: hsl(var(--foreground) / 0.95);
@@ -3535,10 +3512,10 @@ html[data-perf="lite"] .space-bg-nebula {
   font-style: italic;
 }
 .article-prose blockquote {
-  border-left: 3px solid hsl(270 70% 60% / 0.4);
+  border-left: 3px solid hsl(220 11% 60% / 0.4);
   padding: 0.75em 1.25em;
   margin: 1.5em 0;
-  background: hsl(270 30% 50% / 0.06);
+  background: hsl(220 5% 50% / 0.06);
   border-radius: 0 0.5rem 0.5rem 0;
   color: hsl(var(--foreground) / 0.75);
   font-style: italic;
@@ -3555,12 +3532,12 @@ html[data-perf="lite"] .space-bg-nebula {
   margin-bottom: 0.4em;
 }
 .article-prose li::marker {
-  color: hsl(270 60% 65% / 0.6);
+  color: hsl(220 10% 65% / 0.6);
 }
 .article-prose hr {
   border: none;
   height: 1px;
-  background: linear-gradient(90deg, transparent, hsl(270 50% 60% / 0.2), transparent);
+  background: linear-gradient(90deg, transparent, hsl(220 8% 60% / 0.2), transparent);
   margin: 2em 0;
 }
 .article-prose code {
@@ -3568,7 +3545,7 @@ html[data-perf="lite"] .space-bg-nebula {
   padding: 0.15em 0.4em;
   border-radius: 0.25rem;
   background: hsl(var(--muted) / 0.5);
-  color: hsl(270 60% 75%);
+  color: hsl(220 10% 75%);
   word-break: break-word;
 }
 .article-prose pre {
@@ -3694,19 +3671,19 @@ select:not([multiple]):not([size]) {
 }
 
 .mention-hover-bg {
-  background: linear-gradient(to br, #f8f5ff 0%, #f0eefa 50%, #f5f3fc 100%);
+  background: linear-gradient(to br, #f9fafb 0%, #f3f4f5 50%, #f7f7f8 100%);
 }
 
 .dark .mention-hover-bg {
-  background: linear-gradient(to br, #1a0533, #0d0d2b, #0a0a1a);
+  background: linear-gradient(to br, #181b20, #1a1b1e, #111213);
 }
 
 .zap-dialog-bg {
-  background: linear-gradient(to bottom, rgba(248, 246, 255, 0.99), rgba(245, 243, 252, 0.98), rgba(242, 240, 250, 0.99));
+  background: linear-gradient(to bottom, rgba(250, 250, 251, 0.99), rgba(247, 247, 248, 0.98), rgba(244, 245, 246, 0.99));
 }
 
 .dark .zap-dialog-bg {
-  background: linear-gradient(to bottom, #08080e, #050508, #030305);
+  background: linear-gradient(to bottom, #0b0b0b, #050508, #030305);
 }
 
 .zap-dialog-glow-top {
@@ -3726,11 +3703,11 @@ select:not([multiple]):not([size]) {
 }
 
 .mention-hover-radial {
-  background: radial-gradient(ellipse at top, rgba(139, 92, 246, 0.08), transparent 60%);
+  background: radial-gradient(ellipse at top, rgba(157, 165, 181, 0.08), transparent 60%);
 }
 
 .dark .mention-hover-radial {
-  background: radial-gradient(ellipse at top, rgba(139, 92, 246, 0.15), transparent 60%);
+  background: radial-gradient(ellipse at top, rgba(157, 165, 181, 0.15), transparent 60%);
 }
 
 /* Pop-up surfaces: dialogs, sheets, drawers, menus, pickers.
@@ -3908,12 +3885,12 @@ iframe:focus-visible {
 }
 
 @keyframes signalBeaconPulse {
-  0%, 100% { box-shadow: 0 0 4px 1px rgba(139, 92, 246, 0.3), 0 0 8px 2px rgba(139, 92, 246, 0.15); border-color: rgba(139, 92, 246, 0.5); }
-  50% { box-shadow: 0 0 8px 3px rgba(139, 92, 246, 0.5), 0 0 16px 5px rgba(139, 92, 246, 0.2); border-color: rgba(139, 92, 246, 0.7); }
+  0%, 100% { box-shadow: 0 0 4px 1px rgba(157, 165, 181, 0.3), 0 0 8px 2px rgba(157, 165, 181, 0.15); border-color: rgba(157, 165, 181, 0.5); }
+  50% { box-shadow: 0 0 8px 3px rgba(157, 165, 181, 0.5), 0 0 16px 5px rgba(157, 165, 181, 0.2); border-color: rgba(157, 165, 181, 0.7); }
 }
 
 .signal-ring-strong {
-  border: 2px solid rgba(139, 92, 246, 0.5);
+  border: 2px solid rgba(157, 165, 181, 0.5);
   animation: signalBeaconPulse 2.5s ease-in-out infinite;
 }
 
@@ -3944,11 +3921,15 @@ iframe:focus-visible {
 .live-dot {
   animation: liveDotPulse 1.5s ease-in-out infinite;
 }
+/* Live is the one standing pulse; it stops for people who reduce motion. */
+@media (prefers-reduced-motion: reduce) {
+  .live-dot, .signal-ring-live { animation: none; }
+}
 
 .banner-hud {
   backdrop-filter: blur(16px) saturate(120%);
   -webkit-backdrop-filter: blur(16px) saturate(120%);
-  background: rgba(10, 10, 20, 0.82);
+  background: rgba(14, 15, 16, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
 }
@@ -3982,9 +3963,9 @@ iframe:focus-visible {
 }
 
 .dark .banner-hud {
-  background: rgba(8, 8, 18, 0.88);
+  background: rgba(12, 13, 14, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 6px 24px 4px rgba(0, 0, 0, 0.5), 0 0 12px 1px rgba(139, 92, 246, 0.06);
+  box-shadow: 0 6px 24px 4px rgba(0, 0, 0, 0.5), 0 0 12px 1px rgba(157, 165, 181, 0.06);
 }
 
 .dark .banner-hud-label {
@@ -3993,7 +3974,7 @@ iframe:focus-visible {
 
 .dark .banner-hud-value {
   color: rgba(255, 255, 255, 0.92);
-  text-shadow: 0 0 6px rgba(139, 92, 246, 0.12);
+  text-shadow: 0 0 6px rgba(157, 165, 181, 0.12);
 }
 
 .dark .banner-hud-divider {
@@ -4068,17 +4049,17 @@ iframe:focus-visible {
   background: rgba(250, 248, 255, 0.92);
   backdrop-filter: blur(12px) saturate(1.3);
   -webkit-backdrop-filter: blur(12px) saturate(1.3);
-  border: 1px solid rgba(139, 92, 246, 0.16);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(139, 92, 246, 0.05);
+  border: 1px solid rgba(157, 165, 181, 0.16);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(157, 165, 181, 0.05);
   pointer-events: auto;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
 .dark .reaction-bar-btn {
-  background: rgba(16, 10, 32, 0.9);
-  border-color: rgba(139, 92, 246, 0.28);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35), 0 0 8px rgba(139, 92, 246, 0.08);
+  background: rgba(19, 20, 23, 0.9);
+  border-color: rgba(157, 165, 181, 0.28);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35), 0 0 8px rgba(157, 165, 181, 0.08);
 }
 
 .reaction-bar-wrapper[data-hover] .reaction-bar-btn,
@@ -4128,27 +4109,27 @@ iframe:focus-visible {
 .reaction-bar-wrapper[data-open] .reaction-bar-btn:nth-child(9) { transition-delay: 140ms; }
 
 .reaction-bar-close {
-  background: rgba(240, 235, 248, 0.85) !important;
-  border-color: rgba(139, 92, 246, 0.1) !important;
+  background: rgba(240, 241, 243, 0.85) !important;
+  border-color: rgba(157, 165, 181, 0.1) !important;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06) !important;
   width: 32px !important;
   height: 32px !important;
 }
 
 .dark .reaction-bar-close {
-  background: rgba(20, 14, 36, 0.85) !important;
-  border-color: rgba(139, 92, 246, 0.2) !important;
+  background: rgba(23, 24, 27, 0.85) !important;
+  border-color: rgba(157, 165, 181, 0.2) !important;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3) !important;
 }
 
 .reaction-bar-close:hover {
-  background: rgba(220, 210, 240, 0.95) !important;
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15) !important;
+  background: rgba(223, 224, 227, 0.95) !important;
+  box-shadow: 0 2px 8px rgba(157, 165, 181, 0.15) !important;
 }
 
 .dark .reaction-bar-close:hover {
-  background: rgba(30, 20, 55, 0.95) !important;
-  box-shadow: 0 2px 10px rgba(139, 92, 246, 0.2) !important;
+  background: rgba(35, 37, 40, 0.95) !important;
+  box-shadow: 0 2px 10px rgba(157, 165, 181, 0.2) !important;
 }
 
 .reaction-bar-center {
@@ -4161,10 +4142,10 @@ iframe:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(139, 92, 246, 0.25);
-  background: rgba(240, 235, 248, 0.9);
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.12), 0 0 12px rgba(139, 92, 246, 0.06);
-  color: rgba(139, 92, 246, 0.8);
+  border: 1px solid rgba(157, 165, 181, 0.25);
+  background: rgba(240, 241, 243, 0.9);
+  box-shadow: 0 2px 8px rgba(157, 165, 181, 0.12), 0 0 12px rgba(157, 165, 181, 0.06);
+  color: rgba(157, 165, 181, 0.8);
   cursor: pointer;
   opacity: 0;
   pointer-events: none;
@@ -4174,10 +4155,10 @@ iframe:focus-visible {
 }
 
 .dark .reaction-bar-center {
-  background: rgba(20, 14, 36, 0.9);
-  border-color: rgba(139, 92, 246, 0.3);
-  box-shadow: 0 2px 10px rgba(139, 92, 246, 0.15), 0 0 16px rgba(139, 92, 246, 0.08);
-  color: rgba(167, 139, 250, 0.85);
+  background: rgba(23, 24, 27, 0.9);
+  border-color: rgba(157, 165, 181, 0.3);
+  box-shadow: 0 2px 10px rgba(157, 165, 181, 0.15), 0 0 16px rgba(157, 165, 181, 0.08);
+  color: rgba(186, 192, 203, 0.85);
 }
 
 .reaction-bar-wrapper[data-hover] .reaction-bar-center,
@@ -4190,14 +4171,14 @@ iframe:focus-visible {
 }
 
 .reaction-bar-center:hover {
-  background: rgba(220, 210, 240, 0.97);
-  box-shadow: 0 3px 12px rgba(139, 92, 246, 0.25), 0 0 16px rgba(139, 92, 246, 0.1);
+  background: rgba(223, 224, 227, 0.97);
+  box-shadow: 0 3px 12px rgba(157, 165, 181, 0.25), 0 0 16px rgba(157, 165, 181, 0.1);
   transform: scale(1.12);
 }
 
 .dark .reaction-bar-center:hover {
-  background: rgba(30, 20, 55, 0.97);
-  box-shadow: 0 3px 14px rgba(139, 92, 246, 0.3), 0 0 20px rgba(139, 92, 246, 0.12);
+  background: rgba(35, 37, 40, 0.97);
+  box-shadow: 0 3px 14px rgba(157, 165, 181, 0.3), 0 0 20px rgba(157, 165, 181, 0.12);
 }
 
 .reaction-bar-center:active {
@@ -4266,22 +4247,22 @@ iframe:focus-visible {
 
 .reaction-bar-btn:hover {
   transform: scale(1.15) !important;
-  background: rgba(235, 228, 255, 0.95);
-  box-shadow: 0 3px 12px rgba(139, 92, 246, 0.18), 0 0 0 1px rgba(139, 92, 246, 0.12);
+  background: rgba(239, 241, 244, 0.95);
+  box-shadow: 0 3px 12px rgba(157, 165, 181, 0.18), 0 0 0 1px rgba(157, 165, 181, 0.12);
 }
 
 .dark .reaction-bar-btn:hover {
-  background: rgba(30, 20, 60, 0.95);
-  box-shadow: 0 3px 16px rgba(139, 92, 246, 0.25), 0 0 0 1px rgba(139, 92, 246, 0.2);
+  background: rgba(37, 39, 43, 0.95);
+  box-shadow: 0 3px 16px rgba(157, 165, 181, 0.25), 0 0 0 1px rgba(157, 165, 181, 0.2);
 }
 
 .reaction-bar-btn:active {
   transform: scale(0.92) !important;
-  background: rgba(220, 210, 248, 0.97);
+  background: rgba(226, 228, 232, 0.97);
 }
 
 .dark .reaction-bar-btn:active {
-  background: rgba(40, 28, 75, 0.97);
+  background: rgba(48, 50, 55, 0.97);
 }
 
 .reaction-bar-wrapper[data-closed] .reaction-bar {
@@ -4302,12 +4283,12 @@ iframe:focus-visible {
 .reaction-bar-btn:disabled:hover {
   transform: scale(1) !important;
   background: rgba(250, 248, 255, 0.92);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(139, 92, 246, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(157, 165, 181, 0.05);
 }
 
 .dark .reaction-bar-btn:disabled:hover {
-  background: rgba(16, 10, 32, 0.9);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35), 0 0 8px rgba(139, 92, 246, 0.08);
+  background: rgba(19, 20, 23, 0.9);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35), 0 0 8px rgba(157, 165, 181, 0.08);
 }
 
 @keyframes reaction-pop {
@@ -4339,15 +4320,15 @@ iframe:focus-visible {
 }
 
 .emoji-pill-mine {
-  box-shadow: 0 0 6px 1px rgba(139, 92, 246, 0.35);
-  border-color: rgba(139, 92, 246, 0.4) !important;
-  background: rgba(139, 92, 246, 0.08) !important;
+  box-shadow: 0 0 6px 1px rgba(157, 165, 181, 0.35);
+  border-color: rgba(157, 165, 181, 0.4) !important;
+  background: rgba(157, 165, 181, 0.08) !important;
 }
 
 .dark .emoji-pill-mine {
-  box-shadow: 0 0 8px 2px rgba(139, 92, 246, 0.3);
-  border-color: rgba(139, 92, 246, 0.5) !important;
-  background: rgba(139, 92, 246, 0.12) !important;
+  box-shadow: 0 0 8px 2px rgba(157, 165, 181, 0.3);
+  border-color: rgba(157, 165, 181, 0.5) !important;
+  background: rgba(157, 165, 181, 0.12) !important;
 }
 
 .custom-emoji-inline {
@@ -4360,11 +4341,11 @@ iframe:focus-visible {
 
 @keyframes relay-ops-glow {
   0%, 100% {
-    filter: drop-shadow(0 0 2px rgba(168, 85, 247, 0.25));
+    filter: drop-shadow(0 0 2px rgba(153, 162, 179, 0.25));
     opacity: 0.9;
   }
   50% {
-    filter: drop-shadow(0 0 4px rgba(168, 85, 247, 0.4));
+    filter: drop-shadow(0 0 4px rgba(153, 162, 179, 0.4));
     opacity: 1;
   }
 }
@@ -4442,16 +4423,16 @@ input[type="date"]::-webkit-datetime-edit-text {
   inset: -10%;
   pointer-events: none;
   background-image:
-    radial-gradient(1px 1px at 18% 28%, rgba(196,181,253,0.85) 0, transparent 60%),
-    radial-gradient(1px 1px at 82% 22%, rgba(232,121,249,0.75) 0, transparent 60%),
-    radial-gradient(1px 1px at 65% 78%, rgba(196,181,253,0.70) 0, transparent 60%),
-    radial-gradient(1px 1px at 32% 82%, rgba(232,121,249,0.70) 0, transparent 60%),
-    radial-gradient(1px 1px at 92% 58%, rgba(196,181,253,0.80) 0, transparent 60%),
-    radial-gradient(1px 1px at 8%  62%, rgba(232,121,249,0.65) 0, transparent 60%),
-    radial-gradient(1px 1px at 50% 8%,  rgba(196,181,253,0.70) 0, transparent 60%),
-    radial-gradient(1px 1px at 50% 92%, rgba(232,121,249,0.65) 0, transparent 60%),
-    radial-gradient(1px 1px at 25% 55%, rgba(196,181,253,0.55) 0, transparent 60%),
-    radial-gradient(1px 1px at 75% 45%, rgba(232,121,249,0.55) 0, transparent 60%);
+    radial-gradient(1px 1px at 18% 28%, rgba(211,215,223,0.85) 0, transparent 60%),
+    radial-gradient(1px 1px at 82% 22%, rgba(175,182,195,0.75) 0, transparent 60%),
+    radial-gradient(1px 1px at 65% 78%, rgba(211,215,223,0.70) 0, transparent 60%),
+    radial-gradient(1px 1px at 32% 82%, rgba(175,182,195,0.70) 0, transparent 60%),
+    radial-gradient(1px 1px at 92% 58%, rgba(211,215,223,0.80) 0, transparent 60%),
+    radial-gradient(1px 1px at 8%  62%, rgba(175,182,195,0.65) 0, transparent 60%),
+    radial-gradient(1px 1px at 50% 8%,  rgba(211,215,223,0.70) 0, transparent 60%),
+    radial-gradient(1px 1px at 50% 92%, rgba(175,182,195,0.65) 0, transparent 60%),
+    radial-gradient(1px 1px at 25% 55%, rgba(211,215,223,0.55) 0, transparent 60%),
+    radial-gradient(1px 1px at 75% 45%, rgba(175,182,195,0.55) 0, transparent 60%);
   transform-origin: 50% 50%;
   opacity: 0;
   animation: warpDrift 7s ease-in-out infinite;
@@ -4474,45 +4455,42 @@ input[type="date"]::-webkit-datetime-edit-text {
 
 /* Operator radar — sidebar indicator for accounts that own at least
    one outpost relay. Bright violet pulses, calibrated to be obvious in
-   light mode (deep indigo) and dark mode (bright violet) without being
-   loud. Uses scale on plain divs so transform-origin is reliable. */
+   both themes in Ember, the status colour, without being loud. Uses scale on plain divs so transform-origin is reliable. */
 .operator-radar { line-height: 0; }
 .operator-radar__dot {
   position: absolute;
   width: 5px;
   height: 5px;
   border-radius: 9999px;
-  background: rgb(99 102 241);
-  box-shadow: 0 0 3px rgba(99, 102, 241, 0.35);
+  background: hsl(var(--brand));
 }
 .dark .operator-radar__dot {
-  background: rgb(165 180 252);
-  box-shadow: 0 0 4px rgba(129, 140, 248, 0.45);
+  background: hsl(var(--brand));
 }
 .operator-radar__halo {
   position: absolute;
   width: 11px;
   height: 11px;
   border-radius: 9999px;
-  border: 1px solid rgba(99, 102, 241, 0.28);
-  background: rgba(99, 102, 241, 0.04);
+  border: 1px solid rgba(159, 166, 181, 0.28);
+  background: rgba(159, 166, 181, 0.04);
 }
 .dark .operator-radar__halo {
-  border-color: rgba(129, 140, 248, 0.32);
-  background: rgba(129, 140, 248, 0.05);
+  border-color: hsl(var(--border));
+  background: transparent;
 }
 .operator-radar__ring {
   position: absolute;
   width: 11px;
   height: 11px;
   border-radius: 9999px;
-  border: 1px solid rgba(99, 102, 241, 0.35);
+  border: 1px solid rgba(159, 166, 181, 0.35);
   transform-origin: center;
   animation: operatorRadarPulse 3.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   will-change: transform, opacity;
 }
 .dark .operator-radar__ring {
-  border-color: rgba(165, 180, 252, 0.4);
+  border-color: hsl(var(--border));
 }
 .operator-radar__ring--inner { animation-delay: 0s; }
 .operator-radar__ring--outer { animation-delay: 1.8s; }
@@ -4532,36 +4510,14 @@ input[type="date"]::-webkit-datetime-edit-text {
    blur and the ::before/::after glass sheens so the surface stays flat and opaque
    with crisp white text, in any theme and both the page and overlay variants. */
 .field-info-overlay {
-  background: #15121f !important;
-  border-color: rgba(140, 100, 220, 0.35) !important;
+  background: #17181a !important;
+  border-color: rgba(150, 157, 170, 0.35) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.6) !important;
 }
 .field-info-overlay::before,
 .field-info-overlay::after { content: none !important; display: none !important; }
-
-/* ── Landing mascot motion ──────────────────────────────────────────────
-   The frontier-ranger companion (see components/landing/Mascot.tsx). Two
-   independent transforms layered on nested elements so float + sway don't
-   clobber each other: the wrapper bobs, the image gently sways. The ground
-   glow breathes in sync. All disabled under prefers-reduced-motion via the
-   motion-reduce:animate-none utility on each element. */
-@keyframes mascot-bob {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-7px); }
-}
-@keyframes mascot-sway {
-  0%, 100% { transform: rotate(-1.5deg); }
-  50%      { transform: rotate(1.5deg); }
-}
-@keyframes mascot-glow {
-  0%, 100% { opacity: 0.55; transform: translateX(-50%) scale(1); }
-  50%      { opacity: 0.9;  transform: translateX(-50%) scale(1.08); }
-}
-.mascot-bob  { animation: mascot-bob 4.2s ease-in-out infinite; }
-.mascot-sway { animation: mascot-sway 5.6s ease-in-out infinite; transform-origin: 50% 85%; }
-.mascot-glow { animation: mascot-glow 4.2s ease-in-out infinite; }
 
 /* ── Warp "black hole" transition ───────────────────────────────────────
    Replaces the old white flash at the warp apex (too harsh / seizure-risky).
@@ -4579,8 +4535,8 @@ input[type="date"]::-webkit-datetime-edit-text {
   inset: 0;
   background: radial-gradient(circle at 50% 45%,
     transparent var(--bh-hole, 85%),
-    rgba(167, 139, 250, 0.28) calc(var(--bh-hole, 85%) + 1.5%),
-    rgba(91, 33, 182, 0.55) calc(var(--bh-hole, 85%) + 6%),
+    rgba(186, 192, 203, 0.28) calc(var(--bh-hole, 85%) + 1.5%),
+    rgba(96, 104, 119, 0.55) calc(var(--bh-hole, 85%) + 6%),
     #05030a calc(var(--bh-hole, 85%) + 16%));
 }
 @keyframes bh-close { from { --bh-hole: 90%; } to { --bh-hole: 0%; } }
@@ -4614,20 +4570,20 @@ input[type="date"]::-webkit-datetime-edit-text {
    outpost strip's Join chip, the profile Follow button. Hover deepens it a
    touch; keep everything around these buttons quiet. */
 .cta-pop {
-  box-shadow: 0 1px 2px rgba(31, 27, 75, 0.14), 0 2px 10px hsl(262 75% 52% / 0.25);
+  box-shadow: 0 1px 2px rgba(47, 50, 55, 0.14), 0 2px 10px hsl(220 12% 52% / 0.25);
   transition: box-shadow 150ms ease, transform 150ms ease;
 }
 .cta-pop:hover {
-  box-shadow: 0 1px 3px rgba(31, 27, 75, 0.18), 0 3px 14px hsl(262 75% 52% / 0.38);
+  box-shadow: 0 1px 3px rgba(47, 50, 55, 0.18), 0 3px 14px hsl(220 12% 52% / 0.38);
 }
 .cta-pop:active {
   transform: scale(0.98);
 }
 .dark .cta-pop {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 2px 12px hsl(262 85% 62% / 0.32);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 2px 12px hsl(220 14% 62% / 0.32);
 }
 .dark .cta-pop:hover {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55), 0 3px 16px hsl(262 85% 62% / 0.48);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55), 0 3px 16px hsl(220 14% 62% / 0.48);
 }
 @media (prefers-reduced-motion: reduce) {
   .cta-pop, .cta-pop:active { transition: none; transform: none; }
@@ -4733,8 +4689,8 @@ input[type="date"]::-webkit-datetime-edit-text {
    .header-bell-ring-spin), calm — a static brand ring, no animation, so it
    reads as state rather than motion. Extinguishes when freshCount hits 0. */
 .tile-fresh {
-  border-color: hsl(262 70% 58% / 0.45);
-  box-shadow: 0 0 0 1px hsl(262 70% 58% / 0.25), 0 0 18px -6px hsl(262 70% 58% / 0.35);
+  border-color: hsl(220 11% 58% / 0.45);
+  box-shadow: 0 0 0 1px hsl(220 11% 58% / 0.25), 0 0 18px -6px hsl(220 11% 58% / 0.35);
 }
 
 /* "+N new" chip — the NewPostsPill's 170ms calm slide-in, within the motion
@@ -4779,7 +4735,7 @@ html[data-perf="lite"] .fresh-chip {
    is unchanged — proven by a pixel diff of dark screenshots before and after. */
 .dark .glass-card,
 .dark .glass-dialog-card {
-  border-color: rgba(120, 80, 200, 0.15) !important;
+  border-color: rgba(130, 137, 150, 0.15) !important;
 }
 .dark .glass-dialog {
   backdrop-filter: blur(32px) saturate(1.3);
@@ -4788,11 +4744,11 @@ html[data-perf="lite"] .fresh-chip {
 .dark .glass-nav-panel {
   backdrop-filter: blur(16px) saturate(1.2);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
-  border: 1px solid rgba(100, 70, 200, 0.15);
+  border: 1px solid rgba(125, 132, 145, 0.15);
 }
 .dark .glass-feed-header {
-  background: linear-gradient(180deg, rgba(80, 50, 140, 0.06) 0%, transparent 100%);
-  border-bottom: 1px solid rgba(140, 100, 220, 0.06);
+  background: linear-gradient(180deg, rgba(88, 93, 102, 0.06) 0%, transparent 100%);
+  border-bottom: 1px solid rgba(150, 157, 170, 0.06);
 }
 .dark .glass-thread {
   backdrop-filter: blur(24px) saturate(1.2);
@@ -4800,5 +4756,28 @@ html[data-perf="lite"] .fresh-chip {
 }
 .dark .glass-settings-section {
   -webkit-backdrop-filter: blur(16px);
-  border-color: rgba(100, 70, 200, 0.16);
+  border-color: rgba(125, 132, 145, 0.16);
+}
+
+/* ---- Outpost theme: the space imagery is retired ---------------------------
+ * Stars, nebula, shooting star, vignette and the space photos behind the Chats
+ * empty state and the create pop-ups are hidden in every theme. The layers and
+ * images stay in the markup, so removing this block brings them back. */
+.space-bg-nebula,
+.space-bg-nebula-glow,
+.space-bg-stars,
+.space-bg-stars-deep,
+.space-bg-shooting-star,
+.space-bg-vignette,
+.dark .space-bg-nebula,
+.dark .space-bg-nebula-glow,
+.dark .space-bg-stars,
+.dark .space-bg-stars-deep,
+.dark .space-bg-shooting-star,
+.dark .space-bg-vignette {
+  display: none !important;
+}
+img[src*="messages-empty-bg"],
+img[src*="create-bg"] {
+  display: none !important;
 }

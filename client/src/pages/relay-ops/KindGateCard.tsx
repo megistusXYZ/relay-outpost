@@ -110,7 +110,7 @@ export function KindGateCard({ relayUrl }: { relayUrl: string; nip11: Nip11Docum
         </OpsSectionHeader>
 
         {caps === null ? (
-          <p className="text-xs text-muted-foreground/70 py-2">Asking your host what you can change…</p>
+          <p className="text-xs text-muted-foreground py-2">Asking your host what you can change…</p>
         ) : !canChange ? (
           <div className="space-y-2" data-testid="kind-gate-unsupported">
             {canRead && <p className="text-xs text-muted-foreground" data-testid="kind-gate-policy">{policyLine}</p>}
@@ -127,15 +127,15 @@ export function KindGateCard({ relayUrl }: { relayUrl: string; nip11: Nip11Docum
                   <div key={opt.label} className="flex items-center justify-between gap-2 rounded-lg border border-border/25 bg-muted/5 px-2.5 py-1.5">
                     <div className="min-w-0">
                       <p className="text-xs font-medium truncate">{opt.label}</p>
-                      {technical && <p className="text-[10px] text-muted-foreground/50">kind {opt.kinds.join(", ")}</p>}
+                      {technical && <p className="text-[12px] text-muted-foreground">kind {opt.kinds.join(", ")}</p>}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      {st === "allowed" && <span className="flex items-center gap-0.5 text-[10px] text-success dark:text-emerald-500"><Check className="w-3 h-3" />in</span>}
-                      {st === "blocked" && <span className="flex items-center gap-0.5 text-[10px] text-danger dark:text-red-500"><Ban className="w-3 h-3" />out</span>}
-                      <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" disabled={busy} onClick={() => act(opt.label, opt.kinds, "allow")} data-testid={`button-kind-allow-${opt.kinds[0]}`}>
+                      {st === "allowed" && <span className="flex items-center gap-0.5 text-[12px] text-success dark:text-emerald-500"><Check className="w-3 h-3" />in</span>}
+                      {st === "blocked" && <span className="flex items-center gap-0.5 text-[12px] text-danger dark:text-red-500"><Ban className="w-3 h-3" />out</span>}
+                      <Button size="sm" variant="ghost" className="h-6 px-2 text-[12px]" disabled={busy} onClick={() => act(opt.label, opt.kinds, "allow")} data-testid={`button-kind-allow-${opt.kinds[0]}`}>
                         Allow
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px] text-muted-foreground hover:text-red-500" disabled={busy} onClick={() => act(opt.label, opt.kinds, "block")} data-testid={`button-kind-block-${opt.kinds[0]}`}>
+                      <Button size="sm" variant="ghost" className="h-6 px-2 text-[12px] text-muted-foreground hover:text-red-500" disabled={busy} onClick={() => act(opt.label, opt.kinds, "block")} data-testid={`button-kind-block-${opt.kinds[0]}`}>
                         Block
                       </Button>
                     </div>
@@ -143,7 +143,7 @@ export function KindGateCard({ relayUrl }: { relayUrl: string; nip11: Nip11Docum
                 );
               })}
             </div>
-            <p className="text-[10px] text-muted-foreground/50">
+            <p className="text-[12px] text-muted-foreground">
               How Allow and Block work depends on your host — the line above is always what it reports.
             </p>
           </>

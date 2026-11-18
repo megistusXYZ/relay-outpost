@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { PageToolbar } from "@/components/PageToolbar";
 import { MissionBriefing, SHIELD_MATRIX_BRIEFING } from "@/components/MissionBriefing";
 import { use$ } from "applesauce-react/hooks";
@@ -23,7 +23,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/component
 import { applyTrustChoice, useTrustChoice, TRUST_CHOICES, type TrustChoice } from "@/lib/trust-choice";
 import { readExcludedTiers, writeExcludedTiers } from "@/lib/trust-filter";
 import { ShieldMatrixIcon } from "@/components/icons/ShieldMatrixIcon";
-import { TrustTierGlyph } from "@/components/nostr-post/trust-tier-glyph";
+import { TIER_GLYPH, TrustTierGlyph } from "@/components/nostr-post/trust-tier-glyph";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { useToast } from "@/hooks/use-toast";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
@@ -35,7 +35,7 @@ import {
 } from "@/lib/graperank";
 import { type ReachDepth } from "@/lib/spam-filter";
 import { mutePubkey as localMutePubkey, isMutedPubkey, onMuteChange } from "@/lib/spam-filter";
-import { formatNpub, getProfileContent, KIND_METADATA } from "@/lib/nostr-helpers";
+import { getProfileContent, KIND_METADATA } from "@/lib/nostr-helpers";
 import { Link } from "wouter";
 import { nip19 } from "nostr-tools";
 import { useDocumentTitle } from "@/hooks/use-document-title";
@@ -59,16 +59,16 @@ const REACH_DEPTH_OPTIONS: { value: ReachDepth; label: string; desc: string }[] 
 ];
 
 const CALIBRATION_TIERS: { key: keyof TierThresholds; tier: SignalTier; label: string; dotColor: string }[] = [
-  { key: "strong", tier: "strong", label: "Highly Trusted", dotColor: "bg-emerald-500" },
-  { key: "moderate", tier: "moderate", label: "Trusted", dotColor: "bg-blue-500" },
-  { key: "low", tier: "low", label: "Neutral", dotColor: "bg-cyan-400/80" },
-  { key: "weak", tier: "weak", label: "Low Trust", dotColor: "bg-amber-500" },
+  { key: "strong", tier: "strong", label: "Trusted", dotColor: TIER_GLYPH.strong.className },
+  { key: "moderate", tier: "moderate", label: "Known", dotColor: TIER_GLYPH.moderate.className },
+  { key: "low", tier: "low", label: "Some ties", dotColor: TIER_GLYPH.low.className },
+  { key: "weak", tier: "weak", label: "Few ties", dotColor: TIER_GLYPH.weak.className },
 ];
 
 function ShieldSubSection({ title, description, children, className }: { title: string; description: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className={`rounded-lg p-3.5 space-y-2.5 ${className || ""}`}
-      style={{ background: "rgba(140, 100, 220, 0.04)", border: "1px solid rgba(140, 100, 220, 0.12)" }}
+    <div className={`rounded-[16px] p-3.5 space-y-2.5 ${className || ""}`}
+      style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border) / 0.6)" }}
     >
       <div>
         <p className="text-sm font-semibold text-foreground/85">{title}</p>
@@ -84,19 +84,19 @@ function ShieldToggleRow({ label, description, checked, onToggle, testId }: { la
     <div className="flex items-center justify-between gap-3">
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium text-foreground/75">{label}</p>
-        <p className="text-[10px] text-muted-foreground/50 mt-0.5 leading-relaxed">{description}</p>
+        <p className="text-[12px] text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
       </div>
       <button
         role="switch"
         aria-checked={checked}
         onClick={onToggle}
-        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 ${
-          checked ? "bg-brand" : "bg-muted-foreground/30"
+        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 ${
+          checked ? "bg-primary" : "bg-input"
         }`}
         data-testid={testId}
       >
         <span
-          className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200 ${
+          className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-sm ring-0 transition-transform duration-150 ${
             checked ? "translate-x-4" : "translate-x-0"
           }`}
         />
@@ -192,8 +192,8 @@ function WotDiagnosticsCard() {
 
   return (
     <div
-      className="rounded-lg p-4 space-y-3"
-      style={{ background: "rgba(140, 100, 220, 0.04)", border: "1px solid rgba(140, 100, 220, 0.12)" }}
+      className="rounded-[16px] p-4 space-y-3"
+      style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border) / 0.6)" }}
       data-testid="wot-diagnostics-card"
     >
       <AlertDialog open={showRecalcConfirm} onOpenChange={setShowRecalcConfirm}>
@@ -219,7 +219,7 @@ function WotDiagnosticsCard() {
       </AlertDialog>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-semibold text-foreground/85">Trust Network Diagnostics</p>
+          <p className="text-[15px] font-semibold text-foreground">Trust network diagnostics</p>
           <p className="text-xs text-muted-foreground/55 leading-relaxed mt-0.5">
             {wotEnabled
               ? "Your connection to Brainstorm, where your web-of-trust scores are computed. Calculate or refresh them right here — no need to leave the app."
@@ -230,23 +230,23 @@ function WotDiagnosticsCard() {
 
       <div className="grid gap-2 text-xs">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-muted-foreground/70">Signed in</span>
+          <span className="text-muted-foreground">Signed in</span>
           <span className="flex items-center gap-1.5" data-testid="wot-diag-auth">
-            <span className={`w-1.5 h-1.5 rounded-full ${authOk ? "bg-emerald-500" : authHasFail ? "bg-red-500" : "bg-slate-500/50"}`} />
-            <span className={authOk ? "text-success dark:text-emerald-500/80" : authHasFail ? "text-danger dark:text-red-500/85" : "text-muted-foreground/60"}>
+            <span className={`w-1.5 h-1.5 rounded-full ${authOk ? "bg-success" : authHasFail ? "bg-danger" : "bg-foreground/20"}`} />
+            <span className={authOk ? "text-success" : authHasFail ? "text-danger" : "text-muted-foreground"}>
               {authOk ? `Signed in · ${formatRelativeTime(diagnostics.authLastSuccessAt)}` : authHasFail ? `Failed · ${formatRelativeTime(diagnostics.authLastFailAt)}` : "Not yet attempted"}
             </span>
           </span>
         </div>
         {authHasFail && diagnostics.authLastFailReason && (
-          <p className="text-[10px] text-danger dark:text-red-500/70 pl-2">{diagnostics.authLastFailReason}</p>
+          <p className="text-[12px] text-danger pl-2">{diagnostics.authLastFailReason}</p>
         )}
 
         <div className="flex items-center justify-between gap-2">
-          <span className="text-muted-foreground/70">Scores loaded</span>
+          <span className="text-muted-foreground">Scores loaded</span>
           <span className="flex items-center gap-1.5" data-testid="wot-diag-conn">
-            <span className={`w-1.5 h-1.5 rounded-full ${diagnostics.connLastSuccessAt && !connHasFail ? "bg-emerald-500" : connHasFail ? "bg-red-500" : "bg-slate-500/50"}`} />
-            <span className={diagnostics.connLastSuccessAt && !connHasFail ? "text-success dark:text-emerald-500/80" : connHasFail ? "text-danger dark:text-red-500/85" : "text-muted-foreground/60"}>
+            <span className={`w-1.5 h-1.5 rounded-full ${diagnostics.connLastSuccessAt && !connHasFail ? "bg-success" : connHasFail ? "bg-danger" : "bg-foreground/20"}`} />
+            <span className={diagnostics.connLastSuccessAt && !connHasFail ? "text-success" : connHasFail ? "text-danger" : "text-muted-foreground"}>
               {connHasFail
                 ? `Failed · ${formatRelativeTime(diagnostics.connLastFailAt)}`
                 : diagnostics.connLastSuccessAt
@@ -256,14 +256,14 @@ function WotDiagnosticsCard() {
           </span>
         </div>
         {connHasFail && diagnostics.connLastError && (
-          <p className="text-[10px] text-danger dark:text-red-500/70 pl-2">{diagnostics.connLastError}</p>
+          <p className="text-[12px] text-danger pl-2">{diagnostics.connLastError}</p>
         )}
 
         <div className="flex items-center justify-between gap-2">
-          <span className="text-muted-foreground/70">Live scoring</span>
+          <span className="text-muted-foreground">Live scoring</span>
           <span className="flex items-center gap-1.5" data-testid="wot-diag-batch">
-            <span className={`w-1.5 h-1.5 rounded-full ${cooldownActive ? "bg-amber-500" : diagnostics.batchLastSuccessAt ? "bg-emerald-500" : "bg-slate-500/50"}`} />
-            <span className={cooldownActive ? "text-amber-500/85" : diagnostics.batchLastSuccessAt ? "text-success dark:text-emerald-500/80" : "text-muted-foreground/60"}>
+            <span className={`w-1.5 h-1.5 rounded-full ${cooldownActive ? "bg-amber-500 dark:bg-amber-400" : diagnostics.batchLastSuccessAt ? "bg-success" : "bg-foreground/20"}`} />
+            <span className={cooldownActive ? "text-amber-700 dark:text-amber-400" : diagnostics.batchLastSuccessAt ? "text-success" : "text-muted-foreground"}>
               {cooldownActive
                 ? `Paused · retry in ${cooldownSecs}s`
                 : diagnostics.batchLastSuccessAt
@@ -273,14 +273,14 @@ function WotDiagnosticsCard() {
           </span>
         </div>
         {diagnostics.batchLastError && diagnostics.batchLastFailAt >= diagnostics.batchLastSuccessAt && (
-          <p className="text-[10px] text-amber-500/75 pl-2">{diagnostics.batchLastError}</p>
+          <p className="text-[12px] text-amber-700 dark:text-amber-400 pl-2">{diagnostics.batchLastError}</p>
         )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 pt-1">
         <Button
           size="sm"
-          className="h-7 text-xs bg-brand hover:bg-brand text-white"
+          className="h-9 rounded-full px-4 text-[13px]"
           onClick={requestRecalc}
           disabled={triggering || recalculating || !pubkey}
           data-testid="button-wot-calculate"
@@ -316,7 +316,7 @@ function WotDiagnosticsCard() {
           href="https://brainstorm.nosfabrica.com"
           target="_blank"
           rel="noopener noreferrer"
-          className="ml-auto inline-flex items-center gap-0.5 text-[11px] text-muted-foreground/50 hover:text-brand/80 transition-colors"
+          className="ml-auto inline-flex items-center gap-0.5 text-[12px] text-muted-foreground hover:text-brand transition-colors"
           data-testid="link-wot-recalc"
         >
           Open Brainstorm ↗
@@ -341,25 +341,25 @@ function WotBadgeStyleToggle() {
   };
   return (
     <div
-      className={`flex items-center justify-between rounded-lg p-4 transition-opacity duration-300 ${!wotEnabled ? "opacity-40 pointer-events-none" : ""}`}
-      style={{ background: "rgba(140, 100, 220, 0.04)", border: "1px solid rgba(140, 100, 220, 0.12)" }}
+      className={`flex items-center justify-between rounded-[16px] p-4 transition-opacity duration-150 ${!wotEnabled ? "opacity-40 pointer-events-none" : ""}`}
+      style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border) / 0.6)" }}
     >
       <div className="flex-1 min-w-0 mr-3">
-        <p className="text-sm font-medium text-foreground/85">Detailed WoT Badge</p>
+        <p className="text-sm font-medium text-foreground/85">Detailed trust badge</p>
         <p className="text-xs text-muted-foreground/55 leading-relaxed mt-0.5">
-          Show the full WoT service card on your Community banner instead of the compact pill.
+          Show the full trust service card on your Community banner instead of the compact pill.
         </p>
       </div>
       <button
         role="switch"
         aria-checked={detailed}
         onClick={toggle}
-        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 ${
-          detailed ? "bg-brand" : "bg-muted-foreground/30"
+        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 ${
+          detailed ? "bg-primary" : "bg-input"
         }`}
       >
         <span
-          className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200 ${
+          className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-background shadow-sm ring-0 transition-transform duration-150 ${
             detailed ? "translate-x-5" : "translate-x-0"
           }`}
         />
@@ -386,7 +386,7 @@ function TierInput({ value, onCommit, testId }: { value: number; onCommit: (v: s
       onFocus={() => setEditing(true)}
       onBlur={() => { onCommit(draft); setEditing(false); }}
       onKeyDown={(e) => { if (e.key === "Enter") { (e.target as HTMLInputElement).blur(); } }}
-      className="w-11 h-6 text-center text-[11px] rounded border border-brand/20 bg-brand/[0.06] text-foreground/80 focus:outline-none focus:ring-1 focus:ring-brand/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+      className="w-11 h-6 text-center text-[12px] rounded-md border border-input bg-transparent text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
       data-testid={testId}
     />
   );
@@ -480,7 +480,7 @@ function TrustTierCalibration({ onCustomTiersChange }: { onCustomTiersChange: (a
       <div className="flex items-center justify-between gap-3 mb-1">
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-foreground/75">Custom thresholds</p>
-          <p className="text-[10px] text-muted-foreground/50 mt-0.5 leading-relaxed">
+          <p className="text-[12px] text-muted-foreground mt-0.5 leading-relaxed">
             {enabled
               ? "Active — tier boundaries use your custom values below."
               : "Off — using standard Brainstorm tier boundaries."}
@@ -490,13 +490,13 @@ function TrustTierCalibration({ onCustomTiersChange }: { onCustomTiersChange: (a
           role="switch"
           aria-checked={enabled}
           onClick={handleToggle}
-          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 ${
-            enabled ? "bg-brand" : "bg-muted-foreground/30"
+          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 ${
+            enabled ? "bg-primary" : "bg-input"
           }`}
           data-testid="toggle-custom-tiers"
         >
           <span
-            className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200 ${
+            className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-sm ring-0 transition-transform duration-150 ${
               enabled ? "translate-x-4" : "translate-x-0"
             }`}
           />
@@ -517,10 +517,10 @@ function TrustTierCalibration({ onCustomTiersChange }: { onCustomTiersChange: (a
             <div
               key={key}
               className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5"
-              style={{ background: enabled ? "rgba(140, 100, 220, 0.04)" : "transparent" }}
+              style={{ background: enabled ? "hsl(var(--foreground) / 0.03)" : "transparent" }}
             >
               <TrustTierGlyph tier={tier} size="w-2 h-2" decorative />
-              <span className="text-[11px] font-medium text-foreground/70 w-20 shrink-0">{label}</span>
+              <span className="text-[12px] font-medium text-foreground/70 w-20 shrink-0">{label}</span>
               {enabled ? (
                 <div className="flex items-center gap-1 flex-1 justify-end">
                   <TierInput
@@ -528,9 +528,9 @@ function TrustTierCalibration({ onCustomTiersChange }: { onCustomTiersChange: (a
                     onCommit={(v) => updateThreshold(key, v)}
                     testId={`input-threshold-${key}`}
                   />
-                  <span className="text-[10px] text-muted-foreground/40">–</span>
+                  <span className="text-[12px] text-muted-foreground">–</span>
                   {isTopTier ? (
-                    <span className="w-11 h-6 flex items-center justify-center text-[11px] text-muted-foreground/50">100</span>
+                    <span className="w-11 h-6 flex items-center justify-center text-[12px] text-muted-foreground">100</span>
                   ) : (
                     <TierInput
                       value={upperPct}
@@ -538,10 +538,10 @@ function TrustTierCalibration({ onCustomTiersChange }: { onCustomTiersChange: (a
                       testId={`input-upper-${key}`}
                     />
                   )}
-                  <span className="text-[10px] text-muted-foreground/50">%</span>
+                  <span className="text-[12px] text-muted-foreground">%</span>
                 </div>
               ) : (
-                <span className="text-[10px] text-muted-foreground/50 flex-1 text-right">
+                <span className="text-[12px] text-muted-foreground flex-1 text-right">
                   {lowerPct}% – {upperPct}%
                 </span>
               )}
@@ -550,8 +550,8 @@ function TrustTierCalibration({ onCustomTiersChange }: { onCustomTiersChange: (a
         })}
         <div className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5">
           <TrustTierGlyph tier="none" size="w-2 h-2" decorative />
-          <span className="text-[11px] font-medium text-foreground/70 w-20 shrink-0">Unverified</span>
-          <span className="text-[10px] text-muted-foreground/50 flex-1 text-right">
+          <span className="text-[12px] font-medium text-foreground/70 w-20 shrink-0">Unverified</span>
+          <span className="text-[12px] text-muted-foreground flex-1 text-right">
             0% – {Math.round((enabled ? thresholds : DEFAULT_THRESHOLDS).weak * 100) - 1}%
           </span>
         </div>
@@ -561,7 +561,7 @@ function TrustTierCalibration({ onCustomTiersChange }: { onCustomTiersChange: (a
         <div className="flex items-center justify-end pt-1">
           <button
             onClick={handleReset}
-            className="flex items-center gap-1 text-[10px] text-brand/60 hover:text-brand-strong transition-colors cursor-pointer"
+            className="flex items-center gap-1 text-[12px] text-brand hover:text-brand-strong transition-colors cursor-pointer"
             data-testid="button-reset-thresholds"
           >
             <RotateCcw className="w-3 h-3" />
@@ -571,7 +571,7 @@ function TrustTierCalibration({ onCustomTiersChange }: { onCustomTiersChange: (a
       )}
 
       {!enabled && (
-        <p className="text-[10px] text-muted-foreground/40 italic leading-relaxed">
+        <p className="text-[12px] text-muted-foreground leading-relaxed">
           These are the standard Brainstorm tier boundaries. Toggle on to customize how influence scores are categorized for your experience.
         </p>
       )}
@@ -607,10 +607,10 @@ function ReachDepthDefault() {
             <button
               key={opt.value}
               onClick={() => handleChange(opt.value)}
-              className={`px-2.5 py-1.5 rounded-md text-xs transition-all cursor-pointer border ${
+              className={`min-h-9 px-3 py-1.5 rounded-full text-[13px] transition-colors duration-150 cursor-pointer border ${
                 selected
-                  ? "border-brand/40 bg-brand/10 dark:bg-brand/15 text-foreground/90"
-                  : "border-brand/15 dark:border-brand/10 bg-white/[0.02] hover:border-brand/25 hover:bg-brand/[0.04] text-foreground/55"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border/60 bg-transparent hover:bg-foreground/[0.05] text-muted-foreground"
               }`}
               data-testid={`button-reach-depth-${opt.value}`}
             >
@@ -620,7 +620,7 @@ function ReachDepthDefault() {
         })}
       </div>
       {selectedOption && (
-        <p className="text-[10px] text-muted-foreground/45">{selectedOption.desc}</p>
+        <p className="text-[12px] text-muted-foreground">{selectedOption.desc}</p>
       )}
     </div>
   );
@@ -685,10 +685,10 @@ function TrustTierFilterPreset() {
               <button
                 key={tier}
                 onClick={() => toggle(tier)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-all cursor-pointer border ${
+                className={`flex items-center gap-1.5 min-h-9 px-3 py-1.5 rounded-full text-[13px] transition-colors duration-150 cursor-pointer border ${
                   isExcluded
-                    ? "opacity-40 line-through text-muted-foreground/40 border-border/20 bg-transparent"
-                    : "text-foreground/70 border-brand/20 bg-brand/[0.06] hover:bg-brand/10"
+                    ? "line-through text-muted-foreground border-border/60 bg-transparent"
+                    : "text-foreground border-border/60 bg-transparent hover:bg-foreground/[0.05]"
                 }`}
               >
                 <TrustTierGlyph tier={tier} size="w-2 h-2" decorative className={isExcluded ? "opacity-30" : ""} />
@@ -699,12 +699,12 @@ function TrustTierFilterPreset() {
         </div>
         {excluded.size > 0 && (
           <div className="flex items-center justify-between">
-            <p className="text-[10px] text-brand/50">
+            <p className="text-[12px] text-brand">
               {excluded.size} tier{excluded.size !== 1 ? "s" : ""} hidden
             </p>
             <button
               onClick={clearAll}
-              className="text-[10px] text-brand/60 hover:text-brand-strong transition-colors"
+              className="text-[12px] text-brand hover:text-brand-strong transition-colors"
             >
               Reset all
             </button>
@@ -717,7 +717,7 @@ function TrustTierFilterPreset() {
         description="Controls how far through your network posts can come from. Inner Circle shows only your closest connections; Everyone shows all scored users."
       >
         <ReachDepthDefault />
-        <p className="text-[10px] text-muted-foreground/45 italic">You can also change this on-the-fly from the feed controls.</p>
+        <p className="text-[12px] text-muted-foreground">You can also change this on-the-fly from the feed controls.</p>
       </ShieldSubSection>
 
       <ShieldSubSection
@@ -731,7 +731,7 @@ function TrustTierFilterPreset() {
           onToggle={toggleShowOnFeed}
           testId="toggle-tier-filter-on-feed"
         />
-        <div className="border-t border-brand/8" />
+        <div className="border-t border-border/60" />
         <ShieldToggleRow
           label="Show trust dots in comments"
           description="Adds a colored trust indicator next to each commenter's name. When on, your hidden tiers also apply to comment threads."
@@ -781,13 +781,13 @@ function FlaggedAccountRow({ pk, onMute, onDismiss }: { pk: string; onMute: () =
   return (
     <div
       className="flex items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors hover:bg-brand/5 group"
-      style={{ border: "1px solid rgba(140, 100, 220, 0.12)" }}
+      style={{ border: "1px solid hsl(var(--border) / 0.6)" }}
       data-testid={`flagged-user-${pk.slice(0, 8)}`}
     >
       <Link href={`/profile/${npub}`} className="shrink-0">
         <Avatar className="w-8 h-8 border border-border/30">
           <AvatarImage src={picture || undefined} alt={displayName || shortNpub} />
-          <AvatarFallback className="text-[10px] bg-muted text-muted-foreground">
+          <AvatarFallback className="text-[12px] bg-muted text-muted-foreground">
             {displayName ? displayName.slice(0, 2).toUpperCase() : shortNpub.slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
@@ -799,18 +799,18 @@ function FlaggedAccountRow({ pk, onMute, onDismiss }: { pk: string; onMute: () =
           </p>
           <span className="flex items-center gap-1 shrink-0">
             <TrustTierGlyph tier={tier} size="w-1.5 h-1.5" decorative />
-            <span className="text-[10px] text-muted-foreground/50">{tierLabel}</span>
+            <span className="text-[12px] text-muted-foreground">{tierLabel}</span>
           </span>
         </div>
         {displayName && (
-          <p className="text-[11px] text-muted-foreground/50 font-mono truncate">{shortNpub}</p>
+          <p className="text-[12px] text-muted-foreground font-mono truncate">{shortNpub}</p>
         )}
       </Link>
       <div className="flex items-center gap-1 shrink-0">
         <Button
           variant="ghost"
           size="sm"
-          className="text-[11px] text-muted-foreground/60 gap-1 opacity-70 group-hover:opacity-100 transition-opacity h-7 px-2"
+          className="text-[12px] text-muted-foreground gap-1 opacity-70 group-hover:opacity-100 transition-opacity h-7 px-2"
           onClick={onDismiss}
           data-testid={`button-dismiss-${pk.slice(0, 8)}`}
         >
@@ -820,7 +820,7 @@ function FlaggedAccountRow({ pk, onMute, onDismiss }: { pk: string; onMute: () =
         <Button
           variant="ghost"
           size="sm"
-          className="text-[11px] text-red-500/70 gap-1 opacity-70 group-hover:opacity-100 transition-opacity h-7 px-2"
+          className="text-[12px] text-danger gap-1 opacity-70 group-hover:opacity-100 transition-opacity h-7 px-2"
           onClick={onMute}
           data-testid={`button-mute-flagged-${pk.slice(0, 8)}`}
         >
@@ -930,11 +930,11 @@ function FlaggedAccountReviewSection({ flaggedPubkeys, toast }: { flaggedPubkeys
       {detectionEnabled && (
         <div className="space-y-2 mt-1">
           {!flaggedPubkeys && (
-            <p className="text-[11px] text-muted-foreground/50">Loading flagged accounts...</p>
+            <p className="text-[12px] text-muted-foreground">Loading flagged accounts...</p>
           )}
 
           {flaggedPubkeys && pendingPubkeys.length === 0 && (
-            <p className="text-[11px] text-muted-foreground/50">No flagged accounts pending review</p>
+            <p className="text-[12px] text-muted-foreground">No flagged accounts pending review</p>
           )}
 
           {flaggedPubkeys && pendingPubkeys.length > 0 && (
@@ -954,7 +954,7 @@ function FlaggedAccountReviewSection({ flaggedPubkeys, toast }: { flaggedPubkeys
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-[10px] text-muted-foreground/60 h-6 px-2"
+                      className="text-[12px] text-muted-foreground h-6 px-2"
                       onClick={handleDismissAll}
                       data-testid="button-dismiss-all"
                     >
@@ -963,7 +963,7 @@ function FlaggedAccountReviewSection({ flaggedPubkeys, toast }: { flaggedPubkeys
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-[10px] text-red-500/70 h-6 px-2"
+                      className="text-[12px] text-danger h-6 px-2"
                       onClick={handleMuteAll}
                       data-testid="button-mute-all"
                     >
@@ -1006,13 +1006,13 @@ function MutedUserRow({ pk, onUnmute }: { pk: string; onUnmute: () => void }) {
   return (
     <div
       className="flex items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors hover:bg-brand/5 group"
-      style={{ border: "1px solid rgba(140, 100, 220, 0.12)" }}
+      style={{ border: "1px solid hsl(var(--border) / 0.6)" }}
       data-testid={`muted-user-${pk.slice(0, 8)}`}
     >
       <Link href={`/profile/${npub}`} className="shrink-0" data-testid={`link-muted-avatar-${pk.slice(0, 8)}`}>
         <Avatar className="w-8 h-8 border border-border/30">
           <AvatarImage src={picture || undefined} alt={displayName || shortNpub} />
-          <AvatarFallback className="text-[10px] bg-muted text-muted-foreground">
+          <AvatarFallback className="text-[12px] bg-muted text-muted-foreground">
             {displayName ? displayName.slice(0, 2).toUpperCase() : shortNpub.slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
@@ -1026,13 +1026,13 @@ function MutedUserRow({ pk, onUnmute }: { pk: string; onUnmute: () => void }) {
           {displayName || shortNpub}
         </p>
         {displayName && (
-          <p className="text-[11px] text-muted-foreground/50 font-mono truncate">{shortNpub}</p>
+          <p className="text-[12px] text-muted-foreground font-mono truncate">{shortNpub}</p>
         )}
       </Link>
       <Button
         variant="ghost"
         size="sm"
-        className="shrink-0 text-[11px] text-muted-foreground/60 gap-1 opacity-70 group-hover:opacity-100 transition-opacity"
+        className="shrink-0 text-[12px] text-muted-foreground gap-1 opacity-70 group-hover:opacity-100 transition-opacity"
         onClick={onUnmute}
         data-testid={`button-unmute-${pk.slice(0, 8)}`}
       >
@@ -1073,26 +1073,26 @@ function MutedUsersSection({ mutedPubkeys, unmute }: { mutedPubkeys: string[]; u
         <div className="flex items-center gap-1.5">
           <p className="text-sm font-medium text-foreground/85">Muted people</p>
           {mutedPubkeys.length > 0 && (
-            <span className="text-[11px] text-muted-foreground/50 font-mono" data-testid="text-muted-count">
+            <span className="text-[12px] text-muted-foreground tabular-nums" data-testid="text-muted-count">
               ({mutedPubkeys.length})
             </span>
           )}
         </div>
         {mutedPubkeys.length > 0 && (
           expanded
-            ? <ChevronUp className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground/70 transition-colors" />
-            : <ChevronDown className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground/70 transition-colors" />
+            ? <ChevronUp className="w-4 h-4 text-muted-foreground group-hover:text-muted-foreground transition-colors" />
+            : <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-muted-foreground transition-colors" />
         )}
       </button>
       {mutedPubkeys.length === 0 ? (
-        <p className="text-xs text-foreground/45 dark:text-muted-foreground/50 mt-2" data-testid="text-no-muted-users">
+        <p className="text-[13px] text-muted-foreground mt-2" data-testid="text-no-muted-users">
           None yet. Mute someone from the ⋯ menu on any of their posts.
         </p>
       ) : (
         <>
           {showSearch && (
             <div className="relative mt-2">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <Input
                 value={muteSearch}
                 onChange={(e) => {
@@ -1100,7 +1100,7 @@ function MutedUsersSection({ mutedPubkeys, unmute }: { mutedPubkeys: string[]; u
                   if (e.target.value.trim() && !expanded) setExpanded(true);
                 }}
                 placeholder="Search muted users..."
-                className="text-xs pl-8 bg-white/[0.03] border-brand/25 dark:border-brand/15 focus-visible:border-brand/40 dark:focus-visible:border-brand/30"
+                className="text-[13px] pl-8 bg-transparent border-input focus-visible:border-primary"
                 data-testid="input-search-muted"
               />
             </div>
@@ -1108,7 +1108,7 @@ function MutedUsersSection({ mutedPubkeys, unmute }: { mutedPubkeys: string[]; u
           {expanded && (
             <div className="mt-2">
               {filteredPubkeys.length === 0 ? (
-                <p className="text-xs text-foreground/45 dark:text-muted-foreground/50" data-testid="text-no-muted-match">
+                <p className="text-[13px] text-muted-foreground" data-testid="text-no-muted-match">
                   No muted people match your search.
                 </p>
               ) : (
@@ -1145,18 +1145,18 @@ function FilteredKeywordsSection({ mutedKeywords, addKeyword, removeKeyword, new
         <div className="flex items-center gap-1.5">
           <p className="text-sm font-medium text-foreground/85">Muted words</p>
           {mutedKeywords.length > 0 && (
-            <span className="text-[11px] text-muted-foreground/50 font-mono" data-testid="text-keywords-count">
+            <span className="text-[12px] text-muted-foreground tabular-nums" data-testid="text-keywords-count">
               ({mutedKeywords.length})
             </span>
           )}
         </div>
         {expanded
-          ? <ChevronUp className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground/70 transition-colors" />
-          : <ChevronDown className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground/70 transition-colors" />
+          ? <ChevronUp className="w-4 h-4 text-muted-foreground group-hover:text-muted-foreground transition-colors" />
+          : <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-muted-foreground transition-colors" />
         }
       </button>
       {!expanded && mutedKeywords.length === 0 && (
-        <p className="text-xs text-foreground/45 dark:text-muted-foreground/50 mt-2" data-testid="text-no-keywords">
+        <p className="text-[13px] text-muted-foreground mt-2" data-testid="text-no-keywords">
           None yet. Posts containing these words are hidden.
         </p>
       )}
@@ -1167,7 +1167,7 @@ function FilteredKeywordsSection({ mutedKeywords, addKeyword, removeKeyword, new
               value={newKeyword}
               onChange={(e) => setNewKeyword(e.target.value)}
               placeholder="Add a word to hide…"
-              className="text-xs bg-white/[0.03] border-brand/25 dark:border-brand/15 focus-visible:border-brand/40 dark:focus-visible:border-brand/30"
+              className="text-[13px] bg-transparent border-input focus-visible:border-primary"
               data-testid="input-mute-keyword"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && newKeyword.trim()) {
@@ -1186,14 +1186,14 @@ function FilteredKeywordsSection({ mutedKeywords, addKeyword, removeKeyword, new
                 }
               }}
               disabled={!newKeyword.trim()}
-              className="border-brand/25 dark:border-brand/15 bg-white/[0.02]"
+              className="border-input bg-transparent"
               data-testid="button-add-keyword"
             >
               <Plus className="w-4 h-4" />
             </Button>
           </div>
           {mutedKeywords.length === 0 ? (
-            <p className="text-xs text-foreground/45 dark:text-muted-foreground/50" data-testid="text-no-keywords">
+            <p className="text-[13px] text-muted-foreground" data-testid="text-no-keywords">
               None yet. Posts containing these words are hidden.
             </p>
           ) : (
@@ -1235,39 +1235,39 @@ function ReportedContentSection({ reportedItems, removeReport }: {
           <Flag className="w-3.5 h-3.5 text-destructive/70" />
           <p className="text-sm font-medium text-foreground/85">Posts you reported</p>
           {reportedItems.length > 0 && (
-            <span className="text-[11px] text-muted-foreground/50 font-mono" data-testid="text-reports-count">
+            <span className="text-[12px] text-muted-foreground tabular-nums" data-testid="text-reports-count">
               ({reportedItems.length})
             </span>
           )}
         </div>
         {reportedItems.length > 0 && (
           expanded
-            ? <ChevronUp className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground/70 transition-colors" />
-            : <ChevronDown className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground/70 transition-colors" />
+            ? <ChevronUp className="w-4 h-4 text-muted-foreground group-hover:text-muted-foreground transition-colors" />
+            : <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-muted-foreground transition-colors" />
         )}
       </button>
       {reportedItems.length === 0 ? (
-        <p className="text-xs text-foreground/45 dark:text-muted-foreground/50 mt-2" data-testid="text-no-reports">
+        <p className="text-[13px] text-muted-foreground mt-2" data-testid="text-no-reports">
           None yet. Report a post from its ⋯ menu and it disappears from your feeds.
         </p>
       ) : expanded ? (
         <div className="space-y-1.5 mt-2" data-testid="list-reported-items">
           {reportedItems.map((item) => (
             <div key={item.eventId} className="flex items-center gap-2 rounded-md px-2.5 py-1.5"
-              style={{ background: "rgba(140, 100, 220, 0.06)", border: "1px solid rgba(140, 100, 220, 0.15)" }}
+              style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border) / 0.6)" }}
             >
               <div className="flex-1 min-w-0">
-                <span className="text-[11px] font-mono text-foreground/55 dark:text-muted-foreground/70 block truncate" data-testid={`text-report-id-${item.eventId.slice(0, 8)}`}>
+                <span className="text-[12px] font-mono text-muted-foreground block truncate" data-testid={`text-report-id-${item.eventId.slice(0, 8)}`}>
                   {item.eventId.slice(0, 16)}...
                 </span>
-                <span className="text-[10px] text-foreground/45 dark:text-muted-foreground/50 capitalize">{item.reason}</span>
+                <span className="text-[12px] text-muted-foreground capitalize">{item.reason}</span>
               </div>
               <button
                 onClick={() => removeReport(item.eventId)}
                 className="rounded-full p-0.5 shrink-0"
                 data-testid={`button-remove-report-${item.eventId.slice(0, 8)}`}
               >
-                <X className="w-2.5 h-2.5 text-muted-foreground/50" />
+                <X className="w-2.5 h-2.5 text-muted-foreground" />
               </button>
             </div>
           ))}
@@ -1310,12 +1310,12 @@ function TrustHealthLine() {
     const freshest = Math.max(diagnostics.connLastSuccessAt, diagnostics.batchLastSuccessAt);
     return (
       <div
-        className="flex items-center gap-2.5 rounded-lg px-4 py-2.5"
+        className="flex items-center gap-2.5 rounded-[16px] px-4 py-2.5"
         style={{ background: "rgba(16, 185, 129, 0.06)", border: "1px solid rgba(16, 185, 129, 0.18)" }}
         data-testid="trust-health-line"
       >
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15">
-          <Check className="h-3 w-3 text-emerald-500" />
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full dark:bg-success/15">
+          <Check className="h-3.5 w-3.5 text-success" />
         </span>
         <p className="text-xs text-foreground/75">
           <span className="font-medium text-foreground/90">Working</span>
@@ -1329,7 +1329,7 @@ function TrustHealthLine() {
   // nothing is hidden until they're ready — with no button to press.
   if (!wotReady && !authHasFail && !connHasFail) {
     return (
-      <div className="flex items-center gap-2.5 rounded-lg border border-border px-4 py-2.5" data-testid="trust-health-line">
+      <div className="flex items-center gap-2.5 rounded-[16px] border border-border px-4 py-2.5" data-testid="trust-health-line">
         <RelayOutpostInlineLoader />
         <p className="text-xs text-foreground/75">
           <span className="font-medium text-foreground/90">Getting ready.</span> This takes a few minutes the first time; nothing is hidden until then.
@@ -1343,13 +1343,13 @@ function TrustHealthLine() {
 
   return (
     <div
-      className="flex items-center justify-between gap-3 rounded-lg px-4 py-2.5"
+      className="flex items-center justify-between gap-3 rounded-[16px] px-4 py-2.5"
       style={{ background: "rgba(245, 158, 11, 0.06)", border: "1px solid rgba(245, 158, 11, 0.2)" }}
       data-testid="trust-health-line"
     >
       <div className="flex items-center gap-2.5 min-w-0">
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/15">
-          <AlertTriangle className="h-3 w-3 text-amber-500" />
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full dark:bg-amber-400/15">
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-700 dark:text-amber-400" />
         </span>
         <p className="text-xs text-foreground/75 truncate">{problem}</p>
       </div>
@@ -1389,7 +1389,7 @@ function TrustChoiceControl() {
               role="radio"
               aria-checked={active}
               onClick={() => applyTrustChoice(name)}
-              className={`flex min-h-[44px] flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors ${
+              className={`flex min-h-[44px] flex-col items-start gap-1 rounded-[16px] border p-3 text-left transition-colors ${
                 active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-transparent text-foreground/85 hover:bg-muted/40"
               }`}
               data-testid={`trust-choice-${name}`}
@@ -1397,7 +1397,7 @@ function TrustChoiceControl() {
               <span className="flex flex-wrap items-center gap-1.5">
                 <span className="text-sm font-semibold">{def.label}</span>
                 {name === "balanced" && (
-                  <span className={`text-[11px] font-medium ${active ? "text-primary-foreground/80" : "text-brand"}`}>Recommended</span>
+                  <span className={`text-[12px] font-medium ${active ? "text-primary-foreground/80" : "text-brand"}`}>Recommended</span>
                 )}
               </span>
               <span className={`text-xs leading-snug ${active ? "text-primary-foreground/85" : "text-muted-foreground"}`}>{def.line}</span>
@@ -1421,7 +1421,7 @@ function TrustInvite() {
   const { choice, chosen } = useTrustChoice();
   if (chosen || choice !== "everything") return null;
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-brand/20 bg-brand/[0.05] px-4 py-3" data-testid="trust-invite">
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-[16px] border border-border/60 bg-card px-4 py-3" data-testid="trust-invite">
       <p className="min-w-0 flex-1 text-sm text-foreground/85">
         Let the people you trust help keep spam out of your feed. Most people choose Balanced.
       </p>
@@ -1454,9 +1454,9 @@ function TrustSummary({ mutedCount, wordCount, reportCount }: { mutedCount: numb
 
 export default function ShieldMatrix({ embedded = false }: { embedded?: boolean } = {}) {
   useDocumentTitle("Trust & safety");
-  const { pubkey } = useNostrAuth();
+  useNostrAuth();
   const [newKeyword, setNewKeyword] = useState("");
-  const { stats, reportedItems, removeReport } = useSpamFilter();
+  const { reportedItems, removeReport } = useSpamFilter();
   const { mutedPubkeys, mutedKeywords, unmutePubkey: unmute, addKeyword, removeKeyword } = useNostrMuteList();
   const [customTiersActive, setCustomTiersActive] = useState(() => isCustomTiersEnabled());
   // Advanced trust controls are collapsed by default — but if custom tiers are
@@ -1488,7 +1488,7 @@ export default function ShieldMatrix({ embedded = false }: { embedded?: boolean 
             <button
               type="button"
               onClick={() => document.getElementById("trust-tiers")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className="whitespace-nowrap rounded-md border border-brand/15 bg-brand/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-brand/80 transition-colors hover:bg-brand/20 hover:text-brand-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+              className="whitespace-nowrap rounded-full px-1 py-1 text-[13px] font-medium text-brand underline-offset-2 transition-colors hover:underline hover:text-brand-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
               data-testid="button-custom-tiers"
               title="Edit your own trust levels"
               aria-label="Your own trust levels are on — edit them"
@@ -1515,15 +1515,15 @@ export default function ShieldMatrix({ embedded = false }: { embedded?: boolean 
             <CollapsibleTrigger asChild>
               <button
                 type="button"
-                className="flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 min-h-[44px] text-left transition-colors hover:bg-muted/30"
-                style={{ background: "rgba(140, 100, 220, 0.04)", border: "1px solid rgba(140, 100, 220, 0.12)" }}
+                className="flex w-full items-center justify-between gap-3 rounded-[16px] px-4 py-3 min-h-[44px] text-left transition-colors hover:bg-muted/30"
+                style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border) / 0.6)" }}
                 data-testid="toggle-advanced-trust"
               >
                 <span className="flex items-center gap-2">
                   <Sliders className="h-3.5 w-3.5 text-brand/70" />
                   <span className="text-sm font-medium text-foreground/85">Fine-tune</span>
                 </span>
-                <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform duration-200 ${advancedOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 ${advancedOpen ? "rotate-180" : ""}`} />
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-3 pt-3">
@@ -1538,9 +1538,7 @@ export default function ShieldMatrix({ embedded = false }: { embedded?: boolean 
         </div>
 
         {/* ② SAFETY — tools the user controls by hand */}
-        <div className="relative rounded-xl border border-brand/20 dark:border-brand/12 overflow-visible"
-          style={{ background: "rgba(140, 100, 220, 0.02)" }}
-        >
+        <div className="relative rounded-[20px] border border-border/60 bg-card overflow-visible">
           <div className="p-4 space-y-3">
             <div>
               <h2 className="text-base font-semibold text-foreground">Your own filters</h2>
@@ -1549,7 +1547,7 @@ export default function ShieldMatrix({ embedded = false }: { embedded?: boolean 
               </p>
             </div>
             <MutedUsersSection mutedPubkeys={mutedPubkeys} unmute={unmute} />
-            <div className="border-t border-brand/8" />
+            <div className="border-t border-border/60" />
             <FilteredKeywordsSection
               mutedKeywords={mutedKeywords}
               addKeyword={addKeyword}
@@ -1557,7 +1555,7 @@ export default function ShieldMatrix({ embedded = false }: { embedded?: boolean 
               newKeyword={newKeyword}
               setNewKeyword={setNewKeyword}
             />
-            <div className="border-t border-brand/8" />
+            <div className="border-t border-border/60" />
             <ReportedContentSection reportedItems={reportedItems} removeReport={removeReport} />
           </div>
         </div>
@@ -1622,16 +1620,16 @@ export default function ShieldMatrix({ embedded = false }: { embedded?: boolean 
             <div className="mb-4">
               <ShieldCheck className="w-9 h-9 text-brand" />
             </div>
-            <h3 className="text-sm font-brand tracking-wider uppercase text-foreground/90 dark:text-white/90 mb-1.5">
-              Network Vouches
+            <h3 className="text-sm text-foreground/90 dark:text-white/90 mb-1.5 font-medium">
+              Network vouches
             </h3>
             <p className="text-[11px] leading-relaxed text-muted-foreground/70 dark:text-white/50 max-w-[260px] mb-4">
               A peer-to-peer trust layer where users vouch for each other across the Nostr network — strengthening your Web of Trust.
             </p>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand/8 dark:bg-brand/10 border border-brand/15 mb-4">
               <Lock className="w-3 h-3 text-brand/60 dark:text-brand/50" />
-              <span className="text-[9px] font-medium text-brand/70 dark:text-brand/60 tracking-wide uppercase">
-                Coming Soon
+              <span className="text-[12px] font-medium text-brand/70 dark:text-brand/60">
+                Coming soon
               </span>
             </div>
             <div className="flex items-center gap-4 text-[9px] text-muted-foreground/40 dark:text-white/25">

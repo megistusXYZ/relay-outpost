@@ -38,7 +38,7 @@ function ReactorList({ emoji, emojiUrl, reactors, myPubkey }: { emoji: string; e
         {emojiUrl
           ? <img src={emojiUrl} alt={emoji} className="w-4 h-4 object-contain" />
           : <span className="text-sm leading-none">{emoji}</span>}
-        <span className="text-[11px] text-muted-foreground/70">
+        <span className="text-xs text-muted-foreground">
           {reactors.length} {reactors.length === 1 ? "reaction" : "reactions"}
         </span>
       </div>
@@ -46,7 +46,7 @@ function ReactorList({ emoji, emojiUrl, reactors, myPubkey }: { emoji: string; e
         {ordered.map((pk) => (
           <div key={pk} className="flex items-center justify-between gap-2">
             <ConcordIdentity pubkey={pk} size={22} />
-            {pk === myPubkey && <span className="text-[10px] text-brand/70 shrink-0">you</span>}
+            {pk === myPubkey && <span className="text-xs text-brand/70 shrink-0">you</span>}
           </div>
         ))}
       </div>
@@ -65,7 +65,7 @@ export function ConcordReactionPill({ emoji, emojiUrl, reactors, reacted, onReac
   const pillInner = (
     <>
       {emojiUrl ? <img src={emojiUrl} alt={emoji} className="w-4 h-4 object-contain" /> : <span>{emoji}</span>}
-      <span className="tabular-nums text-[11px]">{reactors.length}</span>
+      <span className="tabular-nums text-xs">{reactors.length}</span>
     </>
   );
 
@@ -81,7 +81,7 @@ export function ConcordReactionPill({ emoji, emojiUrl, reactors, reacted, onReac
           <ReactorList emoji={emoji} emojiUrl={emojiUrl} reactors={reactors} myPubkey={myPubkey} />
           <button
             onClick={() => { onReact(); setOpen(false); }}
-            className={`mt-2 w-full h-8 rounded-md text-[11px] font-medium transition-colors ${
+            className={`mt-2 w-full h-8 rounded-md text-xs font-medium transition-colors ${
               reacted ? "bg-muted/40 text-foreground/70 hover:bg-muted/60" : "bg-brand/10 text-brand hover:bg-brand/20"
             }`}
             data-testid={`concord-reaction-toggle-${emoji}`}

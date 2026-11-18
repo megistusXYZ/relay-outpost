@@ -46,43 +46,46 @@ export function friendlyName(rand: () => number): string {
   return `${pick(ADJECTIVES, rand)} ${pick(NOUNS, rand)}`;
 }
 
-// Two-tone grounds in the app's register: violet first, then its neighbours.
-const PALETTES: ReadonlyArray<readonly [string, string]> = [
-  ["#7c3aed", "#22d3ee"], ["#4f46e5", "#a78bfa"], ["#0ea5e9", "#14b8a6"], ["#f59e0b", "#ef4444"],
-  ["#10b981", "#3b82f6"], ["#db2777", "#8b5cf6"], ["#334155", "#7c3aed"], ["#f97316", "#eab308"],
-  ["#0f766e", "#84cc16"], ["#1e3a8a", "#38bdf8"],
+// Grounds from the brand palette (design canvas "Outpost rebrand", 2026-11-16):
+// Space White, Paper, Galaxy, Night, Slate and quiet neighbours. Each names
+// the ink that sits on it. The Ember dot is the one colour on every picture.
+const GROUNDS: ReadonlyArray<readonly [string, string]> = [
+  ["#F7F7F8", "#0D0F12"], ["#0A0C10", "#F3F5F8"], ["#FFFFFF", "#0D0F12"], ["#141820", "#F3F5F8"],
+  ["#565D69", "#F3F5F8"], ["#E6E8EC", "#0D0F12"], ["#1F2430", "#F3F5F8"], ["#D9DCE3", "#0D0F12"],
+  ["#2A3240", "#F3F5F8"], ["#0E1116", "#F3F5F8"],
 ];
+const EMBER = "#FF5B2E";
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
+/** Otto's eyes, one mood per picture (the landing's marks, same geometry). */
+const MOODS: ReadonlyArray<(ink: string) => string> = [
+  (ink) => `<ellipse cx="42" cy="51" rx="3.6" ry="5.2" fill="${ink}"/><ellipse cx="58" cy="51" rx="3.6" ry="5.2" fill="${ink}"/>`,
+  (ink) => `<ellipse cx="47" cy="45" rx="3.4" ry="4.8" fill="${ink}"/><ellipse cx="61" cy="45" rx="3.4" ry="4.8" fill="${ink}"/>`,
+  (ink) => `<path d="M37 53.5q5-8 10 0M53 53.5q5-8 10 0" fill="none" stroke="${ink}" stroke-width="4.2" stroke-linecap="round"/>`,
+  (ink) => `<circle cx="42" cy="50" r="5" fill="${ink}"/><circle cx="58" cy="50" r="5" fill="${ink}"/>`,
+  (ink) => `<path d="M37 51.5h10M53 51.5h10" fill="none" stroke="${ink}" stroke-width="4.2" stroke-linecap="round"/>`,
+];
+
 /**
- * A planet with a ring and a few stars on a two-tone ground: a distinct,
- * on-brand picture per seed. Self-contained (no links), 512 × 512.
+ * Otto as a profile picture: the open ring is the head, the Ember dot sits
+ * at its opening, and the eyes carry a mood. A distinct picture per seed
+ * (ground, mood, size, a slight turn). Self-contained (no links), 512 × 512.
  */
 export function avatarSvg(seed: number): string {
   const rand = seededRandom(seed);
-  const [a, b] = pick(PALETTES, rand);
-  const angle = Math.floor(rand() * 360);
-  const cx = r1(220 + rand() * 72), cy = r1(232 + rand() * 60), r = r1(108 + rand() * 46);
-  const tilt = r1(-35 + rand() * 70);
-  // The ring stays inside the frame (a ring running off the edge reads as cropped).
-  const ringRx = r1(Math.min(r * (1.55 + rand() * 0.35), Math.min(cx, 512 - cx) - 24)), ringRy = r1(r * (0.32 + rand() * 0.16));
-  const stars = Array.from({ length: 4 + Math.floor(rand() * 4) }, () => {
-    const sx = r1(28 + rand() * 456), sy = r1(28 + rand() * 456), sr = r1(2.5 + rand() * 4.5);
-    return `<circle cx="${sx}" cy="${sy}" r="${sr}" fill="#fff" fill-opacity="${r1(0.55 + rand() * 0.4)}"/>`;
-  }).join("");
+  const [ground, ink] = pick(GROUNDS, rand);
+  const eyes = pick(MOODS, rand)(ink);
+  const scale = r1(3.3 + rand() * 0.6);
+  const turn = r1(-9 + rand() * 18);
+  const dx = r1(-10 + rand() * 20), dy = r1(-6 + rand() * 12);
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">` +
-    `<defs>` +
-    `<linearGradient id="g" gradientTransform="rotate(${angle} .5 .5)"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>` +
-    `<radialGradient id="p" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity=".55"/></radialGradient>` +
-    `</defs>` +
-    `<rect width="512" height="512" fill="url(#g)"/>` +
-    stars +
-    `<g transform="rotate(${tilt} ${cx} ${cy})">` +
-    `<ellipse cx="${cx}" cy="${cy}" rx="${ringRx}" ry="${ringRy}" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="14"/>` +
-    `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#p)"/>` +
-    `<path d="M ${r1(cx - ringRx)} ${cy} A ${ringRx} ${ringRy} 0 0 0 ${r1(cx + ringRx)} ${cy}" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="14" stroke-linecap="round"/>` +
+    `<rect width="512" height="512" fill="${ground}"/>` +
+    `<g transform="translate(${r1(256 + dx)} ${r1(256 + dy)}) rotate(${turn}) scale(${scale}) translate(-50 -50)">` +
+    `<path d="M78.98 42.24 A30 30 0 1 1 57.76 21.02" fill="none" stroke="${ink}" stroke-width="9" stroke-linecap="round"/>` +
+    `<circle cx="71.2" cy="28.8" r="6.5" fill="${EMBER}"/>` +
+    eyes +
     `</g>` +
     `</svg>`
   );

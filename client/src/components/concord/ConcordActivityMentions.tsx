@@ -16,7 +16,7 @@ export function ConcordActivityMentions({ className }: { className?: string }) {
   if (rows.length === 0) return null;
   return (
     <section className={className} data-testid="activity-group-mentions">
-      <p className="px-1 pb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50 flex items-center gap-1.5">
+      <p className="px-1 pb-1.5 text-xs font-medium text-muted-foreground flex items-center gap-1.5">
         <Lock className="w-3 h-3" aria-hidden="true" /> From your group chats
       </p>
       <div className="glass-card rounded-lg border divide-y divide-border/20 overflow-hidden">
@@ -41,11 +41,11 @@ function MentionRow({ row }: { row: GroupMentionRow }) {
       <span className="min-w-0 flex-1">
         <span className="block text-sm text-foreground/90 truncate">
           <span className="font-medium">{who}</span> {row.verb} in <span className="font-medium">{row.groupName}</span>
-          {row.roomName && <span className="text-muted-foreground/60"> · #{row.roomName}</span>}
+          {row.roomName && <span className="text-muted-foreground"> · #{row.roomName}</span>}
         </span>
-        {row.snippet && <span className="block text-xs text-muted-foreground/70 truncate">{row.snippet}</span>}
+        {row.snippet && <span className="block text-xs text-muted-foreground truncate">{row.snippet}</span>}
       </span>
-      <span className="text-[10px] text-muted-foreground/50 shrink-0 tabular-nums mt-0.5">{formatCompactTime(Math.floor(row.t / 1000))}</span>
+      <span className="text-xs text-muted-foreground shrink-0 tabular-nums mt-0.5">{formatCompactTime(Math.floor(row.t / 1000))}</span>
     </Link>
   );
 }

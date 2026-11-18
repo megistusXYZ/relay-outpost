@@ -357,12 +357,12 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
 
             {draft.items.length === 0 ? (
               suggestions === null ? (
-                <p className="text-xs text-muted-foreground/70 text-center py-4">Looking at what's already here…</p>
+                <p className="text-xs text-muted-foreground text-center py-4">Looking at what's already here…</p>
               ) : suggestions.length === 0 ? (
-                <p className="text-xs text-muted-foreground/70 text-center py-4">Nothing here yet — paste the first thing worth featuring, or an npub to browse someone's content.</p>
+                <p className="text-xs text-muted-foreground text-center py-4">Nothing here yet — paste the first thing worth featuring, or an npub to browse someone's content.</p>
               ) : (
                 <div className="space-y-1.5" data-testid="featured-suggestions">
-                  <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">From your community</p>
+                  <p className="text-[13px] font-medium text-muted-foreground">From your community</p>
                   {suggestions.map((ev) => (
                     <button
                       key={ev.id}
@@ -370,9 +370,9 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
                       className="w-full flex items-center gap-2.5 rounded-lg border border-border/25 bg-muted/5 px-2.5 py-1.5 text-left hover:bg-muted/15 transition-colors"
                       data-testid={`featured-suggestion-${ev.id.slice(0, 8)}`}
                     >
-                      <Badge variant="secondary" className="text-[9px] px-1.5 py-0 shrink-0">{curationItemLabel(eventToCurationItem(ev))}</Badge>
+                      <Badge variant="secondary" className="text-[12px] px-1.5 py-0 shrink-0">{curationItemLabel(eventToCurationItem(ev))}</Badge>
                       <span className="text-xs text-muted-foreground truncate flex-1">{curationRowTitle(ev)}</span>
-                      <Plus className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+                      <Plus className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                     </button>
                   ))}
                 </div>
@@ -384,7 +384,7 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
                   return (
                     <li key={`${i}-${curationItemKey(item)}`} className="flex items-center gap-2 rounded-lg border border-border/30 bg-muted/10 px-2.5 py-1.5">
                       <Icon className="w-3.5 h-3.5 text-brand/70 shrink-0" />
-                      <Badge variant="secondary" className="text-[9px] px-1.5 py-0 shrink-0">{curationItemLabel(item)}</Badge>
+                      <Badge variant="secondary" className="text-[12px] px-1.5 py-0 shrink-0">{curationItemLabel(item)}</Badge>
                       <span className="text-xs text-muted-foreground truncate flex-1 font-mono">
                         {item.type === "url" ? item.url
                           : item.type === "note" ? item.id.slice(0, 16) + "…"
@@ -443,7 +443,7 @@ export function FeaturedTab({ relayUrl, nip11 }: { relayUrl: string; nip11: Nip1
                 <div className="min-w-0">
                   <p className="text-sm font-semibold truncate">{set.title}</p>
                   {set.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{set.description}</p>}
-                  <p className="text-[10px] text-muted-foreground/60 mt-1">{set.items.length} item{set.items.length !== 1 ? "s" : ""}</p>
+                  <p className="text-[12px] text-muted-foreground mt-1">{set.items.length} item{set.items.length !== 1 ? "s" : ""}</p>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <Button size="sm" variant="outline" onClick={() => openEditor(set)} data-testid={`button-featured-edit-${set.dTag}`}>Edit</Button>

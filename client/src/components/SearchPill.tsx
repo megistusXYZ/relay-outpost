@@ -11,16 +11,16 @@ import { cn } from "@/lib/utils";
  * Exported standalone so button-shaped search *triggers* (e.g. the News hero
  * that opens the feed-search dialog) can wear the identical skin.
  *
- * Anatomy: 44px pill (comfortable tap target), violet-alpha hairline,
+ * Anatomy: 44px pill (comfortable tap target), the control border (--input, 3:1 on every ground),
  * translucent glass fill (soft white in light mode, dark panel in dark mode),
  * primary focus ring with no offset so the ring hugs the pill.
  */
 export const searchPillClass =
-  "h-11 w-full rounded-full border border-primary/25 dark:border-primary/15 " +
+  "h-11 w-full rounded-full border border-input " +
   "bg-white/70 dark:bg-white/[0.04] shadow-sm dark:shadow-none " +
   "text-base sm:text-sm placeholder:text-muted-foreground/60 " +
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 " +
-  "focus-visible:ring-offset-0 focus-visible:border-primary/40 transition-colors";
+  "focus-visible:ring-offset-0 focus-visible:border-primary transition-colors";
 
 export interface SearchPillProps extends React.ComponentProps<"input"> {
   /** Classes for the outer relative wrapper (widths, margins, flex sizing). */

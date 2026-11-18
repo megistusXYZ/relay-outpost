@@ -648,7 +648,6 @@ export function extractZapSplits(event: Event): ZapSplitRecipient[] {
   for (const tag of event.tags) {
     if (tag[0] === "zap" && tag[1]) {
       const pubkey = tag[1];
-      const relay = tag[2] || "";
       const weight = tag[3] ? parseFloat(tag[3]) : 1;
       const name = tag[4] || pubkey.slice(0, 8);
       splits.push({ name, pubkey, split: weight, type: "zap" });

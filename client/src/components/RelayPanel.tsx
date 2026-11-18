@@ -125,7 +125,7 @@ export function RelayPanel() {
           : "text-success dark:text-emerald-500/80 border-emerald-500/30";
     return (
       <span
-        className={`text-[9px] font-mono uppercase tracking-wider px-1 py-[1px] rounded border ${tone}`}
+        className={`text-[11px] px-1 py-[1px] rounded border font-medium ${tone}`}
         data-testid={`nip65-mode-${mode}`}
       >
         {label}
@@ -141,13 +141,13 @@ export function RelayPanel() {
       <div
         className="absolute inset-0 rounded-md pointer-events-none hidden dark:block opacity-25"
         style={{
-          background: "linear-gradient(135deg, hsl(240 15% 4%) 0%, hsl(260 20% 7%) 40%, hsl(220 25% 5%) 100%)",
+          background: "linear-gradient(135deg, hsl(240 15% 4%) 0%, hsl(220 23% 7%) 40%, hsl(220 25% 5%) 100%)",
         }}
       />
       <div
         className="absolute inset-0 rounded-md pointer-events-none hidden dark:block opacity-25"
         style={{
-          background: "radial-gradient(ellipse at 80% 20%, hsl(220 50% 18% / 0.3) 0%, transparent 60%), radial-gradient(ellipse at 20% 80%, hsl(270 40% 15% / 0.2) 0%, transparent 50%)",
+          background: "radial-gradient(ellipse at 80% 20%, hsl(220 50% 18% / 0.3) 0%, transparent 60%), radial-gradient(ellipse at 20% 80%, hsl(220 40% 15% / 0.2) 0%, transparent 50%)",
         }}
       />
       <div className="relative p-4 space-y-3">
@@ -172,8 +172,8 @@ export function RelayPanel() {
         {pubkey && (
           <div className="pt-3 border-t border-brand/15 space-y-2" data-testid="section-user-nip65-relays">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-brand/80 dark:text-brand/70">
-                Your Relay List (NIP-65)
+              <p className="text-[13px] font-semibold text-brand/80 dark:text-brand/70">
+                Your relay list (NIP-65)
               </p>
               <button
                 onClick={discoverUserRelays}
@@ -191,7 +191,7 @@ export function RelayPanel() {
             )}
             {discovery === "empty" && (
               <p className="text-[11px] text-muted-foreground/60" data-testid="text-nip65-empty">
-                No NIP-65 relay list published. Your notes go to the default relays above.
+                No NIP-65 relay list published. Your posts go to the default relays above.
               </p>
             )}
             {discovery === "failed" && (

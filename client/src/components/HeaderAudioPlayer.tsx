@@ -1,6 +1,6 @@
 import { useRef, useCallback, useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { useTTS, type EdgeVoice, RECOMMENDED_VOICES } from "@/contexts/TextToSpeechContext";
+import { useTTS, RECOMMENDED_VOICES } from "@/contexts/TextToSpeechContext";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +17,6 @@ import {
   VolumeX,
   ExternalLink,
   Square,
-  Star,
   Gauge,
   Share2,
   Send,
@@ -55,6 +54,7 @@ import { useSyncExternalStore } from "react";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { ChapterSection, TranscriptSection } from "@/components/PodcastExtras";
 import { usePodcastChapters } from "@/hooks/use-podcast-extras";
+import { LiveWord } from "@/components/LiveBadge";
 
 const TTS_RATES = [1, 1.25, 1.5, 1.75, 2];
 const VOICE_RATE_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -480,7 +480,7 @@ function ExpandedMusicPanel({
     previous,
     queueIndex,
     queue,
-    stop } = useAudioPlayer();
+    } = useAudioPlayer();
   const [muted, setMuted] = useState(false);
   const [prevVolume, setPrevVolume] = useState(0.8);
   const [showSpeed, setShowSpeed] = useState(false);
@@ -695,7 +695,7 @@ function ExpandedMusicPanel({
               </button>
             )}
             <button
-              className="h-12 w-12 md:h-9 md:w-9 rounded-full flex items-center justify-center bg-brand/10 dark:bg-brand/15 hover:bg-brand/20 text-foreground transition-all shadow-[0_0_8px_rgba(139,92,246,0.15)] dark:shadow-[0_0_12px_rgba(139,92,246,0.2)] hover:shadow-[0_0_14px_rgba(139,92,246,0.25)] dark:hover:shadow-[0_0_18px_rgba(139,92,246,0.3)]"
+              className="h-12 w-12 md:h-9 md:w-9 rounded-full flex items-center justify-center bg-brand/10 dark:bg-brand/15 hover:bg-brand/20 text-foreground transition-all hover: dark:hover:"
               onClick={togglePlay}
               disabled={isBuffering}
             >
@@ -719,12 +719,8 @@ function ExpandedMusicPanel({
             )}
           </div>
           {isLive ? (
-            <div className="flex items-center justify-center gap-2 text-xs font-semibold tracking-wide text-danger dark:text-red-400" data-testid="music-live-row">
-              <span className="relative flex h-2 w-2" aria-hidden>
-                <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-60" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
-              </span>
-              LIVE
+            <div className="flex items-center justify-center">
+              <LiveWord testId="music-live-row" />
             </div>
           ) : (
             <ExpandedSeekBar
@@ -913,7 +909,6 @@ function ExpandedTTSPanel({
     voice,
     voices,
     togglePause,
-    stop,
     skipForward,
     skipBack,
     setRate,
@@ -947,7 +942,7 @@ function ExpandedTTSPanel({
   return (
     <div className="p-4 md:p-3.5 space-y-4 md:space-y-3">
       <div className="flex items-center gap-4 md:gap-3">
-        <div className="w-12 h-12 md:w-10 md:h-10 rounded-lg bg-primary/8 dark:bg-primary/12 border border-primary/15 flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(139,92,246,0.08)] dark:shadow-[0_0_10px_rgba(139,92,246,0.15)]">
+        <div className="w-12 h-12 md:w-10 md:h-10 rounded-lg bg-primary/8 dark:bg-primary/12 border border-primary/15 flex items-center justify-center shrink-0">
           {isLoading ? <RelayOutpostInlineLoader className="w-5 h-5 md:w-4.5 md:h-4.5 text-brand/70" /> : <AudioLines className="w-5 h-5 md:w-4.5 md:h-4.5 text-brand/70" />}
         </div>
         <div className="min-w-0 flex-1">
@@ -995,12 +990,12 @@ function ExpandedTTSPanel({
           >
             <div className="absolute left-0 right-0 h-1.5 bg-muted/15 dark:bg-muted/10 rounded-full overflow-hidden">
               <div
-                className="absolute inset-y-0 left-0 bg-primary/60 rounded-full transition-[width] duration-300 ease-out shadow-[0_0_6px_rgba(139,92,246,0.3)]"
+                className="absolute inset-y-0 left-0 bg-primary/60 rounded-full transition-[width] duration-300 ease-out"
                 style={{ width: `${progress}%` }}
               />
             </div>
             <div
-              className="absolute rounded-full bg-primary shadow-[0_0_8px_rgba(139,92,246,0.4)] md:hidden"
+              className="absolute rounded-full bg-primary md:hidden"
               style={{
                 width: 14,
                 height: 14,
@@ -1019,7 +1014,7 @@ function ExpandedTTSPanel({
             <SkipBack className="w-5 h-5 md:w-4 md:h-4" />
           </button>
           <button
-            className="h-12 w-12 md:h-9 md:w-9 rounded-full flex items-center justify-center bg-primary/10 dark:bg-primary/15 hover:bg-primary/20 text-foreground transition-all shadow-[0_0_8px_rgba(139,92,246,0.15)] dark:shadow-[0_0_12px_rgba(139,92,246,0.2)] hover:shadow-[0_0_14px_rgba(139,92,246,0.25)] dark:hover:shadow-[0_0_18px_rgba(139,92,246,0.3)]"
+            className="h-12 w-12 md:h-9 md:w-9 rounded-full flex items-center justify-center bg-primary/10 dark:bg-primary/15 hover:bg-primary/20 text-foreground transition-all hover: dark:hover:"
             onClick={togglePause}
             disabled={isLoading}
           >
@@ -1416,9 +1411,7 @@ export function HeaderAudioPlayer() {
                 </Button>
               )}
               {isLive ? (
-                <span className="text-[9px] font-bold tracking-wide text-danger dark:text-red-400 mr-1" data-testid="header-audio-live">
-                  LIVE
-                </span>
+                <LiveWord className="mr-1 text-[12px]" testId="header-audio-live" />
               ) : (
                 <span className="text-[9px] tabular-nums text-muted-foreground/50 mr-0.5 hidden sm:inline" data-testid="header-audio-time">
                   {formatTime(currentTime)}/{formatTime(duration)}

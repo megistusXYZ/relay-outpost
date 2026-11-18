@@ -75,13 +75,13 @@ export function PostFrame({
                 {sensitive.reason && sensitive.reason !== "Sensitive Content" ? sensitive.reason : "Tap to view"}
               </p>
             </div>
-            <span className="mt-0.5 rounded-full border border-brand/25 bg-brand/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-brand">
+            <span className="mt-0.5 rounded-full border border-brand/25 bg-brand/10 px-3 py-1.5 text-[11px] font-medium text-brand">
               Tap to view
             </span>
           </button>
         )}
         <Card
-          className={`overflow-visible glass-card ${isReply ? "border-l-2 border-l-primary/30 dark:border-l-violet-500/40" : ""} ${blurred ? "blur-xl pointer-events-none select-none" : ""}`}
+          className={`overflow-visible glass-card ${isReply ? "border-l-2 border-l-foreground/25 dark:border-l-white/25" : ""} ${blurred ? "blur-xl pointer-events-none select-none" : ""}`}
           aria-hidden={blurred}
         >
           {children}

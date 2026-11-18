@@ -133,7 +133,7 @@ export function RelaysWelcome({ widerNetwork }: { widerNetwork?: { on: boolean }
       <header className="flex flex-col items-center text-center motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
         <HomeRing size={132} />
         <h1 className="mt-6 text-[32px] sm:text-[44px] font-semibold leading-[1.05] tracking-[-0.02em] [font-family:var(--font-display)] [text-wrap:balance]">
-          Give your relay a home
+          Give your Outpost a home
         </h1>
         <p className="mt-4 max-w-[42ch] text-[16px] sm:text-[17px] leading-relaxed text-muted-foreground [text-wrap:pretty]">
           A relay is a space of your own: your people, their posts, your rules. A provider keeps it running; you run it from here.

@@ -15,7 +15,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { InviteAcceptCard } from "@/components/InviteAcceptCard";
 import { useLocation } from "wouter";
 import { ChevronRight, Compass, MessagesSquare, UserPlus, Users } from "lucide-react";
-import { BrandMark } from "@/components/BrandMark";
+import { OttoMark } from "@/components/OttoMark";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { markWelcomed } from "@/lib/welcome";
@@ -31,13 +31,13 @@ function Start({ icon, title, desc, onClick, testId }: {
     <button
       type="button"
       onClick={onClick}
-      className="w-full flex items-center gap-3.5 px-4 py-3.5 min-h-[64px] text-left transition-colors active:bg-primary/[0.06] hover:bg-primary/[0.04] dark:hover:bg-white/[0.03]"
+      className="w-full flex items-center gap-3.5 px-4 py-3.5 min-h-[64px] text-left transition-colors active:bg-foreground/[0.06] hover:bg-foreground/[0.04] dark:hover:bg-white/[0.03]"
       data-testid={testId}
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">{icon}</span>
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-foreground/[0.06] text-foreground">{icon}</span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium">{title}</span>
-        <span className="block text-xs text-muted-foreground">{desc}</span>
+        <span className="block text-[16px] font-semibold">{title}</span>
+        <span className="block text-[14px] text-muted-foreground">{desc}</span>
       </span>
       <ChevronRight className="w-4 h-4 text-muted-foreground/60 shrink-0" />
     </button>
@@ -59,10 +59,12 @@ export default function Welcome() {
 
   return (
     <div className="mx-auto w-full max-w-lg md:max-w-2xl px-3 sm:px-4 md:px-6 pt-6 md:pt-10 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]" data-testid="welcome-page">
-      <h1 className="text-2xl font-semibold tracking-tight [text-wrap:balance]">
+      {/* Otto greets: this is the one screen where the face says hello before anything else. */}
+      <OttoMark size={48} className="-ml-1 text-foreground" label="Otto says hello" />
+      <h1 className="mt-4 text-[34px] md:text-[40px] leading-[1.05] font-semibold tracking-[-0.035em] [text-wrap:balance]">
         {name ? `Welcome, ${name}.` : "Welcome."}
       </h1>
-      <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground max-w-[60ch]">
+      <p className="mt-4 text-[17px] leading-relaxed text-muted-foreground max-w-[60ch] [text-wrap:pretty]">
         This is your space: your communities and the people you choose. Private messages and
         group chats are end-to-end encrypted, and your account is yours: no email, and no company can lock you out.
       </p>
@@ -73,16 +75,16 @@ export default function Welcome() {
         <InviteAcceptCard inline />
       </div>
 
-      <p className="mt-8 mb-1.5 px-1 text-[11px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Make it yours</p>
-      <div className="rounded-xl border border-border/40 bg-card/40 overflow-hidden divide-y divide-border/25">
-        <Start icon={<BrandMark className="w-5 h-5" aria-hidden="true" />} title="Name your community"
+      <p className="mt-8 mb-2 px-1 text-[14px] font-medium text-muted-foreground">Make it yours</p>
+      <div className="rounded-[20px] border border-border/60 bg-card overflow-hidden divide-y divide-border/40">
+        <Start icon={<OttoMark size={22} face={false} />} title="Name your community"
           desc="A private place for your people. You pick who's in it." onClick={() => setNaming(true)} testId="welcome-create-community" />
         <Start icon={<UserPlus className="w-5 h-5" />} title="Invite a friend"
           desc="Chats are better with people you know. Send them a link." onClick={go("/account?invite=1")} testId="welcome-invite" />
         {widerNetworkOn && (
           <>
             <Start icon={<Compass className="w-5 h-5" />} title="Join a community"
-              desc="Public rooms around shared interests. Drop in and say hello." onClick={go("/outposts")} testId="welcome-communities" />
+              desc="Public communities around shared interests. Drop in and say hello." onClick={go("/outposts")} testId="welcome-communities" />
             <Start icon={<Users className="w-5 h-5" />} title="Follow a few people"
               desc="Fill your feed with people worth hearing from." onClick={go("/discover")} testId="welcome-follow" />
           </>
@@ -98,7 +100,7 @@ export default function Welcome() {
       <button
         type="button"
         onClick={go(CHATS_PATH)}
-        className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-full border border-foreground/25 px-5 text-[15px] font-medium text-foreground hover:bg-foreground/[0.06] transition-colors"
         data-testid="welcome-skip"
       >
         <MessagesSquare className="w-4 h-4" /> Take me to my chats

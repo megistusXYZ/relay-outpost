@@ -82,15 +82,15 @@ export function ParentPostPreview({ event, variant = "card" }: { event: Event; v
         // opposite of that.
         ? "relative pl-6 pb-3 cursor-pointer group/parent"
         : variant === "note"
-          ? "rounded-lg bg-card border border-border/60 dark:border-white/[0.07] border-l-2 border-l-brand/50 dark:border-l-brand/40 p-2.5 space-y-1.5 shadow-sm shadow-black/[0.04] dark:shadow-none cursor-pointer hover:border-border transition-colors"
-          : "rounded-lg bg-muted/15 border border-border/20 border-l-2 border-l-brand/40 dark:border-l-brand/30 p-2.5 space-y-1.5 shadow-sm dark:shadow-md dark:shadow-black/20 cursor-pointer hover:bg-muted/25 transition-colors"}
+          ? "rounded-lg bg-card border border-border/60 dark:border-white/[0.07] border-l-2 border-l-foreground/25 p-2.5 space-y-1.5 shadow-sm shadow-black/[0.04] dark:shadow-none cursor-pointer hover:border-border transition-colors"
+          : "rounded-lg bg-muted/15 border border-border/20 border-l-2 border-l-foreground/25 p-2.5 space-y-1.5 shadow-sm dark:shadow-md dark:shadow-black/20 cursor-pointer hover:bg-muted/25 transition-colors"}
       data-testid={`parent-preview-${event.id}`}
       onClick={(e) => { e.stopPropagation(); navigate(noteUrl); }}
     >
       {isSpine && (
         <span
           aria-hidden="true"
-          className="absolute left-[9px] top-5 -bottom-1 w-[1.5px] rounded-full bg-gradient-to-b from-primary/25 to-primary/50 dark:from-brand/25 dark:to-brand/50 group-hover/parent:to-primary/70 dark:group-hover/parent:to-brand/70 transition-colors"
+          className="absolute left-[9px] top-5 -bottom-1 w-[1.5px] rounded-full bg-foreground/25 group-hover/parent:bg-foreground/45 transition-colors"
           data-testid={`parent-spine-${event.id}`}
         />
       )}
@@ -100,15 +100,15 @@ export function ParentPostPreview({ event, variant = "card" }: { event: Event; v
             ? "w-[18px] h-[18px] shrink-0 -ml-6 ring-2 ring-background cursor-pointer"
             : "w-5 h-5 shrink-0 ring-1 ring-border/30 cursor-pointer"}>
             <AvatarImage src={avatar} alt={name} />
-            <AvatarFallback className="bg-brand/10 text-brand text-[8px] font-bold">
+            <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[8px] font-bold">
               {name.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
         </Link>
         <Link href={profileUrl} data-testid={`link-parent-name-${event.id}`} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-          <span className="text-[11px] font-semibold text-foreground/80 cursor-pointer truncate max-w-[160px]">{name}</span>
+          <span className="text-[13px] font-semibold text-foreground/85 cursor-pointer truncate max-w-[180px]">{name}</span>
         </Link>
-        <span className={`text-[11px] ${variant === "note" ? "text-muted-foreground" : "text-muted-foreground/60"}`}>{timeAgo}</span>
+        <span className={`text-[12px] text-muted-foreground`}>{timeAgo}</span>
       </div>
       {contentText && (
         // Context, not the post: three lines at most, and tapping opens the
@@ -117,7 +117,7 @@ export function ParentPostPreview({ event, variant = "card" }: { event: Event; v
           as="p"
           lines={LINES.context}
           expandable={false}
-          className="text-[11px] text-foreground/80 leading-relaxed whitespace-pre-wrap break-words"
+          className="text-[14px] text-foreground/80 leading-relaxed whitespace-pre-wrap break-words"
           testId={`text-parent-content-${event.id}`}
         >
           {refOnly ? (

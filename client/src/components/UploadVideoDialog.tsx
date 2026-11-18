@@ -200,7 +200,7 @@ export function UploadVideoDialog({ open, onOpenChange, onPublished }: UploadVid
     <Dialog open={open} onOpenChange={(v) => { if (!isUploading && !isPublishing) onOpenChange(v); }}>
       <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg glass-dialog-card border-brand/15 max-h-[85vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6" data-testid="dialog-upload-video">
         <DialogHeader>
-          <DialogTitle className="font-brand uppercase tracking-widest text-sm flex items-center gap-2">
+          <DialogTitle className="text-sm flex items-center gap-2 font-medium">
             <div className="w-7 h-7 rounded-lg bg-brand/10 dark:bg-brand/15 flex items-center justify-center shadow-sm">
               <Upload className="w-3.5 h-3.5 text-brand/70" />
             </div>
@@ -210,7 +210,7 @@ export function UploadVideoDialog({ open, onOpenChange, onPublished }: UploadVid
 
         <div className="space-y-4 mt-1 min-w-0 w-full">
           <div className="rounded-xl bg-brand/[0.04]/[0.06] border border-brand/15 dark:border-brand/20 p-3 sm:p-4 shadow-sm shadow-brand/5 dark:shadow-brand/10 transition-all duration-300">
-            <p className="text-[10px] text-brand/60 font-mono uppercase tracking-wider mb-2.5">Video File</p>
+            <p className="text-[13px] text-brand/60 mb-2.5 font-medium">Video file</p>
             {videoUrl ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -233,7 +233,7 @@ export function UploadVideoDialog({ open, onOpenChange, onPublished }: UploadVid
                 </Button>
                 {detectedOrientation && (
                   <div className="flex items-center gap-2 mt-2 p-2 rounded-lg bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06]">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60 shrink-0">Format</span>
+                    <span className="text-[13px] text-muted-foreground/60 shrink-0 font-medium">Format</span>
                     <div className="flex items-center gap-1.5 flex-1">
                       <button
                         type="button"
@@ -304,7 +304,7 @@ export function UploadVideoDialog({ open, onOpenChange, onPublished }: UploadVid
           <input ref={thumbInputRef} type="file" accept="image/*" className="hidden" onChange={handleThumbUpload} data-testid="input-upload-video-thumb" />
 
           <div className="rounded-xl border border-border/30 dark:border-primary/10 bg-card/30 dark:bg-card/15 p-3 sm:p-4 shadow-sm shadow-primary/5 dark:shadow-primary/10 transition-all duration-300">
-            <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 mb-1.5 block">Caption</label>
+            <label className="text-[13px] text-muted-foreground/70 mb-1.5 block font-medium">Caption</label>
             <Textarea
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
@@ -318,7 +318,7 @@ export function UploadVideoDialog({ open, onOpenChange, onPublished }: UploadVid
           </div>
 
           <div className="rounded-xl border border-border/30 dark:border-primary/10 bg-card/30 dark:bg-card/15 p-3 shadow-sm shadow-primary/5 dark:shadow-primary/10 transition-all duration-300">
-            <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 mb-1.5 block">Thumbnail</label>
+            <label className="text-[13px] text-muted-foreground/70 mb-1.5 block font-medium">Thumbnail</label>
             {thumbUrl ? (
               <div className="flex items-center gap-2.5">
                 <img src={thumbUrl} alt="Thumbnail" className="w-16 h-10 rounded-lg object-cover ring-1 ring-border/20 dark:ring-primary/10 shadow-sm" data-testid="img-thumb-preview" />

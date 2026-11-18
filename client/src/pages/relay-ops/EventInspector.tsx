@@ -394,7 +394,7 @@ function RawPanel({ event, relayUrl }: { event: InspectedEvent; relayUrl: string
           {copied ? "Copied" : "Copy JSON"}
         </button>
       </div>
-      <pre className="overflow-auto rounded-lg border border-border bg-muted p-3 text-[11.5px] leading-relaxed font-mono whitespace-pre-wrap break-all" data-testid="inspector-raw-json">{json}</pre>
+      <pre className="overflow-auto rounded-lg border border-border bg-muted p-3 text-[12px] leading-relaxed font-mono whitespace-pre-wrap break-all" data-testid="inspector-raw-json">{json}</pre>
     </div>
   );
 }

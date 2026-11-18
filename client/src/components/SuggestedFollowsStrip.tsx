@@ -82,7 +82,7 @@ export function SuggestedFollowsStrip({ limit = 8, className }: Props) {
   return (
     <div className={`w-full max-w-md space-y-3 ${className ?? ""}`} data-testid="container-suggested-follows">
       <div className="text-center space-y-1">
-        <p className="text-[10px] font-brand tracking-widest uppercase text-muted-foreground/60">
+        <p className="text-[13px] text-muted-foreground/60 font-medium">
           A few operators to start with
         </p>
         <p className="text-[11px] text-muted-foreground/80 leading-relaxed">

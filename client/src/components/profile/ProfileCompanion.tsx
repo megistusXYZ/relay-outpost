@@ -114,7 +114,7 @@ export function ProfileCompanion({
       {/* The spine is the part that gives way when the screen is short or the
           history long: it scrolls inside itself and keeps the active row in
           view, so the pictures below are never pushed off the screen. */}
-      <section className="flex flex-col min-h-[8.5rem] rounded-xl border border-border/60 dark:border-white/[0.07] bg-card p-3 shadow-sm shadow-black/[0.04] dark:shadow-none" data-testid="companion-spine">
+      <section className="flex flex-col min-h-[8.5rem] rounded-[20px] border border-border/60 bg-card p-3" data-testid="companion-spine">
         <h2 className={`${TILE_TITLE} mb-2`}>Jump through time</h2>
         {/* No scrollbar (owner call): the spine still scrolls by wheel, touch and
             by following the page; a soft fade at each end says there is more. */}
@@ -122,7 +122,7 @@ export function ProfileCompanion({
           <span className="absolute left-[7px] top-3 bottom-3 w-0.5 rounded bg-border/70" aria-hidden="true" />
           {thumbTop !== null && (
             <span
-              className="absolute left-0.5 w-3 h-3 rounded-full bg-primary ring-4 ring-primary/15 motion-safe:transition-[top] motion-safe:duration-300 motion-safe:ease-out"
+              className="absolute left-0.5 w-3 h-3 rounded-full bg-primary ring-4 ring-primary/15 motion-safe:transition-[top] motion-safe:duration-150 motion-safe:ease-out"
               style={{ top: thumbTop }}
               aria-hidden="true"
             />
@@ -149,7 +149,7 @@ export function ProfileCompanion({
             <button
               type="button"
               onClick={goOlder}
-              className="block w-full text-left rounded-md px-1.5 py-1.5 text-[13px] text-muted-foreground/50 hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="block w-full text-left rounded-md px-1.5 py-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               data-testid="companion-older"
             >
               Older…
@@ -159,14 +159,14 @@ export function ProfileCompanion({
       </section>
 
       {from.items.length > 0 && (
-        <section className="shrink-0 rounded-xl border border-border/60 dark:border-white/[0.07] bg-card p-3 shadow-sm shadow-black/[0.04] dark:shadow-none" data-testid="companion-media">
+        <section className="shrink-0 rounded-[20px] border border-border/60 bg-card p-3" data-testid="companion-media">
           <div className="flex items-baseline justify-between mb-2">
             <h2 className={TILE_TITLE}>{from.fallback ? "Recent" : "From this time"}</h2>
-            {!from.fallback && <span className="text-[11px] text-muted-foreground" data-testid="companion-media-label">{from.label}</span>}
+            {!from.fallback && <span className="text-[12px] text-muted-foreground" data-testid="companion-media-label">{from.label}</span>}
           </div>
           {/* Keyed by what it shows, so a new stretch fades in rather than
               swapping under the eye. */}
-          <div key={from.label} className="grid grid-cols-2 gap-2 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300">
+          <div key={from.label} className="grid grid-cols-2 gap-2 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150">
             {from.items.map((m, i) => (
               <button
                 key={m.eventId + m.url}

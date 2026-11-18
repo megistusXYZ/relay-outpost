@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useMemo, useCallback, memo } from "react";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { MissionBriefing, ARTICLES_BRIEFING } from "@/components/MissionBriefing";
 import { use$ } from "applesauce-react/hooks";
-import { eventStore, pool, DEFAULT_RELAYS, FAST_RELAYS, fetchProfiles, publishEvent, throttledPoolSubscribe } from "@/lib/nostr";
+import { eventStore, FAST_RELAYS, fetchProfiles, publishEvent, throttledPoolSubscribe } from "@/lib/nostr";
 import { getPublishTarget } from "@/lib/outpost-relays";
 import { KIND_LONG_FORM, parseArticle, type ArticleData } from "@/lib/nip23";
 import { trendingArticles } from "@/lib/trending-articles";
@@ -14,8 +15,6 @@ import { RelayOutpostLoader, RelayOutpostInlineLoader } from "@/components/Relay
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { PageTabs } from "@/components/PageTabs";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { MediaRow, MediaHero, type MediaItemModel } from "@/components/media/MediaCard";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -25,9 +24,8 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { useDocumentTitle } from "@/hooks/use-document-title";
-import { nip19 } from "nostr-tools";
 import { formatDistanceToNow } from "date-fns";
 import {
   getAvatarUrl,
@@ -51,8 +49,6 @@ import {
   Repeat2,
   Users,
   PenSquare,
-  LayoutGrid,
-  LayoutList,
   BookOpen,
   Hash,
   Share2,
@@ -160,32 +156,32 @@ function ShareArticleToNostrDialog({ article, onClose }: { article: ArticleData;
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg bg-brand/[0.06] border border-brand/15 p-3 overflow-hidden">
+      <div className="rounded-[14px] bg-foreground/[0.04] border border-border/60 p-3 overflow-hidden">
         {article.image && (
           <div className="rounded-md overflow-hidden mb-2 max-h-32 bg-muted/20">
             <img src={article.image} alt={`${article.title || "Article"} cover`} className="w-full h-full object-cover max-h-32" loading="lazy" decoding="async" />
           </div>
         )}
-        <p className="text-[10px] text-brand/60 font-mono uppercase tracking-wider mb-1.5">Sharing Article</p>
+        <p className="text-[13px] text-muted-foreground mb-1.5 font-medium">Sharing article</p>
         <p className="text-sm font-medium text-foreground/90 line-clamp-2 break-words">{article.title}</p>
         {article.summary && (
-          <p className="text-[11px] text-muted-foreground/60 mt-1 line-clamp-2 break-words">{article.summary}</p>
+          <p className="text-[12px] text-muted-foreground mt-1 line-clamp-2 break-words">{article.summary}</p>
         )}
-        <p className="text-[11px] text-muted-foreground/50 mt-1.5 break-all line-clamp-1">{articleUrl}</p>
+        <p className="text-[12px] text-muted-foreground mt-1.5 break-all line-clamp-1">{articleUrl}</p>
       </div>
 
       <Textarea
         value={content}
         onChange={(e) => { userEditedRef.current = true; setContent(e.target.value); }}
         rows={5}
-        className="text-sm resize-none bg-white/[0.04] border-white/[0.08] focus:border-brand/30 focus:bg-white/[0.06] rounded-lg break-words"
+        className="text-sm resize-none bg-white/[0.04] border-white/[0.08] focus:border-foreground/30 focus:bg-white/[0.06] rounded-lg break-words"
         style={{ wordBreak: "break-word", overflowWrap: "break-word" }}
         placeholder="Add your thoughts..."
         autoComplete="off"
         data-testid="textarea-share-article-content"
       />
 
-      <p className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wider leading-relaxed">
+      <p className="text-[13px] text-muted-foreground leading-relaxed font-medium">
         This creates a public post with the article link. Others can reply and zap your post.
       </p>
 
@@ -193,7 +189,7 @@ function ShareArticleToNostrDialog({ article, onClose }: { article: ArticleData;
         <Button
           variant="outline"
           onClick={onClose}
-          className="flex-1 font-brand uppercase tracking-widest text-xs border-white/10 text-muted-foreground"
+          className="flex-1 text-xs border-white/10 text-muted-foreground font-medium"
           data-testid="button-cancel-share-article"
         >
           Cancel
@@ -201,7 +197,7 @@ function ShareArticleToNostrDialog({ article, onClose }: { article: ArticleData;
         <Button
           onClick={handleShare}
           disabled={isPublishing || !content.trim()}
-          className="flex-1 bg-brand text-white font-brand uppercase tracking-widest text-xs border-0"
+          className="flex-1 rounded-full bg-foreground text-background text-[13px] border-0 font-medium hover:bg-foreground/90"
           data-testid="button-confirm-share-article"
         >
           {isPublishing ? (
@@ -217,7 +213,6 @@ function ShareArticleToNostrDialog({ article, onClose }: { article: ArticleData;
 }
 
 type FeedTab = "trending" | "latest" | "following";
-type ViewMode = "grid" | "list";
 
 const PAGE_SIZE = 30;
 const SEARCH_DEBOUNCE = 350;
@@ -240,25 +235,25 @@ function ArticleStats({ eventId }: { eventId: string }) {
   return (
     <div className="flex items-center gap-2.5 flex-wrap" data-testid={`container-article-stats-${eventId}`}>
       {stats.zaps > 0 && (
-        <span className="text-[11px] text-amber-800/80 dark:text-amber-400/80 flex items-center gap-0.5">
+        <span className="text-[12px] text-amber-800/80 dark:text-amber-400/80 flex items-center gap-0.5">
           <Zap className="w-2.5 h-2.5" />
           {formatZapAmount(stats.zapAmount)}
         </span>
       )}
       {stats.replies > 0 && (
-        <span className="text-[11px] text-muted-foreground/70 flex items-center gap-0.5">
+        <span className="text-[12px] text-muted-foreground flex items-center gap-0.5">
           <MessageCircle className="w-2.5 h-2.5" />
           {stats.replies}
         </span>
       )}
       {stats.likes > 0 && (
-        <span className="text-[11px] text-muted-foreground/70 flex items-center gap-0.5">
+        <span className="text-[12px] text-muted-foreground flex items-center gap-0.5">
           <Heart className="w-2.5 h-2.5" />
           {stats.likes}
         </span>
       )}
       {stats.reposts > 0 && (
-        <span className="text-[11px] text-muted-foreground/70 flex items-center gap-0.5">
+        <span className="text-[12px] text-muted-foreground flex items-center gap-0.5">
           <Repeat2 className="w-2.5 h-2.5" />
           {stats.reposts}
         </span>
@@ -291,7 +286,7 @@ const ArticleCard = memo(function ArticleCard({ article, asHero, heroBadge, onSh
     <>
       <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleBookmark(); }}
-        className={`inline-flex items-center justify-center w-9 h-9 rounded-lg transition-colors shrink-0 cursor-pointer ${isBookmarked ? "text-brand" : "text-muted-foreground/60 hover:text-brand hover:bg-muted/50"}`}
+        className={`inline-flex items-center justify-center w-9 h-9 rounded-lg transition-colors shrink-0 cursor-pointer ${isBookmarked ? "text-brand" : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/50"}`}
         data-testid={`button-bookmark-article-${article.event.id}`}
         aria-label={isBookmarked ? "Remove bookmark" : "Bookmark"}
       >
@@ -300,7 +295,7 @@ const ArticleCard = memo(function ArticleCard({ article, asHero, heroBadge, onSh
       {onShare && (
         <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onShare(article); }}
-          className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground/60 hover:text-brand hover:bg-muted/50 transition-colors shrink-0 cursor-pointer"
+          className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors shrink-0 cursor-pointer"
           data-testid={`button-share-article-${article.event.id}`}
           aria-label="Share"
         >
@@ -312,7 +307,7 @@ const ArticleCard = memo(function ArticleCard({ article, asHero, heroBadge, onSh
 
   const meta = (
     <>
-      <span className="text-[11px] text-muted-foreground/70 flex items-center gap-0.5">
+      <span className="text-[12px] text-muted-foreground flex items-center gap-0.5">
         <Clock className="w-2.5 h-2.5" /> {readTime} min
       </span>
       <ArticleStats eventId={article.event.id} />
@@ -396,12 +391,12 @@ function ScopedAuthorChip({
 
   return (
     <div
-      className="inline-flex items-center gap-2 pl-1 pr-1.5 py-1 rounded-full bg-brand/15 border border-brand/30 text-xs text-brand"
+      className="inline-flex items-center gap-2 pl-1 pr-1.5 py-1 rounded-full bg-foreground/[0.06] border border-border/60 text-[13px] text-foreground hover:bg-foreground/10"
       data-testid={`chip-scoped-author-${pubkey.slice(0, 8)}`}
     >
       <Avatar className="w-5 h-5">
         {avatar ? <AvatarImage src={avatar} alt={name} /> : null}
-        <AvatarFallback className="text-[9px] bg-brand/30">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[9px]">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
       </Avatar>
       <span className="font-medium">Articles by {name}</span>
       <button
@@ -428,9 +423,6 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
   const [tab, setTab] = useState<FeedTab>("trending");
   const tabRef = useRef(tab);
   tabRef.current = tab;
-  const [viewMode, setViewMode] = useState<ViewMode>(
-    () => (typeof window !== "undefined" && window.innerWidth < 640 ? "list" : "grid"),
-  );
   const [shareArticle, setShareArticle] = useState<ArticleData | null>(null);
   const stableOnShare = useMemo(() => pubkey ? setShareArticle : undefined, [pubkey]);
   const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
@@ -838,7 +830,7 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
                 subtle primary tint instead of a filled button. */}
             <button
               type="button"
-              className={`flex h-10 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors ${ searchQuery ? "border-brand/40 bg-brand/5 text-brand" : "border-input bg-background text-foreground hover:bg-muted/30" }`}
+              className={`flex h-10 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors ${ searchQuery ? "border-foreground bg-foreground text-background" : "border-input bg-background text-foreground hover:bg-muted/30" }`}
               data-testid="button-topics-dropdown"
             >
               <Filter className="w-3.5 h-3.5" />
@@ -852,7 +844,7 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
           </PopoverTrigger>
           <PopoverContent align="start" className="w-56 p-1.5 max-h-80 overflow-y-auto">
             <div className="sm:hidden">
-              <p className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium">Show</p>
+              <p className="px-3 py-1.5 text-[13px] text-muted-foreground/60 font-medium">Show</p>
               {tabs.map((t) => {
                 const isActive = tab === t.id;
                 const disabled = t.id === "following" && !pubkey;
@@ -884,7 +876,7 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
                 Clear filter
               </button>
             )}
-            <p className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium">Curated</p>
+            <p className="px-3 py-1.5 text-[13px] text-muted-foreground/60 font-medium">Curated</p>
             {CURATED_TOPICS.map((tag) => {
               const isActive = searchQuery === tag;
               return (
@@ -905,7 +897,7 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
             {popularTags.filter((t) => !CURATED_TOPICS.includes(t)).length > 0 && (
               <>
                 <div className="my-1 border-t border-border/30" />
-                <p className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium">Trending</p>
+                <p className="px-3 py-1.5 text-[13px] text-muted-foreground/60 font-medium">Trending</p>
                 {popularTags.filter((t) => !CURATED_TOPICS.includes(t)).map((tag) => {
                   const isActive = searchQuery === tag;
                   return (
@@ -966,7 +958,7 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
           {searchQuery && (
             <button
               onClick={() => { setSearchInput(""); setSearchQuery(""); }}
-              className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full bg-brand/15 border border-brand/30 text-xs text-brand hover:bg-brand/25 transition-colors"
+              className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full bg-foreground/[0.06] border border-border/60 text-[13px] text-foreground hover:bg-foreground/10 transition-colors"
               data-testid="chip-active-hashtag"
             >
               <Hash className="w-3 h-3" />
@@ -985,14 +977,14 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
         </div>
       ) : sortedArticles.length === 0 ? (
         <div className="text-center py-12">
-          <BookOpen className="w-10 h-10 mx-auto text-muted-foreground/50 mb-3" />
+          <OttoEmpty mood="looking" size={88} className="mx-auto mb-3 text-foreground/70" />
           <p className="text-sm text-muted-foreground" data-testid="text-no-articles">
             {searchQuery ? "No articles found for this search." : tab === "following" ? "No articles from people you follow." : "No articles found."}
           </p>
         </div>
       ) : (
         <>
-          <p className="text-[11px] text-muted-foreground/50 mb-3 uppercase tracking-wider">
+          <p className="text-[12px] text-muted-foreground mb-3 font-medium">
             {sortedArticles.length} article{sortedArticles.length !== 1 ? "s" : ""}
           </p>
           {tab === "trending" && !trendingRanked && (
@@ -1033,7 +1025,7 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
           <Drawer open={!!shareArticle} onOpenChange={(open) => { if (!open) setShareArticle(null); }}>
             <DrawerContent>
               <DrawerHeader>
-                <DrawerTitle className="font-brand uppercase tracking-widest text-sm flex items-center gap-2">
+                <DrawerTitle className="text-sm flex items-center gap-2 font-medium">
                   <Share2 className="w-4 h-4" />
                   Share
                 </DrawerTitle>
@@ -1045,9 +1037,9 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
           </Drawer>
         ) : (
           <Dialog open={!!shareArticle} onOpenChange={(open) => { if (!open) setShareArticle(null); }}>
-            <DialogContent className="max-w-sm sm:max-w-md glass-dialog-card border-brand/15 overflow-hidden">
+            <DialogContent className="max-w-sm sm:max-w-md glass-dialog-card border-border/60 overflow-hidden">
               <DialogHeader>
-                <DialogTitle className="font-brand uppercase tracking-widest text-sm flex items-center gap-2">
+                <DialogTitle className="text-sm flex items-center gap-2 font-medium">
                   <Share2 className="w-4 h-4" />
                   Share
                 </DialogTitle>

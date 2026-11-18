@@ -1,5 +1,4 @@
 import type { EventTemplate, NostrEvent } from "nostr-tools";
-import { pool } from "@/lib/nostr";
 import { withSignerTimeout, signWithTimeout, SIGNER_SIGN_TIMEOUT, SignerTimeoutError } from "@/lib/signer-timeout";
 import { getGlobalSigner } from "@/lib/nip42-auth";
 
@@ -163,27 +162,16 @@ export function getReplyTier(influence: number | null, flagged: boolean): ReplyT
   return t === "none" ? "unverified" : t;
 }
 
+// The tier's name in legends, menus, filters and tooltips: a tie to the
+// reader's network, not a verdict (lib/trust-words.ts, owner 2026-11-17).
 export function getSignalTierLabel(tier: SignalTier): string {
   switch (tier) {
-    case "strong": return "Highly Trusted";
-    case "moderate": return "Trusted";
-    case "low": return "Neutral";
-    case "weak": return "Low Trust";
-    case "flagged": return "Flagged";
+    case "strong": return "Trusted";
+    case "moderate": return "Known";
+    case "low": return "Some ties";
+    case "weak": return "Few ties";
+    case "flagged": return "Concerns";
     case "none": return "Unverified";
-  }
-}
-
-// Short labels for tight spaces (e.g. the mobile feed filter bar, where the full
-// labels wrap to two lines). The full label stays available as a tooltip.
-export function getSignalTierShortLabel(tier: SignalTier): string {
-  switch (tier) {
-    case "strong": return "High";
-    case "moderate": return "Trusted";
-    case "low": return "Neutral";
-    case "weak": return "Low";
-    case "flagged": return "Flagged";
-    case "none": return "Unknown";
   }
 }
 

@@ -87,7 +87,7 @@ export function ProfileLink({ pubkey: rawPubkey, displayName: overrideName, clas
               {picture ? (
                 <AvatarImage src={picture} alt={name} />
               ) : null}
-              <AvatarFallback className="bg-brand/20 text-brand">
+              <AvatarFallback className="bg-foreground/[0.08] text-foreground/80">
                 <User className="w-2.5 h-2.5" />
               </AvatarFallback>
             </Avatar>

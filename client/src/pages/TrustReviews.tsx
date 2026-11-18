@@ -92,8 +92,8 @@ function AuthoredReviewCard({
 
   return (
     <div
-      className="rounded-lg p-3.5 space-y-2.5 bg-card/40 dark:bg-brand/[0.03]"
-      style={{ border: "1px solid rgba(140, 100, 220, 0.14)" }}
+      className="rounded-[16px] p-3.5 space-y-2.5 bg-card"
+      style={{ border: "1px solid hsl(var(--border))" }}
       data-testid={`authored-review-${idShort}`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -286,7 +286,7 @@ export default function TrustReviews() {
       {/* Segmented toggle: received vs authored */}
       <div
         className="flex items-center gap-1 rounded-lg p-1"
-        style={{ border: "1px solid rgba(140, 100, 220, 0.14)", background: "rgba(140, 100, 220, 0.04)" }}
+        style={{ border: "1px solid hsl(var(--border))" }}
         role="tablist"
       >
         <button

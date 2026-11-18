@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
  * content calls onOpenChange(false) itself). Toggling stays open otherwise.
  */
 export function DesktopOptionsPopover({
-  open, onOpenChange, anchorRef, align = "start", title, testId, width = "w-[380px]", titleClassName = "text-sm font-brand uppercase tracking-widest mb-4", children,
+  open, onOpenChange, anchorRef, align = "start", title, testId, width = "w-[380px]", titleClassName = "text-sm mb-4 font-medium", children,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;

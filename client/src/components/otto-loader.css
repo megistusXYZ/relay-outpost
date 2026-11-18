@@ -1,0 +1,19 @@
+/*
+ * The loaders (RelayOutpostLoader.tsx): Otto thinking. The ring and its Ember
+ * dot whirl around a head that stays put, the eyes glance about, and the
+ * dot keeps time. Scoped to .otto-loader; reduced motion holds everything
+ * still with the eyes at rest.
+ */
+.otto-loader { overflow: visible; }
+.otto-loader .ring { transform-box: view-box; transform-origin: 50px 50px; animation: otto-whirl 1.3s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
+.otto-loader .dot { transform-box: fill-box; transform-origin: center; animation: otto-tick 1.3s ease-in-out infinite; }
+.otto-loader .look { animation: otto-glance 3.2s ease-in-out infinite; }
+.otto-loader .lid { transform-box: fill-box; transform-origin: center; animation: otto-blink 4.4s infinite; }
+.otto-loader.is-page { filter: drop-shadow(0 0 14px hsl(var(--brand) / 0.28)); }
+@keyframes otto-whirl { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes otto-tick { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
+@keyframes otto-glance { 0%, 18%, 100% { transform: translate(0, 0); } 30%, 46% { transform: translate(-4px, -1.5px); } 58%, 74% { transform: translate(4px, -1.5px); } 86% { transform: translate(0, 1px); } }
+@keyframes otto-blink { 0%, 92%, 100% { transform: scaleY(1); } 95.5% { transform: scaleY(0.08); } }
+@media (prefers-reduced-motion: reduce) {
+  .otto-loader .ring, .otto-loader .dot, .otto-loader .look, .otto-loader .lid { animation: none !important; }
+}

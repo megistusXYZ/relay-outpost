@@ -3,14 +3,13 @@ import { Link } from "wouter";
 import { nip19 } from "nostr-tools";
 import type { Event } from "nostr-tools";
 import { pool, fetchProfilesCached, eventStore } from "@/lib/nostr";
-import { KIND_LONG_FORM, parseArticle, estimateReadingTime, DEFAULT_HORIZON_SECTIONS } from "@/lib/nip23";
+import { KIND_LONG_FORM, parseArticle, estimateReadingTime } from "@/lib/nip23";
 import type { ArticleData, HorizonContentType } from "@/lib/nip23";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useOutpostCompose } from "@/contexts/OutpostComposeContext";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { HorizonNewEntryDialog } from "@/components/HorizonNewEntryDialog";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { SearchPill } from "@/components/SearchPill";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,14 +37,12 @@ import {
   FolderOpen,
   Info,
   ChevronDown,
-  ChevronUp,
   Layers,
   Compass,
   Sparkles,
   MessageSquareOff,
 } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { HorizonIcon } from "@/components/icons/HorizonIcon";
 
 type HorizonSortMode = "newest" | "oldest" | "updated";
 
@@ -76,7 +73,7 @@ function ArticleAuthorLine({ pubkey }: { pubkey: string }) {
     <div className="flex items-center gap-1.5 min-w-0">
       <Avatar className="w-5 h-5 shrink-0">
         <AvatarImage src={avatar} alt={name} />
-        <AvatarFallback className="bg-brand/20 text-brand text-[8px]">
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[8px]">
           {name.slice(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>
@@ -227,63 +224,6 @@ function HorizonSkeletonCard() {
   );
 }
 
-function SectionNav({
-  sections,
-  totalArticles,
-  selectedSection,
-  onSelect,
-}: {
-  sections: { name: string; count: number }[];
-  totalArticles: number;
-  selectedSection: string | null;
-  onSelect: (section: string | null) => void;
-}) {
-  const showDefaults = sections.length === 0;
-
-  return (
-    <div className="flex gap-1.5 overflow-x-auto md:flex-wrap md:overflow-x-visible pb-1 -mx-1 px-1">
-      <button
-        onClick={() => onSelect(null)}
-        className={`shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all duration-200 ${
-          selectedSection === null
-            ? "bg-accent text-accent-foreground dark:text-brand ring-1 ring-primary/20"
-            : "text-muted-foreground/50 hover:text-muted-foreground/80 hover:bg-muted/20"
-        }`}
-      >
-        All
-        {totalArticles > 0 && (
-          <span className="text-[9px] opacity-60">{totalArticles}</span>
-        )}
-      </button>
-
-      {sections.map((s) => (
-        <button
-          key={s.name}
-          onClick={() => onSelect(selectedSection === s.name ? null : s.name)}
-          className={`shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all duration-200 ${
-            selectedSection === s.name
-              ? "bg-accent text-accent-foreground dark:text-brand ring-1 ring-primary/20"
-              : "text-muted-foreground/50 hover:text-muted-foreground/80 hover:bg-muted/20"
-          }`}
-        >
-          <FolderOpen className="w-2.5 h-2.5" />
-          {s.name}
-          <span className="text-[9px] opacity-60">{s.count}</span>
-        </button>
-      ))}
-
-      {showDefaults && DEFAULT_HORIZON_SECTIONS.map((name) => (
-        <span
-          key={name}
-          className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-muted-foreground/25 border border-dashed border-border/20"
-        >
-          <FolderOpen className="w-2.5 h-2.5" />
-          {name}
-        </span>
-      ))}
-    </div>
-  );
-}
 
 export function HorizonTab({
   relayUrl,
@@ -484,7 +424,7 @@ export function HorizonTab({
               </button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-56 p-1.5 max-h-80 overflow-y-auto">
-              <p className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium">Sections</p>
+              <p className="px-3 py-1.5 text-[13px] text-muted-foreground/60 font-medium">Sections</p>
               <button
                 onClick={() => { setSelectedSection(null); setFilterMenuOpen(false); }}
                 className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${
@@ -510,7 +450,7 @@ export function HorizonTab({
                 </button>
               ))}
               <div className="my-1 border-t border-border/30" />
-              <p className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium">Sort</p>
+              <p className="px-3 py-1.5 text-[13px] text-muted-foreground/60 font-medium">Sort</p>
               {(["newest", "oldest", "updated"] as HorizonSortMode[]).map((mode) => (
                 <button
                   key={mode}

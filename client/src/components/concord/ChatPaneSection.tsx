@@ -31,12 +31,12 @@ export function ChatPaneSection({ title, open, onToggle, count, action, fill, ch
           type="button"
           onClick={onToggle}
           aria-expanded={open}
-          className="flex min-h-[44px] md:min-h-[32px] min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 text-left text-muted-foreground/60 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand/60"
+          className="flex min-h-[44px] md:min-h-[32px] min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 text-left text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand/60"
           data-testid={`${testId}-toggle`}
         >
           <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform duration-150 motion-reduce:transition-none ${open ? "rotate-90" : ""}`} aria-hidden="true" />
-          <span className="truncate text-[11px] font-semibold uppercase tracking-wider">{title}</span>
-          {typeof count === "number" && <span className="text-[11px] tabular-nums text-muted-foreground/40">{count}</span>}
+          <span className="truncate text-[12px] font-semibold">{title}</span>
+          {typeof count === "number" && <span className="text-xs tabular-nums text-muted-foreground">{count}</span>}
         </button>
         {action}
       </div>

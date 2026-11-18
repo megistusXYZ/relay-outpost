@@ -79,7 +79,7 @@ export function ConcordCallButton({ community, channel, title, compact }: {
     // (owner, 2026-10-10: nobody looks for calls under feed settings).
     if (compact) return null;
     return (
-      <button onClick={() => navigate("/settings?section=calls")} className="hidden md:inline-flex items-center gap-1 text-[11px] text-muted-foreground/70 hover:text-foreground whitespace-nowrap" data-testid="concord-calls-off">
+      <button onClick={() => navigate("/settings?section=calls")} className="hidden md:inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground whitespace-nowrap" data-testid="concord-calls-off">
         <Phone className="w-3 h-3" aria-hidden="true" /> Calls are off · Turn on
       </button>
     );
@@ -91,7 +91,7 @@ export function ConcordCallButton({ community, channel, title, compact }: {
       onClick={() => { if (channel && !here && !joining && canEncrypt) void join(community, channel, title); }}
       disabled={!channel || joining || (!here && !canEncrypt)}
       className={`flex items-center justify-center ${size} shrink-0 rounded-full transition-colors disabled:opacity-60 ${
-        here ? "text-success bg-emerald-500/10 dark:text-emerald-400" : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/40"
+        here ? "text-success bg-emerald-500/10 dark:text-emerald-400" : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
       }`}
       title={here ? "You're in this room's call" : canEncrypt ? "Start or join a call" : NO_ENCRYPTION}
       aria-label={here ? "In this room's call" : canEncrypt ? "Start or join a call" : NO_ENCRYPTION}
@@ -133,9 +133,9 @@ export function ConcordCallBar({ community, channel, title }: {
         <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
         <div className="min-w-0 flex-1">
           {count > 0 && <p className="text-xs font-medium text-foreground/90">{count} in the call</p>}
-          {count > 0 && !error && <p className="text-[11px] text-muted-foreground/70 truncate" data-testid="concord-call-scope">{callScopeLine(community.name ?? "")}</p>}
-          {error && <p className="text-[11px] text-destructive truncate" data-testid="concord-call-error">{error}</p>}
-          {count > 0 && !canEncrypt && <p className="text-[11px] text-muted-foreground truncate" data-testid="concord-call-cant-encrypt">{NO_ENCRYPTION}</p>}
+          {count > 0 && !error && <p className="text-xs text-muted-foreground truncate" data-testid="concord-call-scope">{callScopeLine(community.name ?? "")}</p>}
+          {error && <p className="text-xs text-destructive truncate" data-testid="concord-call-error">{error}</p>}
+          {count > 0 && !canEncrypt && <p className="text-xs text-muted-foreground truncate" data-testid="concord-call-cant-encrypt">{NO_ENCRYPTION}</p>}
         </div>
         {count > 0 && channel && (
           <button
@@ -161,10 +161,10 @@ export function ConcordCallBar({ community, channel, title }: {
         {/* A device that failed mid-call says so here, in plain words (call-trouble.ts).
             Otherwise: who can hear you (owner, 2026-10-10), or, left alone, when the room lets you go. */}
         {error
-          ? <p className="text-[11px] text-destructive" data-testid="concord-call-error">{error}</p>
+          ? <p className="text-xs text-destructive" data-testid="concord-call-error">{error}</p>
           : alone.alone
-            ? <p className="text-[11px] text-muted-foreground/70 truncate" data-testid="concord-call-alone">The others left. Leaves on its own in {alone.secondsLeft}s.</p>
-            : <p className="text-[11px] text-muted-foreground/70 truncate" data-testid="concord-call-scope">{callScopeLine(community.name ?? "")} End-to-end encrypted.</p>}
+            ? <p className="text-xs text-muted-foreground truncate" data-testid="concord-call-alone">The others left. Leaves on its own in {alone.secondsLeft}s.</p>
+            : <p className="text-xs text-muted-foreground truncate" data-testid="concord-call-scope">{callScopeLine(community.name ?? "")} End-to-end encrypted.</p>}
       </div>
       {/* iPhone can hold a call's sound back until a tap: say so, and take the tap. */}
       {sound.blocked && (
@@ -178,11 +178,11 @@ export function ConcordCallBar({ community, channel, title }: {
         {here.micOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
       </button>
       <button onClick={() => void toggleCamera()} aria-label={here.cameraOn ? "Turn camera off" : "Turn camera on"} aria-pressed={here.cameraOn} data-testid="concord-call-camera"
-        className={`${barButton} ${here.cameraOn ? "bg-brand/15 text-brand" : "bg-muted/60 text-foreground"}`}>
+        className={`${barButton} ${here.cameraOn ? "bg-foreground text-background" : "bg-muted/60 text-foreground"}`}>
         {here.cameraOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
       </button>
       <button onClick={() => void toggleScreen()} aria-label={here.sharing ? "Stop sharing your screen" : "Share your screen"} aria-pressed={here.sharing} data-testid="concord-call-screen"
-        className={`${barButton} hidden sm:flex ${here.sharing ? "bg-brand/15 text-brand" : "bg-muted/60 text-foreground"}`}>
+        className={`${barButton} hidden sm:flex ${here.sharing ? "bg-foreground text-background" : "bg-muted/60 text-foreground"}`}>
         {here.sharing ? <MonitorX className="w-4 h-4" /> : <MonitorUp className="w-4 h-4" />}
       </button>
       {/* The handset promised a phone call, where one hang-up ends it for both.
@@ -264,7 +264,7 @@ function CallTile({ p, participant, source, small = false }: { p: CallParticipan
   const screen = source === "screen_share";
   return (
     <div
-      className={`relative aspect-video overflow-hidden rounded-xl bg-muted/40 ${screen ? "col-span-full w-full" : ""} ${small ? "text-[10px]" : ""} ${p.speaking && !screen ? "ring-2 ring-emerald-500" : ""}`}
+      className={`relative aspect-video overflow-hidden rounded-xl bg-muted/40 ${screen ? "col-span-full w-full" : ""} ${small ? "text-xs" : ""} ${p.speaking && !screen ? "ring-2 ring-emerald-500" : ""}`}
       data-testid={screen ? "concord-call-screen-tile" : "concord-call-tile"}
     >
       {track ? (
@@ -275,7 +275,7 @@ function CallTile({ p, participant, source, small = false }: { p: CallParticipan
           <TileAvatar label={p.label} />
         </div>
       )}
-      <div className="absolute bottom-1.5 left-1.5 flex max-w-[calc(100%-12px)] items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[11px] text-white">
+      <div className="absolute bottom-1.5 left-1.5 flex max-w-[calc(100%-12px)] items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-xs text-white">
         {/* Always on the tile's dark pill, so the light 200 shade (not 300/400). */}
         {!p.micOn && <MicOff className="h-3 w-3 shrink-0 text-red-200" aria-label="Muted" />}
         <span className="truncate">{screen ? <>Screen · <TileName label={p.label} isLocal={p.isLocal} /></> : <TileName label={p.label} isLocal={p.isLocal} />}</span>

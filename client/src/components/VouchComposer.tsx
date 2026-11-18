@@ -194,7 +194,7 @@ export function VouchComposer({
               variant="outline"
               onClick={() => handleClose(false)}
               disabled={isSubmitting}
-              className="flex-1 text-xs font-brand uppercase tracking-widest border-emerald-500/15 min-h-[44px]"
+              className="flex-1 text-xs border-emerald-500/15 min-h-[44px] font-medium"
               data-testid="button-vouch-cancel"
             >
               Cancel
@@ -202,7 +202,7 @@ export function VouchComposer({
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting || !signer || isSelf}
-              className="flex-1 text-xs font-brand uppercase tracking-widest bg-emerald-600/80 hover:bg-emerald-600 min-h-[44px]"
+              className="flex-1 text-xs bg-emerald-600/80 hover:bg-emerald-600 min-h-[44px] font-medium"
               data-testid="button-vouch-submit"
             >
               {isSubmitting ? (

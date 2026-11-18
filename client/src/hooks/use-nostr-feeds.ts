@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
-import { pool, DEFAULT_RELAYS, publishEvent, throttledPoolSubscribe } from "@/lib/nostr";
+import { DEFAULT_RELAYS, publishEvent, throttledPoolSubscribe } from "@/lib/nostr";
 import { useToast } from "@/hooks/use-toast";
 import { signWithTimeout } from "@/lib/signer-timeout";
 import { isValidFeedIconKey } from "@/components/FeedIcons";

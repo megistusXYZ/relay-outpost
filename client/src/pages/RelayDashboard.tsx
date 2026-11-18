@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { timeConnection } from "@/lib/relay-probe";
 import { Link, useLocation } from "wouter";
-import { DEFAULT_RELAYS, pool, getBlockedRelays, isRelayBlocked, blockRelay, unblockRelay, fetchBlockedRelayList, publishBlockedRelayList, eventStore, throttledPoolSubscribe, publishEvent, verifySignedEventKind } from "@/lib/nostr";
+import { DEFAULT_RELAYS, pool, getBlockedRelays, blockRelay, unblockRelay, fetchBlockedRelayList, publishBlockedRelayList, eventStore, throttledPoolSubscribe, publishEvent, verifySignedEventKind } from "@/lib/nostr";
 import { PageToolbar } from "@/components/PageToolbar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { RelayOutpostInlineLoader, RelayOutpostIcon } from "@/components/RelayOutpostLoader";
-import { Radio, Plus, Trash2, RefreshCw, Wifi, WifiOff, Gauge, Globe, Power, PowerOff, Satellite, Lock, Unlock, Pencil, Check, X, ChevronDown, ChevronRight, ChevronUp, Activity, ShieldBan, ShieldCheck, Upload, ExternalLink, AlertTriangle, Search, Server, Zap, Shield, Mail, Hash, FileDown, Info, Copy, Signal, Terminal } from "lucide-react";
+import { Plus, Trash2, RefreshCw, Wifi, WifiOff, Gauge, Globe, Power, PowerOff, Satellite, Lock, Unlock, Pencil, Check, X, ChevronDown, ChevronRight, ChevronUp, Activity, ShieldBan, ShieldCheck, Upload, ExternalLink, AlertTriangle, Search, Server, Zap, Shield, Mail, Hash, FileDown, Info, Copy, Signal, Terminal } from "lucide-react";
 import type { Event as NostrEvent } from "nostr-tools";
 import {
   AlertDialog,
@@ -323,7 +323,7 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
             <button className="w-full flex items-center justify-between gap-2 p-4 text-left">
               <div className="flex items-center gap-2 flex-wrap">
                 <Globe className="w-4 h-4 text-brand" />
-                <h2 className="text-sm font-brand tracking-wider uppercase dark:text-brand">Discover Relays</h2>
+                <h2 className="text-[15px] font-semibold">Discover relays</h2>
               </div>
               {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
             </button>
@@ -484,7 +484,7 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
                               <div className="px-3 pb-3 border-t border-border/30 dark:border-white/[0.04] space-y-3 pt-2.5">
                                 {relay.supportedNips.length > 0 && (
                                   <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider mb-1.5">Supported NIPs</p>
+                                    <p className="text-[13px] font-medium text-muted-foreground/60 mb-1.5">Supported NIPs</p>
                                     <div className="flex flex-wrap gap-1">
                                       {relay.supportedNips.sort((a, b) => a - b).map(nip => (
                                         <Badge key={nip} variant="outline" className="text-[9px] h-5 px-1.5 font-mono border-border dark:border-white/[0.08]">
@@ -497,7 +497,7 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
 
                                 {relay.requirements.length > 0 && (
                                   <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider mb-1.5">Requirements</p>
+                                    <p className="text-[13px] font-medium text-muted-foreground/60 mb-1.5">Requirements</p>
                                     <div className="flex flex-wrap gap-1">
                                       {relay.requirements.map(req => (
                                         <Badge key={req} variant="outline" className="text-[9px] h-5 px-1.5 capitalize border-border dark:border-white/[0.08]">
@@ -512,7 +512,7 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
 
                                 {relay.software && (
                                   <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">Software</span>
+                                    <span className="text-[13px] font-medium text-muted-foreground/60">Software</span>
                                     <span className="text-[10px] text-muted-foreground/80 font-mono">{relay.software}</span>
                                   </div>
                                 )}
@@ -525,7 +525,7 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
 
                                 {relay.nip11 && (
                                   <div className="space-y-2 pt-1 border-t border-border/30 dark:border-white/[0.04]">
-                                    <p className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">NIP-11 Details</p>
+                                    <p className="text-[13px] font-medium text-muted-foreground/60">NIP-11 details</p>
                                     {relay.nip11.name && (
                                       <div className="flex items-center gap-2">
                                         <Info className="w-3 h-3 text-muted-foreground/40" />
@@ -1103,7 +1103,7 @@ export default function RelayDashboard() {
         <Card className="glass-card border-border/40 p-4 mb-5" data-testid="section-relay-routes">
           <div className="flex items-center gap-2 mb-1">
             <Mail className="w-4 h-4 text-brand/70" />
-            <h2 className="text-sm font-brand tracking-wider uppercase">Where your posts go</h2>
+            <h2 className="text-[15px] font-semibold">Where your posts go</h2>
             {routesLoaded && !editingRoutes && (
               <Button variant="ghost" size="sm" className="ml-auto h-7 text-[11px]" onClick={beginEditRoutes} data-testid="button-edit-routes">
                 <Pencil className="w-3 h-3 mr-1" />Edit
@@ -1119,11 +1119,11 @@ export default function RelayDashboard() {
                 <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
                 <span>This is advanced. Your routing tells the whole network where to find and reach you — a wrong list can quietly stop people seeing your posts. Only change it if you know what you're doing.</span>
               </div>
-              {([["read", "Inbox", "Where people reach you", newInbox, setNewInbox], ["write", "Outbox", "Where you broadcast from", newOutbox, setNewOutbox]] as const).map(([role, label, hint, val, setVal]) => (
+              {([["read", "Inbox", "Where people reach you", newInbox, setNewInbox], ["write", "Outbox", "Where your posts go out from", newOutbox, setNewOutbox]] as const).map(([role, label, hint, val, setVal]) => (
                 <div key={role}>
                   <div className="flex items-center gap-1.5 mb-1">
                     {role === "read" ? <Satellite className="w-3.5 h-3.5 text-brand" /> : <Signal className="w-3.5 h-3.5 text-brand" />}
-                    <span className="text-xs uppercase tracking-wider font-medium text-foreground/70">{label}</span>
+                    <span className="text-xs font-medium text-foreground/70">{label}</span>
                   </div>
                   <p className="text-[10px] text-muted-foreground/60 mb-1.5">{hint}.</p>
                   {editRoutes.filter((r) => r[role]).map((r) => (
@@ -1153,7 +1153,7 @@ export default function RelayDashboard() {
               <div>
                 <div className="flex items-center gap-1.5 mb-1">
                   <Satellite className="w-3.5 h-3.5 text-brand" />
-                  <span className="text-xs uppercase tracking-wider font-medium text-foreground/70">Inbox</span>
+                  <span className="text-xs font-medium text-foreground/70">Inbox</span>
                   <Badge variant="secondary" className="text-[10px] ml-auto">{readRoutes.length}</Badge>
                 </div>
                 <p className="text-[10px] text-muted-foreground/60 mb-1.5">Where people reach you.</p>
@@ -1167,10 +1167,10 @@ export default function RelayDashboard() {
               <div>
                 <div className="flex items-center gap-1.5 mb-1">
                   <Signal className="w-3.5 h-3.5 text-brand" />
-                  <span className="text-xs uppercase tracking-wider font-medium text-foreground/70">Outbox</span>
+                  <span className="text-xs font-medium text-foreground/70">Outbox</span>
                   <Badge variant="secondary" className="text-[10px] ml-auto">{writeRoutes.length}</Badge>
                 </div>
-                <p className="text-[10px] text-muted-foreground/60 mb-1.5">Where you broadcast from.</p>
+                <p className="text-[10px] text-muted-foreground/60 mb-1.5">Where your posts go out from.</p>
                 {writeRoutes.length > 0 ? writeRoutes.map((r) => (
                   <div key={`out-${r.url}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-muted/20 border border-border/40 mb-1" data-testid={`route-write-${r.url}`}>
                     <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
@@ -1189,7 +1189,7 @@ export default function RelayDashboard() {
             <button className="w-full flex items-center justify-between gap-2 p-4 text-left" data-testid="button-toggle-manage-relays">
               <div className="flex items-center gap-2">
                 <Satellite className="w-4 h-4 text-brand/70" />
-                <h2 className="text-sm font-brand tracking-wider uppercase">Manage relays</h2>
+                <h2 className="text-[15px] font-semibold">Manage relays</h2>
                 <Badge variant="outline" className="text-[10px]">{outpostRelays.length + allRelays.filter(u => !outpostRelays.some(o => o.url.replace(/\/+$/, "") === u.replace(/\/+$/, ""))).length}</Badge>
               </div>
               {manageOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -1457,7 +1457,7 @@ export default function RelayDashboard() {
                           className="text-[11px] text-brand hover:text-brand/80 dark:hover:text-brand flex items-center gap-1 font-medium min-h-[44px]"
                           data-testid={`link-relay-control-${idx}`}
                         >
-                          Open Relay Control
+                          Open the console
                           <ChevronRight className="w-3 h-3" />
                         </Link>
                       </div>
@@ -1468,7 +1468,7 @@ export default function RelayDashboard() {
             </div>
           )}
 
-      <div className="mt-3 mb-1 text-[10px] uppercase tracking-wider text-muted-foreground/50 font-medium">Relays this app uses</div>
+      <div className="mt-3 mb-1 text-[13px] text-muted-foreground font-medium">Relays this app uses</div>
       <div className="space-y-2">
         {[...allRelays].filter(u => !outpostRelays.some(o => o.url.replace(/\/+$/, "") === u.replace(/\/+$/, ""))).sort((a, b) => {
           const aDisabled = disabledRelays.has(a) ? 1 : 0;
@@ -1596,7 +1596,7 @@ export default function RelayDashboard() {
             <button className="w-full flex items-center justify-between gap-2 p-4 text-left" data-testid="button-toggle-find-relays">
               <div className="flex items-center gap-2">
                 <Search className="w-4 h-4 text-brand/70" />
-                <h2 className="text-sm font-brand tracking-wider uppercase">Find more relays</h2>
+                <h2 className="text-[15px] font-semibold">Find more relays</h2>
               </div>
               {findRelaysOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
             </button>
@@ -1622,7 +1622,7 @@ export default function RelayDashboard() {
                 <button className="w-full flex items-center justify-between gap-2 p-4 text-left" data-testid="button-toggle-blocked-relays">
                   <div className="flex items-center gap-2 flex-wrap">
                     <ShieldBan className="w-4 h-4 text-amber-800/80 dark:text-amber-400/80" />
-                    <h2 className="text-sm font-brand tracking-wider uppercase text-amber-800/90 dark:text-amber-300/90">Blocked Relays</h2>
+                    <h2 className="text-[15px] font-semibold text-amber-800/90 dark:text-amber-300/90">Blocked relays</h2>
                     <Badge variant="outline" className="text-[10px] border-amber-400/20 text-amber-800/60 dark:text-amber-400/60">
                       {blockedRelaysList.length}
                     </Badge>
@@ -1678,7 +1678,7 @@ export default function RelayDashboard() {
               <button className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 text-left" data-testid="button-toggle-relay-health">
                 <div className="flex items-center gap-2 flex-wrap">
                   <Activity className="w-4 h-4 text-brand" />
-                  <h2 className="text-sm font-brand tracking-wider uppercase dark:text-brand">Relay Health Monitor</h2>
+                  <h2 className="text-[15px] font-semibold">Relay health monitor</h2>
                 </div>
                 {healthMonitorOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
               </button>

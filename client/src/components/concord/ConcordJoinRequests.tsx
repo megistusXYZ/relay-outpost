@@ -47,7 +47,7 @@ export function ConcordJoinRequests({ community }: { community: StoredCommunity 
   return (
     <div className="space-y-2">
       <div className="space-y-1">
-        <p className="text-[11px] text-muted-foreground/70">
+        <p className="text-xs text-muted-foreground">
           Anyone with an ask link can ask to join. Requests come to you and the owner, and you decide who gets in.
         </p>
         <SpaceAdminAction icon={copied ? Check : Copy} onClick={copy} disabled={!link} testId="copy-ask-link">
@@ -55,7 +55,7 @@ export function ConcordJoinRequests({ community }: { community: StoredCommunity 
         </SpaceAdminAction>
       </div>
       {requests.length === 0
-        ? <p className="text-[11px] text-muted-foreground/60">Nobody is waiting.</p>
+        ? <p className="text-xs text-muted-foreground">Nobody is waiting.</p>
         : requests.map((r) => <RequestRow key={r.id} request={r} community={community} />)}
     </div>
   );
@@ -88,7 +88,7 @@ function RequestRow({ request, community }: { request: JoinRequest; community: S
 
   return (
     <div className="rounded-lg border border-border/30 p-2.5 space-y-1.5" data-testid={`join-request-${request.id.slice(0, 8)}`}>
-      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/70 min-w-0">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
         {npub
           ? <Link href={`/profile/${npub}`} className="font-medium text-foreground/85 truncate hover:underline">{name}</Link>
           : <span className="font-medium text-foreground/85 truncate">{name}</span>}
@@ -99,7 +99,7 @@ function RequestRow({ request, community }: { request: JoinRequest; community: S
         <button
           onClick={letIn}
           disabled={busy}
-          className="flex items-center gap-1 h-9 md:h-7 px-3 rounded-full text-[11px] font-medium bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity"
+          className="flex items-center gap-1 h-9 md:h-7 px-3 rounded-full text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity"
           data-testid={`join-let-in-${request.id.slice(0, 8)}`}
         >
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserPlus className="w-3 h-3" />} Let in
@@ -107,7 +107,7 @@ function RequestRow({ request, community }: { request: JoinRequest; community: S
         <button
           onClick={decline}
           disabled={busy}
-          className="flex items-center gap-1 h-9 md:h-7 px-3 rounded-full text-[11px] text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
+          className="flex items-center gap-1 h-9 md:h-7 px-3 rounded-full text-xs text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
           data-testid={`join-decline-${request.id.slice(0, 8)}`}
         >
           <X className="w-3 h-3" /> Decline

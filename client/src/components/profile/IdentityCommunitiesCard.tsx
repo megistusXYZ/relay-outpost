@@ -129,14 +129,14 @@ export function IdentityCommunitiesCard({ rows }: { rows: SubjectCommunityRow[] 
               {icon ? (
                 <img src={icon} alt="" className="w-6 h-6 rounded-md object-cover shrink-0" loading="lazy" />
               ) : (
-                <span className="w-6 h-6 rounded-md bg-brand/10 text-brand flex items-center justify-center shrink-0">
+                <span className="w-6 h-6 rounded-md bg-foreground/[0.08] text-foreground/80 flex items-center justify-center shrink-0">
                   <Users className="w-3.5 h-3.5" />
                 </span>
               )}
               <span className="text-sm font-medium truncate">{name}</span>
             </button>
             {isIn ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-brand shrink-0" data-testid={`profile-community-shared-${hostnameOf(row.url)}`}>
+              <span className="inline-flex items-center gap-1 text-[12px] font-medium text-brand shrink-0" data-testid={`profile-community-shared-${hostnameOf(row.url)}`}>
                 <Check className="w-3 h-3" /> You're both here
               </span>
             ) : (
@@ -144,7 +144,7 @@ export function IdentityCommunitiesCard({ rows }: { rows: SubjectCommunityRow[] 
                 type="button"
                 onClick={() => join(row.url)}
                 disabled={joining === row.url}
-                className={`shrink-0 rounded-full border border-primary/40 bg-primary/10 px-3 min-h-[32px] text-xs font-medium text-brand hover:bg-primary/20 transition-colors disabled:opacity-60 ${FOCUS_RING}`}
+                className={`shrink-0 rounded-full border border-foreground/25 px-3.5 min-h-[32px] text-[13px] font-medium text-foreground hover:bg-foreground/[0.06] transition-colors disabled:opacity-60 ${FOCUS_RING}`}
                 title={priv ? "This community is private — the operator approves who gets in" : undefined}
                 data-testid={`profile-community-join-${hostnameOf(row.url)}`}
               >

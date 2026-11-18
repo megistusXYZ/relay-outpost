@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNostrAuth, type QRLoginState, isPWAStandalone, isIOSDevice } from "@/contexts/NostrAuthContext";
 import { ErrorBoundary, OnboardingErrorFallback } from "@/components/ErrorBoundary";
-import { RelayOutpostIcon, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
-import { Shield, Unplug, ArrowLeft, Lock, Fingerprint, QrCode, Copy, Check, RefreshCw, Smartphone, Info, ExternalLink, UserPlus, KeyRound, Sparkles, Compass, Radio, Plug, Rocket, ChevronRight } from "lucide-react";
+import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
+import { Unplug, ArrowLeft, Lock, Fingerprint, QrCode, Copy, Check, RefreshCw, Smartphone, ExternalLink, UserPlus, KeyRound, Radio, Plug, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
 import { WtfAlienIcon } from "@/components/icons/WtfAlienIcon";
 import { KeysInHandIcon } from "@/components/icons/KeysInHandIcon";
@@ -203,7 +203,7 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
               {isMobile ? (
                 <div className="w-full space-y-3">
                   <Button
-                    className={`w-full font-brand uppercase tracking-widest text-xs ${isOverlay ? "bg-white text-black" : "bg-foreground text-background"}`}
+                    className={`w-full text-xs font-medium ${isOverlay ? "bg-white text-black" : "bg-foreground text-background"}`}
                     onClick={() => {
                       try {
                         const w = window.open(qrState.uri, "_blank");
@@ -238,7 +238,7 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
                       </p>
                       <Button
                         size="sm"
-                        className={`w-full text-xs font-brand uppercase tracking-widest ${isOverlay ? "bg-white text-black" : "bg-foreground text-background"}`}
+                        className={`w-full text-xs font-medium ${isOverlay ? "bg-white text-black" : "bg-foreground text-background"}`}
                         onClick={handleRefresh}
                         data-testid="button-start-over"
                       >
@@ -267,7 +267,7 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`w-full text-[10px] font-brand uppercase tracking-widest ${isOverlay ? "border-white/15 text-white/60" : "border-border/50 text-muted-foreground"}`}
+                      className={`w-full text-[13px] font-medium ${isOverlay ? "border-white/15 text-white/60" : "border-border/50 text-muted-foreground"}`}
                       onClick={handleRetryConnection}
                       data-testid="button-retry-connection"
                     >
@@ -279,7 +279,7 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`flex-1 text-xs font-brand uppercase tracking-widest ${isOverlay ? "border-white/20 text-white/70" : "border-border/60"}`}
+                      className={`flex-1 text-xs font-medium ${isOverlay ? "border-white/20 text-white/70" : "border-border/60"}`}
                       onClick={handleCopyUri}
                       data-testid="button-copy-qr-uri-mobile"
                     >
@@ -289,7 +289,7 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`text-xs font-brand uppercase tracking-widest ${isOverlay ? "border-white/20 text-white/70" : "border-border/60"}`}
+                      className={`text-xs font-medium ${isOverlay ? "border-white/20 text-white/70" : "border-border/60"}`}
                       onClick={handleRefresh}
                       disabled={isLoggingIn && elapsed < 3}
                       data-testid="button-refresh-mobile"
@@ -326,7 +326,7 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`flex-1 text-xs font-brand uppercase tracking-widest ${isOverlay ? "border-white/20 text-white/70" : "border-border/60"}`}
+                      className={`flex-1 text-xs font-medium ${isOverlay ? "border-white/20 text-white/70" : "border-border/60"}`}
                       onClick={handleCopyUri}
                       data-testid="button-copy-qr-uri"
                     >
@@ -336,7 +336,7 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`text-xs font-brand uppercase tracking-widest ${isOverlay ? "border-white/20 text-white/70" : "border-border/60"}`}
+                      className={`text-xs font-medium ${isOverlay ? "border-white/20 text-white/70" : "border-border/60"}`}
                       onClick={handleRefresh}
                       disabled={isLoggingIn && elapsed < 3}
                       data-testid="button-refresh-qr"
@@ -356,7 +356,7 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
 
           <div className={`flex items-center gap-1.5 pt-2 border-t ${isOverlay ? "border-white/10" : "border-border/30"}`}>
             <Lock className={`w-3 h-3 ${isOverlay ? "text-white/65" : "text-muted-foreground/80"}`} />
-            <span className={`text-[11px] font-mono uppercase tracking-wider ${isOverlay ? "text-white/65" : "text-muted-foreground/80"}`}>
+            <span className={`text-[12px] font-medium ${isOverlay ? "text-white/65" : "text-muted-foreground/80"}`}>
               Your account never leaves your signer app
             </span>
           </div>
@@ -366,7 +366,7 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
       <Button
         onClick={handleCancel}
         variant="ghost"
-        className={`w-full font-brand uppercase tracking-widest text-xs ${isOverlay ? "text-white/70" : "text-muted-foreground"}`}
+        className={`w-full text-xs font-medium ${isOverlay ? "text-white/70" : "text-muted-foreground"}`}
         data-testid="button-back-from-qr"
       >
         <ArrowLeft className="w-4 h-4 mr-2" />
@@ -458,17 +458,14 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
   };
 
   const cardCls = isOverlay
-    ? "border-white/10 bg-black/40 backdrop-blur-lg transition-[transform,box-shadow,border-color] duration-500 ease-out will-change-transform hover:-translate-y-1 hover:border-brand/35 hover:shadow-[0_30px_72px_-28px_rgba(91,46,162,0.5)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-    : "border-border/60 bg-card/50 transition-[transform,box-shadow,border-color] duration-500 ease-out will-change-transform hover:-translate-y-1 hover:border-brand/35 hover:shadow-[0_24px_60px_-26px_rgba(91,46,162,0.35)] motion-reduce:transition-none motion-reduce:hover:translate-y-0";
+    ? "border-white/10 bg-black/40 backdrop-blur-lg transition-[transform,box-shadow,border-color] duration-500 ease-out will-change-transform hover:-translate-y-1 hover:border-white/25 hover:shadow-[0_30px_72px_-28px_rgba(0,0,0,0.7)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+    : "border-border/60 bg-card/50 transition-[transform,box-shadow,border-color] duration-500 ease-out will-change-transform hover:-translate-y-1 hover:border-foreground/25 hover:shadow-[0_24px_60px_-26px_rgba(0,0,0,0.25)] motion-reduce:transition-none motion-reduce:hover:translate-y-0";
   const iconBoxCls = isOverlay
     ? "bg-white/5 border border-white/10"
-    : "bg-foreground/5 border border-border/40";
-  const iconCls = isOverlay ? "text-white/75" : "text-foreground/70";
+    : "dark:bg-foreground/[0.05] dark:border dark:border-border/40"; // no icon tiles in light (Outpost look)
+  const iconCls = isOverlay ? "text-white/75" : "text-foreground";
   const titleCls = isOverlay ? "text-white" : "";
   const descCls = isOverlay ? "text-white/65" : "text-muted-foreground";
-  const footerBorderCls = isOverlay ? "border-white/10" : "border-border/30";
-  const footerTextCls = isOverlay ? "text-white/70" : "text-muted-foreground/80";
-  const footerIconCls = isOverlay ? "text-white/70" : "text-muted-foreground/80";
   const linkCls = isOverlay ? "text-white/60 underline underline-offset-2" : "text-foreground/70 underline underline-offset-2";
 
   return (
@@ -477,7 +474,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
         <Button
           variant="ghost"
           onClick={onBack}
-          className={`font-brand uppercase tracking-widest text-xs mb-4 ${isOverlay ? "text-white/70" : "text-muted-foreground"}`}
+          className={`text-xs mb-4 font-medium ${isOverlay ? "text-white/70" : "text-muted-foreground"}`}
           data-testid="button-back-from-login"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -552,7 +549,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
                   <span className={`block text-sm font-semibold ${titleCls}`}>{opt.title}</span>
                   <span className={`block text-[11px] leading-snug ${descCls}`}>{opt.caption}</span>
                 </span>
-                <ChevronRight className={`w-4 h-4 shrink-0 ${isOverlay ? "text-white/30" : "text-muted-foreground/40"}`} />
+                <ChevronRight className={`w-4 h-4 shrink-0 ${isOverlay ? "text-white/60" : "text-muted-foreground"}`} />
               </button>
             ))}
           </div>
@@ -584,8 +581,8 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
           <div
             className={`banner-warp relative rounded-lg p-6 sm:p-8 md:p-10 overflow-hidden transition-[transform,box-shadow,border-color] duration-500 ease-out will-change-transform hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${
               isOverlay
-                ? "bg-gradient-to-br from-brand/[0.18] via-white/[0.05] to-brand/[0.14] border border-brand/35 shadow-[0_18px_48px_-12px_rgba(0,0,0,0.7)] hover:border-brand/55 hover:shadow-[0_42px_92px_-26px_rgba(91,46,162,0.55)]"
-                : "bg-gradient-to-br from-brand/[0.12] via-foreground/[0.03] to-brand/[0.08] border border-brand/35 shadow-[0_14px_40px_-12px_rgba(0,0,0,0.45)] hover:border-brand/55 hover:shadow-[0_36px_84px_-26px_rgba(91,46,162,0.4)]"
+                ? "bg-white/[0.05] backdrop-blur-lg border border-white/10 shadow-[0_18px_48px_-12px_rgba(0,0,0,0.7)] hover:border-white/20 hover:shadow-[0_42px_92px_-26px_rgba(0,0,0,0.8)]"
+                : "bg-card/70 border border-border/60 shadow-[0_14px_40px_-12px_rgba(0,0,0,0.45)] hover:border-foreground/25 hover:shadow-[0_36px_84px_-26px_rgba(0,0,0,0.5)]"
             }`}
             data-testid="banner-create-account"
           >
@@ -594,7 +591,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
             <div
               aria-hidden
               className={`pointer-events-none absolute inset-x-0 top-0 h-px ${
-                isOverlay ? "bg-gradient-to-r from-transparent via-brand/50 to-transparent" : "bg-gradient-to-r from-transparent via-brand/50 to-transparent"
+                isOverlay ? "bg-gradient-to-r from-transparent via-white/30 to-transparent" : "bg-gradient-to-r from-transparent via-foreground/20 to-transparent"
               }`}
             />
             <div className="relative flex flex-col items-center text-center gap-4 sm:gap-5">
@@ -611,7 +608,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
                     Full-strength brand rather than /75 and /85 for the same
                     reason: a kicker this small has no room to be faint. */}
                 <p
-                  className="text-[11px] sm:text-xs font-mono uppercase tracking-[0.2em] text-brand"
+                  className="text-[12px] sm:text-xs text-brand font-medium"
                   data-testid="text-banner-eyebrow"
                 >
                   Welcome
@@ -642,23 +639,23 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
                 </p>
               </div>
 
-              {/* CTAs: primary is sized up and gets a violet glow so the
-                  primary action reads first. Secondary stays understated. */}
+              {/* CTAs: primary is sized up and solid so it reads first (no
+                  glow: the theme keeps chrome neutral). Secondary stays understated. */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 w-full sm:w-auto pt-1">
                 <Button
                   onClick={() => setMode("create")}
                   size="lg"
-                  className={`w-full sm:w-auto justify-center text-xs sm:text-sm font-brand uppercase tracking-widest px-6 shadow-[0_8px_24px_-8px_rgba(139,92,246,0.55)] ${isOverlay ? "bg-white text-black hover:bg-white/90" : "bg-foreground text-background hover:bg-foreground/90"}`}
+                  className={`w-full sm:w-auto justify-center text-xs sm:text-sm px-6 font-medium ${isOverlay ? "bg-white text-black hover:bg-white/90" : "bg-foreground text-background hover:bg-foreground/90"}`}
                   data-testid="button-create-account"
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
-                  Create Account
+                  Create account
                 </Button>
                 <Button
                   variant="outline"
                   size="lg"
                   onClick={() => setMode("import")}
-                  className={`w-full sm:w-auto justify-center text-xs sm:text-sm font-brand uppercase tracking-widest px-6 ${isOverlay ? "border-white/20 text-white/80 bg-transparent hover:bg-white/[0.06]" : "border-border/60"}`}
+                  className={`w-full sm:w-auto justify-center text-xs sm:text-sm px-6 font-medium ${isOverlay ? "border-white/20 text-white/80 bg-transparent hover:bg-white/[0.06]" : "border-border/60"}`}
                   data-testid="button-import-key"
                 >
                   <KeyRound className="w-4 h-4 mr-2" />
@@ -667,15 +664,15 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
               </div>
               {/* "Existing account" means a key from another Nostr app — a rule
                   newcomers can't know; one resumed a sign-up through it (2026-10-10). */}
-              <p className={`text-[11px] ${descCls}`} data-testid="text-existing-account-gloss">
+              <p className={`text-xs ${descCls}`} data-testid="text-existing-account-gloss">
                 "Use existing account" signs in with a key from another Nostr app.
               </p>
 
               {/* Footer line — merges the non-custodial reassurance and the
                   WTF curiosity link into a single calm row so neither steals
                   attention from the buttons. */}
-              <div className={`flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.25em] ${
-                isOverlay ? "text-white/70" : "text-muted-foreground/75"
+              <div className={`flex items-center gap-2 text-xs ${
+                isOverlay ? "text-white/75" : "text-muted-foreground"
               }`}>
                 <KeysInHandIcon className="w-3.5 h-3.5" />
                 <span>Yours alone</span>
@@ -686,21 +683,21 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
                   data-testid="link-wtf"
                 >
                   <WtfAlienIcon className="w-3 h-3" />
-                  <span>Help &amp; Guides</span>
+                  <span>Help &amp; guides</span>
                 </Link>
               </div>
             </div>
           </div>
 
-          <div className={`flex items-center gap-3 ${isOverlay ? "text-white/60" : "text-muted-foreground/60"}`}>
+          <div className={`flex items-center gap-3 ${isOverlay ? "text-white/75" : "text-muted-foreground"}`}>
             <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border"}`} />
-            <span className="text-[10px] font-mono uppercase tracking-[0.3em]">or sign in with</span>
+            <span className="text-[13px] font-medium">or sign in with</span>
             <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border"}`} />
           </div>
 
           {/* Compact chooser: every sign-in option, one tap each. Which app or
               extension to use is explained inside each flow's own screen (and in
-              Help & Guides) — not up front. Platform-recommended option leads. */}
+              Help & guides) — not up front. Platform-recommended option leads. */}
           <div
             className={`rounded-lg border overflow-hidden ${isOverlay ? "border-white/10 bg-white/[0.03]" : "border-border/50 bg-card/40"}`}
             data-testid="container-signin-options"
@@ -766,16 +763,16 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
                       <span className={`text-sm font-semibold ${titleCls}`}>{opt.title}</span>
                       {recommended === opt.key && !opt.disabled && (
                         <span
-                          className={`text-[10px] font-brand uppercase tracking-widest px-1.5 py-0.5 rounded whitespace-nowrap ${isOverlay ? "text-white/80 bg-white/[0.08]" : "text-foreground/80 bg-foreground/[0.08]"}`}
+                          className={`text-xs whitespace-nowrap font-medium ${isOverlay ? "text-white/85" : "text-brand"}`}
                           data-testid={`badge-${opt.key}-recommended`}
                         >
                           {recommendedLabel}
                         </span>
                       )}
                     </span>
-                    <span className={`block text-[11px] ${descCls}`}>{opt.caption}</span>
+                    <span className={`block text-xs ${descCls}`}>{opt.caption}</span>
                   </span>
-                  <ChevronRight className={`w-4 h-4 shrink-0 ${isOverlay ? "text-white/30" : "text-muted-foreground/40"}`} />
+                  <ChevronRight className={`w-4 h-4 shrink-0 ${isOverlay ? "text-white/60" : "text-muted-foreground"}`} />
                 </button>
               ))}
           </div>
@@ -787,7 +784,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
               this chooser is the choke point both /login and the landing
               cockpit render. */}
           <p
-            className={`text-center text-[10px] leading-relaxed ${isOverlay ? "text-white/45" : "text-muted-foreground/60"}`}
+            className={`text-center text-xs leading-relaxed ${isOverlay ? "text-white/70" : "text-muted-foreground"}`}
             data-testid="text-signin-legal-links"
           >
             By continuing you accept our{" "}
@@ -825,7 +822,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
                     setBunkerError("");
                   }}
                   placeholder="bunker://pubkey?relay=wss://..."
-                  className={`font-mono text-xs ${isOverlay ? "bg-black/30 border-white/15 text-white placeholder:text-white/25" : "bg-background/50"}`}
+                  className={`font-mono text-xs ${isOverlay ? "bg-black/30 border-white/40 text-white placeholder:text-white/25" : "bg-background/50"}`}
                   style={{ fontSize: 16 }}
                   autoCapitalize="off"
                   autoCorrect="off"
@@ -844,7 +841,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
               <Button
                 onClick={handleBunkerLogin}
                 disabled={isLoggingIn || !bunkerUri.trim()}
-                className={`w-full font-brand uppercase tracking-widest text-xs ${isOverlay ? "bg-white text-black" : "bg-foreground text-background"}`}
+                className={`w-full text-xs font-medium ${isOverlay ? "bg-white text-black" : "bg-foreground text-background"}`}
                 data-testid="button-bunker-connect"
               >
                 {isLoggingIn ? (
@@ -856,7 +853,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
               </Button>
 
               <div className={`rounded-md p-3 space-y-2 ${isOverlay ? "bg-white/[0.03] border border-white/10" : "bg-foreground/[0.03] border border-border/30"}`}>
-                <p className={`text-[11px] font-mono uppercase tracking-wider font-semibold ${descCls}`}>
+                <p className={`text-[12px] font-semibold ${descCls}`}>
                   How to get a bunker:// URI
                 </p>
                 <ul className={`text-[11px] space-y-1 list-disc list-inside ${descCls}`}>
@@ -874,7 +871,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
               setBunkerError("");
             }}
             variant="ghost"
-            className={`w-full font-brand uppercase tracking-widest text-xs ${isOverlay ? "text-white/70" : "text-muted-foreground"}`}
+            className={`w-full text-xs font-medium ${isOverlay ? "text-white/70" : "text-muted-foreground"}`}
             data-testid="button-back-to-options"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -900,7 +897,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
           <div className="flex items-center justify-center gap-2 pt-2">
             <div className={`h-px w-6 sm:w-10 ${isOverlay ? "bg-white/10" : "bg-border"}`} />
             <Icon className={`w-3 h-3 shrink-0 ${isOverlay ? "text-brand/70" : "text-brand/70"}`} />
-            <span className={`text-[11px] sm:text-xs font-mono uppercase tracking-[0.25em] sm:tracking-[0.3em] text-center ${isOverlay ? "text-white/65" : "text-muted-foreground/70"}`}>
+            <span className={`text-[12px] sm:text-xs sm:tracking-[0.3em] text-center font-medium ${isOverlay ? "text-white/65" : "text-muted-foreground/70"}`}>
               {text}
             </span>
             <div className={`h-px w-6 sm:w-10 ${isOverlay ? "bg-white/10" : "bg-border"}`} />

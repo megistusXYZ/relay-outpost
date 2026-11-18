@@ -68,21 +68,11 @@ function getHealthLabel(score: number): HealthLabel {
 
 export function getHealthColor(label: HealthLabel): string {
   switch (label) {
-    case "Thriving": return "text-emerald-600 dark:text-emerald-400";
-    case "Healthy": return "text-blue-600 dark:text-blue-400";
-    case "Growing": return "text-cyan-600 dark:text-cyan-400";
-    case "Quiet": return "text-amber-600 dark:text-amber-400";
-    case "Concerning": return "text-red-600 dark:text-red-400";
-  }
-}
-
-export function getHealthBg(label: HealthLabel): string {
-  switch (label) {
-    case "Thriving": return "bg-emerald-500/10 border-emerald-500/20";
-    case "Healthy": return "bg-blue-500/10 border-blue-500/20";
-    case "Growing": return "bg-cyan-500/10 border-cyan-500/20";
-    case "Quiet": return "bg-amber-500/10 border-amber-500/20";
-    case "Concerning": return "bg-red-500/10 border-red-500/20";
+    case "Thriving": return "text-emerald-700 dark:text-emerald-400";
+    case "Healthy": return "text-blue-700 dark:text-blue-400";
+    case "Growing": return "text-cyan-700 dark:text-cyan-400";
+    case "Quiet": return "text-amber-700 dark:text-amber-400";
+    case "Concerning": return "text-red-700 dark:text-red-400";
   }
 }
 

@@ -21,7 +21,7 @@ export function followerTrustWords(s: FollowerStanding): string {
   switch (s) {
     case "trusted": return "Trusted by your network";
     case "known": return "Known to your network";
-    case "new": return "New to your network";
+    case "new": return "Some ties to your network";
     case "outside": return "Not known to your network";
     case "concerns": return "Your network has concerns";
     default: return "";

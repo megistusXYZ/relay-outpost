@@ -8,7 +8,7 @@ import { usePetnamesVersion } from "@/lib/petnames";
  * your icon tile, else their real picture, else initials (lib/person-look.ts).
  * Re-renders when a custom photo finishes loading or a name changes.
  */
-export function PersonAvatar({ pubkey, profile, name, picture, className = "", fallbackClassName = "bg-brand/10 text-brand font-bold text-xs", alt, testId }: {
+export function PersonAvatar({ pubkey, profile, name, picture, className = "", fallbackClassName = "bg-foreground/[0.08] text-foreground/80 font-semibold text-xs", alt, testId }: {
   pubkey: string;
   profile?: Event;
   /** For surfaces that hold the profile's fields rather than its event. */

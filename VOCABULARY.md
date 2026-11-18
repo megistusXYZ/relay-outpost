@@ -21,6 +21,7 @@ eight names for one secret and a mission-control metaphor on every screen.)
 | Posting | **post**, **New post** | note, broadcast, transmit, compose, create (as the verb for a post) |
 | Refresh | **Pull to refresh** | signal |
 | Strangers and safety | **Trust & safety** (sentence case): **Careful · Balanced · See everything** | Shield Matrix, Web of Trust (except the essay that explains it), WoT, trust score, Open/Strict |
+| How someone sits in your network | on a card: **Trusted by your network · Known to your network · Some ties to your network · Few ties to your network · Your network has concerns**; in legends, menus and filters: **Trusted · Known · Some ties · Few ties · Concerns** | Highly trusted, Neutral, Low trust, New (as a tier: "New" means unread or newcomer), Flagged (as a tier), a percentage on a person |
 | Pictures from strangers | **blurred until you tap** | NSFW |
 | Money | **zaps** = optional **tips in bitcoin**; **wallet** | sats as the only word |
 | The servers | **relay** (first mention in Help: "the servers that store and pass along posts") | server (for a relay), node |
@@ -34,6 +35,7 @@ eight names for one secret and a mission-control metaphor on every screen.)
 
 - The wordmark **RELAY OUTPOST** and the tagline **Beyond the Algorithm** (the default page title). Brand, not a control.
 - The site title "One outpost for everything you say."
+- **Outpost** by name on the visitor landing and in the Relays home heading ("Give your Outpost a home"): the product speaking, not a name for a thing (owner, 2026-11-16, kept 2026-11-18).
 - **Nostr** by name, once per screen at most, where the open network has to be named.
 - **Web of Trust** in the essay that explains it, and the nostr.com / brainstorm links in Help.
 

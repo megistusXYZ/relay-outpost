@@ -200,7 +200,7 @@ function Verdict({ result, onOpen, onRetry }: { result: Result; onOpen: () => vo
       <div className="flex items-center gap-3">
         <Avatar className="w-12 h-12 rounded-xl shrink-0 border border-black/[0.06] dark:border-white/[0.08]">
           {nip11?.icon && <AvatarImage src={nip11.icon} alt="" className="object-cover" />}
-          <AvatarFallback className="rounded-xl bg-brand/10 text-brand font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+          <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 rounded-xl font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <div className="min-w-0">
           <h2 className="text-[17px] font-semibold leading-tight truncate">{name}</h2>

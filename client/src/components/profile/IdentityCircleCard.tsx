@@ -59,7 +59,7 @@ function CirclePerson({ pubkey, profile }: { pubkey: string; profile: Event }) {
       >
         <Avatar className="w-12 h-12 border border-border/40">
           {avatar && <AvatarImage src={avatar} alt={name} />}
-          <AvatarFallback className="text-[11px] bg-brand/10 text-brand font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+          <AvatarFallback className="text-[11px] bg-foreground/[0.08] text-foreground/80 font-semibold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
       </button>
     </AuthorHoverCard>

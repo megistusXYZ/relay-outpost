@@ -16,7 +16,7 @@ describe("what the relay said, in order", () => {
       { relay: R, at: 264, dir: "in", msg: ["EOSE", "q1"] },
     ])).toEqual([
       ["connected", "Connected in 120 ms", "plain"],
-      ["asked", "Asked for Notes and Reactions · up to 50", "plain"],
+      ["asked", "Asked for Posts and Reactions · up to 50", "plain"],
       ["events", "2 events · first after 84 ms", "plain"],
       ["end", "End of stored events · 2 in 143 ms", "good"],
     ]);
@@ -68,7 +68,7 @@ describe("what the relay said, in order", () => {
       { relay: R, at: 100, dir: "out", msg: ["COUNT", "c2", { "#t": ["bitcoin"] }] },
       { relay: R, at: 150, dir: "in", msg: ["COUNT", "c2", { count: 3 }] },
     ])).toEqual([
-      ["asked", "Asked to count Notes", "plain"],
+      ["asked", "Asked to count Posts", "plain"],
       ["count", "About 48,210 · in 90 ms", "good"],
       ["asked", "Asked to count #bitcoin", "plain"],
       ["count", "Exactly 3 · in 50 ms", "good"],
@@ -79,8 +79,8 @@ describe("what the relay said, in order", () => {
     const asked = (f: object) => transcript([{ relay: R, at: 1_000_000, dir: "out", msg: ["REQ", "q", f] }])[0].text;
     expect(asked({ authors: ["a".repeat(64), "b".repeat(64)], since: 1000 - 3 * 3600 })).toBe("Asked for anything · from 2 people · since 3 h ago");
     expect(asked({ ids: ["x"] })).toBe("Asked for 1 event by id");
-    expect(asked({ kinds: [1], since: 1000 - 86400 })).toBe("Asked for Notes · since 24 h ago");
-    expect(asked({ kinds: [1], since: 1000 - 3 * 86400 })).toBe("Asked for Notes · since 3 d ago");
+    expect(asked({ kinds: [1], since: 1000 - 86400 })).toBe("Asked for Posts · since 24 h ago");
+    expect(asked({ kinds: [1], since: 1000 - 3 * 86400 })).toBe("Asked for Posts · since 3 d ago");
     expect(asked({ kinds: [30023], search: "harbour", "#p": ["c".repeat(64)] })).toBe("Asked for Articles · matching “harbour” · mentioning 1 person");
   });
 

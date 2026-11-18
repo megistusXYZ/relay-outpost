@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { PageToolbar } from "@/components/PageToolbar";
 import { MissionBriefing, WALLET_BRIEFING } from "@/components/MissionBriefing";
 import { isToday, isYesterday, isThisWeek, isThisMonth, format as formatDate } from "date-fns";
@@ -50,7 +51,6 @@ import {
   AlertCircle,
   Radio,
   ChevronDown,
-  ChevronUp,
   Share2,
   Zap,
   TrendingUp,
@@ -63,7 +63,6 @@ import {
   MessageCircle,
   X,
   ExternalLink,
-  ArrowLeftRight,
   Filter,
   ScanLine,
   Camera,
@@ -76,7 +75,8 @@ import {
   CheckCircle2,
   XCircle,
   AtSign,
-  Settings2 } from "lucide-react";
+  Settings2,
+} from "lucide-react";
 import {
   type ZapPreset, DEFAULT_ZAP_PRESETS, getZapPresets, saveZapPresets,
   getDefaultZapAmount, saveDefaultZapAmount, EMOJI_OPTIONS } from "@/lib/zap-presets";
@@ -183,7 +183,7 @@ function QRScannerDialog({ open, onClose, onScan }: { open: boolean; onClose: ()
         <div className="p-4 space-y-3" aria-describedby="qr-scanner-desc">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <ScanLine className="w-4 h-4 text-brand" />
+              <ScanLine className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-semibold">Scan QR Code</span>
             </div>
           </div>
@@ -208,7 +208,7 @@ function QRScannerDialog({ open, onClose, onScan }: { open: boolean; onClose: ()
             </div>
           )}
 
-          <p className="text-[11px] text-center text-muted-foreground/60">
+          <p className="text-[12px] text-center text-muted-foreground">
             Point your camera at a Lightning invoice, LNURL, or lightning address QR code
           </p>
         </div>
@@ -217,70 +217,7 @@ function QRScannerDialog({ open, onClose, onScan }: { open: boolean; onClose: ()
   );
 }
 
-let payloadIdCounter = 0;
 
-function PayloadReceiveIcon({ className }: { className?: string }) {
-  const [id] = useState(() => `recv-${++payloadIdCounter}`);
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={`payload-tx-icon ${className || ""}`} xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id={`${id}-g`} x1="12" y1="4" x2="12" y2="20" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="currentColor" stopOpacity="0.05" />
-          <stop offset="100%" stopColor="currentColor" stopOpacity="0.5" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M8 13 C8 11.5, 9 10.5, 12 10.5 C15 10.5, 16 11.5, 16 13 L16 17 C16 18.5, 15 19.5, 12 19.5 C9 19.5, 8 18.5, 8 17 Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill={`url(#${id}-g)`}
-      />
-      <rect x="9.5" y="13.5" width="5" height="4" rx="1" fill="currentColor" opacity="0.2" />
-      <path d="M12 4 L12 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" strokeDasharray="2 2">
-        <animate attributeName="stroke-dashoffset" values="0;-4" dur="1s" repeatCount="indefinite" />
-      </path>
-      <path d="M10 8 L12 10.5 L14 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
-      <circle cx="12" cy="5.5" r="1.3" fill="currentColor" opacity="0.7">
-        <animate attributeName="cy" values="4;9;4" dur="2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" />
-        <animate attributeName="opacity" values="0.8;0.15;0.8" dur="2s" repeatCount="indefinite" />
-      </circle>
-    </svg>
-  );
-}
-
-function PayloadDeployIcon({ className }: { className?: string }) {
-  const [id] = useState(() => `send-${++payloadIdCounter}`);
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={`payload-tx-icon ${className || ""}`} xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id={`${id}-g`} x1="12" y1="20" x2="12" y2="4" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="currentColor" stopOpacity="0.05" />
-          <stop offset="100%" stopColor="currentColor" stopOpacity="0.25" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M8 13 C8 11.5, 9 10.5, 12 10.5 C15 10.5, 16 11.5, 16 13 L16 17 C16 18.5, 15 19.5, 12 19.5 C9 19.5, 8 18.5, 8 17 Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill={`url(#${id}-g)`}
-        strokeDasharray="3 2"
-        opacity="0.6"
-      />
-      <path d="M12 10.5 L12 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" strokeDasharray="2 2">
-        <animate attributeName="stroke-dashoffset" values="0;4" dur="1s" repeatCount="indefinite" />
-      </path>
-      <path d="M10 6.5 L12 4 L14 6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
-      <circle cx="12" cy="8" r="1.3" fill="currentColor" opacity="0.7">
-        <animate attributeName="cy" values="9;3;9" dur="2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" />
-        <animate attributeName="opacity" values="0.8;0.15;0.8" dur="2s" repeatCount="indefinite" />
-      </circle>
-    </svg>
-  );
-}
 
 type ZapPrivacy = "public" | "anonymous";
 
@@ -482,11 +419,11 @@ function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | nul
             {/* Breakdown only when the total has two homes — one number is
                 calmer when it doesn't. */}
             {(exact?.sats ?? 0) > 0 && stashSats > 0 ? (
-              <p className="text-[11px] text-muted-foreground" data-testid="text-npubcash-stash">
+              <p className="text-[12px] text-muted-foreground" data-testid="text-npubcash-stash">
                 {fmtSats(exact!.sats)} waiting at npub.cash · {fmtSats(stashSats)} already collected on this device.
               </p>
             ) : stashSats > 0 ? (
-              <p className="text-[11px] text-muted-foreground" data-testid="text-npubcash-stash">
+              <p className="text-[12px] text-muted-foreground" data-testid="text-npubcash-stash">
                 Already collected on this device — send them on to finish.
               </p>
             ) : null}
@@ -549,7 +486,7 @@ function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | nul
                 Cancel
               </Button>
             </div>
-            <p className="text-[11px] text-muted-foreground/80" data-testid="text-sweep-no-wallet-hint">
+            <p className="text-[12px] text-muted-foreground" data-testid="text-sweep-no-wallet-hint">
               No Lightning wallet yet?{" "}
               <a href="https://primal.net/downloads" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">Primal</a>
               {" "}or{" "}
@@ -617,7 +554,7 @@ function NpubCashClaimCard({ myPubkey, lud16, signer }: { myPubkey: string | nul
             device (NUT-20 is not a nostr event), which extension/remote
             signers rightly never hand over. */}
         {!sweepKey && (
-          <p className="text-[11px] text-muted-foreground/70">
+          <p className="text-[12px] text-muted-foreground">
             Collecting inside the app needs this account's key on this device. Extension and remote-signer accounts collect at npub.cash instead.
           </p>
         )}
@@ -734,7 +671,7 @@ function MakeZappableCard({ myPubkey, signer, profileEvent, profileLoaded }: {
           size="sm"
           onClick={enable}
           disabled={publishing}
-          className="bg-amber-500/90 hover:bg-amber-500 text-black"
+          className="rounded-full bg-foreground text-background hover:bg-foreground/90"
           data-testid="button-make-zappable"
         >
           {publishing ? "Publishing…" : "Use npub.cash address"}
@@ -892,7 +829,7 @@ function NpubCashUsernameCard({ myPubkey, signer, profileEvent, currentLud16 }: 
             ) : (
               <div className="space-y-1.5">
                 <p className="text-xs text-muted-foreground">Set it as the lightning address on your profile so zaps use your name.</p>
-                <Button size="sm" onClick={() => useAsAddress(info!.username!)} disabled={busy} className="bg-amber-500/90 hover:bg-amber-500 text-black" data-testid="button-npubcash-use-address">
+                <Button size="sm" onClick={() => useAsAddress(info!.username!)} disabled={busy} className="rounded-full bg-foreground text-background hover:bg-foreground/90" data-testid="button-npubcash-use-address">
                   {busy ? "Publishing…" : "Use as my lightning address"}
                 </Button>
               </div>
@@ -923,7 +860,7 @@ function NpubCashUsernameCard({ myPubkey, signer, profileEvent, currentLud16 }: 
                 <p className="text-xs text-success dark:text-emerald-400 flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 shrink-0" /> <span className="font-mono break-all">{name}@npub.cash</span> is available{check.priceSats ? ` · ${fmtSats(check.priceSats)}` : ""}
                 </p>
-                <Button size="sm" asChild className="bg-amber-500/90 hover:bg-amber-500 text-black">
+                <Button size="sm" asChild className="rounded-full bg-foreground text-background hover:bg-foreground/90">
                   <a href="https://npub.cash" target="_blank" rel="noopener noreferrer" data-testid="button-npubcash-claim-out">
                     Claim on npub.cash <ExternalLink className="w-3.5 h-3.5 ml-1" />
                   </a>
@@ -940,7 +877,7 @@ function NpubCashUsernameCard({ myPubkey, signer, profileEvent, currentLud16 }: 
               <p className="text-xs text-muted-foreground">Couldn't reach npub.cash — try again.</p>
             ) : null}
 
-            <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
+            <p className="text-[12px] text-muted-foreground leading-relaxed">
               You complete the one-time purchase on npub.cash (an independent service), then come back and tap Refresh to set it as your address.
             </p>
           </div>
@@ -954,7 +891,7 @@ type TransactionCategory = "zap" | "direct" | "self" | "lightning";
 
 const CATEGORY_CONFIG: Record<TransactionCategory, { label: string; color: string; bgClass: string }> = {
   zap: { label: "Zap", color: "text-zap dark:text-amber-400", bgClass: "bg-amber-500/10" },
-  direct: { label: "Direct", color: "text-brand", bgClass: "bg-brand/10" },
+  direct: { label: "Direct", color: "text-foreground/80", bgClass: "bg-foreground/[0.06]" },
   self: { label: "Self", color: "text-blue-600 dark:text-blue-400", bgClass: "bg-blue-500/10" },
   lightning: { label: "Invoice", color: "text-muted-foreground/70", bgClass: "bg-foreground/[0.04]" } };
 
@@ -1323,7 +1260,7 @@ function GalaxyStars() {
             opacity: star.opacity,
             animationDelay: star.delay,
             animationDuration: star.duration,
-            boxShadow: star.glow ? `0 0 ${star.size * 3}px ${star.size}px rgba(167,139,250,0.3)` : undefined }}
+            boxShadow: star.glow ? `0 0 ${star.size * 3}px ${star.size}px rgba(255,255,255,0.3)` : undefined }}
         />
       ))}
     </div>
@@ -1383,7 +1320,7 @@ function TransactionRow({ tx, index, enrichment, txNumber, myPubkey, balanceHidd
               {isIncoming ? "+" : "-"}{amountSats.toLocaleString()}
             </span>
           </div>
-          <span className={`text-[10px] text-muted-foreground/40 font-mono uppercase ml-[1.125rem] transition-all duration-200 ${balanceHidden ? "blur-[6px] select-none" : ""}`}>sats</span>
+          <span className={`text-[13px] text-muted-foreground ml-[1.125rem] transition-all duration-200 font-medium ${balanceHidden ? "blur-[6px] select-none" : ""}`}>sats</span>
         </div>
 
         <div className="flex-1 min-w-0 space-y-1">
@@ -1393,7 +1330,7 @@ function TransactionRow({ tx, index, enrichment, txNumber, myPubkey, balanceHidd
               <ProfileLink
                 pubkey={counterpartyPubkey}
                 className="text-sm font-medium text-foreground/90 dark:text-white/85"
-                fallbackClassName="text-sm font-mono text-primary dark:text-brand"
+                fallbackClassName="text-sm font-mono text-foreground/80"
                 avatarSize="sm"
               />
             ) : (
@@ -1402,7 +1339,7 @@ function TransactionRow({ tx, index, enrichment, txNumber, myPubkey, balanceHidd
               </span>
             )}
             </span>
-            <span className={`text-[9px] font-brand uppercase tracking-wider px-1.5 py-0.5 rounded ${catConfig.bgClass} ${catConfig.color}`} data-testid={`badge-tx-category-${index}`}>
+            <span className={`text-[12px] px-1.5 py-0.5 rounded font-medium ${catConfig.bgClass} ${catConfig.color}`} data-testid={`badge-tx-category-${index}`}>
               {catConfig.label}
             </span>
           </div>
@@ -1414,8 +1351,8 @@ function TransactionRow({ tx, index, enrichment, txNumber, myPubkey, balanceHidd
           )}
 
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-brand/40 font-mono tabular-nums">#{txNumber}</span>
-            <p className="text-[11px] text-muted-foreground/50 font-mono">
+            <span className="text-[12px] text-muted-foreground tabular-nums">#{txNumber}</span>
+            <p className="text-[12px] text-muted-foreground font-mono">
               {formatTxTime(ts)}
             </p>
           </div>
@@ -1508,13 +1445,13 @@ function TransactionDateGroup({
         data-testid={`button-toggle-tx-date-${bucket.key}`}
       >
         <Icon className="w-2.5 h-2.5 text-muted-foreground/50 shrink-0 transition-transform" />
-        <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-foreground/55 dark:text-muted-foreground/60 flex-1 text-left">
+        <span className="text-[13px] text-foreground/55 dark:text-muted-foreground/60 flex-1 text-left font-medium">
           {bucket.label}
         </span>
-        <span className={`text-[9px] text-muted-foreground/40 tabular-nums mr-1.5 transition-all duration-200 ${balanceHidden ? "blur-[6px] select-none" : ""}`}>
+        <span className={`text-[11px] text-muted-foreground tabular-nums mr-1.5 transition-all duration-200 ${balanceHidden ? "blur-[6px] select-none" : ""}`}>
           {bucket.totalSats.toLocaleString()} sats
         </span>
-        <span className="text-[9px] text-muted-foreground/45 dark:text-muted-foreground/40 tabular-nums" data-testid={`text-tx-date-count-${bucket.key}`}>
+        <span className="text-[12px] text-muted-foreground tabular-nums" data-testid={`text-tx-date-count-${bucket.key}`}>
           {bucket.transactions.length}
         </span>
       </button>
@@ -1538,7 +1475,7 @@ function TransactionDateGroup({
           {hasMore && (
             <button
               type="button"
-              className="w-full px-3 py-2 text-[10px] text-brand/60 hover:text-brand/80 hover:bg-muted/10 transition-colors cursor-pointer font-medium rounded-md"
+              className="w-full px-3 py-2 text-[12px] font-medium text-brand hover:text-brand-strong hover:bg-muted/10 transition-colors cursor-pointer font-medium rounded-md"
               onClick={() => setVisibleCount(c => c + ITEMS_PER_TX_PAGE)}
               data-testid={`button-show-more-tx-${bucket.key}`}
             >
@@ -1631,7 +1568,7 @@ function TransactionDetailModal({ tx, enrichment, myPubkey, balanceHidden, onClo
 
   return (
     <Dialog open onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-md p-0 gap-0 bg-background border-border dark:border-brand/10 overflow-hidden max-h-[90vh] overflow-y-auto" data-testid="modal-transaction-detail">
+      <DialogContent className="max-w-md p-0 gap-0 bg-background border-border overflow-hidden max-h-[90vh] overflow-y-auto" data-testid="modal-transaction-detail">
         <VisuallyHidden><DialogTitle>{headerTitle}</DialogTitle></VisuallyHidden>
 
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/10">
@@ -1644,7 +1581,7 @@ function TransactionDetailModal({ tx, enrichment, myPubkey, balanceHidden, onClo
               <ArrowLeft className="w-4 h-4 text-foreground/70" />
             </button>
             <h2 className="text-sm font-semibold text-foreground flex-1" data-testid="text-tx-detail-title">{headerTitle}</h2>
-            <span className={`text-[9px] font-brand uppercase tracking-wider px-1.5 py-0.5 rounded ${catConfig.bgClass} ${catConfig.color}`}>
+            <span className={`text-[12px] px-1.5 py-0.5 rounded font-medium ${catConfig.bgClass} ${catConfig.color}`}>
               {catConfig.label}
             </span>
           </div>
@@ -1670,47 +1607,47 @@ function TransactionDetailModal({ tx, enrichment, myPubkey, balanceHidden, onClo
 
         <div className="px-4 pb-4 space-y-4">
           <div>
-            <p className="text-[10px] text-muted-foreground/40 font-brand uppercase tracking-wider mb-2">
-              {isIncoming ? "Received From" : "Sent To"}
+            <p className="text-[13px] text-muted-foreground mb-2 font-medium">
+              {isIncoming ? "Received from" : "Sent to"}
             </p>
             {counterpartyPubkey ? (
               <div className={`flex items-center gap-3 p-3 rounded-lg glass-card border transition-all duration-200 ${blur}`} data-testid="container-tx-detail-profile">
                 <ProfileLink
                   pubkey={counterpartyPubkey}
                   className="text-sm font-medium text-foreground/90 dark:text-white/85"
-                  fallbackClassName="text-sm font-mono text-primary dark:text-brand"
+                  fallbackClassName="text-sm font-mono text-foreground/80"
                   avatarSize="md"
                 />
               </div>
             ) : (
               <div className="flex items-center gap-3 p-3 rounded-lg glass-card border" data-testid="container-tx-detail-anon">
                 <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Orbit className="w-4.5 h-4.5 text-brand/60" />
+                  <Orbit className="w-4.5 h-4.5 text-muted-foreground" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground/70">Lightning Payment</p>
-                  <p className="text-[11px] text-muted-foreground/40">Identity not available</p>
+                  <p className="text-[12px] text-muted-foreground">Identity not available</p>
                 </div>
               </div>
             )}
             {resolvedLnAddress && (
               <div className={`flex items-center gap-2 mt-2 px-1 transition-all duration-200 ${blur}`}>
                 <Zap className="w-3 h-3 text-amber-500/50 shrink-0" />
-                <span className="text-[11px] text-muted-foreground/60 font-mono truncate">{resolvedLnAddress}</span>
+                <span className="text-[12px] text-muted-foreground font-mono truncate">{resolvedLnAddress}</span>
               </div>
             )}
           </div>
 
           {enrichment?.message && (
             <div className={`p-3 rounded-lg bg-primary/5 border border-primary/10 transition-all duration-200 ${blur}`}>
-              <p className="text-[10px] text-muted-foreground/40 font-brand uppercase tracking-wider mb-1.5">Message</p>
+              <p className="text-[13px] text-muted-foreground mb-1.5 font-medium">Message</p>
               <p className="text-sm text-foreground/80 italic leading-relaxed" data-testid="text-tx-detail-message">"{enrichment.message}"</p>
             </div>
           )}
 
           {!enrichment?.message && cleanDesc && (
             <div className={`p-3 rounded-lg bg-foreground/[0.02] border border-border/10 transition-all duration-200 ${blur}`}>
-              <p className="text-[10px] text-muted-foreground/40 font-brand uppercase tracking-wider mb-1.5">Payment Note</p>
+              <p className="text-[13px] text-muted-foreground mb-1.5 font-medium">Payment note</p>
               <p className="text-sm text-foreground/70 italic leading-relaxed" data-testid="text-tx-detail-note">"{cleanDesc}"</p>
             </div>
           )}
@@ -1722,8 +1659,8 @@ function TransactionDetailModal({ tx, enrichment, myPubkey, balanceHidden, onClo
               data-testid="link-tx-detail-post"
             >
               <div className="flex items-center justify-between mb-1.5">
-                <p className="text-[10px] text-muted-foreground/40 font-brand uppercase tracking-wider">Linked Post</p>
-                <ExternalLink className="w-3 h-3 text-muted-foreground/30 group-hover/linked:text-brand/60 transition-colors" />
+                <p className="text-[13px] text-muted-foreground font-medium">Linked post</p>
+                <ExternalLink className="w-3 h-3 text-muted-foreground/30 group-hover/linked:text-foreground/60 transition-colors" />
               </div>
               <p className="text-[12px] text-foreground/60 group-hover/linked:text-foreground/70 leading-relaxed line-clamp-3 transition-colors">
                 {eventContent.length > 300 ? eventContent.slice(0, 300) + "…" : eventContent}
@@ -1854,12 +1791,12 @@ function MetricCard({ label, value, icon: Icon, iconColor, suffix = "sats", valu
       <CardContent className="p-3 sm:p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="space-y-1 min-w-0">
-            <span className="text-[10px] font-brand uppercase tracking-wider text-muted-foreground/60 block">{label}</span>
+            <span className="text-[13px] text-muted-foreground/60 block font-medium">{label}</span>
             <div className="flex items-baseline gap-1 flex-wrap">
               <span className={`text-base sm:text-lg font-bold tabular-nums transition-all duration-200 ${valueColor || "text-foreground/90 dark:text-white/85"} ${blurred ? "blur-[6px] select-none" : ""}`} data-testid={`text-metric-${label.toLowerCase().replace(/\s+/g, "-")}`}>
                 {value}
               </span>
-              <span className={`text-[10px] text-muted-foreground/40 font-brand transition-all duration-200 ${blurred ? "blur-[6px] select-none" : ""}`}>{suffix}</span>
+              <span className={`text-[12px] text-muted-foreground transition-all duration-200 ${blurred ? "blur-[6px] select-none" : ""}`}>{suffix}</span>
             </div>
           </div>
           <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${iconColor}`}>
@@ -1878,7 +1815,7 @@ function TransactionMetricsDashboard({ transactions, balanceHidden }: { transact
 
   return (
     <div className="space-y-3 mb-4" data-testid="container-transaction-metrics">
-      <p className="text-[10px] font-brand uppercase tracking-wider text-muted-foreground/50">Recent Activity Summary</p>
+      <p className="text-[13px] text-muted-foreground font-medium">Recent activity summary</p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
         <MetricCard
           label="Sent"
@@ -1908,7 +1845,7 @@ function TransactionMetricsDashboard({ transactions, balanceHidden }: { transact
           label="Transactions"
           value={metrics.txCount.toLocaleString()}
           icon={Hash}
-          iconColor="bg-primary/10 text-primary dark:text-brand"
+          iconColor="text-foreground/75"
           suffix=""
           blurred={balanceHidden}
         />
@@ -1945,7 +1882,7 @@ function AmountSelector({ value, customValue, onSelect, onCustomChange, label }:
   return (
     <div className="space-y-2">
       {label && (
-        <label className="text-[11px] font-brand uppercase tracking-wider text-muted-foreground/70 block">{label}</label>
+        <label className="text-[12px] text-muted-foreground/70 block font-medium">{label}</label>
       )}
       <div className="flex flex-wrap gap-1.5">
         {AMOUNT_PRESETS.map(preset => (
@@ -1954,7 +1891,7 @@ function AmountSelector({ value, customValue, onSelect, onCustomChange, label }:
             onClick={() => { onSelect(preset); onCustomChange(""); }}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold tabular-nums transition-all ${
               value === preset
-                ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                ? "bg-foreground text-background"
                 : "bg-foreground/[0.04] dark:bg-white/[0.04] text-foreground/70 dark:text-white/60 hover:bg-foreground/[0.08] dark:hover:bg-white/[0.08]"
             }`}
             data-testid={`button-amount-${preset}`}
@@ -1967,7 +1904,7 @@ function AmountSelector({ value, customValue, onSelect, onCustomChange, label }:
           onClick={() => onSelect(-1)}
           className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
             isCustom
-              ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+              ? "bg-foreground text-background"
               : "bg-foreground/[0.04] dark:bg-white/[0.04] text-foreground/70 dark:text-white/60 hover:bg-foreground/[0.08] dark:hover:bg-white/[0.08]"
           }`}
           data-testid="button-amount-custom"
@@ -2067,14 +2004,14 @@ function ZapPresetsEditor() {
         </p>
         <button
           onClick={resetToDefaults}
-          className="text-[10px] text-muted-foreground/40 hover:text-muted-foreground/70 flex items-center gap-1 transition-colors"
+          className="text-[12px] text-muted-foreground hover:text-muted-foreground/70 flex items-center gap-1 transition-colors"
           data-testid="button-reset-zap-presets"
         >
           <RotateCcw className="w-3 h-3" />
           Reset
         </button>
       </div>
-      <p className="text-[11px] text-foreground/45 dark:text-muted-foreground/50">
+      <p className="text-[12px] text-muted-foreground">
         Tap to set as default. Long-press or use the edit icon to customize.
       </p>
 
@@ -2086,23 +2023,23 @@ function ZapPresetsEditor() {
             tabIndex={0}
             onClick={() => setDefault(idx)}
             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDefault(idx); } }}
-            className={`relative rounded-lg px-1.5 py-2 sm:py-2.5 text-center transition-all cursor-pointer border group ${ defaultAmount === preset.amount ? "border-amber-500/40 bg-amber-500/10 dark:bg-amber-500/15 shadow-[0_0_8px_rgba(245,158,11,0.08)]" : "border-border dark:border-brand/10 bg-white/[0.02] hover:border-brand/25 hover:bg-brand/5" }`}
+            className={`relative rounded-lg px-1.5 py-2 sm:py-2.5 text-center transition-all cursor-pointer border group ${ defaultAmount === preset.amount ? "border-foreground bg-foreground text-background" : "border-border/60 bg-transparent hover:border-foreground/30 hover:bg-foreground/[0.04]" }`}
             data-testid={`button-zap-preset-${idx}`}
           >
             <button
               onClick={(e) => { e.stopPropagation(); startEdit(idx); }}
-              className="absolute top-1 right-1 p-0.5 rounded reveal-on-hover touch-target text-muted-foreground/30 hover:text-muted-foreground/60"
+              className="absolute top-1 right-1 p-0.5 rounded reveal-on-hover touch-target text-muted-foreground hover:text-foreground"
               aria-label={`Edit preset ${idx + 1}`}
               data-testid={`button-edit-preset-${idx}`}
             >
               <Pencil className="w-2.5 h-2.5" />
             </button>
             <span className="text-base sm:text-lg leading-none">{preset.emoji}</span>
-            <p className={`text-[10px] sm:text-[11px] font-medium mt-0.5 leading-tight truncate ${
-              defaultAmount === preset.amount ? "text-zap dark:text-amber-300" : "text-foreground/60"
+            <p className={`text-[12px] font-medium mt-0.5 leading-tight truncate ${
+              defaultAmount === preset.amount ? "text-background" : "text-foreground/75"
             }`}>{preset.label}</p>
-            <p className={`text-[9px] sm:text-[10px] mt-0.5 leading-tight font-mono ${
-              defaultAmount === preset.amount ? "text-zap dark:text-amber-400/60" : "text-muted-foreground/40"
+            <p className={`text-[11px] mt-0.5 leading-tight tabular-nums ${
+              defaultAmount === preset.amount ? "text-background/70" : "text-muted-foreground"
             }`}>{formatAmount(preset.amount)} sats</p>
             {defaultAmount === preset.amount && (
               <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-500 flex items-center justify-center">
@@ -2116,7 +2053,7 @@ function ZapPresetsEditor() {
       {editingIdx !== null && (
         <div className="glass-card rounded-lg border p-3 space-y-2.5" data-testid="zap-preset-editor">
           <div className="flex items-center justify-between">
-            <p className="text-[11px] font-medium text-foreground/70">Edit Preset {editingIdx + 1}</p>
+            <p className="text-[11px] font-medium text-foreground/70">Edit preset {editingIdx + 1}</p>
             <button onClick={cancelEdit} className="text-muted-foreground/40 hover:text-muted-foreground/60">
               <X className="w-3.5 h-3.5" />
             </button>
@@ -2125,7 +2062,7 @@ function ZapPresetsEditor() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="w-10 h-10 rounded-lg border border-border dark:border-brand/10 bg-brand/5 flex items-center justify-center text-lg hover:bg-brand/10 transition-colors shrink-0"
+              className="w-10 h-10 rounded-lg border border-border/60 bg-transparent flex items-center justify-center text-lg hover:bg-foreground/[0.06] transition-colors shrink-0"
               data-testid="button-emoji-picker-toggle"
             >
               {editEmoji}
@@ -2135,7 +2072,7 @@ function ZapPresetsEditor() {
               onChange={(e) => setEditLabel(e.target.value)}
               placeholder="Label"
               maxLength={12}
-              className="text-base bg-white/[0.03] border-border dark:border-brand/15 focus-visible:border-brand h-10"
+              className="text-base bg-white/[0.03] border-border focus-visible:border-foreground/40 h-10"
               data-testid="input-preset-label"
             />
             <div className="relative">
@@ -2146,10 +2083,10 @@ function ZapPresetsEditor() {
                 placeholder="Sats"
                 min={1}
                 inputMode="numeric"
-                className="text-base bg-white/[0.03] border-border dark:border-brand/15 focus-visible:border-brand h-10 w-24 sm:w-28 pr-8"
+                className="text-base bg-white/[0.03] border-border focus-visible:border-foreground/40 h-10 w-24 sm:w-28 pr-8"
                 data-testid="input-preset-amount"
               />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground/40 pointer-events-none">sat</span>
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[12px] text-muted-foreground pointer-events-none">sat</span>
             </div>
           </div>
 
@@ -2173,7 +2110,7 @@ function ZapPresetsEditor() {
             <Button
               onClick={saveEdit}
               size="sm"
-              className="flex-1 text-xs font-brand uppercase tracking-widest"
+              className="flex-1 text-xs font-medium"
               data-testid="button-save-preset"
             >
               <Check className="w-3 h-3 mr-1.5" />
@@ -2183,7 +2120,7 @@ function ZapPresetsEditor() {
               onClick={cancelEdit}
               size="sm"
               variant="outline"
-              className="text-xs font-brand uppercase tracking-widest border-border dark:border-brand/15"
+              className="text-xs border-border font-medium"
               data-testid="button-cancel-preset"
             >
               Cancel
@@ -2192,7 +2129,7 @@ function ZapPresetsEditor() {
         </div>
       )}
 
-      <p className="text-[10px] text-muted-foreground/40">
+      <p className="text-[12px] text-muted-foreground">
         {defaultAmount.toLocaleString()} sats is your default zap amount
       </p>
     </div>
@@ -2213,7 +2150,7 @@ function BtcTrackerToggle() {
     <div className="flex items-center justify-between gap-3">
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium text-foreground/75">BTC Tracker</p>
-        <p className="text-[10px] text-muted-foreground/50 mt-0.5 leading-relaxed">Show the Bitcoin price and wallet badge in the header bar.</p>
+        <p className="text-[12px] text-muted-foreground mt-0.5 leading-relaxed">Show the Bitcoin price and wallet badge in the header bar.</p>
       </div>
       <button
         role="switch"
@@ -2641,7 +2578,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
             <CardContent className="p-4 sm:p-5 space-y-4">
               <div className="flex items-center gap-2 mb-1">
                 <BtcZapIcon className="w-4 h-4 text-amber-800/80 dark:text-amber-400/80" />
-                <span className="text-sm font-brand tracking-wider uppercase">Connect via NWC</span>
+                <span className="text-sm font-medium">Connect via NWC</span>
               </div>
 
               <p className="text-xs text-muted-foreground leading-relaxed">
@@ -2651,7 +2588,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
 
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <div className="text-[11px] font-brand uppercase tracking-wider text-muted-foreground/70">Setup Steps</div>
+                  <div className="text-[12px] text-muted-foreground/70 font-medium">Setup steps</div>
                   <div className="space-y-1">
                     {[
                       "Open your Lightning wallet app or website",
@@ -2686,14 +2623,14 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                 )}
                 <Button onClick={handleConnect} className="w-full" data-testid="button-connect-wallet">
                   <BtcZapIcon className="w-4 h-4 mr-2" />
-                  Connect Wallet
+                  Connect wallet
                 </Button>
               </div>
 
               <div className="pt-3 border-t border-border/20">
                 <div className="flex items-center gap-1.5">
-                  <Unplug className="w-3 h-3 text-brand/40" />
-                  <span className="text-[11px] font-brand uppercase tracking-wider text-muted-foreground/60">
+                  <Unplug className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-[12px] text-muted-foreground/60 font-medium">
                     NIP-47 Nostr Wallet Connect
                   </span>
                 </div>
@@ -2704,7 +2641,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
           <Card className="glass-card">
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
-                <AlertCircle className="w-4 h-4 text-brand/40 mt-0.5 shrink-0" />
+                <AlertCircle className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground/80 leading-relaxed">
                     Your wallet keys never leave your wallet provider.
@@ -2752,13 +2689,11 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
 
         <div className="relative overflow-hidden rounded-xl" data-testid="card-wallet-balance">
           <div className="absolute inset-0 bg-gradient-to-br from-[#0d0a1a] via-[#110e24] to-[#0a0816]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(139,92,246,0.12)_0%,_transparent_60%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_rgba(99,102,241,0.08)_0%,_transparent_50%)]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-amber-500/[0.03] via-transparent to-brand/[0.04]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(13,15,18,0.12)_0%,_transparent_60%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_rgba(13,15,18,0.08)_0%,_transparent_50%)]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-amber-500/[0.03] via-transparent to-transparent" />
           <GalaxyStars />
           <div className="absolute inset-0 border border-white/[0.08] rounded-xl" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-[1px] bg-gradient-to-r from-transparent via-brand/30 to-transparent" />
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-[1px] bg-gradient-to-r from-transparent via-brand/15 to-transparent" />
 
           <div className="relative z-10 p-5 sm:p-7">
             {myLightningAddress && (
@@ -2779,7 +2714,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                   <BtcZapIcon className="w-5 h-5 text-amber-800/80 dark:text-amber-400/80" />
                   <div className="absolute inset-0 blur-sm bg-amber-400/20 rounded-full" />
                 </div>
-                <span className="text-[11px] font-brand uppercase tracking-[0.2em] text-white/50">Balance</span>
+                <span className="text-[12px] text-white/50 font-medium">Balance</span>
                 <button
                   onClick={toggleBalanceVisibility}
                   className="text-white/30 hover:text-white/60 transition-colors cursor-pointer"
@@ -2797,7 +2732,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                     <span className={`text-4xl sm:text-5xl font-bold tabular-nums text-white transition-all duration-200 ${balanceHidden ? "blur-md select-none" : ""}`} data-testid="text-wallet-balance">
                       {balance.toLocaleString()}
                     </span>
-                    <span className={`text-lg text-white/40 font-brand tracking-wider transition-all duration-200 ${balanceHidden ? "blur-sm select-none" : ""}`}>sats</span>
+                    <span className={`text-lg text-white/50 font-medium transition-all duration-200 ${balanceHidden ? "blur-sm select-none" : ""}`}>sats</span>
                   </>
                 ) : (
                   <span className="text-lg text-white/40" data-testid="text-wallet-balance">--</span>
@@ -2826,7 +2761,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                       <div className="w-14 h-14 rounded-full bg-white/[0.08] border border-white/[0.12] flex items-center justify-center transition-all group-active:scale-95 group-active:bg-white/[0.15]">
                         <Icon className="w-6 h-6 text-white/80" />
                       </div>
-                      <span className="text-[10px] font-brand uppercase tracking-[0.15em] text-white/50">{label}</span>
+                      <span className="text-[13px] text-white/50 font-medium">{label}</span>
                     </button>
                   ))}
                 </div>
@@ -2893,7 +2828,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                 ) : (
                   <>
                     <div>
-                      <label className="text-[11px] font-brand uppercase tracking-wider text-muted-foreground/70 mb-1.5 block">Recipient</label>
+                      <label className="text-[12px] text-muted-foreground/70 mb-1.5 block font-medium">Recipient</label>
                       <ProfileSearchInput
                         selected={sendRecipient}
                         onSelect={handleRecipientChange}
@@ -2912,7 +2847,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                         />
 
                         <div>
-                          <label className="text-[11px] font-brand uppercase tracking-wider text-muted-foreground/70 mb-1.5 block">
+                          <label className="text-[12px] text-muted-foreground/70 mb-1.5 block font-medium">
                             <MessageCircle className="w-3 h-3 inline-block mr-1 -mt-0.5" />
                             Message (optional)
                           </label>
@@ -2922,21 +2857,21 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                             placeholder="Add a note to your payment..."
                             maxLength={280}
                             rows={2}
-                            className="w-full rounded-lg border border-border/30 bg-background/50 px-3 py-2 text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-ring focus:border-primary resize-none transition-all"
+                            className="w-full rounded-lg border border-input bg-background/50 px-3 py-2 text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-ring focus:border-primary resize-none transition-all"
                             data-testid="input-send-message"
                           />
                           {sendMessage.length > 0 && (
-                            <p className="text-[10px] text-muted-foreground/40 mt-0.5 text-right">{sendMessage.length}/280</p>
+                            <p className="text-[12px] text-muted-foreground mt-0.5 text-right">{sendMessage.length}/280</p>
                           )}
                         </div>
 
                         <div>
-                          <label className="text-[11px] font-brand uppercase tracking-wider text-muted-foreground/70 mb-1.5 block">Zap Visibility</label>
+                          <label className="text-[12px] text-muted-foreground/70 mb-1.5 block font-medium">Zap visibility</label>
                           <div className="flex rounded-lg border border-border/30 overflow-hidden" data-testid="toggle-zap-privacy">
                             <button
                               onClick={() => handleZapPrivacyChange("public")}
                               disabled={!signer || !sendRecipient?.pubkey}
-                              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${ zapPrivacy === "public" && signer && sendRecipient?.pubkey ? "bg-brand/10 text-brand border-r border-border/30" : "text-muted-foreground/50 hover:text-muted-foreground/70 hover:bg-foreground/[0.03] border-r border-border/30" }`}
+                              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${ zapPrivacy === "public" && signer && sendRecipient?.pubkey ? "bg-foreground text-background border-r border-border/30" : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.03] border-r border-border/30" }`}
                               data-testid="button-zap-public"
                             >
                               <Eye className="w-3.5 h-3.5" />
@@ -2944,14 +2879,14 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                             </button>
                             <button
                               onClick={() => handleZapPrivacyChange("anonymous")}
-                              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all cursor-pointer ${ zapPrivacy === "anonymous" || !signer || !sendRecipient?.pubkey ? "bg-brand/10 text-brand" : "text-muted-foreground/50 hover:text-muted-foreground/70 hover:bg-foreground/[0.03]" }`}
+                              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all cursor-pointer ${ zapPrivacy === "anonymous" || !signer || !sendRecipient?.pubkey ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04]" }`}
                               data-testid="button-zap-anonymous"
                             >
                               <Orbit className="w-3.5 h-3.5" />
                               Anonymous
                             </button>
                           </div>
-                          <p className="text-[10px] text-muted-foreground/40 mt-1">
+                          <p className="text-[12px] text-muted-foreground mt-1">
                             {!signer ? "Sign in to send public zaps" :
                              !sendRecipient?.pubkey ? "Public zaps require a Nostr profile recipient" :
                              zapPrivacy === "public" ? "Recipient will see your Nostr identity" : "Recipient will not see who sent the payment"}
@@ -2966,13 +2901,13 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                           <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
                           <div>
                             <p className="text-sm font-medium text-danger dark:text-red-500">Couldn't read this invoice</p>
-                            <p className="text-[11px] text-muted-foreground/60 mt-0.5">This doesn't look like a valid Lightning invoice. Don't pay it unless you're sure where it came from.</p>
+                            <p className="text-[12px] text-muted-foreground mt-0.5">This doesn't look like a valid Lightning invoice. Don't pay it unless you're sure where it came from.</p>
                           </div>
                         </div>
                       ) : (
                         <div className="rounded-lg border border-border/30 bg-background/40 divide-y divide-border/20" data-testid="invoice-review">
                           <div className="px-3 py-2.5">
-                            <label className="text-[11px] font-brand uppercase tracking-wider text-muted-foreground/70 mb-1.5 block">Amount</label>
+                            <label className="text-[12px] text-muted-foreground/70 mb-1.5 block font-medium">Amount</label>
                             {invoiceAmountless ? (
                               <>
                                 <AmountSelector
@@ -2981,7 +2916,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                                   onSelect={setSendAmount}
                                   onCustomChange={setSendCustomAmount}
                                 />
-                                <p className="text-[10px] text-zap dark:text-amber-500 mt-1.5">This invoice has no fixed amount — choose how much to send.</p>
+                                <p className="text-[12px] text-zap dark:text-amber-500 mt-1.5">This invoice has no fixed amount — choose how much to send.</p>
                               </>
                             ) : (
                               <p className="text-lg font-semibold tabular-nums" data-testid="invoice-amount">
@@ -2992,14 +2927,14 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                           </div>
                           {invoiceDetails.description && (
                             <div className="px-3 py-2.5">
-                              <label className="text-[11px] font-brand uppercase tracking-wider text-muted-foreground/70 mb-0.5 block">Description</label>
+                              <label className="text-[12px] text-muted-foreground/70 mb-0.5 block font-medium">Description</label>
                               <p className="text-xs text-foreground/80 break-words" data-testid="invoice-description">{invoiceDetails.description}</p>
                             </div>
                           )}
                           {invoiceExpired && (
                             <div className="px-3 py-2.5 flex items-center gap-2" data-testid="invoice-expired">
                               <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                              <p className="text-[11px] text-danger dark:text-red-500">This invoice has expired and will likely be rejected.</p>
+                              <p className="text-[12px] text-danger dark:text-red-500">This invoice has expired and will likely be rejected.</p>
                             </div>
                           )}
                         </div>
@@ -3070,7 +3005,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                           <BtcZapIcon className="w-4 h-4 text-amber-500" />
                         </div>
                         <div className="min-w-0">
-                          <label className="text-[11px] font-brand uppercase tracking-wider text-muted-foreground/50 block">Your Lightning Address</label>
+                          <label className="text-[12px] text-muted-foreground block font-medium">Your Lightning Address</label>
                           <span className="text-sm font-mono text-foreground/80 dark:text-white/75 truncate block" data-testid="text-my-lightning-address">
                             {myLightningAddress}
                           </span>
@@ -3146,7 +3081,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                         {showDMSend && (
                           <div className="space-y-3 p-3 rounded-lg bg-foreground/[0.02] dark:bg-white/[0.02] border border-border/20">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="text-[11px] font-brand uppercase tracking-wider text-muted-foreground/70">Send invoice to contact</span>
+                              <span className="text-[12px] text-muted-foreground/70 font-medium">Send invoice to contact</span>
                               <button
                                 onClick={() => { setShowDMSend(false); setDMRecipient(null); }}
                                 className="p-1 rounded-md hover:bg-foreground/[0.06] transition-colors"
@@ -3198,8 +3133,8 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                   ) : (
                     <>
                       <div className="flex items-center gap-2 mb-1">
-                        <QrCode className="w-4 h-4 text-brand/60" />
-                        <span className="text-[11px] font-brand uppercase tracking-wider text-muted-foreground/70">Request Payment</span>
+                        <QrCode className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-[12px] text-muted-foreground/70 font-medium">Request payment</span>
                       </div>
 
                       <AmountSelector
@@ -3211,7 +3146,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                       />
 
                       <div>
-                        <label className="text-[11px] font-brand uppercase tracking-wider text-muted-foreground/70 mb-1.5 block">Description (optional)</label>
+                        <label className="text-[12px] text-muted-foreground/70 mb-1.5 block font-medium">Description (optional)</label>
                         <Input
                           placeholder="What's this payment for?"
                           value={receiveDescription}
@@ -3249,7 +3184,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
             <Card className="glass-card">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[11px] font-brand uppercase tracking-[0.2em] text-muted-foreground/70">Transaction Log</span>
+                  <span className="text-[12px] text-muted-foreground/70 font-medium">Transaction log</span>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -3271,10 +3206,10 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                         <button
                           key={dir}
                           onClick={() => setTxFilterDirection(dir)}
-                          className={`px-2 py-1 rounded text-[10px] font-brand uppercase tracking-wider transition-all ${
+                          className={`px-2.5 py-1 rounded-full text-[12px] font-medium transition-colors ${
                             txFilterDirection === dir
-                              ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
-                              : "bg-foreground/[0.04] dark:bg-white/[0.04] text-muted-foreground/60 hover:bg-foreground/[0.08] dark:hover:bg-white/[0.08]"
+                              ? "bg-foreground text-background"
+                              : "bg-foreground/[0.04] text-muted-foreground hover:bg-foreground/[0.08] hover:text-foreground"
                           }`}
                           data-testid={`button-filter-${dir}`}
                         >
@@ -3284,10 +3219,10 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                       <span className="w-px h-4 bg-border/20 mx-0.5" />
                       <button
                         onClick={() => setTxFilterCategory("all")}
-                        className={`px-2 py-1 rounded text-[10px] font-brand uppercase tracking-wider transition-all ${
+                        className={`px-2.5 py-1 rounded-full text-[12px] font-medium transition-colors ${
                           txFilterCategory === "all"
-                            ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
-                            : "bg-foreground/[0.04] dark:bg-white/[0.04] text-muted-foreground/60 hover:bg-foreground/[0.08] dark:hover:bg-white/[0.08]"
+                            ? "bg-foreground text-background"
+                            : "bg-foreground/[0.04] text-muted-foreground hover:bg-foreground/[0.08] hover:text-foreground"
                         }`}
                         data-testid="button-filter-cat-all"
                       >
@@ -3297,10 +3232,10 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                         <button
                           key={cat}
                           onClick={() => setTxFilterCategory(cat)}
-                          className={`px-2 py-1 rounded text-[10px] font-brand uppercase tracking-wider transition-all ${
+                          className={`px-2.5 py-1 rounded-full text-[12px] font-medium transition-colors ${
                             txFilterCategory === cat
-                              ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
-                              : "bg-foreground/[0.04] dark:bg-white/[0.04] text-muted-foreground/60 hover:bg-foreground/[0.08] dark:hover:bg-white/[0.08]"
+                              ? "bg-foreground text-background"
+                              : "bg-foreground/[0.04] text-muted-foreground hover:bg-foreground/[0.08] hover:text-foreground"
                           }`}
                           data-testid={`button-filter-cat-${cat}`}
                         >
@@ -3310,12 +3245,12 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                     </div>
                     {hasActiveFilter && (
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground/50">
+                        <span className="text-[12px] text-muted-foreground">
                           {filteredTransactions.length} of {transactions.length} transactions · <span className={`transition-all duration-200 ${balanceHidden ? "blur-[6px] select-none" : ""}`}>{filteredTotal.toLocaleString()} sats</span>
                         </span>
                         <button
                           onClick={() => { setTxFilterDirection("all"); setTxFilterCategory("all"); }}
-                          className="text-[10px] text-brand/60 hover:text-brand/80 transition-colors"
+                          className="text-[12px] font-medium text-brand hover:text-brand-strong transition-colors"
                           data-testid="button-clear-filters"
                         >
                           Clear filters
@@ -3331,7 +3266,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                   </div>
                 ) : transactions.length === 0 ? (
                   <div className="text-center py-8">
-                    <BtcZapIcon className="w-8 h-8 mx-auto text-amber-800/15 dark:text-amber-400/15 mb-2" />
+                    <OttoEmpty mood="quiet" size={72} className="mx-auto mb-2 text-foreground/70" />
                     <p className="text-sm text-muted-foreground/80">No transactions yet</p>
                     <p className="text-xs text-muted-foreground/60 mt-1">
                       Transactions will appear here once you send or receive sats
@@ -3343,7 +3278,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                     <p className="text-sm text-muted-foreground/60">No matching transactions</p>
                     <button
                       onClick={() => { setTxFilterDirection("all"); setTxFilterCategory("all"); }}
-                      className="text-xs text-brand/60 hover:text-brand/80 mt-1 transition-colors"
+                      className="text-[13px] font-medium text-brand hover:text-brand-strong mt-1 transition-colors"
                       data-testid="button-clear-filters-empty"
                     >
                       Clear filters
@@ -3409,7 +3344,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <Zap className="w-4 h-4 text-amber-500/70" />
-                    <span className="text-sm font-brand tracking-wider uppercase">Lightning Uplink</span>
+                    <span className="text-sm font-medium">Lightning uplink</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="flex items-center justify-center w-9 h-9 rounded-md shrink-0"
@@ -3419,11 +3354,11 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground" data-testid="text-settings-nwc-status">Wallet Linked</p>
-                      <p className="text-[11px] text-foreground/45 dark:text-muted-foreground/60 font-mono truncate mt-0.5" data-testid="text-settings-nwc-pubkey">
+                      <p className="text-[12px] text-muted-foreground font-mono truncate mt-0.5" data-testid="text-settings-nwc-pubkey">
                         {walletPubkey ? `${walletPubkey.slice(0, 12)}...${walletPubkey.slice(-8)}` : ""}
                       </p>
                       {relay && (
-                        <p className="text-[11px] text-foreground/45 dark:text-muted-foreground/50 font-mono truncate" data-testid="text-settings-nwc-relay">
+                        <p className="text-[12px] text-muted-foreground font-mono truncate" data-testid="text-settings-nwc-relay">
                           {relay}
                         </p>
                       )}
@@ -3436,7 +3371,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                   <Button
                     onClick={() => setShowDisconnectConfirm(true)}
                     variant="outline"
-                    className="w-full text-xs font-brand uppercase tracking-widest border-border dark:border-brand/15 bg-white/[0.02]"
+                    className="w-full text-xs border-border bg-white/[0.02] font-medium"
                     data-testid="button-settings-disconnect-wallet"
                   >
                     <XCircle className="w-3.5 h-3.5 mr-2" />
@@ -3449,12 +3384,12 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
         </Tabs>
 
         <div className="flex items-center justify-center gap-2 py-1">
-          <Radio className="w-3 h-3 text-brand/30" />
-          <span className="text-[11px] font-brand uppercase tracking-[0.2em] text-muted-foreground/50">
-            NIP-47 Encrypted Connection
+          <Radio className="w-3 h-3 text-muted-foreground" />
+          <span className="text-[12px] text-muted-foreground font-medium">
+            NIP-47 encrypted connection
           </span>
           {relay && (
-            <span className="text-[11px] text-muted-foreground/40 truncate max-w-[200px] font-mono">
+            <span className="text-[12px] text-muted-foreground truncate max-w-[200px] font-mono">
               {relay}
             </span>
           )}
@@ -3464,7 +3399,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
       {activeTab !== "settings" && (
         <button
           onClick={() => setActiveTab("settings")}
-          className="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-primary hover:bg-primary/90 dark:bg-brand/80 dark:hover:bg-brand/80 text-primary-foreground shadow-lg shadow-primary/25 flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 backdrop-blur-sm border border-primary/30"
+          className="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-foreground hover:bg-foreground/90 text-background shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 backdrop-blur-sm"
           aria-label="Wallet settings"
           data-testid="button-floating-wallet-settings"
         >
@@ -3473,7 +3408,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
       )}
 
       <Dialog open={showLightningQR} onOpenChange={setShowLightningQR}>
-        <DialogContent className="sm:max-w-sm p-0 overflow-hidden border-border dark:border-brand/30" data-testid="dialog-wallet-lightning-qr">
+        <DialogContent className="sm:max-w-sm p-0 overflow-hidden border-border" data-testid="dialog-wallet-lightning-qr">
           <VisuallyHidden><DialogTitle>Lightning Address QR Code</DialogTitle></VisuallyHidden>
           <div className="relative flex flex-col items-center px-6 pt-8 pb-6 glass-settings-section">
             <div className="absolute inset-0 pointer-events-none glass-settings-glow opacity-40" />
@@ -3483,7 +3418,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
               </div>
               <div className="text-center">
                 <p className="text-sm font-semibold text-foreground">Your Lightning Address</p>
-                <p className="text-[11px] text-brand/50 dark:text-brand/60 mt-0.5">Scan to send sats</p>
+                <p className="text-[13px] text-muted-foreground mt-0.5">Scan to send sats</p>
               </div>
               {myLightningAddress && (
                 <>
@@ -3495,16 +3430,16 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                     />
                   </div>
                   <div className="flex items-center gap-2 w-full max-w-[240px]">
-                    <div className="flex items-center gap-1.5 flex-1 min-w-0 rounded-md bg-accent dark:bg-white/5 border border-border dark:border-brand/20 px-2.5 py-1.5">
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0 rounded-md bg-accent dark:bg-white/5 border border-border px-2.5 py-1.5">
                       <BtcZapIcon className="w-3 h-3 text-amber-500/70 shrink-0" />
-                      <span className="text-xs font-mono text-brand/70 dark:text-brand/80 truncate">
+                      <span className="text-[13px] font-mono text-foreground/80 truncate">
                         {myLightningAddress}
                       </span>
                     </div>
                     <Button
                       variant="outline"
                       size="icon"
-                      className="shrink-0 border-border hover:border-brand dark:border-brand/20 dark:hover:border-brand/40"
+                      className="shrink-0 border-border hover:border-foreground/40"
                       aria-label="Copy Lightning address"
                       onClick={async () => {
                         try {
@@ -3522,7 +3457,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-border hover:border-brand dark:border-brand/20 dark:hover:border-brand/40"
+                      className="border-border hover:border-foreground/40"
                       onClick={async () => {
                         try {
                           await navigator.share({
@@ -3576,7 +3511,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                   return (
                     <div className="w-full rounded-lg bg-foreground/[0.03] border border-border/20 p-3 mb-5" data-testid="container-nwc-string">
                       <div className="flex items-center justify-between mb-2">
-                        <p className="text-[10px] text-muted-foreground/60 font-brand uppercase tracking-wider">Connection String</p>
+                        <p className="text-[13px] text-muted-foreground/60 font-medium">Connection string</p>
                         <div className="flex items-center gap-1">
                           <button
                             className="w-6 h-6 flex items-center justify-center rounded hover:bg-foreground/5 transition-colors cursor-pointer"
@@ -3610,7 +3545,7 @@ export default function WalletPage({ embedded = false }: { embedded?: boolean } 
                         </p>
                       </div>
                       {nwcCopied && (
-                        <p className="text-[10px] text-success dark:text-emerald-500 mt-1.5 text-center">Copied to clipboard</p>
+                        <p className="text-[12px] text-success dark:text-emerald-500 mt-1.5 text-center">Copied to clipboard</p>
                       )}
                     </div>
                   );

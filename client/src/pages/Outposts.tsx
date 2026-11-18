@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { OttoEmpty } from "@/components/OttoEmpty";
 import { SuggestionsBoard } from "@/components/SuggestionsBoard";
 import { feedbackNeedsYou } from "@/lib/feedback-needs";
 import { createPortal } from "react-dom";
@@ -26,7 +27,7 @@ import { GuestWall } from "@/components/GuestWall";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { FEED_FILTER_TIERS } from "@/pages/home/feed-controls";
 import { getSignalTierLabel } from "@/lib/graperank";
-import { TrustTierGlyph } from "@/components/nostr-post/trust-tier-glyph";
+import { TIER_GLYPH, TrustTierGlyph } from "@/components/nostr-post/trust-tier-glyph";
 import { useExcludedTiers, readOutpostFilterOn, writeOutpostFilterOn, isHiddenByTrust } from "@/lib/trust-filter";
 import { useOutpostCompose } from "@/contexts/OutpostComposeContext";
 import { useDocumentTitle } from "@/hooks/use-document-title";
@@ -70,11 +71,9 @@ import {
   AlertDialogCancel,
   AlertDialogAction } from "@/components/ui/alert-dialog";
 import {
-  Search,
   X,
   Lock,
   Hash,
-  Shield,
   ChevronRight,
   ArrowLeft,
   Server,
@@ -83,10 +82,8 @@ import {
   Satellite,
   Rocket,
   Sparkles,
-  ArrowUpRight,
   UserPlus2,
   Telescope,
-  BookOpen,
   ChevronDown,
   ChevronUp,
   Send,
@@ -94,7 +91,6 @@ import {
   ArrowBigDown,
   Share2,
   Info,
-  LogIn,
   LogOut,
   PenSquare,
   ShieldCheck,
@@ -121,11 +117,13 @@ import {
   MoreHorizontal,
   Copy,
   Check,
-  Inbox, Lightbulb } from "lucide-react";
+  Inbox,
+  Lightbulb,
+} from "lucide-react";
 import { ResponsiveFormPanel } from "@/components/ui/responsive-form-panel";
 import { ProfileSearchInput, type SelectedRecipient } from "@/components/ProfileSearchInput";
 import { sendDM } from "@/lib/dm";
-import { OutpostIcon } from "@/components/icons/OutpostIcon";
+
 import { WavesIcon } from "@/components/icons/WavesIcon";
 import { TimelineIcon } from "@/components/icons/TimelineIcon";
 import { AboutIcon } from "@/components/icons/AboutIcon";
@@ -136,7 +134,6 @@ import { readPendingJoins, addPendingJoin, checkPendingJoins } from "@/lib/join-
 import { fetchGroupMetadataResult, sendJoinRequest } from "@/lib/nip29";
 import { isBuzzCommunityHost, fetchBuzzJoinPolicy, claimBuzzInvite, type BuzzJoinPolicy } from "@/lib/buzz-join";
 import { MagicStarIcon } from "@/components/icons/MagicStarIcon";
-import { useQuery } from "@tanstack/react-query";
 import { HorizonIcon } from "@/components/icons/HorizonIcon";
 import { ChannelsIcon } from "@/components/icons/CommsIcon";
 import { HorizonTab } from "@/components/HorizonTab";
@@ -190,11 +187,11 @@ function OperatorBadge({ pubkey }: { pubkey: string }) {
     <div className="flex items-center gap-1.5 mt-1">
       <Avatar className="w-4 h-4 border border-black/10 dark:border-white/10">
         {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName || ""} /> : null}
-        <AvatarFallback className="text-[7px] bg-brand/10 text-brand">
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[7px]">
           {(displayName || "?").slice(0, 1).toUpperCase()}
         </AvatarFallback>
       </Avatar>
-      <span className="text-[10px] text-muted-foreground/60 truncate max-w-[100px]">{displayName}</span>
+      <span className="text-xs text-muted-foreground truncate max-w-[120px]">{displayName}</span>
       <TrustTierDot pubkey={pubkey} />
     </div>
   );
@@ -212,34 +209,6 @@ function OperatorName({ pubkey }: { pubkey: string }) {
   );
 }
 
-/** Avatar-only operator credit for the condensed banner strip (tap → profile). */
-function OperatorMiniAvatar({ pubkey }: { pubkey: string }) {
-  const profile = use$(() => eventStore.replaceable(KIND_METADATA, pubkey), [pubkey]);
-  const avatarUrl = profile ? getAvatarUrl(profile) : null;
-  const displayName = profile ? getDisplayName(profile) : shortenNpub(formatNpub(pubkey));
-
-  useEffect(() => {
-    fetchProfilesCached([pubkey]);
-  }, [pubkey]);
-
-  return (
-    <Link
-      href={`/profile/${formatNpub(pubkey)}`}
-      onClick={(e) => e.stopPropagation()}
-      className="shrink-0"
-      title={`Operated by ${displayName}`}
-      aria-label={`Operated by ${displayName}`}
-      data-testid="collapsed-operator-avatar"
-    >
-      <Avatar className="w-7 h-7 border border-white/25 shadow-sm">
-        {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName || ""} /> : null}
-        <AvatarFallback className="text-[9px] bg-brand/30 text-brand">
-          {(displayName || "?").slice(0, 1).toUpperCase()}
-        </AvatarFallback>
-      </Avatar>
-    </Link>
-  );
-}
 
 function useFeedbackAffordance(relayUrl: string, label: string, isOperator: boolean) {
   const { pubkey: myPubkey } = useNostrAuth();
@@ -369,7 +338,7 @@ function JoinedOutpostCard({
 
   return (
     <Card
-      className="glass-card overflow-hidden cursor-pointer hover:border-primary/30 transition-all duration-200 group"
+      className="glass-card rounded-[16px] overflow-hidden cursor-pointer hover:border-border transition-colors duration-200 group"
       onClick={() => !reordering && setLocation(`/outposts/${encodedUrl}`)}
     >
       <div className="px-3 py-2">
@@ -393,15 +362,15 @@ function JoinedOutpostCard({
             </div>
           )}
           <div className="shrink-0">
-            <Avatar className="w-8 h-8 border border-primary/20">
+            <Avatar className="w-9 h-9 border border-border/60">
               <AvatarImage src={icon || undefined} alt={name} />
-              <AvatarFallback className="bg-brand/10 text-brand text-[10px]">
+              <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[10px]">
                 {name.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
           </div>
           <div className="flex-1 min-w-0 flex items-center gap-1.5">
-            <h3 className="text-sm font-semibold truncate">{name}</h3>
+            <h3 className="text-[15px] font-semibold truncate">{name}</h3>
             {relay.access === "private" && (
               <Lock className="w-3 h-3 text-amber-600/70 dark:text-amber-400/70 shrink-0" />
             )}
@@ -411,7 +380,7 @@ function JoinedOutpostCard({
             <button
               type="button"
               onClick={copyOutpostLink}
-              className={`shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 p-1.5 rounded-md text-muted-foreground/40 hover:text-brand hover:bg-brand/10 transition-colors ${FOCUS_RING}`}
+              className={`shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 p-1.5 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-foreground/[0.06] transition-colors ${FOCUS_RING}`}
               aria-label={`Copy link to ${name}`}
               title="Copy link"
               data-testid={`button-outpost-copy-link-${encodedUrl.slice(0, 24)}`}
@@ -438,7 +407,7 @@ function JoinedOutpostCard({
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onTogglePins?.(); }}
-              className={`shrink-0 flex items-center gap-1 px-2 py-1.5 min-h-[44px] sm:min-h-0 rounded-md text-[10px] font-medium text-brand/80 hover:bg-brand/10 transition-colors ${FOCUS_RING}`}
+              className={`shrink-0 flex items-center gap-1 px-2 py-1.5 min-h-[44px] sm:min-h-0 rounded-md text-[12px] font-medium text-foreground/80 hover:bg-foreground/[0.06] transition-colors ${FOCUS_RING}`}
               aria-label={`Toggle pinned feeds for ${name}`}
               aria-expanded={pinsExpanded}
               data-testid={`button-outpost-pins-toggle-${encodedUrl.slice(0, 24)}`}
@@ -450,7 +419,7 @@ function JoinedOutpostCard({
           )}
           {!reordering && <JoinedCardFeedbackSlot relay={relay} isOperator={!!isOperator} encodedUrl={encodedUrl} />}
           {!reordering && (
-            <ChevronRight className="w-4 h-4 text-muted-foreground/30 group-hover:text-brand/60 dark:text-brand/60 transition-colors shrink-0" />
+            <ChevronRight className="w-4 h-4 text-muted-foreground/30 group-hover:text-foreground transition-colors shrink-0" />
           )}
         </div>
       </div>
@@ -459,10 +428,10 @@ function JoinedOutpostCard({
         // row must be INERT — not fall through to the card's own onClick (which
         // opens the outpost on Posts and made pins "always go to Posts" on iOS).
         <div
-          className="border-t border-primary/10 px-3 py-1.5 cursor-default"
+          className="border-t border-border/50 px-3 py-1.5 cursor-default"
           onClick={(e) => e.stopPropagation()}
         >
-          <ul className="space-y-0.5 pl-1.5 border-l border-primary/15 ml-1">
+          <ul className="space-y-0.5 pl-1.5 border-l border-border/60 ml-1">
             {pins.map((pin) => {
               const Icon = TAB_ICON[pin.tab];
               return (
@@ -470,10 +439,10 @@ function JoinedOutpostCard({
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setLocation(pinUrl(pin)); }}
-                    className="w-full flex items-center gap-2 px-2 py-2.5 sm:py-1 min-h-[44px] sm:min-h-0 rounded-md text-xs text-muted-foreground hover:bg-primary/10 hover:text-foreground active:bg-primary/15 transition-colors text-left"
+                    className="w-full flex items-center gap-2 px-2 py-2.5 sm:py-1 min-h-[44px] sm:min-h-0 rounded-md text-[13px] text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground active:bg-foreground/[0.08] transition-colors text-left"
                     data-testid={`link-outpost-pin-${pin.id.slice(0, 32)}`}
                   >
-                    <Icon className="w-3 h-3 text-brand/70 shrink-0" />
+                    <Icon className="w-3 h-3 text-foreground/60 shrink-0" />
                     <span className="flex-1 truncate">{pinDisplayLabel(pin)}</span>
                   </button>
                 </li>
@@ -486,7 +455,7 @@ function JoinedOutpostCard({
       <AlertDialog open={confirmLeave} onOpenChange={setConfirmLeave}>
         <AlertDialogContent className="glass-dialog-card border-red-500/20 max-w-sm" onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm font-brand tracking-wide">Leave {name}?</AlertDialogTitle>
+            <AlertDialogTitle className="text-base font-semibold">Leave {name}?</AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-muted-foreground/70 leading-relaxed">
               You'll be removed from this community and it won't appear in your joined list. You can rejoin anytime.
             </AlertDialogDescription>
@@ -525,7 +494,7 @@ function ActiveMemberItem({ pubkey }: { pubkey: string }) {
         <div className="relative shrink-0">
           <Avatar className="w-8 h-8 border border-black/10 dark:border-white/10">
             {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName || ""} /> : null}
-            <AvatarFallback className="text-[10px] bg-brand/10 text-brand">
+            <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs">
               {(displayName || "?").slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -584,10 +553,10 @@ function ActiveMembersSection({ authors }: { authors: string[] }) {
     <Card className="glass-card overflow-hidden">
       <div className="p-3 sm:p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-brand tracking-wider uppercase text-brand">
-            Active Members
+          <h3 className="text-[15px] text-foreground font-semibold">
+            Active members
           </h3>
-          <span className="text-[10px] text-muted-foreground/40 tabular-nums">{authors.length}</span>
+          <span className="text-[12px] text-muted-foreground tabular-nums">{authors.length}</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-0.5">
           {displayed.map((pk) => (
@@ -597,7 +566,7 @@ function ActiveMembersSection({ authors }: { authors: string[] }) {
         {sortedAuthors.length > 10 && !showAll && (
           <button
             onClick={() => setShowAll(true)}
-            className="w-full mt-2 py-1.5 rounded-lg hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors text-[10px] text-brand/60 hover:text-brand text-center"
+            className="w-full mt-2 py-1.5 rounded-lg hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors text-[13px] font-medium text-brand hover:text-brand-strong text-center"
           >
             Show {sortedAuthors.length - 10} more members
           </button>
@@ -605,7 +574,7 @@ function ActiveMembersSection({ authors }: { authors: string[] }) {
         {showAll && sortedAuthors.length > 10 && (
           <button
             onClick={() => setShowAll(false)}
-            className="w-full mt-2 py-1.5 rounded-lg hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors text-[10px] text-muted-foreground/50 hover:text-muted-foreground text-center"
+            className="w-full mt-2 py-1.5 rounded-lg hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors text-[12px] text-muted-foreground hover:text-foreground text-center"
           >
             Show less
           </button>
@@ -622,22 +591,22 @@ function WaveAuthorLine({ pubkey, createdAt, isOP, size = "sm" }: { pubkey: stri
   const name = profile ? getDisplayName(profile) : shortenNpub(formatNpub(pubkey));
   const avatar = profile ? getAvatarUrl(profile) : undefined;
   const avatarSize = size === "md" ? "w-7 h-7" : "w-5 h-5";
-  const textSize = size === "md" ? "text-xs" : "text-[11px]";
+  const textSize = size === "md" ? "text-xs" : "text-xs";
 
   return (
     <div className="flex items-center gap-2 min-w-0">
       <Avatar className={`${avatarSize} shrink-0`}>
         {avatar && <AvatarImage src={avatar} alt={name} />}
-        <AvatarFallback className="text-[8px] bg-brand/10 text-brand">
+        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs">
           {name.slice(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>
       <span className={`${textSize} font-medium truncate`}>{name}</span>
       <TrustTierDot pubkey={pubkey} />
       {isOP && (
-        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 shrink-0">OP</span>
+        <span className="text-xs font-medium text-muted-foreground shrink-0">Author</span>
       )}
-      <span className="text-[10px] text-muted-foreground/40 shrink-0">
+      <span className="text-[12px] text-muted-foreground shrink-0">
         {formatDistanceToNow(createdAt * 1000, { addSuffix: true })}
       </span>
     </div>
@@ -818,7 +787,7 @@ function WavePostCard({
 
   return (
     <div
-      className={`group flex bg-black/[0.02] dark:bg-white/[0.03] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] border border-black/[0.06] dark:border-white/[0.06] hover:border-black/[0.1] dark:hover:border-white/[0.1] rounded-xl transition-all cursor-pointer overflow-hidden ${isPinned ? "border-brand/20" : ""}`}
+      className="group flex bg-card hover:bg-foreground/[0.02] border border-border rounded-[20px] transition-colors duration-150 cursor-pointer overflow-hidden"
       onClick={onClick}
       data-testid={`wave-post-${topic.id}`}
     >
@@ -826,43 +795,43 @@ function WavePostCard({
       <div className="flex flex-col items-center gap-0.5 shrink-0 px-1 sm:px-1.5 py-2.5 bg-black/[0.025] dark:bg-white/[0.02] border-r border-black/[0.05] dark:border-white/[0.05]">
         <button
           onClick={(e) => { e.stopPropagation(); castVote("up"); }}
-          className={`p-1.5 sm:p-1 rounded-md transition-colors hover:bg-orange-500/10 active:bg-orange-500/20 ${userVote === "up" ? "text-orange-500 dark:text-orange-400" : "text-muted-foreground/45 hover:text-orange-500/80"}`}
+          className={`p-1.5 sm:p-1 rounded-md transition-colors hover:bg-foreground/[0.06] active:bg-foreground/[0.1] ${userVote === "up" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           aria-label="Upvote"
           data-testid={`wave-upvote-${topic.id}`}
         >
-          <ArrowBigUp className={`w-5 h-5 ${userVote === "up" ? "fill-orange-500 dark:fill-orange-400" : ""}`} />
+          <ArrowBigUp className={`w-5 h-5 ${userVote === "up" ? "fill-current" : ""}`} />
         </button>
-        <span className={`text-[11px] font-bold tabular-nums text-center min-w-[20px] ${userVote === "up" ? "text-orange-500 dark:text-orange-400" : userVote === "down" ? "text-blue-600 dark:text-blue-400" : "text-foreground/70"}`}>
+        <span className={`text-xs font-bold tabular-nums text-center min-w-[20px] ${userVote === "up" ? "text-foreground" : userVote === "down" ? "text-foreground" : "text-foreground/70"}`}>
           {reactionCount || 0}
         </span>
         <button
           onClick={(e) => { e.stopPropagation(); castVote("down"); }}
-          className={`p-1.5 sm:p-1 rounded-md transition-colors hover:bg-blue-500/10 active:bg-blue-500/20 ${userVote === "down" ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground/45 hover:text-blue-500/80"}`}
+          className={`p-1.5 sm:p-1 rounded-md transition-colors hover:bg-foreground/[0.06] active:bg-foreground/[0.1] ${userVote === "down" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           aria-label="Downvote"
           data-testid={`wave-downvote-${topic.id}`}
         >
-          <ArrowBigDown className={`w-5 h-5 ${userVote === "down" ? "fill-blue-600 dark:fill-blue-400" : ""}`} />
+          <ArrowBigDown className={`w-5 h-5 ${userVote === "down" ? "fill-current" : ""}`} />
         </button>
       </div>
 
       {/* Content column */}
       <div className="flex-1 min-w-0 p-3 sm:p-3.5 space-y-1.5">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 min-w-0 flex-1 text-[11px]">
-            {isPinned && <Pin className="w-3 h-3 text-brand shrink-0 rotate-45" />}
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 text-xs">
+            {isPinned && <Pin className="w-3 h-3 text-foreground/70 shrink-0 rotate-45" />}
             {topicTags.length > 0 && (
-              <span className="shrink-0 rounded-full bg-brand/10 dark:bg-brand/15 text-brand/80 px-1.5 py-0.5 text-[10px] font-medium">
+              <span className="shrink-0 rounded-full bg-foreground/[0.06] text-foreground/75 px-2 py-0.5 text-[12px] font-medium">
                 #{topicTags[0]}
               </span>
             )}
-            <span className="text-foreground/25 shrink-0">·</span>
+            <span className="text-muted-foreground shrink-0">·</span>
             <WaveAuthorLine pubkey={topic.pubkey} createdAt={topic.created_at} size="sm" />
           </div>
           {onBan && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 text-muted-foreground/30 hover:text-red-600 dark:hover:text-red-400 shrink-0 reveal-on-hover touch-target"
+              className="h-6 w-6 p-0 text-muted-foreground hover:text-danger shrink-0 reveal-on-hover touch-target"
               aria-label="Remove from community"
               title="Remove from community"
               onClick={(e) => { e.stopPropagation(); onBan(topic.id); }}
@@ -877,7 +846,7 @@ function WavePostCard({
           <div className="flex-1 min-w-0">
             <h3 className="text-sm sm:text-base font-bold leading-snug line-clamp-2 mb-1 text-foreground/90">{title}</h3>
             {bodyPreview && (
-              <p className="text-xs text-foreground/50 dark:text-foreground/40 leading-relaxed line-clamp-3">{bodyPreview}</p>
+              <p className="text-xs text-muted-foreground dark:text-muted-foreground leading-relaxed line-clamp-3">{bodyPreview}</p>
             )}
           </div>
           {thumbnailUrl && (
@@ -890,23 +859,23 @@ function WavePostCard({
         <div className="flex items-center gap-0.5 pt-0.5">
           <button
             onClick={(e) => { e.stopPropagation(); onClick(); }}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-muted-foreground/55 hover:text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors"
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors"
           >
             <MessageSquare className="w-3.5 h-3.5" />
-            <span className="text-[11px] font-semibold">{commentCount}</span>
-            <span className="text-[11px] font-medium hidden sm:inline">Comments</span>
+            <span className="text-xs font-semibold">{commentCount}</span>
+            <span className="text-xs font-medium hidden sm:inline">Comments</span>
           </button>
 
           <button
             onClick={handleCopyLink}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-muted-foreground/55 hover:text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors"
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors"
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span className="text-[11px] font-medium">Share</span>
+            <span className="text-xs font-medium">Share</span>
           </button>
 
           {lastActivity && lastActivity !== topic.created_at && (
-            <span className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground/35 shrink-0">
+            <span className="ml-auto flex items-center gap-1 text-[12px] text-muted-foreground shrink-0">
               <Clock className="w-2.5 h-2.5" />
               {formatDistanceToNow(lastActivity * 1000, { addSuffix: true })}
             </span>
@@ -930,7 +899,7 @@ function TagFilterPills({
     <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
       <button
         onClick={() => onSelect(null)}
-        className={`shrink-0 px-3 py-1.5 sm:px-2.5 sm:py-1 rounded-full text-[11px] sm:text-[10px] font-medium transition-colors active:scale-95 ${ selected === null ? "bg-accent text-accent-foreground dark:text-brand border border-brand/20" : "bg-black/[0.03] dark:bg-white/[0.04] text-muted-foreground/60 border border-black/[0.06] dark:border-white/[0.06] hover:text-muted-foreground/90" }`}
+        className={`shrink-0 px-3 py-1.5 sm:px-2.5 sm:py-1 rounded-full text-[13px] font-medium transition-colors active:scale-95 ${ selected === null ? "bg-foreground text-background border border-foreground" : "bg-black/[0.03] dark:bg-white/[0.04] text-muted-foreground border border-black/[0.06] dark:border-white/[0.06] hover:text-foreground" }`}
       >
         All
       </button>
@@ -938,7 +907,7 @@ function TagFilterPills({
         <button
           key={tag}
           onClick={() => onSelect(selected === tag ? null : tag)}
-          className={`shrink-0 px-3 py-1.5 sm:px-2.5 sm:py-1 rounded-full text-[11px] sm:text-[10px] font-medium transition-colors active:scale-95 ${ selected === tag ? "bg-accent text-accent-foreground dark:text-brand border border-brand/20" : "bg-black/[0.03] dark:bg-white/[0.04] text-muted-foreground/60 border border-black/[0.06] dark:border-white/[0.06] hover:text-muted-foreground/90" }`}
+          className={`shrink-0 px-3 py-1.5 sm:px-2.5 sm:py-1 rounded-full text-[13px] font-medium transition-colors active:scale-95 ${ selected === tag ? "bg-foreground text-background border border-foreground" : "bg-black/[0.03] dark:bg-white/[0.04] text-muted-foreground border border-black/[0.06] dark:border-white/[0.06] hover:text-foreground" }`}
         >
           #{tag}
         </button>
@@ -973,7 +942,7 @@ function WaveSortDropdown({ value, onChange }: { value: WaveSortMode; onChange: 
     <div className="relative shrink-0" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] sm:text-[10px] font-medium transition-colors active:scale-95 ${ value !== "active" ? "bg-accent text-accent-foreground dark:text-brand border border-brand/20" : "bg-black/[0.03] dark:bg-white/[0.04] text-muted-foreground/60 border border-black/[0.06] dark:border-white/[0.06] hover:text-muted-foreground/90" }`}
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] font-medium transition-colors active:scale-95 ${ value !== "active" ? "bg-foreground text-background border border-foreground" : "bg-black/[0.03] dark:bg-white/[0.04] text-muted-foreground border border-black/[0.06] dark:border-white/[0.06] hover:text-foreground" }`}
       >
         <ArrowUpDown className="w-3 h-3" />
         <span className="hidden sm:inline">{current.label}</span>
@@ -986,10 +955,10 @@ function WaveSortDropdown({ value, onChange }: { value: WaveSortMode; onChange: 
               <button
                 key={opt.value}
                 onClick={() => { onChange(opt.value); setOpen(false); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] transition-colors ${
+                className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${
                   value === opt.value
-                    ? "text-accent-foreground dark:text-brand bg-accent"
-                    : "text-muted-foreground/70 hover:text-foreground hover:bg-black/[0.03] dark:hover:bg-white/[0.03]"
+                    ? "text-foreground bg-foreground/[0.07] font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-black/[0.03] dark:hover:bg-white/[0.03]"
                 }`}
               >
                 <OptIcon className="w-3.5 h-3.5" />
@@ -1060,7 +1029,7 @@ function WaveCreateForm({
         toast({ title: "Relay rejected your post", description: "The community relay did not accept your wave. You may not be authenticated.", variant: "destructive" });
         return;
       }
-      toast({ title: "Wave posted" });
+      toast({ title: "Discussion posted" });
       onCreated();
     } catch {
       toast({ title: "Failed to post", variant: "destructive" });
@@ -1071,21 +1040,21 @@ function WaveCreateForm({
 
   return (
     <Card className="glass-card p-4 space-y-3">
-      <h3 className="text-xs font-brand tracking-wider uppercase text-brand">New discussion</h3>
+      <h3 className="text-[15px] text-foreground font-semibold">New discussion</h3>
       <div className="flex items-center gap-1.5">
-        <Lock className="w-3 h-3 text-emerald-600/70 dark:text-emerald-400/70" />
-        <p className="text-[10px] text-success dark:text-emerald-400/70">
+        <Lock className="w-3 h-3 text-success" />
+        <p className="text-xs text-success">
           Publishing to {relayUrl.replace(/^wss?:\/\//, "")} only
         </p>
       </div>
       {!relayReady && relayStatusLabel && (
         <div className="flex items-center gap-1.5">
-          <RelayOutpostInlineLoader className="w-3 h-3 text-amber-600/60 dark:text-amber-400/60" />
-          <span className="text-[10px] text-amber-600/60 dark:text-amber-400/60">{relayStatusLabel}</span>
+          <RelayOutpostInlineLoader className="w-3 h-3 text-warning" />
+          <span className="text-xs text-warning">{relayStatusLabel}</span>
         </div>
       )}
       <Input
-        placeholder="Wave title"
+        placeholder="Discussion title"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         className="text-base sm:text-sm bg-black/[0.03] dark:bg-white/[0.03] border-border/20"
@@ -1103,7 +1072,7 @@ function WaveCreateForm({
             <Badge
               key={tag}
               variant="outline"
-              className="text-[9px] h-5 px-1.5 border-brand/20 text-brand/70 bg-brand/5 cursor-pointer hover:border-red-500/30 hover:text-red-600 dark:hover:text-red-400"
+              className="text-xs h-5 px-1.5 border-border/60 text-foreground/75 bg-transparent cursor-pointer hover:border-red-500/30 hover:text-danger"
               onClick={() => setSelectedTags((prev) => prev.filter((t) => t !== tag))}
             >
               #{tag} <X className="w-2 h-2 ml-0.5" />
@@ -1112,7 +1081,7 @@ function WaveCreateForm({
         </div>
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Hash className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/40" />
+            <Hash className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
             <Input
               placeholder="Add tag..."
               value={tagInput}
@@ -1123,18 +1092,18 @@ function WaveCreateForm({
                   addTag(tagInput);
                 }
               }}
-              className="pl-7 h-8 text-base sm:text-[11px] bg-black/[0.03] dark:bg-white/[0.03] border-border/20"
+              className="pl-7 h-8 text-base sm:text-xs bg-black/[0.03] dark:bg-white/[0.03] border-border/20"
             />
           </div>
         </div>
         {existingTags.length > 0 && (
           <div className="flex gap-1 flex-wrap">
-            <span className="text-[9px] text-muted-foreground/40 mr-1 self-center">Existing:</span>
+            <span className="text-[12px] text-muted-foreground mr-1 self-center">Existing:</span>
             {existingTags.slice(0, 10).map((tag) => (
               <button
                 key={tag}
                 onClick={() => addTag(tag)}
-                className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors ${ selectedTags.includes(tag) ? "border-brand/20 bg-accent text-accent-foreground dark:text-brand" : "border-border/20 text-muted-foreground/50 hover:text-muted-foreground/80" }`}
+                className={`text-xs px-1.5 py-0.5 rounded border transition-colors ${ selectedTags.includes(tag) ? "border-foreground bg-foreground text-background" : "border-border/20 text-muted-foreground hover:text-foreground" }`}
               >
                 #{tag}
               </button>
@@ -1153,7 +1122,7 @@ function WaveCreateForm({
           className="text-xs h-7"
         >
           {publishing ? <RelayOutpostInlineLoader className="w-3.5 h-3.5" /> : <Send className="w-3 h-3 mr-1" />}
-          Post Wave
+          Post discussion
         </Button>
       </div>
     </Card>
@@ -1346,15 +1315,15 @@ function CommentComposer({
   return (
     <div className={`${compact ? "" : "mt-3"}`}>
       <div className="flex items-center gap-1.5 mb-1.5">
-        <Lock className="w-2.5 h-2.5 text-emerald-600/60 dark:text-emerald-400/60" />
-        <span className="text-[9px] text-success dark:text-emerald-400/60">
+        <Lock className="w-2.5 h-2.5 text-success" />
+        <span className="text-xs text-success dark:text-emerald-400/60">
           {relayUrl.replace(/^wss?:\/\//, "")} only
         </span>
       </div>
       {!relayReady && relayStatusLabel && (
         <div className="flex items-center gap-1.5 mb-1.5">
-          <RelayOutpostInlineLoader className="w-2.5 h-2.5 text-amber-600/60 dark:text-amber-400/60" />
-          <span className="text-[9px] text-amber-600/60 dark:text-amber-400/60">{relayStatusLabel}</span>
+          <RelayOutpostInlineLoader className="w-2.5 h-2.5 text-warning" />
+          <span className="text-xs text-warning">{relayStatusLabel}</span>
         </div>
       )}
       <div className="relative">
@@ -1404,7 +1373,7 @@ function CommentComposer({
           ))}
           {isUploading && (
             <div className="w-14 h-14 rounded-md border border-border/20 bg-black/[0.03] dark:bg-white/[0.03] flex items-center justify-center">
-              <RelayOutpostInlineLoader className="w-4 h-4 text-foreground/40" />
+              <RelayOutpostInlineLoader className="w-4 h-4 text-muted-foreground" />
             </div>
           )}
         </div>
@@ -1421,7 +1390,7 @@ function CommentComposer({
             type="button"
             onClick={() => imageInputRef.current?.click()}
             disabled={publishing || isUploading}
-            className="w-8 h-8 flex items-center justify-center rounded-md text-brand/60 hover:text-brand/90 hover:bg-brand/10 dark:hover:bg-brand/15 transition-colors cursor-pointer disabled:opacity-40"
+            className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors cursor-pointer disabled:opacity-40"
           >
             <ImagePlus className="w-[18px] h-[18px]" />
           </button>
@@ -1433,7 +1402,7 @@ function CommentComposer({
             onChange={handleImageSelect}
           />
           {isUploading && (
-            <span className="text-[10px] text-foreground/30 ml-1">{uploadStatus}</span>
+            <span className="text-xs text-muted-foreground ml-1">{uploadStatus}</span>
           )}
         </div>
         <div className="flex items-center gap-1">
@@ -1497,13 +1466,15 @@ function TopicTrustBar({ comments, excludedTiers, onFilterChange }: {
   if (!wotEnabled || !wotReady || !tierCounts || tierCounts.total < 2) return null;
 
   const { total } = tierCounts;
+  // Colours from TIER_GLYPH, the one trust colour map, so this bar, its
+  // legend and the dot beside each author agree; red is for concerns only.
   const segments = [
-    { count: tierCounts.strong, color: "bg-emerald-500", label: "Highly Trusted", tierId: "strong" },
-    { count: tierCounts.moderate, color: "bg-blue-500", label: "Trusted", tierId: "moderate" },
-    { count: tierCounts.low, color: "bg-cyan-500", label: "Neutral", tierId: "low" },
-    { count: tierCounts.weak, color: "bg-amber-500", label: "Low Trust", tierId: "weak" },
-    { count: tierCounts.unverified, color: "bg-slate-500/60 dark:bg-slate-400/50", label: "Unverified", tierId: "none" },
-    { count: tierCounts.flagged, color: "bg-red-600", label: "Flagged", tierId: "flagged" },
+    { count: tierCounts.strong, bar: TIER_GLYPH.strong.className, label: "Trusted", tierId: "strong" },
+    { count: tierCounts.moderate, bar: TIER_GLYPH.moderate.className, label: "Known", tierId: "moderate" },
+    { count: tierCounts.low, bar: TIER_GLYPH.low.className, label: "Some ties", tierId: "low" },
+    { count: tierCounts.weak, bar: TIER_GLYPH.weak.className, label: "Few ties", tierId: "weak" },
+    { count: tierCounts.unverified, bar: "bg-foreground/[0.12]", label: "No data", tierId: "none" },
+    { count: tierCounts.flagged, bar: "bg-danger", label: "Concerns", tierId: "flagged" },
   ].filter(s => s.count > 0);
 
   const hasActiveFilter = excludedTiers.size > 0;
@@ -1518,49 +1489,50 @@ function TopicTrustBar({ comments, excludedTiers, onFilterChange }: {
     : total;
 
   return (
-    <Card className="glass-card px-3 py-2.5 space-y-2">
-      <div className="flex items-center gap-2">
-        <div className="flex-1 h-2 rounded-full overflow-hidden flex gap-px bg-slate-500/15 dark:bg-slate-400/10">
-          {segments.map((seg, i) => {
-            const excluded = excludedTiers.has(seg.tierId);
-            return (
-              <div
-                key={seg.label}
-                className={`${seg.color} transition-all duration-300 ${i === 0 ? "rounded-l-full" : ""} ${i === segments.length - 1 ? "rounded-r-full" : ""} ${excluded ? "opacity-20" : ""}`}
-                style={{ width: `${(seg.count / total) * 100}%`, minWidth: seg.count > 0 ? "4px" : 0 }}
-                title={`${seg.label}: ${seg.count}`}
-              />
-            );
-          })}
+    <div className="rounded-[16px] border border-border/60 bg-card px-3 py-3 space-y-2" data-testid="topic-trust-bar">
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-2 rounded-full overflow-hidden flex gap-px bg-foreground/[0.06]" role="img" aria-label={segments.map((s) => `${s.label} ${s.count}`).join(", ")}>
+          {segments.map((seg) => (
+            <div
+              key={seg.label}
+              className={`h-full ${seg.bar} ${excludedTiers.has(seg.tierId) ? "opacity-20" : ""}`}
+              style={{ width: `${(seg.count / total) * 100}%`, minWidth: "4px" }}
+              title={`${seg.label}: ${seg.count}`}
+            />
+          ))}
         </div>
-        <span className="text-[10px] text-muted-foreground/70 shrink-0 tabular-nums font-medium">
-          {hasActiveFilter ? `${filteredCount}/${total}` : total} authors
+        <span className="text-[12px] text-muted-foreground shrink-0 tabular-nums">
+          {hasActiveFilter ? `${filteredCount} of ${total}` : total} {total === 1 ? "person" : "people"} commented
         </span>
       </div>
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-x-3 gap-y-1 flex-wrap">
         {segments.map((seg) => {
           const excluded = excludedTiers.has(seg.tierId);
           return (
             <button
               key={seg.label}
+              type="button"
+              aria-pressed={!excluded}
+              title={excluded ? `Show ${seg.label}` : `Hide ${seg.label}`}
               onClick={() => toggleTier(seg.tierId)}
-              className={`flex items-center gap-1 text-[10px] transition-all duration-200 cursor-pointer rounded px-1 -mx-1 py-0.5 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] ${excluded ? "opacity-35 line-through decoration-1" : "text-foreground/70 dark:text-foreground/60"}`}
+              className={`hit-area inline-flex items-center gap-1.5 text-[12px] rounded-full px-1.5 -mx-1.5 py-0.5 hover:bg-foreground/[0.05] transition-colors duration-150 cursor-pointer ${excluded ? "text-muted-foreground line-through decoration-1" : "text-foreground/80"}`}
             >
-              <TrustTierGlyph tier={seg.tierId as SignalTier} size="w-1.5 h-1.5" decorative className={excluded ? "opacity-40" : ""} />
-              <span className="font-medium">{seg.label}</span> <span className="tabular-nums">{seg.count}</span>
+              <TrustTierGlyph tier={seg.tierId as SignalTier} size={seg.tierId === "flagged" ? "w-3 h-3" : "w-2 h-2"} decorative className={excluded ? "opacity-40" : undefined} />
+              {seg.label} <span className="tabular-nums">{seg.count}</span>
             </button>
           );
         })}
         {hasActiveFilter && (
           <button
+            type="button"
             onClick={() => onFilterChange(new Set())}
-            className="text-[10px] text-brand/70 hover:text-brand transition-colors ml-1 cursor-pointer"
+            className="hit-area text-[12px] font-medium text-brand hover:text-brand-strong transition-colors duration-150 cursor-pointer"
           >
             Show all
           </button>
         )}
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -1630,13 +1602,13 @@ function CommentTreeItem({
   }, [node]);
 
   const borderColors = [
-    "border-brand/25",
-    "border-blue-500/25",
-    "border-green-500/25",
-    "border-orange-500/25",
-    "border-pink-500/25",
-    "border-cyan-500/25",
-    "border-yellow-500/25",
+    "border-border",
+    "border-border",
+    "border-border",
+    "border-border",
+    "border-border",
+    "border-border",
+    "border-border",
   ];
   const borderColor = borderColors[depth % borderColors.length];
 
@@ -1649,7 +1621,7 @@ function CommentTreeItem({
     if (node.children.length === 0) return null;
     return (
       <div style={{ marginLeft: indent }} className={`${depth > 0 ? `border-l-2 ${borderColor} pl-1.5 sm:pl-3` : ""} mt-2 min-w-0`} data-testid={`comment-item-${node.event.id}`}>
-        <p className="text-sm italic text-muted-foreground/60 py-1" data-testid={`removed-by-community-${node.event.id}`}>{REMOVED_BY_COMMUNITY}</p>
+        <p className="text-sm text-muted-foreground py-1" data-testid={`removed-by-community-${node.event.id}`}>{REMOVED_BY_COMMUNITY}</p>
         {node.children.map((child) => (
           <CommentTreeItem key={child.event.id} node={child} depth={depth + 1} rootEvent={rootEvent} relayUrl={relayUrl} onCommented={onCommented} onBan={onBan} opPubkey={opPubkey} authRequired={authRequired} />
         ))}
@@ -1669,7 +1641,7 @@ function CommentTreeItem({
           {node.children.length > 0 && (
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="text-[10px] text-muted-foreground/40 hover:text-muted-foreground transition-colors ml-auto shrink-0 p-1.5 -m-1.5"
+              className="text-[12px] text-muted-foreground hover:text-foreground transition-colors ml-auto shrink-0 p-1.5 -m-1.5"
             >
               {collapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
             </button>
@@ -1682,23 +1654,23 @@ function CommentTreeItem({
               <div className="flex items-center rounded-full">
                 <button
                   onClick={() => castVote("up")}
-                  className={`p-1.5 sm:p-1 transition-colors hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] rounded-l-full ${userVote === "up" ? "text-orange-500 dark:text-orange-400" : "text-muted-foreground/30 hover:text-muted-foreground/60"}`}
+                  className={`p-1.5 sm:p-1 transition-colors hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] rounded-l-full ${userVote === "up" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
-                  <ArrowBigUp className={`w-3.5 h-3.5 ${userVote === "up" ? "fill-orange-500 dark:fill-orange-400" : ""}`} />
+                  <ArrowBigUp className={`w-3.5 h-3.5 ${userVote === "up" ? "fill-current" : ""}`} />
                 </button>
                 {node.reactionCount > 0 && (
-                  <span className="text-[10px] font-medium text-muted-foreground/50 px-0.5">{node.reactionCount}</span>
+                  <span className="text-xs font-medium text-muted-foreground px-0.5">{node.reactionCount}</span>
                 )}
                 <button
                   onClick={() => castVote("down")}
-                  className={`p-1.5 sm:p-1 transition-colors hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] rounded-r-full ${userVote === "down" ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground/30 hover:text-muted-foreground/60"}`}
+                  className={`p-1.5 sm:p-1 transition-colors hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] rounded-r-full ${userVote === "down" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
-                  <ArrowBigDown className={`w-3.5 h-3.5 ${userVote === "down" ? "fill-blue-600 dark:fill-blue-400" : ""}`} />
+                  <ArrowBigDown className={`w-3.5 h-3.5 ${userVote === "down" ? "fill-current" : ""}`} />
                 </button>
               </div>
               <button
                 onClick={() => setShowReply(!showReply)}
-                className="flex items-center gap-1 px-2.5 py-1.5 sm:px-2 sm:py-1 rounded-full text-[10px] text-muted-foreground/40 hover:text-brand hover:bg-black/[0.03] dark:hover:bg-white/[0.03] active:bg-black/[0.06] dark:active:bg-white/[0.06] transition-colors"
+                className="flex items-center gap-1 px-2.5 py-1.5 sm:px-2 sm:py-1 rounded-full text-[12px] text-muted-foreground hover:text-brand hover:bg-black/[0.03] dark:hover:bg-white/[0.03] active:bg-black/[0.06] dark:active:bg-white/[0.06] transition-colors"
               >
                 <MessageSquare className="w-3 h-3" />
                 Reply
@@ -1706,7 +1678,7 @@ function CommentTreeItem({
               {onBan && (
                 <button
                   onClick={() => onBan(node.event.id)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 sm:px-2 sm:py-1 rounded-full text-[10px] text-muted-foreground/30 hover:text-red-600 dark:hover:text-red-400 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] active:bg-black/[0.06] dark:active:bg-white/[0.06] transition-colors"
+                  className="flex items-center gap-1 px-2.5 py-1.5 sm:px-2 sm:py-1 rounded-full text-[12px] text-muted-foreground hover:text-danger hover:bg-black/[0.03] dark:hover:bg-white/[0.03] active:bg-black/[0.06] dark:active:bg-white/[0.06] transition-colors"
                   title="Remove from community"
                   aria-label="Remove from community"
                   data-testid={`button-remove-comment-${node.event.id}`}
@@ -1734,7 +1706,7 @@ function CommentTreeItem({
         {collapsed && (
           <button
             onClick={() => setCollapsed(false)}
-            className="text-[10px] text-blue-600/70 dark:text-blue-400/70 hover:text-blue-700 dark:hover:text-blue-400 transition-colors py-1"
+            className="text-xs font-medium text-brand hover:text-brand-strong transition-colors py-1"
           >
             {totalDescendants} more {totalDescendants === 1 ? "reply" : "replies"}
           </button>
@@ -1897,7 +1869,7 @@ function TopicThreadView({
       commentMapRef.current.delete(removeTarget.eventId);
       addModLogEntry(relayUrl, { action: "delete_event", targetEventId: removeTarget.eventId, targetPubkey: removeTarget.pubkey || undefined, targetKind: KIND_COMMENT, note: reason || undefined });
       const sent = removeTarget.pubkey && onNotifyRemoved ? await onNotifyRemoved(removeTarget.pubkey) : false;
-      toast({ title: `Removed from ${communityName || "the community"}`, description: sent ? "The author was sent a note." : "The author couldn't be sent a note." });
+      toast({ title: `Removed from ${communityName || "the community"}`, description: sent ? "The author was sent a private message." : "The author couldn't be sent a private message." });
       setRemoveTarget(null);
     } finally {
       setRemoveBusy(false);
@@ -1978,12 +1950,12 @@ function TopicThreadView({
       <div className="flex items-center justify-between gap-2 py-1">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground active:text-muted-foreground transition-colors py-1.5 -my-1.5"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground active:text-muted-foreground transition-colors py-1.5 -my-1.5"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to discussions
         </button>
-        <button onClick={onBack} className="text-muted-foreground/40 hover:text-muted-foreground transition-colors p-2 -m-2">
+        <button onClick={onBack} className="text-muted-foreground hover:text-foreground transition-colors p-2 -m-2">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -1993,7 +1965,7 @@ function TopicThreadView({
           {topicTags.length > 0 && (
             <div className="flex gap-1.5 flex-wrap">
               {topicTags.map((tag) => (
-                <span key={tag} className="text-[10px] text-brand/70">#{tag}</span>
+                <span key={tag} className="text-xs text-muted-foreground">#{tag}</span>
               ))}
             </div>
           )}
@@ -2005,37 +1977,37 @@ function TopicThreadView({
             <div className="flex items-center rounded-full bg-black/[0.03] dark:bg-white/[0.03] border border-border/10">
               <button
                 onClick={() => castPostVote("up")}
-                className={`p-2 sm:p-1.5 rounded-l-full transition-colors hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] ${postVote === "up" ? "text-orange-500 dark:text-orange-400" : "text-muted-foreground/40 hover:text-muted-foreground/70"}`}
+                className={`p-2 sm:p-1.5 rounded-l-full transition-colors hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] ${postVote === "up" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
-                <ArrowBigUp className={`w-4 h-4 ${postVote === "up" ? "fill-orange-500 dark:fill-orange-400" : ""}`} />
+                <ArrowBigUp className={`w-4 h-4 ${postVote === "up" ? "fill-current" : ""}`} />
               </button>
-              <span className="text-[11px] font-medium text-muted-foreground/60 min-w-[20px] text-center px-0.5">
+              <span className="text-xs font-medium text-muted-foreground min-w-[20px] text-center px-0.5">
                 {topicReactionCount || ""}
               </span>
               <button
                 onClick={() => castPostVote("down")}
-                className={`p-2 sm:p-1.5 rounded-r-full transition-colors hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] ${postVote === "down" ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground/40 hover:text-muted-foreground/70"}`}
+                className={`p-2 sm:p-1.5 rounded-r-full transition-colors hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] ${postVote === "down" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
-                <ArrowBigDown className={`w-4 h-4 ${postVote === "down" ? "fill-blue-600 dark:fill-blue-400" : ""}`} />
+                <ArrowBigDown className={`w-4 h-4 ${postVote === "down" ? "fill-current" : ""}`} />
               </button>
             </div>
 
-            <button className="flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-full bg-black/[0.03] dark:bg-white/[0.03] border border-border/10 text-muted-foreground/40 hover:text-muted-foreground/70 hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] transition-colors">
+            <button className="flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-full bg-black/[0.03] dark:bg-white/[0.03] border border-border/10 text-muted-foreground hover:text-foreground hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] transition-colors">
               <MessageSquare className="w-3.5 h-3.5" />
-              <span className="text-[11px] font-medium">
+              <span className="text-xs font-medium">
                 {comments.length}
                 {excludedTiers.size > 0 && filteredCommentCount !== comments.length && (
-                  <span className="text-brand/60 ml-1">({filteredCommentCount})</span>
+                  <span className="text-muted-foreground ml-1">({filteredCommentCount})</span>
                 )}
               </span>
             </button>
 
             <button
               onClick={handleCopyThreadLink}
-              className="flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-full bg-black/[0.03] dark:bg-white/[0.03] border border-border/10 text-muted-foreground/40 hover:text-muted-foreground/70 hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-full bg-black/[0.03] dark:bg-white/[0.03] border border-border/10 text-muted-foreground hover:text-foreground hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] transition-colors"
             >
               <Share2 className="w-3.5 h-3.5" />
-              <span className="text-[11px] font-medium">Share</span>
+              <span className="text-xs font-medium">Share</span>
             </button>
           </div>
         </div>
@@ -2048,18 +2020,18 @@ function TopicThreadView({
       {loading ? (
         <div className="flex flex-col items-center justify-center min-h-[80px] gap-2">
           <RelayOutpostInlineLoader className="w-5 h-5" />
-          <p className="text-[10px] text-muted-foreground/50">Loading comments...</p>
+          <p className="text-[12px] text-muted-foreground">Loading comments...</p>
         </div>
       ) : tree.length === 0 ? (
         <div className="text-center py-6">
-          <p className="text-xs text-muted-foreground/40">No comments yet. Be the first to reply!</p>
+          <p className="text-xs text-muted-foreground">No comments yet. Be the first to reply!</p>
         </div>
       ) : filteredTree.length === 0 && excludedTiers.size > 0 ? (
         <div className="text-center py-6">
-          <p className="text-xs text-muted-foreground/50">All comments filtered out</p>
+          <p className="text-xs text-muted-foreground">All comments filtered out</p>
           <button
             onClick={() => setExcludedTiers(new Set())}
-            className="text-[11px] text-brand/70 hover:text-brand transition-colors mt-1 cursor-pointer"
+            className="text-[13px] font-medium text-brand hover:text-brand-strong transition-colors mt-1 cursor-pointer"
           >
             Show all comments
           </button>
@@ -2101,7 +2073,7 @@ function TopicThreadView({
         ) : (
           <button
             onClick={() => setShowMainReply(true)}
-            className="flex w-full items-center gap-3 text-left text-sm text-muted-foreground/45 bg-black/[0.02] dark:bg-white/[0.02] border border-border/10 rounded-xl px-4 py-3 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:border-border/20 active:bg-black/[0.06] dark:active:bg-white/[0.06] transition-colors"
+            className="flex w-full items-center gap-3 text-left text-sm text-muted-foreground bg-black/[0.02] dark:bg-white/[0.02] border border-border/10 rounded-xl px-4 py-3 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:border-border/20 active:bg-black/[0.06] dark:active:bg-white/[0.06] transition-colors"
             data-testid="button-join-conversation"
           >
             <MessageSquare className="w-4 h-4 text-muted-foreground/25 shrink-0" />
@@ -2121,7 +2093,6 @@ function TopicsTab({
   externalRefreshKey = 0,
   canModerate = false,
   operatorPubkey,
-  onThreadOpen,
   authRequired,
   trustFilterEnabled = false,
   isHiddenByTrust,
@@ -2132,7 +2103,6 @@ function TopicsTab({
   externalRefreshKey?: number;
   canModerate?: boolean;
   operatorPubkey?: string;
-  onThreadOpen?: (open: boolean) => void;
   authRequired?: boolean;
   trustFilterEnabled?: boolean;
   isHiddenByTrust?: (pubkey: string) => boolean;
@@ -2140,7 +2110,7 @@ function TopicsTab({
   communityName?: string;
   onNotifyRemoved?: (authorPubkey: string) => Promise<boolean>;
 }) {
-  const { pubkey } = useNostrAuth();
+  useNostrAuth();
   const { toast } = useToast();
   const [topics, setTopics] = useState<NostrEvent[]>([]);
   const [comments, setComments] = useState<NostrEvent[]>([]);
@@ -2189,7 +2159,7 @@ function TopicsTab({
       setPinnedIds(prev => { const next = new Set(prev); next.delete(removeTopic.eventId); return next; });
       addModLogEntry(relayUrl, { action: "delete_event", targetEventId: removeTopic.eventId, targetPubkey: removeTopic.pubkey || undefined, targetKind: KIND_TOPIC, note: reason || undefined });
       const sent = removeTopic.pubkey && onNotifyRemoved ? await onNotifyRemoved(removeTopic.pubkey) : false;
-      toast({ title: `Removed from ${communityName || "the community"}`, description: sent ? "The author was sent a note." : "The author couldn't be sent a note." });
+      toast({ title: `Removed from ${communityName || "the community"}`, description: sent ? "The author was sent a private message." : "The author couldn't be sent a private message." });
       setRemoveTopic(null);
     } finally {
       setRemoveTopicBusy(false);
@@ -2409,10 +2379,6 @@ function TopicsTab({
     onTrustHidden?.(trustFilterEnabled ? filteredTopics.length - visibleTopics.length : 0);
   }, [trustFilterEnabled, filteredTopics.length, visibleTopics.length, onTrustHidden]);
 
-  useEffect(() => {
-    onThreadOpen?.(selectedTopic !== null);
-  }, [selectedTopic, onThreadOpen]);
-
   if (selectedTopic) {
     return (
       <TopicThreadView
@@ -2430,7 +2396,7 @@ function TopicsTab({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <h2 className="text-xs font-brand tracking-wider uppercase text-brand">Discussions</h2>
+        <h2 className="text-[15px] text-foreground font-semibold">Discussions</h2>
         {loading && <RelayOutpostInlineLoader className="w-3.5 h-3.5" />}
       </div>
 
@@ -2456,16 +2422,16 @@ function TopicsTab({
       {loading ? (
         <div className="flex flex-col items-center justify-center min-h-[120px] gap-3">
           <RelayOutpostInlineLoader className="w-6 h-6" />
-          <p className="text-xs text-muted-foreground/50">Fetching waves...</p>
+          <p className="text-xs text-muted-foreground">Fetching waves...</p>
         </div>
       ) : visibleTopics.length === 0 ? (
         <Card className="glass-card p-6">
           <div className="flex flex-col items-center gap-2 text-center">
-            <BookOpen className="w-8 h-8 text-muted-foreground/20" />
-            <p className="text-sm text-muted-foreground/50">
+            <OttoEmpty mood="quiet" size={72} className="text-foreground/70" />
+            <p className="text-sm text-muted-foreground">
               {selectedTag ? `No discussions tagged #${selectedTag}` : "No discussions yet"}
             </p>
-            <p className="text-[10px] text-muted-foreground/30">
+            <p className="text-[12px] text-muted-foreground">
               Be the first to start a conversation in this community
             </p>
           </div>
@@ -2506,7 +2472,7 @@ function ProfileCardInline({ pubkey, roleLabel }: { pubkey: string; roleLabel?: 
       <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors cursor-pointer">
         <Avatar className="w-8 h-8 border border-black/10 dark:border-white/10 shrink-0">
           {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName || ""} /> : null}
-          <AvatarFallback className="text-[9px] bg-brand/10 text-brand">
+          <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs">
             {(displayName || "?").slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
@@ -2516,7 +2482,7 @@ function ProfileCardInline({ pubkey, roleLabel }: { pubkey: string; roleLabel?: 
             <TrustTierDot pubkey={pubkey} />
           </div>
           {roleLabel && (
-            <span className="text-[9px] text-brand/60 uppercase tracking-wider">{roleLabel}</span>
+            <span className="text-[12px] text-muted-foreground font-medium">{roleLabel}</span>
           )}
         </div>
       </div>
@@ -2575,18 +2541,18 @@ function CommunityInfoPanel({
       <div className="space-y-1">
         {/* No "About" heading — the tab bar already labels this view. */}
         <h2 className="text-sm font-bold">{name}</h2>
-        <p className="text-[11px] text-muted-foreground/50 font-mono">
+        <p className="text-[12px] text-muted-foreground font-mono">
           {relayUrl.replace(/^wss?:\/\//, "")}
         </p>
         {description && (
-          <p className="text-xs text-muted-foreground/70 leading-relaxed mt-2">{description}</p>
+          <p className="text-xs text-muted-foreground leading-relaxed mt-2">{description}</p>
         )}
       </div>
 
       {authors.length > 0 && (
         <div className="space-y-1">
-          <h3 className="text-[10px] font-brand tracking-wider uppercase text-brand/70">
-            Community Health
+          <h3 className="text-[14px] text-foreground font-semibold">
+            Community health
           </h3>
           <OutpostHealthBadge relayUrl={relayUrl} members={authors} lastActivityTs={lastActivity} />
         </div>
@@ -2594,7 +2560,7 @@ function CommunityInfoPanel({
 
       {operatorPubkey && (
         <div className="space-y-1">
-          <h3 className="text-[10px] font-brand tracking-wider uppercase text-brand/70">
+          <h3 className="text-[14px] text-foreground font-semibold">
             Operator
           </h3>
           <ProfileCardInline pubkey={operatorPubkey} roleLabel="Operator" />
@@ -2603,7 +2569,7 @@ function CommunityInfoPanel({
 
       {moderators.length > 0 && (
         <div className="space-y-1">
-          <h3 className="text-[10px] font-brand tracking-wider uppercase text-brand/70 flex items-center gap-1">
+          <h3 className="text-[14px] text-foreground flex items-center gap-1 font-semibold">
             <ShieldCheck className="w-3 h-3" /> Moderators
           </h3>
           {moderators.map((pk) => (
@@ -2614,18 +2580,18 @@ function CommunityInfoPanel({
 
       {(postingPolicy || nip11?.limitation || fees || (pinnedRules && pinnedRules.length > 0)) && (
         <div className="space-y-2">
-          <h3 className="text-[10px] font-brand tracking-wider uppercase text-brand/70">
-            Rules & Policies
+          <h3 className="text-[14px] text-foreground font-semibold">
+            Rules & policies
           </h3>
           {pinnedRules && pinnedRules.length > 0 && (
-            <ul className="text-[11px] text-muted-foreground/70 space-y-0.5 list-disc list-inside">
+            <ul className="text-[12px] text-muted-foreground space-y-0.5 list-disc list-inside">
               {pinnedRules.map((rule, i) => (
                 <li key={i}>{rule}</li>
               ))}
             </ul>
           )}
           {nip11?.limitation && (
-            <ul className="text-[11px] text-muted-foreground/60 space-y-0.5 list-disc list-inside">
+            <ul className="text-[12px] text-muted-foreground space-y-0.5 list-disc list-inside">
               {nip11.limitation.auth_required && (
                 <li>Authentication required (NIP-42)</li>
               )}
@@ -2648,10 +2614,10 @@ function CommunityInfoPanel({
           )}
           {fees && (
             <div className="space-y-1">
-              <p className="text-[10px] font-semibold text-amber-600/80 dark:text-amber-400/80 flex items-center gap-1">
+              <p className="text-xs font-semibold text-warning flex items-center gap-1">
                 <Zap className="w-3 h-3" /> Payment Required
               </p>
-              <ul className="text-[11px] text-muted-foreground/60 space-y-0.5 list-disc list-inside">
+              <ul className="text-[12px] text-muted-foreground space-y-0.5 list-disc list-inside">
                 {fees.admission && fees.admission.length > 0 && fees.admission.map((fee, i) => (
                   <li key={`adm-${i}`}>
                     One-time admission: {formatFeeAmount(fee.amount, fee.unit)}
@@ -2673,7 +2639,7 @@ function CommunityInfoPanel({
                   href={paymentsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[11px] text-amber-600/80 dark:text-amber-400/80 hover:text-amber-700 dark:hover:text-amber-300 underline break-all block"
+                  className="text-xs text-warning hover:text-foreground underline break-all block"
                 >
                   Payment page →
                 </a>
@@ -2685,7 +2651,7 @@ function CommunityInfoPanel({
               href={postingPolicy}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[11px] text-brand hover:text-brand/80 dark:hover:text-brand underline break-all block"
+              className="text-xs text-brand hover:text-brand-strong underline break-all block"
             >
               Full posting policy →
             </a>
@@ -2695,7 +2661,7 @@ function CommunityInfoPanel({
 
       {nip11?.blossom_servers && nip11.blossom_servers.length > 0 && (
         <div className="space-y-1">
-          <h3 className="text-[10px] font-brand tracking-wider uppercase text-brand/70 flex items-center gap-1">
+          <h3 className="text-[14px] text-foreground flex items-center gap-1 font-semibold">
             <Package className="w-3 h-3" /> Media Storage
           </h3>
           <div className="space-y-1">
@@ -2703,16 +2669,16 @@ function CommunityInfoPanel({
               let hostname = server;
               try { hostname = new URL(server).hostname; } catch {}
               return (
-                <div key={server} className="flex items-center gap-1.5 text-[11px]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/70 shrink-0" />
+                <div key={server} className="flex items-center gap-1.5 text-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-success shrink-0" />
                   <span className="text-success dark:text-emerald-400/80 font-mono truncate">{hostname}</span>
-                  <Badge variant="outline" className="text-[8px] h-3.5 px-1 border-emerald-600/20 dark:border-emerald-400/20 text-emerald-600/60 dark:text-emerald-400/60 shrink-0">
+                  <Badge variant="outline" className="text-xs h-5 px-1.5 border-border text-success shrink-0">
                     Blossom
                   </Badge>
                 </div>
               );
             })}
-            <p className="text-[10px] text-muted-foreground/40 leading-relaxed mt-1">
+            <p className="text-[12px] text-muted-foreground leading-relaxed mt-1">
               Media uploaded in this community is stored on the relay's Blossom server.
             </p>
           </div>
@@ -2720,13 +2686,13 @@ function CommunityInfoPanel({
       )}
 
       <div className="space-y-1">
-        <h3 className="text-[10px] font-brand tracking-wider uppercase text-brand/70">
-          Relay Info
+        <h3 className="text-[14px] text-foreground font-semibold">
+          Relay info
         </h3>
-        <div className="space-y-1 text-[11px] text-muted-foreground/60">
+        <div className="space-y-1 text-[12px] text-muted-foreground">
           {lastActivity && lastActivity > 0 && (
             <p className="flex items-center gap-1.5">
-              <Clock className="w-3 h-3 text-emerald-600/60 dark:text-emerald-400/60" />
+              <Clock className="w-3 h-3 text-success" />
               Last activity: {formatDistanceToNow(new Date(lastActivity * 1000), { addSuffix: true })}
             </p>
           )}
@@ -2737,7 +2703,7 @@ function CommunityInfoPanel({
                 <Badge
                   key={nip}
                   variant="outline"
-                  className="text-[8px] h-3.5 px-1 border-border/20 text-muted-foreground/40 font-mono"
+                  className="text-xs h-3.5 px-1 border-border/20 text-muted-foreground font-mono"
                 >
                   NIP-{nip}
                 </Badge>
@@ -2746,7 +2712,7 @@ function CommunityInfoPanel({
                 <button
                   type="button"
                   onClick={() => setShowAllNips((v) => !v)}
-                  className="text-[9px] text-brand/60 hover:text-brand transition-colors px-1 min-h-[20px]"
+                  className="text-[13px] font-medium text-brand hover:text-brand-strong transition-colors px-1 min-h-[20px]"
                   data-testid="button-toggle-nips"
                 >
                   {showAllNips ? "Show less" : `+${supportedNips.length - 8} more`}
@@ -2759,7 +2725,7 @@ function CommunityInfoPanel({
 
       {authors.length > 0 && (
         <div className="space-y-1">
-          <h3 className="text-[10px] font-brand tracking-wider uppercase text-brand/70">
+          <h3 className="text-[14px] text-foreground font-semibold">
             Members ({authors.length})
           </h3>
           <ActiveMembersSection authors={authors} />
@@ -3016,8 +2982,8 @@ function OutpostComposeSheet({
   const body = (
     <div className="space-y-3 p-1">
       <div className="flex items-center gap-2 mb-1">
-        <PenSquare className="w-4 h-4 text-brand/70" />
-        <h3 className="text-xs font-brand tracking-wider uppercase text-brand">
+        <PenSquare className="w-4 h-4 text-muted-foreground" />
+        <h3 className="text-[15px] text-foreground font-semibold">
           {mode === "topic" ? "New discussion" : "New post"}
         </h3>
       </div>
@@ -3031,7 +2997,7 @@ function OutpostComposeSheet({
       >
         <Avatar className="w-6 h-6 shrink-0">
           <AvatarImage src={communityIcon || undefined} alt={communityName} />
-          <AvatarFallback className="text-[9px] bg-brand/10 text-brand">
+          <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs">
             {communityName.slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
@@ -3040,7 +3006,7 @@ function OutpostComposeSheet({
         </span>
         {isPrivateCommunity && (
           <Lock
-            className="w-3 h-3 text-emerald-600/70 dark:text-emerald-400/70 shrink-0"
+            className="w-3 h-3 text-success shrink-0"
             aria-label="Members-only community"
           />
         )}
@@ -3049,7 +3015,7 @@ function OutpostComposeSheet({
         <label className="flex items-center justify-between gap-3 cursor-pointer select-none px-0.5 py-0.5" data-testid="toggle-crosspost">
           <span className="flex flex-col min-w-0">
             <span className="text-[12px] text-foreground/70">Also share to your feed</span>
-            <span className="text-[10px] text-muted-foreground/50">Reach your followers too</span>
+            <span className="text-[12px] text-muted-foreground">Reach your followers too</span>
           </span>
           <Switch
             checked={crossPost}
@@ -3061,7 +3027,7 @@ function OutpostComposeSheet({
       )}
       {mode === "topic" && (
         <Input
-          placeholder="Wave title"
+          placeholder="Discussion title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="text-base sm:text-sm bg-black/[0.03] dark:bg-white/[0.03] border-border/20"
@@ -3114,14 +3080,14 @@ function OutpostComposeSheet({
               )}
               {media.type === "video" && (
                 <div className="w-24 h-24 flex items-center justify-center bg-black/30">
-                  <Film className="w-6 h-6 text-brand/70" />
-                  <span className="absolute bottom-1 left-1 text-[8px] text-white/60">Video</span>
+                  <Film className="w-6 h-6 text-muted-foreground" />
+                  <span className="absolute bottom-1 left-1 text-xs text-white/60">Video</span>
                 </div>
               )}
               {media.type === "audio" && (
                 <div className="w-24 h-24 flex items-center justify-center bg-black/30">
-                  <Music className="w-6 h-6 text-brand/70" />
-                  <span className="absolute bottom-1 left-1 text-[8px] text-white/60">Audio</span>
+                  <Music className="w-6 h-6 text-muted-foreground" />
+                  <span className="absolute bottom-1 left-1 text-xs text-white/60">Audio</span>
                 </div>
               )}
               <button
@@ -3157,8 +3123,8 @@ function OutpostComposeSheet({
 
       {isUploading && (
         <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-primary/5 border border-primary/10">
-          <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-brand/70" />
-          <span className="text-[11px] text-brand/70">{uploadStatus}</span>
+          <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-[12px] text-muted-foreground">{uploadStatus}</span>
         </div>
       )}
 
@@ -3176,7 +3142,7 @@ function OutpostComposeSheet({
           type="button"
           onClick={() => imageInputRef.current?.click()}
           disabled={publishing || isUploading}
-          className="flex items-center justify-center h-9 w-9 rounded-md text-brand/70 hover:text-brand hover:bg-brand/10 transition-colors disabled:opacity-30"
+          className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors disabled:opacity-30"
           title="Add image"
           aria-label="Add image"
         >
@@ -3186,7 +3152,7 @@ function OutpostComposeSheet({
           type="button"
           onClick={() => videoInputRef.current?.click()}
           disabled={publishing || isUploading}
-          className="flex items-center justify-center h-9 w-9 rounded-md text-brand/70 hover:text-brand hover:bg-brand/10 transition-colors disabled:opacity-30"
+          className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors disabled:opacity-30"
           title="Add video"
           aria-label="Add video"
         >
@@ -3196,7 +3162,7 @@ function OutpostComposeSheet({
           type="button"
           onClick={() => audioInputRef.current?.click()}
           disabled={publishing || isUploading}
-          className="flex items-center justify-center h-9 w-9 rounded-md text-brand/70 hover:text-brand hover:bg-brand/10 transition-colors disabled:opacity-30"
+          className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors disabled:opacity-30"
           title="Add audio"
           aria-label="Add audio"
         >
@@ -3206,7 +3172,7 @@ function OutpostComposeSheet({
           type="button"
           onClick={() => setShowLinkInput(!showLinkInput)}
           disabled={publishing || isUploading}
-          className={`flex items-center justify-center h-9 w-9 rounded-md transition-colors disabled:opacity-30 ${showLinkInput ? "text-brand dark:text-brand bg-brand/10" : "text-brand/70 hover:text-brand hover:bg-brand/10"}`}
+          className={`flex items-center justify-center h-9 w-9 rounded-md transition-colors disabled:opacity-30 ${showLinkInput ? "text-foreground bg-foreground/[0.08]" : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06]"}`}
           title="Add link"
           aria-label="Add link"
         >
@@ -3235,51 +3201,51 @@ function OutpostComposeSheet({
           className="flex items-center gap-2 w-full text-left group cursor-pointer"
         >
           <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            <Info className="w-3 h-3 text-brand/60" />
+            <Info className="w-3 h-3 text-muted-foreground" />
           </div>
-          <span className="text-[11px] text-muted-foreground/40 group-hover:text-muted-foreground/60 transition-colors flex-1">
+          <span className="text-[12px] text-muted-foreground group-hover:text-muted-foreground transition-colors flex-1">
             {mode === "topic" ? "How do discussions work?" : "How do posts work?"}
           </span>
           {showLearnMore ? (
-            <ChevronUp className="w-3 h-3 text-muted-foreground/30" />
+            <ChevronUp className="w-3 h-3 text-muted-foreground" />
           ) : (
-            <ChevronDown className="w-3 h-3 text-muted-foreground/30" />
+            <ChevronDown className="w-3 h-3 text-muted-foreground" />
           )}
         </button>
 
         {showLearnMore && (
-          <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="mt-3 space-y-3 animate-in fade-in duration-150">
             {mode === "topic" ? (
               <>
                 <div className="flex gap-2.5">
                   <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Telescope className="w-3.5 h-3.5 text-brand/70" />
+                    <Telescope className="w-3.5 h-3.5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-medium text-foreground/70">Start a conversation</p>
-                    <p className="text-[10px] text-muted-foreground/40 leading-relaxed mt-0.5">
-                      Waves are threaded discussions that live on this relay. Give it a title, share your thoughts, and others can reply to keep the conversation going.
+                    <p className="text-xs font-medium text-foreground/70">Start a conversation</p>
+                    <p className="text-[12px] text-muted-foreground leading-relaxed mt-0.5">
+                      Discussions are threaded conversations that live on this relay. Give it a title, share your thoughts, and others can reply to keep the conversation going.
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2.5">
                   <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Satellite className="w-3.5 h-3.5 text-brand/70" />
+                    <Satellite className="w-3.5 h-3.5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-medium text-foreground/70">Published to this community</p>
-                    <p className="text-[10px] text-muted-foreground/40 leading-relaxed mt-0.5">
+                    <p className="text-xs font-medium text-foreground/70">Published to this community</p>
+                    <p className="text-[12px] text-muted-foreground leading-relaxed mt-0.5">
                       Your wave is stored on this relay and visible to its members.
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2.5">
                   <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Sparkles className="w-3.5 h-3.5 text-yellow-600/70 dark:text-yellow-400/70" />
+                    <Sparkles className="w-3.5 h-3.5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-medium text-foreground/70">Attach media and links</p>
-                    <p className="text-[10px] text-muted-foreground/40 leading-relaxed mt-0.5">
+                    <p className="text-xs font-medium text-foreground/70">Attach media and links</p>
+                    <p className="text-[12px] text-muted-foreground leading-relaxed mt-0.5">
                       Drop in images, videos, audio, GIFs, or links to make your wave stand out.
                     </p>
                   </div>
@@ -3289,34 +3255,34 @@ function OutpostComposeSheet({
               <>
                 <div className="flex gap-2.5">
                   <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Rocket className="w-3.5 h-3.5 text-brand/70" />
+                    <Rocket className="w-3.5 h-3.5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-medium text-foreground/70">Quick thoughts, no title needed</p>
-                    <p className="text-[10px] text-muted-foreground/40 leading-relaxed mt-0.5">
-                      Notes are short-form posts — like a status update or a quick share. Just write and publish. No title required.
+                    <p className="text-xs font-medium text-foreground/70">Quick thoughts, no title needed</p>
+                    <p className="text-[12px] text-muted-foreground leading-relaxed mt-0.5">
+                      Posts are short — like a status update or a quick share. Just write and publish. No title required.
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2.5">
                   <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Satellite className="w-3.5 h-3.5 text-brand/70" />
+                    <Satellite className="w-3.5 h-3.5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-medium text-foreground/70">Shows up in the feed</p>
-                    <p className="text-[10px] text-muted-foreground/40 leading-relaxed mt-0.5">
-                      Your note appears in this community's feed, visible to all members, and is stored on this relay.
+                    <p className="text-xs font-medium text-foreground/70">Shows up in the feed</p>
+                    <p className="text-[12px] text-muted-foreground leading-relaxed mt-0.5">
+                      Your post appears in this community's feed, visible to all members, and is stored on this relay.
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2.5">
                   <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Telescope className="w-3.5 h-3.5 text-brand/70" />
+                    <Telescope className="w-3.5 h-3.5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-medium text-foreground/70">Want a longer discussion?</p>
-                    <p className="text-[10px] text-muted-foreground/40 leading-relaxed mt-0.5">
-                      If you have more to say, try creating a Wave instead. Waves have titles and are designed for threaded conversations that people can find later.
+                    <p className="text-xs font-medium text-foreground/70">Want a longer discussion?</p>
+                    <p className="text-[12px] text-muted-foreground leading-relaxed mt-0.5">
+                      If you have more to say, try starting a discussion instead. Discussions have titles and are designed for threaded conversations that people can find later.
                     </p>
                   </div>
                 </div>
@@ -3414,7 +3380,6 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
   const [showCompose, setShowCompose] = useState(false);
   const [composeMode, setComposeMode] = useState<"note" | "topic">("note");
   const [feedRefreshKey, setFeedRefreshKey] = useState(0);
-  const [waveThreadOpen, setWaveThreadOpen] = useState(false);
   // Condensed by default: outpost identity (avatar · name · AUTH · Invite ·
   // Join/Leave · ⌄) portals into the global top bar's #header-identity-slot,
   // same pattern as profiles — banner shows through the bar, the ⌄ expands the
@@ -4078,7 +4043,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
         markRemovedByCommunity(modAction.eventId);
         addModLogEntry(relayUrl, { action: "delete_event", targetEventId: modAction.eventId, targetPubkey: modAction.pubkey || undefined, note: reason || undefined });
         const sent = modAction.pubkey ? await notifyRemoved(modAction.pubkey) : false;
-        toast({ title: `Removed from ${name}`, description: sent ? "The author was sent a note." : "The author couldn't be sent a note." });
+        toast({ title: `Removed from ${name}`, description: sent ? "The author was sent a private message." : "The author couldn't be sent a private message." });
       } else {
         const res = await banPubkey(relayUrl, modAction.pubkey, reason || "Banned by moderator");
         if (res.error) { toast({ title: "Failed to ban author", description: res.error, variant: "destructive" }); return; }
@@ -4245,16 +4210,16 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
   // relay's particulars, in About.
   const communityMeta = (operatorPubkey || (nip11?.blossom_servers && nip11.blossom_servers.length > 0) || sw || (pubkey && isJoined && (isOperator || !operatorClaimBlocked)) || (tags && tags.length > 0)) ? (
                     <div className="space-y-2.5">
-                      <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground/50">
+                      <div className="flex items-center gap-2 flex-wrap text-[12px] text-muted-foreground">
                         {operatorPubkey && (
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="text-[9px] text-muted-foreground/40 uppercase tracking-wider shrink-0">Operated by</span>
+                            <span className="text-[12px] text-muted-foreground shrink-0 font-medium">Operated by</span>
                             <OperatorBadge pubkey={operatorPubkey} />
                           </div>
                         )}
                         {operatorPubkey && <div className="flex-1" />}
                         {nip11?.blossom_servers && nip11.blossom_servers.length > 0 && (
-                          <span className="flex items-center gap-1 text-success dark:text-emerald-400/70" title={`Media hosted by ${nip11.blossom_servers.map(s => { try { return new URL(s).hostname; } catch { return s; } }).join(", ")}`}>
+                          <span className="flex items-center gap-1 text-success" title={`Media hosted by ${nip11.blossom_servers.map(s => { try { return new URL(s).hostname; } catch { return s; } }).join(", ")}`}>
                             <Package className="w-3 h-3" />
                             <span className="hidden sm:inline">Blossom</span>
                           </span>
@@ -4268,10 +4233,10 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                         {pubkey && isJoined && (isOperator || !operatorClaimBlocked) && (
                           <button
                             onClick={toggleOperatorMode}
-                            className={`relative inline-flex items-center h-5 w-9 rounded-full transition-colors duration-200 shrink-0 ${
-                              isOperator
-                                ? "bg-primary/20 border border-primary/30"
-                                : "bg-muted/60 dark:bg-white/[0.06] border border-border/50 dark:border-white/[0.08]"
+                            role="switch"
+                            aria-checked={!!isOperator}
+                            className={`relative inline-flex items-center h-5 w-9 rounded-full transition-colors duration-150 shrink-0 ${
+                              isOperator ? "bg-primary" : "bg-input"
                             }`}
                             title={
                               isOperator
@@ -4283,10 +4248,8 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                             data-testid="button-operator-mode-toggle"
                             aria-label="Toggle operator mode"
                           >
-                            <span className={`inline-block w-3.5 h-3.5 rounded-full transition-all duration-200 ${
-                              isOperator
-                                ? "translate-x-[18px] bg-primary dark:bg-brand"
-                                : "translate-x-[3px] bg-muted-foreground/30"
+                            <span className={`inline-block w-3.5 h-3.5 rounded-full bg-background shadow transition-transform duration-150 ${
+                              isOperator ? "translate-x-[18px]" : "translate-x-[3px]"
                             }`} />
                           </button>
                         )}
@@ -4295,8 +4258,8 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-7 w-7 p-0 text-muted-foreground/50 hover:text-brand"
-                              title="Relay Control"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-brand"
+                              title="Console"
                             >
                               <Settings className="w-3.5 h-3.5" />
                             </Button>
@@ -4309,7 +4272,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                             <Badge
                               key={tag}
                               variant="outline"
-                              className="text-[9px] h-4 px-1.5 border-brand/15 text-brand/70 bg-brand/5"
+                              className="text-xs h-4 px-1.5 border-border/60 text-foreground/75 bg-transparent"
                             >
                               <Hash className="w-2 h-2 mr-0.5" />
                               {tag}
@@ -4352,7 +4315,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                     >
                       <Avatar className="w-7 h-7 border border-border shrink-0">
                         <AvatarImage src={icon || undefined} alt={name} />
-                        <AvatarFallback className="bg-brand/20 text-brand text-[10px] font-bold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                        <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs font-bold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <span className="text-sm font-bold text-foreground truncate group-data-[audio=true]:hidden" data-testid="header-identity-name">{name}</span>
                     </button>
@@ -4414,26 +4377,26 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                         <DropdownMenuContent align="end" className="min-w-[200px]">
                           {(PINNABLE_TABS as string[]).includes(activeTab) && (
                             <DropdownMenuItem onClick={handleTogglePin} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-outpost-pin">
-                              {feedPinned ? <Pin className="w-4 h-4 rotate-45 text-brand" /> : <PinOff className="w-4 h-4 text-brand/70" />}
+                              {feedPinned ? <Pin className="w-4 h-4 rotate-45 text-foreground" /> : <PinOff className="w-4 h-4 text-muted-foreground" />}
                               {feedPinned ? "Unpin this view" : "Pin this view to your hub"}
                             </DropdownMenuItem>
                           )}
                           {contactRecipient?.hasInbox && (
                             <DropdownMenuItem onClick={() => openFeedbackDrawer({ initialRecipient: contactRecipient })} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-contact-team">
-                              <Inbox className="w-4 h-4 text-brand/70" /> Contact the team
+                              <Inbox className="w-4 h-4 text-muted-foreground" /> Contact the team
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuItem onClick={() => { try { navigator.clipboard?.writeText(`${window.location.origin}/outposts/${encodeURIComponent(relayUrl)}`); } catch {} }} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-outpost-copy-link">
-                            <Link2 className="w-4 h-4 text-brand/70" /> Copy link
+                            <Link2 className="w-4 h-4 text-muted-foreground" /> Copy link
                           </DropdownMenuItem>
                           {pubkey && isJoined && (isOperator || !operatorClaimBlocked) && (
                             <DropdownMenuItem onClick={toggleOperatorMode} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-operator-mode">
-                              <Settings className="w-4 h-4 text-brand/70" /> {isOperator ? "Turn operator mode off" : "I operate this relay"}
+                              <Settings className="w-4 h-4 text-muted-foreground" /> {isOperator ? "Turn operator mode off" : "I operate this relay"}
                             </DropdownMenuItem>
                           )}
                           {isOperator && (
                             <DropdownMenuItem onClick={() => setLocation(`/relay-ops-center/${encodeURIComponent(relayUrl)}`)} className="gap-2.5 cursor-pointer min-h-11 sm:min-h-0" data-testid="menu-item-relay-control">
-                              <Server className="w-4 h-4 text-brand/70" /> Relay Control
+                              <Server className="w-4 h-4 text-muted-foreground" /> Console
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
@@ -4454,7 +4417,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                   size="sm"
                   variant="ghost"
                   onClick={() => setHorizonDialogOpen(true)}
-                  className="h-7 text-[11px] text-brand/70 hover:text-brand gap-1 -mb-px"
+                  className="h-7 text-[13px] font-medium text-brand hover:text-brand-strong gap-1 -mb-px"
                 >
                   <PenSquare className="w-3 h-3" />
                   <span className="hidden sm:inline">New article</span>
@@ -4468,7 +4431,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                   onClick={() => setCreateChannelOpen(true)}
                   title="New room"
                   aria-label="New room"
-                  className="h-7 text-[11px] text-brand/70 hover:text-brand gap-1 -mb-px"
+                  className="h-7 text-[13px] font-medium text-brand hover:text-brand-strong gap-1 -mb-px"
                 >
                   <PenSquare className="w-3 h-3" />
                   <span className="hidden sm:inline">New room</span>
@@ -4478,19 +4441,19 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                   size="sm"
                   variant="ghost"
                   onClick={() => handleCompose(activeTab === "topics" ? "topic" : "note")}
-                  className="h-7 text-[11px] text-brand/70 hover:text-brand gap-1 -mb-px"
+                  className="h-7 text-[13px] font-medium text-brand hover:text-brand-strong gap-1 -mb-px"
                 >
                   <PenSquare className="w-3 h-3" />
                   <span className="hidden sm:inline">{activeTab === "topics" ? "New discussion" : "New post"}</span>
                 </Button>
               )
             ) : relayAuthFailed ? (
-              <span className="text-[10px] text-danger dark:text-red-400/70 flex items-center gap-1 -mb-px">
+              <span className="text-xs text-danger flex items-center gap-1 -mb-px">
                 <ShieldAlert className="w-3 h-3" />
                 <span className="hidden sm:inline">Auth failed</span>
               </span>
             ) : relayStatusLabel ? (
-              <span className="text-[10px] text-amber-600/60 dark:text-amber-400/60 flex items-center gap-1 -mb-px">
+              <span className="text-xs text-warning flex items-center gap-1 -mb-px">
                 <RelayOutpostInlineLoader className="w-3 h-3" />
                 <span className="hidden sm:inline">{relayStatusLabel}</span>
               </span>
@@ -4502,7 +4465,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
               size="sm"
               variant="ghost"
               onClick={handleTogglePin}
-              className={`h-7 w-7 p-0 -mb-px ${feedPinned ? "text-brand" : "text-muted-foreground/50 hover:text-muted-foreground/80"}`}
+              className={`h-7 w-7 p-0 -mb-px ${feedPinned ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               title={feedPinned ? "Unpin this view" : "Pin this view"}
             >
               {feedPinned ? <Pin className="w-3.5 h-3.5 rotate-45" /> : <PinOff className="w-3.5 h-3.5" />}
@@ -4518,7 +4481,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
               size="sm"
               variant="ghost"
               onClick={handleTogglePin}
-              className={`h-9 w-9 p-0 shrink-0 ${feedPinned ? "text-brand" : "text-muted-foreground/60 hover:text-muted-foreground/90"}`}
+              className={`h-9 w-9 p-0 shrink-0 ${feedPinned ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               aria-label={feedPinned ? "Unpin this view from your hub" : "Pin this view to your hub"}
               title={feedPinned ? "Unpin this view" : "Pin this view"}
               data-testid="button-outpost-pin-mobile"
@@ -4534,7 +4497,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-foreground">Apply trust filter</p>
-                  <p className="text-[10px] text-muted-foreground/60">
+                  <p className="text-[12px] text-muted-foreground">
                     {trustFilterOn ? (trustHiddenCount > 0 ? `Hiding ${trustHiddenCount} on this tab` : "On") : "Off — showing everyone"}
                   </p>
                 </div>
@@ -4542,9 +4505,9 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
               </div>
               <div className={trustFilterOn ? "" : "opacity-50 pointer-events-none select-none"}>
                 <div className="flex items-center justify-between mb-1.5">
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/60">Hide these tiers</p>
+                  <p className="text-[13px] font-medium text-muted-foreground">Hide these tiers</p>
                   {trustExcludedTiers.size > 0 && (
-                    <button onClick={clearTrustTiers} className="text-[10px] text-brand/70 hover:text-brand" data-testid="button-trust-reset">Reset</button>
+                    <button onClick={clearTrustTiers} className="text-[13px] font-medium text-brand hover:text-brand-strong" data-testid="button-trust-reset">Reset</button>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
@@ -4555,9 +4518,9 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                         key={tier}
                         onClick={() => toggleTrustTier(tier)}
                         title={excluded ? `Show ${getSignalTierLabel(tier)}` : `Hide ${getSignalTierLabel(tier)}`}
-                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-medium transition-colors ${
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-medium transition-colors ${
                           excluded
-                            ? "border-border/40 bg-muted/40 text-muted-foreground/60 line-through"
+                            ? "border-border/40 bg-muted/40 text-muted-foreground line-through"
                             : "border-primary/30 bg-primary/5 text-foreground hover:bg-primary/10"
                         }`}
                         data-testid={`trust-tier-${tier}`}
@@ -4569,7 +4532,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                   })}
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground/50 leading-relaxed">
+              <p className="text-[12px] text-muted-foreground leading-relaxed">
                 Applies across Posts, Discussions, Chat &amp; Articles in this community. Excluding “None” hides people outside your network. Your selection is shared with your feed.
               </p>
             </div>
@@ -4581,14 +4544,14 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className={`h-7 gap-1.5 px-2 text-xs -mb-px shrink-0 ${trustFilterEnabled ? "text-brand" : "text-muted-foreground/50 hover:text-muted-foreground/80"}`}
+                  className={`h-7 gap-1.5 px-2 text-xs -mb-px shrink-0 ${trustFilterEnabled ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                   title="Trust filter for this community"
                   data-testid="button-outpost-trust-filter"
                 >
                   <ShieldCheck className="w-3.5 h-3.5" />
                   <span>Trust filter</span>
                   {trustFilterEnabled && trustHiddenCount > 0 && (
-                    <span className="rounded-full bg-brand/15 text-brand px-1.5 py-0.5 text-[10px] leading-none">{trustHiddenCount} hidden</span>
+                    <span className="text-[12px] font-medium text-brand tabular-nums">{trustHiddenCount} hidden</span>
                   )}
                 </Button>
               </PopoverTrigger>
@@ -4604,7 +4567,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                 size="sm"
                 variant="ghost"
                 onClick={() => setTrustSheetOpen(true)}
-                className={`relative h-9 w-9 p-0 shrink-0 ${trustFilterEnabled ? "text-brand" : "text-muted-foreground/60 hover:text-muted-foreground/90"}`}
+                className={`relative h-9 w-9 p-0 shrink-0 ${trustFilterEnabled ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 aria-label="Trust filter"
                 data-testid="button-outpost-trust-filter-mobile"
               >
@@ -4613,7 +4576,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
               </Button>
               <Sheet open={trustSheetOpen} onOpenChange={setTrustSheetOpen}>
                 <SheetContent side="bottom" className="rounded-t-2xl px-4 pt-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-                  <SheetTitle className="text-sm font-brand tracking-wide mb-3">Trust filter</SheetTitle>
+                  <SheetTitle className="text-base font-semibold mb-3">Trust filter</SheetTitle>
                   {trustPanel}
                 </SheetContent>
               </Sheet>
@@ -4638,7 +4601,6 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                     const hasSheet = key !== "about" && key !== "ideas";
                     if (key === activeTab && hasSheet) { setTabDropdownOpen(true); return; }
                     setActiveTab(key as OutpostTab);
-                    if (key !== "topics") setWaveThreadOpen(false);
                   }}
                   tabs={TAB_CONFIG.map((tab) => ({
                     key: tab.key,
@@ -4666,7 +4628,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
               {/* Active-tab options sheet — same shell as the feed/Saved sheets. */}
               <Sheet open={tabDropdownOpen} onOpenChange={setTabDropdownOpen}>
                 <SheetContent side="bottom" className="rounded-t-2xl pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]" data-testid="outpost-tab-sheet">
-                  <SheetTitle className="text-sm font-brand uppercase tracking-widest mb-4">
+                  <SheetTitle className="text-sm mb-4 font-medium">
                     {activeTabConfig?.label ?? "Tab"} options
                   </SheetTitle>
                   <div className="space-y-5">
@@ -4694,10 +4656,10 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                         <button
                           type="button"
                           onClick={() => { handleTogglePin(); setTabDropdownOpen(false); }}
-                          className="flex items-center gap-2 rounded-lg px-3 py-2 min-h-[44px] text-sm font-medium border border-border dark:border-brand/10 bg-muted text-muted-foreground/80 hover:border-brand/25 transition-all text-left"
+                          className="flex items-center gap-2 rounded-lg px-3 py-2 min-h-[44px] text-sm font-medium border border-border bg-muted text-muted-foreground hover:border-brand/25 transition-colors text-left"
                           data-testid="sheet-toggle-pin"
                         >
-                          {feedPinned ? <Pin className="w-4 h-4 shrink-0 rotate-45 text-brand" /> : <PinOff className="w-4 h-4 shrink-0" />}
+                          {feedPinned ? <Pin className="w-4 h-4 shrink-0 rotate-45 text-foreground" /> : <PinOff className="w-4 h-4 shrink-0" />}
                           {feedPinned ? "Unpin this view from your hub" : "Pin this view to your hub"}
                         </button>
                       )}
@@ -4705,7 +4667,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                         <button
                           type="button"
                           onClick={() => { handleCompose("topic"); setTabDropdownOpen(false); }}
-                          className="flex items-center gap-2 rounded-lg px-3 py-2 min-h-[44px] text-sm font-medium border border-border dark:border-brand/10 bg-muted text-muted-foreground/80 hover:border-brand/25 transition-all text-left"
+                          className="flex items-center gap-2 rounded-lg px-3 py-2 min-h-[44px] text-sm font-medium border border-border bg-muted text-muted-foreground hover:border-brand/25 transition-colors text-left"
                           data-testid="sheet-new-discussion"
                         >
                           <PenSquare className="w-4 h-4 shrink-0" />
@@ -4716,7 +4678,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                         <button
                           type="button"
                           onClick={() => { setCreateChannelOpen(true); setTabDropdownOpen(false); }}
-                          className="flex items-center gap-2 rounded-lg px-3 py-2 min-h-[44px] text-sm font-medium border border-border dark:border-brand/10 bg-muted text-muted-foreground/80 hover:border-brand/25 transition-all text-left"
+                          className="flex items-center gap-2 rounded-lg px-3 py-2 min-h-[44px] text-sm font-medium border border-border bg-muted text-muted-foreground hover:border-brand/25 transition-colors text-left"
                           data-testid="sheet-new-channel"
                         >
                           <PenSquare className="w-4 h-4 shrink-0" />
@@ -4727,7 +4689,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                         <button
                           type="button"
                           onClick={() => { setHorizonDialogOpen(true); setTabDropdownOpen(false); }}
-                          className="flex items-center gap-2 rounded-lg px-3 py-2 min-h-[44px] text-sm font-medium border border-border dark:border-brand/10 bg-muted text-muted-foreground/80 hover:border-brand/25 transition-all text-left"
+                          className="flex items-center gap-2 rounded-lg px-3 py-2 min-h-[44px] text-sm font-medium border border-border bg-muted text-muted-foreground hover:border-brand/25 transition-colors text-left"
                           data-testid="sheet-new-article"
                         >
                           <PenSquare className="w-4 h-4 shrink-0" />
@@ -4743,17 +4705,17 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
         })()}
 
         {relayAuthFailed && authRequired ? (
-          <Card className="glass-card border-amber-500/20 p-8">
+          <Card className="glass-card p-8">
             <div className="flex flex-col items-center gap-4 text-center max-w-sm mx-auto">
               <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                <Lock className="w-7 h-7 text-amber-500/70 dark:text-amber-400/70" />
+                <Lock className="w-7 h-7 text-warning" />
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-sm font-brand tracking-wide text-foreground/90">
+                <h3 className="text-base font-semibold text-foreground">
                   {isBuzzHost ? (buzzInviteCode ? "You're invited" : "Members join by invite")
                     : supportsGroupJoin ? "Members get approved" : "Members only"}
                 </h3>
-                <p className="text-xs text-muted-foreground/60 leading-relaxed">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   {isBuzzHost
                     ? (buzzInviteCode
                       ? "This community shares an open invite. One tap and you're a member."
@@ -4783,7 +4745,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                       variant="outline"
                       onClick={handleCheckJoinAccepted}
                       disabled={joinRequestBusy}
-                      className="gap-2 text-xs border-amber-500/30"
+                      className="gap-2 text-xs"
                       data-testid="button-join-pending"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${joinRequestBusy ? "animate-spin" : ""}`} />
@@ -4829,7 +4791,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                       size="sm"
                       variant="ghost"
                       onClick={() => setShowLeaveConfirm(true)}
-                      className="flex-1 gap-2 text-xs text-muted-foreground/70 hover:text-foreground"
+                      className="flex-1 gap-2 text-xs text-muted-foreground hover:text-foreground"
                       data-testid="button-leave-noaccess"
                     >
                       <LogOut className="w-3.5 h-3.5" />
@@ -4838,7 +4800,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                   )}
                 </div>
                 {!pubkey && (
-                  <p className="text-[10px] text-amber-600/50 dark:text-amber-400/50">
+                  <p className="text-xs text-warning">
                     Sign in first to authenticate with this relay.
                   </p>
                 )}
@@ -4849,22 +4811,22 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                 never auto-accepted. */}
             <Sheet open={!!buzzConsent} onOpenChange={(open) => { if (!open) setBuzzConsent(null); }}>
               <SheetContent side="bottom" className="max-h-[85svh] overflow-y-auto rounded-t-2xl">
-                <SheetTitle className="text-sm font-brand tracking-wide">Before you join</SheetTitle>
+                <SheetTitle className="text-base font-semibold">Before you join</SheetTitle>
                 {buzzConsent && (
                   <div className="mt-3 space-y-3 pb-2">
-                    <p className="text-xs text-muted-foreground/70 leading-relaxed">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
                       This community runs on Buzz and asks new members to accept its terms.
                     </p>
                     {buzzConsent.policy.termsMarkdown && (
                       <details className="rounded-lg border border-border/30 px-3 py-2">
                         <summary className="text-xs font-medium cursor-pointer select-none">Terms of service</summary>
-                        <div className="mt-2 max-h-40 overflow-y-auto text-[11px] text-muted-foreground/70 whitespace-pre-wrap leading-relaxed">{buzzConsent.policy.termsMarkdown}</div>
+                        <div className="mt-2 max-h-40 overflow-y-auto text-[12px] text-muted-foreground whitespace-pre-wrap leading-relaxed">{buzzConsent.policy.termsMarkdown}</div>
                       </details>
                     )}
                     {buzzConsent.policy.privacyMarkdown && (
                       <details className="rounded-lg border border-border/30 px-3 py-2">
                         <summary className="text-xs font-medium cursor-pointer select-none">Privacy notice</summary>
-                        <div className="mt-2 max-h-40 overflow-y-auto text-[11px] text-muted-foreground/70 whitespace-pre-wrap leading-relaxed">{buzzConsent.policy.privacyMarkdown}</div>
+                        <div className="mt-2 max-h-40 overflow-y-auto text-[12px] text-muted-foreground whitespace-pre-wrap leading-relaxed">{buzzConsent.policy.privacyMarkdown}</div>
                       </details>
                     )}
                     <label className="flex items-start gap-2.5 text-xs leading-relaxed cursor-pointer">
@@ -4893,14 +4855,14 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
             </Sheet>
           </Card>
         ) : relayConnecting && authRequired ? (
-          <Card className="glass-card border-amber-500/20 p-8">
+          <Card className="glass-card p-8">
             <div className="flex flex-col items-center gap-4 text-center max-w-sm mx-auto">
               <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                <RelayOutpostInlineLoader className="w-7 h-7 text-amber-600/60 dark:text-amber-400/60" />
+                <RelayOutpostInlineLoader className="w-7 h-7 text-warning" />
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-sm font-brand tracking-wide text-foreground/90">Authenticating</h3>
-                <p className="text-xs text-muted-foreground/60 leading-relaxed">
+                <h3 className="text-base font-semibold text-foreground">Authenticating</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   Verifying your identity with this relay. Check your signer if prompted.
                 </p>
               </div>
@@ -4932,7 +4894,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                       onClick={() => setFeedContentFilter(val)}
                       aria-pressed={active}
                       aria-label={`Show ${label.toLowerCase()}`}
-                      className={`rounded-full px-3 min-h-[36px] sm:min-h-0 py-1 text-[11px] font-medium transition-colors ${ active ? "bg-accent text-accent-foreground border border-brand/20 dark:bg-brand/15 dark:text-brand dark:border-brand/25" : "text-muted-foreground/60 hover:text-muted-foreground border border-transparent" }`}
+                      className={`rounded-full px-3 min-h-[36px] sm:min-h-0 py-1 text-[13px] font-medium transition-colors ${ active ? "bg-foreground text-background border border-foreground" : "text-muted-foreground hover:text-foreground border border-transparent" }`}
                       data-testid={`button-outpost-content-filter-${val}`}
                     >
                       {label}
@@ -4949,14 +4911,14 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
             {loading && events.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-[120px] gap-3">
                 <RelayOutpostInlineLoader className="w-6 h-6" />
-                <p className="text-xs text-muted-foreground/50">Fetching posts from relay...</p>
+                <p className="text-xs text-muted-foreground">Fetching posts from relay...</p>
               </div>
             ) : !loading && events.length === 0 ? (
               <Card className="glass-card p-6">
                 <div className="flex flex-col items-center gap-2 text-center">
-                  <MessageSquare className="w-8 h-8 text-muted-foreground/20" />
-                  <p className="text-sm text-muted-foreground/50">No recent posts found</p>
-                  <p className="text-[10px] text-muted-foreground/30">
+                  <OttoEmpty mood="looking" size={72} className="text-foreground/70" />
+                  <p className="text-sm text-muted-foreground">No recent posts found</p>
+                  <p className="text-[12px] text-muted-foreground">
                     This relay may have limited public content.
                   </p>
                 </div>
@@ -4967,18 +4929,18 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                   <Card className="glass-card p-6">
                     <div className="flex flex-col items-center gap-2 text-center">
                       <ShieldCheck className="w-8 h-8 text-muted-foreground/20" />
-                      <p className="text-sm text-muted-foreground/50">Everything here is hidden by your trust filter</p>
-                      <p className="text-[10px] text-muted-foreground/30">Loosen the filter (top right) to see more.</p>
+                      <p className="text-sm text-muted-foreground">Everything here is hidden by your trust filter</p>
+                      <p className="text-[12px] text-muted-foreground">Loosen the filter (top right) to see more.</p>
                     </div>
                   </Card>
                 ) : feedContentFilter !== "all" && feedTrustFiltered.length > 0 && feedContentFiltered.length === 0 ? (
                   <Card className="glass-card p-6">
                     <div className="flex flex-col items-center gap-2 text-center">
                       <MessageSquare className="w-8 h-8 text-muted-foreground/20" />
-                      <p className="text-sm text-muted-foreground/50">
+                      <p className="text-sm text-muted-foreground">
                         {feedContentFilter === "replies" ? "No replies in view" : "No top-level posts in view"}
                       </p>
-                      <p className="text-[10px] text-muted-foreground/30">Switch to All to see everything.</p>
+                      <p className="text-[12px] text-muted-foreground">Switch to All to see everything.</p>
                     </div>
                   </Card>
                 ) : (
@@ -5011,7 +4973,6 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
             communityName={name}
             onNotifyRemoved={notifyRemoved}
             operatorPubkey={operatorPubkey || undefined}
-            onThreadOpen={setWaveThreadOpen}
             authRequired={authRequired}
             trustFilterEnabled={trustFilterEnabled}
             isHiddenByTrust={isHiddenByTrustFn}
@@ -5126,7 +5087,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
         open={showOutpostInvite}
         onOpenChange={setShowOutpostInvite}
         contentClassName="border-primary/20 sm:max-h-[calc(100dvh-4rem)]"
-        title={<><Link2 className="w-4 h-4 text-brand" /> Invite to {name}</>}
+        title={<><Link2 className="w-4 h-4 text-foreground/70" /> Invite to {name}</>}
         description="Share a link, or send a private invite DM."
         footer={
           <div className="flex justify-end">
@@ -5136,19 +5097,19 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
       >
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">Invite link</p>
+            <p className="text-[13px] text-muted-foreground font-medium">Invite link</p>
             <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/20 border border-border/30">
-              <Link2 className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
-              <span className="flex-1 text-[11px] font-mono text-foreground/70 truncate">{outpostInviteLink}</span>
-              <Button size="sm" variant="ghost" onClick={handleCopyOutpostLink} className="h-7 px-2 gap-1 text-[10px] shrink-0" data-testid="button-copy-outpost-link">
-                {outpostLinkCopied ? <><Check className="w-3 h-3 text-emerald-500" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
+              <Link2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <span className="flex-1 text-xs font-mono text-foreground/70 truncate">{outpostInviteLink}</span>
+              <Button size="sm" variant="ghost" onClick={handleCopyOutpostLink} className="h-7 px-2 gap-1 text-xs shrink-0" data-testid="button-copy-outpost-link">
+                {outpostLinkCopied ? <><Check className="w-3 h-3 text-success" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
               </Button>
             </div>
-            <p className="text-[10px] text-muted-foreground/40">Anyone with the link can open this community and tap Join.</p>
+            <p className="text-[12px] text-muted-foreground">Anyone with the link can open this community and tap Join.</p>
           </div>
           {pubkey && (
             <div className="space-y-1.5">
-              <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">Send to a person · private DM</p>
+              <p className="text-[13px] text-muted-foreground font-medium">Send to a person · private DM</p>
               <ProfileSearchInput
                 onSelect={(r) => setOutpostInviteRecipient(r)}
                 selected={outpostInviteRecipient}
@@ -5168,10 +5129,10 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
       </ResponsiveFormPanel>
 
       <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
-        <AlertDialogContent className="glass-dialog-card border-red-500/20 max-w-sm">
+        <AlertDialogContent className="glass-dialog-card max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm font-brand tracking-wide">Leave {name}?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground/70 leading-relaxed">
+            <AlertDialogTitle className="text-base font-semibold">Leave {name}?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
               You'll be removed from this community and it won't appear in your joined list. You can rejoin anytime.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -5179,7 +5140,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
             <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmLeave}
-              className="h-8 text-xs bg-red-600 hover:bg-red-700 text-white"
+              className="h-8 text-xs bg-destructive hover:bg-destructive/90 text-destructive-foreground"
             >
               <LogOut className="w-3 h-3 mr-1" />
               Leave community
@@ -5193,83 +5154,6 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
 
 const PAGE_PINS_COLLAPSED_KEY = "relay-outpost-page-pins-collapsed";
 
-/**
- * Buzz communities from buzz.directory, via our /api/buzz-directory proxy.
- * Reach-honest: the section renders on data, says so on failure (with Retry),
- * and shows nothing while nothing is known. Each slug IS a relay
- * (wss://<slug>.communities.buzz.xyz) — opening one is a normal outpost visit.
- */
-function BuzzDirectorySection({ joinedUrls, onOpen }: { joinedUrls: string[]; onOpen: (url: string, inviteCode?: string) => void }) {
-  const { data, isError, refetch } = useQuery<{ communities: { slug: string; name: string; relayUrl: string; access: "public" | "invite" | null; description?: string; avatar?: string; inviteCode?: string }[] }>({
-    queryKey: ["/api/buzz-directory"],
-    queryFn: async () => {
-      const r = await fetch("/api/buzz-directory");
-      if (!r.ok) throw new Error("directory unavailable");
-      return r.json();
-    },
-    staleTime: 10 * 60 * 1000,
-    retry: 1,
-  });
-
-  const joined = useMemo(() => new Set(joinedUrls.map((u) => u.toLowerCase().replace(/\/+$/, ""))), [joinedUrls]);
-  const communities = (data?.communities || []).filter((c) => !joined.has(c.relayUrl.toLowerCase())).slice(0, 8);
-
-  if (isError) {
-    return (
-      <div className="mt-6">
-        <p className="px-0.5 mb-2 text-[11px] font-brand uppercase tracking-wider text-muted-foreground/60">From the Buzz directory</p>
-        <button type="button" onClick={() => refetch()} className="text-[12px] text-muted-foreground/60 hover:text-foreground px-0.5" data-testid="button-buzz-retry">
-          Couldn't reach the directory — tap to retry
-        </button>
-      </div>
-    );
-  }
-  if (communities.length === 0) return null;
-
-  return (
-    <div className="mt-6" data-testid="buzz-directory-section">
-      <div className="flex items-baseline justify-between px-0.5 mb-2.5">
-        <p className="text-[11px] font-brand uppercase tracking-wider text-muted-foreground/60">From the Buzz directory</p>
-        <a href="https://buzz.directory" target="_blank" rel="noopener noreferrer" className="text-[11px] text-muted-foreground/50 hover:text-foreground">
-          buzz.directory ↗
-        </a>
-      </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {communities.map((c) => (
-          <button
-            key={c.slug}
-            type="button"
-            onClick={() => onOpen(c.relayUrl, c.inviteCode)}
-            className="group/buzz flex items-start gap-3 rounded-xl border border-border/30 bg-card/40 px-3.5 py-3 text-left transition-all hover:border-brand/30 hover:bg-brand/[0.05] min-h-[44px]"
-            data-testid={`buzz-community-${c.slug.slice(0, 12)}`}
-          >
-            {c.avatar ? (
-              <img src={c.avatar} alt="" loading="lazy" className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-border/30" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-            ) : (
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-sm font-semibold text-amber-600 dark:text-amber-400">
-                {c.name.slice(0, 1).toUpperCase()}
-              </span>
-            )}
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5 min-w-0">
-                <span className="text-sm font-medium truncate">{c.name}</span>
-                {c.access === "invite" && <span className="shrink-0 rounded-full border border-border/30 px-1.5 text-[9px] uppercase tracking-wider text-muted-foreground/60">Invite</span>}
-              </span>
-              {/* Two lines, not a one-line ellipsis (owner QA: phones lost
-                  every description mid-sentence). NO `block` here — it would
-                  override line-clamp's -webkit-box display and unclamp. */}
-              <span className="text-[11px] leading-snug text-muted-foreground/70 line-clamp-2">
-                {c.description || (c.access === "public" ? "Open to join" : "Buzz community")}
-              </span>
-            </span>
-            <ArrowUpRight className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-colors group-hover/buzz:text-brand" />
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function StarterCommunityIcon({ url, name }: { url: string; name: string }) {
   const [icon, setIcon] = useState<string | null>(null);
   useEffect(() => {
@@ -5281,7 +5165,7 @@ function StarterCommunityIcon({ url, name }: { url: string; name: string }) {
     return <img src={icon} alt="" loading="lazy" className="h-10 w-10 shrink-0 rounded-lg object-cover" onError={() => setIcon(null)} />;
   }
   return (
-    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-sm font-semibold text-brand">
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-foreground/[0.08] text-sm font-semibold text-foreground/80">
       {name.slice(0, 1).toUpperCase()}
     </span>
   );
@@ -5535,11 +5419,11 @@ export default function Outposts() {
                       data-testid="button-open-invite-link"
                     >
                       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 shrink-0">
-                        <Lock className="w-3.5 h-3.5 text-brand" />
+                        <Lock className="w-3.5 h-3.5 text-foreground/70" />
                       </span>
                       <span className="min-w-0">
                         <span className="block text-sm font-medium truncate">Join group chat</span>
-                        <span className="block text-[11px] text-muted-foreground/60 truncate">
+                        <span className="block text-[12px] text-muted-foreground truncate">
                           {groupInvite.host ? `Invite from ${groupInvite.host} — ` : "Encrypted group invite — "}opens in Relay Outpost
                         </span>
                       </span>
@@ -5553,17 +5437,17 @@ export default function Outposts() {
                       data-testid="button-open-outpost-url"
                     >
                       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 shrink-0">
-                        <Rocket className="w-3.5 h-3.5 text-brand" />
+                        <Rocket className="w-3.5 h-3.5 text-foreground/70" />
                       </span>
                       <span className="min-w-0">
                         <span className="block text-sm font-medium truncate">Open {urlToOpen.replace(/^wss?:\/\//, "")}</span>
-                        <span className="block text-[11px] text-muted-foreground/60">Go straight to this community</span>
+                        <span className="block text-[12px] text-muted-foreground">Go straight to this community</span>
                       </span>
                     </button>
                   )}
                   {joinedMatches.length > 0 && (
                     <>
-                      <p className="px-3 pt-2 pb-1 text-[10px] font-brand tracking-wider uppercase text-muted-foreground/50">Your communities</p>
+                      <p className="px-3 pt-2 pb-1 text-[13px] text-muted-foreground font-medium">Your communities</p>
                       {joinedMatches.map((m) => (
                         <button
                           key={m.url}
@@ -5578,15 +5462,15 @@ export default function Outposts() {
                           </Avatar>
                           <span className="min-w-0 flex-1">
                             <span className="block text-sm truncate">{m.name}</span>
-                            <span className="block text-[11px] text-muted-foreground/60 truncate">{m.url.replace(/^wss?:\/\//, "")}</span>
+                            <span className="block text-[12px] text-muted-foreground truncate">{m.url.replace(/^wss?:\/\//, "")}</span>
                           </span>
-                          <span className="text-[10px] text-success dark:text-emerald-400/80 shrink-0">Joined</span>
+                          <span className="text-[12px] text-success dark:text-emerald-400/80 shrink-0">Joined</span>
                         </button>
                       ))}
                     </>
                   )}
                   {(dirMatches.length > 0 || loading) && (
-                    <p className="px-3 pt-2 pb-1 text-[10px] font-brand tracking-wider uppercase text-muted-foreground/50">Directory</p>
+                    <p className="px-3 pt-2 pb-1 text-[13px] text-muted-foreground font-medium">Directory</p>
                   )}
                   {loading && dirMatches.length === 0 && (
                     <div className="flex items-center gap-2 px-3 py-2.5 text-xs text-muted-foreground/60">
@@ -5607,10 +5491,10 @@ export default function Outposts() {
                       </Avatar>
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm truncate">{m.name}</span>
-                        <span className="block text-[11px] text-muted-foreground/60 truncate">{m.url.replace(/^wss?:\/\//, "")}</span>
+                        <span className="block text-[12px] text-muted-foreground truncate">{m.url.replace(/^wss?:\/\//, "")}</span>
                       </span>
                       {(m.activeUserCount ?? 0) > 0 && (
-                        <span className="text-[10px] text-muted-foreground/50 tabular-nums shrink-0">~{m.activeUserCount} active</span>
+                        <span className="text-[12px] text-muted-foreground tabular-nums shrink-0">~{m.activeUserCount} active</span>
                       )}
                     </button>
                   ))}
@@ -5618,7 +5502,7 @@ export default function Outposts() {
                     <p className="px-3 py-3 text-xs text-muted-foreground/60">No communities found — try another name, or paste a link.</p>
                   )}
                   {moreCount > 0 && (
-                    <p className="px-3 pt-1 pb-2 text-[10px] text-muted-foreground/40 tabular-nums">+{moreCount} more — keep typing to narrow it down</p>
+                    <p className="px-3 pt-1 pb-2 text-[12px] text-muted-foreground tabular-nums">+{moreCount} more — keep typing to narrow it down</p>
                   )}
                 </div>
               </div>
@@ -5630,15 +5514,15 @@ export default function Outposts() {
       {joinedRelays.length > 0 && (
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-2">
-            <h2 className="text-xs font-brand tracking-wider uppercase text-success dark:text-emerald-400/70">
+            <h2 className="text-xs text-success dark:text-emerald-400/70 font-medium">
               Your communities
             </h2>
-            <span className="text-[10px] text-muted-foreground/40">{joinedRelays.length}</span>
+            <span className="text-[12px] text-muted-foreground">{joinedRelays.length}</span>
             <div className="ml-auto flex items-center gap-1">
               {relaysWithPins.length > 0 && !reordering && (
                 <button
                   onClick={toggleAllPagePins}
-                  className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 rounded-md text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors"
                   title={anyPinsExpanded ? "Collapse all pins" : "Expand all pins"}
                   aria-label={anyPinsExpanded ? "Collapse all pins" : "Expand all pins"}
                   data-testid="button-toggle-all-pins"
@@ -5650,7 +5534,7 @@ export default function Outposts() {
               {joinedRelays.length > 1 && (
                 <button
                   onClick={() => setReordering((p) => !p)}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${ reordering ? "bg-accent text-accent-foreground dark:text-brand border border-brand/20" : "text-muted-foreground/40 hover:text-muted-foreground/70" }`}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[12px] font-medium transition-colors ${ reordering ? "bg-foreground text-background border border-foreground" : "text-muted-foreground hover:text-foreground" }`}
                 >
                   <GripVertical className="w-3 h-3" />
                   {reordering ? "Done" : "Reorder"}
@@ -5696,7 +5580,7 @@ export default function Outposts() {
       )}
       {pubkey && hubWiderNetworkOn && starterCards.length > 0 && (
         <div className="mt-5" data-testid="starter-communities">
-          <p className="px-3 mb-1.5 text-[11px] font-brand uppercase tracking-wider text-muted-foreground/60">
+          <p className="px-3 mb-2 text-[15px] text-foreground font-semibold">
             Good places to start
           </p>
           {/* Flat rows, one list look across the app (the Chats list draws its
@@ -5709,15 +5593,15 @@ export default function Outposts() {
                 key={c.url}
                 type="button"
                 onClick={() => setLocation(`/outposts/${encodeURIComponent(c.url)}`)}
-                className="group/starter flex w-full items-center gap-3 px-3 min-h-[56px] py-2.5 text-left transition-colors hover:bg-primary/[0.04] active:bg-primary/[0.06]"
+                className="group/starter flex w-full items-center gap-3 px-3 min-h-[56px] py-2.5 text-left transition-colors hover:bg-foreground/[0.04] active:bg-foreground/[0.06]"
                 data-testid={`starter-community-${c.url.replace(/\W+/g, "-")}`}
               >
                 <StarterCommunityIcon url={c.url} name={c.name} />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium truncate">{c.name}</span>
+                  <span className="block text-[15px] font-medium truncate">{c.name}</span>
                   {/* Two lines, not a one-line ellipsis: on a phone a one-line
                       cut took every tagline mid-sentence (owner QA). */}
-                  <span className="text-xs leading-snug text-muted-foreground line-clamp-2">{c.tagline}</span>
+                  <span className="text-[13px] leading-snug text-muted-foreground line-clamp-2">{c.tagline}</span>
                 </span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-colors group-hover/starter:text-foreground" aria-hidden="true" />
               </button>
@@ -5728,13 +5612,13 @@ export default function Outposts() {
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent("relay-outpost:open-feedback", { detail: { initialType: "idea" } }))}
-              className="group/starter flex w-full items-center gap-3 px-3 min-h-[56px] py-2.5 text-left transition-colors hover:bg-primary/[0.04] active:bg-primary/[0.06]"
+              className="group/starter flex w-full items-center gap-3 px-3 min-h-[56px] py-2.5 text-left transition-colors hover:bg-foreground/[0.04] active:bg-foreground/[0.06]"
               data-testid="button-feature-your-community"
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand"><MagicStarIcon className="h-4 w-4" /></span>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full dark:bg-foreground/[0.05] text-foreground/75"><MagicStarIcon className="h-5 w-5" /></span>
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium">Run a community? Get it featured here.</span>
-                <span className="block text-xs text-muted-foreground">Tell us about your relay and we'll take a look.</span>
+                <span className="block text-[15px] font-medium">Run a community? Get it featured here.</span>
+                <span className="block text-[13px] text-muted-foreground">Tell us about your relay and we'll take a look.</span>
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-colors group-hover/starter:text-foreground" aria-hidden="true" />
             </button>
@@ -5748,18 +5632,18 @@ export default function Outposts() {
         {pubkey && (
           <Link
             href="/relays"
-            className="flex items-center gap-2 py-1 text-xs text-muted-foreground/60 hover:text-foreground transition-colors"
+            className="flex items-center gap-2 py-1 text-[13px] text-muted-foreground hover:text-foreground transition-colors"
             data-testid="link-outposts-manage-relays"
           >
-            <Wrench className="w-3.5 h-3.5 text-muted-foreground/50" />
+            <Wrench className="w-3.5 h-3.5 text-muted-foreground" />
             <span>Manage relays</span>
-            <span className="text-[10px] text-muted-foreground/40">routes · health · blocks</span>
+            <span className="text-[12px] text-muted-foreground/80">routes · health · blocks</span>
           </Link>
         )}
         <button
           type="button"
           onClick={() => openFeedbackDrawer({ initialType: "bug" })}
-          className="text-[10px] text-muted-foreground/50 hover:text-brand transition-colors inline-flex items-center gap-1 px-1 ml-auto"
+          className="text-[12px] text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1 px-1 ml-auto"
           data-testid="link-outposts-feedback"
         >
           <Inbox className="w-3 h-3" />

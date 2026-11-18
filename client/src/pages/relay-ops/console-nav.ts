@@ -87,5 +87,5 @@ export function listOf(tab: TabId): { tab: TabId; label: string } | null {
 export function consoleTitle(tab: TabId): string {
   const screen = [...COMMUNITY_SCREENS, ...ADVANCED_SCREENS].find((s) => s.tab === tab);
   if (screen) return screen.label;
-  return SECTIONS.find((s) => s.id === sectionOf(tab))?.label ?? "Relay Control";
+  return SECTIONS.find((s) => s.id === sectionOf(tab))?.label ?? "Console";
 }

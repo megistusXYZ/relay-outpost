@@ -75,7 +75,7 @@ export function WeekRibbon({
       data-testid="week-ribbon"
     >
       <div className="flex items-center justify-between px-1 mb-1">
-        <span className="text-[10px] font-brand uppercase tracking-wider text-gray-500 dark:text-gray-400">
+        <span className="text-[13px] text-gray-500 dark:text-gray-400 font-medium">
           {monthLabel}
         </span>
         <div className="flex items-center gap-0.5">
@@ -83,7 +83,7 @@ export function WeekRibbon({
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 text-[10px] px-2 text-brand"
+              className="h-7 text-[12px] px-2 text-brand"
               onClick={onGoToToday}
               data-testid="button-ribbon-today"
             >
@@ -94,7 +94,7 @@ export function WeekRibbon({
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 text-gray-400 dark:text-gray-500 hover:text-brand"
+              className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
               onClick={onRefresh}
               disabled={refreshing}
               title="Refresh feeds"
@@ -106,7 +106,7 @@ export function WeekRibbon({
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 px-2 text-[10px] text-gray-500 dark:text-gray-400 hover:text-brand flex items-center gap-1"
+            className="h-6 px-2 text-[12px] text-muted-foreground hover:text-foreground flex items-center gap-1"
             onClick={onOpenMonth}
             title="Jump to month"
             data-testid="button-open-month"
@@ -144,7 +144,7 @@ export function WeekRibbon({
                   flex flex-col items-center justify-center gap-0.5 py-1 min-h-[48px] rounded-lg
                   transition-colors touch-manipulation
                   ${isSelected
-                    ? "bg-brand dark:bg-brand/10 ring-1 ring-brand dark:ring-brand/40"
+                    ? "bg-foreground/[0.08] ring-1 ring-foreground/40"
                     : "hover:bg-gray-100 dark:hover:bg-white/[0.06]"}
                   ${isPast && !isSelected ? "opacity-50" : ""}
                 `}
@@ -152,7 +152,7 @@ export function WeekRibbon({
                 aria-pressed={isSelected}
                 data-testid={`ribbon-day-${dayKeyLocal(day)}`}
               >
-                <span className={`text-[9px] uppercase tracking-wider font-medium ${isToday ? "text-brand" : "text-gray-400 dark:text-gray-500"}`}>
+                <span className={`text-[12px] font-medium ${isToday ? "text-brand" : "text-gray-400 dark:text-gray-500"}`}>
                   {WEEKDAY_LETTERS[day.getDay()]}
                 </span>
                 <span className={`text-[13px] leading-none font-medium ${

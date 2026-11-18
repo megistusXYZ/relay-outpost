@@ -125,7 +125,7 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
   const titleCls = isOverlay ? "text-white" : "";
   const descCls = isOverlay ? "text-white/60" : "text-muted-foreground";
   const subtleCls = isOverlay ? "text-white/40" : "text-muted-foreground/70";
-  const inputCls = isOverlay ? "bg-black/30 border-white/15 text-white placeholder:text-white/25" : "bg-background/50";
+  const inputCls = isOverlay ? "bg-black/30 border-white/40 text-white placeholder:text-white/25" : "bg-background/50";
   const primaryBtnCls = isOverlay ? "bg-white text-black hover:bg-white/90" : "bg-foreground text-background hover:bg-foreground/90";
   const ghostBtnCls = isOverlay ? "text-white/60" : "text-muted-foreground";
 
@@ -350,7 +350,7 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
               <Button
                 onClick={handleStayAccept}
                 disabled={isCompletingSignIn}
-                className={`w-full text-xs font-brand uppercase tracking-widest ${primaryBtnCls}`}
+                className={`w-full text-xs font-medium ${primaryBtnCls}`}
                 data-testid="button-stay-nudge-accept"
               >
                 {isCompletingSignIn ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : null}
@@ -360,7 +360,7 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
                 variant="ghost"
                 onClick={handleStayDecline}
                 disabled={isCompletingSignIn}
-                className={`w-full text-[11px] font-brand uppercase tracking-widest ${ghostBtnCls}`}
+                className={`w-full text-[12px] font-medium ${ghostBtnCls}`}
                 data-testid="button-stay-nudge-decline"
               >
                 Keep asking for my password
@@ -400,7 +400,7 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
             <Button
               onClick={handleNudgeContinue}
               disabled={isCompletingSignIn}
-              className={`w-full text-xs font-brand uppercase tracking-widest ${primaryBtnCls}`}
+              className={`w-full text-xs font-medium ${primaryBtnCls}`}
               data-testid="button-nudge-continue"
             >
               {isCompletingSignIn ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : null}
@@ -445,7 +445,7 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
               </Button>
               <div className="flex items-center gap-3">
                 <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border/60"}`} />
-                <span className={`text-[10px] font-brand uppercase tracking-[0.18em] ${subtleCls}`}>or password</span>
+                <span className={`text-[13px] font-medium ${subtleCls}`}>or password</span>
                 <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border/60"}`} />
               </div>
             </div>
@@ -457,7 +457,7 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
             data-testid="form-unlock"
           >
             <CredentialUsername npub={account.npub} />
-            <Label className={`text-[11px] font-brand uppercase tracking-widest ${subtleCls}`}>Your key, or the password for this browser</Label>
+            <Label className={`text-[12px] font-medium ${subtleCls}`}>Your key, or the password for this browser</Label>
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
@@ -518,7 +518,7 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
           <Button
             onClick={handleUnlock}
             disabled={!password || isWorking || inCooldown}
-            className={`w-full text-xs font-brand uppercase tracking-widest ${primaryBtnCls}`}
+            className={`w-full text-xs font-medium ${primaryBtnCls}`}
             data-testid="button-unlock"
           >
             {isWorking ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : <KeyRound className="w-4 h-4 mr-2" />}
@@ -533,7 +533,7 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
             <Button
               variant="ghost"
               onClick={onUseDifferentAccount}
-              className={`flex-1 text-[11px] font-brand uppercase tracking-widest ${ghostBtnCls}`}
+              className={`flex-1 text-[12px] font-medium ${ghostBtnCls}`}
               data-testid="button-use-different-account"
             >
               Sign in another way
@@ -541,7 +541,7 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
             <Button
               variant="ghost"
               onClick={handleForget}
-              className={`text-[11px] font-brand uppercase tracking-widest ${ghostBtnCls}`}
+              className={`text-[12px] font-medium ${ghostBtnCls}`}
               data-testid="button-forget-account"
             >
               <LogOut className="w-3.5 h-3.5 mr-1.5" />
