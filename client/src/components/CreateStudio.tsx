@@ -11,6 +11,7 @@ import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { uploadToNostrBuild, UploadError } from "@/lib/media-upload";
 import { getPublishTarget } from "@/lib/outpost-relays";
 import { publishEvent } from "@/lib/nostr";
+import { followSend } from "@/lib/mark-signals";
 import { clientTags } from "@/lib/nostr-helpers";
 import { publishPodcastFeed } from "@/lib/music";
 import { signWithTimeout } from "@/lib/signer-timeout";
@@ -144,7 +145,10 @@ export function CreateStudio() {
       await createScheduledPost(signed, relays, when, pubkey!, preview);
       toast({ title: "Scheduled", description: `Publishes ${when.toLocaleString()}.` });
     } else {
-      await publishEvent(signed, relays, undefined, userSelected);
+      // "Published" is said only when a relay took it; the New-post button
+      // follows the same send (lib/mark-signals).
+      const took = await followSend(publishEvent(signed, relays, undefined, userSelected));
+      if (!took) throw new Error("Your post didn't reach any relays.");
       toast({ title: "Published", description: "Your content is live." });
     }
     window.dispatchEvent(new CustomEvent("content-published"));

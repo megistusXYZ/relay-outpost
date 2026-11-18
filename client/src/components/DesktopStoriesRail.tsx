@@ -496,7 +496,7 @@ export function DesktopStoriesRail() {
         data-testid="rail-logo"
       >
         {/* Otto, with the app's mood (components/OttoMark): asks when something waits. */}
-        <OttoMark size={34} className="shrink-0 dark:drop-shadow-[0_0_3px_rgba(255,255,255,0.15)]" attention={unreadCount > 0 || chatsUnread > 0} />
+        <OttoMark size={34} className="shrink-0 dark:drop-shadow-[0_0_3px_rgba(255,255,255,0.15)]" attention={unreadCount > 0 || chatsUnread > 0} role="logo" waiting={unreadCount + chatsUnread} />
         {/* The mark that this is a door (owner, 2026-10-10): nothing said the logo opened the hub. */}
         <ChevronDown className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border border-border/60 bg-background p-[1px] text-muted-foreground" aria-hidden="true" data-testid="rail-logo-mark" />
       </button>

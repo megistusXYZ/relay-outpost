@@ -4794,3 +4794,15 @@ img[src*="create-bg"] {
     radial-gradient(60% 46% at 50% 34%, hsl(var(--brand) / 0.07), transparent 72%),
     radial-gradient(70% 40% at 24% 6%, hsl(220 60% 60% / 0.05), transparent 70%);
 }
+
+/* Buttons press down a little: about 97% for a tenth of a second, then back.
+   The `scale` property (not `transform`) so it composes with any transform a
+   button already carries. Nothing moves for reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .press {
+    transition-property: color, background-color, border-color, box-shadow, opacity, scale;
+    transition-duration: 100ms;
+    transition-timing-function: ease-out;
+  }
+  .press:active:not(:disabled) { scale: 0.97; }
+}

@@ -243,7 +243,7 @@ export function AppSidebar() {
         <div className="flex items-center justify-between gap-2">
           <Link href="/" className="flex items-center" data-testid="link-sidebar-brand" onClick={closeMobileNav}>
             <div className="flex items-center gap-2" data-testid="container-brand-pill">
-              <OttoMark size={28} className="shrink-0" />
+              <OttoMark size={28} className="shrink-0" role="logo" waiting={unreadCount + chatsUnread} />
               <span className="text-[15px] font-semibold leading-none text-foreground">Relay Outpost</span>
             </div>
           </Link>

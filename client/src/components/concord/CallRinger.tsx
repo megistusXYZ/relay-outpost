@@ -20,6 +20,7 @@ import { isCommunityMuted, isChannelMuted } from "@/lib/concord/concord-mute";
 import { useConcordCallsEnabled } from "@/lib/concord/concord-prefs";
 import { createRingDecider, QUIET_MS } from "@/lib/concord/call-ring";
 import { effectiveTime } from "@/lib/concord/concord-events";
+import { setCallRinging } from "@/lib/mark-signals";
 import { useConcordProfile } from "./ConcordIdentity";
 
 interface Ringing { key: string; community: StoredCommunity; channel: StoredChannel; caller: string; at: number }
@@ -122,6 +123,11 @@ export function CallRinger({ me, inCallKey, onScreenKey = null, onJoin, onRing }
     const t = setTimeout(() => setRinging(null), QUIET_MS);
     return () => clearTimeout(t);
   }, [ringing, inCallKey]);
+
+  // Tell the logo a call is ringing, for exactly as long as this card is up.
+  // It reads this state and changes nothing about the call.
+  const cardUp = enabled && !!ringing;
+  useEffect(() => { setCallRinging(cardUp); return () => setCallRinging(false); }, [cardUp]);
 
   if (!enabled || !ringing) return null;
   return createPortal(

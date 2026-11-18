@@ -83,6 +83,19 @@ export function setPerfMode(mode: PerfMode): void {
   apply(mode);
 }
 
+/**
+ * The person CHOSE Lite in Settings. Not the same as Lite being active: every
+ * touch device, and every machine with four cores or fewer, defaults to Lite,
+ * so "active" is the device's default and not a wish for less. Relay's idle
+ * glances and pointer-follow stand down only for the choice.
+ */
+export function choseLite(): boolean {
+  return globalMode === "lite";
+}
+export function useChoseLite(): boolean {
+  return useSyncExternalStore(subscribe, choseLite, () => false);
+}
+
 export function usePerfMode() {
   const mode = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const setMode = useCallback((m: PerfMode) => apply(m), []);

@@ -49,7 +49,10 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getProfileContent } from "@/lib/nostr-helpers";
 import { parseInviteParams } from "@/lib/invite-links";
 import { useNostrMuteList } from "@/hooks/use-nostr-mute-list";
-import { fetchProfilesCached, eventStore } from "@/lib/nostr";
+import { fetchProfilesCached, eventStore, pool } from "@/lib/nostr";
+import { canReachAny } from "@/lib/relay-reach";
+import { watchConnection } from "@/lib/mark-signals";
+import { useChatsBadge } from "@/hooks/use-chats-badge";
 import { setSchedulerPubkey, startLocalScheduleRunner } from "@/lib/local-schedule";
 import { KIND_METADATA } from "@/lib/nostr-helpers";
 import { ArrowLeft, ArrowDownLeft, ArrowUpRight, Search as SearchIcon } from "lucide-react";
@@ -589,6 +592,11 @@ function useScrollHide(containerRef: React.RefObject<HTMLElement | null>) {
 }
 
 function MobileSidebarTrigger() {
+  // How many things wait for you: when it rises, the logo looks up for a
+  // moment (the footer's tabs carry the standing counts on a phone).
+  const { pubkey } = useNostrAuth();
+  const { unreadCount } = useNotifications();
+  const chatsUnread = useChatsBadge(pubkey).total;
   // Mobile-only trigger (md:hidden): opens the full-screen Orbit menu instead
   // of the old slide-out Sheet. Desktop keeps the shadcn sidebar untouched.
   //
@@ -608,7 +616,7 @@ function MobileSidebarTrigger() {
     >
       {/* Theme foreground on normal chrome; the on-banner white + legibility
           shadow is applied by the .header-trigger-mark rule in index.css. */}
-      <OttoMark size={36} className="header-trigger-mark text-foreground/85 dark:text-white/85" />
+      <OttoMark size={36} className="header-trigger-mark text-foreground/85 dark:text-white/85" role="logo" waiting={unreadCount + chatsUnread} />
     </button>
   );
 }
@@ -1220,6 +1228,10 @@ function AppLayout() {
   // matched a horizontal swipe anywhere and ran inverted; isEdgeBackSwipe pins
   // the thresholds that made it misfire (see edge-swipe.test.ts).
   useSwipeNavigation(mainRef);
+  // The one place that watches the connection, for the logo's face
+  // (lib/mark-signals): the browser going offline, or relays that dropped and
+  // will not connect again.
+  useEffect(() => watchConnection({ statuses: () => pool.listConnectionStatus(), canReachAny }), []);
   const { pubkey, isLoggingIn, isReconnecting } = useNostrAuth();
   useNostrMuteList();
   const [location, navigate] = useLocation();
