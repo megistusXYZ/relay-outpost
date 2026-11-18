@@ -24,6 +24,12 @@
  *
  * Every failure path degrades to the static brand card (og-image.png) — a
  * scraper must never see a broken image.
+ *
+ * THE LOOK (2026-11-18): the site's own card (scripts/gen-share-card.mjs): a
+ * light ground with a soft warm glow, ink text, the mark with its Ember dot,
+ * Geist. The old look (a dark purple ground, a coloured bar along the top,
+ * the old fonts) is gone; og-card-look.test.ts reads the pixels of each card
+ * to keep it so.
  */
 import type { Express, Request, Response } from "express";
 import fs from "fs";
@@ -60,11 +66,7 @@ async function getSharp(): Promise<typeof SharpNS> {
 const satori: typeof satoriImport = ((satoriImport as unknown as { default?: typeof satoriImport }).default ?? satoriImport);
 import { TTLCache } from "./ttl-cache";
 import { fetchRemoteRaster, REMOTE_IMAGE_DECODE } from "./remote-image";
-import {
-  INTER_400_WOFF_B64,
-  INTER_700_WOFF_B64,
-  SPACE_GROTESK_600_WOFF_B64,
-} from "./og-card-fonts";
+import { GEIST_400_WOFF_B64, GEIST_600_WOFF_B64 } from "./og-card-fonts";
 
 // ── Pure helpers (unit-tested in og-cards.test.ts) ───────────────────────────
 
@@ -140,21 +142,21 @@ export function followingCountFromTags(tags: unknown): number {
   return seen.size;
 }
 
-// ── Palette (Synthesis system, one violet hue 262 — see client/src/index.css) ─
+// ── Palette: the site card's (scripts/gen-share-card.mjs) and the landing's ──
 
 const CARD = {
-  bg: "#0e0c16",                 // dark nebula ground (hsl 260 8% 7%, violet-leaning)
-  text: "#f2f0f8",               // near-white foreground
-  muted: "#a89fc4",              // captions / bylines
-  violet: "#7c4dff",             // accent (hue 262, bright)
-  violetSoft: "rgba(124, 77, 255, 0.32)",
-  violetFaint: "rgba(94, 53, 197, 0.22)",
-  wordmark: "#cfc5ec",
+  bg: "#f7f7f8",         // the landing's light ground
+  text: "#0d0f12",       // ink
+  muted: "#565d69",      // secondary words (6.4:1 on the ground)
+  ember: "#ff5b2e",      // the mark's dot, and nothing else
+  hairline: "rgba(13, 15, 18, 0.09)",
+  initialDisc: "rgba(13, 15, 18, 0.08)",
 } as const;
 
-const NEBULA_BG =
-  `radial-gradient(at 12% -8%, ${CARD.violetSoft} 0%, rgba(14,12,22,0) 55%), ` +
-  `radial-gradient(at 96% 112%, ${CARD.violetFaint} 0%, rgba(14,12,22,0) 50%)`;
+/** The same soft light as the site card: warm low in the middle, a cool breath top left. */
+const GLOW_BG =
+  "radial-gradient(ellipse 60% 55% at 50% 64%, rgba(255, 91, 46, 0.10), rgba(255, 91, 46, 0) 70%), " +
+  "radial-gradient(ellipse 60% 50% at 20% 4%, rgba(96, 128, 255, 0.08), rgba(96, 128, 255, 0) 70%)";
 
 // ── Satori plumbing ──────────────────────────────────────────────────────────
 
@@ -165,13 +167,12 @@ function el(type: string, style: Record<string, unknown>, children?: Node[] | st
   return { type, props: { style, children } };
 }
 
-let fontsCache: { name: string; data: Buffer; weight: 400 | 600 | 700; style: "normal" }[] | null = null;
+let fontsCache: { name: string; data: Buffer; weight: 400 | 600; style: "normal" }[] | null = null;
 function cardFonts() {
   if (!fontsCache) {
     fontsCache = [
-      { name: "Inter", data: Buffer.from(INTER_400_WOFF_B64, "base64"), weight: 400, style: "normal" },
-      { name: "Inter", data: Buffer.from(INTER_700_WOFF_B64, "base64"), weight: 700, style: "normal" },
-      { name: "Space Grotesk", data: Buffer.from(SPACE_GROTESK_600_WOFF_B64, "base64"), weight: 600, style: "normal" },
+      { name: "Geist", data: Buffer.from(GEIST_400_WOFF_B64, "base64"), weight: 400, style: "normal" },
+      { name: "Geist", data: Buffer.from(GEIST_600_WOFF_B64, "base64"), weight: 600, style: "normal" },
     ];
   }
   return fontsCache;
@@ -200,25 +201,6 @@ function findPublicFile(name: string): string | null {
     } catch {}
   }
   return null;
-}
-
-let logoDataUri: string | null | undefined;
-/** The white relay glyph (logo.svg), rasterized once to a PNG data URI. */
-async function getLogoDataUri(): Promise<string | null> {
-  if (logoDataUri !== undefined) return logoDataUri;
-  try {
-    const logoPath = findPublicFile("logo.svg");
-    if (!logoPath) return (logoDataUri = null);
-    const sharp = await getSharp();
-    const png = await sharp(fs.readFileSync(logoPath), { density: 300 })
-      .resize(96, 96)
-      .png()
-      .toBuffer();
-    logoDataUri = `data:image/png;base64,${png.toString("base64")}`;
-  } catch {
-    logoDataUri = null;
-  }
-  return logoDataUri;
 }
 
 const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
@@ -316,29 +298,23 @@ export async function resolveMentions(content: string, fetchProfile: FetchNostrE
 
 // ── Card layouts ─────────────────────────────────────────────────────────────
 
-function wordmarkRow(logo: string | null): Node {
-  const children: Node[] = [];
-  if (logo) {
-    children.push({
-      type: "img",
-      props: { src: logo, width: 44, height: 44, style: { width: 44, height: 44 } },
-    });
-  } else {
-    children.push(el("div", {
-      width: 18, height: 18, borderRadius: 9, backgroundColor: CARD.violet, marginTop: 4,
-    }));
-  }
-  children.push(el("div", {
-    fontFamily: "Space Grotesk", fontWeight: 600, fontSize: 34, color: CARD.wordmark, marginLeft: 18,
-  }, "Relay Outpost"));
-  return el("div", { display: "flex", flexDirection: "row", alignItems: "center" }, children);
+/** The mark: the open ring (the head), the Ember dot at its opening, two eyes. Drawn, never a file. */
+function markNode(size: number): Node {
+  const children: Node[] = [
+    { type: "path", props: { d: "M78.98 42.24 A30 30 0 1 1 57.76 21.02", fill: "none", stroke: CARD.text, "stroke-width": 9, "stroke-linecap": "round" } },
+    { type: "circle", props: { cx: 71.2, cy: 28.8, r: 6.5, fill: CARD.ember } },
+    { type: "ellipse", props: { cx: 42, cy: 51, rx: 3.6, ry: 5.2, fill: CARD.text } },
+    { type: "ellipse", props: { cx: 58, cy: 51, rx: 3.6, ry: 5.2, fill: CARD.text } },
+  ];
+  return { type: "svg", props: { width: size, height: size, viewBox: "0 0 100 100", children } };
 }
 
-function accentBar(): Node {
-  return el("div", {
-    position: "absolute", top: 0, left: 0, width: 1200, height: 8, display: "flex",
-    backgroundImage: `linear-gradient(90deg, ${CARD.violet} 0%, rgba(124,77,255,0.05) 70%)`,
-  });
+/** The mark and the name, small, at the foot of a card: where the link comes from. */
+function wordmarkRow(): Node {
+  return el("div", { display: "flex", flexDirection: "row", alignItems: "center" }, [
+    markNode(44),
+    el("div", { fontWeight: 600, fontSize: 30, letterSpacing: "-0.02em", color: CARD.text, marginLeft: 14 }, "Relay Outpost"),
+  ]);
 }
 
 function avatarNode(avatarDataUri: string | null, name: string, size = 104): Node {
@@ -349,20 +325,21 @@ function avatarNode(avatarDataUri: string | null, name: string, size = 104): Nod
         src: avatarDataUri,
         width: size,
         height: size,
-        style: { width: size, height: size, borderRadius: size / 2, border: `3px solid ${CARD.violetSoft}` },
+        style: { width: size, height: size, borderRadius: size / 2, border: `2px solid ${CARD.hairline}` },
       },
     };
   }
+  // No picture: the initial on a quiet grey disc (the app's own rule for avatars).
   return el("div", {
     width: size, height: size, borderRadius: size / 2, display: "flex",
     alignItems: "center", justifyContent: "center",
-    backgroundColor: "rgba(124, 77, 255, 0.18)", border: `3px solid ${CARD.violetSoft}`,
-    fontFamily: "Space Grotesk", fontWeight: 600, fontSize: Math.round(size * 0.46), color: CARD.text,
+    backgroundColor: CARD.initialDisc,
+    fontWeight: 600, fontSize: Math.round(size * 0.44), color: CARD.text,
   }, (name.trim()[0] || "N").toUpperCase());
 }
 
 /** The identity + excerpt + wordmark column, shared by both thread layouts. */
-function threadTextColumn(opts: { name: string; avatarDataUri: string | null; excerpt: string; logo: string | null; imageSize: number }): Node {
+function threadTextColumn(opts: { name: string; avatarDataUri: string | null; excerpt: string; imageSize: number }): Node {
   const excerpt = opts.excerpt || "Shared a post on Relay Outpost.";
   const narrow = opts.imageSize > 0;
   return el("div", {
@@ -370,47 +347,49 @@ function threadTextColumn(opts: { name: string; avatarDataUri: string | null; ex
     // When an image panel sits on the right, this column is narrower and only
     // pads its own three sides; the image bleeds to the card's right edge.
     padding: narrow ? "64px 44px 56px 72px" : "64px 72px 56px",
-    flexGrow: 1, height: 630,
+    // Beside a picture the column has a fixed width: left to grow, its words took the whole
+    // card and pushed the picture off the right edge (it never showed until 2026-11-18).
+    ...(narrow ? { width: 1200 - opts.imageSize, flexShrink: 0 } : { flexGrow: 1 }),
+    height: 630,
   }, [
     el("div", { display: "flex", flexDirection: "row", alignItems: "center" }, [
       avatarNode(opts.avatarDataUri, opts.name),
       el("div", { display: "flex", flexDirection: "column", marginLeft: 28 }, [
-        el("div", { fontSize: narrow ? 36 : 42, fontWeight: 700, color: CARD.text, lineClamp: 1 }, opts.name),
+        el("div", { fontSize: narrow ? 36 : 42, fontWeight: 600, letterSpacing: "-0.02em", color: CARD.text, lineClamp: 1 }, opts.name),
         el("div", { fontSize: 26, color: CARD.muted, marginTop: 6 }, "on Relay Outpost"),
       ]),
     ]),
     el("div", {
-      display: "block", fontSize: narrow ? 40 : 46, lineHeight: 1.4, color: CARD.text,
+      display: "block", fontSize: narrow ? 40 : 46, lineHeight: 1.4, letterSpacing: "-0.01em", color: CARD.text,
       lineClamp: narrow ? 5 : 4, marginTop: 36, marginBottom: 36,
     }, excerpt),
-    wordmarkRow(opts.logo),
+    wordmarkRow(),
   ]);
 }
 
-function threadCardTree(opts: { name: string; avatarDataUri: string | null; excerpt: string; logo: string | null; imageDataUri?: string | null }): Node {
+function threadCardTree(opts: { name: string; avatarDataUri: string | null; excerpt: string; imageDataUri?: string | null }): Node {
   const imageSize = opts.imageDataUri ? 468 : 0;
   const column = threadTextColumn({ ...opts, imageSize });
   const base = {
     width: 1200, height: 630, display: "flex",
-    backgroundColor: CARD.bg, backgroundImage: NEBULA_BG,
-    position: "relative", fontFamily: "Inter",
+    backgroundColor: CARD.bg, backgroundImage: GLOW_BG,
+    position: "relative", fontFamily: "Geist",
   } as const;
 
   // No post image → the classic full-width text card.
   if (!opts.imageDataUri) {
-    return el("div", { ...base, flexDirection: "column" }, [accentBar(), column]);
+    return el("div", { ...base, flexDirection: "column" }, [column]);
   }
 
   // Post has an image → two-pane "link preview" card: text left, photo right.
   return el("div", { ...base, flexDirection: "row" }, [
-    accentBar(),
     column,
     {
       type: "img",
       props: {
         src: opts.imageDataUri,
         width: imageSize, height: 630,
-        style: { width: imageSize, height: 630, objectFit: "cover" },
+        style: { width: imageSize, height: 630, flexShrink: 0, objectFit: "cover" },
       },
     },
   ]);
@@ -422,13 +401,12 @@ function profileCardTree(opts: {
   aboutExcerpt: string;
   followingCount: number;
   avatarDataUri: string | null;
-  logo: string | null;
 }): Node {
   const identityLines: Node[] = [
-    el("div", { fontSize: 56, fontWeight: 700, color: CARD.text }, opts.name),
+    el("div", { fontSize: 56, fontWeight: 600, letterSpacing: "-0.03em", color: CARD.text }, opts.name),
   ];
   if (opts.nip05) {
-    identityLines.push(el("div", { fontSize: 30, color: CARD.violet, marginTop: 10 }, opts.nip05));
+    identityLines.push(el("div", { fontSize: 30, color: CARD.muted, marginTop: 10 }, opts.nip05));
   }
   identityLines.push(el("div", { fontSize: 26, color: CARD.muted, marginTop: opts.nip05 ? 8 : 12 },
     opts.followingCount > 0
@@ -438,11 +416,10 @@ function profileCardTree(opts: {
   const about = opts.aboutExcerpt || "See posts, replies, and trust reviews on Relay Outpost.";
   return el("div", {
     width: 1200, height: 630, display: "flex", flexDirection: "column",
-    backgroundColor: CARD.bg, backgroundImage: NEBULA_BG,
+    backgroundColor: CARD.bg, backgroundImage: GLOW_BG,
     padding: "64px 72px 56px", justifyContent: "space-between", position: "relative",
-    fontFamily: "Inter",
+    fontFamily: "Geist",
   }, [
-    accentBar(),
     el("div", { display: "flex", flexDirection: "row", alignItems: "center" }, [
       avatarNode(opts.avatarDataUri, opts.name, 168),
       el("div", { display: "flex", flexDirection: "column", marginLeft: 36 }, identityLines),
@@ -451,35 +428,40 @@ function profileCardTree(opts: {
       display: "block", fontSize: 38, lineHeight: 1.45, color: CARD.text,
       lineClamp: 3, marginTop: 32, marginBottom: 32,
     }, about),
-    wordmarkRow(opts.logo),
+    wordmarkRow(),
   ]);
 }
 
-function inviteCardTree(logo: string | null): Node {
+function inviteCardTree(): Node {
+  const HEAD = 88;
   return el("div", {
     width: 1200, height: 630, display: "flex", flexDirection: "column",
-    backgroundColor: CARD.bg,
-    backgroundImage:
-      `radial-gradient(at 50% 8%, ${CARD.violetSoft} 0%, rgba(14,12,22,0) 60%), ` +
-      `radial-gradient(at 8% 110%, ${CARD.violetFaint} 0%, rgba(14,12,22,0) 50%)`,
+    backgroundColor: CARD.bg, backgroundImage: GLOW_BG,
     alignItems: "center", justifyContent: "center", position: "relative",
-    fontFamily: "Inter", padding: 72,
+    fontFamily: "Geist", padding: 72,
   }, [
-    accentBar(),
-    ...(logo
-      ? [{ type: "img", props: { src: logo, width: 88, height: 88, style: { width: 88, height: 88, marginBottom: 40 } } } as Node]
-      : []),
-    el("div", { fontFamily: "Space Grotesk", fontWeight: 600, fontSize: 88, color: CARD.text }, "You're invited"),
+    markNode(96),
+    // "You're invited" with the brand's full stop: the Ember dot on the baseline.
+    el("div", { display: "flex", flexDirection: "row", alignItems: "flex-end", marginTop: 36 }, [
+      el("div", { display: "flex", fontWeight: 600, fontSize: HEAD, lineHeight: 1.04, letterSpacing: "-0.045em", color: CARD.text }, "You\u2019re invited"),
+      el("div", { width: HEAD * 0.15, height: HEAD * 0.15, borderRadius: HEAD * 0.075, backgroundColor: CARD.ember, marginLeft: HEAD * 0.015, marginBottom: HEAD * 0.2 }),
+    ]),
     el("div", {
-      fontSize: 36, color: CARD.muted, marginTop: 28, textAlign: "center",
+      fontSize: 34, color: CARD.muted, marginTop: 28, textAlign: "center",
       display: "block", maxWidth: 860, lineHeight: 1.45,
     }, "Join a private, end-to-end encrypted community on Relay Outpost."),
-    el("div", { position: "absolute", bottom: 52, display: "flex" }, [
-      el("div", {
-        fontFamily: "Space Grotesk", fontWeight: 600, fontSize: 30, color: CARD.wordmark,
-      }, "Relay Outpost"),
-    ]),
   ]);
+}
+
+/** Each card drawn from plain data, no network: what the routes below serve, and what the look test reads. */
+export function renderThreadCard(opts: { name: string; avatarDataUri: string | null; excerpt: string; imageDataUri?: string | null }): Promise<Buffer> {
+  return renderCardPng(threadCardTree(opts));
+}
+export function renderProfileCard(opts: { name: string; nip05: string; aboutExcerpt: string; followingCount: number; avatarDataUri: string | null }): Promise<Buffer> {
+  return renderCardPng(profileCardTree(opts));
+}
+export function renderInviteCard(): Promise<Buffer> {
+  return renderCardPng(inviteCardTree());
 }
 
 // ── Routes ───────────────────────────────────────────────────────────────────
@@ -542,19 +524,17 @@ export function registerOgCardRoutes(app: Express, fetchNostrEvent: FetchNostrEv
       const profile = await fetchNostrEvent({ kinds: [0], authors: [event.pubkey] });
       const { name, picture } = profileCardMeta(profile?.content, event.pubkey);
       const avatarDataUri = picture ? await fetchAvatarDataUri(picture) : null;
-      const logo = await getLogoDataUri();
       // Show the post's own image (two-pane card) when it has one, and keep any
       // @-mentions readable in the excerpt instead of stripping them to nothing.
       const imageUrl = firstPostImageUrl(event);
       const imageDataUri = imageUrl ? await fetchCoverImageDataUri(imageUrl, 468, 630) : null;
       const resolvedContent = await resolveMentions(event.content || "", (f) => fetchNostrEvent(f));
-      const png = await renderCardPng(threadCardTree({
+      const png = await renderThreadCard({
         name,
         avatarDataUri,
         excerpt: excerptForCard(resolvedContent, imageDataUri ? 150 : 200),
-        logo,
         imageDataUri,
-      }));
+      });
       pngCache.set(key, png);
       return sendPng(res, png, 3600);
     } catch (err) {
@@ -595,15 +575,13 @@ export function registerOgCardRoutes(app: Express, fetchNostrEvent: FetchNostrEv
       const contacts = await fetchNostrEvent({ kinds: [3], authors: [pubkey] });
       const followingCount = followingCountFromTags(contacts?.tags);
       const avatarDataUri = picture ? await fetchAvatarDataUri(picture, 256) : null;
-      const logo = await getLogoDataUri();
-      const png = await renderCardPng(profileCardTree({
+      const png = await renderProfileCard({
         name,
         nip05,
         aboutExcerpt: excerptForCard(about, 140),
         followingCount,
         avatarDataUri,
-        logo,
-      }));
+      });
       pngCache.set(key, png);
       return sendPng(res, png, 3600);
     } catch (err) {
@@ -623,8 +601,7 @@ export function registerOgCardRoutes(app: Express, fetchNostrEvent: FetchNostrEv
     if (cached) return sendPng(res, cached, 24 * 3600);
 
     try {
-      const logo = await getLogoDataUri();
-      const png = await renderCardPng(inviteCardTree(logo));
+      const png = await renderInviteCard();
       pngCache.set(key, png);
       return sendPng(res, png, 24 * 3600);
     } catch (err) {
