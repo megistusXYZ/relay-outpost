@@ -172,7 +172,7 @@ function GroupChatRow({
               </span>
             )}
           </div>
-          <p className={`flex items-center gap-1 text-[14px] mt-0.5 min-w-0 ${unread ? "text-foreground/85 font-medium" : "text-muted-foreground"}`}>
+          <p className={`flex items-center gap-1 text-[14px] mt-0.5 min-w-0 ${unread ? "text-foreground font-medium" : "text-muted-foreground"}`}>
             <Lock className="w-3 h-3 shrink-0" aria-label="End-to-end encrypted" />
             <span className="truncate flex-1" data-testid={`group-teaser-${item.communityId.slice(0, 8)}`}>
               {item.teaser ?? `${item.channelCount} room${item.channelCount !== 1 ? "s" : ""} · encrypted`}
@@ -305,7 +305,7 @@ function DmChatRow({
           {isRequest && profileName && !isGroupRoom(item.pubkey) && (
             <ImpersonationChip pubkey={item.pubkey} displayName={profileName} nip05={nip05} className="mt-0.5" />
           )}
-          <p className={`text-[14px] truncate mt-0.5 ${unread ? "text-foreground/85 font-medium" : "text-muted-foreground"}`}>
+          <p className={`text-[14px] truncate mt-0.5 ${unread ? "text-foreground font-medium" : "text-muted-foreground"}`}>
             {hidePreviews ? "Message" : <ChatPreviewLine text={item.lastMessage} />}
           </p>
         </div>

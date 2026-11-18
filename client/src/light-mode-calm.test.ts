@@ -159,7 +159,7 @@ describe("no square icon tiles in light mode", () => {
   // Owner, 2026-10-03: no icon tiles. The Chats empty state still had one.
   it("Chats' empty state shows a bare icon in light; dark keeps a quiet grey disc", () => {
     const src = readFileSync(path.resolve(import.meta.dirname, "pages/Messages.tsx"), "utf8");
-    const at = src.indexOf('<h2 className="text-base font-semibold text-foreground/90">Your messages</h2>');
+    const at = src.indexOf('<h2 className="text-base font-semibold text-foreground">Your messages</h2>');
     expect(at).toBeGreaterThan(-1);
     const tile = src.slice(src.lastIndexOf("<div", src.lastIndexOf("<MessagesIcon", at)), at);
     // Outpost brand (2026-11-16): still no tile in light (bare icon); dark

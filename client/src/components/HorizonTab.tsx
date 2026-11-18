@@ -57,7 +57,7 @@ function ContentTypeIcon({ type, className }: { type: HorizonContentType; classN
 }
 
 const CONTENT_TYPE_COLORS: Record<HorizonContentType, string> = {
-  article: "text-brand/60 bg-brand/8 border-brand/15",
+  article: "text-brand bg-brand/8 border-brand/15",
   video: "text-blue-600/60 dark:text-blue-400/60 bg-blue-500/8 border-blue-500/15",
   audio: "text-success dark:text-emerald-400/60 bg-emerald-500/8 border-emerald-500/15",
   file: "text-amber-600/60 dark:text-amber-400/60 bg-amber-500/8 border-amber-500/15",
@@ -77,7 +77,7 @@ function ArticleAuthorLine({ pubkey }: { pubkey: string }) {
           {name.slice(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>
-      <span className="text-[11px] text-muted-foreground/70 truncate">{name}</span>
+      <span className="text-xs text-muted-foreground truncate">{name}</span>
     </div>
   );
 }
@@ -124,7 +124,7 @@ function HorizonArticleCard({ article, relayUrl }: { article: ArticleData; relay
               loading="lazy"
             />
             {article.contentType !== "article" && (
-              <div className={`absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-medium border backdrop-blur-sm ${typeColors}`}>
+              <div className={`absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs font-medium border backdrop-blur-sm ${typeColors}`}>
                 <ContentTypeIcon type={article.contentType} className="w-2.5 h-2.5" />
                 {article.contentType}
               </div>
@@ -133,11 +133,11 @@ function HorizonArticleCard({ article, relayUrl }: { article: ArticleData; relay
         )}
         <div className="p-3 sm:p-4 flex flex-col flex-1 gap-2">
           <div className="flex items-start gap-2">
-            <h3 className="text-sm font-semibold text-foreground/90 line-clamp-2 group-hover:text-brand transition-colors leading-snug flex-1">
+            <h3 className="text-sm font-semibold text-foreground line-clamp-2 group-hover:text-brand transition-colors leading-snug flex-1">
               {article.title || "Untitled"}
             </h3>
             {!article.image && article.contentType !== "article" && (
-              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-medium border shrink-0 ${typeColors}`}>
+              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs font-medium border shrink-0 ${typeColors}`}>
                 <ContentTypeIcon type={article.contentType} className="w-2.5 h-2.5" />
               </div>
             )}
@@ -146,7 +146,7 @@ function HorizonArticleCard({ article, relayUrl }: { article: ArticleData; relay
           {article.section && (
             <Badge
               variant="outline"
-              className="text-[9px] h-4 px-1.5 border-brand/20 text-brand/70 bg-brand/5 w-fit"
+              className="text-xs h-4 px-1.5 border-brand/20 text-brand bg-brand/5 w-fit"
             >
               <FolderOpen className="w-2 h-2 mr-0.5" />
               {article.section}
@@ -154,7 +154,7 @@ function HorizonArticleCard({ article, relayUrl }: { article: ArticleData; relay
           )}
 
           {summaryText && (
-            <p className="text-[11px] text-muted-foreground/50 line-clamp-3 leading-relaxed flex-1">
+            <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed flex-1">
               {summaryText}
             </p>
           )}
@@ -165,22 +165,22 @@ function HorizonArticleCard({ article, relayUrl }: { article: ArticleData; relay
                 <Badge
                   key={tag}
                   variant="outline"
-                  className="text-[9px] h-4 px-1.5 border-brand/15 text-brand/60 bg-brand/5"
+                  className="text-xs h-4 px-1.5 border-brand/15 text-brand bg-brand/5"
                 >
                   {tag}
                 </Badge>
               ))}
               {article.hashtags.length > 3 && (
-                <span className="text-[9px] text-muted-foreground/30">+{article.hashtags.length - 3}</span>
+                <span className="text-xs text-muted-foreground">+{article.hashtags.length - 3}</span>
               )}
             </div>
           )}
 
           <div className="flex items-center justify-between gap-2 pt-1 mt-auto border-t border-border/20">
             <ArticleAuthorLine pubkey={article.event.pubkey} />
-            <div className="flex items-center gap-2 text-[10px] text-muted-foreground/40 shrink-0">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
               {article.commentsDisabled && (
-                <span className="flex items-center gap-0.5 text-amber-500/50" title="Comments disabled">
+                <span className="flex items-center gap-0.5 text-warning" title="Comments disabled">
                   <MessageSquareOff className="w-2.5 h-2.5" />
                 </span>
               )}
@@ -424,39 +424,39 @@ export function HorizonTab({
               </button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-56 p-1.5 max-h-80 overflow-y-auto">
-              <p className="px-3 py-1.5 text-[13px] text-muted-foreground/60 font-medium">Sections</p>
+              <p className="px-3 py-1.5 text-[13px] text-muted-foreground font-medium">Sections</p>
               <button
                 onClick={() => { setSelectedSection(null); setFilterMenuOpen(false); }}
                 className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${
-                  selectedSection === null ? "bg-primary/15 text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  selectedSection === null ? "bg-primary/15 text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50"
                 }`}
                 data-testid="horizon-section-all"
               >
                 All
-                {articles.length > 0 && <span className="text-[10px] opacity-60 ml-auto">{articles.length}</span>}
+                {articles.length > 0 && <span className="text-xs opacity-60 ml-auto">{articles.length}</span>}
               </button>
               {sections.map((s) => (
                 <button
                   key={s.name}
                   onClick={() => { setSelectedSection(selectedSection === s.name ? null : s.name); setFilterMenuOpen(false); }}
                   className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${
-                    selectedSection === s.name ? "bg-primary/15 text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    selectedSection === s.name ? "bg-primary/15 text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50"
                   }`}
                   data-testid={`horizon-section-${s.name}`}
                 >
                   <FolderOpen className="w-3 h-3" />
                   <span className="truncate">{s.name}</span>
-                  <span className="text-[10px] opacity-60 ml-auto">{s.count}</span>
+                  <span className="text-xs opacity-60 ml-auto">{s.count}</span>
                 </button>
               ))}
               <div className="my-1 border-t border-border/30" />
-              <p className="px-3 py-1.5 text-[13px] text-muted-foreground/60 font-medium">Sort</p>
+              <p className="px-3 py-1.5 text-[13px] text-muted-foreground font-medium">Sort</p>
               {(["newest", "oldest", "updated"] as HorizonSortMode[]).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => { setSortMode(mode); setFilterMenuOpen(false); }}
                   className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${
-                    sortMode === mode ? "bg-primary/15 text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    sortMode === mode ? "bg-primary/15 text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50"
                   }`}
                   data-testid={`horizon-sort-${mode}`}
                 >
@@ -475,7 +475,7 @@ export function HorizonTab({
             trailing={searchQuery ? (
               <button
                 onClick={() => setSearchQuery("")}
-                className="p-2 rounded-full text-muted-foreground/40 hover:text-muted-foreground/70 hover:bg-muted/50 transition-colors"
+                className="p-2 rounded-full text-muted-foreground hover:bg-muted/50 transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -486,7 +486,7 @@ export function HorizonTab({
             type="button"
             onClick={() => setShowLearnMore(!showLearnMore)}
             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors ${
-              showLearnMore ? "text-brand bg-brand/10" : "text-muted-foreground/50 hover:text-muted-foreground/80 hover:bg-muted/20"
+              showLearnMore ? "text-brand bg-brand/10" : "text-muted-foreground hover:bg-muted/20"
             }`}
             aria-expanded={showLearnMore}
             aria-label="How do Articles work?"
@@ -504,33 +504,33 @@ export function HorizonTab({
           <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
             <div className="flex gap-2.5">
               <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                <BookOpen className="w-3.5 h-3.5 text-brand/70" />
+                <BookOpen className="w-3.5 h-3.5 text-brand" />
               </div>
               <div>
-                <p className="text-[11px] font-medium text-foreground/70">A shared knowledge base</p>
-                <p className="text-[10px] text-muted-foreground/40 leading-relaxed mt-0.5">
+                <p className="text-xs font-medium text-foreground">A shared knowledge base</p>
+                <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
                   Articles are this community's long-form content library. Members contribute articles, guides, resources, and links that live permanently on the relay — building a shared knowledge base for the community.
                 </p>
               </div>
             </div>
             <div className="flex gap-2.5">
               <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                <Layers className="w-3.5 h-3.5 text-brand/70" />
+                <Layers className="w-3.5 h-3.5 text-brand" />
               </div>
               <div>
-                <p className="text-[11px] font-medium text-foreground/70">Organized into sections</p>
-                <p className="text-[10px] text-muted-foreground/40 leading-relaxed mt-0.5">
+                <p className="text-xs font-medium text-foreground">Organized into sections</p>
+                <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
                   Entries can be categorized into sections like Guides, Updates, Links, and Resources — or create your own. Sections help people find what they're looking for without scrolling through everything.
                 </p>
               </div>
             </div>
             <div className="flex gap-2.5">
               <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                <Compass className="w-3.5 h-3.5 text-brand/70" />
+                <Compass className="w-3.5 h-3.5 text-brand" />
               </div>
               <div>
-                <p className="text-[11px] font-medium text-foreground/70">Full article editor</p>
-                <p className="text-[10px] text-muted-foreground/40 leading-relaxed mt-0.5">
+                <p className="text-xs font-medium text-foreground">Full article editor</p>
+                <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
                   Write rich articles with formatting, images, video embeds, code blocks, and more. Your content is published as a NIP-23 long-form event — portable across any Nostr client.
                 </p>
               </div>
@@ -540,8 +540,8 @@ export function HorizonTab({
                 <Sparkles className="w-3.5 h-3.5 text-yellow-800/70 dark:text-yellow-400/70" />
               </div>
               <div>
-                <p className="text-[11px] font-medium text-foreground/70">Different from Posts and Discussions</p>
-                <p className="text-[10px] text-muted-foreground/40 leading-relaxed mt-0.5">
+                <p className="text-xs font-medium text-foreground">Different from Posts and Discussions</p>
+                <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
                   Posts are quick status updates, Discussions are threaded conversations. Articles are lasting, polished content — think wiki pages, tutorials, or documentation rather than social posts.
                 </p>
               </div>
@@ -556,7 +556,7 @@ export function HorizonTab({
           {selectedTag && (
             <button
               onClick={() => setSelectedTag(null)}
-              className="flex shrink-0 items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full bg-accent text-accent-foreground dark:text-brand hover:bg-accent/80 transition-colors"
+              className="flex shrink-0 items-center gap-0.5 text-xs px-2 py-0.5 rounded-full bg-accent text-accent-foreground dark:text-brand hover:bg-accent/80 transition-colors"
             >
               <X className="w-2.5 h-2.5" />
               Clear
@@ -566,10 +566,10 @@ export function HorizonTab({
             <button
               key={tag}
               onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
-              className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full transition-colors ${
+              className={`shrink-0 text-xs px-2 py-0.5 rounded-full transition-colors ${
                 selectedTag === tag
                   ? "bg-accent text-accent-foreground dark:text-brand"
-                  : "bg-muted/15 text-muted-foreground/50 hover:text-muted-foreground/80 hover:bg-muted/25"
+                  : "bg-muted/15 text-muted-foreground hover:bg-muted/25"
               }`}
             >
               {tag}
@@ -589,15 +589,15 @@ export function HorizonTab({
           <Card className="glass-card p-6">
             <div className="flex flex-col items-center gap-2 text-center">
               <Search className="w-8 h-8 text-muted-foreground/20" />
-              <p className="text-sm text-muted-foreground/50">No matching entries</p>
-              <p className="text-[10px] text-muted-foreground/30">
+              <p className="text-sm text-muted-foreground">No matching entries</p>
+              <p className="text-xs text-muted-foreground">
                 Try adjusting your search or filters.
               </p>
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => { setSearchQuery(""); setSelectedTag(null); setSelectedSection(null); }}
-                className="text-[11px] text-brand/60 hover:text-brand mt-1"
+                className="text-xs text-brand mt-1"
               >
                 Clear filters
               </Button>
@@ -607,11 +607,11 @@ export function HorizonTab({
           <Card className="glass-card p-8">
             <div className="flex flex-col items-center gap-3 text-center max-w-xs mx-auto">
               <div className="w-14 h-14 rounded-full bg-primary/8 border border-primary/15 flex items-center justify-center">
-                <BookOpen className="w-7 h-7 text-brand/40" />
+                <BookOpen className="w-7 h-7 text-brand" />
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-sm font-brand tracking-wide text-foreground/80">No articles yet</h3>
-                <p className="text-[11px] text-muted-foreground/50 leading-relaxed">
+                <h3 className="text-sm font-brand tracking-wide text-foreground">No articles yet</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   This community's knowledge base has no entries yet. Share articles, resources, files, and links to build your community's library.
                 </p>
               </div>

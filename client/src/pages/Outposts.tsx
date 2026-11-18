@@ -203,7 +203,7 @@ function OperatorName({ pubkey }: { pubkey: string }) {
   const displayName = profile ? getDisplayName(profile) : shortenNpub(formatNpub(pubkey));
   useEffect(() => { fetchProfilesCached([pubkey]); }, [pubkey]);
   return (
-    <Link href={`/profile/${formatNpub(pubkey)}`} onClick={(e) => e.stopPropagation()} className="font-medium text-foreground/90 hover:underline underline-offset-2 truncate max-w-[12rem]" data-testid="hero-operator-name">
+    <Link href={`/profile/${formatNpub(pubkey)}`} onClick={(e) => e.stopPropagation()} className="font-medium text-foreground hover:underline underline-offset-2 truncate max-w-[12rem]" data-testid="hero-operator-name">
       {displayName}
     </Link>
   );
@@ -256,7 +256,7 @@ function JoinedCardFeedbackSlot({ relay, isOperator, encodedUrl }: { relay: Outp
       <span className="relative inline-flex shrink-0">
         <button
           onClick={(e) => { e.stopPropagation(); setLocation(unread > 0 ? `/relay-ops-center/${encodedUrl}#feedback` : `/relay-ops-center/${encodedUrl}`); }}
-          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium border border-brand/30 bg-brand/10 text-brand hover:bg-brand/20 transition-colors"
+          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border border-brand/30 bg-brand/10 text-brand hover:bg-brand/20 transition-colors"
           data-testid={`button-operator-console-${relay.url}`}
           title={unread > 0 ? `${unread} new feedback ${unread === 1 ? "item" : "items"}` : "Open the operator console for this community"}
         >
@@ -265,7 +265,7 @@ function JoinedCardFeedbackSlot({ relay, isOperator, encodedUrl }: { relay: Outp
         </button>
         {unread > 0 && (
           <span
-            className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-[3px] rounded-full bg-primary text-primary-foreground text-[9px] leading-[14px] font-semibold text-center shadow"
+            className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-[3px] rounded-full bg-primary text-primary-foreground text-xs leading-[14px] font-semibold text-center shadow"
             data-testid={`badge-operator-feedback-unread-${relay.url}`}
           >
             {unread > 9 ? "9+" : unread}
@@ -283,7 +283,7 @@ function SendFeedbackLink({ recipient, relayUrl }: { recipient: FeedbackRecipien
   return (
     <button
       onClick={(e) => { e.stopPropagation(); openFeedbackDrawer({ initialRecipient: recipient }); }}
-      className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium border border-border/40 text-muted-foreground/70 hover:text-brand hover:border-brand/40 hover:bg-brand/5 transition-colors"
+      className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border border-border/40 text-muted-foreground hover:text-brand hover:border-brand/40 hover:bg-brand/5 transition-colors"
       data-testid={`button-card-feedback-${relayUrl}`}
       title="Contact this community's team"
     >
@@ -348,14 +348,14 @@ function JoinedOutpostCard({
               <button
                 onClick={(e) => { e.stopPropagation(); onMoveUp?.(); }}
                 disabled={!onMoveUp}
-                className={`p-2 rounded text-muted-foreground/60 hover:text-foreground disabled:opacity-20 disabled:cursor-default transition-colors ${FOCUS_RING}`}
+                className={`p-2 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:cursor-default transition-colors ${FOCUS_RING}`}
               >
                 <ChevronUp className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); onMoveDown?.(); }}
                 disabled={!onMoveDown}
-                className={`p-2 rounded text-muted-foreground/60 hover:text-foreground disabled:opacity-20 disabled:cursor-default transition-colors ${FOCUS_RING}`}
+                className={`p-2 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:cursor-default transition-colors ${FOCUS_RING}`}
               >
                 <ChevronDown className="w-3.5 h-3.5" />
               </button>
@@ -380,7 +380,7 @@ function JoinedOutpostCard({
             <button
               type="button"
               onClick={copyOutpostLink}
-              className={`shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 p-1.5 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-foreground/[0.06] transition-colors ${FOCUS_RING}`}
+              className={`shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors ${FOCUS_RING}`}
               aria-label={`Copy link to ${name}`}
               title="Copy link"
               data-testid={`button-outpost-copy-link-${encodedUrl.slice(0, 24)}`}
@@ -395,7 +395,7 @@ function JoinedOutpostCard({
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setConfirmLeave(true); }}
-              className={`shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 p-1.5 rounded-md text-muted-foreground/30 hover:text-red-500 hover:bg-red-500/10 reveal-on-hover ${FOCUS_RING}`}
+              className={`shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-500/10 reveal-on-hover ${FOCUS_RING}`}
               aria-label={`Leave ${name}`}
               title="Leave community"
               data-testid={`button-outpost-leave-${encodedUrl.slice(0, 24)}`}
@@ -407,7 +407,7 @@ function JoinedOutpostCard({
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onTogglePins?.(); }}
-              className={`shrink-0 flex items-center gap-1 px-2 py-1.5 min-h-[44px] sm:min-h-0 rounded-md text-[12px] font-medium text-foreground/80 hover:bg-foreground/[0.06] transition-colors ${FOCUS_RING}`}
+              className={`shrink-0 flex items-center gap-1 px-2 py-1.5 min-h-[44px] sm:min-h-0 rounded-md text-[12px] font-medium text-foreground hover:bg-foreground/[0.06] transition-colors ${FOCUS_RING}`}
               aria-label={`Toggle pinned feeds for ${name}`}
               aria-expanded={pinsExpanded}
               data-testid={`button-outpost-pins-toggle-${encodedUrl.slice(0, 24)}`}
@@ -442,7 +442,7 @@ function JoinedOutpostCard({
                     className="w-full flex items-center gap-2 px-2 py-2.5 sm:py-1 min-h-[44px] sm:min-h-0 rounded-md text-[13px] text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground active:bg-foreground/[0.08] transition-colors text-left"
                     data-testid={`link-outpost-pin-${pin.id.slice(0, 32)}`}
                   >
-                    <Icon className="w-3 h-3 text-foreground/60 shrink-0" />
+                    <Icon className="w-3 h-3 text-foreground shrink-0" />
                     <span className="flex-1 truncate">{pinDisplayLabel(pin)}</span>
                   </button>
                 </li>
@@ -456,7 +456,7 @@ function JoinedOutpostCard({
         <AlertDialogContent className="glass-dialog-card border-red-500/20 max-w-sm" onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-base font-semibold">Leave {name}?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground/70 leading-relaxed">
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
               You'll be removed from this community and it won't appear in your joined list. You can rejoin anytime.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -502,7 +502,7 @@ function ActiveMemberItem({ pubkey }: { pubkey: string }) {
             <TrustTierDot pubkey={pubkey} />
           </div>
         </div>
-        <span className="flex-1 min-w-0 flex items-center gap-1.5 text-xs text-foreground/90">
+        <span className="flex-1 min-w-0 flex items-center gap-1.5 text-xs text-foreground">
           <span className="truncate">{displayName}</span>
           {/* Inline after the name, NOT on the avatar: TrustTierDot already owns
               that corner, and two small glyphs stacked there reads as noise.
@@ -591,7 +591,7 @@ function WaveAuthorLine({ pubkey, createdAt, isOP, size = "sm" }: { pubkey: stri
   const name = profile ? getDisplayName(profile) : shortenNpub(formatNpub(pubkey));
   const avatar = profile ? getAvatarUrl(profile) : undefined;
   const avatarSize = size === "md" ? "w-7 h-7" : "w-5 h-5";
-  const textSize = size === "md" ? "text-xs" : "text-xs";
+  const textSize = "text-xs";
 
   return (
     <div className="flex items-center gap-2 min-w-0">
@@ -795,7 +795,7 @@ function WavePostCard({
       <div className="flex flex-col items-center gap-0.5 shrink-0 px-1 sm:px-1.5 py-2.5 bg-black/[0.025] dark:bg-white/[0.02] border-r border-black/[0.05] dark:border-white/[0.05]">
         <button
           onClick={(e) => { e.stopPropagation(); castVote("up"); }}
-          className={`p-1.5 sm:p-1 rounded-md transition-colors hover:bg-foreground/[0.06] active:bg-foreground/[0.1] ${userVote === "up" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          className={`p-1.5 sm:p-1 rounded-md transition-colors hover:bg-foreground/[0.06] active:bg-foreground/[0.1] ${userVote === "up" ? "text-foreground" : "text-muted-foreground"}`}
           aria-label="Upvote"
           data-testid={`wave-upvote-${topic.id}`}
         >
@@ -806,7 +806,7 @@ function WavePostCard({
         </span>
         <button
           onClick={(e) => { e.stopPropagation(); castVote("down"); }}
-          className={`p-1.5 sm:p-1 rounded-md transition-colors hover:bg-foreground/[0.06] active:bg-foreground/[0.1] ${userVote === "down" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          className={`p-1.5 sm:p-1 rounded-md transition-colors hover:bg-foreground/[0.06] active:bg-foreground/[0.1] ${userVote === "down" ? "text-foreground" : "text-muted-foreground"}`}
           aria-label="Downvote"
           data-testid={`wave-downvote-${topic.id}`}
         >
@@ -820,7 +820,7 @@ function WavePostCard({
           <div className="flex items-center gap-1.5 min-w-0 flex-1 text-xs">
             {isPinned && <Pin className="w-3 h-3 text-foreground/70 shrink-0 rotate-45" />}
             {topicTags.length > 0 && (
-              <span className="shrink-0 rounded-full bg-foreground/[0.06] text-foreground/75 px-2 py-0.5 text-[12px] font-medium">
+              <span className="shrink-0 rounded-full bg-foreground/[0.06] text-foreground px-2 py-0.5 text-[12px] font-medium">
                 #{topicTags[0]}
               </span>
             )}
@@ -844,7 +844,7 @@ function WavePostCard({
 
         <div className="flex gap-3">
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm sm:text-base font-bold leading-snug line-clamp-2 mb-1 text-foreground/90">{title}</h3>
+            <h3 className="text-sm sm:text-base font-bold leading-snug line-clamp-2 mb-1 text-foreground">{title}</h3>
             {bodyPreview && (
               <p className="text-xs text-muted-foreground dark:text-muted-foreground leading-relaxed line-clamp-3">{bodyPreview}</p>
             )}
@@ -859,7 +859,7 @@ function WavePostCard({
         <div className="flex items-center gap-0.5 pt-0.5">
           <button
             onClick={(e) => { e.stopPropagation(); onClick(); }}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors"
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-muted-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors"
           >
             <MessageSquare className="w-3.5 h-3.5" />
             <span className="text-xs font-semibold">{commentCount}</span>
@@ -868,7 +868,7 @@ function WavePostCard({
 
           <button
             onClick={handleCopyLink}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors"
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-muted-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors"
           >
             <Share2 className="w-3.5 h-3.5" />
             <span className="text-xs font-medium">Share</span>
@@ -958,7 +958,7 @@ function WaveSortDropdown({ value, onChange }: { value: WaveSortMode; onChange: 
                 className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${
                   value === opt.value
                     ? "text-foreground bg-foreground/[0.07] font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-black/[0.03] dark:hover:bg-white/[0.03]"
+                    : "text-muted-foreground hover:bg-black/[0.03] dark:hover:bg-white/[0.03]"
                 }`}
               >
                 <OptIcon className="w-3.5 h-3.5" />
@@ -1072,7 +1072,7 @@ function WaveCreateForm({
             <Badge
               key={tag}
               variant="outline"
-              className="text-xs h-5 px-1.5 border-border/60 text-foreground/75 bg-transparent cursor-pointer hover:border-red-500/30 hover:text-danger"
+              className="text-xs h-5 px-1.5 border-border/60 text-foreground bg-transparent cursor-pointer hover:border-red-500/30 hover:text-danger"
               onClick={() => setSelectedTags((prev) => prev.filter((t) => t !== tag))}
             >
               #{tag} <X className="w-2 h-2 ml-0.5" />
@@ -1316,7 +1316,7 @@ function CommentComposer({
     <div className={`${compact ? "" : "mt-3"}`}>
       <div className="flex items-center gap-1.5 mb-1.5">
         <Lock className="w-2.5 h-2.5 text-success" />
-        <span className="text-xs text-success dark:text-emerald-400/60">
+        <span className="text-xs text-success">
           {relayUrl.replace(/^wss?:\/\//, "")} only
         </span>
       </div>
@@ -1515,7 +1515,7 @@ function TopicTrustBar({ comments, excludedTiers, onFilterChange }: {
               aria-pressed={!excluded}
               title={excluded ? `Show ${seg.label}` : `Hide ${seg.label}`}
               onClick={() => toggleTier(seg.tierId)}
-              className={`hit-area inline-flex items-center gap-1.5 text-[12px] rounded-full px-1.5 -mx-1.5 py-0.5 hover:bg-foreground/[0.05] transition-colors duration-150 cursor-pointer ${excluded ? "text-muted-foreground line-through decoration-1" : "text-foreground/80"}`}
+              className={`hit-area inline-flex items-center gap-1.5 text-[12px] rounded-full px-1.5 -mx-1.5 py-0.5 hover:bg-foreground/[0.05] transition-colors duration-150 cursor-pointer ${excluded ? "text-muted-foreground line-through decoration-1" : "text-foreground"}`}
             >
               <TrustTierGlyph tier={seg.tierId as SignalTier} size={seg.tierId === "flagged" ? "w-3 h-3" : "w-2 h-2"} decorative className={excluded ? "opacity-40" : undefined} />
               {seg.label} <span className="tabular-nums">{seg.count}</span>
@@ -1654,7 +1654,7 @@ function CommentTreeItem({
               <div className="flex items-center rounded-full">
                 <button
                   onClick={() => castVote("up")}
-                  className={`p-1.5 sm:p-1 transition-colors hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] rounded-l-full ${userVote === "up" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`p-1.5 sm:p-1 transition-colors hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] rounded-l-full ${userVote === "up" ? "text-foreground" : "text-muted-foreground"}`}
                 >
                   <ArrowBigUp className={`w-3.5 h-3.5 ${userVote === "up" ? "fill-current" : ""}`} />
                 </button>
@@ -1663,7 +1663,7 @@ function CommentTreeItem({
                 )}
                 <button
                   onClick={() => castVote("down")}
-                  className={`p-1.5 sm:p-1 transition-colors hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] rounded-r-full ${userVote === "down" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`p-1.5 sm:p-1 transition-colors hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] rounded-r-full ${userVote === "down" ? "text-foreground" : "text-muted-foreground"}`}
                 >
                   <ArrowBigDown className={`w-3.5 h-3.5 ${userVote === "down" ? "fill-current" : ""}`} />
                 </button>
@@ -1977,7 +1977,7 @@ function TopicThreadView({
             <div className="flex items-center rounded-full bg-black/[0.03] dark:bg-white/[0.03] border border-border/10">
               <button
                 onClick={() => castPostVote("up")}
-                className={`p-2 sm:p-1.5 rounded-l-full transition-colors hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] ${postVote === "up" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                className={`p-2 sm:p-1.5 rounded-l-full transition-colors hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] ${postVote === "up" ? "text-foreground" : "text-muted-foreground"}`}
               >
                 <ArrowBigUp className={`w-4 h-4 ${postVote === "up" ? "fill-current" : ""}`} />
               </button>
@@ -1986,7 +1986,7 @@ function TopicThreadView({
               </span>
               <button
                 onClick={() => castPostVote("down")}
-                className={`p-2 sm:p-1.5 rounded-r-full transition-colors hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] ${postVote === "down" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                className={`p-2 sm:p-1.5 rounded-r-full transition-colors hover:bg-black/[0.05] dark:hover:bg-white/[0.05] active:bg-black/[0.08] dark:active:bg-white/[0.08] ${postVote === "down" ? "text-foreground" : "text-muted-foreground"}`}
               >
                 <ArrowBigDown className={`w-4 h-4 ${postVote === "down" ? "fill-current" : ""}`} />
               </button>
@@ -2076,7 +2076,7 @@ function TopicThreadView({
             className="flex w-full items-center gap-3 text-left text-sm text-muted-foreground bg-black/[0.02] dark:bg-white/[0.02] border border-border/10 rounded-xl px-4 py-3 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:border-border/20 active:bg-black/[0.06] dark:active:bg-white/[0.06] transition-colors"
             data-testid="button-join-conversation"
           >
-            <MessageSquare className="w-4 h-4 text-muted-foreground/25 shrink-0" />
+            <MessageSquare className="w-4 h-4 text-muted-foreground shrink-0" />
             Join the conversation...
           </button>
         )}
@@ -2427,7 +2427,7 @@ function TopicsTab({
       ) : visibleTopics.length === 0 ? (
         <Card className="glass-card p-6">
           <div className="flex flex-col items-center gap-2 text-center">
-            <OttoEmpty mood="quiet" size={72} className="text-foreground/70" />
+            <OttoEmpty mood="quiet" size={72} className="text-foreground" />
             <p className="text-sm text-muted-foreground">
               {selectedTag ? `No discussions tagged #${selectedTag}` : "No discussions yet"}
             </p>
@@ -2671,7 +2671,7 @@ function CommunityInfoPanel({
               return (
                 <div key={server} className="flex items-center gap-1.5 text-xs">
                   <span className="w-1.5 h-1.5 rounded-full bg-success shrink-0" />
-                  <span className="text-success dark:text-emerald-400/80 font-mono truncate">{hostname}</span>
+                  <span className="text-success font-mono truncate">{hostname}</span>
                   <Badge variant="outline" className="text-xs h-5 px-1.5 border-border text-success shrink-0">
                     Blossom
                   </Badge>
@@ -3001,7 +3001,7 @@ function OutpostComposeSheet({
             {communityName.slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
-        <span className="text-[12px] font-medium text-foreground/80 truncate min-w-0">
+        <span className="text-[12px] font-medium text-foreground truncate min-w-0">
           Posting to <span className="text-foreground">{destinationLabel}</span>
         </span>
         {isPrivateCommunity && (
@@ -3014,7 +3014,7 @@ function OutpostComposeSheet({
       {isPublicRelay && (
         <label className="flex items-center justify-between gap-3 cursor-pointer select-none px-0.5 py-0.5" data-testid="toggle-crosspost">
           <span className="flex flex-col min-w-0">
-            <span className="text-[12px] text-foreground/70">Also share to your feed</span>
+            <span className="text-[12px] text-foreground">Also share to your feed</span>
             <span className="text-[12px] text-muted-foreground">Reach your followers too</span>
           </span>
           <Switch
@@ -3081,13 +3081,13 @@ function OutpostComposeSheet({
               {media.type === "video" && (
                 <div className="w-24 h-24 flex items-center justify-center bg-black/30">
                   <Film className="w-6 h-6 text-muted-foreground" />
-                  <span className="absolute bottom-1 left-1 text-xs text-white/60">Video</span>
+                  <span className="absolute bottom-1 left-1 text-xs text-white">Video</span>
                 </div>
               )}
               {media.type === "audio" && (
                 <div className="w-24 h-24 flex items-center justify-center bg-black/30">
                   <Music className="w-6 h-6 text-muted-foreground" />
-                  <span className="absolute bottom-1 left-1 text-xs text-white/60">Audio</span>
+                  <span className="absolute bottom-1 left-1 text-xs text-white">Audio</span>
                 </div>
               )}
               <button
@@ -3172,7 +3172,7 @@ function OutpostComposeSheet({
           type="button"
           onClick={() => setShowLinkInput(!showLinkInput)}
           disabled={publishing || isUploading}
-          className={`flex items-center justify-center h-9 w-9 rounded-md transition-colors disabled:opacity-30 ${showLinkInput ? "text-foreground bg-foreground/[0.08]" : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06]"}`}
+          className={`flex items-center justify-center h-9 w-9 rounded-md transition-colors disabled:opacity-30 ${showLinkInput ? "text-foreground bg-foreground/[0.08]" : "text-muted-foreground hover:bg-foreground/[0.06]"}`}
           title="Add link"
           aria-label="Add link"
         >
@@ -3222,7 +3222,7 @@ function OutpostComposeSheet({
                     <Telescope className="w-3.5 h-3.5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-foreground/70">Start a conversation</p>
+                    <p className="text-xs font-medium text-foreground">Start a conversation</p>
                     <p className="text-[12px] text-muted-foreground leading-relaxed mt-0.5">
                       Discussions are threaded conversations that live on this relay. Give it a title, share your thoughts, and others can reply to keep the conversation going.
                     </p>
@@ -3233,7 +3233,7 @@ function OutpostComposeSheet({
                     <Satellite className="w-3.5 h-3.5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-foreground/70">Published to this community</p>
+                    <p className="text-xs font-medium text-foreground">Published to this community</p>
                     <p className="text-[12px] text-muted-foreground leading-relaxed mt-0.5">
                       Your wave is stored on this relay and visible to its members.
                     </p>
@@ -3244,7 +3244,7 @@ function OutpostComposeSheet({
                     <Sparkles className="w-3.5 h-3.5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-foreground/70">Attach media and links</p>
+                    <p className="text-xs font-medium text-foreground">Attach media and links</p>
                     <p className="text-[12px] text-muted-foreground leading-relaxed mt-0.5">
                       Drop in images, videos, audio, GIFs, or links to make your wave stand out.
                     </p>
@@ -3258,7 +3258,7 @@ function OutpostComposeSheet({
                     <Rocket className="w-3.5 h-3.5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-foreground/70">Quick thoughts, no title needed</p>
+                    <p className="text-xs font-medium text-foreground">Quick thoughts, no title needed</p>
                     <p className="text-[12px] text-muted-foreground leading-relaxed mt-0.5">
                       Posts are short — like a status update or a quick share. Just write and publish. No title required.
                     </p>
@@ -3269,7 +3269,7 @@ function OutpostComposeSheet({
                     <Satellite className="w-3.5 h-3.5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-foreground/70">Shows up in the feed</p>
+                    <p className="text-xs font-medium text-foreground">Shows up in the feed</p>
                     <p className="text-[12px] text-muted-foreground leading-relaxed mt-0.5">
                       Your post appears in this community's feed, visible to all members, and is stored on this relay.
                     </p>
@@ -3280,7 +3280,7 @@ function OutpostComposeSheet({
                     <Telescope className="w-3.5 h-3.5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-foreground/70">Want a longer discussion?</p>
+                    <p className="text-xs font-medium text-foreground">Want a longer discussion?</p>
                     <p className="text-[12px] text-muted-foreground leading-relaxed mt-0.5">
                       If you have more to say, try starting a discussion instead. Discussions have titles and are designed for threaded conversations that people can find later.
                     </p>
@@ -4272,7 +4272,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                             <Badge
                               key={tag}
                               variant="outline"
-                              className="text-xs h-4 px-1.5 border-border/60 text-foreground/75 bg-transparent"
+                              className="text-xs h-4 px-1.5 border-border/60 text-foreground bg-transparent"
                             >
                               <Hash className="w-2 h-2 mr-0.5" />
                               {tag}
@@ -4465,7 +4465,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
               size="sm"
               variant="ghost"
               onClick={handleTogglePin}
-              className={`h-7 w-7 p-0 -mb-px ${feedPinned ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              className={`h-7 w-7 p-0 -mb-px ${feedPinned ? "text-foreground" : "text-muted-foreground"}`}
               title={feedPinned ? "Unpin this view" : "Pin this view"}
             >
               {feedPinned ? <Pin className="w-3.5 h-3.5 rotate-45" /> : <PinOff className="w-3.5 h-3.5" />}
@@ -4481,7 +4481,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
               size="sm"
               variant="ghost"
               onClick={handleTogglePin}
-              className={`h-9 w-9 p-0 shrink-0 ${feedPinned ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              className={`h-9 w-9 p-0 shrink-0 ${feedPinned ? "text-foreground" : "text-muted-foreground"}`}
               aria-label={feedPinned ? "Unpin this view from your hub" : "Pin this view to your hub"}
               title={feedPinned ? "Unpin this view" : "Pin this view"}
               data-testid="button-outpost-pin-mobile"
@@ -4544,7 +4544,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className={`h-7 gap-1.5 px-2 text-xs -mb-px shrink-0 ${trustFilterEnabled ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`h-7 gap-1.5 px-2 text-xs -mb-px shrink-0 ${trustFilterEnabled ? "text-foreground" : "text-muted-foreground"}`}
                   title="Trust filter for this community"
                   data-testid="button-outpost-trust-filter"
                 >
@@ -4567,7 +4567,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                 size="sm"
                 variant="ghost"
                 onClick={() => setTrustSheetOpen(true)}
-                className={`relative h-9 w-9 p-0 shrink-0 ${trustFilterEnabled ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                className={`relative h-9 w-9 p-0 shrink-0 ${trustFilterEnabled ? "text-foreground" : "text-muted-foreground"}`}
                 aria-label="Trust filter"
                 data-testid="button-outpost-trust-filter-mobile"
               >
@@ -4916,7 +4916,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
             ) : !loading && events.length === 0 ? (
               <Card className="glass-card p-6">
                 <div className="flex flex-col items-center gap-2 text-center">
-                  <OttoEmpty mood="looking" size={72} className="text-foreground/70" />
+                  <OttoEmpty mood="looking" size={72} className="text-foreground" />
                   <p className="text-sm text-muted-foreground">No recent posts found</p>
                   <p className="text-[12px] text-muted-foreground">
                     This relay may have limited public content.
@@ -4936,7 +4936,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
                 ) : feedContentFilter !== "all" && feedTrustFiltered.length > 0 && feedContentFiltered.length === 0 ? (
                   <Card className="glass-card p-6">
                     <div className="flex flex-col items-center gap-2 text-center">
-                      <MessageSquare className="w-8 h-8 text-muted-foreground/20" />
+                      <MessageSquare className="w-8 h-8 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground">
                         {feedContentFilter === "replies" ? "No replies in view" : "No top-level posts in view"}
                       </p>
@@ -5100,7 +5100,7 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
             <p className="text-[13px] text-muted-foreground font-medium">Invite link</p>
             <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/20 border border-border/30">
               <Link2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <span className="flex-1 text-xs font-mono text-foreground/70 truncate">{outpostInviteLink}</span>
+              <span className="flex-1 text-xs font-mono text-foreground truncate">{outpostInviteLink}</span>
               <Button size="sm" variant="ghost" onClick={handleCopyOutpostLink} className="h-7 px-2 gap-1 text-xs shrink-0" data-testid="button-copy-outpost-link">
                 {outpostLinkCopied ? <><Check className="w-3 h-3 text-success" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
               </Button>
@@ -5165,7 +5165,7 @@ function StarterCommunityIcon({ url, name }: { url: string; name: string }) {
     return <img src={icon} alt="" loading="lazy" className="h-10 w-10 shrink-0 rounded-lg object-cover" onError={() => setIcon(null)} />;
   }
   return (
-    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-foreground/[0.08] text-sm font-semibold text-foreground/80">
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-foreground/[0.08] text-sm font-semibold text-foreground">
       {name.slice(0, 1).toUpperCase()}
     </span>
   );
@@ -5437,7 +5437,7 @@ export default function Outposts() {
                       data-testid="button-open-outpost-url"
                     >
                       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 shrink-0">
-                        <Rocket className="w-3.5 h-3.5 text-foreground/70" />
+                        <Rocket className="w-3.5 h-3.5 text-foreground" />
                       </span>
                       <span className="min-w-0">
                         <span className="block text-sm font-medium truncate">Open {urlToOpen.replace(/^wss?:\/\//, "")}</span>
@@ -5464,7 +5464,7 @@ export default function Outposts() {
                             <span className="block text-sm truncate">{m.name}</span>
                             <span className="block text-[12px] text-muted-foreground truncate">{m.url.replace(/^wss?:\/\//, "")}</span>
                           </span>
-                          <span className="text-[12px] text-success dark:text-emerald-400/80 shrink-0">Joined</span>
+                          <span className="text-[12px] text-success shrink-0">Joined</span>
                         </button>
                       ))}
                     </>
@@ -5473,7 +5473,7 @@ export default function Outposts() {
                     <p className="px-3 pt-2 pb-1 text-[13px] text-muted-foreground font-medium">Directory</p>
                   )}
                   {loading && dirMatches.length === 0 && (
-                    <div className="flex items-center gap-2 px-3 py-2.5 text-xs text-muted-foreground/60">
+                    <div className="flex items-center gap-2 px-3 py-2.5 text-xs text-muted-foreground">
                       <RelayOutpostInlineLoader className="w-3.5 h-3.5" /> Searching…
                     </div>
                   )}
@@ -5499,7 +5499,7 @@ export default function Outposts() {
                     </button>
                   ))}
                   {!loading && !groupInvite && !looksLikeUrl && joinedMatches.length === 0 && dirMatches.length === 0 && (
-                    <p className="px-3 py-3 text-xs text-muted-foreground/60">No communities found — try another name, or paste a link.</p>
+                    <p className="px-3 py-3 text-xs text-muted-foreground">No communities found — try another name, or paste a link.</p>
                   )}
                   {moreCount > 0 && (
                     <p className="px-3 pt-1 pb-2 text-[12px] text-muted-foreground tabular-nums">+{moreCount} more — keep typing to narrow it down</p>
@@ -5514,7 +5514,7 @@ export default function Outposts() {
       {joinedRelays.length > 0 && (
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-2">
-            <h2 className="text-xs text-success dark:text-emerald-400/70 font-medium">
+            <h2 className="text-xs text-success font-medium">
               Your communities
             </h2>
             <span className="text-[12px] text-muted-foreground">{joinedRelays.length}</span>
@@ -5563,7 +5563,7 @@ export default function Outposts() {
       {/* Empty hub: one quiet pointer instead of a big empty-state card — the
           hub stays calm: search → your communities once they exist. */}
       {pubkey && joinedRelays.length === 0 && (
-        <p className="px-0.5 text-[13px] text-muted-foreground/50" data-testid="text-empty-outposts-hint">
+        <p className="px-0.5 text-[13px] text-muted-foreground" data-testid="text-empty-outposts-hint">
           Join a community by pasting its link above, or ask a friend for an invite.
         </p>
       )}
@@ -5637,7 +5637,7 @@ export default function Outposts() {
           >
             <Wrench className="w-3.5 h-3.5 text-muted-foreground" />
             <span>Manage relays</span>
-            <span className="text-[12px] text-muted-foreground/80">routes · health · blocks</span>
+            <span className="text-[12px] text-muted-foreground">routes · health · blocks</span>
           </Link>
         )}
         <button

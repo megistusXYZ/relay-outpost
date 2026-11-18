@@ -467,11 +467,11 @@ function CalendarInviteCard({ invite, userPubkey }: { invite: CalendarInvitePayl
   return (
     <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 space-y-1.5">
       <div className="flex items-center gap-1.5">
-        <CalendarPlus className="w-3.5 h-3.5 text-amber-800/80 dark:text-amber-400/80" />
-        <span className="text-[12px] font-medium text-amber-800/90 dark:text-amber-300/90">Event invitation</span>
+        <CalendarPlus className="w-3.5 h-3.5 text-warning" />
+        <span className="text-[12px] font-medium text-warning">Event invitation</span>
         {invite.private && <Lock className="w-3 h-3 text-amber-800/50 dark:text-amber-400/50" />}
       </div>
-      <p className="text-xs font-medium text-foreground/90">{invite.title}</p>
+      <p className="text-xs font-medium text-foreground">{invite.title}</p>
       <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[12px] text-muted-foreground">
         <span className="flex items-center gap-1">
           📅 {dateDisplay}
@@ -490,14 +490,14 @@ function CalendarInviteCard({ invite, userPubkey }: { invite: CalendarInvitePayl
         )}
       </div>
       {pinned ? (
-        <div className="flex items-center gap-1.5 text-[12px] text-success dark:text-emerald-400/80 pt-0.5">
+        <div className="flex items-center gap-1.5 text-[12px] text-success pt-0.5">
           <CalendarCheck className="w-3 h-3" />
           Added to your calendar
         </div>
       ) : (
         <button
           onClick={handleAddToCalendar}
-          className="flex items-center gap-1.5 px-2.5 py-1 mt-0.5 text-[12px] rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+          className="flex items-center gap-1.5 px-2.5 py-1 mt-0.5 text-[12px] rounded-md border border-amber-500/30 bg-amber-500/10 text-warning hover:bg-amber-500/20 transition-colors"
         >
           <CalendarPlus className="w-3 h-3" />
           Add to Calendar
@@ -750,7 +750,7 @@ function DMMessageContent({ content, userPubkey, fileMetadata, isMine }: { conte
                   className={`underline underline-offset-2 break-all ${
                     isMine
                       ? "text-[#d6dae1] hover:text-[#e4e6eb]"
-                      : "text-brand hover:text-brand/80"
+                      : "text-brand"
                   }`}
                   data-testid={`dm-link-${i}`}
                 >
@@ -3372,7 +3372,7 @@ export default function Messages() {
               <button
                 type="button"
                 onClick={() => setShowTimer(true)}
-                className="flex items-center gap-1 min-h-[32px] px-2.5 rounded-full border border-border/60 text-[12px] text-foreground/80 shrink-0"
+                className="flex items-center gap-1 min-h-[32px] px-2.5 rounded-full border border-border/60 text-[12px] text-foreground shrink-0"
                 title="Your messages here disappear. Tap to change."
                 data-testid="chip-thread-timer"
               >
@@ -3485,7 +3485,7 @@ export default function Messages() {
                 aria-label="Dismiss"
                 onClick={(e) => { e.stopPropagation(); if (otherChatAlert) dismissedAlerts.current.add(otherChatAlert); setOtherChatAlert(null); }}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); setOtherChatAlert(null); } }}
-                className="shrink-0 w-8 h-8 -mr-1 flex items-center justify-center rounded-full text-muted-foreground/60"
+                className="shrink-0 w-8 h-8 -mr-1 flex items-center justify-center rounded-full text-muted-foreground"
               >
                 <X className="w-3.5 h-3.5" />
               </span>
@@ -3517,9 +3517,9 @@ export default function Messages() {
               </div>
             ) : visibleMessages.length === 0 ? (
               <div className="text-center py-12">
-                <OttoEmpty mood="quiet" size={72} className="mx-auto mb-2 text-foreground/70" />
+                <OttoEmpty mood="quiet" size={72} className="mx-auto mb-2 text-foreground" />
                 <p className="text-sm text-muted-foreground">No messages yet</p>
-                <p className="text-xs text-muted-foreground/80">Send the first message to start the conversation</p>
+                <p className="text-xs text-muted-foreground">Send the first message to start the conversation</p>
                 {/* An old chat may simply not be loaded yet: offer to look. */}
                 {historyStatus !== "done" && !isDeletedPreview && (
                   <button
@@ -3641,11 +3641,11 @@ export default function Messages() {
                         );
                       })()}
                       {selectedIsGroup && !isMine && isClusterStart && (
-                        <p className="text-[12px] font-semibold text-foreground/80 mb-0.5 truncate" data-testid={`message-sender-${msg.id}`}>{nameOf(msg.from)}</p>
+                        <p className="text-[12px] font-semibold text-foreground mb-0.5 truncate" data-testid={`message-sender-${msg.id}`}>{nameOf(msg.from)}</p>
                       )}
                       {msg.quotedNoteId && (
                         <div className="mb-1.5">
-                          <p className={`text-[11px] mb-1 flex items-center gap-1 ${isMine ? "text-white/70" : "text-muted-foreground"}`}>
+                          <p className="text-xs mb-1 flex items-center gap-1 bubble-meta">
                             <Lock className="w-2.5 h-2.5 shrink-0" />
                             {isMine ? "You replied privately" : "Replied privately to your post"}
                           </p>
@@ -3654,7 +3654,7 @@ export default function Messages() {
                       )}
                       <DMMessageContent content={msg.content} userPubkey={pubkey} fileMetadata={msg.fileMetadata} isMine={isMine} />
                       {showTimestamp && (
-                        <p className="text-[11px] mt-1 opacity-60 flex items-center gap-1">
+                        <p className="text-xs mt-1 flex items-center gap-1 bubble-meta">
                           {formatFullTime(msg.timestamp)}
                           {isMine && (
                             msgStatus[msg.id] === "sending" ? (
@@ -3923,8 +3923,8 @@ export default function Messages() {
             <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full dark:bg-foreground/[0.05]">
               <MessagesIcon className="h-8 w-8 text-foreground/70" />
             </div>
-            <h2 className="text-base font-semibold text-foreground/90">Your messages</h2>
-            <p className="mx-auto mt-1.5 max-w-[18rem] text-sm text-muted-foreground/70">
+            <h2 className="text-base font-semibold text-foreground">Your messages</h2>
+            <p className="mx-auto mt-1.5 max-w-[18rem] text-sm text-muted-foreground">
               Private, end-to-end encrypted. Start a new conversation.
             </p>
             {/* Rendered from the SAME list as ChatList's dropdown, sheet and

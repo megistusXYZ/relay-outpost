@@ -52,7 +52,7 @@ export function OutpostContentRenderer({ event, compact = false }: OutpostConten
   return (
     <div className="space-y-2">
       {renderedContent && (
-        <div className={`${compact ? "text-xs" : "text-[15px]"} text-foreground/90 leading-relaxed whitespace-pre-wrap break-words`}>
+        <div className={`${compact ? "text-xs" : "text-[15px]"} text-foreground leading-relaxed whitespace-pre-wrap break-words`}>
           {renderedContent}
         </div>
       )}
