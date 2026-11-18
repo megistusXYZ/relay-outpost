@@ -41,7 +41,6 @@ import { RelayOutpostInlineLoader, RelayOutpostIcon } from "@/components/RelayOu
 import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
 
 interface Props {
-  variant?: "page" | "overlay";
   onBack: () => void;
   onComplete: () => void;
 }
@@ -86,14 +85,14 @@ function detectFeaturedLinkType(raw: string): { type: FeaturedLinkType; label: s
   return { type: "web", label: "Website" };
 }
 
-function FieldInfo({ title, body, testId, isOverlay }: { title: string; body: React.ReactNode; testId?: string; isOverlay: boolean }) {
+function FieldInfo({ title, body, testId }: { title: string; body: React.ReactNode; testId?: string; }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           type="button"
           aria-label={`What is ${title}?`}
-          className={`shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full transition-all ${isOverlay ? "text-white/60 bg-white/[0.06] hover:bg-white/15 hover:text-white focus-visible:bg-white/15 focus-visible:text-white" : "text-foreground/60 bg-foreground/[0.06] hover:bg-foreground/10 hover:text-foreground focus-visible:bg-foreground/10"} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30`}
+          className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full transition-all text-foreground/60 bg-foreground/[0.06] hover:bg-foreground/10 hover:text-foreground focus-visible:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
           data-testid={testId}
         >
           <Info className="w-3.5 h-3.5" />
@@ -115,7 +114,7 @@ function FieldInfo({ title, body, testId, isOverlay }: { title: string; body: Re
   );
 }
 
-export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Props) {
+export function CreateAccountFlow({ onBack, onComplete }: Props) {
   const { loginWithLocalKey, updateFollows } = useNostrAuth();
   const { setWotEnabled, notifyRecalculating } = useGrapeRankScores();
   const { toast } = useToast();
@@ -260,19 +259,16 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
     clearSignupDraft();
     onBack();
   }, [onBack]);
-
-  const isOverlay = variant === "overlay";
   /** The name the account goes out with: what they typed, or what we chose. */
   const effectiveName = displayName.trim() || suggestedName;
   /** Their account's own name, for the story on the last step. */
   const who = effectiveName;
-  const cardCls = isOverlay ? "border-white/10 bg-black/40 backdrop-blur-lg" : "border-border/60 bg-card/50";
-  const titleCls = isOverlay ? "text-white" : "";
-  const descCls = isOverlay ? "text-white/60" : "text-muted-foreground";
-  const subtleCls = isOverlay ? "text-white/70" : "text-muted-foreground";
-  const inputCls = isOverlay ? "bg-black/30 border-white/40 text-white placeholder:text-white/50" : "bg-background/50 placeholder:text-muted-foreground/70";
-  const primaryBtnCls = isOverlay ? "bg-white text-black hover:bg-white/90" : "bg-foreground text-background hover:bg-foreground/90";
-  const ghostBtnCls = isOverlay ? "text-white/60" : "text-muted-foreground";
+  const cardCls = "border-border/60 bg-card/50";
+  const descCls = "text-muted-foreground";
+  const subtleCls = "text-muted-foreground";
+  const inputCls = "bg-background/50 placeholder:text-muted-foreground/70";
+  const primaryBtnCls = "bg-foreground text-background hover:bg-foreground/90";
+  const ghostBtnCls = "text-muted-foreground";
 
   const passwordStrength = useMemo(() => {
     if (!password) return { label: "", score: 0 };
@@ -845,7 +841,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
         <div
           key={n}
           className={`h-1.5 rounded-full transition-all ${n === step ? "w-6" : "w-1.5"} ${
-            n <= step ? (isOverlay ? "bg-white" : "bg-foreground") : (isOverlay ? "bg-white/15" : "bg-foreground/15")
+            n <= step ? "bg-foreground" : "bg-foreground/15"
           }`}
           data-testid={`step-dot-${n}`}
         />
@@ -863,23 +859,23 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
           : avatarUploading
           ? "Uploading avatar…"
           : "";
-        const fieldInputCls = `${inputCls} h-11 transition-shadow focus-visible:ring-2 ${isOverlay ? "focus-visible:ring-white/30 focus-visible:border-white/30" : "focus-visible:ring-foreground/25 focus-visible:border-foreground/30"}`;
+        const fieldInputCls = `${inputCls} h-11 transition-shadow focus-visible:ring-2 focus-visible:ring-foreground/25 focus-visible:border-foreground/30`;
         const optionalBadge = (
-          <span className={`text-[11px] px-1 py-px rounded-sm leading-none font-medium ${isOverlay ? "text-white/55 bg-white/[0.04] border border-white/10" : "text-foreground/65 bg-foreground/[0.04] border border-border/40"}`}>Optional</span>
+          <span className="text-[11px] px-1 py-px rounded-sm leading-none font-medium text-foreground/65 bg-foreground/[0.04] border border-border/40">Optional</span>
         );
         const labelBase = `text-xs font-brand uppercase tracking-widest flex items-center gap-1.5 ${subtleCls}`;
         return (
         <Card className={`${cardCls} relative overflow-hidden`}>
           {/* Soft light accents (neutral: the theme keeps chrome off the brand colour) */}
-          <div aria-hidden className={`pointer-events-none absolute -top-24 -left-16 w-64 h-64 rounded-full blur-3xl ${isOverlay ? "bg-white/[0.04]" : "bg-foreground/[0.03]"}`} />
-          <div aria-hidden className={`pointer-events-none absolute -bottom-24 -right-16 w-64 h-64 rounded-full blur-3xl ${isOverlay ? "bg-white/[0.03]" : "bg-foreground/[0.02]"}`} />
+          <div aria-hidden className="pointer-events-none absolute -top-24 -left-16 w-64 h-64 rounded-full blur-3xl bg-foreground/[0.03]" />
+          <div aria-hidden className="pointer-events-none absolute -bottom-24 -right-16 w-64 h-64 rounded-full blur-3xl bg-foreground/[0.02]" />
 
           <CardContent className="relative p-5 sm:p-6 space-y-6">
             {/* Banner + avatar (above-the-fold) */}
-            <div className={`relative rounded-xl overflow-hidden border ${isOverlay ? "border-white/10 bg-white/[0.02]" : "border-border/40 bg-muted/30"}`}>
+            <div className="relative rounded-xl overflow-hidden border border-border/40 bg-muted/30">
               <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} data-testid="input-upload-banner" />
               <div
-                className={`relative w-full h-28 sm:h-32 cursor-pointer group/banner overflow-hidden ${isOverlay ? "profile-banner-bg" : "profile-banner-bg-light"}`}
+                className="relative w-full h-28 sm:h-32 cursor-pointer group/banner overflow-hidden profile-banner-bg-light"
                 onClick={() => !bannerUploading && bannerInputRef.current?.click()}
                 data-testid="banner-upload-zone"
               >
@@ -977,10 +973,10 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                   <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} data-testid="input-upload-avatar" />
                   <div className="relative shrink-0 self-start">
                     {avatarUploading && (
-                      <div aria-hidden className={`absolute inset-0 rounded-full blur-md animate-pulse ${isOverlay ? "bg-white/30" : "bg-foreground/20"}`} />
+                      <div aria-hidden className="absolute inset-0 rounded-full blur-md animate-pulse bg-foreground/20" />
                     )}
                     <div
-                      className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-[3px] cursor-pointer group/avatar overflow-hidden shadow-xl transition-transform hover:scale-[1.03] ${isOverlay ? "border-white/20 bg-[radial-gradient(circle_at_30%_25%,#2a3550_0%,#0f1626_55%,#05080f_100%)]" : "border-background bg-muted"}`}
+                      className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-[3px] cursor-pointer group/avatar overflow-hidden shadow-xl transition-transform hover:scale-[1.03] border-background bg-muted"
                       onClick={() => !avatarUploading && avatarInputRef.current?.click()}
                       data-testid="button-upload-avatar"
                     >
@@ -993,7 +989,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                       </div>
                     </div>
                     <div
-                      className={`absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full flex items-center justify-center shadow-lg pointer-events-none ${isOverlay ? "bg-white text-black border-2 border-black/80" : "bg-foreground text-background border-2 border-background"}`}
+                      className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full flex items-center justify-center shadow-lg pointer-events-none bg-foreground text-background border-2 border-background"
                       aria-hidden
                       data-testid="badge-avatar-camera"
                     >
@@ -1020,11 +1016,11 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                     ) : (
                       <>
                         <div className="flex items-center gap-2">
-                          <p className={`text-xs font-medium leading-tight ${isOverlay ? "text-white/85" : "text-foreground/85"}`}>Profile photo</p>
+                          <p className="text-xs font-medium leading-tight text-foreground/85">Profile photo</p>
                           <button
                             type="button"
                             onClick={() => { setPicture(""); setAvatarSeed(newSeed()); }}
-                            className={`hit-area inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors ${isOverlay ? "bg-white/[0.08] text-white/85 hover:bg-white/[0.14]" : "bg-foreground/[0.06] text-foreground/80 hover:bg-foreground/[0.1]"}`}
+                            className="hit-area inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors bg-foreground/[0.06] text-foreground/80 hover:bg-foreground/[0.1]"
                             data-testid="button-shuffle-avatar"
                             aria-label="Show another photo"
                           >
@@ -1054,7 +1050,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                   <button
                     type="button"
                     onClick={() => { const n = friendlyName(seededRandom(newSeed())); setSuggestedName(n); setDisplayName(n); }}
-                    className={`hit-area inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors ${isOverlay ? "bg-white/[0.08] text-white/85 hover:bg-white/[0.14]" : "bg-foreground/[0.06] text-foreground/80 hover:bg-foreground/[0.1]"}`}
+                    className="hit-area inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors bg-foreground/[0.06] text-foreground/80 hover:bg-foreground/[0.1]"
                     data-testid="button-shuffle-name"
                     aria-label="Suggest another name"
                   >
@@ -1099,40 +1095,30 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
 
             {/* Add more details (collapsible) */}
             <div
-              className={`rounded-xl border-2 sm:border ${
-                isOverlay
-                  ? "border-white/15 sm:border-white/10 bg-white/[0.04] sm:bg-white/[0.02]"
-                  : "border-border/60 sm:border-border/40 bg-muted/30 sm:bg-muted/20"
-              }`}
+              className="rounded-xl border-2 sm:border border-border/60 sm:border-border/40 bg-muted/30 sm:bg-muted/20"
             >
               <button
                 type="button"
                 onClick={() => setShowAdvanced((v) => !v)}
                 aria-expanded={showAdvanced}
                 aria-controls="create-advanced-panel"
-                className={`w-full flex items-center gap-3 sm:gap-2 px-4 py-4 sm:py-3 text-left rounded-xl transition-colors ${isOverlay ? "hover:bg-white/[0.04]" : "hover:bg-foreground/[0.03]"}`}
+                className="w-full flex items-center gap-3 sm:gap-2 px-4 py-4 sm:py-3 text-left rounded-xl transition-colors hover:bg-foreground/[0.03]"
                 data-testid="button-toggle-add-more-details"
               >
                 {/* Icon bubble — bold on mobile, flat on desktop */}
                 <span
-                  className={`relative shrink-0 inline-flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto rounded-full sm:rounded-none ${
-                    isOverlay
-                      ? "bg-white/[0.08] sm:bg-transparent ring-1 ring-white/15 sm:ring-0"
-                      : "bg-foreground/[0.06] sm:bg-transparent ring-1 ring-border/60 sm:ring-0"
-                  }`}
+                  className="relative shrink-0 inline-flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto rounded-full sm:rounded-none bg-foreground/[0.06] sm:bg-transparent ring-1 ring-border/60 sm:ring-0"
                 >
-                  <RelayOutpostIcon className={`relative w-5 h-5 sm:w-4 sm:h-4 ${isOverlay ? "text-brand sm:text-brand/80" : "text-brand sm:text-brand/80"}`} />
+                  <RelayOutpostIcon className="relative w-5 h-5 sm:w-4 sm:h-4 text-brand sm:text-brand/80" />
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm sm:text-xs font-semibold tracking-tight ${isOverlay ? "text-white" : "text-foreground"}`}>Add more details</p>
+                  <p className="text-sm sm:text-xs font-semibold tracking-tight text-foreground">Add more details</p>
                   <p className={`text-xs sm:text-[11px] mt-0.5 sm:hidden ${subtleCls}`}>
                     Username, verified address, featured link, Bitcoin tips — all optional.
                   </p>
                 </div>
                 <span
-                  className={`shrink-0 inline-flex items-center justify-center w-7 h-7 sm:w-auto sm:h-auto rounded-full sm:rounded-none transition-colors ${
-                    isOverlay ? "bg-white/[0.06] sm:bg-transparent" : "bg-foreground/[0.05] sm:bg-transparent"
-                  }`}
+                  className="shrink-0 inline-flex items-center justify-center w-7 h-7 sm:w-auto sm:h-auto rounded-full sm:rounded-none transition-colors bg-foreground/[0.05] sm:bg-transparent"
                 >
                   <ChevronDown className={`w-4 h-4 transition-transform ${showAdvanced ? "rotate-180" : ""} ${ghostBtnCls}`} />
                 </span>
@@ -1141,7 +1127,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
               {showAdvanced && (
                 <div
                   id="create-advanced-panel"
-                  className={`px-4 pb-4 pt-1 space-y-4 border-t ${isOverlay ? "border-white/10" : "border-border/40"}`}
+                  className="px-4 pb-4 pt-1 space-y-4 border-t border-border/40"
                 >
                   {/* Username (optional) */}
                   <div className="space-y-1.5 min-w-0">
@@ -1177,7 +1163,6 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                         {optionalBadge}
                       </Label>
                       <FieldInfo
-                        isOverlay={isOverlay}
                         title="Verified address"
                         testId="info-nip05"
                         body={
@@ -1208,7 +1193,6 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                         {optionalBadge}
                       </Label>
                       <FieldInfo
-                        isOverlay={isOverlay}
                         title="Featured link"
                         testId="info-website"
                         body={
@@ -1229,7 +1213,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                     />
                     {featuredLinkInfo.type ? (
                       <div
-                        className={`inline-flex items-center gap-1.5 mt-0.5 text-[11px] px-2 py-0.5 rounded-full font-medium ${ isOverlay ? "bg-white/[0.06] border border-white/15 text-white/80" : "bg-foreground/[0.05] border border-border/60 text-foreground/80" }`}
+                        className="inline-flex items-center gap-1.5 mt-0.5 text-[11px] px-2 py-0.5 rounded-full font-medium bg-foreground/[0.05] border border-border/60 text-foreground/80"
                         data-testid="text-featured-link-type"
                       >
                         {featuredLinkInfo.type === "rss" && <Rss className="w-3 h-3" />}
@@ -1255,7 +1239,6 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                         {optionalBadge}
                       </Label>
                       <FieldInfo
-                        isOverlay={isOverlay}
                         title="RSS feed"
                         testId="info-rss"
                         body={
@@ -1286,7 +1269,6 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                         {optionalBadge}
                       </Label>
                       <FieldInfo
-                        isOverlay={isOverlay}
                         title="Bitcoin tips"
                         testId="info-lud16"
                         body={
@@ -1327,11 +1309,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                 <Button
                   onClick={handleStep1Continue}
                   disabled={avatarUploading || bannerUploading}
-                  className={`group/cta relative text-xs font-brand uppercase tracking-widest h-11 px-5 shadow-lg transition-all hover:shadow-xl disabled:shadow-none ${
-                    isOverlay
-                      ? "bg-gradient-to-r from-white to-white/90 text-black hover:from-white hover:to-white shadow-white/20"
-                      : "bg-foreground text-background hover:bg-foreground/90 shadow-black/20"
-                  }`}
+                  className="group/cta relative text-xs font-brand uppercase tracking-widest h-11 px-5 shadow-lg transition-all hover:shadow-xl disabled:shadow-none bg-foreground text-background hover:bg-foreground/90 shadow-black/20"
                   data-testid="button-create-step1-continue"
                 >
                   Continue
@@ -1354,11 +1332,11 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
         <Card className={cardCls}>
           <CardContent className="p-5 sm:p-6 space-y-5">
             <div className="flex items-center gap-3">
-              <div className={`flex items-center justify-center w-10 h-10 rounded-md ${isOverlay ? "bg-white/5 border border-white/10" : "bg-foreground/5 border border-border/40"}`}>
-                {stored ? <Check className={`w-5 h-5 ${isOverlay ? "text-white/70" : "text-foreground/70"}`} /> : <Lock className={`w-5 h-5 ${isOverlay ? "text-white/70" : "text-foreground/70"}`} />}
+              <div className="flex items-center justify-center w-10 h-10 rounded-md bg-foreground/5 border border-border/40">
+                {stored ? <Check className="w-5 h-5 text-foreground/70" /> : <Lock className="w-5 h-5 text-foreground/70" />}
               </div>
               <div>
-                <h3 className={`text-base font-semibold tracking-tight ${titleCls}`} data-testid="text-step2-title">
+                <h3 className="text-base font-semibold tracking-tight" data-testid="text-step2-title">
                   {stored ? "Save your key" : "Secure your account"}
                 </h3>
                 <p className={`text-xs mt-0.5 leading-relaxed ${descCls}`}>
@@ -1374,7 +1352,6 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                 {/* Recommended one-tap path — the card self-hides on devices
                     without a platform authenticator. */}
                 <PasskeyEnrollmentCard
-                  variant={variant}
                   secretKey={account.secretKey}
                   pubkey={account.pubkey}
                   npub={account.npub}
@@ -1389,30 +1366,30 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                 )}
 
                 {/* Password fallback */}
-                <div className={`rounded-md ${isOverlay ? "border border-white/10" : "border border-border/40"}`}>
+                <div className="rounded-md border border-border/40">
                   <button
                     type="button"
                     onClick={() => setShowPasswordPath((v) => !v)}
-                    className={`w-full px-3 py-2.5 flex items-center gap-2 text-left ${isOverlay ? "hover:bg-white/5" : "hover:bg-foreground/5"}`}
+                    className="w-full px-3 py-2.5 flex items-center gap-2 text-left hover:bg-foreground/5"
                     data-testid="button-toggle-password-path"
                   >
-                    <KeyRound className={`w-4 h-4 ${isOverlay ? "text-white/70" : "text-foreground/70"}`} />
+                    <KeyRound className="w-4 h-4 text-foreground/70" />
                     <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-semibold ${titleCls}`}>Set a password for this browser instead</p>
+                      <p className="text-xs font-semibold">Set a password for this browser instead</p>
                       <p className={`text-xs ${descCls}`}>Unlocks this account here. It is not your key and can't open the account anywhere else.</p>
                     </div>
                     <ArrowRight className={`w-3.5 h-3.5 transition-transform ${showPasswordPath ? "rotate-90" : ""} ${ghostBtnCls}`} />
                   </button>
 
                   {showPasswordPath && (
-                    <div className={`px-3 py-3 space-y-3 border-t ${isOverlay ? "border-white/10 bg-black/20" : "border-border/40 bg-foreground/[0.02]"}`}>
+                    <div className="px-3 py-3 space-y-3 border-t border-border/40 bg-foreground/[0.02]">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-2">
                           <Label className={`text-xs font-medium ${subtleCls}`}>Password for this browser</Label>
                           <button
                             type="button"
                             onClick={handleSuggestPassphrase}
-                            className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-md transition-colors ${isOverlay ? "text-white/85 hover:text-white hover:bg-white/10 border border-white/20" : "text-foreground/85 hover:text-foreground hover:bg-foreground/[0.06] border border-border/60"}`}
+                            className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-md transition-colors text-foreground/85 hover:text-foreground hover:bg-foreground/[0.06] border border-border/60"
                             data-testid="button-suggest-passphrase"
                           >
                             <Dice5 className="w-3 h-3" /> Suggest 6 random words
@@ -1439,7 +1416,7 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                         </div>
                         {password && (
                           <div className="flex items-center gap-2">
-                            <div className={`h-1 flex-1 rounded-full overflow-hidden ${isOverlay ? "bg-white/10" : "bg-foreground/10"}`}>
+                            <div className="h-1 flex-1 rounded-full overflow-hidden bg-foreground/10">
                               <div
                                 className={`h-full transition-all ${passwordStrength.score <= 1 ? "bg-red-500" : passwordStrength.score === 2 ? "bg-amber-500" : passwordStrength.score === 3 ? "bg-yellow-500" : "bg-emerald-500"}`}
                                 style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
@@ -1484,9 +1461,9 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
               </div>
             ) : (
               <div className="space-y-4">
-                <div className={`rounded-md p-3 flex items-start gap-2 ${isOverlay ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-emerald-500/10 border border-emerald-500/30"}`} data-testid="panel-secured">
-                  <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${isOverlay ? "text-emerald-300" : "text-emerald-700"}`} />
-                  <p className={`text-xs leading-relaxed ${isOverlay ? "text-emerald-100" : "text-success dark:text-emerald-900"}`}>
+                <div className="rounded-md p-3 flex items-start gap-2 bg-emerald-500/10 border border-emerald-500/30" data-testid="panel-secured">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-700" />
+                  <p className="text-xs leading-relaxed text-success dark:text-emerald-900">
                     {who} is saved on this device{passkeyBlob ? " and unlocks with a tap" : ""}. Only you hold the key that controls it.
                   </p>
                 </div>
@@ -1494,62 +1471,61 @@ export function CreateAccountFlow({ variant = "page", onBack, onComplete }: Prop
                 {/* The consequence as a story, at the moment of choice, in their own
                     account's name (owner, 2026-10-10). The key file is the thing to
                     keep; Finish opens after a save or a deliberate skip. */}
-                <div className={`rounded-md p-3 space-y-2.5 ${isOverlay ? "border border-white/10 bg-white/[0.03]" : "border border-border/40 bg-foreground/[0.02]"}`} data-testid="panel-save-key">
+                <div className="rounded-md p-3 space-y-2.5 border border-border/40 bg-foreground/[0.02]" data-testid="panel-save-key">
                   <p className={`text-xs leading-relaxed ${descCls}`} data-testid="text-key-story">
                     {who} lives on this browser. If this browser is cleared or this device is lost, {who} is gone. Nobody, including us, can bring it back. Your key is the only way. We keep no copy.
                   </p>
                   <KeyBackupActions
                     material={{ nsec: account.nsec, npub: account.npub, pubkey: account.pubkey, name: displayName.trim(), createdAt: stored.createdAt }}
                     relays={[...FLOOR_RELAYS]}
-                    isOverlay={isOverlay}
                     onSaved={() => setKeySaved(true)}
                     testIdPrefix="signup-key"
                   />
                 </div>
 
-                <div className={`rounded-md ${isOverlay ? "border border-white/10" : "border border-border/40"}`}>
+                <div className="rounded-md border border-border/40">
                   <button
                     type="button"
                     onClick={() => setShowSecureAdvanced((v) => !v)}
-                    className={`w-full px-3 py-2.5 flex items-center gap-2 text-left ${isOverlay ? "hover:bg-white/5" : "hover:bg-foreground/5"}`}
+                    className="w-full px-3 py-2.5 flex items-center gap-2 text-left hover:bg-foreground/5"
                     data-testid="button-toggle-secure-advanced"
                   >
                     <ChevronDown className={`w-4 h-4 transition-transform ${showSecureAdvanced ? "rotate-180" : ""} ${ghostBtnCls}`} />
                     <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-semibold ${titleCls}`}>Advanced: your address &amp; your key as text</p>
+                      <p className="text-xs font-semibold">Advanced: your address &amp; your key as text</p>
                       <p className={`text-xs ${descCls}`}>The address others find you by, and the key itself to copy.</p>
                     </div>
                   </button>
                   {showSecureAdvanced && (
-                    <div className={`px-3 py-3 space-y-3 border-t ${isOverlay ? "border-white/10 bg-black/20" : "border-border/40 bg-foreground/[0.02]"}`}>
+                    <div className="px-3 py-3 space-y-3 border-t border-border/40 bg-foreground/[0.02]">
                       <div className="space-y-1.5">
                         <p className={`text-[13px] font-bold ${subtleCls}`}>Your address</p>
-                        <code className={`block text-[11px] break-all font-mono ${isOverlay ? "text-white/80" : "text-foreground/80"}`} data-testid="text-new-npub">{account.npub}</code>
-                        <Button size="sm" variant="outline" onClick={handleCopyNpub} className={`h-8 text-[13px] font-medium ${isOverlay ? "border-white/15 text-white/85 hover:bg-white/10" : ""}`} data-testid="button-copy-npub">
+                        <code className="block text-[11px] break-all font-mono text-foreground/80" data-testid="text-new-npub">{account.npub}</code>
+                        <Button size="sm" variant="outline" onClick={handleCopyNpub} className="h-8 text-[13px] font-medium" data-testid="button-copy-npub">
                           {copiedNpub ? <Check className="w-3.5 h-3.5 mr-1.5" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
                           {copiedNpub ? "Copied" : "Copy"}
                         </Button>
                       </div>
 
-                      <div className={`rounded-md ${isOverlay ? "border border-white/10" : "border border-border/40"}`}>
+                      <div className="rounded-md border border-border/40">
                         <button
                           type="button"
                           onClick={() => setShowNsec((v) => !v)}
                           aria-pressed={showNsec}
-                          className={`w-full px-3 py-2 flex items-center gap-2 text-left ${isOverlay ? "hover:bg-white/5" : "hover:bg-foreground/5"}`}
+                          className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-foreground/5"
                           data-testid="button-reveal-nsec-step3"
                         >
-                          {showNsec ? <EyeOff className={`w-4 h-4 ${isOverlay ? "text-white/70" : "text-foreground/70"}`} /> : <Eye className={`w-4 h-4 ${isOverlay ? "text-white/70" : "text-foreground/70"}`} />}
+                          {showNsec ? <EyeOff className="w-4 h-4 text-foreground/70" /> : <Eye className="w-4 h-4 text-foreground/70" />}
                           <div className="flex-1 min-w-0">
-                            <p className={`text-xs font-semibold ${titleCls}`}>{showNsec ? "Hide the key" : "Show the key as text"}</p>
+                            <p className="text-xs font-semibold">{showNsec ? "Hide the key" : "Show the key as text"}</p>
                             <p className={`text-xs ${descCls}`}>Hidden until you ask. Anyone holding it can act as you.</p>
                           </div>
                         </button>
-                        <div className={`px-3 py-2.5 space-y-2 border-t ${isOverlay ? "border-white/10 bg-black/20" : "border-border/40 bg-foreground/[0.02]"}`}>
-                          <code className={`block text-xs break-all font-mono p-2 rounded select-all ${isOverlay ? "bg-black/40 text-white/80" : "bg-background text-foreground/80"}`} data-testid="text-step3-nsec">
+                        <div className="px-3 py-2.5 space-y-2 border-t border-border/40 bg-foreground/[0.02]">
+                          <code className="block text-xs break-all font-mono p-2 rounded select-all bg-background text-foreground/80" data-testid="text-step3-nsec">
                             {showNsec ? account.nsec : "•".repeat(24)}
                           </code>
-                          <Button size="sm" variant="outline" onClick={handleCopyNsec} className={`w-full text-xs font-medium ${isOverlay ? "border-white/20 text-white/80" : ""}`} data-testid="button-copy-nsec-step3">
+                          <Button size="sm" variant="outline" onClick={handleCopyNsec} className="w-full text-xs font-medium" data-testid="button-copy-nsec-step3">
                             {copiedNsec ? <Check className="w-3.5 h-3.5 mr-1.5" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
                             {copiedNsec ? "Copied" : "Copy the key"}
                           </Button>

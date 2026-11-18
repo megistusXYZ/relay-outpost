@@ -206,7 +206,6 @@ export default function Login() {
         )}
 
         <LoginOptions
-          variant="page"
           onBack={() => setLocation("/")}
         />
 

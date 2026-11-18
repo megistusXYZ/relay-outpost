@@ -21,11 +21,10 @@ import { useToast } from "@/hooks/use-toast";
 
 
 interface LoginOptionsProps {
-  variant?: "page" | "overlay";
   onBack?: () => void;
 }
 
-function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" | "overlay" }) {
+function QRLoginFlow({ onBack }: { onBack: () => void; }) {
   const { initQRLogin, waitForQRLogin, cancelQRLogin, isLoggingIn } = useNostrAuth();
   const { toast } = useToast();
   const [qrState, setQRState] = useState<QRLoginState | null>(null);
@@ -146,49 +145,45 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
     const sec = s % 60;
     return `${m}:${sec.toString().padStart(2, "0")}`;
   };
-
-  const isOverlay = variant === "overlay";
-  const cardCls = isOverlay
-    ? "border-white/10 bg-black/40 backdrop-blur-lg"
-    : "border-border/60 bg-card/50";
+  const cardCls = "border-border/60 bg-card/50";
 
   return (
     <div className="space-y-4" data-testid="container-qr-login">
       <Card className={cardCls}>
         <CardContent className="p-5 space-y-5">
           <div className="flex items-center gap-3">
-            <div className={`flex items-center justify-center w-10 h-10 rounded-md shrink-0 ${isOverlay ? "bg-white/5 border border-white/10" : "bg-foreground/5 border border-border/40"}`}>
-              <QrCode className={`w-5 h-5 ${isOverlay ? "text-white/70" : "text-foreground/70"}`} />
+            <div className="flex items-center justify-center w-10 h-10 rounded-md shrink-0 bg-foreground/5 border border-border/40">
+              <QrCode className="w-5 h-5 text-foreground/70" />
             </div>
             <div>
-              <h3 className={`text-sm font-semibold ${isOverlay ? "text-white" : ""}`} data-testid="text-qr-title">
+              <h3 className="text-sm font-semibold" data-testid="text-qr-title">
                 {isMobile ? "Sign In with Signer App" : "Scan to Sign In"}
               </h3>
-              <p className={`text-xs mt-0.5 ${isOverlay ? "text-white/70" : "text-muted-foreground"}`}>
+              <p className="text-xs mt-0.5 text-muted-foreground">
                 {isMobile ? "Connect with your signer app" : "Use your signer app to scan"}
               </p>
             </div>
           </div>
 
           {isMobile ? (
-            <div className={`rounded-md p-4 space-y-3 ${isOverlay ? "bg-white/[0.03] border border-white/10" : "bg-foreground/[0.03] border border-border/30"}`}>
+            <div className="rounded-md p-4 space-y-3 bg-foreground/[0.03] border border-border/30">
               <div className="flex items-start gap-3">
-                <Smartphone className={`w-4 h-4 mt-0.5 shrink-0 ${isOverlay ? "text-white/70" : "text-muted-foreground"}`} />
-                <p className={`text-[11px] leading-relaxed ${isOverlay ? "text-white/70" : "text-muted-foreground"}`}>
+                <Smartphone className="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground" />
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
                   Tap the button below to open your signer app.
                   {isAndroid
-                    ? <> Works with <a href="https://github.com/greenart7c3/Amber/releases" target="_blank" rel="noopener noreferrer" className={`underline underline-offset-2 ${isOverlay ? "text-white/85" : "text-foreground/80"}`} data-testid="link-amber-mobile">Amber</a> and other signer apps.</>
+                    ? <> Works with <a href="https://github.com/greenart7c3/Amber/releases" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 text-foreground/80" data-testid="link-amber-mobile">Amber</a> and other signer apps.</>
                     : " Your signer app will handle the connection."}
                 </p>
               </div>
             </div>
           ) : (
-            <div className={`rounded-md p-4 space-y-3 ${isOverlay ? "bg-white/[0.03] border border-white/10" : "bg-foreground/[0.03] border border-border/30"}`}>
+            <div className="rounded-md p-4 space-y-3 bg-foreground/[0.03] border border-border/30">
               <div className="flex items-start gap-3">
-                <Smartphone className={`w-4 h-4 mt-0.5 shrink-0 ${isOverlay ? "text-white/70" : "text-muted-foreground"}`} />
-                <ol className={`text-[11px] space-y-1.5 list-decimal list-inside ${isOverlay ? "text-white/70" : "text-muted-foreground"}`}>
-                  <li>Open your signer app (<a href="https://github.com/greenart7c3/Amber" target="_blank" rel="noopener noreferrer" className={`underline underline-offset-2 ${isOverlay ? "text-white/85" : "text-foreground/80"}`} data-testid="link-amber-qr-instructions">Amber</a> on Android, Keystache, etc.)</li>
-                  <li>Select <span className={`font-medium ${isOverlay ? "text-white/70" : "text-foreground/80"}`}>Remote Login</span> or <span className={`font-medium ${isOverlay ? "text-white/70" : "text-foreground/80"}`}>Scan Code</span></li>
+                <Smartphone className="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground" />
+                <ol className="text-[11px] space-y-1.5 list-decimal list-inside text-muted-foreground">
+                  <li>Open your signer app (<a href="https://github.com/greenart7c3/Amber" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 text-foreground/80" data-testid="link-amber-qr-instructions">Amber</a> on Android, Keystache, etc.)</li>
+                  <li>Select <span className="font-medium text-foreground/80">Remote Login</span> or <span className="font-medium text-foreground/80">Scan Code</span></li>
                   <li>Scan the QR code below</li>
                 </ol>
               </div>
@@ -200,7 +195,7 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
               {isMobile ? (
                 <div className="w-full space-y-3">
                   <Button
-                    className={`w-full text-xs font-medium ${isOverlay ? "bg-white text-black" : "bg-foreground text-background"}`}
+                    className="w-full text-xs font-medium bg-foreground text-background"
                     onClick={() => {
                       try {
                         const w = window.open(qrState.uri, "_blank");
@@ -222,20 +217,20 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
                     <ExternalLink className="w-4 h-4 mr-2" />
                     Open in Signer App
                   </Button>
-                  <p className={`text-[11px] text-center ${isOverlay ? "text-white/65" : "text-muted-foreground/80"}`}>
+                  <p className="text-[11px] text-center text-muted-foreground/80">
                     If nothing happens, copy the connection string and paste it in your signer app
                   </p>
                   {timedOut && (
-                    <div className={`rounded-md p-3 space-y-2 ${isOverlay ? "bg-red-500/10 border border-red-500/20" : "bg-destructive/10 border border-destructive/20"}`}>
-                      <p className={`text-[11px] text-center font-medium ${isOverlay ? "text-red-300" : "text-destructive"}`}>
+                    <div className="rounded-md p-3 space-y-2 bg-destructive/10 border border-destructive/20">
+                      <p className="text-[11px] text-center font-medium text-destructive">
                         Connection timed out
                       </p>
-                      <p className={`text-[10px] text-center ${isOverlay ? "text-white/70" : "text-muted-foreground"}`}>
+                      <p className="text-[10px] text-center text-muted-foreground">
                         The signer did not respond. Try starting over.
                       </p>
                       <Button
                         size="sm"
-                        className={`w-full text-xs font-medium ${isOverlay ? "bg-white text-black" : "bg-foreground text-background"}`}
+                        className="w-full text-xs font-medium bg-foreground text-background"
                         onClick={handleRefresh}
                         data-testid="button-start-over"
                       >
@@ -246,16 +241,16 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
                   )}
                   {recovering && (
                     <div className="flex items-center justify-center gap-1.5">
-                      <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${isOverlay ? "bg-amber-400/70" : "bg-amber-500/70"}`} />
-                      <span className={`text-[11px] font-mono ${isOverlay ? "text-amber-300/70" : "text-amber-600"}`}>
+                      <div className="w-1.5 h-1.5 rounded-full animate-pulse bg-amber-500/70" />
+                      <span className="text-[11px] font-mono text-amber-600">
                         Reconnecting to relays...
                       </span>
                     </div>
                   )}
                   {waiting && !recovering && (
                     <div className="flex items-center justify-center gap-1.5">
-                      <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${isOverlay ? "bg-white/50" : "bg-foreground/50"}`} />
-                      <span className={`text-[11px] font-mono ${isOverlay ? "text-white/70" : "text-muted-foreground"}`}>
+                      <div className="w-1.5 h-1.5 rounded-full animate-pulse bg-foreground/50" />
+                      <span className="text-[11px] font-mono text-muted-foreground">
                         Waiting for approval {formatTime(elapsed)}
                       </span>
                     </div>
@@ -264,7 +259,7 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`w-full text-[13px] font-medium ${isOverlay ? "border-white/15 text-white/60" : "border-border/50 text-muted-foreground"}`}
+                      className="w-full text-[13px] font-medium border-border/50 text-muted-foreground"
                       onClick={handleRetryConnection}
                       data-testid="button-retry-connection"
                     >
@@ -276,7 +271,7 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`flex-1 text-xs font-medium ${isOverlay ? "border-white/20 text-white/70" : "border-border/60"}`}
+                      className="flex-1 text-xs font-medium border-border/60"
                       onClick={handleCopyUri}
                       data-testid="button-copy-qr-uri-mobile"
                     >
@@ -286,7 +281,7 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`text-xs font-medium ${isOverlay ? "border-white/20 text-white/70" : "border-border/60"}`}
+                      className="text-xs font-medium border-border/60"
                       onClick={handleRefresh}
                       disabled={isLoggingIn && elapsed < 3}
                       data-testid="button-refresh-mobile"
@@ -309,9 +304,9 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
                     </div>
                     {waiting && (
                       <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
-                        <div className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 shadow-sm ${isOverlay ? "bg-black/60 border border-white/10" : "bg-card border border-border/50"}`}>
-                          <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${isOverlay ? "bg-white/50" : "bg-foreground/50"}`} />
-                          <span className={`text-[11px] font-mono whitespace-nowrap ${isOverlay ? "text-white/70" : "text-muted-foreground"}`}>
+                        <div className="flex items-center gap-1.5 rounded-md px-2.5 py-1 shadow-sm bg-card border border-border/50">
+                          <div className="w-1.5 h-1.5 rounded-full animate-pulse bg-foreground/50" />
+                          <span className="text-[11px] font-mono whitespace-nowrap text-muted-foreground">
                             Waiting {formatTime(elapsed)}
                           </span>
                         </div>
@@ -323,7 +318,7 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`flex-1 text-xs font-medium ${isOverlay ? "border-white/20 text-white/70" : "border-border/60"}`}
+                      className="flex-1 text-xs font-medium border-border/60"
                       onClick={handleCopyUri}
                       data-testid="button-copy-qr-uri"
                     >
@@ -333,7 +328,7 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`text-xs font-medium ${isOverlay ? "border-white/20 text-white/70" : "border-border/60"}`}
+                      className="text-xs font-medium border-border/60"
                       onClick={handleRefresh}
                       disabled={isLoggingIn && elapsed < 3}
                       data-testid="button-refresh-qr"
@@ -347,13 +342,13 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
           ) : (
             <div className="flex flex-col items-center py-8 gap-3">
               <RelayOutpostInlineLoader className="w-6 h-6" />
-              <span className={`text-xs ${isOverlay ? "text-white/70" : "text-muted-foreground"}`}>Generating connection code...</span>
+              <span className="text-xs text-muted-foreground">Generating connection code...</span>
             </div>
           )}
 
-          <div className={`flex items-center gap-1.5 pt-2 border-t ${isOverlay ? "border-white/10" : "border-border/30"}`}>
-            <Lock className={`w-3 h-3 ${isOverlay ? "text-white/65" : "text-muted-foreground/80"}`} />
-            <span className={`text-[12px] font-medium ${isOverlay ? "text-white/65" : "text-muted-foreground/80"}`}>
+          <div className="flex items-center gap-1.5 pt-2 border-t border-border/30">
+            <Lock className="w-3 h-3 text-muted-foreground/80" />
+            <span className="text-[12px] font-medium text-muted-foreground/80">
               Your account never leaves your signer app
             </span>
           </div>
@@ -363,7 +358,7 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
       <Button
         onClick={handleCancel}
         variant="ghost"
-        className={`w-full text-xs font-medium ${isOverlay ? "text-white/70" : "text-muted-foreground"}`}
+        className="w-full text-xs font-medium text-muted-foreground"
         data-testid="button-back-from-qr"
       >
         <ArrowLeft className="w-4 h-4 mr-2" />
@@ -375,7 +370,7 @@ function QRLoginFlow({ onBack, variant }: { onBack: () => void; variant: "page" 
 
 type LoginMode = "select" | "bunker" | "qr" | "create" | "import" | "unlock" | "reconnect";
 
-export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
+export function LoginOptions({ onBack }: LoginOptionsProps) {
   // The three other sign-in methods stay folded until asked for.
   const [moreOpen, setMoreOpen] = useState(false);
   const { isLoggingIn, loginWithExtension, loginWithBunker } = useNostrAuth();
@@ -437,7 +432,6 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
     : isAndroid
       ? "Recommended for Android"
       : "Recommended for desktop";
-  const isOverlay = variant === "overlay";
 
   const handleExtensionLogin = async () => {
     await loginWithExtension();
@@ -456,16 +450,11 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
     await loginWithBunker(bunkerUri.trim());
   };
 
-  const cardCls = isOverlay
-    ? "border-white/10 bg-black/40 backdrop-blur-lg transition-[transform,box-shadow,border-color] duration-500 ease-out will-change-transform hover:-translate-y-1 hover:border-white/25 hover:shadow-[0_30px_72px_-28px_rgba(0,0,0,0.7)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-    : "border-border/60 bg-card/50 transition-[transform,box-shadow,border-color] duration-500 ease-out will-change-transform hover:-translate-y-1 hover:border-foreground/25 hover:shadow-[0_24px_60px_-26px_rgba(0,0,0,0.25)] motion-reduce:transition-none motion-reduce:hover:translate-y-0";
-  const iconBoxCls = isOverlay
-    ? "bg-white/5 border border-white/10"
-    : "dark:bg-foreground/[0.05] dark:border dark:border-border/40"; // no icon tiles in light (Outpost look)
-  const iconCls = isOverlay ? "text-white/75" : "text-foreground";
-  const titleCls = isOverlay ? "text-white" : "";
-  const descCls = isOverlay ? "text-white/65" : "text-muted-foreground";
-  const linkCls = isOverlay ? "text-white/60 underline underline-offset-2" : "text-foreground/70 underline underline-offset-2";
+  const cardCls = "border-border/60 bg-card/50 transition-[transform,box-shadow,border-color] duration-500 ease-out will-change-transform hover:-translate-y-1 hover:border-foreground/25 hover:shadow-[0_24px_60px_-26px_rgba(0,0,0,0.25)] motion-reduce:transition-none motion-reduce:hover:translate-y-0";
+  const iconBoxCls = "dark:bg-foreground/[0.05] dark:border dark:border-border/40"; // no icon tiles in light (Outpost look)
+  const iconCls = "text-foreground";
+  const descCls = "text-muted-foreground";
+  const linkCls = "text-foreground/70 underline underline-offset-2";
 
   return (
     <div className="w-full">
@@ -475,7 +464,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
           <Button
             variant="ghost"
             onClick={onBack}
-            className={`-ml-3 min-h-[44px] text-sm mb-2 font-medium ${isOverlay ? "text-white/70" : "text-muted-foreground hover:text-foreground"}`}
+            className="-ml-3 min-h-[44px] text-sm mb-2 font-medium text-muted-foreground hover:text-foreground"
             data-testid="button-back-from-login"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -485,7 +474,6 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
       )}
       {mode === "unlock" && storedLocal && (
         <UnlockScreen
-          variant={variant}
           account={storedLocal}
           onUseDifferentAccount={() => setMode("select")}
           onForget={() => { setStoredLocal(null); setMode("select"); }}
@@ -494,7 +482,6 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
       {mode === "create" && (
         <ErrorBoundary fallbackRender={(error) => <OnboardingErrorFallback error={error} />}>
           <CreateAccountFlow
-            variant={variant}
             onBack={() => setMode(home)}
             onComplete={() => { /* auth state will rerender */ }}
           />
@@ -503,7 +490,6 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
       {mode === "import" && (
         <ErrorBoundary fallbackRender={(error) => <OnboardingErrorFallback error={error} />}>
           <ImportKeyFlow
-            variant={variant}
             onBack={() => setMode(home)}
             onComplete={() => { /* auth state will rerender */ }}
           />
@@ -512,7 +498,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
       {mode === "reconnect" && (
         <div className="space-y-4" data-testid="container-app-reconnect">
           <div className="text-center space-y-2 px-2">
-            <h2 className={`text-xl font-semibold tracking-tight text-balance ${isOverlay ? "text-white" : "text-foreground"}`}>
+            <h2 className="text-xl font-semibold tracking-tight text-balance text-foreground">
               Welcome to the app
             </h2>
             <p className={`text-sm leading-relaxed max-w-sm mx-auto ${descCls}`}>
@@ -525,7 +511,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
             )}
           </div>
           <div
-            className={`rounded-lg border overflow-hidden ${isOverlay ? "border-white/10 bg-white/[0.03]" : "border-border/50 bg-card/40"}`}
+            className="rounded-lg border overflow-hidden border-border/50 bg-card/40"
           >
             {[
               { key: "qr", icon: QrCode, title: "Reconnect with your signer", caption: "Open your signer app, or scan its code", mode: "qr" as const, testId: "button-reconnect-signer" },
@@ -541,17 +527,15 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
                 type="button"
                 onClick={() => setMode(opt.mode)}
                 disabled={isLoggingIn}
-                className={`w-full flex items-center gap-3 px-4 py-3.5 min-h-[56px] text-left transition-colors disabled:opacity-45 ${
-                  isOverlay ? "hover:bg-white/[0.05]" : "hover:bg-foreground/[0.04]"
-                } ${i < arr.length - 1 ? (isOverlay ? "border-b border-white/10" : "border-b border-border/40") : ""}`}
+                className={`w-full flex items-center gap-3 px-4 py-3.5 min-h-[56px] text-left transition-colors disabled:opacity-45 hover:bg-foreground/[0.04] ${i < arr.length - 1 ? "border-b border-border/40" : ""}`}
                 data-testid={opt.testId}
               >
                 <opt.icon className={`w-5 h-5 shrink-0 ${iconCls}`} />
                 <span className="flex-1 min-w-0">
-                  <span className={`block text-sm font-semibold ${titleCls}`}>{opt.title}</span>
+                  <span className="block text-sm font-semibold">{opt.title}</span>
                   <span className={`block text-[11px] leading-snug ${descCls}`}>{opt.caption}</span>
                 </span>
-                <ChevronRight className={`w-4 h-4 shrink-0 ${isOverlay ? "text-white/60" : "text-muted-foreground"}`} />
+                <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
               </button>
             ))}
           </div>
@@ -586,14 +570,14 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
               headline is a solid colour (never a clipped gradient: that vanished
               in forced-colours mode). */}
           <div className="flex flex-col gap-6" data-testid="banner-create-account">
-            <h3 className={`text-[28px] sm:text-[32px] font-semibold tracking-[-0.02em] leading-[1.1] text-balance ${isOverlay ? "text-white" : "text-foreground"}`}>
+            <h3 className="text-[28px] sm:text-[32px] font-semibold tracking-[-0.02em] leading-[1.1] text-balance text-foreground">
               Create your account.
             </h3>
             <div className="flex flex-col gap-2.5">
               <Button
                 onClick={() => setMode("create")}
                 size="lg"
-                className={`w-full h-12 rounded-full justify-center text-[15px] font-medium ${isOverlay ? "bg-white text-black hover:bg-white/90" : "bg-foreground text-background hover:bg-foreground/90"}`}
+                className="w-full h-12 rounded-full justify-center text-[15px] font-medium bg-foreground text-background hover:bg-foreground/90"
                 data-testid="button-create-account"
               >
                 Create account
@@ -602,7 +586,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
                 variant="outline"
                 size="lg"
                 onClick={() => setMode("import")}
-                className={`w-full h-12 rounded-full justify-center text-[15px] font-medium ${isOverlay ? "border-white/30 text-white bg-transparent hover:bg-white/[0.06]" : ""}`}
+                className="w-full h-12 rounded-full justify-center text-[15px] font-medium"
                 data-testid="button-import-key"
               >
                 Use existing account
@@ -625,7 +609,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
           {moreOpen && (
           <div
             id="signin-more"
-            className={`rounded-2xl border overflow-hidden text-left ${isOverlay ? "border-white/10 bg-white/[0.03]" : "border-border bg-card"}`}
+            className="rounded-2xl border overflow-hidden text-left border-border bg-card"
             data-testid="container-signin-options"
           >
             {[
@@ -667,9 +651,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
                   type="button"
                   onClick={opt.onClick}
                   disabled={opt.disabled}
-                  className={`w-full flex items-center gap-3 px-4 py-3.5 min-h-[56px] text-left transition-colors disabled:opacity-45 disabled:cursor-not-allowed ${
-                    isOverlay ? "hover:bg-white/[0.05]" : "hover:bg-foreground/[0.04]"
-                  } ${i < arr.length - 1 ? (isOverlay ? "border-b border-white/10" : "border-b border-border/40") : ""}`}
+                  className={`w-full flex items-center gap-3 px-4 py-3.5 min-h-[56px] text-left transition-colors disabled:opacity-45 disabled:cursor-not-allowed hover:bg-foreground/[0.04] ${i < arr.length - 1 ? "border-b border-border/40" : ""}`}
                   data-testid={opt.testId}
                 >
                   <span className={`flex items-center justify-center w-9 h-9 rounded-md shrink-0 ${iconBoxCls}`}>
@@ -686,10 +668,10 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
                       (owner screenshot). */}
                   <span className="flex-1 min-w-0">
                     <span className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-sm font-semibold ${titleCls}`}>{opt.title}</span>
+                      <span className="text-sm font-semibold">{opt.title}</span>
                       {recommended === opt.key && !opt.disabled && (
                         <span
-                          className={`text-xs whitespace-nowrap font-medium ${isOverlay ? "text-white/85" : "text-brand"}`}
+                          className="text-xs whitespace-nowrap font-medium text-brand"
                           data-testid={`badge-${opt.key}-recommended`}
                         >
                           {recommendedLabel}
@@ -698,7 +680,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
                     </span>
                     <span className={`block text-xs ${descCls}`}>{opt.caption}</span>
                   </span>
-                  <ChevronRight className={`w-4 h-4 shrink-0 ${isOverlay ? "text-white/60" : "text-muted-foreground"}`} />
+                  <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
                 </button>
               ))}
           </div>
@@ -711,7 +693,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
               this chooser is the choke point both /login and the landing
               cockpit render. */}
           <p
-            className={`text-center text-xs leading-relaxed ${isOverlay ? "text-white/70" : "text-muted-foreground"}`}
+            className="text-center text-xs leading-relaxed text-muted-foreground"
             data-testid="text-signin-legal-links"
           >
             By continuing you accept our{" "}
@@ -723,7 +705,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
         </div>
       )}
       {mode === "qr" && (
-        <QRLoginFlow onBack={() => setMode(home)} variant={variant} />
+        <QRLoginFlow onBack={() => setMode(home)} />
       )}
       {mode === "bunker" && (
         <div className="space-y-4" data-testid="container-bunker-form">
@@ -734,7 +716,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
                   <Unplug className={`w-5 h-5 ${iconCls}`} />
                 </div>
                 <div>
-                  <h3 className={`text-sm font-semibold ${titleCls}`} data-testid="text-bunker-form-title">Connection link</h3>
+                  <h3 className="text-sm font-semibold" data-testid="text-bunker-form-title">Connection link</h3>
                   <p className={`text-xs mt-0.5 ${descCls}`}>
                     Paste the connection link from your signer app below — it signs you in securely.
                   </p>
@@ -749,7 +731,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
                     setBunkerError("");
                   }}
                   placeholder="bunker://pubkey?relay=wss://..."
-                  className={`font-mono text-xs ${isOverlay ? "bg-black/30 border-white/40 text-white placeholder:text-white/25" : "bg-background/50"}`}
+                  className="font-mono text-xs bg-background/50"
                   style={{ fontSize: 16 }}
                   autoCapitalize="off"
                   autoCorrect="off"
@@ -768,7 +750,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
               <Button
                 onClick={handleBunkerLogin}
                 disabled={isLoggingIn || !bunkerUri.trim()}
-                className={`w-full text-xs font-medium ${isOverlay ? "bg-white text-black" : "bg-foreground text-background"}`}
+                className="w-full text-xs font-medium bg-foreground text-background"
                 data-testid="button-bunker-connect"
               >
                 {isLoggingIn ? (
@@ -779,7 +761,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
                 {isLoggingIn ? "Connecting..." : "Connect to Signer"}
               </Button>
 
-              <div className={`rounded-md p-3 space-y-2 ${isOverlay ? "bg-white/[0.03] border border-white/10" : "bg-foreground/[0.03] border border-border/30"}`}>
+              <div className="rounded-md p-3 space-y-2 bg-foreground/[0.03] border border-border/30">
                 <p className={`text-[12px] font-semibold ${descCls}`}>
                   How to get a bunker:// URI
                 </p>
@@ -798,7 +780,7 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
               setBunkerError("");
             }}
             variant="ghost"
-            className={`w-full text-xs font-medium ${isOverlay ? "text-white/70" : "text-muted-foreground"}`}
+            className="w-full text-xs font-medium text-muted-foreground"
             data-testid="button-back-to-options"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -822,12 +804,12 @@ export function LoginOptions({ variant = "page", onBack }: LoginOptionsProps) {
         const { Icon, text } = tagline;
         return (
           <div className="flex items-center justify-center gap-2 pt-2">
-            <div className={`h-px w-6 sm:w-10 ${isOverlay ? "bg-white/10" : "bg-border"}`} />
-            <Icon className={`w-3 h-3 shrink-0 ${isOverlay ? "text-brand/70" : "text-brand/70"}`} />
-            <span className={`text-[12px] sm:text-xs sm:tracking-[0.3em] text-center font-medium ${isOverlay ? "text-white/65" : "text-muted-foreground/70"}`}>
+            <div className="h-px w-6 sm:w-10 bg-border" />
+            <Icon className="w-3 h-3 shrink-0 text-brand/70" />
+            <span className="text-[12px] sm:text-xs sm:tracking-[0.3em] text-center font-medium text-muted-foreground/70">
               {text}
             </span>
-            <div className={`h-px w-6 sm:w-10 ${isOverlay ? "bg-white/10" : "bg-border"}`} />
+            <div className="h-px w-6 sm:w-10 bg-border" />
           </div>
         );
       })()}

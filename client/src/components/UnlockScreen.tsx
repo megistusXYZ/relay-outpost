@@ -68,13 +68,12 @@ function markPasskeyNudgeDismissed(pubkey: string): void {
 }
 
 interface Props {
-  variant?: "page" | "overlay";
   account: StoredLocalAccount;
   onUseDifferentAccount: () => void;
   onForget?: () => void;
 }
 
-export function UnlockScreen({ variant = "page", account, onUseDifferentAccount, onForget }: Props) {
+export function UnlockScreen({ account, onUseDifferentAccount, onForget }: Props) {
   const { loginWithLocalKey } = useNostrAuth();
   const { toast } = useToast();
   const [password, setPassword] = useState("");
@@ -119,15 +118,12 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
       tickRef.current = null;
     };
   }, [inCooldown, cooldownUntil]);
-
-  const isOverlay = variant === "overlay";
-  const cardCls = isOverlay ? "border-white/10 bg-black/40 backdrop-blur-lg" : "border-border/60 bg-card/50";
-  const titleCls = isOverlay ? "text-white" : "";
-  const descCls = isOverlay ? "text-white/60" : "text-muted-foreground";
-  const subtleCls = isOverlay ? "text-white/40" : "text-muted-foreground/70";
-  const inputCls = isOverlay ? "bg-black/30 border-white/40 text-white placeholder:text-white/25" : "bg-background/50";
-  const primaryBtnCls = isOverlay ? "bg-white text-black hover:bg-white/90" : "bg-foreground text-background hover:bg-foreground/90";
-  const ghostBtnCls = isOverlay ? "text-white/60" : "text-muted-foreground";
+  const cardCls = "border-border/60 bg-card/50";
+  const descCls = "text-muted-foreground";
+  const subtleCls = "text-muted-foreground/70";
+  const inputCls = "bg-background/50";
+  const primaryBtnCls = "bg-foreground text-background hover:bg-foreground/90";
+  const ghostBtnCls = "text-muted-foreground";
 
   const completeSignIn = useCallback(async (secret: Uint8Array, opts: { persistPlainSecret?: boolean } = {}) => {
     setIsCompletingSignIn(true);
@@ -328,18 +324,18 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
         <Card className={cardCls}>
           <CardContent className="p-5 space-y-5">
             <div className="flex items-center gap-3">
-              <div className={`flex items-center justify-center w-12 h-12 rounded-md ${isOverlay ? "bg-emerald-500/10 border border-emerald-400/25" : "bg-emerald-500/10 border border-emerald-500/25"}`}>
-                <KeyRound className={`w-6 h-6 ${isOverlay ? "text-emerald-300" : "text-emerald-700"}`} />
+              <div className="flex items-center justify-center w-12 h-12 rounded-md bg-emerald-500/10 border border-emerald-500/25">
+                <KeyRound className="w-6 h-6 text-emerald-700" />
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className={`text-base font-semibold ${titleCls}`} data-testid="text-stay-nudge-title">Stay signed in next time?</h3>
+                <h3 className="text-base font-semibold" data-testid="text-stay-nudge-title">Stay signed in next time?</h3>
                 <p className={`text-xs mt-0.5 ${descCls}`}>Skip the password on this device. Sign out from the menu when you want to remove your key.</p>
               </div>
             </div>
 
-            <div className={`rounded-md p-3 ${isOverlay ? "bg-amber-500/5 border border-amber-500/20" : "bg-amber-500/5 border border-amber-500/30"}`}>
+            <div className="rounded-md p-3 bg-amber-500/5 border border-amber-500/30">
               <div className="flex items-start gap-2">
-                <ShieldAlert className={`w-4 h-4 mt-0.5 shrink-0 ${isOverlay ? "text-amber-300" : "text-amber-600"}`} />
+                <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
                 <p className={`text-xs leading-relaxed ${descCls}`}>
                   Your key will be saved on this device. Anyone with access to this browser profile can use this account.
                 </p>
@@ -378,17 +374,16 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
         <Card className={cardCls}>
           <CardContent className="p-5 space-y-5">
             <div className="flex items-center gap-3">
-              <div className={`flex items-center justify-center w-12 h-12 rounded-md ${isOverlay ? "bg-emerald-500/10 border border-emerald-400/25" : "bg-emerald-500/10 border border-emerald-500/25"}`}>
-                <KeyRound className={`w-6 h-6 ${isOverlay ? "text-emerald-300" : "text-emerald-700"}`} />
+              <div className="flex items-center justify-center w-12 h-12 rounded-md bg-emerald-500/10 border border-emerald-500/25">
+                <KeyRound className="w-6 h-6 text-emerald-700" />
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className={`text-base font-semibold ${titleCls}`} data-testid="text-passkey-nudge-title">Skip the password next time?</h3>
+                <h3 className="text-base font-semibold" data-testid="text-passkey-nudge-title">Skip the password next time?</h3>
                 <p className={`text-xs mt-0.5 ${descCls}`}>One tap with {platform.name} on this device. Your password for this browser still works.</p>
               </div>
             </div>
 
             <PasskeyEnrollmentCard
-              variant={variant}
               secretKey={pendingSecret}
               pubkey={account.pubkey}
               npub={account.npub}
@@ -421,11 +416,11 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
       <Card className={cardCls}>
         <CardContent className="p-5 space-y-5">
           <div className="flex items-center gap-3">
-            <div className={`flex items-center justify-center w-12 h-12 rounded-md ${isOverlay ? "bg-white/5 border border-white/10" : "bg-foreground/5 border border-border/40"}`}>
-              <Lock className={`w-6 h-6 ${isOverlay ? "text-white/70" : "text-foreground/70"}`} />
+            <div className="flex items-center justify-center w-12 h-12 rounded-md bg-foreground/5 border border-border/40">
+              <Lock className="w-6 h-6 text-foreground/70" />
             </div>
             <div className="min-w-0">
-              <h3 className={`text-base font-semibold truncate ${titleCls}`} data-testid="text-unlock-label">{label}</h3>
+              <h3 className="text-base font-semibold truncate" data-testid="text-unlock-label">{label}</h3>
               <p className={`text-[11px] font-mono mt-0.5 ${subtleCls}`} data-testid="text-unlock-npub">{npubShort}</p>
             </div>
           </div>
@@ -435,18 +430,16 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
               <Button
                 onClick={handlePasskeyUnlock}
                 disabled={isPasskeyWorking || isWorking}
-                className={`w-full text-xs font-brand uppercase tracking-widest ${
-                  isOverlay ? "bg-brand/90 text-white hover:bg-brand" : "bg-brand text-white hover:bg-brand"
-                }`}
+                className="w-full text-xs font-brand uppercase tracking-widest bg-brand text-white hover:bg-brand"
                 data-testid="button-unlock-passkey"
               >
                 {isPasskeyWorking ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : <Fingerprint className="w-4 h-4 mr-2" />}
                 {isPasskeyWorking ? "Waiting for your device…" : `Unlock with ${platform.name}`}
               </Button>
               <div className="flex items-center gap-3">
-                <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border/60"}`} />
+                <div className="flex-1 h-px bg-border/60" />
                 <span className={`text-[13px] font-medium ${subtleCls}`}>or password</span>
-                <div className={`flex-1 h-px ${isOverlay ? "bg-white/10" : "bg-border/60"}`} />
+                <div className="flex-1 h-px bg-border/60" />
               </div>
             </div>
           )}
@@ -487,11 +480,11 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
 
           {inCooldown && (
             <div
-              className={`rounded-md p-3 ${isOverlay ? "bg-rose-500/10 border border-rose-500/25" : "bg-rose-500/10 border border-rose-500/30"}`}
+              className="rounded-md p-3 bg-rose-500/10 border border-rose-500/30"
               data-testid="banner-unlock-cooldown"
             >
               <div className="flex items-start gap-2">
-                <ShieldAlert className={`w-4 h-4 mt-0.5 shrink-0 ${isOverlay ? "text-rose-300" : "text-rose-600"}`} />
+                <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0 text-rose-600" />
                 <p className={`text-[11px] ${descCls}`}>
                   Too many attempts. For your protection, please wait{" "}
                   <strong data-testid="text-cooldown-seconds">
@@ -505,9 +498,9 @@ export function UnlockScreen({ variant = "page", account, onUseDifferentAccount,
             </div>
           )}
           {!inCooldown && attempts >= 2 && (
-            <div className={`rounded-md p-3 ${isOverlay ? "bg-amber-500/10 border border-amber-500/20" : "bg-amber-500/10 border border-amber-500/30"}`}>
+            <div className="rounded-md p-3 bg-amber-500/10 border border-amber-500/30">
               <div className="flex items-start gap-2">
-                <ShieldAlert className={`w-4 h-4 mt-0.5 shrink-0 ${isOverlay ? "text-amber-300" : "text-amber-600"}`} />
+                <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
                 <p className={`text-[11px] ${descCls}`}>
                   Stuck? Use <strong>Sign in another way</strong> below and paste your key from your key file.
                 </p>

@@ -31,11 +31,9 @@ export interface KeyMaterial {
   createdAt?: number;
 }
 
-export function KeyBackupActions({ material, relays, isOverlay = false, onSaved, testIdPrefix = "key" }: {
+export function KeyBackupActions({ material, relays, onSaved, testIdPrefix = "key" }: {
   material: KeyMaterial;
   relays: string[];
-  /** The sign-up cockpit draws on a dark overlay. */
-  isOverlay?: boolean;
   onSaved?: () => void;
   testIdPrefix?: string;
 }) {
@@ -54,9 +52,8 @@ export function KeyBackupActions({ material, relays, isOverlay = false, onSaved,
   const saved = fileSaved || managerSaved;
   const who = material.name || "this account";
 
-  const outline = isOverlay ? "border-white/20 text-white/85 hover:bg-white/10" : "";
-  const done = isOverlay ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200" : "border-emerald-500/40 bg-emerald-500/10 text-success";
-  const quiet = isOverlay ? "text-white/60" : "text-muted-foreground";
+  const done = "border-emerald-500/40 bg-emerald-500/10 text-success";
+  const quiet = "text-muted-foreground";
 
   const saveFile = useCallback(() => {
     try {
@@ -116,11 +113,11 @@ export function KeyBackupActions({ material, relays, isOverlay = false, onSaved,
 
   return (
     <div className="space-y-2.5" data-testid={`${testIdPrefix}-actions`}>
-      <Button onClick={saveFile} variant="outline" className={`w-full text-xs transition-all font-medium ${fileSaved ? done : outline}`} data-testid={`${testIdPrefix}-save-file`}>
+      <Button onClick={saveFile} variant="outline" className={`w-full text-xs transition-all font-medium ${fileSaved ? done : ""}`} data-testid={`${testIdPrefix}-save-file`}>
         {fileSaved ? <Check className="w-4 h-4 mr-2" /> : <Download className="w-4 h-4 mr-2" />}
         {fileSaved ? "Key file saved — save again" : "Save key file"}
       </Button>
-      <Button onClick={saveToManager} disabled={managerWorking} variant="outline" className={`w-full text-xs transition-all font-medium ${managerSaved ? done : outline}`} data-testid={`${testIdPrefix}-save-manager`}>
+      <Button onClick={saveToManager} disabled={managerWorking} variant="outline" className={`w-full text-xs transition-all font-medium ${managerSaved ? done : ""}`} data-testid={`${testIdPrefix}-save-manager`}>
         {managerWorking ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : managerSaved ? <Check className="w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />}
         {managerWorking ? "Saving…" : managerSaved ? "Saved to password manager" : "Save to password manager"}
       </Button>
@@ -128,7 +125,7 @@ export function KeyBackupActions({ material, relays, isOverlay = false, onSaved,
       {managerPaste !== null && (
         <form
           onSubmit={(e) => { e.preventDefault(); finishManagerSave(); }}
-          className={`rounded-md p-3 space-y-2 ${isOverlay ? "border border-white/10 bg-white/[0.03]" : "border border-border/40 bg-foreground/[0.02]"}`}
+          className="rounded-md p-3 space-y-2 border border-border/40 bg-foreground/[0.02]"
           data-testid={`${testIdPrefix}-manager-form`}
         >
           <CredentialUsername npub={material.npub} testId={`${testIdPrefix}-manager-username`} />
@@ -144,7 +141,7 @@ export function KeyBackupActions({ material, relays, isOverlay = false, onSaved,
               autoCapitalize="off"
               autoCorrect="off"
               spellCheck={false}
-              className={`flex-1 min-w-0 h-9 rounded-md border px-2 text-xs bg-transparent ${isOverlay ? "border-white/40 text-white placeholder:text-white/40" : "border-input"}`}
+              className="flex-1 min-w-0 h-9 rounded-md border px-2 text-xs bg-transparent border-input"
               style={{ fontSize: 16 }}
               data-testid={`${testIdPrefix}-manager-paste`}
             />
@@ -157,13 +154,13 @@ export function KeyBackupActions({ material, relays, isOverlay = false, onSaved,
       )}
 
       {saved && (
-        <div className={`rounded-md p-3 space-y-2 ${isOverlay ? "border border-white/10 bg-white/[0.03]" : "border border-border/40 bg-foreground/[0.02]"}`} data-testid={`${testIdPrefix}-check`}>
-          <p className={`text-xs font-semibold ${isOverlay ? "text-white" : ""}`}>Check it works</p>
+        <div className="rounded-md p-3 space-y-2 border border-border/40 bg-foreground/[0.02]" data-testid={`${testIdPrefix}-check`}>
+          <p className="text-xs font-semibold">Check it works</p>
           <p className={`text-xs leading-relaxed ${quiet}`}>Open the saved file here, or paste the key. We read it back and say whether it opens {who}. Nothing is sent anywhere.</p>
           <input ref={fileRef} type="file" accept=".txt,text/plain" className="sr-only" onChange={(e) => void onFile(e.target.files?.[0])} data-testid={`${testIdPrefix}-check-file`} />
           <form onSubmit={(e) => e.preventDefault()} className="flex flex-col sm:flex-row sm:items-center gap-2">
             <CredentialUsername npub={material.npub} testId={`${testIdPrefix}-check-username`} />
-            <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} className={`h-8 text-[12px] font-bold ${outline}`} data-testid={`${testIdPrefix}-check-open`}>
+            <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} className="h-8 text-[12px] font-bold" data-testid={`${testIdPrefix}-check-open`}>
               <FileText className="w-3.5 h-3.5 mr-1.5" /> Open the file
             </Button>
             <span className={`text-[11px] ${quiet}`}>or paste the key:</span>
@@ -173,14 +170,14 @@ export function KeyBackupActions({ material, relays, isOverlay = false, onSaved,
               onChange={(e) => { setPasted(e.target.value); if (e.target.value.trim()) runCheck(e.target.value); else setCheck("idle"); }}
               placeholder="nsec1…"
               autoComplete="off"
-              className={`flex-1 min-w-0 h-8 rounded-md border px-2 text-xs bg-transparent ${isOverlay ? "border-white/40 text-white placeholder:text-white/40" : "border-input"}`}
+              className="flex-1 min-w-0 h-8 rounded-md border px-2 text-xs bg-transparent border-input"
               style={{ fontSize: 16 }}
               data-testid={`${testIdPrefix}-check-paste`}
             />
           </form>
           {check !== "idle" && (
             <p
-              className={`text-xs flex items-center gap-1.5 ${check === "opens" ? (isOverlay ? "text-emerald-200" : "text-success") : "text-destructive"}`}
+              className={`text-xs flex items-center gap-1.5 ${check === "opens" ? "text-success" : "text-destructive"}`}
               role="status"
               data-testid={`${testIdPrefix}-check-result`}
             >
