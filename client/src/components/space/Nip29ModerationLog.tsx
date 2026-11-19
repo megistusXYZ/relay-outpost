@@ -14,7 +14,9 @@
  */
 import { useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { Loader2, ShieldAlert } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
+import { RelayReachStatus, reachState } from "@/components/relay/RelayReachStatus";
+import type { Reached } from "@/lib/relay-reach";
 import type { Event as NostrEvent } from "nostr-tools";
 import { fetchModerationLogResult, getModerationActionPhrase } from "@/lib/nip29";
 import { useQueuePerson } from "@/hooks/use-queue-person";
@@ -43,13 +45,12 @@ function LogRow({ event }: { event: NostrEvent }) {
 }
 
 export function Nip29ModerationLog({ relayUrl, groupId }: { relayUrl: string; groupId: string }) {
-  const [events, setEvents] = useState<NostrEvent[] | null>(null);
-  const [failed, setFailed] = useState(false);
+  // The relay's answer as it came: `undefined` until there is one.
+  const [result, setResult] = useState<Reached<NostrEvent[]> | undefined>(undefined);
 
   useEffect(() => {
     let alive = true;
-    setEvents(null);
-    setFailed(false);
+    setResult(undefined);
     // An empty log and an unreachable relay are NOT the same answer, and this
     // whole drawer exists because that distinction kept getting lost.
     //
@@ -58,28 +59,27 @@ export function Nip29ModerationLog({ relayUrl, groupId }: { relayUrl: string; gr
     // never rejects — so the honest branch below was unreachable code, and an
     // audit log we could not read rendered as an audit log with nothing in it.
     fetchModerationLogResult(relayUrl, groupId)
-      .then(({ data, reached }) => {
-        if (!alive) return;
-        setFailed(!reached);
-        setEvents(data);
-      })
-      .catch(() => { if (alive) { setFailed(true); setEvents([]); } });
+      .then((r) => { if (alive) setResult(r); })
+      .catch(() => { if (alive) setResult({ data: [], reached: false }); });
     return () => { alive = false; };
   }, [relayUrl, groupId]);
 
-  if (events === null) {
-    return (
-      <p className="flex items-center gap-2 text-xs text-muted-foreground/60">
-        <Loader2 className="w-3 h-3 animate-spin" /> Reading the log…
-      </p>
-    );
+  // Four outcomes, and only one of them is a log. A relay that turned us down used to fall
+  // through to "Nothing has been moderated here yet", which it had not told us.
+  const status = reachState(result, result?.data.length === 0);
+  if (status === "connecting") {
+    return <RelayReachStatus status="connecting" text="Reading the log…" className="text-xs" testId="nip29-log-status" />;
   }
-  if (failed) {
-    return <p className="text-xs text-muted-foreground/60">Couldn't reach the relay for this. Try again in a moment.</p>;
+  if (status === "unreachable") {
+    return <RelayReachStatus status="unreachable" text="Couldn't reach the relay for this. Try again in a moment." className="text-xs" testId="nip29-log-status" />;
   }
-  if (events.length === 0) {
-    return <p className="text-xs text-muted-foreground/60">Nothing has been moderated here yet.</p>;
+  if (status === "refused") {
+    return <RelayReachStatus status="refused" text={`This relay wouldn't show its log. It said: “${result?.refusedReason}”`} className="text-xs" testId="nip29-log-status" />;
   }
+  if (status === "empty") {
+    return <RelayReachStatus status="empty" text="Nothing has been moderated here yet." className="text-xs" testId="nip29-log-status" />;
+  }
+  const events = result?.data ?? [];
   return (
     <div className="space-y-1.5" data-testid="nip29-moderation-log">
       {events.map((e) => <LogRow key={e.id} event={e} />)}
