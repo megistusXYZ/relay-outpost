@@ -10,7 +10,7 @@ import { PersonBadges } from "@/components/PersonBadges";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { eventStore, pool, PROFILE_RELAYS, throttledPoolSubscribe, persistentPoolSubscribe, publishEvent, fetchProfilesCached, searchCachedProfiles, getCachedProfile, filterBlockedRelays, subscriptionAuthAcrossRelays } from "@/lib/nostr";
-import { queryAnswered, canReachAny } from "@/lib/relay-reach";
+import { queryAnswered } from "@/lib/relay-reach";
 import { recordRecentDestination } from "@/lib/recent-destinations";
 import { insertSorted } from "@/lib/message-list";
 import { getProfileContent, KIND_METADATA } from "@/lib/nostr-helpers";
@@ -1242,11 +1242,9 @@ export default function Messages() {
         limit: sinceTs ? 100 : 200,
         ...(sinceTs ? { since: sinceTs } : {}) }, 8000);
       const giftWraps = inbox.events as Event[];
-      // An end-of-stream alone is not an answer: the pool also ends the stream when every
-      // relay failed to connect, which would read as "answered, nothing there" while offline.
-      // It counts only if messages arrived or a relay was really connected. This decides the
-      // empty list's words and nothing else; the fetch and the decrypt below are untouched.
-      answered = inbox.answered && (giftWraps.length > 0 || await canReachAny(fetchRelays));
+      // `answered` already means a relay we were connected to ended the stream (lib/relay-reach.ts),
+      // so with every relay down this is false and the empty list says it couldn't reach them.
+      answered = inbox.answered;
       setInboxAnswered(answered);
 
       const seenIds = new Set<string>();
