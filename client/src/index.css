@@ -1684,6 +1684,18 @@ html[data-perf="lite"] .space-bg-nebula {
     color: #c6cad1;
   }
 
+  /* The "can't be shown here" card fits the tile it sits in. A small tile (the desktop video
+     grid's are about 228px wide) keeps the title and the link and lets the mark and the second
+     line go, so no words are pushed out past its top edge and cut off. */
+  .walled-garden-full {
+    container-type: inline-size;
+  }
+  @container (max-width: 359px) {
+    .walled-garden-full .walled-garden-extra {
+      display: none;
+    }
+  }
+
   .glass-bubble-other {
     background: hsl(var(--muted));
     backdrop-filter: blur(12px);

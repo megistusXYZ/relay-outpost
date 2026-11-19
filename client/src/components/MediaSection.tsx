@@ -199,7 +199,7 @@ export function MediaSection({
               <Icon className={`w-3.5 h-3.5 ${isActive ? "text-background" : ""}`} />
               <span className="hidden sm:inline">{tab.label}</span>
               {tab.count > 0 && (
-                <Badge variant="secondary" className={`text-[11px] px-1 py-0 min-w-[18px] justify-center ${isActive ? "bg-background/20 text-background border-transparent" : ""}`}>
+                <Badge variant="secondary" className={`text-xs px-1 py-0 min-w-[18px] justify-center ${isActive ? "bg-background/20 text-background border-transparent" : ""}`}>
                   {tab.count}
                 </Badge>
               )}
@@ -292,16 +292,16 @@ function ImagesSubTab({ urls, loaded, isOwnProfile, mediaMeta, mediaAuthor }: { 
   if (urls.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center" data-testid="container-no-images">
-        <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground/70" />
+        <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground" />
         <p className="text-sm text-muted-foreground">No photos yet</p>
         {isOwnProfile && (
           <>
-            <p className="text-xs text-muted-foreground/60 mt-1">Upload photos to share</p>
+            <p className="text-xs text-muted-foreground mt-1">Upload photos to share</p>
             <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={() => mediaInputRef.current?.click()} disabled={isUploading} data-testid="button-upload-first-image">
               {isUploading ? <RelayOutpostInlineLoader className="w-3.5 h-3.5" /> : <Upload className="w-3.5 h-3.5" />}
               {isUploading ? "Uploading..." : "Upload a photo"}
             </Button>
-            <p className="text-[10px] text-muted-foreground/40 mt-2">Photos up to 25 MB · Metadata auto-stripped</p>
+            <p className="text-xs text-muted-foreground mt-2">Photos up to 25 MB · Metadata auto-stripped</p>
             <input ref={mediaInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} data-testid="input-image-upload" />
           </>
         )}
@@ -313,7 +313,7 @@ function ImagesSubTab({ urls, loaded, isOwnProfile, mediaMeta, mediaAuthor }: { 
     <>
       {isOwnProfile && (
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[13px] text-muted-foreground/60 font-medium">{urls.length} image{urls.length !== 1 ? "s" : ""}</span>
+          <span className="text-[13px] text-muted-foreground font-medium">{urls.length} image{urls.length !== 1 ? "s" : ""}</span>
           <div className="flex items-center gap-2">
             {isUploading && uploadStatus && (
               <span className="text-[12px] text-muted-foreground flex items-center gap-1"><RelayOutpostInlineLoader className="w-2.5 h-2.5" />{uploadStatus}</span>
@@ -374,16 +374,16 @@ function VideosSubTab({ urls, loaded, isOwnProfile, orientationMap, mediaMeta }:
       {isOwnProfile && <UploadVideoDialog open={uploadOpen} onOpenChange={setUploadOpen} />}
       {urls.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center" data-testid="container-no-videos">
-          <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground/70" />
+          <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground" />
           <p className="text-sm text-muted-foreground">No videos yet</p>
           {isOwnProfile && (
             <>
-              <p className="text-xs text-muted-foreground/60 mt-1">Upload videos to share</p>
+              <p className="text-xs text-muted-foreground mt-1">Upload videos to share</p>
               <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={() => setUploadOpen(true)} data-testid="button-upload-first-video">
                 <Upload className="w-3.5 h-3.5" />
                 Upload Video
               </Button>
-              <p className="text-[10px] text-muted-foreground/40 mt-2">Videos up to 100 MB</p>
+              <p className="text-xs text-muted-foreground mt-2">Videos up to 100 MB</p>
             </>
           )}
         </div>
@@ -391,7 +391,7 @@ function VideosSubTab({ urls, loaded, isOwnProfile, orientationMap, mediaMeta }:
         <>
           {isOwnProfile && (
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[13px] text-muted-foreground/60 font-medium">{urls.length} video{urls.length !== 1 ? "s" : ""}</span>
+              <span className="text-[13px] text-muted-foreground font-medium">{urls.length} video{urls.length !== 1 ? "s" : ""}</span>
               <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setUploadOpen(true)} data-testid="button-upload-video">
                 <Upload className="w-3 h-3" />
                 Upload
@@ -600,24 +600,24 @@ function LiveStreamCard({ stream }: { stream: LiveEventData }) {
             {isLive ? (
               <LiveWord />
             ) : playing ? (
-              <Badge variant="secondary" className="text-[11px] px-1.5 py-0 bg-transparent text-foreground/80 border border-border/60">
+              <Badge variant="secondary" className="text-xs px-1.5 py-0 bg-transparent text-foreground border border-border/60">
                 Playing
               </Badge>
             ) : hasRecording ? (
-              <Badge variant="secondary" className="text-[9px] px-1.5 py-0">
+              <Badge variant="secondary" className="text-xs px-1.5 py-0">
                 Recording
               </Badge>
             ) : stream.status === "planned" ? (
-              <Badge variant="secondary" className="text-[9px] px-1.5 py-0">
+              <Badge variant="secondary" className="text-xs px-1.5 py-0">
                 Coming up
               </Badge>
             ) : (
-              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 opacity-60">
+              <Badge variant="secondary" className="text-xs px-1.5 py-0 opacity-60">
                 Ended
               </Badge>
             )}
             {dateStr && (
-              <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <Calendar className="w-2.5 h-2.5" />
                 {dateStr}
               </span>
@@ -625,14 +625,14 @@ function LiveStreamCard({ stream }: { stream: LiveEventData }) {
           </div>
           <p className="text-sm font-medium truncate">{stream.title}</p>
           {stream.summary && (
-            <p className="text-xs text-muted-foreground/70 truncate mt-0.5">{stream.summary}</p>
+            <p className="text-xs text-muted-foreground truncate mt-0.5">{stream.summary}</p>
           )}
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
           {playableUrl && (playsInline || !liveDetailUrl ? (
             <button
-              className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${ loading ? "text-brand/70" : playing ? "text-red-500 bg-red-500/10" : isLive ? "text-red-500/70 hover:text-red-500 hover:bg-red-500/10" : "text-brand/70 hover:text-foreground hover:bg-foreground/[0.06]" }`}
+              className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${ loading ? "text-brand" : playing ? "text-red-500 bg-red-500/10" : isLive ? "text-red-500/70 hover:text-red-500 hover:bg-red-500/10" : "text-brand hover:text-foreground hover:bg-foreground/[0.06]" }`}
               onClick={toggleStream}
               disabled={loading}
               title={playing ? "Stop" : "Play"}
@@ -653,7 +653,7 @@ function LiveStreamCard({ stream }: { stream: LiveEventData }) {
             // embeds (owner rule: watching happens through Relay Outpost).
             <Link
               href={liveDetailUrl}
-              className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${ isLive ? "text-red-500/70 hover:text-red-500 hover:bg-red-500/10" : "text-brand/70 hover:text-foreground hover:bg-foreground/[0.06]" }`}
+              className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${ isLive ? "text-red-500/70 hover:text-red-500 hover:bg-red-500/10" : "text-brand hover:text-foreground hover:bg-foreground/[0.06]" }`}
               title="Watch on the Live page"
               data-testid={`button-stream-toggle-${stream.dTag}`}
             >
@@ -663,7 +663,7 @@ function LiveStreamCard({ stream }: { stream: LiveEventData }) {
           {liveDetailUrl && (
             <Link
               href={liveDetailUrl}
-              className={`shrink-0 rounded-full flex items-center justify-center transition-colors ${ playableUrl ? "w-7 h-7 text-muted-foreground/40 hover:text-foreground hover:bg-muted/30" : "w-9 h-9 text-brand/70 hover:text-foreground hover:bg-foreground/[0.06]" }`}
+              className={`shrink-0 rounded-full flex items-center justify-center transition-colors ${ playableUrl ? "w-7 h-7 text-muted-foreground hover:text-foreground hover:bg-muted/30" : "w-9 h-9 text-brand hover:text-foreground hover:bg-foreground/[0.06]" }`}
               onClick={(e) => e.stopPropagation()}
               title="Open on the Live page"
               data-testid={`button-stream-live-page-${stream.dTag}`}
@@ -780,27 +780,27 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
   if (!hasAnyContent && !connectedPodcastFeed) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center" data-testid="container-no-audio">
-        <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground/70" />
+        <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground" />
         <p className="text-sm text-muted-foreground">No audio published yet</p>
         {isOwnProfile && (
           <>
-            <p className="text-xs text-muted-foreground/60 mt-1">Upload your first track and it shows here</p>
+            <p className="text-xs text-muted-foreground mt-1">Upload your first track and it shows here</p>
             <Button variant="outline" size="sm" className="mt-3 gap-1.5 font-medium" onClick={() => setUploadOpen(true)} data-testid="button-upload-first-track">
               <Upload className="w-3.5 h-3.5" />
               Upload Your First Track
             </Button>
-            <p className="text-[10px] text-muted-foreground/40 mt-2">Audio files up to 100 MB · MP3, WAV, FLAC metadata auto-stripped</p>
+            <p className="text-xs text-muted-foreground mt-2">Audio files up to 100 MB · MP3, WAV, FLAC metadata auto-stripped</p>
             <UploadTrackDialog open={uploadOpen} onOpenChange={setUploadOpen} onPublished={handleUploadComplete} />
 
             {onConnectPodcast && (
               <div className="mt-6 pt-5 border-t border-border/20 w-full max-w-xs mx-auto">
-                <p className="text-xs text-muted-foreground/50 mb-2">Or connect an existing podcast</p>
+                <p className="text-xs text-muted-foreground mb-2">Or connect an existing podcast</p>
                 {connectedPodcastFeed ? (
                   <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border/20 bg-card/30 dark:bg-card/15">
                     <Mic className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-[11px] text-muted-foreground/70 truncate flex-1">{connectedPodcastFeed}</span>
+                    <span className="text-xs text-muted-foreground truncate flex-1">{connectedPodcastFeed}</span>
                     {onDisconnectPodcast && (
-                      <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] text-red-700/70 dark:text-red-400/70 hover:text-red-700 dark:hover:text-red-400" onClick={onDisconnectPodcast}>
+                      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-red-700/70 dark:text-red-400/70 hover:text-red-700 dark:hover:text-red-400" onClick={onDisconnectPodcast}>
                         Disconnect
                       </Button>
                     )}
@@ -893,7 +893,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
             <div className="flex items-center gap-1.5">
               <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
               {isPodcast && track.createdAt > 0 && (
-                <span className="text-[10px] text-muted-foreground/50 shrink-0">· {format(new Date(track.createdAt * 1000), "MMM d")}</span>
+                <span className="text-xs text-muted-foreground shrink-0">· {format(new Date(track.createdAt * 1000), "MMM d")}</span>
               )}
             </div>
           </div>
@@ -902,7 +902,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
               <Button
                 variant="ghost"
                 size="icon"
-                className="w-7 h-7 text-muted-foreground/50 hover:text-brand"
+                className="w-7 h-7 text-muted-foreground hover:text-brand"
                 onClick={(e) => { e.stopPropagation(); handleShare(track); }}
                 disabled={isSharing}
                 data-testid={`button-share-track-${track.id}`}
@@ -911,7 +911,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
               </Button>
             )}
             {track.duration > 0 && (
-              <span className="text-[11px] text-muted-foreground/60 tabular-nums">
+              <span className="text-xs text-muted-foreground tabular-nums">
                 {Math.floor(track.duration / 60)}:{String(Math.floor(track.duration % 60)).padStart(2, "0")}
               </span>
             )}
@@ -962,12 +962,12 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
         </div>
         <div className="flex-1 min-w-0">
           <p className={`text-[13px] font-medium truncate ${isCurrent ? "text-foreground font-semibold" : ""}`}>{track.title}</p>
-          <p className="text-[11px] text-muted-foreground truncate">{track.artist}</p>
+          <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
         </div>
-        {dur && <span className="text-[11px] tabular-nums font-mono text-muted-foreground/60 shrink-0">{dur}</span>}
+        {dur && <span className="text-xs tabular-nums font-mono text-muted-foreground shrink-0">{dur}</span>}
         <button
           onClick={(e) => { e.stopPropagation(); addToQueue(track); toast({ title: "Added to queue", description: track.title }); }}
-          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-foreground/[0.06] opacity-0 group-hover/mrow:opacity-100 transition-all"
+          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] opacity-0 group-hover/mrow:opacity-100 transition-all"
           aria-label="Add to queue" title="Add to queue" data-testid={`button-queue-${track.id}`}
         >
           <ListPlus className="w-3.5 h-3.5" />
@@ -976,7 +976,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
           <button
             onClick={(e) => { e.stopPropagation(); handleShare(track); }}
             disabled={isSharing}
-            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/40 hover:text-brand opacity-0 group-hover/mrow:opacity-100 transition-all"
+            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-brand opacity-0 group-hover/mrow:opacity-100 transition-all"
             aria-label="Share as post" title="Share as post" data-testid={`button-share-track-row-${track.id}`}
           >
             {isSharing ? <RelayOutpostInlineLoader className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
@@ -1003,7 +1003,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
                 <Icon className={`w-3.5 h-3.5 ${isActive ? "text-background" : ""}`} />
                 {tab.label}
                 {tab.count > 0 && (
-                  <Badge variant="secondary" className={`text-[11px] px-1 py-0 min-w-[18px] justify-center ${isActive ? "bg-background/20 text-background border-transparent" : ""}`}>
+                  <Badge variant="secondary" className={`text-xs px-1 py-0 min-w-[18px] justify-center ${isActive ? "bg-background/20 text-background border-transparent" : ""}`}>
                     {tab.count}
                   </Badge>
                 )}
@@ -1032,7 +1032,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
             <div className="mb-3" data-testid="container-coming-up-shows">
               <div className="flex items-center gap-2 mb-2">
                 <Radio className="w-3.5 h-3.5 text-muted-foreground/50" />
-                <span className="text-[13px] text-muted-foreground/60 font-medium">Coming up</span>
+                <span className="text-[13px] text-muted-foreground font-medium">Coming up</span>
               </div>
               <div className="space-y-2">
                 {comingUp.map((stream) => (
@@ -1045,8 +1045,8 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
             <div data-testid="container-previous-shows">
               <div className="flex items-center gap-2 mb-2">
                 <Radio className="w-3.5 h-3.5 text-muted-foreground/50" />
-                <span className="text-[13px] text-muted-foreground/60 font-medium">Previous shows</span>
-                <span className="text-[10px] text-muted-foreground/40">({previousShows.length})</span>
+                <span className="text-[13px] text-muted-foreground font-medium">Previous shows</span>
+                <span className="text-xs text-muted-foreground">({previousShows.length})</span>
               </div>
               <div className="space-y-2">
                 {previousShows.map((stream) => (
@@ -1063,7 +1063,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
           {isOwnProfile && (
             <div className="mb-2">
               <div className="flex items-center justify-between">
-                <span className="text-[13px] text-muted-foreground/60 font-medium">{musicCount} song{musicCount !== 1 ? "s" : ""}</span>
+                <span className="text-[13px] text-muted-foreground font-medium">{musicCount} song{musicCount !== 1 ? "s" : ""}</span>
                 <div className="flex items-center gap-2">
                   {onConnectPodcast && !connectedPodcastFeed && (
                     <Button
@@ -1084,7 +1084,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
                   </Button>
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground/40 mt-1">Audio files up to 100 MB · MP3, WAV, FLAC metadata auto-stripped</p>
+              <p className="text-xs text-muted-foreground mt-1">Audio files up to 100 MB · MP3, WAV, FLAC metadata auto-stripped</p>
               {onConnectPodcast && podcastConnectOpen && !connectedPodcastFeed && (
                 <div className="flex items-center gap-2 mt-2">
                   <input
@@ -1133,9 +1133,9 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
                   <div key={album || "__loose"} className="border-b border-border/15 dark:border-primary/5 last:border-b-0">
                     {album && (
                       <div className="flex items-center gap-2 px-2.5 py-1.5 bg-muted/25 dark:bg-white/[0.02]">
-                        <Disc3 className="w-3 h-3 text-muted-foreground/50 shrink-0" />
-                        <span className="text-[13px] text-muted-foreground/60 truncate font-medium">{album}</span>
-                        <span className="text-[10px] text-muted-foreground/40 ml-auto tabular-nums">{albumTracks.length}</span>
+                        <Disc3 className="w-3 h-3 text-muted-foreground shrink-0" />
+                        <span className="text-[13px] text-muted-foreground truncate font-medium">{album}</span>
+                        <span className="text-xs text-muted-foreground ml-auto tabular-nums">{albumTracks.length}</span>
                       </div>
                     )}
                     <div className="divide-y divide-border/15 dark:divide-primary/5">{albumTracks.map(renderMusicRow)}</div>
@@ -1149,7 +1149,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
           {musicCount === 0 && isOwnProfile && (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Music className="w-6 h-6 text-muted-foreground/40 mb-2" />
-              <p className="text-xs text-muted-foreground/60">No music uploaded yet</p>
+              <p className="text-xs text-muted-foreground">No music uploaded yet</p>
             </div>
           )}
         </div>
@@ -1160,10 +1160,10 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
           {podcastTracks.length > 0 && (
             <div className="flex items-center gap-2 mb-1">
               <Mic className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-[13px] text-muted-foreground/60 font-medium">
+              <span className="text-[13px] text-muted-foreground font-medium">
                 {podcastTracks[0]?.albumTitle || podcastTracks[0]?.artist || "Podcast"}
               </span>
-              <span className="text-[10px] text-muted-foreground/40">({podcastCount} episode{podcastCount !== 1 ? "s" : ""})</span>
+              <span className="text-xs text-muted-foreground">({podcastCount} episode{podcastCount !== 1 ? "s" : ""})</span>
             </div>
           )}
           {(showAllPodcasts ? podcastTracks : podcastTracks.slice(0, PODCAST_INITIAL_LIMIT)).map((track) => renderTrackCard(track, false))}
@@ -1171,7 +1171,7 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
             <Button
               variant="ghost"
               size="sm"
-              className="w-full gap-1.5 text-xs text-muted-foreground/70 hover:text-foreground"
+              className="w-full gap-1.5 text-xs text-muted-foreground hover:text-foreground"
               onClick={() => setShowAllPodcasts(true)}
               data-testid="button-show-more-podcasts"
             >
@@ -1182,14 +1182,14 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
           {podcastTracks.length === 0 && isOwnProfile && !connectedPodcastFeed && (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Mic className="w-6 h-6 text-muted-foreground/40 mb-2" />
-              <p className="text-xs text-muted-foreground/60 mb-3">Connect your podcast RSS feed to display episodes here</p>
+              <p className="text-xs text-muted-foreground mb-3">Connect your podcast RSS feed to display episodes here</p>
             </div>
           )}
           {podcastTracks.length === 0 && connectedPodcastFeed && (
             <div className="flex flex-col items-center justify-center py-6 text-center">
               <Mic className="w-6 h-6 text-amber-500/40 mb-2" />
-              <p className="text-xs text-muted-foreground/70">No episodes loaded from this feed</p>
-              <p className="text-[11px] text-muted-foreground/50 mt-1">The RSS feed may be unavailable, empty, or not a podcast feed. Try disconnecting and using a different URL.</p>
+              <p className="text-xs text-muted-foreground">No episodes loaded from this feed</p>
+              <p className="text-xs text-muted-foreground mt-1">The RSS feed may be unavailable, empty, or not a podcast feed. Try disconnecting and using a different URL.</p>
             </div>
           )}
         </div>
@@ -1199,11 +1199,11 @@ function AudioSubTab({ tracks, loaded, isOwnProfile, onRefresh, liveStreams, con
         <div className="mt-3">
           <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border/20 bg-card/30 dark:bg-card/15">
             <Mic className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            <span className="text-[11px] text-muted-foreground/70 truncate flex-1" data-testid="text-connected-podcast-feed">{connectedPodcastFeed}</span>
+            <span className="text-xs text-muted-foreground truncate flex-1" data-testid="text-connected-podcast-feed">{connectedPodcastFeed}</span>
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 px-2 text-[10px] text-red-500/70 hover:text-red-500 hover:bg-red-500/10"
+              className="h-6 px-2 text-xs text-red-500/70 hover:text-red-500 hover:bg-red-500/10"
               onClick={() => {
                 if (onDisconnectPodcast) onDisconnectPodcast();
                 setPodcastConnectOpen(false);

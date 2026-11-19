@@ -58,14 +58,14 @@ export function WalledGardenFallback({
           <div className="flex-1 min-w-0">
             <p
               className={`text-xs font-medium ${
-                dark ? "text-white/90" : "text-foreground"
+                dark ? "text-white" : "text-foreground"
               }`}
             >
               This {label} can't be shown here
             </p>
             <p
               className={`text-xs mt-0.5 ${
-                dark ? "text-white/70" : "text-muted-foreground"
+                dark ? "text-white" : "text-muted-foreground"
               }`}
             >
               It may be unavailable, or its host doesn't allow embedding
@@ -93,7 +93,7 @@ export function WalledGardenFallback({
 
   return (
     <div
-      className={`relative rounded-xl overflow-hidden ${
+      className={`walled-garden-full relative rounded-xl overflow-hidden ${
         dark
           ? "bg-black"
           : "border border-brand/15"
@@ -111,13 +111,13 @@ export function WalledGardenFallback({
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
 
       <div className="absolute inset-0 flex flex-col items-center justify-end p-4 pb-5 text-center">
-        <RelayOutpostGlyph className="w-6 h-6 text-brand/70 mb-2" />
+        <RelayOutpostGlyph className="walled-garden-extra w-6 h-6 text-brand/70 mb-2" />
 
-        <p className="text-sm sm:text-base font-brand font-semibold text-white/90 tracking-wide leading-snug">
+        <p className="text-sm sm:text-base font-brand font-semibold text-white tracking-wide leading-snug">
           This content can't be shown here
         </p>
 
-        <p className="text-xs text-white/75 mt-1.5 max-w-[280px] leading-relaxed">
+        <p className="walled-garden-extra text-xs text-white mt-1.5 max-w-[280px] leading-relaxed">
           It may be unavailable, or its host doesn't allow embedding.
         </p>
 
@@ -126,7 +126,7 @@ export function WalledGardenFallback({
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-brand bg-brand/25 hover:bg-brand/35 backdrop-blur-sm border border-brand/30 rounded-lg px-3.5 py-1.5 transition-colors"
+            className="mt-3 inline-flex items-center gap-1.5 min-h-9 text-xs font-medium text-white bg-black/30 hover:bg-white/10 backdrop-blur-sm border border-white/40 rounded-full px-3.5 transition-colors"
             data-testid="link-walled-garden-open"
           >
             Open in browser <ExternalLink className="w-3 h-3" />
