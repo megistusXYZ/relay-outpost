@@ -49,7 +49,7 @@ export function StepCard({
             <h3 className="text-[16px] font-semibold text-foreground">{title}</h3>
           </div>
 
-          <div className="text-[15px] text-foreground/75 leading-relaxed space-y-3">
+          <div className="text-[15px] text-foreground leading-relaxed space-y-3">
             {description}
           </div>
 

@@ -111,7 +111,7 @@ export function RelayPanel() {
         ? "text-success dark:text-emerald-500"
         : status === "connecting"
           ? "text-yellow-500 animate-pulse"
-          : "text-muted-foreground/60";
+          : "text-muted-foreground";
     return <Circle className={`w-2 h-2 fill-current shrink-0 ${color}`} />;
   };
 
@@ -119,13 +119,13 @@ export function RelayPanel() {
     const label = mode === "both" ? "r/w" : mode;
     const tone =
       mode === "write"
-        ? "text-brand/80 border-brand/30"
+        ? "text-brand border-brand/30"
         : mode === "read"
-          ? "text-brand/80 border-brand/30"
-          : "text-success dark:text-emerald-500/80 border-emerald-500/30";
+          ? "text-brand border-brand/30"
+          : "text-success border-emerald-500/30";
     return (
       <span
-        className={`text-[11px] px-1 py-[1px] rounded border font-medium ${tone}`}
+        className={`text-xs px-1 py-[1px] rounded border font-medium ${tone}`}
         data-testid={`nip65-mode-${mode}`}
       >
         {label}
@@ -151,7 +151,7 @@ export function RelayPanel() {
         }}
       />
       <div className="relative p-4 space-y-3">
-        <p className="text-xs text-muted-foreground/60" data-testid="text-relay-count">
+        <p className="text-xs text-muted-foreground" data-testid="text-relay-count">
           {connectedCount} of {relays.length} relays reachable
         </p>
         <div className="space-y-2">
@@ -162,7 +162,7 @@ export function RelayPanel() {
               data-testid={`relay-item-${relay.url.replace(/[^a-zA-Z0-9]/g, "_")}`}
             >
               {renderStatusDot(relay.status)}
-              <span className="text-muted-foreground/70 truncate font-mono">
+              <span className="text-muted-foreground truncate font-mono">
                 {relay.url.replace("wss://", "")}
               </span>
             </div>
@@ -172,12 +172,12 @@ export function RelayPanel() {
         {pubkey && (
           <div className="pt-3 border-t border-brand/15 space-y-2" data-testid="section-user-nip65-relays">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[13px] font-semibold text-brand/80 dark:text-brand/70">
+              <p className="text-[13px] font-semibold text-brand">
                 Your relay list (NIP-65)
               </p>
               <button
                 onClick={discoverUserRelays}
-                className="rounded-full p-1 hover:bg-brand/10 transition-colors text-muted-foreground/60 hover:text-brand"
+                className="rounded-full p-1 hover:bg-brand/10 transition-colors text-muted-foreground hover:text-brand"
                 aria-label="Re-discover NIP-65 relays"
                 data-testid="button-rediscover-nip65"
               >
@@ -185,23 +185,23 @@ export function RelayPanel() {
               </button>
             </div>
             {discovery === "loading" && (
-              <p className="text-[11px] text-muted-foreground/60" data-testid="text-nip65-loading">
+              <p className="text-xs text-muted-foreground" data-testid="text-nip65-loading">
                 Discovering your relay list...
               </p>
             )}
             {discovery === "empty" && (
-              <p className="text-[11px] text-muted-foreground/60" data-testid="text-nip65-empty">
+              <p className="text-xs text-muted-foreground" data-testid="text-nip65-empty">
                 No NIP-65 relay list published. Your posts go to the default relays above.
               </p>
             )}
             {discovery === "failed" && (
-              <p className="text-[11px] text-amber-500/80" data-testid="text-nip65-failed">
+              <p className="text-xs text-warning" data-testid="text-nip65-failed">
                 Could not reach discovery relays. Press refresh to retry.
               </p>
             )}
             {discovery === "found" && nip65Entries.length > 0 && (
               <div className="space-y-2">
-                <p className="text-[10px] text-muted-foreground/50 italic" data-testid="text-nip65-discovered">
+                <p className="text-xs text-muted-foreground italic" data-testid="text-nip65-discovered">
                   discovered from network
                 </p>
                 {nip65Entries.map((entry) => (
@@ -211,7 +211,7 @@ export function RelayPanel() {
                     data-testid={`nip65-item-${entry.url.replace(/[^a-zA-Z0-9]/g, "_")}`}
                   >
                     {renderStatusDot(entry.status)}
-                    <span className="text-muted-foreground/70 truncate font-mono flex-1 min-w-0">
+                    <span className="text-muted-foreground truncate font-mono flex-1 min-w-0">
                       {entry.url.replace("wss://", "")}
                     </span>
                     {renderModeBadge(entry.mode)}

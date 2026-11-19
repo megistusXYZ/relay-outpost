@@ -333,8 +333,8 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
               {loading ? (
                 <div className="flex flex-col items-center justify-center min-h-[200px] gap-4">
                   <RelayOutpostInlineLoader className="w-8 h-8" />
-                  <p className="text-sm text-muted-foreground/60">Querying NIP-66 relay monitors...</p>
-                  <p className="text-[10px] text-muted-foreground/40 font-mono">relaypag.es · monitorlizard.nostr1.com</p>
+                  <p className="text-sm text-muted-foreground">Querying NIP-66 relay monitors...</p>
+                  <p className="text-xs text-muted-foreground font-mono">relaypag.es · monitorlizard.nostr1.com</p>
                 </div>
               ) : (
                 <>
@@ -355,7 +355,7 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
                     </div>
                     <Badge
                       variant={requireAuth ? "default" : "outline"}
-                      className={`cursor-pointer text-[10px] h-6 transition-colors ${
+                      className={`cursor-pointer text-xs h-6 transition-colors ${
                         requireAuth ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "hover:bg-muted dark:hover:bg-white/[0.04]"
                       }`}
                       onClick={() => setRequireAuth(!requireAuth)}
@@ -363,7 +363,7 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
                       <Lock className="w-2.5 h-2.5 mr-1" />
                       AUTH
                     </Badge>
-                    <span className="text-[10px] text-muted-foreground/50 tabular-nums">
+                    <span className="text-xs text-muted-foreground tabular-nums">
                       {filtered.length} of {relays.length} relays
                     </span>
                   </div>
@@ -376,10 +376,10 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
                         <button
                           key={preset.label}
                           onClick={() => toggleNipFilter(preset.nips)}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors ${
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
                             isActive
                               ? "bg-primary text-primary-foreground"
-                              : "bg-muted dark:bg-white/[0.04] text-muted-foreground/70 hover:bg-accent dark:hover:bg-white/[0.08]"
+                              : "bg-muted dark:bg-white/[0.04] text-muted-foreground hover:bg-accent dark:hover:bg-white/[0.08]"
                           }`}
                         >
                           <Icon className="w-2.5 h-2.5" />
@@ -392,8 +392,8 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
                   {filtered.length === 0 ? (
                     <div className="flex flex-col items-center justify-center min-h-[150px] gap-3">
                       <Globe className="w-8 h-8 text-muted-foreground/30" />
-                      <p className="text-sm text-muted-foreground/50">No relays match your filters</p>
-                      <button onClick={() => { setSearchQuery(""); setActiveNipFilter([]); setRequireAuth(false); }} className="text-xs text-brand hover:text-brand/80">
+                      <p className="text-sm text-muted-foreground">No relays match your filters</p>
+                      <button onClick={() => { setSearchQuery(""); setActiveNipFilter([]); setRequireAuth(false); }} className="text-xs text-brand">
                         Clear filters
                       </button>
                     </div>
@@ -418,24 +418,24 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
                                   <span className="text-xs font-mono font-medium truncate">{shortUrl}</span>
                                   {relay.operatorPubkey && <TrustTierDot pubkey={relay.operatorPubkey} />}
                                   {hasAuth && (
-                                    <Badge variant="outline" className="text-[9px] h-4 px-1 border-brand/40 text-brand">
+                                    <Badge variant="outline" className="text-xs h-4 px-1 border-brand/40 text-brand">
                                       <Lock className="w-2 h-2 mr-0.5" /> AUTH
                                     </Badge>
                                   )}
                                   {hasPayment && (
-                                    <Badge variant="outline" className="text-[9px] h-4 px-1 border-amber-400/40 text-amber-600 dark:text-amber-300">
+                                    <Badge variant="outline" className="text-xs h-4 px-1 border-amber-400/40 text-warning">
                                       <Zap className="w-2 h-2 mr-0.5" /> PAID
                                     </Badge>
                                   )}
                                 </div>
                                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                                   {relay.software && (
-                                    <span className="text-[10px] text-muted-foreground/50">
+                                    <span className="text-xs text-muted-foreground">
                                       {relay.software.split("/").pop() || relay.software}
                                     </span>
                                   )}
                                   {relay.supportedNips.length > 0 && (
-                                    <span className="text-[10px] text-muted-foreground/40">
+                                    <span className="text-xs text-muted-foreground">
                                       · {relay.supportedNips.length} NIPs
                                     </span>
                                   )}
@@ -443,7 +443,7 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 {isAdded ? (
-                                  <Badge variant="outline" className="text-[10px] h-6 border-green-400/40 text-green-600 dark:text-green-400">
+                                  <Badge variant="outline" className="text-xs h-6 border-green-400/40 text-success">
                                     <Check className="w-2.5 h-2.5 mr-0.5" /> Added
                                   </Badge>
                                 ) : (
@@ -452,7 +452,7 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="h-6 px-2 text-[10px] text-brand hover:bg-accent"
+                                        className="h-6 px-2 text-xs text-brand hover:bg-accent"
                                         onClick={e => e.stopPropagation()}
                                       >
                                         <Plus className="w-2.5 h-2.5 mr-0.5" /> Add
@@ -463,14 +463,14 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
                                         <Wifi className="w-3 h-3 text-blue-700 dark:text-blue-400" />
                                         <div>
                                           <div className="font-medium">Connection</div>
-                                          <div className="text-[10px] text-muted-foreground/60">Read & write relay</div>
+                                          <div className="text-xs text-muted-foreground">Read & write relay</div>
                                         </div>
                                       </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => handleAddOutpost(relay.url)} className="text-xs gap-2 cursor-pointer">
                                         <Satellite className="w-3 h-3 text-brand" />
                                         <div>
                                           <div className="font-medium">My Community</div>
-                                          <div className="text-[10px] text-muted-foreground/60">Relay I operate</div>
+                                          <div className="text-xs text-muted-foreground">Relay I operate</div>
                                         </div>
                                       </DropdownMenuItem>
                                     </DropdownMenuContent>
@@ -484,10 +484,10 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
                               <div className="px-3 pb-3 border-t border-border/30 dark:border-white/[0.04] space-y-3 pt-2.5">
                                 {relay.supportedNips.length > 0 && (
                                   <div>
-                                    <p className="text-[13px] font-medium text-muted-foreground/60 mb-1.5">Supported NIPs</p>
+                                    <p className="text-[13px] font-medium text-muted-foreground mb-1.5">Supported NIPs</p>
                                     <div className="flex flex-wrap gap-1">
                                       {relay.supportedNips.sort((a, b) => a - b).map(nip => (
-                                        <Badge key={nip} variant="outline" className="text-[9px] h-5 px-1.5 font-mono border-border dark:border-white/[0.08]">
+                                        <Badge key={nip} variant="outline" className="text-xs h-5 px-1.5 font-mono border-border dark:border-white/[0.08]">
                                           {NIP_LABELS[nip] ? `${nip} ${NIP_LABELS[nip]}` : `NIP-${nip}`}
                                         </Badge>
                                       ))}
@@ -497,10 +497,10 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
 
                                 {relay.requirements.length > 0 && (
                                   <div>
-                                    <p className="text-[13px] font-medium text-muted-foreground/60 mb-1.5">Requirements</p>
+                                    <p className="text-[13px] font-medium text-muted-foreground mb-1.5">Requirements</p>
                                     <div className="flex flex-wrap gap-1">
                                       {relay.requirements.map(req => (
-                                        <Badge key={req} variant="outline" className="text-[9px] h-5 px-1.5 capitalize border-border dark:border-white/[0.08]">
+                                        <Badge key={req} variant="outline" className="text-xs h-5 px-1.5 capitalize border-border dark:border-white/[0.08]">
                                           {req === "auth" && <Lock className="w-2 h-2 mr-0.5" />}
                                           {req === "payment" && <Zap className="w-2 h-2 mr-0.5" />}
                                           {req}
@@ -512,20 +512,20 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
 
                                 {relay.software && (
                                   <div className="flex items-center gap-2">
-                                    <span className="text-[13px] font-medium text-muted-foreground/60">Software</span>
-                                    <span className="text-[10px] text-muted-foreground/80 font-mono">{relay.software}</span>
+                                    <span className="text-[13px] font-medium text-muted-foreground">Software</span>
+                                    <span className="text-xs text-muted-foreground font-mono">{relay.software}</span>
                                   </div>
                                 )}
 
                                 {relay.nip11Loading && (
-                                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground/50">
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                     <RelayOutpostInlineLoader className="w-3 h-3" /> Loading NIP-11 info...
                                   </div>
                                 )}
 
                                 {relay.nip11 && (
                                   <div className="space-y-2 pt-1 border-t border-border/30 dark:border-white/[0.04]">
-                                    <p className="text-[13px] font-medium text-muted-foreground/60">NIP-11 details</p>
+                                    <p className="text-[13px] font-medium text-muted-foreground">NIP-11 details</p>
                                     {relay.nip11.name && (
                                       <div className="flex items-center gap-2">
                                         <Info className="w-3 h-3 text-muted-foreground/40" />
@@ -533,26 +533,26 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
                                       </div>
                                     )}
                                     {relay.nip11.description && (
-                                      <p className="text-[10px] text-muted-foreground/70 leading-relaxed">{relay.nip11.description}</p>
+                                      <p className="text-xs text-muted-foreground leading-relaxed">{relay.nip11.description}</p>
                                     )}
                                     {relay.nip11.contact && (
-                                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground/60">
+                                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                         <Mail className="w-2.5 h-2.5" />
                                         <span className="font-mono">{relay.nip11.contact}</span>
                                       </div>
                                     )}
                                     {relay.nip11.limitation?.auth_required && (
-                                      <Badge variant="outline" className="text-[9px] h-5 px-1.5 border-brand/30 text-brand">
+                                      <Badge variant="outline" className="text-xs h-5 px-1.5 border-brand/30 text-brand">
                                         <Shield className="w-2 h-2 mr-0.5" /> Auth Required
                                       </Badge>
                                     )}
                                     {relay.nip11.limitation?.payment_required && (
-                                      <Badge variant="outline" className="text-[9px] h-5 px-1.5 border-amber-400/30 text-amber-500">
+                                      <Badge variant="outline" className="text-xs h-5 px-1.5 border-amber-400/30 text-warning">
                                         <Zap className="w-2 h-2 mr-0.5" /> Payment Required
                                       </Badge>
                                     )}
                                     {relay.nip11.fees?.admission && relay.nip11.fees.admission.length > 0 && (
-                                      <div className="text-[10px] text-muted-foreground/60">
+                                      <div className="text-xs text-muted-foreground">
                                         Admission: {relay.nip11.fees.admission.map(f => `${f.amount} ${f.unit}`).join(", ")}
                                       </div>
                                     )}
@@ -563,7 +563,7 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-6 px-2 text-[10px]"
+                                    className="h-6 px-2 text-xs"
                                     onClick={() => { navigator.clipboard.writeText(relay.url); toast({ title: "Copied", description: relay.url }); }}
                                   >
                                     <Copy className="w-2.5 h-2.5 mr-1" /> Copy URL
@@ -571,7 +571,7 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-6 px-2 text-[10px]"
+                                    className="h-6 px-2 text-xs"
                                     onClick={() => navigate(`/my-relays/console?relay=${encodeURIComponent(relay.url)}`)}
                                     data-testid={`button-query-console-${relay.url}`}
                                   >
@@ -581,7 +581,7 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
                                     href={`https://${relay.url.replace("wss://", "").replace("ws://", "")}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                                    className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors"
                                   >
                                     <ExternalLink className="w-2.5 h-2.5" /> Open
                                   </a>
@@ -592,7 +592,7 @@ function DiscoverRelaysSection({ customRelays, outpostRelays: outpostRelaysProp,
                         );
                       })}
                       {filtered.length > 100 && (
-                        <p className="text-center text-[10px] text-muted-foreground/40 py-2">
+                        <p className="text-center text-xs text-muted-foreground py-2">
                           Showing 100 of {filtered.length} relays. Use filters to narrow results.
                         </p>
                       )}
@@ -1188,9 +1188,9 @@ export default function RelayDashboard() {
           <CollapsibleTrigger asChild>
             <button className="w-full flex items-center justify-between gap-2 p-4 text-left" data-testid="button-toggle-manage-relays">
               <div className="flex items-center gap-2">
-                <Satellite className="w-4 h-4 text-brand/70" />
+                <Satellite className="w-4 h-4 text-brand" />
                 <h2 className="text-[15px] font-semibold">Manage relays</h2>
-                <Badge variant="outline" className="text-[10px]">{outpostRelays.length + allRelays.filter(u => !outpostRelays.some(o => o.url.replace(/\/+$/, "") === u.replace(/\/+$/, ""))).length}</Badge>
+                <Badge variant="outline" className="text-xs">{outpostRelays.length + allRelays.filter(u => !outpostRelays.some(o => o.url.replace(/\/+$/, "") === u.replace(/\/+$/, ""))).length}</Badge>
               </div>
               {manageOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
             </button>
@@ -1216,7 +1216,7 @@ export default function RelayDashboard() {
             <div className="p-3 mb-3 rounded-md bg-muted/40 dark:bg-white/[0.02] border border-border dark:border-white/[0.06] space-y-2" data-testid="form-add-outpost">
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground/70 font-mono pointer-events-none select-none">wss://</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono pointer-events-none select-none">wss://</span>
                   <Input
                     placeholder="my-relay.example.com"
                     value={outpostUrl}
@@ -1245,7 +1245,7 @@ export default function RelayDashboard() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className={`gap-1 text-xs ${outpostAccess === "private" ? "text-amber-600 dark:text-amber-400/80" : "text-success dark:text-green-400/80"}`}
+                  className={`gap-1 text-xs ${outpostAccess === "private" ? "text-warning" : "text-success"}`}
                   onClick={() => setOutpostAccess(outpostAccess === "public" ? "private" : "public")}
                   data-testid="button-outpost-access-toggle"
                 >
@@ -1268,10 +1268,10 @@ export default function RelayDashboard() {
 
                 return (
                   <div key={relay.url} className={`p-2.5 rounded-md transition-opacity ${isDisabled ? "opacity-50" : ""} ${relay.isAdmin ? "bg-cyan-50 dark:bg-cyan-950/10 border border-cyan-300 dark:border-cyan-400/20" : "bg-muted/40 dark:bg-white/[0.02] border border-border dark:border-white/[0.06]"}`} data-testid={`outpost-relay-${idx}`}>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1">
                       <div className="shrink-0">
                         {isDisabled ? (
-                          <PowerOff className="w-4 h-4 text-muted-foreground/60" />
+                          <PowerOff className="w-4 h-4 text-muted-foreground" />
                         ) : status?.testing ? (
                           <RelayOutpostInlineLoader className="w-4 h-4" />
                         ) : status?.connected ? (
@@ -1299,14 +1299,14 @@ export default function RelayDashboard() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className={`gap-1 text-[11px] shrink-0 ${editAccess === "private" ? "text-amber-600 dark:text-amber-400/80" : "text-success dark:text-green-400/80"}`}
+                                className={`gap-1 text-xs shrink-0 ${editAccess === "private" ? "text-warning" : "text-success"}`}
                                 onClick={() => setEditAccess(editAccess === "public" ? "private" : "public")}
                               >
                                 {editAccess === "private" ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
                               </Button>
                             </div>
                             <div className="relative">
-                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground/50 font-mono pointer-events-none select-none">wss://</span>
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono pointer-events-none select-none">wss://</span>
                               <Input
                                 value={editUrl}
                                 onChange={(e) => setEditUrl(e.target.value)}
@@ -1329,38 +1329,38 @@ export default function RelayDashboard() {
                               {operatorPubkeys.get(relay.url) && <TrustTierDot pubkey={operatorPubkeys.get(relay.url)!} />}
                               <Badge
                                 variant="outline"
-                                className={`text-[10px] ${relay.access === "private" ? "border-amber-300 dark:border-amber-400/20 text-amber-600 dark:text-amber-400/60" : "border-green-300 dark:border-green-400/20 text-success dark:text-green-400/60"}`}
+                                className={`text-xs ${relay.access === "private" ? "border-amber-300 dark:border-amber-400/20 text-warning" : "border-green-300 dark:border-green-400/20 text-success"}`}
                               >
                                 {relay.access === "private" ? <Lock className="w-2.5 h-2.5 mr-0.5" /> : <Unlock className="w-2.5 h-2.5 mr-0.5" />}
                                 {relay.access}
                               </Badge>
                               {relay.isAdmin && (
-                                <Badge variant="outline" className="text-[10px] border-cyan-300 dark:border-cyan-400/20 text-cyan-600 dark:text-cyan-400/60">
+                                <Badge variant="outline" className="text-xs border-cyan-300 dark:border-cyan-400/20 text-cyan-700 dark:text-cyan-400">
                                   <RelayOutpostIcon className="w-2.5 h-2.5 mr-0.5" />
                                   Relay Op
                                 </Badge>
                               )}
                               {isDisabled && (
-                                <Badge variant="outline" className="text-[10px] border-red-400/20 text-danger dark:text-red-400/60">Disabled</Badge>
+                                <Badge variant="outline" className="text-xs border-red-400/20 text-danger">Disabled</Badge>
                               )}
                             </div>
                             <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-[11px] font-mono text-muted-foreground/60 truncate">{relay.url.replace("wss://", "")}</span>
+                              <span className="text-xs font-mono text-muted-foreground truncate">{relay.url.replace("wss://", "")}</span>
                               {status?.connected && status.latency !== null && (
-                                <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground/70">
+                                <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
                                   <Gauge className="w-2.5 h-2.5" />
                                   {status.latency}ms
                                 </span>
                               )}
                               {status?.error && (
-                                <span className="text-[11px] text-danger dark:text-red-400/60">{status.error}</span>
+                                <span className="text-xs text-danger">{status.error}</span>
                               )}
                             </div>
                           </>
                         )}
                       </div>
 
-                      <div className="flex items-center shrink-0">
+                      <div className="flex items-center shrink-0 basis-full sm:basis-auto justify-end">
                         {isEditing ? (
                           <div className="flex items-center gap-1">
                             <Button variant="ghost" size="icon" onClick={() => saveOutpostEdit(idx)} data-testid={`button-save-edit-${idx}`}>
@@ -1407,7 +1407,7 @@ export default function RelayDashboard() {
                                   <span className={`inline-flex items-center justify-center w-3.5 h-3.5 rounded-full transition-all duration-200 ${
                                     relay.isAdmin
                                       ? "translate-x-[18px] bg-cyan-500 dark:bg-cyan-400 text-white dark:text-cyan-950"
-                                      : "translate-x-[3px] bg-muted-foreground/30 text-muted-foreground/50"
+                                      : "translate-x-[3px] bg-muted-foreground/30 text-muted-foreground"
                                   }`}>
                                     {verifyingAdminIdx === idx ? (
                                       <RelayOutpostInlineLoader className="w-2 h-2" />
@@ -1433,7 +1433,7 @@ export default function RelayDashboard() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => setConfirmAction({ type: "remove-outpost", label: relay.label, url: relay.url, idx })}
-                                className="text-muted-foreground/40 hover:text-red-700/80 dark:hover:text-red-400/80"
+                                className="text-muted-foreground hover:text-red-700/80 dark:hover:text-red-400/80"
                                 title="Remove relay"
                                 data-testid={`button-remove-outpost-${idx}`}
                               >
@@ -1449,12 +1449,12 @@ export default function RelayDashboard() {
                       <div className="mt-2 rounded-md bg-accent dark:bg-brand/10 border border-brand/20 p-2 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <RelayOutpostIcon className="w-3.5 h-3.5 text-brand dark:text-brand/70" />
-                          <span className="text-[11px] text-brand dark:text-brand/80">Admin tools available</span>
+                          <span className="text-xs text-brand">Admin tools available</span>
                         </div>
                         {/* This relay's own Relay Control — /relays/admin only bounced to the last one used. */}
                         <Link
                           href={`/relay-ops-center/${encodeURIComponent(relay.url)}`}
-                          className="text-[11px] text-brand hover:text-brand/80 dark:hover:text-brand flex items-center gap-1 font-medium min-h-[44px]"
+                          className="text-xs text-brand dark:hover:text-brand flex items-center gap-1 font-medium min-h-[44px]"
                           data-testid={`link-relay-control-${idx}`}
                         >
                           Open the console
@@ -1481,10 +1481,10 @@ export default function RelayDashboard() {
 
           return (
             <Card key={url} className={`glass-card p-3 transition-opacity ${isDisabled ? "opacity-50" : ""}`} data-testid={`relay-card-${url}`}>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1">
                 <div className="shrink-0">
                   {isDisabled ? (
-                    <PowerOff className="w-4 h-4 text-muted-foreground/60" />
+                    <PowerOff className="w-4 h-4 text-muted-foreground" />
                   ) : status?.testing ? (
                     <RelayOutpostInlineLoader className="w-4 h-4" />
                   ) : status?.connected ? (
@@ -1496,36 +1496,36 @@ export default function RelayDashboard() {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className={`text-sm font-mono truncate ${isDisabled ? "line-through text-muted-foreground/60" : ""}`} data-testid={`text-relay-url-${url}`}>
+                    <span className={`text-sm font-mono truncate ${isDisabled ? "line-through text-muted-foreground" : ""}`} data-testid={`text-relay-url-${url}`}>
                       {url.replace("wss://", "")}
                     </span>
                     {operatorPubkeys.get(url) && <TrustTierDot pubkey={operatorPubkeys.get(url)!} />}
                     {isDefault && (
-                      <Badge variant="outline" className="text-[11px] border-brand/20 text-brand/60">Default</Badge>
+                      <Badge variant="outline" className="text-xs border-brand/20 text-brand">Default</Badge>
                     )}
                     {isDisabled && (
-                      <Badge variant="outline" className="text-[11px] border-red-400/20 text-danger dark:text-red-400/60">Disabled</Badge>
+                      <Badge variant="outline" className="text-xs border-red-400/20 text-danger">Disabled</Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     {!isDisabled && status?.connected && status.latency !== null && (
-                      <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground/70" data-testid={`text-relay-latency-${url}`}>
+                      <span className="flex items-center gap-0.5 text-xs text-muted-foreground" data-testid={`text-relay-latency-${url}`}>
                         <Gauge className="w-2.5 h-2.5" />
                         {status.latency}ms
                       </span>
                     )}
                     {!isDisabled && status?.error && (
-                      <span className="text-[11px] text-danger dark:text-red-400/60" data-testid={`text-relay-error-${url}`}>
+                      <span className="text-xs text-danger" data-testid={`text-relay-error-${url}`}>
                         {status.error}
                       </span>
                     )}
                     {!isDisabled && status?.testing && (
-                      <span className="text-[11px] text-muted-foreground/60">Testing...</span>
+                      <span className="text-xs text-muted-foreground">Testing...</span>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center shrink-0">
+                <div className="flex items-center shrink-0 basis-full sm:basis-auto justify-end">
                   {!isDisabled && (
                     <div className="flex items-center gap-0.5">
                       <Button
@@ -1555,7 +1555,7 @@ export default function RelayDashboard() {
                       variant="ghost"
                       size="icon"
                       onClick={() => setConfirmAction({ type: "block-relay", label: url, url })}
-                      className="text-muted-foreground/40 hover:text-amber-800/80 dark:hover:text-amber-400/80"
+                      className="text-muted-foreground"
                       title="Block relay"
                       data-testid={`button-block-relay-${url}`}
                     >
@@ -1566,7 +1566,7 @@ export default function RelayDashboard() {
                         variant="ghost"
                         size="icon"
                         onClick={() => setConfirmAction({ type: "remove-relay", label: url, url })}
-                        className="text-muted-foreground/40 hover:text-red-700/80 dark:hover:text-red-400/80"
+                        className="text-muted-foreground hover:text-red-700/80 dark:hover:text-red-400/80"
                         title="Remove relay"
                         data-testid={`button-remove-relay-${url}`}
                       >
@@ -1581,7 +1581,7 @@ export default function RelayDashboard() {
         })}
       </div>
 
-      <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground/60">
+      <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
         <Globe className="w-3 h-3" />
         <span data-testid="text-relay-summary">{enabledCount} active of {outpostRelays.length + allRelays.length} relays</span>
       </div>
@@ -1621,9 +1621,9 @@ export default function RelayDashboard() {
               <CollapsibleTrigger asChild>
                 <button className="w-full flex items-center justify-between gap-2 p-4 text-left" data-testid="button-toggle-blocked-relays">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <ShieldBan className="w-4 h-4 text-amber-800/80 dark:text-amber-400/80" />
-                    <h2 className="text-[15px] font-semibold text-amber-800/90 dark:text-amber-300/90">Blocked relays</h2>
-                    <Badge variant="outline" className="text-[10px] border-amber-400/20 text-amber-800/60 dark:text-amber-400/60">
+                    <ShieldBan className="w-4 h-4 text-warning" />
+                    <h2 className="text-[15px] font-semibold text-warning">Blocked relays</h2>
+                    <Badge variant="outline" className="text-xs border-amber-400/20 text-warning">
                       {blockedRelaysList.length}
                     </Badge>
                   </div>
@@ -1649,14 +1649,14 @@ export default function RelayDashboard() {
                   {blockedRelaysList.map((url) => (
                     <div key={url} className="flex items-center justify-between gap-3 p-2.5 rounded-md bg-muted/40 dark:bg-white/[0.02] border border-border dark:border-white/[0.06]" data-testid={`blocked-relay-${url}`}>
                       <div className="flex items-center gap-2 min-w-0">
-                        <ShieldBan className="w-3.5 h-3.5 text-amber-800/60 dark:text-amber-400/60 shrink-0" />
-                        <span className="text-sm font-mono text-muted-foreground/80 truncate">{url.replace("wss://", "")}</span>
+                        <ShieldBan className="w-3.5 h-3.5 text-warning shrink-0" />
+                        <span className="text-sm font-mono text-muted-foreground truncate">{url.replace("wss://", "")}</span>
                       </div>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => handleUnblockRelay(url)}
-                        className="text-success dark:text-green-400/60 shrink-0"
+                        className="text-success shrink-0"
                         data-testid={`button-unblock-relay-${url}`}
                       >
                         <ShieldCheck className="w-3.5 h-3.5 mr-1" />
@@ -1697,13 +1697,13 @@ export default function RelayDashboard() {
         <AlertDialogContent className="border-border/60 bg-card max-w-[calc(100vw-2rem)] sm:max-w-md mx-auto rounded-xl p-5 sm:p-6 gap-4">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-sm font-brand tracking-wide">Publish your routing?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground/80">
+            <AlertDialogDescription className="text-xs text-muted-foreground">
               This replaces your published relay list (NIP-65) across the network. A wrong list can quietly stop people seeing your posts — double-check it.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="text-xs space-y-1.5">
-            <div><span className="font-medium text-foreground/80">Inbox:</span> <span className="font-mono text-[11px] text-muted-foreground/80">{editRoutes.filter((r) => r.read).map((r) => r.url.replace("wss://", "")).join(", ") || "none"}</span></div>
-            <div><span className="font-medium text-foreground/80">Outbox:</span> <span className="font-mono text-[11px] text-muted-foreground/80">{editRoutes.filter((r) => r.write).map((r) => r.url.replace("wss://", "")).join(", ") || "none"}</span></div>
+            <div><span className="font-medium text-foreground">Inbox:</span> <span className="font-mono text-xs text-muted-foreground">{editRoutes.filter((r) => r.read).map((r) => r.url.replace("wss://", "")).join(", ") || "none"}</span></div>
+            <div><span className="font-medium text-foreground">Outbox:</span> <span className="font-mono text-xs text-muted-foreground">{editRoutes.filter((r) => r.write).map((r) => r.url.replace("wss://", "")).join(", ") || "none"}</span></div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
@@ -1724,7 +1724,7 @@ export default function RelayDashboard() {
                   : "bg-red-500/10 border border-red-500/20"
               }`}>
                 {confirmAction?.type === "block-relay" ? (
-                  <ShieldBan className="w-6 h-6 text-amber-500" />
+                  <ShieldBan className="w-6 h-6 text-warning" />
                 ) : (
                   <Trash2 className="w-6 h-6 text-red-500" />
                 )}
@@ -1735,7 +1735,7 @@ export default function RelayDashboard() {
                 {confirmAction?.type === "block-relay" ? "Block Relay" :
                  confirmAction?.type === "remove-outpost" ? "Remove Community Relay" : "Remove Relay"}
               </AlertDialogTitle>
-              <AlertDialogDescription className="text-[13px] text-muted-foreground/70 mt-1.5 leading-relaxed">
+              <AlertDialogDescription className="text-[13px] text-muted-foreground mt-1.5 leading-relaxed">
                 {confirmAction?.type === "block-relay"
                   ? "This relay will be disconnected and excluded from all future connections."
                   : confirmAction?.type === "remove-outpost"
@@ -1745,9 +1745,9 @@ export default function RelayDashboard() {
             </div>
             {confirmAction && (
               <div className="px-3 py-2.5 rounded-lg bg-muted/30 border border-border/40">
-                <p className="text-xs font-mono text-muted-foreground/80 truncate">{confirmAction.url}</p>
+                <p className="text-xs font-mono text-muted-foreground truncate">{confirmAction.url}</p>
                 {confirmAction.label !== confirmAction.url && (
-                  <p className="text-[11px] text-muted-foreground/50 mt-0.5">{confirmAction.label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{confirmAction.label}</p>
                 )}
               </div>
             )}

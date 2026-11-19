@@ -98,13 +98,13 @@ function PickerBody({
           >
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-7 h-7 rounded-md bg-brand/15 flex items-center justify-center shrink-0">
-                <Satellite className="w-3.5 h-3.5 text-brand/90" />
+                <Satellite className="w-3.5 h-3.5 text-brand" />
               </div>
               <div className="min-w-0">
-                <span className="block text-[12px] sm:text-[13px] font-medium text-foreground/90 truncate">
+                <span className="block text-[12px] sm:text-[13px] font-medium text-foreground truncate">
                   Also post to Communities ({outpostCountLabel})
                 </span>
-                <span className="block text-[10px] sm:text-[11px] text-muted-foreground/55 truncate">
+                <span className="block text-xs text-muted-foreground truncate">
                   {includesAnyOutpost ? "Reaching your communities + defaults" : "Posting only to default relays"}
                 </span>
               </div>
@@ -127,7 +127,7 @@ function PickerBody({
                   className={`relative flex flex-col items-center gap-1 sm:gap-1.5 py-3 sm:py-3 px-2 rounded-lg border transition-all duration-200 text-center min-h-[52px]
                     ${active
                       ? activeClasses
-                      : "border-black/[0.08] dark:border-white/[0.06] bg-black/[0.02] dark:bg-white/[0.02] text-muted-foreground/70 hover:border-black/[0.14] dark:hover:border-white/[0.12] hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+                      : "border-black/[0.08] dark:border-white/[0.06] bg-black/[0.02] dark:bg-white/[0.02] text-muted-foreground hover:border-black/[0.14] dark:hover:border-white/[0.12] hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
                     }`}
                   onClick={() => handlePreset(key)}
                   data-testid={`button-preset-${key}`}
@@ -137,8 +137,8 @@ function PickerBody({
                       <Check className={`w-2 h-2 sm:w-2.5 sm:h-2.5 ${checkIcon}`} />
                     </div>
                   )}
-                  <span className={`${active ? iconActive : "text-muted-foreground/50"}`}>{icon}</span>
-                  <span className="text-[10px] sm:text-[11px] font-medium leading-tight">{label}</span>
+                  <span className={`${active ? iconActive : "text-muted-foreground"}`}>{icon}</span>
+                  <span className="text-xs font-medium leading-tight">{label}</span>
                 </button>
               );
             })}
@@ -147,15 +147,15 @@ function PickerBody({
           <div className="flex items-center justify-start gap-1.5 mt-1 px-1">
             <button
               onClick={() => handlePreset("all")}
-              className="text-[10px] sm:text-[11px] font-medium text-brand hover:text-brand/80 dark:hover:text-brand transition-colors px-1.5 py-0.5 rounded hover:bg-brand/10"
+              className="text-xs font-medium text-brand dark:hover:text-brand transition-colors px-1.5 py-0.5 rounded hover:bg-brand/10"
               data-testid="button-select-all-relays"
             >
               Select All
             </button>
-            <span className="text-muted-foreground/20 text-[10px]">|</span>
+            <span className="text-muted-foreground text-xs">|</span>
             <button
               onClick={handleDeselectAll}
-              className="text-[10px] sm:text-[11px] font-medium text-muted-foreground/60 hover:text-foreground/70 transition-colors px-1.5 py-0.5 rounded hover:bg-muted/30"
+              className="text-xs font-medium text-muted-foreground transition-colors px-1.5 py-0.5 rounded hover:bg-muted/30"
               data-testid="button-deselect-all-relays"
             >
               Deselect All
@@ -170,18 +170,18 @@ function PickerBody({
         >
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-7 h-7 rounded-md bg-brand/15 flex items-center justify-center shrink-0">
-              <Compass className="w-3.5 h-3.5 text-brand/90" />
+              <Compass className="w-3.5 h-3.5 text-brand" />
             </div>
             <div className="min-w-0">
-              <span className="block text-[12px] sm:text-[13px] font-medium text-foreground/90 truncate">
+              <span className="block text-[12px] sm:text-[13px] font-medium text-foreground truncate">
                 Discover Communities
               </span>
-              <span className="block text-[10px] sm:text-[11px] text-muted-foreground/55 truncate">
+              <span className="block text-xs text-muted-foreground truncate">
                 Community relays for topics & groups you care about
               </span>
             </div>
           </div>
-          <span className="text-[11px] font-medium text-brand/90 shrink-0 pr-1">Browse →</span>
+          <span className="text-xs font-medium text-brand shrink-0 pr-1">Browse →</span>
         </button>
       )}
 
@@ -230,8 +230,8 @@ function PickerBody({
 
         {outpostRelays.length === 0 && defaultRelays.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Satellite className="w-8 h-8 text-muted-foreground/20 mb-2" />
-            <p className="text-sm text-muted-foreground/50">No relays configured.</p>
+            <Satellite className="w-8 h-8 text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground">No relays configured.</p>
           </div>
         )}
       </div>
@@ -247,8 +247,8 @@ function PickerBody({
                   {outpostsSelectedCount !== 1 ? "communities" : "community"}
                   {defaultsSelectedCount > 0 && (
                     <>
-                      <span className="text-muted-foreground/40 mx-1">·</span>
-                      <span className="font-medium text-foreground/70">{defaultsSelectedCount}</span>{" "}
+                      <span className="text-muted-foreground mx-1">·</span>
+                      <span className="font-medium text-foreground">{defaultsSelectedCount}</span>{" "}
                       Default{defaultsSelectedCount !== 1 ? "s" : ""}
                     </>
                   )}
@@ -263,13 +263,13 @@ function PickerBody({
                   selection doesn't read as the complete broadcast list. */}
               {pref.preset !== "private" && (
                 <>
-                  <span className="text-muted-foreground/40 mx-1">·</span>
-                  <span className="text-muted-foreground/50">+ your outbox</span>
+                  <span className="text-muted-foreground mx-1">·</span>
+                  <span className="text-muted-foreground">+ your outbox</span>
                 </>
               )}
             </span>
           </div>
-          <span className="text-[9px] sm:text-[10px] text-muted-foreground/40 pl-3">Saved as your default</span>
+          <span className="text-xs text-muted-foreground pl-3">Saved as your default</span>
         </div>
         <Button
           size="sm"
@@ -386,7 +386,7 @@ export function RelayPublishPicker({ open, onOpenChange, onPreferenceChange }: R
       </div>
       <div>
         <span className="text-xs sm:text-sm block font-medium">Publish to</span>
-        <span className="text-[10px] text-muted-foreground/40 block leading-tight">Choose where this post goes</span>
+        <span className="text-xs text-muted-foreground block leading-tight">Choose where this post goes</span>
       </div>
     </div>
   );
@@ -477,13 +477,13 @@ function CollapsibleRelayGroup({
         data-testid={`section-toggle-${storageKey}`}
       >
         <ChevronDown
-          className={`w-3 h-3 text-muted-foreground/40 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`}
+          className={`w-3 h-3 text-muted-foreground transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`}
         />
         <span className="text-[12px] sm:text-[13px] text-muted-foreground font-medium">
           {label}
         </span>
-        <span className="text-[9px] sm:text-[10px] text-muted-foreground/35 font-medium">·</span>
-        <span className="text-[9px] sm:text-[10px] text-muted-foreground/40 font-medium">{count}</span>
+        <span className="text-xs text-muted-foreground font-medium">·</span>
+        <span className="text-xs text-muted-foreground font-medium">{count}</span>
       </button>
       {!collapsed && (
         <div className="space-y-0.5 mt-1.5">
@@ -525,17 +525,17 @@ function RelayItem({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           {label ? (
-            <span className={`text-[13px] sm:text-sm font-medium truncate ${disabled ? "text-muted-foreground/50" : "text-foreground/90"}`}>{label}</span>
+            <span className={`text-[13px] sm:text-sm font-medium truncate ${disabled ? "text-muted-foreground" : "text-foreground"}`}>{label}</span>
           ) : (
-            <span className={`text-[13px] sm:text-sm truncate font-mono ${disabled ? "text-muted-foreground/40" : "text-foreground/75"}`}>{displayUrl}</span>
+            <span className={`text-[13px] sm:text-sm truncate font-mono ${disabled ? "text-muted-foreground" : "text-foreground"}`}>{displayUrl}</span>
           )}
           {access && (
             <Badge
               variant="outline"
-              className={`text-[8px] sm:text-[9px] px-1.5 py-0 h-4 shrink-0 gap-0.5 ${
+              className={`text-xs px-1.5 py-0 h-5 shrink-0 gap-0.5 ${
                 access === "private"
-                  ? "border-amber-500/30 text-amber-600 dark:text-amber-500/80 bg-amber-500/[0.06]"
-                  : "border-green-500/30 text-success dark:text-green-500/80 bg-green-500/[0.06]"
+                  ? "border-amber-500/30 text-warning bg-amber-500/[0.06]"
+                  : "border-green-500/30 text-success bg-green-500/[0.06]"
               }`}
             >
               {access === "private" ? (
@@ -547,13 +547,13 @@ function RelayItem({
             </Badge>
           )}
           {disabled && (
-            <Badge variant="outline" className="text-[8px] sm:text-[9px] px-1.5 py-0 h-4 shrink-0 border-muted-foreground/20 text-muted-foreground/50">
+            <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 shrink-0 border-muted-foreground/20 text-muted-foreground">
               Disabled
             </Badge>
           )}
         </div>
         {label && (
-          <span className={`text-[9px] sm:text-[10px] truncate block font-mono mt-0.5 ${disabled ? "text-muted-foreground/25" : "text-muted-foreground/40"}`}>{displayUrl}</span>
+          <span className={`text-xs truncate block font-mono mt-0.5 ${disabled ? "text-muted-foreground" : "text-muted-foreground"}`}>{displayUrl}</span>
         )}
       </div>
     </label>

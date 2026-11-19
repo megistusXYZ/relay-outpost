@@ -169,7 +169,7 @@ export default function MediaServers() {
         {loading ? (
           <div className="flex items-center gap-2 py-2">
             <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-brand" />
-            <span className="text-xs text-muted-foreground/60">Fetching server list…</span>
+            <span className="text-xs text-muted-foreground">Fetching server list…</span>
           </div>
         ) : (
           <>
@@ -196,7 +196,7 @@ export default function MediaServers() {
 
             {servers.length === 0 ? (
               <div className="space-y-2">
-                <p className="text-xs text-foreground/65 dark:text-muted-foreground/70" data-testid="text-no-blossom-servers">
+                <p className="text-xs text-foreground" data-testid="text-no-blossom-servers">
                   No media servers configured yet. Use the recommended set or add your own.
                 </p>
                 <Button
@@ -223,7 +223,7 @@ export default function MediaServers() {
                     data-testid={`blossom-server-${server.replace(/[^a-z0-9]/gi, "-")}`}
                   >
                     <HardDrive className="w-3.5 h-3.5 text-brand shrink-0" />
-                    <span className="flex-1 min-w-0 text-xs font-mono text-foreground/80 truncate">{server}</span>
+                    <span className="flex-1 min-w-0 text-xs font-mono text-foreground truncate">{server}</span>
                     {signer && isMirrorCapableTarget(server) && (
                       <Button
                         variant="ghost"
@@ -235,7 +235,7 @@ export default function MediaServers() {
                         title="Sync my media here"
                         data-testid={`button-sync-blossom-${server.replace(/[^a-z0-9]/gi, "-")}`}
                       >
-                        <FolderSync className="w-3.5 h-3.5 text-muted-foreground/60" />
+                        <FolderSync className="w-3.5 h-3.5 text-muted-foreground" />
                       </Button>
                     )}
                     <Button
@@ -289,7 +289,7 @@ export default function MediaServers() {
                 aria-label="Cancel media sync"
                 data-testid="button-cancel-media-sync"
               >
-                <XCircle className="w-3.5 h-3.5 text-muted-foreground/60" />
+                <XCircle className="w-3.5 h-3.5 text-muted-foreground" />
               </Button>
             )}
           </div>
@@ -297,7 +297,7 @@ export default function MediaServers() {
           {sync.phase === "finding" && (
             <div className="flex items-center gap-2 py-1">
               <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-brand" />
-              <span className="text-xs text-muted-foreground/60">Finding your published media…</span>
+              <span className="text-xs text-muted-foreground">Finding your published media…</span>
             </div>
           )}
 
@@ -309,16 +309,16 @@ export default function MediaServers() {
                   style={{ width: `${sync.total > 0 ? Math.round((sync.done / sync.total) * 100) : 0}%` }}
                 />
               </div>
-              <p className="text-xs text-muted-foreground/70" data-testid="text-media-sync-progress">
+              <p className="text-xs text-muted-foreground" data-testid="text-media-sync-progress">
                 {sync.done} / {sync.total}
                 {sync.failed > 0 && <span className="text-destructive"> · {sync.failed} failed</span>}
               </p>
               {sync.current && (
-                <p className="text-[11px] font-mono text-muted-foreground/50 truncate" data-testid="text-media-sync-current">
+                <p className="text-xs font-mono text-muted-foreground truncate" data-testid="text-media-sync-current">
                   {sync.current}
                 </p>
               )}
-              <p className="text-[11px] text-muted-foreground/50">
+              <p className="text-xs text-muted-foreground">
                 Stay on this page while syncing. Progress is saved — if you leave, the next sync picks up where this one stopped.
               </p>
             </div>
@@ -326,7 +326,7 @@ export default function MediaServers() {
 
           {sync.phase === "done" && (
             <div className="space-y-2">
-              <p className="text-xs text-foreground/80" data-testid="text-media-sync-summary">
+              <p className="text-xs text-foreground" data-testid="text-media-sync-summary">
                 {sync.aborted && "Cancelled — "}
                 Synced {sync.ok}
                 {sync.alreadyDone > 0 && <> · {sync.alreadyDone} already there</>}
@@ -334,12 +334,12 @@ export default function MediaServers() {
                 {" · "}{sync.skippedNoHash} skipped (no fingerprint)
               </p>
               {sync.skippedNoHash > 0 && (
-                <p className="text-[11px] text-muted-foreground/50">
+                <p className="text-xs text-muted-foreground">
                   Skipped files have no content fingerprint — posted before mirroring existed or from another host — so they can't be copied by hash.
                 </p>
               )}
               {sync.capped && (
-                <p className="text-[11px] text-muted-foreground/50">
+                <p className="text-xs text-muted-foreground">
                   Scanned your {MEDIA_SYNC_EVENT_CAP} most recent posts — older media may not be covered.
                 </p>
               )}

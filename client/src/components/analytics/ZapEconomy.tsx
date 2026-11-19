@@ -355,7 +355,7 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
               <p className="text-[13px] text-muted-foreground font-medium">Total volume</p>
               <div className="flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5 text-amber-800 dark:text-amber-400" />
-                <p className="text-lg font-mono text-amber-800 dark:text-amber-400" data-testid="text-total-volume">
+                <p className="text-lg font-mono text-warning" data-testid="text-total-volume">
                   {formatSats(summary.totalVolume)} sats
                 </p>
               </div>
@@ -450,7 +450,7 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
               <button
                 type="button"
                 onClick={() => setDrilldown(null)}
-                className="text-muted-foreground/40 hover:text-foreground transition-colors"
+                className="text-muted-foreground hover:text-foreground transition-colors"
                 data-testid="button-close-drilldown"
               >
                 <X className="w-3.5 h-3.5" />
@@ -459,7 +459,7 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
             <div className="space-y-1 max-h-[400px] overflow-y-auto pr-1">
               {(drilldown === "zappers" ? allZappers : allRecipients).map((entry, i) => (
                 <div key={entry.pubkey} className="flex items-center gap-2 text-xs py-1" data-testid={`drilldown-row-${i}`}>
-                  <span className="text-muted-foreground/40 w-5 text-right font-mono text-[10px]">{i + 1}</span>
+                  <span className="text-muted-foreground w-5 text-right font-mono text-xs">{i + 1}</span>
                   <RecipientAvatar pubkey={entry.pubkey} />
                   <ProfileLink
                     pubkey={entry.pubkey}
@@ -467,11 +467,11 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
                     fallbackClassName="text-brand font-mono flex-1 truncate text-xs"
                     showAvatar={false}
                   />
-                  <span className="font-mono text-amber-800 dark:text-amber-400 whitespace-nowrap" data-testid={`drilldown-sats-${i}`}>
+                  <span className="font-mono text-warning whitespace-nowrap" data-testid={`drilldown-sats-${i}`}>
                     {formatSats(entry.sats)}
                   </span>
-                  <span className="text-muted-foreground/40 text-[10px]">sats</span>
-                  <Badge variant="secondary" className="text-[10px] px-1.5" data-testid={`drilldown-count-${i}`}>
+                  <span className="text-muted-foreground text-xs">sats</span>
+                  <Badge variant="secondary" className="text-xs px-1.5" data-testid={`drilldown-count-${i}`}>
                     {entry.count} {entry.count === 1 ? "zap" : "zaps"}
                   </Badge>
                 </div>
@@ -486,7 +486,7 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
             <div className="flex items-center gap-2">
               <TrendIcon className={`w-4 h-4 ${trendColor}`} />
               <span className={`text-sm font-mono ${trendColor}`} data-testid="text-velocity-trend">{trendLabel}</span>
-              <span className="text-xs text-muted-foreground/50">
+              <span className="text-xs text-muted-foreground">
                 ({velocity.pctChange > 0 ? "+" : ""}{velocity.pctChange}% volume change)
               </span>
             </div>
@@ -596,13 +596,13 @@ export function ZapEconomy({ relays: propRelays }: { relays?: string[] }) {
             <div className="space-y-1.5">
               {topRecipients.map((r, i) => (
                 <div key={r.pubkey} className="flex items-center gap-2 text-xs" data-testid={`recipient-row-${i}`}>
-                  <span className="text-muted-foreground/40 w-4 text-right font-mono">{i + 1}</span>
+                  <span className="text-muted-foreground w-4 text-right font-mono">{i + 1}</span>
                   <RecipientAvatar pubkey={r.pubkey} />
                   <ProfileLink pubkey={r.pubkey} className="text-foreground flex-1 truncate text-xs" fallbackClassName="text-brand font-mono flex-1 truncate text-xs" showAvatar={false} />
-                  <span className="font-mono text-amber-800 dark:text-amber-400" data-testid={`recipient-sats-${i}`}>
+                  <span className="font-mono text-warning" data-testid={`recipient-sats-${i}`}>
                     {formatSats(r.sats)}
                   </span>
-                  <span className="text-muted-foreground/40">sats</span>
+                  <span className="text-muted-foreground">sats</span>
                   <Badge variant="secondary" data-testid={`recipient-count-${i}`}>
                     {r.count}
                   </Badge>

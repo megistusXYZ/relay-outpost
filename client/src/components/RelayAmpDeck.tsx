@@ -62,13 +62,13 @@ export function RelayAmpDeck({ tracks }: { tracks: MusicTrack[] }) {
         <div className="flex-1 min-w-0 rounded-lg bg-brand/[0.07] ring-1 ring-inset ring-brand/25 dark:bg-zinc-950 dark:ring-brand/20 px-3 py-2 flex flex-col justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-[12px] text-brand-strong/60 dark:text-brand/50 font-medium">RelayAmp</span>
+              <span className="text-[12px] text-brand-strong/60 font-medium">RelayAmp</span>
               <span className={`w-1 h-1 rounded-full ${isPlaying ? "bg-brand animate-pulse" : "bg-brand/30"}`} />
             </div>
             <p className="text-[13px] font-mono text-brand-strong dark:text-brand truncate leading-tight mt-0.5" data-testid="amp-title">
               {track ? track.title : "— quiet —"}
             </p>
-            <p className="text-[10px] font-mono text-brand-strong/70 dark:text-brand/60 truncate leading-tight">
+            <p className="text-xs font-mono text-brand-strong/70 truncate leading-tight">
               {track ? track.artist : "select a track below"}
             </p>
           </div>
@@ -87,8 +87,8 @@ export function RelayAmpDeck({ tracks }: { tracks: MusicTrack[] }) {
                 />
               ))}
             </div>
-            <span className="text-[10px] font-mono text-brand-strong/80 dark:text-brand/80 tabular-nums shrink-0" data-testid="amp-time">
-              {fmt(currentTime)} <span className="text-brand-strong/40 dark:text-brand/40">/</span> {fmt(duration || track?.duration || 0)}
+            <span className="text-xs font-mono text-brand-strong/80 tabular-nums shrink-0" data-testid="amp-time">
+              {fmt(currentTime)} <span className="text-brand-strong/40">/</span> {fmt(duration || track?.duration || 0)}
             </span>
           </div>
         </div>

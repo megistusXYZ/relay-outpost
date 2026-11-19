@@ -26,7 +26,7 @@ function WalletProviderCard({ name, url, description }: { name: string; url: str
     >
       <div className="flex items-center gap-2 mb-1">
         <BtcZapIcon className="w-3.5 h-3.5 text-[#F7931A]" />
-        <span className="text-xs font-semibold text-foreground/80">{name}</span>
+        <span className="text-xs font-semibold text-foreground">{name}</span>
         <ExternalLink className="w-2.5 h-2.5 text-muted-foreground group-hover:text-foreground/60 transition-colors ml-auto" />
       </div>
       <p className="text-[12px] text-muted-foreground leading-relaxed">{description}</p>
@@ -56,7 +56,7 @@ export default function ConnectingWallet() {
 
       <div className="mb-8">
         <div className="rounded-[20px] border border-border/60 bg-card p-5">
-          <p className="text-[15px] text-foreground/75 leading-relaxed">
+          <p className="text-[15px] text-foreground leading-relaxed">
             Zaps are small, optional Bitcoin tips — a way to send someone real appreciation. To send and receive them, you need a Bitcoin (Lightning) wallet that can connect to apps. This guide walks you through choosing a wallet, connecting it, adding a tipping address to your profile, and sending your first zap.
           </p>
           <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border/20">
@@ -110,7 +110,7 @@ export default function ConnectingWallet() {
           description={
             <>
               <p>Inside your wallet app, you'll need to generate a connection code. The exact steps vary by wallet, but the general flow is:</p>
-              <ol className="list-decimal list-inside space-y-1 text-[14px] text-foreground/70">
+              <ol className="list-decimal list-inside space-y-1 text-[14px] text-foreground">
                 <li>Open your Lightning wallet app or website</li>
                 <li>Find <strong>"Connect an app"</strong> (sometimes "Wallet Connect") in the settings</li>
                 <li>Create a new connection (sometimes called "app connection")</li>
@@ -128,7 +128,7 @@ export default function ConnectingWallet() {
           description={
             <>
               <p>Now open the <strong>account</strong> page (your face, at the bottom of the bar) → <strong>Wallet</strong> and paste your connection string:</p>
-              <ol className="list-decimal list-inside space-y-1 text-[14px] text-foreground/70">
+              <ol className="list-decimal list-inside space-y-1 text-[14px] text-foreground">
                 <li>Navigate to the <strong>Lightning Wallet</strong> page</li>
                 <li>Paste your connection code into the field</li>
                 <li>Tap <strong>Connect Wallet</strong></li>
@@ -147,7 +147,7 @@ export default function ConnectingWallet() {
           description={
             <>
               <p>A Lightning address is like an email address for receiving Bitcoin. Zaps go to the address on your <em>profile</em> — and there are two ways to get one:</p>
-              <ol className="list-decimal list-inside space-y-1 text-[14px] text-foreground/70">
+              <ol className="list-decimal list-inside space-y-1 text-[14px] text-foreground">
                 <li><strong>No wallet yet?</strong> On the Wallet page, tap <strong>Use npub.cash address</strong> — you're zappable instantly, and the same page shows what's waiting and lets you claim it later</li>
                 <li><strong>Have a wallet with an address?</strong> Open the <strong>Account</strong> page → <strong>Edit profile</strong> and enter it (e.g., <code className="text-[12px] bg-muted/30 px-1 py-0.5 rounded font-mono">you@getalby.com</code>)</li>
                 <li>Save — this publishes it to your relays</li>
@@ -164,7 +164,7 @@ export default function ConnectingWallet() {
           description={
             <>
               <p>Now the fun part — sending an optional tip to someone you appreciate:</p>
-              <ol className="list-decimal list-inside space-y-1 text-[14px] text-foreground/70">
+              <ol className="list-decimal list-inside space-y-1 text-[14px] text-foreground">
                 <li>Find a post you like in your feed</li>
                 <li>Tap the <strong>zap icon</strong> (lightning bolt) on the post</li>
                 <li>Choose an amount — you can use presets or type a custom amount</li>
@@ -173,7 +173,7 @@ export default function ConnectingWallet() {
               <div className="rounded-[16px] bg-foreground/[0.03] border border-border/60 px-3 py-2 mt-2">
                 <div className="flex items-center gap-2">
                   <BtcZapIcon className="w-3.5 h-3.5 text-[#F7931A] shrink-0" />
-                  <p className="text-[12px] text-foreground/60">You can customize your zap presets and default amount in the Wallet settings. Set quick-tap amounts that work for your budget.</p>
+                  <p className="text-[12px] text-foreground">You can customize your zap presets and default amount in the Wallet settings. Set quick-tap amounts that work for your budget.</p>
                 </div>
               </div>
               <p className="text-[12px] text-muted-foreground">Zaps are recorded on Nostr relays, so everyone can see the value flowing through the network. It's the economic engine of the open internet.</p>
@@ -188,7 +188,7 @@ export default function ConnectingWallet() {
           description={
             <>
               <p>Beyond zapping posts, you can also send sats directly to any Nostr user or Lightning address from the Wallet page:</p>
-              <ul className="list-disc list-inside space-y-1 text-[14px] text-foreground/70">
+              <ul className="list-disc list-inside space-y-1 text-[14px] text-foreground">
                 <li>Search for a person by name</li>
                 <li>Enter a Lightning address or invoice</li>
                 <li>Set the amount and add an optional message</li>
@@ -206,7 +206,7 @@ export default function ConnectingWallet() {
           description={
             <>
               <p>How this keeps your funds secure:</p>
-              <ul className="list-disc list-inside space-y-1 text-[14px] text-foreground/70">
+              <ul className="list-disc list-inside space-y-1 text-[14px] text-foreground">
                 <li><strong>Your keys stay with your wallet</strong> — Relay Outpost never has access to your private keys or seed phrase</li>
                 <li><strong>Encrypted communication</strong> — All wallet commands travel over an encrypted connection</li>
                 <li><strong>Revoke anytime</strong> — You can disconnect your wallet or revoke the connection from your wallet provider at any time</li>
