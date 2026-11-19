@@ -29,6 +29,7 @@ import { SpeechReaderBar } from "@/components/SpeechReaderBar";
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { DesktopStoriesRail } from "@/components/DesktopStoriesRail";
+import { LaunchStory } from "@/components/relay/LaunchStory";
 
 import { OttoMark } from "@/components/OttoMark";
 import { useClassicSidebar } from "@/lib/desktop-chrome";
@@ -1591,6 +1592,9 @@ function AppLayout() {
       onOpenChange={setSidebarOpen}
     >
       <AppContent mainRef={mainRef} scrollHidden={scrollHidden} />
+      {/* Once per session, as the app opens, Relay tells its name over the app and lands on its
+          logo (components/relay/LaunchStory). A layer over the shell, never a gate in front of it. */}
+      {!!pubkey && <LaunchStory />}
       {/* Signed-in recipient invite prompt. New accounts consume + remove the
           invite markers inside CreateAccountFlow, so this never double-fires. */}
       {/* Not over the Welcome page: there it is the page's first card, inline. */}

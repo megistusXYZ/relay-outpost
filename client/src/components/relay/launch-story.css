@@ -1,0 +1,12 @@
+/* The app's launch story (LaunchStory.tsx): a layer over the app in the page's own background,
+   with the logo in the middle where the loading screen's face was (a 54px mark: 36px type, 1.5em).
+   It clears as the logo glides onto the app's own logo ("landing"), or at once on a skip. */
+.launch-story{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;
+  background:hsl(var(--background));opacity:1;touch-action:none;-webkit-tap-highlight-color:transparent}
+.launch-story-logo{display:inline-flex;transform-origin:center}
+/* No hop here: the story's own moves are enough, and a hop mid-glide would land it off the mark. */
+.launch-story .rl[data-s=icon] .rl-m{animation:none}
+.launch-story[data-phase=landing]{background:transparent;transition:background-color .5s linear;pointer-events:none}
+.launch-story[data-phase=landing] .launch-story-logo{transition:transform .7s cubic-bezier(.65,0,.2,1),opacity .2s linear .5s;opacity:0}
+.launch-story[data-phase=skipping]{opacity:0;transition:opacity .22s linear}
+@media (prefers-reduced-motion:reduce){.launch-story,.launch-story-logo{transition:none!important}}
