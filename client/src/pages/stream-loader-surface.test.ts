@@ -122,3 +122,25 @@ describe("the Live page's tabs and hashtags", () => {
     for (const c of tags) expect(c).toBe("text-xs text-muted-foreground");
   });
 });
+
+/**
+ * The Planned badge (LIGHT_MODE.md, rule 5). It sits on the page, beside a
+ * stream's hashtags, and in light mode it was white on 80% amber: 2.56:1. In
+ * light it is now the warning word on the muted surface, the same shape as the
+ * Ended badge beside it. Dark keeps its amber pill, which passes.
+ */
+describe("the Live page's Planned badge", () => {
+  const badge = (SRC.match(/data-testid="badge-status-planned" className="([^"]*)"/) || [])[1] ?? "";
+  const light = badge.split(/\s+/).filter((c) => !c.includes(":"));
+
+  it("is the warning word on a neutral surface in light mode", () => {
+    expect(light).toContain("text-warning");
+    expect(light).toContain("bg-muted");
+    expect(light.filter((c) => /^(bg|text|border)-(amber|white)/.test(c))).toEqual([]);
+  });
+
+  it("keeps its amber pill in dark mode", () => {
+    expect(badge).toContain("dark:bg-amber-600/80");
+    expect(badge).toContain("dark:text-white");
+  });
+});

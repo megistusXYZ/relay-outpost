@@ -80,7 +80,7 @@ function StatusBadge({ status }: { status: string }) {
   }
   if (status === "planned") {
     return (
-      <Badge data-testid="badge-status-planned" className="bg-amber-600/80 text-white border-amber-500/50 gap-1">
+      <Badge data-testid="badge-status-planned" className="bg-muted dark:bg-amber-600/80 text-warning dark:text-white border-border dark:border-amber-500/50 gap-1">
         <Clock className="w-3 h-3" />
         Planned
       </Badge>
