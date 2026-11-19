@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import "./relay-logo.css";
 
 /**
@@ -23,6 +23,12 @@ export interface RelayLogoProps {
   size?: number;
   /** Accessible name. Pass "" when the logo is decorative. */
   label?: string;
+  /**
+   * A face of the caller's own in the mark's place, for a screen whose face
+   * already has its own moods. It must be an <svg> that can fill its box; the
+   * ring, dot and eyes inside it are the caller's to style for each state.
+   */
+  mark?: ReactNode;
   className?: string;
   style?: CSSProperties;
 }
@@ -35,6 +41,7 @@ export function RelayLogo({
   reach,
   size,
   label = "Relay Outpost",
+  mark,
   className,
   style,
 }: RelayLogoProps) {
@@ -57,14 +64,16 @@ export function RelayLogo({
         </span>
       </span>
       <span className="rl-m">
-        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-          <path className="rl-ring" d="M78.98 42.24 A30 30 0 1 1 57.76 21.02" />
-          <circle className="rl-dot" cx="71.2" cy="28.8" r="6.5" />
-          <g className="rl-eyes">
-            <ellipse cx="42" cy="51" rx="3.6" ry="5.2" />
-            <ellipse cx="58" cy="51" rx="3.6" ry="5.2" />
-          </g>
-        </svg>
+        {mark ?? (
+          <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+            <path className="rl-ring" d="M78.98 42.24 A30 30 0 1 1 57.76 21.02" />
+            <circle className="rl-dot" cx="71.2" cy="28.8" r="6.5" />
+            <g className="rl-eyes">
+              <ellipse cx="42" cy="51" rx="3.6" ry="5.2" />
+              <ellipse cx="58" cy="51" rx="3.6" ry="5.2" />
+            </g>
+          </svg>
+        )}
       </span>
       <span className="rl-w b" aria-hidden="true">
         <span>

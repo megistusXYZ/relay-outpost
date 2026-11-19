@@ -19,6 +19,15 @@ describe("RelayLogo", () => {
     expect(html).toContain('aria-label="Relay Outpost"');
   });
 
+  it("lets a screen put its own face in the mark's place, between the two words", () => {
+    const own = createElement("svg", { className: "own-face", viewBox: "0 0 100 100" });
+    const html = renderToStaticMarkup(createElement(RelayLogo, { state: "full", mark: own }));
+    expect(html).toContain('class="own-face"');
+    expect(html).not.toContain("rl-ring");
+    expect(html.indexOf("rl-w a")).toBeLessThan(html.indexOf("own-face"));
+    expect(html.indexOf("own-face")).toBeLessThan(html.indexOf("rl-w b"));
+  });
+
   it("has a style rule for every state and reach value it can be given", () => {
     for (const s of ["relay", "full", "work", "rest", "icon"]) expect(css).toContain(`[data-s=${s}]`);
     for (const r of ["empty", "unreachable", "refused"]) expect(css).toContain(`[data-reach=${r}]`);

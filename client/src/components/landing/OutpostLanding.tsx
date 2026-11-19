@@ -20,6 +20,8 @@ import { choseLite } from "@/hooks/use-perf-mode";
 import { InviteGreeting } from "@/components/landing/InviteGreeting";
 import { loadSignupDraft } from "@/lib/account-draft";
 import { trackSignupEvent } from "@/lib/signup-telemetry";
+import { RelayLogo } from "@/components/relay/RelayLogo";
+import { useLandingLogo, useNoRoomForName } from "./landing-logo";
 import "./outpost-landing.css";
 
 const HEADLINE = "The next phase of the internet";
@@ -44,9 +46,10 @@ function Otto({ size, mood = "here", react, markRef, className = "", label }: { 
   return (
     <svg ref={markRef} className={`otto ${className}`} data-mood={mood} data-react={react || undefined} viewBox="0 0 100 100" width={size} height={size}
       role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true} style={{ overflow: "visible" }}>
-      <path d="M78.98 42.24 A30 30 0 1 1 57.76 21.02" style={{ fill: "none", stroke: "currentColor", strokeWidth: 9, strokeLinecap: "round" }} />
+      {/* The ring's weight lives in the stylesheet (.otto .ring), so the header's logo can thicken it when the face stands in as the O. */}
+      <path className="ring" d="M78.98 42.24 A30 30 0 1 1 57.76 21.02" style={{ fill: "none", stroke: "currentColor", strokeLinecap: "round" }} />
       <circle className="m m-ask" cx="71.2" cy="28.8" r="12" style={{ fill: "none", stroke: "var(--accent)", strokeWidth: 2, strokeOpacity: 0.45 }} />
-      <circle className="dot" cx="71.2" cy="28.8" r="6.5" style={{ fill: "var(--accent)" }} />
+      <circle className="dot rl-dot" cx="71.2" cy="28.8" r="6.5" style={{ fill: "var(--accent)" }} />
       <g className="look">
         <g className="m m-here blink"><ellipse cx="42" cy="51" rx="3.6" ry="5.2" style={INK} /><ellipse cx="58" cy="51" rx="3.6" ry="5.2" style={INK} /></g>
         <g className="m m-work"><ellipse cx="47" cy="45" rx="3.4" ry="4.8" style={INK} /><ellipse cx="61" cy="45" rx="3.4" ry="4.8" style={INK} /></g>
@@ -122,7 +125,7 @@ const pillarText = { margin: 0, fontSize: 19, color: "var(--ink2)", textWrap: "p
  * a second, then the warm dot appears.
  * Screen readers get the sentence from aria-label. Reduced motion: no decode.
  */
-function DecodeHeadline({ text, onLetter }: { text: string; /** Each letter as it settles (its box), then null when the sentence is done. */ onLetter?: (box: DOMRect | null) => void }) {
+function DecodeHeadline({ text, onLetter, start = true }: { text: string; /** Each letter as it settles (its box), then null when the sentence is done. */ onLetter?: (box: DOMRect | null) => void; /** False while the page waits behind the logo's intro: the decode begins when the page comes in. */ start?: boolean }) {
   const rootRef = useRef<HTMLSpanElement>(null);
   const layerRef = useRef<HTMLSpanElement>(null);
   const watcher = useRef(onLetter);
@@ -132,7 +135,7 @@ function DecodeHeadline({ text, onLetter }: { text: string; /** Each letter as i
   // glyphs live in a separate layer, each centred over its letter's measured box.
   useLayoutEffect(() => {
     const root = rootRef.current, layer = layerRef.current;
-    if (!root || !layer || reducedMotion()) return;
+    if (!root || !layer || !start || reducedMotion()) return;
     const cells = [...root.querySelectorAll<HTMLElement>(".dc")];
     const pick = () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
     const box = layer.getBoundingClientRect();
@@ -167,7 +170,7 @@ function DecodeHeadline({ text, onLetter }: { text: string; /** Each letter as i
     };
     raf = requestAnimationFrame(frame);
     return () => { cancelAnimationFrame(raf); cells.forEach((c) => c.classList.remove("scr")); glyphs.forEach((g) => g.remove()); root.classList.remove("decoding"); };
-  }, [text]);
+  }, [text, start]);
   const words = text.split(" ");
   return (
     <h1 aria-label={text} style={{ position: "relative", margin: 0, fontSize: "clamp(42px, 9vw, 92px)", lineHeight: 1.04, fontWeight: 600, textWrap: "balance" } as CSSProperties}>
@@ -376,6 +379,14 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
     return () => io.disconnect();
   }, []);
 
+  // The header's logo (landing-logo.ts): the full name at the top, the face once the page has
+  // scrolled or where a narrow phone has no room for the name. On a first visit it tells its
+  // name in the middle of the screen while the page waits, then lands here.
+  const noRoomForName = useNoRoomForName();
+  const logo = useLandingLogo(scrolled || noRoomForName ? "icon" : "full", choseLite());
+  // As it writes its name, the face looks at it.
+  useEffect(() => { if (logo.stage === "relay") gaze(-4, 0, 1100); }, [logo.stage, gaze]);
+
   const go = useCallback((path: string) => (e: MouseEvent) => { e.preventDefault(); navigate(path); }, [navigate]);
   const toTop = useCallback((e: MouseEvent) => {
     e.preventDefault();
@@ -444,16 +455,19 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
   if (resumable) trackSignupEvent("resume_chip_shown");
 
   return (
-    <div ref={rootRef} className={`outpost-landing${asleep ? " asleep" : ""}`} onPointerMove={onPointerMove} data-testid="outpost-landing">
+    <div ref={rootRef} className={`outpost-landing${asleep ? " asleep" : ""}${logo.pre ? " is-pre" : ""}${logo.landing ? " is-landing" : ""}`} onPointerMove={onPointerMove} data-testid="outpost-landing">
       {/* At the top of the page the header is clear, so the hero has no edge above it;
           its glass and hairline come in once the page scrolls (owner, 2026-11-18). */}
       <div ref={topRef} aria-hidden="true" style={{ height: 1, marginBottom: -1 }} />
-      <header className={`ol-header${scrolled ? " scrolled" : ""}`} style={{ position: "sticky", top: 0, zIndex: 20 }}>
-        <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 clamp(16px, 5vw, 24px)", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <a href="#top" onClick={toTop} style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 44, fontSize: 19, fontWeight: 600, letterSpacing: "-0.02em" }}>
-            <Otto size={34} mood={headMood} react={headReact} markRef={headMarkRef} /> Outpost
+      <header className={`ol-header${scrolled ? " scrolled" : ""}${logo.intro ? " is-intro" : ""}`} style={{ position: "sticky", top: 0, zIndex: 20 }}>
+        <div className="lg-in" style={{ maxWidth: 1120, margin: "0 auto", padding: "0 clamp(16px, 5vw, 24px)", height: 64, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12 }}>
+          <a href="#top" className="lg-btn" data-testid="landing-logo"
+            onClick={(e) => { toTop(e); logo.onClick(); }}
+            onPointerEnter={(e) => logo.onPointerEnter(e.pointerType)}
+            onPointerLeave={logo.onPointerLeave}>
+            <RelayLogo state={logo.stage} mark={<Otto size={34} mood={headMood} react={headReact} markRef={headMarkRef} />} />
           </a>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="lg-hide" style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button type="button" className="tap" onClick={onToggleTheme} aria-label="Switch between light and dark" data-testid="landing-theme-toggle"
               style={{ width: 44, height: 44, borderRadius: 999, border: 0, background: "transparent", color: "var(--ink)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
               <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="8.2" style={{ fill: "none", stroke: "currentColor", strokeWidth: 1.6 }} /><path d="M12 3.8a8.2 8.2 0 0 1 0 16.4z" style={INK} /></svg>
@@ -471,7 +485,7 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
           <HeroDoodles />
         </div>
         <div data-hero-content style={{ position: "relative", zIndex: 2, maxWidth: 920, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 28 }}>
-          <DecodeHeadline text={HEADLINE} onLetter={onLetter} />
+          <DecodeHeadline text={HEADLINE} onLetter={onLetter} start={!logo.pre} />
           <InviteGreeting />
           <div className="in" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: 20, marginTop: 8, animationDelay: ".44s" }}>
             <button type="button" className="btn" onClick={onLaunch} {...noticed} style={btnStyle} data-testid="button-engage-warp">Create your space</button>
