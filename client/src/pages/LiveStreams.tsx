@@ -189,9 +189,9 @@ function StreamCard({ stream, onClick, liveness }: { stream: LiveEventData; onCl
           </div>
         </Link>
         {stream.hashtags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-x-2 gap-y-1">
             {stream.hashtags.slice(0, 3).map(tag => (
-              <span key={tag} className="text-xs px-1.5 py-0.5 rounded-full bg-brand/10 text-brand">
+              <span key={tag} className="text-xs text-muted-foreground">
                 #{tag}
               </span>
             ))}
@@ -287,9 +287,9 @@ function PastBroadcastRow({ stream, onClick }: { stream: LiveEventData; onClick:
           )}
         </div>
         {stream.hashtags.length > 0 && (
-          <div className="flex flex-wrap gap-1 pt-0.5">
+          <div className="flex flex-wrap gap-x-2 gap-y-1 pt-0.5">
             {stream.hashtags.slice(0, 4).map(tag => (
-              <span key={tag} className="text-xs px-1.5 py-0.5 rounded-full bg-brand/10 text-brand">
+              <span key={tag} className="text-xs text-muted-foreground">
                 #{tag}
               </span>
             ))}
@@ -1677,7 +1677,7 @@ function StreamDetail({ stream }: { stream: LiveEventData }) {
             <div className="flex items-center gap-2 flex-wrap">
               <StatusBadge status={stream.status} />
               {stream.hashtags.slice(0, 3).map(t => (
-                <span key={t} className="text-xs px-1.5 py-0.5 rounded-full bg-brand/10 text-brand">#{t}</span>
+                <span key={t} className="text-xs text-muted-foreground">#{t}</span>
               ))}
               <div className="flex items-center gap-1.5 ml-auto">
                 <Button
@@ -2384,16 +2384,18 @@ export default function LiveStreams() {
             key={tab.key}
             onClick={() => setFilterTab(tab.key)}
             data-testid={`tab-streams-${tab.key}`}
+            aria-pressed={filterTab === tab.key}
+            // Selection is ink: the chosen tab is the ink word with an ink line under it.
             className={`px-3 py-1.5 text-xs font-medium rounded-t transition-colors relative whitespace-nowrap shrink-0 ${
               filterTab === tab.key
-                ? "text-brand after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-brand/60"
+                ? "text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-foreground"
                 : "text-muted-foreground"
             }`}
           >
             <span className="sm:hidden">{tab.shortLabel}</span>
             <span className="hidden sm:inline">{tab.label}</span>
             {tab.count > 0 && (
-              <span className={`ml-1.5 text-xs ${filterTab === tab.key ? "text-brand" : "text-muted-foreground"}`}>
+              <span className={`ml-1.5 text-xs ${filterTab === tab.key ? "text-foreground" : "text-muted-foreground"}`}>
                 ({tab.count})
               </span>
             )}
