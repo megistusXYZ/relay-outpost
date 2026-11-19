@@ -100,3 +100,25 @@ describe("the Live page's light surfaces", () => {
     expect(SRC).toMatch(/from-black\/80 via-transparent to-transparent \$\{hasThumbnail \? "" : "hidden dark:block"\}/);
   });
 });
+
+/**
+ * Selection is ink (LIGHT_MODE.md, rule 3), in both themes: the chosen tab was
+ * an Ember word with an Ember line under it. And a hashtag on this page is a
+ * label, not a link, so it is a plain secondary word (rule 2): it was an Ember
+ * word on an Ember tint.
+ */
+describe("the Live page's tabs and hashtags", () => {
+  it("draws the chosen tab in ink, with an ink line, and says it is chosen", () => {
+    const tab = SRC.slice(SRC.indexOf("data-testid={`tab-streams-${tab.key}`}"));
+    const button = tab.slice(0, tab.indexOf("</button>"));
+    expect(button).toMatch(/aria-pressed=\{filterTab === tab\.key\}/);
+    expect(button).toMatch(/"text-foreground after:absolute [^"]*after:bg-foreground"/);
+    expect(button).not.toMatch(/brand/);
+  });
+
+  it("writes each hashtag as a plain secondary word", () => {
+    const tags = [...SRC.matchAll(/<span key=\{t(?:ag)?\} className="([^"]*)">\s*#\{t(?:ag)?\}/g)].map((m) => m[1]);
+    expect(tags).toHaveLength(3);
+    for (const c of tags) expect(c).toBe("text-xs text-muted-foreground");
+  });
+});
