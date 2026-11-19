@@ -87,7 +87,7 @@ function StatusBadge({ status }: { status: string }) {
     );
   }
   return (
-    <Badge data-testid="badge-status-ended" className="bg-brand/60 dark:bg-zinc-700/80 text-brand dark:text-zinc-300 border-brand/40 dark:border-zinc-600/50 gap-1">
+    <Badge data-testid="badge-status-ended" className="bg-muted dark:bg-zinc-700/80 text-muted-foreground dark:text-zinc-300 border-border dark:border-zinc-600/50 gap-1">
       Ended
     </Badge>
   );
@@ -102,6 +102,7 @@ function StreamCard({ stream, onClick, liveness }: { stream: LiveEventData; onCl
   const avatarUrl = profile ? getAvatarUrl(profile) : undefined;
   const [imgError, setImgError] = useState(false);
   const proxiedImage = stream.image && needsProxy(stream.image) ? proxyUrl(stream.image) : stream.image;
+  const hasThumbnail = !!proxiedImage && !imgError;
   let hostNpub: string;
   try { hostNpub = nip19.npubEncode(hostPubkey); } catch { hostNpub = hostPubkey; }
 
@@ -111,8 +112,8 @@ function StreamCard({ stream, onClick, liveness }: { stream: LiveEventData; onCl
       data-testid={`card-stream-${stream.id}`}
       className="group relative overflow-hidden rounded-xl border border-border dark:border-white/[0.06] bg-card dark:bg-gradient-to-br dark:from-[#0c0c14] dark:to-[#080810] backdrop-blur-sm dark:backdrop-blur-none hover:border-brand/30 dark:hover:border-brand/20 hover:shadow-[0_4px_20px_rgba(13,15,18,0.08)] dark:hover:shadow-[0_0_20px_rgba(255,255,255,0.08)] transition-all duration-300 text-left w-full"
     >
-      <div className="relative aspect-video overflow-hidden rounded-t-xl bg-brand/50 dark:bg-black/50">
-        {proxiedImage && !imgError ? (
+      <div className="relative aspect-video overflow-hidden rounded-t-xl bg-muted dark:bg-black/50">
+        {hasThumbnail ? (
           <img
             src={proxiedImage}
             alt={stream.title}
@@ -120,13 +121,13 @@ function StreamCard({ stream, onClick, liveness }: { stream: LiveEventData; onCl
             onError={() => setImgError(true)}
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-brand/60 via-brand/40 to-brand/30 dark:from-[#0e0a1a] dark:via-[#0c0818] dark:to-[#080610] relative overflow-hidden">
+          <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-muted dark:bg-gradient-to-br dark:from-[#0e0a1a] dark:via-[#0c0818] dark:to-[#080610] relative overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(13,15,18,0.08)_0%,transparent_70%)] dark:bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.15)_0%,transparent_70%)]" />
             <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(1px 1px at 20px 30px, white, transparent), radial-gradient(1px 1px at 40px 70px, white, transparent), radial-gradient(1px 1px at 80px 20px, white, transparent), radial-gradient(1px 1px at 90px 80px, white, transparent), radial-gradient(1px 1px at 150px 50px, white, transparent), radial-gradient(1px 1px at 170px 90px, white, transparent)' }} />
             <div className="relative z-10 flex flex-col items-center gap-2.5">
               <div className="relative">
-                <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-brand/30 to-brand/20 dark:from-brand/40 dark:to-brand/30 blur-sm group-hover:from-brand/40 group-hover:to-brand/30 dark:group-hover:from-brand/50 dark:group-hover:to-brand/40 transition-all duration-500" />
-                <Avatar className="w-16 h-16 relative border-2 border-brand/40 dark:border-brand/30 shadow-lg shadow-brand/10 dark:shadow-brand/20 group-hover:border-brand/60 dark:group-hover:border-brand/50 transition-all duration-500">
+                <div className="hidden dark:block absolute -inset-1 rounded-full bg-gradient-to-br dark:from-brand/40 dark:to-brand/30 blur-sm dark:group-hover:from-brand/50 dark:group-hover:to-brand/40 transition-all duration-500" />
+                <Avatar className="w-16 h-16 relative border-2 border-border dark:border-brand/30 dark:shadow-lg dark:shadow-brand/20 dark:group-hover:border-brand/50 transition-all duration-500">
                   <AvatarImage src={avatarUrl} alt={displayName} className="object-cover" />
                   <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-lg font-bold">{displayName?.charAt(0)?.toUpperCase()}</AvatarFallback>
                 </Avatar>
@@ -161,7 +162,9 @@ function StreamCard({ stream, onClick, liveness }: { stream: LiveEventData; onCl
           </div>
         )}
         {stream.status === "live" && liveness !== "offline" && (
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+          // A dark fade for a thumbnail. The card's own art has no picture to
+          // fade, so in light mode the fade is left off it.
+          <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent ${hasThumbnail ? "" : "hidden dark:block"}`} />
         )}
         {liveness === "offline" && (
           <div className="absolute inset-0 bg-black/40" />
@@ -176,7 +179,7 @@ function StreamCard({ stream, onClick, liveness }: { stream: LiveEventData; onCl
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
           className="flex items-center gap-2 group/host rounded-md -mx-1 px-1 py-0.5 hover:bg-accent dark:hover:bg-brand/10 transition-colors"
         >
-          <Avatar className="w-6 h-6 border border-brand/30 dark:border-brand/20 ring-1 ring-brand/20 dark:ring-brand/10">
+          <Avatar className="w-6 h-6 border border-border dark:border-brand/20 dark:ring-1 dark:ring-brand/10">
             <AvatarImage src={avatarUrl} alt={displayName} />
             <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[9px] font-medium">{displayName?.charAt(0)?.toUpperCase()}</AvatarFallback>
           </Avatar>
@@ -837,7 +840,7 @@ function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, i
   if (!url && !hlsUrl) {
     const isPlanned = status === "planned";
     return (
-      <div className="relative aspect-video bg-brand/10 dark:bg-black/80 rounded-lg flex items-center justify-center border border-brand/20 dark:border-transparent overflow-hidden">
+      <div className="relative aspect-video bg-muted dark:bg-black/80 rounded-lg flex items-center justify-center border border-border dark:border-transparent overflow-hidden">
         {image ? (
           <>
             <img src={image} alt={title} className="absolute inset-0 w-full h-full object-cover" />
@@ -858,12 +861,12 @@ function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, i
             </div>
           </>
         ) : (
-          <div className="text-center space-y-2 text-brand">
+          <div className="text-center space-y-2 text-foreground dark:text-brand">
             {isPlanned ? (
               <>
                 <Calendar className="w-16 h-16 mx-auto opacity-30" />
                 <p className="text-sm">Upcoming stream</p>
-                <p className="text-xs opacity-60">This stream hasn't started yet</p>
+                <p className="text-xs text-muted-foreground dark:text-brand">This stream hasn't started yet</p>
               </>
             ) : (
               <>
@@ -879,8 +882,8 @@ function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, i
 
   if (error) {
     return (
-      <div className="aspect-video bg-brand/10 dark:bg-black/80 rounded-lg flex items-center justify-center border border-brand/20 dark:border-transparent">
-        <div className="text-center space-y-3 text-brand px-6">
+      <div className="aspect-video bg-muted dark:bg-black/80 rounded-lg flex items-center justify-center border border-border dark:border-transparent">
+        <div className="text-center space-y-3 text-foreground dark:text-brand px-6">
           <Satellite className="w-12 h-12 mx-auto opacity-40" />
           <p className="text-sm">{error}</p>
           {/* In-app first: retry re-initializes the player through our own
@@ -918,7 +921,7 @@ function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, i
   if ((preferNativeHls || (directVideoUrl && !Hls.isSupported())) && directVideoUrl && !isIframeEmbed) {
     return (
       <div className={`space-y-0 ${mini ? "h-full" : ""}`}>
-        <div className={`relative ${mini ? "h-full" : "aspect-video"} bg-brand/5 dark:bg-black ${mini ? "rounded-none" : "rounded-t-lg sm:rounded-lg"} overflow-hidden border border-brand/20 dark:border-transparent group/stream`}>
+        <div className={`relative ${mini ? "h-full" : "aspect-video"} bg-muted dark:bg-black ${mini ? "rounded-none" : "rounded-t-lg sm:rounded-lg"} overflow-hidden border border-border dark:border-transparent group/stream`}>
           {videoLoading && <StreamPlayerLoader />}
           <video
             ref={videoRef}
@@ -974,7 +977,7 @@ function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, i
 
   if (isIframeEmbed && embedId) {
     return (
-      <div className={`relative ${mini ? "h-full" : "aspect-video"} bg-brand/5 dark:bg-black ${mini ? "rounded-none" : "rounded-lg"} overflow-hidden border border-brand/20 dark:border-transparent`}>
+      <div className={`relative ${mini ? "h-full" : "aspect-video"} bg-muted dark:bg-black ${mini ? "rounded-none" : "rounded-lg"} overflow-hidden border border-border dark:border-transparent`}>
         <InlineEmbedPlayer
           type={embedType}
           embedId={embedId}
@@ -989,7 +992,7 @@ function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, i
   if (useHlsJs) {
     return (
       <div className={`space-y-0 ${mini ? "h-full" : ""}`}>
-        <div className={`relative ${mini ? "h-full" : "aspect-video"} bg-brand/5 dark:bg-black ${mini ? "rounded-none" : "rounded-t-lg sm:rounded-lg"} overflow-hidden border border-brand/20 dark:border-transparent group/stream`}>
+        <div className={`relative ${mini ? "h-full" : "aspect-video"} bg-muted dark:bg-black ${mini ? "rounded-none" : "rounded-t-lg sm:rounded-lg"} overflow-hidden border border-border dark:border-transparent group/stream`}>
           {videoLoading && <StreamPlayerLoader />}
           <video
             ref={videoRef}
@@ -1054,7 +1057,7 @@ function StreamPlayer({ url, title, hlsUrl, isZapStream, zapStreamNaddr, mini, i
 
   return (
     <div className={`space-y-0 ${mini ? "h-full" : ""}`}>
-      <div className={`relative ${mini ? "h-full" : "aspect-video"} bg-brand/5 dark:bg-black ${mini ? "rounded-none" : "rounded-t-lg sm:rounded-lg"} overflow-hidden border border-brand/20 dark:border-transparent group/stream`}>
+      <div className={`relative ${mini ? "h-full" : "aspect-video"} bg-muted dark:bg-black ${mini ? "rounded-none" : "rounded-t-lg sm:rounded-lg"} overflow-hidden border border-border dark:border-transparent group/stream`}>
         {videoLoading && <StreamPlayerLoader />}
         <video
           ref={videoRef}
