@@ -639,11 +639,17 @@ function ChatMessage({ msg, aTag }: { msg: Event; aTag: string }) {
   );
 }
 
+/**
+ * The panel over the player while it tunes in. The loader draws its own ink
+ * face and muted words, so the panel under it is a neutral surface in light
+ * mode: on the old Ember panel the words measured 1.2:1. It stays opaque, the
+ * empty video under it is black. Dark keeps its near-black gradient.
+ */
 function StreamPlayerLoader() {
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-brand/80 to-brand/60 dark:from-[#0a0a14] dark:to-[#080810] z-10 transition-opacity duration-500">
+    <div className="absolute inset-0 flex items-center justify-center bg-muted dark:bg-gradient-to-br dark:from-[#0a0a14] dark:to-[#080810] z-10 transition-opacity duration-500" data-testid="stream-player-loader">
       <div className="text-center space-y-3">
-        <RelayOutpostLoader size="lg" className="text-brand" label="Tuning in..." />
+        <RelayOutpostLoader size="lg" label="Tuning in..." />
       </div>
     </div>
   );
