@@ -236,7 +236,7 @@ function ExpandedSeekBar({
 
   return (
     <div className="flex items-center gap-2.5 w-full">
-      <span className="text-[11px] text-muted-foreground tabular-nums w-9 text-right shrink-0">
+      <span className="text-xs text-muted-foreground tabular-nums w-9 text-right shrink-0">
         {formatTime(displayTime)}
       </span>
       <div
@@ -281,7 +281,7 @@ function ExpandedSeekBar({
           />
         </div>
       </div>
-      <span className="text-[11px] text-muted-foreground tabular-nums w-9 shrink-0">
+      <span className="text-xs text-muted-foreground tabular-nums w-9 shrink-0">
         {formatTime(duration)}
       </span>
     </div>
@@ -347,7 +347,7 @@ function VoicePreviewButton({ voiceId }: { voiceId: string }) {
     <button
       onClick={handlePreview}
       className={`shrink-0 w-7 h-7 md:w-5 md:h-5 rounded-full flex items-center justify-center transition-colors ${
-        isActive ? "bg-brand/20 text-brand" : "hover:bg-muted/30 text-muted-foreground/40"
+        isActive ? "bg-brand/20 text-brand" : "hover:bg-muted/30 text-muted-foreground"
       }`}
       title={isActive ? "Stop preview" : "Preview voice"}
     >
@@ -377,15 +377,15 @@ function UpNextList() {
 
   return (
     <div className="pt-2 md:pt-1.5 border-t border-border/15 dark:border-brand/10">
-      <div className="flex items-center gap-1.5 mb-2 md:mb-1.5 px-0.5 text-muted-foreground/60">
+      <div className="flex items-center gap-1.5 mb-2 md:mb-1.5 px-0.5 text-muted-foreground">
         <ListMusic className="w-4 h-4 md:w-3.5 md:h-3.5" />
-        <span className="text-xs md:text-[11px] font-medium">Up Next</span>
+        <span className="text-xs font-medium">Up Next</span>
         {upNext.length > 0 && (
-          <span className="text-[10px] text-muted-foreground/40 tabular-nums">{upNext.length}</span>
+          <span className="text-xs text-muted-foreground tabular-nums">{upNext.length}</span>
         )}
       </div>
       {upNext.length === 0 ? (
-        <p className="text-[11px] text-muted-foreground/40 px-0.5 py-2">Nothing queued</p>
+        <p className="text-xs text-muted-foreground px-0.5 py-2">Nothing queued</p>
       ) : (
         <div className="max-h-48 md:max-h-44 overflow-y-auto -mx-1 px-1 space-y-0.5">
           {upNext.map(({ track, index }, listPos) => (
@@ -402,7 +402,7 @@ function UpNextList() {
               data-testid="up-next-row"
             >
               {!isMobile && (
-                <span className="shrink-0 text-muted-foreground/30 group-hover:text-muted-foreground/60 cursor-grab active:cursor-grabbing" title="Drag to reorder">
+                <span className="shrink-0 text-muted-foreground cursor-grab active:cursor-grabbing" title="Drag to reorder">
                   <GripVertical className="w-3.5 h-3.5" />
                 </span>
               )}
@@ -415,18 +415,18 @@ function UpNextList() {
                   <img src={track.coverUrl} alt="" className="w-9 h-9 rounded object-cover shrink-0 border border-primary/10" />
                 ) : (
                   <div className="w-9 h-9 rounded bg-brand/5 dark:bg-brand/10 shrink-0 flex items-center justify-center border border-brand/10">
-                    <Music2 className="w-4 h-4 text-brand/50" />
+                    <Music2 className="w-4 h-4 text-brand" />
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs md:text-[12px] font-medium text-foreground/80 truncate leading-tight">{track.title}</p>
-                  <p className="text-[11px] text-muted-foreground/50 truncate leading-tight mt-0.5">{track.artist}</p>
+                  <p className="text-xs md:text-[12px] font-medium text-foreground truncate leading-tight">{track.title}</p>
+                  <p className="text-xs text-muted-foreground truncate leading-tight mt-0.5">{track.artist}</p>
                 </div>
               </button>
               {isMobile && (
                 <div className="flex flex-col shrink-0">
                   <button
-                    className="w-9 h-[22px] flex items-center justify-center text-muted-foreground/40 hover:text-foreground disabled:opacity-25"
+                    className="w-9 h-[22px] flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-25"
                     onClick={() => reorderQueue(index, index - 1)}
                     disabled={listPos === 0}
                     title="Move up"
@@ -434,7 +434,7 @@ function UpNextList() {
                     <ArrowUp className="w-3.5 h-3.5" />
                   </button>
                   <button
-                    className="w-9 h-[22px] flex items-center justify-center text-muted-foreground/40 hover:text-foreground disabled:opacity-25"
+                    className="w-9 h-[22px] flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-25"
                     onClick={() => reorderQueue(index, index + 1)}
                     disabled={listPos === upNext.length - 1}
                     title="Move down"
@@ -444,7 +444,7 @@ function UpNextList() {
                 </div>
               )}
               <button
-                className="shrink-0 w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-lg text-muted-foreground/40 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                className="shrink-0 w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-red-700 dark:hover:text-red-400 hover:bg-red-500/10 transition-colors"
                 onClick={() => removeFromQueue(index)}
                 title="Remove from queue"
                 data-testid="up-next-remove"
@@ -627,22 +627,22 @@ function ExpandedMusicPanel({
             />
           ) : (
             <div className="w-14 h-14 md:w-11 md:h-11 rounded-lg bg-brand/5 dark:bg-brand/10 shrink-0 flex items-center justify-center border border-brand/10">
-              <Music2 className="w-6 h-6 md:w-5 md:h-5 text-brand/60" />
+              <Music2 className="w-6 h-6 md:w-5 md:h-5 text-brand" />
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="text-sm md:text-[13px] font-medium text-foreground/90 leading-snug line-clamp-2">
+            <p className="text-sm md:text-[13px] font-medium text-foreground leading-snug line-clamp-2">
               {currentTrack.title}
             </p>
             {canNavigateToArtist ? (
               <button
-                className="text-xs md:text-[11px] text-brand/70 truncate cursor-pointer hover:text-brand transition-colors text-left bg-transparent border-none p-0 block max-w-full mt-0.5"
+                className="text-xs text-brand truncate cursor-pointer transition-colors text-left bg-transparent border-none p-0 block max-w-full mt-0.5"
                 onClick={navigateToArtist}
               >
                 {currentTrack.artist}
               </button>
             ) : (
-              <p className="text-xs md:text-[11px] text-muted-foreground/60 truncate mt-0.5">
+              <p className="text-xs text-muted-foreground truncate mt-0.5">
                 {currentTrack.artist}
               </p>
             )}
@@ -650,7 +650,7 @@ function ExpandedMusicPanel({
           <div className="flex items-center gap-1 md:gap-0.5 shrink-0">
             {canNavigateToArtist && (
               <button
-                className="w-10 h-10 md:w-8 md:h-8 rounded-lg flex items-center justify-center text-brand/60 hover:text-brand hover:bg-brand/10 transition-colors"
+                className="w-10 h-10 md:w-8 md:h-8 rounded-lg flex items-center justify-center text-brand hover:bg-brand/10 transition-colors"
                 onClick={() => { onCollapse(); navigateToArtist(); }}
                 title="Go to artist"
               >
@@ -659,7 +659,7 @@ function ExpandedMusicPanel({
             )}
             {effectivePubkey && (
               <button
-                className="w-10 h-10 md:w-8 md:h-8 rounded-lg flex items-center justify-center text-amber-500/60 hover:text-amber-500 hover:bg-amber-500/10 transition-colors"
+                className="w-10 h-10 md:w-8 md:h-8 rounded-lg flex items-center justify-center text-warning hover:text-amber-500 hover:bg-amber-500/10 transition-colors"
                 onClick={() => setZapOpen(true)}
                 title="Zap artist"
               >
@@ -667,7 +667,7 @@ function ExpandedMusicPanel({
               </button>
             )}
             <button
-              className="w-10 h-10 md:w-8 md:h-8 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/20 transition-colors"
+              className="w-10 h-10 md:w-8 md:h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted/20 transition-colors"
               onClick={onCollapse}
               title="Collapse"
             >
@@ -679,19 +679,19 @@ function ExpandedMusicPanel({
         <div className="space-y-3 md:space-y-2">
           <div className="flex items-center justify-center gap-2 md:gap-1">
             {!isLive && (
-              <button className="h-11 w-11 md:h-8 md:w-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors" onClick={previous} disabled={!hasPrev} title="Previous track">
+              <button className="h-11 w-11 md:h-8 md:w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/15 transition-colors" onClick={previous} disabled={!hasPrev} title="Previous track">
                 <SkipBack className="w-5 h-5 md:w-4 md:h-4" />
               </button>
             )}
             {!isLive && (
               <button
-                className="relative h-11 w-11 md:h-8 md:w-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors"
+                className="h-11 w-11 md:h-8 md:w-8 rounded-lg flex flex-col items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/15 transition-colors"
                 onClick={() => skip(-SKIP_BACK_SECONDS)}
                 title={`Back ${SKIP_BACK_SECONDS}s`}
                 data-testid="button-music-skip-back"
               >
                 <Rewind className="w-5 h-5 md:w-4 md:h-4" />
-                <span className="absolute -bottom-0.5 text-[8px] font-bold tabular-nums leading-none">{SKIP_BACK_SECONDS}</span>
+                <span className="text-xs font-bold tabular-nums leading-none">{SKIP_BACK_SECONDS}</span>
               </button>
             )}
             <button
@@ -703,17 +703,17 @@ function ExpandedMusicPanel({
             </button>
             {!isLive && (
               <button
-                className="relative h-11 w-11 md:h-8 md:w-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors"
+                className="h-11 w-11 md:h-8 md:w-8 rounded-lg flex flex-col items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/15 transition-colors"
                 onClick={() => skip(SKIP_FORWARD_SECONDS)}
                 title={`Forward ${SKIP_FORWARD_SECONDS}s`}
                 data-testid="button-music-skip-forward"
               >
                 <FastForward className="w-5 h-5 md:w-4 md:h-4" />
-                <span className="absolute -bottom-0.5 text-[8px] font-bold tabular-nums leading-none">{SKIP_FORWARD_SECONDS}</span>
+                <span className="text-xs font-bold tabular-nums leading-none">{SKIP_FORWARD_SECONDS}</span>
               </button>
             )}
             {!isLive && (
-              <button className="h-11 w-11 md:h-8 md:w-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors" onClick={next} disabled={!hasNext} title="Next track">
+              <button className="h-11 w-11 md:h-8 md:w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/15 transition-colors" onClick={next} disabled={!hasNext} title="Next track">
                 <SkipForward className="w-5 h-5 md:w-4 md:h-4" />
               </button>
             )}
@@ -735,7 +735,7 @@ function ExpandedMusicPanel({
 
         <div className="flex items-center justify-between pt-2 md:pt-1.5 border-t border-border/15 dark:border-brand/10">
           <div className="flex items-center gap-2 flex-1 max-w-[160px] md:max-w-[140px]">
-            <button className="shrink-0 w-9 h-9 md:w-auto md:h-auto flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground transition-colors" onClick={toggleMute} aria-label={muted || volume === 0 ? "Unmute" : "Mute"} data-testid="button-audio-mute">
+            <button className="shrink-0 w-9 h-9 md:w-auto md:h-auto flex items-center justify-center text-muted-foreground transition-colors" onClick={toggleMute} aria-label={muted || volume === 0 ? "Unmute" : "Mute"} data-testid="button-audio-mute">
               {muted || volume === 0 ? <VolumeX className="w-4 h-4 md:w-3.5 md:h-3.5" /> : <Volume2 className="w-4 h-4 md:w-3.5 md:h-3.5" />}
             </button>
             {/* iOS silently ignores audio.volume (hardware buttons own
@@ -768,13 +768,13 @@ function ExpandedMusicPanel({
             {!isLive && (
               <div className="relative">
                 <button
-                  className="h-9 md:h-7 px-2 rounded-lg flex items-center gap-1 text-muted-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors shrink-0"
+                  className="h-9 md:h-7 px-2 rounded-lg flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/15 transition-colors shrink-0"
                   onClick={() => setShowSpeed((v) => !v)}
                   title="Playback speed"
                   data-testid="button-music-speed"
                 >
                   <Gauge className="w-4 h-4 md:w-3.5 md:h-3.5" />
-                  <span className="text-xs md:text-[11px] font-medium tabular-nums">{playbackRate}x</span>
+                  <span className="text-xs font-medium tabular-nums">{playbackRate}x</span>
                 </button>
                 {showSpeed && (
                   <div className="absolute bottom-full right-0 mb-1.5 z-10 flex flex-col gap-0.5 p-1 rounded-lg border border-border/30 dark:border-brand/15 bg-popover shadow-xl min-w-[3.5rem]">
@@ -782,10 +782,10 @@ function ExpandedMusicPanel({
                       <button
                         key={r}
                         onClick={() => { setPlaybackRate(r); setShowSpeed(false); }}
-                        className={`px-2.5 py-2 md:py-1.5 rounded-md text-xs md:text-[11px] font-medium tabular-nums text-center transition-colors ${
+                        className={`px-2.5 py-2 md:py-1.5 rounded-md text-xs font-medium tabular-nums text-center transition-colors ${
                           playbackRate === r
                             ? "bg-brand/15 text-brand dark:bg-brand/20"
-                            : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/15"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/15"
                         }`}
                       >
                         {r}x
@@ -796,7 +796,7 @@ function ExpandedMusicPanel({
               </div>
             )}
             <button
-              className="w-9 h-9 md:w-7 md:h-7 rounded-lg flex items-center justify-center text-brand/70 hover:text-brand hover:bg-brand/10 transition-colors shrink-0"
+              className="w-9 h-9 md:w-7 md:h-7 rounded-lg flex items-center justify-center text-brand hover:bg-brand/10 transition-colors shrink-0"
               onClick={() => setShareOpen(true)}
               title="Share"
               data-testid="button-header-player-share"
@@ -805,7 +805,7 @@ function ExpandedMusicPanel({
             </button>
             {currentTrack.event && (
               <button
-                className="w-9 h-9 md:w-7 md:h-7 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/15 transition-colors shrink-0 disabled:opacity-40"
+                className="w-9 h-9 md:w-7 md:h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted/15 transition-colors shrink-0 disabled:opacity-40"
                 onClick={handleRepost}
                 disabled={isReposting}
                 title="Repost"
@@ -859,24 +859,24 @@ function ExpandedMusicPanel({
               />
             ) : (
               <div className="w-14 h-14 rounded-lg bg-brand/[0.08] dark:bg-brand/12 shrink-0 flex items-center justify-center border border-brand/10">
-                <Music2 className="w-6 h-6 text-brand/60" />
+                <Music2 className="w-6 h-6 text-brand" />
               </div>
             )}
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-semibold text-foreground leading-snug line-clamp-2">
                 {currentTrack.title}
               </p>
-              <p className="text-[12px] text-brand/70 mt-0.5 truncate">
+              <p className="text-[12px] text-brand mt-0.5 truncate">
                 {currentTrack.artist}
               </p>
               {currentTrack.genre && (
-                <p className="text-[11px] text-muted-foreground/50 mt-1 truncate">
+                <p className="text-xs text-muted-foreground mt-1 truncate">
                   {currentTrack.genre}
                 </p>
               )}
             </div>
           </div>
-          <p className="text-[12px] text-muted-foreground/70 leading-relaxed px-1">
+          <p className="text-[12px] text-muted-foreground leading-relaxed px-1">
             This will share this track with your followers by publishing a repost to your relays.
           </p>
           <AlertDialogFooter>
@@ -946,21 +946,21 @@ function ExpandedTTSPanel({
           {isLoading ? <RelayOutpostInlineLoader className="w-5 h-5 md:w-4.5 md:h-4.5 text-brand/70" /> : <AudioLines className="w-5 h-5 md:w-4.5 md:h-4.5 text-brand/70" />}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm md:text-[13px] font-medium text-foreground/90 leading-snug line-clamp-2">
+          <p className="text-sm md:text-[13px] font-medium text-foreground leading-snug line-clamp-2">
             {title}
           </p>
-          <p className="text-xs md:text-[11px] text-muted-foreground/60 mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {isLoading ? "Generating..." : `Section ${currentSentence} of ${totalSentences}`}
           </p>
         </div>
         <div className="flex items-center gap-1 md:gap-0.5 shrink-0">
           {sourceUrl && (
-            <button className="w-10 h-10 md:w-8 md:h-8 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/20 transition-colors" onClick={() => navigate(sourceUrl)} title="Go to source">
+            <button className="w-10 h-10 md:w-8 md:h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted/20 transition-colors" onClick={() => navigate(sourceUrl)} title="Go to source">
               <ExternalLink className="w-4 h-4 md:w-3.5 md:h-3.5" />
             </button>
           )}
           <button
-            className="w-10 h-10 md:w-8 md:h-8 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/20 transition-colors"
+            className="w-10 h-10 md:w-8 md:h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted/20 transition-colors"
             onClick={onCollapse}
             title="Collapse"
           >
@@ -971,7 +971,7 @@ function ExpandedTTSPanel({
 
       <div className="space-y-3 md:space-y-2">
         <div className="flex items-center gap-2 w-full">
-          <span className="text-[11px] text-muted-foreground/50 tabular-nums w-8 text-right shrink-0">
+          <span className="text-xs text-muted-foreground tabular-nums w-8 text-right shrink-0">
             {Math.round(progress)}%
           </span>
           <div
@@ -1004,13 +1004,13 @@ function ExpandedTTSPanel({
                 transform: "translate(-50%, -50%)" }}
             />
           </div>
-          <span className="text-[11px] text-muted-foreground/50 tabular-nums shrink-0">
+          <span className="text-xs text-muted-foreground tabular-nums shrink-0">
             {currentSentence}/{totalSentences}
           </span>
         </div>
 
         <div className="flex items-center justify-center gap-3 md:gap-1">
-          <button className="h-11 w-11 md:h-8 md:w-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors" onClick={skipBack} disabled={isLoading}>
+          <button className="h-11 w-11 md:h-8 md:w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/15 transition-colors" onClick={skipBack} disabled={isLoading}>
             <SkipBack className="w-5 h-5 md:w-4 md:h-4" />
           </button>
           <button
@@ -1020,7 +1020,7 @@ function ExpandedTTSPanel({
           >
             {isLoading ? <RelayOutpostInlineLoader className="w-5 h-5 md:w-4.5 md:h-4.5" /> : isPaused ? <Play className="w-5 h-5 md:w-4.5 md:h-4.5 ml-0.5" /> : <Pause className="w-5 h-5 md:w-4.5 md:h-4.5" />}
           </button>
-          <button className="h-11 w-11 md:h-8 md:w-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors" onClick={skipForward} disabled={isLoading}>
+          <button className="h-11 w-11 md:h-8 md:w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/15 transition-colors" onClick={skipForward} disabled={isLoading}>
             <SkipForward className="w-5 h-5 md:w-4 md:h-4" />
           </button>
         </div>
@@ -1030,7 +1030,7 @@ function ExpandedTTSPanel({
         <div className="flex items-start gap-4">
           <div className="flex-1 min-w-0">
             <button
-              className="flex items-center gap-1.5 text-xs md:text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors py-1.5 md:py-1"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors py-1.5 md:py-1"
               onClick={() => setShowSpeed((v) => !v)}
             >
               <Gauge className="w-4 h-4 md:w-3.5 md:h-3.5" />
@@ -1043,10 +1043,10 @@ function ExpandedTTSPanel({
                   <button
                     key={r}
                     onClick={() => { setRate(r); setShowSpeed(false); }}
-                    className={`min-w-[2.75rem] md:min-w-[2.25rem] px-2.5 md:px-2 py-1.5 md:py-1 rounded-md text-xs md:text-[11px] font-medium transition-colors text-center ${
+                    className={`min-w-[2.75rem] md:min-w-[2.25rem] px-2.5 md:px-2 py-1.5 md:py-1 rounded-md text-xs font-medium transition-colors text-center ${
                       rate === r
                         ? "bg-brand/15 text-brand dark:bg-brand/20"
-                        : "text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/15"
+                        : "text-muted-foreground hover:bg-muted/15"
                     }`}
                   >
                     {r}x
@@ -1059,7 +1059,7 @@ function ExpandedTTSPanel({
           {!multiVoice && (
             <div className="flex-1 min-w-0">
               <button
-                className="flex items-center gap-1.5 text-xs md:text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors py-1.5 md:py-1"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors py-1.5 md:py-1"
                 onClick={() => setShowVoices((v) => !v)}
               >
                 <Volume2 className="w-4 h-4 md:w-3.5 md:h-3.5" />
@@ -1074,7 +1074,7 @@ function ExpandedTTSPanel({
                     return (
                       <div
                         key={v.shortName}
-                        className={`inline-flex items-center gap-1 rounded-full text-xs md:text-[11px] pl-3 md:pl-2.5 pr-1.5 md:pr-1 py-1.5 md:py-1 border transition-colors cursor-pointer ${ isSelected ? "bg-brand/[0.12] dark:bg-brand/12 border-brand/25 text-foreground" : "bg-muted/10 border-transparent text-muted-foreground/60 hover:bg-muted/20 hover:text-muted-foreground" }`}
+                        className={`inline-flex items-center gap-1 rounded-full text-xs pl-3 md:pl-2.5 pr-1.5 md:pr-1 py-1.5 md:py-1 border transition-colors cursor-pointer ${ isSelected ? "bg-brand/[0.12] dark:bg-brand/12 border-brand/25 text-foreground" : "bg-muted/10 border-transparent text-muted-foreground hover:bg-muted/20 hover:text-muted-foreground" }`}
                         onClick={() => setVoice(v.shortName)}
                       >
                         <span>{shortLabel}</span>
@@ -1289,9 +1289,9 @@ export function HeaderAudioPlayer() {
               {ttsLoading ? (
                 <RelayOutpostInlineLoader className="w-3.5 h-3.5 md:w-3 md:h-3 text-brand/70 shrink-0" />
               ) : (
-                <AudioLines className="w-3.5 h-3.5 md:w-3 md:h-3 text-brand/70 shrink-0" />
+                <AudioLines className="w-3.5 h-3.5 md:w-3 md:h-3 text-brand shrink-0" />
               )}
-              <span className="text-xs md:text-[11px] font-medium text-foreground/80 truncate leading-tight block" data-testid="header-audio-title">
+              <span className="text-xs font-medium text-foreground truncate leading-tight block" data-testid="header-audio-title">
                 {ttsTitle}
               </span>
             </div>
@@ -1307,7 +1307,7 @@ export function HeaderAudioPlayer() {
                 <SkipForward className="w-2.5 h-2.5" />
               </Button>
               <button
-                className="h-5 px-0.5 text-[9px] font-bold tabular-nums text-brand/70 hover:text-brand transition-colors rounded hidden sm:block"
+                className="h-5 px-0.5 text-xs font-bold tabular-nums text-brand transition-colors rounded hidden sm:block"
                 onClick={nextRate}
                 data-testid="header-audio-speed"
               >
@@ -1398,22 +1398,22 @@ export function HeaderAudioPlayer() {
               style={{ flex: "1 1 0%", maxWidth: "calc(100% - 9.5rem)" }}
               onClick={() => setExpanded((v) => !v)}
             >
-              <Music2 className="w-3.5 h-3.5 md:w-3 md:h-3 text-brand/70 shrink-0" />
-              <span className="text-xs md:text-[11px] font-medium text-foreground/80 truncate leading-tight block" data-testid="header-audio-title">
+              <Music2 className="w-3.5 h-3.5 md:w-3 md:h-3 text-brand shrink-0" />
+              <span className="text-xs font-medium text-foreground truncate leading-tight block" data-testid="header-audio-title">
                 {currentTrack.title}
               </span>
             </div>
 
             <div className="flex items-center shrink-0 ml-auto">
               {canNavigateToArtistFromStrip && (
-                <Button variant="ghost" size="icon" className="h-6 w-6 md:h-5 md:w-5 text-brand/70 hover:text-brand" onClick={navigateToArtistFromStrip} title="Go to artist">
+                <Button variant="ghost" size="icon" className="h-6 w-6 md:h-5 md:w-5 text-brand" onClick={navigateToArtistFromStrip} title="Go to artist">
                   <User className="w-2.5 h-2.5" />
                 </Button>
               )}
               {isLive ? (
                 <LiveWord className="mr-1 text-[12px]" testId="header-audio-live" />
               ) : (
-                <span className="text-[9px] tabular-nums text-muted-foreground/50 mr-0.5 hidden sm:inline" data-testid="header-audio-time">
+                <span className="text-xs tabular-nums text-muted-foreground mr-0.5 hidden sm:inline" data-testid="header-audio-time">
                   {formatTime(currentTime)}/{formatTime(duration)}
                 </span>
               )}

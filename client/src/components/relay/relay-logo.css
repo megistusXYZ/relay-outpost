@@ -1,0 +1,74 @@
+/* Relay Outpost logo. One element, three states: data-s="icon" | "relay" | "full".
+   Also data-s="work" (loading) and "rest" (empty), and data-reach="ok|empty|unreachable|refused".
+   Size with font-size. Colours come from the app tokens (--foreground, --brand, --muted-foreground). */
+.rl{--ink:hsl(var(--foreground,216 16% 6%));--ember:hsl(var(--brand,14 88% 46%));--rl-muted:hsl(var(--muted-foreground,218 10% 37%));--e:cubic-bezier(.65,0,.2,1);
+  font-family:var(--font-brand,'Geist',system-ui,sans-serif);font-weight:600;letter-spacing:-.045em;
+  color:var(--ink);display:inline-flex;align-items:center;justify-content:center;line-height:1;white-space:nowrap;
+  font-size:22px;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%;direction:ltr;user-select:none;-webkit-user-select:none}
+.rl i{font-style:normal}
+.rl-w{display:inline-grid;grid-template-columns:0fr}
+/* padding + negative margin: room for the y's tail and its right edge inside the clip box */
+.rl-w>span{overflow:hidden;min-width:0;display:inline-flex;padding:.36em .07em .36em .02em;margin:-.36em 0}
+.rl-l{display:inline-block}
+.rl-m{flex:none;display:block;width:1.5em;height:1.5em}
+.rl-m svg{display:block;width:100%;height:100%;overflow:visible}
+.rl-ring{fill:none;stroke:var(--ink);stroke-width:9;stroke-linecap:round}
+.rl-dot{fill:var(--ember);transform-box:fill-box;transform-origin:center}
+.rl-eyes,.rl-eyes ellipse{fill:var(--ink);transform-box:fill-box;transform-origin:center}
+
+/* ---------- states ---------- */
+/* Folded words are out of the page's text as well as out of sight (find-in-page, copy, a page's
+   own text), and only once the fold has finished, so the letters are still seen leaving. */
+.rl[data-s] .rl-w{visibility:hidden;transition:grid-template-columns .6s var(--e),visibility 0s linear .6s}
+.rl[data-s] .rl-l{opacity:0;transform:translateY(.35em);transition:opacity .18s linear,transform .18s linear}
+.rl[data-s=relay] .a .rl-l,.rl[data-s=full] .rl-l{opacity:1;transform:none;transition:opacity .3s linear,transform .5s cubic-bezier(.3,1.5,.5,1);transition-delay:.12s}
+.rl[data-s=relay] .a .rl-l:nth-child(2),.rl[data-s=full] .rl-l:nth-child(2){transition-delay:.165s}
+.rl[data-s=relay] .a .rl-l:nth-child(3),.rl[data-s=full] .rl-l:nth-child(3){transition-delay:.21s}
+.rl[data-s=relay] .a .rl-l:nth-child(4),.rl[data-s=full] .rl-l:nth-child(4){transition-delay:.255s}
+.rl[data-s=relay] .a .rl-l:nth-child(5),.rl[data-s=full] .rl-l:nth-child(5){transition-delay:.3s}
+.rl[data-s=full] .rl-l:nth-child(6){transition-delay:.345s}
+.rl[data-s=relay] .a,.rl[data-s=full] .rl-w{grid-template-columns:1fr;visibility:visible;transition:grid-template-columns .6s var(--e),visibility 0s}
+.rl[data-s] .rl-m{margin:0;transition:width .6s var(--e),height .6s var(--e),margin .6s var(--e)}
+.rl[data-s=relay] .rl-m{margin:0 0 0 .04em}
+.rl[data-s=full] .rl-m{width:1em;height:1em;margin:0 -.19em 0 -.01em}
+.rl[data-s] .rl-m svg{transition:transform .6s var(--e)}
+.rl[data-s=icon] .rl-m svg{transform:rotate(-360deg)}
+.rl[data-s] .rl-ring{transition:stroke-width .6s var(--e)}
+.rl[data-s=full] .rl-ring{stroke-width:11}
+.rl[data-s] .rl-eyes{transition:opacity .25s linear,transform .35s var(--e)}
+.rl[data-s=relay] .rl-eyes{transform:translateX(-5px)}
+.rl[data-s=full] .rl-eyes{opacity:0;transform:scale(.4)}
+.rl[data-s] .rl-eyes ellipse{animation:rl-blink 4.2s infinite}
+.rl[data-s=full] .rl-dot{animation:rl-pulse .7s .55s both}
+.rl[data-s=icon] .rl-m{animation:rl-hop .5s .5s both}
+@keyframes rl-blink{0%,91%,100%{transform:none}95%{transform:scaleY(.1)}}
+@keyframes rl-pulse{0%,100%{transform:none}45%{transform:scale(1.7)}}
+@keyframes rl-hop{0%,100%{transform:none}45%{transform:translateY(-.12em)}}
+
+/* ---------- work (loading) and rest (empty) ---------- */
+.rl[data-s] .rl-dot{transition:fill .3s linear,opacity .3s linear,transform .5s var(--e)}
+.rl[data-s] .rl-eyes ellipse{transition:transform .3s var(--e)}
+.rl[data-s=work] .rl-m svg{transform:rotate(-360deg);animation:rl-work .9s linear infinite}
+.rl[data-s=work] .rl-eyes{opacity:0;transform:scale(.4)}
+@keyframes rl-work{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.rl[data-s=rest] .rl-m svg{transform:rotate(-360deg)}
+.rl[data-s=rest] .rl-eyes ellipse{animation:none;transform:scaleY(.12)}
+.rl[data-s=rest] .rl-dot{opacity:.5}
+/* One slow breath as it settles, then still: Relay never loops while it rests. */
+.rl[data-s=rest] .rl-m{animation:rl-breathe 4s ease-in-out 1}
+@keyframes rl-breathe{0%,100%{transform:none}50%{transform:scale(1.045)}}
+/* ---------- reach: what the relay told us ---------- */
+.rl[data-reach=empty][data-s=icon] .rl-eyes{animation:rl-glance 1.6s .3s var(--e) 1}
+@keyframes rl-glance{0%,100%{transform:none}30%,70%{transform:translateY(4px)}}
+.rl[data-reach=unreachable] .rl-dot{fill:var(--rl-muted);transform:translate(7px,-7px)}
+.rl[data-reach=unreachable][data-s=icon] .rl-eyes{transform:translate(4px,-2px)}
+.rl[data-reach=refused] .rl-dot{fill:var(--rl-muted)}
+.rl[data-reach=refused][data-s=icon] .rl-eyes{transform:translateY(4px)}
+/* No arriving hop when the news is that a relay could not be reached or turned us down. */
+.rl[data-reach=unreachable][data-s=icon] .rl-m,.rl[data-reach=refused][data-s=icon] .rl-m{animation:none}
+
+@media (prefers-reduced-motion:reduce){
+ .rl *{animation:none!important;transition:none!important}
+ .rl[data-s=work] .rl-dot{animation:rl-soft 1.2s ease-in-out infinite alternate!important}
+}
+@keyframes rl-soft{from{opacity:.3}to{opacity:1}}

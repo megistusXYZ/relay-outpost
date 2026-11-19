@@ -12,6 +12,8 @@ import {
   DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { ChatListSkeleton } from "./ChatListSkeleton";
+import { RelayEmpty } from "@/components/relay/RelayEmpty";
+import { RelayReachStatus, reachState } from "@/components/relay/RelayReachStatus";
 
 import { ConcordPendingInvites } from "@/components/concord/ConcordPendingInvites";
 import {
@@ -728,6 +730,8 @@ export function ChatList({
   // holding nothing BUT requests renders "no conversations yet" over five
   // people trying to reach you.
   const emptyWords = emptyChatsWords({ loading, inboxAnswered: inboxAnswered ?? null });
+  // The same three stories in the logo's terms: no result yet, never reached, or answered with nothing.
+  const chatsReach = reachState(emptyWords === "checking" ? undefined : { reached: emptyWords === "none" }, true);
   const nothingToShow = iaCollapsed
     ? sections.length === 0 && !needsPeopleForRequests
     : entries.length === 0;
@@ -1585,17 +1589,14 @@ export function ChatList({
             {nothingToShow && showPeopleResults ? null : nothingToShow ? (
               <div className="text-center py-12 px-4">
                 {dmTab === "primary" ? (
-                  <>
-                    <OttoEmpty mood="quiet" size={88} className="mx-auto mb-2 text-foreground/70" />
-                    {/* Three stories for an empty list, never one confident one:
-                        still asking, nobody answered, or answered and empty
-                        (pages/messages/refresh-outcome.ts). */}
-                    <p className="text-sm text-muted-foreground mb-1" data-testid="text-chats-empty">
-                      {searchFilter ? "No matches" : emptyWords === "checking" ? "Checking for messages…" : emptyWords === "unreachable" ? "Couldn't reach your relays" : "No conversations yet"}
-                    </p>
-                    {searchFilter ? (
-                      <p className="text-xs text-muted-foreground/80">Try a different search</p>
-                    ) : (
+                  searchFilter ? (
+                    <>
+                      <OttoEmpty mood="quiet" size={88} className="mx-auto mb-2 text-foreground/70" />
+                      <p className="text-sm text-muted-foreground mb-1" data-testid="text-chats-empty">No matches</p>
+                      <p className="text-xs text-muted-foreground">Try a different search</p>
+                    </>
+                  ) : (() => {
+                    const startHere = (
                       <>
                         {/* Two panes, two jobs. This one is the INVENTORY, so
                             when it is empty it says what will live here — the
@@ -1609,7 +1610,7 @@ export function ChatList({
                             block was written for the phone, where the list IS
                             the whole screen and there is no second pane to
                             defer to. Which is why it stays below md. */}
-                        <p className="hidden md:block text-xs text-muted-foreground/80">
+                        <p className="hidden md:block max-w-xs text-sm text-muted-foreground">
                           Your chats, groups and communities will appear here
                         </p>
                         <div className="mx-auto mt-3 flex w-full max-w-[300px] flex-col gap-2 md:hidden">
@@ -1630,8 +1631,37 @@ export function ChatList({
                           ))}
                         </div>
                       </>
-                    )}
-                  </>
+                    );
+                    // Three stories for an empty list, never one confident one:
+                    // still asking, nobody answered, or answered and empty
+                    // (pages/messages/refresh-outcome.ts). Relay rests only for
+                    // the third; the other two are a status, never an empty state.
+                    return (
+                      <div data-testid="text-chats-empty" data-reach={chatsReach}>
+                        {chatsReach === "empty" ? (
+                          <RelayEmpty className="px-0 py-0" title="No conversations yet" action={startHere} />
+                        ) : chatsReach === "unreachable" ? (
+                          <RelayReachStatus
+                            status="unreachable"
+                            stacked
+                            className="px-0 py-0"
+                            text="Couldn't reach your relays"
+                            action={
+                              <>
+                                <Button variant="outline" size="sm" className="min-h-11 md:min-h-9" onClick={() => loadConversations()} data-testid="button-retry-conversations-empty">
+                                  <RefreshCw className="w-3 h-3 mr-1" />
+                                  Try again
+                                </Button>
+                                {startHere}
+                              </>
+                            }
+                          />
+                        ) : (
+                          <RelayReachStatus status="connecting" stacked className="px-0 py-0" text="Checking for messages…" action={startHere} />
+                        )}
+                      </div>
+                    );
+                  })()
                 ) : (
                   <>
                     <OttoEmpty mood="looking" size={88} className="mx-auto mb-3 text-foreground/70" />

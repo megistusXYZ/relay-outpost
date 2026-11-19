@@ -2514,7 +2514,7 @@ export default function Profile() {
                 // Phones: three lines and "Show more", so every profile reads the same length.
                 <CollapsibleBio
                   text={profileContent.about}
-                  render={(t) => <LinkifiedText text={t} className="text-sm text-foreground/85 whitespace-pre-wrap break-words leading-relaxed" data-testid="identity-about" />}
+                  render={(t) => <LinkifiedText text={t} className="text-sm text-foreground whitespace-pre-wrap break-words leading-relaxed" data-testid="identity-about" />}
                 />
               )
               : undefined,

@@ -75,6 +75,10 @@ const DARK_SURFACES: Record<string, { count: number; why: string }> = {
     count: 1,
     why: "DARK-SURFACE. The lightbox is black regardless of theme.",
   },
+  "client/src/pages/LiveStreams.tsx": {
+    count: 1,
+    why: "DARK-SURFACE. The Host badge on a participant's card, whose gradient (#1a0533 to #0a0a1a) is dark in both themes.",
+  },
 };
 
 // ---- colour maths, so the thresholds are measured rather than remembered ----

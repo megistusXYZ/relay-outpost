@@ -218,16 +218,16 @@ export function ShareTrackDialog({ track, open, onOpenChange }: { track: MusicTr
         </DialogHeader>
         <div className="space-y-4">
           <div className="rounded-lg bg-primary/10 border border-border p-3 overflow-hidden">
-            <p className="text-[13px] text-brand/60 mb-1.5 font-medium">Sharing</p>
+            <p className="text-[13px] text-brand mb-1.5 font-medium">Sharing</p>
             <div className="flex items-center gap-3">
               {track.coverUrl && (
                 <img src={coverArt(track.coverUrl, 96)} alt={track.title} width={48} height={48} loading="lazy" className="w-12 h-12 rounded-md object-cover shrink-0" />
               )}
               <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground dark:text-white/80 truncate">{track.title}</p>
-                <p className="text-xs text-muted-foreground dark:text-white/40 truncate">by {track.artist}</p>
+                <p className="text-sm font-medium text-foreground truncate">{track.title}</p>
+                <p className="text-xs text-muted-foreground truncate">by {track.artist}</p>
                 {track.albumTitle && (
-                  <p className="text-[11px] text-muted-foreground dark:text-white/30 truncate">{track.albumTitle}</p>
+                  <p className="text-xs text-muted-foreground truncate">{track.albumTitle}</p>
                 )}
               </div>
             </div>
@@ -237,7 +237,7 @@ export function ShareTrackDialog({ track, open, onOpenChange }: { track: MusicTr
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={5}
-            className="text-sm bg-muted dark:bg-white/[0.04] border-border dark:border-white/[0.06] text-foreground dark:text-white/80 resize-none rounded-lg"
+            className="text-sm bg-muted dark:bg-white/[0.04] border-border dark:border-white/[0.06] text-foreground resize-none rounded-lg"
             style={{ fontSize: 16, wordBreak: "break-word", overflowWrap: "break-word" }}
             placeholder="Add your thoughts..."
             autoComplete="off"
@@ -371,15 +371,15 @@ export function ShareLinkDialog({
         </DialogHeader>
         <div className="space-y-4">
           <div className="rounded-lg bg-primary/10 border border-border p-3 overflow-hidden">
-            <p className="text-[13px] text-brand/60 mb-1.5 font-medium">Sharing</p>
+            <p className="text-[13px] text-brand mb-1.5 font-medium">Sharing</p>
             <div className="flex items-center gap-3">
               {coverUrl && (
                 <img src={coverArt(coverUrl, 96)} alt={title} width={48} height={48} loading="lazy" className="w-12 h-12 rounded-md object-cover shrink-0" />
               )}
               <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground dark:text-white/80 truncate">{title}</p>
+                <p className="text-sm font-medium text-foreground truncate">{title}</p>
                 {subtitle && (
-                  <p className="text-xs text-muted-foreground dark:text-white/40 truncate">{subtitle}</p>
+                  <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
                 )}
               </div>
             </div>
@@ -389,7 +389,7 @@ export function ShareLinkDialog({
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={5}
-            className="text-sm bg-muted dark:bg-white/[0.04] border-border dark:border-white/[0.06] text-foreground dark:text-white/80 resize-none rounded-lg"
+            className="text-sm bg-muted dark:bg-white/[0.04] border-border dark:border-white/[0.06] text-foreground resize-none rounded-lg"
             style={{ fontSize: 16, wordBreak: "break-word", overflowWrap: "break-word" }}
             placeholder="Add your thoughts..."
             autoComplete="off"
@@ -530,7 +530,7 @@ function AudioShareMenu({ track }: { track: MusicTrack }) {
           <Button
             variant="ghost"
             size="icon"
-            className="w-6 h-6 text-muted-foreground/70"
+            className="w-6 h-6 text-muted-foreground"
             data-testid={`button-audio-share-${track.id}`}
           >
             <Share2 className="w-3 h-3" />
@@ -614,7 +614,7 @@ function TrackCard({ track, tracks, onArtistClick }: { track: MusicTrack; tracks
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary/20 via-muted/30 to-primary/10 flex items-center justify-center" data-testid={`img-cover-placeholder-${track.id}`}>
-            <Disc3 className="w-16 h-16 text-brand/30" />
+            <Disc3 className="w-16 h-16 text-brand" />
           </div>
         )}
 
@@ -655,7 +655,7 @@ function TrackCard({ track, tracks, onArtistClick }: { track: MusicTrack; tracks
 
         {track.genre && (
           <div className="absolute top-2 left-2">
-            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-black/50 text-white/80 backdrop-blur-sm border border-white/10" data-testid={`text-genre-${track.id}`}>
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-black/50 text-white backdrop-blur-sm border border-white/10" data-testid={`text-genre-${track.id}`}>
               {track.genre}
             </span>
           </div>
@@ -671,7 +671,7 @@ function TrackCard({ track, tracks, onArtistClick }: { track: MusicTrack; tracks
 
         {resolvedDuration > 0 && (
           <div className="absolute bottom-2 right-2">
-            <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-black/60 text-white/70 backdrop-blur-sm tabular-nums">
+            <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-black/60 text-white backdrop-blur-sm tabular-nums">
               {formatDuration(resolvedDuration)}
             </span>
           </div>
@@ -680,11 +680,11 @@ function TrackCard({ track, tracks, onArtistClick }: { track: MusicTrack; tracks
 
       <div className="p-3 space-y-2">
         <div>
-          <p className="text-sm font-medium text-foreground/90 truncate" data-testid={`text-title-${track.id}`}>
+          <p className="text-sm font-medium text-foreground truncate" data-testid={`text-title-${track.id}`}>
             {track.title}
           </p>
           <p
-            className={`text-xs text-muted-foreground/80 truncate ${onArtistClick && track.artistId ? "hover:text-brand/70 cursor-pointer" : ""}`}
+            className={`text-xs text-muted-foreground truncate ${onArtistClick && track.artistId ? "hover:text-brand/70 cursor-pointer" : ""}`}
             onClick={(e) => {
               if (onArtistClick && track.artistId) {
                 e.stopPropagation();
@@ -696,7 +696,7 @@ function TrackCard({ track, tracks, onArtistClick }: { track: MusicTrack; tracks
             {displayArtist}
           </p>
           {track.albumTitle && (
-            <p className="text-[11px] text-muted-foreground/60 truncate mt-0.5">
+            <p className="text-xs text-muted-foreground truncate mt-0.5">
               {track.albumTitle}
             </p>
           )}
@@ -719,7 +719,7 @@ function TrackCard({ track, tracks, onArtistClick }: { track: MusicTrack; tracks
                 <AvatarFallback className="text-[8px] bg-muted">{displayArtist.slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
             </div>
-            <span className="text-[11px] text-muted-foreground/60 truncate" data-testid={`text-time-${track.id}`}>{timeAgo}</span>
+            <span className="text-xs text-muted-foreground truncate" data-testid={`text-time-${track.id}`}>{timeAgo}</span>
           </div>
 
           <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -765,7 +765,7 @@ function TrackListItem({ track, tracks, index, onArtistClick }: {
       onClick={handlePlay}
       data-testid={`track-list-item-${track.id}`}
     >
-      <span className="text-xs text-muted-foreground/60 w-5 text-right tabular-nums shrink-0">
+      <span className="text-xs text-muted-foreground w-5 text-right tabular-nums shrink-0">
         {isCurrentTrack && isPlaying ? (
           <div className="flex items-end gap-[1px] h-3 justify-center">
             <div className="w-[2px] bg-primary rounded-full animate-music-bar-1" />
@@ -782,7 +782,7 @@ function TrackListItem({ track, tracks, index, onArtistClick }: {
           <img src={coverArt(track.coverUrl, 128)} alt={track.title} className="w-full h-full object-cover" loading="lazy" />
         ) : (
           <div className="w-full h-full bg-muted/30 flex items-center justify-center">
-            <Disc3 className="w-5 h-5 text-muted-foreground/50" />
+            <Disc3 className="w-5 h-5 text-muted-foreground" />
           </div>
         )}
         <div className={`absolute inset-0 flex items-center justify-center bg-black/40 transition-opacity ${
@@ -798,15 +798,15 @@ function TrackListItem({ track, tracks, index, onArtistClick }: {
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <p className={`text-sm truncate ${isCurrentTrack ? "text-brand font-medium" : "text-foreground/90"}`}>
+          <p className={`text-sm truncate ${isCurrentTrack ? "text-brand font-medium" : "text-foreground"}`}>
             {track.title}
           </p>
           {track.source === "relay-outpost" && (
-            <RelayOutpostBadge className="w-3.5 h-3.5 text-brand/70 shrink-0" />
+            <RelayOutpostBadge className="w-3.5 h-3.5 text-brand shrink-0" />
           )}
         </div>
         <p
-          className={`text-xs text-muted-foreground/80 truncate ${onArtistClick && track.artistId ? "hover:text-brand/70 cursor-pointer" : ""}`}
+          className={`text-xs text-muted-foreground truncate ${onArtistClick && track.artistId ? "hover:text-brand/70 cursor-pointer" : ""}`}
           onClick={(e) => {
             if (onArtistClick && track.artistId) {
               e.stopPropagation();
@@ -820,7 +820,7 @@ function TrackListItem({ track, tracks, index, onArtistClick }: {
 
       {track.transcriptUrl && (
         <span
-          className="hidden sm:inline-flex items-center rounded border border-brand/20 bg-brand/5 px-1 py-px text-[9px] font-medium text-brand/70 shrink-0"
+          className="hidden sm:inline-flex items-center rounded border border-brand/20 bg-brand/5 px-1 py-px text-xs font-medium text-brand shrink-0"
           title="This episode has a transcript — open it from the player"
         >
           Transcript
@@ -828,10 +828,10 @@ function TrackListItem({ track, tracks, index, onArtistClick }: {
       )}
 
       {track.genre && (
-        <span className="text-[11px] text-muted-foreground/60 hidden sm:inline shrink-0">{track.genre}</span>
+        <span className="text-xs text-muted-foreground hidden sm:inline shrink-0">{track.genre}</span>
       )}
 
-      <span className="text-xs text-muted-foreground/60 tabular-nums shrink-0">
+      <span className="text-xs text-muted-foreground tabular-nums shrink-0">
         {formatDuration(resolvedDuration)}
       </span>
     </div>
@@ -859,8 +859,8 @@ function SearchResultItem({ result, onArtistClick, onAlbumClick, onTrackPlay, tr
           <AvatarFallback className="text-xs bg-muted"><User className="w-4 h-4" /></AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground/90 truncate">{result.name}</p>
-          <p className="text-xs text-muted-foreground/70">Artist</p>
+          <p className="text-sm font-medium text-foreground truncate">{result.name}</p>
+          <p className="text-xs text-muted-foreground">Artist</p>
         </div>
         <ArrowLeft className="w-4 h-4 text-muted-foreground/50 rotate-180 shrink-0" />
       </div>
@@ -879,13 +879,13 @@ function SearchResultItem({ result, onArtistClick, onAlbumClick, onTrackPlay, tr
             <img src={coverArt(result.artworkUrl, 160)} alt={result.name || ""} className="w-full h-full object-cover" loading="lazy" />
           ) : (
             <div className="w-full h-full bg-muted/30 flex items-center justify-center">
-              <Disc className="w-5 h-5 text-muted-foreground/50" />
+              <Disc className="w-5 h-5 text-muted-foreground" />
             </div>
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground/90 truncate">{result.name}</p>
-          <p className="text-xs text-muted-foreground/70 truncate">{result.artist ? `${result.artist} · ` : ""}Album</p>
+          <p className="text-sm font-medium text-foreground truncate">{result.name}</p>
+          <p className="text-xs text-muted-foreground truncate">{result.artist ? `${result.artist} · ` : ""}Album</p>
         </div>
         <ChevronRight className="w-4 h-4 text-muted-foreground/50 shrink-0" />
       </div>
@@ -941,8 +941,8 @@ function SearchResultItem({ result, onArtistClick, onAlbumClick, onTrackPlay, tr
           </div>
         </div>
         <div className="flex-1 min-w-0">
-          <p className={`text-sm truncate ${isCurrentTrack ? "text-brand font-medium" : "text-foreground/90"}`}>{result.title || result.name}</p>
-          <p className="text-xs text-muted-foreground/70 truncate">{result.artist} {result.albumTitle ? `\u00B7 ${result.albumTitle}` : ""}</p>
+          <p className={`text-sm truncate ${isCurrentTrack ? "text-brand font-medium" : "text-foreground"}`}>{result.title || result.name}</p>
+          <p className="text-xs text-muted-foreground truncate">{result.artist} {result.albumTitle ? `\u00B7 ${result.albumTitle}` : ""}</p>
         </div>
       </div>
     );
@@ -963,16 +963,16 @@ function AlbumCard({ album, onAlbumClick }: { album: WavlakeAlbum; onAlbumClick:
           <img src={coverArt(album.artworkUrl, 256)} alt={album.title} className="w-full h-full object-cover" loading="lazy" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary/20 via-muted/30 to-primary/10 flex items-center justify-center">
-            <Disc className="w-10 h-10 text-brand/30" />
+            <Disc className="w-10 h-10 text-brand" />
           </div>
         )}
         <div className="absolute inset-0 bg-black/40 reveal-on-hover flex items-center justify-center">
           <Play className="w-8 h-8 text-white" />
         </div>
       </div>
-      <p className="text-sm font-medium text-foreground/90 truncate">{album.title}</p>
+      <p className="text-sm font-medium text-foreground truncate">{album.title}</p>
       {album.description && (
-        <p className="text-[11px] text-muted-foreground/60 truncate">{album.description}</p>
+        <p className="text-xs text-muted-foreground truncate">{album.description}</p>
       )}
     </div>
   );
@@ -991,15 +991,15 @@ function ArtistCard({ artist, onClick }: { artist: UniqueArtistInfo; onClick: (i
           <AvatarFallback className="text-lg bg-muted">{artist.name.slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         {artist.hasV4V && (
-          <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/90 text-white whitespace-nowrap flex items-center gap-0.5">
+          <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 text-xs font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/90 text-white whitespace-nowrap flex items-center gap-0.5">
             <Zap className="w-2.5 h-2.5" />
             V4V
           </span>
         )}
       </div>
-      <p className="text-sm font-medium text-foreground/90 truncate w-full">{artist.name}</p>
+      <p className="text-sm font-medium text-foreground truncate w-full">{artist.name}</p>
       {artist.genres.length > 0 && (
-        <p className="text-[11px] text-muted-foreground/60 truncate w-full">{artist.genres.slice(0, 2).join(" / ")}</p>
+        <p className="text-xs text-muted-foreground truncate w-full">{artist.genres.slice(0, 2).join(" / ")}</p>
       )}
     </div>
   );
@@ -1022,14 +1022,14 @@ function TrendingPodcastCard({ podcast, onSelect }: { podcast: TrendingPodcast; 
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground/90 truncate">{podcast.title}</p>
-        <p className="text-xs text-muted-foreground/70 truncate">{podcast.author}</p>
+        <p className="text-sm font-medium text-foreground truncate">{podcast.title}</p>
+        <p className="text-xs text-muted-foreground truncate">{podcast.author}</p>
         <div className="flex items-center gap-2 mt-1">
           {podcast.episodeCount > 0 && (
-            <span className="text-[10px] text-muted-foreground/50">{podcast.episodeCount} episodes</span>
+            <span className="text-xs text-muted-foreground">{podcast.episodeCount} episodes</span>
           )}
           {podcast.categories.length > 0 && (
-            <span className="text-[10px] text-muted-foreground/50 truncate">{podcast.categories.slice(0, 2).join(", ")}</span>
+            <span className="text-xs text-muted-foreground truncate">{podcast.categories.slice(0, 2).join(", ")}</span>
           )}
         </div>
       </div>
@@ -1070,14 +1070,14 @@ function TrendingPodcastEpisodes({ podcast, onBack }: { podcast: TrendingPodcast
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <button onClick={onBack} className="text-muted-foreground/70 hover:text-foreground/80 transition-colors shrink-0">
+            <button onClick={onBack} className="text-muted-foreground transition-colors shrink-0">
               <ArrowLeft className="w-4 h-4" />
             </button>
-            <p className="text-sm font-semibold text-foreground/90 truncate">{podcast.title}</p>
+            <p className="text-sm font-semibold text-foreground truncate">{podcast.title}</p>
           </div>
-          <p className="text-xs text-muted-foreground/70 mt-0.5 truncate">{podcast.author}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">{podcast.author}</p>
           {podcast.description && (
-            <p className="text-[11px] text-muted-foreground/50 line-clamp-2 mt-1">{podcast.description}</p>
+            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{podcast.description}</p>
           )}
         </div>
       </div>
@@ -1088,7 +1088,7 @@ function TrendingPodcastEpisodes({ podcast, onBack }: { podcast: TrendingPodcast
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground/70 text-center py-8">No episodes found</p>
+        <p className="text-sm text-muted-foreground text-center py-8">No episodes found</p>
       )}
     </div>
   );
@@ -1123,13 +1123,13 @@ function AlbumDetailView({ albumId, albumTitle, onBack, onArtistClick }: { album
             {tracks[0].coverUrl ? (
               <img src={tracks[0].coverUrl} alt={albumTitle || "Album"} className="w-full h-full object-cover" loading="lazy" decoding="async" />
             ) : (
-              <Disc3 className="w-12 h-12 text-muted-foreground/40" />
+              <Disc3 className="w-12 h-12 text-muted-foreground" />
             )}
           </div>
           <div className="min-w-0 pb-1">
-            <p className="text-[11px] text-muted-foreground mb-1 font-medium">Album</p>
+            <p className="text-xs text-muted-foreground mb-1 font-medium">Album</p>
             <h3 className="text-lg font-bold tracking-tight truncate" data-testid="text-album-title">{albumTitle || "Unknown Album"}</h3>
-            <p className="text-xs text-muted-foreground/70 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               {tracks.length} {tracks.length === 1 ? "track" : "tracks"}
             </p>
             <div className="flex items-center gap-2 mt-2">
@@ -1163,7 +1163,7 @@ function AlbumDetailView({ albumId, albumTitle, onBack, onArtistClick }: { album
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground/70 text-center py-8">No tracks in this album</p>
+        <p className="text-sm text-muted-foreground text-center py-8">No tracks in this album</p>
       )}
     </div>
   );
@@ -1240,20 +1240,20 @@ function ArtistDetailView({ artistId, onBack, onArtistClick, onAlbumClick }: { a
           </Avatar>
           <div className="min-w-0 text-center sm:text-left pb-1 flex-1">
             {artist.verified && (
-              <span className="text-[11px] font-medium text-brand/70">Verified artist</span>
+              <span className="text-xs font-medium text-brand">Verified artist</span>
             )}
             <h2 className="text-2xl font-bold tracking-tight truncate" data-testid="text-artist-name">{artist.name}</h2>
             {artist.bio && (
-              <p className="text-xs text-muted-foreground/80 line-clamp-3 mt-1 max-w-md">{artist.bio}</p>
+              <p className="text-xs text-muted-foreground line-clamp-3 mt-1 max-w-md">{artist.bio}</p>
             )}
             <div className="flex items-center justify-center sm:justify-start gap-1 mt-1">
-              <span className="text-[11px] text-muted-foreground/60">
+              <span className="text-xs text-muted-foreground">
                 {tracks.length} {tracks.length === 1 ? "track" : "tracks"}
               </span>
               {albums.length > 0 && (
                 <>
-                  <span className="text-[11px] text-muted-foreground/50">·</span>
-                  <span className="text-[11px] text-muted-foreground/60">
+                  <span className="text-xs text-muted-foreground">·</span>
+                  <span className="text-xs text-muted-foreground">
                     {albums.length} {albums.length === 1 ? "album" : "albums"}
                   </span>
                 </>
@@ -1322,22 +1322,22 @@ function ArtistDetailView({ artistId, onBack, onArtistClick, onAlbumClick }: { a
       {(hasSocials) && (
         <div className="flex flex-wrap items-center gap-2 mb-6 px-1" data-testid="container-artist-socials">
           {artist.twitter && (
-            <a href={artist.twitter.startsWith("http") ? artist.twitter : `https://x.com/${artist.twitter.replace(/^@/, "")}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-muted-foreground/70 hover:text-foreground/70 transition-colors" data-testid="link-twitter">
+            <a href={artist.twitter.startsWith("http") ? artist.twitter : `https://x.com/${artist.twitter.replace(/^@/, "")}`} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground transition-colors" data-testid="link-twitter">
               @{artist.twitter.replace(/^@/, "").replace(/^https?:\/\/(x\.com|twitter\.com)\//, "")}
             </a>
           )}
           {artist.instagram && (
-            <a href={artist.instagram.startsWith("http") ? artist.instagram : `https://instagram.com/${artist.instagram.replace(/^@/, "")}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-muted-foreground/70 hover:text-foreground/70 transition-colors" data-testid="link-instagram">
+            <a href={artist.instagram.startsWith("http") ? artist.instagram : `https://instagram.com/${artist.instagram.replace(/^@/, "")}`} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground transition-colors" data-testid="link-instagram">
               Instagram
             </a>
           )}
           {artist.youtube && (
-            <a href={artist.youtube.startsWith("http") ? artist.youtube : `https://youtube.com/${artist.youtube}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-muted-foreground/70 hover:text-foreground/70 transition-colors" data-testid="link-youtube">
+            <a href={artist.youtube.startsWith("http") ? artist.youtube : `https://youtube.com/${artist.youtube}`} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground transition-colors" data-testid="link-youtube">
               YouTube
             </a>
           )}
           {artist.website && (
-            <a href={artist.website.startsWith("http") ? artist.website : `https://${artist.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[11px] text-muted-foreground/70 hover:text-foreground/70 transition-colors" data-testid="link-website">
+            <a href={artist.website.startsWith("http") ? artist.website : `https://${artist.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground transition-colors" data-testid="link-website">
               <Globe className="w-3 h-3" />
               Website
             </a>
@@ -1347,7 +1347,7 @@ function ArtistDetailView({ artistId, onBack, onArtistClick, onAlbumClick }: { a
 
       {albums.length > 0 && (
         <div className="mb-6" data-testid="container-artist-albums">
-          <h3 className="text-sm font-semibold text-foreground/80 mb-3 px-1">Albums</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3 px-1">Albums</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {albums.map((album) => (
               <AlbumCard key={album.id} album={album} onAlbumClick={(id) => onAlbumClick(id, album.title)} />
@@ -1359,11 +1359,11 @@ function ArtistDetailView({ artistId, onBack, onArtistClick, onAlbumClick }: { a
       {tracks.length > 0 ? (
         <div data-testid="container-artist-tracks">
           <div className="flex items-center justify-between px-1 mb-2">
-            <h3 className="text-sm font-semibold text-foreground/80">Top tracks</h3>
+            <h3 className="text-sm font-semibold text-foreground">Top tracks</h3>
             {tracks.length > 5 && (
               <button
                 onClick={() => setShowAllTracks(!showAllTracks)}
-                className="text-[11px] text-muted-foreground/70 hover:text-foreground/70 transition-colors flex items-center gap-1"
+                className="text-xs text-muted-foreground transition-colors flex items-center gap-1"
                 data-testid="button-toggle-all-tracks"
               >
                 {showAllTracks ? "Show less" : `See all ${tracks.length}`}
@@ -1384,7 +1384,7 @@ function ArtistDetailView({ artistId, onBack, onArtistClick, onAlbumClick }: { a
           </div>
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground/70 text-center py-8">No tracks available</p>
+        <p className="text-sm text-muted-foreground text-center py-8">No tracks available</p>
       )}
     </div>
   );
@@ -1393,7 +1393,7 @@ function ArtistDetailView({ artistId, onBack, onArtistClick, onAlbumClick }: { a
 function BrowseGenres({ onGenreSelect }: { onGenreSelect: (genre: typeof BROWSE_GENRES[number]) => void }) {
   return (
     <div data-testid="container-browse-genres">
-      <h3 className="text-sm font-semibold text-foreground/80 mb-3 px-1">Browse by Genre</h3>
+      <h3 className="text-sm font-semibold text-foreground mb-3 px-1">Browse by Genre</h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
         {BROWSE_GENRES.map((genre) => {
           const IconComponent = GENRE_ICON_MAP[genre.icon] || Music;
@@ -1425,8 +1425,8 @@ function BrowseGenres({ onGenreSelect }: { onGenreSelect: (genre: typeof BROWSE_
               className={`flex items-center gap-3 p-3 rounded-md bg-gradient-to-br ${color} border hover-elevate transition-all text-left`}
               data-testid={`button-genre-${genre.label.toLowerCase().replace(/[^a-z]/g, "")}`}
             >
-              <IconComponent className="w-5 h-5 text-foreground/80 shrink-0" />
-              <span className="text-sm font-medium text-foreground/80 truncate">{genre.label}</span>
+              <IconComponent className="w-5 h-5 text-foreground shrink-0" />
+              <span className="text-sm font-medium text-foreground truncate">{genre.label}</span>
             </button>
           );
         })}
@@ -1907,7 +1907,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
               variant="ghost"
               size="icon"
               onClick={() => { hasUserToggledView.current = true; setViewMode(viewMode === "grid" ? "list" : "grid"); }}
-              className="text-muted-foreground/80 shrink-0"
+              className="text-muted-foreground shrink-0"
               aria-label={viewMode === "grid" ? "Show as list" : "Show as grid"}
               data-testid="button-toggle-view-mode"
             >
@@ -1933,7 +1933,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
                 {searchQuery && (
                   <button
                     onClick={clearSearch}
-                    className="p-2 rounded-full text-muted-foreground/60 hover:text-foreground/70 hover:bg-muted/50 transition-colors"
+                    className="p-2 rounded-full text-muted-foreground hover:bg-muted/50 transition-colors"
                     data-testid="button-clear-search"
                   >
                     <X className="w-4 h-4" />
@@ -1947,7 +1947,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
               variant="ghost"
               size="icon"
               onClick={() => { hasUserToggledView.current = true; setViewMode(viewMode === "grid" ? "list" : "grid"); }}
-              className="text-muted-foreground/80 shrink-0"
+              className="text-muted-foreground shrink-0"
               data-testid="button-toggle-view-mode"
             >
               {viewMode === "grid" ? <LayoutList className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
@@ -1976,8 +1976,8 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
           <div data-testid="container-search-results">
             {searchResults.length === 0 && !isSearching ? (
               <div className="flex flex-col items-center justify-center py-16 space-y-2">
-                <OttoEmpty mood="looking" size={72} className="text-foreground/70" />
-                <p className="text-sm text-muted-foreground/70">
+                <OttoEmpty mood="looking" size={72} className="text-foreground" />
+                <p className="text-sm text-muted-foreground">
                   {searchQuery ? `No results for "${searchQuery}"` : "Type to search"}
                 </p>
               </div>
@@ -2044,8 +2044,8 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
               </div>
             ) : artistsList.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 space-y-2">
-                <OttoEmpty mood="looking" size={72} className="text-foreground/70" />
-                <p className="text-sm text-muted-foreground/70">No artists found</p>
+                <OttoEmpty mood="looking" size={72} className="text-foreground" />
+                <p className="text-sm text-muted-foreground">No artists found</p>
               </div>
             ) : (
               <>
@@ -2066,7 +2066,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
                         variant={artistGenreFilter === g ? "default" : "ghost"}
                         size="sm"
                         onClick={() => setArtistGenreFilter(artistGenreFilter === g ? null : g)}
-                        className={`shrink-0 ${artistGenreFilter === g ? "" : "text-muted-foreground/80"}`}
+                        className={`shrink-0 ${artistGenreFilter === g ? "" : "text-muted-foreground"}`}
                         data-testid={`button-artist-filter-${g.toLowerCase().replace(/[^a-z]/g, "")}`}
                       >
                         {g}
@@ -2077,7 +2077,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
                 {filteredArtists.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 space-y-2">
                     <Users className="w-6 h-6 text-muted-foreground/50" />
-                    <p className="text-xs text-muted-foreground/70">No artists match this genre</p>
+                    <p className="text-xs text-muted-foreground">No artists match this genre</p>
                   </div>
                 ) : viewMode === "list" ? (
                   <div className="space-y-0.5" data-testid="container-artists-list">
@@ -2094,16 +2094,16 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <p className="text-sm text-foreground/90 truncate">{a.name}</p>
+                            <p className="text-sm text-foreground truncate">{a.name}</p>
                             {a.hasV4V && (
-                              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/90 text-white whitespace-nowrap flex items-center gap-0.5 shrink-0">
+                              <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/90 text-white whitespace-nowrap flex items-center gap-0.5 shrink-0">
                                 <Zap className="w-2.5 h-2.5" />
                                 V4V
                               </span>
                             )}
                           </div>
                           {a.genres.length > 0 && (
-                            <p className="text-[11px] text-muted-foreground/60 truncate">{a.genres.slice(0, 3).join(", ")}</p>
+                            <p className="text-xs text-muted-foreground truncate">{a.genres.slice(0, 3).join(", ")}</p>
                           )}
                         </div>
                       </div>
@@ -2140,7 +2140,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
                     {isLoadingMore ? (
                       <RelayOutpostInlineLoader />
                     ) : noMoreResults ? (
-                      <span className="text-muted-foreground/70">No more artists</span>
+                      <span className="text-muted-foreground">No more artists</span>
                     ) : (
                       <>
                         <Shuffle className="w-3.5 h-3.5 mr-1.5" />
@@ -2163,7 +2163,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
             ) : genreTracks.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 space-y-2">
                 <Music className="w-8 h-8 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground/70">No {selectedGenre} tracks found</p>
+                <p className="text-sm text-muted-foreground">No {selectedGenre} tracks found</p>
               </div>
             ) : (
               <>
@@ -2208,7 +2208,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
                     {isLoadingMore ? (
                       <RelayOutpostInlineLoader />
                     ) : noMoreResults ? (
-                      <span className="text-muted-foreground/70">No more results</span>
+                      <span className="text-muted-foreground">No more results</span>
                     ) : (
                       <>
                         <Shuffle className="w-3.5 h-3.5 mr-1.5" />
@@ -2231,7 +2231,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
             {isLoading && tracks.length === 0 && !selectedTrendingPodcast ? (
               <div className="flex flex-col items-center justify-center py-20" data-testid="container-loading">
                 <RelayOutpostLoader size="lg" label="Loading music..." />
-                <p className="text-xs text-muted-foreground/60 mt-4">Fetching tracks from Wavlake & Nostr</p>
+                <p className="text-xs text-muted-foreground mt-4">Fetching tracks from Wavlake & Nostr</p>
               </div>
             ) : error ? (
               <div className="flex flex-col items-center justify-center py-20 space-y-4" data-testid="container-error">
@@ -2250,11 +2250,11 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
             ) : tracks.length === 0 && (view !== "podcasts" || trendingPodcasts.length === 0) ? (
               <div className="flex flex-col items-center justify-center py-20 space-y-4" data-testid="container-empty">
                 <div className="w-16 h-16 rounded-2xl bg-muted/20 flex items-center justify-center border border-border/30">
-                  <Disc3 className="w-8 h-8 text-muted-foreground/50" />
+                  <Disc3 className="w-8 h-8 text-muted-foreground" />
                 </div>
                 <div className="text-center space-y-1">
                   <p className="text-sm text-muted-foreground">No music found</p>
-                  <p className="text-xs text-muted-foreground/70">Try a different category</p>
+                  <p className="text-xs text-muted-foreground">Try a different category</p>
                 </div>
               </div>
             ) : (
@@ -2281,7 +2281,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
                         variant={podcastCategoryFilter === g ? "default" : "ghost"}
                         size="sm"
                         onClick={() => setPodcastCategoryFilter(podcastCategoryFilter === g ? null : g)}
-                        className={`shrink-0 ${podcastCategoryFilter === g ? "" : "text-muted-foreground/80"}`}
+                        className={`shrink-0 ${podcastCategoryFilter === g ? "" : "text-muted-foreground"}`}
                         data-testid={`button-podcast-filter-${g.toLowerCase().replace(/[^a-z]/g, "")}`}
                       >
                         {g}
@@ -2299,7 +2299,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
                     <div className="mb-6" data-testid="container-trending-podcasts">
                       <div className="flex items-center gap-2 mb-3">
                         <Flame className="w-4 h-4 text-orange-500/80" />
-                        <h3 className="text-sm font-semibold text-foreground/80">Trending podcasts</h3>
+                        <h3 className="text-sm font-semibold text-foreground">Trending podcasts</h3>
                       </div>
                       {isLoadingTrending ? (
                         <div className="flex justify-center py-6">
@@ -2322,15 +2322,15 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
 
                 {view === "podcasts" && trendingPodcasts.length > 0 && (podcastCategoryFilter ? filteredPodcasts.length > 0 : tracks.length > 0) && (
                   <div className="flex items-center gap-2 mb-3">
-                    <Headphones className="w-4 h-4 text-brand/60" />
-                    <h3 className="text-sm font-semibold text-foreground/80">Wavlake episodes</h3>
+                    <Headphones className="w-4 h-4 text-brand" />
+                    <h3 className="text-sm font-semibold text-foreground">Wavlake episodes</h3>
                   </div>
                 )}
 
                 {view === "podcasts" && podcastCategoryFilter && filteredPodcasts.length === 0 && !trendingPodcasts.some(p => p.categories.some(c => c.toLowerCase() === podcastCategoryFilter!.toLowerCase())) ? (
                   <div className="flex flex-col items-center justify-center py-12 space-y-2">
                     <Radio className="w-6 h-6 text-muted-foreground/50" />
-                    <p className="text-xs text-muted-foreground/70">No episodes match this category</p>
+                    <p className="text-xs text-muted-foreground">No episodes match this category</p>
                   </div>
                 ) : viewMode === "list" ? (
                   <div className="space-y-0.5" data-testid="container-music-list">
@@ -2371,7 +2371,7 @@ export default function AudioFeed({ embedded = false }: { embedded?: boolean } =
                       {isLoadingMore ? (
                         <RelayOutpostInlineLoader />
                       ) : (view === "podcasts" && noMoreResults) ? (
-                        <span className="text-muted-foreground/70">No more episodes</span>
+                        <span className="text-muted-foreground">No more episodes</span>
                       ) : (
                         <>
                           <Shuffle className="w-3.5 h-3.5 mr-1.5" />

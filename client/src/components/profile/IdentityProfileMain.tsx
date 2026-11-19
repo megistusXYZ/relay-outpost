@@ -378,7 +378,7 @@ export function IdentityProfileMain({
       {filter === "articles" ? (
         <div>{articlesSlot}</div>
       ) : filter === "media" ? (
-        <div>{mediaSlot}</div>
+        <div data-testid="identity-media">{mediaSlot}</div>
       ) : filter === "shop" ? (
         <ProfileShopGrid listings={listings} />
       ) : (

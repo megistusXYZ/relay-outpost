@@ -262,7 +262,7 @@ function MediaSortBar({ value, onChange, compact = false }: { value: SortMode; o
                   key={opt.value}
                   onClick={() => onChange(opt.value)}
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer ${
-                    isActive ? "bg-primary/15 text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    isActive ? "bg-primary/15 text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50"
                   }`}
                   data-testid={`sort-mobile-${opt.value}`}
                 >
@@ -376,7 +376,7 @@ function VideoProgressBar({ videoRef }: { videoRef: React.RefObject<HTMLVideoEle
       data-testid="video-progress-bar"
     >
       <div className="flex items-center gap-2">
-        <span className="text-[10px] font-mono text-white/80 tabular-nums w-8 text-right shrink-0">{formatTime(currentTime)}</span>
+        <span className="text-xs font-mono text-white tabular-nums w-8 text-right shrink-0">{formatTime(currentTime)}</span>
         <div
           ref={trackRef}
           className="relative flex-1 h-6 flex items-center cursor-pointer touch-none"
@@ -392,7 +392,7 @@ function VideoProgressBar({ videoRef }: { videoRef: React.RefObject<HTMLVideoEle
             style={{ left: `${progress * 100}%` }}
           />
         </div>
-        <span className="text-[10px] font-mono text-white/50 tabular-nums w-8 shrink-0">{formatTime(duration)}</span>
+        <span className="text-xs font-mono text-white tabular-nums w-8 shrink-0">{formatTime(duration)}</span>
       </div>
     </div>
   );
@@ -615,7 +615,7 @@ function ShortsCard({ event, videoUrl, isActive, isMuted, shouldPreload = false,
         {onToggleSort && (
           <button
             onClick={(e) => { e.stopPropagation(); onToggleSort(); }}
-            className={`w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white/80 active-elevate-2 transition-opacity duration-300 ${utilityDimmed ? "opacity-30" : "opacity-100"}`}
+            className={`w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white active-elevate-2 transition-opacity duration-300 ${utilityDimmed ? "opacity-30" : "opacity-100"}`}
             aria-label={sortMode === "latest" ? "Showing newest — switch to trending" : "Showing trending — switch to newest"}
             data-testid={`button-shorts-sort-toggle-${event.id}`}
           >
@@ -669,18 +669,18 @@ function ShortsCard({ event, videoUrl, isActive, isMuted, shouldPreload = false,
                   {displayName}
                 </Link>
               )}
-              <span className="text-[11px] text-white/40" data-testid={`text-shorts-time-${event.id}`}>{timeAgo}</span>
+              <span className="text-xs text-white" data-testid={`text-shorts-time-${event.id}`}>{timeAgo}</span>
             </div>
             <Link
               href={getThreadUrl(event.id)}
-              className="shrink-0 flex items-center gap-1.5 text-xs text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-md px-2.5 py-1.5 transition-colors"
+              className="shrink-0 flex items-center gap-1.5 text-xs text-white hover:text-white bg-white/10 hover:bg-white/20 rounded-md px-2.5 py-1.5 transition-colors"
               data-testid={`link-shorts-view-post-${event.id}`}
             >
               <ExternalLink className="w-3.5 h-3.5" /> View Post
             </Link>
           </div>
           {previewText && (
-            <p className="text-xs text-white/70 line-clamp-2" data-testid={`text-shorts-desc-${event.id}`}>{previewText}</p>
+            <p className="text-xs text-white line-clamp-2" data-testid={`text-shorts-desc-${event.id}`}>{previewText}</p>
           )}
         </div>
       </div>
@@ -783,7 +783,7 @@ function VideoCard({ event, videoUrl }: { event: Event; videoUrl: string }) {
         </div>
         <div className="p-3 space-y-1.5">
           {previewText && (
-            <p className="text-xs text-foreground/70 line-clamp-2" data-testid={`text-video-desc-${event.id}`}>{previewText}</p>
+            <p className="text-xs text-foreground line-clamp-2" data-testid={`text-video-desc-${event.id}`}>{previewText}</p>
           )}
           <div className="flex items-center gap-2">
             <Link href={profileUrl} data-testid={`link-avatar-${event.id}`}>
@@ -795,10 +795,10 @@ function VideoCard({ event, videoUrl }: { event: Event; videoUrl: string }) {
             <Link href={profileUrl} className="text-xs font-medium truncate flex-1 text-foreground/80 cursor-pointer" data-testid={`link-author-${event.id}`}>
               {displayName}
             </Link>
-            <span className="text-[11px] text-muted-foreground/70 shrink-0" data-testid={`text-time-${event.id}`}>{timeAgo}</span>
+            <span className="text-xs text-muted-foreground shrink-0" data-testid={`text-time-${event.id}`}>{timeAgo}</span>
             <Link
               href={getThreadUrl(event.id)}
-              className="text-muted-foreground/50 hover:text-brand/70 transition-colors shrink-0"
+              className="text-muted-foreground transition-colors shrink-0"
               title="View post"
               data-testid={`link-view-post-${event.id}`}
             >
@@ -827,11 +827,11 @@ function VideoCard({ event, videoUrl }: { event: Event; videoUrl: string }) {
               <AvatarFallback className="text-[8px] bg-muted">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
           </Link>
-          <span className="text-xs font-medium truncate flex-1 text-foreground/80" data-testid={`text-author-${event.id}`}>{displayName}</span>
-          <span className="text-[11px] text-muted-foreground/70 shrink-0" data-testid={`text-time-${event.id}`}>{timeAgo}</span>
+          <span className="text-xs font-medium truncate flex-1 text-foreground" data-testid={`text-author-${event.id}`}>{displayName}</span>
+          <span className="text-xs text-muted-foreground shrink-0" data-testid={`text-time-${event.id}`}>{timeAgo}</span>
           <Link
             href={getThreadUrl(event.id)}
-            className="text-muted-foreground/50 hover:text-brand/70 transition-colors shrink-0"
+            className="text-muted-foreground transition-colors shrink-0"
             title="View post"
             data-testid={`link-view-post-unavail-${event.id}`}
           >
@@ -871,7 +871,7 @@ function VideoCard({ event, videoUrl }: { event: Event; videoUrl: string }) {
               if (!video) return;
               await enterPiP(video, videoUrl, true);
             }}
-            className={`absolute top-2 left-2 sm:left-auto sm:right-2 z-10 p-1.5 rounded-full backdrop-blur-md transition-all ${isThisPiP ? "bg-green-500/30 text-success dark:text-green-300" : "bg-black/50 text-white/70 hover:text-white hover:bg-black/70"} opacity-0 group-hover/vcard:opacity-100 focus:opacity-100`}
+            className={`absolute top-2 left-2 sm:left-auto sm:right-2 z-10 p-1.5 rounded-full backdrop-blur-md transition-all ${isThisPiP ? "bg-green-500/30 text-success dark:text-green-300" : "bg-black/50 text-white hover:text-white hover:bg-black/70"} opacity-0 group-hover/vcard:opacity-100 focus:opacity-100`}
             title={isThisPiP ? "Playing in Picture-in-Picture" : "Picture-in-Picture"}
             data-testid={`button-pip-${event.id}`}
           >
@@ -893,7 +893,7 @@ function VideoCard({ event, videoUrl }: { event: Event; videoUrl: string }) {
       </div>
       <div className="p-3 space-y-1.5">
         {previewText && (
-          <p className="text-xs text-foreground/70 line-clamp-2" data-testid={`text-video-desc-${event.id}`}>{previewText}</p>
+          <p className="text-xs text-foreground line-clamp-2" data-testid={`text-video-desc-${event.id}`}>{previewText}</p>
         )}
         <div className="flex items-center gap-2">
           <Link href={profileUrl} data-testid={`link-avatar-${event.id}`}>
@@ -905,10 +905,10 @@ function VideoCard({ event, videoUrl }: { event: Event; videoUrl: string }) {
           <Link href={profileUrl} className="text-xs font-medium truncate flex-1 text-foreground/80 cursor-pointer" data-testid={`link-author-${event.id}`}>
             {displayName}
           </Link>
-          <span className="text-[11px] text-muted-foreground/70 shrink-0" data-testid={`text-time-${event.id}`}>{timeAgo}</span>
+          <span className="text-xs text-muted-foreground shrink-0" data-testid={`text-time-${event.id}`}>{timeAgo}</span>
           <Link
             href={getThreadUrl(event.id)}
-            className="text-muted-foreground/50 hover:text-brand/70 transition-colors shrink-0"
+            className="text-muted-foreground transition-colors shrink-0"
             title="View post"
             data-testid={`link-view-post-native-${event.id}`}
           >
@@ -1012,7 +1012,7 @@ function VideoListItem({ event, videoUrl }: { event: Event; videoUrl: string }) 
               </div>
             )}
             {isEmbed && (
-              <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-black/70 text-white/80" data-testid={`text-list-platform-${event.id}`}>
+              <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-xs font-medium bg-black/70 text-white" data-testid={`text-list-platform-${event.id}`}>
                 {platformLabel}
               </div>
             )}
@@ -1025,7 +1025,7 @@ function VideoListItem({ event, videoUrl }: { event: Event; videoUrl: string }) 
           <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
             <div>
               {previewText && (
-                <p className="text-xs text-foreground/70 line-clamp-2 mb-1" data-testid={`text-list-desc-${event.id}`}>{previewText}</p>
+                <p className="text-xs text-foreground line-clamp-2 mb-1" data-testid={`text-list-desc-${event.id}`}>{previewText}</p>
               )}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -1038,10 +1038,10 @@ function VideoListItem({ event, videoUrl }: { event: Event; videoUrl: string }) 
               <Link href={profileUrl} className="text-xs font-medium truncate text-foreground/80 cursor-pointer" data-testid={`link-list-author-${event.id}`} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                 {displayName}
               </Link>
-              <span className="text-[11px] text-muted-foreground/70 shrink-0 ml-auto" data-testid={`text-list-time-${event.id}`}>{timeAgo}</span>
+              <span className="text-xs text-muted-foreground shrink-0 ml-auto" data-testid={`text-list-time-${event.id}`}>{timeAgo}</span>
               <Link
                 href={getThreadUrl(event.id)}
-                className="text-muted-foreground/50 hover:text-brand/70 transition-colors shrink-0"
+                className="text-muted-foreground transition-colors shrink-0"
                 onClick={(e: React.MouseEvent) => e.stopPropagation()}
                 title="View post"
                 data-testid={`link-list-view-post-${event.id}`}
