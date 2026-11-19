@@ -352,14 +352,20 @@ export async function fetchDMRelayList(
     }
     // ZERO EVENTS IS NOT AN ANSWER UNTIL SOMEONE ANSWERED.
     //
-    // "Confirmed empty" means the relays ANSWERED (a real EOSE) and had
-    // nothing — not merely that the query resolved. Two failure modes used to
-    // land here and be filed as fact: an unreachable relay set (querySync
-    // resolves [] without throwing), and a reachable relay that REFUSES the
-    // REQ — nostr-tools reports `CLOSED auth-required` as an ordinary
-    // end-of-stream. The interim fix probed `canReachAny` after the fact,
-    // which caught the first mode but not the second: a relay you can
-    // connect to has still not answered the question it declined.
+    // "Confirmed empty" means the stream ended with a relay we were connected
+    // to and nothing came back — not merely that the query resolved. An
+    // unreachable relay set landed here and was filed as fact twice over:
+    // querySync resolves [] without throwing, and queryAnswered, which
+    // replaced it, took the pool's end-of-stream for an answer although the
+    // pool sends one for a relay that never connected. queryAnswered now
+    // checks the connection itself (lib/relay-reach.ts).
+    //
+    // What `answered` still cannot see is a relay we DID connect to that
+    // REFUSES the REQ: nostr-tools reports `CLOSED auth-required` as an
+    // ordinary end-of-stream, and a relay you can connect to has still not
+    // answered the question it declined. Here that takes every connected
+    // relay in the set declining, since one that really answers makes the
+    // answer real.
     //
     // The cost was not subtle. Two accounts created in THIS app, both of which
     // publish a kind-10050 at signup, were told about each other: "Their app

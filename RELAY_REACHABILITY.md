@@ -55,6 +55,41 @@ it is an answer).
 that genuinely throws is a different problem from a relay that is down, and
 hiding it there would rebuild the same defect one layer up.
 
+### `queryAnswered`, and how it repeated the mistake
+
+`queryAnswered(relays, filter)` is the one-shot read that returns
+`{ events, answered }`. Writes are gated on `answered`: the DM relay list, the
+NIP-65 list, a Featured feed.
+
+It settled `answered = true` inside `oneose` — the trap this page is named
+for, inside the primitive built to avoid it. Measured in a browser against
+relays on the same machine (2026-11-18), calling the real module:
+
+| relay | read as, before | read as, after |
+|---|---|---|
+| nothing listening on the port | answered, 0 events | **not answered** |
+| hangs up before the handshake (1006) | answered, 0 events | **not answered** |
+| asked again moments later (dial skipped) | answered, 0 events, 0 ms | **not answered** |
+| one down, one answering with nothing | answered | answered |
+| answers with nothing | answered | answered |
+| silent, caller's timer shorter than `maxWait` | not answered | not answered |
+
+The end of the stream is now put to `canReachAny`: `answered` is true only when
+the stream ended **and** one of the relays asked is connected. It costs nothing:
+an open socket resolves at once, and a relay that just refused is not dialed
+twice (the pool remembers it).
+
+Two things `answered` still does not tell apart. Both were measured, and both
+were left as they were:
+
+- **A connected relay that declines the REQ** (`CLOSED restricted`, or
+  `auth-required` and then a refused sign-in) ends the stream and reads as
+  answered. `withReach` reports this as `refusedReason`; `queryAnswered` does not.
+- **A connected relay that says nothing** gets an end-of-stream from the library
+  at `maxWait` (10 s). A caller that waits longer than that reads it as
+  answered; one that waits less reads it as not answered — including when
+  another relay in the set really did answer.
+
 ## Where a wrong answer is worst
 
 Ranked by consequence, not frequency. A sentence is bad; these are worse.
