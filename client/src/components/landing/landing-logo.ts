@@ -19,11 +19,9 @@
  * states, outpost-landing.css for where the logo sits and how it arrives).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { logoStorySeen, markLogoStorySeen } from "@/components/relay/logo-session";
 
 export type LogoStage = "icon" | "relay" | "full";
-
-/** Session flag: the intro has played (or begun) in this tab. */
-const SEEN_KEY = "relay-outpost-logo-intro";
 
 /** The intro, in ms after the one before: the name is written, the face becomes the O, the logo lands. */
 export const INTRO_STEPS = { relay: 750, full: 950, land: 1150 } as const;
@@ -37,13 +35,6 @@ const HOVER_CLOSE_MS = 500;
 function prefersStill(): boolean {
   try { return !!window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; }
 }
-function seenThisSession(): boolean {
-  try { return window.sessionStorage.getItem(SEEN_KEY) === "1"; } catch { return false; }
-}
-function markSeen(): void {
-  try { window.sessionStorage.setItem(SEEN_KEY, "1"); } catch { /* storage is off: the intro plays again next load, which is harmless */ }
-}
-
 export interface LandingLogo {
   stage: LogoStage;
   /** The logo is large in the middle of the screen (the header's `is-intro`). */
@@ -63,7 +54,7 @@ export interface LandingLogo {
  */
 export function useLandingLogo(rest: LogoStage, still: boolean): LandingLogo {
   // Decided before the first paint, so the page never flashes ahead of the intro.
-  const [plays] = useState(() => typeof window !== "undefined" && !still && !prefersStill() && !seenThisSession());
+  const [plays] = useState(() => typeof window !== "undefined" && !still && !prefersStill() && !logoStorySeen());
   const [stage, setStage] = useState<LogoStage>(plays ? "icon" : rest);
   const [intro, setIntro] = useState(plays);
   const [pre, setPre] = useState(plays);
@@ -102,7 +93,7 @@ export function useLandingLogo(rest: LogoStage, still: boolean): LandingLogo {
   // The intro, once.
   useEffect(() => {
     if (!plays) return;
-    markSeen();
+    markLogoStorySeen();
     run([
       [INTRO_STEPS.relay, () => setStage("relay")],
       [INTRO_STEPS.full, () => setStage("full")],
