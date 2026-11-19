@@ -341,13 +341,13 @@ function PagerBottomBar({ event, onNavigate }: { event: Event; onNavigate: (url:
           <button
             type="button"
             onClick={() => onNavigate(getThreadUrl(event.id))}
-            className="text-xs text-white/70 truncate flex-1 min-w-0 drop-shadow text-left cursor-pointer"
+            className="text-xs text-white truncate flex-1 min-w-0 drop-shadow text-left cursor-pointer"
             data-testid="pager-caption"
           >
             {caption}
           </button>
         ) : (
-          <span className="flex-1 min-w-0 text-[11px] text-white/40">{timeAgo}</span>
+          <span className="flex-1 min-w-0 text-xs text-white">{timeAgo}</span>
         )}
         <button
           type="button"
@@ -513,7 +513,7 @@ export function MediaPagerViewer({
       </div>
 
       {/* Counter — subtle, top-left. */}
-      <div className="absolute top-3 left-3 z-10 px-2.5 py-1.5 rounded-full bg-black/40 backdrop-blur-sm text-[11px] font-medium text-white/80 tabular-nums pointer-events-none" data-testid="pager-counter">
+      <div className="absolute top-3 left-3 z-10 px-2.5 py-1.5 rounded-full bg-black/40 backdrop-blur-sm text-xs font-medium text-white tabular-nums pointer-events-none" data-testid="pager-counter">
         {Math.min(currentIndex + 1, items.length)} / {items.length}
       </div>
 
@@ -534,7 +534,7 @@ export function MediaPagerViewer({
         <button
           type="button"
           onClick={() => scrollToIndex(currentIndex - 1)}
-          className="hidden sm:flex absolute right-3 top-1/2 -translate-y-[50px] z-10 w-11 h-11 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 items-center justify-center text-white/80 hover:text-white"
+          className="hidden sm:flex absolute right-3 top-1/2 -translate-y-[50px] z-10 w-11 h-11 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 items-center justify-center text-white hover:text-white"
           aria-label="Previous"
           data-testid="pager-prev"
         >
@@ -545,7 +545,7 @@ export function MediaPagerViewer({
         <button
           type="button"
           onClick={() => scrollToIndex(currentIndex + 1)}
-          className="hidden sm:flex absolute right-3 top-1/2 translate-y-1.5 z-10 w-11 h-11 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 items-center justify-center text-white/80 hover:text-white"
+          className="hidden sm:flex absolute right-3 top-1/2 translate-y-1.5 z-10 w-11 h-11 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 items-center justify-center text-white hover:text-white"
           aria-label="Next"
           data-testid="pager-next"
         >
@@ -595,7 +595,7 @@ export function MediaGridGallery({ events, mode }: { events: Event[]; mode: "pho
         className="glass-card rounded-lg flex flex-col items-center justify-center py-12 sm:py-16 text-center px-4"
         data-testid="container-media-grid-empty"
       >
-        <Icon className="w-8 h-8 text-muted-foreground/40 mb-3" />
+        <Icon className="w-8 h-8 text-muted-foreground mb-3" />
         <p className="text-sm font-medium mb-1">No {mode === "photos" ? "photos" : "videos"} yet</p>
         <p className="text-xs text-muted-foreground max-w-xs">
           Media from this feed will show up here as it streams in.

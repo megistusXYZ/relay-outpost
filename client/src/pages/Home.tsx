@@ -3108,7 +3108,7 @@ export default function Home() {
             ref={filterButtonRef}
             type="button"
             onClick={() => { setFeedsOpen(false); setFilterOpen((o) => !o); }}
-            className="glass-feed-tabs shrink-0 inline-flex items-center justify-center w-11 h-11 sm:w-auto sm:px-3 sm:gap-1.5 rounded-lg text-foreground/80 hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="glass-feed-tabs shrink-0 inline-flex items-center justify-center w-11 h-11 sm:w-auto sm:px-3 sm:gap-1.5 rounded-lg text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={`Filter ${currentFeedName}`}
             aria-expanded={filterOpen}
             title={`Filter ${currentFeedName}`}
@@ -3143,7 +3143,7 @@ export default function Home() {
                 Loading posts from the last {topTimeWindow}...
               </p>
             ) : (
-              <p className="text-[11px] text-muted-foreground/50 italic" data-testid="text-top-fallback">
+              <p className="text-xs text-muted-foreground italic" data-testid="text-top-fallback">
                 No posts in the last {topTimeWindow} — showing all time
               </p>
             )}
@@ -3154,7 +3154,7 @@ export default function Home() {
             the granular reach/tier controls live on the Trust & Safety page. */}
         {feedMode === "raw_signal" && !pubkey && (
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-[11px] text-muted-foreground/50 italic leading-tight" data-testid="text-raw-disclaimer">
+            <span className="text-xs text-muted-foreground italic leading-tight" data-testid="text-raw-disclaimer">
               The wider network, unfiltered · sign in to enable trust filtering
             </span>
           </div>
@@ -3229,12 +3229,12 @@ export default function Home() {
               <div className="relative mb-5">
                 <div className="absolute inset-0 rounded-full bg-foreground/10 dark:bg-white/10 blur-xl scale-150" />
                 <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full border border-foreground/20 bg-foreground/5 dark:border-white/20 dark:bg-white/5 backdrop-blur-sm flex items-center justify-center">
-                  <Antenna className="w-7 h-7 sm:w-8 sm:h-8 text-foreground/70" />
+                  <Antenna className="w-7 h-7 sm:w-8 sm:h-8 text-foreground" />
                 </div>
               </div>
 
               <h3 className="text-lg sm:text-xl font-bold tracking-tight text-foreground mb-2">The wider network</h3>
-              <p className="text-sm text-foreground/50 max-w-[280px] leading-relaxed mb-8">
+              <p className="text-sm text-foreground max-w-[280px] leading-relaxed mb-8">
                 The wider network shows recent posts from every connected relay, with no filtering applied.
               </p>
 
@@ -3248,7 +3248,7 @@ export default function Home() {
                   Enter with Trust Filter (2 Hops)
                 </button>
                 <button
-                  className="w-full py-2 px-5 text-[13px] text-foreground/50 hover:text-foreground/80 dark:hover:text-white/70 font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 underline underline-offset-2 decoration-foreground/15 hover:decoration-foreground/35 dark:decoration-white/15 dark:hover:decoration-white/35"
+                  className="w-full py-2 px-5 text-[13px] text-foreground dark:hover:text-white/70 font-medium transition-colors duration-200 flex items-center justify-center gap-1.5 underline underline-offset-2 decoration-foreground/15 hover:decoration-foreground/35 dark:decoration-white/15 dark:hover:decoration-white/35"
                   onClick={() => acknowledgeRaw(false)}
                   data-testid="button-raw-gate-unfiltered"
                 >
@@ -3256,7 +3256,7 @@ export default function Home() {
                 </button>
               </div>
 
-              <p className="text-[11px] text-foreground/25 mt-6 max-w-[260px] leading-relaxed">
+              <p className="text-xs text-foreground mt-6 max-w-[260px] leading-relaxed">
                 Trust filter controls how far beyond your follows you'll see posts from. Slide it to widen or narrow your circle.
               </p>
             </div>
@@ -3266,7 +3266,7 @@ export default function Home() {
             className="glass-card rounded-lg flex flex-col items-center justify-center py-12 sm:py-16 text-center px-4"
             data-testid="container-empty-frequencies"
           >
-            <TuneAntennaIllustration className="text-foreground/60 mb-3" />
+            <TuneAntennaIllustration className="text-foreground mb-3" />
             <p className="text-sm font-medium mb-1">No feeds tuned yet</p>
             <p className="text-xs text-muted-foreground max-w-xs">
               Create a custom feed to filter posts by hashtags, keywords, or specific people.
@@ -3305,7 +3305,7 @@ export default function Home() {
             className="glass-card rounded-lg flex flex-col items-center justify-center py-12 sm:py-16 text-center px-4"
             data-testid="container-empty-following"
           >
-            <NoSignalIllustration className="text-foreground/60 mb-3" />
+            <NoSignalIllustration className="text-foreground mb-3" />
             {!widerNetworkOn ? (
               <>
                 {/* Your space, nobody in it yet: the way in is yours to make —
@@ -3376,7 +3376,7 @@ export default function Home() {
             className="glass-card rounded-lg flex flex-col items-center justify-center py-12 sm:py-16 text-center px-4"
             data-testid="container-empty-trending"
           >
-            <RadarSweepIllustration className="text-foreground/60 mb-3" />
+            <RadarSweepIllustration className="text-foreground mb-3" />
             <p className="text-sm font-medium mb-1">Deep scan returned empty</p>
             <p className="text-xs text-muted-foreground max-w-xs">
               Try a different time range or check back later.
@@ -3404,7 +3404,7 @@ export default function Home() {
             className="glass-card rounded-lg flex flex-col items-center justify-center py-12 sm:py-16 text-center px-4"
             data-testid="container-empty-custom"
           >
-            <StaticNoiseIllustration className="text-foreground/60 mb-3" />
+            <StaticNoiseIllustration className="text-foreground mb-3" />
             <p className="text-sm font-medium mb-1">Nothing on this feed yet</p>
             <p className="text-xs text-muted-foreground max-w-xs">
               Try adjusting your filters or check back later.
@@ -3415,7 +3415,7 @@ export default function Home() {
             className="glass-card rounded-lg flex flex-col items-center justify-center py-12 sm:py-16 text-center px-4"
             data-testid="container-empty-feed"
           >
-            <StaticNoiseIllustration className="text-foreground/60 mb-3" />
+            <StaticNoiseIllustration className="text-foreground mb-3" />
             <p className="text-sm font-medium mb-1">Your feed is filling up</p>
             <p className="text-xs text-muted-foreground max-w-xs mb-3">
               Posts from the people you follow will show up here. Give it a moment — or explore trending and find more people to follow.
@@ -3555,7 +3555,7 @@ export default function Home() {
         <AlertDialogContent className="glass-dialog-card border-red-500/20 max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-base font-semibold">Delete "{deletingFeed?.name}"?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground/70">
+            <AlertDialogDescription className="text-xs text-muted-foreground">
               This removes the feed from your list. You can always tune or import it again.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -3603,11 +3603,11 @@ export default function Home() {
                       <span className="text-sm font-semibold text-foreground truncate">{feedToShare.name}</span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
-                      {feedToShare.hashtags.map(t => <Badge key={t} variant="secondary" className="text-[11px] bg-foreground/[0.06] text-foreground border-border/60">#{t}</Badge>)}
-                      {feedToShare.includeKeywords.map(k => <Badge key={k} variant="outline" className="text-[11px] border-emerald-500/20 text-success dark:text-emerald-400">{k}</Badge>)}
-                      {feedToShare.excludeKeywords.map(k => <Badge key={k} variant="outline" className="text-[11px] border-red-500/20 text-danger dark:text-red-400 line-through">{k}</Badge>)}
+                      {feedToShare.hashtags.map(t => <Badge key={t} variant="secondary" className="text-xs bg-foreground/[0.06] text-foreground border-border/60">#{t}</Badge>)}
+                      {feedToShare.includeKeywords.map(k => <Badge key={k} variant="outline" className="text-xs border-emerald-500/20 text-success dark:text-emerald-400">{k}</Badge>)}
+                      {feedToShare.excludeKeywords.map(k => <Badge key={k} variant="outline" className="text-xs border-red-500/20 text-danger dark:text-red-400 line-through">{k}</Badge>)}
                       {feedToShare.authorPubkeys.length > 0 && <Badge variant="outline" className="text-[11px] border-blue-500/20 text-blue-700 dark:text-blue-400"><Users className="w-3 h-3 mr-1" />{feedToShare.authorPubkeys.length} {feedToShare.authorPubkeys.length === 1 ? "person" : "people"}</Badge>}
-                      {feedToShare.contentType !== "all" && <Badge variant="outline" className="text-[11px] border-border/60 text-foreground/80">{feedToShare.contentType === "text_only" ? "Text" : feedToShare.contentType === "media" ? "Media" : "Links"}</Badge>}
+                      {feedToShare.contentType !== "all" && <Badge variant="outline" className="text-xs border-border/60 text-foreground">{feedToShare.contentType === "text_only" ? "Text" : feedToShare.contentType === "media" ? "Media" : "Links"}</Badge>}
                     </div>
                   </div>
                   {typeof navigator.share === "function" && (
@@ -3626,7 +3626,7 @@ export default function Home() {
                       Copy Code
                     </Button>
                   </div>
-                  <p className="text-[11px] text-muted-foreground/50 text-center leading-relaxed">
+                  <p className="text-xs text-muted-foreground text-center leading-relaxed">
                     Anyone with the link or code can import this feed into their Relay Outpost
                   </p>
                 </>
@@ -3658,11 +3658,11 @@ export default function Home() {
                     <span className="text-sm font-semibold text-foreground truncate">{feedToShare.name}</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {feedToShare.hashtags.map(t => <Badge key={t} variant="secondary" className="text-[11px] bg-foreground/[0.06] text-foreground border-border/60">#{t}</Badge>)}
-                    {feedToShare.includeKeywords.map(k => <Badge key={k} variant="outline" className="text-[11px] border-emerald-500/20 text-success dark:text-emerald-400">{k}</Badge>)}
-                    {feedToShare.excludeKeywords.map(k => <Badge key={k} variant="outline" className="text-[11px] border-red-500/20 text-danger dark:text-red-400 line-through">{k}</Badge>)}
+                    {feedToShare.hashtags.map(t => <Badge key={t} variant="secondary" className="text-xs bg-foreground/[0.06] text-foreground border-border/60">#{t}</Badge>)}
+                    {feedToShare.includeKeywords.map(k => <Badge key={k} variant="outline" className="text-xs border-emerald-500/20 text-success dark:text-emerald-400">{k}</Badge>)}
+                    {feedToShare.excludeKeywords.map(k => <Badge key={k} variant="outline" className="text-xs border-red-500/20 text-danger dark:text-red-400 line-through">{k}</Badge>)}
                     {feedToShare.authorPubkeys.length > 0 && <Badge variant="outline" className="text-[11px] border-blue-500/20 text-blue-700 dark:text-blue-400"><Users className="w-3 h-3 mr-1" />{feedToShare.authorPubkeys.length} {feedToShare.authorPubkeys.length === 1 ? "person" : "people"}</Badge>}
-                    {feedToShare.contentType !== "all" && <Badge variant="outline" className="text-[11px] border-border/60 text-foreground/80">{feedToShare.contentType === "text_only" ? "Text" : feedToShare.contentType === "media" ? "Media" : "Links"}</Badge>}
+                    {feedToShare.contentType !== "all" && <Badge variant="outline" className="text-xs border-border/60 text-foreground">{feedToShare.contentType === "text_only" ? "Text" : feedToShare.contentType === "media" ? "Media" : "Links"}</Badge>}
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -3690,7 +3690,7 @@ export default function Home() {
                     </>
                   )}
                 </div>
-                <p className="text-[11px] text-muted-foreground/50 text-center leading-relaxed">
+                <p className="text-xs text-muted-foreground text-center leading-relaxed">
                   Anyone with the link or code can import this feed into their Relay Outpost
                 </p>
               </div>

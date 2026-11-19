@@ -459,7 +459,7 @@ function NewsHeroTile() {
                   (hidden/md:block), the INNER owns the clamp (line-clamp sets
                   display:-webkit-box). Putting both on one element is the exact
                   block-vs-webkit-box collision that made every clamp here inert. */}
-              {dek && <span className="mt-2 hidden md:block"><span className="text-sm text-muted-foreground/80 line-clamp-3">{dek}</span></span>}
+              {dek && <span className="mt-2 hidden md:block"><span className="text-sm text-muted-foreground line-clamp-3">{dek}</span></span>}
               {allFailed && (
                 <span className="block mt-2 text-[12px] text-muted-foreground" data-testid="news-hero-stale">
                   Couldn't refresh — showing the last front page we saw.
@@ -552,7 +552,7 @@ function FeedTile({ trustKey }: { trustKey: string }) {
                   {avatar ? (
                     <img src={avatar} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />
                   ) : (
-                    <span className="text-[8px] font-semibold text-foreground/80">{name.slice(0, 1).toUpperCase()}</span>
+                    <span className="text-xs font-semibold text-foreground">{name.slice(0, 1).toUpperCase()}</span>
                   )}
                 </span>
                 <span className="text-[13px] font-medium text-foreground shrink-0 max-w-[110px] truncate">{name}</span>
@@ -655,7 +655,7 @@ function CommunitiesTile({ widerNetworkOn = true }: { widerNetworkOn?: boolean }
                   {meta.icon ? (
                     <img src={meta.icon} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />
                   ) : (
-                    <span className="text-[9px] font-semibold text-foreground/80">{label.slice(0, 1).toUpperCase()}</span>
+                    <span className="text-xs font-semibold text-foreground">{label.slice(0, 1).toUpperCase()}</span>
                   )}
                 </span>
               );
@@ -665,11 +665,11 @@ function CommunitiesTile({ widerNetworkOn = true }: { widerNetworkOn?: boolean }
             )}
           </span>
           {p.newest && name ? (
-            <span className="block text-xs font-medium text-foreground/90" data-testid="communities-tile-newest">
+            <span className="block text-xs font-medium text-foreground" data-testid="communities-tile-newest">
               {name} · active {formatDistanceToNow(new Date(p.newest.at), { addSuffix: true })}
             </span>
           ) : (
-            <span className="block text-xs font-medium text-foreground/90">Quiet this week</span>
+            <span className="block text-xs font-medium text-foreground">Quiet this week</span>
           )}
           <span className="block text-[13px] text-muted-foreground">
             {p.active} of {p.total} active this week
@@ -684,7 +684,7 @@ function CommunitiesTile({ widerNetworkOn = true }: { widerNetworkOn?: boolean }
     // so the tile says how to start one instead (the Welcome screen does it).
     body = (
       <>
-        <span className="block text-xs font-medium text-foreground/90" data-testid="communities-tile-start">Name your community</span>
+        <span className="block text-xs font-medium text-foreground" data-testid="communities-tile-start">Name your community</span>
         <span className="block text-[13px] text-muted-foreground">A private place for your people. You pick who's in it.</span>
       </>
     );
@@ -693,7 +693,7 @@ function CommunitiesTile({ widerNetworkOn = true }: { widerNetworkOn?: boolean }
   } else if (dir.relays.length > 0) {
     body = (
       <>
-        <span className="block text-xs font-medium text-foreground/90" data-testid="communities-tile-count">
+        <span className="block text-xs font-medium text-foreground" data-testid="communities-tile-count">
           {dir.relays.length} communities in the directory
         </span>
         {guestMatches.length > 0 && (
@@ -705,7 +705,7 @@ function CommunitiesTile({ widerNetworkOn = true }: { widerNetworkOn?: boolean }
                   {m.icon ? (
                     <img src={m.icon} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />
                   ) : (
-                    <span className="text-[8px] font-semibold text-foreground/80">{m.name.slice(0, 1).toUpperCase()}</span>
+                    <span className="text-xs font-semibold text-foreground">{m.name.slice(0, 1).toUpperCase()}</span>
                   )}
                 </span>
                 <span className="text-[13px] text-foreground truncate flex-1">{m.name}</span>
@@ -1000,7 +1000,7 @@ function UniversalBar() {
             );
           })}
           {pubkey && peopleLoading && peopleResults.length === 0 && (
-            <div className="px-3 py-2 text-xs text-muted-foreground/60">Looking for people…</div>
+            <div className="px-3 py-2 text-xs text-muted-foreground">Looking for people…</div>
           )}
           {pubkey && rows.map((m) => (
             <ResultRow
@@ -1015,7 +1015,7 @@ function UniversalBar() {
             />
           ))}
           {pubkey && loading && rows.length === 0 && (
-            <div className="px-3 py-2.5 text-xs text-muted-foreground/60">Searching the directory…</div>
+            <div className="px-3 py-2.5 text-xs text-muted-foreground">Searching the directory…</div>
           )}
           {pubkey && (
             <ResultRow label={`Search everything for "${raw}"`} hint="Posts, people, media" onPick={() => go(`/search?q=${encodeURIComponent(raw)}`)} testId="row-discover-search-all" />
@@ -1126,7 +1126,7 @@ function LiveTile() {
     <TileShell label="Live" chip={chip} onOpen={() => setLocation("/live")} testId="tile-live">
       {networkLive.length > 0 ? (
         <>
-          <span className="block text-xs font-medium text-foreground/90" data-testid="live-tile-host">
+          <span className="block text-xs font-medium text-foreground" data-testid="live-tile-host">
             {authorNameFor(networkLive[0])}
             {networkLive.length > 1 && <span className="text-muted-foreground"> +{networkLive.length - 1} more you follow</span>}
           </span>
@@ -1201,7 +1201,7 @@ function PodcastsTile({ widerNetworkOn = true }: { widerNetworkOn?: boolean }) {
         <span className="flex items-center gap-2.5">
           {top.image && <img src={top.image} alt="" className="w-10 h-10 rounded-md object-cover shrink-0" loading="lazy" />}
           <span className="min-w-0">
-            <span className="block text-xs font-medium text-foreground/90 truncate" data-testid="podcasts-tile-title">{top.title}</span>
+            <span className="block text-xs font-medium text-foreground truncate" data-testid="podcasts-tile-title">{top.title}</span>
             <span className="block text-xs text-muted-foreground truncate">
               {freshness ? `New episode ${freshness}` : "Trending now"}
             </span>
@@ -1222,9 +1222,9 @@ function InviteTile() {
   return (
     <TileShell label="Invite" onOpen={() => setLocation("/account?invite=1")} testId="tile-invite">
       <span className="flex items-center gap-2.5">
-        <span className="w-10 h-10 rounded-full dark:bg-foreground/[0.06] flex items-center justify-center shrink-0"><UserPlus className="w-5 h-5 text-foreground/75" /></span>
+        <span className="w-10 h-10 rounded-full dark:bg-foreground/[0.06] flex items-center justify-center shrink-0"><UserPlus className="w-5 h-5 text-foreground" /></span>
         <span className="min-w-0">
-          <span className="block text-xs font-medium text-foreground/90">Invite a friend</span>
+          <span className="block text-xs font-medium text-foreground">Invite a friend</span>
           <span className="block text-[13px] text-muted-foreground">Chats are better with people you know. Send them a link.</span>
         </span>
       </span>
@@ -1272,7 +1272,7 @@ function EventsTile() {
       {state.status === "loading" && <TileSkeleton />}
       {state.status === "ready" && next && (
         <>
-          <span className="block text-xs font-medium text-foreground/90 truncate" data-testid="events-tile-title">{next.title}</span>
+          <span className="block text-xs font-medium text-foreground truncate" data-testid="events-tile-title">{next.title}</span>
           <span className="block text-xs text-muted-foreground truncate">{when ?? "Upcoming"}</span>
         </>
       )}
@@ -1317,7 +1317,7 @@ function VideosTile() {
       {state.status === "ready" && video && (
         <span className="flex items-center gap-2.5">
           {video.poster && <img src={video.poster} alt="" className="w-16 h-10 rounded-md object-cover shrink-0" loading="lazy" />}
-          <span className="block text-xs font-medium text-foreground/90 line-clamp-2 min-w-0" data-testid="videos-tile-title">{video.title}</span>
+          <span className="block text-xs font-medium text-foreground line-clamp-2 min-w-0" data-testid="videos-tile-title">{video.title}</span>
         </span>
       )}
       {state.status === "empty" && <span className="block text-[13px] text-muted-foreground">Quiet right now — tap to browse.</span>}
@@ -1378,7 +1378,7 @@ function MarketplaceShelfTile() {
                 onError={(e) => { e.currentTarget.style.display = "none"; }}
               />
               {it.priceLine && (
-                <span className="absolute bottom-1 left-1 rounded bg-black/65 px-1 py-0.5 text-[10px] font-medium text-white tabular-nums">
+                <span className="absolute bottom-1 left-1 rounded bg-black/65 px-1 py-0.5 text-xs font-medium text-white tabular-nums">
                   {it.priceLine}
                 </span>
               )}

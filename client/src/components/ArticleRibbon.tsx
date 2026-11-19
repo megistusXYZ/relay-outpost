@@ -63,13 +63,13 @@ export function ArticleRibbon({ coord, replyAuthor }: { coord: ArticleCoord; rep
         <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground ml-1" aria-hidden="true" />
       )}
       <span className="min-w-0 flex-1">
-        <span className="block text-[11px] text-muted-foreground" data-testid="article-ribbon-eyebrow">
+        <span className="block text-xs text-muted-foreground" data-testid="article-ribbon-eyebrow">
           {ownArticle ? "More on their article" : "On the article"}
         </span>
         <span className="block truncate text-sm font-semibold text-foreground group-hover/ribbon:underline underline-offset-2" data-testid="article-ribbon-title">
           {title}
         </span>
-        <span className="block truncate text-[11px] text-muted-foreground" data-testid="article-ribbon-meta">
+        <span className="block truncate text-xs text-muted-foreground" data-testid="article-ribbon-meta">
           {ownArticle ? "" : `by ${author}`}{minutes !== null ? `${ownArticle ? "" : " · "}${minutes} min read` : ""}
         </span>
       </span>

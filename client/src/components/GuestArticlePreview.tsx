@@ -99,7 +99,7 @@ export function GuestArticlePreview({ naddr }: { naddr: string }) {
       </div>
       <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/[0.06] border-b border-border/30 shrink-0">
         <ShieldCheck className="w-3.5 h-3.5 text-brand/70 shrink-0" />
-        <p className="text-[11px] text-muted-foreground">Guest view · sign in to react, comment &amp; follow</p>
+        <p className="text-xs text-muted-foreground">Guest view · sign in to react, comment &amp; follow</p>
       </div>
       <div className="flex-1 overflow-y-auto">
         {outcome === "loading" && (

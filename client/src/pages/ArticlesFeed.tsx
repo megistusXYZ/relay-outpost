@@ -163,7 +163,7 @@ function ShareArticleToNostrDialog({ article, onClose }: { article: ArticleData;
           </div>
         )}
         <p className="text-[13px] text-muted-foreground mb-1.5 font-medium">Sharing article</p>
-        <p className="text-sm font-medium text-foreground/90 line-clamp-2 break-words">{article.title}</p>
+        <p className="text-sm font-medium text-foreground line-clamp-2 break-words">{article.title}</p>
         {article.summary && (
           <p className="text-[12px] text-muted-foreground mt-1 line-clamp-2 break-words">{article.summary}</p>
         )}
@@ -235,7 +235,7 @@ function ArticleStats({ eventId }: { eventId: string }) {
   return (
     <div className="flex items-center gap-2.5 flex-wrap" data-testid={`container-article-stats-${eventId}`}>
       {stats.zaps > 0 && (
-        <span className="text-[12px] text-amber-800/80 dark:text-amber-400/80 flex items-center gap-0.5">
+        <span className="text-[12px] text-warning flex items-center gap-0.5">
           <Zap className="w-2.5 h-2.5" />
           {formatZapAmount(stats.zapAmount)}
         </span>
@@ -286,7 +286,7 @@ const ArticleCard = memo(function ArticleCard({ article, asHero, heroBadge, onSh
     <>
       <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleBookmark(); }}
-        className={`inline-flex items-center justify-center w-9 h-9 rounded-lg transition-colors shrink-0 cursor-pointer ${isBookmarked ? "text-brand" : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/50"}`}
+        className={`inline-flex items-center justify-center w-9 h-9 rounded-lg transition-colors shrink-0 cursor-pointer ${isBookmarked ? "text-brand" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
         data-testid={`button-bookmark-article-${article.event.id}`}
         aria-label={isBookmarked ? "Remove bookmark" : "Bookmark"}
       >
@@ -295,7 +295,7 @@ const ArticleCard = memo(function ArticleCard({ article, asHero, heroBadge, onSh
       {onShare && (
         <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onShare(article); }}
-          className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors shrink-0 cursor-pointer"
+          className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors shrink-0 cursor-pointer"
           data-testid={`button-share-article-${article.event.id}`}
           aria-label="Share"
         >
@@ -331,7 +331,7 @@ const ArticleCard = memo(function ArticleCard({ article, asHero, heroBadge, onSh
       <MediaHero
         item={item}
         badge={heroBadge}
-        placeholder={<BookOpen className="w-10 h-10 text-muted-foreground/20" />}
+        placeholder={<BookOpen className="w-10 h-10 text-muted-foreground" />}
       />
     );
   }
@@ -844,7 +844,7 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
           </PopoverTrigger>
           <PopoverContent align="start" className="w-56 p-1.5 max-h-80 overflow-y-auto">
             <div className="sm:hidden">
-              <p className="px-3 py-1.5 text-[13px] text-muted-foreground/60 font-medium">Show</p>
+              <p className="px-3 py-1.5 text-[13px] text-muted-foreground font-medium">Show</p>
               {tabs.map((t) => {
                 const isActive = tab === t.id;
                 const disabled = t.id === "following" && !pubkey;
@@ -854,7 +854,7 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
                     onClick={() => { if (!disabled) { setTab(t.id); setTopicsDropdownOpen(false); } }}
                     disabled={disabled}
                     className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer ${
-                      isActive ? "bg-primary/15 text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                      isActive ? "bg-primary/15 text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50"
                     } ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}
                     data-testid={`dropdown-tab-${t.id}`}
                   >
@@ -876,7 +876,7 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
                 Clear filter
               </button>
             )}
-            <p className="px-3 py-1.5 text-[13px] text-muted-foreground/60 font-medium">Curated</p>
+            <p className="px-3 py-1.5 text-[13px] text-muted-foreground font-medium">Curated</p>
             {CURATED_TOPICS.map((tag) => {
               const isActive = searchQuery === tag;
               return (
@@ -884,7 +884,7 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
                   key={tag}
                   onClick={() => { setSearchInput(tag); setSearchQuery(tag); if (tab === "following") setTab("latest"); setTopicsDropdownOpen(false); }}
                   className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${
-                    isActive ? "bg-primary/15 text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    isActive ? "bg-primary/15 text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50"
                   }`}
                   data-testid={`dropdown-topic-${tag}`}
                 >
@@ -897,7 +897,7 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
             {popularTags.filter((t) => !CURATED_TOPICS.includes(t)).length > 0 && (
               <>
                 <div className="my-1 border-t border-border/30" />
-                <p className="px-3 py-1.5 text-[13px] text-muted-foreground/60 font-medium">Trending</p>
+                <p className="px-3 py-1.5 text-[13px] text-muted-foreground font-medium">Trending</p>
                 {popularTags.filter((t) => !CURATED_TOPICS.includes(t)).map((tag) => {
                   const isActive = searchQuery === tag;
                   return (
@@ -905,7 +905,7 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
                       key={tag}
                       onClick={() => { setSearchInput(tag); setSearchQuery(tag); if (tab === "following") setTab("latest"); setTopicsDropdownOpen(false); }}
                       className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${
-                        isActive ? "bg-primary/15 text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                        isActive ? "bg-primary/15 text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50"
                       }`}
                       data-testid={`dropdown-topic-${tag}`}
                     >
@@ -939,7 +939,7 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
           }}
         />
         {pubkey && (
-          <Button variant="ghost" size="icon" className="shrink-0 sm:hidden text-muted-foreground/80 h-10 w-10" onClick={() => setLocation("/articles/write")} data-testid="button-write-article-mobile" aria-label="Write article">
+          <Button variant="ghost" size="icon" className="shrink-0 sm:hidden text-muted-foreground h-10 w-10" onClick={() => setLocation("/articles/write")} data-testid="button-write-article-mobile" aria-label="Write article">
             <PenSquare className="w-4 h-4" />
           </Button>
         )}
@@ -977,7 +977,7 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
         </div>
       ) : sortedArticles.length === 0 ? (
         <div className="text-center py-12">
-          <OttoEmpty mood="looking" size={88} className="mx-auto mb-3 text-foreground/70" />
+          <OttoEmpty mood="looking" size={88} className="mx-auto mb-3 text-foreground" />
           <p className="text-sm text-muted-foreground" data-testid="text-no-articles">
             {searchQuery ? "No articles found for this search." : tab === "following" ? "No articles from people you follow." : "No articles found."}
           </p>

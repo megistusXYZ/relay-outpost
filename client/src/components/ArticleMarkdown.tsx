@@ -130,7 +130,7 @@ function NostrReference({ encoded }: { encoded: string }) {
   if (encoded.startsWith("nsec1")) {
     return <span className="text-xs text-danger dark:text-red-500/70 font-mono">[key redacted]</span>;
   }
-  return <span className="text-xs text-muted-foreground/60 font-mono">{encoded.slice(0, 16)}…</span>;
+  return <span className="text-xs text-muted-foreground font-mono">{encoded.slice(0, 16)}…</span>;
 }
 
 function remarkNostrEmbeds() {

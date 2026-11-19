@@ -148,7 +148,7 @@ function ShareArticleToNostrDialog({ article, onClose }: { article: ArticleData;
           </div>
         )}
         <p className="text-[13px] text-muted-foreground mb-1.5 font-medium">Sharing article</p>
-        <p className="text-sm font-medium text-foreground/90 line-clamp-2 break-words">{article.title}</p>
+        <p className="text-sm font-medium text-foreground line-clamp-2 break-words">{article.title}</p>
         {article.summary && (
           <p className="text-[12px] text-muted-foreground mt-1 line-clamp-2 break-words">{article.summary}</p>
         )}
@@ -322,8 +322,8 @@ function ArticleComments({ articleEvent }: { articleEvent: Event }) {
     <div className="border-t border-border/20 pt-5 mb-6" data-testid="container-article-comments">
       <div className="flex items-center gap-2 mb-4">
         <MessageSquare className="w-4 h-4 text-muted-foreground" />
-        <h3 className="text-sm text-foreground/80 font-medium">
-          Comments {comments.length > 0 && <span className="text-muted-foreground/60 ml-1">({comments.length})</span>}
+        <h3 className="text-sm text-foreground font-medium">
+          Comments {comments.length > 0 && <span className="text-muted-foreground ml-1">({comments.length})</span>}
         </h3>
       </div>
 
@@ -360,13 +360,13 @@ function ArticleComments({ articleEvent }: { articleEvent: Event }) {
       {loadingComments && (
         <div className="flex items-center justify-center py-6">
           <RelayOutpostInlineLoader className="w-4 h-4 mr-2" />
-          <span className="text-xs text-muted-foreground/60">Loading comments...</span>
+          <span className="text-xs text-muted-foreground">Loading comments...</span>
         </div>
       )}
 
       {!loadingComments && comments.length === 0 && (
         <div className="text-center py-6" data-testid="text-no-comments">
-          <p className="text-xs text-muted-foreground/50">No comments yet. Be the first to share your thoughts.</p>
+          <p className="text-xs text-muted-foreground">No comments yet. Be the first to share your thoughts.</p>
         </div>
       )}
 
@@ -593,7 +593,7 @@ export default function ArticleDetail() {
       </h1>
 
       {article.summary && (
-        <p className="hidden sm:block text-sm sm:text-base text-muted-foreground/80 mb-5 leading-relaxed" data-testid="text-article-summary">
+        <p className="hidden sm:block text-sm sm:text-base text-muted-foreground mb-5 leading-relaxed" data-testid="text-article-summary">
           {article.summary}
         </p>
       )}
@@ -605,7 +605,7 @@ export default function ArticleDetail() {
             <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-xs">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
-            <span className="text-sm font-medium text-foreground/90" data-testid="text-author-name">{displayName}</span>
+            <span className="text-sm font-medium text-foreground" data-testid="text-author-name">{displayName}</span>
             <span className="text-[12px] text-muted-foreground">{timeAgo}</span>
           </div>
         </Link>
@@ -669,7 +669,7 @@ export default function ArticleDetail() {
               variant="ghost"
               size="icon"
               onClick={() => setShowZapDialog(true)}
-              className="text-amber-500/70 hover:text-amber-500"
+              className="text-warning hover:text-amber-500"
               data-testid="button-zap-article-author"
             >
               <BtcZapIcon className="w-4 h-4" />
@@ -697,7 +697,7 @@ export default function ArticleDetail() {
       {event && (
         event.tags.some((t: string[]) => t[0] === "comments" && t[1] === "off") ? (
           <div className="border-t border-border/20 pt-5 mb-6">
-            <div className="flex items-center gap-2 text-muted-foreground/40">
+            <div className="flex items-center gap-2 text-muted-foreground">
               <MessageSquareOff className="w-4 h-4" />
               <p className="text-xs">Comments are closed on this post.</p>
             </div>
@@ -714,7 +714,7 @@ export default function ArticleDetail() {
               <AvatarImage src={avatarUrl} alt={displayName} />
               <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[10px]">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
-            <span className="text-xs text-muted-foreground/70">Written by <span className="text-foreground/80 font-medium">{displayName}</span></span>
+            <span className="text-xs text-muted-foreground">Written by <span className="text-foreground font-medium">{displayName}</span></span>
           </Link>
           <Button variant="outline" size="sm" onClick={() => goBack("/articles")} data-testid="button-back-bottom">
             <ArrowLeft className="w-3 h-3 mr-1" /> All Articles
@@ -829,7 +829,7 @@ export default function ArticleDetail() {
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowZapDialog(true)}
-                  className="text-amber-500/70"
+                  className="text-warning"
                   data-testid="button-zap-article-mobile"
                 >
                   <BtcZapIcon className="w-4 h-4" />
@@ -859,7 +859,7 @@ export default function ArticleDetail() {
                     <SkipForward className="w-3 h-3" />
                   </Button>
                   <button
-                    className="h-7 px-1.5 text-[12px] font-semibold tabular-nums text-foreground/70 hover:text-foreground transition-colors rounded"
+                    className="h-7 px-1.5 text-[12px] font-semibold tabular-nums text-foreground transition-colors rounded"
                     onClick={() => {
                       const rates = [1, 1.25, 1.5, 1.75, 2];
                       const idx = rates.indexOf(tts.rate);
@@ -899,7 +899,7 @@ export default function ArticleDetail() {
   return (
     <div className="max-w-3xl mx-auto px-3 sm:px-6 py-4 sm:py-6" data-testid="page-article-detail">
       <div className="flex items-center gap-2 mb-5">
-        <span className="text-xs text-muted-foreground/60 font-medium">Articles</span>
+        <span className="text-xs text-muted-foreground font-medium">Articles</span>
       </div>
 
       {tts.isReading && (
@@ -924,7 +924,7 @@ export default function ArticleDetail() {
                 <SkipForward className="w-3 h-3" />
               </Button>
               <button
-                className="h-7 px-1.5 text-[12px] font-semibold tabular-nums text-foreground/70 hover:text-foreground transition-colors rounded"
+                className="h-7 px-1.5 text-[12px] font-semibold tabular-nums text-foreground transition-colors rounded"
                 onClick={() => {
                   const rates = [1, 1.25, 1.5, 1.75, 2];
                   const idx = rates.indexOf(tts.rate);

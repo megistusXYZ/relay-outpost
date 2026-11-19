@@ -51,13 +51,13 @@ function BylineRow({ item }: { item: MediaItemModel }) {
             <AvatarImage src={b.avatar} alt="" />
             <AvatarFallback className="text-[8px] bg-muted text-muted-foreground">{b.name.slice(0, 1).toUpperCase()}</AvatarFallback>
           </Avatar>
-          <span className="text-[11px] text-muted-foreground truncate max-w-[140px]">{b.name}</span>
+          <span className="text-xs text-muted-foreground truncate max-w-[140px]">{b.name}</span>
         </>
       ))}
       {item.timeAgo && (
         <>
-          {b && <span className="text-muted-foreground/40 text-[11px]">·</span>}
-          <span className="text-[11px] text-muted-foreground/80 font-mono">{item.timeAgo}</span>
+          {b && <span className="text-muted-foreground text-xs">·</span>}
+          <span className="text-xs text-muted-foreground font-mono">{item.timeAgo}</span>
         </>
       )}
     </div>
@@ -141,7 +141,7 @@ export function MediaHero({ item, badge, placeholder }: { item: MediaItemModel; 
             </>
           ) : placeholder}
           {badge && (
-            <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-primary/90 text-primary-foreground text-[11px] px-2.5 py-1 shadow-sm font-medium">
+            <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-primary/90 text-primary-foreground text-xs px-2.5 py-1 shadow-sm font-medium">
               {badge}
             </span>
           )}
@@ -149,7 +149,7 @@ export function MediaHero({ item, badge, placeholder }: { item: MediaItemModel; 
       )}
       <div className="p-4 sm:p-5">
         {(b || item.timeAgo) && (
-          <div className="flex items-center gap-2 mb-2 text-[11px] text-muted-foreground/80 min-w-0">
+          <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground min-w-0">
             {b?.avatar && (b.mono ? (
               <img src={b.avatar} alt="" className="w-4 h-4 rounded-sm object-cover shrink-0" loading="lazy" />
             ) : (
@@ -165,7 +165,7 @@ export function MediaHero({ item, badge, placeholder }: { item: MediaItemModel; 
         <h2 className="text-lg sm:text-xl font-semibold leading-snug text-foreground line-clamp-3" data-testid={`media-hero-title-${item.id}`}>
           {item.title || "Untitled"}
         </h2>
-        {item.summary && <p className="mt-2 text-sm text-muted-foreground/85 line-clamp-2">{item.summary}</p>}
+        {item.summary && <p className="mt-2 text-sm text-muted-foreground line-clamp-2">{item.summary}</p>}
         {item.actions && <div className="mt-3 flex items-center gap-1">{item.actions}</div>}
       </div>
     </article>
