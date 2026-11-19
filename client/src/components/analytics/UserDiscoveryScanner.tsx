@@ -270,27 +270,27 @@ function ResultCard({ result }: { result: ScanResult }) {
       </div>
 
       <div className="flex flex-wrap gap-1.5">
-        <Badge variant="outline" className={`text-[10px] gap-1 ${stageInfo?.color || ""}`} data-testid="badge-stage">
+        <Badge variant="outline" className={`text-xs gap-1 ${stageInfo?.color || ""}`} data-testid="badge-stage">
           <StageIcon className="w-3 h-3" />
           {result.stageName}
         </Badge>
-        <Badge variant="outline" className="text-[10px]" data-testid="badge-pace">
+        <Badge variant="outline" className="text-xs" data-testid="badge-pace">
           {result.pace}
         </Badge>
-        <Badge variant="outline" className={`text-[10px] gap-1 ${ratingInfo.color}`} data-testid="badge-rating">
+        <Badge variant="outline" className={`text-xs gap-1 ${ratingInfo.color}`} data-testid="badge-rating">
           <RatingIcon className="w-3 h-3" />
           {result.rating}
         </Badge>
       </div>
 
-      <div className="flex items-center justify-between text-[10px] text-muted-foreground/60">
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>{result.milestoneCount}/{result.totalMilestones} milestones</span>
         {result.timeSpanDays !== null && <span>{result.timeSpanDays}d span</span>}
       </div>
 
       <a
         href={`/console/dashboard?pubkey=${nip19.npubEncode(result.pubkey)}`}
-        className="inline-flex items-center gap-1 text-[10px] text-brand hover:underline"
+        className="inline-flex items-center gap-1 text-xs text-brand hover:underline"
         data-testid="link-full-report"
       >
         <ExternalLink className="w-2.5 h-2.5" />
@@ -392,7 +392,7 @@ export function UserDiscoveryScanner({ relays: propRelays }: { relays?: string[]
           </h2>
         </div>
 
-        <p className="text-xs text-muted-foreground/60">
+        <p className="text-xs text-muted-foreground">
           Sample recent Nostr profiles and classify them by adoption stage, pace, and engagement rating. Results appear as each user is scanned.
         </p>
 
@@ -431,7 +431,7 @@ export function UserDiscoveryScanner({ relays: propRelays }: { relays?: string[]
                 style={{ width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%` }}
               />
             </div>
-            <p className="text-[10px] text-muted-foreground/50">
+            <p className="text-xs text-muted-foreground">
               Analyzing user {progress.current} of {progress.total}...
             </p>
           </div>
@@ -459,7 +459,7 @@ export function UserDiscoveryScanner({ relays: propRelays }: { relays?: string[]
                     <SelectItem key={key} value={key}>
                       <div className="flex flex-col">
                         <span>{info.name} {stageCounts[key] ? `(${stageCounts[key]})` : ""}</span>
-                        <span className="text-[10px] text-muted-foreground">{info.description}</span>
+                        <span className="text-xs text-muted-foreground">{info.description}</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -476,7 +476,7 @@ export function UserDiscoveryScanner({ relays: propRelays }: { relays?: string[]
                     <SelectItem key={label} value={label}>
                       <div className="flex flex-col">
                         <span>{label} {paceCounts[label] ? `(${paceCounts[label]})` : ""}</span>
-                        <span className="text-[10px] text-muted-foreground">{desc}</span>
+                        <span className="text-xs text-muted-foreground">{desc}</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -493,7 +493,7 @@ export function UserDiscoveryScanner({ relays: propRelays }: { relays?: string[]
                     <SelectItem key={label} value={label}>
                       <div className="flex flex-col">
                         <span>{label} {ratingCounts[label] ? `(${ratingCounts[label]})` : ""}</span>
-                        <span className="text-[10px] text-muted-foreground">{info.description}</span>
+                        <span className="text-xs text-muted-foreground">{info.description}</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -501,14 +501,14 @@ export function UserDiscoveryScanner({ relays: propRelays }: { relays?: string[]
               </Select>
             </div>
 
-            <div className="flex items-center justify-between text-xs text-muted-foreground/60">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span data-testid="text-result-count">
                 Showing {filteredResults.length} of {results.length} profiles
               </span>
               {(stageFilter !== "all" || paceFilter !== "all" || ratingFilter !== "all") && (
                 <button
                   onClick={() => { setStageFilter("all"); setPaceFilter("all"); setRatingFilter("all"); }}
-                  className="text-brand hover:underline text-[10px]"
+                  className="text-brand hover:underline text-xs"
                   data-testid="button-clear-filters"
                 >
                   Clear filters
@@ -545,16 +545,16 @@ export function UserDiscoveryScanner({ relays: propRelays }: { relays?: string[]
                           <ProfileLink pubkey={r.pubkey} className="text-xs font-medium text-foreground" avatarSize="sm" />
                         </td>
                         <td className="py-2.5 px-2">
-                          <Badge variant="outline" className={`text-[10px] gap-1 ${stageInfo?.color || ""}`}>
+                          <Badge variant="outline" className={`text-xs gap-1 ${stageInfo?.color || ""}`}>
                             <StageIcon className="w-3 h-3" />
                             {r.stageName}
                           </Badge>
                         </td>
                         <td className="py-2.5 px-2">
-                          <Badge variant="outline" className="text-[10px]">{r.pace}</Badge>
+                          <Badge variant="outline" className="text-xs">{r.pace}</Badge>
                         </td>
                         <td className="py-2.5 px-2">
-                          <Badge variant="outline" className={`text-[10px] gap-1 ${ratingInfo.color}`}>
+                          <Badge variant="outline" className={`text-xs gap-1 ${ratingInfo.color}`}>
                             <RatingIcon className="w-3 h-3" />
                             {r.rating}
                           </Badge>
@@ -568,7 +568,7 @@ export function UserDiscoveryScanner({ relays: propRelays }: { relays?: string[]
                         <td className="py-2.5 px-2 text-right">
                           <a
                             href={`/console/dashboard?pubkey=${nip19.npubEncode(r.pubkey)}`}
-                            className="inline-flex items-center gap-1 text-[10px] text-brand hover:underline"
+                            className="inline-flex items-center gap-1 text-xs text-brand hover:underline"
                             data-testid={`link-report-${r.pubkey.slice(0, 8)}`}
                           >
                             <ExternalLink className="w-2.5 h-2.5" />
@@ -589,7 +589,7 @@ export function UserDiscoveryScanner({ relays: propRelays }: { relays?: string[]
             </div>
 
             {filteredResults.length === 0 && results.length > 0 && (
-              <div className="py-6 text-center text-xs text-muted-foreground/50" data-testid="no-filter-results">
+              <div className="py-6 text-center text-xs text-muted-foreground" data-testid="no-filter-results">
                 No profiles match the selected filters. Try adjusting your criteria.
               </div>
             )}
@@ -599,7 +599,7 @@ export function UserDiscoveryScanner({ relays: propRelays }: { relays?: string[]
         {!loading && results.length === 0 && !error && (
           <div className="flex flex-col items-center justify-center py-8 gap-2" data-testid="scanner-empty">
             <Search className="w-8 h-8 text-brand/20" />
-            <p className="text-xs text-muted-foreground/50">
+            <p className="text-xs text-muted-foreground">
               Click "Scan Profiles" to discover and classify recent Nostr users
             </p>
           </div>

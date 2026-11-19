@@ -98,7 +98,7 @@ export function FeedsList({
           return (
             <button key={m.key} type="button" onClick={() => { onPickMacro(m.key); close(); }} className={ROW} aria-current={on ? "true" : undefined} data-testid={`feeds-pick-${m.key}`}>
               <span className={on ? "text-brand" : "text-muted-foreground"}>{m.icon}</span>
-              <span className={`flex-1 text-[15px] ${on ? "font-semibold text-foreground" : "text-foreground/90"}`}>{m.label}</span>
+              <span className={`flex-1 text-[15px] ${on ? "font-semibold text-foreground" : "text-foreground"}`}>{m.label}</span>
               {on && <Check className="w-4 h-4 text-brand" aria-label="On screen" />}
             </button>
           );
@@ -107,12 +107,12 @@ export function FeedsList({
 
       {hasOwn && (
         <>
-          <p className="mt-4 mb-1 px-2 text-[12px] font-medium text-muted-foreground/60">Your feeds</p>
+          <p className="mt-4 mb-1 px-2 text-[12px] font-medium text-muted-foreground">Your feeds</p>
           <div className="space-y-0.5">
             {liveCount > 0 && (
               <button type="button" onClick={() => after(() => navigate("/search?tab=live"))} className={ROW} data-testid="feeds-live-now">
                 <Radio className="w-[18px] h-[18px] text-red-500 live-dot" />
-                <span className="flex-1 text-[15px] text-foreground/90">Live now</span>
+                <span className="flex-1 text-[15px] text-foreground">Live now</span>
                 <span className="text-xs font-semibold text-danger dark:text-red-500 tabular-nums">{liveCount}</span>
               </button>
             )}
@@ -124,7 +124,7 @@ export function FeedsList({
                   <div className="flex items-center">
                     <button type="button" onClick={() => after(() => navigate(`/search?tab=hashtags&q=${encodeURIComponent(tag)}`))} className={`${ROW} flex-1 min-w-0`}>
                       <Hash className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
-                      <span className="flex-1 min-w-0 truncate text-[15px] text-foreground/90">{tag}</span>
+                      <span className="flex-1 min-w-0 truncate text-[15px] text-foreground">{tag}</span>
                     </button>
                     <button type="button" onClick={() => setManaging(managing === key ? null : key)} className="shrink-0 w-11 h-11 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60" aria-label={`More for #${tag}`} aria-expanded={managing === key} data-testid={`feeds-more-hashtag-${tag}`}>
                       <MoreHorizontal className="w-4 h-4" />
@@ -153,7 +153,7 @@ export function FeedsList({
                           ? <FeedIconSvg iconKey={cf.icon} className="w-[18px] h-[18px]" />
                           : cf.source === "pack" ? <Users className="w-[18px] h-[18px]" /> : <Flame className="w-[18px] h-[18px]" />}
                       </span>
-                      <span className={`flex-1 min-w-0 truncate text-[15px] ${on ? "font-semibold text-foreground" : "text-foreground/90"}`}>{cf.name}</span>
+                      <span className={`flex-1 min-w-0 truncate text-[15px] ${on ? "font-semibold text-foreground" : "text-foreground"}`}>{cf.name}</span>
                       {live && <span className="w-2 h-2 rounded-full bg-red-500 live-dot shrink-0" title="Someone in this feed is live" />}
                       {on && <Check className="w-4 h-4 text-brand shrink-0" aria-label="On screen" />}
                     </button>
@@ -191,15 +191,15 @@ export function FeedsList({
           <div className="mt-1 space-y-0.5 pl-2" data-testid="feeds-add-choices">
             <button type="button" onClick={() => after(onCreate)} className={ROW} data-testid="feeds-add-create">
               <Pencil className="w-4 h-4 text-muted-foreground" />
-              <span className="flex-1"><span className="block text-sm text-foreground/90">Make your own</span><span className="block text-xs text-muted-foreground">Pick hashtags, people or words</span></span>
+              <span className="flex-1"><span className="block text-sm text-foreground">Make your own</span><span className="block text-xs text-muted-foreground">Pick hashtags, people or words</span></span>
             </button>
             <button type="button" onClick={() => after(onFindFeeds)} className={ROW} data-testid="feeds-add-find">
               <Package className="w-4 h-4 text-muted-foreground" />
-              <span className="flex-1"><span className="block text-sm text-foreground/90">Find feeds</span><span className="block text-xs text-muted-foreground">Ready-made lists of people to read</span></span>
+              <span className="flex-1"><span className="block text-sm text-foreground">Find feeds</span><span className="block text-xs text-muted-foreground">Ready-made lists of people to read</span></span>
             </button>
             <button type="button" onClick={() => after(onImport)} className={ROW} data-testid="feeds-add-import">
               <Download className="w-4 h-4 text-muted-foreground" />
-              <span className="flex-1"><span className="block text-sm text-foreground/90">Import a feed</span><span className="block text-xs text-muted-foreground">Paste one someone shared with you</span></span>
+              <span className="flex-1"><span className="block text-sm text-foreground">Import a feed</span><span className="block text-xs text-muted-foreground">Paste one someone shared with you</span></span>
             </button>
             {canFollow && (
               <div className="flex items-center gap-1.5 px-2 pt-1.5" data-testid="feeds-add-hashtag">

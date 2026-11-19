@@ -3468,6 +3468,8 @@ html[data-perf="lite"] .space-bg-nebula {
   margin: 1.5rem 0;
 }
 
+/* Long-form reads at full strength (readable words, 2026-11-19): ink for the text, the secondary
+   grey for a quotation, Ember for links. No softened greys, which fell under contrast in light. */
 .article-prose {
   overflow-wrap: break-word;
   word-break: break-word;
@@ -3475,7 +3477,7 @@ html[data-perf="lite"] .space-bg-nebula {
      Headings below intentionally stay Space Grotesk — a design choice. */
   font-family: var(--font-body, 'Geist', 'Inter', system-ui, sans-serif);
   line-height: 1.8;
-  color: hsl(var(--foreground) / 0.85);
+  color: hsl(var(--foreground));
   font-size: 0.938rem;
 }
 .article-prose h1,
@@ -3487,7 +3489,7 @@ html[data-perf="lite"] .space-bg-nebula {
   font-family: 'Space Grotesk', system-ui, sans-serif;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: hsl(var(--foreground) / 0.95);
+  color: hsl(var(--foreground));
   margin-top: 2em;
   margin-bottom: 0.75em;
   line-height: 1.3;
@@ -3500,22 +3502,22 @@ html[data-perf="lite"] .space-bg-nebula {
   margin-bottom: 1.25em;
 }
 .article-prose a {
-  color: hsl(220 11% 70%);
+  color: hsl(var(--brand));
   text-decoration: underline;
   text-underline-offset: 3px;
-  text-decoration-color: hsl(220 11% 70% / 0.3);
+  text-decoration-color: hsl(var(--brand) / 0.4);
   transition: text-decoration-color 0.15s;
   word-break: break-all;
 }
 .article-prose a:hover {
-  text-decoration-color: hsl(220 11% 70% / 0.8);
+  text-decoration-color: hsl(var(--brand));
 }
 .article-prose strong {
-  color: hsl(var(--foreground) / 0.95);
+  color: hsl(var(--foreground));
   font-weight: 600;
 }
 .article-prose em {
-  color: hsl(var(--foreground) / 0.8);
+  color: hsl(var(--foreground));
   font-style: italic;
 }
 .article-prose blockquote {
@@ -3524,7 +3526,7 @@ html[data-perf="lite"] .space-bg-nebula {
   margin: 1.5em 0;
   background: hsl(220 5% 50% / 0.06);
   border-radius: 0 0.5rem 0.5rem 0;
-  color: hsl(var(--foreground) / 0.75);
+  color: hsl(var(--muted-foreground));
   font-style: italic;
 }
 .article-prose blockquote p:last-child {
@@ -3539,7 +3541,7 @@ html[data-perf="lite"] .space-bg-nebula {
   margin-bottom: 0.4em;
 }
 .article-prose li::marker {
-  color: hsl(220 10% 65% / 0.6);
+  color: hsl(var(--muted-foreground));
 }
 .article-prose hr {
   border: none;
@@ -3552,7 +3554,7 @@ html[data-perf="lite"] .space-bg-nebula {
   padding: 0.15em 0.4em;
   border-radius: 0.25rem;
   background: hsl(var(--muted) / 0.5);
-  color: hsl(220 10% 75%);
+  color: hsl(var(--foreground));
   word-break: break-word;
 }
 .article-prose pre {
@@ -3568,7 +3570,7 @@ html[data-perf="lite"] .space-bg-nebula {
 .article-prose pre code {
   background: none;
   padding: 0;
-  color: hsl(var(--foreground) / 0.8);
+  color: hsl(var(--foreground));
 }
 .article-prose img {
   max-width: 100% !important;

@@ -119,7 +119,8 @@ export function useTranslation(event: NostrEvent): Translation {
   };
 }
 
-const LINK = "cursor-pointer text-primary/70 dark:text-brand/80 hover:text-primary dark:hover:text-brand-strong";
+// An action, so Ember at full strength in both themes.
+const LINK = "cursor-pointer text-brand hover:text-brand-strong";
 
 /** The quiet one-line control under a post body. Renders nothing when the post
  *  doesn't qualify — zero cost for same-language posts. */
@@ -134,7 +135,7 @@ export function TranslateLine({ tr, eventId }: { tr: Translation; eventId: strin
 
   return (
     <div
-      className="mt-1.5 text-[11px] leading-none text-muted-foreground/60 flex items-center gap-1 flex-wrap"
+      className="mt-1.5 text-xs leading-none text-muted-foreground flex items-center gap-1 flex-wrap"
       onClick={(e) => e.stopPropagation()}
       data-testid={`translate-line-${eventId}`}
     >

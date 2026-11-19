@@ -403,7 +403,7 @@ export function UnifiedArticleSearch({
           >
           {isMobile && (
             <div className="sticky top-0 bg-popover border-b border-border/30 px-3 py-2 flex items-center justify-between">
-              <div className="text-xs font-medium text-foreground/70">Search results</div>
+              <div className="text-xs font-medium text-foreground">Search results</div>
               <button
                 type="button"
                 onClick={() => setShowDropdown(false)}
@@ -433,7 +433,7 @@ export function UnifiedArticleSearch({
                     aria-selected={isActive}
                   >
                     <Hash className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-foreground/90 flex-1 truncate">{h.tag}</span>
+                    <span className="text-foreground flex-1 truncate">{h.tag}</span>
                     {typeof h.count === "number" && h.count > 0 && (
                       <span className="text-[12px] text-muted-foreground font-mono shrink-0">{h.count}</span>
                     )}
@@ -469,13 +469,13 @@ export function UnifiedArticleSearch({
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-foreground/90 truncate">{a.name || fallback}</div>
+                      <div className="text-sm font-medium text-foreground truncate">{a.name || fallback}</div>
                       {a.nip05 && (
                         <div className="text-[12px] text-muted-foreground truncate">{a.nip05}</div>
                       )}
                     </div>
                     {a.wot !== null && (
-                      <div className="flex items-center gap-1 text-[12px] text-success dark:text-emerald-500/80 shrink-0" title="Web of Trust score">
+                      <div className="flex items-center gap-1 text-[12px] text-success shrink-0" title="Web of Trust score">
                         <ShieldCheck className="w-3 h-3" />
                         <span className="font-mono">{Math.round((a.wot ?? 0) * 100)}</span>
                       </div>
@@ -506,7 +506,7 @@ export function UnifiedArticleSearch({
                   >
                     <BookOpen className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm text-foreground/90 line-clamp-2">{r.title}</div>
+                      <div className="text-sm text-foreground line-clamp-2">{r.title}</div>
                       <ArticleAuthorLine pubkey={r.authorPubkey} />
                     </div>
                   </button>

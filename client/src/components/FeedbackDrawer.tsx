@@ -320,16 +320,16 @@ export function FeedbackDrawer() {
             <div className="flex items-center gap-2 text-sm text-success dark:text-emerald-400">
               <Check className="w-4 h-4" /> {success.isPrivate ? "Sent privately." : "Feedback sent."}
             </div>
-            <p className="text-xs text-muted-foreground/70 leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               {success.isPrivate
                 ? "Only the operator can read it. Follow the conversation any time in Your tickets."
                 : "It's on its way to the operator. Follow the conversation any time in Your tickets."}
             </p>
             {!success.isPrivate && success.nevent && (
-              <details className="text-[11px]">
-                <summary className="cursor-pointer text-muted-foreground/60 hover:text-foreground">Advanced details</summary>
+              <details className="text-xs">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Advanced details</summary>
                 <div className="flex items-center gap-2 mt-2">
-                  <Input readOnly value={success.nevent} className="font-mono text-[11px]" data-testid="input-feedback-nevent" />
+                  <Input readOnly value={success.nevent} className="font-mono text-xs" data-testid="input-feedback-nevent" />
                   <Button size="icon" variant="outline" onClick={copyNevent} data-testid="button-copy-feedback-nevent"><Copy className="w-3.5 h-3.5" /></Button>
                 </div>
               </details>
@@ -339,7 +339,7 @@ export function FeedbackDrawer() {
                 href={success.openIssuesUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] text-brand hover:underline"
+                className="inline-flex items-center gap-1 text-xs text-brand hover:underline"
                 data-testid="link-feedback-view-open-issues"
               >
                 View open issues for this operator <ExternalLink className="w-3 h-3" />
@@ -361,9 +361,9 @@ export function FeedbackDrawer() {
         ) : (
           <div className="mt-6 space-y-5">
             <div>
-              <label className="text-[13px] text-muted-foreground/70 font-medium">Send to</label>
+              <label className="text-[13px] text-muted-foreground font-medium">Send to</label>
               {loadingRecipients && recipients.length === 0 ? (
-                <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground/60">
+                <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                   <RelayOutpostInlineLoader className="w-3 h-3" /> Discovering recipients…
                 </div>
               ) : (
@@ -379,7 +379,7 @@ export function FeedbackDrawer() {
                 </select>
               )}
               {recipient && !canPrivate && !canPublicIssue && (
-                <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-400/90 flex items-start gap-1.5 leading-relaxed">
+                <p className="mt-2 text-xs text-warning flex items-start gap-1.5 leading-relaxed">
                   <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
                   <span>We couldn't find this operator's details, so feedback can only go out as a public post.</span>
                 </p>
@@ -388,8 +388,8 @@ export function FeedbackDrawer() {
               {recipient && !isPrivate && !recipient.operatorPubkey && (
                 <div className="mt-2 rounded-md border border-amber-400/30 bg-amber-500/5 px-2.5 py-2 flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p id="feedback-public-note-label" className="text-[11px] font-medium">Post publicly anyway</p>
-                    <p id="feedback-public-note-desc" className="text-[10px] text-muted-foreground/70 mt-0.5 leading-relaxed">
+                    <p id="feedback-public-note-label" className="text-xs font-medium">Post publicly anyway</p>
+                    <p id="feedback-public-note-desc" className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                       This operator has no public feedback box. Your post goes only to their relay, but could still show on your profile. Prefer Private to send it straight to them.
                     </p>
                   </div>
@@ -423,7 +423,7 @@ export function FeedbackDrawer() {
               </div>
             ) : (
             <div>
-              <label className="text-[13px] text-muted-foreground/70 font-medium">Type</label>
+              <label className="text-[13px] text-muted-foreground font-medium">Type</label>
               <div className="mt-1 grid grid-cols-4 gap-1.5">
                 {TYPE_OPTIONS.map((opt) => {
                   const Icon = opt.icon;
@@ -436,7 +436,7 @@ export function FeedbackDrawer() {
                       className={`flex flex-col items-center gap-1 py-2 rounded-md border text-[10px] transition-colors ${
                         active
                           ? "border-brand/60 bg-brand/10 text-brand"
-                          : "border-border/40 hover:border-brand/30 text-muted-foreground/70"
+                          : "border-border/40 hover:border-brand/30 text-muted-foreground"
                       }`}
                       data-testid={`button-feedback-type-${opt.id}`}
                     >
@@ -450,7 +450,7 @@ export function FeedbackDrawer() {
             )}
 
             <div>
-              <label className="text-[13px] text-muted-foreground/70 font-medium">Title</label>
+              <label className="text-[13px] text-muted-foreground font-medium">Title</label>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -462,7 +462,7 @@ export function FeedbackDrawer() {
             </div>
 
             <div>
-              <label className="text-[13px] text-muted-foreground/70 font-medium">Description (optional)</label>
+              <label className="text-[13px] text-muted-foreground font-medium">Description (optional)</label>
               <Textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
@@ -476,7 +476,7 @@ export function FeedbackDrawer() {
             <div className="flex items-start justify-between gap-3 rounded-md border border-border/40 px-3 py-2.5">
               <div className="min-w-0">
                 <p className="text-xs font-medium">Attach context</p>
-                <p className="text-[10px] text-muted-foreground/60 mt-0.5 leading-relaxed">
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                   Adds: route, viewport, signer type, app version. Nothing else.
                 </p>
               </div>
@@ -485,14 +485,14 @@ export function FeedbackDrawer() {
 
             {/* Privacy choice — plain language, no protocol jargon. */}
             <div>
-              <label className="text-[13px] text-muted-foreground/70 font-medium">Visibility</label>
+              <label className="text-[13px] text-muted-foreground font-medium">Visibility</label>
               <div className="mt-1 grid grid-cols-2 gap-1.5">
                 <button
                   type="button"
                   onClick={() => setIsPrivate(true)}
                   disabled={!canPrivate}
                   className={`flex items-center justify-center gap-1.5 py-2 rounded-md border text-[11px] transition-colors disabled:opacity-40 ${
-                    isPrivate ? "border-brand/60 bg-brand/10 text-brand" : "border-border/40 hover:border-brand/30 text-muted-foreground/70"
+                    isPrivate ? "border-brand/60 bg-brand/10 text-brand" : "border-border/40 hover:border-brand/30 text-muted-foreground"
                   }`}
                   data-testid="button-feedback-private"
                 >
@@ -502,20 +502,20 @@ export function FeedbackDrawer() {
                   type="button"
                   onClick={() => setIsPrivate(false)}
                   className={`flex items-center justify-center gap-1.5 py-2 rounded-md border text-[11px] transition-colors ${
-                    !isPrivate ? "border-brand/60 bg-brand/10 text-brand" : "border-border/40 hover:border-brand/30 text-muted-foreground/70"
+                    !isPrivate ? "border-brand/60 bg-brand/10 text-brand" : "border-border/40 hover:border-brand/30 text-muted-foreground"
                   }`}
                   data-testid="button-feedback-public"
                 >
                   <Globe className="w-3.5 h-3.5" /> Public
                 </button>
               </div>
-              <p className="text-[10px] text-muted-foreground/60 mt-1.5 leading-relaxed">
+              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
                 {isPrivate
                   ? "Only the operator can read this — sent as a private, encrypted message."
                   : "Others on the relay can see this and add to it, like a public suggestion board."}
               </p>
               {recipient?.operatorPubkey && !canEncrypt && (
-                <p className="text-[10px] text-amber-500/80 mt-1.5 leading-relaxed" data-testid="text-feedback-no-encrypt">
+                <p className="text-xs text-warning mt-1.5 leading-relaxed" data-testid="text-feedback-no-encrypt">
                   Private feedback needs a signer that supports encryption (NIP-44). Yours doesn't, so this sends as a public issue to the operator — your feedback still gets through.
                 </p>
               )}

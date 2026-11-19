@@ -46,7 +46,7 @@ import { inYourSpace } from "@/lib/your-space";
 const TYPE_CONFIG = {
   accepted: { icon: DoorOpen, label: "accepted you into the community", color: "text-success dark:text-emerald-400", bgAccent: "bg-emerald-500/15 dark:bg-emerald-500/10", borderAccent: "border-emerald-500/30 dark:border-emerald-500/20", dotColor: "bg-emerald-500 dark:bg-emerald-400", chevDark: "dark:text-emerald-400/60" },
   reply: { icon: MessageSquare, label: "replied to you", color: "text-blue-600 dark:text-blue-400", bgAccent: "bg-blue-500/15 dark:bg-blue-500/10", borderAccent: "border-blue-500/30 dark:border-blue-500/20", dotColor: "bg-blue-500 dark:bg-blue-400", chevDark: "dark:text-blue-400/60" },
-  mention: { icon: AtSign, label: "mentioned you", color: "text-brand", bgAccent: "bg-brand/15 dark:bg-brand/10", borderAccent: "border-brand/30 dark:border-brand/20", dotColor: "bg-brand", chevDark: "dark:text-brand/60" },
+  mention: { icon: AtSign, label: "mentioned you", color: "text-brand", bgAccent: "bg-brand/15 dark:bg-brand/10", borderAccent: "border-brand/30 dark:border-brand/20", dotColor: "bg-brand", chevDark: "" },
   reaction: { icon: Heart, label: "reacted to your post", color: "text-red-600 dark:text-red-400", bgAccent: "bg-red-500/15 dark:bg-red-500/10", borderAccent: "border-red-500/30 dark:border-red-500/20", dotColor: "bg-red-500 dark:bg-red-400", chevDark: "dark:text-red-400/60" },
   repost: { icon: Repeat, label: "reposted your post", color: "text-success dark:text-green-400", bgAccent: "bg-green-500/15 dark:bg-green-500/10", borderAccent: "border-green-500/30 dark:border-green-500/20", dotColor: "bg-green-500 dark:bg-green-400", chevDark: "dark:text-green-400/60" },
   zap: { icon: BtcZapIcon, label: "zapped you", color: "text-amber-600 dark:text-amber-400", bgAccent: "bg-amber-500/15 dark:bg-amber-500/10", borderAccent: "border-amber-500/30 dark:border-amber-500/20", dotColor: "bg-amber-500 dark:bg-amber-400", chevDark: "dark:text-amber-400/60" },
@@ -202,9 +202,8 @@ const AggregatedNotificationItem = memo(function AggregatedNotificationItem({ gr
 
   return (
     <div
-      className={`flex items-start gap-3 p-3 sm:p-3.5 transition-colors cursor-pointer rounded-lg hover:bg-muted/10 ${
-        !group.hasUnread ? "opacity-80" : ""
-      }`}
+      // Read rows stay at full strength: the unread dot on the avatar tells the two apart.
+      className="flex items-start gap-3 p-3 sm:p-3.5 transition-colors cursor-pointer rounded-lg hover:bg-muted/10"
       onClick={handleClick}
       data-unread={group.hasUnread ? "true" : undefined}
       data-testid={`notification-aggregated-${group.key}`}
@@ -216,7 +215,7 @@ const AggregatedNotificationItem = memo(function AggregatedNotificationItem({ gr
           ))}
           {remainingCount > 0 && (
             <div className="w-8 h-8 rounded-full bg-muted border-2 border-background flex items-center justify-center z-10">
-              <span className="text-[11px] font-semibold text-muted-foreground">+{remainingCount}</span>
+              <span className="text-xs font-semibold text-muted-foreground">+{remainingCount}</span>
             </div>
           )}
         </div>
@@ -230,11 +229,11 @@ const AggregatedNotificationItem = memo(function AggregatedNotificationItem({ gr
           {displayPubkeys.map((pk, i) => (
             <span key={pk}>
               <ProfileName pubkey={pk} />
-              {i < displayPubkeys.length - 1 && <span className="text-foreground/40">, </span>}
+              {i < displayPubkeys.length - 1 && <span className="text-foreground">, </span>}
             </span>
           ))}
           {remainingCount > 0 && (
-            <span className="text-foreground/60">and {remainingCount} other{remainingCount > 1 ? "s" : ""}</span>
+            <span className="text-foreground">and {remainingCount} other{remainingCount > 1 ? "s" : ""}</span>
           )}
           <span className="text-[13px] text-muted-foreground">{actionLabel}</span>
           {group.hasUnread && (
@@ -242,7 +241,7 @@ const AggregatedNotificationItem = memo(function AggregatedNotificationItem({ gr
           )}
         </div>
         {repostedContent && (
-          <p className="text-[14px] text-foreground/75 mt-0.5 line-clamp-2 leading-relaxed">
+          <p className="text-[14px] text-foreground mt-0.5 line-clamp-2 leading-relaxed">
             {repostedContent}
           </p>
         )}
@@ -323,7 +322,7 @@ function OutsideNetworkFollowers({ items, onRead }: { items: any[]; onRead: (id:
         aria-expanded={open}
         data-testid="button-outside-network-followers"
       >
-        <UserPlus className="w-4 h-4 text-muted-foreground/60 shrink-0" />
+        <UserPlus className="w-4 h-4 text-muted-foreground shrink-0" />
         <span className="flex-1 text-[12px] text-muted-foreground">
           From outside your network — {items.length} {items.length === 1 ? "new follower" : "new followers"} your network doesn't know
         </span>
@@ -420,7 +419,7 @@ function FilteredSpamSection({ items }: { items: any[] }) {
         aria-expanded={open}
         data-testid="button-filtered-spam-toggle"
       >
-        <ShieldAlert className="w-4 h-4 text-muted-foreground/60 shrink-0" />
+        <ShieldAlert className="w-4 h-4 text-muted-foreground shrink-0" />
         <span className="flex-1 text-[12px] text-muted-foreground">
           Filtered — {items.length} likely spam {items.length === 1 ? "mention" : "mentions"} from accounts outside your network
         </span>
@@ -474,7 +473,7 @@ function FilteredSpamRow({ author, notifs, onMute, onReport }: { author: string;
           {name}
           {notifs.length > 1 && <span className="ml-1.5 text-[12px] text-muted-foreground">×{notifs.length}</span>}
         </p>
-        <p className="text-[14px] text-foreground/75 truncate">{notificationPreview(newest.type ?? "mention", newest.event?.content, spamNames)}</p>
+        <p className="text-[14px] text-foreground truncate">{notificationPreview(newest.type ?? "mention", newest.event?.content, spamNames)}</p>
       </div>
       <div className="flex items-center gap-1 shrink-0">
         {muted ? (
@@ -688,9 +687,8 @@ const NotificationItem = memo(function NotificationItem({ notification, onRead }
 
   return (
     <div
-      className={`flex items-start gap-3 p-3 sm:p-3.5 transition-colors cursor-pointer rounded-lg hover:bg-muted/10 ${
-        notification.read ? "opacity-80" : ""
-      }`}
+      // Read rows stay at full strength: the unread dot on the avatar tells the two apart.
+      className="flex items-start gap-3 p-3 sm:p-3.5 transition-colors cursor-pointer rounded-lg hover:bg-muted/10"
       onClick={handleCardClick}
       data-unread={notification.read ? undefined : "true"}
       data-testid={`notification-item-${notification.id}`}
@@ -716,7 +714,7 @@ const NotificationItem = memo(function NotificationItem({ notification, onRead }
           )}
         </div>
         {contentPreview && (
-          <p className="text-[14px] text-foreground/75 mt-0.5 line-clamp-1" data-testid={`notification-preview-${notification.id}`}>
+          <p className="text-[14px] text-foreground mt-0.5 line-clamp-1" data-testid={`notification-preview-${notification.id}`}>
             {contentPreview}
           </p>
         )}
@@ -1209,16 +1207,16 @@ export default function Notifications() {
       {loading && notifications.length === 0 ? (
         <div className="glass-card rounded-lg border p-10">
           <div className="flex flex-col items-center gap-3 text-center">
-            <OttoEmpty mood="looking" size={96} className="text-foreground/70" />
-            <p className="text-sm text-muted-foreground/70" data-testid="text-loading-notifications">Checking your relays for activity…</p>
+            <OttoEmpty mood="looking" size={96} className="text-foreground" />
+            <p className="text-sm text-muted-foreground" data-testid="text-loading-notifications">Checking your relays for activity…</p>
             <p className="text-[13px] text-muted-foreground">Replies, reactions, follows and mentions arrive here</p>
           </div>
         </div>
       ) : notifications.length === 0 ? (
         <div className="glass-card rounded-lg border p-10">
           <div className="flex flex-col items-center gap-3 text-center">
-            <OttoEmpty mood="quiet" size={96} className="text-foreground/70" />
-            <p className="text-sm text-muted-foreground/70" data-testid="text-no-notifications">No activity yet</p>
+            <OttoEmpty mood="quiet" size={96} className="text-foreground" />
+            <p className="text-sm text-muted-foreground" data-testid="text-no-notifications">No activity yet</p>
             <p className="text-[13px] text-muted-foreground">When people reply, react, follow or mention you, it shows here</p>
           </div>
         </div>
@@ -1233,7 +1231,7 @@ export default function Notifications() {
           )}
           {visibleGroups.length === 0 ? (
             <div className="glass-card rounded-lg border p-8 text-center" data-testid="text-no-filtered-notifications">
-              <p className="text-[12px] text-muted-foreground/70">No {activeLabel} yet</p>
+              <p className="text-[12px] text-muted-foreground">No {activeLabel} yet</p>
             </div>
           ) : (
             visibleGroups.map(({ type, items }) => (

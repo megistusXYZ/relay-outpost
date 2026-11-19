@@ -106,7 +106,7 @@ export function FeedFilter({
             href="https://nostrarchives.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-3 inline-flex items-center gap-1 text-[11px] text-muted-foreground/70 hover:text-foreground transition-colors"
+            className="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             data-testid="link-archives-attribution"
           >
             <Globe className="w-3 h-3" /> Charts by Archives

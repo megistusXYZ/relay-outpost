@@ -104,7 +104,7 @@ export function ChipInput({
 
   return (
     <div className="space-y-1.5">
-      <Label className="text-[13px] font-medium text-foreground/80 flex items-center gap-1.5">
+      <Label className="text-[13px] font-medium text-foreground flex items-center gap-1.5">
         <Icon className="w-3 h-3" />
         {label}
       </Label>
@@ -266,7 +266,7 @@ export function PeopleSearch({
             </Avatar>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium truncate">{profile.display_name || profile.name || event.pubkey.slice(0, 12) + "..."}</p>
-              {profile.nip05 && <p className="text-[10px] text-muted-foreground/50 truncate">{profile.nip05}</p>}
+              {profile.nip05 && <p className="text-xs text-muted-foreground truncate">{profile.nip05}</p>}
             </div>
             {isSelected && <span className="text-[12px] text-muted-foreground shrink-0">Added</span>}
           </button>
@@ -277,7 +277,7 @@ export function PeopleSearch({
 
   return (
     <div className="space-y-1.5">
-      <Label className="text-[13px] font-medium text-foreground/80 flex items-center gap-1.5">
+      <Label className="text-[13px] font-medium text-foreground flex items-center gap-1.5">
         <Users className="w-3 h-3" />
         People
       </Label>
@@ -355,7 +355,7 @@ export function TuneFrequencyFormContent({
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor="feed-name" className="text-[13px] font-medium text-foreground/80 flex items-center gap-1.5">
+        <Label htmlFor="feed-name" className="text-[13px] font-medium text-foreground flex items-center gap-1.5">
           <Radio className="w-3 h-3" />
           Feed Name
         </Label>
@@ -374,7 +374,7 @@ export function TuneFrequencyFormContent({
       </div>
 
       <div className="space-y-1.5">
-        <Label className="text-[13px] font-medium text-foreground/80 flex items-center gap-1.5">
+        <Label className="text-[13px] font-medium text-foreground flex items-center gap-1.5">
           <Antenna className="w-3 h-3" />
           Icon
         </Label>
@@ -388,7 +388,7 @@ export function TuneFrequencyFormContent({
                 "p-1.5 rounded-md border transition-all",
                 icon === key
                   ? "border-foreground bg-foreground text-background"
-                  : "border-border bg-card text-muted-foreground/60 hover:border-primary/25 hover:bg-accent dark:bg-white/[0.02] dark:hover:border-border dark:hover:bg-foreground/[0.05]"
+                  : "border-border bg-card text-muted-foreground hover:border-primary/25 hover:bg-accent dark:bg-white/[0.02] dark:hover:border-border dark:hover:bg-foreground/[0.05]"
               )}
               data-testid={`icon-pick-${key}`}
             >
@@ -418,7 +418,7 @@ export function TuneFrequencyFormContent({
       />
 
       <div className="space-y-1.5">
-        <Label className="text-[13px] font-medium text-foreground/80 flex items-center gap-1.5">
+        <Label className="text-[13px] font-medium text-foreground flex items-center gap-1.5">
           <Type className="w-3 h-3" />
           Content Type
         </Label>
@@ -547,7 +547,7 @@ export function TuneFrequencyDialog({
           <DrawerHeader className="pb-2">
             <div className="flex items-center gap-2.5">
               <div className="p-1.5 rounded-md bg-accent">
-                <Settings2 className="w-4 h-4 text-foreground/75" />
+                <Settings2 className="w-4 h-4 text-foreground" />
               </div>
               <div>
                 <DrawerTitle className="text-sm font-semibold text-foreground">{titleText}</DrawerTitle>
@@ -578,7 +578,7 @@ export function TuneFrequencyDialog({
         <DialogHeader>
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 rounded-md bg-accent">
-              <Settings2 className="w-4 h-4 text-foreground/75" />
+              <Settings2 className="w-4 h-4 text-foreground" />
             </div>
             <div>
               <DialogTitle className="text-sm font-semibold">{titleText}</DialogTitle>
@@ -670,7 +670,7 @@ export function ReachDepthSlider({
   return (
     <div className="mb-3 space-y-2" data-testid="container-reach-depth">
       <div className="flex items-center gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 text-foreground/60">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 text-foreground">
           <g clipPath="url(#reach-icon)">
             <path d="M15.0301 10.7697L20.6901 6.97973C21.2601 6.59973 21.4101 5.81973 21.0301 5.25973L19.2101 2.54971C18.8301 1.97971 18.0501 1.82971 17.4901 2.20971L11.8301 5.99972L15.0301 10.7697Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             <path d="M12.1739 6.47981L7.39624 9.67969L9.95614 13.5018L14.7338 10.302L12.1739 6.47981Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -684,7 +684,7 @@ export function ReachDepthSlider({
             </clipPath>
           </defs>
         </svg>
-        <span className="text-[12px] font-medium text-foreground/70 dark:text-foreground/60">
+        <span className="text-[12px] font-medium text-foreground">
           Trust reach
         </span>
       </div>
@@ -746,7 +746,7 @@ export function ReachDepthSlider({
       )}
 
       {!loadingScores && allTiersIdentical && (
-        <div className="text-[10px] text-muted-foreground/50 italic leading-tight" data-testid="text-reach-tiers-identical">
+        <div className="text-xs text-muted-foreground italic leading-tight" data-testid="text-reach-tiers-identical">
           Your loaded feed has the same posts at every reach level — try refreshing or scrolling for more variety.
         </div>
       )}
@@ -787,7 +787,7 @@ export function StrictnessPresetControl({
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex items-center gap-1.5 shrink-0">
           <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-foreground/60" />
-          <span className="text-[12px] font-medium text-foreground/70 dark:text-foreground/60">
+          <span className="text-[12px] font-medium text-foreground">
             How careful?
           </span>
         </div>
@@ -915,7 +915,7 @@ export function FeedTierFilter({ excludedTiers, onToggle, onClear }: {
                   ? "opacity-40 line-through text-muted-foreground dark:text-neutral-500 hover:opacity-60"
                   : hasFilters
                   ? "text-foreground dark:text-neutral-300 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
-                  : "text-muted-foreground dark:text-neutral-400 hover:text-foreground dark:hover:text-neutral-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+                  : "text-muted-foreground dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
               }`}
             >
               <TrustTierGlyph tier={tier} size="w-2 h-2" decorative className={excluded ? "opacity-25" : ""} />

@@ -84,7 +84,7 @@ export default function PollsFeed({
   if (!loading && filteredPolls.length === 0) {
     return (
       <div className="glass-card rounded-lg flex flex-col items-center justify-center py-12 sm:py-16 text-center px-4" data-testid="container-empty-polls">
-        <OttoEmpty mood="looking" size={72} className="mb-3 text-foreground/70" />
+        <OttoEmpty mood="looking" size={72} className="mb-3 text-foreground" />
         <p className="text-sm font-medium mb-1">{show === "all" ? "No polls right now" : "No open polls right now"}</p>
         <p className="max-w-xs text-xs text-muted-foreground">
           Polls people start across the network show up here. Check back soon — or start one from the compose box.
@@ -104,7 +104,7 @@ export default function PollsFeed({
         <button
           onClick={refresh}
           disabled={refreshing}
-          className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/60 transition-colors hover:text-foreground disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
           data-testid="button-refresh-polls"
         >
           {refreshing ? <RelayOutpostInlineLoader className="w-3 h-3" /> : <RefreshCw className="w-3 h-3" />}

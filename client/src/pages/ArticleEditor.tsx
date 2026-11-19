@@ -73,8 +73,8 @@ function getRelayModeStyle(preset: string): { text: string; dot: string } {
   switch (preset) {
     case "private": return { text: "text-amber-600 dark:text-amber-400/80", dot: "bg-amber-400" };
     case "public": return { text: "text-success dark:text-green-400/80", dot: "bg-green-400" };
-    case "all": return { text: "text-brand dark:text-brand/80", dot: "bg-brand" };
-    default: return { text: "text-muted-foreground/70", dot: "bg-muted-foreground/40" };
+    case "all": return { text: "text-brand", dot: "bg-brand" };
+    default: return { text: "text-muted-foreground", dot: "bg-muted-foreground/40" };
   }
 }
 
@@ -372,7 +372,7 @@ function ImageInsertPopover({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-72 p-3 space-y-2" align="start">
-        <p className="text-xs font-medium text-foreground/80 mb-2">Insert Image</p>
+        <p className="text-xs font-medium text-foreground mb-2">Insert Image</p>
         <input
           ref={fileRef}
           type="file"
@@ -398,13 +398,13 @@ function ImageInsertPopover({
         </Button>
         <Popover>
           <PopoverTrigger asChild>
-            <button className="text-[10px] text-success dark:text-green-500/40 hover:text-green-500/70 flex items-center gap-1 pt-1 transition-colors cursor-pointer" data-testid="button-inline-image-privacy">
+            <button className="text-xs text-success hover:underline flex items-center gap-1 pt-1 transition-colors cursor-pointer" data-testid="button-inline-image-privacy">
               <ShieldCheck className="w-2.5 h-2.5" />
               Location removed from photos
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-60 p-3 text-xs space-y-2" align="start" side="top">
-            <div className="flex items-center gap-1.5 font-medium text-foreground/90">
+            <div className="flex items-center gap-1.5 font-medium text-foreground">
               <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
               Photos leave without their location
             </div>
@@ -485,10 +485,10 @@ function SectionPicker({
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <button
-              className="flex items-center gap-1.5 text-sm text-left flex-1 min-w-0 cursor-pointer hover:text-foreground/80 transition-colors"
+              className="flex items-center gap-1.5 text-sm text-left flex-1 min-w-0 cursor-pointer transition-colors"
               data-testid="button-section-picker"
             >
-              <span className={`truncate ${value ? "text-foreground/80" : "text-muted-foreground/50"}`}>
+              <span className={`truncate ${value ? "text-foreground" : "text-muted-foreground"}`}>
                 {value || "Select section (optional)"}
               </span>
               <ChevronDown className="w-3 h-3 text-muted-foreground/40 shrink-0" />
@@ -517,7 +517,7 @@ function SectionPicker({
                   className={`w-full text-left text-xs px-2 py-1.5 rounded-md transition-colors cursor-pointer ${
                     value === s
                       ? "bg-foreground text-background"
-                      : "text-muted-foreground/70 hover:bg-muted/20 hover:text-foreground/80"
+                      : "text-muted-foreground hover:bg-muted/20"
                   }`}
                   onClick={() => {
                     onChange(value === s ? "" : s);
@@ -529,7 +529,7 @@ function SectionPicker({
                     <FolderOpen className="w-3 h-3 shrink-0" />
                     {s}
                     {existingSections.includes(s) && (
-                      <span className="text-[9px] text-muted-foreground/30 ml-auto">existing</span>
+                      <span className="text-xs text-muted-foreground ml-auto">existing</span>
                     )}
                   </span>
                 </button>
@@ -555,7 +555,7 @@ function SectionPicker({
         {value && (
           <button
             onClick={() => onChange("")}
-            className="text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors shrink-0 cursor-pointer"
+            className="text-muted-foreground transition-colors shrink-0 cursor-pointer"
           >
             <X className="w-3 h-3" />
           </button>
@@ -642,20 +642,20 @@ function BannerUploadZone({
             <div className="w-10 h-10 rounded-full bg-primary/8 dark:bg-primary/12 flex items-center justify-center group-hover/upload:bg-primary/15 dark:group-hover/upload:bg-primary/20 transition-colors duration-300">
               <Upload className="w-5 h-5 text-muted-foreground group-hover/upload:text-foreground transition-colors duration-300" />
             </div>
-            <span className="text-xs text-muted-foreground/70 font-medium">Tap to upload banner image</span>
-            <span className="text-[10px] text-muted-foreground/40 hidden sm:block">or drag and drop</span>
+            <span className="text-xs text-muted-foreground font-medium">Tap to upload banner image</span>
+            <span className="text-xs text-muted-foreground hidden sm:block">or drag and drop</span>
           </>
         )}
       </button>
       <Popover>
         <PopoverTrigger asChild>
-          <button className="text-[10px] text-success dark:text-green-500/40 hover:text-green-500/70 flex items-center gap-1 justify-center w-full transition-colors cursor-pointer py-0.5" data-testid="button-banner-privacy">
+          <button className="text-xs text-success hover:underline flex items-center gap-1 justify-center w-full transition-colors cursor-pointer py-0.5" data-testid="button-banner-privacy">
             <ShieldCheck className="w-2.5 h-2.5" />
             Location removed from photos
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-64 p-3 text-xs space-y-2" align="center">
-          <div className="flex items-center gap-1.5 font-medium text-foreground/90">
+          <div className="flex items-center gap-1.5 font-medium text-foreground">
             <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
             Photos leave without their location
           </div>
@@ -684,11 +684,11 @@ function DraftsDropdown({
         <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground" data-testid="button-drafts-menu">
           <FileText className="w-3.5 h-3.5" />
           Drafts
-          <Badge variant="secondary" className="text-[10px] px-1 py-0 ml-0.5">{drafts.length}</Badge>
+          <Badge variant="secondary" className="text-xs px-1 py-0 ml-0.5">{drafts.length}</Badge>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64 max-h-[300px] overflow-y-auto">
-        <p className="text-[13px] text-muted-foreground/60 px-2 py-1 font-medium">Saved drafts</p>
+        <p className="text-[13px] text-muted-foreground px-2 py-1 font-medium">Saved drafts</p>
         <DropdownMenuSeparator />
         {drafts.map((draft) => (
           <DropdownMenuItem
@@ -706,7 +706,7 @@ function DraftsDropdown({
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(draft.id); }}
-              className="p-1 rounded hover:bg-red-500/10 text-muted-foreground/40 hover:text-red-700 dark:hover:text-red-400 transition-colors shrink-0 cursor-pointer"
+              className="p-1 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-700 dark:hover:text-red-400 transition-colors shrink-0 cursor-pointer"
               data-testid={`button-delete-draft-${draft.id}`}
             >
               <Trash2 className="w-3 h-3" />
@@ -746,7 +746,7 @@ function ArticlePreview({
     <div className="rounded-xl border border-border/30 dark:border-primary/10 bg-card/40 dark:bg-card/20 backdrop-blur-sm overflow-hidden shadow-sm shadow-primary/5 dark:shadow-primary/10 transition-all duration-300" data-testid="article-preview-panel">
       <div className="px-3 py-2 border-b border-border/20 dark:border-primary/8 flex items-center gap-2 bg-muted/10 dark:bg-muted/5">
         <Eye className="w-3.5 h-3.5 text-muted-foreground" />
-        <span className="text-[12px] text-muted-foreground/60 font-medium">Preview</span>
+        <span className="text-[12px] text-muted-foreground font-medium">Preview</span>
       </div>
 
       <div className="p-4 sm:p-6 max-h-[70vh] overflow-y-auto">
@@ -773,7 +773,7 @@ function ArticlePreview({
         {hashtags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-4">
             {hashtags.map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-[10px]">#{tag}</Badge>
+              <Badge key={tag} variant="secondary" className="text-xs">#{tag}</Badge>
             ))}
           </div>
         )}
@@ -1631,7 +1631,7 @@ export default function ArticleEditor() {
   if (!pubkey) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-12 text-center">
-        <BookOpen className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+        <BookOpen className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
         <p className="text-muted-foreground mb-4" data-testid="text-sign-in-required">Sign in to write articles</p>
         <Button variant="outline" onClick={() => setLocation("/login")} data-testid="button-go-to-login">
           Sign In
@@ -1645,7 +1645,7 @@ export default function ArticleEditor() {
       {draftBanner && (
         <div className="mb-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 flex items-center gap-2 flex-wrap" data-testid="draft-restore-banner">
           <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-          <span className="text-xs text-foreground/80 flex-1">
+          <span className="text-xs text-foreground flex-1">
             Draft from {formatDistanceToNow(draftBanner.savedAt, { addSuffix: true })}
             {draftBanner.title && <> — "{draftBanner.title}"</>}
           </span>
@@ -1671,7 +1671,7 @@ export default function ArticleEditor() {
       )}
 
       {editNaddr && (
-        <div className="mb-4 rounded-[14px] border border-border/60 bg-foreground/[0.04] px-3 py-2 text-[13px] text-foreground/80" data-testid="editing-article-banner">
+        <div className="mb-4 rounded-[14px] border border-border/60 bg-foreground/[0.04] px-3 py-2 text-[13px] text-foreground" data-testid="editing-article-banner">
           {editLoading ? "Loading your article…" : <>Editing <strong>{editing?.title || "this article"}</strong>. Changes save to the same link, and readers see the new version.</>}
         </div>
       )}
@@ -1736,20 +1736,20 @@ export default function ArticleEditor() {
 
           <div className="flex items-center gap-1 ml-auto">
             {outpostRelay ? (
-              <span className="shrink-0 flex items-center gap-1.5 text-xs px-2 text-brand dark:text-brand/80">
+              <span className="shrink-0 flex items-center gap-1.5 text-xs px-2 text-brand">
                 <span className="w-2 h-2 rounded-full bg-brand shrink-0" />
                 <span className="max-w-[120px] truncate hidden sm:inline font-medium">{outpostRelay.replace(/^wss?:\/\//, "")}</span>
               </span>
             ) : getOutpostRelays().length === 0 ? (
               <button
                 onClick={() => setLocation("/outposts")}
-                className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-md text-[11px] text-muted-foreground/55 hover:text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors"
+                className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-md text-xs text-muted-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors"
                 data-testid="button-article-relay-manage-link"
                 title="Manage Communities"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
                 <span className="hidden sm:inline truncate">Posting to defaults</span>
-                <span className="opacity-40 hidden sm:inline">·</span>
+                <span className="opacity-40 hidden sm:inline" aria-hidden="true">·</span>
                 <span className="text-brand">Manage</span>
               </button>
             ) : (() => {
@@ -1778,7 +1778,7 @@ export default function ArticleEditor() {
             <Button
               variant="ghost"
               size="sm"
-              className="shrink-0 h-9 w-9 p-0 text-muted-foreground/40 hover:text-foreground"
+              className="shrink-0 h-9 w-9 p-0 text-muted-foreground hover:text-foreground"
               onClick={() => mdInputRef.current?.click()}
               title="Import a Markdown (.md) file"
               data-testid="button-import-md"
@@ -1788,7 +1788,7 @@ export default function ArticleEditor() {
             {!editNaddr && <Button
               variant="ghost"
               size="sm"
-              className={`shrink-0 h-9 w-9 p-0 ${showSchedule ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              className={`shrink-0 h-9 w-9 p-0 ${showSchedule ? "text-foreground" : "text-muted-foreground"}`}
               onClick={() => setShowSchedule(!showSchedule)}
               title="Schedule for later"
               data-testid="button-toggle-schedule-article"
@@ -1839,7 +1839,7 @@ export default function ArticleEditor() {
                   data-testid="input-schedule-datetime-article"
                 />
                 <button
-                  className="text-muted-foreground/40 hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground"
                   onClick={() => { setShowSchedule(false); setScheduleDateTime(""); }}
                 >
                   <X className="w-3.5 h-3.5" />
@@ -1858,7 +1858,7 @@ export default function ArticleEditor() {
             <AlertDialogContent className="glass-dialog-card max-w-sm">
               <AlertDialogHeader>
                 <AlertDialogTitle className="text-base font-semibold">Replace current content?</AlertDialogTitle>
-                <AlertDialogDescription className="text-xs text-muted-foreground/70">
+                <AlertDialogDescription className="text-xs text-muted-foreground">
                   Importing this Markdown file will replace what's in the editor. Empty title, summary, banner, and tags will be filled in from the file.
                 </AlertDialogDescription>
               </AlertDialogHeader>
@@ -1918,7 +1918,7 @@ export default function ArticleEditor() {
                     <Badge
                       key={tag}
                       variant="secondary"
-                      className="gap-1 px-2.5 py-1 text-xs bg-foreground/[0.06] text-foreground border border-border/60 hover:bg-foreground/10 transition-all duration-200 shadow-sm shadow-primary/5 dark:shadow-primary/15 animate-in fade-in slide-in-from-bottom-1 duration-200"
+                      className="gap-1 px-2.5 py-1 text-xs bg-foreground/[0.06] text-foreground border border-border/60 hover:bg-foreground/10 transition-all duration-200 shadow-sm shadow-primary/5 dark:shadow-primary/15 animate-in fade-in slide-in-from-bottom-1"
                     >
                       #{tag}
                       <button onClick={() => removeHashtag(tag)} className="ml-0.5 rounded-full hover:bg-primary/20 dark:hover:bg-primary/30 p-0.5 transition-colors cursor-pointer" data-testid={`button-remove-tag-${tag}`}>
@@ -1960,7 +1960,7 @@ export default function ArticleEditor() {
             )}
 
             {commentsDisabled && (
-              <div className="flex items-center gap-1.5 text-[10px] text-amber-500/60 mt-1">
+              <div className="flex items-center gap-1.5 text-xs text-warning mt-1">
                 <MessageSquareOff className="w-3 h-3" />
                 <span>Comments disabled on this entry</span>
               </div>
@@ -2095,7 +2095,7 @@ export default function ArticleEditor() {
 
           <div className="flex items-center justify-between px-3 py-2 text-[12px] text-muted-foreground rounded-lg bg-card/30 dark:bg-card/10 border border-border/20 dark:border-primary/8" data-testid="editor-stats">
             <span className="font-mono tracking-wide">{wordCount} words · {readTime} min read</span>
-            {hasUnsavedChanges && <span className="text-amber-500/70 font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500/70 animate-pulse" />Unsaved changes</span>}
+            {hasUnsavedChanges && <span className="text-warning font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500/70 animate-pulse" />Unsaved changes</span>}
             {currentDraftId && !hasUnsavedChanges && <span className="text-success dark:text-green-500/70 font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500/70" />Draft saved</span>}
           </div>
         </div>
