@@ -50,3 +50,53 @@ describe("the stream's tuning-in panel", () => {
     expect(loader![0]).not.toMatch(/\btext-(brand|foreground|muted|white|black)/);
   });
 });
+
+/**
+ * The rest of the Live page (LIGHT_MODE.md, rules 2 and 6): Ember is for
+ * acting, so in light mode it does not paint a surface. The card art of a
+ * stream with no picture, the player box, the "can't play" card, the
+ * placeholders and the Ended badge were Ember panels with Ember words on them.
+ *
+ * A class with a variant (`dark:`, `hover:`, `after:`) is left alone: dark
+ * keeps its look, and a hover is an action answering. An Ember tint is still
+ * allowed behind an Ember word, which is how a tinted button or a tag is drawn.
+ */
+describe("the Live page's light surfaces", () => {
+  /** Every quoted or back-ticked piece of the source that could hold class names. */
+  const strings = [...SRC.matchAll(/"([^"\n]*)"|`([^`]*)`/g)].map((m) => m[1] ?? m[2] ?? "");
+  const emberPaint = (c: string) => /^(bg|from|via|to|border|ring)-brand(\/\d+)?$/.test(c);
+
+  // The participant hover card is one dark card in both themes (its words are
+  // white), so its Ember hairlines and avatar ring sit on a dark ground in
+  // light mode too.
+  const DARK_IN_BOTH_THEMES = [
+    "absolute inset-0 border border-brand/20 rounded-xl",
+    "absolute top-0 left-1/2 -translate-x-1/2 w-24 h-[1px] bg-gradient-to-r from-transparent via-brand/50 to-transparent",
+    "w-12 h-12 ring-2 ring-brand/30 border-2 border-[#0d0d2b] shrink-0 cursor-pointer",
+  ];
+
+  it("paints no Ember surface, border or ring without an Ember word on it", () => {
+    const offenders = strings
+      .filter((s) => !DARK_IN_BOTH_THEMES.includes(s))
+      .filter((s) => {
+        const classes = s.split(/\s+/);
+        return classes.some(emberPaint) && !classes.includes("text-brand");
+      });
+    expect(offenders).toEqual([]);
+  });
+
+  it("still finds the exceptions it lists: a list that matches nothing hides a change", () => {
+    for (const s of DARK_IN_BOTH_THEMES) expect(strings).toContain(s);
+  });
+
+  it("writes the sentences on the player's panels in ink, not Ember", () => {
+    // The wrappers of the "upcoming", "no stream" and "can't play" words.
+    const wrappers = strings.filter((s) => /^text-center space-y-[23] /.test(s) && /\btext-(brand|foreground)\b/.test(s));
+    expect(wrappers).toHaveLength(2);
+    for (const s of wrappers) expect(s.split(/\s+/)).toContain("text-foreground");
+  });
+
+  it("leaves the thumbnail's dark fade off a card that has no picture, in light mode", () => {
+    expect(SRC).toMatch(/from-black\/80 via-transparent to-transparent \$\{hasThumbnail \? "" : "hidden dark:block"\}/);
+  });
+});
