@@ -6,7 +6,7 @@ import { lazyNamed } from "@/lib/lazy-retry";
 // (guest-first-load.test.ts).
 const LoginOptions = lazy(() => lazyNamed(() => import("@/components/LoginOptions"), "LoginOptions"));
 import { OutpostLanding } from "@/components/landing/OutpostLanding";
-import { OttoMark } from "@/components/OttoMark";
+import { RelayLogo } from "@/components/relay/RelayLogo";
 import { trackSignupEvent } from "@/lib/signup-telemetry";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
@@ -766,9 +766,9 @@ export function GalaxyWarpOverlay({ mode, onLaunch, onWarpStarted, onWarpComplet
       {isCockpit && !warping && (
         <div className="absolute inset-0 z-10 flex flex-col items-center overflow-y-auto" data-testid="cockpit-login-panel">
           <div className="w-full max-w-md md:max-w-5xl px-4 sm:px-6 py-8 sm:py-12 space-y-8 animate-in fade-in-0 duration-300">
-            <div className="flex items-center justify-center gap-3" data-testid="login-brand">
-              <OttoMark size={44} className="shrink-0" />
-              <span className="text-[22px] font-semibold leading-none tracking-[-0.01em] text-foreground">Relay Outpost</span>
+            {/* The one logo, as on the landing's header: the face stands in as the O. */}
+            <div className="flex items-center justify-center" data-testid="login-brand">
+              <RelayLogo state="full" size={28} />
             </div>
             <Suspense fallback={<div className="min-h-[280px]" aria-busy="true" />}>
               <LoginOptions

@@ -5,18 +5,17 @@ import { useLocation } from "wouter";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { UserPlus } from "lucide-react";
 import { LoginOptions } from "@/components/LoginOptions";
-import { OttoMark } from "@/components/OttoMark";
+import { RelayLogo } from "@/components/relay/RelayLogo";
 import { isAddAccountPending, clearAddAccountPending } from "@/lib/account-registry";
 import { isNewAccount } from "@/lib/local-account";
 import { isWelcomed } from "@/lib/welcome";
 
 function BrandLogo({ className }: { className?: string }) {
-  // Outpost look (owner, 2026-11-18): the Otto mark and the name in ink, like
-  // the rail and the Classic sidebar — no boxed wordmark, no flicker or glow.
+  // The one logo (owner, 2026-11-18): "Relay Outpost" in ink with Relay's face standing in as
+  // the O, the same as the landing's header. No boxed wordmark, no flicker or glow.
   return (
-    <div className={`flex items-center gap-3 ${className || ""}`} data-testid="login-brand">
-      <OttoMark size={44} className="shrink-0" />
-      <span className="text-[22px] font-semibold leading-none tracking-[-0.01em] text-foreground">Relay Outpost</span>
+    <div className={`flex items-center ${className || ""}`} data-testid="login-brand">
+      <RelayLogo state="full" size={28} />
     </div>
   );
 }
